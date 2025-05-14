@@ -402,10 +402,7 @@ const transcripts = async (command: string, args: parseArgs.ParsedArgs) => {
 
       const auth = await Authenticator.internalAdminForWorkspace(args.wId);
       const transcriptsConfiguration =
-        await LabsTranscriptsConfigurationResource.fetchByModelIdWithAuth(
-          auth,
-          args.cId
-        );
+        await LabsTranscriptsConfigurationResource.fetchById(auth, args.cId);
 
       if (!transcriptsConfiguration) {
         throw new Error(
@@ -431,12 +428,10 @@ const transcripts = async (command: string, args: parseArgs.ParsedArgs) => {
       if (!args.cId) {
         throw new Error("Missing --cId argument");
       }
+
       const auth = await Authenticator.internalAdminForWorkspace(args.wId);
       const transcriptsConfiguration =
-        await LabsTranscriptsConfigurationResource.fetchByModelIdWithAuth(
-          auth,
-          args.cId
-        );
+        await LabsTranscriptsConfigurationResource.fetchById(auth, args.cId);
 
       if (!transcriptsConfiguration) {
         throw new Error(

@@ -12,7 +12,7 @@ import { toFileContentFragment } from "@app/lib/api/assistant/conversation/conte
 import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 import config from "@app/lib/api/config";
 import { sendEmailWithTemplate } from "@app/lib/api/email";
-import type { Authenticator } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -106,7 +106,7 @@ export async function retrieveNewTranscriptsActivity(
 }
 
 export async function processTranscriptActivity(
-  auth: Authenticator,
+  workspaceAuth: Authenticator,
   {
     transcriptsConfigurationId,
     fileId,
@@ -171,7 +171,7 @@ export async function processTranscriptActivity(
 
   const transcriptsConfiguration =
     await LabsTranscriptsConfigurationResource.fetchByModelIdWithAuth(
-      auth,
+      workspaceAuth,
       transcriptsConfigurationId
     );
 
@@ -192,7 +192,7 @@ export async function processTranscriptActivity(
     );
   }
 
-  const owner = auth.workspace();
+  const owner = workspaceAuth.workspace();
   if (!owner) {
     await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
     throw new Error(
@@ -200,6 +200,10 @@ export async function processTranscriptActivity(
     );
   }
 
+  const auth = await Authenticator.fromUserIdAndWorkspaceId(
+    user.sId,
+    owner.sId
+  );
   const localLogger = mainLogger.child({
     fileId,
     transcriptsConfigurationId,
