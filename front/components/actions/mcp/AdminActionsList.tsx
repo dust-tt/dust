@@ -268,7 +268,7 @@ export const AdminActionsList = ({
               <Button
                 icon={PlusIcon}
                 onClick={() => setIsCreateOpen(true)}
-                label="Add a tool"
+                label="Add Tools"
               />
             }
           />
