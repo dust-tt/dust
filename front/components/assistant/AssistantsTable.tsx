@@ -24,7 +24,7 @@ import {
   Tooltip,
   TrashIcon,
 } from "@dust-tt/sparkle";
-import type { CellContext, Row } from "@tanstack/react-table";
+import type { CellContext } from "@tanstack/react-table";
 import { useRouter } from "next/router";
 import { useMemo, useState } from "react";
 
