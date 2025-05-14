@@ -1,7 +1,7 @@
 import { faker } from "@faker-js/faker";
 import { describe, expect } from "vitest";
 
-import { WorkspaceHasDomain } from "@app/lib/models/workspace_has_domain";
+import { WorkspaceHasDomainModel } from "@app/lib/models/workspace_has_domain";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { itInTransaction } from "@app/tests/utils/utils";
 
@@ -102,7 +102,7 @@ describe("POST /api/w/[wId]", () => {
 
     // Create a workspace domain first
     const fakeDomain = faker.internet.domainName();
-    await WorkspaceHasDomain.create({
+    await WorkspaceHasDomainModel.create({
       workspaceId: workspace.id,
       domain: fakeDomain,
       domainAutoJoinEnabled: false,
@@ -118,7 +118,7 @@ describe("POST /api/w/[wId]", () => {
     expect(res._getStatusCode()).toBe(200);
 
     // Verify the domain was updated
-    const updatedDomain = await WorkspaceHasDomain.findOne({
+    const updatedDomain = await WorkspaceHasDomainModel.findOne({
       where: {
         workspaceId: workspace.id,
         domain: fakeDomain,

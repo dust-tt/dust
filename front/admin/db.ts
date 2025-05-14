@@ -73,7 +73,7 @@ import { MembershipInvitation } from "@app/lib/models/membership_invitation";
 import { Plan, Subscription } from "@app/lib/models/plan";
 import { TagModel } from "@app/lib/models/tags";
 import { Workspace } from "@app/lib/models/workspace";
-import { WorkspaceHasDomain } from "@app/lib/models/workspace_has_domain";
+import { WorkspaceHasDomainModel } from "@app/lib/models/workspace_has_domain";
 import {
   AppModel,
   Clone,
@@ -118,7 +118,7 @@ async function main() {
   await UserModel.sync({ alter: true });
   await UserMetadataModel.sync({ alter: true });
   await Workspace.sync({ alter: true });
-  await WorkspaceHasDomain.sync({ alter: true });
+  await WorkspaceHasDomainModel.sync({ alter: true });
   await MembershipModel.sync({ alter: true });
   await MembershipInvitation.sync({ alter: true });
   await GroupModel.sync({ alter: true });
