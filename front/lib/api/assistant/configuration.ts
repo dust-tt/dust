@@ -535,7 +535,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
     user && variant !== "extra_light"
       ? getFavoriteStates(auth, { configurationIds: configurationSIds })
       : Promise.resolve(new Map<string, boolean>()),
-    user && variant !== "extra_light"
+    variant !== "extra_light"
       ? TagResource.listForAgents(auth, configurationIds)
       : Promise.resolve([]),
   ]);
