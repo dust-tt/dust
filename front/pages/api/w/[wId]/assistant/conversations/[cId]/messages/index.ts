@@ -163,8 +163,7 @@ async function handler(
         return apiError(req, res, messageRes.error);
       }
 
-      const responseData = { message: messageRes.value.userMessage };
-      res.status(200).json(responseData);
+      res.status(200).json({ message: messageRes.value.userMessage });
       return;
 
     default:
