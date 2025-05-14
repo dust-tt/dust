@@ -108,7 +108,7 @@ export async function getAgentConfigurationGroupIdsFromActions(
     auth,
     actions
       .filter((action) => isDustAppRunConfiguration(action))
-      .map((action) => (action as DustAppRunConfigurationType).appId)
+      .map((action) => action.appId)
   );
 
   // Map spaceId to its group requirements.
@@ -139,10 +139,7 @@ export async function getAgentConfigurationGroupIdsFromActions(
     auth,
     actions
       .filter((action) => isServerSideMCPServerConfiguration(action))
-      .map(
-        (action) =>
-          (action as ServerSideMCPServerConfigurationType).mcpServerViewId
-      )
+      .map((action) => action.mcpServerViewId)
   );
 
   for (const view of mcpServerViews) {
