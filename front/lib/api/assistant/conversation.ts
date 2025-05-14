@@ -1411,7 +1411,7 @@ export async function* editUserMessage(
                 agentConfigurationId: configuration.sId,
                 agentConfigurationVersion: configuration.version,
                 workspaceId: owner.id,
-                skipToolsValidation: false,
+                skipToolsValidation,
               },
               { transaction: t }
             );

@@ -1987,6 +1987,7 @@ export const PublicPostEditMessagesRequestBodySchema = z.object({
       configurationId: z.string(),
     })
   ),
+  skipToolsValidation: z.boolean().optional().default(false),
 });
 
 export type PublicPostEditMessagesRequestBody = z.infer<

@@ -15,6 +15,7 @@ import { isUserMessageType } from "@app/types";
 const PostEditRequestBodySchema = t.type({
   content: t.string,
   mentions: t.array(t.type({ configurationId: t.string })),
+  skipToolsValidation: t.union([t.boolean, t.undefined]),
 });
 
 async function handler(
@@ -81,13 +82,14 @@ async function handler(
           },
         });
       }
-      const { content, mentions } = bodyValidation.right;
+      const { content, mentions, skipToolsValidation } = bodyValidation.right;
 
       const editedMessageRes = await editUserMessageWithPubSub(auth, {
         conversation,
         message,
         content,
         mentions,
+        skipToolsValidation: skipToolsValidation ?? false,
       });
       if (editedMessageRes.isErr()) {
         return apiError(req, res, editedMessageRes.error);
