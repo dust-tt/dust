@@ -30,6 +30,7 @@ interface AppProps {
     };
     sId: {
       type: "string";
+      shortFlag: "s";
       isMultiple: true;
     };
   }>;
