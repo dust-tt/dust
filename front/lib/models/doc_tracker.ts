@@ -107,7 +107,6 @@ TrackerConfigurationModel.init(
     modelName: "tracker_configuration",
     sequelize: frontSequelize,
     indexes: [
-      { fields: ["workspaceId"] },
       {
         fields: ["workspaceId", "status"],
         concurrently: true,
