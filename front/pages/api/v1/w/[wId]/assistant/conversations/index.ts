@@ -50,7 +50,7 @@ import {
  *       - in: path
  *         name: wId
  *         required: true
- *         description: ID of the workspace
+ *         description: Id of the workspace
  *         schema:
  *           type: string
  *     security:
