@@ -175,6 +175,26 @@ export async function launchSlackSyncOneMessageWorkflow(
     return new Ok(undefined);
   }
 
+  const thread = await SlackMessages.findOne({
+    where: {
+      connectorId: connectorId,
+      channelId: channelId,
+      messageTs: threadTs,
+    },
+  });
+  if (thread && thread.skipReason) {
+    logger.info(
+      {
+        connectorId,
+        channelId,
+        threadTs,
+        skipReason: thread.skipReason,
+      },
+      `Skipping thread : ${thread.skipReason}`
+    );
+    return new Ok(undefined);
+  }
+
   const client = await getTemporalClient();
 
   const messageTs = parseInt(threadTs as string) * 1000;
