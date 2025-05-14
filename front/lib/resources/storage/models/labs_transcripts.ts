@@ -76,6 +76,14 @@ LabsTranscriptsConfigurationModel.init(
       { fields: ["userId"] },
       { fields: ["userId", "workspaceId"], unique: true },
       { fields: ["dataSourceViewId"] },
+      {
+        fields: ["workspaceId", "provider"],
+        concurrently: true,
+      },
+      {
+        fields: ["workspaceId", "userId"],
+        concurrently: true,
+      },
     ],
   }
 );

@@ -1,6 +1,7 @@
 import type { WorkflowHandle } from "@temporalio/client";
 import { WorkflowNotFoundError } from "@temporalio/client";
 
+import type { Authenticator } from "@app/lib/auth";
 import type { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import { getTemporalClient } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
@@ -11,6 +12,7 @@ import type { Result } from "@app/types";
 import { Err, Ok } from "@app/types";
 
 export async function launchRetrieveTranscriptsWorkflow(
+  auth: Authenticator,
   transcriptsConfiguration: LabsTranscriptsConfigurationResource
 ): Promise<Result<string, Error>> {
   const client = await getTemporalClient();
@@ -18,7 +20,7 @@ export async function launchRetrieveTranscriptsWorkflow(
 
   try {
     await client.workflow.start(retrieveNewTranscriptsWorkflow, {
-      args: [transcriptsConfiguration.id],
+      args: [auth, transcriptsConfiguration.id],
       taskQueue: TRANSCRIPTS_QUEUE_NAME,
       workflowId: workflowId,
       cronSchedule: "*/5 * * * *",
