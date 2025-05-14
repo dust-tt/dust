@@ -33,7 +33,6 @@ import { PrevNextButtons } from "@app/components/assistant_builder/PrevNextButto
 import SettingsScreen, {
   validateHandle,
 } from "@app/components/assistant_builder/SettingsScreen";
-import { SharingButton } from "@app/components/assistant_builder/Sharing";
 import { submitAssistantBuilderForm } from "@app/components/assistant_builder/submitAssistantBuilderForm";
 import type {
   AssistantBuilderPendingAction,
@@ -61,7 +60,6 @@ import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { useKillSwitches } from "@app/lib/swr/kill";
 import { useModels } from "@app/lib/swr/models";
 import { useUser } from "@app/lib/swr/user";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
   AgentConfigurationScope,
   AssistantBuilderRightPanelStatus,

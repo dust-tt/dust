@@ -47,7 +47,6 @@ import {
   useUpdateAgentScope,
 } from "@app/lib/swr/assistants";
 import { useEditors, useUpdateEditors } from "@app/lib/swr/editors";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
   AgentConfigurationScope,
   AgentConfigurationType,
@@ -426,9 +425,7 @@ export function AssistantDetails({
               agentConfiguration={agentConfiguration}
               initialScope={agentConfiguration.scope}
               newScope={agentConfiguration.scope}
-              disabled={isUpdatingScope}
               setNewScope={(scope) => updateScope(scope)}
-              origin="modal"
             />
           )}
         </div>

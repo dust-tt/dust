@@ -1,7 +1,4 @@
 import {
-  ArrowUpOnSquareIcon,
-  Button,
-  ChevronDownIcon,
   Chip,
   CompanyIcon,
   Dialog,
@@ -11,34 +8,21 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
   DustIcon,
   LockIcon,
-  Page,
-  PopoverContent,
-  PopoverRoot,
-  PopoverTrigger,
-  SliderToggle,
   UserGroupIcon,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
 import { assistantUsageMessage } from "@app/components/assistant/Usage";
-import type { SlackChannel } from "@app/components/assistant_builder/SlackIntegration";
-import { SlackAssistantDefaultManager } from "@app/components/assistant_builder/SlackIntegration";
-import { useAgentConfiguration, useAgentUsage } from "@app/lib/swr/assistants";
+import { useAgentUsage } from "@app/lib/swr/assistants";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
   AgentConfigurationScope,
   AgentConfigurationType,
-  DataSourceType,
   LightWorkspaceType,
-  WorkspaceType,
 } from "@app/types";
-import { isAdmin, isBuilder } from "@app/types";
+import { isBuilder } from "@app/types";
 
 type ConfirmationModalDataType = {
   title: string;
@@ -135,202 +119,12 @@ export const SCOPE_INFO: Record<
 
 type NonGlobalScope = Exclude<AgentConfigurationScope, "global">;
 
-interface SharingButtonProps {
-  agentConfigurationId: string | null;
-  baseUrl: string;
-  initialScope: NonGlobalScope;
-  newScope: NonGlobalScope;
-  owner: WorkspaceType;
-  setNewLinkedSlackChannels: (channels: SlackChannel[]) => void;
-  setNewScope: (scope: NonGlobalScope) => void;
-  showSlackIntegration: boolean;
-  slackChannelSelected: SlackChannel[];
-  slackDataSource: DataSourceType | undefined;
-}
-
-export function SharingButton({
-  agentConfigurationId,
-  baseUrl,
-  initialScope,
-  newScope,
-  owner,
-  setNewLinkedSlackChannels,
-  setNewScope,
-  showSlackIntegration,
-  slackChannelSelected,
-  slackDataSource,
-}: SharingButtonProps) {
-  const [isPopoverOpen, setIsPopoverOpen] = useState(false);
-  const { agentUsage, isAgentUsageLoading, isAgentUsageError } = useAgentUsage({
-    workspaceId: owner.sId,
-    agentConfigurationId,
-  });
-  const { agentConfiguration } = useAgentConfiguration({
-    workspaceId: owner.sId,
-    agentConfigurationId,
-  });
-  const [slackDrawerOpened, setSlackDrawerOpened] = useState(false);
-  const assistantName = agentConfiguration?.name;
-
-  const usageText = assistantName
-    ? assistantUsageMessage({
-        assistantName: null,
-        usage: agentUsage,
-        isLoading: isAgentUsageLoading,
-        isError: isAgentUsageError,
-        boldVersion: true,
-      })
-    : "";
-
-  const shareLink = `${baseUrl}/w/${owner.sId}/assistant/new?assistantDetails=${agentConfigurationId}`;
-  const [copyLinkSuccess, setCopyLinkSuccess] = useState<boolean>(false);
-
-  return (
-    <>
-      {slackDataSource && (
-        <SlackAssistantDefaultManager
-          existingSelection={slackChannelSelected}
-          owner={owner}
-          onSave={(slackChannels: SlackChannel[]) => {
-            setNewLinkedSlackChannels(slackChannels);
-          }}
-          assistantHandle="@Dust"
-          show={slackDrawerOpened}
-          slackDataSource={slackDataSource}
-          onClose={() => setSlackDrawerOpened(false)}
-        />
-      )}
-      <PopoverRoot open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
-        <PopoverTrigger asChild>
-          <Button
-            size="sm"
-            label="Sharing"
-            icon={ArrowUpOnSquareIcon}
-            variant="outline"
-            isSelect
-            data-gtm-label="sharingButton"
-            data-gtm-location="assistantBuilder"
-            onClick={() => setIsPopoverOpen(!isPopoverOpen)}
-          />
-        </PopoverTrigger>
-        <PopoverContent>
-          <div className="flex flex-col gap-y-2 py-1">
-            <div className="flex flex-col gap-y-3">
-              <SharingDropdown
-                owner={owner}
-                agentConfiguration={agentConfiguration}
-                initialScope={initialScope}
-                newScope={newScope}
-                setNewScope={setNewScope}
-                origin="page"
-              />
-              <div className="text-sm text-muted-foreground">
-                <div>
-                  {SCOPE_INFO[newScope].text}{" "}
-                  {agentUsage && newScope !== "private" ? usageText : null}
-                </div>
-              </div>
-            </div>
-            {showSlackIntegration && (
-              <>
-                <Page.Separator />
-                <div className="flex flex-row justify-between">
-                  <div>
-                    <div className="heading-base text-muted-foreground">
-                      Slack integration
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      {slackChannelSelected.length === 0 ? (
-                        <>Set as default agent for specific&nbsp;channels.</>
-                      ) : (
-                        <>
-                          Default agent for{" "}
-                          {slackChannelSelected
-                            .map((c) => c.slackChannelName)
-                            .join(", ")}
-                        </>
-                      )}
-                    </div>
-
-                    {slackChannelSelected.length > 0 && (
-                      <div className="pt-3">
-                        <Button
-                          size="xs"
-                          variant="outline"
-                          label="Manage channels"
-                          onClick={() => {
-                            setIsPopoverOpen(false);
-                            setSlackDrawerOpened(true);
-                          }}
-                        />
-                      </div>
-                    )}
-                  </div>
-                  <div className="pt-4">
-                    <SliderToggle
-                      selected={slackChannelSelected.length > 0}
-                      // If not admins, but there are channels selected, prevent from removing.
-                      disabled={
-                        !slackDataSource ||
-                        (slackChannelSelected.length > 0 && !isAdmin(owner))
-                      }
-                      onClick={() => {
-                        if (slackChannelSelected.length > 0) {
-                          setNewLinkedSlackChannels([]);
-                        } else {
-                          setIsPopoverOpen(false);
-                          setSlackDrawerOpened(true);
-                        }
-                      }}
-                    />
-                  </div>
-                </div>
-              </>
-            )}
-            {agentConfigurationId && (
-              <>
-                <Page.Separator />
-                <div className="flex w-full flex-row">
-                  <div className="grow">
-                    <div className="heading-base text-muted-foreground">
-                      Link
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      Shareable direct&nbsp;URL
-                    </div>
-                  </div>
-                  <div className="pt-4 text-right">
-                    <Button
-                      size="sm"
-                      label={copyLinkSuccess ? "Copied!" : "Copy link"}
-                      variant="outline"
-                      onClick={async () => {
-                        await navigator.clipboard.writeText(shareLink);
-                        setCopyLinkSuccess(true);
-                        setTimeout(() => {
-                          setCopyLinkSuccess(false);
-                        }, 1000);
-                      }}
-                    />
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
-        </PopoverContent>
-      </PopoverRoot>
-    </>
-  );
-}
-
 interface SharingDropdownProps {
   owner: LightWorkspaceType;
   agentConfiguration: AgentConfigurationType | null;
-  disabled?: boolean;
   initialScope: AgentConfigurationScope;
   newScope: AgentConfigurationScope;
   setNewScope: (scope: NonGlobalScope) => void;
-  origin: "page" | "modal";
 }
 
 /*
@@ -339,11 +133,9 @@ interface SharingDropdownProps {
 export function SharingDropdown({
   owner,
   agentConfiguration,
-  disabled,
   initialScope,
   newScope,
   setNewScope,
-  origin,
 }: SharingDropdownProps) {
   const [requestNewScope, setModalNewScope] = useState<NonGlobalScope | null>(
     null

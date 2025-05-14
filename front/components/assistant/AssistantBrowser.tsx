@@ -28,7 +28,6 @@ import { useRouter } from "next/router";
 import React, { useCallback, useMemo, useState } from "react";
 
 import { useTheme } from "@app/components/sparkle/ThemeContext";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import {
   compareForFuzzySort,
   getAgentSearchString,
@@ -184,11 +183,6 @@ export function AssistantBrowser({
 
     return { filteredAgents, filteredTags, uniqueTags };
   }, [agentConfigurations, assistantSearch]);
-
-  // TODO(agent-discovery) Remove feature-flag
-  const featureFlags = useFeatureFlags({
-    workspaceId: owner.sId,
-  });
 
   // if search is active, only show the search tab, otherwise show all tabs with agents except the search tab
   const visibleTabs = AGENTS_TABS;
