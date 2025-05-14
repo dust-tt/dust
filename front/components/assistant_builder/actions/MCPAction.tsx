@@ -169,31 +169,29 @@ export function MCPAction({
           viewType="table"
         />
       )}
-      {/* Server selection */}
-      {(selectedServerAvailability === null ||
-        selectedServerAvailability === "manual") && (
-        <div className="text-sm text-foreground dark:text-foreground-night">
-          <div>
-            {hasOnlyOneTool
-              ? selectedMCPServerView?.server.tools[0].description
-              : selectedMCPServerView?.server.description}
-          </div>
-          <br />
-          {selectedServerAvailability === "manual" && (
-            <div>
-              Available to you via{" "}
-              <b>
-                {
-                  allowedSpaces.find(
-                    (space) => space.sId === selectedMCPServerView?.spaceId
-                  )?.name
-                }
-              </b>{" "}
-              space.
-            </div>
-          )}
+
+      <div className="text-sm text-foreground dark:text-foreground-night">
+        <div>
+          {hasOnlyOneTool
+            ? selectedMCPServerView?.server.tools[0].description
+            : selectedMCPServerView?.server.description}
         </div>
-      )}
+        <br />
+        {selectedServerAvailability === "manual" && (
+          <div>
+            Available to you via{" "}
+            <b>
+              {
+                allowedSpaces.find(
+                  (space) => space.sId === selectedMCPServerView?.spaceId
+                )?.name
+              }
+            </b>{" "}
+            space.
+          </div>
+        )}
+      </div>
+
       {/* Configurable blocks */}
       {requirements.requiresDataSourceConfiguration && (
         <DataSourceSelectionSection
