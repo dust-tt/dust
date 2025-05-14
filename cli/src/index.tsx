@@ -39,6 +39,7 @@ const cli = meow({
     },
     sId: {
       type: "string",
+      shortFlag: "s",
       isMultiple: true,
       description: "Specify agent sId(s) to use directly (can be repeated)",
     },
