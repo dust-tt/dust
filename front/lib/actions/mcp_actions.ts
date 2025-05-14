@@ -366,16 +366,18 @@ function getPrefixedToolName(
   return new Ok(prefixedName);
 }
 
+type AgentLoopListToolsContextWithoutConfigurationType = Omit<
+  AgentLoopListToolsContextType,
+  "agentActionConfiguration"
+>;
+
 /**
  * List the MCP tools for the given agent actions.
  * Returns MCP tools by connecting to the specified MCP servers.
  */
 export async function tryListMCPTools(
   auth: Authenticator,
-  agentLoopListToolsContext: Omit<
-    AgentLoopListToolsContextType,
-    "agentActionConfiguration"
-  >
+  agentLoopListToolsContext: AgentLoopListToolsContextWithoutConfigurationType
 ): Promise<{ tools: MCPToolConfigurationType[]; error?: string }> {
   const owner = auth.getNonNullableWorkspace();
 
