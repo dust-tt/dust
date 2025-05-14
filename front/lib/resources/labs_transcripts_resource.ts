@@ -257,15 +257,26 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
   /**
    * History
    */
-  async recordHistory(
-    blob: Omit<
-      CreationAttributes<LabsTranscriptsHistoryModel>,
-      "id" | "configurationId"
-    >
-  ): Promise<InferAttributes<LabsTranscriptsHistoryModel>> {
+  async recordHistory({
+    workspace,
+    fileId,
+    fileName,
+    conversationId,
+    stored,
+  }: {
+    workspace: LightWorkspaceType;
+    fileId: string;
+    fileName: string;
+    conversationId?: string | null;
+    stored?: boolean;
+  }): Promise<InferAttributes<LabsTranscriptsHistoryModel>> {
     const history = await LabsTranscriptsHistoryModel.create({
-      ...blob,
       configurationId: this.id,
+      workspaceId: workspace.id,
+      fileId,
+      fileName,
+      conversationId: conversationId,
+      stored: stored,
     });
     return history.get();
   }
@@ -349,7 +360,8 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
 
   toJSON(): LabsTranscriptsConfigurationType {
     return {
-      id: this.sId,
+      id: this.id,
+      sId: this.sId,
       workspaceId: this.workspaceId,
       provider: this.provider,
       agentConfigurationId: this.agentConfigurationId,

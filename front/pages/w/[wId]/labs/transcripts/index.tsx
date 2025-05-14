@@ -167,7 +167,7 @@ export default function LabsTranscriptsIndex({
           onClose={() => setIsDeleteProviderDialogOpened(false)}
           onConfirm={async () => {
             await handleDisconnectProvider(
-              transcriptsConfiguration?.id || null
+              transcriptsConfiguration?.sId || null
             );
           }}
         />

@@ -344,7 +344,7 @@ export async function processTranscriptActivity(
     await transcriptsConfiguration.recordHistory({
       fileId,
       fileName: transcriptTitle.substring(0, 255),
-      workspaceId: owner.id,
+      workspace: owner,
     });
   } catch (error) {
     if (error instanceof UniqueConstraintError) {

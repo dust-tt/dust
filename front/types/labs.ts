@@ -23,7 +23,8 @@ export type LabsConnectionType = (typeof labsConnections)[number];
 // Types
 
 export type LabsTranscriptsConfigurationType = {
-  id: string;
+  id: ModelId;
+  sId: string;
   workspaceId: ModelId;
   provider: LabsTranscriptsProviderType;
   agentConfigurationId: string | null;
