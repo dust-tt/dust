@@ -2,11 +2,12 @@ import type {
   CreateConversationResponseType,
   GetAgentConfigurationsResponseType,
 } from "@dust-tt/client";
-import { Box, Text, useInput, useStdout } from "ink";
+import { assertNever } from "@dust-tt/client";
+import { Box, Static, Text, useInput, useStdout } from "ink";
 import Spinner from "ink-spinner";
 import open from "open";
 import type { FC } from "react";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useRef, useState } from "react";
 
 import AuthService from "../../utils/authService.js";
 import { getDustClient } from "../../utils/dustClient.js";
@@ -17,16 +18,140 @@ import AgentSelector from "../components/AgentSelector.js";
 type AgentConfiguration =
   GetAgentConfigurationsResponseType["agentConfigurations"][number];
 
-interface Message {
-  type: "user" | "assistant";
-  content: string;
-  chainOfThought: string;
-  isStreaming?: boolean;
-}
-
 interface CliChatProps {
   sId?: string;
 }
+
+type ConversationItem = { key: string } & (
+  | {
+      type: "welcome_header";
+      agentName: string;
+      agentId: string;
+    }
+  | {
+      type: "user_message";
+      firstName: string;
+      content: string;
+      index: number;
+    }
+  | {
+      type: "agent_message_header";
+      agentName: string;
+      index: number;
+    }
+  | {
+      type: "agent_message_cot_line";
+      text: string;
+      index: number;
+    }
+  | {
+      type: "agent_message_content_line";
+      text: string;
+      index: number;
+    }
+  | {
+      type: "agent_message_cancelled";
+    }
+  | {
+      type: "separator";
+    }
+);
+
+function getLast<T extends ConversationItem>(
+  items: ConversationItem[],
+  type: T["type"]
+): T | null {
+  for (let i = items.length - 1; i >= 0; i--) {
+    const item = items[i];
+    if (item.type === type) {
+      return item as T;
+    }
+  }
+  return null;
+}
+
+const StaticConversationItem: FC<{
+  item: ConversationItem;
+  stdout: NodeJS.WriteStream | null;
+}> = ({ item, stdout }) => {
+  const terminalWidth = stdout?.columns || 80;
+  const rightPadding = 4;
+
+  switch (item.type) {
+    case "welcome_header":
+      return (
+        <Box flexDirection="row" marginBottom={1}>
+          <Box borderStyle="round" borderColor="gray" paddingX={1} paddingY={1}>
+            <Box flexDirection="column">
+              <Box justifyContent="center">
+                <Text bold>Welcome to Dust CLI beta!</Text>
+              </Box>
+              <Box height={1}></Box>
+              <Box justifyContent="center">
+                <Text>
+                  You&apos;re currently chatting with {item.agentName} (
+                  {item.agentId})
+                </Text>
+              </Box>
+              <Box height={1}></Box>
+              <Box justifyContent="center">
+                <Text dimColor>
+                  Type your message below and press Enter to send
+                </Text>
+              </Box>
+            </Box>
+          </Box>
+          <Box></Box>
+        </Box>
+      );
+    case "user_message":
+      return (
+        <Box flexDirection="column" marginBottom={1}>
+          <Box>
+            <Text bold color="green">
+              {item.firstName ?? "You"}
+            </Text>
+          </Box>
+          <Box
+            marginLeft={2}
+            marginRight={rightPadding}
+            flexDirection="column"
+            width={terminalWidth - rightPadding - 2}
+          >
+            <Text wrap="wrap">
+              {item.content.replace(/^\n+/, "").replace(/\n+$/, "")}
+            </Text>
+          </Box>
+        </Box>
+      );
+    case "agent_message_header":
+      return (
+        <Box>
+          <Text bold color="blue">
+            {item.agentName}
+          </Text>
+        </Box>
+      );
+    case "agent_message_cot_line":
+      return (
+        <Text dimColor italic>
+          {item.text}
+        </Text>
+      );
+    case "agent_message_content_line":
+      return <Text>{item.text}</Text>;
+    case "agent_message_cancelled":
+      return (
+        <Box marginBottom={1}>
+          <Text color="red">[Cancelled]</Text>
+        </Box>
+      );
+    case "separator":
+      return <Box height={1}></Box>;
+    default:
+      assertNever(item);
+  }
+};
 
 const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
   const [error, setError] = useState<string | null>(null);
@@ -35,13 +160,14 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
   );
   const [isProcessingQuestion, setIsProcessingQuestion] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [conversationItems, setConversationItems] = useState<
+    ConversationItem[]
+  >([]);
   const [abortController, setAbortController] =
     useState<AbortController | null>(null);
   const [userInput, setUserInput] = useState("");
   const [cursorPosition, setCursorPosition] = useState(0);
   const { stdout } = useStdout();
-
   const updateIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const contentRef = useRef<string>("");
   const chainOfThoughtRef = useRef<string>("");
@@ -61,23 +187,47 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
         return;
       }
 
-      setMessages((prev) => [
-        ...prev,
-        { type: "user", content: questionText, chainOfThought: "" },
-      ]);
+      // Append the user message and agent message header to the conversation items
+      setConversationItems((prev) => {
+        const lastUserMessage = getLast<
+          ConversationItem & { type: "user_message" }
+        >(prev, "user_message");
 
-      setMessages((prev) => [
-        ...prev,
-        {
-          type: "assistant",
-          content: "",
-          chainOfThought: "",
-          isStreaming: true,
-        },
-      ]);
+        const newUserMessageIndex = lastUserMessage
+          ? lastUserMessage.index + 1
+          : 0;
+        const newUserMessageKey = `user_message_${newUserMessageIndex}`;
+
+        const lastAgentMessageHeader = getLast<
+          ConversationItem & { type: "agent_message_header" }
+        >(prev, "agent_message_header");
+
+        const newAgentMessageHeaderIndex = lastAgentMessageHeader
+          ? lastAgentMessageHeader.index + 1
+          : 0;
+        const newAgentMessageHeaderKey = `agent_message_header_${newAgentMessageHeaderIndex}`;
+
+        const newItems = [...prev];
+
+        return [
+          ...newItems,
+          {
+            key: newUserMessageKey,
+            type: "user_message",
+            firstName: me.firstName ?? "You",
+            content: questionText,
+            index: newUserMessageIndex,
+          },
+          {
+            key: newAgentMessageHeaderKey,
+            type: "agent_message_header",
+            agentName: selectedAgent.name,
+            index: newAgentMessageHeaderIndex,
+          },
+        ];
+      });
 
       setIsProcessingQuestion(true);
-
       const controller = new AbortController();
       setAbortController(controller);
 
@@ -85,7 +235,7 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
       if (!dustClient) {
         setError("Authentication required. Run `dust login` first.");
         setIsProcessingQuestion(false);
-        setMessages((prev) => prev.slice(0, -1)); // Remove the streaming message
+        setConversationItems((prev) => prev.slice(0, -1));
         return;
       }
 
@@ -121,18 +271,15 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
             );
           }
 
-          // Store the conversation ID for future messages
           conversation = convRes.value.conversation;
           setConversationId(conversation.sId);
           userMessageId = convRes.value.message.sId;
         } else {
-          // Add a message to the existing conversation
           const workspaceId = await AuthService.getSelectedWorkspaceId();
           if (!workspaceId) {
             throw new Error("No workspace selected");
           }
 
-          // Create a message in the existing conversation
           const messageRes = await dustClient.postUserMessage({
             conversationId: conversationId,
             message: {
@@ -179,25 +326,103 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
           );
         }
 
-        const updateStreamingMessage = (isStreaming: boolean) => {
-          setMessages((prev) => {
-            const newMessages = [...prev];
-            const lastMessage = newMessages[newMessages.length - 1];
+        const pushFullLinesToConversationItems = (isStreaming: boolean) => {
+          // If isStreaming is true, we only consider lines are full up to the penultimate line,
+          // as we have no guarantee the last line is complete.
+          // If isStreaming is false, we consider all lines to be complete.
+          const cotLines = chainOfThoughtRef.current.split("\n");
+          const contentLines = contentRef.current.split("\n");
 
-            return [
-              ...newMessages.slice(0, -1),
-              {
-                ...lastMessage,
-                content: contentRef.current,
-                chainOfThought: chainOfThoughtRef.current,
-                isStreaming: isStreaming,
-              },
-            ];
+          setConversationItems((prev) => {
+            // Remove leading empty lines
+            while (cotLines.length > 0 && cotLines[0] === "") {
+              cotLines.shift();
+            }
+            while (contentLines.length > 0 && contentLines[0] === "") {
+              contentLines.shift();
+            }
+
+            const lastAgentMessageHeader = getLast<
+              ConversationItem & { type: "agent_message_header" }
+            >(prev, "agent_message_header");
+
+            if (!lastAgentMessageHeader) {
+              throw new Error("Unreachable: No agent message header found");
+            }
+
+            const agentMessageIndex = lastAgentMessageHeader.index;
+
+            const prevIds = new Set(prev.map((item) => item.key));
+
+            const contentItems = contentLines
+              .map(
+                (line, index) =>
+                  ({
+                    key: `agent_message_content_line_${agentMessageIndex}__${index}`,
+                    type: "agent_message_content_line",
+                    text: line || " ",
+                    index,
+                  } satisfies ConversationItem & {
+                    type: "agent_message_content_line";
+                  })
+              )
+              .filter((item) => !prevIds.has(item.key))
+              .slice(0, isStreaming ? -1 : undefined);
+
+            const hasContentLines =
+              prev[prev.length - 1].type === "agent_message_content_line";
+
+            const newItems = [...prev];
+
+            // If we already inserted some content lines for the agent message, we don't insert more cot lines, even if
+            // the agent generated some additional ones.
+            if (!hasContentLines) {
+              const cotItems = cotLines
+                .map(
+                  (line, index) =>
+                    ({
+                      key: `agent_message_cot_line_${agentMessageIndex}__${index}`,
+                      type: "agent_message_cot_line",
+                      text: line,
+                      index,
+                    } satisfies ConversationItem & {
+                      type: "agent_message_cot_line";
+                    })
+                )
+                .filter((item) => !prevIds.has(item.key))
+                .slice(0, isStreaming && !contentItems.length ? -1 : undefined);
+
+              newItems.push(...cotItems);
+            }
+
+            const hasCotLines =
+              prev[prev.length - 1].type === "agent_message_cot_line";
+
+            if (!hasContentLines && hasCotLines && contentLines.length > 0) {
+              // This is the first content line, and we have some previous cot lines.
+              // So we insert a separator to separate the cot from the content.
+              newItems.push({
+                key: `end_of_cot_separator_${agentMessageIndex}`,
+                type: "separator",
+              });
+            }
+
+            newItems.push(...contentItems);
+
+            // If we are done streaming, we insert a separator below the completed agent message.
+            if (!isStreaming) {
+              newItems.push({
+                key: `end_of_agent_message_separator_${agentMessageIndex}`,
+                type: "separator",
+              });
+            }
+
+            return newItems;
           });
         };
 
         updateIntervalRef.current = setInterval(() => {
-          updateStreamingMessage(true);
+          pushFullLinesToConversationItems(true);
         }, 1000);
 
         for await (const event of streamRes.value.eventStream) {
@@ -212,42 +437,50 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
           } else if (event.type === "user_message_error") {
             throw new Error(`User message error: ${event.error.message}`);
           } else if (event.type === "agent_message_success") {
-            clearInterval(updateIntervalRef.current);
-            updateStreamingMessage(false);
+            if (updateIntervalRef.current) {
+              clearInterval(updateIntervalRef.current);
+            }
+            setError(null);
+            pushFullLinesToConversationItems(false);
+            chainOfThoughtRef.current = "";
+            contentRef.current = "";
             break;
           }
         }
       } catch (error) {
         if (controller.signal.aborted) {
-          // The request was aborted, handled above
+          setAbortController(null);
+          if (updateIntervalRef.current) {
+            clearInterval(updateIntervalRef.current);
+          }
+
+          setConversationItems((prev) => {
+            const lastAgentMessageHeader = getLast<
+              ConversationItem & { type: "agent_message_header" }
+            >(prev, "agent_message_header");
+
+            if (!lastAgentMessageHeader) {
+              throw new Error("Unreachable: No agent message header found");
+            }
+
+            return [
+              ...prev,
+              {
+                key: `agent_message_cancelled_${lastAgentMessageHeader.index}`,
+                type: "agent_message_cancelled",
+              },
+            ];
+          });
+
+          chainOfThoughtRef.current = "";
+          contentRef.current = "";
+
+          setIsProcessingQuestion(false);
+
           return;
         }
 
         setError(`Error: ${normalizeError(error).message}`);
-
-        // Update or remove the streaming message
-        setMessages((prev) => {
-          const newMessages = [...prev];
-          const lastMessage = newMessages[newMessages.length - 1];
-          if (lastMessage.type === "assistant" && lastMessage.isStreaming) {
-            if (lastMessage.content) {
-              // Keep what was streamed so far but mark as not streaming
-              newMessages[newMessages.length - 1] = {
-                ...lastMessage,
-                isStreaming: false,
-              };
-            } else {
-              // No content was streamed, add an error message
-              newMessages[newMessages.length - 1] = {
-                type: "assistant",
-                content: `Error: ${normalizeError(error).message}`,
-                chainOfThought: "",
-                isStreaming: false,
-              };
-            }
-          }
-          return newMessages;
-        });
       } finally {
         setIsProcessingQuestion(false);
         setAbortController(null);
@@ -255,16 +488,6 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
     },
     [selectedAgent, conversationId, me, meError, isMeLoading]
   );
-
-  // Cleanup timeouts on unmount
-  useEffect(() => {
-    return () => {
-      if (updateIntervalRef.current) {
-        clearInterval(updateIntervalRef.current);
-        updateIntervalRef.current = null;
-      }
-    };
-  }, []);
 
   // Handle keyboard events
   useInput((input, key) => {
@@ -275,14 +498,11 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
           const workspaceId = await AuthService.getSelectedWorkspaceId();
           if (workspaceId) {
             const url = `https://dust.tt/w/${workspaceId}/assistant/${conversationId}`;
-            console.log(`\nOpening conversation in browser: ${url}`);
             await open(url);
           } else {
             console.error("\nCould not determine workspace ID");
           }
         })();
-      } else {
-        console.log("\nNo active conversation to open");
       }
       return;
     }
@@ -290,25 +510,8 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
     // ESC key to either cancel ongoing request or clear input
     if (key.escape) {
       if (isProcessingQuestion && abortController) {
-        // Cancel ongoing request
         abortController.abort();
-        setIsProcessingQuestion(false);
-
-        // Update the streaming message to indicate cancellation
-        setMessages((prev) => {
-          const newMessages = [...prev];
-          const lastMessage = newMessages[newMessages.length - 1];
-          if (lastMessage?.type === "assistant" && lastMessage.isStreaming) {
-            newMessages[newMessages.length - 1] = {
-              ...lastMessage,
-              content: lastMessage.content + " [Cancelled]",
-              isStreaming: false,
-            };
-          }
-          return newMessages;
-        });
       } else if (userInput) {
-        // Clear input when not processing a request
         setUserInput("");
         setCursorPosition(0);
       }
@@ -398,71 +601,11 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
     }
   });
 
-  const renderMessages = () => {
-    // Get terminal width for calculating right padding
-    const terminalWidth = stdout?.columns || 80;
-    const rightPadding = 4; // Number of characters to reserve for right padding
-
-    return messages.map((message, index) => (
-      <Box key={index} flexDirection="column" marginBottom={1}>
-        <Box>
-          <Text bold color={message.type === "user" ? "green" : "blue"}>
-            {message.type === "user"
-              ? `${me?.firstName ?? "You"}: `
-              : `${selectedAgent?.name ?? "Assistant"}: `}
-          </Text>
-        </Box>
-        <Box
-          marginLeft={2}
-          marginRight={rightPadding}
-          flexDirection="column"
-          width={terminalWidth - rightPadding - 2}
-        >
-          {message.type === "assistant" && message.chainOfThought && (
-            <>
-              {/* Chain of thought in gray italic */}
-              <Text dimColor italic wrap="wrap">
-                {
-                  message.chainOfThought
-                    .replace(/^\n+/, "") // Remove leading newlines
-                    .replace(/\n{3,}/g, "\n\n") // Replace 3+ consecutive newlines with just 2
-                    .replace(/\n+$/, "") // Remove trailing newlines
-                }
-              </Text>
-              <Box marginBottom={1}></Box>
-            </>
-          )}
-
-          {message.isStreaming ? (
-            <Box flexDirection="column">
-              <Text wrap="wrap">{message.content}</Text>
-              <Box marginTop={1}>
-                <Text color="green">
-                  <Spinner type="dots" /> Thinking...
-                </Text>
-              </Box>
-            </Box>
-          ) : (
-            <Text wrap="wrap">
-              {
-                message.content
-                  .replace(/^\n+/, "") // Remove leading newlines
-                  .replace(/\n+$/, "") // Remove trailing newlines
-              }
-            </Text>
-          )}
-        </Box>
-      </Box>
-    ));
-  };
-
   // Render error state
   if (error) {
     return (
       <Box flexDirection="column" height="100%">
         <Box flexDirection="column" flexGrow={1}>
-          {renderMessages()}
-
           <Box marginY={1}>
             <Box borderStyle="round" borderColor="red" padding={1}>
               <Text>{error}</Text>
@@ -488,6 +631,14 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
         onError={setError}
         onConfirm={(agents) => {
           setSelectedAgent(agents[0]);
+          setConversationItems([
+            {
+              key: "welcome_header",
+              type: "welcome_header",
+              agentName: agents[0].name,
+              agentId: agents[0].sId,
+            },
+          ]);
         }}
       />
     );
@@ -531,34 +682,25 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
   // Main chat UI
   return (
     <Box flexDirection="column" height="100%">
-      {/* Welcome header */}
-      <Box flexDirection="row" marginBottom={1}>
-        <Box borderStyle="round" borderColor="gray" paddingX={1} paddingY={1}>
-          <Box flexDirection="column">
-            <Box justifyContent="center">
-              <Text bold>Welcome to Dust CLI beta!</Text>
-            </Box>
-            <Box height={1}></Box>
-            <Box justifyContent="center">
-              <Text>
-                You&apos;re currently chatting with {selectedAgent.name} (
-                {selectedAgent.sId})
-              </Text>
-            </Box>
-            <Box height={1}></Box>
-            <Box justifyContent="center">
-              <Text dimColor>
-                Type your message below and press Enter to send
-              </Text>
-            </Box>
-          </Box>
-        </Box>
-        <Box></Box>
-      </Box>
+      <Static items={conversationItems}>
+        {(item) => {
+          return (
+            <StaticConversationItem
+              item={item}
+              stdout={stdout}
+              key={item.key}
+            />
+          );
+        }}
+      </Static>
 
-      <Box flexDirection="column" flexGrow={1}>
-        {renderMessages()}
-      </Box>
+      {isProcessingQuestion && (
+        <Box marginTop={1}>
+          <Text color="green">
+            <Spinner type="dots" /> Thinking...
+          </Text>
+        </Box>
+      )}
 
       {/* Input box */}
       <Box flexDirection="column" marginTop={0} paddingTop={0}>
@@ -648,8 +790,8 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
 
         <Box marginTop={0}>
           <Text dimColor>
-            ↵ to send · \↵ for new line · ESC to clear · Ctrl+G to open in
-            browser
+            ↵ to send · \↵ for new line · ESC to clear
+            {conversationId && "· Ctrl+G to open in browser"}
           </Text>
         </Box>
       </Box>
