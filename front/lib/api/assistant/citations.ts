@@ -119,29 +119,6 @@ export function makeWebsearchResultsCitation(
   };
 }
 
-export const getLightAgentMessageFromAgentMessage = (
-  agentMessage: AgentMessageType
-): LightAgentMessageType => {
-  const { actions, ...rest } = agentMessage;
-  return {
-    ...rest,
-    lightActions: actions.map((a) => ({
-      type: a.type,
-      id: a.id,
-    })),
-    configuration: {
-      sId: agentMessage.configuration.sId,
-      name: agentMessage.configuration.name,
-      pictureUrl: agentMessage.configuration.pictureUrl,
-      status: agentMessage.configuration.status,
-      canRead: agentMessage.configuration.canRead,
-      requestedGroupIds: agentMessage.configuration.requestedGroupIds,
-    },
-    citations: getCitationsFromActions(actions),
-    generatedFiles: actions.flatMap((a) => a.generatedFiles),
-  };
-};
-
 export const getCitationsFromActions = (
   actions: AgentActionType[]
 ): Record<string, CitationType> => {
@@ -216,5 +193,40 @@ export const getCitationsFromActions = (
     ...allWebReferences,
     ...allMCPSearchResultsReferences,
     ...allMCPWebsearchResultsReferences,
+  };
+};
+
+export const getLightAgentMessageFromAgentMessage = (
+  agentMessage: AgentMessageType
+): LightAgentMessageType => {
+  return {
+    type: "agent_message",
+    sId: agentMessage.sId,
+    version: agentMessage.version,
+    parentMessageId: agentMessage.parentMessageId,
+    content: agentMessage.content,
+    chainOfThought: agentMessage.chainOfThought,
+    error: agentMessage.error,
+    status: agentMessage.status,
+    actions: agentMessage.actions.map((a) => ({
+      type: a.type,
+      id: a.id,
+    })),
+    configuration: {
+      sId: agentMessage.configuration.sId,
+      name: agentMessage.configuration.name,
+      pictureUrl: agentMessage.configuration.pictureUrl,
+      status: agentMessage.configuration.status,
+      canRead: agentMessage.configuration.canRead,
+      requestedGroupIds: agentMessage.configuration.requestedGroupIds,
+    },
+    citations: getCitationsFromActions(agentMessage.actions),
+    generatedFiles: agentMessage.actions
+      .flatMap((a) => a.generatedFiles)
+      .map((f) => ({
+        fileId: f.fileId,
+        title: f.title,
+        contentType: f.contentType,
+      })),
   };
 };

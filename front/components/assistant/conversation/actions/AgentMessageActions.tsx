@@ -33,8 +33,8 @@ export function AgentMessageActions({
         setChipLabel("Thinking");
         break;
       case "acting":
-        if (agentMessage.lightActions && agentMessage.lightActions.length > 0) {
-          setChipLabel(renderActionName(agentMessage.lightActions));
+        if (agentMessage.actions && agentMessage.actions.length > 0) {
+          setChipLabel(renderActionName(agentMessage.actions));
         }
         break;
       case "done":
@@ -43,7 +43,7 @@ export function AgentMessageActions({
       default:
         assertNever(lastAgentStateClassification);
     }
-  }, [lastAgentStateClassification, agentMessage.lightActions]);
+  }, [lastAgentStateClassification, agentMessage.actions]);
 
   const isThinkingOrActing = useMemo(
     () => agentMessage.status === "created",
@@ -61,7 +61,7 @@ export function AgentMessageActions({
         owner={owner}
       />
       <ActionDetails
-        hasActions={agentMessage.lightActions.length > 0}
+        hasActions={agentMessage.actions.length > 0}
         isActionStepDone={!isThinkingOrActing}
         label={chipLabel}
         onClick={() => setIsActionDrawerOpened(true)}

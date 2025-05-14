@@ -50,8 +50,8 @@ function updateMessageWithAction(
 ): LightAgentMessageType {
   return {
     ...m,
-    lightActions: [
-      ...m.lightActions.filter((a) => a.id !== action.id),
+    actions: [
+      ...m.actions.filter((a) => a.id !== action.id),
       {
         type: action.type,
         id: action.id,

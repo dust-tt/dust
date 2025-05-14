@@ -203,12 +203,8 @@ export type AgentMessageType = {
 };
 
 export type LightAgentMessageType = {
-  id: ModelId;
-  agentMessageId: ModelId;
-  created: number;
   type: "agent_message";
   sId: string;
-  visibility: MessageVisibility;
   version: number;
   parentMessageId: string | null;
   configuration: {
@@ -220,18 +216,14 @@ export type LightAgentMessageType = {
     requestedGroupIds: string[][];
   };
   status: AgentMessageStatus;
-  lightActions: {
+  actions: {
     type: AgentActionType["type"];
     id: ModelId;
   }[];
   citations: Record<string, CitationType>;
-  generatedFiles: ActionGeneratedFileType[];
+  generatedFiles: Omit<ActionGeneratedFileType, "snippet">[];
   content: string | null;
   chainOfThought: string | null;
-  rawContents: Array<{
-    step: number;
-    content: string;
-  }>;
   error: {
     code: string;
     message: string;
