@@ -84,11 +84,11 @@ import {
  *                 example: unlisted
  *               skipToolsValidation:
  *                 type: boolean
- *                 description: Whether to skip the tools validation of the agent messages triggered by this user message (optional, default: false)
+ *                 description: Whether to skip the tools validation of the agent messages triggered by this user message (optional, defaults to false)
  *                 example: false
  *               blocking:
  *                 type: boolean
- *                 description: Whether to wait for the agent to generate the initial message (if false, you will need to use streaming events to get the messages, default: false).
+ *                 description: Whether to wait for the agent to generate the initial message (if false, you will need to use streaming events to get the messages, defaults to false).
  *                 example: true
  *     responses:
  *       200:
