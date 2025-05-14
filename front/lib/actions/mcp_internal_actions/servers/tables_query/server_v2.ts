@@ -76,32 +76,27 @@ function createServer(
         dataSourceViews.map((dsv) => [dsv.id, dsv])
       );
 
-      // Format table identifiers for Core API call
-      const configuredTables: Array<[number, string, string]> = [];
-      for (const t of agentTableConfigurations) {
-        const dataSourceView = dataSourceViewsMap.get(t.dataSourceViewId);
-        if (!dataSourceView || !dataSourceView.dataSource.dustAPIDataSourceId) {
-          throw new Error(
-            `Missing data source ID for view ${t.dataSourceViewId}`
-          );
-        }
-
-        configuredTables.push([
-          parseInt(dataSourceView.dataSource.dustAPIProjectId, 10),
-          dataSourceView.dataSource.dustAPIDataSourceId,
-          t.tableId,
-        ]);
-      }
-
       // Call Core API's /database_schema endpoint
       const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
       const schemaResult = await coreAPI.getDatabaseSchema({
-        tables: configuredTables.map(([projectId, dataSourceId, tableId]) => ({
-          project_id: projectId.toString(),
-          data_source_id: dataSourceId,
-          table_id: tableId,
-        })),
+        tables: agentTableConfigurations.map((t) => {
+          const dataSourceView = dataSourceViewsMap.get(t.dataSourceViewId);
+          if (
+            !dataSourceView ||
+            !dataSourceView.dataSource.dustAPIDataSourceId
+          ) {
+            throw new Error(
+              `Missing data source ID for view ${t.dataSourceViewId}`
+            );
+          }
+          return {
+            project_id: parseInt(dataSourceView.dataSource.dustAPIProjectId),
+            data_source_id: dataSourceView.dataSource.dustAPIDataSourceId,
+            table_id: t.tableId,
+          };
+        }),
       });
+
       if (schemaResult.isErr()) {
         return makeMCPToolTextError(
           `Error retrieving database schema: ${schemaResult.error.message}`
@@ -164,31 +159,25 @@ function createServer(
         dataSourceViews.map((dsv) => [dsv.id, dsv])
       );
 
-      // Format table identifiers for Core API call
-      const configuredTables: Array<[number, string, string]> = [];
-      for (const t of agentTableConfigurations) {
-        const dataSourceView = dataSourceViewsMap.get(t.dataSourceViewId);
-        if (!dataSourceView || !dataSourceView.dataSource.dustAPIDataSourceId) {
-          throw new Error(
-            `Missing data source ID for view ${t.dataSourceViewId}`
-          );
-        }
-
-        configuredTables.push([
-          parseInt(dataSourceView.dataSource.dustAPIProjectId, 10),
-          dataSourceView.dataSource.dustAPIDataSourceId,
-          t.tableId,
-        ]);
-      }
-
       // Call Core API's /query_database endpoint
       const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
       const queryResult = await coreAPI.queryDatabase({
-        tables: configuredTables.map(([projectId, dataSourceId, tableId]) => ({
-          project_id: projectId.toString(),
-          data_source_id: dataSourceId,
-          table_id: tableId,
-        })),
+        tables: agentTableConfigurations.map((t) => {
+          const dataSourceView = dataSourceViewsMap.get(t.dataSourceViewId);
+          if (
+            !dataSourceView ||
+            !dataSourceView.dataSource.dustAPIDataSourceId
+          ) {
+            throw new Error(
+              `Missing data source ID for view ${t.dataSourceViewId}`
+            );
+          }
+          return {
+            project_id: parseInt(dataSourceView.dataSource.dustAPIProjectId),
+            data_source_id: dataSourceView.dataSource.dustAPIDataSourceId,
+            table_id: t.tableId,
+          };
+        }),
         query,
       });
       if (queryResult.isErr()) {

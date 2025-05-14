@@ -1886,7 +1886,7 @@ export class CoreAPI {
     query,
   }: {
     tables: Array<{
-      project_id: string;
+      project_id: number;
       data_source_id: string;
       table_id: string;
     }>;
@@ -1904,11 +1904,7 @@ export class CoreAPI {
       },
       body: JSON.stringify({
         query,
-        tables: tables.map((t) => [
-          parseInt(t.project_id),
-          t.data_source_id,
-          t.table_id,
-        ]),
+        tables: tables.map((t) => [t.project_id, t.data_source_id, t.table_id]),
       }),
     });
 
@@ -1919,7 +1915,7 @@ export class CoreAPI {
     tables,
   }: {
     tables: Array<{
-      project_id: string;
+      project_id: number;
       data_source_id: string;
       table_id: string;
     }>;
@@ -1941,7 +1937,7 @@ export class CoreAPI {
         },
         body: JSON.stringify({
           tables: tables.map((t) => [
-            parseInt(t.project_id),
+            t.project_id,
             t.data_source_id,
             t.table_id,
           ]),
