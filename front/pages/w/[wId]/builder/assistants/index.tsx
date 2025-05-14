@@ -31,7 +31,6 @@ import { SCOPE_INFO } from "@app/components/assistant_builder/Sharing";
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
 import AppContentLayout from "@app/components/sparkle/AppContentLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
-import { useDebounce } from "@app/hooks/useDebounce";
 import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -174,11 +173,7 @@ export default function WorkspaceAssistants({
   hasAgentDiscovery,
   user,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  const {
-    inputValue: assistantSearch,
-    debouncedValue: debouncedAssistantSearch,
-    setValue: setAssistantSearch,
-  } = useDebounce("", { delay: 300 });
+  const [assistantSearch, setAssistantSearch] = useState("");
   const [showDisabledFreeWorkspacePopup, setShowDisabledFreeWorkspacePopup] =
     useState<string | null>(null);
   const [selectedTab, setSelectedTab] = useHashParam("selectedTab", "all");
@@ -187,7 +182,7 @@ export default function WorkspaceAssistants({
   const [selection, setSelection] = useState<string[]>([]);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const activeTab = useMemo(() => {
-    if (debouncedAssistantSearch.trim() !== "") {
+    if (assistantSearch.trim() !== "") {
       return "search";
     }
 
@@ -196,7 +191,7 @@ export default function WorkspaceAssistants({
       : hasAgentDiscovery
         ? "all_custom"
         : "current_user";
-  }, [debouncedAssistantSearch, selectedTab, hasAgentDiscovery]);
+  }, [assistantSearch, selectedTab, hasAgentDiscovery]);
 
   // only fetch the agents that are relevant to the current scope, except when
   // user searches: search across all agents
@@ -250,14 +245,11 @@ export default function WorkspaceAssistants({
           (a) =>
             a.status === "active" &&
             // Filters on search query
-            subFilter(
-              debouncedAssistantSearch.toLowerCase(),
-              getAgentSearchString(a)
-            )
+            subFilter(assistantSearch.toLowerCase(), getAgentSearchString(a))
         )
         .sort((a, b) => {
           return compareForFuzzySort(
-            debouncedAssistantSearch,
+            assistantSearch,
             getAgentSearchString(a),
             getAgentSearchString(b)
           );
@@ -267,7 +259,7 @@ export default function WorkspaceAssistants({
     agentConfigurations,
     archivedAgentConfigurations,
     selectedTags,
-    debouncedAssistantSearch,
+    assistantSearch,
   ]);
 
   const { uniqueTags } = useMemo(() => {
@@ -322,13 +314,13 @@ export default function WorkspaceAssistants({
       throw new Error("Unexpected: Search tab not found");
     }
 
-    return debouncedAssistantSearch.trim() !== ""
+    return assistantSearch.trim() !== ""
       ? [searchTab]
       : (hasAgentDiscovery
           ? AGENT_MANAGER_TABS
           : AGENT_MANAGER_TABS_LEGACY
         ).filter((tab) => tab.id !== "search");
-  }, [debouncedAssistantSearch, hasAgentDiscovery]);
+  }, [assistantSearch, hasAgentDiscovery]);
 
   const searchBarRef = useRef<HTMLInputElement>(null);
 
@@ -465,7 +457,7 @@ export default function WorkspaceAssistants({
                         value={tab.id}
                         label={tab.label}
                         onClick={() =>
-                          !debouncedAssistantSearch && setSelectedTab(tab.id)
+                          !assistantSearch && setSelectedTab(tab.id)
                         }
                         tooltip={
                           AGENT_MANAGER_TABS.find((t) => t.id === tab.id)
@@ -504,7 +496,7 @@ export default function WorkspaceAssistants({
                   mutateAgentConfigurations={mutateAgentConfigurations}
                 />
               ) : (
-                !debouncedAssistantSearch && (
+                !assistantSearch && (
                   <div className="pt-2">
                     <EmptyCallToAction
                       href={`/w/${owner.sId}/builder/assistants/create?flow=workspace_assistants`}
