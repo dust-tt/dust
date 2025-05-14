@@ -110,6 +110,7 @@ async function migrateWorkspaceTablesQueryActions({
       );
 
       if (execute) {
+        // Create the MCP server configuration.
         const mcpConfig = await AgentMCPServerConfiguration.create({
           sId: generateRandomModelSId(),
           agentConfigurationId: tablesQueryConfig.agentConfigurationId,
@@ -125,6 +126,7 @@ async function migrateWorkspaceTablesQueryActions({
 
         revertSql += `DELETE FROM "agent_mcp_server_configurations" WHERE "id" = '${mcpConfig.id}';\n`;
 
+        // Update the tables query configuration tables to link to the new MCP server configuration.
         for (const table of tables) {
           revertSql +=
             `UPDATE "agent_tables_query_configuration_tables" ` +
@@ -137,6 +139,7 @@ async function migrateWorkspaceTablesQueryActions({
           });
         }
 
+        // Delete the tables query configuration.
         revertSql +=
           `INSERT INTO "agent_tables_query_configurations" ` +
           `("id", "agentConfigurationId", "workspaceId", "name", "description", "createdAt", "updatedAt") ` +
@@ -145,7 +148,6 @@ async function migrateWorkspaceTablesQueryActions({
           `'${format(tablesQueryConfig.createdAt, "yyyy-MM-dd")}', ` +
           `'${format(tablesQueryConfig.updatedAt, "yyyy-MM-dd")}');\n`;
 
-        // Delete the tables query configuration
         await tablesQueryConfig.destroy();
 
         logger.info(
