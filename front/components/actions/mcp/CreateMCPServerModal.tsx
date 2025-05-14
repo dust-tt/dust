@@ -93,7 +93,7 @@ export function CreateMCPServerModal({
         if (createServerRes.success) {
           await createMCPServerConnection({
             connectionId: cRes.value.connection_id,
-            mcpServerId: createServerRes.server.id,
+            mcpServerId: createServerRes.server.sId,
             provider: authorization.provider,
           });
         } else {

@@ -168,7 +168,7 @@ function actionIcon(
 ) {
   if (action.type === "MCP") {
     const server = mcpServerViews.find(
-      (v) => v.id === action.configuration.mcpServerViewId
+      (v) => v.sId === action.configuration.mcpServerViewId
     )?.server;
 
     if (server) {
@@ -981,6 +981,14 @@ function ActionEditor({
 }: ActionEditorProps) {
   const { mcpServerViews } = useContext(AssistantBuilderContext);
 
+  const selectedMCPServerView =
+    action.type === "MCP"
+      ? mcpServerViews.find(
+          (mcpServerView) =>
+            mcpServerView.sId === action.configuration.mcpServerViewId
+        )
+      : undefined;
+
   const isActionWithDataSource = useMemo(() => {
     const actionType = action.type;
     switch (actionType) {
@@ -995,12 +1003,6 @@ function ActionEditor({
       case "RETRIEVAL_SEARCH":
         return true;
       case "MCP":
-        const selectedMCPServerView = mcpServerViews.find((mcpServerView) =>
-          action.type === "MCP"
-            ? mcpServerView.id === action.configuration.mcpServerViewId
-            : false
-        );
-
         const requirements = getMCPServerRequirements(selectedMCPServerView);
         return (
           requirements.requiresDataSourceConfiguration ||
@@ -1010,7 +1012,7 @@ function ActionEditor({
       default:
         assertNever(actionType);
     }
-  }, [action.type, action.configuration, mcpServerViews]);
+  }, [action.type, selectedMCPServerView]);
 
   const shouldDisplayAdvancedSettings = !["DUST_APP_RUN"].includes(action.type);
 
@@ -1018,14 +1020,23 @@ function ActionEditor({
     <div className="px-1">
       <ActionModeSection show={true}>
         <div className="flex w-full flex-row items-center justify-between px-1">
-          <Page.Header
-            title={actionDisplayName(action)}
-            icon={
-              action.type === "DATA_VISUALIZATION"
-                ? DATA_VISUALIZATION_SPECIFICATION.cardIcon
-                : ACTION_SPECIFICATIONS[action.type].cardIcon
-            }
-          />
+          <div className="flex items-center gap-3">
+            {selectedMCPServerView ? (
+              getAvatar(selectedMCPServerView.server, "md")
+            ) : (
+              <Avatar
+                icon={
+                  action.type === "DATA_VISUALIZATION"
+                    ? DATA_VISUALIZATION_SPECIFICATION.cardIcon
+                    : ACTION_SPECIFICATIONS[action.type].cardIcon
+                }
+              />
+            )}
+            <h2 className="heading-lg line-clamp-1 text-foreground dark:text-foreground-night">
+              {actionDisplayName(action)}
+            </h2>
+          </div>
+
           {shouldDisplayAdvancedSettings && !action.noConfigurationRequired && (
             <Popover
               trigger={<Button icon={MoreIcon} size="sm" variant="ghost" />}

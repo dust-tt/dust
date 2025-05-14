@@ -75,7 +75,7 @@ function getGroupedMCPServerViews({
 }) {
   const serverIdToCount = mcpServerViews.reduce(
     (acc, view) => {
-      acc[view.server.id] = (acc[view.server.id] || 0) + 1;
+      acc[view.server.sId] = (acc[view.server.sId] || 0) + 1;
       return acc;
     },
     {} as Record<string, number>
@@ -83,9 +83,9 @@ function getGroupedMCPServerViews({
 
   const mcpServerViewsWithLabel = mcpServerViews.map((view) => {
     // There can be the same tool available in different spaces, in that case we need to show the space name.
-    const displayeName = asDisplayName(view.server.name);
+    const displayName = asDisplayName(view.server.name);
 
-    if (serverIdToCount[view.server.id] > 1) {
+    if (serverIdToCount[view.server.sId] > 1) {
       const spaceName = spaces.find(
         (space) => space.sId === view.spaceId
       )?.name;
@@ -93,14 +93,14 @@ function getGroupedMCPServerViews({
       if (spaceName) {
         return {
           ...view,
-          label: `${displayeName} (${spaceName})`,
+          label: `${displayName} (${spaceName})`,
         };
       }
     }
 
     return {
       ...view,
-      label: displayeName,
+      label: displayName,
     };
   });
 

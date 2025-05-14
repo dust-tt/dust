@@ -57,7 +57,7 @@ export function RequestActionsModal({ owner, space }: RequestActionsModal) {
       try {
         await sendRequestActionsAccessEmail({
           emailMessage: message,
-          mcpServerViewId: selectedMcpServer.id,
+          mcpServerViewId: selectedMcpServer.sId,
           owner,
         });
         sendNotification({
@@ -75,7 +75,7 @@ export function RequestActionsModal({ owner, space }: RequestActionsModal) {
         logger.error(
           {
             userToId,
-            mcpServerId: selectedMcpServer.id,
+            mcpServerId: selectedMcpServer.sId,
             error: e,
           },
           "Error sending email"
@@ -138,7 +138,7 @@ export function RequestActionsModal({ owner, space }: RequestActionsModal) {
                       <DropdownMenuContent>
                         {serverViews.map((v) => (
                           <DropdownMenuItem
-                            key={v.id}
+                            key={v.sId}
                             label={asDisplayName(v.server.name)}
                             icon={() => getAvatar(v.server, "xs")}
                             onClick={() => setSelectedMcpServer(v)}

@@ -75,7 +75,7 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
             .includes(searchQuery.toLowerCase())
       )
       .map((serverView) => ({
-        id: serverView.id,
+        id: serverView.sId,
         name: serverView.server.name,
         description: serverView.server.description,
         visual: getAvatar(serverView.server),

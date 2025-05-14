@@ -20,7 +20,7 @@ import {
   TrashIcon,
 } from "@dust-tt/sparkle";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { MCPServerDetailsInfo } from "@app/components/actions/mcp/MCPServerDetailsInfo";
 import { MCPServerDetailsSharing } from "@app/components/actions/mcp/MCPServerDetailsSharing";
@@ -52,12 +52,12 @@ export function MCPServerDetails({
   const [selectedTab, setSelectedTab] = useState<string>("info");
 
   const serverType = mcpServer
-    ? getServerTypeAndIdFromSId(mcpServer.id).serverType
+    ? getServerTypeAndIdFromSId(mcpServer.sId).serverType
     : "internal";
 
   const { server: updatedMCPServer } = useMCPServer({
     owner,
-    serverId: mcpServer?.id || "",
+    serverId: mcpServer?.sId || "",
     disabled: serverType !== "remote",
   });
 
@@ -81,7 +81,7 @@ export function MCPServerDetails({
   });
 
   const connection = connections.find(
-    (c) => c.internalMCPServerId === effectiveMCPServer?.id
+    (c) => c.internalMCPServerId === effectiveMCPServer?.sId
   );
 
   const [isLoading, setIsLoading] = useState(false);
@@ -126,7 +126,7 @@ export function MCPServerDetails({
                 if (mcpServerToDelete) {
                   setMCPServerToDelete(undefined);
                   setIsLoading(true);
-                  await deleteServer(mcpServerToDelete.id);
+                  await deleteServer(mcpServerToDelete.sId);
                   setIsLoading(false);
                   onClose();
                 }
@@ -172,7 +172,7 @@ export function MCPServerDetails({
                     onClick={() => {
                       void createAndSaveMCPServerConnection({
                         authorizationInfo: authorization,
-                        mcpServerId: effectiveMCPServer?.id,
+                        mcpServerId: effectiveMCPServer?.sId,
                       });
                     }}
                   />

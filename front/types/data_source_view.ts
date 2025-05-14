@@ -17,8 +17,8 @@ export interface DataSourceViewType {
   kind: DataSourceViewKind;
   parentsIn: string[] | null;
   sId: string;
-  updatedAt: number;
   spaceId: string;
+  updatedAt: number;
 }
 
 export type DataSourceViewsWithDetails = DataSourceViewType & {

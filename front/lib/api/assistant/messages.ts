@@ -166,7 +166,8 @@ async function batchRenderAgentMessages(
       tableQueryTypesFromAgentMessageIds(auth, { agentMessageIds }))(),
     (async () =>
       processActionTypesFromAgentMessageIds(auth, { agentMessageIds }))(),
-    (async () => websearchActionTypesFromAgentMessageIds(agentMessageIds))(),
+    (async () =>
+      websearchActionTypesFromAgentMessageIds(auth, { agentMessageIds }))(),
     (async () =>
       browseActionTypesFromAgentMessageIds(auth, { agentMessageIds }))(),
     (async () =>

@@ -19,8 +19,10 @@ import {
   isRemoteAllowedIconType,
 } from "@app/lib/actions/mcp_icons";
 import { connectToInternalMCPServer } from "@app/lib/actions/mcp_internal_actions";
-import type { AgentLoopRunContextType } from "@app/lib/actions/types";
-import type { AgentLoopListToolsContextType } from "@app/lib/actions/types";
+import type {
+  AgentLoopListToolsContextType,
+  AgentLoopRunContextType,
+} from "@app/lib/actions/types";
 import { ClientSideRedisMCPTransport } from "@app/lib/api/actions/mcp_client_side";
 import apiConfig from "@app/lib/api/config";
 import type {
@@ -55,7 +57,7 @@ async function getAccessTokenForRemoteMCPServer(
   if (metadata.authorization) {
     const connection = await MCPServerConnectionResource.findByMCPServer({
       auth,
-      mcpServerId: metadata.id,
+      mcpServerId: metadata.sId,
     });
     if (connection.isOk()) {
       const token = await getOAuthConnectionAccessToken({
@@ -295,7 +297,7 @@ export function extractMetadataFromTools(tools: Tool[]): MCPToolType[] {
 export async function fetchRemoteServerMetaDataByURL(
   auth: Authenticator,
   url: string
-): Promise<Result<Omit<MCPServerType, "id">, Error>> {
+): Promise<Result<Omit<MCPServerType, "sId">, Error>> {
   const r = await connectToMCPServer(auth, {
     params: {
       type: "remoteMCPServerUrl",
