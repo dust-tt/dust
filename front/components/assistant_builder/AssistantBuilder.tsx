@@ -532,8 +532,6 @@ export default function AssistantBuilder({
                         setEdited={setEdited}
                         setAction={setAction}
                         pendingAction={pendingAction}
-                        enableReasoningTool={reasoningModels.length > 0}
-                        reasoningModels={reasoningModels}
                       />
                     );
 
