@@ -15,7 +15,7 @@ import {
   findSchemaAtPath,
   followInternalRef,
   isJSONSchemaObject,
-  isSchemaConfigurable,
+  schemaIsConfigurable,
   setValueAtPath,
 } from "@app/lib/utils/json_schemas";
 import type { WorkspaceType } from "@app/types";
@@ -238,12 +238,12 @@ export function hideInternalConfiguration(inputSchema: JSONSchema): JSONSchema {
       if (isJSONSchemaObject(property)) {
         for (const mimeType of Object.values(INTERNAL_MIME_TYPES.TOOL_INPUT)) {
           // Check if the property matches the schema, following references if $ref points to a schema internally.
-          let schemasMatch = isSchemaConfigurable(property, mimeType);
+          let schemasMatch = schemaIsConfigurable(property, mimeType);
 
           if (!schemasMatch && property.$ref) {
             const refSchema = followInternalRef(inputSchema, property.$ref);
             if (refSchema) {
-              schemasMatch = isSchemaConfigurable(refSchema, mimeType);
+              schemasMatch = schemaIsConfigurable(refSchema, mimeType);
             }
           }
 
@@ -349,7 +349,7 @@ export function augmentInputsWithConfiguration({
       // If we found a schema and it has a matching MIME type, inject the value
       if (propSchema) {
         for (const mimeType of Object.values(INTERNAL_MIME_TYPES.TOOL_INPUT)) {
-          if (isSchemaConfigurable(propSchema, mimeType)) {
+          if (schemaIsConfigurable(propSchema, mimeType)) {
             const value = generateConfiguredInput({
               owner,
               actionConfiguration,
