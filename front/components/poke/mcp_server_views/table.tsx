@@ -21,7 +21,7 @@ function prepareMCPServerViewsForDisplay(
       const result = {
         ...sv,
         // For display purposes
-        mcpServerViewLink: `/poke/${owner.sId}/spaces/${sv.spaceId}/mcp_server_views/${sv.id}`,
+        mcpServerViewLink: `/poke/${owner.sId}/spaces/${sv.spaceId}/mcp_server_views/${sv.sId}`,
         spaceLink: `/poke/${owner.sId}/spaces/${sv.spaceId}`,
         editedAt: sv.editedByUser?.editedAt ?? undefined,
         editedBy: sv.editedByUser?.fullName ?? undefined,
