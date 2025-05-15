@@ -56,6 +56,7 @@ export const INTERNAL_MCP_SERVERS: Record<
     flag: null,
     tools_stakes: {
       get_pull_request: "never_ask",
+      list_organization_projects: "never_ask",
     },
   },
   image_generation: {
