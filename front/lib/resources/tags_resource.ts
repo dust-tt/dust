@@ -47,6 +47,13 @@ export class TagResource extends BaseResource<TagModel> {
     return new this(TagModel, tag.get());
   }
 
+  static async makeDefaultsForWorkspace(auth: Authenticator) {
+    await this.makeNew(auth, {
+      name: "Company",
+      reserved: true,
+    });
+  }
+
   private static async baseFetch(
     auth: Authenticator,
     options?: ResourceFindOptions<TagModel>

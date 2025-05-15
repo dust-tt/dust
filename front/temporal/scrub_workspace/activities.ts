@@ -34,6 +34,7 @@ import { CustomerioServerSideTracking } from "@app/lib/tracking/customerio/serve
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { ConnectorsAPI, removeNulls } from "@app/types";
+import { TagResource } from "@app/lib/resources/tags_resource";
 
 export async function sendDataDeletionEmail({
   remainingDays,
@@ -95,6 +96,7 @@ export async function scrubWorkspaceData({
   });
   await deleteAllConversations(auth);
   await archiveAssistants(auth);
+  await deleteTags(auth);
   await deleteTrackers(auth);
   await deleteDatasources(auth);
   await deleteSpaces(auth);
@@ -153,6 +155,13 @@ async function archiveAssistants(auth: Authenticator) {
   );
   for (const agentConfiguration of agentConfigurationsToArchive) {
     await archiveAgentConfiguration(auth, agentConfiguration.sId);
+  }
+}
+
+async function deleteTags(auth: Authenticator) {
+  const tags = await TagResource.findAll(auth, { includeReserved: true });
+  for (const tag of tags) {
+    await tag.delete(auth);
   }
 }
 

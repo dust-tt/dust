@@ -8,6 +8,7 @@ import { GroupResource } from "@app/lib/resources/group_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
+import { TagResource } from "@app/lib/resources/tags_resource";
 import { isDisposableEmailDomain } from "@app/lib/utils/disposable_email_domains";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 
@@ -103,6 +104,8 @@ export async function createWorkspaceInternal({
       endDate,
     });
   }
+
+  await TagResource.makeDefaultsForWorkspace(auth);
 
   return workspace;
 }
