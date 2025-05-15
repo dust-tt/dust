@@ -38,15 +38,12 @@ export function AgentMessageActionsDrawer({
     fullAgentMessage?.type === "agent_message" ? fullAgentMessage.actions : [];
 
   const groupedActionsByStep = actions
-    ? actions.reduce<Record<number, AgentActionType[]>>(
-        (acc, current) => {
-          const currentStep = current.step + 1;
-          acc[currentStep] = acc[currentStep] || [];
-          acc[currentStep].push(current);
-          return acc;
-        },
-        {}
-      )
+    ? actions.reduce<Record<number, AgentActionType[]>>((acc, current) => {
+        const currentStep = current.step + 1;
+        acc[currentStep] = acc[currentStep] || [];
+        acc[currentStep].push(current);
+        return acc;
+      }, {})
     : {};
 
   return (
