@@ -11,6 +11,7 @@ import {
 } from "@app/lib/models/assistant/conversation";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { getFrontReplicaDbConnection } from "@app/lib/resources/storage";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import type {
@@ -18,8 +19,6 @@ import type {
   ModelId,
   WorkspaceType,
 } from "@app/types";
-
-import { MembershipResource } from "./resources/membership_resource";
 
 export interface WorkspaceUsageQueryResult {
   createdAt: string;
