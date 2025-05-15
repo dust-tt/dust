@@ -68,7 +68,8 @@ export type MCPToolStakeLevelType = (typeof MCP_TOOL_STAKE_LEVELS)[number];
 
 export const FALLBACK_INTERNAL_AUTO_SERVERS_TOOL_STAKE_LEVEL: MCPToolStakeLevelType =
   "never_ask";
-export const FALLBACK_MCP_TOOL_STAKE_LEVEL: MCPToolStakeLevelType = "high";
+export const FALLBACK_MCP_TOOL_STAKE_LEVEL: RemoteMCPToolStakeLevelType =
+  "high";
 
 export const DEFAULT_CLIENT_SIDE_MCP_TOOL_STAKE_LEVEL: MCPToolStakeLevelType =
   "low";

@@ -153,6 +153,7 @@ async function handler(
   await publicMCPResults(auth, {
     mcpServerId: serverId,
     messageId,
+    requestId: r.data.requestId,
     result: r.data.result,
   });
 

@@ -111,7 +111,6 @@ async function handler(
           context.clientSideMCPServerIds,
           async (serverId) =>
             validateMCPServerAccess(auth, {
-              workspaceId: auth.getNonNullableWorkspace().sId,
               serverId,
             }),
           { concurrency: 10 }
