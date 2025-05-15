@@ -101,7 +101,7 @@ export function withLogging<T>(
     };
 
     try {
-      // Make a clone to make sure we don't change it deeply by mistake
+      // Make a clone to make sure we don't change it deeply by mistake.
       await handler(req, res, cloneDeep(context), (key, value) => {
         context[key] = value;
       });
