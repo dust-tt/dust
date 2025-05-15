@@ -59,8 +59,15 @@ function schemasAreEqual(schemaA: JSONSchema, schemaB: JSONSchema): boolean {
   if (!isEqual(schemaA.items, schemaB.items)) {
     return false;
   }
+  if (!isEqual(schemaA.properties, schemaB.properties)) {
+    return false;
+  }
+  // We need this comparison because at least the NULLABLE_TIME_FRAME relies on 
+  if (!isEqual(schemaA.anyOf, schemaB.anyOf)) {
+    return false;
+  }
 
-  return isEqual(schemaA.properties, schemaB.properties);
+  return isEqual(schemaA, schemaB);
 }
 
 /**
