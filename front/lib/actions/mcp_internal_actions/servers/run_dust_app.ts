@@ -32,15 +32,11 @@ import { sanitizeJSONOutput } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import type { DatasetSchema } from "@app/types";
 import { getHeaderFromGroupIds, SUPPORTED_MODEL_CONFIGS } from "@app/types";
+import { SpecificationBlockType } from "@app/types";
 
 import { ConfigurableToolInputSchemas } from "../input_schemas";
 
 const MIN_GENERATION_TOKENS = 2048;
-
-interface DustAppBlock {
-  type: string;
-  name: string;
-}
 
 interface DustFileOutput {
   __dust_file?: {
@@ -97,10 +93,11 @@ async function prepareAppContext(
   }
 
   const parsedSpec = app.parseSavedSpecification();
-  const appSpec = parsedSpec as DustAppBlock[];
   const appConfig = extractConfig(parsedSpec);
 
-  const inputSpec = appSpec.find((b: DustAppBlock) => b.type === "input");
+  const inputSpec = parsedSpec.find(
+    (b: SpecificationBlockType) => b.type === "input"
+  );
   const inputConfig = inputSpec ? appConfig[inputSpec.name] : null;
   const datasetName = inputConfig?.dataset;
 
