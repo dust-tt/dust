@@ -101,18 +101,17 @@ function Popover({
 
 PopoverContent.displayName = PopoverPrimitive.Content.displayName;
 
-interface AnchoredPopoverProps {
+interface AnchoredPopoverProps extends PopoverContentProps {
   open: boolean;
   anchorRef?: React.RefObject<HTMLElement>;
   children: React.ReactNode;
-  popoverProps: PopoverContentProps;
 }
 
-export function AnchoredPopover({
+function AnchoredPopover({
   open,
   anchorRef,
   children,
-  popoverProps,
+  ...props
 }: AnchoredPopoverProps) {
   const [position, setPosition] = useState({
     top: "50%",
@@ -173,7 +172,7 @@ export function AnchoredPopover({
         }}
       />
       <PopoverContent
-        {...popoverProps}
+        {...props}
         onOpenAutoFocus={(e) => e.preventDefault()}
         mountPortal={false}
       >
@@ -184,6 +183,7 @@ export function AnchoredPopover({
 }
 
 export {
+  AnchoredPopover,
   Popover,
   PopoverAnchor,
   PopoverContent,
