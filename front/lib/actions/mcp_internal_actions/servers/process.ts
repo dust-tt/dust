@@ -25,12 +25,8 @@ import type { Authenticator } from "@app/lib/auth";
 import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import logger from "@app/logger/logger";
-import type {
-  UserMessageType} from "@app/types";
-import {
-  isUserMessageType,
-  timeFrameFromNow
-} from "@app/types";
+import type { UserMessageType } from "@app/types";
+import { isUserMessageType, timeFrameFromNow } from "@app/types";
 
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "extract_data",
@@ -104,6 +100,7 @@ function createServer(
           "Process the retrieved data to extract structured information based on the provided schema.",
         model: supportedModel,
         hasAvailableActions: false,
+        agentsList: null,
       });
 
       assert(
