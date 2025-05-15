@@ -163,7 +163,10 @@ function AnchoredPopover({
   return (
     <PopoverRoot open={open} modal={false}>
       <PopoverAnchor
-        className="s-fixed s-transition-all s-duration-300 s-ease-in-out"
+        className={cn(
+          "s-fixed s-transition-all s-duration-300 s-ease-in-out",
+          !anchorRef && "s-translate-y-[-50%]"
+        )}
         style={{
           top: position.top,
           left: position.left,
