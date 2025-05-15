@@ -22,7 +22,7 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<ValidateActionResponseType>>,
   auth: Authenticator
 ): Promise<void> {
-  const { cId, mId, wId } = req.query;
+  const { cId, mId } = req.query;
   if (typeof cId !== "string" || typeof mId !== "string") {
     return apiError(req, res, {
       status_code: 404,
@@ -64,7 +64,7 @@ async function handler(
 
   try {
     const result = await validateAction({
-      workspaceId: wId as string,
+      workspaceId: auth.getNonNullableWorkspace().sId,
       conversationId: cId,
       messageId: mId,
       actionId,
@@ -75,7 +75,7 @@ async function handler(
   } catch (error) {
     logger.error(
       {
-        workspaceId: wId,
+        workspaceId: auth.getNonNullableWorkspace().sId,
         conversationId: cId,
         messageId: mId,
         actionId,

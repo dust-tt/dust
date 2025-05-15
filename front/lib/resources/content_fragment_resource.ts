@@ -7,7 +7,7 @@ import type {
 
 import appConfig from "@app/lib/api/config";
 import config from "@app/lib/api/config";
-import { Authenticator } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { Message } from "@app/lib/models/assistant/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -35,7 +35,6 @@ import type {
   ModelId,
   Result,
   SupportedContentFragmentType,
-  WorkspaceType,
 } from "@app/types";
 import { CoreAPI, Err, isSupportedImageContentType, Ok } from "@app/types";
 
@@ -138,11 +137,16 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
   }
 
   static async fromStringIdAndVersion(
+    auth: Authenticator,
     sId: string,
     version: ContentFragmentVersion
   ) {
     const contentFragment = await ContentFragmentModel.findOne({
-      where: { sId, version },
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        sId,
+        version,
+      },
     });
     if (!contentFragment) {
       throw new Error(
@@ -389,12 +393,12 @@ export function fileAttachmentLocation({
 }
 
 async function getOriginalFileContent(
-  workspace: WorkspaceType,
+  auth: Authenticator,
   fileId: string
 ): Promise<string> {
   const fileCloudStoragePath = FileResource.getCloudStoragePathForId({
     fileId,
-    workspaceId: workspace.sId,
+    workspaceId: auth.getNonNullableWorkspace().sId,
     version: "original",
   });
 
@@ -402,12 +406,12 @@ async function getOriginalFileContent(
 }
 
 async function getProcessedFileContent(
-  workspace: WorkspaceType,
+  auth: Authenticator,
   fileId: string
 ): Promise<string> {
   const fileCloudStoragePath = FileResource.getCloudStoragePathForId({
     fileId,
-    workspaceId: workspace.sId,
+    workspaceId: auth.getNonNullableWorkspace().sId,
     version: "processed",
   });
 
@@ -415,12 +419,12 @@ async function getProcessedFileContent(
 }
 
 async function getSignedUrlForProcessedContent(
-  workspace: WorkspaceType,
+  auth: Authenticator,
   fileId: string
 ): Promise<string> {
   const fileCloudStoragePath = FileResource.getCloudStoragePathForId({
     fileId,
-    workspaceId: workspace.sId,
+    workspaceId: auth.getNonNullableWorkspace().sId,
     version: "processed",
   });
 
@@ -428,7 +432,7 @@ async function getSignedUrlForProcessedContent(
 }
 
 export async function renderFromAttachmentId(
-  workspace: WorkspaceType,
+  auth: Authenticator,
   {
     contentType,
     excludeImages,
@@ -460,7 +464,7 @@ export async function renderFromAttachmentId(
           nodeDataSourceViewId: null,
         }
       : await getIncludeFileIdsFromContentFragmentResourceId(
-          workspace,
+          auth,
           conversationAttachmentId
         );
 
@@ -492,10 +496,7 @@ export async function renderFromAttachmentId(
       );
     }
 
-    const signedUrl = await getSignedUrlForProcessedContent(
-      workspace,
-      fileStringId
-    );
+    const signedUrl = await getSignedUrlForProcessedContent(auth, fileStringId);
 
     return new Ok({
       role: "content_fragment",
@@ -512,9 +513,6 @@ export async function renderFromAttachmentId(
   } else if (nodeId && nodeDataSourceViewId) {
     const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
-    // `renderFromFileId` is called by agents, so assuming they have a builder
-    // role in the workspace is ok.
-    const auth = await Authenticator.internalBuilderForWorkspace(workspace.sId);
     const [dataSourceView] = await DataSourceViewResource.fetchByModelIds(
       auth,
       [nodeDataSourceViewId]
@@ -560,18 +558,18 @@ export async function renderFromAttachmentId(
       ],
     });
   } else if (fileStringId) {
-    let content = await getProcessedFileContent(workspace, fileStringId);
+    let content = await getProcessedFileContent(auth, fileStringId);
 
     if (!content) {
       logger.warn(
         {
           fileId: fileStringId,
           contentType,
-          workspaceId: workspace.sId,
+          workspaceId: auth.getNonNullableWorkspace().sId,
         },
         "No content extracted from file processed version, we are retrieving the original file as a fallback."
       );
-      content = await getOriginalFileContent(workspace, fileStringId);
+      content = await getOriginalFileContent(auth, fileStringId);
     }
 
     return new Ok({
@@ -664,10 +662,7 @@ export async function renderLightContentFragmentForModel(
       };
     }
 
-    const signedUrl = await getSignedUrlForProcessedContent(
-      conversation.owner,
-      fileStringId
-    );
+    const signedUrl = await getSignedUrlForProcessedContent(auth, fileStringId);
 
     return {
       role: "content_fragment",
@@ -726,10 +721,11 @@ function renderContentFragmentXml({
 }
 
 async function getIncludeFileIdsFromContentFragmentResourceId(
-  workspace: WorkspaceType,
+  auth: Authenticator,
   resourceId: string
 ) {
   const contentFragment = await ContentFragmentResource.fromStringIdAndVersion(
+    auth,
     resourceId,
     "latest"
   );
@@ -747,7 +743,7 @@ async function getIncludeFileIdsFromContentFragmentResourceId(
 
   const fileStringId = FileResource.modelIdToSId({
     id: contentFragment.fileId,
-    workspaceId: workspace.id,
+    workspaceId: auth.getNonNullableWorkspace().id,
   });
 
   return { fileStringId, nodeId: null, nodeDataSourceViewId: null };

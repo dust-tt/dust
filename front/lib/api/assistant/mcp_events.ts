@@ -1,4 +1,9 @@
-import { getMCPServerChannelId } from "@app/lib/api/actions/mcp_client_side";
+import {
+  getMCPServerChannelId,
+  getMCPServerResultsChannelId,
+  isClientSideMCPPayload,
+} from "@app/lib/api/actions/mcp_client_side";
+import { publishEvent } from "@app/lib/api/assistant/pubsub";
 import type { EventPayload } from "@app/lib/api/redis-hybrid-manager";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import type { Authenticator } from "@app/lib/auth";
@@ -74,4 +79,46 @@ export async function* getMCPEventsForServer(
   } finally {
     unsubscribe();
   }
+}
+
+export async function publishMCPResults(
+  auth: Authenticator,
+  {
+    mcpServerId,
+    messageId,
+    requestId,
+    result,
+  }: {
+    mcpServerId: string;
+    messageId: string;
+    requestId: string;
+    result?: unknown;
+  }
+) {
+  // Publish MCP action results.
+  await publishEvent({
+    origin: "mcp_client_side_results",
+    channel: getMCPServerResultsChannelId(auth, {
+      mcpServerId,
+    }),
+    event: JSON.stringify({
+      type: "mcp_client_side_results",
+      messageId,
+      result,
+    }),
+  });
+
+  // Remove the event from the action channel once we have published the results.
+  await getRedisHybridManager().removeEvent(
+    (event) => {
+      const payload = JSON.parse(event.message["payload"]);
+
+      if (isClientSideMCPPayload(payload)) {
+        return payload.requestId === requestId;
+      }
+
+      return false;
+    },
+    getMCPServerChannelId(auth, { mcpServerId })
+  );
 }
