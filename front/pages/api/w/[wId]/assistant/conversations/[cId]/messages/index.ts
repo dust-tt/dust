@@ -77,12 +77,15 @@ async function handler(
 
       const messageLatency = performance.now() - messageStartTime;
 
-      statsDClient.gauge("assistant.messages.fetch.latency", messageLatency);
+      statsDClient.distribution(
+        "assistant.messages.fetch.latency",
+        messageLatency
+      );
       const rawSize = Buffer.byteLength(
         JSON.stringify(messagesRes.value),
         "utf8"
       );
-      statsDClient.gauge("assistant.messages.fetch.raw_size", rawSize);
+      statsDClient.distribution("assistant.messages.fetch.raw_size", rawSize);
 
       res.status(200).json(messagesRes.value);
       break;

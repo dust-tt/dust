@@ -31,6 +31,7 @@ import {
 import { useRouter } from "next/router";
 import React, { useCallback, useMemo, useState } from "react";
 
+import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import {
@@ -122,6 +123,7 @@ export function AssistantBrowser({
   );
 
   const router = useRouter();
+  const { createAgentButtonRef } = useWelcomeTourGuide();
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const { isDark } = useTheme();
   const [sortType, setSortType] = useState<"popularity" | "alphabetical">(
@@ -237,7 +239,7 @@ export function AssistantBrowser({
       {/* Search bar */}
       <div
         id="search-container"
-        className="flex w-full flex-row items-center justify-center gap-2 align-middle"
+        className="mb-2 flex w-full flex-row items-center justify-center gap-2 align-middle"
       >
         <SearchDropdownMenu
           searchInputValue={assistantSearch}
@@ -302,16 +304,18 @@ export function AssistantBrowser({
 
         <div className="hidden sm:block">
           <div className="flex gap-2">
-            <Button
-              tooltip="Create your own agent"
-              href={`/w/${owner.sId}/builder/assistants/create?flow=personal_assistants`}
-              variant="primary"
-              icon={PlusIcon}
-              label="Create"
-              data-gtm-label="assistantCreationButton"
-              data-gtm-location="homepage"
-              size="sm"
-            />
+            <div ref={createAgentButtonRef}>
+              <Button
+                tooltip="Create your own agent"
+                href={`/w/${owner.sId}/builder/assistants/create?flow=personal_assistants`}
+                variant="primary"
+                icon={PlusIcon}
+                label="Create"
+                data-gtm-label="assistantCreationButton"
+                data-gtm-location="homepage"
+                size="sm"
+              />
+            </div>
 
             {(isBuilder(owner) || hasAgentDiscovery) && (
               <Button

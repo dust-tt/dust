@@ -10,7 +10,7 @@ import {
 } from "@app/components/home/Particles";
 import TrustedBy from "@app/components/home/TrustedBy";
 
-export async function getServerSideProps() {
+export async function getStaticProps() {
   return {
     props: {
       shape: getParticleShapeIndexByName(shapeNames.bigSphere),

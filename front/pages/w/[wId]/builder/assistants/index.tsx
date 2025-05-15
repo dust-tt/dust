@@ -22,10 +22,10 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
-import { AssistantsTable } from "@app/components/assistant/AssistantsTable";
 import { ConversationsNavigationProvider } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import { DeleteAssistantsDialog } from "@app/components/assistant/DeleteAssistantsDialog";
+import { AssistantsTable } from "@app/components/assistant/manager/AssistantsTable";
 import { TagsFilterMenu } from "@app/components/assistant/TagsFilterMenu";
 import { SCOPE_INFO } from "@app/components/assistant_builder/Sharing";
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
@@ -173,7 +173,7 @@ export default function WorkspaceAssistants({
   hasAgentDiscovery,
   user,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  const [assistantSearch, setAssistantSearch] = useState<string>("");
+  const [assistantSearch, setAssistantSearch] = useState("");
   const [showDisabledFreeWorkspacePopup, setShowDisabledFreeWorkspacePopup] =
     useState<string | null>(null);
   const [selectedTab, setSelectedTab] = useHashParam("selectedTab", "all");
@@ -466,6 +466,8 @@ export default function WorkspaceAssistants({
                         icon={
                           AGENT_MANAGER_TABS.find((t) => t.id === tab.id)?.icon
                         }
+                        isCounter={tab.id !== "archived"}
+                        counterValue={`${agentsByTab[tab.id].length}`}
                       />
                     ))}
                   </TabsList>

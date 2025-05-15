@@ -254,20 +254,15 @@ export function InstructionScreen({
 
   return (
     <div className="flex grow flex-col gap-4">
-      <div className="flex flex-col sm:flex-row">
-        <div className="flex flex-col gap-2">
-          <Page.Header title="Instructions" />
-          <Page.P>
-            <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-              Command or guideline you provide to your agent to direct its
-              responses.
-            </span>
-          </Page.P>
-        </div>
-        <div className="flex-grow" />
-
-        <div className="mt-2 flex w-full flex-col gap-2 sm:w-auto">
-          <div className="flex items-center gap-2 self-end">
+      <div className="flex flex-col items-center justify-between sm:flex-row">
+        <Page.P>
+          <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+            Command or guideline you provide to your agent to direct its
+            responses.
+          </span>
+        </Page.P>
+        <div className="flex w-full flex-col gap-2 sm:w-auto">
+          <div className="flex items-center gap-2">
             {!isInstructionDiffMode && (
               <AdvancedSettings
                 generationSettings={builderState.generationSettings}
@@ -293,7 +288,6 @@ export function InstructionScreen({
               agentConfigurationHistory.length > 1 && (
                 <InstructionHistory
                   history={agentConfigurationHistory}
-                  currentInstructions={builderState.instructions || ""}
                   selectedConfig={compareVersion}
                   onSelect={(config) => {
                     setCompareVersion(config);
@@ -304,10 +298,10 @@ export function InstructionScreen({
           </div>
         </div>
       </div>
-      <Separator />
 
       {isInstructionDiffMode && compareVersion && (
         <>
+          <Separator />
           {compareVersion?.versionCreatedAt && (
             <Label>
               Comparing with{" "}

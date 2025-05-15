@@ -193,7 +193,7 @@ export async function* tryCallMCPTool(
   try {
     const r = await connectToMCPServer(auth, {
       params: connectionParamsRes.value,
-      agentLoopRunContext,
+      agentLoopContext: { agentLoopRunContext },
     });
     if (r.isErr()) {
       yield {
@@ -375,16 +375,18 @@ function getPrefixedToolName(
   return new Ok(prefixedName);
 }
 
+type AgentLoopListToolsContextWithoutConfigurationType = Omit<
+  AgentLoopListToolsContextType,
+  "agentActionConfiguration"
+>;
+
 /**
  * List the MCP tools for the given agent actions.
  * Returns MCP tools by connecting to the specified MCP servers.
  */
 export async function tryListMCPTools(
   auth: Authenticator,
-  agentLoopListToolsContext: Omit<
-    AgentLoopListToolsContextType,
-    "agentActionConfiguration"
-  >
+  agentLoopListToolsContext: AgentLoopListToolsContextWithoutConfigurationType
 ): Promise<{ tools: MCPToolConfigurationType[]; error?: string }> {
   const owner = auth.getNonNullableWorkspace();
 
@@ -656,7 +658,7 @@ async function listMCPServerTools(
     const connectionParams = connectionParamsRes.value;
     const r = await connectToMCPServer(auth, {
       params: connectionParams,
-      agentLoopListToolsContext,
+      agentLoopContext: { agentLoopListToolsContext },
     });
     if (r.isErr()) {
       return r;

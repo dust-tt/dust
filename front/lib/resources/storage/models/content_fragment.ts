@@ -112,7 +112,15 @@ ContentFragmentModel.init(
   {
     modelName: "content_fragment",
     sequelize: frontSequelize,
-    indexes: [{ fields: ["fileId"] }, { fields: ["sId", "version"] }],
+    indexes: [
+      { fields: ["fileId"] },
+      // TODO(WORKSPACE_ID_ISOLATION 2025-05-14): Remove index
+      { fields: ["sId", "version"] },
+      {
+        fields: ["workspaceId", "sId", "version"],
+        concurrently: true,
+      },
+    ],
   }
 );
 

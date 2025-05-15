@@ -111,8 +111,8 @@ export default function Welcome({
       }
     }
     await router.push(
-      `/w/${owner.sId}/congratulations?${
-        conversationId ? `cId=${conversationId}` : ""
+      `/w/${owner.sId}/assistant/new?welcome=true${
+        conversationId ? `&cId=${conversationId}` : ""
       }`
     );
   });

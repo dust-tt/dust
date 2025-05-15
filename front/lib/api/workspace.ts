@@ -5,7 +5,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { MAX_SEARCH_EMAILS } from "@app/lib/memberships";
 import { Plan, Subscription } from "@app/lib/models/plan";
 import { Workspace } from "@app/lib/models/workspace";
-import { WorkspaceHasDomain } from "@app/lib/models/workspace_has_domain";
+import { WorkspaceHasDomainModel } from "@app/lib/models/workspace_has_domain";
 import { getStripeSubscription } from "@app/lib/plans/stripe";
 import { getUsageToReportForSubscriptionItem } from "@app/lib/plans/usage";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
@@ -61,7 +61,7 @@ export async function getWorkspaceInfos(
 export async function getWorkspaceVerifiedDomain(
   workspace: LightWorkspaceType
 ): Promise<WorkspaceDomain | null> {
-  const workspaceDomain = await WorkspaceHasDomain.findOne({
+  const workspaceDomain = await WorkspaceHasDomainModel.findOne({
     attributes: ["domain", "domainAutoJoinEnabled"],
     where: {
       workspaceId: workspace.id,

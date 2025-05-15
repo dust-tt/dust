@@ -227,13 +227,8 @@ export default function AssistantBuilder({
 
   const [rightPanelStatus, setRightPanelStatus] =
     useState<AssistantBuilderRightPanelStatus>({
-      tab:
-        template != null
-          ? "Template"
-          : screen == "instructions"
-            ? "Preview"
-            : null,
-      openedAt: screen == "instructions" ? Date.now() : null,
+      tab: template != null ? "Template" : null,
+      openedAt: template != null ? Date.now() : null,
     });
 
   // We deactivate the Preview button if the BuilderState is empty (= no instructions, no tools)
@@ -499,7 +494,7 @@ export default function AssistantBuilder({
       >
         <BuilderLayout
           leftPanel={
-            <div className="flex h-full flex-col gap-5 pb-6 pt-4">
+            <div className="flex h-full flex-col gap-4 pb-6 pt-4">
               <div className="flex flex-wrap justify-between gap-4 sm:flex-row">
                 <Tabs
                   className="w-full"

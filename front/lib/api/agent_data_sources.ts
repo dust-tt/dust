@@ -654,6 +654,7 @@ export async function getDataSourceUsage({
         ],
       ],
       where: {
+        workspaceId: owner.id,
         dataSourceId: dataSource.id,
       },
       include: [
@@ -691,6 +692,7 @@ export async function getDataSourceUsage({
         ],
       ],
       where: {
+        workspaceId: owner.id,
         dataSourceId: dataSource.id,
       },
       include: [
@@ -804,6 +806,7 @@ export async function getDataSourceViewUsage({
         ],
       ],
       where: {
+        workspaceId: owner.id,
         dataSourceViewId: dataSourceView.id,
       },
       include: [
@@ -841,6 +844,7 @@ export async function getDataSourceViewUsage({
         ],
       ],
       where: {
+        workspaceId: owner.id,
         dataSourceViewId: dataSourceView.id,
       },
       include: [
@@ -878,6 +882,7 @@ export async function getDataSourceViewUsage({
         ],
       ],
       where: {
+        workspaceId: owner.id,
         dataSourceViewId: dataSourceView.id,
       },
       include: [

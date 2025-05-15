@@ -58,7 +58,7 @@ async function handler(
           },
         });
       }
-      await cancelMessageGenerationEvent(bodyValidation.right.messageIds);
+      await cancelMessageGenerationEvent(auth, bodyValidation.right.messageIds);
       return res.status(200).json({ success: true });
 
     default:

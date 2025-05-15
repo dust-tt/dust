@@ -71,7 +71,7 @@ async function handler(
             status_code: 400,
             api_error: {
               type: "invalid_request_error",
-              message: "Failed to get the access token for the connector.",
+              message: "Failed to get the access token for the MCP server.",
             },
           });
         }
