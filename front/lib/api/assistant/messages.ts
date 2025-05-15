@@ -15,6 +15,7 @@ import {
   AgentMessageContentParser,
   getDelimitersConfiguration,
 } from "@app/lib/api/assistant/agent_message_content_parser";
+import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import type { PaginationParams } from "@app/lib/api/pagination";
 import { Authenticator } from "@app/lib/auth";
@@ -44,7 +45,6 @@ import type {
   UserMessageType,
 } from "@app/types";
 import { ConversationError, Err, Ok, removeNulls } from "@app/types";
-import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
 
 async function batchRenderUserMessages(
   auth: Authenticator,
