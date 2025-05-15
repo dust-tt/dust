@@ -124,7 +124,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // create index with settings and mappings
-    let response = search_store
+    let index_creation_response = search_store
         .client
         .indices()
         .create(IndicesCreateParts::Index(index_fullname.as_str()))
@@ -132,10 +132,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .send()
         .await?;
 
-    match response.status_code() {
+    match index_creation_response.status_code() {
         StatusCode::OK => println!("Index created: {}", index_fullname),
         _ => {
-            let body = response.json::<serde_json::Value>().await?;
+            let body = index_creation_response.json::<serde_json::Value>().await?;
             eprintln!("{:?}", body);
             return Err(anyhow::anyhow!("Failed to create index").into());
         }
