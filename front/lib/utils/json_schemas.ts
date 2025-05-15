@@ -28,7 +28,7 @@ export function isSchemaConfigurable(
 ): boolean {
   // If the mime type has a static configuration schema, we check that the schema matches it.
   if (mimeType !== INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM) {
-    return schemasAreEqual(schema, ConfigurableToolInputJSONSchemas[mimeType]);
+    return areSchemasEqual(schema, ConfigurableToolInputJSONSchemas[mimeType]);
   }
   // If the mime type does not have a static configuration schema, it supports flexible schemas.
   // We only check that the schema has a `value` property and a `mimeType` property with the correct value.
@@ -49,7 +49,7 @@ export function isSchemaConfigurable(
  * Compares two JSON schemas for equality, only checking the properties, items and required fields.
  * In particular, it ignores the $schema field.
  */
-function schemasAreEqual(schemaA: JSONSchema, schemaB: JSONSchema): boolean {
+function areSchemasEqual(schemaA: JSONSchema, schemaB: JSONSchema): boolean {
   if (schemaA.type !== schemaB.type) {
     return false;
   }
