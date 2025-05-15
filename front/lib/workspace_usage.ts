@@ -58,7 +58,7 @@ type UserUsageQueryResult = {
   activeDaysCount: number;
 };
 
-type InactiveUserUsageQueryResult = {
+type TotalUserUsageQueryResult = {
   userId: number;
   userName: string;
   userEmail: string;
@@ -346,7 +346,7 @@ export async function getTotalUserUsageData(
     includeUser: true,
   });
 
-  const userUsage: InactiveUserUsageQueryResult[] = memberships.reduce(
+  const userUsage: TotalUserUsageQueryResult[] = memberships.reduce(
     (acc, membership) => {
       if (
         membership.user != null &&
@@ -361,7 +361,7 @@ export async function getTotalUserUsageData(
 
       return acc;
     },
-    [] as InactiveUserUsageQueryResult[]
+    [] as TotalUserUsageQueryResult[]
   );
 
   if (!userUsage.length) {
@@ -577,7 +577,7 @@ function generateCsvFromQueryResult(
   rows:
     | WorkspaceUsageQueryResult[]
     | UserUsageQueryResult[]
-    | InactiveUserUsageQueryResult[]
+    | TotalUserUsageQueryResult[]
     | AgentUsageQueryResult[]
     | MessageUsageQueryResult[]
     | BuilderUsageQueryResult[]
