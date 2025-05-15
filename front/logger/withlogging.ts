@@ -2,6 +2,7 @@ import tracer from "dd-trace";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getSession } from "@app/lib/auth";
+import type { SessionWithUser } from "@app/lib/iam/provider";
 import type {
   CustomGetServerSideProps,
   UserPrivilege,
@@ -14,7 +15,8 @@ import { statsDClient } from "./statsDClient";
 export function withLogging<T>(
   handler: (
     req: NextApiRequest,
-    res: NextApiResponse<WithAPIErrorResponse<T>>
+    res: NextApiResponse<WithAPIErrorResponse<T>>,
+    context: { session: SessionWithUser | null }
   ) => Promise<void>,
   streaming = false
 ) {
@@ -55,7 +57,9 @@ export function withLogging<T>(
       req.headers["x-dust-cli-version"] ?? req.query.cliVersion;
 
     try {
-      await handler(req, res);
+      await handler(req, res, {
+        session,
+      });
     } catch (err) {
       const elapsed = new Date().getTime() - now.getTime();
       logger.error(

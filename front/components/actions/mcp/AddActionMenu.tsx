@@ -20,6 +20,7 @@ import { asDisplayName } from "@app/types";
 type AddActionMenuProps = {
   owner: WorkspaceType;
   enabledMCPServers: string[];
+  buttonVariant?: "primary" | "outline";
   createInternalMCPServer: (mcpServer: MCPServerType) => void;
   createRemoteMCPServer: () => void;
   setIsLoading: (isLoading: boolean) => void;
@@ -30,6 +31,7 @@ export const AddActionMenu = ({
   enabledMCPServers,
   createInternalMCPServer,
   createRemoteMCPServer,
+  buttonVariant = "primary",
 }: AddActionMenuProps) => {
   const [searchText, setSearchText] = useState("");
   const { availableMCPServers, isAvailableMCPServersLoading } =
@@ -40,7 +42,12 @@ export const AddActionMenu = ({
   return (
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
-        <Button label="Add Tools" variant="primary" icon={PlusIcon} size="sm" />
+        <Button
+          label="Add Tools"
+          variant={buttonVariant}
+          icon={PlusIcon}
+          size="sm"
+        />
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-[500px]">
         <DropdownMenuSearchbar

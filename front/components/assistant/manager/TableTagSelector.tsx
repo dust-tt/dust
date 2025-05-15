@@ -13,6 +13,7 @@ import { useState } from "react";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useUpdateAgentTags } from "@app/lib/swr/tags";
 import type { WorkspaceType } from "@app/types";
+import { isBuilder } from "@app/types";
 import type { TagType } from "@app/types/tag";
 
 type TableTagSelectorProps = {
@@ -57,27 +58,29 @@ export const TableTagSelector = ({
         )}
       </DropdownMenuTrigger>
       <DropdownMenuContent mountPortalContainer={document.body}>
-        {tags.map((t) => {
-          const isChecked = agentTags.some((x) => x.sId === t.sId);
-          return (
-            <DropdownMenuCheckboxItem
-              key={t.sId}
-              onClick={async (e: React.MouseEvent) => {
-                setIsLoading(true);
-                e.stopPropagation();
-                e.preventDefault();
-                await updateAgentTags({
-                  addTagIds: isChecked ? [] : [t.sId],
-                  removeTagIds: isChecked ? [t.sId] : [],
-                });
-                await onChange();
-              }}
-              checked={isChecked}
-            >
-              <Chip size="xs" label={t.name} color="golden" />
-            </DropdownMenuCheckboxItem>
-          );
-        })}
+        {tags
+          .filter((t) => isBuilder(owner) || t.kind !== "protected")
+          .map((t) => {
+            const isChecked = agentTags.some((x) => x.sId === t.sId);
+            return (
+              <DropdownMenuCheckboxItem
+                key={t.sId}
+                onClick={async (e: React.MouseEvent) => {
+                  setIsLoading(true);
+                  e.stopPropagation();
+                  e.preventDefault();
+                  await updateAgentTags({
+                    addTagIds: isChecked ? [] : [t.sId],
+                    removeTagIds: isChecked ? [t.sId] : [],
+                  });
+                  await onChange();
+                }}
+                checked={isChecked}
+              >
+                <Chip size="xs" label={t.name} color="golden" />
+              </DropdownMenuCheckboxItem>
+            );
+          })}
         {isLoading && (
           <div className="absolute inset-0 flex items-center justify-center bg-white/50 dark:bg-black/50">
             <Spinner variant={isDark ? "light" : "dark"} />

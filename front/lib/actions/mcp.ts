@@ -1,13 +1,11 @@
 import { isSupportedImageContentType } from "@dust-tt/client";
 import { McpError } from "@modelcontextprotocol/sdk/types.js";
-import assert from "assert";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 
 import type {
   MCPToolStakeLevelType,
   MCPValidationMetadataType,
 } from "@app/lib/actions/constants";
-import { FALLBACK_MCP_TOOL_STAKE_LEVEL } from "@app/lib/actions/constants";
 import type { DustAppRunConfigurationType } from "@app/lib/actions/dust_app_run";
 import { tryCallMCPTool } from "@app/lib/actions/mcp_actions";
 import type { MCPServerAvailability } from "@app/lib/actions/mcp_internal_actions/constants";
@@ -41,7 +39,6 @@ import type {
   ActionConfigurationType,
   AgentActionSpecification,
 } from "@app/lib/actions/types/agent";
-import { isServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import { getExecutionStatusFromConfig } from "@app/lib/actions/utils";
 import {
   processAndStoreFromUrl,
@@ -129,8 +126,10 @@ export type ClientSideMCPToolType = Omit<
   ClientSideMCPServerConfigurationType,
   "type"
 > & {
-  type: "mcp_configuration";
   inputSchema: JSONSchema;
+  permission: MCPToolStakeLevelType;
+  toolServerId: string;
+  type: "mcp_configuration";
 };
 
 type WithToolNameMetadata<T> = T & {
@@ -477,9 +476,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
         messageId: agentMessage.sId,
         action: mcpAction,
         inputs: rawInputs,
-        stake: isServerSideMCPToolConfiguration(actionConfiguration)
-          ? actionConfiguration.permission
-          : FALLBACK_MCP_TOOL_STAKE_LEVEL,
+        stake: actionConfiguration.permission,
         metadata: {
           toolName: actionConfiguration.originalName,
           mcpServerName: actionConfiguration.mcpServerName,
@@ -507,7 +504,6 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
             data.type === "always_approved" &&
             data.actionId === mcpAction.id
           ) {
-            assert(isServerSideMCPToolConfiguration(actionConfiguration));
             const user = auth.getNonNullableUser();
             await user.appendToMetadata(
               `toolsValidations:${actionConfiguration.toolServerId}`,

@@ -3,6 +3,7 @@ import type {
   LightWorkspaceType,
 } from "@dust-tt/client";
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
+import assert from "assert";
 
 const logger = console;
 
@@ -32,6 +33,7 @@ export class CoEditionTransport implements Transport {
   private requestIdMap = new Map<number, string>();
   private lastEventId: string | null = null;
   private heartbeatTimer: NodeJS.Timeout | null = null;
+  private serverId: string | null = null;
 
   // Required by Transport interface.
   public onmessage?: (message: any) => void;
@@ -41,24 +43,8 @@ export class CoEditionTransport implements Transport {
 
   constructor(
     private readonly owner: LightWorkspaceType,
-    private readonly serverId: string = CoEditionTransport.generateUUID(),
     private readonly serverName: string = "Co-Edition"
   ) {}
-
-  /**
-   * Generate a UUID v4 for use as a server ID
-   */
-  private static generateUUID(): string {
-    // Simple UUID v4 generation.
-    return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(
-      /[xy]/g,
-      function (c) {
-        const r = (Math.random() * 16) | 0,
-          v = c === "x" ? r : (r & 0x3) | 0x8;
-        return v.toString(16);
-      }
-    );
-  }
 
   /**
    * Register the MCP server with the Dust backend
@@ -70,7 +56,6 @@ export class CoEditionTransport implements Transport {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        serverId: this.serverId,
         serverName: this.serverName,
       }),
     });
@@ -79,6 +64,9 @@ export class CoEditionTransport implements Transport {
       logger.error(`Failed to register MCP server: ${response.statusText}`);
       return false;
     }
+
+    const body = await response.json();
+    this.serverId = body.serverId;
 
     // Setup heartbeat to keep the server registration alive.
     this.setupHeartbeat();
@@ -142,6 +130,8 @@ export class CoEditionTransport implements Transport {
    * Connect to the SSE stream for the workspace
    */
   private async connectToRequestsStream(): Promise<void> {
+    assert(this.serverId, "Server ID not set");
+
     // Close any existing connection
     if (this.eventSource) {
       this.eventSource.close();
@@ -226,6 +216,8 @@ export class CoEditionTransport implements Transport {
    * This method is required by the Transport interface
    */
   async send(message: any): Promise<void> {
+    assert(this.serverId, "Server ID not set");
+
     // Get the requestId using the message.id.
     const requestId = this.requestIdMap.get(message.id);
     if (!requestId) {
@@ -292,7 +284,7 @@ export class CoEditionTransport implements Transport {
   /**
    * Get the current server ID
    */
-  getServerId(): string {
+  getServerId(): string | null {
     return this.serverId;
   }
 }

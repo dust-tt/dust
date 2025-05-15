@@ -13,8 +13,9 @@ import { useCallback, useMemo, useState } from "react";
 
 import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
 import { useTags } from "@app/lib/swr/tags";
+import { tagsSorter } from "@app/lib/utils";
 import type { WorkspaceType } from "@app/types";
-import { isAdmin } from "@app/types";
+import { isAdmin, isBuilder } from "@app/types";
 import type { TagType } from "@app/types/tag";
 
 import { TagCreationDialog } from "./TagCreationDialog";
@@ -51,23 +52,23 @@ export const TagsSelector = ({
 
   const filteredTags = useMemo(() => {
     const currentTagIds = new Set(builderState.tags.map((t) => t.sId));
-    return tags.filter(
-      (t) =>
-        !currentTagIds.has(t.sId) &&
-        t.name.toLowerCase().includes(searchText.toLowerCase())
-    );
-  }, [tags, builderState.tags, searchText]);
+    return tags
+      .filter(
+        (t) =>
+          !currentTagIds.has(t.sId) &&
+          t.name.toLowerCase().includes(searchText.toLowerCase())
+      )
+      .filter((t) => isBuilder(owner) || t.kind !== "protected")
+      .sort(tagsSorter);
+  }, [tags, builderState.tags, searchText, owner]);
 
-  const assistantTags = [...(builderState.tags || [])].sort((a, b) =>
-    a.name.localeCompare(b.name)
-  );
+  const assistantTags = [...(builderState.tags || [])].sort(tagsSorter);
 
   const onTagCreated = (tag: TagType) => {
     setBuilderState((state) => ({
       ...state,
       tags: [...state.tags, tag],
     }));
-    setEdited(true);
     setEdited(true);
   };
 
@@ -83,13 +84,17 @@ export const TagsSelector = ({
         {assistantTags.map((tag) => (
           <Chip
             key={tag.sId}
-            onRemove={() => {
-              setBuilderState((state) => ({
-                ...state,
-                tags: state.tags.filter((t) => t.sId !== tag.sId),
-              }));
-              setEdited(true);
-            }}
+            onRemove={
+              tag.kind === "protected" && !isBuilder(owner)
+                ? undefined
+                : () => {
+                    setBuilderState((state) => ({
+                      ...state,
+                      tags: state.tags.filter((t) => t.sId !== tag.sId),
+                    }));
+                    setEdited(true);
+                  }
+            }
             size="xs"
             color="golden"
             label={tag.name}
@@ -148,19 +153,19 @@ export const TagsSelector = ({
               </>
             }
           >
-            {filteredTags.map((c) => (
+            {filteredTags.map((tag) => (
               <DropdownMenuItem
                 className="p-1"
-                key={c.sId}
+                key={tag.sId}
                 onClick={() => {
                   setBuilderState((state) => ({
                     ...state,
-                    tags: [...state.tags, c],
+                    tags: [...state.tags, tag],
                   }));
                   setEdited(true);
                 }}
               >
-                <Chip size="xs" color="golden" label={c.name} />
+                <Chip size="xs" color="golden" label={tag.name} />
               </DropdownMenuItem>
             ))}
           </DropdownMenuContent>

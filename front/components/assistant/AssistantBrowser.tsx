@@ -33,6 +33,7 @@ import {
   compareForFuzzySort,
   getAgentSearchString,
   subFilter,
+  tagsSorter,
 } from "@app/lib/utils";
 import { setQueryParam } from "@app/lib/utils/router";
 import type { LightAgentConfigurationType, WorkspaceType } from "@app/types";
@@ -154,7 +155,7 @@ export function AssistantBrowser({
     // Remove duplicate tags by unique sId
     const uniqueTags = Array.from(
       new Map(tags.map((tag) => [tag.sId, tag])).values()
-    ).sort((a, b) => a.name.localeCompare(b.name));
+    ).sort(tagsSorter);
 
     if (assistantSearch.trim() === "") {
       return { filteredAgents: [], filteredTags: [], uniqueTags };
