@@ -130,12 +130,10 @@ const EXAMPLE_AGENTS = [
   },
 ] as const;
 
-// Keep your existing CONNECTIONS_IN_TOUR_GUIDE, ACTIONS_IN_TOUR_GUIDE, FAKE_AGENTS constants
-
 type Step = {
-  anchorRef?: React.RefObject<HTMLDivElement>;
-  side?: "top" | "right" | "bottom" | "left";
-  align?: "start" | "center" | "end";
+  anchorRef?: React.ComponentProps<typeof AnchoredPopover>["anchorRef"];
+  side?: React.ComponentProps<typeof AnchoredPopover>["side"];
+  align?: React.ComponentProps<typeof AnchoredPopover>["align"];
   body: React.ReactNode;
 };
 
