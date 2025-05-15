@@ -1,32 +1,35 @@
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import assert from "assert";
+import _ from "lodash";
 
+import {
+  generateJSONFileAndSnippet,
+  uploadFileToConversationDataSource,
+} from "@app/lib/actions/action_file_helpers";
 import { PROCESS_ACTION_TOP_K } from "@app/lib/actions/constants";
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import type { ProcessActionOutputsType } from "@app/lib/actions/process";
+import { getExtractFileTitle } from "@app/lib/actions/process/utils";
+import { applyDataSourceFilters } from "@app/lib/actions/retrieval";
+import { runActionStreamed } from "@app/lib/actions/server";
 import type {
-  IncludeQueryResourceType,
-  IncludeResultResourceType,
-} from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import { getCoreSearchArgs } from "@app/lib/actions/mcp_internal_actions/servers/utils";
-import type { AgentLoopRunContextType } from "@app/lib/actions/types";
-import { actionRefsOffset, getRetrievalTopK } from "@app/lib/actions/utils";
-import { getRefs } from "@app/lib/api/assistant/citations";
-import config from "@app/lib/api/config";
+  ActionGeneratedFileType,
+  AgentLoopRunContextType,
+} from "@app/lib/actions/types";
+import { isServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
+import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
+import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
-import {
-  getDataSourceNameFromView,
-  getDisplayNameForDocument,
-} from "@app/lib/data_sources";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import logger from "@app/logger/logger";
-import type { CoreAPIDocument, TimeFrame } from "@app/types";
+import type {
+  UserMessageType} from "@app/types";
 import {
-  CoreAPI,
-  dustManagedCredentials,
-  removeNulls,
-  timeFrameFromNow,
+  isUserMessageType,
+  timeFrameFromNow
 } from "@app/types";
 
 const serverInfo: InternalMCPServerDefinitionType = {
@@ -61,133 +64,267 @@ function createServer(
         ],
     },
     async ({ timeFrame, dataSources, jsonSchema }) => {
-      const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-      const credentials = dustManagedCredentials();
-
       if (!agentLoopRunContext) {
         throw new Error(
           "agentLoopContext is required where the tool is called."
         );
       }
 
-      const topK = PROCESS_ACTION_TOP_K;
-
-      // Get the core search args for each data source, fail if any of them are invalid.
-      const coreSearchArgsResults = await concurrentExecutor(
-        dataSources,
-        async (dataSourceConfiguration) =>
-          getCoreSearchArgs(auth, dataSourceConfiguration),
-        { concurrency: 10 }
+      const { agentConfiguration, conversation, actionConfiguration } =
+        agentLoopRunContext;
+      assert(
+        isServerSideMCPToolConfiguration(actionConfiguration),
+        "actionConfiguration must be a server side MCP tool configuration"
       );
 
-      // If any of the data sources are invalid, return an error message.
-      if (coreSearchArgsResults.some((res) => res.isErr())) {
-        return {
-          isError: false,
-          content: removeNulls(
-            coreSearchArgsResults.map((res) => (res.isErr() ? res.error : null))
-          ).map((error) => ({
-            type: "text",
-            text: error.message,
-          })),
+      // grab user message
+      const userMessagesFiltered = conversation.content.filter((m) =>
+        isUserMessageType(m[0])
+      );
+      const lastUserMessageTuple = userMessagesFiltered.at(-1);
+      assert(
+        lastUserMessageTuple,
+        "No user message found in conversation content."
+      );
+      const userMessage: UserMessageType =
+        lastUserMessageTuple[0] as UserMessageType;
+
+      const objective = "n/a";
+
+      const { model } = agentConfiguration;
+      const supportedModel = getSupportedModelConfig(model);
+      const contextSize = supportedModel.contextSize;
+
+      const now = Date.now();
+
+      const prompt = await constructPromptMultiActions(auth, {
+        userMessage,
+        agentConfiguration,
+        fallbackPrompt:
+          "Process the retrieved data to extract structured information based on the provided schema.",
+        model: supportedModel,
+        hasAvailableActions: false,
+      });
+
+      assert(
+        actionConfiguration.dataSources &&
+          actionConfiguration.dataSources.length > 0,
+        "Extract data action must have at least one data source."
+      );
+      const dataSourceViews = await DataSourceViewResource.fetchByIds(
+        auth,
+        _.uniq(actionConfiguration.dataSources.map((ds) => ds.dataSourceViewId))
+      );
+      const dataSourceViewsMap = Object.fromEntries(
+        dataSourceViews.map((dsv) => [dsv.sId, dsv])
+      );
+
+      const config = cloneBaseConfig(
+        getDustProdAction("assistant-v2-process").config
+      );
+
+      // Set the process action model configuration to the agent model configuration.
+      config.MODEL.provider_id = model.providerId;
+      config.MODEL.model_id = model.modelId;
+      config.MODEL.temperature = model.temperature;
+
+      // Handle data sources list and parents/tags filtering.
+      config.DATASOURCE.data_sources = actionConfiguration.dataSources.map(
+        (d) => ({
+          workspace_id: d.workspaceId,
+          // Note: This value is passed to the registry for lookup. The registry will return the
+          // associated data source's dustAPIDataSourceId.
+          data_source_id: d.dataSourceViewId,
+        })
+      );
+
+      const globalTagsIn: string[] | null = null;
+      const globalTagsNot: string[] | null = null;
+
+      applyDataSourceFilters(
+        config,
+        actionConfiguration.dataSources,
+        dataSourceViewsMap,
+        globalTagsIn,
+        globalTagsNot
+      );
+
+      if (timeFrame) {
+        config.DATASOURCE.filter.timestamp = {
+          gt: timeFrameFromNow(timeFrame),
         };
       }
 
-      const coreSearchArgs = removeNulls(
-        coreSearchArgsResults.map((res) => (res.isOk() ? res.value : null))
-      );
+      config.DATASOURCE.top_k = PROCESS_ACTION_TOP_K;
 
-      const searchResults = await coreAPI.searchDataSources(
-        "",
-        topK,
-        credentials,
-        false,
-        coreSearchArgs.map((args) => ({
-          projectId: args.projectId,
-          dataSourceId: args.dataSourceId,
-          filter: {
-            ...args.filter,
-            tags: {
-              in: args.filter.tags?.in ?? null,
-              not: args.filter.tags?.not ?? null,
-            },
-            timestamp: {
-              gt: timeFrame ? timeFrameFromNow(timeFrame) : null,
-              lt: null,
-            },
+      const res = await runActionStreamed(
+        auth,
+        "assistant-v2-process",
+        config,
+        [
+          {
+            context_size: contextSize,
+            prompt,
+            schema: actionConfiguration.jsonSchema,
+            objective,
           },
-          view_filter: args.view_filter,
-        }))
+        ],
+        {
+          workspaceId: conversation.owner.sId,
+          conversationId: conversation.sId,
+          userMessageId: userMessage.sId,
+        }
       );
 
-      if (searchResults.isErr()) {
+      if (res.isErr()) {
+        logger.error(
+          {
+            workspaceId: conversation.owner.sId,
+            conversationId: conversation.sId,
+            error: res.error,
+          },
+          "Error running extract data action"
+        );
         return {
           isError: true,
           content: [
             {
               type: "text",
-              text: searchResults.error.message,
+              created: Date.now(),
+              workspaceId: conversation.owner.sId,
+              conversationId: conversation.sId,
+              text: `Error running extract data action: ${res.error.message}`,
             },
           ],
         };
       }
 
-      if (refsOffset + topK > getRefs().length) {
-        return {
-          isError: true,
-          content: [
+      const { eventStream } = res.value;
+      let outputs: ProcessActionOutputsType | null = null;
+
+      for await (const event of eventStream) {
+        if (event.type === "error") {
+          logger.error(
             {
-              type: "text",
-              text: "The inclusion exhausted the total number of references available for citations",
+              workspaceId: conversation.owner.sId,
+              conversationId: conversation.sId,
+              error: event.content.message,
             },
-          ],
-        };
-      }
-
-      const refs = getRefs().slice(refsOffset, refsOffset + topK);
-
-      const results: IncludeResultResourceType[] =
-        searchResults.value.documents.map((doc) => {
-          const dataSourceView = coreSearchArgs.find(
-            (args) =>
-              args.dataSourceView.dataSource.dustAPIDataSourceId ===
-              doc.data_source_id
-          )?.dataSourceView;
-
-          assert(dataSourceView, "DataSource view not found");
-
+            "Error running extract data action"
+          );
           return {
-            mimeType:
-              INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_INCLUDE_RESULT,
-            uri: doc.source_url ?? "",
-            text: getDisplayNameForDocument(doc),
-
-            id: doc.document_id,
-            source: {
-              provider:
-                dataSourceView.dataSource.connectorProvider ?? undefined,
-              name: getDataSourceNameFromView(dataSourceView),
-            },
-            tags: doc.tags,
-            ref: refs.shift() as string,
-            chunks: doc.chunks.map((chunk) => chunk.text),
+            isError: true,
+            content: [
+              {
+                type: "text",
+                created: Date.now(),
+                workspaceId: conversation.owner.sId,
+                conversationId: conversation.sId,
+                text: `Error running extract data action: ${event.content.message}`,
+              },
+            ],
           };
-        });
+        }
+
+        if (event.type === "block_execution") {
+          const e = event.content.execution[0][0];
+          if (e.error) {
+            logger.error(
+              {
+                workspaceId: conversation.owner.sId,
+                conversationId: conversation.sId,
+                error: e.error,
+              },
+              "Error running process"
+            );
+            return {
+              isError: true,
+              content: [
+                {
+                  type: "text",
+                  created: Date.now(),
+                  workspaceId: conversation.owner.sId,
+                  conversationId: conversation.sId,
+                  text: `Error running extract data action: ${e.error}`,
+                },
+              ],
+            };
+          }
+
+          if (event.content.block_name === "OUTPUT" && e.value) {
+            outputs = e.value as ProcessActionOutputsType;
+          }
+        }
+      }
+
+      let jsonFileSId: string | null = null;
+      let jsonFileSnippet: string | null = null;
+
+      const updateParams: {
+        jsonFileId: number | null;
+        jsonFileSnippet: string | null;
+        outputs: ProcessActionOutputsType | null;
+        runId?: string;
+      } = {
+        jsonFileId: null,
+        jsonFileSnippet: null,
+        outputs: outputs,
+      };
+
+      // Generate the JSON file with extraction results
+      const fileTitle = getExtractFileTitle({
+        schema: actionConfiguration.jsonSchema,
+      });
+      const { jsonFile, jsonSnippet } = await generateJSONFileAndSnippet(auth, {
+        title: fileTitle,
+        conversationId: conversation.sId,
+        data: outputs?.data,
+      });
+
+      // Upload the file to the conversation data source.
+      // This step is critical for file persistence across sessions.
+      await uploadFileToConversationDataSource({
+        auth,
+        file: jsonFile,
+      });
+
+      const generatedFile: ActionGeneratedFileType = {
+        fileId: jsonFile.sId,
+        title: fileTitle,
+        contentType: jsonFile.contentType,
+        snippet: jsonSnippet,
+      };
+
+      // Update the parameters with numeric IDs for database
+      updateParams.jsonFileId = jsonFile.id;
+      updateParams.jsonFileSnippet = jsonSnippet;
+
+      // Save references for the yield statement with string IDs for UI
+      jsonFileSId = jsonFile.sId;
+      jsonFileSnippet = jsonSnippet;
+
+      logger.info(
+        {
+          workspaceId: conversation.owner.sId,
+          conversationId: conversation.sId,
+          elapsed: Date.now() - now,
+        },
+        "[ASSISTANT_TRACE] Finished process action run execution"
+      );
 
       return {
         isError: false,
         content: [
-          ...results.map((result) => ({
-            type: "resource" as const,
-            resource: result,
-          })),
           {
             type: "resource" as const,
-            resource: makeQueryResource(
-              searchResults.value.documents,
-              topK,
-              timeFrame ?? null
-            ),
+            resource: {
+              // "text" here is what will be presented to the model,
+              // not necessarily the raw text of the file.
+              text: "Generated JSON file with extraction results",
+              uri: jsonFile.getPublicUrl(auth),
+              mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
+              ...generatedFile,
+            },
           },
         ],
       };
@@ -195,43 +332,6 @@ function createServer(
   );
 
   return server;
-}
-
-function makeQueryResource(
-  documents: CoreAPIDocument[],
-  topK: number,
-  timeFrame: TimeFrame | null
-): IncludeQueryResourceType {
-  const timeFrameAsString = timeFrame
-    ? "over the last " +
-      (timeFrame.duration > 1
-        ? `${timeFrame.duration} ${timeFrame.unit}s`
-        : `${timeFrame.unit}`)
-    : "across all time periods";
-
-  // Check if the number of chunks reached the limit defined in params.topK.
-  const tooManyChunks =
-    documents &&
-    documents.reduce((sum, doc) => sum + doc.chunks.length, 0) >= topK;
-
-  // Determine the retrieval date limit from the last document's timestamp.
-  const retrievalTsLimit = documents?.[documents.length - 1]?.timestamp;
-  const date = retrievalTsLimit ? new Date(retrievalTsLimit) : null;
-  const retrievalDateLimitAsString = date
-    ? `${date.toLocaleString("default", { month: "short" })} ${date.getDate()}`
-    : null;
-
-  return {
-    mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_INCLUDE_QUERY,
-    text: `Including ${timeFrameAsString}.`,
-    warning: tooManyChunks
-      ? {
-          title: `Limited retrieval (from now to ${retrievalDateLimitAsString}`,
-          description: `Too much data to retrieve! Retrieved ${topK} excerpts from ${documents?.length} recent docs, up to ${retrievalDateLimitAsString}.`,
-        }
-      : undefined,
-    uri: "",
-  };
 }
 
 export default createServer;
