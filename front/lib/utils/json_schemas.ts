@@ -53,22 +53,25 @@ function areSchemasEqual(schemaA: JSONSchema, schemaB: JSONSchema): boolean {
   if (schemaA.type !== schemaB.type) {
     return false;
   }
-  if (!isEqual(schemaA.required, schemaB.required)) {
-    return false;
-  }
-  if (!isEqual(schemaA.items, schemaB.items)) {
-    return false;
-  }
-  if (!isEqual(schemaA.properties, schemaB.properties)) {
-    return false;
-  }
-  // We need this comparison because at least the NULLABLE_TIME_FRAME
-  // relies on the anyOf field.
-  if (!isEqual(schemaA.anyOf, schemaB.anyOf)) {
+
+  // Only checking differences on selected fields.
+  const fields = [
+    "required",
+    "items",
+    "anyOf",
+    "oneOf",
+    "allOf",
+    "enum",
+  ] as const;
+  if (fields.some((f) => !isEqual(schemaA[f], schemaB[f]))) {
     return false;
   }
 
-  return isEqual(schemaA, schemaB);
+  return (
+    schemaA.properties !== undefined &&
+    schemaB.properties !== undefined &&
+    isEqual(schemaA.properties, schemaB.properties)
+  );
 }
 
 /**
