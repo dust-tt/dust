@@ -56,7 +56,7 @@ export const TableTagSelector = ({
           />
         )}
       </DropdownMenuTrigger>
-      <DropdownMenuContent>
+      <DropdownMenuContent mountPortalContainer={document.body}>
         {tags
           .filter((t) => isBuilder(owner) || t.kind !== "protected")
           .map((t) => {

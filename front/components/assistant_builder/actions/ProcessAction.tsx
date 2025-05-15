@@ -276,20 +276,20 @@ export function ActionProcess({
               disabled={timeFrameDisabled}
             />
           </div>
+          <JsonSchemaConfigurationSection
+            instructions={instructions ?? ""}
+            schemaEdit={schemaEdit ?? ""}
+            setSchemaEdit={setSchemaEdit}
+            setEdited={setEdited}
+            updateAction={updateAction}
+            description={description ?? ""}
+            schemaConfigurationDescription="Optionally, provide a schema for the data to be extracted. If you do not specify a schema, the tool will determine the schema based on the conversation context."
+            generateSchema={(instructions: string) =>
+              generateSchema({ owner, instructions })
+            }
+          />
         </>
       )}
-      <JsonSchemaConfigurationSection
-        instructions={instructions ?? ""}
-        schemaEdit={schemaEdit ?? ""}
-        setSchemaEdit={setSchemaEdit}
-        setEdited={setEdited}
-        updateAction={updateAction}
-        description={description ?? ""}
-        schemaConfigurationDescription="Optionally, provide a schema for the data to be extracted. If you do not specify a schema, the tool will determine the schema based on the conversation context."
-        generateSchema={(instructions: string) =>
-          generateSchema({ owner, instructions })
-        }
-      />
     </>
   );
 }

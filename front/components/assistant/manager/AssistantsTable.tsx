@@ -187,7 +187,7 @@ const getTableColumns = ({
       meta: { className: "w-16", tooltip: "Messages in the last 30 days" },
     },
     {
-      header: "Feedbacks",
+      header: "Feedback",
       accessorFn: (row: RowData) => row.feedbacks,
       cell: (info: CellContext<RowData, { up: number; down: number }>) => {
         if (info.row.original.scope === "global") {
