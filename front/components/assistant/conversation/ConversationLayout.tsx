@@ -116,8 +116,8 @@ const ConversationLayoutContent = ({
     useWelcomeTourGuide();
 
   const shouldDisplayWelcomeTourGuide = useMemo(() => {
-    return router.query.welcome === "true";
-  }, [router.query.welcome]);
+    return router.query.welcome === "true" && !activeConversationId;
+  }, [router.query.welcome, activeConversationId]);
 
   const onTourGuideEnd = () => {
     void router.push(router.asPath.replace("?welcome=true", ""), undefined, {
