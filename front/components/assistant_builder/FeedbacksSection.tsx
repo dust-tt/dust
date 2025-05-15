@@ -243,8 +243,8 @@ function FeedbackCard({ owner, feedback }: FeedbackCardProps) {
               className={cn(
                 "rounded-full bg-primary-300 p-2",
                 feedback.thumbDirection === "up"
-                  ? "bg-success-200"
-                  : "bg-info-200"
+                  ? "bg-success-200 dark:bg-success-200-night"
+                  : "bg-info-200 dark:bg-info-200-night"
               )}
             >
               <Icon
