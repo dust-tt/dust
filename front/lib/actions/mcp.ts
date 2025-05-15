@@ -54,6 +54,7 @@ import { FileModel } from "@app/lib/resources/storage/models/files";
 import { makeSId } from "@app/lib/resources/string_ids";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
+import { statsDClient } from "@app/logger/statsDClient";
 import type {
   AgentConfigurationType,
   AgentMessageType,
@@ -74,7 +75,6 @@ import {
   Ok,
   removeNulls,
 } from "@app/types";
-import { statsDClient } from "@app/logger/statsDClient";
 
 const MAX_BLOB_SIZE_BYTES = 1024 * 1024 * 10; // 10MB
 
