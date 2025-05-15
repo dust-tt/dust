@@ -1313,7 +1313,7 @@ export class DustAPI {
           url,
           duration,
           connectorsError: err,
-          error: e instanceof Error ? { name: e.name, message: e.message } : e,
+          error: e,
         },
         "DustAPI error"
       );
