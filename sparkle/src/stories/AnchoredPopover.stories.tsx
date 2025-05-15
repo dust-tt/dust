@@ -103,6 +103,13 @@ const MultipleAnchorsExample = () => {
   );
 };
 
-export const MultipleAnchors: Story = {
+export const Example: Story = {
+  args: {
+    open: true,
+    side: "bottom",
+    align: "center",
+    sideOffset: 4,
+    children: <div>Popover content</div>,
+  },
   render: () => <MultipleAnchorsExample />,
 };
