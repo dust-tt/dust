@@ -157,7 +157,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }),
     };
 
-    search_store
+    let alias_creation_response = search_store
         .client
         .indices()
         .update_aliases()
@@ -165,10 +165,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .send()
         .await?;
 
-    match response.status_code() {
+    match alias_creation_response.status_code() {
         StatusCode::OK => Ok(()),
         _ => {
-            let body = response.json::<serde_json::Value>().await?;
+            let body = alias_creation_response.json::<serde_json::Value>().await?;
             eprintln!("{:?}", body);
             Err(anyhow::anyhow!("Failed to create alias").into())
         }
