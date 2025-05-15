@@ -3,7 +3,10 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { registerMCPServer } from "@app/lib/api/actions/mcp/client_side_registry";
+import {
+  MCPServerInstanceLimitError,
+  registerMCPServer,
+} from "@app/lib/api/actions/mcp/client_side_registry";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
@@ -29,7 +32,6 @@ export type PostMCPRegisterRequestBody = t.TypeOf<
 type RegisterMCPResponseType = {
   expiresAt: string;
   serverId: string;
-  success: boolean;
 };
 
 async function handler(
@@ -67,7 +69,30 @@ async function handler(
     workspaceId: auth.getNonNullableWorkspace().sId,
   });
 
-  res.status(200).json(registration);
+  if (registration.isErr()) {
+    const error = registration.error;
+    // Check if this is a server instance limit error.
+    if (error instanceof MCPServerInstanceLimitError) {
+      return apiError(req, res, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: error.message,
+        },
+      });
+    }
+
+    // Other errors are treated as server errors.
+    return apiError(req, res, {
+      status_code: 500,
+      api_error: {
+        type: "internal_server_error",
+        message: error.message,
+      },
+    });
+  }
+
+  res.status(200).json(registration.value);
 }
 
 export default withSessionAuthenticationForWorkspace(handler);

@@ -318,13 +318,11 @@ export async function getExecutionStatusFromConfig(
     return { status: "allowed_implicitly" };
   }
 
-  /**
-   * Permissions:
-   * - "never_ask": Automatically approved
-   * - "low": Ask user for approval and allow to automatically approve next time
-   * - "high": Ask for approval each time
-   * - undefined: Use default permission ("never_ask" for default tools, "high" for other tools)
-   */
+  // Permissions:
+  // - "never_ask": Automatically approved
+  // - "low": Ask user for approval and allow to automatically approve next time
+  // - "high": Ask for approval each time
+  // - undefined: Use default permission ("never_ask" for default tools, "high" for other tools)
   switch (actionConfiguration.permission) {
     case "never_ask":
       return { status: "allowed_implicitly" };

@@ -52,6 +52,7 @@ import {
   isServerSideMCPServerConfiguration,
   isServerSideMCPToolConfiguration,
 } from "@app/lib/actions/types/guards";
+import { getBaseServerId } from "@app/lib/api/actions/mcp/client_side_registry";
 import type {
   ClientSideMCPToolTypeWithStakeLevel,
   MCPToolType,
@@ -125,7 +126,9 @@ function makeClientSideMCPToolConfigurations(
     name: tool.name,
     originalName: tool.name,
     permission: tool.stakeLevel,
-    toolServerId: config.clientSideMcpServerId,
+    // Use the base serverId (without suffix) to ensure tools are shared across all instances
+    // of the same server name, allowing for consistent tool behavior.
+    toolServerId: getBaseServerId(config.clientSideMcpServerId),
   }));
 }
 

@@ -2920,7 +2920,6 @@ export type PublicHeartbeatMCPRequestBody = z.infer<
 export const RegisterMCPResponseSchema = z.object({
   expiresAt: z.string(),
   serverId: z.string(),
-  success: z.boolean(),
 });
 
 export type RegisterMCPResponseType = z.infer<typeof RegisterMCPResponseSchema>;

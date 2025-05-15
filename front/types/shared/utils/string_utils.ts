@@ -1,5 +1,3 @@
-import { validate as validateUuid, version as uuidVersion } from "uuid";
-
 import type { Result } from "../result";
 import { Err, Ok } from "../result";
 
