@@ -20,7 +20,7 @@ export function isJSONSchemaObject(
 }
 
 /**
- * Checks if a JSON schema matches should be idenfied as being configurable for a specific mime type.
+ * Checks if a JSON schema matches should be identified as being configurable for a specific mime type.
  */
 export function schemaIsConfigurable(
   schema: JSONSchema,
