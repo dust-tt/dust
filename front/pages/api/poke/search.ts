@@ -1,8 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import type { SessionAuthenticationContext } from "@app/lib/api/auth_wrappers";
 import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
 import { Authenticator } from "@app/lib/auth";
-import type { SessionWithUser } from "@app/lib/iam/provider";
 import { searchPokeResources } from "@app/lib/poke/search";
 import { apiError } from "@app/logger/withlogging";
 import type { PokeItemBase } from "@app/types";
@@ -15,7 +15,7 @@ export type GetPokeSearchItemsResponseBody = {
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<GetPokeSearchItemsResponseBody>>,
-  session: SessionWithUser
+  { session }: SessionAuthenticationContext
 ): Promise<void> {
   const auth = await Authenticator.fromSuperUserSession(session, null);
 

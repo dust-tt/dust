@@ -3,8 +3,8 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import type { SessionAuthenticationContext } from "@app/lib/api/auth_wrappers";
 import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
-import type { SessionWithUser } from "@app/lib/iam/provider";
 import { getUserFromSession } from "@app/lib/iam/session";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
@@ -31,7 +31,7 @@ async function handler(
   res: NextApiResponse<
     WithAPIErrorResponse<PostUserMetadataResponseBody | GetUserResponseBody>
   >,
-  session: SessionWithUser
+  { session }: SessionAuthenticationContext
 ): Promise<void> {
   // This functions retrieves the full user including all workspaces.
   const user = await getUserFromSession(session);

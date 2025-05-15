@@ -1,4 +1,5 @@
 import tracer from "dd-trace";
+import { cloneDeep } from "lodash";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import type { Authenticator } from "@app/lib/auth";
@@ -16,7 +17,13 @@ import { statsDClient } from "./statsDClient";
 export type LoggingContext = {
   session: SessionWithUser | null;
   auth: Authenticator | null;
+  token: string | null;
 };
+
+export type UpdateLoggingContextCallback = <K extends keyof LoggingContext>(
+  key: K,
+  value: LoggingContext[K]
+) => void;
 
 /**
  * Helper to transform the LoggingContext into a Record
@@ -30,6 +37,14 @@ function loggingContextInfo(
     userId: context.auth?.user()?.sId ?? null,
   };
 
+  if (context.auth !== null && context.auth.user() !== null) {
+    metadata.userId = context.auth.getNonNullableWorkspace().sId;
+  }
+
+  if (context.token !== null) {
+    metadata.token = context.token.slice(0, 5);
+  }
+
   return metadata;
 }
 
@@ -37,7 +52,8 @@ export function withLogging<T>(
   handler: (
     req: NextApiRequest,
     res: NextApiResponse<WithAPIErrorResponse<T>>,
-    context: LoggingContext
+    context: LoggingContext,
+    updateContext: UpdateLoggingContextCallback
   ) => Promise<void>,
   streaming = false
 ) {
@@ -79,10 +95,14 @@ export function withLogging<T>(
     const context: LoggingContext = {
       session,
       auth: null,
+      token: null,
     };
 
     try {
-      await handler(req, res, context);
+      // make a clone to make sure we don't change it deeply by mistake
+      await handler(req, res, cloneDeep(context), (key, value) => {
+        context[key] = value;
+      });
     } catch (err) {
       const elapsed = new Date().getTime() - now.getTime();
       logger.error(

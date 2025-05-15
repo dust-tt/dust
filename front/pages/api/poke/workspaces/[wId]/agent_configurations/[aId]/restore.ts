@@ -4,9 +4,9 @@ import {
   getAgentConfiguration,
   restoreAgentConfiguration,
 } from "@app/lib/api/assistant/configuration";
+import type { SessionAuthenticationContext } from "@app/lib/api/auth_wrappers";
 import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
 import { Authenticator } from "@app/lib/auth";
-import type { SessionWithUser } from "@app/lib/iam/provider";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 
@@ -19,7 +19,7 @@ async function handler(
   res: NextApiResponse<
     WithAPIErrorResponse<RestoreAgentConfigurationResponseBody>
   >,
-  session: SessionWithUser
+  { session }: SessionAuthenticationContext
 ): Promise<void> {
   const auth = await Authenticator.fromSuperUserSession(
     session,

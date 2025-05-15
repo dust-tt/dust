@@ -5,7 +5,6 @@ import {
   getDustStatusMemoized,
   getProviderStatusMemoized,
 } from "@app/lib/api/status";
-import type { SessionWithUser } from "@app/lib/iam/provider";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 
@@ -24,9 +23,7 @@ export interface GetAppStatusResponseBody {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<GetAppStatusResponseBody>>,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- session is passed by the auth wrapper
-  session: SessionWithUser
+  res: NextApiResponse<WithAPIErrorResponse<GetAppStatusResponseBody>>
 ): Promise<void> {
   if (req.method !== "GET") {
     return apiError(req, res, {

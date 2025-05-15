@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import type { SessionAuthenticationContext } from "@app/lib/api/auth_wrappers";
 import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
-import type { SessionWithUser } from "@app/lib/iam/provider";
 import { getUserFromSession } from "@app/lib/iam/session";
 import { createWorkspace } from "@app/lib/iam/workspaces";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -12,7 +12,7 @@ import type { WithAPIErrorResponse } from "@app/types";
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<{ sId: string }>>,
-  session: SessionWithUser
+  { session }: SessionAuthenticationContext
 ): Promise<void> {
   if (req.method !== "POST") {
     return apiError(req, res, {

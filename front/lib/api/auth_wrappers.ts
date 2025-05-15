@@ -16,9 +16,25 @@ import {
 } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import logger from "@app/logger/logger";
+import type {
+  LoggingContext,
+  UpdateLoggingContextCallback,
+} from "@app/logger/withlogging";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { UserTypeWithWorkspaces, WithAPIErrorResponse } from "@app/types";
 import { getGroupIdsFromHeaders, getUserEmailFromHeaders } from "@app/types";
+
+// Take the LoggingContext but make the session non null
+export type SessionAuthenticationContext = Omit<LoggingContext, "session"> & {
+  session: SessionWithUser;
+};
+
+export type WithSessionAuthenticationForWorkspaceHandler<T> = (
+  req: NextApiRequest,
+  res: NextApiResponse<WithAPIErrorResponse<T>>,
+  context: SessionAuthenticationContext,
+  updateContext: UpdateLoggingContextCallback
+) => Promise<void> | void;
 
 /**
  * This function is a wrapper for API routes that require session authentication.
@@ -28,18 +44,15 @@ import { getGroupIdsFromHeaders, getUserEmailFromHeaders } from "@app/types";
  * @returns
  */
 export function withSessionAuthentication<T>(
-  handler: (
-    req: NextApiRequest,
-    res: NextApiResponse<WithAPIErrorResponse<T>>,
-    session: SessionWithUser
-  ) => Promise<void> | void,
+  handler: WithSessionAuthenticationForWorkspaceHandler<T>,
   { isStreaming = false }: { isStreaming?: boolean } = {}
 ) {
   return withLogging(
     async (
-      req: NextApiRequest,
+      req,
       res: NextApiResponse<WithAPIErrorResponse<T>>,
-      context
+      context,
+      updateContext
     ) => {
       if (!context.session) {
         return apiError(req, res, {
@@ -51,8 +64,12 @@ export function withSessionAuthentication<T>(
           },
         });
       }
-
-      return handler(req, res, context.session);
+      return handler(
+        req,
+        res,
+        context as SessionAuthenticationContext,
+        updateContext
+      );
     },
     isStreaming
   );
@@ -82,12 +99,8 @@ export function withSessionAuthenticationForWorkspace<T>(
     allowUserOutsideCurrentWorkspace?: boolean;
   } = {}
 ) {
-  return withSessionAuthentication(
-    async (
-      req: NextApiRequest,
-      res: NextApiResponse<WithAPIErrorResponse<T>>,
-      session: SessionWithUser
-    ) => {
+  return withSessionAuthentication<T>(
+    async (req, res, context, updateContext) => {
       const { wId } = req.query;
       if (typeof wId !== "string" || !wId) {
         return apiError(req, res, {
@@ -99,7 +112,8 @@ export function withSessionAuthenticationForWorkspace<T>(
         });
       }
 
-      const auth = await Authenticator.fromSession(session, wId);
+      const auth = await Authenticator.fromSession(context.session, wId);
+      updateContext("auth", auth);
 
       const owner = auth.workspace();
       const plan = auth.plan();
@@ -147,7 +161,7 @@ export function withSessionAuthenticationForWorkspace<T>(
         });
       }
 
-      return handler(req, res, auth, session);
+      return handler(req, res, auth, context.session);
     },
     opts
   );
@@ -183,7 +197,9 @@ export function withPublicAPIAuthentication<T, U extends boolean>(
   return withLogging(
     async (
       req: NextApiRequest,
-      res: NextApiResponse<WithAPIErrorResponse<T>>
+      res: NextApiResponse<WithAPIErrorResponse<T>>,
+      context,
+      updateContext
     ) => {
       const wId = typeof req.query.wId === "string" ? req.query.wId : undefined;
       if (!wId) {
@@ -208,6 +224,7 @@ export function withPublicAPIAuthentication<T, U extends boolean>(
         });
       }
       const token = bearerTokenRes.value;
+      updateContext("token", token);
       const authMethod = getAuthType(token);
 
       // Authentification with Auth0 token.
