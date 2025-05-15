@@ -56,7 +56,7 @@ export const TableTagSelector = ({
           />
         )}
       </DropdownMenuTrigger>
-      <DropdownMenuContent>
+      <DropdownMenuContent mountPortalContainer={document.body}>
         {tags.map((t) => {
           const isChecked = agentTags.some((x) => x.sId === t.sId);
           return (

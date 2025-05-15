@@ -5,6 +5,7 @@ import {
   Chip,
   ClipboardIcon,
   DataTable,
+  EyeIcon,
   PencilSquareIcon,
   Tooltip,
   TrashIcon,
@@ -176,7 +177,7 @@ const getTableColumns = ({
       meta: { className: "w-16", tooltip: "Messages in the last 30 days" },
     },
     {
-      header: "Feedbacks",
+      header: "Feedback",
       accessorFn: (row: RowData) => row.feedbacks,
       cell: (info: CellContext<RowData, { up: number; down: number }>) => {
         if (info.row.original.scope === "global") {
@@ -357,6 +358,17 @@ export function AssistantsTable({
                       void navigator.clipboard.writeText(
                         agentConfiguration.sId
                       );
+                    },
+                    kind: "item" as const,
+                  },
+                  {
+                    label: "More info",
+                    "data-gtm-label": "assistantMoreInfoButton",
+                    "data-gtm-location": "assistantDetails",
+                    icon: EyeIcon,
+                    onClick: (e: React.MouseEvent) => {
+                      e.stopPropagation();
+                      setShowDetails(agentConfiguration);
                     },
                     kind: "item" as const,
                   },

@@ -1,10 +1,5 @@
 import _ from "lodash";
-import type {
-  Attributes,
-  CreationAttributes,
-  ModelStatic,
-  Transaction,
-} from "sequelize";
+import type { Attributes, CreationAttributes, Transaction } from "sequelize";
 import type Stripe from "stripe";
 
 import { sendProactiveTrialCancelledEmail } from "@app/lib/api/email";
@@ -35,6 +30,7 @@ import { REPORT_USAGE_METADATA_KEY } from "@app/lib/plans/usage/types";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
+import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { getWorkspaceFirstAdmin } from "@app/lib/workspace";
 import { checkWorkspaceActivity } from "@app/lib/workspace_usage";
@@ -64,11 +60,11 @@ export interface SubscriptionResource
   extends ReadonlyAttributesType<Subscription> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class SubscriptionResource extends BaseResource<Subscription> {
-  static model: ModelStatic<Subscription> = Subscription;
+  static model: ModelStaticWorkspaceAware<Subscription> = Subscription;
   private readonly plan: PlanType;
 
   constructor(
-    model: ModelStatic<Subscription>,
+    model: ModelStaticWorkspaceAware<Subscription>,
     blob: Attributes<Subscription>,
     plan: PlanType
   ) {
@@ -94,7 +90,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
     const workspaceModelBySid = _.keyBy(workspaces, "sId");
 
     const activeSubscriptionByWorkspaceId = _.keyBy(
-      await Subscription.findAll({
+      await this.model.findAll({
         attributes: [
           "endDate",
           "id",
@@ -110,6 +106,8 @@ export class SubscriptionResource extends BaseResource<Subscription> {
           workspaceId: Object.values(workspaceModelBySid).map((w) => w.id),
           status: "active",
         },
+        // WORKSPACE_ISOLATION_BYPASS: workspaceId is filtered just above, but the check is refusing more than 1 elements in the array. It's ok here to have more than 1 element.
+        dangerouslyBypassWorkspaceIsolationSecurity: true,
         include: [
           {
             model: Plan,
@@ -182,9 +180,12 @@ export class SubscriptionResource extends BaseResource<Subscription> {
   static async fetchByStripeId(
     stripeSubscriptionId: string
   ): Promise<SubscriptionResource | null> {
-    const res = await Subscription.findOne({
+    const res = await this.model.findOne({
       where: { stripeSubscriptionId },
       include: [Plan],
+
+      // WORKSPACE_ISOLATION_BYPASS: Used to check if a subscription is not attached to a workspace
+      dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
 
     if (!res) {

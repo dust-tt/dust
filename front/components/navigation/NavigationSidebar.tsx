@@ -14,6 +14,7 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 
+import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
 import type { SidebarNavigation } from "@app/components/navigation/config";
 import { getTopNavigationTabs } from "@app/components/navigation/config";
 import { HelpDropdown } from "@app/components/navigation/HelpDropdown";
@@ -61,8 +62,13 @@ export const NavigationSidebar = React.forwardRef<
     }
   }, [router.route, router.isReady]);
 
+  const { spaceMenuButtonRef } = useWelcomeTourGuide();
+
   // TODO(2024-06-19 flav): Fix issue with AppLayout changing between pagesg
-  const navs = useMemo(() => getTopNavigationTabs(owner), [owner]);
+  const navs = useMemo(
+    () => getTopNavigationTabs(owner, spaceMenuButtonRef),
+    [owner, spaceMenuButtonRef]
+  );
   const currentTab = useMemo(
     () => navs.find((n) => n.isCurrent(activePath)),
     [navs, activePath]
@@ -82,14 +88,16 @@ export const NavigationSidebar = React.forwardRef<
           <Tabs value={currentTab?.id ?? "conversations"}>
             <TabsList className="px-2">
               {navs.map((tab) => (
-                <TabsTrigger
-                  key={tab.id}
-                  value={tab.id}
-                  label={tab.hideLabel ? undefined : tab.label}
-                  tooltip={tab.hideLabel ? tab.label : undefined}
-                  icon={tab.icon}
-                  href={tab.href}
-                />
+                <div key={tab.id} ref={tab.ref ?? undefined}>
+                  <TabsTrigger
+                    key={tab.id}
+                    value={tab.id}
+                    label={tab.hideLabel ? undefined : tab.label}
+                    tooltip={tab.hideLabel ? tab.label : undefined}
+                    icon={tab.icon}
+                    href={tab.href}
+                  />
+                </div>
               ))}
             </TabsList>
             {navs.map((tab) => (
