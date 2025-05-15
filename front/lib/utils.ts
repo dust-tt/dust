@@ -313,6 +313,29 @@ export function isArrayEqual2DUnordered(
   return isEqual(sort2D(first), sort2D(second));
 }
 
+// Postgres requires all subarrays to be of the same length.
+// This function ensures that all subarrays are of the same length
+// by repeating the last element of each subarray until all subarrays have the same length.
+// Make sure that it's okay to use this function for your use case.
+export function normalizeArrays<T>(array2D: T[][]): T[][] {
+  // Copy the array to avoid mutating the original array.
+  const array2DCopy = array2D.map((array) => [...array]);
+
+  const longestArray = array2DCopy.reduce(
+    (max, req) => Math.max(max, req.length),
+    0
+  );
+  // for each array, repeatedly add the last id until array is of longest array length
+  const updatedArrays = array2DCopy.map((array) => {
+    while (array.length < longestArray) {
+      array.push(array[array.length - 1]);
+    }
+    return array;
+  });
+
+  return updatedArrays;
+}
+
 // from http://detectmobilebrowsers.com/
 export const isMobile = (navigator: Navigator) =>
   /(android|bb\d+|meego).+mobile|avantgo|bada\/|blackberry|blazer|compal|elaine|fennec|hiptop|iemobile|ip(hone|od)|iris|kindle|lge |maemo|midp|mmp|mobile.+firefox|netfront|opera m(ob|in)i|palm( os)?|phone|p(ixi|re)\/|plucker|pocket|psp|series(4|6)0|symbian|treo|up\.(browser|link)|vodafone|wap|windows ce|xda|xiino/i.test(
