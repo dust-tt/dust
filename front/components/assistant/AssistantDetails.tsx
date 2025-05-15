@@ -140,7 +140,7 @@ function AssistantDetailsPerformance({
 
   return (
     <>
-      <div className="flex flex-row justify-between gap-3">
+      <div className="flex flex-row items-center justify-between gap-3">
         <Page.H variant="h5">Analytics</Page.H>
         <div className="self-end">
           <DropdownMenu>
