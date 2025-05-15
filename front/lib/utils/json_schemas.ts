@@ -22,7 +22,7 @@ export function isJSONSchemaObject(
 /**
  * Checks if a JSON schema matches should be identified as being configurable for a specific mime type.
  */
-export function schemaIsConfigurable(
+export function isSchemaConfigurable(
   schema: JSONSchema,
   mimeType: InternalToolInputMimeType
 ): boolean {
@@ -62,7 +62,8 @@ function schemasAreEqual(schemaA: JSONSchema, schemaB: JSONSchema): boolean {
   if (!isEqual(schemaA.properties, schemaB.properties)) {
     return false;
   }
-  // We need this comparison because at least the NULLABLE_TIME_FRAME relies on 
+  // We need this comparison because at least the NULLABLE_TIME_FRAME
+  // relies on the anyOf field.
   if (!isEqual(schemaA.anyOf, schemaB.anyOf)) {
     return false;
   }
@@ -90,7 +91,7 @@ export function findMatchingSubSchemas(
     for (const [key, propSchema] of Object.entries(inputSchema.properties)) {
       if (isJSONSchemaObject(propSchema)) {
         // Check if this property's schema matches the target
-        if (schemaIsConfigurable(propSchema, mimeType)) {
+        if (isSchemaConfigurable(propSchema, mimeType)) {
           matches[key] = propSchema;
         }
 
@@ -98,7 +99,7 @@ export function findMatchingSubSchemas(
         // zodToJsonSchema generates references if the same subSchema is repeated.
         if (propSchema.$ref) {
           const refSchema = followInternalRef(inputSchema, propSchema.$ref);
-          if (refSchema && schemaIsConfigurable(refSchema, mimeType)) {
+          if (refSchema && isSchemaConfigurable(refSchema, mimeType)) {
             matches[key] = refSchema;
           }
         }
@@ -162,7 +163,7 @@ export function findMatchingSubSchemas(
       continue;
     }
 
-    if (isJSONSchemaObject(value) && schemaIsConfigurable(value, mimeType)) {
+    if (isJSONSchemaObject(value) && isSchemaConfigurable(value, mimeType)) {
       matches[key] = value;
     } else if (isJSONSchemaObject(value)) {
       const nestedMatches = findMatchingSubSchemas(value, mimeType);
