@@ -25,6 +25,17 @@ jobs:
             ./front/package-lock.json
             ./types/package-lock.json
             ./sdks/js/package-lock.json
+      - uses: actions/cache@v4
+        id: npm-cache-front
+        with:
+          path: |
+            ~/.npm
+            ${{ github.workspace }}/.next/cache
+          # Generate a new cache whenever packages or source files change.
+          key: ${{ runner.os }}-nextjs-${{ hashFiles('**/package-lock.json') }}-${{ hashFiles('**/*.js', '**/*.jsx', '**/*.ts', '**/*.tsx') }}
+          # If source files changed but packages didn't, rebuild from a prior cache.
+          restore-keys: |
+            ${{ runner.os }}-nextjs-${{ hashFiles('**/package-lock.json') }}-
       - name: Build SDK/JS
         working-directory: sdks/js
         run: npm install && npm run build
