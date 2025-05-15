@@ -544,12 +544,12 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
         let content = "";
         projects.forEach((project) => {
           content +=
-            `project='${project.title}' id=${project.id} ` +
+            `project='${project.title}' node_id=${project.id} ` +
             `description='${project.shortDescription}'\n`;
           project.fields.nodes.forEach((field) => {
-            content += `  field='${field.name}' id=${field.id}\n`;
+            content += `  field='${field.name}' node_id=${field.id}\n`;
             field.options.forEach((o) => {
-              content += `    option='${o.name}' id=${o.id}\n`;
+              content += `    option='${o.name}' node_id=${o.id}\n`;
             });
           });
           content += "\n";
@@ -602,11 +602,11 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
         .object({
           fieldId: z
             .string()
-            .describe("The ID of the field to update (GraphQL ID)."),
+            .describe("The node ID of the field to update (GraphQL ID)."),
           optionId: z
             .string()
             .describe(
-              "The ID of the option to update the field to (GraphQL ID)."
+              "The node ID of the option to update the field to (GraphQL ID)."
             ),
         })
         .optional()
