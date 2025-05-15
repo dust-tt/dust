@@ -142,7 +142,7 @@ export const INTERNAL_MCP_SERVERS: Record<
   reasoning: {
     id: 1007,
     availability: "auto",
-    flag: "dev_mcp_actions",
+    flag: null,
   },
   ask_agent: {
     id: 1008,
