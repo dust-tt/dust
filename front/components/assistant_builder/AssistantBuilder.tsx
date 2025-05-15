@@ -33,7 +33,6 @@ import { PrevNextButtons } from "@app/components/assistant_builder/PrevNextButto
 import SettingsScreen, {
   validateHandle,
 } from "@app/components/assistant_builder/SettingsScreen";
-import { SharingButton } from "@app/components/assistant_builder/Sharing";
 import { submitAssistantBuilderForm } from "@app/components/assistant_builder/submitAssistantBuilderForm";
 import type {
   AssistantBuilderPendingAction,
@@ -61,7 +60,6 @@ import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { useKillSwitches } from "@app/lib/swr/kill";
 import { useModels } from "@app/lib/swr/models";
 import { useUser } from "@app/lib/swr/user";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
   AgentConfigurationScope,
   AssistantBuilderRightPanelStatus,
@@ -117,20 +115,9 @@ export default function AssistantBuilder({
   const { killSwitches } = useKillSwitches();
   const { models, reasoningModels } = useModels({ owner });
 
-  const { featureFlags } = useFeatureFlags({
-    workspaceId: owner.sId,
-  });
-  const isAgentDiscoveryEnabled = featureFlags.includes("agent_discovery");
-
   const isSavingDisabled = killSwitches?.includes("save_agent_configurations");
 
-  const defaultScope = isAgentDiscoveryEnabled
-    ? flow === "personal_assistants"
-      ? "hidden"
-      : "visible"
-    : flow === "personal_assistants"
-      ? "private"
-      : "workspace";
+  const defaultScope = flow === "personal_assistants" ? "hidden" : "visible";
 
   const [currentTab, setCurrentTab] = useHashParam(
     "selectedTab",
@@ -206,7 +193,6 @@ export default function AssistantBuilder({
 
   const {
     slackDataSource,
-    showSlackIntegration,
     selectedSlackChannels,
     slackChannelsLinkedWithAgent,
     setSelectedSlackChannels,
@@ -514,32 +500,6 @@ export default function AssistantBuilder({
                         data-gtm-location={tab.dataGtm.location}
                       />
                     ))}
-                    {!isAgentDiscoveryEnabled && (
-                      <div className="flex w-full items-center justify-end">
-                        <SharingButton
-                          agentConfigurationId={agentConfigurationId}
-                          initialScope={
-                            initialBuilderState?.scope ?? defaultScope
-                          }
-                          newScope={builderState.scope}
-                          owner={owner}
-                          showSlackIntegration={showSlackIntegration}
-                          slackChannelSelected={selectedSlackChannels || []}
-                          slackDataSource={slackDataSource}
-                          setNewScope={(
-                            scope: Exclude<AgentConfigurationScope, "global">
-                          ) => {
-                            setEdited(scope !== initialBuilderState?.scope);
-                            setBuilderState((state) => ({ ...state, scope }));
-                          }}
-                          baseUrl={baseUrl}
-                          setNewLinkedSlackChannels={(channels) => {
-                            setSelectedSlackChannels(channels);
-                            setEdited(true);
-                          }}
-                        />
-                      </div>
-                    )}
                   </TabsList>
                 </Tabs>
               </div>
@@ -589,7 +549,6 @@ export default function AssistantBuilder({
                         setEdited={setEdited}
                         assistantHandleError={assistantHandleError}
                         descriptionError={descriptionError}
-                        isAgentDiscoveryEnabled={isAgentDiscoveryEnabled}
                         slackChannelSelected={selectedSlackChannels || []}
                         slackDataSource={slackDataSource}
                         setSelectedSlackChannels={setSelectedSlackChannels}

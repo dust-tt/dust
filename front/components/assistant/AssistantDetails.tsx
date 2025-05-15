@@ -6,11 +6,13 @@ import {
   ChatBubbleLeftRightIcon,
   ChatBubbleThoughtIcon,
   Chip,
+  CompanyIcon,
   ContentMessage,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DustIcon,
   HandThumbDownIcon,
   HandThumbUpIcon,
   InformationCircleIcon,
@@ -30,7 +32,7 @@ import {
   ValueCard,
 } from "@dust-tt/sparkle";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { AssistantDetailsButtonBar } from "@app/components/assistant/AssistantDetailsButtonBar";
 import { AssistantKnowledgeSection } from "@app/components/assistant/details/AssistantKnowledgeSection";
@@ -39,14 +41,11 @@ import { AssistantUsageSection } from "@app/components/assistant/details/Assista
 import { ReadOnlyTextArea } from "@app/components/assistant/ReadOnlyTextArea";
 import { RestoreAssistantDialog } from "@app/components/assistant/RestoreAssistantDialog";
 import { FeedbacksSection } from "@app/components/assistant_builder/FeedbacksSection";
-import { SharingDropdown } from "@app/components/assistant_builder/Sharing";
 import {
   useAgentAnalytics,
   useAgentConfiguration,
-  useUpdateAgentScope,
 } from "@app/lib/swr/assistants";
 import { useEditors, useUpdateEditors } from "@app/lib/swr/editors";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
   AgentConfigurationScope,
   AgentConfigurationType,
@@ -58,6 +57,60 @@ import { GLOBAL_AGENTS_SID, isAdmin, removeNulls } from "@app/types";
 
 import { AddEditorDropdown } from "../members/AddEditorsDropdown";
 import { MembersList } from "../members/MembersList";
+
+export const SCOPE_INFO: Record<
+  AgentConfigurationScope,
+  {
+    shortLabel: string;
+    label: string;
+    color: "green" | "golden" | "blue" | "primary";
+    icon?: typeof UserGroupIcon | undefined;
+    text: string;
+  }
+> = {
+  // TODO(agent-discovery) remove once all agents are migrated to the new scope
+  workspace: {
+    shortLabel: "Company",
+    label: "Company Agent",
+    color: "golden",
+    icon: CompanyIcon,
+    text: "Activated by default for all members of the workspace.",
+  },
+  published: {
+    shortLabel: "Shared",
+    label: "Shared Agent",
+    color: "green",
+    icon: UserGroupIcon,
+    text: "Anyone in the workspace can view and edit.",
+  },
+  private: {
+    shortLabel: "Personal",
+    label: "Personal Agent",
+    color: "blue",
+    icon: LockIcon,
+    text: "Only I can view and edit.",
+  },
+  // END-TODO(agent-discovery)
+  global: {
+    shortLabel: "Default",
+    label: "Default Agent",
+    color: "primary",
+    icon: DustIcon,
+    text: "Default agents provided by Dust.",
+  },
+  hidden: {
+    shortLabel: "Not published",
+    label: "Not published",
+    color: "primary",
+    text: "Hidden agents.",
+  },
+  visible: {
+    shortLabel: "Published",
+    label: "Published",
+    color: "green",
+    text: "Visible agents.",
+  },
+} as const;
 
 const PERIODS = [
   { value: 7, label: "Last 7 days" },
@@ -358,7 +411,6 @@ export function AssistantDetails({
   owner,
   user,
 }: AssistantDetailsProps) {
-  const [isUpdatingScope, setIsUpdatingScope] = useState(false);
   const [selectedTab, setSelectedTab] = useState<
     "info" | "performance" | "editors"
   >("info");
@@ -377,35 +429,17 @@ export function AssistantDetails({
     setSelectedTab("info");
   }, [assistantId]);
 
-  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
-  const doUpdateScope = useUpdateAgentScope({
-    owner,
-    agentConfigurationId: assistantId,
-  });
-
   const isGlobalAgent = Object.values(GLOBAL_AGENTS_SID).includes(
     agentConfiguration?.sId as GLOBAL_AGENTS_SID
   );
 
   const [showRestoreModal, setShowRestoreModal] = useState(false);
-  const showEditorsTabs =
-    featureFlags.includes("agent_discovery") &&
-    assistantId != null &&
-    !isGlobalAgent;
+  const showEditorsTabs = assistantId != null && !isGlobalAgent;
 
   const showPerformanceTabs =
     (agentConfiguration?.canEdit || isAdmin(owner)) &&
     assistantId != null &&
     !isGlobalAgent;
-
-  const updateScope = useCallback(
-    async (scope: Exclude<AgentConfigurationScope, "global">) => {
-      setIsUpdatingScope(true);
-      await doUpdateScope(scope);
-      setIsUpdatingScope(false);
-    },
-    [doUpdateScope]
-  );
 
   const DescriptionSection = () => (
     <div className="flex flex-col gap-5">
@@ -418,15 +452,14 @@ export function AssistantDetails({
         <div className="flex grow flex-col gap-1">
           <div className="heading-lg line-clamp-1 text-foreground dark:text-foreground-night">{`${agentConfiguration?.name ?? ""}`}</div>
           {agentConfiguration?.status === "active" && (
-            <SharingDropdown
-              owner={owner}
-              agentConfiguration={agentConfiguration}
-              initialScope={agentConfiguration.scope}
-              newScope={agentConfiguration.scope}
-              disabled={isUpdatingScope}
-              setNewScope={(scope) => updateScope(scope)}
-              origin="modal"
-            />
+            <div>
+              <Chip
+                color={SCOPE_INFO[agentConfiguration.scope].color}
+                icon={SCOPE_INFO[agentConfiguration.scope].icon || undefined}
+              >
+                {SCOPE_INFO[agentConfiguration.scope].label}
+              </Chip>
+            </div>
           )}
         </div>
       </div>

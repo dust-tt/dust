@@ -14,11 +14,11 @@ import type { CellContext } from "@tanstack/react-table";
 import { useRouter } from "next/router";
 import { useMemo, useState } from "react";
 
+import { SCOPE_INFO } from "@app/components/assistant/AssistantDetails";
 import { DeleteAssistantDialog } from "@app/components/assistant/DeleteAssistantDialog";
 import { GlobalAgentAction } from "@app/components/assistant/manager/GlobalAgentAction";
 import { TableTagSelector } from "@app/components/assistant/manager/TableTagSelector";
 import { assistantUsageMessage } from "@app/components/assistant/Usage";
-import { SCOPE_INFO } from "@app/components/assistant_builder/Sharing";
 import { useTags } from "@app/lib/swr/tags";
 import {
   classNames,
@@ -132,42 +132,35 @@ const getTableColumns = ({
         className: "w-32",
       },
     },
-    ...(tags.length > 0
-      ? [
-          {
-            header: "Tags",
-            accessorKey: "agentTagsAsString",
-            cell: (info: CellContext<RowData, string>) => (
-              <DataTable.CellContent
-                grow
-                className="flex flex-row items-center"
-              >
-                <div className="group flex flex-row items-center gap-1">
-                  <div className="truncate text-muted-foreground dark:text-muted-foreground-night">
-                    <Tooltip
-                      tooltipTriggerAsChild
-                      label={info.getValue()}
-                      trigger={<span>{info.getValue()}</span>}
-                    />
-                  </div>
-                  <TableTagSelector
-                    tags={tags}
-                    agentTags={info.row.original.agentTags}
-                    agentConfigurationId={info.row.original.sId}
-                    owner={owner}
-                    onChange={mutateAgentConfigurations}
-                  />
-                </div>
-              </DataTable.CellContent>
-            ),
-            isFilterable: true,
-            meta: {
-              className: "w-32 xl:w-64",
-              tooltip: "Tags",
-            },
-          },
-        ]
-      : []),
+    {
+      header: "Tags",
+      accessorKey: "agentTagsAsString",
+      cell: (info: CellContext<RowData, string>) => (
+        <DataTable.CellContent grow className="flex flex-row items-center">
+          <div className="group flex flex-row items-center gap-1">
+            <div className="truncate text-muted-foreground dark:text-muted-foreground-night">
+              <Tooltip
+                tooltipTriggerAsChild
+                label={info.getValue()}
+                trigger={<span>{info.getValue()}</span>}
+              />
+            </div>
+            <TableTagSelector
+              tags={tags}
+              agentTags={info.row.original.agentTags}
+              agentConfigurationId={info.row.original.sId}
+              owner={owner}
+              onChange={mutateAgentConfigurations}
+            />
+          </div>
+        </DataTable.CellContent>
+      ),
+      isFilterable: true,
+      meta: {
+        className: "w-32 xl:w-64",
+        tooltip: "Tags",
+      },
+    },
     {
       header: "Usage",
       accessorKey: "usage.messageCount",

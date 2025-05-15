@@ -5,18 +5,15 @@ import {
   Button,
   CardGrid,
   Chip,
-  CompanyIcon,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
-  LockIcon,
   MoreIcon,
   PencilSquareIcon,
   PlusIcon,
   RobotIcon,
-  RocketIcon,
   ScrollArea,
   ScrollBar,
   SearchDropdownMenu,
@@ -26,14 +23,12 @@ import {
   TabsList,
   TabsTrigger,
   useHashParam,
-  UserGroupIcon,
 } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
 import React, { useCallback, useMemo, useState } from "react";
 
 import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import {
   compareForFuzzySort,
   getAgentSearchString,
@@ -42,23 +37,10 @@ import {
 } from "@app/lib/utils";
 import { setQueryParam } from "@app/lib/utils/router";
 import type { LightAgentConfigurationType, WorkspaceType } from "@app/types";
-import { isBuilder } from "@app/types";
 
 function isValidTab(tab: string, visibleTabs: TabId[]): tab is TabId {
   return visibleTabs.includes(tab as TabId);
 }
-
-// TODO(agent-discovery): Remove this once old scopes are removed
-const AGENTS_TABS_LEGACY = [
-  // default shown tab = earliest in this list with non-empty agents
-  { label: "Favorites", icon: StarIcon, id: "favorites" },
-  { label: "Most popular", icon: RocketIcon, id: "most_popular" },
-  { label: "Company", icon: CompanyIcon, id: "workspace" },
-  { label: "Shared", icon: UserGroupIcon, id: "published" },
-  { label: "Personal", icon: LockIcon, id: "personal" },
-  { label: "All", icon: RobotIcon, id: "all" },
-] as const;
-// END-TODO(agent-discovery)
 
 const AGENTS_TABS = [
   { label: "Favorites", icon: StarIcon, id: "favorites" },
@@ -66,9 +48,7 @@ const AGENTS_TABS = [
   { label: "Editable by me", icon: PencilSquareIcon, id: "editable_by_me" },
 ] as const;
 
-const ALL_TABS = [...AGENTS_TABS_LEGACY, ...AGENTS_TABS];
-
-type TabId = (typeof ALL_TABS)[number]["id"];
+type TabId = (typeof AGENTS_TABS)[number]["id"];
 
 type AgentGridProps = {
   agentConfigurations: LightAgentConfigurationType[];
@@ -207,19 +187,10 @@ export function AssistantBrowser({
     return { filteredAgents, filteredTags, uniqueTags };
   }, [agentConfigurations, assistantSearch]);
 
-  // TODO(agent-discovery) Remove feature-flag
-  const featureFlags = useFeatureFlags({
-    workspaceId: owner.sId,
-  });
-  const hasAgentDiscovery = featureFlags.hasFeature("agent_discovery");
-
-  // if search is active, only show the search tab, otherwise show all tabs with agents except the search tab
-  const visibleTabs = hasAgentDiscovery ? AGENTS_TABS : AGENTS_TABS_LEGACY;
-
   // check the query string for the tab to show, the query param to look for is called "selectedTab"
   // if it's not found, show the first tab with agents
   const viewTab = useMemo(() => {
-    const enabledTabs = visibleTabs.filter(
+    const enabledTabs = AGENTS_TABS.filter(
       (tab) => agentsByTab[tab.id].length > 0
     );
     return selectedTab &&
@@ -229,7 +200,7 @@ export function AssistantBrowser({
       )
       ? selectedTab
       : enabledTabs[0]?.id;
-  }, [selectedTab, visibleTabs, agentsByTab]);
+  }, [selectedTab, agentsByTab]);
 
   const handleMoreClick = (agent: LightAgentConfigurationType) => {
     setQueryParam(router, "assistantDetails", agent.sId);
@@ -318,18 +289,16 @@ export function AssistantBrowser({
               />
             </div>
 
-            {(isBuilder(owner) || hasAgentDiscovery) && (
-              <Button
-                tooltip="Manage agents"
-                href={`/w/${owner.sId}/builder/assistants/`}
-                variant="primary"
-                icon={RobotIcon}
-                label="Manage"
-                data-gtm-label="assistantManagementButton"
-                data-gtm-location="homepage"
-                size="sm"
-              />
-            )}
+            <Button
+              tooltip="Manage agents"
+              href={`/w/${owner.sId}/builder/assistants/`}
+              variant="primary"
+              icon={RobotIcon}
+              label="Manage"
+              data-gtm-label="assistantManagementButton"
+              data-gtm-location="homepage"
+              size="sm"
+            />
           </div>
         </div>
       </div>
@@ -339,7 +308,7 @@ export function AssistantBrowser({
         <ScrollArea aria-orientation="horizontal">
           <Tabs value={viewTab} onValueChange={setSelectedTab}>
             <TabsList>
-              {visibleTabs.map((tab) => (
+              {AGENTS_TABS.map((tab) => (
                 <TabsTrigger
                   disabled={agentsByTab[tab.id].length === 0}
                   key={tab.id}
@@ -386,7 +355,7 @@ export function AssistantBrowser({
         </div>
       )}
 
-      {viewTab === "all" && hasAgentDiscovery ? (
+      {viewTab === "all" ? (
         <>
           <div className="mb-2 flex flex-wrap gap-2">
             {uniqueTags.map((tag) => (
