@@ -170,11 +170,16 @@ export async function upsertDatabaseInCore({
 
   // We immediately mark the database as upserted, to allow the sync process
   // to queue it again while it is being processed.
-  const { isNewDatabase } = await markDatabasesAsUpserted({
+  const { isNewDatabase, isMissing } = await markDatabasesAsUpserted({
     connectorId,
     databaseIds: [databaseId],
     runTimestamp,
   });
+
+  // The database is missing from our DB (it may have been deleted), so we don't need to process it.
+  if (isMissing) {
+    return;
+  }
 
   // If the database is new, we consider this to be a "batch sync".
   // We won't trigger individual post upsert hooks for each page.
