@@ -3,12 +3,12 @@ import { useEffect, useMemo, useState } from "react";
 
 import { getActionSpecification } from "@app/components/actions/types";
 import { AgentMessageActionsDrawer } from "@app/components/assistant/conversation/actions/AgentMessageActionsDrawer";
-import type { AgentStateClassification } from "@app/lib/assistant/state/messageReducer";
 import type {
-  AgentActionType,
-  LightAgentMessageType,
-  LightWorkspaceType,
-} from "@app/types";
+  BaseActionType,
+  BaseAgentActionType,
+} from "@app/lib/actions/types";
+import type { AgentStateClassification } from "@app/lib/assistant/state/messageReducer";
+import type { LightAgentMessageType, LightWorkspaceType } from "@app/types";
 import { assertNever } from "@app/types";
 
 interface AgentMessageActionsProps {
@@ -108,21 +108,14 @@ function ActionDetails({
   );
 }
 
-function renderActionName(
-  actions: {
-    type: AgentActionType["type"];
-  }[]
-): string {
-  const uniqueActionTypes = actions.reduce(
-    (acc, action) => {
-      if (!acc.includes(action.type)) {
-        acc.push(action.type);
-      }
+function renderActionName(actions: BaseAgentActionType[]): string {
+  const uniqueActionTypes = actions.reduce((acc, action) => {
+    if (!acc.includes(action.type)) {
+      acc.push(action.type);
+    }
 
-      return acc;
-    },
-    [] as AgentActionType["type"][]
-  );
+    return acc;
+  }, [] as BaseActionType[]);
 
   return uniqueActionTypes
     .map((actionType) => getActionSpecification(actionType).runningLabel)

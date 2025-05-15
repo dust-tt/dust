@@ -10,7 +10,10 @@ import type { SearchLabelsActionType } from "@app/lib/actions/search_labels";
 import type { TablesQueryActionType } from "@app/lib/actions/tables_query";
 import type { WebsearchActionType } from "@app/lib/actions/websearch";
 
-import { ActionGeneratedFileType } from "@app/lib/actions/types";
+import {
+  ActionGeneratedFileType,
+  BaseAgentActionType,
+} from "@app/lib/actions/types";
 import type { ContentFragmentType } from "../content_fragment";
 import type { ModelId } from "../shared/model_id";
 import type { UserType, WorkspaceType } from "../user";
@@ -216,10 +219,7 @@ export type LightAgentMessageType = {
     requestedGroupIds: string[][];
   };
   status: AgentMessageStatus;
-  actions: {
-    type: AgentActionType["type"];
-    id: ModelId;
-  }[];
+  actions: BaseAgentActionType[];
   citations: Record<string, CitationType>;
   generatedFiles: Omit<ActionGeneratedFileType, "snippet">[];
   content: string | null;

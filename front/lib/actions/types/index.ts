@@ -31,7 +31,7 @@ type ConversationBaseActionType =
   | "conversation_list_files_action"
   | "conversation_include_file_action";
 
-type BaseActionType =
+export type BaseActionType =
   | "browse_action"
   | "dust_app_run_action"
   | "process_action"
@@ -39,12 +39,15 @@ type BaseActionType =
   | "retrieval_action"
   | "search_labels_action"
   | "tables_query_action"
-  | "visualization_action"
   | "websearch_action"
   | "tool_action"
   | ConversationBaseActionType;
 
-export abstract class BaseAction {
+export interface BaseAgentActionType {
+  type: BaseActionType;
+  id: ModelId;
+}
+export abstract class BaseAction implements BaseAgentActionType {
   readonly id: ModelId;
   readonly type: BaseActionType;
   readonly generatedFiles: ActionGeneratedFileType[];
