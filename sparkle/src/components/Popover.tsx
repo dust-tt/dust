@@ -5,10 +5,9 @@ import { useEffect, useState } from "react";
 import { cn } from "@sparkle/lib/utils";
 
 const PopoverRoot = PopoverPrimitive.Root;
-
 const PopoverTrigger = PopoverPrimitive.Trigger;
-
 const PopoverPortal = PopoverPrimitive.Portal;
+const PopoverAnchor = PopoverPrimitive.Anchor;
 
 interface PopoverContentProps
   extends React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Content> {
@@ -68,7 +67,7 @@ const PopoverContent = React.forwardRef<
         const defaultContainer = dialogElements[dialogElements.length - 1];
         setContainer(defaultContainer);
       }
-    }, []);
+    }, [mountPortal, container]);
 
     return mountPortal ? (
       <PopoverPrimitive.Portal container={container}>
@@ -102,4 +101,11 @@ function Popover({
 
 PopoverContent.displayName = PopoverPrimitive.Content.displayName;
 
-export { Popover, PopoverContent, PopoverPortal, PopoverRoot, PopoverTrigger };
+export {
+  Popover,
+  PopoverAnchor,
+  PopoverContent,
+  PopoverPortal,
+  PopoverRoot,
+  PopoverTrigger,
+};

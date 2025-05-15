@@ -104,11 +104,11 @@ export { Pagination } from "./Pagination";
 export { ColorPicker, IconPicker } from "./Picker";
 export {
   Popover,
+  PopoverAnchor,
   PopoverContent,
   PopoverPortal,
   PopoverRoot,
-  PopoverTrigger,
-} from "./Popover";
+  PopoverTrigger} from "./Popover";
 export { PriceTable } from "./PriceTable";
 export { RadioGroup, RadioGroupCustomItem, RadioGroupItem } from "./RadioGroup";
 export { RainbowEffect } from "./RainbowEffect";
