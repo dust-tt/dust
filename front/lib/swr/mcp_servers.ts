@@ -369,7 +369,7 @@ export function useCreateMCPServerConnection({
         type: "success",
         title: "Provider connected",
         description:
-          "Your capability provider has been connected successfully.",
+          "Your selected tool has been connected successfully.",
       });
     } else {
       sendNotification({
