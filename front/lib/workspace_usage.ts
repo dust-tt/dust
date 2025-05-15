@@ -19,6 +19,8 @@ import type {
   WorkspaceType,
 } from "@app/types";
 
+import { MembershipResource } from "./resources/membership_resource";
+
 export interface WorkspaceUsageQueryResult {
   createdAt: string;
   conversationModelId: string;
@@ -58,6 +60,7 @@ type UserUsageQueryResult = {
 };
 
 type InactiveUserUsageQueryResult = {
+  userId: number;
   userName: string;
   userEmail: string;
 };
@@ -320,58 +323,47 @@ export async function getUserUsageData(
   return generateCsvFromQueryResult(userUsage);
 }
 
-export async function getInactiveUserUsageData(
+/**
+ * Is membership active between the given period
+ */
+function isMembershipActiveIn(
+  membership: MembershipResource,
+  startDate: Date,
+  endDate: Date
+): boolean {
+  return (
+    membership.startAt <= endDate &&
+    (!membership.endAt || membership.endAt >= startDate)
+  );
+}
+
+export async function getTotalUserUsageData(
   startDate: Date,
   endDate: Date,
   workspace: WorkspaceType
 ): Promise<string> {
-  const wId = workspace.sId;
-
-  const readReplica = getFrontReplicaDbConnection();
-  const users = await readReplica.query(
-    `
-      SELECT 
-          u.id,
-          u.email,
-          u.name
-      FROM 
-          users u
-      JOIN 
-          memberships m ON u.id = m."userId"
-      JOIN
-          workspaces w ON m."workspaceId" = w.id
-      WHERE
-          w."sId" = :wId
-          AND m."createdAt" <= :endDate
-          AND NOT EXISTS (
-              SELECT 1
-              FROM user_messages msg
-              WHERE 
-                  msg."userId" = u.id
-                  AND msg."workspaceId" = w.id
-                  AND msg."createdAt" BETWEEN :startDate AND :endDate
-          )
-      ORDER BY 
-          u.name;
-`,
-    {
-      mapToModel: true,
-      model: UserModel,
-      replacements: {
-        wId,
-        startDate: startDate.toISOString(),
-        endDate: endDate.toISOString(),
-      },
-    }
-  );
-
-  const userUsage: InactiveUserUsageQueryResult[] = users.map((user) => {
-    return {
-      userId: user.id,
-      userName: user.name,
-      userEmail: user.email,
-    };
+  const { memberships } = await MembershipResource.getMembershipsForWorkspace({
+    workspace,
+    includeUser: true,
   });
+
+  const userUsage: InactiveUserUsageQueryResult[] = memberships.reduce(
+    (acc, membership) => {
+      if (
+        membership.user != null &&
+        isMembershipActiveIn(membership, startDate, endDate)
+      ) {
+        acc.push({
+          userId: membership.user.id,
+          userName: `${membership.user.firstName} ${membership.user.lastName}`,
+          userEmail: membership.user.email,
+        });
+      }
+
+      return acc;
+    },
+    [] as InactiveUserUsageQueryResult[]
+  );
 
   if (!userUsage.length) {
     return "No data available for the selected period.";

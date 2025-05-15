@@ -16,8 +16,8 @@ import {
   getAssistantsUsageData,
   getBuildersUsageData,
   getFeedbacksUsageData,
-  getInactiveUserUsageData,
   getMessageUsageData,
+  getTotalUserUsageData,
   getUserUsageData,
 } from "@app/lib/workspace_usage";
 import { apiError } from "@app/logger/withlogging";
@@ -73,7 +73,7 @@ import { assertNever } from "@app/types";
  *         description: |
  *           The name of the usage table to retrieve:
  *           - "users": The list of users categorized by their activity level.
- *           - "inactive_users": The of users that didn't sent any messages
+ *           - "total_users": The total users in the workspace at the given period
  *           - "assistant_messages": The list of messages sent by users including the mentioned agents.
  *           - "builders": The list of builders categorized by their activity level.
  *           - "assistants": The list of workspace agents and their corresponding usage.
@@ -81,7 +81,7 @@ import { assertNever } from "@app/types";
  *           - "all": A concatenation of all the above tables.
  *         schema:
  *           type: string
- *           enum: [users, inactive_users, assistant_messages, builders, assistants, feedbacks, all]
+ *           enum: [users, total_users, assistant_messages, builders, assistants, feedbacks, all]
  *     responses:
  *       200:
  *         description: The usage data in CSV or JSON format, or a ZIP of multiple CSVs if table is equal to "all"
@@ -261,9 +261,9 @@ async function fetchUsageData({
   switch (table) {
     case "users":
       return { users: await getUserUsageData(start, end, workspace) };
-    case "inactive_users":
+    case "total_users":
       return {
-        inactive_users: await getInactiveUserUsageData(start, end, workspace),
+        total_users: await getTotalUserUsageData(start, end, workspace),
       };
     case "assistant_messages":
       return {
@@ -282,14 +282,14 @@ async function fetchUsageData({
     case "all":
       const [
         users,
-        inactive_users,
+        total_users,
         assistant_messages,
         builders,
         assistants,
         feedbacks,
       ] = await Promise.all([
         getUserUsageData(start, end, workspace),
-        getInactiveUserUsageData(start, end, workspace),
+        getTotalUserUsageData(start, end, workspace),
         getMessageUsageData(start, end, workspace),
         getBuildersUsageData(start, end, workspace),
         getAssistantsUsageData(start, end, workspace),
@@ -297,7 +297,7 @@ async function fetchUsageData({
       ]);
       return {
         users,
-        inactive_users,
+        total_users,
         assistant_messages,
         builders,
         assistants,

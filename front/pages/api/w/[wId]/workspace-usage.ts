@@ -11,8 +11,8 @@ import {
   getAssistantsUsageData,
   getBuildersUsageData,
   getFeedbacksUsageData,
-  getInactiveUserUsageData,
   getMessageUsageData,
+  getTotalUserUsageData,
   getUserUsageData,
 } from "@app/lib/workspace_usage";
 import { apiError } from "@app/logger/withlogging";
@@ -27,7 +27,7 @@ const MonthSchema = t.refinement(
 
 const usageTables = [
   "users",
-  "inactive_users",
+  "total_users",
   "assistant_messages",
   "builders",
   "assistants",
@@ -186,9 +186,9 @@ async function fetchUsageData({
   switch (table) {
     case "users":
       return { users: await getUserUsageData(start, end, workspace) };
-    case "inactive_users":
+    case "total_users":
       return {
-        inactive_users: await getInactiveUserUsageData(start, end, workspace),
+        total_users: await getTotalUserUsageData(start, end, workspace),
       };
     case "assistant_messages":
       return { mentions: await getMessageUsageData(start, end, workspace) };
@@ -205,14 +205,14 @@ async function fetchUsageData({
     case "all":
       const [
         users,
-        inactive_users,
+        total_users,
         assistant_messages,
         builders,
         assistants,
         feedbacks,
       ] = await Promise.all([
         getUserUsageData(start, end, workspace),
-        getInactiveUserUsageData(start, end, workspace),
+        getTotalUserUsageData(start, end, workspace),
         getMessageUsageData(start, end, workspace),
         getBuildersUsageData(start, end, workspace),
         getAssistantsUsageData(start, end, workspace),
@@ -220,7 +220,7 @@ async function fetchUsageData({
       ]);
       return {
         users,
-        inactive_users,
+        total_users,
         assistant_messages,
         builders,
         assistants,
