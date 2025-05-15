@@ -362,6 +362,7 @@ export class ProcessConfigurationServerRunner extends BaseActionConfigurationSer
         "Process the retrieved data to extract structured information based on the provided schema.",
       model: supportedModel,
       hasAvailableActions: false,
+      agentsList: null,
     });
 
     const dataSourceViews = await DataSourceViewResource.fetchByIds(
