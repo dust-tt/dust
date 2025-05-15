@@ -8,6 +8,7 @@ import {
   ContentMessage,
   ExclamationCircleIcon,
   ExternalLinkIcon,
+  Icon,
   IconPicker,
   Input,
   Label,
@@ -18,6 +19,7 @@ import {
   Separator,
   useCopyToClipboard,
   useSendNotification,
+  XMarkIcon,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useCallback, useState } from "react";
@@ -51,7 +53,6 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
   const sendNotification = useSendNotification();
 
   const [isSynchronizing, setIsSynchronizing] = useState(false);
-  const [syncError, setSyncError] = useState<string | null>(null);
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
   const [isCopied, copy] = useCopyToClipboard();
@@ -65,7 +66,7 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
     },
   });
 
-  const { url, sharedSecret } = mcpServer;
+  const { url, sharedSecret, lastError, lastSyncAt } = mcpServer;
 
   const { mutateMCPServers } = useMCPServers({
     owner,
@@ -109,12 +110,6 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
   );
 
   const handleSynchronize = useCallback(async () => {
-    if (!url) {
-      setSyncError("Please enter a valid URL before synchronizing.");
-      return;
-    }
-
-    setSyncError(null);
     setIsSynchronizing(true);
 
     try {
@@ -139,11 +134,6 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
         description:
           error instanceof Error ? error.message : "An error occurred",
       });
-      setSyncError(
-        error instanceof Error
-          ? error.message
-          : "Failed to synchronize with MCP server"
-      );
     } finally {
       setIsSynchronizing(false);
     }
@@ -166,30 +156,15 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
 
   return (
     <div className="space-y-5 text-foreground dark:text-foreground-night">
-      {syncError && (
+      {lastError && (
         <ContentMessage
           variant="warning"
           icon={ExclamationCircleIcon}
           size="sm"
           title="Synchronization Error"
         >
-          {syncError}
+          Server could not synchronize successfully. Last attempt {lastSyncAt ? "on " + new Date(lastSyncAt).toLocaleString() : "" } : {lastError}
         </ContentMessage>
-        // <div className="rounded-md bg-warning-50 p-4">
-        //   <div className="flex">
-        //     <div className="flex-shrink-0">
-        //       <Icon size="sm" icon={XMarkIcon} className="text-warning" />
-        //     </div>
-        //     <div className="ml-3">
-        //       <h3 className="text-sm font-medium text-warning-800">
-        //         Synchronization Error
-        //       </h3>
-        //       <div className="mt-2 text-sm text-warning-700">
-        //         <p>{syncError}</p>
-        //       </div>
-        //     </div>
-        //   </div>
-        // </div>
       )}
 
       <div className="heading-lg">Server Settings</div>

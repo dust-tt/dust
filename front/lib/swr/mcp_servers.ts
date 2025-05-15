@@ -261,6 +261,7 @@ export function useSyncRemoteMCPServer(
 
     if (!response.ok) {
       const error = await response.json();
+      await mutateMCPServer();
       throw new Error(
         error.api_error?.message || "Failed to synchronize server"
       );
