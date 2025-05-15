@@ -26,7 +26,6 @@ import {
   Tabs,
   TabsList,
   TabsTrigger,
-  Tooltip,
   UserGroupIcon,
   ValueCard,
 } from "@dust-tt/sparkle";
@@ -183,25 +182,19 @@ function AssistantDetailsPerformance({
                         {agentAnalytics.users.length}
                       </div>
 
-                      <Avatar.Stack size="md" hasMagnifier={false}>
-                        {removeNulls(
+                      <Avatar.Stack
+                        size="md"
+                        hasMagnifier={false}
+                        avatars={removeNulls(
                           agentAnalytics.users.map((top) => top.user)
                         )
                           .slice(0, 5)
-                          .map((user) => (
-                            <Tooltip
-                              key={user.id}
-                              trigger={
-                                <Avatar
-                                  size="sm"
-                                  name={user.fullName}
-                                  visual={user.image}
-                                />
-                              }
-                              label={user.fullName}
-                            />
-                          ))}
-                      </Avatar.Stack>
+                          .map((user) => ({
+                            size: "sm",
+                            name: user.fullName,
+                            visual: user.image,
+                          }))}
+                      />
                     </>
                   ) : (
                     "-"
