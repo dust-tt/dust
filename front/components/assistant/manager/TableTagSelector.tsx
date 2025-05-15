@@ -12,7 +12,8 @@ import { useState } from "react";
 
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useUpdateAgentTags } from "@app/lib/swr/tags";
-import { isBuilder, type WorkspaceType } from "@app/types";
+import type { WorkspaceType } from "@app/types";
+import { isBuilder } from "@app/types";
 import type { TagType } from "@app/types/tag";
 
 type TableTagSelectorProps = {

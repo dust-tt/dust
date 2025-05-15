@@ -13,12 +13,12 @@ import { useCallback, useMemo, useState } from "react";
 
 import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
 import { useTags } from "@app/lib/swr/tags";
+import { tagsSorter } from "@app/lib/utils";
 import type { WorkspaceType } from "@app/types";
 import { isAdmin, isBuilder } from "@app/types";
 import type { TagType } from "@app/types/tag";
 
 import { TagCreationDialog } from "./TagCreationDialog";
-import { tagsSorter } from "@app/lib/utils";
 
 export const TagsSelector = ({
   owner,
@@ -60,7 +60,7 @@ export const TagsSelector = ({
       )
       .filter((t) => isBuilder(owner) || t.kind !== "protected")
       .sort(tagsSorter);
-  }, [tags, builderState.tags, searchText]);
+  }, [tags, builderState.tags, searchText, owner]);
 
   const assistantTags = [...(builderState.tags || [])].sort(tagsSorter);
 
