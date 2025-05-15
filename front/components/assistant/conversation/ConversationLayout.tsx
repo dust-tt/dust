@@ -21,6 +21,8 @@ import { FileDropProvider } from "@app/components/assistant/conversation/FileUpl
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { InputBarProvider } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
+import { WelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuide";
+import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
 import AppContentLayout from "@app/components/sparkle/AppContentLayout";
 import { useURLSheet } from "@app/hooks/useURLSheet";
 import { useConversation } from "@app/lib/swr/conversations";
@@ -109,6 +111,21 @@ const ConversationLayoutContent = ({
     return null;
   }, [router.query.assistantDetails]);
 
+  // Logic for the welcome tour guide. We display it if the welcome query param is set to true.
+  const { startConversationRef, spaceMenuButtonRef, createAgentButtonRef } =
+    useWelcomeTourGuide();
+
+  const shouldDisplayWelcomeTourGuide = useMemo(() => {
+    return router.query.welcome === "true";
+  }, [router.query.welcome]);
+
+  const onTourGuideEnd = () => {
+    void router.push(router.asPath.replace("?welcome=true", ""), undefined, {
+      shallow: true,
+    });
+    // Focus back on input bar
+  };
+
   return (
     <InputBarProvider>
       <AppContentLayout
@@ -151,6 +168,16 @@ const ConversationLayoutContent = ({
                 {children}
               </ConversationInnerLayout>
             </CoEditionProvider>
+            {shouldDisplayWelcomeTourGuide && (
+              <WelcomeTourGuide
+                owner={owner}
+                user={user}
+                startConversationRef={startConversationRef}
+                spaceMenuButtonRef={spaceMenuButtonRef}
+                createAgentButtonRef={createAgentButtonRef}
+                onTourGuideEnd={onTourGuideEnd}
+              />
+            )}
           </>
         )}
       </AppContentLayout>
