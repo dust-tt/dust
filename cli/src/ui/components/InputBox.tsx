@@ -1,12 +1,12 @@
 import { Box, Text } from "ink";
 import React from "react";
 
-type InputBoxProps = {
+interface InputBoxProps {
   userInput: string;
   cursorPosition: number;
   isProcessingQuestion: boolean;
   mentionPrefix: string;
-};
+}
 
 export function InputBox({
   userInput,
@@ -48,7 +48,7 @@ export function InputBox({
       >
         <Box flexDirection="column">
           {
-            // Find which line and position the cursor is on
+            // Find which line and position the cursor is on.
             lines.map((line, index) => (
               <Box key={index}>
                 {index === 0 && (
@@ -69,8 +69,8 @@ export function InputBox({
                     <Text>{line.substring(cursorPosInLine + 1)}</Text>
                   </>
                 ) : (
-                  // Regular line without cursor
-                  // For empty lines, just render a space to ensure the line is visible
+                  // Regular line without cursor.
+                  // For empty lines, just render a space to ensure the line is visible.
                   <Text>{line === "" ? " " : line}</Text>
                 )}
               </Box>

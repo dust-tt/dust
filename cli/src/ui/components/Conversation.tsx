@@ -44,7 +44,7 @@ export type ConversationItem = { key: string } & (
     }
 );
 
-type ConversationProps = {
+interface ConversationProps {
   conversationItems: ConversationItem[];
   isProcessingQuestion: boolean;
   userInput: string;
@@ -52,7 +52,7 @@ type ConversationProps = {
   mentionPrefix: string;
   conversationId: string | null;
   stdout: NodeJS.WriteStream | null;
-};
+}
 
 const _Conversation: FC<ConversationProps> = ({
   conversationItems,
@@ -101,10 +101,15 @@ const _Conversation: FC<ConversationProps> = ({
   );
 };
 
-const StaticConversationItem: FC<{
+interface StaticConversationItemProps {
   item: ConversationItem;
   stdout: NodeJS.WriteStream | null;
-}> = ({ item, stdout }) => {
+}
+
+const StaticConversationItem: FC<StaticConversationItemProps> = ({
+  item,
+  stdout,
+}) => {
   const terminalWidth = stdout?.columns || 80;
   const rightPadding = 4;
 
