@@ -11,7 +11,7 @@ import { CloudConnectorsSection } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 
-export async function getServerSideProps() {
+export async function getStaticProps() {
   return {
     props: {
       shape: 0,
