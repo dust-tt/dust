@@ -1,6 +1,7 @@
 import tracer from "dd-trace";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import type { Authenticator } from "@app/lib/auth";
 import { getSession } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import type {
@@ -12,11 +13,31 @@ import type { APIErrorWithStatusCode, WithAPIErrorResponse } from "@app/types";
 import logger from "./logger";
 import { statsDClient } from "./statsDClient";
 
+export type LoggingContext = {
+  session: SessionWithUser | null;
+  auth: Authenticator | null;
+};
+
+/**
+ * Helper to transform the LoggingContext into a Record
+ * that will be sent to the logger
+ */
+function loggingContextInfo(
+  context: LoggingContext
+): Record<string, string | number | null> {
+  const metadata: Record<string, string | number | null> = {
+    sessionId: context.session?.user.sid || "unknown",
+    userId: context.auth?.user()?.sId ?? null,
+  };
+
+  return metadata;
+}
+
 export function withLogging<T>(
   handler: (
     req: NextApiRequest,
     res: NextApiResponse<WithAPIErrorResponse<T>>,
-    context: { session: SessionWithUser | null }
+    context: LoggingContext
   ) => Promise<void>,
   streaming = false
 ) {
@@ -31,7 +52,6 @@ export function withLogging<T>(
     const now = new Date();
 
     const session = await getSession(req, res);
-    const sessionId = session?.user.sid || "unknown";
 
     let route = req.url;
     let workspaceId: string | null = null;
@@ -56,10 +76,13 @@ export function withLogging<T>(
     const cliVersion =
       req.headers["x-dust-cli-version"] ?? req.query.cliVersion;
 
+    const context: LoggingContext = {
+      session,
+      auth: null,
+    };
+
     try {
-      await handler(req, res, {
-        session,
-      });
+      await handler(req, res, context);
     } catch (err) {
       const elapsed = new Date().getTime() - now.getTime();
       logger.error(
@@ -71,12 +94,12 @@ export function withLogging<T>(
           error: err,
           method: req.method,
           route,
-          sessionId,
           streaming,
           url: req.url,
           // @ts-expect-error best effort to get err.stack if it exists
           error_stack: err?.stack,
           workspaceId,
+          ...loggingContextInfo(context),
         },
         "Unhandled API Error"
       );
@@ -118,11 +141,11 @@ export function withLogging<T>(
         durationMs: elapsed,
         method: req.method,
         route,
-        sessionId,
         statusCode: res.statusCode,
         streaming,
         url: req.url,
         workspaceId,
+        ...loggingContextInfo(context),
       },
       "Processed request"
     );

@@ -39,9 +39,9 @@ export function withSessionAuthentication<T>(
     async (
       req: NextApiRequest,
       res: NextApiResponse<WithAPIErrorResponse<T>>,
-      { session }
+      context
     ) => {
-      if (!session) {
+      if (!context.session) {
         return apiError(req, res, {
           status_code: 401,
           api_error: {
@@ -52,7 +52,7 @@ export function withSessionAuthentication<T>(
         });
       }
 
-      return handler(req, res, session);
+      return handler(req, res, context.session);
     },
     isStreaming
   );
