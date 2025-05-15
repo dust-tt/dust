@@ -1,5 +1,6 @@
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { registerMCPServer } from "@app/lib/api/actions/mcp/client_side_registry";
@@ -7,15 +8,27 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-import { isValidUUIDv4 } from "@app/types";
+
+const MIN_SERVER_NAME_LENGTH = 5;
+const MAX_SERVER_NAME_LENGTH = 30;
+export const ClientSideMCPServerNameCodec = t.refinement(
+  t.string,
+  (s) =>
+    s.trim().length >= MIN_SERVER_NAME_LENGTH &&
+    s.trim().length <= MAX_SERVER_NAME_LENGTH
+);
 
 const PostMCPRegisterRequestBodyCodec = t.type({
-  serverId: t.string,
-  serverName: t.string,
+  serverName: ClientSideMCPServerNameCodec,
 });
+
+export type PostMCPRegisterRequestBody = t.TypeOf<
+  typeof PostMCPRegisterRequestBodyCodec
+>;
 
 type RegisterMCPResponseType = {
   expiresAt: string;
+  serverId: string;
   success: boolean;
 };
 
@@ -35,21 +48,21 @@ async function handler(
   }
 
   const bodyValidation = PostMCPRegisterRequestBodyCodec.decode(req.body);
-  if (isLeft(bodyValidation) || !isValidUUIDv4(bodyValidation.right.serverId)) {
+  if (isLeft(bodyValidation)) {
+    const pathError = reporter.formatValidationErrors(bodyValidation.left);
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: "Invalid server ID format. Must be a valid UUID.",
+        message: `Invalid server name: ${pathError}`,
       },
     });
   }
 
-  const { serverId, serverName } = bodyValidation.right;
+  const { serverName } = bodyValidation.right;
 
   // Register the server.
   const registration = await registerMCPServer(auth, {
-    serverId,
     serverName,
     workspaceId: auth.getNonNullableWorkspace().sId,
   });

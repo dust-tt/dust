@@ -125,9 +125,3 @@ export function asDisplayName(name?: string | null) {
     .replace(/github/g, "GitHub")
     .replace(/\b\w/g, (char) => char.toUpperCase());
 }
-
-// UUID utils.
-
-export function isValidUUIDv4(uuid: string): boolean {
-  return validateUuid(uuid) && uuidVersion(uuid) === 4;
-}

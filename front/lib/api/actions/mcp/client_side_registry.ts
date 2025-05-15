@@ -1,5 +1,6 @@
 import { runOnRedis } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
+import { slugify } from "@app/types";
 
 // TTL for MCP server registrations (5 minutes).
 const MCP_SERVER_REGISTRATION_TTL = 5 * 60;
@@ -17,6 +18,14 @@ export function getMCPServerRegistryKey({
   serverId: string;
 }): string {
   return `w:${workspaceId}:mcp:reg:u:${userId}:s:${serverId}`;
+}
+
+export function getMCPServerIdFromServerName({
+  serverName,
+}: {
+  serverName: string;
+}): string {
+  return `mcp-client-side:${slugify(serverName)}`;
 }
 
 /**
@@ -37,17 +46,16 @@ interface MCPServerRegistration {
 export async function registerMCPServer(
   auth: Authenticator,
   {
-    serverId,
     serverName,
     workspaceId,
   }: {
-    serverId: string;
     serverName: string;
     workspaceId: string;
   }
-): Promise<{ success: boolean; expiresAt: string }> {
+): Promise<{ expiresAt: string; serverId: string; success: boolean }> {
   const userId = auth.getNonNullableUser().id.toString();
   const now = Date.now();
+  const serverId = getMCPServerIdFromServerName({ serverName });
 
   const key = getMCPServerRegistryKey({
     workspaceId,
@@ -75,8 +83,9 @@ export async function registerMCPServer(
   ).toISOString();
 
   return {
-    success: true,
     expiresAt,
+    serverId,
+    success: true,
   };
 }
 
@@ -119,15 +128,16 @@ export async function getMCPServersMetadata(
 /**
  * Update heartbeat for an existing MCP server.
  */
-export async function updateMCPServerHeartbeat({
-  auth,
-  workspaceId,
-  serverId,
-}: {
-  auth: Authenticator;
-  workspaceId: string;
-  serverId: string;
-}): Promise<{ success: boolean; expiresAt: string } | null> {
+export async function updateMCPServerHeartbeat(
+  auth: Authenticator,
+  {
+    serverId,
+    workspaceId,
+  }: {
+    serverId: string;
+    workspaceId: string;
+  }
+): Promise<{ success: boolean; expiresAt: string } | null> {
   const userId = auth.getNonNullableUser().id.toString();
   const now = Date.now();
 
@@ -180,16 +190,15 @@ export async function updateMCPServerHeartbeat({
 export async function validateMCPServerAccess(
   auth: Authenticator,
   {
-    workspaceId,
     serverId,
   }: {
-    workspaceId: string;
     serverId: string;
   }
 ): Promise<boolean> {
   if (!serverId) {
     return false;
   }
+  const workspaceId = auth.getNonNullableWorkspace().sId;
 
   const userId = auth.getNonNullableUser().id.toString();
   const key = getMCPServerRegistryKey({

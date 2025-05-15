@@ -6,6 +6,11 @@ import { getMCPServersMetadata } from "@app/lib/api/actions/mcp/client_side_regi
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import type { Authenticator } from "@app/lib/auth";
 
+interface ClientSideMCPPayload {
+  requestId: string;
+  request: JSONRPCMessage;
+}
+
 // ------------------------------
 // Request ID Utilities
 // ------------------------------
@@ -13,7 +18,7 @@ import type { Authenticator } from "@app/lib/auth";
 /**
  * Generate a unique MCP request ID for a conversation and message
  */
-export function makeClientSideMCPRequestIdForMessageAndConversation({
+function makeClientSideMCPRequestIdForMessageAndConversation({
   conversationId,
   messageId,
 }: {
@@ -44,6 +49,21 @@ export function parseClientSideMCPRequestId(
     conversationId: match[1],
     messageId: match[2],
   };
+}
+
+export function isClientSideMCPPayload(
+  payload: unknown
+): payload is ClientSideMCPPayload {
+  return (
+    typeof payload === "object" &&
+    payload !== null &&
+    "requestId" in payload &&
+    typeof payload.requestId === "string" &&
+    parseClientSideMCPRequestId(payload.requestId) !== null &&
+    "request" in payload &&
+    typeof payload.request === "object" &&
+    payload.request !== null
+  );
 }
 
 // ------------------------------
@@ -196,13 +216,15 @@ export class ClientSideRedisMCPTransport implements Transport {
       messageId: this.messageId,
     });
 
+    const payload: ClientSideMCPPayload = {
+      requestId,
+      request: message,
+    };
+
     // Publish MCP requests to Redis
     await getRedisHybridManager().publish(
       channelId,
-      JSON.stringify({
-        requestId,
-        request: message,
-      }),
+      JSON.stringify(payload),
       "mcp_client_side_request"
     );
   }

@@ -1,5 +1,6 @@
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { updateMCPServerHeartbeat } from "@app/lib/api/actions/mcp/client_side_registry";
@@ -7,11 +8,14 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-import { isValidUUIDv4 } from "@app/types";
 
 const PostMCPHeartbeatRequestBodyCodec = t.type({
   serverId: t.string,
 });
+
+export type PostMCPHeartbeatRequestBody = t.TypeOf<
+  typeof PostMCPHeartbeatRequestBodyCodec
+>;
 
 interface MCPServerHeartbeatSuccess {
   expiresAt: string;
@@ -42,12 +46,13 @@ async function handler(
   }
 
   const bodyValidation = PostMCPHeartbeatRequestBodyCodec.decode(req.body);
-  if (isLeft(bodyValidation) || !isValidUUIDv4(bodyValidation.right.serverId)) {
+  if (isLeft(bodyValidation)) {
+    const pathError = reporter.formatValidationErrors(bodyValidation.left);
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: "Invalid server ID format. Must be a valid UUID.",
+        message: `Invalid server name: ${pathError}`,
       },
     });
   }
@@ -55,10 +60,9 @@ async function handler(
   const { serverId } = bodyValidation.right;
 
   // Update the heartbeat for the server.
-  const result = await updateMCPServerHeartbeat({
-    auth,
-    workspaceId: auth.getNonNullableWorkspace().sId,
+  const result = await updateMCPServerHeartbeat(auth, {
     serverId,
+    workspaceId: auth.getNonNullableWorkspace().sId,
   });
 
   if (!result) {

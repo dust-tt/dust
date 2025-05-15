@@ -35,6 +35,7 @@ import type {
   LoggerInterface,
   PatchDataSourceViewRequestType,
   PostMCPResultsResponseType,
+  PublicHeartbeatMCPRequestBody,
   PublicPostContentFragmentRequestBody,
   PublicPostConversationsRequestBody,
   PublicPostMCPResultsRequestBody,
@@ -1286,14 +1287,11 @@ export class DustAPI {
   }
 
   async registerMCPServer({
-    serverId,
     serverName,
   }: {
-    serverId: string;
     serverName: string;
   }): Promise<Result<RegisterMCPResponseType, APIError>> {
     const body: PublicRegisterMCPRequestBody = {
-      serverId,
       serverName,
     };
 
@@ -1311,12 +1309,14 @@ export class DustAPI {
   }: {
     serverId: string;
   }): Promise<Result<HeartbeatMCPResponseType, APIError>> {
+    const body: PublicHeartbeatMCPRequestBody = {
+      serverId,
+    };
+
     const res = await this.request({
       method: "POST",
       path: "mcp/heartbeat",
-      body: {
-        serverId,
-      },
+      body,
     });
 
     return this._resultFromResponse(HeartbeatMCPResponseSchema, res);

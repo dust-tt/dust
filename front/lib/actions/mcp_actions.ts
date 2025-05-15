@@ -167,12 +167,15 @@ export async function* tryCallMCPTool(
     return;
   }
 
+  const conversationId = agentLoopRunContext.conversation.sId;
+  const messageId = agentLoopRunContext.agentMessage.sId;
+
   const connectionParamsRes = await getMCPClientConnectionParams(
     auth,
     agentLoopRunContext.actionConfiguration,
     {
-      conversationId: agentLoopRunContext.conversation.sId,
-      messageId: agentLoopRunContext.agentMessage.sId,
+      conversationId,
+      messageId,
     }
   );
   if (connectionParamsRes.isErr()) {
@@ -269,8 +272,8 @@ export async function* tryCallMCPTool(
       logger.error(
         {
           workspaceId: auth.getNonNullableWorkspace().sId,
-          conversationId: agentLoopRunContext.conversation.sId,
-          messageId: agentLoopRunContext.agentMessage.sId,
+          conversationId,
+          messageId,
           error: toolCallResult.content,
         },
         `Error calling MCP tool in tryCallMCPTool().`

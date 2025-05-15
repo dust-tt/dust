@@ -2899,18 +2899,28 @@ export type ValidateActionRequestBodyType = z.infer<
   typeof ValidateActionRequestBodySchema
 >;
 
+export const ClientSideMCPServerNameSchema = z.string().min(5).max(30);
+
 export const PublicRegisterMCPRequestBodySchema = z.object({
-  serverId: z.string(),
-  serverName: z.string().min(3).max(25),
+  serverName: ClientSideMCPServerNameSchema,
 });
 
 export type PublicRegisterMCPRequestBody = z.infer<
   typeof PublicRegisterMCPRequestBodySchema
 >;
 
+export const PublicHeartbeatMCPRequestBodySchema = z.object({
+  serverId: z.string(),
+});
+
+export type PublicHeartbeatMCPRequestBody = z.infer<
+  typeof PublicHeartbeatMCPRequestBodySchema
+>;
+
 export const RegisterMCPResponseSchema = z.object({
-  success: z.boolean(),
   expiresAt: z.string(),
+  serverId: z.string(),
+  success: z.boolean(),
 });
 
 export type RegisterMCPResponseType = z.infer<typeof RegisterMCPResponseSchema>;
@@ -2931,6 +2941,23 @@ export const PublicPostMCPResultsRequestBodySchema = z.object({
 
 export type PublicPostMCPResultsRequestBody = z.infer<
   typeof PublicPostMCPResultsRequestBodySchema
+>;
+
+export const PostMCPResultsRequestQuerySchema = z.object({
+  serverId: z.string(),
+});
+
+export type PostMCPResultsRequestQueryType = z.infer<
+  typeof PostMCPResultsRequestQuerySchema
+>;
+
+export const PostMCPRequestsRequestQuerySchema = z.object({
+  serverId: z.string(),
+  lastEventId: z.string().optional(),
+});
+
+export type PostMCPRequestsRequestQueryType = z.infer<
+  typeof PostMCPRequestsRequestQuerySchema
 >;
 
 export const PostMCPResultsResponseSchema = z.object({

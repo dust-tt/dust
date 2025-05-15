@@ -8,7 +8,6 @@ import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-import { isValidUUIDv4 } from "@app/types";
 
 /**
  * @ignoreswagger
@@ -87,20 +86,10 @@ async function handler(
     });
   }
 
-  const { serverId, serverName } = r.data;
-  if (!isValidUUIDv4(serverId)) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Invalid server ID format. Must be a valid UUID.",
-      },
-    });
-  }
+  const { serverName } = r.data;
 
   // Register the server.
   const registration = await registerMCPServer(auth, {
-    serverId,
     serverName,
     workspaceId: auth.getNonNullableWorkspace().sId,
   });

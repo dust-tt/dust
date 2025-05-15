@@ -1,12 +1,13 @@
 import type { HeartbeatMCPResponseType } from "@dust-tt/client";
+import { PublicHeartbeatMCPRequestBodySchema } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { fromError } from "zod-validation-error";
 
 import { updateMCPServerHeartbeat } from "@app/lib/api/actions/mcp/client_side_registry";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-import { isValidUUIDv4 } from "@app/types";
 
 /**
  * @ignoreswagger
@@ -66,21 +67,21 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<HeartbeatMCPResponseType>>,
   auth: Authenticator
 ): Promise<void> {
-  // Extract the client-provided server ID.
-  const { serverId } = req.body;
-  if (typeof serverId !== "string" || !isValidUUIDv4(serverId)) {
+  const r = PublicHeartbeatMCPRequestBodySchema.safeParse(req.body);
+  if (r.error) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: "Invalid server ID format. Must be a valid UUID.",
+        message: fromError(r.error).toString(),
       },
     });
   }
 
+  const { serverId } = r.data;
+
   // Update the heartbeat for the server.
-  const result = await updateMCPServerHeartbeat({
-    auth,
+  const result = await updateMCPServerHeartbeat(auth, {
     workspaceId: auth.getNonNullableWorkspace().sId,
     serverId,
   });

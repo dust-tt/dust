@@ -4,23 +4,23 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { validateMCPServerAccess } from "@app/lib/api/actions/mcp/client_side_registry";
-import {
-  getMCPServerResultsChannelId,
-  parseClientSideMCPRequestId,
-} from "@app/lib/api/actions/mcp_client_side";
+import { parseClientSideMCPRequestId } from "@app/lib/api/actions/mcp_client_side";
 import { getConversation } from "@app/lib/api/assistant/conversation";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
+import { publicMCPResults } from "@app/lib/api/assistant/mcp_events";
 import { fetchMessageInConversation } from "@app/lib/api/assistant/messages";
-import { publishEvent } from "@app/lib/api/assistant/pubsub";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-import { isValidUUIDv4 } from "@app/types";
 
 const PostMCPResultsRequestBodyCodec = t.type({
   requestId: t.string,
   result: t.unknown,
+});
+
+const PostMCPResultsRequestQueryCodec = t.type({
+  serverId: t.string,
 });
 
 type PostMCPResultsResponseType = {
@@ -33,19 +33,22 @@ async function handler(
   auth: Authenticator
 ): Promise<void> {
   // Extract the client-provided server ID.
-  const { serverId } = req.query;
-  if (typeof serverId !== "string" || !isValidUUIDv4(serverId)) {
+  const queryValidation = PostMCPResultsRequestQueryCodec.decode(req.query);
+  if (isLeft(queryValidation)) {
+    const pathError = reporter.formatValidationErrors(queryValidation.left);
+
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: "Invalid server ID format. Must be a valid UUID.",
+        message: `Invalid request query: ${pathError}`,
       },
     });
   }
 
+  const { serverId } = queryValidation.right;
+
   const isValidAccess = await validateMCPServerAccess(auth, {
-    workspaceId: auth.getNonNullableWorkspace().sId,
     serverId,
   });
   if (!isValidAccess) {
@@ -107,16 +110,11 @@ async function handler(
   }
 
   // Publish MCP action results.
-  await publishEvent({
-    origin: "mcp_client_side_results",
-    channel: getMCPServerResultsChannelId(auth, {
-      mcpServerId: serverId,
-    }),
-    event: JSON.stringify({
-      type: "mcp_client_side_results",
-      messageId,
-      result: r.right.result,
-    }),
+  await publicMCPResults(auth, {
+    mcpServerId: serverId,
+    messageId,
+    requestId: r.right.requestId,
+    result: r.right.result,
   });
 
   res.status(200).json({
