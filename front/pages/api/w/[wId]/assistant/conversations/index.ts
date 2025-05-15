@@ -79,7 +79,6 @@ async function handler(
           message.context.clientSideMCPServerIds,
           async (serverId) =>
             validateMCPServerAccess(auth, {
-              workspaceId: auth.getNonNullableWorkspace().sId,
               serverId,
             }),
           { concurrency: 10 }
@@ -180,6 +179,8 @@ async function handler(
               clientSideMCPServerIds:
                 message.context.clientSideMCPServerIds ?? [],
             },
+            // For now we never skip tools when interacting with agents from the web client.
+            skipToolsValidation: false,
           },
           { resolveAfterFullGeneration: false }
         );

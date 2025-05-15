@@ -165,7 +165,7 @@ export function InstructionSuggestions({
         >
           <div
             className={classNames(
-              "absolute bottom-0 left-0 top-8 w-8 border-l bg-gradient-to-l transition-opacity duration-700 ease-out",
+              "absolute bottom-0 left-0 top-8 w-8 bg-gradient-to-l transition-opacity duration-700 ease-out",
               "border-primary-200/80 dark:border-primary-200-night/80",
               "from-white/0 to-white/70 dark:from-black/0 dark:to-black/70",
               showLeftGradients ? "opacity-100" : "opacity-0"
@@ -173,7 +173,7 @@ export function InstructionSuggestions({
           />
           <div
             className={classNames(
-              "absolute bottom-0 right-0 top-8 w-8 border-r bg-gradient-to-r transition-opacity duration-700 ease-out",
+              "absolute bottom-0 right-0 top-8 w-8 bg-gradient-to-r transition-opacity duration-700 ease-out",
               "border-primary-200/80 dark:border-primary-200-night/80",
               "from-white/0 to-white/70 dark:from-black/0 dark:to-black/70",
               showRightGradients ? "opacity-100" : "opacity-0"

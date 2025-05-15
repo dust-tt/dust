@@ -47,16 +47,16 @@ export const INTERNAL_MCP_SERVERS: Record<
   // Notes:
   // ids should be stable, do not change them for production internal servers as it would break existing agents.
   // Let's start dev actions at 1000 to avoid conflicts with production actions.
-  // flag "mcp_actions" for actions that are part of the MCP actions feature.
   // flag "dev_mcp_actions" for actions that are only used internally for dev and testing.
 
   // Production
   github: {
     id: 1,
     availability: "manual",
-    flag: "mcp_actions",
+    flag: null,
     tools_stakes: {
       get_pull_request: "never_ask",
+      list_organization_projects: "never_ask",
     },
   },
   image_generation: {
@@ -67,7 +67,7 @@ export const INTERNAL_MCP_SERVERS: Record<
   file_generation: {
     id: 3,
     availability: "auto",
-    flag: "mcp_actions",
+    flag: null,
   },
   query_tables: {
     id: 4,

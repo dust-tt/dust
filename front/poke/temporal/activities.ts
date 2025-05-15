@@ -51,7 +51,7 @@ import { FeatureFlag } from "@app/lib/models/feature_flag";
 import { MembershipInvitation } from "@app/lib/models/membership_invitation";
 import { Subscription } from "@app/lib/models/plan";
 import { Workspace } from "@app/lib/models/workspace";
-import { WorkspaceHasDomain } from "@app/lib/models/workspace_has_domain";
+import { WorkspaceHasDomainModel } from "@app/lib/models/workspace_has_domain";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -716,7 +716,7 @@ export async function deleteWorkspaceActivity({
   await FileResource.deleteAllForWorkspace(workspace);
   await RunResource.deleteAllForWorkspace(workspace);
   await MembershipResource.deleteAllForWorkspace(workspace);
-  await WorkspaceHasDomain.destroy({
+  await WorkspaceHasDomainModel.destroy({
     where: { workspaceId: workspace.id },
   });
   await AgentUserRelation.destroy({

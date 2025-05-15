@@ -22,10 +22,10 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
-import { AssistantsTable } from "@app/components/assistant/AssistantsTable";
 import { ConversationsNavigationProvider } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import { DeleteAssistantsDialog } from "@app/components/assistant/DeleteAssistantsDialog";
+import { AssistantsTable } from "@app/components/assistant/manager/AssistantsTable";
 import { TagsFilterMenu } from "@app/components/assistant/TagsFilterMenu";
 import { SCOPE_INFO } from "@app/components/assistant_builder/Sharing";
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
@@ -35,7 +35,11 @@ import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
-import { compareForFuzzySort, subFilter } from "@app/lib/utils";
+import {
+  compareForFuzzySort,
+  getAgentSearchString,
+  subFilter,
+} from "@app/lib/utils";
 import type {
   LightAgentConfigurationType,
   SubscriptionType,
@@ -169,7 +173,7 @@ export default function WorkspaceAssistants({
   hasAgentDiscovery,
   user,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  const [assistantSearch, setAssistantSearch] = useState<string>("");
+  const [assistantSearch, setAssistantSearch] = useState("");
   const [showDisabledFreeWorkspacePopup, setShowDisabledFreeWorkspacePopup] =
     useState<string | null>(null);
   const [selectedTab, setSelectedTab] = useHashParam("selectedTab", "all");
@@ -241,13 +245,13 @@ export default function WorkspaceAssistants({
           (a) =>
             a.status === "active" &&
             // Filters on search query
-            subFilter(assistantSearch.toLowerCase(), a.name.toLowerCase())
+            subFilter(assistantSearch.toLowerCase(), getAgentSearchString(a))
         )
         .sort((a, b) => {
           return compareForFuzzySort(
             assistantSearch,
-            a.name.toLowerCase(),
-            b.name.toLowerCase()
+            getAgentSearchString(a),
+            getAgentSearchString(b)
           );
         }),
     };
@@ -462,6 +466,8 @@ export default function WorkspaceAssistants({
                         icon={
                           AGENT_MANAGER_TABS.find((t) => t.id === tab.id)?.icon
                         }
+                        isCounter={tab.id !== "archived"}
+                        counterValue={`${agentsByTab[tab.id].length}`}
                       />
                     ))}
                   </TabsList>

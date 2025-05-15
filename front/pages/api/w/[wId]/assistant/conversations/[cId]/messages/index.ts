@@ -12,6 +12,7 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import { getPaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import { statsDClient } from "@app/logger/statsDClient";
 import { apiError } from "@app/logger/withlogging";
 import type { UserMessageType, WithAPIErrorResponse } from "@app/types";
 import { InternalPostMessagesRequestBodySchema } from "@app/types";
@@ -27,7 +28,7 @@ async function handler(
 ): Promise<void> {
   const user = auth.getNonNullableUser();
 
-  if (!(typeof req.query.cId === "string")) {
+  if (typeof req.query.cId !== "string") {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -41,6 +42,8 @@ async function handler(
 
   switch (req.method) {
     case "GET":
+      const messageStartTime = performance.now();
+
       const paginationRes = getPaginationParams(req, {
         defaultLimit: 10,
         defaultOrderColumn: "rank",
@@ -72,6 +75,18 @@ async function handler(
         return apiErrorForConversation(req, res, messagesRes.error);
       }
 
+      const messageLatency = performance.now() - messageStartTime;
+
+      statsDClient.distribution(
+        "assistant.messages.fetch.latency",
+        messageLatency
+      );
+      const rawSize = Buffer.byteLength(
+        JSON.stringify(messagesRes.value),
+        "utf8"
+      );
+      statsDClient.distribution("assistant.messages.fetch.raw_size", rawSize);
+
       res.status(200).json(messagesRes.value);
       break;
 
@@ -99,7 +114,6 @@ async function handler(
           context.clientSideMCPServerIds,
           async (serverId) =>
             validateMCPServerAccess(auth, {
-              workspaceId: auth.getNonNullableWorkspace().sId,
               serverId,
             }),
           { concurrency: 10 }
@@ -124,8 +138,6 @@ async function handler(
 
       const conversation = conversationRes.value;
 
-      /* postUserMessageWithPubSub returns swiftly since it only waits for the
-        initial message creation event (or error) */
       const messageRes = await postUserMessageWithPubSub(
         auth,
         {
@@ -141,9 +153,12 @@ async function handler(
             origin: "web",
             clientSideMCPServerIds: context.clientSideMCPServerIds ?? [],
           },
+          // For now we never skip tools when interacting with agents from the web client.
+          skipToolsValidation: false,
         },
         { resolveAfterFullGeneration: false }
       );
+
       if (messageRes.isErr()) {
         return apiError(req, res, messageRes.error);
       }

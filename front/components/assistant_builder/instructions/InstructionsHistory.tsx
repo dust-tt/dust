@@ -9,7 +9,7 @@ import {
   DropdownMenuTrigger,
   HistoryIcon,
 } from "@dust-tt/sparkle";
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import React from "react";
 
 import { GaugeDiff } from "@app/components/assistant_builder/instructions/GaugeDiff";
@@ -17,7 +17,6 @@ import type { LightAgentConfigurationType } from "@app/types";
 
 interface InstructionHistoryProps {
   history: LightAgentConfigurationType[];
-  currentInstructions: string;
   selectedConfig: LightAgentConfigurationType | null;
   onSelect: (config: LightAgentConfigurationType) => void;
 }
@@ -25,7 +24,6 @@ interface InstructionHistoryProps {
 export function InstructionHistory({
   history,
   onSelect,
-  currentInstructions,
   selectedConfig,
 }: InstructionHistoryProps) {
   const formatVersionLabel = useCallback(
@@ -45,6 +43,59 @@ export function InstructionHistory({
     []
   );
 
+  const historyWithPrev = useMemo(() => {
+    const sorted = [...history].sort((a, b) => {
+      const timeA = a.versionCreatedAt
+        ? new Date(a.versionCreatedAt).getTime()
+        : a.version;
+      const timeB = b.versionCreatedAt
+        ? new Date(b.versionCreatedAt).getTime()
+        : b.version;
+
+      if (timeA !== timeB) {
+        return timeA - timeB;
+      }
+      return a.version - b.version;
+    });
+
+    const result: Array<{
+      config: LightAgentConfigurationType;
+      prevInstructions: string;
+    }> = [];
+
+    let lastRawInstructions: string | null = null;
+
+    for (const config of sorted) {
+      const instructions = config.instructions ?? "";
+      const isNewRun =
+        lastRawInstructions === null || instructions !== lastRawInstructions;
+
+      if (isNewRun) {
+        // Compute prevInstructions from last result
+        const prevInstructions =
+          result.length > 0
+            ? result[result.length - 1].config.instructions ?? ""
+            : "";
+
+        result.push({
+          config,
+          prevInstructions,
+        });
+      } else if (config.version === selectedConfig?.version) {
+        // Replace representative of current run with selected config
+        const prevInstructions = result[result.length - 1].prevInstructions;
+        result[result.length - 1] = {
+          config,
+          prevInstructions,
+        };
+      }
+
+      lastRawInstructions = instructions;
+    }
+
+    return result;
+  }, [history, selectedConfig]);
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -57,7 +108,7 @@ export function InstructionHistory({
         />
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent className="w-64">
+      <DropdownMenuContent className="w-80">
         <DropdownMenuLabel label="Choose version to compare" />
         <DropdownMenuSeparator />
 
@@ -72,7 +123,7 @@ export function InstructionHistory({
             }
           }}
         >
-          {history.map((config) => (
+          {historyWithPrev.map(({ config, prevInstructions }) => (
             <DropdownMenuRadioItem
               key={config.version}
               value={config.version.toString()}
@@ -80,8 +131,8 @@ export function InstructionHistory({
               <div className="flex w-full items-center justify-between">
                 <span>{formatVersionLabel(config)}</span>
                 <GaugeDiff
-                  original={config.instructions || ""}
-                  updated={currentInstructions}
+                  original={prevInstructions}
+                  updated={config.instructions ?? ""}
                 />
               </div>
             </DropdownMenuRadioItem>

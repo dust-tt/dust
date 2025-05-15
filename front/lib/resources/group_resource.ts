@@ -195,6 +195,70 @@ export class GroupResource extends BaseResource<GroupModel> {
     return group;
   }
 
+  /**
+   * Finds the specific editor groups associated with a set of agent configuration.
+   */
+  static async findEditorGroupsForAgents(
+    auth: Authenticator,
+    agent: LightAgentConfigurationType[]
+  ): Promise<Result<Record<string, GroupResource>, Error>> {
+    const owner = auth.getNonNullableWorkspace();
+
+    const groupAgents = await GroupAgentModel.findAll({
+      where: {
+        agentConfigurationId: agent.map((a) => a.id),
+        workspaceId: owner.id,
+      },
+      attributes: ["groupId", "agentConfigurationId"],
+    });
+
+    if (groupAgents.length === 0) {
+      return new Err(
+        new DustError(
+          "group_not_found",
+          "Editor group association not found for agent."
+        )
+      );
+    }
+
+    const groups = await GroupResource.fetchByIds(
+      auth,
+      groupAgents.map((ga) =>
+        GroupResource.modelIdToSId({
+          id: ga.groupId,
+          workspaceId: owner.id,
+        })
+      )
+    );
+
+    if (groups.isErr()) {
+      return groups;
+    }
+
+    if (groups.value.some((g) => g.kind !== "agent_editors")) {
+      // Should not happen based on creation logic, but good to check.
+      // Might change when we allow other group kinds to be associated with agents.
+      return new Err(
+        new Error("Associated group is not an agent_editors group.")
+      );
+    }
+
+    const r = groupAgents.reduce<Record<string, GroupResource>>((acc, ga) => {
+      if (ga.agentConfigurationId) {
+        const agentConfiguration = agent.find(
+          (a) => a.id === ga.agentConfigurationId
+        );
+        const group = groups.value.find((g) => g.id === ga.groupId);
+        if (group && agentConfiguration) {
+          acc[agentConfiguration.sId] = group;
+        }
+      }
+      return acc;
+    }, {});
+
+    return new Ok(r);
+  }
+
   static async makeDefaultsForWorkspace(workspace: LightWorkspaceType) {
     const existingGroups = (
       await GroupModel.findAll({

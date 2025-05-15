@@ -1,22 +1,21 @@
 import type { PostMCPResultsResponseType } from "@dust-tt/client";
-import { PublicPostMCPResultsRequestBodySchema } from "@dust-tt/client";
+import {
+  PostMCPResultsRequestQuerySchema,
+  PublicPostMCPResultsRequestBodySchema,
+} from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { fromError } from "zod-validation-error";
 
 import { validateMCPServerAccess } from "@app/lib/api/actions/mcp/client_side_registry";
-import {
-  getMCPServerResultsChannelId,
-  parseClientSideMCPRequestId,
-} from "@app/lib/api/actions/mcp_client_side";
+import { parseClientSideMCPRequestId } from "@app/lib/api/actions/mcp_client_side";
 import { getConversation } from "@app/lib/api/assistant/conversation";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
+import { publishMCPResults } from "@app/lib/api/assistant/mcp_events";
 import { fetchMessageInConversation } from "@app/lib/api/assistant/messages";
-import { publishEvent } from "@app/lib/api/assistant/pubsub";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-import { isValidUUIDv4 } from "@app/types";
 
 /**
  * @ignoreswagger
@@ -78,20 +77,20 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<PostMCPResultsResponseType>>,
   auth: Authenticator
 ): Promise<void> {
-  // Extract the client-provided server ID.
-  const { serverId } = req.query;
-  if (typeof serverId !== "string" || !isValidUUIDv4(serverId)) {
+  const rq = PostMCPResultsRequestQuerySchema.safeParse(req.query);
+  if (rq.error) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: "Invalid server ID format. Must be a valid UUID.",
+        message: fromError(rq.error).toString(),
       },
     });
   }
 
+  const { serverId } = rq.data;
+
   const isValidAccess = await validateMCPServerAccess(auth, {
-    workspaceId: auth.getNonNullableWorkspace().sId,
     serverId,
   });
   if (!isValidAccess) {
@@ -151,16 +150,11 @@ async function handler(
   }
 
   // Publish MCP action results.
-  await publishEvent({
-    origin: "mcp_client_side_results",
-    channel: getMCPServerResultsChannelId(auth, {
-      mcpServerId: serverId,
-    }),
-    event: JSON.stringify({
-      type: "mcp_client_side_results",
-      messageId,
-      result: r.data.result,
-    }),
+  await publishMCPResults(auth, {
+    mcpServerId: serverId,
+    messageId,
+    requestId: r.data.requestId,
+    result: r.data.result,
   });
 
   res.status(200).json({

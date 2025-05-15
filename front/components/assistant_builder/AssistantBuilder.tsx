@@ -136,7 +136,9 @@ export default function AssistantBuilder({
     "selectedTab",
     "instructions"
   );
-  const [screen, setScreen] = useState<BuilderScreen>("instructions");
+  const [screen, setScreen] = useState<BuilderScreen>(
+    currentTab && isValidTab(currentTab) ? currentTab : "instructions"
+  );
   const [edited, setEdited] = useState(defaultIsEdited ?? false);
   const [isSavingOrDeleting, setIsSavingOrDeleting] = useState(false);
   const [disableUnsavedChangesPrompt, setDisableUnsavedChangesPrompt] =
@@ -266,7 +268,9 @@ export default function AssistantBuilder({
     if (!agentConfigurationId) {
       setBuilderState((state) => ({
         ...state,
-        editors: [...state.editors, user],
+        editors: state.editors.some((m) => m.sId === user.sId)
+          ? state.editors
+          : [...state.editors, user],
       }));
     }
   }, [
@@ -490,7 +494,7 @@ export default function AssistantBuilder({
       >
         <BuilderLayout
           leftPanel={
-            <div className="flex h-full flex-col gap-5 pb-6 pt-4">
+            <div className="flex h-full flex-col gap-4 pb-6 pt-4">
               <div className="flex flex-wrap justify-between gap-4 sm:flex-row">
                 <Tabs
                   className="w-full"

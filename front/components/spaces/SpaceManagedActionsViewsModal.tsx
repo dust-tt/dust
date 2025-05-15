@@ -8,7 +8,7 @@ import {
   PlusIcon,
   Spinner,
 } from "@dust-tt/sparkle";
-import React, { useState } from "react";
+import { useState } from "react";
 
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerType } from "@app/lib/api/mcp";
@@ -68,7 +68,7 @@ export default function SpaceManagedActionsViewsModel({
           .filter((s) => filterMCPServer(s, searchText))
           .map((server) => (
             <DropdownMenuItem
-              key={server.id}
+              key={server.sId}
               label={asDisplayName(server.name)}
               icon={() => getAvatar(server, "xs")}
               description={server.description}

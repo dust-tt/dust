@@ -7,7 +7,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { Workspace } from "@app/lib/models/workspace";
-import { WorkspaceHasDomain } from "@app/lib/models/workspace_has_domain";
+import { WorkspaceHasDomainModel } from "@app/lib/models/workspace_has_domain";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse, WorkspaceType } from "@app/types";
 import { EmbeddingProviderCodec, ModelProviderIdCodec } from "@app/types";
@@ -110,7 +110,7 @@ async function handler(
         owner.defaultEmbeddingProvider = w.defaultEmbeddingProvider;
       } else {
         const { domain, domainAutoJoinEnabled } = body;
-        const [affectedCount] = await WorkspaceHasDomain.update(
+        const [affectedCount] = await WorkspaceHasDomainModel.update(
           {
             domainAutoJoinEnabled,
           },

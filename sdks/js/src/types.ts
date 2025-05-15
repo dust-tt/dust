@@ -809,7 +809,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "labs_salesforce_personal_connections"
   | "labs_trackers"
   | "labs_transcripts"
-  | "mcp_actions"
   | "okta_enterprise_connection"
   | "openai_o1_custom_assistants_feature"
   | "openai_o1_feature"
@@ -1876,7 +1875,7 @@ export type PostContentFragmentResponseType = z.infer<
 
 export const CreateConversationResponseSchema = z.object({
   conversation: ConversationSchema,
-  message: UserMessageSchema,
+  message: UserMessageSchema.optional(),
 });
 
 export type CreateConversationResponseType = z.infer<
@@ -1966,6 +1965,7 @@ export const PublicPostMessagesRequestBodySchema = z.intersection(
   z
     .object({
       blocking: z.boolean().optional(),
+      skipToolsValidation: z.boolean().optional(),
     })
     .partial()
 );
@@ -1986,6 +1986,7 @@ export const PublicPostEditMessagesRequestBodySchema = z.object({
       configurationId: z.string(),
     })
   ),
+  skipToolsValidation: z.boolean().optional().default(false),
 });
 
 export type PublicPostEditMessagesRequestBody = z.infer<
@@ -2094,6 +2095,7 @@ export const PublicPostConversationsRequestBodySchema = z.intersection(
   z
     .object({
       blocking: z.boolean().optional(),
+      skipToolsValidation: z.boolean().optional(),
     })
     .partial()
 );
@@ -2190,7 +2192,8 @@ export const PatchDataSourceViewRequestSchema = z.union([
       parentsToAdd: z.union([z.array(z.string()), z.undefined()]),
       parentsToRemove: z.array(z.string()).optional(),
     })
-    // For the fields to be not optional, see https://stackoverflow.com/questions/71477015/specify-a-zod-schema-with-a-non-optional-but-possibly-undefined-field
+    // For the fields to be not optional, see:
+    // https://stackoverflow.com/questions/71477015/specify-a-zod-schema-with-a-non-optional-but-possibly-undefined-field
     .transform((o) => ({
       parentsToAdd: o.parentsToAdd,
       parentsToRemove: o.parentsToRemove,
@@ -2259,7 +2262,9 @@ export const PostDataSourceDocumentRequestSchema = z.object({
   upsert_context: z
     .object({
       sync_type: z.union([z.enum(["batch", "incremental"]), z.undefined()]),
-    }) // For the fields to be not optional, see https://stackoverflow.com/questions/71477015/specify-a-zod-schema-with-a-non-optional-but-possibly-undefined-field
+    })
+    // For the fields to be not optional, see:
+    // https://stackoverflow.com/questions/71477015/specify-a-zod-schema-with-a-non-optional-but-possibly-undefined-field
     .transform((o) => ({
       sync_type: o.sync_type,
     }))
@@ -2894,18 +2899,27 @@ export type ValidateActionRequestBodyType = z.infer<
   typeof ValidateActionRequestBodySchema
 >;
 
+export const ClientSideMCPServerNameSchema = z.string().min(5).max(30);
+
 export const PublicRegisterMCPRequestBodySchema = z.object({
-  serverId: z.string(),
-  serverName: z.string().min(3).max(25),
+  serverName: ClientSideMCPServerNameSchema,
 });
 
 export type PublicRegisterMCPRequestBody = z.infer<
   typeof PublicRegisterMCPRequestBodySchema
 >;
 
+export const PublicHeartbeatMCPRequestBodySchema = z.object({
+  serverId: z.string(),
+});
+
+export type PublicHeartbeatMCPRequestBody = z.infer<
+  typeof PublicHeartbeatMCPRequestBodySchema
+>;
+
 export const RegisterMCPResponseSchema = z.object({
-  success: z.boolean(),
   expiresAt: z.string(),
+  serverId: z.string(),
 });
 
 export type RegisterMCPResponseType = z.infer<typeof RegisterMCPResponseSchema>;
@@ -2926,6 +2940,23 @@ export const PublicPostMCPResultsRequestBodySchema = z.object({
 
 export type PublicPostMCPResultsRequestBody = z.infer<
   typeof PublicPostMCPResultsRequestBodySchema
+>;
+
+export const PostMCPResultsRequestQuerySchema = z.object({
+  serverId: z.string(),
+});
+
+export type PostMCPResultsRequestQueryType = z.infer<
+  typeof PostMCPResultsRequestQuerySchema
+>;
+
+export const PostMCPRequestsRequestQuerySchema = z.object({
+  serverId: z.string(),
+  lastEventId: z.string().optional(),
+});
+
+export type PostMCPRequestsRequestQueryType = z.infer<
+  typeof PostMCPRequestsRequestQuerySchema
 >;
 
 export const PostMCPResultsResponseSchema = z.object({

@@ -53,21 +53,14 @@ async function fetchAgentDataSourceConfiguration(
   }
 
   const agentDataSourceConfiguration =
-    await AgentDataSourceConfiguration.findByPk(sIdParts.resourceModelId, {
+    await AgentDataSourceConfiguration.findOne({
+      where: {
+        id: sIdParts.resourceModelId,
+        workspaceId: sIdParts.workspaceModelId,
+      },
       nest: true,
       include: [{ model: DataSourceModel, as: "dataSource", required: true }],
     });
-
-  if (
-    agentDataSourceConfiguration &&
-    agentDataSourceConfiguration.workspaceId !== sIdParts.workspaceModelId
-  ) {
-    return new Err(
-      new Error(
-        `Data source configuration ${dataSourceConfigId} does not belong to workspace ${sIdParts.workspaceModelId}`
-      )
-    );
-  }
 
   if (!agentDataSourceConfiguration) {
     return new Err(
@@ -119,6 +112,7 @@ export async function fetchAgentTableConfigurations(
     await AgentTablesQueryConfigurationTable.findAll({
       where: {
         id: { [Op.in]: configurationIds },
+        workspaceId: auth.getNonNullableWorkspace().id,
       },
     });
 

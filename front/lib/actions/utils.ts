@@ -1,5 +1,5 @@
-import type { Icon } from "@dust-tt/sparkle";
 import {
+  BarChartIcon,
   BoltIcon,
   ChatBubbleThoughtIcon,
   CommandLineIcon,
@@ -10,7 +10,10 @@ import {
   TimeIcon,
 } from "@dust-tt/sparkle";
 
-import type { AssistantBuilderActionConfiguration } from "@app/components/assistant_builder/types";
+import type {
+  ActionSpecification,
+  AssistantBuilderActionConfiguration,
+} from "@app/components/assistant_builder/types";
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import { isInternalMCPServerOfName } from "@app/lib/actions/mcp_internal_actions/constants";
@@ -26,20 +29,14 @@ import {
 import type { WebsearchConfigurationType } from "@app/lib/actions/websearch";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
-import type { AgentConfigurationType, WhitelistableFeature } from "@app/types";
+import type { AgentConfigurationType, AgentMessageType } from "@app/types";
 import { assertNever } from "@app/types";
 
 export const WEBSEARCH_ACTION_NUM_RESULTS = 16;
 
 export const ACTION_SPECIFICATIONS: Record<
   AssistantBuilderActionConfiguration["type"],
-  {
-    label: string;
-    description: string;
-    dropDownIcon: NonNullable<React.ComponentProps<typeof Icon>["visual"]>;
-    cardIcon: NonNullable<React.ComponentProps<typeof Icon>["visual"]>;
-    flag: WhitelistableFeature | null;
-  }
+  ActionSpecification
 > = {
   RETRIEVAL_EXHAUSTIVE: {
     label: "Include data",
@@ -96,8 +93,16 @@ export const ACTION_SPECIFICATIONS: Record<
     description: "Add additional sets of tools",
     cardIcon: BoltIcon,
     dropDownIcon: BoltIcon,
-    flag: "mcp_actions",
+    flag: null,
   },
+};
+
+export const DATA_VISUALIZATION_SPECIFICATION: ActionSpecification = {
+  label: "Data Visualization",
+  description: "Generate a data visualization",
+  cardIcon: BarChartIcon,
+  dropDownIcon: BarChartIcon,
+  flag: null,
 };
 
 /**
@@ -299,23 +304,25 @@ export function getMCPApprovalKey({
 
 export async function getExecutionStatusFromConfig(
   auth: Authenticator,
-  actionConfiguration: MCPToolConfigurationType
+  actionConfiguration: MCPToolConfigurationType,
+  agentMessage: AgentMessageType
 ): Promise<{
   stake?: MCPToolStakeLevelType;
   status: "allowed_implicitly" | "pending";
   serverId?: string;
 }> {
-  if (!isServerSideMCPToolConfiguration(actionConfiguration)) {
-    return { status: "pending" };
+  // If the agent message is marked as "skipToolsValidation" we skip all tools validation
+  // irrespective of the `actionConfiguration.permission`. This is set when the agent message was
+  // created by an API call where the caller explicitly set `skipToolsValidation` to true.
+  if (agentMessage.skipToolsValidation) {
+    return { status: "allowed_implicitly" };
   }
 
-  /**
-   * Permissions:
-   * - "never_ask": Automatically approved
-   * - "low": Ask user for approval and allow to automatically approve next time
-   * - "high": Ask for approval each time
-   * - undefined: Use default permission ("never_ask" for default tools, "high" for other tools)
-   */
+  // Permissions:
+  // - "never_ask": Automatically approved
+  // - "low": Ask user for approval and allow to automatically approve next time
+  // - "high": Ask for approval each time
+  // - undefined: Use default permission ("never_ask" for default tools, "high" for other tools)
   switch (actionConfiguration.permission) {
     case "never_ask":
       return { status: "allowed_implicitly" };

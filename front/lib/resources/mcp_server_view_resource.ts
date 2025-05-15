@@ -605,7 +605,8 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
   // Serialization.
   toJSON(): MCPServerViewType {
     return {
-      id: this.sId,
+      id: this.id,
+      sId: this.sId,
       createdAt: this.createdAt.getTime(),
       updatedAt: this.updatedAt.getTime(),
       spaceId: this.space.sId,

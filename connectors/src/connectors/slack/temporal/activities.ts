@@ -832,6 +832,26 @@ export async function syncThread(
 
   const tags = getTagsForPage(documentId, channelId, channelName, threadTs);
 
+  const firstMessageObject = await SlackMessages.findOne({
+    where: {
+      connectorId: connectorId,
+      channelId: channelId,
+      messageTs: threadTs,
+    },
+  });
+  if (firstMessageObject && firstMessageObject.skipReason) {
+    logger.info(
+      {
+        connectorId,
+        channelId,
+        threadTs,
+        skipReason: firstMessageObject.skipReason,
+      },
+      `Skipping thread : ${firstMessageObject.skipReason}`
+    );
+    return;
+  }
+
   // Only create the document if it doesn't already exist based on the documentId
   const existingMessages = await SlackMessages.findAll({
     where: {

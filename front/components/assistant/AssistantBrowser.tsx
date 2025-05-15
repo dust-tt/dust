@@ -31,8 +31,14 @@ import {
 import { useRouter } from "next/router";
 import React, { useCallback, useMemo, useState } from "react";
 
+import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import { compareForFuzzySort, subFilter } from "@app/lib/utils";
+import {
+  compareForFuzzySort,
+  getAgentSearchString,
+  subFilter,
+} from "@app/lib/utils";
 import { setQueryParam } from "@app/lib/utils/router";
 import type { LightAgentConfigurationType, WorkspaceType } from "@app/types";
 import { isBuilder } from "@app/types";
@@ -117,8 +123,9 @@ export function AssistantBrowser({
   );
 
   const router = useRouter();
+  const { createAgentButtonRef } = useWelcomeTourGuide();
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
-
+  const { isDark } = useTheme();
   const [sortType, setSortType] = useState<"popularity" | "alphabetical">(
     "popularity"
   );
@@ -173,20 +180,21 @@ export function AssistantBrowser({
       return { filteredAgents: [], filteredTags: [], uniqueTags };
     }
     const search = assistantSearch.toLowerCase().trim().replace(/^@/, "");
+
     const filteredAgents: LightAgentConfigurationType[] = agentConfigurations
       .filter(
         (a) =>
           a.status === "active" &&
           // Filters on search query
-          subFilter(search, a.name.toLowerCase())
+          subFilter(search, getAgentSearchString(a))
       )
 
       .sort((a, b) => {
         return (
           compareForFuzzySort(
             assistantSearch,
-            a.name.toLowerCase(),
-            b.name.toLowerCase()
+            getAgentSearchString(a),
+            getAgentSearchString(b)
           ) || (b.usage?.messageCount ?? 0) - (a.usage?.messageCount ?? 0)
         );
       });
@@ -205,22 +213,22 @@ export function AssistantBrowser({
   const hasAgentDiscovery = featureFlags.hasFeature("agent_discovery");
 
   // if search is active, only show the search tab, otherwise show all tabs with agents except the search tab
-  const visibleTabs = useMemo(() => {
-    return (hasAgentDiscovery ? AGENTS_TABS : AGENTS_TABS_LEGACY).filter(
-      (tab) => agentsByTab[tab.id].length > 0
-    );
-  }, [agentsByTab, hasAgentDiscovery]);
+  const visibleTabs = hasAgentDiscovery ? AGENTS_TABS : AGENTS_TABS_LEGACY;
+
   // check the query string for the tab to show, the query param to look for is called "selectedTab"
   // if it's not found, show the first tab with agents
   const viewTab = useMemo(() => {
+    const enabledTabs = visibleTabs.filter(
+      (tab) => agentsByTab[tab.id].length > 0
+    );
     return selectedTab &&
       isValidTab(
         selectedTab,
-        visibleTabs.map((tab) => tab.id)
+        enabledTabs.map((tab) => tab.id)
       )
       ? selectedTab
-      : visibleTabs[0]?.id;
-  }, [selectedTab, visibleTabs]);
+      : enabledTabs[0]?.id;
+  }, [selectedTab, visibleTabs, agentsByTab]);
 
   const handleMoreClick = (agent: LightAgentConfigurationType) => {
     setQueryParam(router, "assistantDetails", agent.sId);
@@ -231,7 +239,7 @@ export function AssistantBrowser({
       {/* Search bar */}
       <div
         id="search-container"
-        className="flex w-full flex-row items-center justify-center gap-2 align-middle"
+        className="mb-2 flex w-full flex-row items-center justify-center gap-2 align-middle"
       >
         <SearchDropdownMenu
           searchInputValue={assistantSearch}
@@ -287,7 +295,7 @@ export function AssistantBrowser({
             </>
           ) : isLoading ? (
             <div className="flex justify-center py-8">
-              <Spinner variant="dark" size="md" />
+              <Spinner variant={isDark ? "light" : "dark"} size="md" />
             </div>
           ) : (
             <div className="p-2 text-sm text-gray-500">No results found</div>
@@ -296,16 +304,18 @@ export function AssistantBrowser({
 
         <div className="hidden sm:block">
           <div className="flex gap-2">
-            <Button
-              tooltip="Create your own agent"
-              href={`/w/${owner.sId}/builder/assistants/create?flow=personal_assistants`}
-              variant="primary"
-              icon={PlusIcon}
-              label="Create"
-              data-gtm-label="assistantCreationButton"
-              data-gtm-location="homepage"
-              size="sm"
-            />
+            <div ref={createAgentButtonRef}>
+              <Button
+                tooltip="Create your own agent"
+                href={`/w/${owner.sId}/builder/assistants/create?flow=personal_assistants`}
+                variant="primary"
+                icon={PlusIcon}
+                label="Create"
+                data-gtm-label="assistantCreationButton"
+                data-gtm-location="homepage"
+                size="sm"
+              />
+            </div>
 
             {(isBuilder(owner) || hasAgentDiscovery) && (
               <Button
@@ -330,6 +340,7 @@ export function AssistantBrowser({
             <TabsList>
               {visibleTabs.map((tab) => (
                 <TabsTrigger
+                  disabled={agentsByTab[tab.id].length === 0}
                   key={tab.id}
                   value={tab.id}
                   label={tab.label}
@@ -367,6 +378,12 @@ export function AssistantBrowser({
           <ScrollBar orientation="horizontal" className="hidden" />
         </ScrollArea>
       </div>
+
+      {isLoading && (
+        <div className="flex justify-center py-8">
+          <Spinner size="lg" />
+        </div>
+      )}
 
       {viewTab === "all" && hasAgentDiscovery ? (
         <>

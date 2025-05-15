@@ -69,6 +69,7 @@
     "@tiptap/react": "^2.9.1",
     "@tiptap/starter-kit": "^2.9.1",
     "buffer": "^6.0.3",
+    "compare-versions": "^6.1.1",
     "event-source-polyfill": "^1.0.31",
     "https-browserify": "^1.0.0",
     "jwt-decode": "^4.0.0",

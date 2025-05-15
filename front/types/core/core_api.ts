@@ -197,7 +197,7 @@ export function isRowMatchingSchema(
 }
 
 export type CoreAPIQueryResult = {
-  value: Record<string, unknown>;
+  value: Record<string, string | number | boolean | null | undefined>;
 };
 
 export type CoreAPISearchFilter = {
@@ -1884,15 +1884,13 @@ export class CoreAPI {
   async queryDatabase({
     tables,
     query,
-    filter,
   }: {
     tables: Array<{
-      project_id: string;
+      project_id: number;
       data_source_id: string;
       table_id: string;
     }>;
     query: string;
-    filter?: CoreAPISearchFilter | null;
   }): Promise<
     CoreAPIResponse<{
       schema: CoreAPITableSchema;
@@ -1906,8 +1904,7 @@ export class CoreAPI {
       },
       body: JSON.stringify({
         query,
-        tables,
-        filter,
+        tables: tables.map((t) => [t.project_id, t.data_source_id, t.table_id]),
       }),
     });
 
@@ -1917,7 +1914,11 @@ export class CoreAPI {
   async getDatabaseSchema({
     tables,
   }: {
-    tables: Array<[number, string, string]>; // project_id, data_source_id, table_id
+    tables: Array<{
+      project_id: number;
+      data_source_id: string;
+      table_id: string;
+    }>;
   }): Promise<
     CoreAPIResponse<{
       dialect: string;
@@ -1935,7 +1936,11 @@ export class CoreAPI {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          tables,
+          tables: tables.map((t) => [
+            t.project_id,
+            t.data_source_id,
+            t.table_id,
+          ]),
         }),
       }
     );

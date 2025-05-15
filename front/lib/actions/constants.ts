@@ -48,6 +48,10 @@ export const DEFAULT_REASONING_ACTION_NAME = "advanced_reasoning";
 export const DEFAULT_REASONING_ACTION_DESCRIPTION =
   "Offload a reasoning-heavy task to to a powerful reasoning model. The reasoning model does not have access to any tools.";
 
+export const DEFAULT_DATA_VISUALIZATION_NAME = "data_visualization";
+export const DEFAULT_DATA_VISUALIZATION_DESCRIPTION =
+  "Generate a data visualization.";
+
 export const DEFAULT_MCP_ACTION_NAME = "mcp";
 export const DEFAULT_MCP_ACTION_VERSION = "1.0.0";
 export const DEFAULT_MCP_ACTION_DESCRIPTION =
@@ -65,6 +69,8 @@ export type MCPToolStakeLevelType = (typeof MCP_TOOL_STAKE_LEVELS)[number];
 export const FALLBACK_INTERNAL_AUTO_SERVERS_TOOL_STAKE_LEVEL =
   "never_ask" as const;
 export const FALLBACK_MCP_TOOL_STAKE_LEVEL = "high" as const;
+
+export const DEFAULT_CLIENT_SIDE_MCP_TOOL_STAKE_LEVEL = "low" as const;
 
 export const MCP_VALIDATION_OUTPUTS = [
   "approved",

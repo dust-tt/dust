@@ -41,6 +41,7 @@ export async function fetchTableQueryActionConfigurations(
   const agentTablesQueryConfigurationTables =
     await AgentTablesQueryConfigurationTable.findAll({
       where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
         tablesQueryConfigurationId: {
           [Op.in]: tableQueryConfigurations.map((r) => r.id),
         },

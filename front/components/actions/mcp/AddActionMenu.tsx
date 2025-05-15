@@ -8,7 +8,7 @@ import {
   PlusIcon,
   Spinner,
 } from "@dust-tt/sparkle";
-import React, { useState } from "react";
+import { useState } from "react";
 
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerType } from "@app/lib/api/mcp";
@@ -64,11 +64,11 @@ export const AddActionMenu = ({
           </div>
         )}
         {availableMCPServers
-          .filter((mcpServer) => !enabledMCPServers.includes(mcpServer.id))
+          .filter((mcpServer) => !enabledMCPServers.includes(mcpServer.sId))
           .filter((mcpServer) => filterMCPServer(mcpServer, searchText))
           .map((mcpServer) => (
             <DropdownMenuItem
-              key={mcpServer.id}
+              key={mcpServer.sId}
               label={asDisplayName(mcpServer.name)}
               icon={() => getAvatar(mcpServer, "xs")}
               description={mcpServer.description}

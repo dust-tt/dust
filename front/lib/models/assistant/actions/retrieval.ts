@@ -91,6 +91,7 @@ AgentRetrievalConfiguration.init(
       {
         fields: ["workspaceId", "agentConfigurationId"],
         concurrently: true,
+        name: "agent_retrieval_config_workspace_id_agent_config_id",
       },
       {
         unique: true,
@@ -217,8 +218,12 @@ AgentRetrievalAction.init(
     modelName: "agent_retrieval_action",
     sequelize: frontSequelize,
     indexes: [
+      // TODO(WORKSPACE_ID_ISOLATION 2025-05-12): Remove index.
       {
         fields: ["agentMessageId"],
+      },
+      {
+        fields: ["workspaceId", "agentMessageId"],
         concurrently: true,
       },
     ],

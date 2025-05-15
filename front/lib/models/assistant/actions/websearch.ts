@@ -59,6 +59,7 @@ AgentWebsearchConfiguration.init(
       {
         fields: ["workspaceId", "agentConfigurationId"],
         concurrently: true,
+        name: "agent_websearch_config_workspace_id_agent_config_id",
       },
     ],
     sequelize: frontSequelize,
@@ -140,8 +141,13 @@ AgentWebsearchAction.init(
     modelName: "agent_websearch_action",
     sequelize: frontSequelize,
     indexes: [
+      // TODO(WORKSPACE_ID_ISOLATION 2025-05-13): Remove index
       {
         fields: ["agentMessageId"],
+        concurrently: true,
+      },
+      {
+        fields: ["workspaceId", "agentMessageId"],
         concurrently: true,
       },
     ],

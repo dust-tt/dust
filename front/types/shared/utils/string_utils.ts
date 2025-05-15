@@ -1,5 +1,3 @@
-import { validate as validateUuid, version as uuidVersion } from "uuid";
-
 import type { Result } from "../result";
 import { Err, Ok } from "../result";
 
@@ -122,11 +120,6 @@ export function asDisplayName(name?: string | null) {
   return name
     .toLowerCase()
     .replace(/_/g, " ")
+    .replace(/github/g, "GitHub")
     .replace(/\b\w/g, (char) => char.toUpperCase());
-}
-
-// UUID utils.
-
-export function isValidUUIDv4(uuid: string): boolean {
-  return validateUuid(uuid) && uuidVersion(uuid) === 4;
 }

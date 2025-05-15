@@ -26,12 +26,11 @@ import {
   Tabs,
   TabsList,
   TabsTrigger,
-  Tooltip,
   UserGroupIcon,
   ValueCard,
 } from "@dust-tt/sparkle";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { AssistantDetailsButtonBar } from "@app/components/assistant/AssistantDetailsButtonBar";
 import { AssistantKnowledgeSection } from "@app/components/assistant/details/AssistantKnowledgeSection";
@@ -140,7 +139,7 @@ function AssistantDetailsPerformance({
 
   return (
     <>
-      <div className="flex flex-row justify-between gap-3">
+      <div className="flex flex-row items-center justify-between gap-3">
         <Page.H variant="h5">Analytics</Page.H>
         <div className="self-end">
           <DropdownMenu>
@@ -183,25 +182,19 @@ function AssistantDetailsPerformance({
                         {agentAnalytics.users.length}
                       </div>
 
-                      <Avatar.Stack size="md" hasMagnifier={false}>
-                        {removeNulls(
+                      <Avatar.Stack
+                        size="md"
+                        hasMagnifier={false}
+                        avatars={removeNulls(
                           agentAnalytics.users.map((top) => top.user)
                         )
                           .slice(0, 5)
-                          .map((user) => (
-                            <Tooltip
-                              key={user.id}
-                              trigger={
-                                <Avatar
-                                  size="sm"
-                                  name={user.fullName}
-                                  visual={user.image}
-                                />
-                              }
-                              label={user.fullName}
-                            />
-                          ))}
-                      </Avatar.Stack>
+                          .map((user) => ({
+                            size: "sm",
+                            name: user.fullName,
+                            visual: user.image,
+                          }))}
+                      />
                     </>
                   ) : (
                     "-"
@@ -379,6 +372,11 @@ export function AssistantDetails({
     agentConfigurationId: assistantId,
   });
 
+  useEffect(() => {
+    // Reset to info tab when we open/close the modal
+    setSelectedTab("info");
+  }, [assistantId]);
+
   const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
   const doUpdateScope = useUpdateAgentScope({
     owner,
@@ -392,6 +390,11 @@ export function AssistantDetails({
   const [showRestoreModal, setShowRestoreModal] = useState(false);
   const showEditorsTabs =
     featureFlags.includes("agent_discovery") &&
+    assistantId != null &&
+    !isGlobalAgent;
+
+  const showPerformanceTabs =
+    (agentConfiguration?.canEdit || isAdmin(owner)) &&
     assistantId != null &&
     !isGlobalAgent;
 
@@ -482,7 +485,7 @@ export function AssistantDetails({
                 <SheetTitle />
               </VisuallyHidden>
               <DescriptionSection />
-              {(agentConfiguration?.canEdit || isAdmin(owner)) && (
+              {showEditorsTabs || showPerformanceTabs ? (
                 <Tabs value={selectedTab}>
                   <TabsList border={false}>
                     <TabsTrigger
@@ -491,12 +494,14 @@ export function AssistantDetails({
                       icon={InformationCircleIcon}
                       onClick={() => setSelectedTab("info")}
                     />
-                    <TabsTrigger
-                      value="performance"
-                      label="Performance"
-                      icon={BarChartIcon}
-                      onClick={() => setSelectedTab("performance")}
-                    />
+                    {showPerformanceTabs && (
+                      <TabsTrigger
+                        value="performance"
+                        label="Performance"
+                        icon={BarChartIcon}
+                        onClick={() => setSelectedTab("performance")}
+                      />
+                    )}
                     {showEditorsTabs && (
                       <TabsTrigger
                         value="editors"
@@ -507,6 +512,8 @@ export function AssistantDetails({
                     )}
                   </TabsList>
                 </Tabs>
+              ) : (
+                <div />
               )}
             </SheetHeader>
             <SheetContainer className="flex flex-col gap-5 pt-6 text-sm text-foreground dark:text-foreground-night">

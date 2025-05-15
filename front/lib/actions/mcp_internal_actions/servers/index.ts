@@ -17,10 +17,7 @@ import { default as tablesQueryServer } from "@app/lib/actions/mcp_internal_acti
 import { default as tablesQueryServerV2 } from "@app/lib/actions/mcp_internal_actions/servers/tables_query/server_v2";
 import { default as thinkServer } from "@app/lib/actions/mcp_internal_actions/servers/think";
 import { default as webtoolsServer } from "@app/lib/actions/mcp_internal_actions/servers/webtools";
-import type {
-  AgentLoopListToolsContextType,
-  AgentLoopRunContextType,
-} from "@app/lib/actions/types";
+import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
 import { assertNever } from "@app/types";
 
@@ -33,8 +30,7 @@ export async function getInternalMCPServer(
     internalMCPServerName: InternalMCPServerNameType;
     mcpServerId: string;
   },
-  agentLoopRunContext?: AgentLoopRunContextType,
-  agentLoopListToolsContext?: AgentLoopListToolsContextType
+  agentLoopContext: AgentLoopContextType
 ): Promise<McpServer> {
   switch (internalMCPServerName) {
     case "github":
@@ -46,31 +42,27 @@ export async function getInternalMCPServer(
     case "file_generation":
       return generateFileServer(auth);
     case "query_tables":
-      return tablesQueryServer(auth, agentLoopRunContext);
+      return tablesQueryServer(auth, agentLoopContext.agentLoopRunContext);
     case "query_tables_v2":
-      return tablesQueryServerV2(auth);
+      return tablesQueryServerV2(auth, agentLoopContext.agentLoopRunContext);
     case "primitive_types_debugger":
       return primitiveTypesDebuggerServer();
     case "think":
       return thinkServer();
     case "web_search_&_browse":
-      return webtoolsServer(agentLoopRunContext);
+      return webtoolsServer(agentLoopContext.agentLoopRunContext);
     case "search":
-      return searchServer(auth, agentLoopRunContext);
+      return searchServer(auth, agentLoopContext.agentLoopRunContext);
     case "notion":
       return notionServer(auth, mcpServerId);
     case "include_data":
-      return includeDataServer(auth, agentLoopRunContext);
+      return includeDataServer(auth, agentLoopContext.agentLoopRunContext);
     case "ask_agent":
       return askAgentServer(auth);
     case "reasoning_v2":
-      return reasoningServer(auth, agentLoopRunContext);
+      return reasoningServer(auth, agentLoopContext.agentLoopRunContext);
     case "run_dust_app":
-      return dustAppServer(
-        auth,
-        agentLoopRunContext,
-        agentLoopListToolsContext
-      );
+      return dustAppServer(auth, agentLoopContext);
     case "agent_router":
       return agentRouterServer(auth);
     default:

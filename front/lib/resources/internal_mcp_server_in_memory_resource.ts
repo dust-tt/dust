@@ -34,7 +34,7 @@ export class InternalMCPServerInMemoryResource {
   // SID of the internal MCP server, scoped to a workspace.
   readonly id: string;
 
-  private metadata: Omit<MCPServerType, "id"> = {
+  private metadata: Omit<MCPServerType, "sId"> = {
     ...extractMetadataFromServerVersion(undefined),
     tools: [],
     availability: "manual",
@@ -67,6 +67,7 @@ export class InternalMCPServerInMemoryResource {
             type: "mcpServerId",
             mcpServerId: id,
           },
+          agentLoopContext: {},
         });
 
         if (s.isErr()) {
@@ -268,7 +269,7 @@ export class InternalMCPServerInMemoryResource {
   // Serialization.
   toJSON(): MCPServerType {
     return {
-      id: this.id,
+      sId: this.id,
       ...this.metadata,
     };
   }
