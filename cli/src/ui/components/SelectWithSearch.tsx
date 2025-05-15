@@ -1,6 +1,7 @@
+import Fuse from "fuse.js";
 import { Box, Text, useInput, useStdout } from "ink";
 import type { ReactNode } from "react";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 
 export interface BaseItem {
   id: string;
@@ -62,9 +63,8 @@ export const SelectWithSearch = <T extends BaseItem>({
     Math.floor(listAvailableHeight / itemLines)
   );
 
-  const filteredItems = items.filter((item) =>
-    item.label.toLowerCase().startsWith(searchQuery.toLowerCase())
-  );
+  const fuse = useMemo(() => new Fuse(items, { keys: ["label"], }), [items]);
+  const filteredItems = fuse.search(searchQuery).map(r => r.item);
 
   const totalPages = Math.max(
     1,
