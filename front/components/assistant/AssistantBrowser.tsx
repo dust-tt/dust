@@ -187,13 +187,10 @@ export function AssistantBrowser({
     return { filteredAgents, filteredTags, uniqueTags };
   }, [agentConfigurations, assistantSearch]);
 
-  // if search is active, only show the search tab, otherwise show all tabs with agents except the search tab
-  const visibleTabs = AGENTS_TABS;
-
   // check the query string for the tab to show, the query param to look for is called "selectedTab"
   // if it's not found, show the first tab with agents
   const viewTab = useMemo(() => {
-    const enabledTabs = visibleTabs.filter(
+    const enabledTabs = AGENTS_TABS.filter(
       (tab) => agentsByTab[tab.id].length > 0
     );
     return selectedTab &&
@@ -203,7 +200,7 @@ export function AssistantBrowser({
       )
       ? selectedTab
       : enabledTabs[0]?.id;
-  }, [selectedTab, visibleTabs, agentsByTab]);
+  }, [selectedTab, agentsByTab]);
 
   const handleMoreClick = (agent: LightAgentConfigurationType) => {
     setQueryParam(router, "assistantDetails", agent.sId);
@@ -311,7 +308,7 @@ export function AssistantBrowser({
         <ScrollArea aria-orientation="horizontal">
           <Tabs value={viewTab} onValueChange={setSelectedTab}>
             <TabsList>
-              {visibleTabs.map((tab) => (
+              {AGENTS_TABS.map((tab) => (
                 <TabsTrigger
                   disabled={agentsByTab[tab.id].length === 0}
                   key={tab.id}
