@@ -313,17 +313,20 @@ export function isArrayEqual2DUnordered(
   return isEqual(sort2D(first), sort2D(second));
 }
 
-// Postgres requires all subarrays to be of the same length
+// Postgres requires all subarrays to be of the same length.
 // This function ensures that all subarrays are of the same length
 // by repeating the last element of each subarray until all subarrays have the same length.
 // Make sure that it's okay to use this function for your use case.
 export function normalizeArrays<T>(array2D: T[][]): T[][] {
-  const longestArray = array2D.reduce(
+  // Copy the array to avoid mutating the original array.
+  const array2DCopy = array2D.map((array) => [...array]);
+
+  const longestArray = array2DCopy.reduce(
     (max, req) => Math.max(max, req.length),
     0
   );
   // for each array, repeatedly add the last id until array is of longest array length
-  const updatedArrays = array2D.map((array) => {
+  const updatedArrays = array2DCopy.map((array) => {
     while (array.length < longestArray) {
       array.push(array[array.length - 1]);
     }
