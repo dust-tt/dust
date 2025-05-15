@@ -68,6 +68,7 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { TemplateResource } from "@app/lib/resources/template_resource";
+import { tagsSorter } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import type {
   AgentConfigurationScope,
@@ -624,17 +625,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
           GroupResource.modelIdToSId({ id, workspaceId: owner.id })
         )
       ),
-      tags: tags
-        .map((t) => t.toJSON())
-        .sort((a, b) => {
-          if (a.reserved && !b.reserved) {
-            return -1;
-          }
-          if (!a.reserved && b.reserved) {
-            return 1;
-          }
-          return a.name.localeCompare(b.name);
-        }),
+      tags: tags.map((t) => t.toJSON()).sort(tagsSorter),
       canRead: false,
       canEdit: false,
     };

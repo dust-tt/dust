@@ -1,6 +1,7 @@
 import { isEqual } from "lodash";
 
 import type { LightAgentConfigurationType } from "@app/types";
+import type { TagType } from "@app/types/tag";
 
 export const MODELS_STRING_MAX_LENGTH = 255;
 
@@ -195,6 +196,16 @@ function spreadLength(a: string, b: string) {
 
   return lastIndex - firstIndex;
 }
+
+export const tagsSorter = (a: TagType, b: TagType) => {
+  if (a.reserved && !b.reserved) {
+    return -1;
+  }
+  if (!a.reserved && b.reserved) {
+    return 1;
+  }
+  return a.name.localeCompare(b.name);
+};
 
 /**
  * Gets a string to use when filtering agents by name, description, and last authors.
