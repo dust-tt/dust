@@ -18,7 +18,7 @@ import type { SessionWithUser } from "@app/lib/iam/provider";
 import logger from "@app/logger/logger";
 import type {
   LoggingContext,
-  UpdateLoggingContextCallback,
+  WithContextHandler,
 } from "@app/logger/withlogging";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { UserTypeWithWorkspaces, WithAPIErrorResponse } from "@app/types";
@@ -29,12 +29,14 @@ export type SessionAuthenticationContext = Omit<LoggingContext, "session"> & {
   session: SessionWithUser;
 };
 
-export type WithSessionAuthenticationForWorkspaceHandler<T> = (
-  req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<T>>,
-  context: SessionAuthenticationContext,
-  updateContext: UpdateLoggingContextCallback
-) => Promise<void> | void;
+export type WithSessionAuthenticationForWorkspaceHandler<T> =
+  WithContextHandler<SessionAuthenticationContext, T>;
+
+function hasSession(
+  context: LoggingContext
+): context is SessionAuthenticationContext {
+  return context.session !== null;
+}
 
 /**
  * This function is a wrapper for API routes that require session authentication.
@@ -48,7 +50,7 @@ export function withSessionAuthentication<T>(
   { isStreaming = false }: { isStreaming?: boolean } = {}
 ) {
   return withLogging<T>(async (req, res, context, updateContext) => {
-    if (!context.session) {
+    if (!hasSession(context)) {
       return apiError(req, res, {
         status_code: 401,
         api_error: {
@@ -58,12 +60,8 @@ export function withSessionAuthentication<T>(
         },
       });
     }
-    return handler(
-      req,
-      res,
-      context as SessionAuthenticationContext,
-      updateContext
-    );
+
+    return handler(req, res, context, updateContext);
   }, isStreaming);
 }
 

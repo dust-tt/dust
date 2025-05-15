@@ -48,13 +48,15 @@ function loggingContextInfo(
   return metadata;
 }
 
+export type WithContextHandler<C, T> = (
+  req: NextApiRequest,
+  res: NextApiResponse<WithAPIErrorResponse<T>>,
+  context: C,
+  updateContext: UpdateLoggingContextCallback
+) => Promise<void> | void;
+
 export function withLogging<T>(
-  handler: (
-    req: NextApiRequest,
-    res: NextApiResponse<WithAPIErrorResponse<T>>,
-    context: LoggingContext,
-    updateContext: UpdateLoggingContextCallback
-  ) => Promise<void>,
+  handler: WithContextHandler<LoggingContext, T>,
   streaming = false
 ) {
   return async (
@@ -99,7 +101,7 @@ export function withLogging<T>(
     };
 
     try {
-      // make a clone to make sure we don't change it deeply by mistake
+      // Make a clone to make sure we don't change it deeply by mistake
       await handler(req, res, cloneDeep(context), (key, value) => {
         context[key] = value;
       });
