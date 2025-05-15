@@ -6,16 +6,19 @@ import assert from "assert";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
-import type { ConfigurableToolInputType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import {
+  ConfigurableToolInputJSONSchemas,
+  type ConfigurableToolInputType,
+} from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { MCPToolResult } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { isServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import type { MCPServerType, MCPServerViewType } from "@app/lib/api/mcp";
 import {
-  findMatchingSubSchemas,
   findSchemaAtPath,
   followInternalRef,
   isJSONSchemaObject,
   isSchemaConfigurable,
+  schemasAreEqual,
   setValueAtPath,
 } from "@app/lib/utils/json_schemas";
 import type { WorkspaceType } from "@app/types";
@@ -515,4 +518,142 @@ export function getMCPServerRequirements(
       requiredBooleans.length === 0 &&
       Object.keys(requiredEnums).length === 0,
   };
+}
+
+/**
+ * Checks if a JSON schema matches should be idenfied as being configurable for a specific mime type.
+ */
+function schemaIsConfigurable(
+  schema: JSONSchema,
+  mimeType: InternalToolInputMimeType
+): boolean {
+  // If the mime type has a static configuration schema, we check that the schema matches it.
+  if (mimeType !== INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM) {
+    return schemasAreEqual(schema, ConfigurableToolInputJSONSchemas[mimeType]);
+  }
+  // If the mime type does not have a static configuration schema, it supports flexible schemas.
+  // We only check that the schema has a `value` property and a `mimeType` property with the correct value.
+  const mimeTypeProperty = schema.properties?.mimeType;
+  if (
+    schema.properties?.value &&
+    mimeTypeProperty &&
+    isJSONSchemaObject(mimeTypeProperty)
+  ) {
+    return (
+      mimeTypeProperty.type === "string" && mimeTypeProperty.const === mimeType
+    );
+  }
+  return false;
+}
+
+/**
+ * Recursively finds all property keys and subschemas match a specific sub-schema.
+ * This function handles nested objects and arrays.
+ * @returns A record of property keys that match the schema comparison. Empty record if no matches found.
+ */
+export function findMatchingSubSchemas(
+  inputSchema: JSONSchema,
+  mimeType: InternalToolInputMimeType
+): Record<string, JSONSchema> {
+  const matches: Record<string, JSONSchema> = {};
+
+  if (!isJSONSchemaObject(inputSchema)) {
+    return matches;
+  }
+
+  // Check properties in object schemas
+  if (inputSchema.properties) {
+    for (const [key, propSchema] of Object.entries(inputSchema.properties)) {
+      if (isJSONSchemaObject(propSchema)) {
+        // Check if this property's schema matches the target
+        if (schemaIsConfigurable(propSchema, mimeType)) {
+          matches[key] = propSchema;
+        }
+
+        // Following references within the main schema.
+        // zodToJsonSchema generates references if the same subSchema is repeated.
+        if (propSchema.$ref) {
+          const refSchema = followInternalRef(inputSchema, propSchema.$ref);
+          if (refSchema && schemaIsConfigurable(refSchema, mimeType)) {
+            matches[key] = refSchema;
+          }
+        }
+
+        // Recursively check this property's schema
+        const nestedMatches = findMatchingSubSchemas(propSchema, mimeType);
+        // For nested matches, prefix with the current property key
+        for (const match of Object.keys(nestedMatches)) {
+          if (match !== "") {
+            // Skip the empty string from direct matches
+            matches[`${key}.${match}`] = nestedMatches[match];
+          }
+        }
+      }
+    }
+  }
+
+  // Check items in array schemas
+  if (inputSchema.type === "array" && inputSchema.items) {
+    if (isJSONSchemaObject(inputSchema.items)) {
+      // Single schema for all items
+      const itemMatches = findMatchingSubSchemas(inputSchema.items, mimeType);
+      // For array items, we use the 'items' key as a prefix
+      for (const match of Object.keys(itemMatches)) {
+        if (match !== "") {
+          matches[`items.${match}`] = itemMatches[match];
+        } else {
+          matches["items"] = itemMatches[match];
+        }
+      }
+    } else if (Array.isArray(inputSchema.items)) {
+      // Array of schemas for tuple validation
+      for (let i = 0; i < inputSchema.items.length; i++) {
+        const item = inputSchema.items[i];
+        if (isJSONSchemaObject(item)) {
+          const itemMatches = findMatchingSubSchemas(item, mimeType);
+          // For tuple items, we use the index as part of the key
+          for (const match of Object.keys(itemMatches)) {
+            if (match !== "") {
+              matches[`items[${i}].${match}`] = itemMatches[match];
+            } else {
+              matches[`items[${i}]`] = itemMatches[match];
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // Check all other properties and values in the schema
+  for (const [key, value] of Object.entries(inputSchema)) {
+    // Skip properties and items as they are handled separately above
+    if (
+      key === "properties" ||
+      key === "required" ||
+      key === "anyOf" ||
+      key === "enum" ||
+      key === "type" ||
+      (key === "items" && inputSchema.type === "array")
+    ) {
+      continue;
+    }
+
+    if (isJSONSchemaObject(value) && schemaIsConfigurable(value, mimeType)) {
+      matches[key] = value;
+    } else if (isJSONSchemaObject(value)) {
+      const nestedMatches = findMatchingSubSchemas(value, mimeType);
+      for (const match of Object.keys(nestedMatches)) {
+        if (match !== "") {
+          matches[`${key}.${match}`] = nestedMatches[match];
+        } else {
+          matches[key] = nestedMatches[match];
+        }
+      }
+    }
+  }
+
+  // Note: we don't handle anyOf, allOf, oneOf yet as we cannot disambiguate whether to inject the configuration
+  // since we entirely hide the configuration from the agent.
+
+  return matches;
 }

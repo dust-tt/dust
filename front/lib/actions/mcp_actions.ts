@@ -64,10 +64,10 @@ import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_m
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { fromEvent } from "@app/lib/utils/events";
-import { findMatchingSubSchemas } from "@app/lib/utils/json_schemas";
 import logger from "@app/logger/logger";
 import type { ModelId, Result } from "@app/types";
 import { assertNever, Err, normalizeError, Ok, slugify } from "@app/types";
+import { findMatchingSubSchemas } from "@app/lib/actions/mcp_internal_actions/utils";
 
 const MAX_OUTPUT_ITEMS = 128;
 
@@ -101,6 +101,7 @@ function makeServerSideMCPToolConfigurations(
     childAgentId: config.childAgentId,
     reasoningModel: config.reasoningModel,
     timeFrame: config.timeFrame,
+    jsonSchema: config.jsonSchema,
     additionalConfiguration: config.additionalConfiguration,
     permission: tool.stakeLevel,
     toolServerId: tool.toolServerId,

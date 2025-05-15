@@ -1427,6 +1427,7 @@ export async function createAgentActionConfiguration(
           timeFrame: action.timeFrame,
           additionalConfiguration: action.additionalConfiguration,
           dustAppConfiguration: action.dustAppConfiguration,
+          jsonSchema: action.jsonSchema,
         });
       });
     }
