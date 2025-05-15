@@ -113,6 +113,14 @@ export async function startMcpServer(
             }
 
             const { conversation, message: createdUserMessage } = convRes.value;
+            if (!createdUserMessage) {
+              const errorMessage = `Failed to create user message`;
+              console.error(`[MCP Tool Error ${toolName}] ${errorMessage}`);
+              return {
+                content: [{ type: "text", text: errorMessage }],
+                isError: true,
+              };
+            }
             const streamRes = await dustClient.streamAgentAnswerEvents({
               conversation: conversation,
               userMessageId: createdUserMessage.sId,
