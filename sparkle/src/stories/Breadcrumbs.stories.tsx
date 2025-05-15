@@ -27,6 +27,10 @@ type BreadcrumbsExampleProps = {
 };
 
 export const BreadcrumbsExample = (args: BreadcrumbsExampleProps) => {
+  const items0 = [
+    { label: "Home", icon: HomeIcon },
+  ];
+
   const items1 = [
     { label: "Home", href: "#", icon: HomeIcon },
     { label: "Spaces", onClick: () => alert("Spaces clicked!") },
@@ -80,6 +84,7 @@ export const BreadcrumbsExample = (args: BreadcrumbsExampleProps) => {
 
   return (
     <div className="s-flex s-flex-col s-gap-4 s-pb-8">
+      <Breadcrumbs items={items0} {...args} />
       <Breadcrumbs items={items1} {...args} />
       <Breadcrumbs items={items2} {...args} />
       <Breadcrumbs items={items4} {...args} />
