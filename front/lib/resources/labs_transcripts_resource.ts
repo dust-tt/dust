@@ -14,11 +14,13 @@ import {
   LabsTranscriptsHistoryModel,
 } from "@app/lib/resources/storage/models/labs_transcripts";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
+import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type {
   LabsTranscriptsConfigurationType,
   LabsTranscriptsProviderType,
   LightWorkspaceType,
+  ModelId,
   Result,
 } from "@app/types";
 import { Err, Ok } from "@app/types";
@@ -145,6 +147,27 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
       : null;
   }
 
+  static modelIdToSId({
+    id,
+    workspaceId,
+  }: {
+    id: ModelId;
+    workspaceId: ModelId;
+  }): string {
+    return makeSId("transcripts_configuration", { id, workspaceId });
+  }
+
+  static async fetchById(
+    sId: string,
+    transaction?: Transaction
+  ): Promise<LabsTranscriptsConfigurationResource | null> {
+    const resourceId = getResourceIdFromSId(sId);
+    if (!resourceId) {
+      return null;
+    }
+    return this.fetchByModelId(resourceId, transaction);
+  }
+
   async getUser(): Promise<UserResource | null> {
     return UserResource.fetchByModelId(this.userId);
   }
@@ -234,12 +257,27 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
   /**
    * History
    */
-
-  async recordHistory(
-    blob: Omit<CreationAttributes<LabsTranscriptsHistoryModel>, "id">
-  ): Promise<InferAttributes<LabsTranscriptsHistoryModel>> {
-    const history = await LabsTranscriptsHistoryModel.create(blob);
-
+  async recordHistory({
+    workspace,
+    fileId,
+    fileName,
+    conversationId,
+    stored,
+  }: {
+    workspace: LightWorkspaceType;
+    fileId: string;
+    fileName: string;
+    conversationId?: string | null;
+    stored?: boolean;
+  }): Promise<InferAttributes<LabsTranscriptsHistoryModel>> {
+    const history = await LabsTranscriptsHistoryModel.create({
+      configurationId: this.id,
+      workspaceId: workspace.id,
+      fileId,
+      fileName,
+      conversationId: conversationId,
+      stored: stored,
+    });
     return history.get();
   }
 
@@ -323,6 +361,7 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
   toJSON(): LabsTranscriptsConfigurationType {
     return {
       id: this.id,
+      sId: this.sId,
       workspaceId: this.workspaceId,
       provider: this.provider,
       agentConfigurationId: this.agentConfigurationId,
@@ -332,5 +371,12 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
       dataSourceViewId: this.dataSourceViewId,
       useConnectorConnection: this.useConnectorConnection,
     };
+  }
+
+  get sId(): string {
+    return LabsTranscriptsConfigurationResource.modelIdToSId({
+      id: this.id,
+      workspaceId: this.workspaceId,
+    });
   }
 }

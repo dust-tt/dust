@@ -4,14 +4,14 @@ import type { ModelId } from "@app/types";
 export function makeRetrieveTranscriptWorkflowId(
   transcriptsConfiguration: LabsTranscriptsConfigurationResource
 ): string {
-  return `labs-transcripts-retrieve-${transcriptsConfiguration.id}`;
+  return `labs-transcripts-retrieve-${transcriptsConfiguration.sId}`;
 }
 
 export function makeProcessTranscriptWorkflowId({
   transcriptsConfigurationId,
   fileId,
 }: {
-  transcriptsConfigurationId: ModelId;
+  transcriptsConfigurationId: string;
   fileId: string;
 }): string {
   return `labs-transcripts-process-${transcriptsConfigurationId}-${fileId}`;

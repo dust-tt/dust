@@ -397,7 +397,7 @@ const transcripts = async (command: string, args: parseArgs.ParsedArgs) => {
         throw new Error("Missing --cId argument");
       }
       const transcriptsConfiguration =
-        await LabsTranscriptsConfigurationResource.fetchByModelId(args.cId);
+        await LabsTranscriptsConfigurationResource.fetchById(args.cId);
 
       if (!transcriptsConfiguration) {
         throw new Error(
@@ -421,7 +421,7 @@ const transcripts = async (command: string, args: parseArgs.ParsedArgs) => {
         throw new Error("Missing --cId argument");
       }
       const transcriptsConfiguration =
-        await LabsTranscriptsConfigurationResource.fetchByModelId(args.cId);
+        await LabsTranscriptsConfigurationResource.fetchById(args.cId);
 
       if (!transcriptsConfiguration) {
         throw new Error(
