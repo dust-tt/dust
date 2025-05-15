@@ -76,6 +76,7 @@ const migrateWorkspace = async (
         });
         const agentConfig = agentConfigs[0];
         if (
+          companyTag &&
           agentConfig &&
           !agentConfig.tags.some((tag) => tag.sId === companyTag.sId)
         ) {
@@ -87,7 +88,7 @@ const migrateWorkspace = async (
             },
             "Adding company tag to agent"
           );
-          if (execute && companyTag) {
+          if (execute) {
             await companyTag.addToAgent(auth, agentConfig);
           }
         }
