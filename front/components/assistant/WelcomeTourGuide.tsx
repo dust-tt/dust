@@ -331,10 +331,16 @@ export function WelcomeTourGuide({
       side={side}
       align={align}
       className={cn(
-        "w-78 max-w-xs shadow-xl",
+        "max-w-xs shadow-xl",
         "border-highlight-400 ring-2 ring-highlight-400/30",
         "dark:border-border-night dark:bg-background-night"
       )}
+      fullWidth
+      style={{
+        // hack: equivalent to w-xs, without this the popover is too smart
+        // and grows based on content size
+        width: "320px",
+      }}
     >
       {body}
       <div className="flex justify-end gap-2 p-2 pt-4">
