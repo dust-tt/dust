@@ -180,21 +180,28 @@ export interface CitationType {
  * them together in case of error of either. We store an error only here whether it's an error
  * coming from the action or from the message generation.
  */
-export type AgentMessageType = {
+export type BaseAgentMessageType = {
+  type: "agent_message";
+  sId: string;
+  version: number;
+  parentMessageId: string | null;
+  status: AgentMessageStatus;
+  content: string | null;
+  chainOfThought: string | null;
+  error: {
+    code: string;
+    message: string;
+  } | null;
+};
+
+export type AgentMessageType = BaseAgentMessageType & {
   id: ModelId;
   agentMessageId: ModelId;
   created: number;
-  type: "agent_message";
-  sId: string;
   visibility: MessageVisibility;
-  version: number;
-  parentMessageId: string | null;
   configuration: LightAgentConfigurationType;
   skipToolsValidation: boolean;
-  status: AgentMessageStatus;
   actions: AgentActionType[];
-  content: string | null;
-  chainOfThought: string | null;
   rawContents: Array<{
     step: number;
     content: string;
@@ -205,11 +212,7 @@ export type AgentMessageType = {
   } | null;
 };
 
-export type LightAgentMessageType = {
-  type: "agent_message";
-  sId: string;
-  version: number;
-  parentMessageId: string | null;
+export type LightAgentMessageType = BaseAgentMessageType & {
   configuration: {
     sId: string;
     name: string;
@@ -218,16 +221,9 @@ export type LightAgentMessageType = {
     canRead: boolean;
     requestedGroupIds: string[][];
   };
-  status: AgentMessageStatus;
   actions: BaseAgentActionType[];
   citations: Record<string, CitationType>;
   generatedFiles: Omit<ActionGeneratedFileType, "snippet">[];
-  content: string | null;
-  chainOfThought: string | null;
-  error: {
-    code: string;
-    message: string;
-  } | null;
 };
 
 export type AgentMessageWithRankType = WithRank<AgentMessageType>;
