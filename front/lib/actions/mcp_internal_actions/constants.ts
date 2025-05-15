@@ -19,7 +19,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "primitive_types_debugger",
   "query_tables",
   "query_tables_v2",
-  "reasoning_v2",
+  "reasoning",
   "run_dust_app",
   "search",
   "think",
@@ -139,7 +139,7 @@ export const INTERNAL_MCP_SERVERS: Record<
     availability: "auto",
     flag: "dev_mcp_actions",
   },
-  reasoning_v2: {
+  reasoning: {
     id: 1007,
     availability: "auto",
     flag: "dev_mcp_actions",

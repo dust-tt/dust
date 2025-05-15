@@ -15,7 +15,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { isModelId, isModelProviderId, isReasoningEffortId } from "@app/types";
 
 const serverInfo: InternalMCPServerDefinitionType = {
-  name: "reasoning_v2",
+  name: "reasoning",
   version: "1.0.0",
   description:
     "Agent can decide to trigger a reasoning model for complex tasks (mcp)",
