@@ -6,7 +6,7 @@ import {
   ActionScanIcon,
   ActionTableIcon,
   Avatar,
-  classNames,
+  cn,
   ConfettiBackground,
   Tooltip,
   TourGuide,
@@ -125,7 +125,7 @@ export const WelcomeTourGuide = ({
     <TourGuide autoStart onEnd={onTourGuideEnd} onDismiss={onTourGuideEnd}>
       <TourGuideCard anchorRef={undefined}>
         <TourGuideCardVisual
-          className={classNames(
+          className={cn(
             "flex items-center justify-center px-6 text-center",
             "bg-brand-support-blue"
           )}
@@ -138,9 +138,7 @@ export const WelcomeTourGuide = ({
         </TourGuideCardVisual>
         <TourGuideCardTitle>
           Welcome to the{" "}
-          <span
-            className={classNames("font-semibold", "text-brand-hunter-green")}
-          >
+          <span className={cn("font-semibold", "text-brand-hunter-green")}>
             {owner.name}
           </span>{" "}
           workspace.
@@ -152,7 +150,7 @@ export const WelcomeTourGuide = ({
       </TourGuideCard>
       <TourGuideCard anchorRef={startConversationRef} side="bottom">
         <TourGuideCardVisual
-          className={classNames(
+          className={cn(
             "relative flex overflow-hidden p-4 text-center",
             "bg-brand-support-green"
           )}
@@ -160,7 +158,7 @@ export const WelcomeTourGuide = ({
           <div className="flex gap-1">
             <div className="flex gap-1">
               <div
-                className={classNames(
+                className={cn(
                   "heading-2xl",
                   "text-highlight dark:text-highlight-night"
                 )}
@@ -168,15 +166,15 @@ export const WelcomeTourGuide = ({
                 @tra
               </div>
               <div
-                className={classNames(
-                  "h-[32px] w-[3px] animate-cursor-blink",
+                className={cn(
+                  "h-8 w-[3px] animate-cursor-blink",
                   "bg-foreground dark:bg-foreground-night"
                 )}
               />
             </div>
             <div
-              className={classNames(
-                "flex h-[240px] flex-col gap-3 rounded-xl border p-3 pr-5 shadow-xl",
+              className={cn(
+                "flex h-60 flex-col gap-3 rounded-xl border p-3 pr-5 shadow-xl",
                 "border-border bg-background dark:border-border-night dark:bg-background-night"
               )}
             >
@@ -184,7 +182,7 @@ export const WelcomeTourGuide = ({
                 return (
                   <div
                     key={agent.name}
-                    className={classNames(
+                    className={cn(
                       "heading-base flex items-center gap-2",
                       "text-foreground dark:text-foreground-night"
                     )}
@@ -204,7 +202,7 @@ export const WelcomeTourGuide = ({
         <TourGuideCardTitle>
           Use{" "}
           <span
-            className={classNames(
+            className={cn(
               "font-semibold",
               "text-highlight dark:text-highlight-night"
             )}
@@ -223,7 +221,7 @@ export const WelcomeTourGuide = ({
       </TourGuideCard>
       <TourGuideCard anchorRef={spaceMenuButtonRef} side="bottom">
         <TourGuideCardVisual
-          className={classNames(
+          className={cn(
             "flex flex-col items-center justify-center gap-4 p-6 text-center",
             "dark:bg-brand-support-rose-night bg-brand-support-rose"
           )}
@@ -281,7 +279,7 @@ export const WelcomeTourGuide = ({
       </TourGuideCard>
       <TourGuideCard anchorRef={createAgentButtonRef}>
         <TourGuideCardVisual
-          className={classNames(
+          className={cn(
             "flex flex-col items-center justify-center gap-0 px-6 text-center",
             "dark:bg-brand-support-golden-night bg-brand-support-golden"
           )}
@@ -340,7 +338,7 @@ export const WelcomeTourGuide = ({
         <TourGuideCardTitle>
           Create new custom agents{" "}
           <span
-            className={classNames(
+            className={cn(
               "dark:text-brand-orange-golden-night text-brand-orange-golden"
             )}
           >
