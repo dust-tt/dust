@@ -27,7 +27,7 @@ import React, {
 import { AvatarPicker } from "@app/components/assistant_builder/avatar_picker/AssistantBuilderAvatarPicker";
 import {
   buildSelectedEmojiType,
-  makeUrlForEmojiAndBackgroud,
+  makeUrlForEmojiAndBackground,
 } from "@app/components/assistant_builder/avatar_picker/utils";
 import {
   DROID_AVATAR_URLS,
@@ -214,7 +214,7 @@ export default function SettingsScreen({
       const suggestion = emojiSuggestions.value.suggestions[0];
       const emoji = buildSelectedEmojiType(suggestion.emoji);
       if (emoji) {
-        avatarUrl = makeUrlForEmojiAndBackgroud(
+        avatarUrl = makeUrlForEmojiAndBackground(
           {
             id: emoji.id,
             unified: emoji.unified,

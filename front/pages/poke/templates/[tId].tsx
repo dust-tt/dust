@@ -26,7 +26,7 @@ import type { Control } from "react-hook-form";
 import { useFieldArray, useForm } from "react-hook-form";
 import { MultiSelect } from "react-multi-select-component";
 
-import { makeUrlForEmojiAndBackgroud } from "@app/components/assistant_builder/avatar_picker/utils";
+import { makeUrlForEmojiAndBackground } from "@app/components/assistant_builder/avatar_picker/utils";
 import PokeLayout from "@app/components/poke/PokeLayout";
 import {
   PokeForm,
@@ -412,7 +412,7 @@ function PreviewDialog({ form }: { form: any }) {
   const backgroundColor = form.getValues("backgroundColor");
   const [id, unified] = emoji ? emoji.split("/") : [];
 
-  const avatarVisual = makeUrlForEmojiAndBackgroud(
+  const avatarVisual = makeUrlForEmojiAndBackground(
     {
       id,
       unified,

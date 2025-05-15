@@ -1,11 +1,10 @@
 import type { EmojiMartData as EmojiData } from "@dust-tt/sparkle";
-import { avatarUtils } from "@dust-tt/sparkle";
-import { DataEmojiMart } from "@dust-tt/sparkle";
+import { avatarUtils, DataEmojiMart } from "@dust-tt/sparkle";
 
 import type { SelectedEmojiType } from "@app/components/assistant_builder/avatar_picker/types";
 import { EMOJI_AVATAR_BASE_URL } from "@app/components/assistant_builder/shared";
 
-export function makeUrlForEmojiAndBackgroud(
+export function makeUrlForEmojiAndBackground(
   emoji: SelectedEmojiType,
   backgroundColor: `bg-${string}`
 ) {
@@ -47,7 +46,7 @@ export function getDefaultAvatarUrlForPreview(): string | null {
   if (!emoji) {
     return null;
   }
-  return makeUrlForEmojiAndBackgroud(
+  return makeUrlForEmojiAndBackground(
     {
       id: emoji.id,
       unified: emoji.unified,
