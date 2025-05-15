@@ -8,7 +8,6 @@ import {
   ContentMessage,
   ExclamationCircleIcon,
   ExternalLinkIcon,
-  Icon,
   IconPicker,
   Input,
   Label,
@@ -19,7 +18,6 @@ import {
   Separator,
   useCopyToClipboard,
   useSendNotification,
-  XMarkIcon,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useCallback, useState } from "react";
@@ -137,7 +135,7 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
     } finally {
       setIsSynchronizing(false);
     }
-  }, [url, syncServer, mutateMCPServers, sendNotification]);
+  }, [syncServer, mutateMCPServers, sendNotification]);
 
   const copyToClipboard = async () => {
     if (sharedSecret) {
@@ -163,7 +161,9 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
           size="sm"
           title="Synchronization Error"
         >
-          Server could not synchronize successfully. Last attempt {lastSyncAt ? "on " + new Date(lastSyncAt).toLocaleString() : "" } : {lastError}
+          Server could not synchronize successfully. Last attempt{" "}
+          {lastSyncAt ? "on " + new Date(lastSyncAt).toLocaleString() : ""} :{" "}
+          {lastError}
         </ContentMessage>
       )}
 

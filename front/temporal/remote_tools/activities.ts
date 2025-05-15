@@ -37,7 +37,7 @@ export async function syncRemoteMCPServers(): Promise<void> {
 
       // Fetch the remote server metadata
       const r = await fetchRemoteServerMetaDataByURL(auth, server.url);
-      
+
       if (r.isErr()) {
         logger.error({
           msg: "Error fetching remote server metadata",

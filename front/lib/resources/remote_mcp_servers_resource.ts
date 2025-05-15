@@ -277,16 +277,15 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
     auth: Authenticator,
     {
       lastError,
-      lastSyncAt
-    }: 
-    {
-      lastError: string
-      lastSyncAt: Date
+      lastSyncAt,
+    }: {
+      lastError: string;
+      lastSyncAt: Date;
     }
   ) {
     await this.update({
       lastError,
-      lastSyncAt
+      lastSyncAt,
     });
   }
 

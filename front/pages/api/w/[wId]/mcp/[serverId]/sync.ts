@@ -67,7 +67,7 @@ async function handler(
 
   const r = await fetchRemoteServerMetaDataByURL(auth, server.url);
   if (r.isErr()) {
-    server.markAsErrored(auth, {
+    await server.markAsErrored(auth, {
       lastError: r.error.message,
       lastSyncAt: new Date(),
     });
