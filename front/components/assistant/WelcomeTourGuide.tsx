@@ -335,7 +335,6 @@ export function WelcomeTourGuide({
         "border-highlight-400 ring-2 ring-highlight-400/30",
         "dark:border-border-night dark:bg-background-night"
       )}
-      fullWidth
     >
       {body}
       <div className="flex justify-end gap-2 p-2 pt-4">
