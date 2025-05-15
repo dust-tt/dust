@@ -54,6 +54,7 @@ import { FileModel } from "@app/lib/resources/storage/models/files";
 import { makeSId } from "@app/lib/resources/string_ids";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
+import { statsDClient } from "@app/logger/statsDClient";
 import type {
   AgentConfigurationType,
   AgentMessageType,
@@ -491,6 +492,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
 
         localLogger.info(
           {
+            workspaceId: owner.sId,
             actionName: actionConfiguration.name,
           },
           "Waiting for action validation"
@@ -551,8 +553,22 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       executionState: status,
     });
 
+    const tags = [
+      `action:${actionConfiguration.name}`,
+      `mcp_server:${actionConfiguration.mcpServerName}`,
+      `workspace:${owner.sId}`,
+      `workspace_name:${owner.name}`,
+    ];
+
     if (status === "timeout") {
-      localLogger.info("Tool validation timed out");
+      statsDClient.increment("mcp_actions_timeout.count", 1, tags);
+      localLogger.info(
+        {
+          workspaceId: owner.sId,
+          actionName: actionConfiguration.name,
+        },
+        "Tool validation timed out"
+      );
       yield buildErrorEvent(
         action,
         agentConfiguration,
@@ -565,7 +581,14 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
     }
 
     if (status === "denied") {
-      localLogger.info("Action execution rejected by user");
+      statsDClient.increment("mcp_actions_denied.count", 1, tags);
+      localLogger.info(
+        {
+          workspaceId: owner.sId,
+          actionName: actionConfiguration.name,
+        },
+        "Action execution rejected by user"
+      );
       yield buildErrorEvent(
         action,
         agentConfiguration,
@@ -624,8 +647,11 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
     }
 
     if (!toolCallResult || toolCallResult.isErr()) {
+      statsDClient.increment("mcp_actions_error.count", 1, tags);
       localLogger.error(
         {
+          workspaceId: owner.sId,
+          actionName: actionConfiguration.name,
           error: toolCallResult?.error?.message,
         },
         "Error calling MCP tool on run."
@@ -826,6 +852,8 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
         fileId: c.file?.id,
       }))
     );
+
+    statsDClient.increment("mcp_actions_success.count", 1, tags);
 
     yield {
       type: "tool_success",
