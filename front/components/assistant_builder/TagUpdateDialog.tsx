@@ -31,7 +31,6 @@ export const EditTagDialog = ({
   const { updateTag } = useUpdateTag({ owner, tagId: tag.sId });
 
   const handleUpdateTag = async () => {
-    console.log("updateTag", name, tag.reserved);
     await updateTag({ name, reserved: tag.reserved });
     if (tag) {
       setIsOpen(false);

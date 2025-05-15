@@ -943,7 +943,7 @@ export async function createAgentConfiguration(
         .filter((t) => t.reserved)
         .map((t) => t.sId);
       if (
-        !isAdmin(owner) &&
+        !isBuilder(owner) &&
         !existingReservedTags.every((reservedTagId) =>
           tags.some((tag) => tag.sId === reservedTagId)
         )
@@ -955,7 +955,7 @@ export async function createAgentConfiguration(
         const tagResource = await TagResource.fetchById(auth, tag.sId);
         if (tagResource) {
           if (
-            !isAdmin(owner) &&
+            !isBuilder(owner) &&
             tagResource.reserved &&
             !existingReservedTags.includes(tagResource.sId)
           ) {

@@ -10,7 +10,7 @@ import { TagResource } from "@app/lib/resources/tags_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-import { isAdmin } from "@app/types";
+import { isBuilder } from "@app/types";
 import type { TagType } from "@app/types/tag";
 
 // Changed schema to accept optional add/remove lists
@@ -104,7 +104,7 @@ async function handler(
       }
 
       if (
-        !isAdmin(auth.getNonNullableWorkspace()) &&
+        !isBuilder(auth.getNonNullableWorkspace()) &&
         (tagsToAdd.some((tag) => tag.reserved) ||
           tagsToRemove.some((tag) => tag.reserved))
       ) {

@@ -14,7 +14,7 @@ import { useCallback, useMemo, useState } from "react";
 import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
 import { useTags } from "@app/lib/swr/tags";
 import type { WorkspaceType } from "@app/types";
-import { isAdmin } from "@app/types";
+import { isAdmin, isBuilder } from "@app/types";
 import type { TagType } from "@app/types/tag";
 
 import { TagCreationDialog } from "./TagCreationDialog";
@@ -83,7 +83,7 @@ export const TagsSelector = ({
           <Chip
             key={tag.sId}
             onRemove={
-              tag.reserved && !isAdmin(owner)
+              tag.reserved && !isBuilder(owner)
                 ? undefined
                 : () => {
                     setBuilderState((state) => ({
