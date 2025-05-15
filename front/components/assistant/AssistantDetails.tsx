@@ -357,7 +357,7 @@ export function AssistantDetails({
   owner,
   user,
 }: AssistantDetailsProps) {
-  const [isUpdatingScope, setIsUpdatingScope] = useState(false);
+  const [, setIsUpdatingScope] = useState(false);
   const [selectedTab, setSelectedTab] = useState<
     "info" | "performance" | "editors"
   >("info");

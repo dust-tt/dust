@@ -193,7 +193,6 @@ export default function AssistantBuilder({
 
   const {
     slackDataSource,
-    showSlackIntegration,
     selectedSlackChannels,
     slackChannelsLinkedWithAgent,
     setSelectedSlackChannels,

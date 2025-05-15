@@ -57,7 +57,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   flow: BuilderFlow;
   baseUrl: string;
   templateId: string | null;
-  isAgentDiscoveryEnabled: boolean;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const plan = auth.plan();
@@ -134,7 +133,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       subscription,
       templateId,
       spaces: spaces.map((s) => s.toJSON()),
-      isAgentDiscoveryEnabled,
     },
   };
 });
@@ -152,7 +150,6 @@ export default function CreateAssistant({
   plan,
   subscription,
   templateId,
-  isAgentDiscoveryEnabled,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const { assistantTemplate } = useAssistantTemplate({ templateId });
 
@@ -183,9 +180,7 @@ export default function CreateAssistant({
                 scope:
                   agentConfiguration.scope !== "global"
                     ? agentConfiguration.scope
-                    : isAgentDiscoveryEnabled
-                      ? "hidden"
-                      : "private",
+                    : "hidden",
                 handle: `${agentConfiguration.name}${
                   "isTemplate" in agentConfiguration ? "" : "_Copy"
                 }`,

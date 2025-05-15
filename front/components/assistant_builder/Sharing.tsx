@@ -16,13 +16,11 @@ import { useState } from "react";
 
 import { assistantUsageMessage } from "@app/components/assistant/Usage";
 import { useAgentUsage } from "@app/lib/swr/assistants";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
   AgentConfigurationScope,
   AgentConfigurationType,
   LightWorkspaceType,
 } from "@app/types";
-import { isBuilder } from "@app/types";
 
 type ConfirmationModalDataType = {
   title: string;
@@ -146,18 +144,6 @@ export function SharingDropdown({
     agentConfigurationId: agentConfiguration?.sId || null,
   });
   const assistantName = agentConfiguration?.name;
-
-  const featureFlags = useFeatureFlags({
-    workspaceId: owner.sId,
-  });
-
-  const scopes = Object.entries(SCOPE_INFO).filter(
-    ([entryScope]) =>
-      entryScope !== "global" &&
-      entryScope !== "hidden" &&
-      entryScope !== "visible" &&
-      (isBuilder(owner) || entryScope !== "workspace")
-  );
 
   const usageText = assistantName
     ? assistantUsageMessage({
