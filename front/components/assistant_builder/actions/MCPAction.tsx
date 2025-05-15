@@ -11,6 +11,7 @@ import { DustAppConfigurationSection } from "@app/components/assistant_builder/a
 import { JsonSchemaConfigurationSection } from "@app/components/assistant_builder/actions/configuration/JsonSchemaConfigurationSection";
 import { ReasoningModelConfigurationSection } from "@app/components/assistant_builder/actions/configuration/ReasoningModelConfigurationSection";
 import { TimeFrameConfigurationSection } from "@app/components/assistant_builder/actions/configuration/TimeFrameConfigurationSection";
+import { MCPToolsList } from "@app/components/assistant_builder/actions/MCPToolsList";
 import { DataDescription } from "@app/components/assistant_builder/actions/DataDescription";
 import { generateSchema } from "@app/components/assistant_builder/actions/ProcessAction";
 import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
