@@ -10,7 +10,7 @@ import {
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
-import { compareForFuzzySort, subFilter } from "@app/lib/utils";
+import { compareForFuzzySort, subFilter, tagsSorter } from "@app/lib/utils";
 import type { WorkspaceType } from "@app/types";
 import { isAdmin } from "@app/types";
 import type { TagType } from "@app/types/tag";
@@ -39,11 +39,15 @@ export const TagsFilterMenu = ({
       return subFilter(tagSearch, a.name.toLowerCase());
     })
     .sort((a, b) => {
-      return compareForFuzzySort(
-        tagSearch,
-        a.name.toLowerCase(),
-        b.name.toLowerCase()
-      );
+      if (tagSearch) {
+        return compareForFuzzySort(
+          tagSearch,
+          a.name.toLowerCase(),
+          b.name.toLowerCase()
+        );
+      } else {
+        return tagsSorter(a, b);
+      }
     });
 
   return (

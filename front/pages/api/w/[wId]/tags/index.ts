@@ -81,6 +81,7 @@ async function handler(
 
       const newTag = await TagResource.makeNew(auth, {
         name,
+        kind: "standard",
       });
 
       if (agentIds) {
