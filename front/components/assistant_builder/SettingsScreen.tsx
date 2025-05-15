@@ -202,7 +202,7 @@ export default function SettingsScreen({
     }
   }, [owner, builderState.instructions, builderState.description]);
 
-  const { nonGlobalSpacessUsedInActions } = useBuilderActionInfo(builderState);
+  const { nonGlobalSpacesUsedInActions } = useBuilderActionInfo(builderState);
 
   const updateEmojiFromSuggestions = useCallback(async () => {
     let avatarUrl: string | null = null;
@@ -557,16 +557,16 @@ export default function SettingsScreen({
                       builderState.scope === "published" ||
                       builderState.scope === "workspace") && (
                       <>
-                        {nonGlobalSpacessUsedInActions.length === 0 && (
+                        {nonGlobalSpacesUsedInActions.length === 0 && (
                           <>Visible & usable by all members of the workspace.</>
                         )}
-                        {nonGlobalSpacessUsedInActions.length > 0 && (
+                        {nonGlobalSpacesUsedInActions.length > 0 && (
                           <div>
                             Visible & usable by the members of the{" "}
-                            {`space${nonGlobalSpacessUsedInActions.length > 1 ? "s" : ""}`}{" "}
+                            {`space${nonGlobalSpacesUsedInActions.length > 1 ? "s" : ""}`}{" "}
                             :{" "}
                             <b>
-                              {nonGlobalSpacessUsedInActions
+                              {nonGlobalSpacesUsedInActions
                                 .map((v) => v.name)
                                 .join(", ")}
                             </b>
