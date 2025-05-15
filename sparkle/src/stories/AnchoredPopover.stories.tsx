@@ -1,8 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import React, { useRef, useState } from "react";
 
-import { AnchoredPopover } from "@sparkle/components/AnchoredPopover";
 import { Button } from "@sparkle/components/Button";
+import { AnchoredPopover } from "@sparkle/components/Popover";
 
 const meta = {
   title: "Components/AnchoredPopover",

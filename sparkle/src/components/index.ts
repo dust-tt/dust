@@ -1,4 +1,3 @@
-export { AnchoredPopover } from "./AnchoredPopover";
 export { AnimatedText } from "./AnimatedText";
 export { AspectRatio } from "./AspectRatio";
 export {
@@ -104,6 +103,7 @@ export { PaginatedCitationsGrid } from "./PaginatedCitationsGrid";
 export { Pagination } from "./Pagination";
 export { ColorPicker, IconPicker } from "./Picker";
 export {
+  AnchoredPopover,
   Popover,
   PopoverAnchor,
   PopoverContent,
