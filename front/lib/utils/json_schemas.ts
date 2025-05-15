@@ -21,12 +21,7 @@ export function isJSONSchemaObject(
     | boolean
     | undefined
 ): value is JSONSchema {
-  return (
-    !!value &&
-    typeof value === "object" &&
-    !Array.isArray(value) &&
-    value.type === "object"
-  );
+  return !!value && typeof value === "object";
 }
 
 /**
@@ -64,6 +59,10 @@ function areSchemasEqual(schemaA: JSONSchema, schemaB: JSONSchema): boolean {
     return false;
   }
 
+  if (!isEqual(schemaA.required, schemaB.required)) {
+    return false;
+  }
+
   // Checking for arrays with a single schema for all items.
   if (
     schemaA.type === "array" &&
@@ -74,17 +73,11 @@ function areSchemasEqual(schemaA: JSONSchema, schemaB: JSONSchema): boolean {
     return false;
   }
 
-  // Only checking differences on selected fields.
-  const fields = ["required", "anyOf", "oneOf", "allOf", "enum"] as const;
-  if (fields.some((f) => !isEqual(schemaA[f], schemaB[f]))) {
+  if (!isEqual(schemaA.anyOf, schemaB.anyOf)) {
     return false;
   }
 
-  return (
-    schemaA.properties !== undefined &&
-    schemaB.properties !== undefined &&
-    isEqual(schemaA.properties, schemaB.properties)
-  );
+  return isEqual(schemaA.properties, schemaB.properties);
 }
 
 /**
