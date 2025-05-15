@@ -231,7 +231,7 @@ export default function ActionsScreen({
 
   const isLegacyConfig = isLegacyAssistantBuilderConfiguration(builderState);
 
-  const { nonGlobalSpacessUsedInActions, spaceIdToActions } =
+  const { nonGlobalSpacesUsedInActions, spaceIdToActions } =
     useBuilderActionInfo(builderState);
 
   const {
@@ -461,12 +461,12 @@ export default function ActionsScreen({
             </div>
           )}
         </div>
-        {nonGlobalSpacessUsedInActions.length > 0 && (
+        {nonGlobalSpacesUsedInActions.length > 0 && (
           <div className="w-full">
             <Chip
               color="info"
               size="sm"
-              label={`Based on the sources you selected, this agent can only be used by users with access to space${nonGlobalSpacessUsedInActions.length > 1 ? "s" : ""} : ${nonGlobalSpacessUsedInActions.map((v) => v.name).join(", ")}.`}
+              label={`Based on the sources you selected, this agent can only be used by users with access to space${nonGlobalSpacesUsedInActions.length > 1 ? "s" : ""} : ${nonGlobalSpacesUsedInActions.map((v) => v.name).join(", ")}.`}
             />
           </div>
         )}

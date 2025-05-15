@@ -151,14 +151,14 @@ export const useBuilderActionInfo = (builderState: AssistantBuilderState) => {
     }, {});
   }, [configurableActions, mcpServerViews]);
 
-  const nonGlobalSpacessUsedInActions = useMemo(() => {
+  const nonGlobalSpacesUsedInActions = useMemo(() => {
     const nonGlobalSpaces = spaces.filter((s) => s.kind !== "global");
     return nonGlobalSpaces.filter((v) => spaceIdToActions[v.sId]?.length > 0);
   }, [spaceIdToActions, spaces]);
 
   return {
     configurableActions,
-    nonGlobalSpacessUsedInActions,
+    nonGlobalSpacesUsedInActions,
     spaceIdToActions,
   };
 };
