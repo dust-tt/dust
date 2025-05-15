@@ -14,11 +14,11 @@ import type { CellContext } from "@tanstack/react-table";
 import { useRouter } from "next/router";
 import { useMemo, useState } from "react";
 
+import { SCOPE_INFO } from "@app/components/assistant/AssistantDetails";
 import { DeleteAssistantDialog } from "@app/components/assistant/DeleteAssistantDialog";
 import { GlobalAgentAction } from "@app/components/assistant/manager/GlobalAgentAction";
 import { TableTagSelector } from "@app/components/assistant/manager/TableTagSelector";
 import { assistantUsageMessage } from "@app/components/assistant/Usage";
-import { SCOPE_INFO } from "@app/components/assistant_builder/Sharing";
 import { useTags } from "@app/lib/swr/tags";
 import { classNames, formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type {
