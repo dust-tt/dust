@@ -2,7 +2,6 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getMembershipInvitationToken } from "@app/lib/api/invitation";
 import { evaluateWorkspaceSeatAvailability } from "@app/lib/api/workspace";
-import { getSession } from "@app/lib/auth";
 import { AuthFlowError, SSOEnforcedError } from "@app/lib/iam/errors";
 import {
   getPendingMembershipInvitationForEmailAndWorkspace,
@@ -326,9 +325,9 @@ async function handleRegularSignupFlow(
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<void>>
+  res: NextApiResponse<WithAPIErrorResponse<void>>,
+  { session }: { session: SessionWithUser | null }
 ): Promise<void> {
-  const session = await getSession(req, res);
   if (!session) {
     res.status(401).end();
     return;
