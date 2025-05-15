@@ -331,7 +331,7 @@ export function WelcomeTourGuide({
       side={side}
       align={align}
       className={cn(
-        "max-w-xs shadow-xl",
+        "w-78 max-w-xs shadow-xl",
         "border-highlight-400 ring-2 ring-highlight-400/30",
         "dark:border-border-night dark:bg-background-night"
       )}
