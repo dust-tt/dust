@@ -12,7 +12,7 @@ import {
 } from "@app/components/home/Particles";
 import { PricePlans } from "@app/components/plans/PlansTables";
 
-export async function getServerSideProps() {
+export async function getStaticProps() {
   return {
     props: {
       shape: getParticleShapeIndexByName(shapeNames.bigSphere),
