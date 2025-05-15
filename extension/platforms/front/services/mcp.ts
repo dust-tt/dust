@@ -71,7 +71,7 @@ export class FrontMcpService extends McpService {
       // Connect the server to the transport.
       await server.connect(transport);
 
-      // Save the server id for potential reconnections.
+      // Once connected, save the server id for potential reconnections.
       this.serverId = transport.getServerId();
 
       // Store the transport for future reuse.
