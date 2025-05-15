@@ -66,13 +66,11 @@ export const MCP_TOOL_STAKE_LEVELS = [
 ] as const;
 export type MCPToolStakeLevelType = (typeof MCP_TOOL_STAKE_LEVELS)[number];
 
-export const FALLBACK_INTERNAL_AUTO_SERVERS_TOOL_STAKE_LEVEL: MCPToolStakeLevelType =
-  "never_ask";
-export const FALLBACK_MCP_TOOL_STAKE_LEVEL: RemoteMCPToolStakeLevelType =
-  "high";
+export const FALLBACK_INTERNAL_AUTO_SERVERS_TOOL_STAKE_LEVEL =
+  "never_ask" as const;
+export const FALLBACK_MCP_TOOL_STAKE_LEVEL = "high" as const;
 
-export const DEFAULT_CLIENT_SIDE_MCP_TOOL_STAKE_LEVEL: MCPToolStakeLevelType =
-  "low";
+export const DEFAULT_CLIENT_SIDE_MCP_TOOL_STAKE_LEVEL = "low" as const;
 
 export const MCP_VALIDATION_OUTPUTS = [
   "approved",
