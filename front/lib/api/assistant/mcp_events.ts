@@ -81,7 +81,7 @@ export async function* getMCPEventsForServer(
   }
 }
 
-export async function publicMCPResults(
+export async function publishMCPResults(
   auth: Authenticator,
   {
     mcpServerId,

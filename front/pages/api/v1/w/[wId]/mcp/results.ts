@@ -10,7 +10,7 @@ import { validateMCPServerAccess } from "@app/lib/api/actions/mcp/client_side_re
 import { parseClientSideMCPRequestId } from "@app/lib/api/actions/mcp_client_side";
 import { getConversation } from "@app/lib/api/assistant/conversation";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
-import { publicMCPResults } from "@app/lib/api/assistant/mcp_events";
+import { publishMCPResults } from "@app/lib/api/assistant/mcp_events";
 import { fetchMessageInConversation } from "@app/lib/api/assistant/messages";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -150,7 +150,7 @@ async function handler(
   }
 
   // Publish MCP action results.
-  await publicMCPResults(auth, {
+  await publishMCPResults(auth, {
     mcpServerId: serverId,
     messageId,
     requestId: r.data.requestId,
