@@ -462,6 +462,127 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
   );
 
   server.tool(
+    "list_organization_projects",
+    "List the open projects of a GitHub organization along with their single select fields (generally used as columns)",
+    {
+      owner: z
+        .string()
+        .describe(
+          "The owner of the repository (account or organization name)."
+        ),
+    },
+    async ({ owner }) => {
+      const accessToken = await getAccessTokenForInternalMCPServer(auth, {
+        mcpServerId,
+      });
+
+      const octokit = new Octokit({ auth: accessToken });
+
+      try {
+        const projectsQuery = `
+        query($owner: String!) {
+          organization(login: $owner) {
+            projectsV2(first: 100) {
+              nodes {
+                id
+                title
+                shortDescription
+                url
+                closed
+                fields(first: 100) {
+                  nodes {
+                    ... on ProjectV2SingleSelectField {
+                      id
+                      name
+                      options {
+                        id
+                        name
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }`;
+
+        const results = (await octokit.graphql(projectsQuery, {
+          owner,
+        })) as {
+          organization: {
+            projectsV2: {
+              nodes: {
+                id: string;
+                title: string;
+                shortDescription: string | null;
+                url: string;
+                closed: boolean;
+                fields: {
+                  nodes: {
+                    id: string;
+                    name: string;
+                    options: {
+                      id: string;
+                      name: string;
+                    }[];
+                  }[];
+                };
+              }[];
+            };
+          };
+        };
+
+        const projects = results.organization.projectsV2.nodes
+          .filter((project: any) => !project.closed)
+          .map((project) => ({
+            ...project,
+            fields: {
+              nodes: project.fields.nodes.filter((n) => n.id),
+            },
+          }));
+
+        let content = "";
+        projects.forEach((project) => {
+          content +=
+            `project='${project.title}' id=${project.id} ` +
+            `description='${project.shortDescription}'\n`;
+          project.fields.nodes.forEach((field) => {
+            content += `  field='${field.name}' id=${field.id}\n`;
+            field.options.forEach((o) => {
+              content += `    option='${o.name}' id=${o.id}\n`;
+            });
+          });
+          content += "\n";
+        });
+
+        if (!content) {
+          content = "No open projects found.";
+        }
+
+        return {
+          isError: false,
+          content: [
+            {
+              type: "text",
+              text: content,
+            },
+          ],
+        };
+      } catch (e) {
+        return {
+          isError: true,
+          content: [
+            {
+              type: "text",
+              text: `Error reviewing GitHub repository projects: ${normalizeError(e).message}`,
+            },
+          ],
+        };
+      }
+    }
+  );
+
+  server.tool(
     "add_issue_to_project",
     "Add an existing issue to a GitHub project, optionally setting a field value.",
     {
