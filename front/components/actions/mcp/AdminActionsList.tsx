@@ -1,10 +1,8 @@
 import {
-  Button,
   Chip,
   classNames,
   DataTable,
   EmptyCTA,
-  PlusIcon,
   Spinner,
 } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
@@ -105,6 +103,24 @@ export const AdminActionsList = ({
   const { portalToHeader } = useActionButtonsPortal({
     containerId: ACTION_BUTTONS_CONTAINER_ID,
   });
+
+  const onCreateRemoteMCPServer = () => {
+    setInternalMCPServerToCreate(undefined);
+    setIsCreateOpen(true);
+  };
+
+  const onCreateInternalMCPServer = async (mcpServer: MCPServerType) => {
+    if (mcpServer.authorization) {
+      setInternalMCPServerToCreate(mcpServer);
+      setIsCreateOpen(true);
+    } else {
+      setIsLoading(true);
+      await createInternalMCPServer(mcpServer.name, true);
+      setIsLoading(false);
+    }
+  };
+
+  const enabledMCPServers = mcpServers.map((s) => s.sId);
 
   const getTableColumns = (): ColumnDef<RowData>[] => {
     const columns: ColumnDef<RowData, any>[] = [];
@@ -237,22 +253,10 @@ export const AdminActionsList = ({
         portalToHeader(
           <AddActionMenu
             owner={owner}
-            enabledMCPServers={mcpServers.map((s) => s.sId)}
+            enabledMCPServers={enabledMCPServers}
             setIsLoading={setIsLoading}
-            createRemoteMCPServer={() => {
-              setInternalMCPServerToCreate(undefined);
-              setIsCreateOpen(true);
-            }}
-            createInternalMCPServer={async (mcpServer: MCPServerType) => {
-              if (mcpServer.authorization) {
-                setInternalMCPServerToCreate(mcpServer);
-                setIsCreateOpen(true);
-              } else {
-                setIsLoading(true);
-                await createInternalMCPServer(mcpServer.name, true);
-                setIsLoading(false);
-              }
-            }}
+            createRemoteMCPServer={onCreateRemoteMCPServer}
+            createInternalMCPServer={onCreateInternalMCPServer}
           />
         )}
 
@@ -267,10 +271,13 @@ export const AdminActionsList = ({
           <EmptyCTA
             message="You don’t have any tools yet."
             action={
-              <Button
-                icon={PlusIcon}
-                onClick={() => setIsCreateOpen(true)}
-                label="Add Tools"
+              <AddActionMenu
+                buttonVariant="outline"
+                owner={owner}
+                enabledMCPServers={enabledMCPServers}
+                setIsLoading={setIsLoading}
+                createRemoteMCPServer={onCreateRemoteMCPServer}
+                createInternalMCPServer={onCreateInternalMCPServer}
               />
             }
           />
