@@ -1,3 +1,4 @@
+export { AnchoredPopover } from "./AnchoredPopover";
 export { AnimatedText } from "./AnimatedText";
 export { AspectRatio } from "./AspectRatio";
 export {
@@ -108,7 +109,8 @@ export {
   PopoverContent,
   PopoverPortal,
   PopoverRoot,
-  PopoverTrigger} from "./Popover";
+  PopoverTrigger,
+} from "./Popover";
 export { PriceTable } from "./PriceTable";
 export { RadioGroup, RadioGroupCustomItem, RadioGroupItem } from "./RadioGroup";
 export { RainbowEffect } from "./RainbowEffect";
