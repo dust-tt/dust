@@ -152,7 +152,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         false => serde_json::json!({
             "actions": [
                 { "add": { "index": index_fullname, "alias": index_alias, "is_write_index": true } },
-                { "add": { "index": index_previous_fullname, "alias": index_alias, "is_write_index": false } }
             ]
         }),
     };
