@@ -35,7 +35,7 @@ export async function launchRemoteMCPServersSyncWorkflow(): Promise<
       {
         workflowId,
       },
-      "Started weekly remote MCP servers sync workflow. Schedule: Sunday at noon."
+      "Started weekly remote MCP servers sync workflow."
     );
 
     return new Ok(workflowId);
