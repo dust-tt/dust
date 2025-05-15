@@ -32,7 +32,7 @@ const migrateWorkspace = async (
   if (!companyTag) {
     companyTag = await TagResource.makeNew(auth, {
       name: "Company",
-      reserved: true,
+      kind: "protected",
     });
   }
 

@@ -83,7 +83,7 @@ export const TagsSelector = ({
           <Chip
             key={tag.sId}
             onRemove={
-              tag.reserved && !isBuilder(owner)
+              tag.kind === "protected" && !isBuilder(owner)
                 ? undefined
                 : () => {
                     setBuilderState((state) => ({

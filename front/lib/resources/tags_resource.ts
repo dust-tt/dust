@@ -20,7 +20,7 @@ import {
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { LightAgentConfigurationType, ModelId, Result } from "@app/types";
 import { Err, Ok, removeNulls } from "@app/types";
-import type { TagTypeWithUsage } from "@app/types/tag";
+import type { TagKind, TagTypeWithUsage } from "@app/types/tag";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -50,7 +50,7 @@ export class TagResource extends BaseResource<TagModel> {
   static async makeDefaultsForWorkspace(auth: Authenticator) {
     await this.makeNew(auth, {
       name: "Company",
-      reserved: true,
+      kind: "protected",
     });
   }
 
@@ -118,18 +118,12 @@ export class TagResource extends BaseResource<TagModel> {
     return tags.length > 0 ? tags[0] : null;
   }
 
-  static async findAll(
-    auth: Authenticator,
-    { includeReserved }: { includeReserved?: boolean } = {}
-  ) {
+  static async findAll(auth: Authenticator, { kind }: { kind?: TagKind } = {}) {
     return this.baseFetch(auth, {
       where: {
-        ...(includeReserved ? {} : { reserved: false }),
+        ...(kind ? { kind } : {}),
       },
-      order: [
-        ["reserved", "DESC"],
-        ["name", "ASC"],
-      ],
+      order: [["name", "ASC"]],
     });
   }
 
@@ -143,7 +137,7 @@ export class TagResource extends BaseResource<TagModel> {
       attributes: [
         "id",
         "name",
-        "reserved",
+        "kind",
         "createdAt",
         "updatedAt",
         [
@@ -169,7 +163,7 @@ export class TagResource extends BaseResource<TagModel> {
         }),
         name: tag.name,
         usage: (tag.get({ plain: true }) as any).usage as number,
-        reserved: tag.reserved,
+        kind: tag.kind,
       };
     });
   }
@@ -244,8 +238,8 @@ export class TagResource extends BaseResource<TagModel> {
     });
   }
 
-  async updateTag({ name, reserved }: { name: string; reserved: boolean }) {
-    await this.update({ name, reserved });
+  async updateTag({ name, kind }: { name: string; kind: TagKind }) {
+    await this.update({ name, kind });
   }
 
   async delete(
@@ -302,7 +296,7 @@ export class TagResource extends BaseResource<TagModel> {
     return {
       sId: this.sId,
       name: this.name,
-      reserved: this.reserved,
+      kind: this.kind,
     };
   }
 }

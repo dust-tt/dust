@@ -105,14 +105,14 @@ async function handler(
 
       if (
         !isBuilder(auth.getNonNullableWorkspace()) &&
-        (tagsToAdd.some((tag) => tag.reserved) ||
-          tagsToRemove.some((tag) => tag.reserved))
+        (tagsToAdd.some((tag) => tag.kind === "protected") ||
+          tagsToRemove.some((tag) => tag.kind === "protected"))
       ) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: "Reserved tags cannot be added or removed.",
+            message: "Protected tags cannot be added or removed.",
           },
         });
       }

@@ -931,7 +931,7 @@ export async function createAgentConfiguration(
         ? await TagResource.listForAgent(auth, existingAgent.id)
         : [];
       const existingReservedTags = existingTags
-        .filter((t) => t.reserved)
+        .filter((t) => t.kind === "protected")
         .map((t) => t.sId);
       if (
         !isBuilder(owner) &&
@@ -947,7 +947,7 @@ export async function createAgentConfiguration(
         if (tagResource) {
           if (
             !isBuilder(owner) &&
-            tagResource.reserved &&
+            tagResource.kind === "protected" &&
             !existingReservedTags.includes(tagResource.sId)
           ) {
             throw new Error("Cannot add reserved tag to agent");

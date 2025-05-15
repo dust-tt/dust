@@ -198,11 +198,8 @@ function spreadLength(a: string, b: string) {
 }
 
 export const tagsSorter = (a: TagType, b: TagType) => {
-  if (a.reserved && !b.reserved) {
-    return -1;
-  }
-  if (!a.reserved && b.reserved) {
-    return 1;
+  if (a.kind !== b.kind) {
+    return a.kind.localeCompare(b.kind);
   }
   return a.name.localeCompare(b.name);
 };

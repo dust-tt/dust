@@ -3,12 +3,13 @@ import { DataTypes } from "sequelize";
 
 import { frontSequelize } from "@app/lib/resources/storage";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
+import type { TagKind } from "@app/types/tag";
 
 export class TagModel extends WorkspaceAwareModel<TagModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare reserved: boolean;
+  declare kind: TagKind;
 
   declare name: string;
 }
@@ -24,10 +25,10 @@ TagModel.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
-    reserved: {
-      type: DataTypes.BOOLEAN,
-      allowNull: false,
-      defaultValue: false,
+    kind: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: "standard",
     },
     name: {
       type: DataTypes.STRING,
