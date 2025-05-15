@@ -23,7 +23,6 @@ const DEFAULT_TOOLS_WITH_CONFIGURATION = [
 ] as const satisfies Array<AssistantBuilderActionConfiguration["type"]>;
 
 const DEFAULT_TOOLS_WITHOUT_CONFIGURATION = [
-  "REASONING",
   "DATA_VISUALIZATION",
 ] as const satisfies Array<
   | AssistantBuilderActionConfiguration["type"]
@@ -46,22 +45,12 @@ function getDefaultConfigurationSpecification(
   };
 }
 
-function getAvailableNonMCPActions({
-  enableReasoningTool,
-}: {
-  enableReasoningTool: boolean;
-}) {
+function getAvailableNonMCPActions() {
   // We should not show the option if it's already selected.
   const list = [
     ...DEFAULT_TOOLS_WITHOUT_CONFIGURATION,
     ...DEFAULT_TOOLS_WITH_CONFIGURATION,
-  ].filter((tool) => {
-    if (tool === "REASONING") {
-      return enableReasoningTool;
-    }
-
-    return true;
-  });
+  ];
 
   return list.map((item) => getDefaultConfigurationSpecification(item));
 }
@@ -132,17 +121,13 @@ function getGroupedMCPServerViews({
 }
 
 interface UseToolsProps {
-  enableReasoningTool: boolean;
   actions: AssistantBuilderActionState[];
 }
 
-export const useTools = ({ enableReasoningTool, actions }: UseToolsProps) => {
+export const useTools = ({ actions }: UseToolsProps) => {
   const { mcpServerViews, spaces } = useContext(AssistantBuilderContext);
 
-  const nonDefaultMCPActions = useMemo(
-    () => getAvailableNonMCPActions({ enableReasoningTool }),
-    [enableReasoningTool]
-  );
+  const nonDefaultMCPActions = useMemo(() => getAvailableNonMCPActions(), []);
 
   const {
     mcpServerViewsWithKnowledge,

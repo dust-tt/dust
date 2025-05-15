@@ -11,11 +11,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
   InformationCircleIcon,
   Input,
@@ -82,7 +77,6 @@ import type {
   AssistantBuilderActionState,
   AssistantBuilderPendingAction,
   AssistantBuilderProcessConfiguration,
-  AssistantBuilderReasoningConfiguration,
   AssistantBuilderRetrievalConfiguration,
   AssistantBuilderSetActionType,
   AssistantBuilderState,
@@ -108,7 +102,6 @@ import {
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
-  ModelConfigurationType,
   SpaceType,
   WhitelistableFeature,
   WorkspaceType,
@@ -211,8 +204,6 @@ interface ActionScreenProps {
   setEdited: (edited: boolean) => void;
   setAction: (action: AssistantBuilderSetActionType) => void;
   pendingAction: AssistantBuilderPendingAction;
-  enableReasoningTool: boolean;
-  reasoningModels: ModelConfigurationType[];
 }
 
 export default function ActionsScreen({
@@ -222,8 +213,6 @@ export default function ActionsScreen({
   setEdited,
   setAction,
   pendingAction,
-  enableReasoningTool,
-  reasoningModels,
 }: ActionScreenProps) {
   const { hasFeature } = useFeatureFlags({
     workspaceId: owner.sId,
@@ -240,7 +229,6 @@ export default function ActionsScreen({
     selectableDefaultMCPServerViews,
     selectableNonDefaultMCPServerViews,
   } = useTools({
-    enableReasoningTool,
     actions: builderState.actions,
   });
 
@@ -430,33 +418,6 @@ export default function ActionsScreen({
                     maxStepsPerRun,
                   }));
                 }}
-                setReasoningModel={
-                  enableReasoningTool &&
-                  builderState.actions.find((a) => a.type === "REASONING")
-                    ? (model) => {
-                        setEdited(true);
-                        setBuilderState((state) => ({
-                          ...state,
-                          actions: state.actions.map((a) =>
-                            a.type === "REASONING"
-                              ? {
-                                  ...a,
-                                  configuration: {
-                                    ...a.configuration,
-                                    modelId: model.modelId,
-                                    providerId: model.providerId,
-                                    reasoningEffort:
-                                      model.reasoningEffort ?? null,
-                                  },
-                                }
-                              : a
-                          ),
-                        }));
-                      }
-                    : undefined
-                }
-                reasoningModels={reasoningModels}
-                builderState={builderState}
               />
             </div>
           )}
@@ -1136,29 +1097,10 @@ function ActionEditor({
 function AdvancedSettings({
   maxStepsPerRun,
   setMaxStepsPerRun,
-  reasoningModels,
-  setReasoningModel,
-  builderState,
 }: {
   maxStepsPerRun: number | null;
   setMaxStepsPerRun: (maxStepsPerRun: number | null) => void;
-  reasoningModels?: ModelConfigurationType[];
-  setReasoningModel: ((model: ModelConfigurationType) => void) | undefined;
-  builderState: AssistantBuilderState;
 }) {
-  const reasoningConfig = builderState.actions.find(
-    (a) => a.type === "REASONING"
-  )?.configuration as AssistantBuilderReasoningConfiguration | undefined;
-
-  const reasoningModel =
-    reasoningModels?.find(
-      (m) =>
-        m.modelId === reasoningConfig?.modelId &&
-        m.providerId === reasoningConfig?.providerId &&
-        (m.reasoningEffort ?? null) ===
-          (reasoningConfig?.reasoningEffort ?? null)
-    ) ?? reasoningModels?.[0];
-
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -1192,26 +1134,6 @@ function AdvancedSettings({
             }
           }}
         />
-
-        {(reasoningModels?.length ?? 0) > 1 && setReasoningModel && (
-          <DropdownMenuSub>
-            <DropdownMenuSubTrigger label="Reasoning model" className="mt-1" />
-            <DropdownMenuSubContent>
-              <DropdownMenuRadioGroup
-                value={`${reasoningModel?.modelId}-${reasoningModel?.providerId}-${reasoningModel?.reasoningEffort ?? ""}`}
-              >
-                {(reasoningModels ?? []).map((model) => (
-                  <DropdownMenuRadioItem
-                    key={`${model.modelId}-${model.providerId}-${model.reasoningEffort ?? ""}`}
-                    value={`${model.modelId}-${model.providerId}-${model.reasoningEffort ?? ""}`}
-                    label={model.displayName}
-                    onClick={() => setReasoningModel(model)}
-                  />
-                ))}
-              </DropdownMenuRadioGroup>
-            </DropdownMenuSubContent>
-          </DropdownMenuSub>
-        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );
