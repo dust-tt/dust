@@ -47,32 +47,24 @@ export function withSessionAuthentication<T>(
   handler: WithSessionAuthenticationForWorkspaceHandler<T>,
   { isStreaming = false }: { isStreaming?: boolean } = {}
 ) {
-  return withLogging(
-    async (
+  return withLogging<T>(async (req, res, context, updateContext) => {
+    if (!context.session) {
+      return apiError(req, res, {
+        status_code: 401,
+        api_error: {
+          type: "not_authenticated",
+          message:
+            "The user does not have an active session or is not authenticated.",
+        },
+      });
+    }
+    return handler(
       req,
-      res: NextApiResponse<WithAPIErrorResponse<T>>,
-      context,
+      res,
+      context as SessionAuthenticationContext,
       updateContext
-    ) => {
-      if (!context.session) {
-        return apiError(req, res, {
-          status_code: 401,
-          api_error: {
-            type: "not_authenticated",
-            message:
-              "The user does not have an active session or is not authenticated.",
-          },
-        });
-      }
-      return handler(
-        req,
-        res,
-        context as SessionAuthenticationContext,
-        updateContext
-      );
-    },
-    isStreaming
-  );
+    );
+  }, isStreaming);
 }
 
 /**
