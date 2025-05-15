@@ -9,7 +9,8 @@ import type { Authenticator } from "@app/lib/auth";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import { isAdmin, type WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types";
+import { isAdmin } from "@app/types";
 import type { TagType } from "@app/types/tag";
 
 // Changed schema to accept optional add/remove lists

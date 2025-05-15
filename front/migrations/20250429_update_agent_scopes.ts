@@ -30,7 +30,10 @@ const migrateWorkspace = async (
 
   let companyTag = await TagResource.findByName(auth, "Company");
   if (!companyTag) {
-    companyTag = await TagResource.makeNew(auth, { name: "Company" });
+    companyTag = await TagResource.makeNew(auth, {
+      name: "Company",
+      reserved: true,
+    });
   }
 
   for (const agent of agents) {

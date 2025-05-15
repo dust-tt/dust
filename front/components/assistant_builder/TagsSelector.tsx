@@ -94,7 +94,7 @@ export const TagsSelector = ({
                   }
             }
             size="xs"
-            color={tag.reserved ? "blue" : "golden"}
+            color="golden"
             label={tag.name}
           />
         ))}
@@ -163,11 +163,7 @@ export const TagsSelector = ({
                   setEdited(true);
                 }}
               >
-                <Chip
-                  size="xs"
-                  color={tag.reserved ? "blue" : "golden"}
-                  label={tag.name}
-                />
+                <Chip size="xs" color="golden" label={tag.name} />
               </DropdownMenuItem>
             ))}
           </DropdownMenuContent>

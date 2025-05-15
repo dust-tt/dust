@@ -39,11 +39,21 @@ export const TagsFilterMenu = ({
       return subFilter(tagSearch, a.name.toLowerCase());
     })
     .sort((a, b) => {
-      return compareForFuzzySort(
-        tagSearch,
-        a.name.toLowerCase(),
-        b.name.toLowerCase()
-      );
+      if (tagSearch) {
+        return compareForFuzzySort(
+          tagSearch,
+          a.name.toLowerCase(),
+          b.name.toLowerCase()
+        );
+      } else {
+        if (a.reserved && !b.reserved) {
+          return -1;
+        }
+        if (!a.reserved && b.reserved) {
+          return 1;
+        }
+        return a.name.localeCompare(b.name);
+      }
     });
 
   return (
@@ -99,11 +109,7 @@ export const TagsFilterMenu = ({
                   setSelectedTags([...selectedTags, tag]);
                 }}
               >
-                <Chip
-                  label={tag.name}
-                  size="xs"
-                  color={tag.reserved ? "blue" : "golden"}
-                />
+                <Chip label={tag.name} size="xs" color="golden" />
               </DropdownMenuItem>
             ))}
         </DropdownMenuContent>

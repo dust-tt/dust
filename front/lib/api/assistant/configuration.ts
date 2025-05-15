@@ -65,10 +65,7 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
-import {
-  generateRandomModelSId,
-  getResourceIdFromSId,
-} from "@app/lib/resources/string_ids";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { TemplateResource } from "@app/lib/resources/template_resource";
 import logger from "@app/logger/logger";
@@ -629,7 +626,15 @@ async function fetchWorkspaceAgentConfigurationsForView(
       ),
       tags: tags
         .map((t) => t.toJSON())
-        .sort((a, b) => a.name.localeCompare(b.name)),
+        .sort((a, b) => {
+          if (a.reserved && !b.reserved) {
+            return -1;
+          }
+          if (!a.reserved && b.reserved) {
+            return 1;
+          }
+          return a.name.localeCompare(b.name);
+        }),
       canRead: false,
       canEdit: false,
     };

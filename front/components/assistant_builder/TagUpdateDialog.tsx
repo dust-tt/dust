@@ -30,8 +30,9 @@ export const EditTagDialog = ({
   const [name, setName] = useState(() => tag.name);
   const { updateTag } = useUpdateTag({ owner, tagId: tag.sId });
 
-  const handleCreateTag = async () => {
-    await updateTag({ name });
+  const handleUpdateTag = async () => {
+    console.log("updateTag", name, tag.reserved);
+    await updateTag({ name, reserved: tag.reserved });
     if (tag) {
       setIsOpen(false);
     }
@@ -58,7 +59,7 @@ export const EditTagDialog = ({
                   }}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && name.length > 0) {
-                      void handleCreateTag();
+                      void handleUpdateTag();
                     }
                   }}
                   autoFocus
@@ -75,7 +76,7 @@ export const EditTagDialog = ({
           rightButtonProps={{
             label: "Save",
             variant: "primary",
-            onClick: handleCreateTag,
+            onClick: handleUpdateTag,
             disabled: name.length === 0,
           }}
         />

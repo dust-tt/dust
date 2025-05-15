@@ -174,7 +174,13 @@ export function useUpdateTag({
   const { mutateTags } = useTags({ owner, disabled: true });
   const { mutateTagsUsage } = useTagsUsage({ owner, disabled: true });
 
-  const updateTag = async ({ name }: { name: string }) => {
+  const updateTag = async ({
+    name,
+    reserved,
+  }: {
+    name: string;
+    reserved: boolean;
+  }) => {
     const res = await fetch(`/api/w/${owner.sId}/tags/${tagId}`, {
       method: "PUT",
       headers: {
@@ -182,6 +188,7 @@ export function useUpdateTag({
       },
       body: JSON.stringify({
         name,
+        reserved,
       }),
     });
 

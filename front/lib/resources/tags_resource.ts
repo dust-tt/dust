@@ -136,6 +136,7 @@ export class TagResource extends BaseResource<TagModel> {
       attributes: [
         "id",
         "name",
+        "reserved",
         "createdAt",
         "updatedAt",
         [
@@ -161,6 +162,7 @@ export class TagResource extends BaseResource<TagModel> {
         }),
         name: tag.name,
         usage: (tag.get({ plain: true }) as any).usage as number,
+        reserved: tag.reserved,
       };
     });
   }

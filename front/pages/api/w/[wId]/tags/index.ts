@@ -8,7 +8,8 @@ import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { TagAgentModel } from "@app/lib/models/assistant/tag_agent";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { apiError } from "@app/logger/withlogging";
-import { isAdmin, type WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types";
+import { isAdmin } from "@app/types";
 import type { TagType } from "@app/types/tag";
 
 export type GetTagsResponseBody = {
@@ -83,6 +84,7 @@ async function handler(
 
       const newTag = await TagResource.makeNew(auth, {
         name,
+        reserved: false,
       });
 
       if (agentIds) {
