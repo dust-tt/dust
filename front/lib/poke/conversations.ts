@@ -21,6 +21,7 @@ export async function getPokeConversation(
   conversationId: string,
   includeDeleted?: boolean
 ): Promise<Result<PokeConversationType, ConversationError>> {
+  const owner = auth.getNonNullableWorkspace();
   const conversation = await getConversation(
     auth,
     conversationId,
@@ -39,7 +40,10 @@ export async function getPokeConversation(
         if (m.type === "agent_message") {
           m.runIds = (
             await AgentMessage.findOne({
-              where: { id: m.agentMessageId },
+              where: {
+                id: m.agentMessageId,
+                workspaceId: owner.id,
+              },
               attributes: ["runIds"],
               raw: true,
             })
@@ -52,7 +56,10 @@ export async function getPokeConversation(
                   case "browse_action": {
                     a.runId = (
                       await AgentBrowseAction.findOne({
-                        where: { id: a.id },
+                        where: {
+                          id: a.id,
+                          workspaceId: owner.id,
+                        },
                         attributes: ["runId"],
                         raw: true,
                       })
@@ -66,7 +73,10 @@ export async function getPokeConversation(
                   case "process_action": {
                     a.runId = (
                       await AgentProcessAction.findOne({
-                        where: { id: a.id },
+                        where: {
+                          id: a.id,
+                          workspaceId: owner.id,
+                        },
                         attributes: ["runId"],
                         raw: true,
                       })
@@ -82,7 +92,7 @@ export async function getPokeConversation(
                       await AgentRetrievalAction.findOne({
                         where: {
                           id: a.id,
-                          workspaceId: auth.getNonNullableWorkspace().id,
+                          workspaceId: owner.id,
                         },
                         attributes: ["runId"],
                         raw: true,
@@ -99,7 +109,7 @@ export async function getPokeConversation(
                       await AgentTablesQueryAction.findOne({
                         where: {
                           id: a.id,
-                          workspaceId: auth.getNonNullableWorkspace().id,
+                          workspaceId: owner.id,
                         },
                         attributes: ["runId"],
                         raw: true,
@@ -118,7 +128,7 @@ export async function getPokeConversation(
                       await AgentWebsearchAction.findOne({
                         where: {
                           id: a.id,
-                          workspaceId: auth.getNonNullableWorkspace().id,
+                          workspaceId: owner.id,
                         },
                         attributes: ["runId"],
                         raw: true,
@@ -134,7 +144,7 @@ export async function getPokeConversation(
                     const runAction = await AgentDustAppRunAction.findOne({
                       where: {
                         id: a.id,
-                        workspaceId: auth.getNonNullableWorkspace().id,
+                        workspaceId: owner.id,
                       },
                       attributes: ["runId", "appWorkspaceId", "appId"],
                       raw: true,

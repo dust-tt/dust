@@ -8,6 +8,7 @@ import type { JSONSchema7 } from "json-schema";
 
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import {
+  DEFAULT_CLIENT_SIDE_MCP_TOOL_STAKE_LEVEL,
   FALLBACK_INTERNAL_AUTO_SERVERS_TOOL_STAKE_LEVEL,
   FALLBACK_MCP_TOOL_STAKE_LEVEL,
 } from "@app/lib/actions/constants";
@@ -51,6 +52,7 @@ import {
   isServerSideMCPServerConfiguration,
   isServerSideMCPToolConfiguration,
 } from "@app/lib/actions/types/guards";
+import { getBaseServerId } from "@app/lib/api/actions/mcp/client_side_registry";
 import type {
   ClientSideMCPToolTypeWithStakeLevel,
   MCPToolType,
@@ -115,14 +117,18 @@ function makeClientSideMCPToolConfigurations(
   return tools.map((tool) => ({
     sId: generateRandomModelSId(),
     type: "mcp_configuration",
-    name: tool.name,
-    description: tool.description ?? null,
-    inputSchema: tool.inputSchema || EMPTY_INPUT_SCHEMA,
-    id: config.id,
-    clientSideMcpServerId: config.clientSideMcpServerId,
     availability: "manual", // Can't be auto for client-side MCP servers.
-    originalName: tool.name,
+    clientSideMcpServerId: config.clientSideMcpServerId,
+    description: tool.description ?? null,
+    id: config.id,
+    inputSchema: tool.inputSchema || EMPTY_INPUT_SCHEMA,
     mcpServerName: config.name,
+    name: tool.name,
+    originalName: tool.name,
+    permission: tool.stakeLevel,
+    // Use the base serverId (without suffix) to ensure tools are shared across all instances
+    // of the same server name, allowing for consistent tool behavior.
+    toolServerId: getBaseServerId(config.clientSideMcpServerId),
   }));
 }
 
@@ -164,12 +170,15 @@ export async function* tryCallMCPTool(
     return;
   }
 
+  const conversationId = agentLoopRunContext.conversation.sId;
+  const messageId = agentLoopRunContext.agentMessage.sId;
+
   const connectionParamsRes = await getMCPClientConnectionParams(
     auth,
     agentLoopRunContext.actionConfiguration,
     {
-      conversationId: agentLoopRunContext.conversation.sId,
-      messageId: agentLoopRunContext.agentMessage.sId,
+      conversationId,
+      messageId,
     }
   );
   if (connectionParamsRes.isErr()) {
@@ -184,7 +193,7 @@ export async function* tryCallMCPTool(
   try {
     const r = await connectToMCPServer(auth, {
       params: connectionParamsRes.value,
-      agentLoopRunContext,
+      agentLoopContext: { agentLoopRunContext },
     });
     if (r.isErr()) {
       yield {
@@ -266,8 +275,8 @@ export async function* tryCallMCPTool(
       logger.error(
         {
           workspaceId: auth.getNonNullableWorkspace().sId,
-          conversationId: agentLoopRunContext.conversation.sId,
-          messageId: agentLoopRunContext.agentMessage.sId,
+          conversationId,
+          messageId,
           error: toolCallResult.content,
         },
         `Error calling MCP tool in tryCallMCPTool().`
@@ -366,16 +375,18 @@ function getPrefixedToolName(
   return new Ok(prefixedName);
 }
 
+type AgentLoopListToolsContextWithoutConfigurationType = Omit<
+  AgentLoopListToolsContextType,
+  "agentActionConfiguration"
+>;
+
 /**
  * List the MCP tools for the given agent actions.
  * Returns MCP tools by connecting to the specified MCP servers.
  */
 export async function tryListMCPTools(
   auth: Authenticator,
-  agentLoopListToolsContext: Omit<
-    AgentLoopListToolsContextType,
-    "agentActionConfiguration"
-  >
+  agentLoopListToolsContext: AgentLoopListToolsContextWithoutConfigurationType
 ): Promise<{ tools: MCPToolConfigurationType[]; error?: string }> {
   const owner = auth.getNonNullableWorkspace();
 
@@ -518,7 +529,7 @@ async function listToolsForClientSideMCPServer(
       ...extractMetadataFromTools(tools).map((tool) => ({
         ...tool,
         availability: "manual" as const,
-        stakeLevel: FALLBACK_MCP_TOOL_STAKE_LEVEL,
+        stakeLevel: DEFAULT_CLIENT_SIDE_MCP_TOOL_STAKE_LEVEL,
       })),
     ];
   } while (nextPageCursor);
@@ -528,6 +539,7 @@ async function listToolsForClientSideMCPServer(
     config,
     allTools
   );
+
   return new Ok(clientSideToolConfigs);
 }
 
@@ -646,7 +658,7 @@ async function listMCPServerTools(
     const connectionParams = connectionParamsRes.value;
     const r = await connectToMCPServer(auth, {
       params: connectionParams,
-      agentLoopListToolsContext,
+      agentLoopContext: { agentLoopListToolsContext },
     });
     if (r.isErr()) {
       return r;

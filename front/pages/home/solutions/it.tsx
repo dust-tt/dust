@@ -29,7 +29,7 @@ import {
 import TrustedBy from "@app/components/home/TrustedBy";
 import { classNames } from "@app/lib/utils";
 
-export async function getServerSideProps() {
+export async function getStaticProps() {
   return {
     props: {
       shape: getParticleShapeIndexByName(shapeNames.octahedron),

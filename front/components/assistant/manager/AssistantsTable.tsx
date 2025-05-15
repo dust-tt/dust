@@ -5,6 +5,7 @@ import {
   Chip,
   ClipboardIcon,
   DataTable,
+  EyeIcon,
   PencilSquareIcon,
   Tooltip,
   TrashIcon,
@@ -19,7 +20,11 @@ import { TableTagSelector } from "@app/components/assistant/manager/TableTagSele
 import { assistantUsageMessage } from "@app/components/assistant/Usage";
 import { SCOPE_INFO } from "@app/components/assistant_builder/Sharing";
 import { useTags } from "@app/lib/swr/tags";
-import { classNames, formatTimestampToFriendlyDate } from "@app/lib/utils";
+import {
+  classNames,
+  formatTimestampToFriendlyDate,
+  tagsSorter,
+} from "@app/lib/utils";
 import type {
   AgentConfigurationScope,
   AgentUsageType,
@@ -183,7 +188,7 @@ const getTableColumns = ({
       meta: { className: "w-16", tooltip: "Messages in the last 30 days" },
     },
     {
-      header: "Feedbacks",
+      header: "Feedback",
       accessorFn: (row: RowData) => row.feedbacks,
       cell: (info: CellContext<RowData, { up: number; down: number }>) => {
         if (info.row.original.scope === "global") {
@@ -268,6 +273,8 @@ export function AssistantsTable({
   mutateAgentConfigurations,
 }: AssistantsTableProps) {
   const { tags } = useTags({ owner });
+  const sortedTags = useMemo(() => [...tags].sort(tagsSorter), [tags]);
+
   const [showDeleteDialog, setShowDeleteDialog] = useState<{
     open: boolean;
     agentConfiguration: LightAgentConfigurationType | undefined;
@@ -368,6 +375,17 @@ export function AssistantsTable({
                     kind: "item" as const,
                   },
                   {
+                    label: "More info",
+                    "data-gtm-label": "assistantMoreInfoButton",
+                    "data-gtm-location": "assistantDetails",
+                    icon: EyeIcon,
+                    onClick: (e: React.MouseEvent) => {
+                      e.stopPropagation();
+                      setShowDetails(agentConfiguration);
+                    },
+                    kind: "item" as const,
+                  },
+                  {
                     label: "Duplicate (New)",
                     "data-gtm-label": "assistantDuplicationButton",
                     "data-gtm-location": "assistantDetails",
@@ -434,7 +452,7 @@ export function AssistantsTable({
             data={rows}
             columns={getTableColumns({
               owner,
-              tags,
+              tags: sortedTags,
               isBatchEdit,
               mutateAgentConfigurations,
             })}

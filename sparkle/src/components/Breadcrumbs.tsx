@@ -1,7 +1,7 @@
 import type { ComponentType } from "react";
 import React from "react";
 
-import { Button } from "@sparkle/components/Button";
+import { Button, ICON_SIZE_MAP } from "@sparkle/components/Button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -130,6 +130,19 @@ function BreadcrumbItem({
         tooltip={item.label}
         size={size}
       />
+    );
+  }
+
+  if (item.icon) {
+    return (
+      <div className="s-shrink0 s-label-sm s-inline-flex s-h-9 s-items-center s-gap-2 s-border s-border-border/0 s-px-3">
+        <Icon
+          visual={item.icon}
+          size={ICON_SIZE_MAP[size]}
+          className={cn("-s-mx-0.5")}
+        />
+        <div className={cn("", commonClassName)}>{item.label}</div>
+      </div>
     );
   }
 

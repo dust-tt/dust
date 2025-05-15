@@ -12,6 +12,7 @@ export class TagFactory {
     const auth = await Authenticator.internalBuilderForWorkspace(workspace.sId);
     return TagResource.makeNew(auth, {
       name: params.name,
+      kind: "standard",
     });
   }
 }

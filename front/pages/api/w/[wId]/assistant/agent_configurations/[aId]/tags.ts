@@ -10,6 +10,7 @@ import { TagResource } from "@app/lib/resources/tags_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
+import { isBuilder } from "@app/types";
 import type { TagType } from "@app/types/tag";
 
 // Changed schema to accept optional add/remove lists
@@ -98,6 +99,20 @@ async function handler(
           api_error: {
             type: "invalid_request_error",
             message: "Invalid tag ids",
+          },
+        });
+      }
+
+      if (
+        !isBuilder(auth.getNonNullableWorkspace()) &&
+        (tagsToAdd.some((tag) => tag.kind === "protected") ||
+          tagsToRemove.some((tag) => tag.kind === "protected"))
+      ) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Protected tags cannot be added or removed.",
           },
         });
       }
