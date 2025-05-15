@@ -179,6 +179,7 @@ function _getAgentRouterToolsConfiguration(
       additionalConfiguration: {},
       timeFrame: null,
       dustAppConfiguration: null,
+      jsonSchema: null,
     },
   ];
 }

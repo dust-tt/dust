@@ -32,6 +32,7 @@ import type {
   MCPToolResultContentType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { isMCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { findMatchingSubSchemas } from "@app/lib/actions/mcp_internal_actions/utils";
 import type {
   MCPConnectionParams,
   ServerSideMCPConnectionParams,
@@ -67,7 +68,6 @@ import { fromEvent } from "@app/lib/utils/events";
 import logger from "@app/logger/logger";
 import type { ModelId, Result } from "@app/types";
 import { assertNever, Err, normalizeError, Ok, slugify } from "@app/types";
-import { findMatchingSubSchemas } from "@app/lib/actions/mcp_internal_actions/utils";
 
 const MAX_OUTPUT_ITEMS = 128;
 

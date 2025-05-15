@@ -162,7 +162,7 @@ function createServer(
           {
             context_size: contextSize,
             prompt,
-            schema: actionConfiguration.jsonSchema,
+            schema: jsonSchema,
             objective,
           },
         ],

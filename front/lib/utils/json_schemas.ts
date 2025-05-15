@@ -1,5 +1,3 @@
-import type { InternalToolInputMimeType } from "@dust-tt/client";
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import Ajv from "ajv";
 import type {
   JSONSchema7 as JSONSchema,
@@ -8,7 +6,6 @@ import type {
 import { isEqual } from "lodash";
 
 import type { ConfigurableToolInputType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
-import { ConfigurableToolInputJSONSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 
 /**
  * Type guard to check if a value is a JSONSchema object

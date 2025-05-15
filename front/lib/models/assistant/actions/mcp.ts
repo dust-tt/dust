@@ -1,3 +1,4 @@
+import type { JSONSchema7 as JSONSchema } from "json-schema";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
@@ -21,6 +22,7 @@ export class AgentMCPServerConfiguration extends WorkspaceAwareModel<AgentMCPSer
 
   declare timeFrame: TimeFrame | null;
   declare additionalConfiguration: Record<string, boolean | number | string>;
+  declare jsonSchema: JSONSchema;
 
   declare appId: string | null;
 
@@ -66,6 +68,17 @@ AgentMCPServerConfiguration.init(
           }
           if (!isTimeFrame(value)) {
             throw new Error("Invalid time frame");
+          }
+        },
+      },
+    },
+    jsonSchema: {
+      type: DataTypes.JSONB,
+      allowNull: true,
+      validate: {
+        isValidJSONSchema(value: unknown) {
+          if (typeof value !== "object") {
+            throw new Error("jsonSchema must be an object");
           }
         },
       },
