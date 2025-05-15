@@ -48,7 +48,7 @@ const PopoverContent = React.forwardRef<
           "s-border s-border-border dark:s-border-border-night",
           "s-bg-background dark:s-bg-background-night",
           "s-text-primary-950 dark:s-text-primary-950-night",
-          fullWidth ? "s-grow" : "s-w-72 s-p-4",
+          fullWidth ? "s-w-full" : "s-w-72 s-p-4",
           className
         )}
         {...props}
@@ -111,6 +111,7 @@ function AnchoredPopover({
   open,
   anchorRef,
   children,
+  className,
   ...props
 }: AnchoredPopoverProps) {
   const [position, setPosition] = useState({
@@ -163,10 +164,7 @@ function AnchoredPopover({
   return (
     <PopoverRoot open={open} modal={false}>
       <PopoverAnchor
-        className={cn(
-          "s-fixed s-transition-all s-duration-300 s-ease-in-out",
-          !anchorRef && "s-translate-y-[-50%]"
-        )}
+        className="s-fixed s-transition-all s-duration-300 s-ease-in-out"
         style={{
           top: position.top,
           left: position.left,
@@ -178,6 +176,7 @@ function AnchoredPopover({
         {...props}
         onOpenAutoFocus={(e) => e.preventDefault()}
         mountPortal={false}
+        className={cn(className, !anchorRef && "s-translate-y-[-50%]")}
       >
         {children}
       </PopoverContent>
