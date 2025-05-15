@@ -2,9 +2,7 @@ import type {
   CreateConversationResponseType,
   GetAgentConfigurationsResponseType,
 } from "@dust-tt/client";
-import { assertNever } from "@dust-tt/client";
-import { Box, Static, Text, useInput, useStdout } from "ink";
-import Spinner from "ink-spinner";
+import { Box, Text, useInput, useStdout } from "ink";
 import open from "open";
 import type { FC } from "react";
 import React, { useCallback, useRef, useState } from "react";
@@ -14,6 +12,8 @@ import { getDustClient } from "../../utils/dustClient.js";
 import { normalizeError } from "../../utils/errors.js";
 import { useMe } from "../../utils/hooks/use_me.js";
 import AgentSelector from "../components/AgentSelector.js";
+import type { ConversationItem } from "../components/Conversation.js";
+import Conversation from "../components/Conversation.js";
 
 type AgentConfiguration =
   GetAgentConfigurationsResponseType["agentConfigurations"][number];
@@ -22,42 +22,7 @@ interface CliChatProps {
   sId?: string;
 }
 
-type ConversationItem = { key: string } & (
-  | {
-      type: "welcome_header";
-      agentName: string;
-      agentId: string;
-    }
-  | {
-      type: "user_message";
-      firstName: string;
-      content: string;
-      index: number;
-    }
-  | {
-      type: "agent_message_header";
-      agentName: string;
-      index: number;
-    }
-  | {
-      type: "agent_message_cot_line";
-      text: string;
-      index: number;
-    }
-  | {
-      type: "agent_message_content_line";
-      text: string;
-      index: number;
-    }
-  | {
-      type: "agent_message_cancelled";
-    }
-  | {
-      type: "separator";
-    }
-);
-
-function getLast<T extends ConversationItem>(
+function getLastConversationItem<T extends ConversationItem>(
   items: ConversationItem[],
   type: T["type"]
 ): T | null {
@@ -69,95 +34,6 @@ function getLast<T extends ConversationItem>(
   }
   return null;
 }
-
-const StaticConversationItem: FC<{
-  item: ConversationItem;
-  stdout: NodeJS.WriteStream | null;
-}> = ({ item, stdout }) => {
-  const terminalWidth = stdout?.columns || 80;
-  const rightPadding = 4;
-
-  switch (item.type) {
-    case "welcome_header":
-      return (
-        <Box flexDirection="row" marginBottom={1}>
-          <Box borderStyle="round" borderColor="gray" paddingX={1} paddingY={1}>
-            <Box flexDirection="column">
-              <Box justifyContent="center">
-                <Text bold>Welcome to Dust CLI beta!</Text>
-              </Box>
-              <Box height={1}></Box>
-              <Box justifyContent="center">
-                <Text>
-                  You&apos;re currently chatting with {item.agentName} (
-                  {item.agentId})
-                </Text>
-              </Box>
-              <Box height={1}></Box>
-              <Box justifyContent="center">
-                <Text dimColor>
-                  Type your message below and press Enter to send
-                </Text>
-              </Box>
-            </Box>
-          </Box>
-          <Box></Box>
-        </Box>
-      );
-    case "user_message":
-      return (
-        <Box flexDirection="column" marginBottom={1}>
-          <Box>
-            <Text bold color="green">
-              {item.firstName ?? "You"}
-            </Text>
-          </Box>
-          <Box
-            marginLeft={2}
-            marginRight={rightPadding}
-            flexDirection="column"
-            width={terminalWidth - rightPadding - 2}
-          >
-            <Text wrap="wrap">
-              {item.content.replace(/^\n+/, "").replace(/\n+$/, "")}
-            </Text>
-          </Box>
-        </Box>
-      );
-    case "agent_message_header":
-      return (
-        <Box>
-          <Text bold color="blue">
-            {item.agentName}
-          </Text>
-        </Box>
-      );
-    case "agent_message_cot_line":
-      return (
-        <Box marginLeft={2}>
-          <Text dimColor italic>
-            {item.text}
-          </Text>
-        </Box>
-      );
-    case "agent_message_content_line":
-      return (
-        <Box marginLeft={2}>
-          <Text>{item.text}</Text>
-        </Box>
-      );
-    case "agent_message_cancelled":
-      return (
-        <Box marginBottom={1} marginTop={1}>
-          <Text color="red">[Cancelled]</Text>
-        </Box>
-      );
-    case "separator":
-      return <Box height={1}></Box>;
-    default:
-      assertNever(item);
-  }
-};
 
 const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
   const [error, setError] = useState<string | null>(null);
@@ -173,10 +49,12 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
     useState<AbortController | null>(null);
   const [userInput, setUserInput] = useState("");
   const [cursorPosition, setCursorPosition] = useState(0);
-  const { stdout } = useStdout();
+
   const updateIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const contentRef = useRef<string>("");
   const chainOfThoughtRef = useRef<string>("");
+
+  const { stdout } = useStdout();
 
   const { me, isLoading: isMeLoading, error: meError } = useMe();
 
@@ -195,7 +73,7 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
 
       // Append the user message and agent message header to the conversation items
       setConversationItems((prev) => {
-        const lastUserMessage = getLast<
+        const lastUserMessage = getLastConversationItem<
           ConversationItem & { type: "user_message" }
         >(prev, "user_message");
 
@@ -204,7 +82,7 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
           : 0;
         const newUserMessageKey = `user_message_${newUserMessageIndex}`;
 
-        const lastAgentMessageHeader = getLast<
+        const lastAgentMessageHeader = getLastConversationItem<
           ConversationItem & { type: "agent_message_header" }
         >(prev, "agent_message_header");
 
@@ -352,7 +230,7 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
               contentLines.shift();
             }
 
-            const lastAgentMessageHeader = getLast<
+            const lastAgentMessageHeader = getLastConversationItem<
               ConversationItem & { type: "agent_message_header" }
             >(prev, "agent_message_header");
 
@@ -466,7 +344,7 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
           }
 
           setConversationItems((prev) => {
-            const lastAgentMessageHeader = getLast<
+            const lastAgentMessageHeader = getLastConversationItem<
               ConversationItem & { type: "agent_message_header" }
             >(prev, "agent_message_header");
 
@@ -655,158 +533,19 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
     );
   }
 
-  // Calculate input box dimensions
-  const inputWidth = stdout?.columns ? stdout.columns - 10 : 70;
   const mentionPrefix = selectedAgent ? `@${selectedAgent.name} ` : "";
-  const prefixLength = mentionPrefix.length;
-
-  // Calculate cursor display without modifying the original input
-  const displayInput =
-    userInput.length <= inputWidth - prefixLength
-      ? userInput
-      : userInput.slice(
-          Math.max(
-            0,
-            cursorPosition - Math.floor((inputWidth - prefixLength) / 2)
-          ),
-          cursorPosition + Math.ceil((inputWidth - prefixLength) / 2)
-        );
-
-  const visibleCursorPosition =
-    userInput.length <= inputWidth - prefixLength
-      ? cursorPosition
-      : Math.min(
-          inputWidth - prefixLength,
-          cursorPosition -
-            Math.max(
-              0,
-              cursorPosition - Math.floor((inputWidth - prefixLength) / 2)
-            )
-        );
-
-  // Create a display string with cursor
-  const beforeCursor = displayInput.slice(0, visibleCursorPosition);
-  // Always show a space for the cursor position, even when the input is empty
-  const atCursor = displayInput.charAt(visibleCursorPosition) || " ";
-  const afterCursor = displayInput.slice(visibleCursorPosition + 1);
 
   // Main chat UI
   return (
-    <Box flexDirection="column" height="100%">
-      <Static items={conversationItems}>
-        {(item) => {
-          return (
-            <StaticConversationItem
-              item={item}
-              stdout={stdout}
-              key={item.key}
-            />
-          );
-        }}
-      </Static>
-
-      {isProcessingQuestion && (
-        <Box marginTop={1}>
-          <Text color="green">
-            Thinking <Spinner type="simpleDots" />
-          </Text>
-        </Box>
-      )}
-
-      {/* Input box */}
-      <Box flexDirection="column" marginTop={0} paddingTop={0}>
-        <Box
-          borderStyle="round"
-          borderColor="gray"
-          padding={0}
-          paddingX={1}
-          marginTop={0}
-        >
-          {userInput.includes("\n") ? (
-            // Multiline
-            <Box flexDirection="column">
-              {(() => {
-                // Find which line and position the cursor is on
-                let currentPos = 0;
-                const lines = userInput.split("\n");
-                const cursorLine = lines.findIndex((line) => {
-                  if (
-                    cursorPosition >= currentPos &&
-                    cursorPosition <= currentPos + line.length
-                  ) {
-                    return true;
-                  }
-                  currentPos += line.length + 1; // +1 for the \n character
-                  return false;
-                });
-
-                const cursorPosInLine =
-                  cursorLine >= 0
-                    ? cursorPosition -
-                      (cursorLine === 0
-                        ? 0
-                        : lines
-                            .slice(0, cursorLine)
-                            .reduce((sum, line) => sum + line.length + 1, 0))
-                    : 0;
-
-                return lines.map((line, index) => (
-                  <Box key={index}>
-                    {index === 0 && (
-                      <Text color={isProcessingQuestion ? "gray" : "cyan"} bold>
-                        {mentionPrefix}
-                      </Text>
-                    )}
-
-                    {index === cursorLine ? (
-                      // This is the line with the cursor
-                      <>
-                        <Text>{line.substring(0, cursorPosInLine)}</Text>
-                        <Text
-                          backgroundColor={
-                            isProcessingQuestion ? "gray" : "blue"
-                          }
-                          color="white"
-                        >
-                          {line.charAt(cursorPosInLine) || " "}
-                        </Text>
-                        <Text>{line.substring(cursorPosInLine + 1)}</Text>
-                      </>
-                    ) : (
-                      // Regular line without cursor
-                      // For empty lines, just render a space to ensure the line is visible
-                      <Text>{line === "" ? " " : line}</Text>
-                    )}
-                  </Box>
-                ));
-              })()}
-            </Box>
-          ) : (
-            // Single line
-            <Box>
-              <Text color={isProcessingQuestion ? "gray" : "cyan"} bold>
-                {mentionPrefix}
-              </Text>
-              <Text>{beforeCursor}</Text>
-              <Text
-                backgroundColor={isProcessingQuestion ? "gray" : "blue"}
-                color="white"
-              >
-                {atCursor}
-              </Text>
-              <Text>{afterCursor}</Text>
-            </Box>
-          )}
-        </Box>
-
-        <Box marginTop={0}>
-          <Text dimColor>
-            ↵ to send · \↵ for new line · ESC to clear
-            {conversationId && "· Ctrl+G to open in browser"}
-          </Text>
-        </Box>
-      </Box>
-    </Box>
+    <Conversation
+      conversationItems={conversationItems}
+      isProcessingQuestion={isProcessingQuestion}
+      userInput={userInput}
+      cursorPosition={cursorPosition}
+      mentionPrefix={mentionPrefix}
+      conversationId={conversationId}
+      stdout={stdout}
+    />
   );
 };
 
