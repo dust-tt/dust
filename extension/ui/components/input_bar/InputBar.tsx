@@ -4,6 +4,7 @@ import { useDustAPI } from "@app/shared/lib/dust_api";
 import { getSpaceIcon } from "@app/shared/lib/spaces";
 import type { ContentFragmentsType } from "@app/shared/lib/types";
 import { classNames, compareAgentsForSort } from "@app/shared/lib/utils";
+import type { CaptureService, TabContent } from "@app/shared/services/capture";
 import { usePublicAgentConfigurations } from "@app/ui/components/assistants/usePublicAgentConfigurations";
 import { useFileDrop } from "@app/ui/components/conversation/FileUploaderContext";
 import { GenerationContext } from "@app/ui/components/conversation/GenerationContextProvider";
@@ -20,6 +21,7 @@ import type {
   ExtensionWorkspaceType,
   LightAgentConfigurationType,
 } from "@dust-tt/client";
+import { Ok } from "@dust-tt/client";
 import { Button, Page, Spinner, StopIcon } from "@dust-tt/sparkle";
 import {
   useCallback,

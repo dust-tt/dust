@@ -1,6 +1,7 @@
 import type { UploadedContentFragmentTypeWithKind } from "@app/shared/lib/types";
 import type { AuthService, StoredUser } from "@app/shared/services/auth";
 import type { CaptureService } from "@app/shared/services/capture";
+import { createMockCaptureService } from "@app/shared/services/capture";
 import type { McpService } from "@app/shared/services/mcp";
 import type { StorageService } from "@app/shared/services/storage";
 import type { FileUploaderService } from "@app/ui/hooks/useFileUploaderService";
@@ -58,7 +59,7 @@ export abstract class CorePlatformService {
     platform: PlatformType,
     authCls: new (storage: StorageService) => AuthService,
     storage: StorageService,
-    capture: CaptureService,
+    capture?: CaptureService,
     browserMessaging?: BrowserMessagingService,
     mcp?: McpService
   ) {
@@ -66,7 +67,7 @@ export abstract class CorePlatformService {
     this.auth = new authCls(storage);
     this.storage = storage;
     this.messaging = browserMessaging;
-    this.capture = capture;
+    this.capture = capture || createMockCaptureService();
     this.mcp = mcp;
   }
 
@@ -191,7 +192,7 @@ export abstract class PlatformService extends CorePlatformService {
   // Abstract methods that must be implemented by platform-specific classes.
 
   // Content capture.
-  abstract getCaptureActionsComponent(): ComponentType<CaptureActionsProps>;
+  abstract getCaptureActionsComponent(): ComponentType<CaptureActionsProps> | null;
 
   abstract getSendWithActionsLabel(): string;
 }
