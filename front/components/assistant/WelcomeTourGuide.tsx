@@ -6,18 +6,15 @@ import {
   ActionScanIcon,
   ActionTableIcon,
   Avatar,
-  cn,
   ConfettiBackground,
   Tooltip,
-  TourGuide,
-  TourGuideCard,
-  TourGuideCardContent,
-  TourGuideCardTitle,
-  TourGuideCardVisual,
   TypingAnimation,
 } from "@dust-tt/sparkle";
-import type { ComponentType } from "react";
+import { cn } from "@dust-tt/sparkle";
+import { AnchoredPopover } from "@dust-tt/sparkle";
+import { Button } from "@dust-tt/sparkle";
 import { useMemo, useRef } from "react";
+import { useState } from "react";
 
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import type { ConnectorProvider, UserType, WorkspaceType } from "@app/types";
@@ -90,7 +87,59 @@ const FAKE_AGENTS = [
   },
 ] as const;
 
-export const WelcomeTourGuide = ({
+const EXAMPLE_AGENTS = [
+  {
+    name: "FeedbackHelper",
+    emoji: "❤️",
+    backgroundColor: "bg-rose-100",
+  },
+  {
+    name: "RiskAnalyzer",
+    emoji: "💀",
+    backgroundColor: "bg-lime-800",
+  },
+  {
+    name: "EngagementPro",
+    emoji: "😂",
+    backgroundColor: "bg-golden-200",
+  },
+  {
+    name: "RunbookMaster",
+    emoji: "🧑‍🚀",
+    backgroundColor: "bg-violet-800",
+  },
+  {
+    name: "BrandSpecialist",
+    emoji: "👕",
+    backgroundColor: "bg-blue-200",
+  },
+  {
+    name: "CrisisManager",
+    emoji: "🚒",
+    backgroundColor: "bg-red-200",
+  },
+  {
+    name: "PerformanceCoach",
+    emoji: "🏆",
+    backgroundColor: "bg-yellow-200",
+  },
+  {
+    name: "StrategyPlanner",
+    emoji: "🎯",
+    backgroundColor: "bg-pink-100",
+  },
+] as const;
+
+// Keep your existing CONNECTIONS_IN_TOUR_GUIDE, ACTIONS_IN_TOUR_GUIDE, FAKE_AGENTS constants
+
+type Step = {
+  anchorRef?: React.RefObject<HTMLDivElement>;
+  side?: "top" | "right" | "bottom" | "left";
+  align?: "start" | "center" | "end";
+  body: React.ReactNode;
+};
+
+export function WelcomeTourGuide({
   owner,
   user,
   startConversationRef,
@@ -104,13 +153,11 @@ export const WelcomeTourGuide = ({
   spaceMenuButtonRef: React.RefObject<HTMLDivElement>;
   createAgentButtonRef: React.RefObject<HTMLDivElement>;
   onTourGuideEnd: () => void;
-}) => {
+}) {
   const centeredRef = useRef<HTMLDivElement>(null);
+  const [currentStep, setCurrentStep] = useState(0);
 
-  const connections: {
-    name: string;
-    logo: ComponentType<{ className?: string }>;
-  }[] = useMemo(() => {
+  const connections = useMemo(() => {
     return Object.values(CONNECTOR_CONFIGURATIONS)
       .filter((connector) =>
         CONNECTIONS_IN_TOUR_GUIDE.includes(connector.connectorProvider)
@@ -121,71 +168,56 @@ export const WelcomeTourGuide = ({
       }));
   }, []);
 
-  return (
-    <TourGuide autoStart onEnd={onTourGuideEnd} onDismiss={onTourGuideEnd}>
-      <TourGuideCard anchorRef={undefined}>
-        <TourGuideCardVisual
-          className={cn(
-            "flex items-center justify-center px-6 text-center",
-            "bg-brand-support-blue"
-          )}
-          ref={centeredRef}
-        >
-          <ConfettiBackground variant="confetti" referentSize={centeredRef} />
-          <span className="heading-3xl">
-            <TypingAnimation text={`Rise and shine, ${user.firstName}! 🌅`} />
-          </span>
-        </TourGuideCardVisual>
-        <TourGuideCardTitle>
-          Welcome to the{" "}
-          <span className={cn("font-semibold", "text-brand-hunter-green")}>
-            {owner.name}
-          </span>{" "}
-          workspace.
-        </TourGuideCardTitle>
-        <TourGuideCardContent>
-          {" "}
-          Discover the basics of Dust in 3 steps.
-        </TourGuideCardContent>
-      </TourGuideCard>
-      <TourGuideCard anchorRef={startConversationRef} side="bottom">
-        <TourGuideCardVisual
-          className={cn(
-            "relative flex overflow-hidden p-4 text-center",
-            "bg-brand-support-green"
-          )}
-        >
-          <div className="flex gap-1">
+  const steps: Step[] = [
+    {
+      body: (
+        <>
+          <div
+            ref={centeredRef}
+            className={cn(
+              "flex w-full items-center justify-center p-6 text-center",
+              "aspect-video rounded-t-2xl bg-brand-support-blue"
+            )}
+          >
+            <ConfettiBackground variant="confetti" referentSize={centeredRef} />
+            <span className="heading-3xl">
+              <TypingAnimation text={`Rise and shine, ${user.firstName}! 🌅`} />
+            </span>
+          </div>
+          <div className="heading-lg px-3 pt-4">
+            Welcome to the{" "}
+            <span className="font-semibold text-brand-hunter-green">
+              {owner.name}
+            </span>{" "}
+            workspace.
+          </div>
+          <div className="copy-base px-3 text-muted-foreground dark:text-muted-foreground-night">
+            Discover the basics of Dust in 3 steps.
+          </div>
+        </>
+      ),
+    },
+    {
+      anchorRef: startConversationRef,
+      side: "bottom",
+      body: (
+        <>
+          <div
+            className={cn(
+              "relative flex overflow-hidden rounded-t-2xl p-4 text-center",
+              "bg-brand-support-green"
+            )}
+          >
             <div className="flex gap-1">
-              <div
-                className={cn(
-                  "heading-2xl",
-                  "text-highlight dark:text-highlight-night"
-                )}
-              >
-                @tra
+              <div className="flex gap-1">
+                <div className="heading-2xl text-highlight">@tra</div>
+                <div className="h-8 w-1 animate-cursor-blink bg-foreground" />
               </div>
-              <div
-                className={cn(
-                  "h-8 w-[3px] animate-cursor-blink",
-                  "bg-foreground dark:bg-foreground-night"
-                )}
-              />
-            </div>
-            <div
-              className={cn(
-                "flex h-60 flex-col gap-3 rounded-xl border p-3 pr-5 shadow-xl",
-                "border-border bg-background dark:border-border-night dark:bg-background-night"
-              )}
-            >
-              {FAKE_AGENTS.map((agent) => {
-                return (
+              <div className="flex h-60 flex-col gap-3 rounded-xl border p-3 pr-5 shadow-xl">
+                {FAKE_AGENTS.map((agent) => (
                   <div
                     key={agent.name}
-                    className={cn(
-                      "heading-base flex items-center gap-2",
-                      "text-foreground dark:text-foreground-night"
-                    )}
+                    className="heading-base flex items-center gap-2"
                   >
                     <Avatar
                       size="sm"
@@ -194,41 +226,25 @@ export const WelcomeTourGuide = ({
                     />
                     {agent.name}
                   </div>
-                );
-              })}
+                ))}
+              </div>
             </div>
           </div>
-        </TourGuideCardVisual>
-        <TourGuideCardTitle>
-          Use{" "}
-          <span
-            className={cn(
-              "font-semibold",
-              "text-highlight dark:text-highlight-night"
-            )}
-          >
-            @mentions
-          </span>{" "}
-          to call agents and&nbsp;start a conversation.
-        </TourGuideCardTitle>
-        {/* <TourGuideCardContent className="py-2">
-          <Button
-            label="Watch the full video"
-            icon={PlayIcon}
-            variant={"outline"}
-          />
-        </TourGuideCardContent> */}
-      </TourGuideCard>
-      <TourGuideCard anchorRef={spaceMenuButtonRef} side="bottom">
-        <TourGuideCardVisual
-          className={cn(
-            "flex flex-col items-center justify-center gap-4 p-6 text-center",
-            "dark:bg-brand-support-rose-night bg-brand-support-rose"
-          )}
-        >
-          <div className="grid grid-cols-6 gap-2">
-            {connections.map((c) => {
-              return (
+          <div className="heading-lg px-3 pt-4">
+            Use <span className="font-semibold text-highlight">@mentions</span>{" "}
+            to call agents and&nbsp;start a conversation.
+          </div>
+        </>
+      ),
+    },
+    {
+      anchorRef: spaceMenuButtonRef,
+      side: "bottom",
+      body: (
+        <>
+          <div className="flex flex-col items-center justify-center gap-4 rounded-t-2xl bg-brand-support-rose p-6 text-center">
+            <div className="grid grid-cols-6 gap-2">
+              {connections.map((c) => (
                 <Tooltip
                   key={c.name}
                   label={c.name}
@@ -236,14 +252,12 @@ export const WelcomeTourGuide = ({
                     <Avatar
                       size="md"
                       icon={c.logo}
-                      backgroundColor="bg-white dark:s-bg-primary-800-night"
+                      backgroundColor="bg-white dark:bg-primary-800-night"
                     />
                   }
                 />
-              );
-            })}
-            {ACTIONS_IN_TOUR_GUIDE.map((action) => {
-              return (
+              ))}
+              {ACTIONS_IN_TOUR_GUIDE.map((action) => (
                 <Tooltip
                   key={action.label}
                   label={action.label}
@@ -256,104 +270,97 @@ export const WelcomeTourGuide = ({
                     />
                   }
                 />
-              );
-            })}
+              ))}
+            </div>
           </div>
-        </TourGuideCardVisual>
-        <TourGuideCardTitle>
-          Make your agents smarter by adding&nbsp;
-          <span className="text-brand-red-rose dark:text-brand-red-rose">
-            knowledge and tools
-          </span>
-          .
-        </TourGuideCardTitle>
-        <TourGuideCardContent className="py-2">
-          Set up your connections and your tools in&nbsp;the{" "}
-          <span className="font-semibold text-foreground">spaces</span> tab.
-          {/* <Button
-            label="Watch the full video"
-            icon={PlayIcon}
-            variant={"outline"}
-          /> */}
-        </TourGuideCardContent>
-      </TourGuideCard>
-      <TourGuideCard anchorRef={createAgentButtonRef}>
-        <TourGuideCardVisual
-          className={cn(
-            "flex flex-col items-center justify-center gap-0 px-6 text-center",
-            "dark:bg-brand-support-golden-night bg-brand-support-golden"
-          )}
-        >
-          <div className="grid grid-cols-4 gap-2">
-            <Tooltip
-              label="FeedbackHelper"
-              trigger={
-                <Avatar size="lg" emoji="❤️" backgroundColor="bg-rose-100" />
-              }
-            />
-            <Tooltip
-              label="RiskAnalyzer"
-              trigger={
-                <Avatar size="lg" emoji="💀" backgroundColor="bg-lime-800" />
-              }
-            />
-            <Tooltip
-              label="EngagementPro"
-              trigger={
-                <Avatar size="lg" emoji="😂" backgroundColor="bg-golden-200" />
-              }
-            />
-            <Tooltip
-              label="RunbookMaster"
-              trigger={
-                <Avatar size="lg" emoji="🧑‍🚀" backgroundColor="bg-violet-800" />
-              }
-            />
-            <Tooltip
-              label="BrandSpecialist"
-              trigger={
-                <Avatar size="lg" emoji="👕" backgroundColor="bg-blue-200" />
-              }
-            />
-            <Tooltip
-              label="CrisisManager"
-              trigger={
-                <Avatar size="lg" emoji="🚒" backgroundColor="bg-red-200" />
-              }
-            />
-            <Tooltip
-              label="PerformanceCoach"
-              trigger={
-                <Avatar size="lg" emoji="🏆" backgroundColor="bg-yellow-200" />
-              }
-            />
-            <Tooltip
-              label="StrategyPlanner"
-              trigger={
-                <Avatar size="lg" emoji="🎯" backgroundColor="bg-pink-100" />
-              }
-            />
+          <div className="heading-lg px-3 pt-4">
+            Make your agents smarter by adding&nbsp;
+            <span className="text-brand-red-rose">knowledge and tools</span>.
           </div>
-        </TourGuideCardVisual>
-        <TourGuideCardTitle>
-          Create new custom agents{" "}
-          <span
-            className={cn(
-              "dark:text-brand-orange-golden-night text-brand-orange-golden"
-            )}
-          >
-            designed for your needs
-          </span>
-          .
-        </TourGuideCardTitle>
-        {/* <TourGuideCardContent className="py-2">
+          <div className="copy-base px-3 text-muted-foreground dark:text-muted-foreground-night">
+            Set up your connections and your tools in&nbsp;the{" "}
+            <span className="font-semibold text-foreground">spaces</span> tab.
+          </div>
+        </>
+      ),
+    },
+    {
+      anchorRef: createAgentButtonRef,
+      body: (
+        <>
+          <div className="flex flex-col items-center justify-center gap-0 rounded-t-2xl bg-brand-support-golden p-6 text-center">
+            <div className="grid grid-cols-4 gap-2">
+              {EXAMPLE_AGENTS.map((agent) => (
+                <Tooltip
+                  key={agent.name}
+                  label={agent.name}
+                  trigger={
+                    <Avatar
+                      size="lg"
+                      emoji={agent.emoji}
+                      backgroundColor={agent.backgroundColor}
+                    />
+                  }
+                />
+              ))}
+            </div>
+          </div>
+          <div className="heading-lg px-3 pt-4">
+            Create new custom agents{" "}
+            <span className="text-brand-orange-golden">
+              designed for your needs
+            </span>
+            .
+          </div>
+        </>
+      ),
+    },
+  ];
+
+  const open = currentStep < steps.length;
+  if (!open) {
+    return null;
+  }
+
+  const { anchorRef, side, align, body } = steps[currentStep];
+  const isFirstStep = currentStep === 0;
+  const isLastStep = currentStep === steps.length - 1;
+
+  return (
+    <AnchoredPopover
+      open={open}
+      anchorRef={anchorRef}
+      side={side}
+      align={align}
+      className={cn(
+        "w-[420px] max-w-xs rounded-2xl border shadow-xl",
+        "border-highlight-400 bg-background ring-2 ring-highlight-400/30",
+        "dark:border-border-night dark:bg-background-night"
+      )}
+    >
+      {body}
+      <div className="flex justify-end gap-2 p-2 pt-4">
+        {!isLastStep && (
           <Button
-            label="Watch the full video"
-            icon={PlayIcon}
-            variant={"outline"}
+            variant="outline"
+            label="Dismiss"
+            onClick={() => {
+              setCurrentStep(steps.length);
+              onTourGuideEnd();
+            }}
           />
-        </TourGuideCardContent> */}
-      </TourGuideCard>
-    </TourGuide>
+        )}
+        <Button
+          variant="highlight"
+          label={isFirstStep ? "Start Tour" : isLastStep ? "Done" : "Next"}
+          onClick={() => {
+            if (isLastStep) {
+              onTourGuideEnd();
+            }
+            setCurrentStep(currentStep + 1);
+          }}
+        />
+      </div>
+    </AnchoredPopover>
   );
-};
+}
