@@ -18,6 +18,7 @@ import { isAdmin, isBuilder } from "@app/types";
 import type { TagType } from "@app/types/tag";
 
 import { TagCreationDialog } from "./TagCreationDialog";
+import { tagsSorter } from "@app/lib/utils";
 
 export const TagsSelector = ({
   owner,
@@ -51,16 +52,17 @@ export const TagsSelector = ({
 
   const filteredTags = useMemo(() => {
     const currentTagIds = new Set(builderState.tags.map((t) => t.sId));
-    return tags.filter(
-      (t) =>
-        !currentTagIds.has(t.sId) &&
-        t.name.toLowerCase().includes(searchText.toLowerCase())
-    );
+    return tags
+      .filter(
+        (t) =>
+          !currentTagIds.has(t.sId) &&
+          t.name.toLowerCase().includes(searchText.toLowerCase())
+      )
+      .filter((t) => isBuilder(owner) || t.kind !== "protected")
+      .sort(tagsSorter);
   }, [tags, builderState.tags, searchText]);
 
-  const assistantTags = [...(builderState.tags || [])].sort((a, b) =>
-    a.name.localeCompare(b.name)
-  );
+  const assistantTags = [...(builderState.tags || [])].sort(tagsSorter);
 
   const onTagCreated = (tag: TagType) => {
     setBuilderState((state) => ({
