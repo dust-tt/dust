@@ -297,11 +297,14 @@ export class MCPActionType extends BaseAction {
     };
   }
 
-  async renderForMultiActionsModel({
-    model,
-  }: {
-    model: ModelConfigurationType;
-  }): Promise<FunctionMessageTypeModel> {
+  async renderForMultiActionsModel(
+    _: Authenticator,
+    {
+      model,
+    }: {
+      model: ModelConfigurationType;
+    }
+  ): Promise<FunctionMessageTypeModel> {
     if (!this.functionCallName) {
       throw new Error("MCPAction: functionCallName is required");
     }

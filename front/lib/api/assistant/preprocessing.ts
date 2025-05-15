@@ -96,7 +96,7 @@ export async function renderConversationForModel(
         // doing a Promise.all for now but might need to be reconsiderd in the future.
         stepByStepIndex[stepIndex].actions.push({
           call: action.renderForFunctionCall(),
-          result: await action.renderForMultiActionsModel({
+          result: await action.renderForMultiActionsModel(auth, {
             conversation,
             model,
           }),
