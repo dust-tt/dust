@@ -31,8 +31,8 @@ import { AppResource } from "@app/lib/resources/app_resource";
 import { sanitizeJSONOutput } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import type { DatasetSchema } from "@app/types";
-import { getHeaderFromGroupIds, SUPPORTED_MODEL_CONFIGS } from "@app/types";
 import type { SpecificationBlockType } from "@app/types";
+import { getHeaderFromGroupIds, SUPPORTED_MODEL_CONFIGS } from "@app/types";
 
 import { ConfigurableToolInputSchemas } from "../input_schemas";
 
