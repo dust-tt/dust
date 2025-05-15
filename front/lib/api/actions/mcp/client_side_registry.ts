@@ -148,7 +148,6 @@ export async function registerMCPServer(
   return new Ok({
     expiresAt,
     serverId,
-    success: true,
   });
 }
 
