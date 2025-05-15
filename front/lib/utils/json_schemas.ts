@@ -14,9 +14,19 @@ import { ConfigurableToolInputJSONSchemas } from "@app/lib/actions/mcp_internal_
  * Type guard to check if a value is a JSONSchema object
  */
 export function isJSONSchemaObject(
-  value: JSONSchema | JSONSchemaDefinition | JSONSchemaDefinition[] | boolean
+  value:
+    | JSONSchema
+    | JSONSchemaDefinition
+    | JSONSchemaDefinition[]
+    | boolean
+    | undefined
 ): value is JSONSchema {
-  return value !== null && typeof value === "object";
+  return (
+    !!value &&
+    typeof value === "object" &&
+    !Array.isArray(value) &&
+    value.type === "object"
+  );
 }
 
 /**
@@ -54,15 +64,18 @@ function areSchemasEqual(schemaA: JSONSchema, schemaB: JSONSchema): boolean {
     return false;
   }
 
+  // Checking for arrays with a single schema for all items.
+  if (
+    schemaA.type === "array" &&
+    isJSONSchemaObject(schemaA.items) &&
+    isJSONSchemaObject(schemaB.items) &&
+    !areSchemasEqual(schemaA.items, schemaB.items)
+  ) {
+    return false;
+  }
+
   // Only checking differences on selected fields.
-  const fields = [
-    "required",
-    "items",
-    "anyOf",
-    "oneOf",
-    "allOf",
-    "enum",
-  ] as const;
+  const fields = ["required", "anyOf", "oneOf", "allOf", "enum"] as const;
   if (fields.some((f) => !isEqual(schemaA[f], schemaB[f]))) {
     return false;
   }
