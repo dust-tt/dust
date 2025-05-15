@@ -69,6 +69,7 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { TemplateResource } from "@app/lib/resources/template_resource";
 import { tagsSorter } from "@app/lib/utils";
+import { normalizeArrays } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import type {
   AgentConfigurationScope,
@@ -919,7 +920,7 @@ export async function createAgentConfiguration(
           workspaceId: owner.id,
           authorId: user.id,
           templateId: template?.id,
-          requestedGroupIds,
+          requestedGroupIds: normalizeArrays(requestedGroupIds),
           responseFormat: model.responseFormat,
         },
         {
