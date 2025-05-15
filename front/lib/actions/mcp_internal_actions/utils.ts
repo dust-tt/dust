@@ -136,6 +136,14 @@ export function generateConfiguredInput({
       return { duration, unit, mimeType };
     }
 
+    case INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA: {
+      const { jsonSchema } = actionConfiguration;
+      if (!jsonSchema) {
+        return null;
+      }
+      return { value: JSON.stringify(jsonSchema), mimeType };
+    }
+
     case INTERNAL_MIME_TYPES.TOOL_INPUT.STRING: {
       // For primitive types, we have rendered the key from the path and use it to look up the value.
       const value = actionConfiguration.additionalConfiguration[keyPath];

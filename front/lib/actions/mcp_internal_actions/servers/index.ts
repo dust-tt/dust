@@ -18,10 +18,7 @@ import { default as tablesQueryServer } from "@app/lib/actions/mcp_internal_acti
 import { default as tablesQueryServerV2 } from "@app/lib/actions/mcp_internal_actions/servers/tables_query/server_v2";
 import { default as thinkServer } from "@app/lib/actions/mcp_internal_actions/servers/think";
 import { default as webtoolsServer } from "@app/lib/actions/mcp_internal_actions/servers/webtools";
-import type {
-  AgentLoopListToolsContextType,
-  AgentLoopRunContextType,
-} from "@app/lib/actions/types";
+import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
 import { assertNever } from "@app/types";
 
@@ -70,7 +67,7 @@ export async function getInternalMCPServer(
     case "agent_router":
       return agentRouterServer(auth);
     case "extract_data":
-      return extractDataServer(auth, agentLoopContext);
+      return extractDataServer(auth, agentLoopContext.agentLoopRunContext);
     default:
       assertNever(internalMCPServerName);
   }
