@@ -2,7 +2,6 @@ import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 
 import {
-  Button,
   ChatBubbleBottomCenterTextIcon,
   ContentMessage,
   HeartIcon,
@@ -141,12 +140,6 @@ export const ColorVariants: Story = {
         >
           This is a {variant} variant message. It shows how the component looks
           with this color scheme.
-          <Button
-            label="Action"
-            variant="outline"
-            size="sm"
-            className="s-mt-2"
-          />
         </ContentMessage>
       ))}
     </div>

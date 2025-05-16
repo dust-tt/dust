@@ -481,15 +481,18 @@ export function AssistantDetails({
             size="md"
           >
             It is no longer active and cannot be used.
-            <Button
-              variant="outline"
-              label="Restore"
-              onClick={() => {
-                setShowRestoreModal(true);
-              }}
-              classname="mt-2"
-              icon={ArrowPathIcon}
-            />
+            <br />
+            <div>
+              <Button
+                variant="outline"
+                label="Restore"
+                onClick={() => {
+                  setShowRestoreModal(true);
+                }}
+                classname="mt-2"
+                icon={ArrowPathIcon}
+              />
+            </div>
           </ContentMessage>
 
           <RestoreAssistantDialog
