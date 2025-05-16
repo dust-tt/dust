@@ -5,14 +5,13 @@ import { Authenticator } from "@app/lib/auth";
 import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
 import { AgentReasoningConfiguration } from "@app/lib/models/assistant/actions/reasoning";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
+import { Workspace } from "@app/lib/models/workspace";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type Logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
-import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
-import { ModelId } from "@app/types";
-import { Workspace } from "@app/lib/models/workspace";
+import type { ModelId } from "@app/types";
 
 async function findWorkspacesWithReasoningConfigurations(): Promise<ModelId[]> {
   const reasoningConfigurations = await AgentReasoningConfiguration.findAll({
