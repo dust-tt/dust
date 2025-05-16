@@ -355,6 +355,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
       where: {
         sId: messageId,
         conversationId: conversation.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
       },
       include: [
         {
