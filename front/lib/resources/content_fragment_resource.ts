@@ -175,10 +175,11 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
     return ContentFragmentResource.fromMessage(message);
   }
 
-  static async fetchManyByModelIds(ids: Array<ModelId>) {
+  static async fetchManyByModelIds(auth: Authenticator, ids: Array<ModelId>) {
     const blobs = await ContentFragmentResource.model.findAll({
       where: {
         id: ids,
+        workspaceId: auth.getNonNullableWorkspace().id,
       },
     });
 

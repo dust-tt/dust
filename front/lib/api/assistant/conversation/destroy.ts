@@ -94,16 +94,15 @@ async function destroyMessageRelatedResources(messageIds: Array<ModelId>) {
 }
 
 async function destroyContentFragments(
+  auth: Authenticator,
   messageAndContentFragmentIds: Array<{
     contentFragmentId: ModelId;
     messageId: string;
   }>,
   {
     conversationId,
-    workspaceId,
   }: {
     conversationId: string;
-    workspaceId: string;
   }
 ) {
   const contentFragmentIds = messageAndContentFragmentIds.map(
@@ -113,8 +112,10 @@ async function destroyContentFragments(
     return;
   }
 
-  const contentFragments =
-    await ContentFragmentResource.fetchManyByModelIds(contentFragmentIds);
+  const contentFragments = await ContentFragmentResource.fetchManyByModelIds(
+    auth,
+    contentFragmentIds
+  );
 
   for (const contentFragment of contentFragments) {
     const messageContentFragmentId = messageAndContentFragmentIds.find(
@@ -132,7 +133,7 @@ async function destroyContentFragments(
     const deletionRes = await contentFragment.destroy({
       conversationId,
       messageId,
-      workspaceId,
+      workspaceId: auth.getNonNullableWorkspace().sId,
     });
     if (deletionRes.isErr()) {
       throw deletionRes;
@@ -169,7 +170,6 @@ export async function destroyConversation(
     conversationId: string;
   }
 ) {
-  const workspace = auth.getNonNullableWorkspace();
   const conversationRes =
     await ConversationResource.fetchConversationWithoutContent(
       auth,
@@ -228,8 +228,7 @@ export async function destroyConversation(
       where: { id: agentMessageIds },
     });
 
-    await destroyContentFragments(messageAndContentFragmentIds, {
-      workspaceId: workspace.sId,
+    await destroyContentFragments(auth, messageAndContentFragmentIds, {
       conversationId: conversation.sId,
     });
 
