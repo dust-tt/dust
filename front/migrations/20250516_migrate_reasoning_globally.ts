@@ -15,23 +15,21 @@ import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 /**
  * Migrates reasoning actions from non-MCP to MCP version for a specific workspace
  */
-async function migrateWorkspaceReasoningActions({
-  wId,
-  execute,
-  parentLogger,
-}: {
-  wId: string;
-  execute: boolean;
-  parentLogger: typeof Logger;
-}): Promise<string> {
+async function migrateWorkspaceReasoningActions(
+  auth: Authenticator,
+  {
+    execute,
+    parentLogger,
+  }: {
+    execute: boolean;
+    parentLogger: typeof Logger;
+  }
+): Promise<string> {
   const logger = parentLogger.child({
-    workspaceId: wId,
+    workspaceId: auth.getNonNullableWorkspace().id,
   });
 
   logger.info("Starting migration of reasoning actions to MCP.");
-
-  // Get admin auth for the workspace
-  const auth = await Authenticator.internalAdminForWorkspace(wId);
 
   // Find all existing reasoning configurations that are linked to an agent configuration
   // (non-MCP version) and not yet linked to an MCP server configuration
@@ -156,8 +154,9 @@ makeScript({}, async ({ execute }, parentLogger) => {
 
   let revertSql = "";
   await runOnAllWorkspaces(async (workspace) => {
-    const workspaceRevertSql = await migrateWorkspaceReasoningActions({
-      wId: workspace.sId,
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+    const workspaceRevertSql = await migrateWorkspaceReasoningActions(auth, {
       execute,
       parentLogger,
     });
