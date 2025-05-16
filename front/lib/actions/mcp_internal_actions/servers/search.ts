@@ -13,7 +13,7 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
   getCoreSearchArgs,
-  mustTagsBeSuppliedByLLM,
+  shouldAutoGenerateTags,
 } from "@app/lib/actions/mcp_internal_actions/servers/utils";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { actionRefsOffset, getRetrievalTopK } from "@app/lib/actions/utils";
@@ -91,8 +91,8 @@ function createServer(
       ),
   };
 
-  const tagsAreDynamic = agentLoopContext
-    ? mustTagsBeSuppliedByLLM(agentLoopContext)
+  const areTagsDynamic = agentLoopContext
+    ? shouldAutoGenerateTags(agentLoopContext)
     : false;
 
   const searchFunction = async ({
@@ -259,7 +259,7 @@ function createServer(
     };
   };
 
-  if (!tagsAreDynamic) {
+  if (!areTagsDynamic) {
     server.tool(
       "search_data_sources",
       "Search the data sources specified by the user." +

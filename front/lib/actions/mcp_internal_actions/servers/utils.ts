@@ -184,7 +184,7 @@ export async function getCoreSearchArgs(
   });
 }
 
-export function mustTagsBeSuppliedByLLM(
+export function shouldAutoGenerateTags(
   agentLoopContext: AgentLoopContextType
 ): boolean {
   const hasTagAutoMode = (
@@ -196,8 +196,7 @@ export function mustTagsBeSuppliedByLLM(
     );
 
   if (
-    agentLoopContext.listToolsContext &&
-    agentLoopContext.listToolsContext.agentActionConfiguration &&
+    !!agentLoopContext.listToolsContext?.agentActionConfiguration &&
     isServerSideMCPServerConfiguration(
       agentLoopContext.listToolsContext.agentActionConfiguration
     ) &&
@@ -207,8 +206,7 @@ export function mustTagsBeSuppliedByLLM(
       agentLoopContext.listToolsContext.agentActionConfiguration.dataSources
     );
   } else if (
-    agentLoopContext.runContext &&
-    agentLoopContext.runContext.actionConfiguration &&
+    !!agentLoopContext.runContext?.actionConfiguration &&
     isServerSideMCPToolConfiguration(
       agentLoopContext.runContext.actionConfiguration
     ) &&
