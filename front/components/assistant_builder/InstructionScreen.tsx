@@ -253,7 +253,7 @@ export function InstructionScreen({
   };
 
   return (
-    <div className="flex grow flex-col gap-4">
+    <div className="flex h-full flex-col gap-4">
       <div className="flex flex-col items-center justify-between sm:flex-row">
         <Page.P>
           <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">

@@ -30,10 +30,13 @@ const FEEDBACKS_PAGE_SIZE = 50;
 interface FeedbacksSectionProps {
   owner: LightWorkspaceType;
   agentConfigurationId: string;
+  gridMode?: boolean;
 }
+
 export const FeedbacksSection = ({
   owner,
   agentConfigurationId,
+  gridMode = false,
 }: FeedbacksSectionProps) => {
   const {
     isAgentConfigurationFeedbacksLoading,
@@ -107,43 +110,67 @@ export const FeedbacksSection = ({
 
   return (
     <>
-      <div className="flex flex-col gap-2">
-        <AgentConfigurationVersionHeader
-          agentConfiguration={agentConfigurationHistory[0]}
-          agentConfigurationVersion={agentConfigurationHistory[0].version}
-          isLatestVersion
-        />
-        {agentConfigurationFeedbacks?.map((feedback, index) => {
-          const isFirstFeedback = index === 0;
-          const previousFeedbackHasDifferentVersion =
-            !isFirstFeedback &&
-            feedback.agentConfigurationVersion !==
-              agentConfigurationFeedbacks[index - 1].agentConfigurationVersion;
-          return (
-            <div key={feedback.id} className="animate-fadeIn">
-              {previousFeedbackHasDifferentVersion && (
-                <AgentConfigurationVersionHeader
-                  agentConfiguration={agentConfigurationHistory?.find(
-                    (c) => c.version === feedback.agentConfigurationVersion
-                  )}
-                  agentConfigurationVersion={feedback.agentConfigurationVersion}
-                  isLatestVersion={false}
+      {gridMode ? (
+        <div className="flex flex-col gap-4">
+          <AgentConfigurationVersionHeader
+            agentConfiguration={agentConfigurationHistory[0]}
+            agentConfigurationVersion={agentConfigurationHistory[0].version}
+            isLatestVersion
+          />
+          <div className="@container">
+            <div className="grid grid-cols-1 gap-4 @[48rem]:grid-cols-2">
+              {agentConfigurationFeedbacks?.map((feedback) => (
+                <MemoizedFeedbackCard
+                  key={feedback.id}
+                  className="h-full"
+                  owner={owner}
+                  feedback={feedback as AgentMessageFeedbackWithMetadataType}
                 />
-              )}
-              <MemoizedFeedbackCard
-                owner={owner}
-                feedback={feedback as AgentMessageFeedbackWithMetadataType}
-              />
+              ))}
             </div>
-          );
-        })}
-      </div>
+          </div>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-2">
+          <AgentConfigurationVersionHeader
+            agentConfiguration={agentConfigurationHistory[0]}
+            agentConfigurationVersion={agentConfigurationHistory[0].version}
+            isLatestVersion
+          />
+          {agentConfigurationFeedbacks?.map((feedback, index) => {
+            const isFirstFeedback = index === 0;
+            const previousFeedbackHasDifferentVersion =
+              !isFirstFeedback &&
+              feedback.agentConfigurationVersion !==
+                agentConfigurationFeedbacks[index - 1]
+                  .agentConfigurationVersion;
+            return (
+              <div key={feedback.id} className="animate-fadeIn">
+                {previousFeedbackHasDifferentVersion && (
+                  <AgentConfigurationVersionHeader
+                    agentConfiguration={agentConfigurationHistory?.find(
+                      (c) => c.version === feedback.agentConfigurationVersion
+                    )}
+                    agentConfigurationVersion={
+                      feedback.agentConfigurationVersion
+                    }
+                    isLatestVersion={false}
+                  />
+                )}
+                <MemoizedFeedbackCard
+                  owner={owner}
+                  feedback={feedback as AgentMessageFeedbackWithMetadataType}
+                />
+              </div>
+            );
+          })}
+        </div>
+      )}
       {/* Invisible div to act as a scroll anchor for detecting when the user has scrolled to the bottom */}
       <div ref={bottomRef} className="h-1.5" />
     </>
   );
 };
-
 interface AgentConfigurationVersionHeaderProps {
   agentConfigurationVersion: number;
   agentConfiguration: LightAgentConfigurationType | undefined;
@@ -185,9 +212,12 @@ function AgentConfigurationVersionHeader({
 interface FeedbackCardProps {
   owner: LightWorkspaceType;
   feedback: AgentMessageFeedbackWithMetadataType;
+  className?: string;
 }
+
 const MemoizedFeedbackCard = memo(FeedbackCard);
-function FeedbackCard({ owner, feedback }: FeedbackCardProps) {
+
+function FeedbackCard({ owner, feedback, className }: FeedbackCardProps) {
   const conversationUrl =
     feedback.conversationId &&
     feedback.messageId &&
@@ -206,6 +236,7 @@ function FeedbackCard({ owner, feedback }: FeedbackCardProps) {
 
   return (
     <Card
+      className={cn("flex h-full flex-col", className)} // Add className here
       action={
         conversationUrl && (
           <CardActionButton
@@ -219,66 +250,60 @@ function FeedbackCard({ owner, feedback }: FeedbackCardProps) {
         )
       }
     >
-      <div className="flex w-full flex-col gap-3 text-sm font-normal text-foreground dark:text-foreground-night">
-        <div className="flex w-full flex-row gap-3">
-          {feedback.userImageUrl ? (
-            <Avatar
-              size="sm"
-              visual={feedback.userImageUrl}
-              name={feedback.userName}
-            />
-          ) : (
-            <Spinner size="sm" />
-          )}
-          <div className="flex flex-col">
-            <div className="font-semibold">{feedback.userName}</div>
-            <div className="text-muted-foreground dark:text-muted-foreground-night">
-              {timeSinceFeedback} ago
-            </div>
-          </div>
-        </div>
-        <div className="flex w-full flex-row gap-3 text-base">
-          <div>
-            <div
-              className={cn(
-                "rounded-full bg-primary-300 p-2",
-                feedback.thumbDirection === "up"
-                  ? "bg-success-200 dark:bg-success-200-night"
-                  : "bg-info-200 dark:bg-info-200-night"
-              )}
-            >
-              <Icon
-                size="xs"
-                className={cn(
-                  "text-foreground dark:text-foreground-night",
-                  feedback.thumbDirection === "up"
-                    ? "text-success-800 dark:text-success-800-night"
-                    : "text-info-800 dark:text-info-800-night"
-                )}
-                visual={
-                  feedback.thumbDirection === "up"
-                    ? HandThumbUpIcon
-                    : HandThumbDownIcon
-                }
-              />
-            </div>
-          </div>
-          <div className="flex flex-col">
-            {feedback.content}
-            {conversationUrl && (
-              <div>
-                <Hoverable
-                  variant="primary"
-                  href={conversationUrl ?? ""}
-                  target="_blank"
-                >
-                  View conversation
-                </Hoverable>
-              </div>
-            )}
+      <div className="flex flex-shrink-0 items-center gap-3 px-4 py-3">
+        {feedback.userImageUrl ? (
+          <Avatar
+            size="sm"
+            visual={feedback.userImageUrl}
+            name={feedback.userName}
+          />
+        ) : (
+          <Spinner size="sm" />
+        )}
+        <div className="flex flex-col">
+          <div className="font-semibold">{feedback.userName}</div>
+          <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+            {timeSinceFeedback} ago
           </div>
         </div>
       </div>
+
+      <div className="flex flex-grow flex-col gap-3 overflow-hidden px-4">
+        <div className="flex items-start gap-3">
+          <div
+            className={cn(
+              "flex-shrink-0 rounded-full p-2",
+              feedback.thumbDirection === "up"
+                ? "bg-success-200 dark:bg-success-200-night"
+                : "bg-info-200 dark:bg-info-200-night"
+            )}
+          >
+            <Icon
+              size="xs"
+              className={cn(
+                "text-foreground dark:text-foreground-night",
+                feedback.thumbDirection === "up"
+                  ? "text-success-800 dark:text-success-800-night"
+                  : "text-info-800 dark:text-info-800-night"
+              )}
+              visual={
+                feedback.thumbDirection === "up"
+                  ? HandThumbUpIcon
+                  : HandThumbDownIcon
+              }
+            />
+          </div>
+          <div className="flex-grow overflow-hidden">{feedback.content}</div>
+        </div>
+      </div>
+
+      {conversationUrl && (
+        <div className="flex-shrink-0 px-4 py-3">
+          <Hoverable variant="primary" href={conversationUrl} target="_blank">
+            View conversation
+          </Hoverable>
+        </div>
+      )}
     </Card>
   );
 }
