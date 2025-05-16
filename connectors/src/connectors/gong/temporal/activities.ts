@@ -16,6 +16,7 @@ import { deleteDataSourceDocument } from "@connectors/lib/data_sources";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
+import type { GongConfigurationResource } from "@connectors/resources/gong_resources";
 import {
   GongTranscriptResource,
   GongUserResource,
@@ -60,11 +61,13 @@ export async function gongSaveSyncSuccessActivity({
 export async function getTranscriptsMetadata({
   callIds,
   connector,
+  configuration,
 }: {
   callIds: string[];
   connector: ConnectorResource;
+  configuration: GongConfigurationResource;
 }): Promise<GongTranscriptMetadata[]> {
-  const gongClient = await getGongClient(connector);
+  const gongClient = await getGongClient(connector, configuration);
 
   const metadata = [];
   let cursor = null;
@@ -101,7 +104,7 @@ export async function gongSyncTranscriptsActivity({
     workspaceId: dataSourceConfig.workspaceId,
   };
 
-  const gongClient = await getGongClient(connector);
+  const gongClient = await getGongClient(connector, configuration);
 
   const { transcripts, nextPageCursor } = await gongClient.getTranscripts({
     startTimestamp: configuration.getSyncStartTimestamp(),
@@ -135,6 +138,7 @@ export async function gongSyncTranscriptsActivity({
   const callsMetadata = await getTranscriptsMetadata({
     callIds: transcriptsToSync.map((t) => t.callId),
     connector,
+    configuration,
   });
   const callsMetadataMap = new Map(
     callsMetadata.map((c) => [c.metaData.id, c])
@@ -154,7 +158,7 @@ export async function gongSyncTranscriptsActivity({
 
       const { parties = [] } = transcriptMetadata;
 
-      const participants = await getGongUsers(connector, {
+      const participants = await getGongUsers(connector, configuration, {
         gongUserIds: parties
           .map((p) => p.userId)
           .filter((id): id is string => Boolean(id)),
@@ -202,7 +206,9 @@ export async function gongListAndSaveUsersActivity({
   connectorId: ModelId;
 }) {
   const connector = await fetchGongConnector({ connectorId });
-  const gongClient = await getGongClient(connector);
+  const configuration = await fetchGongConfiguration(connector);
+
+  const gongClient = await getGongClient(connector, configuration);
 
   let pageCursor = null;
   do {
