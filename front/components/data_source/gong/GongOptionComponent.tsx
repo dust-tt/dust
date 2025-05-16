@@ -57,7 +57,7 @@ export function GongOptionComponent({
   const [loading, setLoading] = useState(false);
   const sendNotification = useSendNotification();
 
-  const handleSetNewConfig = async (newValue: string, configKey: string) => {
+  const handleSetNewConfig = async (configKey: string, newValue: string) => {
     // Validate that the value is either empty or a positive integer
     if (newValue !== "" && !checkIsNonNegativeInteger(newValue)) {
       sendNotification({
@@ -133,8 +133,8 @@ export function GongOptionComponent({
                 size="sm"
                 onClick={() =>
                   handleSetNewConfig(
-                    retentionPeriod,
-                    GONG_RETENTION_PERIOD_CONFIG_KEY
+                    GONG_RETENTION_PERIOD_CONFIG_KEY,
+                    retentionPeriod
                   )
                 }
                 disabled={readOnly || !isAdmin || loading}
@@ -164,8 +164,8 @@ export function GongOptionComponent({
                 size="xs"
                 onClick={async () => {
                   await handleSetNewConfig(
-                    smartTrackersConfigValue || "false",
-                    GONG_SMART_TRACKERS_CONFIG_KEY
+                    GONG_SMART_TRACKERS_CONFIG_KEY,
+                    smartTrackersConfigValue || "false"
                   );
                 }}
                 selected={smartTrackersConfigValue === "true"}
