@@ -295,18 +295,13 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
     const connector = await fetchGongConnector({
       connectorId: this.connectorId,
     });
+    const configuration = await fetchGongConfiguration(connector);
 
     switch (configKey) {
-      case RETENTION_PERIOD_CONFIG_KEY: {
-        const configuration = await fetchGongConfiguration(connector);
-
+      case RETENTION_PERIOD_CONFIG_KEY:
         return new Ok(configuration.retentionPeriodDays?.toString() || null);
-      }
-      case SMART_TRACKERS_CONFIG_KEY: {
-        const configuration = await fetchGongConfiguration(connector);
-
+      case SMART_TRACKERS_CONFIG_KEY:
         return new Ok(configuration.smartTrackersEnabled.toString());
-      }
       default:
         return new Err(new Error(`Invalid config key ${configKey}`));
     }
@@ -322,10 +317,10 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
     const connector = await fetchGongConnector({
       connectorId: this.connectorId,
     });
+    const configuration = await fetchGongConfiguration(connector);
 
     switch (configKey) {
       case RETENTION_PERIOD_CONFIG_KEY: {
-        const configuration = await fetchGongConfiguration(connector);
         const retentionPeriodDays = configValue
           ? parseInt(configValue, 10)
           : null;
@@ -357,7 +352,6 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
         return new Ok(undefined);
       }
       case SMART_TRACKERS_CONFIG_KEY: {
-        const configuration = await fetchGongConfiguration(connector);
         await configuration.setSmartTrackersEnabled(configValue === "true");
 
         return new Ok(undefined);
