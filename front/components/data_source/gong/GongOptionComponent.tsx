@@ -10,11 +10,8 @@ import {
 import { useState } from "react";
 
 import { useConnectorConfig } from "@app/lib/swr/connectors";
-import {
-  normalizeError,
-  type DataSourceType,
-  type WorkspaceType,
-} from "@app/types";
+import type { DataSourceType, WorkspaceType } from "@app/types";
+import { normalizeError } from "@app/types";
 
 // TODO(2025-03-17): share these variables between connectors and front.
 const GONG_RETENTION_PERIOD_CONFIG_KEY = "gongRetentionPeriodDays";
