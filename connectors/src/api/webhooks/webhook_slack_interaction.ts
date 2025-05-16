@@ -14,7 +14,13 @@ export const STATIC_AGENT_CONFIG = "static_agent_config";
 export const TOOL_VALIDATION_ACTIONS = [
   "approve_tool_execution",
   "reject_tool_execution",
-];
+] as const;
+
+const [first, second] = TOOL_VALIDATION_ACTIONS;
+const ToolValidationActionsCodec = t.union([
+  t.literal(first),
+  t.literal(second),
+]);
 
 export const SlackInteractionPayloadSchema = t.type({
   team: t.type({
@@ -50,10 +56,7 @@ export const SlackInteractionPayloadSchema = t.type({
       }),
       t.type({
         type: t.string,
-        action_id: t.union([
-          t.literal("approve_tool_execution"),
-          t.literal("reject_tool_execution"),
-        ]),
+        action_id: ToolValidationActionsCodec,
         block_id: t.string,
         value: t.string,
         action_ts: t.string,
