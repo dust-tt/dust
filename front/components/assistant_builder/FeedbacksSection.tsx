@@ -117,15 +117,17 @@ export const FeedbacksSection = ({
             agentConfigurationVersion={agentConfigurationHistory[0].version}
             isLatestVersion
           />
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            {agentConfigurationFeedbacks?.map((feedback) => (
-              <MemoizedFeedbackCard
-                key={feedback.id}
-                className="h-full"
-                owner={owner}
-                feedback={feedback as AgentMessageFeedbackWithMetadataType}
-              />
-            ))}
+          <div className="@container">
+            <div className="grid grid-cols-1 gap-4 @[48rem]:grid-cols-2">
+              {agentConfigurationFeedbacks?.map((feedback) => (
+                <MemoizedFeedbackCard
+                  key={feedback.id}
+                  className="h-full"
+                  owner={owner}
+                  feedback={feedback as AgentMessageFeedbackWithMetadataType}
+                />
+              ))}
+            </div>
           </div>
         </div>
       ) : (
