@@ -212,11 +212,14 @@ export function AgentMessage({
     >((acc, citation) => {
       if (citation) {
         const IconComponent = getCitationIcon(citation[1].provider, isDark);
-        acc[citation[0]] = {
-          href: citation[1].href,
-          title: citation[1].title,
-          description: citation[1].description,
-          icon: <IconComponent />,
+        return {
+          ...acc,
+          [citation[0]]: {
+            href: citation[1].href,
+            title: citation[1].title,
+            description: citation[1].description,
+            icon: <IconComponent />,
+          },
         };
       }
       return acc;

@@ -9,6 +9,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { MessageWithRankType, WithAPIErrorResponse } from "@app/types";
+import { isString } from "@app/types";
 
 export type FetchConversationMessageResponse = {
   message: MessageWithRankType;
@@ -19,7 +20,9 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<FetchConversationMessageResponse>>,
   auth: Authenticator
 ): Promise<void> {
-  if (typeof req.query.cId !== "string") {
+  const { cId, mId } = req.query;
+
+  if (!isString(cId)) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -28,13 +31,9 @@ async function handler(
       },
     });
   }
-  const conversationId = req.query.cId;
 
   const conversationRes =
-    await ConversationResource.fetchConversationWithoutContent(
-      auth,
-      conversationId
-    );
+    await ConversationResource.fetchConversationWithoutContent(auth, cId);
 
   if (conversationRes.isErr()) {
     return apiError(req, res, {
@@ -46,7 +45,7 @@ async function handler(
     });
   }
 
-  if (!(typeof req.query.mId === "string")) {
+  if (!isString(mId)) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -55,7 +54,6 @@ async function handler(
       },
     });
   }
-  const messageId = req.query.mId;
 
   switch (req.method) {
     case "GET":
@@ -63,7 +61,7 @@ async function handler(
       const message = await fetchMessageInConversation(
         auth,
         conversationRes.value,
-        messageId
+        mId
       );
 
       if (!message) {
@@ -78,7 +76,7 @@ async function handler(
 
       const renderedMessages = await batchRenderMessages(
         auth,
-        conversationId,
+        cId,
         [message],
         "full"
       );

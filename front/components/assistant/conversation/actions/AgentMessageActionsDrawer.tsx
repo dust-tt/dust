@@ -40,9 +40,10 @@ export function AgentMessageActionsDrawer({
   const groupedActionsByStep = actions
     ? actions.reduce<Record<number, AgentActionType[]>>((acc, current) => {
         const currentStep = current.step + 1;
-        acc[currentStep] = acc[currentStep] || [];
-        acc[currentStep].push(current);
-        return acc;
+        return {
+          ...acc,
+          [currentStep]: [...(acc[currentStep] || []), current],
+        };
       }, {})
     : {};
 

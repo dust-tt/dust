@@ -131,10 +131,13 @@ export const getCitationsFromActions = (
   );
   const allDocsReferences = allDocs.reduce<{
     [key: string]: CitationType;
-  }>((acc, d) => {
-    acc[d.reference] = makeDocumentCitation(d);
-    return acc;
-  }, {});
+  }>(
+    (acc, d) => ({
+      ...acc,
+      [d.reference]: makeDocumentCitation(d),
+    }),
+    {}
+  );
 
   // Websearch actions.
   const websearchActionsWithResults = actions
@@ -146,10 +149,13 @@ export const getCitationsFromActions = (
   );
   const allWebReferences = allWebResults.reduce<{
     [key: string]: CitationType;
-  }>((acc, l) => {
-    acc[l.reference] = makeWebsearchResultsCitation(l);
-    return acc;
-  }, {});
+  }>(
+    (acc, l) => ({
+      ...acc,
+      [l.reference]: makeWebsearchResultsCitation(l),
+    }),
+    {}
+  );
 
   // MCP actions with search results.
   const searchResultsWithDocs = removeNulls(
@@ -161,14 +167,17 @@ export const getCitationsFromActions = (
   );
   const allMCPSearchResultsReferences = searchResultsWithDocs.reduce<{
     [key: string]: CitationType;
-  }>((acc, d) => {
-    acc[d.ref] = {
-      href: d.uri,
-      title: d.text,
-      provider: d.source.provider ?? "document",
-    };
-    return acc;
-  }, {});
+  }>(
+    (acc, d) => ({
+      ...acc,
+      [d.ref]: {
+        href: d.uri,
+        title: d.text,
+        provider: d.source.provider ?? "document",
+      },
+    }),
+    {}
+  );
 
   const websearchResultsWithDocs = removeNulls(
     actions
@@ -178,14 +187,17 @@ export const getCitationsFromActions = (
 
   const allMCPWebsearchResultsReferences = websearchResultsWithDocs.reduce<{
     [key: string]: CitationType;
-  }>((acc, d) => {
-    acc[d.resource.reference] = {
-      href: d.resource.uri,
-      title: d.resource.title,
-      provider: "document",
-    };
-    return acc;
-  }, {});
+  }>(
+    (acc, d) => ({
+      ...acc,
+      [d.resource.reference]: {
+        href: d.resource.uri,
+        title: d.resource.title,
+        provider: "document",
+      },
+    }),
+    {}
+  );
 
   // Merge all references.
   return {
