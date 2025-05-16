@@ -12,16 +12,17 @@ import type { APIErrorWithStatusCode, WithAPIErrorResponse } from "@app/types";
 import logger from "./logger";
 import { statsDClient } from "./statsDClient";
 
-type RequestContext = {
+export type LogContextValue = string | number | null;
+export type RequestContext = {
   sessionId: string | null;
 } & {
-  [key: string]: string | number | null;
+  [key: string]: LogContextValue;
 };
 
 // Make the elements undefined temporarely avoid updating all NextApiRequest to NextApiRequestWithContext.
 export interface NextApiRequestWithContext extends NextApiRequest {
   logContext?: RequestContext;
-  addLogToContext?: (data: Record<string, string | number | null>) => void;
+  addLogToContext?: (data: Record<string, LogContextValue>) => void;
 }
 
 export function withLogging<T>(
