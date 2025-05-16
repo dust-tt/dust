@@ -49,10 +49,11 @@ export function registerGetCurrentConversationTool(
         }
 
         return {
+          isError: false,
           content: [
             {
               type: "text",
-              text: JSON.stringify(conversationTimelineRes.value, null, 2),
+              text: JSON.stringify(conversationTimelineRes.value),
             },
           ],
         };
