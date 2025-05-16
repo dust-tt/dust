@@ -97,6 +97,9 @@ export default function AssistantBuilderRightPanel({
     assistant: draftAssistant,
   });
 
+  const isBuilderStateEmpty =
+    !builderState.instructions?.trim() && !builderState.actions.length;
+
   useEffect(() => {
     setConversation(null);
   }, [draftAssistant?.sId, setConversation]);
@@ -140,37 +143,47 @@ export default function AssistantBuilderRightPanel({
         {rightPanelTab === "Preview" && user && (
           <div className="flex h-full w-full flex-1 flex-col justify-between overflow-x-hidden">
             {draftAssistant ? (
-              <ConversationsNavigationProvider>
-                <ActionValidationProvider>
-                  <GenerationContextProvider>
-                    <div className="flex-grow overflow-y-auto">
-                      {conversation && (
-                        <ConversationViewer
+              isBuilderStateEmpty ? (
+                <div className="flex h-full w-full items-center justify-center">
+                  <div className="text-center">
+                    <span className="block cursor-pointer whitespace-nowrap px-4 py-2 text-muted-foreground">
+                      Start configuring your assistant and try it out!
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <ConversationsNavigationProvider>
+                  <ActionValidationProvider>
+                    <GenerationContextProvider>
+                      <div className="flex-grow overflow-y-auto">
+                        {conversation && (
+                          <ConversationViewer
+                            owner={owner}
+                            user={user}
+                            conversationId={conversation.sId}
+                            onStickyMentionsChange={setStickyMentions}
+                            isInModal
+                            isFading={isFading}
+                            key={conversation.sId}
+                          />
+                        )}
+                      </div>
+                      <div className="shrink-0">
+                        <AssistantInputBar
                           owner={owner}
-                          user={user}
-                          conversationId={conversation.sId}
-                          onStickyMentionsChange={setStickyMentions}
-                          isInModal
-                          isFading={isFading}
-                          key={conversation.sId}
+                          onSubmit={handleSubmit}
+                          stickyMentions={stickyMentions}
+                          conversationId={conversation?.sId || null}
+                          additionalAgentConfiguration={draftAssistant}
+                          actions={["attachment"]}
+                          disableAutoFocus
+                          isFloating={false}
                         />
-                      )}
-                    </div>
-                    <div className="shrink-0">
-                      <AssistantInputBar
-                        owner={owner}
-                        onSubmit={handleSubmit}
-                        stickyMentions={stickyMentions}
-                        conversationId={conversation?.sId || null}
-                        additionalAgentConfiguration={draftAssistant}
-                        actions={["attachment"]}
-                        disableAutoFocus
-                        isFloating={false}
-                      />
-                    </div>
-                  </GenerationContextProvider>
-                </ActionValidationProvider>
-              </ConversationsNavigationProvider>
+                      </div>
+                    </GenerationContextProvider>
+                  </ActionValidationProvider>
+                </ConversationsNavigationProvider>
+              )
             ) : (
               <div className="flex h-full w-full flex-col items-center justify-center gap-2">
                 <Label>Try out your assistant...</Label>
