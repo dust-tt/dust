@@ -10,7 +10,11 @@ import {
 import { useState } from "react";
 
 import { useConnectorConfig } from "@app/lib/swr/connectors";
-import type { DataSourceType, WorkspaceType } from "@app/types";
+import {
+  normalizeError,
+  type DataSourceType,
+  type WorkspaceType,
+} from "@app/types";
 
 // TODO(2025-03-17): share these variables between connectors and front.
 const GONG_RETENTION_PERIOD_CONFIG_KEY = "gongRetentionPeriodDays";
@@ -57,7 +61,7 @@ export function GongOptionComponent({
   const [loading, setLoading] = useState(false);
   const sendNotification = useSendNotification();
 
-  const handleSetNewConfig = async (configKey: string, newValue: string) => {
+  const handleRetentionPeriodChange = async (newValue: string) => {
     // Validate that the value is either empty or a positive integer
     if (newValue !== "" && !checkIsNonNegativeInteger(newValue)) {
       sendNotification({
@@ -71,7 +75,7 @@ export function GongOptionComponent({
 
     setLoading(true);
     const res = await fetch(
-      `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/config/${configKey}`,
+      `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/config/${GONG_RETENTION_PERIOD_CONFIG_KEY}`,
       {
         headers: { "Content-Type": "application/json" },
         method: "POST",
@@ -79,11 +83,7 @@ export function GongOptionComponent({
       }
     );
     if (res.ok) {
-      if (configKey === GONG_RETENTION_PERIOD_CONFIG_KEY) {
-        await mutateRetentionPeriodConfig();
-      } else if (configKey === GONG_SMART_TRACKERS_CONFIG_KEY) {
-        await mutateSmartTrackersConfig();
-      }
+      await mutateRetentionPeriodConfig();
       setLoading(false);
       sendNotification({
         type: "success",
@@ -96,7 +96,36 @@ export function GongOptionComponent({
       sendNotification({
         type: "error",
         title: "Failed to update Gong configuration",
-        description: err.error?.message || "An unknown error occurred",
+        description: normalizeError(err).message || "An unknown error occurred",
+      });
+    }
+  };
+
+  const handleSmartTrackersChange = async (newValue: string) => {
+    setLoading(true);
+    const res = await fetch(
+      `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/config/${GONG_SMART_TRACKERS_CONFIG_KEY}`,
+      {
+        headers: { "Content-Type": "application/json" },
+        method: "POST",
+        body: JSON.stringify({ configValue: newValue }),
+      }
+    );
+    if (res.ok) {
+      await mutateSmartTrackersConfig();
+      setLoading(false);
+      sendNotification({
+        type: "success",
+        title: "Gong configuration updated",
+        description: "Smart trackers synchronization successfully enabled.",
+      });
+    } else {
+      setLoading(false);
+      const err = await res.json();
+      sendNotification({
+        type: "error",
+        title: "Failed to update Gong configuration",
+        description: normalizeError(err).message || "An unknown error occurred",
       });
     }
   };
@@ -131,12 +160,7 @@ export function GongOptionComponent({
               <Button
                 variant="primary"
                 size="sm"
-                onClick={() =>
-                  handleSetNewConfig(
-                    GONG_RETENTION_PERIOD_CONFIG_KEY,
-                    retentionPeriod
-                  )
-                }
+                onClick={() => handleRetentionPeriodChange(retentionPeriod)}
                 disabled={readOnly || !isAdmin || loading}
                 label="Save"
               />
@@ -162,8 +186,7 @@ export function GongOptionComponent({
               <SliderToggle
                 size="xs"
                 onClick={async () => {
-                  await handleSetNewConfig(
-                    GONG_SMART_TRACKERS_CONFIG_KEY,
+                  await handleSmartTrackersChange(
                     smartTrackersConfigValue || "false"
                   );
                 }}
