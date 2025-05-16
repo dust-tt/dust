@@ -8,7 +8,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import {
-  getAssistantsUsageData,
+  getAgentsUsageData,
   getBuildersUsageData,
   getFeedbacksUsageData,
   getMessageUsageData,
@@ -195,7 +195,7 @@ async function fetchUsageData({
       };
     case "agents":
       return {
-        agents: await getAssistantsUsageData(start, end, workspace),
+        agents: await getAgentsUsageData(start, end, workspace),
       };
     case "all":
       const [users, agent_messages, builders, agents, feedbacks] =
@@ -203,7 +203,7 @@ async function fetchUsageData({
           getUserUsageData(start, end, workspace),
           getMessageUsageData(start, end, workspace),
           getBuildersUsageData(start, end, workspace),
-          getAssistantsUsageData(start, end, workspace),
+          getAgentsUsageData(start, end, workspace),
           getFeedbacksUsageData(start, end, workspace),
         ]);
       return { users, agent_messages, builders, agents, feedbacks };

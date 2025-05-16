@@ -7,7 +7,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { Workspace } from "@app/lib/models/workspace";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { getFrontReplicaDbConnection } from "@app/lib/resources/storage";
-import { getAssistantUsageData } from "@app/lib/workspace_usage";
+import { getAgentUsageData } from "@app/lib/workspace_usage";
 import { launchMentionsCountWorkflow } from "@app/temporal/mentions_count_queue/client";
 import type { LightAgentConfigurationType } from "@app/types";
 
@@ -115,7 +115,7 @@ export async function getAgentUsage(
   const start = new Date();
   start.setDate(end.getDate() - rankingUsageDays);
 
-  const agentUsage = await getAssistantUsageData(
+  const agentUsage = await getAgentUsageData(
     start,
     end,
     owner,

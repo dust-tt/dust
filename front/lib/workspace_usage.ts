@@ -28,8 +28,8 @@ export interface WorkspaceUsageQueryResult {
   userId: string;
   userFirstName: string;
   userLastName: string;
-  assistantId: string;
-  assistantName: string;
+  agentId: string;
+  agentName: string;
   actionType: string;
   source: string;
 }
@@ -37,8 +37,8 @@ export interface WorkspaceUsageQueryResult {
 interface MessageUsageQueryResult {
   message_id: number;
   created_at: Date;
-  assistant_id: string;
-  assistant_name: string;
+  agent_id: string;
+  agent_name: string;
   workspace_id: number;
   workspace_name: string;
   conversation_id: number;
@@ -69,7 +69,7 @@ type BuilderUsageQueryResult = {
 interface AgentUsageQueryResult {
   name: string;
   description: string;
-  settings: "shared" | "private" | "company";
+  settings: "published" | "unpublished" | "unknown";
   authorEmails: string[];
   messages: number;
   distinctUsersReached: number;
@@ -104,13 +104,13 @@ export async function unsafeGetUsageData(
         p."sId" AS "parentMessageId",
         CASE
           WHEN um."id" IS NOT NULL THEN 'user'
-          WHEN am."id" IS NOT NULL THEN 'assistant'
+          WHEN am."id" IS NOT NULL THEN 'agent'
           WHEN cf."id" IS NOT NULL THEN 'content_fragment'
         END AS "messageType",
         um."userContextFullName" AS "userFullName",
         um."userContextEmail" AS "userEmail",
-        COALESCE(ac."sId", am."agentConfigurationId") AS "assistantId",
-        COALESCE(ac."name", am."agentConfigurationId") AS "assistantName",
+        COALESCE(ac."sId", am."agentConfigurationId") AS "agentId",
+        COALESCE(ac."name", am."agentConfigurationId") AS "agentName",
         CASE
             WHEN COUNT(DISTINCT arc."id") > 0 AND COUNT(DISTINCT atqc."id") = 0 AND COUNT(DISTINCT adarc."id") = 0 THEN 'retrieval'
             WHEN COUNT(DISTINCT arc."id") = 0 AND COUNT(DISTINCT atqc."id") > 0 AND COUNT(DISTINCT adarc."id") = 0 THEN 'tablesQuery'
@@ -179,13 +179,13 @@ export async function getMessageUsageData(
       SELECT
         am."id" AS "message_id",
         TO_CHAR(am."createdAt"::timestamp, 'YYYY-MM-DD HH24:MI:SS') AS "createdAt",
-        COALESCE(ac."sId", am."agentConfigurationId") AS "assistant_id",
-        COALESCE(ac."name", am."agentConfigurationId") AS "assistant_name",
+        COALESCE(ac."sId", am."agentConfigurationId") AS "agent_id",
+        COALESCE(ac."name", am."agentConfigurationId") AS "agent_name",
         CASE
-          WHEN ac."scope" = 'published' THEN 'shared'
-          WHEN ac."scope" = 'private' THEN 'private'
-          ELSE 'company'
-        END AS "assistant_settings",
+          WHEN ac."scope" = 'visible' THEN 'published'
+          WHEN ac."scope" = 'hidden' THEN 'unpublished'
+          ELSE 'unknown'
+        END AS "agent_settings",
         w."id" AS "workspace_id",
         w."name" AS "workspace_name",
         c."id" AS "conversation_id",
@@ -390,7 +390,7 @@ export async function getBuildersUsageData(
   return generateCsvFromQueryResult(buildersUsage);
 }
 
-export async function getAssistantUsageData(
+export async function getAgentUsageData(
   startDate: Date,
   endDate: Date,
   workspace: WorkspaceType,
@@ -427,7 +427,7 @@ export async function getAssistantUsageData(
   return mentions[0].messages;
 }
 
-export async function getAssistantsUsageData(
+export async function getAgentsUsageData(
   startDate: Date,
   endDate: Date,
   workspace: WorkspaceType
@@ -441,9 +441,9 @@ export async function getAssistantsUsageData(
       ac."name",
       ac."description",
       CASE
-        WHEN ac."scope" = 'published' THEN 'shared'
-        WHEN ac."scope" = 'private' THEN 'private'
-        ELSE 'company'
+        WHEN ac."scope" = 'visible' THEN 'published'
+        WHEN ac."scope" = 'hidden' THEN 'unpublished'
+        ELSE 'unknown'
       END AS "settings",
       ARRAY_AGG(DISTINCT aut."email") AS "authorEmails",
       COUNT(a."id") AS "messages",
@@ -462,7 +462,7 @@ export async function getAssistantsUsageData(
       a."createdAt" BETWEEN :startDate AND :endDate
       AND ac."workspaceId" = :wId
       AND ac."status" = 'active'
-      AND ac."scope" != 'private'
+      AND ac."scope" != 'hidden'
     GROUP BY
       ac."name",
       ac."description",
@@ -553,7 +553,7 @@ export async function checkWorkspaceActivity(auth: Authenticator) {
   const hasDataSource =
     (await DataSourceResource.listByWorkspace(auth, { limit: 1 })).length > 0;
 
-  const hasCreatedAssistant = await AgentConfiguration.findOne({
+  const hasCreatedAgent = await AgentConfiguration.findOne({
     where: { workspaceId: auth.getNonNullableWorkspace().id },
   });
 
@@ -566,5 +566,5 @@ export async function checkWorkspaceActivity(auth: Authenticator) {
     },
   });
 
-  return hasDataSource || hasCreatedAssistant || hasRecentConversation;
+  return hasDataSource || hasCreatedAgent || hasRecentConversation;
 }

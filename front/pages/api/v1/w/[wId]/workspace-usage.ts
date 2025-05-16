@@ -13,7 +13,7 @@ import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import {
-  getAssistantsUsageData,
+  getAgentsUsageData,
   getBuildersUsageData,
   getFeedbacksUsageData,
   getMessageUsageData,
@@ -268,7 +268,7 @@ async function fetchUsageData({
       return { builders: await getBuildersUsageData(start, end, workspace) };
     case "assistants":
       return {
-        assistants: await getAssistantsUsageData(start, end, workspace),
+        assistants: await getAgentsUsageData(start, end, workspace),
       };
     case "feedbacks":
       return {
@@ -280,7 +280,7 @@ async function fetchUsageData({
           getUserUsageData(start, end, workspace),
           getMessageUsageData(start, end, workspace),
           getBuildersUsageData(start, end, workspace),
-          getAssistantsUsageData(start, end, workspace),
+          getAgentsUsageData(start, end, workspace),
           getFeedbacksUsageData(start, end, workspace),
         ]);
       return { users, assistant_messages, builders, assistants, feedbacks };
