@@ -1,10 +1,10 @@
 import { Page } from "@dust-tt/sparkle";
 
 import { useAgentConfigurationLastAuthor } from "@app/lib/swr/assistants";
-import type { AgentMessageType, LightWorkspaceType } from "@app/types";
+import type { LightAgentMessageType, LightWorkspaceType } from "@app/types";
 
 interface FeedbackSelectorPopoverContentProps {
-  agentMessageToRender: AgentMessageType;
+  agentMessageToRender: LightAgentMessageType;
   owner: LightWorkspaceType;
 }
 

@@ -2,6 +2,7 @@ import type { ToolNotificationEvent } from "@app/lib/actions/mcp";
 import type { ProgressNotificationContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { BaseAction } from "@app/lib/actions/types";
 import type { AgentActionSpecificEvent } from "@app/lib/actions/types/agent";
+import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
 import type {
   AgentActionSuccessEvent,
   AgentActionType,
@@ -11,12 +12,12 @@ import type {
   GenerationTokensEvent,
 } from "@app/types";
 import { assertNever } from "@app/types";
-import type { AgentMessageType } from "@app/types/assistant/conversation";
+import type { LightAgentMessageType } from "@app/types/assistant/conversation";
 
 export type AgentStateClassification = "thinking" | "acting" | "done";
 
 export interface MessageTemporaryState {
-  message: AgentMessageType;
+  message: LightAgentMessageType;
   agentState: AgentStateClassification;
   isRetrying: boolean;
   lastUpdated: Date;
@@ -44,12 +45,18 @@ type AgentMessageStateEventWithoutToolApproveExecution = Exclude<
 >;
 
 function updateMessageWithAction(
-  m: AgentMessageType,
+  m: LightAgentMessageType,
   action: AgentActionType
-): AgentMessageType {
+): LightAgentMessageType {
   return {
     ...m,
-    actions: [...m.actions.filter((a) => a.id !== action.id), action],
+    actions: [
+      ...m.actions.filter((a) => a.id !== action.id),
+      {
+        type: action.type,
+        id: action.id,
+      },
+    ],
   };
 }
 
@@ -124,7 +131,7 @@ export function messageReducer(
     case "agent_message_success":
       return {
         ...state,
-        message: event.message,
+        message: getLightAgentMessageFromAgentMessage(event.message),
         agentState: "done",
       };
 
