@@ -168,6 +168,7 @@ export async function botReplaceMention(
   const { slackConfig, connector } = connectorRes.value;
 
   try {
+    // TODO: export to it's own func
     const slackChatBotMessage = await SlackChatBotMessage.findOne({
       where: { id: messageId },
     });

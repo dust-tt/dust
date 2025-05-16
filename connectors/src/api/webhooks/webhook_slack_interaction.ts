@@ -151,7 +151,7 @@ const _webhookSlackInteractionsAPIHandler = async (
       };
 
       const approved = action.value === "approve" ? "approved" : "rejected";
-g
+
       const validationRes = await botValidateToolExecution(
         {
           actionId,
