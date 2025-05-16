@@ -26,7 +26,10 @@ import {
   AgentMessageContentParser,
   getDelimitersConfiguration,
 } from "@app/lib/api/assistant/agent_message_content_parser";
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
+import {
+  getAgentConfiguration,
+  getAgentConfigurations,
+} from "@app/lib/api/assistant/configuration";
 import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
 import { getEmulatedAndJITActions } from "@app/lib/api/assistant/jit_actions";
 import { isLegacyAgentConfiguration } from "@app/lib/api/assistant/legacy_agent";
@@ -402,6 +405,16 @@ async function* runMultiActionsAgent(
     fallbackPrompt += ".";
   }
 
+  const agentsList = agentConfiguration.instructions?.includes(
+    "{ASSISTANTS_LIST}"
+  )
+    ? await getAgentConfigurations({
+        auth,
+        agentsGetView: auth.user() ? "list" : "all",
+        variant: "light",
+      })
+    : null;
+
   const prompt = await constructPromptMultiActions(auth, {
     userMessage,
     agentConfiguration,
@@ -409,6 +422,7 @@ async function* runMultiActionsAgent(
     model,
     hasAvailableActions: !!availableActions.length,
     errorContext: error,
+    agentsList,
   });
 
   const MIN_GENERATION_TOKENS = model.generationTokensCount;
