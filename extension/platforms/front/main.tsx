@@ -14,10 +14,14 @@ import { routes } from "@app/ui/pages/routes";
 import { Notification } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
 import ReactDOM from "react-dom/client";
-import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import { createMemoryRouter, RouterProvider } from "react-router-dom";
 
 // Create a router instance outside the component to avoid recreation.
-const router = createBrowserRouter(routes);
+// Use memory router to avoid interfering with the parent page.
+const router = createMemoryRouter(routes, {
+  initialEntries: ["/"],
+  initialIndex: 0,
+});
 
 // Simple wrapper component to handle unmounting.
 const AppWrapper = () => {
