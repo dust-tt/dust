@@ -37,9 +37,7 @@ export function InstructionHistory({
         hour12: true,
       });
       return config.versionCreatedAt
-        ? dateFormatter
-            .format(new Date(config.versionCreatedAt))
-            .replace(/\//g, "/")
+        ? dateFormatter.format(new Date(config.versionCreatedAt))
         : `v${config.version}`;
     },
     []

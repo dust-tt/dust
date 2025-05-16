@@ -223,8 +223,8 @@ export function InstructionScreen({
 
   const dateFormatter = new Intl.DateTimeFormat("en-US", {
     year: "numeric",
-    month: "long",
-    day: "numeric",
+    month: "2-digit",
+    day: "2-digit",
     hour: "numeric",
     minute: "numeric",
     hour12: true,
@@ -304,7 +304,7 @@ export function InstructionScreen({
           <Separator />
           {compareVersion?.versionCreatedAt && (
             <Label>
-              Comparing with{" "}
+              Comparing current version with{" "}
               {dateFormatter.format(new Date(compareVersion.versionCreatedAt))}
             </Label>
           )}
