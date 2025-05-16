@@ -9,13 +9,41 @@ import {
   AgentTablesQueryConfigurationTable,
 } from "@app/lib/models/assistant/actions/tables_query";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
+import { Workspace } from "@app/lib/models/workspace";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type Logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
-import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
+import type { ModelId } from "@app/types";
 import { removeNulls } from "@app/types";
+
+async function findWorkspacesWithTablesConfigurations(): Promise<ModelId[]> {
+  const tableConfigurations = await AgentTablesQueryConfigurationTable.findAll({
+    attributes: ["workspaceId"],
+    where: {
+      tablesQueryConfigurationId: { [Op.not]: null },
+      mcpServerConfigurationId: null,
+    },
+    include: [
+      {
+        model: AgentTablesQueryConfiguration,
+        required: true,
+        include: [
+          {
+            model: AgentConfiguration,
+            required: true,
+            where: {
+              status: "active",
+            },
+          },
+        ],
+      },
+    ],
+  });
+
+  return tableConfigurations.map((config) => config.workspaceId);
+}
 
 /**
  * Migrates tables query actions from non-MCP to MCP version for a specific workspace.
@@ -188,7 +216,15 @@ makeScript({}, async ({ execute }, parentLogger) => {
   const now = new Date().toISOString().slice(0, 10).replace(/-/g, "");
 
   let revertSql = "";
-  await runOnAllWorkspaces(async (workspace) => {
+
+  const workspaceIds = await findWorkspacesWithTablesConfigurations();
+  const workspaces = await Workspace.findAll({
+    where: {
+      id: { [Op.in]: workspaceIds },
+    },
+  });
+
+  for (const workspace of workspaces) {
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
     const workspaceRevertSql = await migrateWorkspaceTablesQueryActions(auth, {
@@ -203,7 +239,7 @@ makeScript({}, async ({ execute }, parentLogger) => {
       );
     }
     revertSql += workspaceRevertSql;
-  });
+  }
 
   if (execute) {
     fs.writeFileSync(`${now}_tables_query_to_mcp_revert_all.sql`, revertSql);
