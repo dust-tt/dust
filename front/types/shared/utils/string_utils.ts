@@ -112,6 +112,17 @@ export function hasNullUnicodeCharacter(text: string): boolean {
   return text.includes("\u0000");
 }
 
+const SPECIAL_CASES = {
+  github: "GitHub",
+  hubspot: "HubSpot",
+  mcp: "MCP",
+};
+
+const SPECIAL_CASES_PATTERN = new RegExp(
+  Object.keys(SPECIAL_CASES).join("|"),
+  "g"
+);
+
 export function asDisplayName(name?: string | null) {
   if (!name) {
     return "";
@@ -120,6 +131,9 @@ export function asDisplayName(name?: string | null) {
   return name
     .toLowerCase()
     .replace(/_/g, " ")
-    .replace(/github/g, "GitHub")
+    .replace(
+      SPECIAL_CASES_PATTERN,
+      (match) => SPECIAL_CASES[match as keyof typeof SPECIAL_CASES]
+    )
     .replace(/\b\w/g, (char) => char.toUpperCase());
 }
