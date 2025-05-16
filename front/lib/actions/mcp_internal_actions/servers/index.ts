@@ -42,25 +42,25 @@ export async function getInternalMCPServer(
     case "file_generation":
       return generateFileServer(auth);
     case "query_tables":
-      return tablesQueryServer(auth, agentLoopContext.agentLoopRunContext);
+      return tablesQueryServer(auth, agentLoopContext.runContext);
     case "query_tables_v2":
-      return tablesQueryServerV2(auth, agentLoopContext.agentLoopRunContext);
+      return tablesQueryServerV2(auth, agentLoopContext.runContext);
     case "primitive_types_debugger":
       return primitiveTypesDebuggerServer();
     case "think":
       return thinkServer();
     case "web_search_&_browse":
-      return webtoolsServer(agentLoopContext.agentLoopRunContext);
+      return webtoolsServer(agentLoopContext.runContext);
     case "search":
-      return searchServer(auth, agentLoopContext.agentLoopRunContext);
+      return searchServer(auth, agentLoopContext);
     case "notion":
       return notionServer(auth, mcpServerId);
     case "include_data":
-      return includeDataServer(auth, agentLoopContext.agentLoopRunContext);
+      return includeDataServer(auth, agentLoopContext);
     case "ask_agent":
       return askAgentServer(auth);
     case "reasoning_v2":
-      return reasoningServer(auth, agentLoopContext.agentLoopRunContext);
+      return reasoningServer(auth, agentLoopContext.runContext);
     case "run_dust_app":
       return dustAppServer(auth, agentLoopContext);
     case "agent_router":

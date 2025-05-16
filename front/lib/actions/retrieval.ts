@@ -19,6 +19,7 @@ import type {
 import { dustAppRunInputsToInputSchema } from "@app/lib/actions/types/agent";
 import { actionRefsOffset, getRetrievalTopK } from "@app/lib/actions/utils";
 import { getRefs } from "@app/lib/api/assistant/citations";
+import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration";
 import type { Authenticator } from "@app/lib/auth";
 import { getDataSourceNameFromView } from "@app/lib/data_sources";
 import { AgentRetrievalAction } from "@app/lib/models/assistant/actions/retrieval";
@@ -33,23 +34,9 @@ import type {
   FunctionMessageTypeModel,
   ModelId,
   Result,
-  TagsFilter,
   TimeFrame,
 } from "@app/types";
 import { Ok, parseTimeFrame, timeFrameFromNow } from "@app/types";
-
-export type DataSourceFilter = {
-  parents: { in: string[]; not: string[] } | null;
-  tags?: TagsFilter;
-};
-
-// TODO(mcp): move function and types relative to data sources to a dedicated file instead of retrieval.ts.
-export type DataSourceConfiguration = {
-  sId?: string; // The sId is not always available, for instance it is not in an unsaved state of the builder.
-  workspaceId: string;
-  dataSourceViewId: string;
-  filter: DataSourceFilter;
-};
 
 /**
  * Retrieval configuration

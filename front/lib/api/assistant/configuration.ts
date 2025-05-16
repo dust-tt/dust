@@ -25,7 +25,6 @@ import {
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/actions/constants";
 import type { ReasoningModelConfiguration } from "@app/lib/actions/reasoning";
-import type { DataSourceConfiguration } from "@app/lib/actions/retrieval";
 import type { TableDataSourceConfiguration } from "@app/lib/actions/tables_query";
 import type {
   AgentActionConfigurationType,
@@ -81,6 +80,7 @@ import type {
   LightAgentConfigurationType,
   ModelId,
   Result,
+  TagsFilter,
   UserType,
   WorkspaceType,
 } from "@app/types";
@@ -97,6 +97,18 @@ import {
   removeNulls,
 } from "@app/types";
 import type { TagType } from "@app/types/tag";
+
+export type DataSourceFilter = {
+  parents: { in: string[]; not: string[] } | null;
+  tags?: TagsFilter;
+};
+
+export type DataSourceConfiguration = {
+  sId?: string; // The sId is not always available, for instance it is not in an unsaved state of the builder.
+  workspaceId: string;
+  dataSourceViewId: string;
+  filter: DataSourceFilter;
+};
 
 type SortStrategyType = "alphabetical" | "priority" | "updatedAt";
 interface SortStrategy {
