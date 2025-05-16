@@ -13,6 +13,7 @@ import type { SlackMessageUpdate } from "@connectors/connectors/slack/chat/block
 import {
   makeAssistantSelectionBlock,
   makeMessageUpdateBlocksAndText,
+  makeToolValidationBlock,
   MAX_SLACK_MESSAGE_LENGTH,
 } from "@connectors/connectors/slack/chat/blocks";
 import { annotateCitations } from "@connectors/connectors/slack/chat/citations";
@@ -84,6 +85,7 @@ async function streamAgentAnswerToSlack(
     slackChatBotMessage,
     agentConfigurations,
     slack,
+    connector,
   } = conversationData;
 
   const {
@@ -120,7 +122,6 @@ async function streamAgentAnswerToSlack(
       case "tables_query_model_output":
       case "tables_query_output":
       case "tables_query_started":
-      case "tool_approve_execution":
       case "tool_params":
       case "tool_notification":
       case "websearch_params":
@@ -140,6 +141,38 @@ async function streamAgentAnswerToSlack(
         );
 
         break;
+
+      case "tool_approve_execution": {
+        logger.info(
+          {
+            connectorId: connector.id,
+            conversationId: conversation.sId,
+            messageId: event.messageId,
+            actionId: event.action.id,
+            toolName: event.metadata.toolName,
+            agentName: event.metadata.agentName,
+          },
+          "Tool validation request"
+        );
+        
+        if (slackUserId && !slackUserInfo.is_bot) {
+          await slackClient.chat.postEphemeral({
+            channel: slackChannelId,
+            user: slackUserId,
+            text: `Approve tool execution`,
+            blocks: makeToolValidationBlock(
+              event.metadata.agentName,
+              event.metadata.toolName,
+              connector.workspaceId,
+              conversation.sId,
+              event.messageId,
+              event.action.id
+            ),
+            thread_ts: slackMessageTs,
+          });
+        }
+        break;
+      }
 
       case "user_message_error": {
         return new Err(

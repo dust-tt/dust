@@ -3,10 +3,12 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 
 import { botReplaceMention } from "@connectors/connectors/slack/bot";
+import { validateToolExecution } from "@connectors/connectors/slack/tool_validation";
 import logger from "@connectors/logger/logger";
 import { withLogging } from "@connectors/logger/withlogging";
 
 export const STATIC_AGENT_CONFIG = "static_agent_config";
+export const TOOL_VALIDATION_ACTION = "tool_validation_action";
 
 export const SlackInteractionPayloadSchema = t.type({
   team: t.type({
@@ -26,19 +28,28 @@ export const SlackInteractionPayloadSchema = t.type({
     id: t.string,
   }),
   actions: t.array(
-    t.type({
-      type: t.string,
-      action_id: t.literal(STATIC_AGENT_CONFIG),
-      block_id: t.string,
-      selected_option: t.type({
-        text: t.type({
-          type: t.string,
-          text: t.string,
+    t.union([
+      t.type({
+        type: t.string,
+        action_id: t.literal(STATIC_AGENT_CONFIG),
+        block_id: t.string,
+        selected_option: t.type({
+          text: t.type({
+            type: t.string,
+            text: t.string,
+          }),
+          value: t.string,
         }),
-        value: t.string,
+        action_ts: t.string,
       }),
-      action_ts: t.string,
-    })
+      t.type({
+        type: t.string,
+        action_id: t.literal(TOOL_VALIDATION_ACTION),
+        block_id: t.string,
+        value: t.string,
+        action_ts: t.string,
+      })
+    ])
   ),
 });
 
@@ -104,6 +115,34 @@ const _webhookSlackInteractionsAPIHandler = async (
           );
           return;
         }
+      }
+    } else if (action.action_id === TOOL_VALIDATION_ACTION) {
+      // note(adrien): cc @ flav, that's the part where i'm not convinced
+      // tried to mimick what was done upper in the file
+      const { workspaceId, conversationId, messageId, actionId } = JSON.parse(action.block_id);
+      
+      const approved = action.value === "approve" ? "approved" : "rejected";
+      
+      const validationRes = await validateToolExecution({
+        workspaceId,
+        conversationId,
+        messageId,
+        actionId,
+        approved,
+      });
+
+      if (validationRes.isErr()) {
+        logger.error(
+          {
+            error: validationRes.error,
+            workspaceId,
+            conversationId,
+            messageId,
+            actionId,
+            approved,
+          },
+          "Failed to validate tool execution"
+        );
       }
     }
   }
