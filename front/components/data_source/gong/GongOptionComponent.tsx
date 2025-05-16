@@ -50,6 +50,7 @@ export function GongOptionComponent({
     dataSource,
     configKey: GONG_SMART_TRACKERS_CONFIG_KEY,
   });
+  const smartTrackersEnabled = smartTrackersConfigValue === "true";
 
   const [retentionPeriod, setRetentionPeriod] = useState<string>(
     retentionPeriodConfigValue || ""
@@ -84,7 +85,8 @@ export function GongOptionComponent({
       }
     );
     if (res.ok) {
-      if (configKey === GONG_RETENTION_PERIOD_CONFIG_KEY) {2
+      if (configKey === GONG_RETENTION_PERIOD_CONFIG_KEY) {
+        2;
         await mutateRetentionPeriodConfig();
       } else if (configKey === GONG_SMART_TRACKERS_CONFIG_KEY) {
         await mutateSmartTrackersConfig();
@@ -172,10 +174,10 @@ export function GongOptionComponent({
                 onClick={async () => {
                   await handleConfigUpdate(
                     GONG_SMART_TRACKERS_CONFIG_KEY,
-                    smartTrackersConfigValue || "false"
+                    (!smartTrackersEnabled).toString()
                   );
                 }}
-                selected={smartTrackersConfigValue === "true"}
+                selected={smartTrackersEnabled}
                 disabled={readOnly || !isAdmin || loading}
               />
             </div>
