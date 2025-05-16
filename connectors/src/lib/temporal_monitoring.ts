@@ -60,9 +60,7 @@ export class ActivityInboundLogInterceptor
       `attempt:${this.context.info.attempt}`,
     ];
 
-    // startToClose timeouts do not log an error by default; this code
-    // ensures that the error is logged and the activity is marked as
-    // failed.
+    const TIMEOUT_BUFFER_MS = 5000; // 5 seconds buffer
     const startToCloseTimer = setTimeout(() => {
       const error = new DustConnectorWorkflowError(
         "Activity execution exceeded startToClose timeout (note: the activity might still be running)",
@@ -78,7 +76,7 @@ export class ActivityInboundLogInterceptor
         },
         "Activity failed"
       );
-    }, this.context.info.startToCloseTimeoutMs);
+    }, Math.max(0, this.context.info.startToCloseTimeoutMs - TIMEOUT_BUFFER_MS));
 
     // We already trigger a monitor after 20 failures, but when the pod crashes (eg: OOM or segfault), the attempt never gets logged.
     // By looking at the attempt count before the activity starts, we can detect activities that are repeatedly crashing the pod.
