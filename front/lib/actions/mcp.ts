@@ -97,6 +97,7 @@ export type ServerSideMCPServerConfigurationType =
     childAgentId: string | null;
     reasoningModel: ReasoningModelConfiguration | null;
     timeFrame: TimeFrame | null;
+    jsonSchema: JSONSchema | null;
     additionalConfiguration: Record<string, boolean | number | string>;
     mcpServerViewId: string; // Hold the sId of the MCP server view.
     dustAppConfiguration: DustAppRunConfigurationType | null;
