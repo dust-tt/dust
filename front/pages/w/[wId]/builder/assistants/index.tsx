@@ -163,12 +163,13 @@ export default function WorkspaceAssistants({
   });
 
   const agentsByTab = useMemo(() => {
+    const selectedTagIds = selectedTags.map((tag) => tag.sId);
     const allAgents: LightAgentConfigurationType[] = agentConfigurations
       .filter((a) => {
-        if (selectedTags.length === 0) {
+        if (selectedTagIds.length === 0) {
           return true;
         }
-        return a.tags.some((t) => selectedTags.includes(t));
+        return a.tags.some((t) => selectedTagIds.includes(t.sId));
       })
       .sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
 
