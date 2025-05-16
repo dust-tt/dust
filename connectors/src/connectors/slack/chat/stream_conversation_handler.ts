@@ -155,6 +155,16 @@ async function streamAgentAnswerToSlack(
           "Tool validation request"
         );
 
+        const blockId = JSON.stringify({
+          workspaceId: connector.workspaceId,
+          conversationId: conversation.id,
+          messageId: event.messageId,
+          actionId: event.action.id,
+          slackThreadTs: mainMessage.message?.thread_ts,
+          messageTs: mainMessage.message?.ts,
+          botId: mainMessage.message?.bot_id,
+        });
+
         if (slackUserId && !slackUserInfo.is_bot) {
           await slackClient.chat.postEphemeral({
             channel: slackChannelId,
@@ -163,10 +173,7 @@ async function streamAgentAnswerToSlack(
             blocks: makeToolValidationBlock(
               event.metadata.agentName,
               event.metadata.toolName,
-              connector.workspaceId,
-              conversation.sId,
-              event.messageId,
-              event.action.id
+              blockId
             ),
             thread_ts: slackMessageTs,
           });

@@ -231,10 +231,7 @@ export function makeErrorBlock(
 export function makeToolValidationBlock(
   agentName: string,
   toolName: string,
-  workspaceId: string,
-  conversationId: string,
-  messageId: string,
-  actionId: number
+  id: string
 ) {
   return [
     {
@@ -246,12 +243,7 @@ export function makeToolValidationBlock(
     },
     {
       type: "actions",
-      block_id: JSON.stringify({
-        workspaceId,
-        conversationId,
-        messageId,
-        actionId,
-      }),
+      block_id: id,
       elements: [
         {
           type: "button",

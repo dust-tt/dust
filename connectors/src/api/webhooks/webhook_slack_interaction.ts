@@ -3,8 +3,10 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 
-import { botReplaceMention } from "@connectors/connectors/slack/bot";
-import { botValidateToolExecution } from "@connectors/connectors/slack/tool_validation";
+import {
+  botReplaceMention,
+  botValidateToolExecution,
+} from "@connectors/connectors/slack/bot";
 import logger from "@connectors/logger/logger";
 import { withLogging } from "@connectors/logger/withlogging";
 
@@ -126,16 +128,23 @@ const _webhookSlackInteractionsAPIHandler = async (
         }
       }
     } else if (TOOL_VALIDATION_ACTIONS.includes(action.action_id)) {
-      // note(adrien): cc @ flav, that's the part where i'm not convinced
-      // tried to mimick what was done upper in the file
-      const { workspaceId, conversationId, messageId, actionId } = JSON.parse(
-        action.block_id
-      );
+      const {
+        workspaceId,
+        conversationId,
+        messageId,
+        actionId,
+        slackThreadTs,
+        messageTs,
+        botId,
+      } = JSON.parse(action.block_id);
 
       const params = {
         slackTeamId: payload.team.id,
         slackChannel: payload.channel.id,
         slackUserId: payload.user.id,
+        slackBotId: botId,
+        slackThreadTs: slackThreadTs,
+        slackMessageTs: messageTs,
       };
 
       // TODO: Ensure that messageId exists.
