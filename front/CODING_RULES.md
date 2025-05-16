@@ -53,13 +53,17 @@ function addItem(items: string[], newItem: string) {
 
 ### [GEN6] Comments must be sentences and properly wrapped
 
-Comments must be full sentences (starting with a capital letter and ending with a period) and must
-be wrapped at ~100 characters. Wrapping at clearly higher or lower characer count should be avoided.
-A bit of flexibility is allowed, in particular for long URLs or other long non wrappable strings.
+Comments must be full sentences (generally starting with a capital letter and ending with a period)
+and must be consistently wrapped (see examples below).
 
 Example:
 
 ```
+// BAD
+// new function
+// does something
+// interesting
+
 // BAD
 // this is a comment that is neither a full sentence nor wrapped at 100 characters (clearly higher) / it should be wrapped because otherwise it's really hard to read
 
@@ -68,9 +72,29 @@ Example:
 // is wrapped at a much lower character count than
 // 100. It should be wrapped at ~100 characters.
 
+// BAD
+// Check if the current tag is the page selector.
+// If it is, we are inside a page.
+// This assumes that we don't have nested pages.
+
+// GOOD
+// This function is new and does something interesting.
+// TODO(xyz):
+
 // GOOD
 // This is a comment that is a full sentence and is wrapped at 100 characters. It is easy to read
 // and supports consistency of our code style.
+
+// GOOD
+// Permissions:
+// - "never_ask": Automatically approved
+// - "low": Ask user for approval and allow to automatically approve next time
+// - "high": Ask for approval each time
+// - undefined: Use default permission ("never_ask" for default tools, "high" for other tools)
+
+// GOOD
+// Check if the current tag is the page selector. If it is, we are inside a page. This assumes that
+// we don't have nested pages.
 ```
 
 ## SECURITY
