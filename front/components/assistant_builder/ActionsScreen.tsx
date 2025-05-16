@@ -29,7 +29,6 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle,
-  TextArea,
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
@@ -44,6 +43,7 @@ import React, {
   useState,
 } from "react";
 
+import { MCPActionHeader } from "@app/components/actions/MCPActionHeader";
 import { DataVisualization } from "@app/components/assistant_builder/actions/DataVisualization";
 import {
   ActionDustAppRun,
@@ -99,12 +99,12 @@ import {
 } from "@app/components/assistant_builder/useBuilderActionInfo";
 import { useTools } from "@app/components/assistant_builder/useTools";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
-import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/utils";
 import {
   ACTION_SPECIFICATIONS,
   DATA_VISUALIZATION_SPECIFICATION,
 } from "@app/lib/actions/utils";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import { useMCPServerConnections } from "@app/lib/swr/mcp_servers";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
   ModelConfigurationType,
@@ -117,9 +117,7 @@ import {
   assertNever,
   MAX_STEPS_USE_PER_RUN_LIMIT,
 } from "@app/types";
-import { ConfigurationSectionContainer } from "@app/components/assistant_builder/actions/configuration/ConfigurationSectionContainer";
-import { useMCPServerConnections } from "@app/lib/swr/mcp_servers";
-import { MCPActionHeader } from "@app/components/actions/MCPActionHeader";
+
 import { DataDescription } from "./actions/DataDescription";
 
 const DATA_SOURCES_ACTION_CATEGORIES = [
