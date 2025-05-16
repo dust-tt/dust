@@ -1,9 +1,12 @@
 import "react-image-crop/dist/ReactCrop.css";
 
-import { useHashParam, useSendNotification } from "@dust-tt/sparkle";
-import { Tabs } from "@dust-tt/sparkle";
-import { TabsList } from "@dust-tt/sparkle";
-import { TabsTrigger } from "@dust-tt/sparkle";
+import {
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  useHashParam,
+  useSendNotification,
+} from "@dust-tt/sparkle";
 import assert from "assert";
 import { uniqueId } from "lodash";
 import { useRouter } from "next/router";
