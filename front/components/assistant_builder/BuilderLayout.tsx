@@ -4,13 +4,12 @@ import {
   ResizablePanelGroup,
 } from "@dust-tt/sparkle";
 
-export function BuilderLayout({
-  leftPanel,
-  rightPanel,
-}: {
+interface BuilderLayoutProps {
   leftPanel: React.ReactNode;
   rightPanel: React.ReactNode;
-}) {
+}
+
+export function BuilderLayout({ leftPanel, rightPanel }: BuilderLayoutProps) {
   return (
     <div className="flex h-full w-full items-center justify-center">
       <ResizablePanelGroup direction="horizontal" className="h-full w-full">

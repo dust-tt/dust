@@ -44,10 +44,11 @@ import { ACTION_SPECIFICATIONS } from "@app/lib/actions/utils";
 import { useUser } from "@app/lib/swr/user";
 import type { FetchAssistantTemplateResponse } from "@app/pages/api/templates/[tId]";
 import type {
-  AssistantBuilderRightPanelTab,
+  AssistantBuilderRightPanelTabType,
   ModelConfigurationType,
   WorkspaceType,
 } from "@app/types";
+import { isAssistantBuilderRightPanelTab } from "@app/types";
 
 interface AssistantBuilderRightPanelProps {
   screen: BuilderScreen;
@@ -75,7 +76,7 @@ export default function AssistantBuilderRightPanel({
   reasoningModels,
 }: AssistantBuilderRightPanelProps) {
   const [rightPanelTab, setRightPanelTab] =
-    useState<AssistantBuilderRightPanelTab>("Preview");
+    useState<AssistantBuilderRightPanelTabType>("Preview");
 
   const { draftAssistant, isFading } = usePreviewAssistant({
     owner,
@@ -109,9 +110,11 @@ export default function AssistantBuilderRightPanel({
       <div className="shrink-0 pt-5">
         <Tabs
           value={rightPanelTab ?? "Preview"}
-          onValueChange={(t) =>
-            setRightPanelTab(t as AssistantBuilderRightPanelTab)
-          }
+          onValueChange={(t) => {
+            if (isAssistantBuilderRightPanelTab(t)) {
+              setRightPanelTab(t);
+            }
+          }}
           className="hidden lg:block"
         >
           <TabsList>
@@ -304,7 +307,7 @@ const TemplateAddActionButton = ({
 };
 
 interface TemplateDropDownMenuProps {
-  setRightPanelTab: (tabName: AssistantBuilderRightPanelTab) => void;
+  setRightPanelTab: (tabName: AssistantBuilderRightPanelTabType) => void;
   removeTemplate: () => Promise<void>;
   resetToTemplateActions: () => Promise<void>;
   resetToTemplateInstructions: () => Promise<void>;
