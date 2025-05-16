@@ -138,7 +138,6 @@ export function GongOptionComponent({
                   )
                 }
                 disabled={readOnly || !isAdmin || loading}
-                className="w-full"
                 label="Save"
               />
             </div>
