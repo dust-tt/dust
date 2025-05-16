@@ -9,6 +9,7 @@ import {
 import React from "react";
 
 import { AssistantPicker } from "@app/components/assistant/AssistantPicker";
+import { ConfigurationSectionContainer } from "@app/components/assistant_builder/actions/configuration/ConfigurationSectionContainer";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import type { LightWorkspaceType } from "@app/types";
 
@@ -63,10 +64,7 @@ export function ChildAgentConfigurationSection({
   );
 
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex-grow pt-4 text-sm font-semibold text-foreground dark:text-foreground-night">
-        Selected Agent
-      </div>
+    <ConfigurationSectionContainer title="Selected Agent">
       {isAgentConfigurationsLoading ? (
         <Card size="sm" className="h-36 w-full">
           <div className="flex h-full w-full items-center justify-center">
@@ -133,6 +131,6 @@ export function ChildAgentConfigurationSection({
           </div>
         </Card>
       )}
-    </div>
+    </ConfigurationSectionContainer>
   );
 }

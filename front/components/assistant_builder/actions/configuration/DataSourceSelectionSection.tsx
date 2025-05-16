@@ -8,6 +8,7 @@ import {
 import { useRouter } from "next/router";
 import { useContext, useState } from "react";
 
+import { ConfigurationSectionContainer } from "@app/components/assistant_builder/actions/configuration/ConfigurationSectionContainer";
 import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
 import { DataSourceViewTagsFilterDropdown } from "@app/components/assistant_builder/tags/DataSourceViewTagsFilterDropdown";
 import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
@@ -73,160 +74,164 @@ export default function DataSourceSelectionSection({
       />
 
       <div className="overflow-hidden pt-4">
-        <div className="flex flex-row items-start">
-          <div className="flex-grow pb-2 text-sm font-semibold text-foreground dark:text-foreground-night">
-            Selected {viewTypeToLabel(viewType)}
+        <ConfigurationSectionContainer
+          title={`Selected ${viewTypeToLabel(viewType)}`}
+        >
+          <div className="flex flex-row items-start">
+            <div>
+              {Object.keys(dataSourceConfigurations).length > 0 && (
+                <Button
+                  label="Manage selection"
+                  variant="primary"
+                  size="sm"
+                  onClick={openDataSourceModal}
+                  disabled={!canAddDataSource}
+                />
+              )}
+            </div>
           </div>
-          <div>
-            {Object.keys(dataSourceConfigurations).length > 0 && (
-              <Button
-                label="Manage selection"
-                variant="primary"
-                size="sm"
-                onClick={openDataSourceModal}
-                disabled={!canAddDataSource}
-              />
-            )}
-          </div>
-        </div>
-        {!Object.keys(dataSourceConfigurations).length ? (
-          <EmptyCallToAction
-            label={`Select ${viewTypeToLabel(viewType)}`}
-            onClick={openDataSourceModal}
-            disabled={!canAddDataSource}
-          />
-        ) : (
-          <Tree>
-            {orderDatasourceViewSelectionConfigurationByImportance(
-              Object.values(dataSourceConfigurations)
-            ).map((dsConfig) => {
-              const LogoComponent = getConnectorProviderLogoWithFallback({
-                provider: dsConfig.dataSourceView.dataSource.connectorProvider,
-                isDark,
-              });
+          {!Object.keys(dataSourceConfigurations).length ? (
+            <EmptyCallToAction
+              label={`Select ${viewTypeToLabel(viewType)}`}
+              onClick={openDataSourceModal}
+              disabled={!canAddDataSource}
+            />
+          ) : (
+            <Tree>
+              {orderDatasourceViewSelectionConfigurationByImportance(
+                Object.values(dataSourceConfigurations)
+              ).map((dsConfig) => {
+                const LogoComponent = getConnectorProviderLogoWithFallback({
+                  provider:
+                    dsConfig.dataSourceView.dataSource.connectorProvider,
+                  isDark,
+                });
 
-              return (
-                <Tree.Item
-                  key={dsConfig.dataSourceView.sId}
-                  type={
-                    canBeExpanded(dsConfig.dataSourceView.dataSource)
-                      ? "node"
-                      : "leaf"
-                  } // todo make useConnectorPermissions hook work for non managed ds (Folders)
-                  label={getDisplayNameForDataSource(
-                    dsConfig.dataSourceView.dataSource
-                  )}
-                  visual={LogoComponent}
-                  className="whitespace-nowrap"
-                  actions={
-                    onSave && (
-                      <DataSourceViewTagsFilterDropdown
-                        owner={owner}
-                        dataSourceConfigurations={dataSourceConfigurations}
-                        currentDataSourceConfiguration={dsConfig}
-                        onSave={onSave}
-                      />
-                    )
-                  }
-                  areActionsFading={dsConfig.tagsFilter === null}
-                >
-                  {dsConfig.isSelectAll && (
-                    <DataSourceViewPermissionTree
-                      owner={owner}
-                      dataSourceView={dsConfig.dataSourceView}
-                      parentId={null}
-                      onDocumentViewClick={(documentId: string) => {
-                        setDataSourceViewToDisplay(dsConfig.dataSourceView);
-                        setQueryParam(
-                          router,
-                          DocumentViewRawContentKey,
-                          "true"
-                        );
-                        setQueryParam(router, "documentId", documentId);
-                      }}
-                      viewType={viewType}
-                    />
-                  )}
-                  {dsConfig.selectedResources.map((node) => {
-                    return (
-                      <Tree.Item
-                        key={`${dsConfig.dataSourceView.sId}-${node.internalId}`}
-                        label={node.title}
-                        type={node.expandable ? "node" : "leaf"}
-                        visual={getVisualForDataSourceViewContentNode(node)}
-                        className="whitespace-nowrap"
-                        actions={
-                          <div className="mr-8 flex flex-row gap-2">
-                            <IconButton
-                              size="xs"
-                              icon={ExternalLinkIcon}
-                              onClick={() => {
-                                if (node.sourceUrl) {
-                                  window.open(node.sourceUrl, "_blank");
-                                }
-                              }}
-                              className={classNames(
-                                node.sourceUrl
-                                  ? ""
-                                  : "pointer-events-none opacity-0"
-                              )}
-                              disabled={!node.sourceUrl}
-                              variant="outline"
-                            />
-                            <IconButton
-                              size="xs"
-                              icon={BracesIcon}
-                              onClick={() => {
-                                if (node.type === "document") {
-                                  setDataSourceViewToDisplay(
-                                    dsConfig.dataSourceView
-                                  );
-                                  setQueryParam(
-                                    router,
-                                    DocumentViewRawContentKey,
-                                    "true"
-                                  );
-                                  setQueryParam(
-                                    router,
-                                    "documentId",
-                                    node.internalId
-                                  );
-                                }
-                              }}
-                              className={classNames(
-                                node.type === "document"
-                                  ? ""
-                                  : "pointer-events-none opacity-0"
-                              )}
-                              disabled={node.type !== "document"}
-                              variant="outline"
-                            />
-                          </div>
-                        }
-                      >
-                        <DataSourceViewPermissionTree
+                return (
+                  <Tree.Item
+                    key={dsConfig.dataSourceView.sId}
+                    type={
+                      canBeExpanded(dsConfig.dataSourceView.dataSource)
+                        ? "node"
+                        : "leaf"
+                    } // todo make useConnectorPermissions hook work for non managed ds (Folders)
+                    label={getDisplayNameForDataSource(
+                      dsConfig.dataSourceView.dataSource
+                    )}
+                    visual={LogoComponent}
+                    className="whitespace-nowrap"
+                    actions={
+                      onSave && (
+                        <DataSourceViewTagsFilterDropdown
                           owner={owner}
-                          dataSourceView={dsConfig.dataSourceView}
-                          parentId={node.internalId}
-                          onDocumentViewClick={(documentId: string) => {
-                            setDataSourceViewToDisplay(dsConfig.dataSourceView);
-                            setQueryParam(
-                              router,
-                              DocumentViewRawContentKey,
-                              "true"
-                            );
-                            setQueryParam(router, "documentId", documentId);
-                          }}
-                          viewType={viewType}
+                          dataSourceConfigurations={dataSourceConfigurations}
+                          currentDataSourceConfiguration={dsConfig}
+                          onSave={onSave}
                         />
-                      </Tree.Item>
-                    );
-                  })}
-                </Tree.Item>
-              );
-            })}
-          </Tree>
-        )}
+                      )
+                    }
+                    areActionsFading={dsConfig.tagsFilter === null}
+                  >
+                    {dsConfig.isSelectAll && (
+                      <DataSourceViewPermissionTree
+                        owner={owner}
+                        dataSourceView={dsConfig.dataSourceView}
+                        parentId={null}
+                        onDocumentViewClick={(documentId: string) => {
+                          setDataSourceViewToDisplay(dsConfig.dataSourceView);
+                          setQueryParam(
+                            router,
+                            DocumentViewRawContentKey,
+                            "true"
+                          );
+                          setQueryParam(router, "documentId", documentId);
+                        }}
+                        viewType={viewType}
+                      />
+                    )}
+                    {dsConfig.selectedResources.map((node) => {
+                      return (
+                        <Tree.Item
+                          key={`${dsConfig.dataSourceView.sId}-${node.internalId}`}
+                          label={node.title}
+                          type={node.expandable ? "node" : "leaf"}
+                          visual={getVisualForDataSourceViewContentNode(node)}
+                          className="whitespace-nowrap"
+                          actions={
+                            <div className="mr-8 flex flex-row gap-2">
+                              <IconButton
+                                size="xs"
+                                icon={ExternalLinkIcon}
+                                onClick={() => {
+                                  if (node.sourceUrl) {
+                                    window.open(node.sourceUrl, "_blank");
+                                  }
+                                }}
+                                className={classNames(
+                                  node.sourceUrl
+                                    ? ""
+                                    : "pointer-events-none opacity-0"
+                                )}
+                                disabled={!node.sourceUrl}
+                                variant="outline"
+                              />
+                              <IconButton
+                                size="xs"
+                                icon={BracesIcon}
+                                onClick={() => {
+                                  if (node.type === "document") {
+                                    setDataSourceViewToDisplay(
+                                      dsConfig.dataSourceView
+                                    );
+                                    setQueryParam(
+                                      router,
+                                      DocumentViewRawContentKey,
+                                      "true"
+                                    );
+                                    setQueryParam(
+                                      router,
+                                      "documentId",
+                                      node.internalId
+                                    );
+                                  }
+                                }}
+                                className={classNames(
+                                  node.type === "document"
+                                    ? ""
+                                    : "pointer-events-none opacity-0"
+                                )}
+                                disabled={node.type !== "document"}
+                                variant="outline"
+                              />
+                            </div>
+                          }
+                        >
+                          <DataSourceViewPermissionTree
+                            owner={owner}
+                            dataSourceView={dsConfig.dataSourceView}
+                            parentId={node.internalId}
+                            onDocumentViewClick={(documentId: string) => {
+                              setDataSourceViewToDisplay(
+                                dsConfig.dataSourceView
+                              );
+                              setQueryParam(
+                                router,
+                                DocumentViewRawContentKey,
+                                "true"
+                              );
+                              setQueryParam(router, "documentId", documentId);
+                            }}
+                            viewType={viewType}
+                          />
+                        </Tree.Item>
+                      );
+                    })}
+                  </Tree.Item>
+                );
+              })}
+            </Tree>
+          )}
+        </ConfigurationSectionContainer>
       </div>
     </>
   );

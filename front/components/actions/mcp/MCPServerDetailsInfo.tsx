@@ -22,6 +22,9 @@ export function MCPServerDetailsInfo({
       {mcpServerIsRemote(mcpServer) && (
         <RemoteMCPForm mcpServer={mcpServer} owner={owner} />
       )}
+      <h3 className="heading-base mb-4 font-semibold text-foreground dark:text-foreground-night">
+        Available Tools
+      </h3>
       <ToolsList
         owner={owner}
         tools={mcpServer.tools}

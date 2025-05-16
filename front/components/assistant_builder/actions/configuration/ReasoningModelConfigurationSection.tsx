@@ -12,6 +12,7 @@ import {
 } from "@dust-tt/sparkle";
 import { useMemo } from "react";
 
+import { ConfigurationSectionContainer } from "@app/components/assistant_builder/actions/configuration/ConfigurationSectionContainer";
 import { getModelProviderLogo } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import type { ReasoningModelConfiguration } from "@app/lib/actions/reasoning";
@@ -72,11 +73,7 @@ export function ReasoningModelConfigurationSection({
   }
 
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex-grow pt-4 text-sm font-semibold text-foreground dark:text-foreground-night">
-        Reasoning Model
-      </div>
-
+    <ConfigurationSectionContainer title="Reasoning Model">
       {isModelsLoading ? (
         <Card size="sm" className="h-36 w-full">
           <div className="flex h-full w-full items-center justify-center">
@@ -165,6 +162,6 @@ export function ReasoningModelConfigurationSection({
           </div>
         </Card>
       )}
-    </div>
+    </ConfigurationSectionContainer>
   );
 }
