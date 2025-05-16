@@ -4,9 +4,9 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
+import type { SessionAuthenticationContext } from "@app/lib/api/auth_wrappers";
 import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
 import { Authenticator } from "@app/lib/auth";
-import type { SessionWithUser } from "@app/lib/iam/provider";
 import { apiError } from "@app/logger/withlogging";
 import type { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
 import type { WithAPIErrorResponse } from "@app/types";
@@ -20,7 +20,7 @@ async function handler(
   res: NextApiResponse<
     WithAPIErrorResponse<GetAgentConfigurationsResponseBody | void>
   >,
-  session: SessionWithUser
+  { session }: SessionAuthenticationContext
 ): Promise<void> {
   const auth = await Authenticator.fromSuperUserSession(
     session,

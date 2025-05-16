@@ -1,10 +1,10 @@
 import _ from "lodash";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import type { SessionAuthenticationContext } from "@app/lib/api/auth_wrappers";
 import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
 import { getDatasetHash, getDatasets } from "@app/lib/api/datasets";
 import { Authenticator } from "@app/lib/auth";
-import type { SessionWithUser } from "@app/lib/iam/provider";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { AppType, DatasetType, WithAPIErrorResponse } from "@app/types";
@@ -20,7 +20,7 @@ export type ExportAppResponseBody = {
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<ExportAppResponseBody>>,
-  session: SessionWithUser
+  { session }: SessionAuthenticationContext
 ): Promise<void> {
   const auth = await Authenticator.fromSuperUserSession(
     session,

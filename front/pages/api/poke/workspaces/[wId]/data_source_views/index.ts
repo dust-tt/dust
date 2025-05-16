@@ -1,8 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import type { SessionAuthenticationContext } from "@app/lib/api/auth_wrappers";
 import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
 import { Authenticator } from "@app/lib/auth";
-import type { SessionWithUser } from "@app/lib/iam/provider";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { DataSourceViewType, WithAPIErrorResponse } from "@app/types";
@@ -14,7 +14,7 @@ export type PokeListDataSourceViews = {
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<PokeListDataSourceViews>>,
-  session: SessionWithUser
+  { session }: SessionAuthenticationContext
 ): Promise<void> {
   const { wId } = req.query;
   if (typeof wId !== "string") {

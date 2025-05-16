@@ -3,10 +3,10 @@ import { DataSourceSearchQuerySchema } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { fromError } from "zod-validation-error";
 
+import type { SessionAuthenticationContext } from "@app/lib/api/auth_wrappers";
 import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
 import { handleDataSourceSearch } from "@app/lib/api/data_sources";
 import { Authenticator } from "@app/lib/auth";
-import type { SessionWithUser } from "@app/lib/iam/provider";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
@@ -15,7 +15,7 @@ import { assertNever } from "@app/types";
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<DataSourceSearchResponseType>>,
-  session: SessionWithUser
+  { session }: SessionAuthenticationContext
 ): Promise<void> {
   const auth = await Authenticator.fromSuperUserSession(
     session,

@@ -1,8 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import type { SessionAuthenticationContext } from "@app/lib/api/auth_wrappers";
 import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
 import { Authenticator } from "@app/lib/auth";
-import type { SessionWithUser } from "@app/lib/iam/provider";
 import { TrackerConfigurationResource } from "@app/lib/resources/tracker_resource";
 import { apiError } from "@app/logger/withlogging";
 import type {
@@ -17,7 +17,7 @@ export type PokeListTrackers = {
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<PokeListTrackers>>,
-  session: SessionWithUser
+  { session }: SessionAuthenticationContext
 ): Promise<void> {
   const { wId } = req.query;
   if (typeof wId !== "string") {

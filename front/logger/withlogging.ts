@@ -1,6 +1,8 @@
 import tracer from "dd-trace";
+import { cloneDeep } from "lodash";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import type { Authenticator } from "@app/lib/auth";
 import { getSession } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import type {
@@ -12,12 +14,49 @@ import type { APIErrorWithStatusCode, WithAPIErrorResponse } from "@app/types";
 import logger from "./logger";
 import { statsDClient } from "./statsDClient";
 
+export type LoggingContext = {
+  session: SessionWithUser | null;
+  auth: Authenticator | null;
+  token: string | null;
+};
+
+export type UpdateLoggingContextCallback = <K extends keyof LoggingContext>(
+  key: K,
+  value: LoggingContext[K]
+) => void;
+
+/**
+ * Helper to transform the LoggingContext into a Record
+ * that will be sent to the logger
+ */
+function loggingContextInfo(
+  context: LoggingContext
+): Record<string, string | number | null> {
+  const metadata: Record<string, string | number | null> = {
+    sessionId: context.session?.user.sid || "unknown",
+    userId: context.auth?.user()?.sId ?? null,
+  };
+
+  if (context.auth !== null && context.auth.user() !== null) {
+    metadata.userId = context.auth.getNonNullableUser().sId;
+  }
+
+  if (context.token !== null) {
+    metadata.token = context.token.slice(0, 5);
+  }
+
+  return metadata;
+}
+
+export type WithContextHandler<C, T> = (
+  req: NextApiRequest,
+  res: NextApiResponse<WithAPIErrorResponse<T>>,
+  context: C,
+  updateContext: UpdateLoggingContextCallback
+) => Promise<void> | void;
+
 export function withLogging<T>(
-  handler: (
-    req: NextApiRequest,
-    res: NextApiResponse<WithAPIErrorResponse<T>>,
-    context: { session: SessionWithUser | null }
-  ) => Promise<void>,
+  handler: WithContextHandler<LoggingContext, T>,
   streaming = false
 ) {
   return async (
@@ -31,7 +70,6 @@ export function withLogging<T>(
     const now = new Date();
 
     const session = await getSession(req, res);
-    const sessionId = session?.user.sid || "unknown";
 
     let route = req.url;
     let workspaceId: string | null = null;
@@ -56,9 +94,16 @@ export function withLogging<T>(
     const cliVersion =
       req.headers["x-dust-cli-version"] ?? req.query.cliVersion;
 
+    const context: LoggingContext = {
+      session,
+      auth: null,
+      token: null,
+    };
+
     try {
-      await handler(req, res, {
-        session,
+      // Make a clone to make sure we don't change it deeply by mistake.
+      await handler(req, res, cloneDeep(context), (key, value) => {
+        context[key] = value;
       });
     } catch (err) {
       const elapsed = new Date().getTime() - now.getTime();
@@ -71,12 +116,12 @@ export function withLogging<T>(
           error: err,
           method: req.method,
           route,
-          sessionId,
           streaming,
           url: req.url,
           // @ts-expect-error best effort to get err.stack if it exists
           error_stack: err?.stack,
           workspaceId,
+          ...loggingContextInfo(context),
         },
         "Unhandled API Error"
       );
@@ -118,11 +163,11 @@ export function withLogging<T>(
         durationMs: elapsed,
         method: req.method,
         route,
-        sessionId,
         statusCode: res.statusCode,
         streaming,
         url: req.url,
         workspaceId,
+        ...loggingContextInfo(context),
       },
       "Processed request"
     );

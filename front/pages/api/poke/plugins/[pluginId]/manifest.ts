@@ -1,9 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import type { SessionAuthenticationContext } from "@app/lib/api/auth_wrappers";
 import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
 import { pluginManager } from "@app/lib/api/poke/plugin_manager";
 import { Authenticator } from "@app/lib/auth";
-import type { SessionWithUser } from "@app/lib/iam/provider";
 import { apiError } from "@app/logger/withlogging";
 import type {
   PluginArgs,
@@ -19,7 +19,7 @@ export interface PokeGetPluginDetailsResponseBody {
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<PokeGetPluginDetailsResponseBody>>,
-  session: SessionWithUser
+  { session }: SessionAuthenticationContext
 ): Promise<void> {
   const auth = await Authenticator.fromSuperUserSession(session, null);
   if (!auth.isDustSuperUser()) {

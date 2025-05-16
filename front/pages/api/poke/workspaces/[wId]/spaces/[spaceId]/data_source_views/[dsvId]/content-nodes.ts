@@ -3,11 +3,11 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import type { SessionAuthenticationContext } from "@app/lib/api/auth_wrappers";
 import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
 import { getContentNodesForDataSourceView } from "@app/lib/api/data_source_view";
 import { getCursorPaginationParams } from "@app/lib/api/pagination";
 import { Authenticator } from "@app/lib/auth";
-import type { SessionWithUser } from "@app/lib/iam/provider";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { apiError } from "@app/logger/withlogging";
 import type {
@@ -36,7 +36,7 @@ export type PokeGetDataSourceViewContentNodes = {
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<PokeGetDataSourceViewContentNodes>>,
-  session: SessionWithUser
+  { session }: SessionAuthenticationContext
 ): Promise<void> {
   const { wId } = req.query;
   if (typeof wId !== "string") {
