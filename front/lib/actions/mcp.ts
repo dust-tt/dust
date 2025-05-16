@@ -24,7 +24,6 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/utils";
 import { getMCPEvents } from "@app/lib/actions/pubsub";
 import type { ReasoningModelConfiguration } from "@app/lib/actions/reasoning";
-import type { DataSourceConfiguration } from "@app/lib/actions/retrieval";
 import type { TableDataSourceConfiguration } from "@app/lib/actions/tables_query";
 import type {
   AgentLoopRunContextType,
@@ -40,6 +39,7 @@ import type {
   AgentActionSpecification,
 } from "@app/lib/actions/types/agent";
 import { getExecutionStatusFromConfig } from "@app/lib/actions/utils";
+import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration";
 import {
   processAndStoreFromUrl,
   uploadBase64ImageToFileStorage,

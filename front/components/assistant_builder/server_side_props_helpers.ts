@@ -16,10 +16,7 @@ import type { DustAppRunConfigurationType } from "@app/lib/actions/dust_app_run"
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { ProcessConfigurationType } from "@app/lib/actions/process";
 import type { ReasoningConfigurationType } from "@app/lib/actions/reasoning";
-import type {
-  DataSourceConfiguration,
-  RetrievalConfigurationType,
-} from "@app/lib/actions/retrieval";
+import type { RetrievalConfigurationType } from "@app/lib/actions/retrieval";
 import type {
   TableDataSourceConfiguration,
   TablesQueryConfigurationType,
@@ -36,6 +33,7 @@ import {
   isTablesQueryConfiguration,
   isWebsearchConfiguration,
 } from "@app/lib/actions/types/guards";
+import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration";
 import { getContentNodesForDataSourceView } from "@app/lib/api/data_source_view";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";

@@ -267,10 +267,10 @@ export default async function createServer(
   const server = new McpServer(serverInfo);
   const owner = auth.getNonNullableWorkspace();
 
-  if (agentLoopContext && agentLoopContext.agentLoopListToolsContext) {
+  if (agentLoopContext && agentLoopContext.listToolsContext) {
     if (
       !isMCPConfigurationForDustAppRun(
-        agentLoopContext.agentLoopListToolsContext.agentActionConfiguration
+        agentLoopContext.listToolsContext.agentActionConfiguration
       )
     ) {
       throw new Error("Invalid Dust app run agent configuration");
@@ -278,7 +278,7 @@ export default async function createServer(
 
     const { app, schema } = await prepareAppContext(
       auth,
-      agentLoopContext.agentLoopListToolsContext.agentActionConfiguration
+      agentLoopContext.listToolsContext.agentActionConfiguration
     );
 
     if (!app.description) {
@@ -301,18 +301,16 @@ export default async function createServer(
         };
       }
     );
-  } else if (agentLoopContext && agentLoopContext.agentLoopRunContext) {
+  } else if (agentLoopContext && agentLoopContext.runContext) {
     if (
-      !isMCPInternalDustAppRun(
-        agentLoopContext.agentLoopRunContext.actionConfiguration
-      )
+      !isMCPInternalDustAppRun(agentLoopContext.runContext.actionConfiguration)
     ) {
       throw new Error("Invalid Dust app run tool configuration");
     }
 
     const { app, schema, appConfig } = await prepareAppContext(
       auth,
-      agentLoopContext.agentLoopRunContext.actionConfiguration
+      agentLoopContext.runContext.actionConfiguration
     );
 
     if (!app.description) {
@@ -329,7 +327,7 @@ export default async function createServer(
         params = await prepareParamsWithHistory(
           params,
           schema,
-          agentLoopContext.agentLoopRunContext,
+          agentLoopContext.runContext,
           auth
         );
 
@@ -401,12 +399,12 @@ export default async function createServer(
 
         if (
           containsFileOutput(sanitizedOutput) &&
-          agentLoopContext.agentLoopRunContext?.conversation
+          agentLoopContext.runContext?.conversation
         ) {
           const fileContent = await processDustFileOutput(
             auth,
             sanitizedOutput,
-            agentLoopContext.agentLoopRunContext.conversation,
+            agentLoopContext.runContext.conversation,
             app.name
           );
           content.push(...fileContent);

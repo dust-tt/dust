@@ -10,10 +10,7 @@ import {
   PROCESS_ACTION_TOP_K,
 } from "@app/lib/actions/constants";
 import { getExtractFileTitle } from "@app/lib/actions/process/utils";
-import type {
-  DataSourceConfiguration,
-  RetrievalTimeframe,
-} from "@app/lib/actions/retrieval";
+import type { RetrievalTimeframe } from "@app/lib/actions/retrieval";
 import {
   applyDataSourceFilters,
   retrievalAutoTimeFrameInputSpecification,
@@ -61,6 +58,7 @@ export const PROCESS_SCHEMA_ALLOWED_TYPES = [
 ] as const;
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 
+import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration";
 import { FileResource } from "@app/lib/resources/file_resource";
 
 // Properties in the process configuration table are stored as an array of objects.

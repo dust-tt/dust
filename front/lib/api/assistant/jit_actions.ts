@@ -21,10 +21,7 @@ import {
   makeConversationListFilesAction,
 } from "@app/lib/actions/conversation/list_files";
 import type { ProcessConfigurationType } from "@app/lib/actions/process";
-import type {
-  DataSourceConfiguration,
-  RetrievalConfigurationType,
-} from "@app/lib/actions/retrieval";
+import type { RetrievalConfigurationType } from "@app/lib/actions/retrieval";
 import type { TablesQueryConfigurationType } from "@app/lib/actions/tables_query";
 import type {
   ActionConfigurationType,
@@ -34,6 +31,7 @@ import {
   isProcessConfiguration,
   isRetrievalConfiguration,
 } from "@app/lib/actions/types/guards";
+import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration";
 import {
   isMultiSheetSpreadsheetContentType,
   isSearchableFolder,
