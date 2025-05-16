@@ -784,6 +784,7 @@ module.exports = {
   },
   plugins: [
     require("@tailwindcss/forms"),
+    require('@tailwindcss/container-queries'),
     require("tailwind-scrollbar-hide"),
     require("tailwindcss-animate"),
     plugin(function ({ addBase, theme }) {
