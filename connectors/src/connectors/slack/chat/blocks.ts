@@ -236,43 +236,46 @@ export function makeToolValidationBlock(
   messageId: string,
   actionId: number
 ) {
-  return [{
-    type: "section",
-    text: {
-      type: "mrkdwn",
-      text: `Agent \`${agentName}\` is requesting permission to use tool \`${toolName}\``,
+  return [
+    {
+      type: "section",
+      text: {
+        type: "mrkdwn",
+        text: `Agent \`${agentName}\` is requesting permission to use tool \`${toolName}\``,
+      },
     },
-  }, {  
-    type: "actions",
-    block_id: JSON.stringify({
-      workspaceId,
-      conversationId,
-      messageId,
-      actionId,
-    }),
-    elements: [
-      {
-        type: "button",
-        text: {
-          type: "plain_text",
-          text: "Approve",
-          emoji: true,
+    {
+      type: "actions",
+      block_id: JSON.stringify({
+        workspaceId,
+        conversationId,
+        messageId,
+        actionId,
+      }),
+      elements: [
+        {
+          type: "button",
+          text: {
+            type: "plain_text",
+            text: "Approve",
+            emoji: true,
+          },
+          style: "primary",
+          value: "approve",
+          action_id: "approve_tool_execution",
         },
-        style: "primary",
-        value: "approve",
-        action_id: "approve_tool_execution",        
-      },
-      {
-        type: "button",
-        text: {
-          type: "plain_text",
-          text: "Reject",
-          emoji: true,
+        {
+          type: "button",
+          text: {
+            type: "plain_text",
+            text: "Reject",
+            emoji: true,
+          },
+          style: "danger",
+          value: "reject",
+          action_id: "reject_tool_execution",
         },
-        style: "danger",
-        value: "reject",
-        action_id: "reject_tool_execution",
-      },
-    ],
-  }]
+      ],
+    },
+  ];
 }

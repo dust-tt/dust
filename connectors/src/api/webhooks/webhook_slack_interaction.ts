@@ -48,7 +48,7 @@ export const SlackInteractionPayloadSchema = t.type({
         block_id: t.string,
         value: t.string,
         action_ts: t.string,
-      })
+      }),
     ])
   ),
 });
@@ -119,10 +119,12 @@ const _webhookSlackInteractionsAPIHandler = async (
     } else if (action.action_id === TOOL_VALIDATION_ACTION) {
       // note(adrien): cc @ flav, that's the part where i'm not convinced
       // tried to mimick what was done upper in the file
-      const { workspaceId, conversationId, messageId, actionId } = JSON.parse(action.block_id);
-      
+      const { workspaceId, conversationId, messageId, actionId } = JSON.parse(
+        action.block_id
+      );
+
       const approved = action.value === "approve" ? "approved" : "rejected";
-      
+
       const validationRes = await validateToolExecution({
         workspaceId,
         conversationId,

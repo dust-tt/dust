@@ -154,7 +154,7 @@ async function streamAgentAnswerToSlack(
           },
           "Tool validation request"
         );
-        
+
         if (slackUserId && !slackUserInfo.is_bot) {
           await slackClient.chat.postEphemeral({
             channel: slackChannelId,

@@ -23,16 +23,18 @@ export async function validateToolExecution({
   approved,
 }: ToolValidationParams): Promise<Result<{ success: boolean }, Error>> {
   try {
-    logger.info({
-      workspaceId,
-      conversationId,
-      messageId,
-      actionId,
-      approved,
-    }, "Validating tool execution"
-    )
+    logger.info(
+      {
+        workspaceId,
+        conversationId,
+        messageId,
+        actionId,
+        approved,
+      },
+      "Validating tool execution"
+    );
     const dustFrontAPIUrl = apiConfig.getDustFrontAPIUrl();
-    
+
     const response = await fetch(
       `${dustFrontAPIUrl}/w/${workspaceId}/assistant/conversations/${conversationId}/messages/${messageId}/validate-action`,
       {
@@ -85,7 +87,9 @@ export async function validateToolExecution({
       "Exception validating tool execution"
     );
     return new Err(
-      new Error(`Exception validating tool execution: ${(error as Error).message}`)
+      new Error(
+        `Exception validating tool execution: ${(error as Error).message}`
+      )
     );
   }
-} 
+}
