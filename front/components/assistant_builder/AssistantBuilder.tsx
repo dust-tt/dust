@@ -1,13 +1,6 @@
 import "react-image-crop/dist/ReactCrop.css";
 
 import {
-  BarChartIcon,
-  Button,
-  ChatBubbleBottomCenterTextIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
-  cn,
-  MagicIcon,
   Tabs,
   TabsList,
   TabsTrigger,
@@ -213,29 +206,9 @@ export default function AssistantBuilder({
 
   const [rightPanelStatus, setRightPanelStatus] =
     useState<AssistantBuilderRightPanelStatus>({
-      tab: template != null ? "Template" : null,
-      openedAt: template != null ? Date.now() : null,
+      tab: template != null ? "Template" : "Preview",
+      openedAt: Date.now(),
     });
-
-  // We deactivate the Preview button if the BuilderState is empty (= no instructions, no tools)
-  const isBuilderStateEmpty =
-    !builderState.instructions?.trim() && !builderState.actions.length;
-
-  const [isPreviewButtonAnimating, setIsPreviewButtonAnimating] =
-    useState(false);
-
-  const triggerPreviewButtonAnimation = () => {
-    setIsPreviewButtonAnimating(true);
-    setTimeout(() => {
-      setIsPreviewButtonAnimating(false);
-    }, 1500);
-  };
-
-  useEffect(() => {
-    if (!isBuilderStateEmpty) {
-      triggerPreviewButtonAnimation();
-    }
-  }, [isBuilderStateEmpty]);
 
   // If agent is created, the user creating it should be added to the builder
   // editors list. If not, then the user should be in this list.
@@ -273,17 +246,6 @@ export default function AssistantBuilder({
       tab: tabName,
       openedAt: Date.now(),
     });
-  };
-  const closeRightPanel = () => {
-    setRightPanelStatus({
-      tab: null,
-      openedAt: null,
-    });
-  };
-  const toggleRightPanel = () => {
-    rightPanelStatus.tab !== null
-      ? closeRightPanel()
-      : openRightPanelTab(template === null ? "Preview" : "Template");
   };
 
   const formValidation = useCallback(async () => {
@@ -453,6 +415,7 @@ export default function AssistantBuilder({
         hideSidebar
         isWideMode
         owner={owner}
+        noSidePadding
         titleChildren={
           !edited ? (
             <AppLayoutSimpleCloseTitle
@@ -562,58 +525,6 @@ export default function AssistantBuilder({
               <PrevNextButtons screen={screen} setCurrentTab={setCurrentTab} />
             </div>
           }
-          buttonsRightPanel={
-            <>
-              {/* Chevron button */}
-              <Button
-                size="sm"
-                variant="ghost"
-                icon={
-                  rightPanelStatus.tab !== null
-                    ? ChevronRightIcon
-                    : ChevronLeftIcon
-                }
-                disabled={isBuilderStateEmpty}
-                onClick={toggleRightPanel}
-              />
-              {rightPanelStatus.tab === null && (
-                <div className="flex flex-col gap-3">
-                  {/* Preview Button */}
-                  <Button
-                    icon={ChatBubbleBottomCenterTextIcon}
-                    onClick={() => openRightPanelTab("Preview")}
-                    size="sm"
-                    variant="outline"
-                    tooltip="Preview your agent"
-                    className={cn(
-                      isPreviewButtonAnimating && "animate-breathing-scale"
-                    )}
-                    disabled={isBuilderStateEmpty}
-                  />
-                  {/* Performance Button */}
-                  {!!agentConfigurationId && (
-                    <Button
-                      icon={BarChartIcon}
-                      onClick={() => openRightPanelTab("Performance")}
-                      size="sm"
-                      variant="outline"
-                      tooltip="Inspect feedback and performance"
-                    />
-                  )}
-                  {/* Template Button */}
-                  {template !== null && (
-                    <Button
-                      icon={MagicIcon}
-                      onClick={() => openRightPanelTab("Template")}
-                      size="sm"
-                      variant="outline"
-                      tooltip="Template instructions"
-                    />
-                  )}
-                </div>
-              )}
-            </>
-          }
           rightPanel={
             <AssistantBuilderRightPanel
               screen={screen}
@@ -636,7 +547,6 @@ export default function AssistantBuilder({
               reasoningModels={reasoningModels}
             />
           }
-          isRightPanelOpen={rightPanelStatus.tab !== null}
         />
       </AppContentLayout>
     </>

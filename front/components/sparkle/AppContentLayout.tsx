@@ -30,7 +30,7 @@ interface AppContentLayoutProps {
   children: React.ReactNode;
   hasTopPadding?: boolean;
   hideSidebar?: boolean;
-  isConversationView?: boolean;
+  noSidePadding?: boolean;
   isWideMode?: boolean;
   navChildren?: React.ReactNode;
   owner: WorkspaceType;
@@ -47,7 +47,7 @@ export default function AppContentLayout({
   children,
   hasTopPadding,
   hideSidebar = false,
-  isConversationView,
+  noSidePadding,
   isWideMode = false,
   navChildren,
   owner,
@@ -106,7 +106,7 @@ export default function AppContentLayout({
           <div
             className={cn(
               "flex h-full w-full flex-col items-center overflow-y-auto",
-              !isConversationView && "px-4 sm:px-8"
+              !noSidePadding && "px-4 sm:px-8"
             )}
           >
             {isWideMode ? (
