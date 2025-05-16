@@ -12,12 +12,16 @@ interface BuilderLayoutProps {
 export function BuilderLayout({ leftPanel, rightPanel }: BuilderLayoutProps) {
   return (
     <div className="flex h-full w-full">
-      <ResizablePanelGroup direction="horizontal" className="h-full w-full">
-        <ResizablePanel defaultSize={50} minSize={30}>
+      <ResizablePanelGroup
+        autoSaveId="assistant-builder-layout"
+        direction="horizontal"
+        className="h-full w-full"
+      >
+        <ResizablePanel defaultSize={70} minSize={30}>
           <div className="h-full w-full overflow-y-auto px-6">{leftPanel}</div>
         </ResizablePanel>
         <ResizableHandle />
-        <ResizablePanel defaultSize={50} minSize={20}>
+        <ResizablePanel defaultSize={30} minSize={20}>
           <div className="h-full w-full overflow-y-auto px-6">{rightPanel}</div>
         </ResizablePanel>
       </ResizablePanelGroup>
