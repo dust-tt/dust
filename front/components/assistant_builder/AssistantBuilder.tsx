@@ -441,63 +441,70 @@ export default function AssistantBuilder({
                   </TabsList>
                 </Tabs>
               </div>
-              {(() => {
-                switch (screen) {
-                  case "instructions":
-                    return (
-                      <InstructionScreen
-                        owner={owner}
-                        builderState={builderState}
-                        setBuilderState={setBuilderState}
-                        setEdited={setEdited}
-                        resetAt={instructionsResetAt}
-                        isUsingTemplate={template !== null}
-                        instructionsError={instructionsError}
-                        doTypewriterEffect={doTypewriterEffect}
-                        setDoTypewriterEffect={setDoTypewriterEffect}
-                        agentConfigurationId={agentConfigurationId}
-                        models={models}
-                        setIsInstructionDiffMode={setIsInstructionDiffMode}
-                        isInstructionDiffMode={isInstructionDiffMode}
-                      />
-                    );
-                  case "actions":
-                    return (
-                      <ActionsScreen
-                        owner={owner}
-                        builderState={builderState}
-                        setBuilderState={setBuilderState}
-                        setEdited={setEdited}
-                        setAction={setAction}
-                        pendingAction={pendingAction}
-                        enableReasoningTool={reasoningModels.length > 0}
-                        reasoningModels={reasoningModels}
-                      />
-                    );
+              <div className="h-full">
+                {(() => {
+                  switch (screen) {
+                    case "instructions":
+                      return (
+                        <InstructionScreen
+                          owner={owner}
+                          builderState={builderState}
+                          setBuilderState={setBuilderState}
+                          setEdited={setEdited}
+                          resetAt={instructionsResetAt}
+                          isUsingTemplate={template !== null}
+                          instructionsError={instructionsError}
+                          doTypewriterEffect={doTypewriterEffect}
+                          setDoTypewriterEffect={setDoTypewriterEffect}
+                          agentConfigurationId={agentConfigurationId}
+                          models={models}
+                          setIsInstructionDiffMode={setIsInstructionDiffMode}
+                          isInstructionDiffMode={isInstructionDiffMode}
+                        />
+                      );
+                    case "actions":
+                      return (
+                        <ActionsScreen
+                          owner={owner}
+                          builderState={builderState}
+                          setBuilderState={setBuilderState}
+                          setEdited={setEdited}
+                          setAction={setAction}
+                          pendingAction={pendingAction}
+                          enableReasoningTool={reasoningModels.length > 0}
+                          reasoningModels={reasoningModels}
+                        />
+                      );
 
-                  case "settings":
-                    return (
-                      <SettingsScreen
-                        agentConfigurationId={agentConfigurationId}
-                        baseUrl={baseUrl}
-                        owner={owner}
-                        builderState={builderState}
-                        initialHandle={initialBuilderState?.handle}
-                        setBuilderState={setBuilderState}
-                        setEdited={setEdited}
-                        assistantHandleError={assistantHandleError}
-                        descriptionError={descriptionError}
-                        slackChannelSelected={selectedSlackChannels || []}
-                        slackDataSource={slackDataSource}
-                        setSelectedSlackChannels={setSelectedSlackChannels}
-                        currentUser={user}
-                      />
-                    );
-                  default:
-                    assertNever(screen);
-                }
-              })()}
-              <PrevNextButtons screen={screen} setCurrentTab={setCurrentTab} />
+                    case "settings":
+                      return (
+                        <SettingsScreen
+                          agentConfigurationId={agentConfigurationId}
+                          baseUrl={baseUrl}
+                          owner={owner}
+                          builderState={builderState}
+                          initialHandle={initialBuilderState?.handle}
+                          setBuilderState={setBuilderState}
+                          setEdited={setEdited}
+                          assistantHandleError={assistantHandleError}
+                          descriptionError={descriptionError}
+                          slackChannelSelected={selectedSlackChannels || []}
+                          slackDataSource={slackDataSource}
+                          setSelectedSlackChannels={setSelectedSlackChannels}
+                          currentUser={user}
+                        />
+                      );
+                    default:
+                      assertNever(screen);
+                  }
+                })()}
+              </div>
+              <div className="mt-auto flex-shrink-0">
+                <PrevNextButtons
+                  screen={screen}
+                  setCurrentTab={setCurrentTab}
+                />
+              </div>
             </div>
           }
           rightPanel={
