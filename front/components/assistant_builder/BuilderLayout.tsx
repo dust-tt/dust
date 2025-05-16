@@ -11,7 +11,7 @@ interface BuilderLayoutProps {
 
 export function BuilderLayout({ leftPanel, rightPanel }: BuilderLayoutProps) {
   return (
-    <div className="flex h-full w-full items-center justify-center">
+    <div className="flex h-full w-full">
       <ResizablePanelGroup direction="horizontal" className="h-full w-full">
         <ResizablePanel defaultSize={50} minSize={30}>
           <div className="h-full w-full overflow-y-auto px-6">{leftPanel}</div>
