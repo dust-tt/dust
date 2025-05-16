@@ -11,6 +11,32 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type Logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
+import { ModelId } from "@app/types";
+import { Workspace } from "@app/lib/models/workspace";
+
+async function findWorkspacesWithReasoningConfigurations(): Promise<ModelId[]> {
+  const reasoningConfigurations = await AgentReasoningConfiguration.findAll({
+    attributes: ["workspaceId"],
+    where: {
+      agentConfigurationId: { [Op.not]: null },
+      mcpServerConfigurationId: null,
+    },
+    // Filter on active agents.
+    include: [
+      {
+        attributes: [],
+        model: AgentConfiguration,
+        required: true,
+        where: {
+          status: "active",
+        },
+      },
+    ],
+    order: [["id", "ASC"]],
+  });
+
+  return reasoningConfigurations.map((config) => config.workspaceId);
+}
 
 /**
  * Migrates reasoning actions from non-MCP to MCP version for a specific workspace.
@@ -152,8 +178,15 @@ async function migrateWorkspaceReasoningActions(
 makeScript({}, async ({ execute }, parentLogger) => {
   const now = new Date().toISOString().slice(0, 10).replace(/-/g, "");
 
+  const workspaceIds = await findWorkspacesWithReasoningConfigurations();
+  const workspaces = await Workspace.findAll({
+    where: {
+      id: { [Op.in]: workspaceIds },
+    },
+  });
+
   let revertSql = "";
-  await runOnAllWorkspaces(async (workspace) => {
+  for (const workspace of workspaces) {
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
     const workspaceRevertSql = await migrateWorkspaceReasoningActions(auth, {
@@ -168,7 +201,7 @@ makeScript({}, async ({ execute }, parentLogger) => {
       );
     }
     revertSql += workspaceRevertSql;
-  });
+  }
 
   if (execute) {
     fs.writeFileSync(`${now}_reasoning_to_mcp_revert_all.sql`, revertSql);
