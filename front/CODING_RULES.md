@@ -79,7 +79,7 @@ Example:
 
 // GOOD
 // This function is new and does something interesting.
-// TODO(xyz):
+// TODO(xxx): improve the efficiency of this.
 
 // GOOD
 // This is a comment that is a full sentence and is wrapped at 100 characters. It is easy to read
