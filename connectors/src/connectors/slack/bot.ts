@@ -67,7 +67,7 @@ import {
 
 const MAX_FILE_SIZE_TO_UPLOAD = 10 * 1024 * 1024; // 10 MB
 
-type BotAnswerParams = {
+export type BotAnswerParams = {
   slackTeamId: string;
   slackChannel: string;
   slackUserId: string | null;

@@ -1,95 +1,50 @@
 import type { Result } from "@dust-tt/client";
-import { Err, Ok } from "@dust-tt/client";
+import { DustAPI, Err, Ok } from "@dust-tt/client";
 
 import { apiConfig } from "@connectors/lib/api/config";
 import logger from "@connectors/logger/logger";
+import {
+  BotAnswerParams,
+  getSlackConnector,
+} from "@connectors/connectors/slack/bot";
 
 interface ToolValidationParams {
-  workspaceId: string;
-  conversationId: string;
-  messageId: string;
   actionId: number;
   approved: "approved" | "rejected";
+  conversationId: string;
+  messageId: string;
 }
 
-/**
- * Validates a tool execution by calling the validate-action API endpoint.
- */
-export async function validateToolExecution({
-  workspaceId,
-  conversationId,
-  messageId,
-  actionId,
-  approved,
-}: ToolValidationParams): Promise<Result<{ success: boolean }, Error>> {
-  try {
-    logger.info(
-      {
-        workspaceId,
-        conversationId,
-        messageId,
-        actionId,
-        approved,
-      },
-      "Validating tool execution"
-    );
-    const dustFrontAPIUrl = apiConfig.getDustFrontAPIUrl();
-
-    const response = await fetch(
-      `${dustFrontAPIUrl}/w/${workspaceId}/assistant/conversations/${conversationId}/messages/${messageId}/validate-action`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          actionId,
-          approved,
-        }),
-      }
-    );
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      logger.error(
-        {
-          workspaceId,
-          conversationId,
-          messageId,
-          actionId,
-          approved,
-          status: response.status,
-          error: errorData,
-        },
-        "Error validating tool execution"
-      );
-      return new Err(
-        new Error(
-          `Failed to validate tool execution: ${
-            errorData.api_error?.message || response.statusText
-          }`
-        )
-      );
-    }
-
-    const data = await response.json();
-    return new Ok(data);
-  } catch (error: unknown) {
-    logger.error(
-      {
-        workspaceId,
-        conversationId,
-        messageId,
-        actionId,
-        approved,
-        error,
-      },
-      "Exception validating tool execution"
-    );
-    return new Err(
-      new Error(
-        `Exception validating tool execution: ${(error as Error).message}`
-      )
-    );
+export async function botValidateToolExecution(
+  { actionId, approved, conversationId, messageId }: ToolValidationParams,
+  params: BotAnswerParams
+) {
+  const connectorRes = await getSlackConnector(params);
+  if (connectorRes.isErr()) {
+    return connectorRes;
   }
+
+  const { connector } = connectorRes.value;
+
+  const dustAPI = new DustAPI(
+    apiConfig.getDustAPIConfig(),
+    {
+      apiKey: connector.workspaceAPIKey,
+      // We neither need group ids nor user email headers here because validate tool endpoint is not
+      // gated by group ids or user email headers.
+      extraHeaders: {},
+      workspaceId: connector.workspaceId,
+    },
+    logger,
+    apiConfig.getDustFrontAPIUrl()
+  );
+
+  const res = await dustAPI.validateAction({
+    conversationId,
+    messageId,
+    actionId,
+    approved,
+  });
+
+  return res;
 }

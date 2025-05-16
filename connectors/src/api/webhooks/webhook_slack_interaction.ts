@@ -1,14 +1,18 @@
 import type { Request, Response } from "express";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
 
 import { botReplaceMention } from "@connectors/connectors/slack/bot";
-import { validateToolExecution } from "@connectors/connectors/slack/tool_validation";
+import { botValidateToolExecution } from "@connectors/connectors/slack/tool_validation";
 import logger from "@connectors/logger/logger";
 import { withLogging } from "@connectors/logger/withlogging";
 
 export const STATIC_AGENT_CONFIG = "static_agent_config";
-export const TOOL_VALIDATION_ACTION = "tool_validation_action";
+export const TOOL_VALIDATION_ACTIONS = [
+  "approve_tool_execution",
+  "reject_tool_execution",
+];
 
 export const SlackInteractionPayloadSchema = t.type({
   team: t.type({
@@ -44,7 +48,10 @@ export const SlackInteractionPayloadSchema = t.type({
       }),
       t.type({
         type: t.string,
-        action_id: t.literal(TOOL_VALIDATION_ACTION),
+        action_id: t.union([
+          t.literal("approve_tool_execution"),
+          t.literal("reject_tool_execution"),
+        ]),
         block_id: t.string,
         value: t.string,
         action_ts: t.string,
@@ -70,9 +77,11 @@ const _webhookSlackInteractionsAPIHandler = async (
   const rawPayload = JSON.parse(req.body.payload);
   const bodyValidation = SlackInteractionPayloadSchema.decode(rawPayload);
   if (isLeft(bodyValidation)) {
+    const pathError = reporter.formatValidationErrors(bodyValidation.left);
+
     logger.error(
       {
-        error: bodyValidation.left,
+        error: pathError,
         payload: rawPayload,
       },
       "Invalid payload in slack interactions"
@@ -116,22 +125,31 @@ const _webhookSlackInteractionsAPIHandler = async (
           return;
         }
       }
-    } else if (action.action_id === TOOL_VALIDATION_ACTION) {
+    } else if (TOOL_VALIDATION_ACTIONS.includes(action.action_id)) {
       // note(adrien): cc @ flav, that's the part where i'm not convinced
       // tried to mimick what was done upper in the file
       const { workspaceId, conversationId, messageId, actionId } = JSON.parse(
         action.block_id
       );
 
+      const params = {
+        slackTeamId: payload.team.id,
+        slackChannel: payload.channel.id,
+        slackUserId: payload.user.id,
+      };
+
+      // TODO: Ensure that messageId exists.
       const approved = action.value === "approve" ? "approved" : "rejected";
 
-      const validationRes = await validateToolExecution({
-        workspaceId,
-        conversationId,
-        messageId,
-        actionId,
-        approved,
-      });
+      const validationRes = await botValidateToolExecution(
+        {
+          actionId,
+          approved,
+          conversationId,
+          messageId,
+        },
+        params
+      );
 
       if (validationRes.isErr()) {
         logger.error(
