@@ -1,4 +1,5 @@
 import {
+  ArrowPathIcon,
   Avatar,
   BarChartIcon,
   Button,
@@ -475,10 +476,20 @@ export function AssistantDetails({
         <>
           <ContentMessage
             title="This agent has been deleted."
+            variant="warning"
             icon={InformationCircleIcon}
             size="md"
           >
             It is no longer active and cannot be used.
+            <Button
+              variant="outline"
+              label="Restore"
+              onClick={() => {
+                setShowRestoreModal(true);
+              }}
+              classname="mt-2"
+              icon={ArrowPathIcon}
+            />
           </ContentMessage>
 
           <RestoreAssistantDialog
@@ -490,15 +501,7 @@ export function AssistantDetails({
             }}
           />
 
-          <div className="flex justify-center">
-            <Button
-              variant="warning"
-              label="Restore"
-              onClick={() => {
-                setShowRestoreModal(true);
-              }}
-            />
-          </div>
+          <div className="flex justify-center"></div>
         </>
       )}
     </div>
