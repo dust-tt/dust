@@ -201,6 +201,10 @@ TrackerDataSourceConfigurationModel.init(
         fields: ["workspaceId", "dataSourceId"],
         concurrently: true,
       },
+      {
+        fields: ["workspaceId", "trackerConfigurationId", "scope"],
+        name: "tracker_data_source_config_workspace_id_tracker_config_id_scope",
+      },
     ],
   }
 );
