@@ -176,9 +176,8 @@ export function GongOptionComponent({
         >
           <ContextItem.Description>
             <div className="text-muted-foreground dark:text-muted-foreground-night">
-              If activated, Dust will also sync the unresolved tickets. This may
-              significantly increase the number of synced tickets, potentially
-              negatively affecting the response quality due to the added noise.
+              If activated, Dust will sync the list of smart trackers associated
+              to each call transcript.
             </div>
           </ContextItem.Description>
         </ContextItem>
