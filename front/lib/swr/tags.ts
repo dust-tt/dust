@@ -8,7 +8,7 @@ import type { GetTagsResponseBody } from "@app/pages/api/w/[wId]/tags";
 import type { GetSuggestionsResponseBody } from "@app/pages/api/w/[wId]/tags/suggest_from_agents";
 import type { GetTagsUsageResponseBody } from "@app/pages/api/w/[wId]/tags/usage";
 import type { LightWorkspaceType } from "@app/types";
-import type { TagType } from "@app/types/tag";
+import type { TagKind, TagType } from "@app/types/tag";
 
 export function useTags({
   owner,
@@ -147,6 +147,8 @@ export function useDeleteTag({ owner }: { owner: LightWorkspaceType }) {
         title: "Failed to delete tag",
         description: json.error.message || "Failed to delete tag",
       });
+
+      return;
     }
 
     sendNotification({
@@ -174,7 +176,7 @@ export function useUpdateTag({
   const { mutateTags } = useTags({ owner, disabled: true });
   const { mutateTagsUsage } = useTagsUsage({ owner, disabled: true });
 
-  const updateTag = async ({ name }: { name: string }) => {
+  const updateTag = async ({ name, kind }: { name: string; kind: TagKind }) => {
     const res = await fetch(`/api/w/${owner.sId}/tags/${tagId}`, {
       method: "PUT",
       headers: {
@@ -182,6 +184,7 @@ export function useUpdateTag({
       },
       body: JSON.stringify({
         name,
+        kind,
       }),
     });
 
@@ -195,6 +198,11 @@ export function useUpdateTag({
       });
       return;
     }
+
+    sendNotification({
+      type: "success",
+      title: "Tag updated",
+    });
 
     void mutateTags();
     void mutateTagsUsage();

@@ -13,7 +13,6 @@ import {
   getAPIKey,
   getAuthType,
   getBearerToken,
-  getSession,
 } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import logger from "@app/logger/logger";
@@ -39,10 +38,9 @@ export function withSessionAuthentication<T>(
   return withLogging(
     async (
       req: NextApiRequest,
-      res: NextApiResponse<WithAPIErrorResponse<T>>
+      res: NextApiResponse<WithAPIErrorResponse<T>>,
+      { session }
     ) => {
-      const session = await getSession(req, res);
-
       if (!session) {
         return apiError(req, res, {
           status_code: 401,

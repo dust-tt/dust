@@ -1,6 +1,7 @@
 import { isEqual } from "lodash";
 
 import type { LightAgentConfigurationType } from "@app/types";
+import type { TagType } from "@app/types/tag";
 
 export const MODELS_STRING_MAX_LENGTH = 255;
 
@@ -196,6 +197,13 @@ function spreadLength(a: string, b: string) {
   return lastIndex - firstIndex;
 }
 
+export const tagsSorter = (a: TagType, b: TagType) => {
+  if (a.kind !== b.kind) {
+    return a.kind.localeCompare(b.kind);
+  }
+  return a.name.localeCompare(b.name);
+};
+
 /**
  * Gets a string to use when filtering agents by name, description, and last authors.
  */
@@ -303,6 +311,29 @@ export function isArrayEqual2DUnordered(
     [...arr].map((row) => [...row].sort()).sort();
 
   return isEqual(sort2D(first), sort2D(second));
+}
+
+// Postgres requires all subarrays to be of the same length.
+// This function ensures that all subarrays are of the same length
+// by repeating the last element of each subarray until all subarrays have the same length.
+// Make sure that it's okay to use this function for your use case.
+export function normalizeArrays<T>(array2D: T[][]): T[][] {
+  // Copy the array to avoid mutating the original array.
+  const array2DCopy = array2D.map((array) => [...array]);
+
+  const longestArray = array2DCopy.reduce(
+    (max, req) => Math.max(max, req.length),
+    0
+  );
+  // for each array, repeatedly add the last id until array is of longest array length
+  const updatedArrays = array2DCopy.map((array) => {
+    while (array.length < longestArray) {
+      array.push(array[array.length - 1]);
+    }
+    return array;
+  });
+
+  return updatedArrays;
 }
 
 // from http://detectmobilebrowsers.com/

@@ -368,8 +368,7 @@ export function useCreateMCPServerConnection({
       sendNotification({
         type: "success",
         title: "Provider connected",
-        description:
-          "Your capability provider has been connected successfully.",
+        description: `Successfully connected to provider ${provider}.`,
       });
     } else {
       sendNotification({

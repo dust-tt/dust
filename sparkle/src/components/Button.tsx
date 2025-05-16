@@ -171,7 +171,7 @@ MetaButton.displayName = "MetaButton";
 type IconSizeType = "xs" | "sm" | "md";
 type CounterSizeType = "xs" | "sm" | "md";
 
-const ICON_SIZE_MAP: Record<ButtonSizeType, IconSizeType> = {
+export const ICON_SIZE_MAP: Record<ButtonSizeType, IconSizeType> = {
   xmini: "xs",
   mini: "sm",
   xs: "xs",

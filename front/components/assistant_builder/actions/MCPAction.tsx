@@ -338,6 +338,12 @@ export function hasErrorActionMCP(
     ) {
       return "Please select a reasoning model.";
     }
+    if (
+      requirements.requiredDustAppConfiguration &&
+      !action.configuration.dustAppConfiguration
+    ) {
+      return "Please select a Dust App.";
+    }
 
     const missingFields = [];
     for (const key of requirements.requiredStrings) {

@@ -1,7 +1,9 @@
 import { useEffect } from "react";
 
+import { clearTerminal } from "../terminal.js";
+
 export function useClearTerminalOnMount() {
   useEffect(() => {
-    process.stdout.write("\x1bc");
+    void clearTerminal();
   }, []);
 }

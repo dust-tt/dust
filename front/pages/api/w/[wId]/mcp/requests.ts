@@ -1,3 +1,6 @@
+import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { validateMCPServerAccess } from "@app/lib/api/actions/mcp/client_side_registry";
@@ -6,28 +9,36 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-import { isValidUUIDv4 } from "@app/types";
+
+const GetMCPRequestsRequestQueryCodec = t.intersection([
+  t.type({
+    serverId: t.string,
+  }),
+  t.partial({
+    lastEventId: t.string,
+  }),
+]);
 
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<void>>,
   auth: Authenticator
 ): Promise<void> {
-  const { serverId, lastEventId } = req.query;
-
-  // Extract the client-provided server ID.
-  if (typeof serverId !== "string" || !isValidUUIDv4(serverId)) {
+  const queryValidation = GetMCPRequestsRequestQueryCodec.decode(req.query);
+  if (isLeft(queryValidation)) {
+    const pathError = reporter.formatValidationErrors(queryValidation.left);
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: "Invalid server ID format. Must be a valid UUID.",
+        message: `Invalid request query: ${pathError}`,
       },
     });
   }
 
+  const { lastEventId, serverId } = queryValidation.right;
+
   const isValidAccess = await validateMCPServerAccess(auth, {
-    workspaceId: auth.getNonNullableWorkspace().sId,
     serverId,
   });
   if (!isValidAccess) {
@@ -79,8 +90,8 @@ async function handler(
   const mcpEvents = getMCPEventsForServer(
     auth,
     {
-      mcpServerId: serverId,
       lastEventId,
+      mcpServerId: serverId,
     },
     signal
   );

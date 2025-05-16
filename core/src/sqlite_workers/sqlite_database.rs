@@ -204,8 +204,24 @@ async fn create_in_memory_sqlite_db(
         }
     }))
     .await?;
+
+    let total_rows: usize = tables_with_rows.iter().map(|(_, rows)| rows.len()).sum();
+
+    // Log table details including IDs and row counts
+    for (table, rows) in &tables_with_rows {
+        info!(
+            project_id = table.project().project_id(),
+            datasource_id = table.data_source_id(),
+            table_id = table.unique_id(),
+            row_count = rows.len(),
+            "DSSTRUCTSTAT - WORKER Table statistics"
+        );
+    }
+
     info!(
         duration = utils::now() - time_get_rows_start,
+        total_row_count = total_rows,
+        table_count = tables_with_rows.len(),
         "DSSTRUCTSTAT - WORKER Finished retrieving rows"
     );
 

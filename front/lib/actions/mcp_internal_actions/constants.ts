@@ -55,7 +55,10 @@ export const INTERNAL_MCP_SERVERS: Record<
     availability: "manual",
     flag: null,
     tools_stakes: {
+      create_issue: "low",
+      add_issue_to_project: "low",
       get_pull_request: "never_ask",
+      list_organization_projects: "never_ask",
     },
   },
   image_generation: {

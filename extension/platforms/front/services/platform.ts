@@ -1,6 +1,4 @@
-import { FrontCaptureActions } from "@app/platforms/front/components/FrontCaptureActions";
 import { FrontAuthService } from "@app/platforms/front/services/auth";
-import { FrontCaptureService } from "@app/platforms/front/services/capture";
 import { FrontMcpService } from "@app/platforms/front/services/mcp";
 import { FrontStorageService } from "@app/platforms/front/services/storage";
 import type { CaptureActionsProps } from "@app/shared/services/platform";
@@ -22,14 +20,14 @@ export class FrontPlatformService extends PlatformService {
       "front",
       FrontAuthService,
       storage,
-      new FrontCaptureService(frontContext),
+      undefined, // No capture service for Front.
       undefined, // No browser messaging service for Front.
       mcpService
     );
   }
 
-  getCaptureActionsComponent(): ComponentType<CaptureActionsProps> {
-    return FrontCaptureActions;
+  getCaptureActionsComponent(): ComponentType<CaptureActionsProps> | null {
+    return null;
   }
 
   getSendWithActionsLabel(): string {

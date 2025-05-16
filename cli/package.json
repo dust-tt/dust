@@ -1,6 +1,6 @@
 {
   "name": "@dust-tt/dust-cli",
-  "version": "0.1.10",
+  "version": "0.1.11",
   "description": "A command-line interface for interacting with Dust.",
   "type": "module",
   "main": "dist/index.js",
@@ -27,7 +27,7 @@
   "author": "Dust",
   "license": "MIT",
   "dependencies": {
-    "@dust-tt/client": "^1.0.47",
+    "@dust-tt/client": "^1.0.50",
     "@modelcontextprotocol/sdk": "^1.8.0",
     "clipboardy": "^4.0.0",
     "express": "^5.1.0",
@@ -37,6 +37,7 @@
     "install": "^0.13.0",
     "jwt-decode": "^4.0.0",
     "keytar": "^7.9.0",
+    "lodash": "^4.17.21",
     "meow": "^13.2.0",
     "node-fetch": "^3.3.2",
     "npm": "^11.2.0",
@@ -50,6 +51,7 @@
   },
   "devDependencies": {
     "@types/express": "^5.0.1",
+    "@types/lodash": "^4.17.16",
     "@types/node": "^22.13.16",
     "@types/react": "^19.0.12",
     "@types/update-notifier": "^6.0.8",

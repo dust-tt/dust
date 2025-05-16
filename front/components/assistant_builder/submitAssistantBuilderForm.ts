@@ -14,11 +14,9 @@ import {
   DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/actions/constants";
-import type {
-  DataSourceConfiguration,
-  RetrievalTimeframe,
-} from "@app/lib/actions/retrieval";
+import type { RetrievalTimeframe } from "@app/lib/actions/retrieval";
 import type { TableDataSourceConfiguration } from "@app/lib/actions/tables_query";
+import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration";
 import type {
   AgentConfigurationType,
   DataSourceViewSelectionConfigurations,

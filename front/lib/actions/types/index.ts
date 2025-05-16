@@ -64,13 +64,16 @@ export abstract class BaseAction {
   }
 
   abstract renderForFunctionCall(): FunctionCallType;
-  abstract renderForMultiActionsModel({
-    conversation,
-    model,
-  }: {
-    conversation: ConversationType;
-    model: ModelConfigurationType;
-  }): Promise<FunctionMessageTypeModel>;
+  abstract renderForMultiActionsModel(
+    auth: Authenticator,
+    {
+      conversation,
+      model,
+    }: {
+      conversation: ConversationType;
+      model: ModelConfigurationType;
+    }
+  ): Promise<FunctionMessageTypeModel>;
 }
 
 export type ExtractActionBlob<T extends BaseAction> = Pick<
@@ -156,3 +159,14 @@ export type AgentLoopListToolsContextType = {
   conversation: ConversationType;
   agentMessage: AgentMessageType;
 };
+
+export type AgentLoopContextType =
+  | {
+      runContext: AgentLoopRunContextType;
+      listToolsContext?: never;
+    }
+  | {
+      runContext?: never;
+      listToolsContext: AgentLoopListToolsContextType;
+    }
+  | { runContext?: never; listToolsContext?: never };

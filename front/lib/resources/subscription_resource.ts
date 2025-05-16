@@ -180,9 +180,12 @@ export class SubscriptionResource extends BaseResource<Subscription> {
   static async fetchByStripeId(
     stripeSubscriptionId: string
   ): Promise<SubscriptionResource | null> {
-    const res = await Subscription.findOne({
+    const res = await this.model.findOne({
       where: { stripeSubscriptionId },
       include: [Plan],
+
+      // WORKSPACE_ISOLATION_BYPASS: Used to check if a subscription is not attached to a workspace
+      dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
 
     if (!res) {

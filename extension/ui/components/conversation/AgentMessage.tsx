@@ -3,6 +3,11 @@ import { usePlatform } from "@app/shared/context/PlatformContext";
 import { assertNeverAndIgnore } from "@app/shared/lib/assertNeverAndIgnore";
 import { retryMessage } from "@app/shared/lib/conversation";
 import type { StoredUser } from "@app/shared/services/auth";
+import type {
+  AgentMessageStateEvent,
+  MessageTemporaryState,
+} from "@app/ui/components/assistants/state/messageReducer";
+import { messageReducer } from "@app/ui/components/assistants/state/messageReducer";
 import { ActionValidationContext } from "@app/ui/components/conversation/ActionValidationProvider";
 import { AgentMessageActions } from "@app/ui/components/conversation/AgentMessageActions";
 import type { FeedbackSelectorProps } from "@app/ui/components/conversation/FeedbackSelector";
@@ -70,6 +75,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useReducer,
   useRef,
   useState,
 } from "react";
@@ -148,6 +154,18 @@ interface AgentMessageProps {
   user: StoredUser;
 }
 
+function makeInitialMessageStreamState(
+  message: AgentMessagePublicType
+): MessageTemporaryState {
+  return {
+    actionProgress: new Map(),
+    agentState: message.status === "created" ? "thinking" : "done",
+    isRetrying: false,
+    lastUpdated: new Date(),
+    message,
+  };
+}
+
 export type AgentStateClassification = "thinking" | "acting" | "done";
 
 /**
@@ -168,8 +186,11 @@ export function AgentMessage({
   const sendNotification = useSendNotification();
   const { theme } = useTheme();
 
-  const [streamedAgentMessage, setStreamedAgentMessage] =
-    useState<AgentMessagePublicType>(message);
+  const [messageStreamState, dispatch] = useReducer(
+    messageReducer,
+    message,
+    makeInitialMessageStreamState
+  );
 
   const [isRetryHandlerProcessing, setIsRetryHandlerProcessing] =
     useState<boolean>(false);
@@ -191,7 +212,7 @@ export function AgentMessage({
       return false;
     }
 
-    switch (streamedAgentMessage.status) {
+    switch (messageStreamState.message.status) {
       case "succeeded":
       case "failed":
       case "cancelled":
@@ -199,7 +220,7 @@ export function AgentMessage({
       case "created":
         return true;
       default:
-        assertNever(streamedAgentMessage.status);
+        assertNever(messageStreamState.message.status);
     }
   })();
 
@@ -227,131 +248,32 @@ export function AgentMessage({
     [conversationId, message.sId, owner.sId]
   );
 
-  const onEventCallback = useCallback((eventStr: string) => {
-    const eventPayload: {
-      eventId: string;
-      data:
-        | AgentErrorEvent
-        | AgentActionSpecificEvent
-        | AgentActionSuccessEvent
-        | GenerationTokensEvent
-        | AgentGenerationCancelledEvent
-        | AgentMessageSuccessEvent;
-    } = JSON.parse(eventStr);
+  const onEventCallback = useCallback(
+    (eventStr: string) => {
+      const eventPayload: {
+        eventId: string;
+        data: AgentMessageStateEvent;
+      } = JSON.parse(eventStr);
 
-    const updateMessageWithAction = (
-      m: AgentMessagePublicType,
-      action: AgentActionPublicType
-    ): AgentMessagePublicType => {
-      return {
-        ...m,
-        actions: m.actions
-          ? [...m.actions.filter((a) => a.id !== action.id), action]
-          : [action],
-      };
-    };
-
-    const event = eventPayload.data;
-    switch (event.type) {
-      case "agent_action_success":
-        setStreamedAgentMessage((m) => {
-          return { ...updateMessageWithAction(m, event.action) };
-        });
-        setLastAgentStateClassification("thinking");
-        break;
-      case "browse_params":
-      case "conversation_include_file_params":
-      case "dust_app_run_block":
-      case "dust_app_run_params":
-      case "process_params":
-      case "reasoning_started":
-      case "reasoning_thinking":
-      case "reasoning_tokens":
-      case "retrieval_params":
-      case "search_labels_params":
-      case "tables_query_model_output":
-      case "tables_query_output":
-      case "tables_query_started":
-      case "websearch_params":
-      case "tool_params":
-        setStreamedAgentMessage((m) => {
-          return updateMessageWithAction(m, event.action);
-        });
-        setLastAgentStateClassification("acting");
-        break;
-      case "agent_error":
-        setStreamedAgentMessage((m) => {
-          return { ...m, status: "failed", error: event.error };
-        });
-        setLastAgentStateClassification("done");
-        break;
-
-      case "agent_generation_cancelled":
-        setStreamedAgentMessage((m) => {
-          return { ...m, status: "cancelled" };
-        });
-        setLastAgentStateClassification("done");
-        break;
-      case "agent_message_success": {
-        setStreamedAgentMessage((m) => {
-          return {
-            ...m,
-            ...event.message,
-          };
-        });
-        setLastAgentStateClassification("done");
-        break;
-      }
-      case "tool_approve_execution":
-        // Show the validation dialog when this event is received.
+      // Handle validation dialog separately.
+      if (eventPayload.data.type === "tool_approve_execution") {
         showValidationDialog({
-          action: event.action,
-          conversationId: conversationId,
-          inputs: event.inputs,
-          messageId: message.sId,
-          stake: event.stake,
           workspaceId: owner.sId,
-          metadata: event.metadata,
+          messageId: message.sId,
+          conversationId: conversationId,
+          action: eventPayload.data.action,
+          inputs: eventPayload.data.inputs,
+          stake: eventPayload.data.stake,
+          metadata: eventPayload.data.metadata,
         });
-        break;
 
-      case "generation_tokens": {
-        switch (event.classification) {
-          case "closing_delimiter":
-            break;
-          case "opening_delimiter":
-            break;
-          case "tokens":
-            setLastTokenClassification("tokens");
-            setStreamedAgentMessage((m) => {
-              const previousContent = m.content || "";
-              return { ...m, content: previousContent + event.text };
-            });
-            break;
-          case "chain_of_thought":
-            setLastTokenClassification("chain_of_thought");
-            setStreamedAgentMessage((m) => {
-              const currentChainOfThought = m.chainOfThought ?? "";
-              return {
-                ...m,
-                chainOfThought: currentChainOfThought + event.text,
-              };
-            });
-            break;
-          default:
-            // Log message and do nothing. Don't crash if a new token classification is not handled here.
-            assertNeverAndIgnore(event);
-            break;
-        }
-        setLastAgentStateClassification("thinking");
-        break;
+        return;
       }
-      default:
-        // Log message and do nothing. Don't crash if a new event type is not handled here.
-        assertNeverAndIgnore(event);
-        break;
-    }
-  }, []);
+
+      dispatch(eventPayload.data);
+    },
+    [showValidationDialog, owner.sId, message.sId, conversationId]
+  );
 
   useEventSource(
     buildEventSourceURL,
@@ -366,12 +288,12 @@ export function AgentMessage({
       case "failed":
         return message;
       case "cancelled":
-        if (streamedAgentMessage.status === "created") {
-          return { ...streamedAgentMessage, status: "cancelled" };
+        if (messageStreamState.message.status === "created") {
+          return { ...messageStreamState.message, status: "cancelled" };
         }
         return message;
       case "created":
-        return streamedAgentMessage;
+        return messageStreamState.message;
       default:
         assertNever(message.status);
     }

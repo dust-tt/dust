@@ -29,6 +29,9 @@ const config = {
   getAuth0ExtensionApplicationId: (): string => {
     return EnvironmentConfig.getEnvVariable("AUTH0_EXTENSION_CLIENT_ID");
   },
+  getAuth0CliApplicationId: (): string => {
+    return EnvironmentConfig.getEnvVariable("AUTH0_CLI_CLIENT_ID");
+  },
   getAuth0NamespaceClaim: (): string => {
     return EnvironmentConfig.getEnvVariable("AUTH0_CLAIM_NAMESPACE");
   },

@@ -25,7 +25,6 @@ import {
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/actions/constants";
 import type { ReasoningModelConfiguration } from "@app/lib/actions/reasoning";
-import type { DataSourceConfiguration } from "@app/lib/actions/retrieval";
 import type { TableDataSourceConfiguration } from "@app/lib/actions/tables_query";
 import type {
   AgentActionConfigurationType,
@@ -65,12 +64,11 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
-import {
-  generateRandomModelSId,
-  getResourceIdFromSId,
-} from "@app/lib/resources/string_ids";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { TemplateResource } from "@app/lib/resources/template_resource";
+import { tagsSorter } from "@app/lib/utils";
+import { normalizeArrays } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import type {
   AgentConfigurationScope,
@@ -82,6 +80,7 @@ import type {
   LightAgentConfigurationType,
   ModelId,
   Result,
+  TagsFilter,
   UserType,
   WorkspaceType,
 } from "@app/types";
@@ -98,6 +97,18 @@ import {
   removeNulls,
 } from "@app/types";
 import type { TagType } from "@app/types/tag";
+
+export type DataSourceFilter = {
+  parents: { in: string[]; not: string[] } | null;
+  tags?: TagsFilter;
+};
+
+export type DataSourceConfiguration = {
+  sId?: string; // The sId is not always available, for instance it is not in an unsaved state of the builder.
+  workspaceId: string;
+  dataSourceViewId: string;
+  filter: DataSourceFilter;
+};
 
 type SortStrategyType = "alphabetical" | "priority" | "updatedAt";
 interface SortStrategy {
@@ -627,9 +638,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
           GroupResource.modelIdToSId({ id, workspaceId: owner.id })
         )
       ),
-      tags: tags
-        .map((t) => t.toJSON())
-        .sort((a, b) => a.name.localeCompare(b.name)),
+      tags: tags.map((t) => t.toJSON()).sort(tagsSorter),
       canRead: false,
       canEdit: false,
     };
@@ -923,7 +932,7 @@ export async function createAgentConfiguration(
           workspaceId: owner.id,
           authorId: user.id,
           templateId: template?.id,
-          requestedGroupIds,
+          requestedGroupIds: normalizeArrays(requestedGroupIds),
           responseFormat: model.responseFormat,
         },
         {
@@ -931,13 +940,35 @@ export async function createAgentConfiguration(
         }
       );
 
+      const existingTags = existingAgent
+        ? await TagResource.listForAgent(auth, existingAgent.id)
+        : [];
+      const existingReservedTags = existingTags
+        .filter((t) => t.kind === "protected")
+        .map((t) => t.sId);
+      if (
+        !isBuilder(owner) &&
+        !existingReservedTags.every((reservedTagId) =>
+          tags.some((tag) => tag.sId === reservedTagId)
+        )
+      ) {
+        throw new Error("Cannot remove reserved tag from agent");
+      }
+
       for (const tag of tags) {
-        const id = getResourceIdFromSId(tag.sId);
-        if (id) {
+        const tagResource = await TagResource.fetchById(auth, tag.sId);
+        if (tagResource) {
+          if (
+            !isBuilder(owner) &&
+            tagResource.kind === "protected" &&
+            !existingReservedTags.includes(tagResource.sId)
+          ) {
+            throw new Error("Cannot add reserved tag to agent");
+          }
           await TagAgentModel.create(
             {
               workspaceId: owner.id,
-              tagId: id,
+              tagId: tagResource.id,
               agentConfigurationId: agentConfigurationInstance.id,
             },
             { transaction: t }

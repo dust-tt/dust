@@ -112,6 +112,7 @@ export async function createMessageReaction(
     where: {
       sId: messageId,
       conversationId: conversation.id,
+      workspaceId: owner.id,
     },
   });
 
@@ -162,6 +163,7 @@ export async function deleteMessageReaction(
     where: {
       sId: messageId,
       conversationId: conversation.id,
+      workspaceId: owner.id,
     },
   });
 
