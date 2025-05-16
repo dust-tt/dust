@@ -13,7 +13,7 @@ import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 
 /**
- * Migrates reasoning actions from non-MCP to MCP version for a specific workspace
+ * Migrates reasoning actions from non-MCP to MCP version for a specific workspace.
  */
 async function migrateWorkspaceReasoningActions(
   auth: Authenticator,
@@ -32,7 +32,7 @@ async function migrateWorkspaceReasoningActions(
   logger.info("Starting migration of reasoning actions to MCP.");
 
   // Find all existing reasoning configurations that are linked to an agent configuration
-  // (non-MCP version) and not yet linked to an MCP server configuration
+  // (non-MCP version) and not yet linked to an MCP server configuration.
   const reasoningConfigs = await AgentReasoningConfiguration.findAll({
     where: {
       // No index here so that might be slow.
@@ -78,7 +78,7 @@ async function migrateWorkspaceReasoningActions(
 
   let revertSql = "";
 
-  // For each reasoning configuration, create an MCP server configuration and link it
+  // For each reasoning configuration, create an MCP server configuration and link it.
   await concurrentExecutor(
     reasoningConfigs,
     async (reasoningConfig) => {
