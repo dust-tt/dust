@@ -17,6 +17,7 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
+  Hoverable,
   InformationCircleIcon,
   Input,
   MoreIcon,
@@ -34,7 +35,6 @@ import {
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import assert from "assert";
 import { uniqueId } from "lodash";
-import Link from "next/dist/client/link";
 import type { ReactNode } from "react";
 import React, {
   useCallback,
@@ -117,6 +117,10 @@ import {
   assertNever,
   MAX_STEPS_USE_PER_RUN_LIMIT,
 } from "@app/types";
+import { ConfigurationSectionContainer } from "@app/components/assistant_builder/actions/configuration/ConfigurationSectionContainer";
+import { useMCPServerConnections } from "@app/lib/swr/mcp_servers";
+import { MCPActionHeader } from "@app/components/actions/MCPActionHeader";
+import { DataDescription } from "./actions/DataDescription";
 
 const DATA_SOURCES_ACTION_CATEGORIES = [
   "RETRIEVAL_SEARCH",
@@ -376,13 +380,13 @@ export default function ActionsScreen({
                 answer.
                 <br />
                 Need help? Check out our{" "}
-                <Link
+                <Hoverable
+                  variant="highlight"
                   href="https://docs.dust.tt/docs/data"
-                  className="text-highlight"
                   target="_blank"
                 >
                   guide
-                </Link>
+                </Hoverable>
                 .
               </span>
             </Page.P>
@@ -665,7 +669,7 @@ function NewActionModal({
         }
       }}
     >
-      <SheetContent size="xl">
+      <SheetContent size="lg">
         <VisuallyHidden>
           <SheetHeader>
             <SheetTitle></SheetTitle>
@@ -673,7 +677,7 @@ function NewActionModal({
         </VisuallyHidden>
 
         <SheetContainer>
-          <div className="w-full pt-8">
+          <div className="w-full">
             {newActionConfig && (
               <ActionEditor
                 action={newActionConfig}
@@ -790,6 +794,10 @@ interface ActionConfigEditorProps {
   setEdited: (edited: boolean) => void;
   description: string;
   onDescriptionChange: (v: string) => void;
+  setShowInvalidActionDescError: (
+    showInvalidActionDescError: string | null
+  ) => void;
+  showInvalidActionDescError: string | null;
 }
 
 function ActionConfigEditor({
@@ -802,6 +810,8 @@ function ActionConfigEditor({
   setEdited,
   description,
   onDescriptionChange,
+  setShowInvalidActionDescError,
+  showInvalidActionDescError,
 }: ActionConfigEditorProps) {
   const { spaces } = useContext(AssistantBuilderContext);
 
@@ -887,6 +897,8 @@ function ActionConfigEditor({
           allowedSpaces={allowedSpaces}
           updateAction={updateAction}
           setEdited={setEdited}
+          setShowInvalidActionDescError={setShowInvalidActionDescError}
+          showInvalidActionDescError={showInvalidActionDescError}
         />
       );
 
@@ -988,7 +1000,19 @@ function ActionEditor({
         )
       : undefined;
 
-  const isActionWithDataSource = useMemo(() => {
+  const { connections, isConnectionsLoading } = useMCPServerConnections({
+    owner,
+    disabled: !selectedMCPServerView?.server.authorization,
+  });
+
+  const isConnected = connections.some(
+    (c) => c.internalMCPServerId === selectedMCPServerView?.server.sId
+  );
+
+  // This is to show the data description input.
+  // For MCP, to show it before the tool section, we handle it in
+  // MCPAction component.
+  const isDefaultActionWithDataSource = useMemo(() => {
     const actionType = action.type;
     switch (actionType) {
       case "DUST_APP_RUN":
@@ -1002,27 +1026,28 @@ function ActionEditor({
       case "RETRIEVAL_SEARCH":
         return true;
       case "MCP":
-        const requirements = getMCPServerRequirements(selectedMCPServerView);
-        return (
-          requirements.requiresDataSourceConfiguration ||
-          requirements.requiresTableConfiguration
-        );
+        return false;
 
       default:
         assertNever(actionType);
     }
-  }, [action.type, selectedMCPServerView]);
+  }, [action.type]);
 
   const shouldDisplayAdvancedSettings = !["DUST_APP_RUN"].includes(action.type);
 
   return (
-    <div className="px-1">
+    <div className="flex flex-col gap-4 px-1">
       <ActionModeSection show={true}>
         <div className="flex w-full flex-row items-center justify-between px-1">
-          <div className="flex items-center gap-3">
-            {selectedMCPServerView ? (
-              getAvatar(selectedMCPServerView.server, "md")
-            ) : (
+          {selectedMCPServerView ? (
+            <MCPActionHeader
+              mcpServer={selectedMCPServerView.server}
+              isAuthorized={Boolean(selectedMCPServerView.server.authorization)}
+              isConnected={isConnected}
+              isConnectionsLoading={isConnectionsLoading}
+            />
+          ) : (
+            <div className="flex items-center gap-3">
               <Avatar
                 icon={
                   action.type === "DATA_VISUALIZATION"
@@ -1030,11 +1055,11 @@ function ActionEditor({
                     : ACTION_SPECIFICATIONS[action.type].cardIcon
                 }
               />
-            )}
-            <h2 className="heading-lg line-clamp-1 text-foreground dark:text-foreground-night">
-              {actionDisplayName(action)}
-            </h2>
-          </div>
+              <h2 className="heading-lg line-clamp-1 text-foreground dark:text-foreground-night">
+                {actionDisplayName(action)}
+              </h2>
+            </div>
+          )}
 
           {shouldDisplayAdvancedSettings && !action.noConfigurationRequired && (
             <Popover
@@ -1083,6 +1108,8 @@ function ActionEditor({
           updateAction={updateAction}
           setEdited={setEdited}
           description={action.description}
+          setShowInvalidActionDescError={setShowInvalidActionDescError}
+          showInvalidActionDescError={showInvalidActionDescError}
           onDescriptionChange={(v) => {
             updateAction({
               actionName: action.name,
@@ -1098,35 +1125,13 @@ function ActionEditor({
           </div>
         )}
       </ActionModeSection>
-      {isActionWithDataSource && (
-        <div className="flex flex-col gap-4 pt-8">
-          <div className="flex flex-col gap-2">
-            <div className="font-semibold text-muted-foreground dark:text-muted-foreground-night">
-              What's the data?
-            </div>
-            <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-              Provide a brief description (maximum 800 characters) of the data
-              content and context to help the agent determine when to utilize it
-              effectively.
-            </div>
-          </div>
-          <TextArea
-            placeholder={"This data contains…"}
-            value={action.description}
-            onChange={(e) => {
-              if (e.target.value.length < 800) {
-                updateAction({
-                  actionName: action.name,
-                  actionDescription: e.target.value,
-                  getNewActionConfig: (old) => old,
-                });
-                setShowInvalidActionDescError(null);
-              }
-            }}
-            error={showInvalidActionDescError}
-            showErrorLabel
-          />
-        </div>
+      {isDefaultActionWithDataSource && (
+        <DataDescription
+          updateAction={updateAction}
+          action={action}
+          setShowInvalidActionDescError={setShowInvalidActionDescError}
+          showInvalidActionDescError={showInvalidActionDescError}
+        />
       )}
     </div>
   );

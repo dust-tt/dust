@@ -13,6 +13,7 @@ import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/a
 import DataSourceSelectionSection from "@app/components/assistant_builder/actions/configuration/DataSourceSelectionSection";
 import { JsonSchemaConfigurationSection } from "@app/components/assistant_builder/actions/configuration/JsonSchemaConfigurationSection";
 import { TimeUnitDropdown } from "@app/components/assistant_builder/actions/TimeDropdown";
+import { ConfigurationSectionContainer } from "@app/components/assistant_builder/actions/configuration/ConfigurationSectionContainer";
 import type {
   AssistantBuilderActionConfiguration,
   AssistantBuilderProcessConfiguration,
@@ -183,25 +184,26 @@ export function ActionProcess({
       />
 
       {onDescriptionChange && (
-        <div className="flex flex-col gap-4 pt-8">
-          <div className="font-semibold text-muted-foreground dark:text-muted-foreground-night">
-            Tool description
-          </div>
-          <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-            Clarify what the tool should do and what data it should extract. For
-            example:
-            <span className="block text-muted-foreground dark:text-muted-foreground-night">
-              "Extract from the #reading slack channel a list of books,
-              including their title, author, and the reason why they were
-              recommended".
-            </span>
-          </div>
+        <ConfigurationSectionContainer
+          title="Tool Description"
+          description={
+            <>
+              Clarify what the tool should do and what data it should extract.
+              For example:
+              <span className="mt-1 block italic text-muted-foreground dark:text-muted-foreground-night">
+                "Extract from the #reading slack channel a list of books,
+                including their title, author, and the reason why they were
+                recommended."
+              </span>
+            </>
+          }
+        >
           <TextArea
             placeholder={"Extract the list of…"}
             value={description}
             onChange={(e) => onDescriptionChange(e.target.value)}
           />
-        </div>
+        </ConfigurationSectionContainer>
       )}
 
       <div className="flex flex-col gap-4 pt-8">
@@ -218,15 +220,12 @@ export function ActionProcess({
       </div>
 
       {showAdvancedSettings && (
-        <>
-          <div className="font-semibold text-muted-foreground dark:text-muted-foreground-night">
-            Time Range
-          </div>
-          <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-            By default, the time frame is determined automatically based on the
+        <ConfigurationSectionContainer
+          title="Time Range"
+          description="By default, the time frame is determined automatically based on the
             conversation context. Enable manual time frame selection when you
-            need to specify an exact range for data extraction.
-          </div>
+            need to specify an exact range for data extraction."
+        >
           <div className={"flex flex-row items-center gap-4 pb-4"}>
             <Checkbox
               checked={!!actionConfiguration.timeFrame}
@@ -276,7 +275,7 @@ export function ActionProcess({
               disabled={timeFrameDisabled}
             />
           </div>
-        </>
+        </ConfigurationSectionContainer>
       )}
       <JsonSchemaConfigurationSection
         instructions={instructions ?? ""}

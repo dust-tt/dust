@@ -8,6 +8,7 @@ import { useState } from "react";
 
 import type { AssistantBuilderProcessConfiguration } from "@app/components/assistant_builder/types";
 import { isValidJsonSchema } from "@app/lib/utils/json_schemas";
+import { ConfigurationSectionContainer } from "@app/components/assistant_builder/actions/configuration/ConfigurationSectionContainer";
 import type { Result } from "@app/types";
 
 interface JsonSchemaConfigurationSectionProps {
@@ -92,13 +93,10 @@ export function JsonSchemaConfigurationSection({
   };
 
   return (
-    <>
-      <div className="font-semibold text-muted-foreground dark:text-muted-foreground-night">
-        Schema
-      </div>
-      <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-        {schemaConfigurationDescription}
-      </div>
+    <ConfigurationSectionContainer
+      title="Schema"
+      description={schemaConfigurationDescription}
+    >
       <Button
         tooltip="Automatically re-generate the extraction schema based on Instructions"
         label="Re-generate from Instructions"
@@ -107,6 +105,7 @@ export function JsonSchemaConfigurationSection({
         size="sm"
         disabled={isGeneratingSchema || !instructions}
         onClick={generateSchemaFromInstructions}
+        className="mb-4"
       />
       <TextArea
         error={schemaEdit ? isValidJsonSchema(schemaEdit).error : undefined}
@@ -137,6 +136,6 @@ export function JsonSchemaConfigurationSection({
           }
         }}
       />
-    </>
+    </ConfigurationSectionContainer>
   );
 }
