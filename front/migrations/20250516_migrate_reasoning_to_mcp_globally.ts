@@ -174,35 +174,48 @@ async function migrateWorkspaceReasoningActions(
   return revertSql;
 }
 
-makeScript({}, async ({ execute }, parentLogger) => {
-  const now = new Date().toISOString().slice(0, 10).replace(/-/g, "");
-
-  const workspaceIds = await findWorkspacesWithReasoningConfigurations();
-  const workspaces = await Workspace.findAll({
-    where: {
-      id: { [Op.in]: workspaceIds },
+makeScript(
+  {
+    startFromWorkspaceId: {
+      type: "number",
+      description: "Workspace ID to start from",
+      required: false,
     },
-  });
+  },
+  async ({ execute, startFromWorkspaceId }, parentLogger) => {
+    const now = new Date().toISOString().slice(0, 10).replace(/-/g, "");
 
-  let revertSql = "";
-  for (const workspace of workspaces) {
-    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-
-    const workspaceRevertSql = await migrateWorkspaceReasoningActions(auth, {
-      execute,
-      parentLogger,
+    const workspaceIds = await findWorkspacesWithReasoningConfigurations();
+    const workspaces = await Workspace.findAll({
+      where: {
+        id: { [Op.in]: workspaceIds },
+        ...(startFromWorkspaceId
+          ? { id: { [Op.gte]: startFromWorkspaceId } }
+          : {}),
+      },
+      order: [["id", "ASC"]],
     });
 
-    if (execute) {
-      fs.writeFileSync(
-        `${now}_reasoning_to_mcp_revert_${workspace.sId}.sql`,
-        workspaceRevertSql
-      );
-    }
-    revertSql += workspaceRevertSql;
-  }
+    let revertSql = "";
+    for (const workspace of workspaces) {
+      const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
-  if (execute) {
-    fs.writeFileSync(`${now}_reasoning_to_mcp_revert_all.sql`, revertSql);
+      const workspaceRevertSql = await migrateWorkspaceReasoningActions(auth, {
+        execute,
+        parentLogger,
+      });
+
+      if (execute) {
+        fs.writeFileSync(
+          `${now}_reasoning_to_mcp_revert_${workspace.sId}.sql`,
+          workspaceRevertSql
+        );
+      }
+      revertSql += workspaceRevertSql;
+    }
+
+    if (execute) {
+      fs.writeFileSync(`${now}_reasoning_to_mcp_revert_all.sql`, revertSql);
+    }
   }
-});
+);
