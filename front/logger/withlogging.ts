@@ -38,7 +38,7 @@ function loggingContextInfo(
   };
 
   if (context.auth !== null && context.auth.user() !== null) {
-    metadata.userId = context.auth.getNonNullableWorkspace().sId;
+    metadata.userId = context.auth.getNonNullableUser().sId;
   }
 
   if (context.token !== null) {
