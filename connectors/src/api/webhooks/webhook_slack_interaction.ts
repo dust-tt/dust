@@ -139,6 +139,7 @@ const _webhookSlackInteractionsAPIHandler = async (
         slackThreadTs,
         messageTs,
         botId,
+        slackBotMessageId,
       } = JSON.parse(action.block_id);
 
       const params = {
@@ -158,6 +159,7 @@ const _webhookSlackInteractionsAPIHandler = async (
           approved,
           conversationId,
           messageId,
+          slackBotMessageId,
         },
         params
       );

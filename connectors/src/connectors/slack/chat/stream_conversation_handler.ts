@@ -157,12 +157,13 @@ async function streamAgentAnswerToSlack(
 
         const blockId = JSON.stringify({
           workspaceId: connector.workspaceId,
-          conversationId: conversation.id,
+          conversationId: conversation.sId,
           messageId: event.messageId,
           actionId: event.action.id,
           slackThreadTs: mainMessage.message?.thread_ts,
           messageTs: mainMessage.message?.ts,
           botId: mainMessage.message?.bot_id,
+          slackBotMessageId: slackChatBotMessage.id,
         });
 
         if (slackUserId && !slackUserInfo.is_bot) {

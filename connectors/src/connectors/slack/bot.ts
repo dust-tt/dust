@@ -211,10 +211,17 @@ type ToolValidationParams = {
   approved: "approved" | "rejected";
   conversationId: string;
   messageId: string;
+  slackBotMessageId: number;
 };
 
 export async function botValidateToolExecution(
-  { actionId, approved, conversationId, messageId }: ToolValidationParams,
+  {
+    actionId,
+    approved,
+    conversationId,
+    messageId,
+    slackBotMessageId,
+  }: ToolValidationParams,
   params: BotAnswerParams
 ) {
   const { slackChannel, slackMessageTs, slackTeamId } = params;
@@ -227,7 +234,7 @@ export async function botValidateToolExecution(
 
   try {
     const slackChatBotMessage = await SlackChatBotMessage.findOne({
-      where: { id: messageId },
+      where: { id: slackBotMessageId },
     });
     if (!slackChatBotMessage) {
       throw new Error("Missing Slack message");
