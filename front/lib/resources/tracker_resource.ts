@@ -348,6 +348,7 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
         where: {
           trackerConfigurationId: this.id,
           scope: "maintained",
+          workspaceId: this.workspaceId,
         },
       });
 
