@@ -12,16 +12,28 @@ import type { APIErrorWithStatusCode, WithAPIErrorResponse } from "@app/types";
 import logger from "./logger";
 import { statsDClient } from "./statsDClient";
 
+type RequestContext = {
+  sessionId: string | null;
+} & {
+  [key: string]: string | number | null;
+};
+
+// Make the elements undefined temporarely avoid updating all NextApiRequest to NextApiRequestWithContext.
+export interface NextApiRequestWithContext extends NextApiRequest {
+  logContext?: RequestContext;
+  addLogToContext?: (data: Record<string, string | number | null>) => void;
+}
+
 export function withLogging<T>(
   handler: (
-    req: NextApiRequest,
+    req: NextApiRequestWithContext,
     res: NextApiResponse<WithAPIErrorResponse<T>>,
     context: { session: SessionWithUser | null }
   ) => Promise<void>,
   streaming = false
 ) {
   return async (
-    req: NextApiRequest,
+    req: NextApiRequestWithContext,
     res: NextApiResponse<WithAPIErrorResponse<T>>
   ): Promise<void> => {
     const ddtraceSpan = tracer.scope().active();
@@ -32,6 +44,13 @@ export function withLogging<T>(
 
     const session = await getSession(req, res);
     const sessionId = session?.user.sid || "unknown";
+    req.logContext = { sessionId };
+    req.addLogToContext = (data) => {
+      req.logContext = {
+        ...(req.logContext ?? { sessionId: null }),
+        ...data,
+      };
+    };
 
     let route = req.url;
     let workspaceId: string | null = null;
@@ -71,12 +90,12 @@ export function withLogging<T>(
           error: err,
           method: req.method,
           route,
-          sessionId,
           streaming,
           url: req.url,
           // @ts-expect-error best effort to get err.stack if it exists
           error_stack: err?.stack,
           workspaceId,
+          ...req.logContext,
         },
         "Unhandled API Error"
       );
@@ -118,11 +137,11 @@ export function withLogging<T>(
         durationMs: elapsed,
         method: req.method,
         route,
-        sessionId,
         statusCode: res.statusCode,
         streaming,
         url: req.url,
         workspaceId,
+        ...req.logContext,
       },
       "Processed request"
     );
