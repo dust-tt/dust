@@ -36,8 +36,3 @@ export const ASSISTANT_BUILDER_DRAWER_TABS = [
 
 export type AssistantBuilderRightPanelTab =
   (typeof ASSISTANT_BUILDER_DRAWER_TABS)[number];
-
-export type AssistantBuilderRightPanelStatus = {
-  openedAt: number | null;
-  tab: AssistantBuilderRightPanelTab | null;
-};

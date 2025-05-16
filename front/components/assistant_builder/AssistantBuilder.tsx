@@ -1,31 +1,24 @@
 import "react-image-crop/dist/ReactCrop.css";
 
-import {
-  Tabs,
-  TabsList,
-  TabsTrigger,
-  useHashParam,
-  useSendNotification,
-} from "@dust-tt/sparkle";
+import { useHashParam, useSendNotification } from "@dust-tt/sparkle";
+import { Tabs } from "@dust-tt/sparkle";
+import { TabsList } from "@dust-tt/sparkle";
+import { TabsTrigger } from "@dust-tt/sparkle";
 import assert from "assert";
 import { uniqueId } from "lodash";
 import { useRouter } from "next/router";
 import React, { useCallback, useContext, useEffect, useState } from "react";
 
-import ActionsScreen, {
-  hasActionError,
-} from "@app/components/assistant_builder/ActionsScreen";
+import { hasActionError } from "@app/components/assistant_builder/ActionsScreen";
+import ActionsScreen from "@app/components/assistant_builder/ActionsScreen";
 import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
 import AssistantBuilderRightPanel from "@app/components/assistant_builder/AssistantBuilderPreviewDrawer";
 import { BuilderLayout } from "@app/components/assistant_builder/BuilderLayout";
-import {
-  INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT,
-  InstructionScreen,
-} from "@app/components/assistant_builder/InstructionScreen";
+import { INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT } from "@app/components/assistant_builder/InstructionScreen";
+import { InstructionScreen } from "@app/components/assistant_builder/InstructionScreen";
 import { PrevNextButtons } from "@app/components/assistant_builder/PrevNextButtons";
-import SettingsScreen, {
-  validateHandle,
-} from "@app/components/assistant_builder/SettingsScreen";
+import { validateHandle } from "@app/components/assistant_builder/SettingsScreen";
+import SettingsScreen from "@app/components/assistant_builder/SettingsScreen";
 import { submitAssistantBuilderForm } from "@app/components/assistant_builder/submitAssistantBuilderForm";
 import type {
   AssistantBuilderPendingAction,
@@ -36,9 +29,9 @@ import type {
 } from "@app/components/assistant_builder/types";
 import {
   BUILDER_SCREENS,
-  BUILDER_SCREENS_INFOS,
   getDefaultAssistantState,
 } from "@app/components/assistant_builder/types";
+import { BUILDER_SCREENS_INFOS } from "@app/components/assistant_builder/types";
 import { useNavigationLock } from "@app/components/assistant_builder/useNavigationLock";
 import { useSlackChannel } from "@app/components/assistant_builder/useSlackChannels";
 import { useTemplate } from "@app/components/assistant_builder/useTemplate";
@@ -53,14 +46,8 @@ import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { useKillSwitches } from "@app/lib/swr/kill";
 import { useModels } from "@app/lib/swr/models";
 import { useUser } from "@app/lib/swr/user";
-import type {
-  AgentConfigurationScope,
-  AssistantBuilderRightPanelStatus,
-  AssistantBuilderRightPanelTab,
-  WorkspaceType,
-} from "@app/types";
+import type { AgentConfigurationScope, WorkspaceType } from "@app/types";
 import {
-  assertNever,
   CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG,
   GPT_4_1_MINI_MODEL_CONFIG,
   isAdmin,
@@ -68,6 +55,7 @@ import {
   isUser,
   SUPPORTED_MODEL_CONFIGS,
 } from "@app/types";
+import { assertNever } from "@app/types";
 
 function isValidTab(tab: string): tab is BuilderScreen {
   return BUILDER_SCREENS.includes(tab as BuilderScreen);
@@ -204,12 +192,6 @@ export default function AssistantBuilder({
 
   const checkUsernameTimeout = React.useRef<NodeJS.Timeout | null>(null);
 
-  const [rightPanelStatus, setRightPanelStatus] =
-    useState<AssistantBuilderRightPanelStatus>({
-      tab: template != null ? "Template" : "Preview",
-      openedAt: Date.now(),
-    });
-
   // If agent is created, the user creating it should be added to the builder
   // editors list. If not, then the user should be in this list.
   useEffect(() => {
@@ -240,13 +222,6 @@ export default function AssistantBuilder({
     agentConfigurationId,
     initialBuilderState,
   ]);
-
-  const openRightPanelTab = (tabName: AssistantBuilderRightPanelTab) => {
-    setRightPanelStatus({
-      tab: tabName,
-      openedAt: Date.now(),
-    });
-  };
 
   const formValidation = useCallback(async () => {
     const modelConfig = SUPPORTED_MODEL_CONFIGS.filter(
@@ -539,8 +514,6 @@ export default function AssistantBuilder({
                 setEdited(true);
               }}
               owner={owner}
-              rightPanelStatus={rightPanelStatus}
-              openRightPanelTab={openRightPanelTab}
               builderState={builderState}
               agentConfigurationId={agentConfigurationId}
               setAction={setAction}
