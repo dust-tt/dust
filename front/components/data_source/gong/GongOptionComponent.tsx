@@ -4,15 +4,18 @@ import {
   ContextItem,
   GongLogo,
   Input,
+  SliderToggle,
   useSendNotification,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
 import { useConnectorConfig } from "@app/lib/swr/connectors";
 import type { DataSourceType, WorkspaceType } from "@app/types";
+import { normalizeError } from "@app/types";
 
-// TODO(2025-03-17): share this variable between connectors and front.
+// TODO(2025-03-17): share these variables between connectors and front.
 const GONG_RETENTION_PERIOD_CONFIG_KEY = "gongRetentionPeriodDays";
+const GONG_SMART_TRACKERS_CONFIG_KEY = "gongSmartTrackersEnabled";
 
 function checkIsNonNegativeInteger(value: string) {
   return /^[0-9]+$/.test(value);
@@ -31,21 +34,38 @@ export function GongOptionComponent({
   isAdmin,
   dataSource,
 }: GongOptionComponentProps) {
-  const { configValue, mutateConfig } = useConnectorConfig({
+  const {
+    configValue: retentionPeriodConfigValue,
+    mutateConfig: mutateRetentionPeriodConfig,
+  } = useConnectorConfig({
     owner,
     dataSource,
     configKey: GONG_RETENTION_PERIOD_CONFIG_KEY,
   });
+  const {
+    configValue: smartTrackersConfigValue,
+    mutateConfig: mutateSmartTrackersConfig,
+  } = useConnectorConfig({
+    owner,
+    dataSource,
+    configKey: GONG_SMART_TRACKERS_CONFIG_KEY,
+  });
+  const smartTrackersEnabled = smartTrackersConfigValue === "true";
 
   const [retentionPeriod, setRetentionPeriod] = useState<string>(
-    configValue || ""
+    retentionPeriodConfigValue || ""
   );
+
   const [loading, setLoading] = useState(false);
   const sendNotification = useSendNotification();
 
-  const handleSetNewConfig = async (newValue: string) => {
+  const handleConfigUpdate = async (configKey: string, newValue: string) => {
     // Validate that the value is either empty or a positive integer
-    if (newValue !== "" && !checkIsNonNegativeInteger(newValue)) {
+    if (
+      configKey === GONG_RETENTION_PERIOD_CONFIG_KEY &&
+      newValue !== "" &&
+      !checkIsNonNegativeInteger(newValue)
+    ) {
       sendNotification({
         type: "error",
         title: "Invalid retention period",
@@ -57,7 +77,7 @@ export function GongOptionComponent({
 
     setLoading(true);
     const res = await fetch(
-      `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/config/${GONG_RETENTION_PERIOD_CONFIG_KEY}`,
+      `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/config/${configKey}`,
       {
         headers: { "Content-Type": "application/json" },
         method: "POST",
@@ -65,12 +85,20 @@ export function GongOptionComponent({
       }
     );
     if (res.ok) {
-      await mutateConfig();
+      if (configKey === GONG_RETENTION_PERIOD_CONFIG_KEY) {
+        2;
+        await mutateRetentionPeriodConfig();
+      } else if (configKey === GONG_SMART_TRACKERS_CONFIG_KEY) {
+        await mutateSmartTrackersConfig();
+      }
       setLoading(false);
       sendNotification({
         type: "success",
         title: "Gong configuration updated",
-        description: "Retention period successfully updated.",
+        description:
+          configKey === GONG_RETENTION_PERIOD_CONFIG_KEY
+            ? "Retention period successfully updated."
+            : "Smart trackers synchronization successfully enabled.",
       });
     } else {
       setLoading(false);
@@ -78,7 +106,7 @@ export function GongOptionComponent({
       sendNotification({
         type: "error",
         title: "Failed to update Gong configuration",
-        description: err.error?.message || "An unknown error occurred",
+        description: normalizeError(err).message || "An unknown error occurred",
       });
     }
   };
@@ -113,9 +141,13 @@ export function GongOptionComponent({
               <Button
                 variant="primary"
                 size="sm"
-                onClick={() => handleSetNewConfig(retentionPeriod)}
+                onClick={() =>
+                  handleConfigUpdate(
+                    GONG_RETENTION_PERIOD_CONFIG_KEY,
+                    retentionPeriod
+                  )
+                }
                 disabled={readOnly || !isAdmin || loading}
-                className="w-full"
                 label="Save"
               />
             </div>
@@ -128,6 +160,33 @@ export function GongOptionComponent({
               Leave empty to disable retention (no limit).
               <br />
               Outdated transcripts will be deleted on a daily basis.
+            </div>
+          </ContextItem.Description>
+        </ContextItem>
+
+        <ContextItem
+          title="Enable Smart Trackers"
+          visual={<ContextItem.Visual visual={GongLogo} />}
+          action={
+            <div className="relative">
+              <SliderToggle
+                size="xs"
+                onClick={async () => {
+                  await handleConfigUpdate(
+                    GONG_SMART_TRACKERS_CONFIG_KEY,
+                    (!smartTrackersEnabled).toString()
+                  );
+                }}
+                selected={smartTrackersEnabled}
+                disabled={readOnly || !isAdmin || loading}
+              />
+            </div>
+          }
+        >
+          <ContextItem.Description>
+            <div className="text-muted-foreground dark:text-muted-foreground-night">
+              If activated, Dust will sync the list of smart trackers associated
+              to each call transcript.
             </div>
           </ContextItem.Description>
         </ContextItem>

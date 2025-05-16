@@ -41,6 +41,8 @@ const TRANSCRIPTS_FOLDER_TITLE = "Transcripts";
 
 const RETENTION_PERIOD_CONFIG_KEY = "gongRetentionPeriodDays";
 
+const SMART_TRACKERS_CONFIG_KEY = "gongSmartTrackersEnabled";
+
 // This function generates a connector-wise unique schedule ID for the Gong sync.
 // The IDs of the workflows spawned by this schedule will follow the pattern:
 //   gong-sync-${connectorId}-workflow-${isoFormatDate}
@@ -71,6 +73,7 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
       },
       {
         baseUrl: baseUrlRes.value,
+        smartTrackersEnabled: false,
       }
     );
 
@@ -292,13 +295,13 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
     const connector = await fetchGongConnector({
       connectorId: this.connectorId,
     });
+    const configuration = await fetchGongConfiguration(connector);
 
     switch (configKey) {
-      case RETENTION_PERIOD_CONFIG_KEY: {
-        const configuration = await fetchGongConfiguration(connector);
-
+      case RETENTION_PERIOD_CONFIG_KEY:
         return new Ok(configuration.retentionPeriodDays?.toString() || null);
-      }
+      case SMART_TRACKERS_CONFIG_KEY:
+        return new Ok(configuration.smartTrackersEnabled.toString());
       default:
         return new Err(new Error(`Invalid config key ${configKey}`));
     }
@@ -314,10 +317,10 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
     const connector = await fetchGongConnector({
       connectorId: this.connectorId,
     });
+    const configuration = await fetchGongConfiguration(connector);
 
     switch (configKey) {
       case RETENTION_PERIOD_CONFIG_KEY: {
-        const configuration = await fetchGongConfiguration(connector);
         const retentionPeriodDays = configValue
           ? parseInt(configValue, 10)
           : null;
@@ -345,6 +348,11 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
           "[Gong] Update retention period."
         );
         await configuration.setRetentionPeriodDays(retentionPeriodDays);
+
+        return new Ok(undefined);
+      }
+      case SMART_TRACKERS_CONFIG_KEY: {
+        await configuration.setSmartTrackersEnabled(configValue === "true");
 
         return new Ok(undefined);
       }
