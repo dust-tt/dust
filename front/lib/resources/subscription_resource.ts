@@ -1,5 +1,6 @@
 import _ from "lodash";
 import type { Attributes, CreationAttributes, Transaction } from "sequelize";
+import { Op } from "sequelize";
 import type Stripe from "stripe";
 
 import { sendProactiveTrialCancelledEmail } from "@app/lib/api/email";
@@ -11,6 +12,7 @@ import { Workspace } from "@app/lib/models/workspace";
 import type { PlanAttributes } from "@app/lib/plans/free_plans";
 import { FREE_NO_PLAN_DATA } from "@app/lib/plans/free_plans";
 import {
+  FREE_TEST_PLAN_CODE,
   isEntreprisePlan,
   isFreePlan,
   isProPlan,
@@ -196,6 +198,42 @@ export class SubscriptionResource extends BaseResource<Subscription> {
       Subscription,
       res.get(),
       renderPlanFromModel({ plan: res.plan })
+    );
+  }
+
+  /**
+   * Get all active subscription that are not FREE_TEST_PLAN_CODE
+   */
+  static async internalListAllActiveNoFreeTestPlan(): Promise<
+    SubscriptionResource[]
+  > {
+    const subscriptions = await this.model.findAll({
+      where: {
+        status: "active",
+      },
+      // WORKSPACE_ISOLATION_BYPASS: Internal use to actively down the callstack get the list
+      // of workspaces that are active
+      dangerouslyBypassWorkspaceIsolationSecurity: true,
+      include: [
+        {
+          model: Plan,
+          as: "plan",
+          where: {
+            code: {
+              [Op.ne]: FREE_TEST_PLAN_CODE,
+            },
+          },
+        },
+      ],
+    });
+
+    return subscriptions.map(
+      (sub) =>
+        new SubscriptionResource(
+          this.model,
+          sub.get(),
+          renderPlanFromModel({ plan: sub.plan })
+        )
     );
   }
 
