@@ -198,7 +198,7 @@ makeScript({}, async ({ execute }, parentLogger) => {
 
     if (execute) {
       fs.writeFileSync(
-        `${now}_reasoning_to_mcp_revert_${workspace.sId}.sql`,
+        `${now}_tables_query_to_mcp_revert_${workspace.sId}.sql`,
         workspaceRevertSql
       );
     }
@@ -206,6 +206,6 @@ makeScript({}, async ({ execute }, parentLogger) => {
   });
 
   if (execute) {
-    fs.writeFileSync(`${now}_reasoning_to_mcp_revert_all.sql`, revertSql);
+    fs.writeFileSync(`${now}_tables_query_to_mcp_revert_all.sql`, revertSql);
   }
 });
