@@ -67,7 +67,7 @@ import {
 
 const MAX_FILE_SIZE_TO_UPLOAD = 10 * 1024 * 1024; // 10 MB
 
-export type BotAnswerParams = {
+type BotAnswerParams = {
   slackTeamId: string;
   slackChannel: string;
   slackUserId: string | null;
@@ -168,7 +168,6 @@ export async function botReplaceMention(
   const { slackConfig, connector } = connectorRes.value;
 
   try {
-    // TODO: export to it's own func
     const slackChatBotMessage = await SlackChatBotMessage.findOne({
       where: { id: messageId },
     });
