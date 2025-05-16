@@ -26,7 +26,7 @@ async function migrateWorkspaceReasoningActions(
   }
 ): Promise<string> {
   const logger = parentLogger.child({
-    workspaceId: auth.getNonNullableWorkspace().id,
+    workspaceId: auth.getNonNullableWorkspace().sId,
   });
 
   logger.info("Starting migration of reasoning actions to MCP.");
