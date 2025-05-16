@@ -1,9 +1,3 @@
-import type {
-  CaptureOperationId,
-  CaptureOptions,
-  CaptureService,
-  TabContent,
-} from "@app/shared/services/capture";
 import type { Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
 import type {
@@ -134,45 +128,30 @@ function timelineToLLMFormat(timeline: TimelineEntry[]): string {
   return metadata + entries;
 }
 
-export class FrontCaptureService implements CaptureService {
-  constructor(private frontContext: WebViewContext) {}
+interface ConversationTimeline {
+  content: string;
+  id: string;
+  subject?: string;
+}
 
-  isOperationSupported(id: CaptureOperationId) {
-    return ["capture-page-content"].includes(id);
+export async function getCurrentConversationTimeline(
+  frontContext: WebViewContext
+): Promise<Result<ConversationTimeline, Error>> {
+  if (frontContext.type !== "singleConversation") {
+    return new Err(new Error("Not in a single conversation"));
   }
 
-  private async capturePageContent(): Promise<Result<TabContent, Error>> {
-    if (this.frontContext.type !== "singleConversation") {
-      return new Err(new Error("Not in a single conversation"));
-    }
+  const messages = await frontContext.listMessages();
+  const comments = await frontContext.listComments();
+  const timeline = createTimelineFromMessagesAndComments(
+    messages.results,
+    comments.results
+  );
+  const llmFormat = timelineToLLMFormat(timeline);
 
-    const messages = await this.frontContext.listMessages();
-    const comments = await this.frontContext.listComments();
-    const timeline = createTimelineFromMessagesAndComments(
-      messages.results,
-      comments.results
-    );
-    const llmFormat = timelineToLLMFormat(timeline);
-
-    return new Ok({
-      content: llmFormat,
-      title: this.frontContext.conversation.id,
-      // TODO: This should be the URL of the conversation.
-      //   url: "",
-    });
-  }
-
-  async handleOperation(
-    id: CaptureOperationId,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    options: CaptureOptions
-  ): Promise<Result<TabContent, Error>> {
-    switch (id) {
-      case "capture-page-content":
-        return this.capturePageContent();
-
-      default:
-        throw new Error(`Operation ${id} not supported`);
-    }
-  }
+  return new Ok({
+    content: llmFormat,
+    id: frontContext.conversation.id,
+    subject: frontContext.conversation.subject,
+  });
 }

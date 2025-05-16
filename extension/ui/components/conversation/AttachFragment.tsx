@@ -32,6 +32,10 @@ export const AttachFragment = ({
 
   const CaptureActionsComponent = platform.getCaptureActionsComponent();
 
+  if (!CaptureActionsComponent) {
+    return null;
+  }
+
   return (
     <div className="flex flex-row gap-2">
       <CaptureActionsComponent

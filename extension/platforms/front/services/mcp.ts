@@ -13,7 +13,7 @@ export class FrontMcpService extends McpService {
   private frontContext: WebViewContext | null = null;
   private server: McpServer | null = null;
   private transport: DustMcpServerTransport | null = null;
-  private serverUUID: string | undefined = undefined;
+  private serverId: string | undefined = undefined;
 
   constructor() {
     super();
@@ -66,13 +66,13 @@ export class FrontMcpService extends McpService {
       }
 
       // Create our custom transport with workspace-scoped registration.
-      const transport = new DustMcpServerTransport(dustAPI, this.serverUUID);
-
-      // Save the server UUID for potential reconnections.
-      this.serverUUID = transport.getServerId();
+      const transport = new DustMcpServerTransport(dustAPI, this.serverId);
 
       // Connect the server to the transport.
       await server.connect(transport);
+
+      // Once connected, save the server id for potential reconnections.
+      this.serverId = transport.getServerId();
 
       // Store the transport for future reuse.
       this.transport = transport;
@@ -96,7 +96,7 @@ export class FrontMcpService extends McpService {
         await this.connectServer(this.server, dustAPI);
         return {
           server: this.server,
-          serverId: this.serverUUID,
+          serverId: this.serverId,
         };
       }
 
@@ -114,7 +114,7 @@ export class FrontMcpService extends McpService {
 
       return {
         server: server,
-        serverId: this.serverUUID,
+        serverId: this.serverId,
       };
     } catch (error) {
       console.error("Error getting or creating MCP server:", error);
@@ -130,7 +130,7 @@ export class FrontMcpService extends McpService {
    * This is useful for including in message payloads
    */
   getServerId(): string | undefined {
-    return this.serverUUID;
+    return this.serverId;
   }
 
   /**
@@ -141,6 +141,6 @@ export class FrontMcpService extends McpService {
       await this.transport.close();
       this.transport = null;
     }
-    // Note: We keep the serverUUID for potential reconnection
+    // Note: We keep the serverId for potential reconnection.
   }
 }
