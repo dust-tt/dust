@@ -107,7 +107,7 @@ export default function AssistantBuilderRightPanel({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="shrink-0 pt-5">
+      <div className="shrink-0 pt-4">
         <Tabs
           value={rightPanelTab ?? "Preview"}
           onValueChange={(t) => {
@@ -273,6 +273,7 @@ export default function AssistantBuilderRightPanel({
             <FeedbacksSection
               owner={owner}
               agentConfigurationId={agentConfigurationId}
+              gridMode
             />
           </div>
         )}
