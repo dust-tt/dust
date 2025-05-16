@@ -6,6 +6,7 @@ import {
   generateSectionFile,
   uploadFileToConversationDataSource,
 } from "@app/lib/actions/action_file_helpers";
+import { DEFAULT_TABLES_QUERY_ACTION_NAME } from "@app/lib/actions/constants";
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { MCPToolResultContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { fetchAgentTableConfigurations } from "@app/lib/actions/mcp_internal_actions/servers/utils";
@@ -32,7 +33,7 @@ const RENDERED_CONVERSATION_MIN_TOKEN = 4_000;
 export const TABLES_QUERY_SECTION_FILE_MIN_COLUMN_LENGTH = 500;
 
 const serverInfo: InternalMCPServerDefinitionType = {
-  name: "query_tables",
+  name: DEFAULT_TABLES_QUERY_ACTION_NAME,
   version: "1.0.0",
   description: "Tables, Spreadsheets, Notion DBs (quantitative) (mcp).",
   icon: "ActionTableIcon",
