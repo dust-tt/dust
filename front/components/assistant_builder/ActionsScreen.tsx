@@ -1204,6 +1204,11 @@ function AddKnowledgeDropdown({
         collisionPadding={10}
       >
         {DATA_SOURCES_ACTION_CATEGORIES.map((key) => {
+          // TODO(mcp): remove this when we are ready to clean up tables query entirely.
+          if (key === "TABLES_QUERY") {
+            return null;
+          }
+
           const spec = ACTION_SPECIFICATIONS[key];
           if (hideAction(key)) {
             return null;
