@@ -1,6 +1,6 @@
 import {
   Button,
-  ChatBubbleBottomCenterPlusIcon,
+  ChatBubbleBottomCenterTextIcon,
   Checkbox,
   DropdownMenu,
   DropdownMenuContent,
@@ -222,7 +222,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                   href={`/w/${owner.sId}/assistant/new`}
                   shallow
                   label="New"
-                  icon={ChatBubbleBottomCenterPlusIcon}
+                  icon={ChatBubbleBottomCenterTextIcon}
                   className="shrink"
                   tooltip="Create a new conversation"
                   onClick={() => {

@@ -137,7 +137,18 @@ const ItemWithLabelIconAndDescription = <
   return (
     <>
       {label && (
-        <div className="s-grid s-flex-grow s-grid-cols-[auto,1fr,auto] s-items-center s-gap-x-2.5">
+        <div
+          className={cn(
+            "s-grid s-flex-grow s-items-center s-gap-x-2.5",
+            icon && endComponent
+              ? "s-grid-cols-[auto,1fr,auto]"
+              : icon
+                ? "s-grid-cols-[auto,1fr]"
+                : endComponent
+                  ? "s-grid-cols-[1fr,auto]"
+                  : "s-grid-cols-[1fr]"
+          )}
+        >
           {renderIcon(icon, "sm")}
           <div className={cn("s-flex s-flex-col", truncate && "s-truncate")}>
             <span className={cn(truncate && "s-truncate")}>{label}</span>
@@ -152,7 +163,7 @@ const ItemWithLabelIconAndDescription = <
               </span>
             )}
           </div>
-          <div>{endComponent}</div>
+          {endComponent}
         </div>
       )}
       {children}
@@ -212,7 +223,7 @@ const DropdownMenuSubContent = React.forwardRef<
         "s-max-h-[calc(var(--radix-dropdown-menu-content-available-height)-var(--header-height,20px))]"
       )}
     >
-      <div className="s-p-1">{children}</div>
+      {children}
     </ScrollArea>
   </DropdownMenuPrimitive.SubContent>
 ));
