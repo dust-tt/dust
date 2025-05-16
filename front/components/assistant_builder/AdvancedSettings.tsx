@@ -67,17 +67,19 @@ const isInvalidJson = (value: string | null | undefined): boolean => {
   }
 };
 
-export function AdvancedSettings({
-  generationSettings,
-  setGenerationSettings,
-  models,
-}: {
+interface AdvancedSettingsProps {
   generationSettings: AssistantBuilderState["generationSettings"];
   setGenerationSettings: (
     generationSettingsSettings: AssistantBuilderState["generationSettings"]
   ) => void;
   models: ModelConfigurationType[];
-}) {
+}
+
+export function AdvancedSettings({
+  generationSettings,
+  setGenerationSettings,
+  models,
+}: AdvancedSettingsProps) {
   const { isDark } = useTheme();
   if (!models) {
     return null;
