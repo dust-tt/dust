@@ -16,6 +16,7 @@ import {
 } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import logger from "@app/logger/logger";
+import type { NextApiRequestWithContext } from "@app/logger/withlogging";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { UserTypeWithWorkspaces, WithAPIErrorResponse } from "@app/types";
 import { getGroupIdsFromHeaders, getUserEmailFromHeaders } from "@app/types";
@@ -29,7 +30,7 @@ import { getGroupIdsFromHeaders, getUserEmailFromHeaders } from "@app/types";
  */
 export function withSessionAuthentication<T>(
   handler: (
-    req: NextApiRequest,
+    req: NextApiRequestWithContext,
     res: NextApiResponse<WithAPIErrorResponse<T>>,
     session: SessionWithUser
   ) => Promise<void> | void,
@@ -37,7 +38,7 @@ export function withSessionAuthentication<T>(
 ) {
   return withLogging(
     async (
-      req: NextApiRequest,
+      req: NextApiRequestWithContext,
       res: NextApiResponse<WithAPIErrorResponse<T>>,
       { session }
     ) => {
@@ -84,7 +85,7 @@ export function withSessionAuthenticationForWorkspace<T>(
 ) {
   return withSessionAuthentication(
     async (
-      req: NextApiRequest,
+      req: NextApiRequestWithContext,
       res: NextApiResponse<WithAPIErrorResponse<T>>,
       session: SessionWithUser
     ) => {
@@ -100,6 +101,9 @@ export function withSessionAuthenticationForWorkspace<T>(
       }
 
       const auth = await Authenticator.fromSession(session, wId);
+      req.addLogToContext?.({
+        userId: auth.getNonNullableUser().sId,
+      });
 
       const owner = auth.workspace();
       const plan = auth.plan();
