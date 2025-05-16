@@ -24,18 +24,19 @@ const MonthSchema = t.refinement(
   "YYYY-MM"
 );
 
-const usageTables = [
+const SUPPORTED_USAGE_TABLES = [
   "users",
-  "assistant_messages",
+  "agent_messages",
   "builders",
-  "assistants",
+  "agents",
   "feedbacks",
   "all",
 ];
-type usageTableType = (typeof usageTables)[number];
+type usageTableType = (typeof SUPPORTED_USAGE_TABLES)[number];
 
+// Sorcery: Create a union type with at least two elements to satisfy t.union.
 function getSupportedUsageTablesCodec(): t.Mixed {
-  const [first, second, ...rest] = usageTables;
+  const [first, second, ...rest] = SUPPORTED_USAGE_TABLES;
   return t.union([
     t.literal(first),
     t.literal(second),
@@ -184,7 +185,7 @@ async function fetchUsageData({
   switch (table) {
     case "users":
       return { users: await getUserUsageData(start, end, workspace) };
-    case "assistant_messages":
+    case "agent_messages":
       return { mentions: await getMessageUsageData(start, end, workspace) };
     case "builders":
       return { builders: await getBuildersUsageData(start, end, workspace) };
@@ -192,12 +193,12 @@ async function fetchUsageData({
       return {
         feedbacks: await getFeedbacksUsageData(start, end, workspace),
       };
-    case "assistants":
+    case "agents":
       return {
-        assistants: await getAssistantsUsageData(start, end, workspace),
+        agents: await getAssistantsUsageData(start, end, workspace),
       };
     case "all":
-      const [users, assistant_messages, builders, assistants, feedbacks] =
+      const [users, agent_messages, builders, agents, feedbacks] =
         await Promise.all([
           getUserUsageData(start, end, workspace),
           getMessageUsageData(start, end, workspace),
@@ -205,7 +206,7 @@ async function fetchUsageData({
           getAssistantsUsageData(start, end, workspace),
           getFeedbacksUsageData(start, end, workspace),
         ]);
-      return { users, assistant_messages, builders, assistants, feedbacks };
+      return { users, agent_messages, builders, agents, feedbacks };
     default:
       return {};
   }
