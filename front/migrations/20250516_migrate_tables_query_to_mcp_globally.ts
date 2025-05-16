@@ -212,36 +212,51 @@ async function migrateWorkspaceTablesQueryActions(
   return revertSql;
 }
 
-makeScript({}, async ({ execute }, parentLogger) => {
-  const now = new Date().toISOString().slice(0, 10).replace(/-/g, "");
-
-  let revertSql = "";
-
-  const workspaceIds = await findWorkspacesWithTablesConfigurations();
-  const workspaces = await Workspace.findAll({
-    where: {
-      id: { [Op.in]: workspaceIds },
+makeScript(
+  {
+    startFromWorkspaceId: {
+      type: "number",
+      description: "Workspace ID to start from",
+      required: false,
     },
-  });
+  },
+  async ({ execute, startFromWorkspaceId }, parentLogger) => {
+    const now = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+    let revertSql = "";
 
-  for (const workspace of workspaces) {
-    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-
-    const workspaceRevertSql = await migrateWorkspaceTablesQueryActions(auth, {
-      execute,
-      parentLogger,
+    const workspaceIds = await findWorkspacesWithTablesConfigurations();
+    const workspaces = await Workspace.findAll({
+      where: {
+        id: { [Op.in]: workspaceIds },
+        ...(startFromWorkspaceId
+          ? { id: { [Op.gte]: startFromWorkspaceId } }
+          : {}),
+      },
+      order: [["id", "ASC"]],
     });
 
-    if (execute) {
-      fs.writeFileSync(
-        `${now}_tables_query_to_mcp_revert_${workspace.sId}.sql`,
-        workspaceRevertSql
-      );
-    }
-    revertSql += workspaceRevertSql;
-  }
+    for (const workspace of workspaces) {
+      const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
-  if (execute) {
-    fs.writeFileSync(`${now}_tables_query_to_mcp_revert_all.sql`, revertSql);
+      const workspaceRevertSql = await migrateWorkspaceTablesQueryActions(
+        auth,
+        {
+          execute,
+          parentLogger,
+        }
+      );
+
+      if (execute) {
+        fs.writeFileSync(
+          `${now}_tables_query_to_mcp_revert_${workspace.sId}.sql`,
+          workspaceRevertSql
+        );
+      }
+      revertSql += workspaceRevertSql;
+    }
+
+    if (execute) {
+      fs.writeFileSync(`${now}_tables_query_to_mcp_revert_all.sql`, revertSql);
+    }
   }
-});
+);
