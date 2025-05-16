@@ -82,6 +82,12 @@ function isWorkspaceIsolationBypassEnabled<T>(
   );
 }
 
+/**
+ * Models that we know trigger workspace_isolation_violation, but we want to keep observing
+ * to avoid breaking anything. We'll only trigger a sample of events
+ */
+const SAMPLED_MODELS = ["spaces", "data_source", "groups", "data_source_view"];
+
 export class WorkspaceAwareModel<M extends Model = any> extends BaseModel<M> {
   declare workspaceId: ForeignKey<Workspace["id"]>;
   declare workspace: NonAttribute<Workspace>;
@@ -116,8 +122,8 @@ export class WorkspaceAwareModel<M extends Model = any> extends BaseModel<M> {
           return;
         }
 
-        // log only 1 time on 100 approximately
-        if (Math.random() < 0.99) {
+        // log only 1 time on 100 approximately for SAMPLED_MODELS
+        if (SAMPLED_MODELS.includes(this.name) && Math.random() < 0.99) {
           return;
         }
 
@@ -140,12 +146,15 @@ export class WorkspaceAwareModel<M extends Model = any> extends BaseModel<M> {
             "workspace_isolation_violation"
           );
 
-          // TODO: Uncomment this once we've updated all queries to include `workspaceId`.
-          // if (process.env.NODE_ENV === "development") {
-          //   throw new Error(
-          //     `Query attempted without workspaceId on ${this.name}`
-          //   );
-          // }
+          // Only trigger throw for violation in dev on the models that are not sampled
+          if (
+            process.env.NODE_ENV === "development" &&
+            !SAMPLED_MODELS.includes(this.name)
+          ) {
+            throw new Error(
+              `Query attempted without workspaceId on ${this.name}`
+            );
+          }
         }
       },
       ...(restOptions.hooks || {}),
