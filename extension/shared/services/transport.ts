@@ -110,7 +110,7 @@ export class DustMcpServerTransport implements Transport {
       return;
     }
 
-    // Close any existing connection
+    // Close any existing connection.
     if (this.eventSource) {
       this.eventSource.close();
       this.eventSource = null;

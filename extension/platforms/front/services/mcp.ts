@@ -141,6 +141,6 @@ export class FrontMcpService extends McpService {
       await this.transport.close();
       this.transport = null;
     }
-    // Note: We keep the serverId for potential reconnection
+    // Note: We keep the serverId for potential reconnection.
   }
 }
