@@ -159,6 +159,15 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
     return servers.length > 0 ? servers[0] : null;
   }
 
+  static async dangerouslyListAllServers(offset = 0, limit = 100) {
+    const servers = await RemoteMCPServerModel.findAll({
+      offset,
+      limit,
+      order: [['id', 'ASC']]
+    });
+    return servers.map((server) => new this(RemoteMCPServerModel, server.get()));
+  }
+
   // sId
   get sId(): string {
     return remoteMCPServerNameToSId({

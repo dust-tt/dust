@@ -32,7 +32,7 @@ import {
   useUpdateRemoteMCPServer,
 } from "@app/lib/swr/mcp_servers";
 import type { LightWorkspaceType } from "@app/types";
-import { asDisplayName, isRedacted } from "@app/types";
+import { asDisplayName, isRedacted, normalizeError } from "@app/types";
 
 interface RemoteMCPFormProps {
   owner: LightWorkspaceType;
@@ -130,7 +130,7 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
         title: "Error synchronizing MCP server",
         type: "error",
         description:
-          error instanceof Error ? error.message : "An error occurred",
+          normalizeError(error ?? "An error occured").message,
       });
     } finally {
       setIsSynchronizing(false);
