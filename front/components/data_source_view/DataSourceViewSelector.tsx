@@ -854,7 +854,10 @@ export function DataSourceViewSelector({
               className="mr-4 text-xs"
               label={hasActiveSelection ? "Unselect All" : "Select All"}
               icon={ListCheckIcon}
-              onClick={handleSelectAll}
+              onClick={(e: Event) => {
+                e.stopPropagation();
+                handleSelectAll();
+              }}
             />
           )
         }
