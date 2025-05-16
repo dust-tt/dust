@@ -44,12 +44,14 @@ export function withLogging<T>(
 
     const session = await getSession(req, res);
     const sessionId = session?.user.sid || "unknown";
-    req.logContext = { sessionId };
+
+    // Use freeze to make sure we cannot update `req.logContext` down the callstack
+    req.logContext = Object.freeze({ sessionId });
     req.addLogToContext = (data) => {
-      req.logContext = {
+      req.logContext = Object.freeze({
         ...(req.logContext ?? { sessionId: null }),
         ...data,
-      };
+      });
     };
 
     let route = req.url;
