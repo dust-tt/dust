@@ -223,3 +223,51 @@ export function makeErrorBlock(
     text: errorMessage,
   };
 }
+
+/**
+ * Creates Slack blocks with buttons for validating a tool execution.
+ * This is used when an agent sends a tool_approve_execution event to Slack.
+ */
+export function makeToolValidationBlock(
+  agentName: string,
+  toolName: string,
+  id: string
+) {
+  return [
+    {
+      type: "section",
+      text: {
+        type: "mrkdwn",
+        text: `Agent \`${agentName}\` is requesting permission to use tool \`${toolName}\``,
+      },
+    },
+    {
+      type: "actions",
+      block_id: id,
+      elements: [
+        {
+          type: "button",
+          text: {
+            type: "plain_text",
+            text: "Approve",
+            emoji: true,
+          },
+          style: "primary",
+          value: "approve",
+          action_id: "approve_tool_execution",
+        },
+        {
+          type: "button",
+          text: {
+            type: "plain_text",
+            text: "Reject",
+            emoji: true,
+          },
+          style: "danger",
+          value: "reject",
+          action_id: "reject_tool_execution",
+        },
+      ],
+    },
+  ];
+}
