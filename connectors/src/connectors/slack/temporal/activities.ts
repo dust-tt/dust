@@ -523,6 +523,8 @@ export async function syncNonThreaded(
       );
     }
 
+    await heartbeat();
+
     for (const message of c.messages) {
       if (message.ts) {
         latestTsSec = parseInt(message.ts);
