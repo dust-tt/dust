@@ -99,6 +99,7 @@ import {
 } from "@app/components/assistant_builder/useBuilderActionInfo";
 import { useTools } from "@app/components/assistant_builder/useTools";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
+import { getInternalMCPServerNameAndWorkspaceId } from "@app/lib/actions/mcp_internal_actions/constants";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/utils";
 import {
   ACTION_SPECIFICATIONS,
@@ -1227,6 +1228,37 @@ function AddKnowledgeDropdown({
   setAction,
   mcpServerViewsWithKnowledge,
 }: AddKnowledgeDropdownProps) {
+  const hideAction = useCallback(
+    (key: (typeof DATA_SOURCES_ACTION_CATEGORIES)[number]) => {
+      const spec = ACTION_SPECIFICATIONS[key];
+      if (!hasFeature(spec.flag)) {
+        return true;
+      }
+      switch (key) {
+        case "RETRIEVAL_SEARCH":
+          return mcpServerViewsWithKnowledge.some((v) => {
+            const r = getInternalMCPServerNameAndWorkspaceId(v.server.sId);
+            return r.isOk() && r.value.name === "search";
+          });
+        case "RETRIEVAL_EXHAUSTIVE":
+          return mcpServerViewsWithKnowledge.some((v) => {
+            const r = getInternalMCPServerNameAndWorkspaceId(v.server.sId);
+            return r.isOk() && r.value.name === "include_data";
+          });
+        case "TABLES_QUERY":
+          return mcpServerViewsWithKnowledge.some((v) => {
+            const r = getInternalMCPServerNameAndWorkspaceId(v.server.sId);
+            return r.isOk() && r.value.name === "query_tables";
+          });
+        case "PROCESS":
+          return false;
+        default:
+          assertNever(key);
+      }
+    },
+    [hasFeature, mcpServerViewsWithKnowledge]
+  );
+
   return (
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
@@ -1239,7 +1271,7 @@ function AddKnowledgeDropdown({
       >
         {DATA_SOURCES_ACTION_CATEGORIES.map((key) => {
           const spec = ACTION_SPECIFICATIONS[key];
-          if (!hasFeature(spec.flag)) {
+          if (hideAction(key)) {
             return null;
           }
           const action = getDefaultActionConfiguration(key);
