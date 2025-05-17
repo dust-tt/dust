@@ -23,6 +23,8 @@ import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { LightWorkspaceType, SpaceType, TimeFrame } from "@app/types";
 import { asDisplayName, assertNever } from "@app/types";
+import { JsonSchemaConfigurationSection } from "@app/components/assistant_builder/actions/configuration/JsonSchemaConfigurationSection";
+import { generateSchema } from "@app/components/assistant_builder/actions/ProcessAction";
 
 interface NoActionAvailableProps {
   owner: LightWorkspaceType;
@@ -253,12 +255,28 @@ export function MCPAction({
           }}
         />
       )}
-      {requirements.mayRequiresTimeFrameConfiguration && (
+      {requirements.mayRequireTimeFrameConfiguration && (
         <TimeFrameConfigurationSection
           onConfigUpdate={(timeFrame: TimeFrame | null) => {
             handleConfigUpdate((old) => ({ ...old, timeFrame }));
           }}
           timeFrame={actionConfiguration.timeFrame}
+        />
+      )}
+      {requirements.mayRequireJsonSchemaConfiguration && (
+        <JsonSchemaConfigurationSection
+          instructions={action.description}
+          description={action.description}
+          schemaConfigurationDescription="Optionally, provide a schema for the data to be extracted. If you do not specify a schema, the tool will determine the schema based on the conversation context."
+          schemaEdit={actionConfiguration.jsonSchema}
+          setSchemaEdit={(jsonSchema) => {
+            handleConfigUpdate((old) => ({ ...old, jsonSchema }));
+          }}
+          setEdited={setEdited}
+          updateAction={updateAction}
+          generateSchema={(instructions: string) =>
+            generateSchema({ owner, instructions })
+          }
         />
       )}
       <AdditionalConfigurationSection

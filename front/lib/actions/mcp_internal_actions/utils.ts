@@ -6,10 +6,8 @@ import assert from "assert";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
-import type {ConfigurableToolInputType} from "@app/lib/actions/mcp_internal_actions/input_schemas";
-import {
-  ConfigurableToolInputJSONSchemas
-} from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import type { ConfigurableToolInputType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import { ConfigurableToolInputJSONSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { MCPToolResult } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { isServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import type { MCPServerType, MCPServerViewType } from "@app/lib/api/mcp";
@@ -386,7 +384,8 @@ export function getMCPServerRequirements(
   requiresTableConfiguration: boolean;
   requiresChildAgentConfiguration: boolean;
   requiresReasoningConfiguration: boolean;
-  mayRequiresTimeFrameConfiguration: boolean;
+  mayRequireTimeFrameConfiguration: boolean;
+  mayRequireJsonSchemaConfiguration: boolean;
   requiredStrings: string[];
   requiredNumbers: string[];
   requiredBooleans: string[];
@@ -400,7 +399,8 @@ export function getMCPServerRequirements(
       requiresTableConfiguration: false,
       requiresChildAgentConfiguration: false,
       requiresReasoningConfiguration: false,
-      mayRequiresTimeFrameConfiguration: false,
+      mayRequireTimeFrameConfiguration: false,
+      mayRequireJsonSchemaConfiguration: false,
       requiredStrings: [],
       requiredNumbers: [],
       requiredBooleans: [],
@@ -443,8 +443,12 @@ export function getMCPServerRequirements(
       })
     ).length > 0;
 
-  const mayRequiresTimeFrameConfiguration = server.tools.some(
+  const mayRequireTimeFrameConfiguration = server.tools.some(
     (tool) => tool.inputSchema?.properties?.timeFrame
+  );
+
+  const mayRequireJsonSchemaConfiguration = server.tools.some(
+    (tool) => tool.inputSchema?.properties?.jsonSchema
   );
 
   const requiredStrings = Object.keys(
@@ -500,7 +504,8 @@ export function getMCPServerRequirements(
     requiresTableConfiguration,
     requiresChildAgentConfiguration,
     requiresReasoningConfiguration,
-    mayRequiresTimeFrameConfiguration,
+    mayRequireTimeFrameConfiguration,
+    mayRequireJsonSchemaConfiguration,
     requiredStrings,
     requiredNumbers,
     requiredBooleans,
@@ -512,7 +517,7 @@ export function getMCPServerRequirements(
       !requiresChildAgentConfiguration &&
       !requiresReasoningConfiguration &&
       !requiredDustAppConfiguration &&
-      !mayRequiresTimeFrameConfiguration &&
+      !mayRequireTimeFrameConfiguration &&
       requiredStrings.length === 0 &&
       requiredNumbers.length === 0 &&
       requiredBooleans.length === 0 &&
