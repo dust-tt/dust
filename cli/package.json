@@ -31,6 +31,7 @@
     "@modelcontextprotocol/sdk": "^1.8.0",
     "clipboardy": "^4.0.0",
     "express": "^5.1.0",
+    "fuse.js": "^7.1.0",
     "ink": "^5.2.0",
     "ink-select-input": "^6.0.0",
     "ink-spinner": "^5.0.0",
