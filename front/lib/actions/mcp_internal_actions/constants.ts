@@ -74,7 +74,7 @@ export const INTERNAL_MCP_SERVERS: Record<
   query_tables: {
     id: 4,
     availability: "auto",
-    flag: "dev_mcp_actions", // Putting this behind the dev flag for now to allow shipping without it.
+    flag: null,
   },
   "web_search_&_browse": {
     id: 5,
