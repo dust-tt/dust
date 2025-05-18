@@ -8,9 +8,12 @@ import { ChildAgentConfigurationSection } from "@app/components/assistant_builde
 import { ConfigurationSectionContainer } from "@app/components/assistant_builder/actions/configuration/ConfigurationSectionContainer";
 import DataSourceSelectionSection from "@app/components/assistant_builder/actions/configuration/DataSourceSelectionSection";
 import { DustAppConfigurationSection } from "@app/components/assistant_builder/actions/configuration/DustAppConfigurationSection";
+import { JsonSchemaConfigurationSection } from "@app/components/assistant_builder/actions/configuration/JsonSchemaConfigurationSection";
 import { ReasoningModelConfigurationSection } from "@app/components/assistant_builder/actions/configuration/ReasoningModelConfigurationSection";
 import { TimeFrameConfigurationSection } from "@app/components/assistant_builder/actions/configuration/TimeFrameConfigurationSection";
 import { DataDescription } from "@app/components/assistant_builder/actions/DataDescription";
+import { MCPToolsList } from "@app/components/assistant_builder/actions/MCPToolsList";
+import { generateSchema } from "@app/components/assistant_builder/actions/ProcessAction";
 import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
 import type {
   AssistantBuilderActionConfiguration,
@@ -23,8 +26,6 @@ import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { LightWorkspaceType, SpaceType, TimeFrame } from "@app/types";
 import { asDisplayName, assertNever } from "@app/types";
-import { JsonSchemaConfigurationSection } from "@app/components/assistant_builder/actions/configuration/JsonSchemaConfigurationSection";
-import { generateSchema } from "@app/components/assistant_builder/actions/ProcessAction";
 
 interface NoActionAvailableProps {
   owner: LightWorkspaceType;
@@ -267,13 +268,21 @@ export function MCPAction({
         <JsonSchemaConfigurationSection
           instructions={action.description}
           description={action.description}
-          schemaConfigurationDescription="Optionally, provide a schema for the data to be extracted. If you do not specify a schema, the tool will determine the schema based on the conversation context."
-          schemaEdit={actionConfiguration.jsonSchema}
-          setSchemaEdit={(jsonSchema) => {
-            handleConfigUpdate((old) => ({ ...old, jsonSchema }));
-          }}
+          sectionConfigurationDescription="Optionally, provide a schema for the data to be extracted. If you do not specify a schema, the tool will determine the schema based on the conversation context."
           setEdited={setEdited}
-          updateAction={updateAction}
+          onConfigUpdate={({ jsonSchema, _jsonSchemaString }) => {
+            handleConfigUpdate((old) => ({
+              ...old,
+              _jsonSchemaString,
+              jsonSchema: jsonSchema ?? old.jsonSchema,
+            }));
+          }}
+          initialSchema={
+            actionConfiguration._jsonSchemaString ??
+            (actionConfiguration.jsonSchema
+              ? JSON.stringify(actionConfiguration.jsonSchema, null, 2)
+              : null)
+          }
           generateSchema={(instructions: string) =>
             generateSchema({ owner, instructions })
           }
