@@ -14,3 +14,5 @@ oauth-api-keys.json
 CLAUDE.md
 **/.yalc
 yalc.lock
+claude_code
+openai-node

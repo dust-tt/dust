@@ -1,0 +1,22 @@
+{
+  "name": "dust-stream-drop-repro",
+  "version": "1.0.0",
+  "description": "Reproduction test for Dust CLI stream chunk dropping issue",
+  "main": "server.js",
+  "scripts": {
+    "start:server": "node server.js",
+    "start:client": "node client.js",
+    "test": "npm run start:server & sleep 2 && npm run start:client",
+    "analyze": "node analyze.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "eventsource-parser": "^1.0.0",
+    "express": "^4.18.2",
+    "ioredis": "^5.3.2",
+    "node-fetch": "^2.6.11",
+    "uuid": "^9.0.0"
+  }
+}
