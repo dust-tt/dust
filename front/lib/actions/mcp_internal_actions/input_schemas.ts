@@ -71,7 +71,7 @@ export const ConfigurableToolInputSchemas = {
   [INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA]: z.object({
     value: z
       .string()
-      .refine(isValidJsonSchema, {
+      .refine((v) => isValidJsonSchema(v).isValid, {
         message: "Value must be a valid JSON schema string",
       })
       .optional(),

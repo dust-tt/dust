@@ -9,6 +9,7 @@ import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
+import { isValidJsonSchema } from "@app/lib/utils/json_schemas";
 import type { TimeFrame } from "@app/types";
 import { isTimeFrame } from "@app/types";
 
@@ -22,7 +23,7 @@ export class AgentMCPServerConfiguration extends WorkspaceAwareModel<AgentMCPSer
 
   declare timeFrame: TimeFrame | null;
   declare additionalConfiguration: Record<string, boolean | number | string>;
-  declare jsonSchema: JSONSchema;
+  declare jsonSchema: string | null;
 
   declare appId: string | null;
 
@@ -73,12 +74,15 @@ AgentMCPServerConfiguration.init(
       },
     },
     jsonSchema: {
-      type: DataTypes.JSONB,
+      type: DataTypes.TEXT,
       allowNull: true,
       validate: {
-        isValidJSONSchema(value: unknown) {
-          if (typeof value !== "object") {
-            throw new Error("jsonSchema must be an object");
+        isValid(value: unknown) {
+          if (
+            value &&
+            (typeof value !== "string" || !isValidJsonSchema(value).isValid)
+          ) {
+            throw new Error("jsonSchema is invalid");
           }
         },
       },
