@@ -111,7 +111,8 @@ export async function stopZendeskWorkflows(
   ];
   for (const workflowId of workflowIds) {
     try {
-      const handle: WorkflowHandle<typeof zendeskSyncWorkflow> =        client.workflow.getHandle(workflowId);
+      const handle: WorkflowHandle<typeof zendeskSyncWorkflow> =
+        client.workflow.getHandle(workflowId);
       try {
         await handle.terminate();
       } catch (e) {
