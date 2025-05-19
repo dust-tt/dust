@@ -3,7 +3,13 @@ import { Box, Static, Text } from "ink";
 import Spinner from "ink-spinner";
 import _ from "lodash";
 import type { FC } from "react";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import { useTerminalSize } from "../../utils/hooks/use_terminal_size.js";
 import { clearTerminal } from "../../utils/terminal.js";
@@ -203,6 +209,7 @@ const StaticConversationItem: FC<StaticConversationItemProps> = ({
 const Conversation: React.FC<ConversationProps> = (props) => {
   const [renderKey, setRenderKey] = useState(0);
   const { columns } = useTerminalSize();
+  const initRenderKey = useRef(false);
 
   const handleResize = useCallback(() => {
     void clearTerminal().then(() => setRenderKey((k) => k + 1));
@@ -214,6 +221,11 @@ const Conversation: React.FC<ConversationProps> = (props) => {
   );
 
   useEffect(() => {
+    if (!initRenderKey.current) {
+      initRenderKey.current = true;
+      return;
+    }
+
     debouncedHandleResize();
     return debouncedHandleResize.cancel;
   }, [debouncedHandleResize, columns]);
