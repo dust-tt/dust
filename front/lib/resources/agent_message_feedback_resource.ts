@@ -422,6 +422,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
 
     const agentConfiguration = await AgentConfiguration.findOne({
       where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
         sId: message.agentMessage.agentConfigurationId,
       },
       attributes: ["id", "sId", "version"],
