@@ -86,6 +86,7 @@ async function handler(
       "zendeskSyncUnresolvedTicketsEnabled",
       "zendeskHideCustomerDetails",
       "gongRetentionPeriodDays",
+      "gongSmartTrackersEnabled",
     ].includes(configKey)
   ) {
     return apiError(req, res, {

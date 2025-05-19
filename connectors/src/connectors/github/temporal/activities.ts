@@ -6,7 +6,10 @@ import { promises as fs } from "fs";
 import PQueue from "p-queue";
 import { Op } from "sequelize";
 
-import { isGraphQLNotFound } from "@connectors/connectors/github/lib/errors";
+import {
+  isGraphQLNotFound,
+  RepositoryAccessBlockedError,
+} from "@connectors/connectors/github/lib/errors";
 import type {
   GithubIssue as GithubIssueType,
   GithubUser,
@@ -1070,7 +1073,10 @@ export async function githubCodeSyncActivity({
   Context.current().heartbeat();
 
   if (repoRes.isErr()) {
-    if (repoRes.error instanceof ExternalOAuthTokenError) {
+    if (
+      repoRes.error instanceof ExternalOAuthTokenError ||
+      repoRes.error instanceof RepositoryAccessBlockedError
+    ) {
       logger.info(
         { err: repoRes.error },
         "Missing Github repository tarball: Garbage collecting repo."

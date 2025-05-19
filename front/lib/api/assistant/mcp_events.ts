@@ -1,13 +1,13 @@
 import {
   getMCPServerChannelId,
   getMCPServerResultsChannelId,
-  isClientSideMCPPayload,
+  isMCPEventResult,
 } from "@app/lib/api/actions/mcp_client_side";
 import { publishEvent } from "@app/lib/api/assistant/pubsub";
 import type { EventPayload } from "@app/lib/api/redis-hybrid-manager";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import type { Authenticator } from "@app/lib/auth";
-import { createCallbackPromise } from "@app/lib/utils";
+import { createCallbackReader } from "@app/lib/utils";
 import { setTimeoutAsync } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 
@@ -25,10 +25,10 @@ export async function* getMCPEventsForServer(
 ) {
   const channelId = getMCPServerChannelId(auth, { mcpServerId });
 
-  const callbackPromise = createCallbackPromise<EventPayload | "close">();
+  const callbackReader = createCallbackReader<EventPayload | "close">();
   const { history, unsubscribe } = await getRedisHybridManager().subscribe(
     channelId,
-    callbackPromise.callback,
+    callbackReader.callback,
     lastEventId,
     "mcp_events"
   );
@@ -51,7 +51,7 @@ export async function* getMCPEventsForServer(
         break;
       }
       const rawEvent = await Promise.race([
-        callbackPromise.promise,
+        callbackReader.next(),
         setTimeoutAsync(MCP_EVENTS_TIMEOUT),
       ]);
 
@@ -59,9 +59,6 @@ export async function* getMCPEventsForServer(
       if (rawEvent === "timeout") {
         break;
       }
-
-      // Reset the promise for the next event.
-      callbackPromise.reset();
 
       if (rawEvent === "close") {
         break;
@@ -85,13 +82,9 @@ export async function publishMCPResults(
   auth: Authenticator,
   {
     mcpServerId,
-    messageId,
-    requestId,
     result,
   }: {
     mcpServerId: string;
-    messageId: string;
-    requestId: string;
     result?: unknown;
   }
 ) {
@@ -103,7 +96,6 @@ export async function publishMCPResults(
     }),
     event: JSON.stringify({
       type: "mcp_client_side_results",
-      messageId,
       result,
     }),
   });
@@ -113,11 +105,16 @@ export async function publishMCPResults(
     (event) => {
       const payload = JSON.parse(event.message["payload"]);
 
-      if (isClientSideMCPPayload(payload)) {
-        return payload.requestId === requestId;
+      if (
+        "id" in payload &&
+        isMCPEventResult(result) &&
+        payload.id === result.id
+      ) {
+        return true;
       }
 
-      return false;
+      // If it's a notification (no id, then let's drop it).
+      return true;
     },
     getMCPServerChannelId(auth, { mcpServerId })
   );

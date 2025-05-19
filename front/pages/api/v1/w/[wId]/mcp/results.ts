@@ -1,24 +1,17 @@
 import type { PostMCPResultsResponseType } from "@dust-tt/client";
-import {
-  PostMCPResultsRequestQuerySchema,
-  PublicPostMCPResultsRequestBodySchema,
-} from "@dust-tt/client";
+import { PublicPostMCPResultsRequestBodySchema } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { fromError } from "zod-validation-error";
 
 import { validateMCPServerAccess } from "@app/lib/api/actions/mcp/client_side_registry";
-import { parseClientSideMCPRequestId } from "@app/lib/api/actions/mcp_client_side";
-import { getConversation } from "@app/lib/api/assistant/conversation";
-import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { publishMCPResults } from "@app/lib/api/assistant/mcp_events";
-import { fetchMessageInConversation } from "@app/lib/api/assistant/messages";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 
 /**
- * @ignoreswagger
+ * @swagger
  * /api/v1/w/{wId}/mcp/results:
  *   post:
  *     summary: Submit MCP tool execution results
@@ -36,12 +29,6 @@ import type { WithAPIErrorResponse } from "@app/types";
  *         description: ID of the workspace
  *         schema:
  *           type: string
- *       - in: query
- *         name: serverId
- *         required: true
- *         description: UUID of the MCP server submitting the results
- *         schema:
- *           type: string
  *     requestBody:
  *       required: true
  *       content:
@@ -49,15 +36,15 @@ import type { WithAPIErrorResponse } from "@app/types";
  *           schema:
  *             type: object
  *             required:
- *               - requestId
  *               - result
+ *               - serverId
  *             properties:
- *               requestId:
- *                 type: string
- *                 description: ID of the original tool request
  *               result:
  *                 type: object
  *                 description: The result data from the tool execution
+ *               serverId:
+ *                 type: string
+ *                 description: ID of the MCP server submitting the results
  *     responses:
  *       200:
  *         description: Tool execution results successfully submitted
@@ -77,18 +64,18 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<PostMCPResultsResponseType>>,
   auth: Authenticator
 ): Promise<void> {
-  const rq = PostMCPResultsRequestQuerySchema.safeParse(req.query);
-  if (rq.error) {
+  const r = PublicPostMCPResultsRequestBodySchema.safeParse(req.body);
+  if (r.error) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: fromError(rq.error).toString(),
+        message: fromError(r.error).toString(),
       },
     });
   }
 
-  const { serverId } = rq.data;
+  const { result, serverId } = r.data;
 
   const isValidAccess = await validateMCPServerAccess(auth, {
     serverId,
@@ -103,58 +90,10 @@ async function handler(
     });
   }
 
-  const r = PublicPostMCPResultsRequestBodySchema.safeParse(req.body);
-  if (r.error) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: fromError(r.error).toString(),
-      },
-    });
-  }
-
-  const parsed = parseClientSideMCPRequestId(r.data.requestId);
-  if (!parsed) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Invalid requestId",
-      },
-    });
-  }
-
-  const { conversationId, messageId } = parsed;
-
-  // Verify the conversation exists and user has access.
-  const conversationRes = await getConversation(auth, conversationId);
-  if (conversationRes.isErr()) {
-    return apiErrorForConversation(req, res, conversationRes.error);
-  }
-
-  // Verify the message exists.
-  const message = await fetchMessageInConversation(
-    auth,
-    conversationRes.value,
-    messageId
-  );
-  if (!message || !message.agentMessage) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "message_not_found",
-        message: "Message not found.",
-      },
-    });
-  }
-
   // Publish MCP action results.
   await publishMCPResults(auth, {
     mcpServerId: serverId,
-    messageId,
-    requestId: r.data.requestId,
-    result: r.data.result,
+    result,
   });
 
   res.status(200).json({
