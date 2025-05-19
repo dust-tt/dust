@@ -357,6 +357,7 @@ export class GongClient {
             exposedFields: {
               parties: true,
             },
+            ...(smartTrackersEnabled ? { content: { transcript: true } } : {}),
           },
         },
         GongPaginatedResults(
