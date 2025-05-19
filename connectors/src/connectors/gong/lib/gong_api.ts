@@ -94,6 +94,27 @@ export type GongTranscriptMetadata = t.TypeOf<
   typeof GongTranscriptMetadataCodec
 >;
 
+const GongTranscriptMetadataWithTrackersCodec = t.intersection([
+  GongTranscriptMetadataCodec,
+  t.type({
+    content: t.type({
+      tracker: t.intersection([
+        t.type({
+          id: t.string,
+          name: t.string,
+          count: t.number,
+          type: t.string,
+        }),
+        CatchAllCodec,
+      ]),
+    }),
+  }),
+]);
+
+export type GongTranscriptMetadataWithTrackers = t.TypeOf<
+  typeof GongTranscriptMetadataWithTrackersCodec
+>;
+
 // Generic codec for paginated results from Gong API.
 const GongPaginatedResults = <C extends t.Mixed, F extends string>(
   fieldName: F,
@@ -343,7 +364,12 @@ export class GongClient {
             },
           },
         },
-        GongPaginatedResults("calls", GongTranscriptMetadataCodec)
+        GongPaginatedResults(
+          "calls",
+          this.configuration.smartTrackersEnabled
+            ? GongTranscriptMetadataWithTrackersCodec
+            : GongTranscriptMetadataCodec
+        )
       );
       return {
         callsMetadata: callsMetadata.calls,
