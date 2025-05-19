@@ -1,4 +1,4 @@
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import { INTERNAL_MIME_TYPES, removeNulls } from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import assert from "assert";
 import _ from "lodash";
@@ -11,7 +11,10 @@ import { PROCESS_ACTION_TOP_K } from "@app/lib/actions/constants";
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { ProcessActionOutputsType } from "@app/lib/actions/process";
 import { getExtractFileTitle } from "@app/lib/actions/process/utils";
-import { applyDataSourceFilters } from "@app/lib/actions/retrieval";
+import {
+  applyDataSourceFilters,
+  DataSourceConfiguration,
+} from "@app/lib/actions/retrieval";
 import { runActionStreamed } from "@app/lib/actions/server";
 import type {
   ActionGeneratedFileType,
@@ -27,6 +30,11 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import logger from "@app/logger/logger";
 import type { UserMessageType } from "@app/types";
 import { isUserMessageType, timeFrameFromNow } from "@app/types";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import {
+  getCoreSearchArgs,
+  getDataSourceConfiguration,
+} from "@app/lib/actions/mcp_internal_actions/servers/utils";
 
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "extract_data",
@@ -104,13 +112,41 @@ function createServer(
       });
 
       assert(
-        actionConfiguration.dataSources &&
-          actionConfiguration.dataSources.length > 0,
+        dataSources && dataSources.length > 0,
         "Extract data action must have at least one data source."
       );
+
+      const dataSourceConfigurationResults = await concurrentExecutor(
+        dataSources,
+        async (dataSourceToolConfiguration) =>
+          getDataSourceConfiguration(dataSourceToolConfiguration),
+        { concurrency: 10 }
+      );
+
+      // If any of the data sources are invalid, return an error message.
+      if (dataSourceConfigurationResults.some((res) => res.isErr())) {
+        return {
+          isError: false,
+          content: removeNulls(
+            dataSourceConfigurationResults.map((res) =>
+              res.isErr() ? res.error : null
+            )
+          ).map((error) => ({
+            type: "text",
+            text: error.message,
+          })),
+        };
+      }
+
+      const dataSourceConfigurations = removeNulls(
+        dataSourceConfigurationResults.map((res) =>
+          res.isOk() ? res.value : null
+        )
+      );
+
       const dataSourceViews = await DataSourceViewResource.fetchByIds(
         auth,
-        _.uniq(actionConfiguration.dataSources.map((ds) => ds.dataSourceViewId))
+        _.uniq(dataSourceConfigurations.map((ds) => ds.dataSourceViewId))
       );
       const dataSourceViewsMap = Object.fromEntries(
         dataSourceViews.map((dsv) => [dsv.sId, dsv])
@@ -126,21 +162,19 @@ function createServer(
       config.MODEL.temperature = model.temperature;
 
       // Handle data sources list and parents/tags filtering.
-      config.DATASOURCE.data_sources = actionConfiguration.dataSources.map(
-        (d) => ({
-          workspace_id: d.workspaceId,
-          // Note: This value is passed to the registry for lookup. The registry will return the
-          // associated data source's dustAPIDataSourceId.
-          data_source_id: d.dataSourceViewId,
-        })
-      );
+      config.DATASOURCE.data_sources = dataSourceConfigurations.map((d) => ({
+        workspace_id: d.workspaceId,
+        // Note: This value is passed to the registry for lookup. The registry will return the
+        // associated data source's dustAPIDataSourceId.
+        data_source_id: d.dataSourceViewId,
+      }));
 
       const globalTagsIn: string[] | null = null;
       const globalTagsNot: string[] | null = null;
 
       applyDataSourceFilters(
         config,
-        actionConfiguration.dataSources,
+        dataSourceConfigurations,
         dataSourceViewsMap,
         globalTagsIn,
         globalTagsNot
@@ -254,9 +288,6 @@ function createServer(
         }
       }
 
-      let jsonFileSId: string | null = null;
-      let jsonFileSnippet: string | null = null;
-
       const updateParams: {
         jsonFileId: number | null;
         jsonFileSnippet: string | null;
@@ -295,10 +326,6 @@ function createServer(
       // Update the parameters with numeric IDs for database
       updateParams.jsonFileId = jsonFile.id;
       updateParams.jsonFileSnippet = jsonSnippet;
-
-      // Save references for the yield statement with string IDs for UI
-      jsonFileSId = jsonFile.sId;
-      jsonFileSnippet = jsonSnippet;
 
       logger.info(
         {

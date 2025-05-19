@@ -27,6 +27,8 @@ import type {
   Result,
 } from "@app/types";
 import { Err, Ok } from "@app/types";
+import { DataSourceConfiguration } from "@app/lib/actions/retrieval";
+import { renderDataSourceConfiguration } from "@app/lib/actions/configuration/helpers";
 
 async function fetchAgentDataSourceConfiguration(
   dataSourceConfiguration: DataSourcesToolConfigurationType[number]
@@ -142,6 +144,22 @@ type CoreSearchArgs = {
   view_filter: CoreAPISearchFilter;
   dataSourceView: DataSourceViewType;
 };
+
+export async function getDataSourceConfiguration(
+  dataSourceToolConfiguration: DataSourcesToolConfigurationType[number]
+): Promise<Result<DataSourceConfiguration, Error>> {
+  const r = await fetchAgentDataSourceConfiguration(
+    dataSourceToolConfiguration
+  );
+
+  if (r.isErr()) {
+    return r;
+  }
+
+  const agentDataSourceConfiguration = r.value;
+
+  return new Ok(renderDataSourceConfiguration(agentDataSourceConfiguration));
+}
 
 export async function getCoreSearchArgs(
   auth: Authenticator,
