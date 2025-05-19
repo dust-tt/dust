@@ -8,8 +8,11 @@ use axum::{
 use dust::{
     databases::table::{LocalTable, Table},
     databases_store::{self},
-    sqlite_workers::sqlite_database::{SqliteDatabase, SqliteDatabaseError},
-    utils::{error_response, APIResponse, CoreRequestMakeSpan},
+    sqlite_workers::{
+        client::HEARTBEAT_INTERVAL_MS,
+        sqlite_database::{SqliteDatabase, SqliteDatabaseError},
+    },
+    utils::{self, error_response, APIResponse, CoreRequestMakeSpan},
 };
 use hyper::StatusCode;
 use lazy_static::lazy_static;
@@ -19,7 +22,7 @@ use serde_json::json;
 use std::{
     collections::HashMap,
     sync::{
-        atomic::{AtomicBool, Ordering},
+        atomic::{AtomicBool, AtomicU64, Ordering},
         Arc,
     },
     time::{Duration, Instant},
@@ -66,6 +69,7 @@ struct WorkerState {
     registry: Arc<Mutex<HashMap<String, DatabaseEntry>>>,
     is_shutting_down: Arc<AtomicBool>,
     first_heartbeat_success: Arc<AtomicBool>,
+    last_successful_heartbeat: Arc<AtomicU64>,
 }
 
 impl WorkerState {
@@ -77,6 +81,7 @@ impl WorkerState {
             registry: Arc::new(Mutex::new(HashMap::new())),
             is_shutting_down: Arc::new(AtomicBool::new(false)),
             first_heartbeat_success: Arc::new(AtomicBool::new(false)),
+            last_successful_heartbeat: Arc::new(AtomicU64::new(utils::now())),
         }
     }
 
@@ -115,6 +120,8 @@ impl WorkerState {
         match self._core_request("POST").await {
             Ok(response) => {
                 self.first_heartbeat_success.store(true, Ordering::SeqCst);
+                self.last_successful_heartbeat
+                    .store(utils::now(), Ordering::SeqCst);
                 Ok(response)
             }
             Err(e) => Err(e),
@@ -169,8 +176,22 @@ impl WorkerState {
 
 async fn index(State(state): State<Arc<WorkerState>>) -> Result<&'static str, StatusCode> {
     if state.first_heartbeat_success.load(Ordering::SeqCst) {
-        Ok("sqlite_worker server ready")
+        let now = utils::now();
+        let last_heartbeat = state.last_successful_heartbeat.load(Ordering::SeqCst);
+        let elapsed = now - last_heartbeat;
+
+        if elapsed < HEARTBEAT_INTERVAL_MS * 2 {
+            Ok("sqlite_worker server ready")
+        } else {
+            error!(
+                "Health check failed: last heartbeat was {} ms ago (threshold: {} ms)",
+                elapsed,
+                HEARTBEAT_INTERVAL_MS * 2
+            );
+            Err(StatusCode::SERVICE_UNAVAILABLE)
+        }
     } else {
+        error!("Health check failed: no successful heartbeat yet");
         Err(StatusCode::SERVICE_UNAVAILABLE)
     }
 }
