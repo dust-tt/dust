@@ -36,5 +36,21 @@ describe("Utils", () => {
       expect(await reader.next()).toBe(2);
       expect(await reader.next()).toBe(3);
     });
+
+    it("return a promise that resolves to the same value when calling next before it is resolved", async () => {
+      const reader = createCallbackReader<number>();
+      const promise1 = reader.next();
+      const promise2 = reader.next();
+
+      reader.callback(1);
+
+      expect(promise1).toBe(promise2);
+
+      expect(await promise1).toBe(1);
+      expect(await promise2).toBe(1);
+
+      reader.callback(2);
+      expect(await reader.next()).toBe(2);
+    });
   });
 });

@@ -357,26 +357,42 @@ export type CallbackReader<T> = {
 
 export function createCallbackReader<T>(): CallbackReader<T> {
   const buffered: T[] = []; // arrived but unconsumed values
-  let waiter: ((v: T) => void) | undefined; // pending `.next()` resolver
+  let waiterResolver: ((v: T) => void) | undefined; // pending `.next()` resolver
+  let waiterPromise: Promise<T> | undefined; // pending `.next()` promise
 
   return {
     callback: (v: T) => {
-      if (waiter) {
-        waiter(v);
-        waiter = undefined;
+      // If we already have a waiter on the next callback, resolve it.
+      if (waiterResolver) {
+        waiterResolver(v);
+        waiterResolver = undefined;
+        waiterPromise = undefined;
       } else {
+        // Otherwise, buffer the value.
         buffered.push(v);
       }
     },
 
     next: () => {
+      // If we have buffered values, return the first one.
       const v = buffered.shift();
       if (v !== undefined) {
         return Promise.resolve(v);
       }
 
-      // No value ready: return a fresh promise and queue its resolver.
-      return new Promise<T>((resolve) => (waiter = resolve));
+      // If we already have a waiter on the next callback, return the same promise.
+      if (waiterPromise) {
+        return waiterPromise;
+      }
+
+      // Otherwise, create a new promise and queue its resolver.
+      const promise = new Promise<T>((resolve) => {
+        waiterResolver = resolve;
+      });
+
+      waiterPromise = promise;
+
+      return promise;
     },
   };
 }
