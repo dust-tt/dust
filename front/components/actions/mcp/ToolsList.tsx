@@ -21,17 +21,23 @@ import {
 import type { LightWorkspaceType } from "@app/types";
 import { asDisplayName } from "@app/types";
 
+interface ToolsListProps {
+  owner: LightWorkspaceType;
+  tools: { name: string; description: string }[];
+  serverType: "remote" | "internal";
+  serverId: string;
+  canUpdate: boolean;
+}
+
+// We disable buttons for Assistant Builder view because it would feel like
+// you can configure per agent
 export function ToolsList({
   owner,
   tools,
   serverType,
   serverId,
-}: {
-  owner: LightWorkspaceType;
-  tools: { name: string; description: string }[];
-  serverType: "remote" | "internal";
-  serverId: string;
-}) {
+  canUpdate,
+}: ToolsListProps) {
   const { toolsPermissions } = useMCPServerToolsPermissions({
     owner,
     serverId,
@@ -53,8 +59,8 @@ export function ToolsList({
   };
 
   const toolPermissionLabel: Record<RemoteMCPToolStakeLevelType, string> = {
-    high: "High (Update data, or sends information)",
-    low: "Low (Retrieve data, or generates content)",
+    high: "High (update data or send information)",
+    low: "Low (retrieve data or generate content)",
   };
 
   return (
@@ -100,11 +106,10 @@ export function ToolsList({
                           Tool stake setting
                         </Label>
                         <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
+                          <DropdownMenuTrigger asChild disabled={!canUpdate}>
                             <Button
                               variant="outline"
                               label={toolPermissionLabel[toolPermission]}
-                              isSelect
                             />
                           </DropdownMenuTrigger>
                           <DropdownMenuContent>

@@ -293,6 +293,7 @@ export function MCPAction({
                 .serverType
             }
             serverId={selectedMCPServerView.server.sId}
+            canUpdate={false}
           />
         </ConfigurationSectionContainer>
       )}

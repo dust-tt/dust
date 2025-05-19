@@ -30,6 +30,7 @@ export function MCPServerDetailsInfo({
         tools={mcpServer.tools}
         serverType={serverType}
         serverId={mcpServer.sId}
+        canUpdate={owner.role === "admin"}
       />
     </div>
   );
