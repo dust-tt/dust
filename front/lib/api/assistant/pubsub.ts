@@ -6,7 +6,7 @@ import type { EventPayload } from "@app/lib/api/redis-hybrid-manager";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMessage, Message } from "@app/lib/models/assistant/conversation";
-import { createCallbackPromise } from "@app/lib/utils";
+import { createCallbackReader } from "@app/lib/utils";
 import { wakeLock } from "@app/lib/wake_lock";
 import logger from "@app/logger/logger";
 import type {
@@ -482,10 +482,10 @@ export async function* getConversationEvents({
 > {
   const pubsubChannel = getConversationChannelId(conversationId);
 
-  const callbackPromise = createCallbackPromise<EventPayload | "close">();
+  const callbackReader = createCallbackReader<EventPayload | "close">();
   const { history, unsubscribe } = await getRedisHybridManager().subscribe(
     pubsubChannel,
-    callbackPromise.callback,
+    callbackReader.callback,
     lastEventId,
     "conversation_events"
   );
@@ -514,7 +514,7 @@ export async function* getConversationEvents({
         }, TIMEOUT);
       });
       const rawEvent = await Promise.race([
-        callbackPromise.promise,
+        callbackReader.next(),
         timeoutPromise,
       ]);
 
@@ -522,9 +522,6 @@ export async function* getConversationEvents({
       if (rawEvent === "timeout") {
         break;
       }
-
-      // to reset the promise for the next event
-      callbackPromise.reset();
 
       if (rawEvent === "close") {
         break;
@@ -610,10 +607,10 @@ export async function* getMessagesEvents(
   const start = Date.now();
   const TIMEOUT = 60000; // 1 minute
 
-  const callbackPromise = createCallbackPromise<EventPayload | "close">();
+  const callbackReader = createCallbackReader<EventPayload | "close">();
   const { history, unsubscribe } = await getRedisHybridManager().subscribe(
     pubsubChannel,
-    callbackPromise.callback,
+    callbackReader.callback,
     lastEventId,
     "message_events"
   );
@@ -635,9 +632,7 @@ export async function* getMessagesEvents(
         break;
       }
 
-      const rawEvent = await callbackPromise.promise;
-      // to reset the promise for the next event
-      callbackPromise.reset();
+      const rawEvent = await callbackReader.next();
 
       if (rawEvent === "close") {
         break;
