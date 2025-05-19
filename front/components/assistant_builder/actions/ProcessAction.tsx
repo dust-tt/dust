@@ -96,12 +96,6 @@ export function ActionProcess({
       unit: "day",
     });
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
-  const [schemaEdit, setSchemaEdit] = useState(
-    actionConfiguration?._jsonSchemaString ??
-      (actionConfiguration?.jsonSchema
-        ? JSON.stringify(actionConfiguration.jsonSchema, null, 2)
-        : null)
-  );
   const toggleAdvancedSettings = () => {
     setShowAdvancedSettings((prev) => !prev);
   };
@@ -278,12 +272,22 @@ export function ActionProcess({
           </div>
           <JsonSchemaConfigurationSection
             instructions={instructions ?? ""}
-            schemaEdit={schemaEdit ?? ""}
-            setSchemaEdit={setSchemaEdit}
-            setEdited={setEdited}
-            updateAction={updateAction}
             description={description ?? ""}
-            schemaConfigurationDescription="Optionally, provide a schema for the data to be extracted. If you do not specify a schema, the tool will determine the schema based on the conversation context."
+            initialSchema={
+              actionConfiguration?._jsonSchemaString ??
+              (actionConfiguration?.jsonSchema
+                ? JSON.stringify(actionConfiguration.jsonSchema, null, 2)
+                : null)
+            }
+            sectionConfigurationDescription="Optionally, provide a schema for the data to be extracted. If you do not specify a schema, the tool will determine the schema based on the conversation context."
+            setEdited={setEdited}
+            onConfigUpdate={({ _jsonSchemaString, jsonSchema }) =>
+              updateAction((previousAction) => ({
+                ...previousAction,
+                _jsonSchemaString,
+                jsonSchema: jsonSchema ?? previousAction.jsonSchema,
+              }))
+            }
             generateSchema={(instructions: string) =>
               generateSchema({ owner, instructions })
             }
@@ -294,7 +298,7 @@ export function ActionProcess({
   );
 }
 
-async function generateSchema({
+export async function generateSchema({
   owner,
   instructions,
 }: {
