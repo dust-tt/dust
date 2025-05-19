@@ -331,9 +331,11 @@ export class GongClient {
   async getCallsMetadata({
     callIds,
     pageCursor = null,
+    smartTrackersEnabled = false,
   }: {
     callIds: string[];
     pageCursor?: string | null;
+    smartTrackersEnabled?: boolean;
   }) {
     // Calling the endpoint with an empty array of callIds causes a 400 error.
     if (callIds.length === 0) {
@@ -359,7 +361,7 @@ export class GongClient {
         },
         GongPaginatedResults(
           "calls",
-          this.configuration.smartTrackersEnabled
+          smartTrackersEnabled
             ? GongTranscriptMetadataWithTrackersCodec
             : GongTranscriptMetadataCodec
         )
