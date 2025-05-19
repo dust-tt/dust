@@ -125,7 +125,7 @@ export function setValueAtPath(
   current[path[path.length - 1]] = value;
 }
 
-export function isValidJsonSchema(value: string | null | undefined): {
+export function validateJsonSchema(value: string | null | undefined): {
   isValid: boolean;
   error?: string;
 } {

@@ -8,7 +8,7 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { useState } from "react";
 
 import { ConfigurationSectionContainer } from "@app/components/assistant_builder/actions/configuration/ConfigurationSectionContainer";
-import { isValidJsonSchema } from "@app/lib/utils/json_schemas";
+import { validateJsonSchema } from "@app/lib/utils/json_schemas";
 import type { Result } from "@app/types";
 
 interface JsonSchemaConfigurationSectionProps {
@@ -112,7 +112,7 @@ export function JsonSchemaConfigurationSection({
       />
       <TextArea
         error={
-          extractSchema ? isValidJsonSchema(extractSchema).error : undefined
+          extractSchema ? validateJsonSchema(extractSchema).error : undefined
         }
         showErrorLabel={true}
         placeholder={
@@ -125,7 +125,7 @@ export function JsonSchemaConfigurationSection({
           setExtractSchema(newSchemaString);
           setEdited(true);
 
-          const parsedSchema = isValidJsonSchema(newSchemaString);
+          const parsedSchema = validateJsonSchema(newSchemaString);
           if (parsedSchema.isValid) {
             onConfigUpdate({
               jsonSchema: newSchemaString ? JSON.parse(newSchemaString) : null,

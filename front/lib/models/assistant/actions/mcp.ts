@@ -8,7 +8,7 @@ import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
-import { isValidJsonSchema } from "@app/lib/utils/json_schemas";
+import { validateJsonSchema } from "@app/lib/utils/json_schemas";
 import type { TimeFrame } from "@app/types";
 import { isTimeFrame } from "@app/types";
 
@@ -79,10 +79,10 @@ AgentMCPServerConfiguration.init(
         isValid(value: unknown) {
           if (
             value &&
-            (typeof value !== "string" || !isValidJsonSchema(value).isValid)
+            (typeof value !== "string" || !validateJsonSchema(value).isValid)
           ) {
             throw new Error(
-              `jsonSchema is invalid: ${value}\nError: ${typeof value === "string" ? isValidJsonSchema(value).error : "value is not a string"}`
+              `jsonSchema is invalid: ${value}\nError: ${typeof value === "string" ? validateJsonSchema(value).error : "value is not a string"}`
             );
           }
         },

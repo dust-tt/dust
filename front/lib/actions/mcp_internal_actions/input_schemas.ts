@@ -4,7 +4,7 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
-import { isValidJsonSchema } from "@app/lib/utils/json_schemas";
+import { validateJsonSchema } from "@app/lib/utils/json_schemas";
 
 export const DATA_SOURCE_CONFIGURATION_URI_PATTERN =
   /^data_source_configuration:\/\/dust\/w\/(\w+)\/data_source_configurations\/(\w+)$/;
@@ -71,7 +71,7 @@ export const ConfigurableToolInputSchemas = {
   [INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA]: z.object({
     value: z
       .string()
-      .refine((v) => isValidJsonSchema(v).isValid, {
+      .refine((v) => validateJsonSchema(v).isValid, {
         message: "Value must be a valid JSON schema string",
       })
       .optional(),
