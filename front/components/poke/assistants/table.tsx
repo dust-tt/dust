@@ -109,9 +109,11 @@ export function AssistantsDataTable({ owner }: AssistantsDataTableProps) {
         owner={owner}
         useSWRHook={usePokeAgentConfigurations}
       >
-        {(data) => (
+        {(data, mutate) => (
           <PokeDataTable
-            columns={makeColumnsForAssistants(owner, router.reload)}
+            columns={makeColumnsForAssistants(owner, async () => {
+              await mutate();
+            })}
             data={prepareAgentConfigurationForDisplay(data)}
           />
         )}
@@ -129,13 +131,11 @@ function RestoreAssistantModal({
   onClose: () => void;
   owner: LightWorkspaceType;
 }) {
-  const { data: archivedAssistants } = usePokeAgentConfigurations({
+  const { data: archivedAssistants, mutate } = usePokeAgentConfigurations({
     owner,
     disabled: !show,
     agentsGetView: "archived",
   });
-
-  const router = useRouter();
 
   return (
     <Sheet
@@ -153,7 +153,9 @@ function RestoreAssistantModal({
         <SheetContainer>
           {!!archivedAssistants?.length && (
             <PokeDataTable
-              columns={makeColumnsForAssistants(owner, router.reload)}
+              columns={makeColumnsForAssistants(owner, async () => {
+                await mutate();
+              })}
               data={prepareAgentConfigurationForDisplay(archivedAssistants)}
             />
           )}

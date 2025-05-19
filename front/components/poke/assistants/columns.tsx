@@ -24,7 +24,7 @@ type AgentConfigurationDisplayType = {
 
 export function makeColumnsForAssistants(
   owner: LightWorkspaceType,
-  reload: () => void
+  onAgentArchivedOrRestored: () => Promise<void>
 ): ColumnDef<AgentConfigurationDisplayType>[] {
   return [
     {
@@ -106,8 +106,16 @@ export function makeColumnsForAssistants(
               variant="outline"
               onClick={async () => {
                 await (assistant.status !== "archived"
-                  ? archiveAssistant(owner, reload, assistant)
-                  : restoreAssistant(owner, reload, assistant));
+                  ? archiveAssistant(
+                      owner,
+                      onAgentArchivedOrRestored,
+                      assistant
+                    )
+                  : restoreAssistant(
+                      owner,
+                      onAgentArchivedOrRestored,
+                      assistant
+                    ));
               }}
             />
             <Link
@@ -130,7 +138,7 @@ export function makeColumnsForAssistants(
 
 async function archiveAssistant(
   owner: LightWorkspaceType,
-  reload: () => void,
+  onAgentArchived: () => Promise<void>,
   agentConfiguration: AgentConfigurationDisplayType
 ) {
   if (
@@ -155,7 +163,7 @@ async function archiveAssistant(
       throw new Error("Failed to archive agent configuration.");
     }
 
-    reload();
+    await onAgentArchived();
   } catch (e) {
     console.error(e);
     window.alert("An error occurred while archiving the agent configuration.");
@@ -164,7 +172,7 @@ async function archiveAssistant(
 
 async function restoreAssistant(
   owner: LightWorkspaceType,
-  reload: () => void,
+  onAgentRestored: () => Promise<void>,
   agentConfiguration: AgentConfigurationDisplayType
 ) {
   if (
@@ -189,7 +197,7 @@ async function restoreAssistant(
       throw new Error("Failed to restore agent configuration.");
     }
 
-    reload();
+    await onAgentRestored();
   } catch (e) {
     console.error(e);
     window.alert("An error occurred while restoring the agent configuration.");
