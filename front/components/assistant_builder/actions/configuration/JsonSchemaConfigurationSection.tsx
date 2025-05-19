@@ -6,9 +6,9 @@ import {
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
+import { ConfigurationSectionContainer } from "@app/components/assistant_builder/actions/configuration/ConfigurationSectionContainer";
 import type { AssistantBuilderProcessConfiguration } from "@app/components/assistant_builder/types";
 import { isValidJsonSchema } from "@app/lib/utils/json_schemas";
-import { ConfigurationSectionContainer } from "@app/components/assistant_builder/actions/configuration/ConfigurationSectionContainer";
 import type { Result } from "@app/types";
 
 interface JsonSchemaConfigurationSectionProps {

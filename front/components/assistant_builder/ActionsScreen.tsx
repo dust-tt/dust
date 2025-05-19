@@ -100,7 +100,6 @@ import {
 import { useTools } from "@app/components/assistant_builder/useTools";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import { getInternalMCPServerNameAndWorkspaceId } from "@app/lib/actions/mcp_internal_actions/constants";
-import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/utils";
 import {
   ACTION_SPECIFICATIONS,
   DATA_VISUALIZATION_SPECIFICATION,

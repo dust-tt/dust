@@ -1,6 +1,5 @@
 import {
   Button,
-  Chip,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -22,9 +21,9 @@ import {
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { useEffect, useState } from "react";
 
-import { MCPActionHeader } from "@app/components/actions/MCPActionHeader";
 import { MCPServerDetailsInfo } from "@app/components/actions/mcp/MCPServerDetailsInfo";
 import { MCPServerDetailsSharing } from "@app/components/actions/mcp/MCPServerDetailsSharing";
+import { MCPActionHeader } from "@app/components/actions/MCPActionHeader";
 import { useMCPConnectionManagement } from "@app/hooks/useMCPConnectionManagement";
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import type { MCPServerType } from "@app/lib/api/mcp";

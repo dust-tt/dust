@@ -10,10 +10,10 @@ import { ChevronDownIcon, ChevronUpIcon } from "lucide-react";
 import React, { useEffect, useState } from "react";
 
 import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/actions/configuration/AssistantBuilderDataSourceModal";
+import { ConfigurationSectionContainer } from "@app/components/assistant_builder/actions/configuration/ConfigurationSectionContainer";
 import DataSourceSelectionSection from "@app/components/assistant_builder/actions/configuration/DataSourceSelectionSection";
 import { JsonSchemaConfigurationSection } from "@app/components/assistant_builder/actions/configuration/JsonSchemaConfigurationSection";
 import { TimeUnitDropdown } from "@app/components/assistant_builder/actions/TimeDropdown";
-import { ConfigurationSectionContainer } from "@app/components/assistant_builder/actions/configuration/ConfigurationSectionContainer";
 import type {
   AssistantBuilderActionConfiguration,
   AssistantBuilderProcessConfiguration,

@@ -10,6 +10,7 @@ import DataSourceSelectionSection from "@app/components/assistant_builder/action
 import { DustAppConfigurationSection } from "@app/components/assistant_builder/actions/configuration/DustAppConfigurationSection";
 import { ReasoningModelConfigurationSection } from "@app/components/assistant_builder/actions/configuration/ReasoningModelConfigurationSection";
 import { TimeFrameConfigurationSection } from "@app/components/assistant_builder/actions/configuration/TimeFrameConfigurationSection";
+import { DataDescription } from "@app/components/assistant_builder/actions/DataDescription";
 import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
 import type {
   AssistantBuilderActionConfiguration,
@@ -22,7 +23,6 @@ import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { LightWorkspaceType, SpaceType, TimeFrame } from "@app/types";
 import { asDisplayName, assertNever } from "@app/types";
-import { DataDescription } from "@app/components/assistant_builder/actions/DataDescription";
 
 interface NoActionAvailableProps {
   owner: LightWorkspaceType;
