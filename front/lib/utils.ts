@@ -357,14 +357,16 @@ export type CallbackReader<T> = {
 
 export function createCallbackReader<T>(): CallbackReader<T> {
   const buffered: T[] = []; // arrived but unconsumed values
-  const waiters: ((v: T) => void)[] = []; // pending `.next()` resolvers
+  let waiter: ((v: T) => void) | undefined; // pending `.next()` resolver
 
   return {
     callback: (v: T) => {
-      const w = waiters.shift(); // earliest consumer waiting
-      w
-        ? w(v) // wake it with the value
-        : buffered.push(v); // otherwise store for later
+      if (waiter) {
+        waiter(v);
+        waiter = undefined;
+      } else {
+        buffered.push(v);
+      }
     },
 
     next: () => {
@@ -374,7 +376,7 @@ export function createCallbackReader<T>(): CallbackReader<T> {
       }
 
       // No value ready: return a fresh promise and queue its resolver.
-      return new Promise<T>((resolve) => waiters.push(resolve));
+      return new Promise<T>((resolve) => (waiter = resolve));
     },
   };
 }
