@@ -96,6 +96,8 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     mcpServerViews: mcpServerViewsJSON,
   });
 
+  console.log("actions", actions);
+
   const editorGroupRes = await GroupResource.findEditorGroupForAgent(
     auth,
     configuration
