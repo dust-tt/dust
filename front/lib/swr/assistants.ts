@@ -173,7 +173,7 @@ export function useSuggestedAgentConfigurations({
   return {
     suggestedAgentConfigurations:
       dataToUse?.agentConfigurations ?? emptyArray(),
-    isSuggestedAgentConfigurationsLoading: !error && !dataToUse,
+    isSuggestedAgentConfigurationsLoading: !error && !dataToUse && !disabled,
     isSuggestedAgentConfigurationsError: error,
     mutate,
     mutateRegardlessOfQueryParams,
