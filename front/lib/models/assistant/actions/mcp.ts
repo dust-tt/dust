@@ -81,7 +81,9 @@ AgentMCPServerConfiguration.init(
             value &&
             (typeof value !== "string" || !isValidJsonSchema(value).isValid)
           ) {
-            throw new Error("jsonSchema is invalid");
+            throw new Error(
+              `jsonSchema is invalid: ${value}\nError: ${typeof value === "string" ? isValidJsonSchema(value).error : "value is not a string"}`
+            );
           }
         },
       },

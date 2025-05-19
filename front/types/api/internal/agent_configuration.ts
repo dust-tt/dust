@@ -153,6 +153,7 @@ const MCPServerActionConfigurationSchema = t.type({
       unit: TimeframeUnitCodec,
     }),
   ]),
+  jsonSchema: t.union([t.string, t.null]),
   additionalConfiguration: t.record(
     t.string,
     t.union([t.boolean, t.number, t.string, t.null])
