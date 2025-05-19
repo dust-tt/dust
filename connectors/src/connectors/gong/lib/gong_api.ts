@@ -9,7 +9,6 @@ import {
   isNotFoundError,
 } from "@connectors/lib/error";
 import logger from "@connectors/logger/logger";
-import type { GongConfigurationResource } from "@connectors/resources/gong_resources";
 import type { ModelId } from "@connectors/types";
 
 // Pass-through codec that is used to allow unknown properties.
@@ -141,8 +140,7 @@ export class GongClient {
 
   constructor(
     private readonly authToken: string,
-    private readonly connectorId: ModelId,
-    private readonly configuration: GongConfigurationResource
+    private readonly connectorId: ModelId
   ) {}
 
   /**
@@ -356,11 +354,6 @@ export class GongClient {
           contentSelector: {
             exposedFields: {
               parties: true,
-              ...(this.configuration.smartTrackersEnabled
-                ? {
-                    content: { transcript: true },
-                  }
-                : {}),
             },
           },
         },

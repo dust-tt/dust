@@ -58,14 +58,11 @@ async function getGongAccessToken(
   return new Ok(tokenResult.value.access_token);
 }
 
-export async function getGongClient(
-  connector: ConnectorResource,
-  configuration: GongConfigurationResource
-) {
+export async function getGongClient(connector: ConnectorResource) {
   const accessTokenResult = await getGongAccessToken(connector);
   if (accessTokenResult.isErr()) {
     throw accessTokenResult.error;
   }
 
-  return new GongClient(accessTokenResult.value, connector.id, configuration);
+  return new GongClient(accessTokenResult.value, connector.id);
 }

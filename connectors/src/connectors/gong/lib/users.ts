@@ -3,10 +3,7 @@ import { difference } from "lodash";
 import type { GongAPIUser } from "@connectors/connectors/gong/lib/gong_api";
 import { getGongClient } from "@connectors/connectors/gong/lib/utils";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
-import type {
-  GongConfigurationResource,
-  GongUserBlob,
-} from "@connectors/resources/gong_resources";
+import type { GongUserBlob } from "@connectors/resources/gong_resources";
 import { GongUserResource } from "@connectors/resources/gong_resources";
 import { concurrentExecutor } from "@connectors/types";
 
@@ -23,7 +20,6 @@ export function getUserBlobFromGongAPI(user: GongAPIUser): GongUserBlob {
 // Only users with an "internal" affiliation can be synced and stored in our database.
 export async function getGongUsers(
   connector: ConnectorResource,
-  configuration: GongConfigurationResource,
   { gongUserIds }: { gongUserIds: string[] }
 ) {
   const users = await GongUserResource.fetchByGongUserIds(connector, {
@@ -40,7 +36,7 @@ export async function getGongUsers(
     return users;
   }
 
-  const gongClient = await getGongClient(connector, configuration);
+  const gongClient = await getGongClient(connector);
 
   await concurrentExecutor(
     missingUsers,
