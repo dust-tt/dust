@@ -4,11 +4,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { fromError } from "zod-validation-error";
 
 import { validateMCPServerAccess } from "@app/lib/api/actions/mcp/client_side_registry";
-import { parseClientSideMCPRequestId } from "@app/lib/api/actions/mcp_client_side";
-import { getConversation } from "@app/lib/api/assistant/conversation";
-import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { publishMCPResults } from "@app/lib/api/assistant/mcp_events";
-import { fetchMessageInConversation } from "@app/lib/api/assistant/messages";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";

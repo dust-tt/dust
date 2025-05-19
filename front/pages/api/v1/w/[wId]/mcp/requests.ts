@@ -10,7 +10,6 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 
 /**
- * @ignoreswagger
  * /api/v1/w/{wId}/mcp/requests:
  *   get:
  *     summary: Stream MCP tool requests for a workspace
@@ -32,7 +31,7 @@ import type { WithAPIErrorResponse } from "@app/types";
  *       - in: query
  *         name: serverId
  *         required: true
- *         description: UUID of the MCP server to filter events for
+ *         description: ID of the MCP server to filter events for
  *         schema:
  *           type: string
  *       - in: query

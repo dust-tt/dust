@@ -3,6 +3,7 @@ import type {
   LightWorkspaceType,
 } from "@dust-tt/client";
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
+import type { JSONRPCMessage } from "@modelcontextprotocol/sdk/types.js";
 import assert from "assert";
 
 const logger = console;
@@ -35,7 +36,7 @@ export class CoEditionTransport implements Transport {
   private serverId: string | null = null;
 
   // Required by Transport interface.
-  public onmessage?: (message: any) => void;
+  public onmessage?: (message: JSONRPCMessage) => void;
   public onclose?: () => void;
   public onerror?: (error: Error) => void;
   public sessionId?: string;
@@ -209,7 +210,7 @@ export class CoEditionTransport implements Transport {
    * Send a message to the server
    * This method is required by the Transport interface
    */
-  async send(message: any): Promise<void> {
+  async send(message: JSONRPCMessage): Promise<void> {
     assert(this.serverId, "Server ID not set");
 
     // Send tool results back to Dust via HTTP POST.

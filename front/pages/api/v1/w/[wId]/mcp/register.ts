@@ -13,7 +13,6 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 
 /**
- * @ignoreswagger
  * /api/v1/w/{wId}/mcp/register:
  *   post:
  *     summary: Register a local MCP server
@@ -38,11 +37,11 @@ import type { WithAPIErrorResponse } from "@app/types";
  *           schema:
  *             type: object
  *             required:
- *               - serverId
+ *               - serverName
  *             properties:
- *               serverId:
+ *               serverName:
  *                 type: string
- *                 description: Client-generated UUID of the MCP server
+ *                 description: Name of the MCP server
  *     responses:
  *       200:
  *         description: Server registered successfully
