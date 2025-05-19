@@ -345,26 +345,36 @@ export const isMobile = (navigator: Navigator) =>
     (navigator.userAgent || navigator.vendor).substr(0, 4)
   );
 
-export function createCallbackPromise<T>(): {
-  promise: Promise<T>;
-  callback: (value: T) => void;
-  reset: () => void;
-} {
-  let resolveCallback: (value: T) => void;
+/**
+ * Bridge a push-based callback to a pull-based `.next()` promise stream.
+ */
+export type CallbackReader<T> = {
+  /** Push endpoint fed by the producer (e.g. Redis subscription). */
+  callback: (v: T) => void;
+  /** Pull endpoint for the consumer; resolves with the next value. */
+  next(): Promise<T>;
+};
 
-  let promise = new Promise<T>((resolve) => {
-    resolveCallback = resolve;
-  });
+export function createCallbackReader<T>(): CallbackReader<T> {
+  const buffered: T[] = []; // arrived but unconsumed values
+  const waiters: ((v: T) => void)[] = []; // pending `.next()` resolvers
 
   return {
-    get promise() {
-      return promise;
+    callback: (v: T) => {
+      const w = waiters.shift(); // earliest consumer waiting
+      w
+        ? w(v) // wake it with the value
+        : buffered.push(v); // otherwise store for later
     },
-    callback: (value: T) => resolveCallback(value),
-    reset: () => {
-      promise = new Promise<T>((resolve) => {
-        resolveCallback = resolve;
-      });
+
+    next: () => {
+      const v = buffered.shift();
+      if (v !== undefined) {
+        return Promise.resolve(v);
+      }
+
+      // No value ready: return a fresh promise and queue its resolver.
+      return new Promise<T>((resolve) => waiters.push(resolve));
     },
   };
 }
