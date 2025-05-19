@@ -10,7 +10,7 @@ import { syncRemoteMCPServersWorkflow } from "./workflows";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 
 export async function launchRemoteMCPServersSyncWorkflow(): Promise<
-  Result<string, Error>
+  Result<undefined, Error>
 > {
   const client = await getTemporalClient();
   const workflowIdHandle = "remote-mcp-servers-sync";
@@ -77,7 +77,7 @@ export async function launchRemoteMCPServersSyncWorkflow(): Promise<
       i++;
     } while (true);
 
-    return new Ok(workflowIdHandle);
+    return new Ok(undefined);
   } catch (e) {
     logger.error(
       {
