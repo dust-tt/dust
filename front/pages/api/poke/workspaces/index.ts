@@ -11,7 +11,6 @@ import { Workspace } from "@app/lib/models/workspace";
 import { WorkspaceHasDomainModel } from "@app/lib/models/workspace_has_domain";
 import { FREE_NO_PLAN_DATA } from "@app/lib/plans/free_plans";
 import {
-  FREE_TEST_PLAN_CODE,
   isEntreprisePlan,
   isFreePlan,
   isFriendsAndFamilyPlan,
@@ -21,6 +20,7 @@ import {
 import { renderSubscriptionFromModels } from "@app/lib/plans/renderers";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { isDomain, isEmailValid } from "@app/lib/utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
@@ -148,21 +148,8 @@ async function handler(
       const conditions: WhereOptions<Workspace>[] = [];
 
       if (listUpgraded !== undefined) {
-        const subscriptions = await Subscription.findAll({
-          where: {
-            status: "active",
-          },
-          attributes: ["workspaceId"],
-          include: [
-            {
-              model: Plan,
-              as: "plan",
-              where: {
-                code: { [Op.ne]: FREE_TEST_PLAN_CODE },
-              },
-            },
-          ],
-        });
+        const subscriptions =
+          await SubscriptionResource.internalListAllActiveNoFreeTestPlan();
         const workspaceIds = subscriptions.map((s) => s.workspaceId);
         if (listUpgraded) {
           conditions.push({
