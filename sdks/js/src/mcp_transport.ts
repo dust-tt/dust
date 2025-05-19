@@ -1,27 +1,13 @@
-import type {
-  HeartbeatMCPResponseType,
-  LightWorkspaceType,
-} from "@dust-tt/client";
-import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
-import type { JSONRPCMessage } from "@modelcontextprotocol/sdk/types.js";
-import assert from "assert";
+import type { Transport } from "@modelcontextprotocol/sdk/shared/transport";
+import { JSONRPCMessage } from "@modelcontextprotocol/sdk/types";
+import { EventSourcePolyfill } from "event-source-polyfill";
+
+import { DustAPI } from ".";
 
 const logger = console;
 
-const HEARTBEAT_INTERVAL_MS = 4 * 60 * 1000; // 4 minutes.
+const HEARTBEAT_INTERVAL_MS = 15 * 60 * 1000; // 15 minutes.
 const RECONNECT_DELAY_MS = 5 * 1000; // 5 seconds.
-
-function isFailedHeartbeatResponse(
-  response: unknown
-): response is HeartbeatMCPResponseType {
-  return (
-    typeof response === "object" &&
-    response !== null &&
-    "success" in response &&
-    typeof response.success === "boolean" &&
-    !response.success
-  );
-}
 
 /**
  * Custom transport implementation for MCP
@@ -29,7 +15,7 @@ function isFailedHeartbeatResponse(
  * - Uses fetch (HTTP POST) to send results back to Dust
  * - Supports workspace-scoped MCP registration only
  */
-export class CoEditionTransport implements Transport {
+export class DustMcpServerTransport implements Transport {
   private eventSource: EventSource | null = null;
   private lastEventId: string | null = null;
   private heartbeatTimer: NodeJS.Timeout | null = null;
@@ -42,34 +28,27 @@ export class CoEditionTransport implements Transport {
   public sessionId?: string;
 
   constructor(
-    private readonly owner: LightWorkspaceType,
-    private readonly serverName: string = "Co-Edition"
+    private readonly dustAPI: DustAPI,
+    private readonly serverName: string = "Dust Extension"
   ) {}
 
   /**
    * Register the MCP server with the Dust backend
    */
   private async registerServer(): Promise<boolean> {
-    const response = await fetch(`/api/w/${this.owner.sId}/mcp/register`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        serverName: this.serverName,
-      }),
+    const registerRes = await this.dustAPI.registerMCPServer({
+      serverName: this.serverName,
     });
-
-    if (!response.ok) {
-      logger.error(`Failed to register MCP server: ${response.statusText}`);
+    if (registerRes.isErr()) {
+      logger.error(`Failed to register MCP server: ${registerRes.error}`);
       return false;
     }
 
-    const body = await response.json();
-    this.serverId = body.serverId;
+    const { serverId } = registerRes.value;
+    this.serverId = serverId;
 
     // Setup heartbeat to keep the server registration alive.
-    this.setupHeartbeat();
+    this.setupHeartbeat(serverId);
 
     return true;
   }
@@ -77,7 +56,7 @@ export class CoEditionTransport implements Transport {
   /**
    * Send periodic heartbeats to keep the server registration alive.
    */
-  private setupHeartbeat(): void {
+  private setupHeartbeat(serverId: string): void {
     // Clear any existing heartbeat timer.
     if (this.heartbeatTimer) {
       clearInterval(this.heartbeatTimer);
@@ -85,19 +64,16 @@ export class CoEditionTransport implements Transport {
 
     // Set up a new heartbeat timer (every HEARTBEAT_INTERVAL_MS).
     this.heartbeatTimer = setInterval(async () => {
-      const response = await fetch(`/api/w/${this.owner.sId}/mcp/heartbeat`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          serverId: this.serverId,
-        }),
+      const heartbeatRes = await this.dustAPI.heartbeatMCPServer({
+        serverId,
       });
 
-      const body = await response.json();
-      if (!response.ok || isFailedHeartbeatResponse(body)) {
-        logger.error(`Failed to heartbeat MCP server: ${response.statusText}`);
+      if (heartbeatRes.isErr() || heartbeatRes.value.success === false) {
+        const error = heartbeatRes.isErr()
+          ? heartbeatRes.error
+          : new Error("Server not registered");
+
+        logger.error(`Failed to heartbeat MCP server: ${error}`);
         await this.registerServer();
       }
     }, HEARTBEAT_INTERVAL_MS);
@@ -130,21 +106,35 @@ export class CoEditionTransport implements Transport {
    * Connect to the SSE stream for the workspace
    */
   private async connectToRequestsStream(): Promise<void> {
-    assert(this.serverId, "Server ID not set");
+    if (!this.serverId) {
+      logger.error("Server ID is not set");
+      return;
+    }
 
-    // Close any existing connection
+    // Close any existing connection.
     if (this.eventSource) {
       this.eventSource.close();
       this.eventSource = null;
     }
 
-    const params = new URLSearchParams();
-    params.set("serverId", this.serverId);
-    params.set("lastEventId", this.lastEventId || "");
-
-    this.eventSource = new EventSource(
-      `/api/w/${this.owner.sId}/mcp/requests?${params.toString()}`
+    const connectionResult = await this.dustAPI.getMCPRequestsConnectionDetails(
+      {
+        serverId: this.serverId,
+        lastEventId: this.lastEventId,
+      }
     );
+
+    if (connectionResult.isErr()) {
+      throw new Error(
+        `Failed to get connection details: ${connectionResult.error.message}`
+      );
+    }
+
+    const { url, headers } = connectionResult.value;
+
+    this.eventSource = new EventSourcePolyfill(url, {
+      headers,
+    });
 
     this.eventSource.onmessage = (event) => {
       try {
@@ -155,7 +145,7 @@ export class CoEditionTransport implements Transport {
 
         const eventData = JSON.parse(event.data);
 
-        // Save the eventId for reconnection purposes
+        // Save the eventId for reconnection purposes.
         if (eventData.eventId) {
           this.lastEventId = eventData.eventId;
         }
@@ -176,7 +166,7 @@ export class CoEditionTransport implements Transport {
           );
         }
       } catch (error) {
-        logger.error("Failed to parse MCP request:", error);
+        console.error("Failed to parse MCP request:", error);
         this.onerror?.(new Error(`Failed to parse MCP request: ${error}`));
       }
     };
@@ -211,24 +201,21 @@ export class CoEditionTransport implements Transport {
    * This method is required by the Transport interface
    */
   async send(message: JSONRPCMessage): Promise<void> {
-    assert(this.serverId, "Server ID not set");
+    if (!this.serverId) {
+      logger.error("Server ID is not set");
+      return;
+    }
 
     // Send tool results back to Dust via HTTP POST.
-    const response = await fetch(`/api/w/${this.owner.sId}/mcp/results`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        result: message,
-        serverId: this.serverId,
-      }),
+    const postResultsRes = await this.dustAPI.postMCPResults({
+      serverId: this.serverId,
+      result: message,
     });
 
-    if (!response.ok) {
-      logger.error("Failed to send MCP result:", response.statusText);
+    if (postResultsRes.isErr()) {
+      logger.error("Failed to send MCP result:", postResultsRes.error);
       this.onerror?.(
-        new Error(`Failed to send MCP result: ${response.statusText}`)
+        new Error(`Failed to send MCP result: ${postResultsRes.error}`)
       );
     }
   }
@@ -258,7 +245,7 @@ export class CoEditionTransport implements Transport {
   /**
    * Get the current server ID
    */
-  getServerId(): string | null {
-    return this.serverId;
+  getServerId(): string | undefined {
+    return this.serverId ?? undefined;
   }
 }
