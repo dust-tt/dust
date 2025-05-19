@@ -418,6 +418,7 @@ export default function ActionsScreen({
                 nonDefaultMCPActions={selectableNonMCPActions}
                 defaultMCPServerViews={selectableDefaultMCPServerViews}
                 nonDefaultMCPServerViews={selectableNonDefaultMCPServerViews}
+                reasoningModels={reasoningModels}
               />
 
               <div className="flex-grow" />
