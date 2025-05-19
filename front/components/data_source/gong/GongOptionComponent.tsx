@@ -63,7 +63,7 @@ export function GongOptionComponent({
     // Validate that the value is either empty or a positive integer
     if (
       configKey === GONG_RETENTION_PERIOD_CONFIG_KEY &&
-      newValue !== "" &&
+      newValue.trim() !== "" &&
       !checkIsNonNegativeInteger(newValue)
     ) {
       sendNotification({
