@@ -79,6 +79,7 @@ import {
 } from "./types";
 
 export * from "./internal_mime_types";
+export * from "./mcp_transport";
 export * from "./types";
 
 interface DustResponse {
