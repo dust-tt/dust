@@ -64,6 +64,7 @@ export interface SubscriptionResource
 export class SubscriptionResource extends BaseResource<Subscription> {
   static model: ModelStaticWorkspaceAware<Subscription> = Subscription;
   private readonly plan: PlanType;
+  private readonly workspace: Workspace | null = null;
 
   constructor(
     model: ModelStaticWorkspaceAware<Subscription>,
@@ -187,6 +188,37 @@ export class SubscriptionResource extends BaseResource<Subscription> {
       include: [Plan],
 
       // WORKSPACE_ISOLATION_BYPASS: Used to check if a subscription is not attached to a workspace
+      dangerouslyBypassWorkspaceIsolationSecurity: true,
+    });
+
+    if (!res) {
+      return null;
+    }
+
+    return new SubscriptionResource(
+      Subscription,
+      res.get(),
+      renderPlanFromModel({ plan: res.plan })
+    );
+  }
+
+  /**
+   * Fetch the subscription with a required workspace
+   */
+  static async fetchByStripeIdWithWorkspace(
+    stripeSubscriptionId: string
+  ): Promise<SubscriptionResource | null> {
+    const res = await this.model.findOne({
+      where: { stripeSubscriptionId },
+      include: [
+        Plan,
+        {
+          model: Workspace,
+          required: true,
+        },
+      ],
+
+      // WORKSPACE_ISOLATION_BYPASS: Used in webhook, the linked workspace help us figuring out the Authenticator
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
 
@@ -461,28 +493,22 @@ export class SubscriptionResource extends BaseResource<Subscription> {
     });
   }
 
-  static async maybeCancelInactiveTrials(
-    auth: Authenticator,
-    eventStripeSubscription: Stripe.Subscription
-  ) {
-    const { id: stripeSubscriptionId } = eventStripeSubscription;
-
-    const subscription = await Subscription.findOne({
-      where: { stripeSubscriptionId },
-      include: [Workspace],
-    });
-
+  async maybeCancelInactiveTrials(auth: Authenticator) {
     // Bail early if the DB subscription is not in trial mode.
-    if (!subscription || !subscription.trialing) {
+    if (!this.trialing || !this.stripeSubscriptionId) {
       return;
     }
 
-    const { workspace } = subscription;
+    const { workspace } = this;
+    if (!workspace) {
+      return;
+    }
 
     // This function can get called if the subscription is upgraded before the end of the trial.
     // Ensure that the Stripe subscription still has a status set to `trialing`.
-    const stripeSubscription =
-      await getStripeSubscription(stripeSubscriptionId);
+    const stripeSubscription = await getStripeSubscription(
+      this.stripeSubscriptionId
+    );
     if (!stripeSubscription || stripeSubscription.status !== "trialing") {
       logger.info(
         { action: "cancelling-trial", workspaceId: workspace.sId },
@@ -501,7 +527,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
       );
 
       await cancelSubscriptionImmediately({
-        stripeSubscriptionId,
+        stripeSubscriptionId: this.stripeSubscriptionId,
       });
 
       const firstAdmin = await getWorkspaceFirstAdmin(workspace);
@@ -630,8 +656,38 @@ export class SubscriptionResource extends BaseResource<Subscription> {
     };
   }
 
+  async updateStatus(
+    options:
+      | { status: "ended"; endDate: Date }
+      | { status: "active"; trialing: boolean },
+    transaction?: Transaction
+  ) {
+    return this.update(options, transaction);
+  }
+
+  async updateEndDate({
+    endDate,
+    requestCancelAt,
+  }: {
+    endDate: Date | null;
+    requestCancelAt: Date | null;
+  }) {
+    return this.update({
+      endDate,
+      requestCancelAt,
+    });
+  }
+
+  async updatePaymentFailing(date: Date | null) {
+    return this.update({ paymentFailingSince: date });
+  }
+
   getPlan(): PlanType {
     return Object.freeze({ ...this.plan });
+  }
+
+  getWorkspace(): Workspace | null {
+    return this.workspace;
   }
 
   toJSON(): SubscriptionType {
