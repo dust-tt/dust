@@ -21,7 +21,9 @@ import { fetch as undiciFetch, ProxyAgent } from "undici";
 import {
   isBadCredentials,
   isGithubRequestErrorNotFound,
+  isGithubRequestErrorRepositoryAccessBlocked,
   isGithubRequestRedirectCountExceededError,
+  RepositoryAccessBlockedError,
 } from "@connectors/connectors/github/lib/errors";
 import type {
   DiscussionCommentNode,
@@ -828,7 +830,32 @@ export async function processRepository({
   repoId: number;
   onEntry: (entry: ReadEntry) => void;
   logger: Logger;
-}) {
+}): Promise<
+  Result<
+    {
+      tempDir: string;
+      files: {
+        fileName: string;
+        filePath: string[];
+        sourceUrl: string;
+        sizeBytes: number;
+        documentId: string;
+        parentInternalId: string | null;
+        parents: string[];
+        localFilePath: string;
+      }[];
+      directories: {
+        dirName: string;
+        dirPath: string[];
+        sourceUrl: string;
+        internalId: string;
+        parentInternalId: string | null;
+        parents: string[];
+      }[];
+    },
+    RepositoryAccessBlockedError | ExternalOAuthTokenError
+  >
+> {
   const octokit = await getOctokit(connector);
 
   const { data } = await octokit.rest.repos.get({
@@ -885,6 +912,9 @@ export async function processRepository({
   } catch (err) {
     if (isGithubRequestErrorNotFound(err)) {
       return new Err(new ExternalOAuthTokenError(err));
+    }
+    if (isGithubRequestErrorRepositoryAccessBlocked(err)) {
+      return new Err(new RepositoryAccessBlockedError(err));
     }
 
     throw err;

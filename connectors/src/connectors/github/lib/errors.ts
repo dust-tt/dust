@@ -1,19 +1,19 @@
 import { RequestError } from "octokit";
 
-export function isGithubRequestErrorNotFound(error: unknown): error is {
-  name: string;
-  status: number;
-  message: string;
-} {
+export function isGithubRequestErrorNotFound(
+  error: unknown
+): error is RequestError {
+  return error instanceof RequestError && error.status === 404;
+}
+export function isGithubRequestErrorRepositoryAccessBlocked(
+  error: unknown
+): error is RequestError {
   return (
-    error instanceof Error &&
-    "name" in error &&
-    error.name === "HttpError" &&
-    "status" in error &&
-    error.status === 404
+    error instanceof RequestError &&
+    error.status === 451 &&
+    error.message.includes("Repository access blocked")
   );
 }
-
 export function isGithubRequestRedirectCountExceededError(
   error: unknown
 ): error is RequestError {
@@ -39,4 +39,11 @@ export function isGraphQLNotFound(error: unknown): error is Error {
     Array.isArray(error.errors) &&
     error.errors.some((e) => e.type === "NOT_FOUND")
   );
+}
+
+export class RepositoryAccessBlockedError extends Error {
+  constructor(readonly innerError?: RequestError) {
+    super(innerError?.message);
+    this.name = "RepositoryAccessBlockedError";
+  }
 }
