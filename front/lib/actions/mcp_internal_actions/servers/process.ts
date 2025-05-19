@@ -12,7 +12,10 @@ import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_acti
 import { getDataSourceConfiguration } from "@app/lib/actions/mcp_internal_actions/servers/utils";
 import type { ProcessActionOutputsType } from "@app/lib/actions/process";
 import { getExtractFileTitle } from "@app/lib/actions/process/utils";
-import { applyDataSourceFilters } from "@app/lib/actions/retrieval";
+import {
+  applyDataSourceFilters,
+  DataSourceConfiguration,
+} from "@app/lib/actions/retrieval";
 import { runActionStreamed } from "@app/lib/actions/server";
 import type {
   ActionGeneratedFileType,
@@ -27,7 +30,11 @@ import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import type { UserMessageType } from "@app/types";
+import type {
+  AgentModelConfigurationType,
+  TimeFrame,
+  UserMessageType,
+} from "@app/types";
 import { isUserMessageType, timeFrameFromNow } from "@app/types";
 
 const serverInfo: InternalMCPServerDefinitionType = {
@@ -62,11 +69,10 @@ function createServer(
         ],
     },
     async ({ timeFrame, dataSources, jsonSchema }) => {
-      if (!agentLoopRunContext) {
-        throw new Error(
-          "agentLoopContext is required where the tool is called."
-        );
-      }
+      assert(
+        agentLoopRunContext,
+        "agentLoopContext is required where the tool is called."
+      );
 
       const { agentConfiguration, conversation, actionConfiguration } =
         agentLoopRunContext;
@@ -87,8 +93,6 @@ function createServer(
       );
       const userMessage: UserMessageType =
         lastUserMessageTuple[0] as UserMessageType;
-
-      const objective = "n/a";
 
       const { model } = agentConfiguration;
       const supportedModel = getSupportedModelConfig(model);
@@ -147,41 +151,12 @@ function createServer(
         dataSourceViews.map((dsv) => [dsv.sId, dsv])
       );
 
-      const config = cloneBaseConfig(
-        getDustProdAction("assistant-v2-process").config
-      );
-
-      // Set the process action model configuration to the agent model configuration.
-      config.MODEL.provider_id = model.providerId;
-      config.MODEL.model_id = model.modelId;
-      config.MODEL.temperature = model.temperature;
-
-      // Handle data sources list and parents/tags filtering.
-      config.DATASOURCE.data_sources = dataSourceConfigurations.map((d) => ({
-        workspace_id: d.workspaceId,
-        // Note: This value is passed to the registry for lookup. The registry will return the
-        // associated data source's dustAPIDataSourceId.
-        data_source_id: d.dataSourceViewId,
-      }));
-
-      const globalTagsIn: string[] | null = null;
-      const globalTagsNot: string[] | null = null;
-
-      applyDataSourceFilters(
-        config,
+      const config = getConfigForProcessDustApp({
+        model,
         dataSourceConfigurations,
         dataSourceViewsMap,
-        globalTagsIn,
-        globalTagsNot
-      );
-
-      if (timeFrame) {
-        config.DATASOURCE.filter.timestamp = {
-          gt: timeFrameFromNow(timeFrame),
-        };
-      }
-
-      config.DATASOURCE.top_k = PROCESS_ACTION_TOP_K;
+        timeFrame,
+      });
 
       const res = await runActionStreamed(
         auth,
@@ -192,7 +167,7 @@ function createServer(
             context_size: contextSize,
             prompt,
             schema: jsonSchema,
-            objective,
+            objective: "n/a",
           },
         ],
         {
@@ -354,3 +329,50 @@ function createServer(
 }
 
 export default createServer;
+
+function getConfigForProcessDustApp({
+  model,
+  dataSourceConfigurations,
+  dataSourceViewsMap,
+  timeFrame,
+}: {
+  model: AgentModelConfigurationType;
+  dataSourceConfigurations: DataSourceConfiguration[];
+  dataSourceViewsMap: Record<string, DataSourceViewResource>;
+  timeFrame: TimeFrame | null;
+}) {
+  const config = cloneBaseConfig(
+    getDustProdAction("assistant-v2-process").config
+  );
+
+  // Set the process action model configuration to the agent model configuration.
+  config.MODEL.provider_id = model.providerId;
+  config.MODEL.model_id = model.modelId;
+  config.MODEL.temperature = model.temperature;
+
+  // Handle data sources list and parents/tags filtering.
+  config.DATASOURCE.data_sources = dataSourceConfigurations.map((d) => ({
+    workspace_id: d.workspaceId,
+    // Note: This value is passed to the registry for lookup. The registry will return the
+    // associated data source's dustAPIDataSourceId.
+    data_source_id: d.dataSourceViewId,
+  }));
+
+  applyDataSourceFilters(
+    config,
+    dataSourceConfigurations,
+    dataSourceViewsMap,
+    null, // TODO(pr,mcp-extract): add globalTagsIn
+    null // TODO(pr,mcp-extract): add globalTagsNot
+  );
+
+  if (timeFrame) {
+    config.DATASOURCE.filter.timestamp = {
+      gt: timeFrameFromNow(timeFrame),
+    };
+  }
+
+  config.DATASOURCE.top_k = PROCESS_ACTION_TOP_K;
+
+  return config;
+}
