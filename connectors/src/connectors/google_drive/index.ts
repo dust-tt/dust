@@ -152,7 +152,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
     }
 
     // Ideally we want to check that the Google Project ID is the same as the one from the connector
-    // I couln't find an easy way to access it from the googleapis library
+    // I couldn't find an easy way to access it from the googleapis library
     // Workaround is checking the domain of the user who is updating the connector
     if (connectionId) {
       try {
@@ -291,7 +291,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
             parentId: parentDriveId,
           };
           if (isTablesView) {
-            // In tables view, we only show folders, spreadhsheets and sheets.
+            // In tables view, we only show folders, spreadsheets and sheets.
             // We filter out folders that only contain Documents.
             where.mimeType = [
               "application/vnd.google-apps.folder",
@@ -531,7 +531,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
           )
         );
       }
-      // Unanhdled error, throwing to get a 500.
+      // Unhandled error, throwing to get a 500.
       throw e;
     }
   }

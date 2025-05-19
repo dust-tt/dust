@@ -319,7 +319,7 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
           )
         );
       }
-      // Unanhdled error, throwing to get a 500.
+      // Unhandled error, throwing to get a 500.
       throw e;
     }
   }
