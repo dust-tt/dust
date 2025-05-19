@@ -368,7 +368,7 @@ export class GongClient {
     try {
       if (smartTrackersEnabled) {
         const callsMetadata = await this.postRequest(
-          `/calls/extensive`,
+          "/calls/extensive",
           body,
           GongPaginatedResults("calls", GongTranscriptMetadataCodec)
         );
