@@ -507,18 +507,13 @@ export async function getSuggestedAgentsForConversation(
   const agents = await getAgentConfigurations({
     auth,
     agentsGetView: "list",
-    variant: "full", // We load the full agent configuration to get the actions name and description.
+    variant: "light",
   });
 
   const formattedAgents = agents.map((a) => ({
     id: a.sId,
     displayName: `@${a.name}`,
     description: a.description,
-    tools: a.actions.map((a) => ({
-      name: a.name,
-      description: a.description,
-    })),
-    visualizationEnabled: a.visualizationEnabled,
     userFavorite: a.userFavorite,
   }));
 
