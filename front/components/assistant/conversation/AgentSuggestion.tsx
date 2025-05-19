@@ -49,6 +49,8 @@ export function AgentSuggestion({
     workspaceId: owner.sId,
     conversationId,
     messageId: userMessage.sId,
+    disabled:
+      userMessage.id === -1 || userMessage.sId.startsWith("placeholder"),
   });
 
   const sendNotification = useSendNotification();
