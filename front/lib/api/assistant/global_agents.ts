@@ -1640,10 +1640,12 @@ export async function getGlobalAgents(
       where: { workspaceId: owner.id },
     }),
     HelperAssistantPrompt.getInstance(),
-    MCPServerViewResource.getMCPServerViewForAutoInternalTool(
-      auth,
-      "agent_router"
-    ),
+    variant === "full"
+      ? MCPServerViewResource.getMCPServerViewForAutoInternalTool(
+          auth,
+          "agent_router"
+        )
+      : null,
   ]);
 
   // If agentIds have been passed we fetch those. Otherwise we fetch them all, removing the retired
