@@ -1382,23 +1382,19 @@ export class DustAPI {
   }
 
   async postMCPResults({
-    requestId,
     result,
     serverId,
   }: PublicPostMCPResultsRequestBody & { serverId: string }): Promise<
     Result<PostMCPResultsResponseType, APIError>
   > {
-    const params = new URLSearchParams();
-    params.set("serverId", serverId);
-
     const body: PublicPostMCPResultsRequestBody = {
-      requestId,
       result,
+      serverId,
     };
 
     const res = await this.request({
       method: "POST",
-      path: `mcp/results?${params.toString()}`,
+      path: "mcp/results",
       body,
     });
 
