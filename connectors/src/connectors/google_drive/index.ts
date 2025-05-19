@@ -64,6 +64,7 @@ import type { DataSourceConfig } from "@connectors/types";
 import {
   getGoogleSheetContentNodeInternalId,
   INTERNAL_MIME_TYPES,
+  normalizeError,
 } from "@connectors/types";
 import { FILE_ATTRIBUTES_TO_FETCH } from "@connectors/types";
 
@@ -725,7 +726,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
 
       return new Ok(parents.map((p) => getInternalId(p)));
     } catch (err) {
-      return new Err(err as Error);
+      return new Err(normalizeError(err));
     }
   }
 

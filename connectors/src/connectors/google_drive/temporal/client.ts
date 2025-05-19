@@ -14,7 +14,10 @@ import { getTemporalClient, terminateWorkflow } from "@connectors/lib/temporal";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types";
-import { googleDriveIncrementalSyncWorkflowId } from "@connectors/types";
+import {
+  googleDriveIncrementalSyncWorkflowId,
+  normalizeError,
+} from "@connectors/types";
 
 import {
   googleDriveFixParentsConsistencyWorkflow,
@@ -95,7 +98,7 @@ export async function launchGoogleDriveFullSyncWorkflow(
       },
       `Failed starting workflow.`
     );
-    return new Err(e as Error);
+    return new Err(normalizeError(e));
   }
 }
 
@@ -145,7 +148,7 @@ export async function launchGoogleDriveIncrementalSyncWorkflow(
       },
       `Failed starting workflow.`
     );
-    return new Err(e as Error);
+    return new Err(normalizeError(e));
   }
 }
 
@@ -195,7 +198,7 @@ export async function launchGoogleGarbageCollector(
       },
       `Failed starting workflow.`
     );
-    return new Err(e as Error);
+    return new Err(normalizeError(e));
   }
 }
 
@@ -247,6 +250,6 @@ export async function launchGoogleFixParentsConsistencyWorkflow(
       },
       `Failed starting workflow.`
     );
-    return new Err(e as Error);
+    return new Err(normalizeError(e));
   }
 }

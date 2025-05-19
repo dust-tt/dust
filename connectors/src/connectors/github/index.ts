@@ -42,7 +42,7 @@ import type {
   ContentNodesViewType,
   DataSourceConfig,
 } from "@connectors/types";
-import { INTERNAL_MIME_TYPES } from "@connectors/types";
+import { INTERNAL_MIME_TYPES, normalizeError } from "@connectors/types";
 
 const logger = mainLogger.child({ provider: "github" });
 
@@ -166,7 +166,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
 
       return new Ok(undefined);
     } catch (err) {
-      return new Err(err as Error);
+      return new Err(normalizeError(err));
     }
   }
 
@@ -222,7 +222,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
 
       return new Ok(undefined);
     } catch (err) {
-      return new Err(err as Error);
+      return new Err(normalizeError(err));
     }
   }
 
@@ -244,7 +244,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
       });
       return new Ok(this.connectorId.toString());
     } catch (err) {
-      return new Err(err as Error);
+      return new Err(normalizeError(err));
     }
   }
 

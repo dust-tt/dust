@@ -16,6 +16,7 @@ import {
 import { BaseResource } from "@connectors/resources/base_resource";
 import type { ConnectorResource } from "@connectors/resources/connector_resource"; // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 import type { ReadonlyAttributesType } from "@connectors/resources/storage/types";
+import { normalizeError } from "@connectors/types";
 
 function minutesToMs(minutes: number) {
   return minutes * 60 * 1000;
@@ -230,7 +231,7 @@ export class GongUserResource extends BaseResource<GongUserModel> {
         transaction,
       });
     } catch (error) {
-      return new Err(error as Error);
+      return new Err(normalizeError(error));
     }
 
     return new Ok(undefined);

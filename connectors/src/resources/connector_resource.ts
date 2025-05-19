@@ -21,6 +21,7 @@ import { sequelizeConnection } from "@connectors/resources/storage";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 import type { ReadonlyAttributesType } from "@connectors/resources/storage/types";
 import type { ConnectorType, ModelId } from "@connectors/types";
+import { normalizeError } from "@connectors/types";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -201,7 +202,7 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
 
         return new Ok(undefined);
       } catch (err) {
-        return new Err(err as Error);
+        return new Err(normalizeError(err));
       }
     });
   }

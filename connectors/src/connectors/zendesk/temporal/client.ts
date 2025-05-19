@@ -27,6 +27,7 @@ import {
 import {
   getZendeskGarbageCollectionWorkflowId,
   getZendeskSyncWorkflowId,
+  normalizeError,
 } from "@connectors/types";
 
 export async function launchZendeskSyncWorkflow(
@@ -93,7 +94,7 @@ export async function launchZendeskSyncWorkflow(
       cronSchedule: `${minute},${30 + minute} * * * *`, // Every 30 minutes.
     });
   } catch (err) {
-    return new Err(err as Error);
+    return new Err(normalizeError(err));
   }
 
   return new Ok(undefined);
@@ -110,8 +111,7 @@ export async function stopZendeskWorkflows(
   ];
   for (const workflowId of workflowIds) {
     try {
-      const handle: WorkflowHandle<typeof zendeskSyncWorkflow> =
-        client.workflow.getHandle(workflowId);
+      const handle: WorkflowHandle<typeof zendeskSyncWorkflow> =        client.workflow.getHandle(workflowId);
       try {
         await handle.terminate();
       } catch (e) {
@@ -124,7 +124,7 @@ export async function stopZendeskWorkflows(
         { workflowId, error: e },
         "[Zendesk] Failed to stop the workflow."
       );
-      return new Err(e as Error);
+      return new Err(normalizeError(e));
     }
   }
   return new Ok(undefined);
@@ -188,7 +188,7 @@ export async function launchZendeskGarbageCollectionWorkflow(
   } catch (err: unknown) {
     // ignoring errors caused by relaunching the gc workflow
     if (!(err instanceof WorkflowExecutionAlreadyStartedError)) {
-      return new Err(err as Error);
+      return new Err(normalizeError(err));
     }
   }
 
