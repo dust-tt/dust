@@ -163,9 +163,11 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
     const servers = await RemoteMCPServerModel.findAll({
       offset,
       limit,
-      order: [['id', 'ASC']]
+      order: [["id", "ASC"]],
     });
-    return servers.map((server) => new this(RemoteMCPServerModel, server.get()));
+    return servers.map(
+      (server) => new this(RemoteMCPServerModel, server.get())
+    );
   }
 
   // sId

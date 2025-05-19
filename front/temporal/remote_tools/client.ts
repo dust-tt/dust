@@ -7,6 +7,7 @@ import { Err, Ok } from "@app/types";
 
 import { QUEUE_NAME } from "./config";
 import { syncRemoteMCPServersWorkflow } from "./workflows";
+import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 
 export async function launchRemoteMCPServersSyncWorkflow(): Promise<
   Result<string, Error>
@@ -24,19 +25,43 @@ export async function launchRemoteMCPServersSyncWorkflow(): Promise<
       }
     }
 
-    await client.workflow.start(syncRemoteMCPServersWorkflow, {
-      args: [],
-      taskQueue: QUEUE_NAME,
-      workflowId: workflowId,
-      cronSchedule: "0 12 * * 0", // Run every Sunday at 12:00
-    });
+    do {
+      // Batches of 100 servers.
+      const servers = await RemoteMCPServerResource.dangerouslyListAllServers(
+        0,
+        100
+      );
+      if (servers.length === 0) {
+        break;
+      }
 
-    logger.info(
-      {
-        workflowId,
-      },
-      "Started weekly remote MCP servers sync workflow."
-    );
+      await client.workflow.start(syncRemoteMCPServersWorkflow, {
+        args: [{ servers }],
+        taskQueue: QUEUE_NAME,
+        workflowId: workflowId,
+        memo: {
+          workflowId,
+          servers: servers.map((server) => server.sId),
+        },
+      });
+
+      await client.schedule.create({
+        action: {
+          type: "startWorkflow",
+          workflowType: syncRemoteMCPServersWorkflow,
+          args: [{ servers }],
+          taskQueue: QUEUE_NAME,
+        },
+        scheduleId: workflowId,
+        spec: {
+          cronExpressions: ["0 12 * * 0"], // Every Sunday at 12:00 PM
+        },
+        memo: {
+          workflowId,
+          servers: servers.map((server) => server.sId),
+        },
+      });
+    } while (true);
 
     return new Ok(workflowId);
   } catch (e) {

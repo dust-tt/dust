@@ -129,8 +129,7 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
       sendNotification({
         title: "Error synchronizing MCP server",
         type: "error",
-        description:
-          normalizeError(error ?? "An error occured").message,
+        description: normalizeError(error ?? "An error occured").message,
       });
     } finally {
       setIsSynchronizing(false);

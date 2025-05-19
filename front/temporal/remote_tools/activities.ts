@@ -4,11 +4,12 @@ import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_r
 import { getWorkspaceByModelId } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 
-export async function syncRemoteMCPServers(): Promise<void> {
+export async function syncRemoteMCPServers(
+  servers: RemoteMCPServerResource[]
+): Promise<void> {
   logger.info({ msg: "Starting sync of remote_mcp_servers" });
 
   try {
-    const servers = await RemoteMCPServerResource.dangerouslyListAllServers(0, 100);
     for (const server of servers) {
       // Retrieve the workspace
       const workspace = await getWorkspaceByModelId(server.workspaceId);
@@ -27,12 +28,15 @@ export async function syncRemoteMCPServers(): Promise<void> {
       const r = await fetchRemoteServerMetaDataByURL(auth, server.url);
 
       if (r.isErr()) {
-        logger.error({
-          workspaceId,
-          serverId: server.sId,
-          url: server.url,
-          error: r.error.message,
-        }, "Error fetching remote server metadata");
+        logger.error(
+          {
+            workspaceId,
+            serverId: server.sId,
+            url: server.url,
+            error: r.error.message,
+          },
+          "Error fetching remote server metadata"
+        );
         await server.markAsErrored(auth, {
           lastError: r.error.message,
           lastSyncAt: new Date(),
