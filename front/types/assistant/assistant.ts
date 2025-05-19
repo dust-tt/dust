@@ -231,6 +231,7 @@ export type ModelConfigurationType = {
   description: string;
   shortDescription: string;
   isLegacy: boolean;
+  reasoningDescription?: string; // Only used for the models you can use for reasoning
 
   // Allows configuring parsing of special delimiters in the streamed model output.
   delimitersConfiguration?: {
@@ -399,6 +400,7 @@ export const O1_MODEL_CONFIG: ModelConfigurationType = {
     "OpenAI's reasoning model designed to solve hard problems across domains (Limited preview access).",
   shortDescription: "OpenAI's reasoning model.",
   isLegacy: false,
+  reasoningDescription: "Best for deep analytical problems across domains.",
   generationTokensCount: 2048,
   supportsVision: true,
   featureFlag: "openai_o1_feature",
@@ -417,6 +419,8 @@ export const O1_HIGH_REASONING_MODEL_CONFIG: ModelConfigurationType = {
     "OpenAI's reasoning model designed to solve hard problems across domains (Limited preview access). High reasoning effort.",
   shortDescription: "OpenAI's reasoning model (high effort).",
   isLegacy: false,
+  reasoningDescription:
+    "Optimal for intensive problems requiring thorough analysis.",
   generationTokensCount: 2048,
   supportsVision: true,
   reasoningEffort: "high",
@@ -437,6 +441,8 @@ export const O1_MINI_MODEL_CONFIG: ModelConfigurationType = {
     "OpenAI's fast reasoning model particularly good at coding, math, and science.",
   shortDescription: "OpenAI's fast reasoning model.",
   isLegacy: false,
+  reasoningDescription:
+    "Specialized for coding, math, and scientific problems.",
   generationTokensCount: 2048,
   supportsVision: false,
   featureFlag: "openai_o1_mini_feature",
@@ -456,6 +462,7 @@ export const O3_MODEL_CONFIG: ModelConfigurationType = {
     "OpenAI's most advanced reasoning model particularly good at coding, math, and science.",
   shortDescription: "OpenAI's best reasoning model.",
   isLegacy: false,
+  reasoningDescription: "Best for complex coding, math, and science problems.",
   generationTokensCount: 2048,
   supportsVision: true,
   supportsResponseFormat: true,
@@ -475,6 +482,7 @@ export const O3_MINI_MODEL_CONFIG: ModelConfigurationType = {
     "OpenAI's fast reasoning model particularly good at coding, math, and science.",
   shortDescription: "OpenAI's fast reasoning model.",
   isLegacy: false,
+  reasoningDescription: "Efficient for coding, math, and science tasks.",
   generationTokensCount: 2048,
   supportsVision: false,
   supportsResponseFormat: true,
@@ -491,6 +499,8 @@ export const O3_MINI_HIGH_REASONING_MODEL_CONFIG: ModelConfigurationType = {
     "OpenAI's fast reasoning model particularly good at coding, math, and science. High reasoning effort.",
   shortDescription: "OpenAI's fast reasoning model.",
   isLegacy: false,
+  reasoningDescription:
+    "Optimal for complex coding, math, and science with thorough analysis.",
   generationTokensCount: 2048,
   supportsVision: false,
   reasoningEffort: "high",
@@ -508,6 +518,8 @@ export const O4_MINI_MODEL_CONFIG: ModelConfigurationType = {
   description: "OpenAI's o4 mini model (200k context).",
   shortDescription: "OpenAI's fast o4 model.",
   isLegacy: false,
+  reasoningDescription:
+    "Effective for analytical problems requiring efficient solutions.",
   generationTokensCount: 100_000,
   supportsVision: true,
   supportsResponseFormat: true,
@@ -525,6 +537,7 @@ export const O4_MINI_HIGH_REASONING_MODEL_CONFIG: ModelConfigurationType = {
   description: "OpenAI's o4 mini model (200k context). High reasoning effort.",
   shortDescription: "OpenAI's fast o4 model.",
   isLegacy: false,
+  reasoningDescription: "Best for complex problems needing detailed analysis.",
   generationTokensCount: 100_000,
   supportsVision: true,
   supportsResponseFormat: true,
@@ -665,6 +678,8 @@ export const CLAUDE_3_7_SONNET_REASONING_MODEL_CONFIG: ModelConfigurationType =
     description: "Anthropic's latest Claude 3.7 Sonnet model (200k context).",
     shortDescription: "Anthropic's best model.",
     isLegacy: false,
+    reasoningDescription:
+      "Advanced reasoning capabilities with thorough analysis and creative problem-solving.",
     delimitersConfiguration: ANTHROPIC_DELIMITERS_CONFIGURATION,
     generationTokensCount: 64_000,
     supportsVision: true,
@@ -941,6 +956,8 @@ export const GEMINI_2_FLASH_THINKING_PREVIEW_MODEL_CONFIG: ModelConfigurationTyp
     generationTokensCount: 2048,
     supportsVision: true,
     featureFlag: "google_ai_studio_experimental_models_feature",
+    reasoningDescription:
+      "Suitable for basic tasks with straightforward solutions.",
   };
 
 export const TOGETHERAI_LLAMA_3_3_70B_INSTRUCT_TURBO_MODEL_CONFIG: ModelConfigurationType =
@@ -1094,6 +1111,8 @@ export const FIREWORKS_DEEPSEEK_R1_MODEL_CONFIG: ModelConfigurationType = {
       },
     ],
   },
+  reasoningDescription:
+    "Optimal for complex problems needing detailed analysis.",
 };
 
 export const SUPPORTED_MODEL_CONFIGS: ModelConfigurationType[] = [

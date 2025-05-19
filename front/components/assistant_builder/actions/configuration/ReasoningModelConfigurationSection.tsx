@@ -1,5 +1,4 @@
 import {
-  Avatar,
   Button,
   Card,
   ContentMessage,
@@ -40,7 +39,9 @@ export function ReasoningModelConfigurationSection({
       reasoningModels.find(
         (m) =>
           m.modelId === selectedReasoningModel.modelId &&
-          m.providerId === selectedReasoningModel.providerId
+          m.providerId === selectedReasoningModel.providerId &&
+          (m.reasoningEffort ?? null) ===
+            (selectedReasoningModel.reasoningEffort ?? null)
       ),
     [selectedReasoningModel, reasoningModels]
   );
@@ -83,87 +84,53 @@ export function ReasoningModelConfigurationSection({
             <Spinner />
           </div>
         </Card>
-      ) : selectedReasoningModelConfig ? (
-        <Card size="sm" className="w-full">
-          <div className="flex w-full p-3">
-            <div className="flex w-full flex-grow flex-col gap-2 overflow-hidden">
-              <div className="text-md flex items-center gap-2 font-medium">
-                <Avatar
-                  icon={getModelProviderLogo(
-                    selectedReasoningModelConfig.providerId,
-                    false
-                  )}
-                  size="sm"
-                />
-                {selectedReasoningModelConfig.displayName}
-              </div>
-              <div className="max-h-24 overflow-y-auto text-sm text-muted-foreground dark:text-muted-foreground-night">
-                {selectedReasoningModelConfig.description}
-              </div>
-            </div>
-            <div className="ml-4 flex-shrink-0 self-start">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    size="sm"
-                    label="Select another model"
-                    variant="outline"
-                    isSelect
-                  />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  {reasoningModels.map((model) => (
-                    <DropdownMenuItem
-                      key={`${model.modelId}-${model.providerId}-${model.reasoningEffort ?? ""}`}
-                      label={model.displayName}
-                      icon={getModelProviderLogo(model.providerId, isDark)}
-                      onClick={() =>
-                        onModelSelect({
-                          modelId: model.modelId,
-                          providerId: model.providerId,
-                          reasoningEffort: model.reasoningEffort ?? null,
-                          temperature: null,
-                        })
-                      }
-                    />
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          </div>
-        </Card>
       ) : (
-        <Card size="sm" className="h-36 w-full">
-          <div className="flex h-full w-full items-center justify-center">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  label="Select a reasoning model"
-                  variant="outline"
-                  size="sm"
-                  isSelect
+        <>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                label={
+                  selectedReasoningModelConfig?.displayName ??
+                  "Select a reasoning model"
+                }
+                icon={
+                  selectedReasoningModelConfig?.providerId
+                    ? getModelProviderLogo(
+                        selectedReasoningModelConfig?.providerId,
+                        isDark
+                      )
+                    : undefined
+                }
+                variant="outline"
+                size="sm"
+                isSelect
+              />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="max-w-xl">
+              {reasoningModels.map((model) => (
+                <DropdownMenuItem
+                  key={`${model.modelId}-${model.providerId}-${model.reasoningEffort ?? ""}`}
+                  label={model.displayName}
+                  icon={getModelProviderLogo(model.providerId, isDark)}
+                  description={model.reasoningDescription || model.description}
+                  onClick={() =>
+                    onModelSelect({
+                      modelId: model.modelId,
+                      providerId: model.providerId,
+                      reasoningEffort: model.reasoningEffort ?? null,
+                      temperature: null,
+                    })
+                  }
                 />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                {reasoningModels.map((model) => (
-                  <DropdownMenuItem
-                    key={`${model.modelId}-${model.providerId}-${model.reasoningEffort ?? ""}`}
-                    label={model.displayName}
-                    icon={getModelProviderLogo(model.providerId, isDark)}
-                    onClick={() =>
-                      onModelSelect({
-                        modelId: model.modelId,
-                        providerId: model.providerId,
-                        reasoningEffort: model.reasoningEffort ?? null,
-                        temperature: null,
-                      })
-                    }
-                  />
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </Card>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          {selectedReasoningModelConfig?.reasoningDescription && (
+            <p className="mt-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
+              {selectedReasoningModelConfig.reasoningDescription}
+            </p>
+          )}
+        </>
       )}
     </div>
   );

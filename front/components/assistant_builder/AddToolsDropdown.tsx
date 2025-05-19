@@ -27,6 +27,7 @@ import {
 } from "@app/components/assistant_builder/types";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import type { ModelConfigurationType } from "@app/types";
 
 type MCPServerViewTypeWithLabel = MCPServerViewType & { label: string };
 
@@ -39,6 +40,7 @@ interface AddToolsDropdownProps {
   nonDefaultMCPActions: ActionSpecificationWithType[];
   defaultMCPServerViews: MCPServerViewTypeWithLabel[];
   nonDefaultMCPServerViews: MCPServerViewTypeWithLabel[];
+  reasoningModels: ModelConfigurationType[];
 }
 
 export function AddToolsDropdown({
@@ -48,6 +50,7 @@ export function AddToolsDropdown({
   nonDefaultMCPActions,
   defaultMCPServerViews,
   nonDefaultMCPServerViews,
+  reasoningModels,
 }: AddToolsDropdownProps) {
   const [searchText, setSearchText] = useState("");
   const [filteredNonMCPActions, setFilteredNonMCPActions] =
@@ -117,6 +120,34 @@ export function AddToolsDropdown({
     setEdited(true);
     const action = getDefaultMCPServerActionConfiguration(selectedView);
     assert(action);
+
+    // For reasoning v2, we set the first reasoning model in the list as the default.
+    // (The higher prioirity model is placed first in the list.)
+    if (action.type === "MCP" && action.name === "reasoning_v2") {
+      const defaultReasoningAction = reasoningModels[0];
+
+      setAction({
+        type: "pending",
+        action: {
+          ...action,
+          configuration: {
+            ...action.configuration,
+            reasoningModel: defaultReasoningAction
+              ? {
+                  modelId: defaultReasoningAction.modelId,
+                  providerId: defaultReasoningAction.providerId,
+                  reasoningEffort:
+                    defaultReasoningAction.reasoningEffort ?? null,
+                  temperature: null,
+                }
+              : null,
+          },
+          id: uniqueId(),
+        },
+      });
+
+      return;
+    }
 
     setAction({
       type: action.noConfigurationRequired ? "insert" : "pending",
