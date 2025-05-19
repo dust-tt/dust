@@ -235,7 +235,7 @@ export async function submitAssistantBuilderForm({
             timeFrame,
             additionalConfiguration,
             dustAppConfiguration,
-            jsonSchema: jsonSchema ? JSON.stringify(jsonSchema) : null,
+            jsonSchema,
           },
         ];
 

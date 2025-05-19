@@ -1369,9 +1369,7 @@ export async function createAgentActionConfiguration(
             internalMCPServerId: mcpServerView.internalMCPServerId,
             additionalConfiguration: action.additionalConfiguration,
             timeFrame: action.timeFrame,
-            jsonSchema: action.jsonSchema
-              ? JSON.stringify(action.jsonSchema)
-              : null,
+            jsonSchema: action.jsonSchema,
             name: serverName !== action.name ? action.name : null,
             singleToolDescriptionOverride:
               serverDescription !== action.description

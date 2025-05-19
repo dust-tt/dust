@@ -9,6 +9,8 @@ import {
 } from "../../assistant/assistant";
 import { createRangeCodec } from "../../shared/utils/iots_utils";
 import { TimeframeUnitCodec } from "../../shared/utils/time_frame";
+import { validateJsonSchema } from "@app/lib/utils/json_schemas";
+import type { JSONSchema7 } from "json-schema";
 
 const LimitCodec = createRangeCodec(0, 100);
 
@@ -138,6 +140,24 @@ const ReasoningActionConfigurationSchema = t.type({
   reasoningEffort: t.union([ReasoningEffortCodec, t.null]),
 });
 
+const JsonSchemaCodec = new t.Type<JSONSchema7, unknown, unknown>(
+  "JsonSchema",
+  (u): u is JSONSchema7 => {
+    if (typeof u !== "object" || u === null) return false;
+    return validateJsonSchema(JSON.stringify(u)).isValid;
+  },
+  (u, c) => {
+    if (typeof u !== "object" || u === null) {
+      return t.failure(u, c, "Invalid JSON schema");
+    }
+    const validation = validateJsonSchema(JSON.stringify(u));
+    return validation.isValid
+      ? t.success(u as JSONSchema7)
+      : t.failure(u, c, validation.error || "Invalid JSON schema");
+  },
+  t.identity
+);
+
 const MCPServerActionConfigurationSchema = t.type({
   type: t.literal("mcp_server_configuration"),
   mcpServerViewId: t.string,
@@ -153,7 +173,7 @@ const MCPServerActionConfigurationSchema = t.type({
       unit: TimeframeUnitCodec,
     }),
   ]),
-  jsonSchema: t.union([t.string, t.null]),
+  jsonSchema: t.union([JsonSchemaCodec, t.null]),
   additionalConfiguration: t.record(
     t.string,
     t.union([t.boolean, t.number, t.string, t.null])

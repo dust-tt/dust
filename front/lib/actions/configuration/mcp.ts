@@ -186,7 +186,7 @@ export async function fetchMCPServerActionConfigurations(
               }
             : null,
         timeFrame: config.timeFrame,
-        jsonSchema: config.jsonSchema ? JSON.parse(config.jsonSchema) : null,
+        jsonSchema: config.jsonSchema,
       });
     }
   }
