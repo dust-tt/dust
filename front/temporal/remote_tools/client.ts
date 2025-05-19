@@ -13,23 +13,25 @@ export async function launchRemoteMCPServersSyncWorkflow(): Promise<
   Result<string, Error>
 > {
   const client = await getTemporalClient();
-  const workflowId = "remote-mcp-servers-sync";
+  const workflowIdHandle = "remote-mcp-servers-sync";
 
   try {
-    try {
-      const handle = client.workflow.getHandle(workflowId);
-      await handle.terminate();
-    } catch (e) {
-      if (!(e instanceof WorkflowNotFoundError)) {
-        throw e;
-      }
-    }
+    let i = 0;
 
     do {
+      try {
+        const handle = client.workflow.getHandle(`${workflowIdHandle}-sync-${i}`);
+        await handle.terminate();
+      } catch (e) {
+        if (!(e instanceof WorkflowNotFoundError)) {
+          throw e;
+        }
+      }  
+
       // Batches of 100 servers.
       const servers = await RemoteMCPServerResource.dangerouslyListAllServers(
-        0,
-        100
+        i * 100,
+        (i + 1) * 100
       );
       if (servers.length === 0) {
         break;
@@ -38,9 +40,9 @@ export async function launchRemoteMCPServersSyncWorkflow(): Promise<
       await client.workflow.start(syncRemoteMCPServersWorkflow, {
         args: [{ servers }],
         taskQueue: QUEUE_NAME,
-        workflowId: workflowId,
+        workflowId: `${workflowIdHandle}-sync-${i}`,
         memo: {
-          workflowId,
+          workflowId: `${workflowIdHandle}-sync-${i}`,
           servers: servers.map((server) => server.sId),
         },
       });
@@ -52,22 +54,33 @@ export async function launchRemoteMCPServersSyncWorkflow(): Promise<
           args: [{ servers }],
           taskQueue: QUEUE_NAME,
         },
-        scheduleId: workflowId,
+        scheduleId: `${workflowIdHandle}-schedule-${i}`,
         spec: {
           cronExpressions: ["0 12 * * 0"], // Every Sunday at 12:00 PM
         },
         memo: {
-          workflowId,
+          workflowId: `${workflowIdHandle}-sync-${i}`,
           servers: servers.map((server) => server.sId),
         },
       });
+
+      logger.info(
+        {
+          msg: "Scheduled remote MCP servers sync workflow",
+          workflowId: `${workflowIdHandle}-sync-${i}`,
+          servers: servers.map((server) => server.sId),
+        },
+        "Remote MCP servers sync workflow scheduled."
+      );
+
+      // Increment batch index
+      i++;
     } while (true);
 
-    return new Ok(workflowId);
+    return new Ok(workflowIdHandle);
   } catch (e) {
     logger.error(
       {
-        workflowId,
         error: e,
       },
       "Failed to start remote MCP servers sync workflow."
