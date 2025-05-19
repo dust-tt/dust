@@ -4,7 +4,6 @@ import type {
   InferAttributes,
   Transaction,
 } from "sequelize";
-import { Op } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -22,10 +21,9 @@ import type {
   ModelId,
   Result,
 } from "@app/types";
-import { Err, Ok, removeNulls } from "@app/types";
+import { Err, Ok } from "@app/types";
 
 import type { ModelStaticWorkspaceAware } from "./storage/wrappers/workspace_models";
-import { getResourceIdFromSId } from "./string_ids";
 import type { ResourceFindOptions } from "./types";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
@@ -147,30 +145,6 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     });
 
     return configuration ?? null;
-  }
-
-  static async fetchByIds(
-    auth: Authenticator,
-    ids: string[]
-  ): Promise<LabsTranscriptsConfigurationResource[]> {
-    const configIds = removeNulls(ids.map(getResourceIdFromSId));
-
-    return this.baseFetch(auth, {
-      where: {
-        id: {
-          [Op.in]: configIds,
-        },
-      },
-    });
-  }
-
-  static async fetchById(
-    auth: Authenticator,
-    id: string
-  ): Promise<LabsTranscriptsConfigurationResource | null> {
-    const [config] = await this.fetchByIds(auth, [id]);
-
-    return config ?? null;
   }
 
   static override async fetchByModelId(

@@ -62,10 +62,14 @@ async function handler(
     });
   }
 
+  const parsedId =
+    typeof transcriptsConfigurationId === "string"
+      ? parseInt(transcriptsConfigurationId, 10)
+      : transcriptsConfigurationId;
   const transcriptsConfiguration =
-    await LabsTranscriptsConfigurationResource.fetchById(
+    await LabsTranscriptsConfigurationResource.fetchByModelIdWithAuth(
       auth,
-      transcriptsConfigurationId
+      parsedId
     );
   // TODO(2024-04-19 flav) Consider adding auth to `fetchById` to move this permission check within the method.
   if (

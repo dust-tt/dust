@@ -401,8 +401,13 @@ const transcripts = async (command: string, args: parseArgs.ParsedArgs) => {
       }
 
       const auth = await Authenticator.internalAdminForWorkspace(args.wId);
+      const parsedId =
+        typeof args.cId === "string" ? parseInt(args.cId, 10) : args.cId;
       const transcriptsConfiguration =
-        await LabsTranscriptsConfigurationResource.fetchById(auth, args.cId);
+        await LabsTranscriptsConfigurationResource.fetchByModelIdWithAuth(
+          auth,
+          parsedId
+        );
 
       if (!transcriptsConfiguration) {
         throw new Error(
@@ -430,8 +435,13 @@ const transcripts = async (command: string, args: parseArgs.ParsedArgs) => {
       }
 
       const auth = await Authenticator.internalAdminForWorkspace(args.wId);
+      const parsedId =
+        typeof args.cId === "string" ? parseInt(args.cId, 10) : args.cId;
       const transcriptsConfiguration =
-        await LabsTranscriptsConfigurationResource.fetchById(auth, args.cId);
+        await LabsTranscriptsConfigurationResource.fetchByModelIdWithAuth(
+          auth,
+          parsedId
+        );
 
       if (!transcriptsConfiguration) {
         throw new Error(
