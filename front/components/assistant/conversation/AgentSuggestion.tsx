@@ -5,7 +5,6 @@ import {
   LoadingBlock,
   Page,
   RobotIcon,
-  Spinner,
   useSendNotification,
 } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
