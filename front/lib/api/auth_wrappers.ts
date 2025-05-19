@@ -101,9 +101,7 @@ export function withSessionAuthenticationForWorkspace<T>(
       }
 
       const auth = await Authenticator.fromSession(session, wId);
-      req.addLogToContext?.({
-        userId: auth.getNonNullableUser().sId,
-      });
+      req.addResourceToLog?.(auth.getNonNullableUser());
 
       const owner = auth.workspace();
       const plan = auth.plan();
@@ -186,7 +184,7 @@ export function withPublicAPIAuthentication<T, U extends boolean>(
 
   return withLogging(
     async (
-      req: NextApiRequest,
+      req: NextApiRequestWithContext,
       res: NextApiResponse<WithAPIErrorResponse<T>>
     ) => {
       const wId = typeof req.query.wId === "string" ? req.query.wId : undefined;
@@ -279,6 +277,8 @@ export function withPublicAPIAuthentication<T, U extends boolean>(
             },
           });
         }
+
+        req.addResourceToLog?.(auth.getNonNullableUser());
 
         const maintenance = auth.workspace()?.metadata?.maintenance;
         if (maintenance) {
@@ -404,7 +404,7 @@ export function withAuth0TokenAuthentication<T>(
 ) {
   return withLogging(
     async (
-      req: NextApiRequest,
+      req: NextApiRequestWithContext,
       res: NextApiResponse<WithAPIErrorResponse<T>>
     ) => {
       const bearerTokenRes = await getBearerToken(req);
@@ -469,6 +469,8 @@ export function withAuth0TokenAuthentication<T>(
           },
         });
       }
+
+      req.addResourceToLog?.(user);
 
       const isFromExtension = req.headers["x-request-origin"] === "extension";
       const userWithWorkspaces = await getUserWithWorkspaces(

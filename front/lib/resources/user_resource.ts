@@ -9,6 +9,7 @@ import { Op } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
 import { LabsPersonalSalesforceConnection } from "@app/lib/models/labs_personal_salesforce_connection";
+import type { ResourceLogContext } from "@app/lib/resources/base_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import {
@@ -392,6 +393,15 @@ export class UserResource extends BaseResource<UserModel> {
     return {
       users: users.map((u) => new UserResource(UserModel, u.get())),
       total: count,
+    };
+  }
+
+  toContextLog(): ResourceLogContext {
+    return {
+      key: "user",
+      logContext: {
+        sId: this.sId,
+      },
     };
   }
 }

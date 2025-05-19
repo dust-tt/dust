@@ -1,5 +1,6 @@
 import tracer from "dd-trace";
 import type { NextApiRequest, NextApiResponse } from "next";
+import type { Model } from "sequelize";
 
 import { getSession } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
@@ -7,22 +8,28 @@ import type {
   CustomGetServerSideProps,
   UserPrivilege,
 } from "@app/lib/iam/session";
+import type {
+  BaseResource,
+  ResourceLogContext,
+  ResourceWithId,
+} from "@app/lib/resources/base_resource";
 import type { APIErrorWithStatusCode, WithAPIErrorResponse } from "@app/types";
 
 import logger from "./logger";
 import { statsDClient } from "./statsDClient";
 
-export type LogContextValue = string | number | null;
 export type RequestContext = {
-  sessionId: string | null;
-} & {
-  [key: string]: LogContextValue;
+  [key: string]: ResourceLogContext["logContext"];
 };
+
+const EMPTY_LOG_CONTEXT = Object.freeze({});
 
 // Make the elements undefined temporarely avoid updating all NextApiRequest to NextApiRequestWithContext.
 export interface NextApiRequestWithContext extends NextApiRequest {
   logContext?: RequestContext;
-  addLogToContext?: (data: Record<string, LogContextValue>) => void;
+  addResourceToLog?: <T extends Model & ResourceWithId>(
+    resource: BaseResource<T>
+  ) => void;
 }
 
 export function withLogging<T>(
@@ -47,11 +54,13 @@ export function withLogging<T>(
     const sessionId = session?.user.sid || "unknown";
 
     // Use freeze to make sure we cannot update `req.logContext` down the callstack
-    req.logContext = Object.freeze({ sessionId });
-    req.addLogToContext = (data) => {
+    req.logContext = EMPTY_LOG_CONTEXT;
+    req.addResourceToLog = (resource) => {
+      const { key, logContext } = resource.toContextLog();
+
       req.logContext = Object.freeze({
-        ...(req.logContext ?? { sessionId: null }),
-        ...data,
+        ...(req.logContext ?? {}),
+        [key]: logContext,
       });
     };
 
@@ -93,6 +102,7 @@ export function withLogging<T>(
           error: err,
           method: req.method,
           route,
+          sessionId,
           streaming,
           url: req.url,
           // @ts-expect-error best effort to get err.stack if it exists
@@ -140,6 +150,7 @@ export function withLogging<T>(
         durationMs: elapsed,
         method: req.method,
         route,
+        sessionId,
         statusCode: res.statusCode,
         streaming,
         url: req.url,
