@@ -4,11 +4,7 @@ import type { Transaction } from "sequelize";
 import { runActionStreamed } from "@app/lib/actions/server";
 import type { AgentActionSpecificEvent } from "@app/lib/actions/types/agent";
 import { runAgent } from "@app/lib/api/assistant/agent";
-import type { AgentUsageCount } from "@app/lib/api/assistant/agent_usage";
-import {
-  getAgentsUsage,
-  signalAgentUsage,
-} from "@app/lib/api/assistant/agent_usage";
+import { signalAgentUsage } from "@app/lib/api/assistant/agent_usage";
 import {
   getAgentConfigurations,
   getLightAgentConfiguration,
@@ -55,7 +51,6 @@ import logger from "@app/logger/logger";
 import { launchUpdateUsageWorkflow } from "@app/temporal/usage_queue/client";
 import type {
   AgentActionSuccessEvent,
-  AgentConfigurationType,
   AgentDisabledErrorEvent,
   AgentErrorEvent,
   AgentGenerationCancelledEvent,
