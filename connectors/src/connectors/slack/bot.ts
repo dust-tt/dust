@@ -259,6 +259,14 @@ export async function botValidateToolExecution(
       approved,
     });
 
+    const slackClient = await getSlackClient(connector.id);
+    await slackClient.chat.postEphemeral({
+      channel: slackChannel,
+      user: slackChatBotMessage.slackUserId,
+      text: `The tool execution has been ${approved}.`,
+      thread_ts: slackMessageTs,
+    });
+
     return res;
   } catch (e) {
     logger.error(
@@ -267,7 +275,7 @@ export async function botValidateToolExecution(
         connectorId: connector.id,
         slackTeamId,
       },
-      "Unexpected exception updating mention on Chat Bot message"
+      "Unexpected exception validating tool execution"
     );
     const slackClient = await getSlackClient(connector.id);
     await slackClient.chat.postMessage({

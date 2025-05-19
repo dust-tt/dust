@@ -22,6 +22,27 @@ const ToolValidationActionsCodec = t.union([
   t.literal(second),
 ]);
 
+const StaticAgentConfigSchema = t.type({
+  type: t.string,
+  action_id: t.literal(STATIC_AGENT_CONFIG),
+  block_id: t.string,
+  selected_option: t.type({
+    text: t.type({
+      type: t.string,
+      text: t.string,
+    }),
+    value: t.string,
+  }),
+  action_ts: t.string,
+});
+
+const ToolValidationActionsSchema = t.type({
+  type: t.string,
+  action_id: ToolValidationActionsCodec,
+  block_id: t.string,
+  action_ts: t.string,
+});
+
 export const SlackInteractionPayloadSchema = t.type({
   team: t.type({
     id: t.string,
@@ -40,28 +61,7 @@ export const SlackInteractionPayloadSchema = t.type({
     id: t.string,
   }),
   actions: t.array(
-    t.union([
-      t.type({
-        type: t.string,
-        action_id: t.literal(STATIC_AGENT_CONFIG),
-        block_id: t.string,
-        selected_option: t.type({
-          text: t.type({
-            type: t.string,
-            text: t.string,
-          }),
-          value: t.string,
-        }),
-        action_ts: t.string,
-      }),
-      t.type({
-        type: t.string,
-        action_id: ToolValidationActionsCodec,
-        block_id: t.string,
-        value: t.string,
-        action_ts: t.string,
-      }),
-    ])
+    t.union([StaticAgentConfigSchema, ToolValidationActionsSchema])
   ),
 });
 
@@ -151,7 +151,8 @@ const _webhookSlackInteractionsAPIHandler = async (
         slackMessageTs: messageTs,
       };
 
-      const approved = action.value === "approve" ? "approved" : "rejected";
+      const approved =
+        action.action_id === "approve_tool_execution" ? "approved" : "rejected";
 
       const validationRes = await botValidateToolExecution(
         {

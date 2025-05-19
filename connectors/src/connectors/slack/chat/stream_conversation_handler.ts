@@ -170,12 +170,12 @@ async function streamAgentAnswerToSlack(
           await slackClient.chat.postEphemeral({
             channel: slackChannelId,
             user: slackUserId,
-            text: `Approve tool execution`,
-            blocks: makeToolValidationBlock(
-              event.metadata.agentName,
-              event.metadata.toolName,
-              blockId
-            ),
+            text: "Approve tool execution",
+            blocks: makeToolValidationBlock({
+              agentName: event.metadata.agentName,
+              toolName: event.metadata.toolName,
+              id: blockId,
+            }),
             thread_ts: slackMessageTs,
           });
         }
