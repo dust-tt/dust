@@ -10,6 +10,7 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 
 /**
+ * @swagger
  * /api/v1/w/{wId}/mcp/requests:
  *   get:
  *     summary: Stream MCP tool requests for a workspace

@@ -10,6 +10,7 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 
 /**
+ * @swagger
  * /api/v1/w/{wId}/mcp/heartbeat:
  *   post:
  *     summary: Update heartbeat for a local MCP server

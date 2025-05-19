@@ -11,6 +11,7 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 
 /**
+ * @swagger
  * /api/v1/w/{wId}/mcp/results:
  *   post:
  *     summary: Submit MCP tool execution results
