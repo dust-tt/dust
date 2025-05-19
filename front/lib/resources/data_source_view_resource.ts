@@ -542,6 +542,9 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
           ],
           node_ids: parentsToAdd,
         },
+        options: {
+          cursor: nextPageCursor,
+        },
       });
 
       if (coreRes.isErr()) {
