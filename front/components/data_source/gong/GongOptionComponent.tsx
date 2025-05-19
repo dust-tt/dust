@@ -187,6 +187,10 @@ export function GongOptionComponent({
             <div className="text-muted-foreground dark:text-muted-foreground-night">
               If activated, Dust will sync the list of smart trackers associated
               to each call transcript.
+              <br />
+              {/* The procedure to follow to backfill existing transcripts is a full sync. */}
+              Only new transcripts will be affected, please contact
+              support@dust.tt if you need to update the existing transcripts.
             </div>
           </ContextItem.Description>
         </ContextItem>
