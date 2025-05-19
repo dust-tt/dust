@@ -167,6 +167,7 @@ export class TagResource extends BaseResource<TagModel> {
   ): Promise<TagResource[]> {
     const tags = await TagAgentModel.findAll({
       where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
         agentConfigurationId,
       },
     });
