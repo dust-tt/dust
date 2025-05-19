@@ -378,7 +378,7 @@ export class GongClient {
         };
       } else {
         const callsMetadata = await this.postRequest(
-          `/calls/extensive`,
+          "/calls/extensive",
           body,
           GongPaginatedResults(
             "calls",
