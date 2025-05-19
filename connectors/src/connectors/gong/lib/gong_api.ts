@@ -57,7 +57,7 @@ export const GongParticipantCodec = t.intersection([
   CatchAllCodec,
 ]);
 
-const GongTranscriptMetadataCodec = t.intersection([
+const GongTranscriptMetadataWithoutTrackersCodec = t.intersection([
   t.type({
     metaData: t.intersection([
       t.type({
@@ -89,12 +89,12 @@ const GongTranscriptMetadataCodec = t.intersection([
   CatchAllCodec,
 ]);
 
-export type GongTranscriptMetadata = t.TypeOf<
-  typeof GongTranscriptMetadataCodec
+export type GongTranscriptMetadataWithoutTrackers = t.TypeOf<
+  typeof GongTranscriptMetadataWithoutTrackersCodec
 >;
 
-const GongTranscriptMetadataWithTrackersCodec = t.intersection([
-  GongTranscriptMetadataCodec,
+const GongTranscriptMetadataCodec = t.intersection([
+  GongTranscriptMetadataWithoutTrackersCodec,
   t.type({
     content: t.intersection([
       t.type({
@@ -115,8 +115,8 @@ const GongTranscriptMetadataWithTrackersCodec = t.intersection([
   }),
 ]);
 
-export type GongTranscriptMetadataWithTrackers = t.TypeOf<
-  typeof GongTranscriptMetadataWithTrackersCodec
+export type GongTranscriptMetadata = t.TypeOf<
+  typeof GongTranscriptMetadataCodec
 >;
 
 // Generic codec for paginated results from Gong API.
@@ -342,7 +342,7 @@ export class GongClient {
     pageCursor?: string | null;
     smartTrackersEnabled?: boolean;
   }): Promise<{
-    callsMetadata: GongTranscriptMetadataWithTrackers[];
+    callsMetadata: GongTranscriptMetadata[];
     nextPageCursor: string | null;
   }> {
     // Calling the endpoint with an empty array of callIds causes a 400 error.
@@ -370,7 +370,7 @@ export class GongClient {
         const callsMetadata = await this.postRequest(
           `/calls/extensive`,
           body,
-          GongPaginatedResults("calls", GongTranscriptMetadataWithTrackersCodec)
+          GongPaginatedResults("calls", GongTranscriptMetadataCodec)
         );
         return {
           callsMetadata: callsMetadata.calls,
@@ -380,7 +380,10 @@ export class GongClient {
         const callsMetadata = await this.postRequest(
           `/calls/extensive`,
           body,
-          GongPaginatedResults("calls", GongTranscriptMetadataCodec)
+          GongPaginatedResults(
+            "calls",
+            GongTranscriptMetadataWithoutTrackersCodec
+          )
         );
         // Adding empty trackers to the calls metadata to present a uniformed type.
         return {
