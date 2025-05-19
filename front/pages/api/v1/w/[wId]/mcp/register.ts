@@ -78,6 +78,16 @@ async function handler(
     });
   }
 
+  if (auth.isKey()) {
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "invalid_request_error",
+        message: "API keys are not allowed to register MCP servers.",
+      },
+    });
+  }
+
   const r = PublicRegisterMCPRequestBodySchema.safeParse(req.body);
   if (r.error) {
     return apiError(req, res, {

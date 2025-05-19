@@ -37,7 +37,7 @@ async function handler(
     });
   }
 
-  const { serverId } = r.right;
+  const { serverId, result } = r.right;
 
   const isValidAccess = await validateMCPServerAccess(auth, {
     serverId,
@@ -55,7 +55,7 @@ async function handler(
   // Publish MCP action results.
   await publishMCPResults(auth, {
     mcpServerId: serverId,
-    result: r.right.result,
+    result,
   });
 
   res.status(200).json({
