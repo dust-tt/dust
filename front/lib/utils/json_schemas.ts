@@ -125,7 +125,7 @@ export function setValueAtPath(
   current[path[path.length - 1]] = value;
 }
 
-export function validateJsonSchema(value: string | null | undefined): {
+export function validateJsonSchema(value: object | string | null | undefined): {
   isValid: boolean;
   error?: string;
 } {
@@ -134,7 +134,7 @@ export function validateJsonSchema(value: string | null | undefined): {
   }
 
   try {
-    const parsed = JSON.parse(value);
+    const parsed = typeof value !== "object" ? JSON.parse(value) : value;
     const ajv = new Ajv();
     ajv.compile(parsed); // Throws an error if the schema is invalid
     return { isValid: true };

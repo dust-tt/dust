@@ -1,4 +1,7 @@
 import * as t from "io-ts";
+import type { JSONSchema7 } from "json-schema";
+
+import { validateJsonSchema } from "@app/lib/utils/json_schemas";
 
 import type { SupportedModel } from "../../assistant/assistant";
 import {
@@ -9,8 +12,6 @@ import {
 } from "../../assistant/assistant";
 import { createRangeCodec } from "../../shared/utils/iots_utils";
 import { TimeframeUnitCodec } from "../../shared/utils/time_frame";
-import { validateJsonSchema } from "@app/lib/utils/json_schemas";
-import type { JSONSchema7 } from "json-schema";
 
 const LimitCodec = createRangeCodec(0, 100);
 
@@ -143,7 +144,7 @@ const ReasoningActionConfigurationSchema = t.type({
 const JsonSchemaCodec = new t.Type<JSONSchema7, unknown, unknown>(
   "JsonSchema",
   (u): u is JSONSchema7 => {
-    if (typeof u !== "object" || u === null) return false;
+    if (typeof u !== "object" || u === null) {return false;}
     return validateJsonSchema(JSON.stringify(u)).isValid;
   },
   (u, c) => {
