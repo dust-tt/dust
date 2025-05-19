@@ -1,6 +1,7 @@
 import {} from "@dust-tt/client";
 import { Op } from "sequelize";
 
+import { renderDataSourceConfiguration } from "@app/lib/actions/configuration/helpers";
 import type {
   DataSourcesToolConfigurationType,
   TablesConfigurationToolType,
@@ -9,6 +10,7 @@ import {
   DATA_SOURCE_CONFIGURATION_URI_PATTERN,
   TABLE_CONFIGURATION_URI_PATTERN,
 } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import type { DataSourceConfiguration } from "@app/lib/actions/retrieval";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import {
   isServerSideMCPServerConfiguration,
@@ -27,8 +29,6 @@ import type {
   Result,
 } from "@app/types";
 import { Err, Ok } from "@app/types";
-import { DataSourceConfiguration } from "@app/lib/actions/retrieval";
-import { renderDataSourceConfiguration } from "@app/lib/actions/configuration/helpers";
 
 async function fetchAgentDataSourceConfiguration(
   dataSourceConfiguration: DataSourcesToolConfigurationType[number]

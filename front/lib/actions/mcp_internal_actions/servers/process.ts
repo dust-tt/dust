@@ -9,12 +9,10 @@ import {
 } from "@app/lib/actions/action_file_helpers";
 import { PROCESS_ACTION_TOP_K } from "@app/lib/actions/constants";
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import { getDataSourceConfiguration } from "@app/lib/actions/mcp_internal_actions/servers/utils";
 import type { ProcessActionOutputsType } from "@app/lib/actions/process";
 import { getExtractFileTitle } from "@app/lib/actions/process/utils";
-import {
-  applyDataSourceFilters,
-  DataSourceConfiguration,
-} from "@app/lib/actions/retrieval";
+import { applyDataSourceFilters } from "@app/lib/actions/retrieval";
 import { runActionStreamed } from "@app/lib/actions/server";
 import type {
   ActionGeneratedFileType,
@@ -27,14 +25,10 @@ import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { UserMessageType } from "@app/types";
 import { isUserMessageType, timeFrameFromNow } from "@app/types";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import {
-  getCoreSearchArgs,
-  getDataSourceConfiguration,
-} from "@app/lib/actions/mcp_internal_actions/servers/utils";
 
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "extract_data",
