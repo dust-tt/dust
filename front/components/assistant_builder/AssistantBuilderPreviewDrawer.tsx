@@ -11,13 +11,11 @@ import {
   Markdown,
   MoreIcon,
   Page,
-  Spinner,
   Tabs,
   TabsList,
   TabsTrigger,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import { Label } from "@dust-tt/sparkle";
 import { Separator } from "@radix-ui/react-select";
 import { useContext, useEffect } from "react";
 import { useState } from "react";
@@ -78,10 +76,9 @@ export default function AssistantBuilderRightPanel({
   const [rightPanelTab, setRightPanelTab] =
     useState<AssistantBuilderRightPanelTabType>("Preview");
 
-  const { draftAssistant, isFading } = usePreviewAssistant({
+  const { draftAssistant, isFading, isSavingDraftAgent } = usePreviewAssistant({
     owner,
     builderState,
-    isPreviewOpened: rightPanelTab === "Preview",
     reasoningModels,
   });
 
@@ -145,53 +142,49 @@ export default function AssistantBuilderRightPanel({
       >
         {rightPanelTab === "Preview" && user && (
           <div className="flex h-full w-full flex-1 flex-col justify-between overflow-x-hidden">
-            {draftAssistant ? (
-              isBuilderStateEmpty ? (
-                <div className="flex h-full w-full items-center justify-center">
-                  <div className="text-center">
-                    <span className="block cursor-pointer whitespace-nowrap px-4 py-2 text-muted-foreground">
-                      Start configuring your assistant and try it out!
-                    </span>
-                  </div>
+            {isBuilderStateEmpty ? (
+              <div className="flex h-full w-full items-center justify-center">
+                <div className="text-center">
+                  <span className="block cursor-pointer whitespace-nowrap px-4 py-2 text-muted-foreground">
+                    Start configuring your assistant and try it out!
+                  </span>
                 </div>
-              ) : (
-                <ConversationsNavigationProvider>
-                  <ActionValidationProvider>
-                    <GenerationContextProvider>
-                      <div className="flex-grow overflow-y-auto">
-                        {conversation && (
-                          <ConversationViewer
-                            owner={owner}
-                            user={user}
-                            conversationId={conversation.sId}
-                            onStickyMentionsChange={setStickyMentions}
-                            isInModal
-                            isFading={isFading}
-                            key={conversation.sId}
-                          />
-                        )}
-                      </div>
-                      <div className="shrink-0">
-                        <AssistantInputBar
-                          owner={owner}
-                          onSubmit={handleSubmit}
-                          stickyMentions={stickyMentions}
-                          conversationId={conversation?.sId || null}
-                          additionalAgentConfiguration={draftAssistant}
-                          actions={["attachment"]}
-                          disableAutoFocus
-                          isFloating={false}
-                        />
-                      </div>
-                    </GenerationContextProvider>
-                  </ActionValidationProvider>
-                </ConversationsNavigationProvider>
-              )
-            ) : (
-              <div className="flex h-full w-full flex-col items-center justify-center gap-2">
-                <Label>Try out your assistant...</Label>
-                <Spinner />
               </div>
+            ) : (
+              <ConversationsNavigationProvider>
+                <ActionValidationProvider>
+                  <GenerationContextProvider>
+                    <div className="flex-grow overflow-y-auto">
+                      {conversation && (
+                        <ConversationViewer
+                          owner={owner}
+                          user={user}
+                          conversationId={conversation.sId}
+                          onStickyMentionsChange={setStickyMentions}
+                          isInModal
+                          isFading={isFading}
+                          key={conversation.sId}
+                        />
+                      )}
+                    </div>
+                    <div className="shrink-0">
+                      <AssistantInputBar
+                        isLoading={isSavingDraftAgent}
+                        owner={owner}
+                        onSubmit={handleSubmit}
+                        stickyMentions={stickyMentions}
+                        conversationId={conversation?.sId || null}
+                        additionalAgentConfiguration={
+                          draftAssistant ?? undefined
+                        }
+                        actions={["attachment"]}
+                        disableAutoFocus
+                        isFloating={false}
+                      />
+                    </div>
+                  </GenerationContextProvider>
+                </ActionValidationProvider>
+              </ConversationsNavigationProvider>
             )}
           </div>
         )}
