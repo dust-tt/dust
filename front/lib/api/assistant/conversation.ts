@@ -514,20 +514,8 @@ export async function getSuggestedAgentsForConversation(
     agentsGetView: "list",
     variant: "full", // We load the full agent configuration to get the actions name and description.
   });
-  const agentUsages = await getAgentsUsage({
-    workspaceId: owner.sId,
-  });
 
-  // Filter out agents that have not been used in any conversation.
-  const usedAgents = agents.filter((a: AgentConfigurationType) => {
-    const usage = agentUsages.find((u: AgentUsageCount) => u.agentId === a.sId);
-    return usage?.messageCount ? usage.conversationCount > 0 : false;
-  });
-
-  // If no agents have been used, suggest all agents any way.
-  const agentsToSuggest = usedAgents.length > 0 ? usedAgents : agents;
-
-  const formattedAgents = agentsToSuggest.map((a) => ({
+  const formattedAgents = agents.map((a) => ({
     id: a.sId,
     displayName: `@${a.name}`,
     description: a.description,
