@@ -100,6 +100,12 @@ export class GongConfigurationResource extends BaseResource<GongConfigurationMod
     return new this(this.model, configuration.get());
   }
 
+  async setSmartTrackersEnabled(smartTrackersEnabled: boolean): Promise<void> {
+    await this.update({
+      smartTrackersEnabled,
+    });
+  }
+
   async resetLastSyncTimestamp(): Promise<void> {
     await this.update({
       lastSyncTimestamp: null,
