@@ -96,17 +96,22 @@ export type GongTranscriptMetadata = t.TypeOf<
 const GongTranscriptMetadataWithTrackersCodec = t.intersection([
   GongTranscriptMetadataCodec,
   t.type({
-    content: t.type({
-      tracker: t.intersection([
-        t.type({
-          id: t.string,
-          name: t.string,
-          count: t.number,
-          type: t.string,
-        }),
-        CatchAllCodec,
-      ]),
-    }),
+    content: t.intersection([
+      t.type({
+        trackers: t.array(
+          t.intersection([
+            t.type({
+              id: t.string,
+              name: t.string,
+              count: t.number,
+              type: t.string,
+            }),
+            CatchAllCodec,
+          ])
+        ),
+      }),
+      CatchAllCodec,
+    ]),
   }),
 ]);
 
@@ -336,7 +341,10 @@ export class GongClient {
     callIds: string[];
     pageCursor?: string | null;
     smartTrackersEnabled?: boolean;
-  }) {
+  }): Promise<{
+    callsMetadata: GongTranscriptMetadataWithTrackers[];
+    nextPageCursor: string | null;
+  }> {
     // Calling the endpoint with an empty array of callIds causes a 400 error.
     if (callIds.length === 0) {
       return {
@@ -345,32 +353,44 @@ export class GongClient {
       };
     }
 
-    try {
-      const callsMetadata = await this.postRequest(
-        `/calls/extensive`,
-        {
-          cursor: pageCursor,
-          filter: {
-            callIds,
-          },
-          contentSelector: {
-            exposedFields: {
-              parties: true,
-            },
-            ...(smartTrackersEnabled ? { content: { transcript: true } } : {}),
-          },
+    const body = {
+      cursor: pageCursor,
+      filter: {
+        callIds,
+      },
+      contentSelector: {
+        exposedFields: {
+          parties: true,
         },
-        GongPaginatedResults(
-          "calls",
-          smartTrackersEnabled
-            ? GongTranscriptMetadataWithTrackersCodec
-            : GongTranscriptMetadataCodec
-        )
-      );
-      return {
-        callsMetadata: callsMetadata.calls,
-        nextPageCursor: callsMetadata.records.cursor,
-      };
+        ...(smartTrackersEnabled ? { content: { transcript: true } } : {}),
+      },
+    };
+    try {
+      if (smartTrackersEnabled) {
+        const callsMetadata = await this.postRequest(
+          `/calls/extensive`,
+          body,
+          GongPaginatedResults("calls", GongTranscriptMetadataWithTrackersCodec)
+        );
+        return {
+          callsMetadata: callsMetadata.calls,
+          nextPageCursor: callsMetadata.records.cursor ?? null,
+        };
+      } else {
+        const callsMetadata = await this.postRequest(
+          `/calls/extensive`,
+          body,
+          GongPaginatedResults("calls", GongTranscriptMetadataCodec)
+        );
+        // Adding empty trackers to the calls metadata to present a uniformed type.
+        return {
+          callsMetadata: callsMetadata.calls.map((callMetadata) => ({
+            ...callMetadata,
+            content: { trackers: [] },
+          })),
+          nextPageCursor: callsMetadata.records.cursor ?? null,
+        };
+      }
     } catch (err) {
       if (isNotFoundError(err)) {
         return {
