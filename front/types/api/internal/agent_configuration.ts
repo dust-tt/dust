@@ -144,7 +144,9 @@ const ReasoningActionConfigurationSchema = t.type({
 const JsonSchemaCodec = new t.Type<JSONSchema7, unknown, unknown>(
   "JsonSchema",
   (u): u is JSONSchema7 => {
-    if (typeof u !== "object" || u === null) {return false;}
+    if (typeof u !== "object" || u === null) {
+      return false;
+    }
     return validateJsonSchema(JSON.stringify(u)).isValid;
   },
   (u, c) => {

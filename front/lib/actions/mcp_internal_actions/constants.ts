@@ -134,7 +134,6 @@ export const INTERNAL_MCP_SERVERS: Record<
     flag: "dev_mcp_actions",
   },
 
-
   // Dev
   primitive_types_debugger: {
     id: 1004,

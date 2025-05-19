@@ -70,6 +70,7 @@ function createServer(
 
       const { agentConfiguration, conversation, actionConfiguration } =
         agentLoopRunContext;
+
       assert(
         isServerSideMCPToolConfiguration(actionConfiguration),
         "actionConfiguration must be a server side MCP tool configuration"
