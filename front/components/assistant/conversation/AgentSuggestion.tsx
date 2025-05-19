@@ -156,7 +156,7 @@ export function AgentSuggestion({
         </div>
       )}
       <div className="flex flex-row items-center gap-2">
-        <p className="flex text-base text-muted-foreground">Or</p>
+        <p className="flex text-sm text-muted-foreground">Or</p>
         <AssistantPicker
           owner={owner}
           assistants={allSortedAgents}
