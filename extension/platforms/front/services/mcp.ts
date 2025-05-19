@@ -1,7 +1,7 @@
 import { registerAllTools } from "@app/platforms/front/tools";
 import { McpService } from "@app/shared/services/mcp";
-import { DustMcpServerTransport } from "@app/shared/services/transport";
 import type { DustAPI } from "@dust-tt/client";
+import { DustMcpServerTransport } from "@dust-tt/client";
 import type { WebViewContext } from "@frontapp/plugin-sdk/dist/webViewSdkTypes";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
