@@ -86,7 +86,6 @@ export function GongOptionComponent({
     );
     if (res.ok) {
       if (configKey === GONG_RETENTION_PERIOD_CONFIG_KEY) {
-        2;
         await mutateRetentionPeriodConfig();
       } else if (configKey === GONG_SMART_TRACKERS_CONFIG_KEY) {
         await mutateSmartTrackersConfig();
