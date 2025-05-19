@@ -189,7 +189,7 @@ export function GongOptionComponent({
               to each call transcript.
               <br />
               {/* The procedure to follow to backfill existing transcripts is a full sync. */}
-              Only new transcripts will be affected, please contact
+              Only new transcripts will be affected, please contact us at
               support@dust.tt if you need to update the existing transcripts.
             </div>
           </ContextItem.Description>
