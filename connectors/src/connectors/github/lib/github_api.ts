@@ -58,6 +58,7 @@ import {
 const API_PAGE_SIZE = 100;
 const REPOSITORIES_API_PAGE_SIZE = 25;
 const MAX_ISSUES_PAGE_SIZE = 100;
+export const MAX_REPOSITORIES_PAGE_SIZE = 100;
 
 type GithubOrg = {
   id: number;
@@ -126,7 +127,8 @@ export async function installationIdFromConnectionId(
 
 export async function getReposPage(
   connector: ConnectorResource,
-  page: number
+  page: number,
+  perPage: number = REPOSITORIES_API_PAGE_SIZE
 ): Promise<Result<GithubRepo[], ExternalOAuthTokenError>> {
   try {
     const octokit = await getOctokit(connector);
@@ -134,7 +136,7 @@ export async function getReposPage(
     return new Ok(
       (
         await octokit.request("GET /installation/repositories", {
-          per_page: REPOSITORIES_API_PAGE_SIZE,
+          per_page: perPage,
           page: page,
         })
       ).data.repositories.map((r) => ({
