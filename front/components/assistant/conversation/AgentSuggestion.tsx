@@ -2,9 +2,9 @@ import {
   AssistantCard,
   AssistantCardMore,
   Button,
+  LoadingBlock,
   Page,
   RobotIcon,
-  Spinner,
   useSendNotification,
 } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
@@ -125,59 +125,60 @@ export function AgentSuggestion({
 
   return (
     <div className="flex flex-col items-start gap-6">
+      <Page.SectionHeader
+        title="Best-matching Agents"
+        description="Selected based on agents' descriptions, names, and available tools."
+      />
       {suggestedAgents.length === 0 ? (
-        <div className="flex min-h-28 w-full items-center justify-center">
-          <Spinner />
+        <div className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4">
+          <LoadingBlock className="h-[130px] w-full rounded-xl" />
+          <LoadingBlock className="h-[130px] w-full rounded-xl" />
+          <LoadingBlock className="h-[130px] w-full rounded-xl" />
+          <LoadingBlock className="h-[130px] w-full rounded-xl" />
         </div>
       ) : (
-        <>
-          <Page.SectionHeader
-            title="Best-matching Agents"
-            description="Selected based on agents' descriptions, names, and available tools."
-          />
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4">
-            {suggestedAgents.map((agent, id) => (
-              <AssistantCard
-                key={`${agent.sId}-${id}`}
-                description={agent.description}
-                subtitle={agent.lastAuthors?.join(", ") ?? ""}
-                title={agent.name}
-                pictureUrl={agent.pictureUrl}
-                onClick={() => handleSelectSuggestion(agent)}
-                variant="secondary"
-                action={
-                  <AssistantCardMore
-                    onClick={() => showAssistantDetails(agent)}
-                  />
-                }
-              />
-            ))}
-          </div>
-          <div className="flex flex-row items-center gap-2">
-            <p className="flex text-base text-muted-foreground">Or</p>
-            <AssistantPicker
-              owner={owner}
-              assistants={allSortedAgents}
-              onItemClick={async (agent) => {
-                if (!isLoading) {
-                  setIsLoading(true);
-                  await handleSelectSuggestion(agent);
-                  setIsLoading(false);
-                }
-              }}
-              pickerButton={
-                <Button
-                  variant="outline"
-                  size="sm"
-                  icon={RobotIcon}
-                  label="Pick an agent"
-                  isSelect
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4">
+          {suggestedAgents.map((agent, id) => (
+            <AssistantCard
+              key={`${agent.sId}-${id}`}
+              description={agent.description}
+              subtitle={agent.lastAuthors?.join(", ") ?? ""}
+              title={agent.name}
+              pictureUrl={agent.pictureUrl}
+              onClick={() => handleSelectSuggestion(agent)}
+              variant="secondary"
+              action={
+                <AssistantCardMore
+                  onClick={() => showAssistantDetails(agent)}
                 />
               }
             />
-          </div>
-        </>
+          ))}
+        </div>
       )}
+      <div className="flex flex-row items-center gap-2">
+        <p className="flex text-sm text-muted-foreground">Or</p>
+        <AssistantPicker
+          owner={owner}
+          assistants={allSortedAgents}
+          onItemClick={async (agent) => {
+            if (!isLoading) {
+              setIsLoading(true);
+              await handleSelectSuggestion(agent);
+              setIsLoading(false);
+            }
+          }}
+          pickerButton={
+            <Button
+              variant="outline"
+              size="sm"
+              icon={RobotIcon}
+              label="Pick an agent"
+              isSelect
+            />
+          }
+        />
+      </div>
     </div>
   );
 }
