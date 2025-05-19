@@ -29,6 +29,8 @@ import type {
   Result,
 } from "@app/types";
 import { Err, Ok } from "@app/types";
+import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
+import { Workspace } from "@app/lib/models/workspace";
 
 async function fetchAgentDataSourceConfiguration(
   dataSourceConfiguration: DataSourcesToolConfigurationType[number]
@@ -67,7 +69,15 @@ async function fetchAgentDataSourceConfiguration(
         workspaceId: sIdParts.workspaceModelId,
       },
       nest: true,
-      include: [{ model: DataSourceModel, as: "dataSource", required: true }],
+      include: [
+        { model: DataSourceModel, as: "dataSource", required: true },
+        {
+          model: DataSourceViewModel,
+          as: "dataSourceView",
+          required: true,
+          include: [{ model: Workspace, as: "workspace", required: true }],
+        },
+      ],
     });
 
   if (!agentDataSourceConfiguration) {
