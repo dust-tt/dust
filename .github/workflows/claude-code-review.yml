@@ -5,8 +5,10 @@ on:
     types: [review_requested, synchronize] # Runs when review is requested or PR is updated
 
 permissions:
-  contents: read
+  contents: write
+  issues: write
   pull-requests: write
+  id-token: write
 
 jobs:
   code-review:
@@ -76,7 +78,7 @@ jobs:
         uses: anthropics/claude-code-action@beta
         with:
           # Define the review focus areas
-          prompt: >-
+          direct_prompt: >-
             Review the PR changes. Focus on code quality, potential bugs, and
             performance issues. Suggest improvements where appropriate.
 
