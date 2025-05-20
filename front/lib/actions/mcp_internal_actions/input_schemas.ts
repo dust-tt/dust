@@ -16,6 +16,23 @@ export const TABLE_CONFIGURATION_URI_PATTERN =
 export const CHILD_AGENT_CONFIGURATION_URI_PATTERN =
   /^agent:\/\/dust\/w\/(\w+)\/agents\/(\w+)$/;
 
+// The double "Schema" is intentional, it's a zod schema for a JSON schema.
+export const JsonSchemaSchema = z.custom<JSONSchema>(
+  (val) => {
+    if (typeof val !== "object" || val === null) {
+      return false;
+    }
+    // Remove the mimeType property from the object before validating it, see
+    // below at INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA.
+    const v = { ...val };
+    delete v.mimeType;
+    return validateJsonSchema(v).isValid;
+  },
+  {
+    message: "Value must be a valid JSON schema object",
+  }
+);
+
 /**
  * Mapping between the mime types we used to identify a configurable resource and the Zod schema used to validate it.
  * Not all mime types have a fixed schema, for instance the ENUM mime type is flexible.
@@ -68,20 +85,12 @@ export const ConfigurableToolInputSchemas = {
     })
     .describe("An optional time frame to use for the tool.")
     .nullable(),
-  [INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA]: z.object({
-    jsonSchema: z.custom<JSONSchema>(
-      (val) => {
-        if (typeof val !== "object" || val === null) {
-          return false;
-        }
-        return validateJsonSchema(JSON.stringify(val)).isValid;
-      },
-      {
-        message: "Value must be a valid JSON schema object",
-      }
-    ),
-    mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA),
-  }),
+  [INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA]: z.intersection(
+    JsonSchemaSchema,
+    z.object({
+      mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA),
+    })
+  ),
   // All mime types do not necessarily have a fixed schema,
   // for instance the ENUM mime type is flexible and the exact content of the enum is dynamic.
 } as const satisfies Omit<

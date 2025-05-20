@@ -141,7 +141,7 @@ export function generateConfiguredInput({
       if (!jsonSchema) {
         return null;
       }
-      return { jsonSchema, mimeType };
+      return { ...jsonSchema, mimeType };
     }
 
     case INTERNAL_MIME_TYPES.TOOL_INPUT.STRING: {
@@ -447,7 +447,7 @@ export function getMCPServerRequirements(
   );
 
   const mayRequireJsonSchemaConfiguration = server.tools.some(
-    (tool) => tool.inputSchema?.properties?.jsonSchemaContainer
+    (tool) => tool.inputSchema?.properties?.jsonSchema
   );
 
   const requiredStrings = Object.keys(

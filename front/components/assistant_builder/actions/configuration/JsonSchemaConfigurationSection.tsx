@@ -125,6 +125,14 @@ export function JsonSchemaConfigurationSection({
           setExtractSchema(newSchemaString);
           setEdited(true);
 
+          // If the new schema string is empty, we reset the jsonSchema to null.
+          if (newSchemaString === "") {
+            onConfigUpdate({
+              jsonSchema: null,
+              _jsonSchemaString: null,
+            });
+            return;
+          }
           const parsedSchema = validateJsonSchema(newSchemaString);
           if (parsedSchema.isValid) {
             onConfigUpdate({
