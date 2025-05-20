@@ -99,13 +99,15 @@ export abstract class BaseResource<M extends Model & ResourceWithId> {
   /**
    * Remove 'Resource' suffix and convert to snake_case
    * i.e: UserResource -> user
+   * KillSwitchResource -> kill_switch
+   * MCPServerViewResource -> mcp_server_view
    */
   className(): string {
     return this.constructor.name
       .replace(/Resource$/, "") // Remove 'Resource' suffix
-      .replace(/[A-Z]/g, (letter, index) =>
-        index === 0 ? letter.toLowerCase() : "_" + letter.toLowerCase()
-      );
+      .replace(/([A-Z]+)([A-Z][a-z])/g, "$1_$2") // handle UPPERCASE followed by Titlecase
+      .replace(/([a-z])([A-Z])/g, "$1_$2") // handle normal camelCase
+      .toLowerCase();
   }
 
   /**
