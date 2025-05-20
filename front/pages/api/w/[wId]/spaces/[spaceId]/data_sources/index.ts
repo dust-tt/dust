@@ -9,7 +9,7 @@ import { createDataSourceWithoutProvider } from "@app/lib/api/data_sources";
 import { checkConnectionOwnership } from "@app/lib/api/oauth";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { getOrCreateSystemApiKey } from "@app/lib/auth";
+import { getFeatureFlags, getOrCreateSystemApiKey } from "@app/lib/auth";
 import {
   getDefaultDataSourceDescription,
   getDefaultDataSourceName,
@@ -240,10 +240,13 @@ const handleDataSourceWithProvider = async ({
     });
   }
 
+  const featureFlags = await getFeatureFlags(owner);
+
   // Checking that the provider is allowed for the workspace plan
   const isDataSourceAllowedInPlan = isConnectorProviderAllowedForPlan(
     plan,
-    provider
+    provider,
+    featureFlags
   );
   if (!isDataSourceAllowedInPlan) {
     return apiError(req, res, {

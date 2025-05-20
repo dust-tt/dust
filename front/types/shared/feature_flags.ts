@@ -21,6 +21,7 @@ export const WHITELISTABLE_FEATURES = [
   "openai_o1_high_reasoning_feature",
   "openai_o1_mini_feature",
   "salesforce_feature",
+  "pro_plan_salesforce_connector",
   "show_debug_tools",
   "usage_data_api",
   "custom_webcrawler",
