@@ -7,7 +7,7 @@ import sgMail from "@sendgrid/mail";
 import config from "@app/lib/api/config";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
-import { Err, isDevelopment, Ok } from "@app/types";
+import { Err, isDevelopment, normalizeError, Ok } from "@app/types";
 
 let sgMailClient: sgMail.MailService | null = null;
 
@@ -223,6 +223,6 @@ export async function sendEmailWithTemplate({
       },
       "Error sending email."
     );
-    return new Err(e as Error);
+    return new Err(normalizeError(e));
   }
 }

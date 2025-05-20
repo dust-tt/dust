@@ -34,7 +34,13 @@ import {
   markSyncStarted,
 } from "@app/temporal/labs/connections/utils";
 import type { ModelId, Result } from "@app/types";
-import { Err, isHubspotCredentials, OAuthAPI, Ok } from "@app/types";
+import {
+  Err,
+  isHubspotCredentials,
+  normalizeError,
+  OAuthAPI,
+  Ok,
+} from "@app/types";
 import { CoreAPI, dustManagedCredentials } from "@app/types";
 
 function formatDate(dateString: string): string {
@@ -597,12 +603,12 @@ export async function syncHubspotConnection(
       const errorMsg = `${error instanceof Error ? error.message : String(error)}`;
       logger.error({ error }, errorMsg);
       await markSyncFailed(configuration, errorMsg);
-      return new Err(error as Error);
+      return new Err(normalizeError(error));
     }
   } catch (error) {
     const errorMsg = `${error instanceof Error ? error.message : String(error)}`;
     logger.error({ error }, errorMsg);
     await markSyncFailed(configuration, errorMsg);
-    return new Err(error as Error);
+    return new Err(normalizeError(error));
   }
 }

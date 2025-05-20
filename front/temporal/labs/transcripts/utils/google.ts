@@ -7,6 +7,7 @@ import { getTranscriptsGoogleAuth } from "@app/lib/labs/transcripts/utils/helper
 import type { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import type { Logger } from "@app/logger/logger";
 import type { ModelId, Result } from "@app/types";
+import { normalizeError } from "@app/types";
 
 export async function retrieveRecentGoogleTranscripts(
   {
@@ -80,7 +81,7 @@ export async function retrieveGoogleTranscripts(
       { error, transcriptsConfiguration },
       "[retrieveGoogleTranscripts] Error retrieving recent Google transcripts."
     );
-    return new Err(error as Error);
+    return new Err(normalizeError(error));
   }
 
   for (const recentTranscriptFile of recentTranscriptFiles) {
