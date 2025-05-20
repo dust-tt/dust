@@ -278,8 +278,7 @@ async function getPromptForProcessDustApp({
   agentConfiguration: AgentConfigurationType;
   conversation: ConversationType;
 }) {
-  const { model } = agentConfiguration;
-  // grab user message
+  // Grab user message.
   const userMessagesFiltered = conversation.content.filter((m) =>
     isUserMessageType(m[0])
   );
@@ -296,7 +295,7 @@ async function getPromptForProcessDustApp({
     agentConfiguration,
     fallbackPrompt:
       "Process the retrieved data to extract structured information based on the provided schema.",
-    model: getSupportedModelConfig(model),
+    model: getSupportedModelConfig(agentConfiguration.model),
     hasAvailableActions: false,
     agentsList: null,
   });
@@ -367,7 +366,7 @@ async function generateProcessToolOutput({
         {
           type: "resource" as const,
           resource: {
-            // "text" here is what will be presented to the model,
+            // Field "text" here is what will be presented to the model,
             // not necessarily the raw text of the file.
             text: "Generated JSON file with extraction results",
             uri: jsonFile.getPublicUrl(auth),
