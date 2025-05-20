@@ -815,6 +815,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "openai_o1_high_reasoning_custom_assistants_feature"
   | "openai_o1_high_reasoning_feature"
   | "openai_o1_mini_feature"
+  | "pro_plan_salesforce_connector"
   | "salesforce_feature"
   | "search_knowledge_builder"
   | "show_debug_tools"
@@ -822,6 +823,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "usage_data_api"
   | "custom_webcrawler"
   | "exploded_tables_query"
+  | "pro_plan_salesforce_connector"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;

@@ -27,7 +27,7 @@ async function enableFeatureFlag(
   if (execute) {
     await FeatureFlag.create({
       workspaceId,
-      name: featureFlag as WhitelistableFeature,
+      name: featureFlag satisfies WhitelistableFeature,
     });
   }
 

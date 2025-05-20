@@ -153,6 +153,7 @@ export const AddConnectionMenu = ({
     [owner, systemSpace]
   );
 
+  // Filter available integrations
   const availableIntegrations = integrations.filter((i) => {
     const hide = CONNECTOR_CONFIGURATIONS[i.connectorProvider].hide;
     const rolloutFlag =
@@ -160,7 +161,11 @@ export const AddConnectionMenu = ({
     const hasFlag = rolloutFlag && featureFlags.includes(rolloutFlag);
 
     return (
-      isConnectorProviderAllowedForPlan(plan, i.connectorProvider) &&
+      isConnectorProviderAllowedForPlan(
+        plan,
+        i.connectorProvider,
+        featureFlags
+      ) &&
       isConnectionIdRequiredForProvider(i.connectorProvider) &&
       // If the connector is hidden, it should only be shown if the feature flag is enabled.
       (!hide || hasFlag)
@@ -278,7 +283,8 @@ export const AddConnectionMenu = ({
 
     const isProviderAllowed = isConnectorProviderAllowedForPlan(
       plan,
-      configuration.connectorProvider
+      configuration.connectorProvider,
+      featureFlags
     );
 
     if (!isProviderAllowed) {
