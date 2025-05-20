@@ -582,6 +582,7 @@ export const AdminCommandSchema = t.union([
   ConfluenceCommandSchema,
   ConnectorsCommandSchema,
   GithubCommandSchema,
+  GongCommandSchema,
   GoogleDriveCommandSchema,
   IntercomCommandSchema,
   MicrosoftCommandSchema,
