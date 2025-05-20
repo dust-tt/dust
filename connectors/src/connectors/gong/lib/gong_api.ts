@@ -364,8 +364,8 @@ export class GongClient {
       contentSelector: {
         exposedFields: {
           parties: true,
+          ...(smartTrackersEnabled ? { content: { trackers: true } } : {}),
         },
-        ...(smartTrackersEnabled ? { content: { trackers: true } } : {}),
       },
     };
     try {
