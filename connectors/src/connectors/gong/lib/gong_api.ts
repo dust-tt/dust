@@ -96,24 +96,21 @@ export type GongTranscriptMetadataWithoutTrackers = t.TypeOf<
 const GongTranscriptMetadataCodec = t.intersection([
   GongTranscriptMetadataWithoutTrackersCodec,
   t.type({
-    content: t.union([
-      t.intersection([
-        t.type({
-          trackers: t.array(
-            t.intersection([
-              t.type({
-                id: t.string,
-                name: t.string,
-                count: t.number,
-                type: t.string,
-              }),
-              CatchAllCodec,
-            ])
-          ),
-        }),
-        CatchAllCodec,
-      ]),
-      t.undefined,
+    content: t.intersection([
+      t.type({
+        trackers: t.array(
+          t.intersection([
+            t.type({
+              id: t.string,
+              name: t.string,
+              count: t.number,
+              type: t.string,
+            }),
+            CatchAllCodec,
+          ])
+        ),
+      }),
+      CatchAllCodec,
     ]),
   }),
 ]);
