@@ -76,6 +76,7 @@ import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { deleteAllConversations } from "@app/temporal/scrub_workspace/activities";
 import { CoreAPI } from "@app/types";
+import { TagResource } from "@app/lib/resources/tags_resource";
 
 const hardDeleteLogger = logger.child({ activity: "hard-delete" });
 
@@ -770,4 +771,16 @@ export async function deleteTranscriptsActivity({
       workspaceId: workspace.id,
     },
   });
+}
+
+export async function deleteTagsActivity({
+  workspaceId,
+}: {
+  workspaceId: string;
+}) {
+  const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
+  const tags = await TagResource.findAll(auth);
+  for (const tag of tags) {
+    await tag.delete(auth);
+  }
 }
