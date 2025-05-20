@@ -422,6 +422,8 @@ export async function incrementalSync(
         driveId: driveId,
       };
     }
+
+    await heartbeat();
     const changesRes: GaxiosResponse<drive_v3.Schema$ChangeList> =
       await driveClient.changes.list(opts);
 
@@ -515,6 +517,7 @@ export async function incrementalSync(
 
       const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
+      await heartbeat();
       const driveFile: GoogleDriveObjectType = await driveObjectToDustType(
         connectorId,
         change.file,
@@ -571,6 +574,7 @@ export async function incrementalSync(
 
         continue;
       } else {
+        await heartbeat();
         await syncOneFile(
           connectorId,
           authCredentials,
