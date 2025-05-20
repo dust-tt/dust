@@ -177,6 +177,23 @@ export function APIKeys({
               </p>
               <br />
               <div className="mt-4">
+                <Page.H variant="h5">Name</Page.H>
+                <Page.Horizontal align="center">
+                  <pre className="flex-grow overflow-x-auto rounded bg-muted-background p-2 font-mono dark:bg-muted-background-night">
+                    {keys[0]?.name}
+                  </pre>
+                  <IconButton
+                    tooltip="Copy to clipboard"
+                    icon={isCopiedDomain ? ClipboardCheckIcon : ClipboardIcon}
+                    onClick={async () => {
+                      if (keys[0]?.name) {
+                        await copyApiKey(keys[0].name);
+                      }
+                    }}
+                  />
+                </Page.Horizontal>
+              </div>
+              <div className="mt-4">
                 <Page.H variant="h5">Domain</Page.H>
                 <Page.Horizontal align="center">
                   <pre className="flex-grow overflow-x-auto rounded bg-muted-background p-2 font-mono dark:bg-muted-background-night">
