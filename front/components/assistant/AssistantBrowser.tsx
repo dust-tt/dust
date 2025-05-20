@@ -107,15 +107,22 @@ export function AssistantBrowser({
   const { createAgentButtonRef } = useWelcomeTourGuide();
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const { isDark } = useTheme();
-  const [sortType, setSortType] = useState<"popularity" | "alphabetical">(
-    "popularity"
-  );
+  const [sortType, setSortType] = useState<
+    "popularity" | "alphabetical" | "updated"
+  >("popularity");
 
   const sortAgents = useCallback(
     (a: LightAgentConfigurationType, b: LightAgentConfigurationType) => {
       if (sortType === "popularity") {
         return (
           (b.usage?.messageCount ?? 0) - (a.usage?.messageCount ?? 0) ||
+          a.name.toLowerCase().localeCompare(b.name.toLowerCase())
+        );
+      }
+      if (sortType === "updated") {
+        return (
+          new Date(b.versionCreatedAt ?? 0).getTime() -
+            new Date(a.versionCreatedAt ?? 0).getTime() ||
           a.name.toLowerCase().localeCompare(b.name.toLowerCase())
         );
       }
@@ -340,6 +347,10 @@ export function AssistantBrowser({
                   <DropdownMenuItem
                     label="Alphabetical"
                     onClick={() => setSortType("alphabetical")}
+                  />
+                  <DropdownMenuItem
+                    label="Recently updated"
+                    onClick={() => setSortType("updated")}
                   />
                 </DropdownMenuContent>
               </DropdownMenu>
