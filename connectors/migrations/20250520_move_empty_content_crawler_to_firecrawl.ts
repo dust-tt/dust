@@ -24,6 +24,11 @@ makeScript(
     logger.info(`${workspaceIds.length} workspaces will be skipped`);
 
     const webcrawlerConfigs = await WebCrawlerConfigurationModel.findAll({
+      where: {
+        customCrawler: {
+          [Op.ne]: "firecrawl",
+        },
+      },
       include: [
         {
           model: ConnectorModel,
