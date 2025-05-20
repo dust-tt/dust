@@ -129,6 +129,31 @@ we don't control), but otherwise errors that may alter the execution upstream sh
 using our `Result<>` pattern. It is OK to throw errors, since we can't catch them these are
 guaranteed to trigger a internal error (and return a 500).
 
+### [ERR2] Do not rely on `err as Error`
+
+Never catch and cast what was caught as `Error`. JS allows throwing anything (string, number,
+random object, ...) so the cast may be invalid and hide errors from the logs. Use `normalizeError`
+instead, this util function properly checks the content of the caught object and always returns
+an `Error`.
+
+Example:
+
+```
+// BAD
+try {
+  // Some code.
+} catch (err) {
+  return new Err(err as Err);
+}
+
+// GOOD
+try {
+  // Some code.
+} catch(err) {
+  return new Err(normalizeError(err));
+}
+```
+
 ## BACKEND
 
 ### [BACK1] No sequelize models in API routes
