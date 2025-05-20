@@ -3,15 +3,15 @@ import type { JSONSchema7 } from "json-schema";
 
 import { validateJsonSchema } from "@app/lib/utils/json_schemas";
 
-import type { SupportedModel } from "../../assistant/assistant";
+import type { SupportedModel } from "@app/types/assistant/assistant";
 import {
   isSupportedModel,
   ModelIdCodec,
   ModelProviderIdCodec,
   ReasoningEffortCodec,
-} from "../../assistant/assistant";
-import { createRangeCodec } from "../../shared/utils/iots_utils";
-import { TimeframeUnitCodec } from "../../shared/utils/time_frame";
+} from "@app/types/assistant/assistant";
+import { createRangeCodec } from "@app/types/shared/utils/iots_utils";
+import { TimeframeUnitCodec } from "@app/types/shared/utils/time_frame";
 
 const LimitCodec = createRangeCodec(0, 100);
 
