@@ -54,6 +54,23 @@ export const JsonSchemaSchema = z.object({
   properties: z.record(z.string(), JsonPropertySchema).optional(),
 });
 
+// The double "Schema" is intentional, it's a zod schema for a JSON schema.
+export const JsonSchemaSchema = z.custom<JSONSchema>(
+  (val) => {
+    if (typeof val !== "object" || val === null) {
+      return false;
+    }
+    // Remove the mimeType property from the object before validating it, see
+    // below at INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA.
+    const v = { ...val };
+    delete v.mimeType;
+    return validateJsonSchema(v).isValid;
+  },
+  {
+    message: "Value must be a valid JSON schema object",
+  }
+);
+
 /**
  * Mapping between the mime types we used to identify a configurable resource and the Zod schema used to validate it.
  * Not all mime types have a fixed schema, for instance the ENUM mime type is flexible.
