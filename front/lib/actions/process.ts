@@ -274,10 +274,14 @@ export class ProcessConfigurationServerRunner extends BaseActionConfigurationSer
       }
     }
     if (!actionConfiguration.jsonSchema) {
-      if (rawInputs.schema && typeof rawInputs.schema === "string") {
-        const res = safeParseJSON(rawInputs.schema);
-        if (res.isOk()) {
-          actionConfiguration.jsonSchema = res.value;
+      if (rawInputs.schema) {
+        if (typeof rawInputs.schema === "string") {
+          const res = safeParseJSON(rawInputs.schema);
+          if (res.isOk()) {
+            actionConfiguration.jsonSchema = res.value;
+          }
+        } else if (typeof rawInputs.schema === "object") {
+          actionConfiguration.jsonSchema = rawInputs.schema;
         }
       }
     }
