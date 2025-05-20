@@ -229,7 +229,7 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
     });
     const configuration = await fetchGongConfiguration(connector);
 
-    if (!fromTs) {
+    if (fromTs === null) {
       // Resetting the last sync timestamp to run a full sync.
       await configuration.resetLastSyncTimestamp();
     } else {

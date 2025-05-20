@@ -31,7 +31,7 @@ export const gong = async ({
       const configuration = await fetchGongConfiguration(connector);
 
       // If fromTs is not provided, reset the last sync timestamp to run a full sync.
-      if (!fromTs) {
+      if (fromTs === undefined) {
         await configuration.resetLastSyncTimestamp();
       } else {
         await configuration.setLastSyncTimestamp(fromTs);
