@@ -30,7 +30,7 @@ import type { Authenticator } from "@app/lib/auth";
 
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "hubspot",
-  version: "1.0.0",
+  version: "0.0.1",
   description: "Hubspot tools.",
   authorization: {
     provider: "hubspot" as const,

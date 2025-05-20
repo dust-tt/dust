@@ -18,7 +18,7 @@ import { Err, getHeaderFromGroupIds, normalizeError, Ok } from "@app/types";
 
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "ask_agent",
-  version: "1.0.0",
+  version: "0.0.1",
   description: "Offload a query to another agent.",
   icon: "ActionRobotIcon",
   authorization: null,

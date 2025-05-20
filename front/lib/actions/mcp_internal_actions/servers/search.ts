@@ -40,7 +40,7 @@ const DEFAULT_SEARCH_LABELS_LIMIT = 10;
 
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "search",
-  version: "1.0.0",
+  version: "0.0.1",
   description: "Search through selected Data sources (mcp)",
   icon: "ActionMagnifyingGlassIcon",
   authorization: null,

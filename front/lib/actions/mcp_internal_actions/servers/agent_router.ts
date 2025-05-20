@@ -13,7 +13,7 @@ import { getHeaderFromGroupIds } from "@app/types/groups";
 
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "agent_router",
-  version: "1.0.0",
+  version: "0.0.1",
   description: "Tools with access to the published agents of the workspace.",
   icon: "ActionRobotIcon",
   authorization: null,

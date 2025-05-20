@@ -39,7 +39,7 @@ const DEFAULT_SEARCH_LABELS_LIMIT = 10;
 
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "include_data",
-  version: "1.0.0",
+  version: "0.0.1",
   description: "Include data exhaustively (mcp)",
   icon: "ActionTimeIcon",
   authorization: null,
