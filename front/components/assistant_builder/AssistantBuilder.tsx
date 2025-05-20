@@ -453,7 +453,8 @@ export default function AssistantBuilder({
                       ? ChevronDoubleRightIcon
                       : ChevronDoubleLeftIcon
                   }
-                  variant="outline"
+                  variant="ghost"
+                  tooltip={isPreviewPanelOpen ? "Hide preview" : "Open preview"}
                   onClick={() => setIsPreviewPanelOpen(!isPreviewPanelOpen)}
                 />
               </div>

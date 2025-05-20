@@ -1,4 +1,8 @@
-import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@dust-tt/sparkle";
+import {
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup,
+} from "@dust-tt/sparkle";
 import { useContext, useEffect, useRef, useState } from "react";
 import type { ImperativePanelHandle } from "react-resizable-panels";
 
@@ -58,9 +62,7 @@ export function BuilderLayout({ leftPanel, rightPanel }: BuilderLayoutProps) {
               : "overflow-hidden"
           }
         >
-          <div
-            className="h-full w-full overflow-y-auto px-6 transition-all duration-200 ease-in-out"
-          >
+          <div className="h-full w-full overflow-y-auto px-6 transition-all duration-200 ease-in-out">
             {rightPanel}
           </div>
         </ResizablePanel>
