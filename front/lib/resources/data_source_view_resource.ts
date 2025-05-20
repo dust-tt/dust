@@ -528,26 +528,34 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     // Check parentsToAdd exist in core as part of this data source view.
     const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
-    const coreRes = await coreAPI.searchNodes({
-      filter: {
-        data_source_views: [
-          {
-            data_source_id: this.dataSource.dustAPIDataSourceId,
-            view_filter: [],
-          },
-        ],
-        node_ids: parentsToAdd,
-      },
-    });
+    const allNodes = [];
+    let nextPageCursor;
 
-    if (coreRes.isErr()) {
-      return new Err(new Error(coreRes.error.message));
-    }
+    do {
+      const coreRes = await coreAPI.searchNodes({
+        filter: {
+          data_source_views: [
+            {
+              data_source_id: this.dataSource.dustAPIDataSourceId,
+              view_filter: [],
+            },
+          ],
+          node_ids: parentsToAdd,
+        },
+        options: {
+          cursor: nextPageCursor,
+        },
+      });
+
+      if (coreRes.isErr()) {
+        return new Err(new Error(coreRes.error.message));
+      }
+      allNodes.push(...coreRes.value.nodes);
+      nextPageCursor = coreRes.value.next_page_cursor;
+    } while (nextPageCursor);
 
     // set to avoid O(n**2) complexity in check below
-    const coreParents = new Set(
-      coreRes.value.nodes.map((node) => node.node_id)
-    );
+    const coreParents = new Set(allNodes.map((node) => node.node_id));
     if (parentsToAdd.some((parent) => !coreParents.has(parent))) {
       return new Err(
         new Error("Some parents do not exist in this data source view.")
