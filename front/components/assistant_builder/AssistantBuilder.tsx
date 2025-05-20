@@ -7,6 +7,9 @@ import {
   useHashParam,
   useSendNotification,
 } from "@dust-tt/sparkle";
+import { Button } from "@dust-tt/sparkle";
+import { ChevronDoubleRightIcon } from "@dust-tt/sparkle";
+import { ChevronDoubleLeftIcon } from "@dust-tt/sparkle";
 import assert from "assert";
 import { uniqueId } from "lodash";
 import { useRouter } from "next/router";
@@ -191,7 +194,8 @@ export default function AssistantBuilder({
     agentConfigurationId,
   });
   useNavigationLock(edited && !disableUnsavedChangesPrompt);
-  const { mcpServerViews } = useContext(AssistantBuilderContext);
+  const { mcpServerViews, isPreviewPanelOpen, setIsPreviewPanelOpen } =
+    useContext(AssistantBuilderContext);
 
   const checkUsernameTimeout = React.useRef<NodeJS.Timeout | null>(null);
 
@@ -422,7 +426,7 @@ export default function AssistantBuilder({
         <BuilderLayout
           leftPanel={
             <div className="flex h-full flex-col gap-4 pb-6 pt-4">
-              <div className="flex flex-wrap justify-between gap-4 sm:flex-row">
+              <div className="flex flex-row justify-between gap-4 sm:flex-row">
                 <Tabs
                   className="w-full"
                   onValueChange={(t) => {
@@ -443,6 +447,15 @@ export default function AssistantBuilder({
                     ))}
                   </TabsList>
                 </Tabs>
+                <Button
+                  icon={
+                    isPreviewPanelOpen
+                      ? ChevronDoubleRightIcon
+                      : ChevronDoubleLeftIcon
+                  }
+                  variant="outline"
+                  onClick={() => setIsPreviewPanelOpen(!isPreviewPanelOpen)}
+                />
               </div>
               <div className="flex h-full justify-center">
                 <div className="h-full w-full max-w-4xl">
