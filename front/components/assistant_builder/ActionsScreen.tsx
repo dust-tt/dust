@@ -1094,13 +1094,15 @@ function ActionEditor({
   );
 }
 
+interface AdvancedSettingsProps {
+  maxStepsPerRun: number | null;
+  setMaxStepsPerRun: (maxStepsPerRun: number | null) => void;
+}
+
 function AdvancedSettings({
   maxStepsPerRun,
   setMaxStepsPerRun,
-}: {
-  maxStepsPerRun: number | null;
-  setMaxStepsPerRun: (maxStepsPerRun: number | null) => void;
-}) {
+}: AdvancedSettingsProps) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
