@@ -886,8 +886,13 @@ function TagsSection({
     // We make sure we don't suggest tags that doesn't already exists
     return (
       tagsSuggestions.suggestions
-        ?.slice(0, 3)
-        .filter((tag) => tags.findIndex((t) => t.name === tag) !== -1) ?? []
+        ?.filter(
+          (tag) =>
+            tags.findIndex(
+              (t) => t.name.toLowerCase() === tag.toLowerCase()
+            ) !== -1
+        )
+        .slice(0, 3) ?? []
     );
   }, [tagsSuggestions, tags]);
 
