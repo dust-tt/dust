@@ -1,0 +1,35 @@
+name: Claude Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize] # Runs on new PRs and updates
+
+jobs:
+  code-review:
+    runs-on: ubuntu-latest
+    steps:
+      # Check out the code to allow git diff operations
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Fetch full history for accurate diffs
+
+      - name: Run Code Review with Claude
+        id: code-review
+        uses: anthropics/claude-code-action@beta
+        with:
+          # Define the review focus areas
+          prompt: >-
+            Review the PR changes. Focus on code quality, potential bugs, and
+            performance issues. Suggest improvements where appropriate.
+
+          # Limited tools for safer review operations
+          allowed_tools: [
+              "Bash(git diff --name-only HEAD~1)", # List changed files
+              "Bash(git diff HEAD~1)", # See actual changes
+              "View", # Read file contents
+              "GlobTool", # Find related files
+              "GrepTool", # Search for patterns
+            ]
+
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
