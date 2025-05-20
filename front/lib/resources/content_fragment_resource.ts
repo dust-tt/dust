@@ -36,7 +36,13 @@ import type {
   Result,
   SupportedContentFragmentType,
 } from "@app/types";
-import { CoreAPI, Err, isSupportedImageContentType, normalizeError, Ok } from "@app/types";
+import {
+  CoreAPI,
+  Err,
+  isSupportedImageContentType,
+  normalizeError,
+  Ok,
+} from "@app/types";
 
 export const CONTENT_OUTDATED_MSG =
   "Content is outdated. Please refer to the latest version of this content.";
