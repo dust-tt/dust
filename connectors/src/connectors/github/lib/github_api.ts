@@ -21,7 +21,9 @@ import { fetch as undiciFetch, ProxyAgent } from "undici";
 import {
   isBadCredentials,
   isGithubRequestErrorNotFound,
+  isGithubRequestErrorRepositoryAccessBlocked,
   isGithubRequestRedirectCountExceededError,
+  RepositoryAccessBlockedError,
 } from "@connectors/connectors/github/lib/errors";
 import type {
   DiscussionCommentNode,
@@ -58,6 +60,7 @@ import {
 const API_PAGE_SIZE = 100;
 const REPOSITORIES_API_PAGE_SIZE = 25;
 const MAX_ISSUES_PAGE_SIZE = 100;
+export const MAX_REPOSITORIES_PAGE_SIZE = 100;
 
 type GithubOrg = {
   id: number;
@@ -126,7 +129,8 @@ export async function installationIdFromConnectionId(
 
 export async function getReposPage(
   connector: ConnectorResource,
-  page: number
+  page: number,
+  perPage: number = REPOSITORIES_API_PAGE_SIZE
 ): Promise<Result<GithubRepo[], ExternalOAuthTokenError>> {
   try {
     const octokit = await getOctokit(connector);
@@ -134,7 +138,7 @@ export async function getReposPage(
     return new Ok(
       (
         await octokit.request("GET /installation/repositories", {
-          per_page: REPOSITORIES_API_PAGE_SIZE,
+          per_page: perPage,
           page: page,
         })
       ).data.repositories.map((r) => ({
@@ -826,7 +830,32 @@ export async function processRepository({
   repoId: number;
   onEntry: (entry: ReadEntry) => void;
   logger: Logger;
-}) {
+}): Promise<
+  Result<
+    {
+      tempDir: string;
+      files: {
+        fileName: string;
+        filePath: string[];
+        sourceUrl: string;
+        sizeBytes: number;
+        documentId: string;
+        parentInternalId: string | null;
+        parents: string[];
+        localFilePath: string;
+      }[];
+      directories: {
+        dirName: string;
+        dirPath: string[];
+        sourceUrl: string;
+        internalId: string;
+        parentInternalId: string | null;
+        parents: string[];
+      }[];
+    },
+    RepositoryAccessBlockedError | ExternalOAuthTokenError
+  >
+> {
   const octokit = await getOctokit(connector);
 
   const { data } = await octokit.rest.repos.get({
@@ -883,6 +912,9 @@ export async function processRepository({
   } catch (err) {
     if (isGithubRequestErrorNotFound(err)) {
       return new Err(new ExternalOAuthTokenError(err));
+    }
+    if (isGithubRequestErrorRepositoryAccessBlocked(err)) {
+      return new Err(new RepositoryAccessBlockedError(err));
     }
 
     throw err;

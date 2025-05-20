@@ -69,6 +69,7 @@ export async function createEnterpriseConnection(
     enabled_clients: [
       config.getAuth0WebApplicationId(),
       config.getAuth0ExtensionApplicationId(),
+      config.getAuth0CliApplicationId(),
     ],
     metadata: {},
   });

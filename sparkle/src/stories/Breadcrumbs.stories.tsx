@@ -27,9 +27,7 @@ type BreadcrumbsExampleProps = {
 };
 
 export const BreadcrumbsExample = (args: BreadcrumbsExampleProps) => {
-  const items0 = [
-    { label: "Home", icon: HomeIcon },
-  ];
+  const items0 = [{ label: "Home", icon: HomeIcon }];
 
   const items1 = [
     { label: "Home", href: "#", icon: HomeIcon },

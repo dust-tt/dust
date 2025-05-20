@@ -5,6 +5,7 @@ import {
   getRepo,
   getReposPage,
   installationIdFromConnectionId,
+  MAX_REPOSITORIES_PAGE_SIZE,
 } from "@connectors/connectors/github/lib/github_api";
 import {
   getCodeRootInternalId,
@@ -42,7 +43,7 @@ import type {
   ContentNodesViewType,
   DataSourceConfig,
 } from "@connectors/types";
-import { INTERNAL_MIME_TYPES } from "@connectors/types";
+import { INTERNAL_MIME_TYPES, normalizeError } from "@connectors/types";
 
 const logger = mainLogger.child({ provider: "github" });
 
@@ -166,7 +167,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
 
       return new Ok(undefined);
     } catch (err) {
-      return new Err(err as Error);
+      return new Err(normalizeError(err));
     }
   }
 
@@ -222,7 +223,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
 
       return new Ok(undefined);
     } catch (err) {
-      return new Err(err as Error);
+      return new Err(normalizeError(err));
     }
   }
 
@@ -244,7 +245,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
       });
       return new Ok(this.connectorId.toString());
     } catch (err) {
-      return new Err(err as Error);
+      return new Err(normalizeError(err));
     }
   }
 
@@ -271,7 +272,11 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
       let nodes: ContentNode[] = [];
       let pageNumber = 1; // 1-indexed
       for (;;) {
-        const pageRes = await getReposPage(c, pageNumber);
+        const pageRes = await getReposPage(
+          c,
+          pageNumber,
+          MAX_REPOSITORIES_PAGE_SIZE
+        );
 
         if (pageRes.isErr()) {
           return new Err(

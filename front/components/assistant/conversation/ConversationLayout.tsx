@@ -137,7 +137,7 @@ const ConversationLayoutContent = ({
             ? `Dust - ${conversation?.title}`
             : `Dust - New Conversation`
         }
-        isConversationView
+        noSidePadding
         titleChildren={
           activeConversationId && (
             <ConversationTitle owner={owner} baseUrl={baseUrl} />

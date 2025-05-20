@@ -5,12 +5,11 @@ import { useEffect, useState } from "react";
 import { cn } from "@sparkle/lib/utils";
 
 const PopoverRoot = PopoverPrimitive.Root;
-
 const PopoverTrigger = PopoverPrimitive.Trigger;
-
 const PopoverPortal = PopoverPrimitive.Portal;
+const PopoverAnchor = PopoverPrimitive.Anchor;
 
-interface PopoverContentProps
+export interface PopoverContentProps
   extends React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Content> {
   fullWidth?: boolean;
   mountPortal?: boolean;
@@ -49,7 +48,7 @@ const PopoverContent = React.forwardRef<
           "s-border s-border-border dark:s-border-border-night",
           "s-bg-background dark:s-bg-background-night",
           "s-text-primary-950 dark:s-text-primary-950-night",
-          fullWidth ? "s-grow" : "s-w-72 s-p-4",
+          fullWidth ? "s-w-full" : "s-w-72 s-p-4",
           className
         )}
         {...props}
@@ -68,7 +67,7 @@ const PopoverContent = React.forwardRef<
         const defaultContainer = dialogElements[dialogElements.length - 1];
         setContainer(defaultContainer);
       }
-    }, []);
+    }, [mountPortal, container]);
 
     return mountPortal ? (
       <PopoverPrimitive.Portal container={container}>
@@ -102,4 +101,95 @@ function Popover({
 
 PopoverContent.displayName = PopoverPrimitive.Content.displayName;
 
-export { Popover, PopoverContent, PopoverPortal, PopoverRoot, PopoverTrigger };
+interface AnchoredPopoverProps extends PopoverContentProps {
+  open: boolean;
+  anchorRef?: React.RefObject<HTMLElement>;
+  children: React.ReactNode;
+}
+
+function AnchoredPopover({
+  open,
+  anchorRef,
+  children,
+  className,
+  ...props
+}: AnchoredPopoverProps) {
+  const [position, setPosition] = useState({
+    top: "50%",
+    left: "50%",
+    width: "0px",
+    height: "0px",
+  });
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    const updatePosition = () => {
+      if (!anchorRef?.current) {
+        setPosition({
+          top: "50%",
+          left: "50%",
+          width: "0px",
+          height: "0px",
+        });
+        return;
+      }
+
+      const rect = anchorRef.current.getBoundingClientRect();
+      setPosition({
+        top: `${rect.top}px`,
+        left: `${rect.left}px`,
+        width: `${rect.width}px`,
+        height: `${rect.height}px`,
+      });
+    };
+
+    updatePosition();
+
+    const resizeObserver = new ResizeObserver(updatePosition);
+    if (anchorRef?.current) {
+      resizeObserver.observe(anchorRef.current);
+    }
+
+    window.addEventListener("scroll", updatePosition, true);
+
+    return () => {
+      resizeObserver.disconnect();
+      window.removeEventListener("scroll", updatePosition, true);
+    };
+  }, [open, anchorRef]);
+
+  return (
+    <PopoverRoot open={open} modal={false}>
+      <PopoverAnchor
+        className="s-fixed s-transition-all s-duration-300 s-ease-in-out"
+        style={{
+          top: position.top,
+          left: position.left,
+          width: position.width,
+          height: position.height,
+        }}
+      />
+      <PopoverContent
+        {...props}
+        onOpenAutoFocus={(e) => e.preventDefault()}
+        mountPortal={false}
+        className={cn(className, !anchorRef && "s-translate-y-[-50%]")}
+      >
+        {children}
+      </PopoverContent>
+    </PopoverRoot>
+  );
+}
+
+export {
+  AnchoredPopover,
+  Popover,
+  PopoverAnchor,
+  PopoverContent,
+  PopoverPortal,
+  PopoverRoot,
+  PopoverTrigger,
+};

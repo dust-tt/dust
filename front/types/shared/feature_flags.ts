@@ -1,6 +1,5 @@
 export const WHITELISTABLE_FEATURES = [
   "advanced_notion_management",
-  "agent_discovery",
   "claude_3_7_reasoning",
   "co_edition",
   "deepseek_feature",

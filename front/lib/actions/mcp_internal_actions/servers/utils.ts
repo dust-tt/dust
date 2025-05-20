@@ -9,6 +9,12 @@ import {
   DATA_SOURCE_CONFIGURATION_URI_PATTERN,
   TABLE_CONFIGURATION_URI_PATTERN,
 } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import type { AgentLoopContextType } from "@app/lib/actions/types";
+import {
+  isServerSideMCPServerConfiguration,
+  isServerSideMCPToolConfiguration,
+} from "@app/lib/actions/types/guards";
+import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
@@ -176,4 +182,40 @@ export async function getCoreSearchArgs(
     view_filter: dataSourceView.toViewFilter(),
     dataSourceView: dataSourceView.toJSON(),
   });
+}
+
+export function shouldAutoGenerateTags(
+  agentLoopContext: AgentLoopContextType
+): boolean {
+  const hasTagAutoMode = (
+    dataSourceConfigurations: DataSourceConfiguration[]
+  ) =>
+    dataSourceConfigurations.some(
+      (dataSourceConfiguration) =>
+        dataSourceConfiguration.filter.tags?.mode === "auto"
+    );
+
+  if (
+    !!agentLoopContext.listToolsContext?.agentActionConfiguration &&
+    isServerSideMCPServerConfiguration(
+      agentLoopContext.listToolsContext.agentActionConfiguration
+    ) &&
+    !!agentLoopContext.listToolsContext.agentActionConfiguration.dataSources
+  ) {
+    return hasTagAutoMode(
+      agentLoopContext.listToolsContext.agentActionConfiguration.dataSources
+    );
+  } else if (
+    !!agentLoopContext.runContext?.actionConfiguration &&
+    isServerSideMCPToolConfiguration(
+      agentLoopContext.runContext.actionConfiguration
+    ) &&
+    !!agentLoopContext.runContext.actionConfiguration.dataSources
+  ) {
+    return hasTagAutoMode(
+      agentLoopContext.runContext.actionConfiguration.dataSources
+    );
+  }
+
+  return false;
 }

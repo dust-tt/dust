@@ -13,7 +13,7 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 
 /**
- * @ignoreswagger
+ * @swagger
  * /api/v1/w/{wId}/mcp/register:
  *   post:
  *     summary: Register a local MCP server
@@ -38,11 +38,11 @@ import type { WithAPIErrorResponse } from "@app/types";
  *           schema:
  *             type: object
  *             required:
- *               - serverId
+ *               - serverName
  *             properties:
- *               serverId:
+ *               serverName:
  *                 type: string
- *                 description: Client-generated UUID of the MCP server
+ *                 description: Name of the MCP server
  *     responses:
  *       200:
  *         description: Server registered successfully
@@ -74,6 +74,16 @@ async function handler(
       api_error: {
         type: "invalid_request_error",
         message: "Method not allowed.",
+      },
+    });
+  }
+
+  if (auth.isKey()) {
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "invalid_request_error",
+        message: "API keys are not allowed to register MCP servers.",
       },
     });
   }

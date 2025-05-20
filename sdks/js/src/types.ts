@@ -2934,20 +2934,12 @@ export type HeartbeatMCPResponseType = z.infer<
 >;
 
 export const PublicPostMCPResultsRequestBodySchema = z.object({
-  requestId: z.string(),
   result: z.unknown(),
+  serverId: z.string(),
 });
 
 export type PublicPostMCPResultsRequestBody = z.infer<
   typeof PublicPostMCPResultsRequestBodySchema
->;
-
-export const PostMCPResultsRequestQuerySchema = z.object({
-  serverId: z.string(),
-});
-
-export type PostMCPResultsRequestQueryType = z.infer<
-  typeof PostMCPResultsRequestQuerySchema
 >;
 
 export const PostMCPRequestsRequestQuerySchema = z.object({

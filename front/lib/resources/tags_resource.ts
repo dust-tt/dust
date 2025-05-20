@@ -167,6 +167,7 @@ export class TagResource extends BaseResource<TagModel> {
   ): Promise<TagResource[]> {
     const tags = await TagAgentModel.findAll({
       where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
         agentConfigurationId,
       },
     });
@@ -187,9 +188,13 @@ export class TagResource extends BaseResource<TagModel> {
         agentConfigurationId: agentConfigurationIds,
       },
     });
+    const tagIds = [...new Set(tagAgents.map((t) => t.tagId))];
+    if (tagIds.length === 0) {
+      return {};
+    }
     const tags = await this.baseFetch(auth, {
       where: {
-        id: [...new Set(tagAgents.map((t) => t.tagId))],
+        id: tagIds,
       },
     });
 

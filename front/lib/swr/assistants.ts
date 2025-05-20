@@ -147,10 +147,12 @@ export function useSuggestedAgentConfigurations({
   workspaceId,
   conversationId,
   messageId,
+  disabled,
 }: {
   workspaceId: string;
   conversationId: string;
   messageId: string;
+  disabled?: boolean;
 }) {
   const agentConfigurationsFetcher: Fetcher<GetAgentConfigurationsResponseBody> =
     fetcher;
@@ -163,7 +165,7 @@ export function useSuggestedAgentConfigurations({
 
   const { data, error, mutate, mutateRegardlessOfQueryParams } =
     useSWRWithDefaults(key, agentConfigurationsFetcher, {
-      disabled: inCache,
+      disabled: inCache || disabled,
     });
 
   const dataToUse = cachedData || data;
@@ -171,7 +173,7 @@ export function useSuggestedAgentConfigurations({
   return {
     suggestedAgentConfigurations:
       dataToUse?.agentConfigurations ?? emptyArray(),
-    isSuggestedAgentConfigurationsLoading: !error && !dataToUse,
+    isSuggestedAgentConfigurationsLoading: !error && !dataToUse && !disabled,
     isSuggestedAgentConfigurationsError: error,
     mutate,
     mutateRegardlessOfQueryParams,

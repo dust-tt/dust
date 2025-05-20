@@ -30,8 +30,8 @@ export function InstructionHistory({
     (config: LightAgentConfigurationType) => {
       const dateFormatter = new Intl.DateTimeFormat("en-US", {
         year: "numeric",
-        month: "long",
-        day: "numeric",
+        month: "2-digit",
+        day: "2-digit",
         hour: "numeric",
         minute: "numeric",
         hour12: true,
@@ -53,9 +53,9 @@ export function InstructionHistory({
         : b.version;
 
       if (timeA !== timeB) {
-        return timeA - timeB;
+        return timeB - timeA;
       }
-      return a.version - b.version;
+      return b.version - a.version;
     });
 
     const result: Array<{

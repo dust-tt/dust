@@ -19,7 +19,10 @@ import { getTemporalClient, terminateWorkflow } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types";
-import { microsoftGarbageCollectionWorkflowId } from "@connectors/types";
+import {
+  microsoftGarbageCollectionWorkflowId,
+  normalizeError,
+} from "@connectors/types";
 
 export async function launchMicrosoftFullSyncWorkflow(
   connectorId: ModelId,
@@ -86,7 +89,7 @@ export async function launchMicrosoftFullSyncWorkflow(
       },
       `Failed starting workflow.`
     );
-    return new Err(e as Error);
+    return new Err(normalizeError(e));
   }
 }
 
@@ -133,7 +136,7 @@ export async function launchMicrosoftIncrementalSyncWorkflow(
       },
       `Failed starting workflow.`
     );
-    return new Err(e as Error);
+    return new Err(normalizeError(e));
   }
 }
 
@@ -204,6 +207,6 @@ export async function launchMicrosoftGarbageCollectionWorkflow(
       },
       `Failed starting workflow.`
     );
-    return new Err(e as Error);
+    return new Err(normalizeError(e));
   }
 }

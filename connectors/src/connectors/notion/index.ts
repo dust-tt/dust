@@ -32,6 +32,7 @@ import type { DataSourceConfig } from "@connectors/types";
 import {
   getOAuthConnectionAccessToken,
   INTERNAL_MIME_TYPES,
+  normalizeError,
 } from "@connectors/types";
 
 import { getOrphanedCount, hasChildren } from "./lib/parents";
@@ -264,7 +265,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
         "Error stopping notion sync workflow"
       );
 
-      return new Err(e as Error);
+      return new Err(normalizeError(e));
     }
 
     return new Ok(undefined);
@@ -414,7 +415,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
         "Error stopping notion sync workflow."
       );
 
-      return new Err(e as Error);
+      return new Err(normalizeError(e));
     }
 
     notionConnectorState.fullResyncStartTime = new Date();

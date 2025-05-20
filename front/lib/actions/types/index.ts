@@ -165,11 +165,11 @@ export type AgentLoopListToolsContextType = {
 
 export type AgentLoopContextType =
   | {
-      agentLoopRunContext: AgentLoopRunContextType;
-      agentLoopListToolsContext?: never;
+      runContext: AgentLoopRunContextType;
+      listToolsContext?: never;
     }
   | {
-      agentLoopRunContext?: never;
-      agentLoopListToolsContext: AgentLoopListToolsContextType;
+      runContext?: never;
+      listToolsContext: AgentLoopListToolsContextType;
     }
-  | { agentLoopRunContext?: never; agentLoopListToolsContext?: never };
+  | { runContext?: never; listToolsContext?: never };

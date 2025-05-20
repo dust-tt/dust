@@ -103,7 +103,9 @@ export { PaginatedCitationsGrid } from "./PaginatedCitationsGrid";
 export { Pagination } from "./Pagination";
 export { ColorPicker, IconPicker } from "./Picker";
 export {
+  AnchoredPopover,
   Popover,
+  PopoverAnchor,
   PopoverContent,
   PopoverPortal,
   PopoverRoot,
@@ -147,13 +149,6 @@ export {
   TooltipRoot,
   TooltipTrigger,
 } from "./Tooltip";
-export {
-  TourGuide,
-  TourGuideCard,
-  TourGuideCardContent,
-  TourGuideCardTitle,
-  TourGuideCardVisual,
-} from "./TourGuide";
 export { Tree } from "./Tree";
 export { TypingAnimation } from "./TypingAnimation";
 export { ValueCard } from "./ValueCard";

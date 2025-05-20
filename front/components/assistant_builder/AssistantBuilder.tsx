@@ -1,13 +1,6 @@
 import "react-image-crop/dist/ReactCrop.css";
 
 import {
-  BarChartIcon,
-  Button,
-  ChatBubbleBottomCenterTextIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
-  cn,
-  MagicIcon,
   Tabs,
   TabsList,
   TabsTrigger,
@@ -19,21 +12,16 @@ import { uniqueId } from "lodash";
 import { useRouter } from "next/router";
 import React, { useCallback, useContext, useEffect, useState } from "react";
 
-import ActionsScreen, {
-  hasActionError,
-} from "@app/components/assistant_builder/ActionsScreen";
+import { hasActionError } from "@app/components/assistant_builder/ActionsScreen";
+import ActionsScreen from "@app/components/assistant_builder/ActionsScreen";
 import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
 import AssistantBuilderRightPanel from "@app/components/assistant_builder/AssistantBuilderPreviewDrawer";
 import { BuilderLayout } from "@app/components/assistant_builder/BuilderLayout";
-import {
-  INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT,
-  InstructionScreen,
-} from "@app/components/assistant_builder/InstructionScreen";
+import { INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT } from "@app/components/assistant_builder/InstructionScreen";
+import { InstructionScreen } from "@app/components/assistant_builder/InstructionScreen";
 import { PrevNextButtons } from "@app/components/assistant_builder/PrevNextButtons";
-import SettingsScreen, {
-  validateHandle,
-} from "@app/components/assistant_builder/SettingsScreen";
-import { SharingButton } from "@app/components/assistant_builder/Sharing";
+import { validateHandle } from "@app/components/assistant_builder/SettingsScreen";
+import SettingsScreen from "@app/components/assistant_builder/SettingsScreen";
 import { submitAssistantBuilderForm } from "@app/components/assistant_builder/submitAssistantBuilderForm";
 import type {
   AssistantBuilderPendingAction,
@@ -44,9 +32,9 @@ import type {
 } from "@app/components/assistant_builder/types";
 import {
   BUILDER_SCREENS,
-  BUILDER_SCREENS_INFOS,
   getDefaultAssistantState,
 } from "@app/components/assistant_builder/types";
+import { BUILDER_SCREENS_INFOS } from "@app/components/assistant_builder/types";
 import { useNavigationLock } from "@app/components/assistant_builder/useNavigationLock";
 import { useSlackChannel } from "@app/components/assistant_builder/useSlackChannels";
 import { useTemplate } from "@app/components/assistant_builder/useTemplate";
@@ -61,15 +49,8 @@ import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { useKillSwitches } from "@app/lib/swr/kill";
 import { useModels } from "@app/lib/swr/models";
 import { useUser } from "@app/lib/swr/user";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import type {
-  AgentConfigurationScope,
-  AssistantBuilderRightPanelStatus,
-  AssistantBuilderRightPanelTab,
-  WorkspaceType,
-} from "@app/types";
+import type { AgentConfigurationScope, WorkspaceType } from "@app/types";
 import {
-  assertNever,
   CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG,
   GPT_4_1_MINI_MODEL_CONFIG,
   isAdmin,
@@ -77,6 +58,7 @@ import {
   isUser,
   SUPPORTED_MODEL_CONFIGS,
 } from "@app/types";
+import { assertNever } from "@app/types";
 
 function isValidTab(tab: string): tab is BuilderScreen {
   return BUILDER_SCREENS.includes(tab as BuilderScreen);
@@ -117,20 +99,9 @@ export default function AssistantBuilder({
   const { killSwitches } = useKillSwitches();
   const { models, reasoningModels } = useModels({ owner });
 
-  const { featureFlags } = useFeatureFlags({
-    workspaceId: owner.sId,
-  });
-  const isAgentDiscoveryEnabled = featureFlags.includes("agent_discovery");
-
   const isSavingDisabled = killSwitches?.includes("save_agent_configurations");
 
-  const defaultScope = isAgentDiscoveryEnabled
-    ? flow === "personal_assistants"
-      ? "hidden"
-      : "visible"
-    : flow === "personal_assistants"
-      ? "private"
-      : "workspace";
+  const defaultScope = flow === "personal_assistants" ? "hidden" : "visible";
 
   const [currentTab, setCurrentTab] = useHashParam(
     "selectedTab",
@@ -206,7 +177,6 @@ export default function AssistantBuilder({
 
   const {
     slackDataSource,
-    showSlackIntegration,
     selectedSlackChannels,
     slackChannelsLinkedWithAgent,
     setSelectedSlackChannels,
@@ -224,32 +194,6 @@ export default function AssistantBuilder({
   const { mcpServerViews } = useContext(AssistantBuilderContext);
 
   const checkUsernameTimeout = React.useRef<NodeJS.Timeout | null>(null);
-
-  const [rightPanelStatus, setRightPanelStatus] =
-    useState<AssistantBuilderRightPanelStatus>({
-      tab: template != null ? "Template" : null,
-      openedAt: template != null ? Date.now() : null,
-    });
-
-  // We deactivate the Preview button if the BuilderState is empty (= no instructions, no tools)
-  const isBuilderStateEmpty =
-    !builderState.instructions?.trim() && !builderState.actions.length;
-
-  const [isPreviewButtonAnimating, setIsPreviewButtonAnimating] =
-    useState(false);
-
-  const triggerPreviewButtonAnimation = () => {
-    setIsPreviewButtonAnimating(true);
-    setTimeout(() => {
-      setIsPreviewButtonAnimating(false);
-    }, 1500);
-  };
-
-  useEffect(() => {
-    if (!isBuilderStateEmpty) {
-      triggerPreviewButtonAnimation();
-    }
-  }, [isBuilderStateEmpty]);
 
   // If agent is created, the user creating it should be added to the builder
   // editors list. If not, then the user should be in this list.
@@ -281,24 +225,6 @@ export default function AssistantBuilder({
     agentConfigurationId,
     initialBuilderState,
   ]);
-
-  const openRightPanelTab = (tabName: AssistantBuilderRightPanelTab) => {
-    setRightPanelStatus({
-      tab: tabName,
-      openedAt: Date.now(),
-    });
-  };
-  const closeRightPanel = () => {
-    setRightPanelStatus({
-      tab: null,
-      openedAt: null,
-    });
-  };
-  const toggleRightPanel = () => {
-    rightPanelStatus.tab !== null
-      ? closeRightPanel()
-      : openRightPanelTab(template === null ? "Preview" : "Template");
-  };
 
   const formValidation = useCallback(async () => {
     const modelConfig = SUPPORTED_MODEL_CONFIGS.filter(
@@ -467,6 +393,7 @@ export default function AssistantBuilder({
         hideSidebar
         isWideMode
         owner={owner}
+        noSidePadding
         titleChildren={
           !edited ? (
             <AppLayoutSimpleCloseTitle
@@ -514,146 +441,76 @@ export default function AssistantBuilder({
                         data-gtm-location={tab.dataGtm.location}
                       />
                     ))}
-                    {!isAgentDiscoveryEnabled && (
-                      <div className="flex w-full items-center justify-end">
-                        <SharingButton
-                          agentConfigurationId={agentConfigurationId}
-                          initialScope={
-                            initialBuilderState?.scope ?? defaultScope
-                          }
-                          newScope={builderState.scope}
-                          owner={owner}
-                          showSlackIntegration={showSlackIntegration}
-                          slackChannelSelected={selectedSlackChannels || []}
-                          slackDataSource={slackDataSource}
-                          setNewScope={(
-                            scope: Exclude<AgentConfigurationScope, "global">
-                          ) => {
-                            setEdited(scope !== initialBuilderState?.scope);
-                            setBuilderState((state) => ({ ...state, scope }));
-                          }}
-                          baseUrl={baseUrl}
-                          setNewLinkedSlackChannels={(channels) => {
-                            setSelectedSlackChannels(channels);
-                            setEdited(true);
-                          }}
-                        />
-                      </div>
-                    )}
                   </TabsList>
                 </Tabs>
               </div>
-              {(() => {
-                switch (screen) {
-                  case "instructions":
-                    return (
-                      <InstructionScreen
-                        owner={owner}
-                        builderState={builderState}
-                        setBuilderState={setBuilderState}
-                        setEdited={setEdited}
-                        resetAt={instructionsResetAt}
-                        isUsingTemplate={template !== null}
-                        instructionsError={instructionsError}
-                        doTypewriterEffect={doTypewriterEffect}
-                        setDoTypewriterEffect={setDoTypewriterEffect}
-                        agentConfigurationId={agentConfigurationId}
-                        models={models}
-                        setIsInstructionDiffMode={setIsInstructionDiffMode}
-                        isInstructionDiffMode={isInstructionDiffMode}
-                      />
-                    );
-                  case "actions":
-                    return (
-                      <ActionsScreen
-                        owner={owner}
-                        builderState={builderState}
-                        setBuilderState={setBuilderState}
-                        setEdited={setEdited}
-                        setAction={setAction}
-                        pendingAction={pendingAction}
-                        enableReasoningTool={reasoningModels.length > 0}
-                        reasoningModels={reasoningModels}
-                      />
-                    );
+              <div className="flex h-full justify-center">
+                <div className="h-full w-full max-w-4xl">
+                  {(() => {
+                    switch (screen) {
+                      case "instructions":
+                        return (
+                          <InstructionScreen
+                            owner={owner}
+                            builderState={builderState}
+                            setBuilderState={setBuilderState}
+                            setEdited={setEdited}
+                            resetAt={instructionsResetAt}
+                            isUsingTemplate={template !== null}
+                            instructionsError={instructionsError}
+                            doTypewriterEffect={doTypewriterEffect}
+                            setDoTypewriterEffect={setDoTypewriterEffect}
+                            agentConfigurationId={agentConfigurationId}
+                            models={models}
+                            setIsInstructionDiffMode={setIsInstructionDiffMode}
+                            isInstructionDiffMode={isInstructionDiffMode}
+                          />
+                        );
+                      case "actions":
+                        return (
+                          <ActionsScreen
+                            owner={owner}
+                            builderState={builderState}
+                            setBuilderState={setBuilderState}
+                            setEdited={setEdited}
+                            setAction={setAction}
+                            pendingAction={pendingAction}
+                            enableReasoningTool={reasoningModels.length > 0}
+                            reasoningModels={reasoningModels}
+                          />
+                        );
 
-                  case "settings":
-                    return (
-                      <SettingsScreen
-                        agentConfigurationId={agentConfigurationId}
-                        baseUrl={baseUrl}
-                        owner={owner}
-                        builderState={builderState}
-                        initialHandle={initialBuilderState?.handle}
-                        setBuilderState={setBuilderState}
-                        setEdited={setEdited}
-                        assistantHandleError={assistantHandleError}
-                        descriptionError={descriptionError}
-                        isAgentDiscoveryEnabled={isAgentDiscoveryEnabled}
-                        slackChannelSelected={selectedSlackChannels || []}
-                        slackDataSource={slackDataSource}
-                        setSelectedSlackChannels={setSelectedSlackChannels}
-                        currentUser={user}
-                      />
-                    );
-                  default:
-                    assertNever(screen);
-                }
-              })()}
-              <PrevNextButtons screen={screen} setCurrentTab={setCurrentTab} />
-            </div>
-          }
-          buttonsRightPanel={
-            <>
-              {/* Chevron button */}
-              <Button
-                size="sm"
-                variant="ghost"
-                icon={
-                  rightPanelStatus.tab !== null
-                    ? ChevronRightIcon
-                    : ChevronLeftIcon
-                }
-                disabled={isBuilderStateEmpty}
-                onClick={toggleRightPanel}
-              />
-              {rightPanelStatus.tab === null && (
-                <div className="flex flex-col gap-3">
-                  {/* Preview Button */}
-                  <Button
-                    icon={ChatBubbleBottomCenterTextIcon}
-                    onClick={() => openRightPanelTab("Preview")}
-                    size="sm"
-                    variant="outline"
-                    tooltip="Preview your agent"
-                    className={cn(
-                      isPreviewButtonAnimating && "animate-breathing-scale"
-                    )}
-                    disabled={isBuilderStateEmpty}
-                  />
-                  {/* Performance Button */}
-                  {!!agentConfigurationId && (
-                    <Button
-                      icon={BarChartIcon}
-                      onClick={() => openRightPanelTab("Performance")}
-                      size="sm"
-                      variant="outline"
-                      tooltip="Inspect feedback and performance"
-                    />
-                  )}
-                  {/* Template Button */}
-                  {template !== null && (
-                    <Button
-                      icon={MagicIcon}
-                      onClick={() => openRightPanelTab("Template")}
-                      size="sm"
-                      variant="outline"
-                      tooltip="Template instructions"
-                    />
-                  )}
+                      case "settings":
+                        return (
+                          <SettingsScreen
+                            agentConfigurationId={agentConfigurationId}
+                            baseUrl={baseUrl}
+                            owner={owner}
+                            builderState={builderState}
+                            initialHandle={initialBuilderState?.handle}
+                            setBuilderState={setBuilderState}
+                            setEdited={setEdited}
+                            assistantHandleError={assistantHandleError}
+                            descriptionError={descriptionError}
+                            slackChannelSelected={selectedSlackChannels || []}
+                            slackDataSource={slackDataSource}
+                            setSelectedSlackChannels={setSelectedSlackChannels}
+                            currentUser={user}
+                          />
+                        );
+                      default:
+                        assertNever(screen);
+                    }
+                  })()}
                 </div>
-              )}
-            </>
+              </div>
+              <div className="mt-auto flex-shrink-0">
+                <PrevNextButtons
+                  screen={screen}
+                  setCurrentTab={setCurrentTab}
+                />
+              </div>
+            </div>
           }
           rightPanel={
             <AssistantBuilderRightPanel
@@ -669,15 +526,12 @@ export default function AssistantBuilder({
                 setEdited(true);
               }}
               owner={owner}
-              rightPanelStatus={rightPanelStatus}
-              openRightPanelTab={openRightPanelTab}
               builderState={builderState}
               agentConfigurationId={agentConfigurationId}
               setAction={setAction}
               reasoningModels={reasoningModels}
             />
           }
-          isRightPanelOpen={rightPanelStatus.tab !== null}
         />
       </AppContentLayout>
     </>

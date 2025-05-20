@@ -99,7 +99,11 @@ const CitationGrid = React.forwardRef<
   React.HTMLAttributes<HTMLDivElement>
 >(({ children, className, ...props }, ref) => {
   return (
-    <div ref={ref} className={cn("s-@container", className)} {...props}>
+    <div
+      ref={ref}
+      className={cn("s-min-w-[240px] s-@container", className)}
+      {...props}
+    >
       <div className="s-grid s-grid-cols-2 s-gap-2 @xxs:s-grid-cols-3 @xs:s-grid-cols-4 @md:s-grid-cols-5 @lg:s-grid-cols-6">
         {children}
       </div>

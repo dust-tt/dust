@@ -69,7 +69,9 @@ type BuilderUsageQueryResult = {
 interface AgentUsageQueryResult {
   name: string;
   description: string;
-  settings: "shared" | "private" | "company";
+  settings: "published" | "unpublished" | "unknown";
+  modelId: string;
+  providerId: string;
   authorEmails: string[];
   messages: number;
   distinctUsersReached: number;
@@ -182,9 +184,9 @@ export async function getMessageUsageData(
         COALESCE(ac."sId", am."agentConfigurationId") AS "assistant_id",
         COALESCE(ac."name", am."agentConfigurationId") AS "assistant_name",
         CASE
-          WHEN ac."scope" = 'published' THEN 'shared'
-          WHEN ac."scope" = 'private' THEN 'private'
-          ELSE 'company'
+          WHEN ac."scope" = 'visible' THEN 'published'
+          WHEN ac."scope" = 'hidden' THEN 'unpublished'
+          ELSE 'unknown'
         END AS "assistant_settings",
         w."id" AS "workspace_id",
         w."name" AS "workspace_name",
@@ -440,10 +442,12 @@ export async function getAssistantsUsageData(
     SELECT
       ac."name",
       ac."description",
+      ac."modelId",
+      ac."providerId",
       CASE
-        WHEN ac."scope" = 'published' THEN 'shared'
-        WHEN ac."scope" = 'private' THEN 'private'
-        ELSE 'company'
+        WHEN ac."scope" = 'visible' THEN 'published'
+        WHEN ac."scope" = 'hidden' THEN 'unpublished'
+        ELSE 'unknown'
       END AS "settings",
       ARRAY_AGG(DISTINCT aut."email") AS "authorEmails",
       COUNT(a."id") AS "messages",
@@ -462,11 +466,13 @@ export async function getAssistantsUsageData(
       a."createdAt" BETWEEN :startDate AND :endDate
       AND ac."workspaceId" = :wId
       AND ac."status" = 'active'
-      AND ac."scope" != 'private'
+      AND ac."scope" != 'hidden'
     GROUP BY
       ac."name",
       ac."description",
-      ac."scope"
+      ac."scope",
+      ac."modelId",
+      ac."providerId"
     ORDER BY
       "messages" DESC;
     `,

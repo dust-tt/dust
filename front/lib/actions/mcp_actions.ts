@@ -193,7 +193,7 @@ export async function* tryCallMCPTool(
   try {
     const r = await connectToMCPServer(auth, {
       params: connectionParamsRes.value,
-      agentLoopContext: { agentLoopRunContext },
+      agentLoopContext: { runContext: agentLoopRunContext },
     });
     if (r.isErr()) {
       yield {
@@ -519,10 +519,6 @@ async function listToolsForClientSideMCPServer(
   do {
     const { tools, nextCursor } = await mcpClient.listTools();
 
-    for (const t of tools) {
-      t.inputSchema;
-    }
-
     nextPageCursor = nextCursor;
     allTools = [
       ...allTools,
@@ -534,7 +530,7 @@ async function listToolsForClientSideMCPServer(
     ];
   } while (nextPageCursor);
 
-  // Create the configurations directly here
+  // Create the configurations directly here.
   const clientSideToolConfigs = makeClientSideMCPToolConfigurations(
     config,
     allTools
@@ -658,7 +654,7 @@ async function listMCPServerTools(
     const connectionParams = connectionParamsRes.value;
     const r = await connectToMCPServer(auth, {
       params: connectionParams,
-      agentLoopContext: { agentLoopListToolsContext },
+      agentLoopContext: { listToolsContext: agentLoopListToolsContext },
     });
     if (r.isErr()) {
       return r;

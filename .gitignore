@@ -12,3 +12,5 @@ oauth-api-keys.json
 /extension/build/
 **/.claude/settings.local.json
 CLAUDE.md
+**/.yalc
+yalc.lock

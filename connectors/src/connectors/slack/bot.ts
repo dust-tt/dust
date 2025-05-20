@@ -205,6 +205,89 @@ export async function botReplaceMention(
   }
 }
 
+type ToolValidationParams = {
+  actionId: number;
+  approved: "approved" | "rejected";
+  conversationId: string;
+  messageId: string;
+  slackBotMessageId: number;
+};
+
+export async function botValidateToolExecution(
+  {
+    actionId,
+    approved,
+    conversationId,
+    messageId,
+    slackBotMessageId,
+  }: ToolValidationParams,
+  params: BotAnswerParams
+) {
+  const { slackChannel, slackMessageTs, slackTeamId } = params;
+
+  const connectorRes = await getSlackConnector(params);
+  if (connectorRes.isErr()) {
+    return connectorRes;
+  }
+  const { connector } = connectorRes.value;
+
+  try {
+    const slackChatBotMessage = await SlackChatBotMessage.findOne({
+      where: { id: slackBotMessageId },
+    });
+    if (!slackChatBotMessage) {
+      throw new Error("Missing Slack message");
+    }
+
+    const dustAPI = new DustAPI(
+      apiConfig.getDustAPIConfig(),
+      {
+        apiKey: connector.workspaceAPIKey,
+        // We neither need group ids nor user email headers here because validate tool endpoint is not
+        // gated by group ids or user email headers.
+        extraHeaders: {},
+        workspaceId: connector.workspaceId,
+      },
+      logger,
+      apiConfig.getDustFrontAPIUrl()
+    );
+
+    const res = await dustAPI.validateAction({
+      conversationId,
+      messageId,
+      actionId,
+      approved,
+    });
+
+    const slackClient = await getSlackClient(connector.id);
+    await slackClient.chat.postEphemeral({
+      channel: slackChannel,
+      user: slackChatBotMessage.slackUserId,
+      text: `The tool execution has been ${approved}.`,
+      thread_ts: slackMessageTs,
+    });
+
+    return res;
+  } catch (e) {
+    logger.error(
+      {
+        error: e,
+        connectorId: connector.id,
+        slackTeamId,
+      },
+      "Unexpected exception validating tool execution"
+    );
+    const slackClient = await getSlackClient(connector.id);
+    await slackClient.chat.postMessage({
+      channel: slackChannel,
+      text: "An unexpected error occurred while sending the validation. Our team has been notified.",
+      thread_ts: slackMessageTs,
+    });
+
+    return new Err(new Error("An unexpected error occurred"));
+  }
+}
+
 async function processErrorResult(
   res: Result<AgentMessageSuccessEvent | undefined, Error>,
   params: BotAnswerParams,
