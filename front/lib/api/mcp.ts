@@ -41,6 +41,10 @@ export type MCPToolWithStakeLevelType =
 export type MCPServerType = {
   sId: string;
   name: string;
+  /**
+   * We use a version number to identify the version of the server.
+   * If the version number starts with 0, it is an unreleased version.
+   */
   version: string;
   description: string;
   icon: RemoteAllowedIconType | InternalAllowedIconType;
