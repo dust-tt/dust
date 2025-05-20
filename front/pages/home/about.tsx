@@ -263,6 +263,13 @@ const PEOPLE: Record<
     github: "https://github.com/johnoppenheimer",
     linkedIn: "https://www.linkedin.com/in/maximecattet",
   },
+  gaelle: {
+    name: "Gaëlle Caplier",
+    title: "Customer Success",
+    image: "https://avatars.githubusercontent.com/u/49072037?v=4",
+    github: "https://github.com/gcaplier",
+    linkedIn: "https://www.linkedin.com/in/gcaplier/",
+  },
   lena: {
     name: "Léna Caloud",
     title: "Customer Success",
