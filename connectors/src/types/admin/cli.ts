@@ -157,6 +157,29 @@ export const SlackCommandSchema = t.type({
   ),
 });
 
+/**
+ * <Gong>
+ */
+export const GongCommandSchema = t.type({
+  majorCommand: t.literal("gong"),
+  command: t.literal("force-resync"),
+  args: t.type({
+    connectorId: t.union([t.number, t.undefined]),
+  }),
+});
+export type GongCommandType = t.TypeOf<typeof GongCommandSchema>;
+
+export const GongForceResyncResponseSchema = t.type({
+  workflowId: t.string,
+  workflowUrl: t.union([t.string, t.undefined]),
+});
+export type GongForceResyncResponseType = t.TypeOf<
+  typeof GongForceResyncResponseSchema
+>;
+/**
+ * </Gong>
+ */
+
 export type SlackCommandType = t.TypeOf<typeof SlackCommandSchema>;
 
 export const BatchCommandSchema = t.type({
@@ -570,6 +593,7 @@ export const AdminResponseSchema = t.union([
   SnowflakeFetchDatabaseResponseSchema,
   SnowflakeFetchSchemaResponseSchema,
   SnowflakeFetchTableResponseSchema,
+  GongForceResyncResponseSchema,
 ]);
 
 export type AdminResponseType = t.TypeOf<typeof AdminResponseSchema>;
