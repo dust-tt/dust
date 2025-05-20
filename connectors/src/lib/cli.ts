@@ -27,7 +27,6 @@ import type {
   BatchCommandType,
   ConnectorPermission,
   ConnectorsCommandType,
-  GetParentsResponseType,
   TemporalCheckQueueResponseType,
   TemporalCommandType,
   TemporalUnprocessedWorkflowsResponseType,
@@ -108,9 +107,7 @@ export async function throwOnError<T>(p: Promise<Result<T, Error>>) {
 export const connectors = async ({
   command,
   args,
-}: ConnectorsCommandType): Promise<
-  AdminSuccessResponseType | GetParentsResponseType
-> => {
+}: ConnectorsCommandType): Promise<AdminSuccessResponseType> => {
   if (!args.wId) {
     throw new Error("Missing --wId argument");
   }
