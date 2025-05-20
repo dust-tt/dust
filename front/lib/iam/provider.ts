@@ -2,6 +2,7 @@ import type { Session } from "@auth0/nextjs-auth0";
 
 // This maps to the Auth0 user.
 export interface ExternalUser {
+  sid: string;
   email: string;
   email_verified: boolean;
   name: string;
