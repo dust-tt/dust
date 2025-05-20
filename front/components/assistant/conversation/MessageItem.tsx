@@ -86,10 +86,6 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
         }
       );
 
-    if (message.visibility === "deleted") {
-      return null;
-    }
-
     const messageFeedbackWithSubmit: FeedbackSelectorProps = {
       feedback: messageFeedback
         ? {

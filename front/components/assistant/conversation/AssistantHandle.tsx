@@ -1,9 +1,11 @@
-import type { LightAgentConfigurationType } from "@dust-tt/client";
 import Link from "next/link";
 import { useRouter } from "next/router";
 
 interface AssistantHandleProps {
-  assistant: LightAgentConfigurationType;
+  assistant: {
+    sId: string;
+    name: string;
+  };
   canMention?: boolean;
 }
 

@@ -211,7 +211,7 @@ export async function deleteConversation(
 export async function getConversation(
   auth: Authenticator,
   conversationId: string,
-  includeDeleted?: boolean
+  includeDeleted: boolean = false
 ): Promise<Result<ConversationType, ConversationError>> {
   const owner = auth.getNonNullableWorkspace();
 
@@ -267,7 +267,12 @@ export async function getConversation(
     ],
   });
 
-  const renderRes = await batchRenderMessages(auth, conversation.sId, messages);
+  const renderRes = await batchRenderMessages(
+    auth,
+    conversation.sId,
+    messages,
+    "full"
+  );
 
   if (renderRes.isErr()) {
     return new Err(renderRes.error);

@@ -3,22 +3,24 @@ import { useEffect, useMemo, useState } from "react";
 
 import { getActionSpecification } from "@app/components/actions/types";
 import { AgentMessageActionsDrawer } from "@app/components/assistant/conversation/actions/AgentMessageActionsDrawer";
-import type { AgentStateClassification } from "@app/lib/assistant/state/messageReducer";
 import type {
-  AgentActionType,
-  AgentMessageType,
-  LightWorkspaceType,
-} from "@app/types";
+  BaseActionType,
+  BaseAgentActionType,
+} from "@app/lib/actions/types";
+import type { AgentStateClassification } from "@app/lib/assistant/state/messageReducer";
+import type { LightAgentMessageType, LightWorkspaceType } from "@app/types";
 import { assertNever } from "@app/types";
 
 interface AgentMessageActionsProps {
-  agentMessage: AgentMessageType;
+  agentMessage: LightAgentMessageType;
+  conversationId: string;
   lastAgentStateClassification: AgentStateClassification;
   owner: LightWorkspaceType;
 }
 
 export function AgentMessageActions({
   agentMessage,
+  conversationId,
   lastAgentStateClassification,
   owner,
 }: AgentMessageActionsProps) {
@@ -31,7 +33,7 @@ export function AgentMessageActions({
         setChipLabel("Thinking");
         break;
       case "acting":
-        if (agentMessage.actions.length > 0) {
+        if (agentMessage.actions && agentMessage.actions.length > 0) {
           setChipLabel(renderActionName(agentMessage.actions));
         }
         break;
@@ -51,14 +53,15 @@ export function AgentMessageActions({
   return (
     <div className="flex flex-col items-start gap-y-4">
       <AgentMessageActionsDrawer
-        actions={agentMessage.actions}
+        conversationId={conversationId}
+        message={agentMessage}
         isOpened={isActionDrawerOpened}
         onClose={() => setIsActionDrawerOpened(false)}
         isActing={lastAgentStateClassification === "acting"}
         owner={owner}
       />
       <ActionDetails
-        hasActions={agentMessage.actions.length !== 0}
+        hasActions={agentMessage.actions.length > 0}
         isActionStepDone={!isThinkingOrActing}
         label={chipLabel}
         onClick={() => setIsActionDrawerOpened(true)}
@@ -105,17 +108,14 @@ function ActionDetails({
   );
 }
 
-function renderActionName(actions: AgentActionType[]): string {
-  const uniqueActionTypes = actions.reduce(
-    (acc, action) => {
-      if (!acc.includes(action.type)) {
-        acc.push(action.type);
-      }
+function renderActionName(actions: BaseAgentActionType[]): string {
+  const uniqueActionTypes = actions.reduce<BaseActionType[]>((acc, action) => {
+    if (!acc.includes(action.type)) {
+      acc.push(action.type);
+    }
 
-      return acc;
-    },
-    [] as AgentActionType["type"][]
-  );
+    return acc;
+  }, []);
 
   return uniqueActionTypes
     .map((actionType) => getActionSpecification(actionType).runningLabel)

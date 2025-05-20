@@ -21,11 +21,6 @@ import React from "react";
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 
-import {
-  getDocumentIcon,
-  makeDocumentCitation,
-} from "@app/components/actions/retrieval/utils";
-import { makeWebsearchResultsCitation } from "@app/components/actions/websearch/utils";
 import { AgentMessageActions } from "@app/components/assistant/conversation/actions/AgentMessageActions";
 import { ActionValidationContext } from "@app/components/assistant/conversation/ActionValidationProvider";
 import { AssistantHandle } from "@app/components/assistant/conversation/AssistantHandle";
@@ -41,6 +36,7 @@ import {
   getCiteDirective,
 } from "@app/components/markdown/CiteBlock";
 import type { MarkdownCitation } from "@app/components/markdown/MarkdownCitation";
+import { getCitationIcon } from "@app/components/markdown/MarkdownCitation";
 import {
   getMentionPlugin,
   mentionDirective,
@@ -52,42 +48,34 @@ import {
 } from "@app/components/markdown/VisualizationBlock";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useEventSource } from "@app/hooks/useEventSource";
-import {
-  isImageProgressOutput,
-  isSearchResultResourceType,
-  isWebsearchResultResourceType,
-} from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import type { RetrievalActionType } from "@app/lib/actions/retrieval";
-import {
-  isMCPActionType,
-  isRetrievalActionType,
-  isWebsearchActionType,
-} from "@app/lib/actions/types/guards";
-import type { WebsearchActionType } from "@app/lib/actions/websearch";
+import { isImageProgressOutput } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type {
   AgentMessageStateEvent,
   MessageTemporaryState,
 } from "@app/lib/assistant/state/messageReducer";
 import { messageReducer } from "@app/lib/assistant/state/messageReducer";
-import type { AgentMessageType, UserType, WorkspaceType } from "@app/types";
+import type {
+  LightAgentMessageType,
+  UserType,
+  WorkspaceType,
+} from "@app/types";
 import {
   assertNever,
   GLOBAL_AGENTS_SID,
   isSupportedImageContentType,
-  removeNulls,
 } from "@app/types";
 
 interface AgentMessageProps {
   conversationId: string;
   isLastMessage: boolean;
-  message: AgentMessageType;
+  message: LightAgentMessageType;
   messageFeedback: FeedbackSelectorProps;
   owner: WorkspaceType;
   user: UserType;
 }
 
 function makeInitialMessageStreamState(
-  message: AgentMessageType
+  message: LightAgentMessageType
 ): MessageTemporaryState {
   return {
     actionProgress: new Map(),
@@ -138,10 +126,6 @@ export function AgentMessage({
 
   const [isRetryHandlerProcessing, setIsRetryHandlerProcessing] =
     React.useState<boolean>(false);
-
-  const [references, setReferences] = React.useState<{
-    [key: string]: MarkdownCitation;
-  }>({});
 
   const [activeReferences, setActiveReferences] = React.useState<
     { index: number; document: MarkdownCitation }[]
@@ -205,7 +189,7 @@ export function AgentMessage({
     { isReadyToConsumeStream: shouldStream }
   );
 
-  const agentMessageToRender = ((): AgentMessageType => {
+  const agentMessageToRender = ((): LightAgentMessageType => {
     switch (message.status) {
       case "succeeded":
       case "failed":
@@ -221,6 +205,24 @@ export function AgentMessage({
         assertNever(message.status);
     }
   })();
+
+  const references = Object.entries(
+    agentMessageToRender?.citations ?? {}
+  ).reduce<Record<string, MarkdownCitation>>((acc, [key, citation]) => {
+    if (citation) {
+      const IconComponent = getCitationIcon(citation.provider, isDark);
+      return {
+        ...acc,
+        [key]: {
+          href: citation.href,
+          title: citation.title,
+          description: citation.description,
+          icon: <IconComponent />,
+        },
+      };
+    }
+    return acc;
+  }, {});
 
   // Autoscroll is performed when a message is generating and the page is
   // already scrolled down; but if the user has scrolled the page up after the
@@ -403,88 +405,6 @@ export function AgentMessage({
     }
   }
 
-  React.useEffect(() => {
-    // Retrieval actions.
-    const retrievalActionsWithDocs = agentMessageToRender.actions
-      .filter((a) => isRetrievalActionType(a) && a.documents)
-      .sort((a, b) => a.id - b.id) as RetrievalActionType[];
-    const allDocs = removeNulls(
-      retrievalActionsWithDocs.map((a) => a.documents).flat()
-    );
-    const allDocsReferences = allDocs.reduce<{
-      [key: string]: MarkdownCitation;
-    }>((acc, d) => {
-      acc[d.reference] = makeDocumentCitation(d, isDark);
-      return acc;
-    }, {});
-
-    // Websearch actions.
-    const websearchActionsWithResults = agentMessageToRender.actions
-      .filter((a) => isWebsearchActionType(a) && a.output?.results?.length)
-      .sort((a, b) => a.id - b.id) as WebsearchActionType[];
-    const allWebResults = removeNulls(
-      websearchActionsWithResults.map((a) => a.output?.results).flat()
-    );
-    const allWebReferences = allWebResults.reduce<{
-      [key: string]: MarkdownCitation;
-    }>((acc, l) => {
-      acc[l.reference] = makeWebsearchResultsCitation(l);
-      return acc;
-    }, {});
-
-    // MCP actions with search results.
-    const searchResultsWithDocs = removeNulls(
-      agentMessageToRender.actions
-        .filter(isMCPActionType)
-        .flatMap((action) =>
-          action.output
-            ?.filter(isSearchResultResourceType)
-            .map((o) => o.resource)
-        )
-    );
-    const allMCPSearchResultsReferences = searchResultsWithDocs.reduce<{
-      [key: string]: MarkdownCitation;
-    }>((acc, d) => {
-      acc[d.ref] = {
-        href: d.uri,
-        title: d.text,
-        icon: getDocumentIcon(d.source.provider),
-      };
-      return acc;
-    }, {});
-
-    const websearchResultsWithDocs = removeNulls(
-      agentMessageToRender.actions
-        .filter(isMCPActionType)
-        .flatMap((action) =>
-          action.output?.filter(isWebsearchResultResourceType)
-        )
-    );
-
-    const allMCPWebsearchResultsReferences = websearchResultsWithDocs.reduce<{
-      [key: string]: MarkdownCitation;
-    }>((acc, d) => {
-      acc[d.resource.reference] = {
-        href: d.resource.uri,
-        title: d.resource.title,
-        icon: <DocumentIcon />,
-      };
-      return acc;
-    }, {});
-
-    // Merge all references.
-    setReferences({
-      ...allDocsReferences,
-      ...allWebReferences,
-      ...allMCPSearchResultsReferences,
-      ...allMCPWebsearchResultsReferences,
-    });
-  }, [
-    agentMessageToRender.actions,
-    agentMessageToRender.status,
-    agentMessageToRender.sId,
-    isDark,
-  ]);
   const { configuration: agentConfiguration } = agentMessageToRender;
 
   const additionalMarkdownComponents: Components = React.useMemo(
@@ -548,7 +468,7 @@ export function AgentMessage({
     streaming,
     lastTokenClassification,
   }: {
-    agentMessage: AgentMessageType;
+    agentMessage: LightAgentMessageType;
     references: { [key: string]: MarkdownCitation };
     streaming: boolean;
     lastTokenClassification: null | "tokens" | "chain_of_thought";
@@ -589,17 +509,12 @@ export function AgentMessage({
       }));
 
     // Get completed images.
-    const completedImages = messageStreamState.message.actions.flatMap(
-      (action) =>
-        action.generatedFiles.filter((file) =>
-          isSupportedImageContentType(file.contentType)
-        )
+    const completedImages = messageStreamState.message.generatedFiles.filter(
+      (file) => isSupportedImageContentType(file.contentType)
     );
 
-    const generatedFiles = agentMessage.actions.flatMap((action) =>
-      action.generatedFiles.filter(
-        (file) => !isSupportedImageContentType(file.contentType)
-      )
+    const generatedFiles = agentMessage.generatedFiles.filter(
+      (file) => !isSupportedImageContentType(file.contentType)
     );
 
     return (
@@ -607,6 +522,7 @@ export function AgentMessage({
         <div className="flex flex-col gap-2">
           <AgentMessageActions
             agentMessage={agentMessage}
+            conversationId={conversationId}
             lastAgentStateClassification={messageStreamState.agentState}
             owner={owner}
           />
@@ -696,7 +612,7 @@ export function AgentMessage({
     );
   }
 
-  async function retryHandler(agentMessage: AgentMessageType) {
+  async function retryHandler(agentMessage: LightAgentMessageType) {
     setIsRetryHandlerProcessing(true);
     await fetch(
       `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${agentMessage.sId}/retry`,
