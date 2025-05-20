@@ -9,11 +9,15 @@ import {
 
 import { getActionSpecification } from "@app/components/actions/types";
 import { useConversationMessage } from "@app/lib/swr/conversations";
-import type { AgentActionType, LightWorkspaceType } from "@app/types";
+import type {
+  AgentActionType,
+  LightAgentMessageType,
+  LightWorkspaceType,
+} from "@app/types";
 
 interface AgentMessageActionsDrawerProps {
   conversationId: string;
-  messageId: string;
+  message: LightAgentMessageType;
   isOpened: boolean;
   isActing: boolean;
   onClose: () => void;
@@ -21,7 +25,7 @@ interface AgentMessageActionsDrawerProps {
 }
 export function AgentMessageActionsDrawer({
   conversationId,
-  messageId,
+  message,
   isOpened,
   isActing,
   onClose,
@@ -31,7 +35,7 @@ export function AgentMessageActionsDrawer({
     useConversationMessage({
       conversationId,
       workspaceId: owner.sId,
-      messageId: isOpened ? messageId : null,
+      messageId: isOpened ? message.sId : null,
     });
 
   const actions =

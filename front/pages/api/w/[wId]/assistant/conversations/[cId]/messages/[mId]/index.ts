@@ -32,6 +32,16 @@ async function handler(
     });
   }
 
+  if (!isString(mId)) {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Invalid query parameters, `mId` (string) is required.",
+      },
+    });
+  }
+
   const conversationRes =
     await ConversationResource.fetchConversationWithoutContent(auth, cId);
 
@@ -41,16 +51,6 @@ async function handler(
       api_error: {
         type: "conversation_not_found",
         message: "Conversation not found",
-      },
-    });
-  }
-
-  if (!isString(mId)) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Invalid query parameters, `cId` (string) is required.",
       },
     });
   }

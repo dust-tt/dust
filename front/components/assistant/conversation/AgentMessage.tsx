@@ -206,24 +206,23 @@ export function AgentMessage({
     }
   })();
 
-  const references =
-    Object.entries(agentMessageToRender?.citations ?? {}).reduce<
-      Record<string, MarkdownCitation>
-    >((acc, citation) => {
-      if (citation) {
-        const IconComponent = getCitationIcon(citation[1].provider, isDark);
-        return {
-          ...acc,
-          [citation[0]]: {
-            href: citation[1].href,
-            title: citation[1].title,
-            description: citation[1].description,
-            icon: <IconComponent />,
-          },
-        };
-      }
-      return acc;
-    }, {}) ?? {};
+  const references = Object.entries(
+    agentMessageToRender?.citations ?? {}
+  ).reduce<Record<string, MarkdownCitation>>((acc, [key, citation]) => {
+    if (citation) {
+      const IconComponent = getCitationIcon(citation.provider, isDark);
+      return {
+        ...acc,
+        [key]: {
+          href: citation.href,
+          title: citation.title,
+          description: citation.description,
+          icon: <IconComponent />,
+        },
+      };
+    }
+    return acc;
+  }, {});
 
   // Autoscroll is performed when a message is generating and the page is
   // already scrolled down; but if the user has scrolled the page up after the

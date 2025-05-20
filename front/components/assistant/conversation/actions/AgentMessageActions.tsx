@@ -54,7 +54,7 @@ export function AgentMessageActions({
     <div className="flex flex-col items-start gap-y-4">
       <AgentMessageActionsDrawer
         conversationId={conversationId}
-        messageId={agentMessage.sId}
+        message={agentMessage}
         isOpened={isActionDrawerOpened}
         onClose={() => setIsActionDrawerOpened(false)}
         isActing={lastAgentStateClassification === "acting"}
@@ -109,13 +109,13 @@ function ActionDetails({
 }
 
 function renderActionName(actions: BaseAgentActionType[]): string {
-  const uniqueActionTypes = actions.reduce((acc, action) => {
+  const uniqueActionTypes = actions.reduce<BaseActionType[]>((acc, action) => {
     if (!acc.includes(action.type)) {
       acc.push(action.type);
     }
 
     return acc;
-  }, [] as BaseActionType[]);
+  }, []);
 
   return uniqueActionTypes
     .map((actionType) => getActionSpecification(actionType).runningLabel)
