@@ -1,4 +1,5 @@
-import { createContext } from "react";
+import { createContext, useState } from "react";
+import { useEffect } from "react";
 
 import { mcpServerViewSortingFn } from "@app/lib/actions/mcp_helper";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
@@ -9,6 +10,8 @@ type AssistantBuilderContextType = {
   dataSourceViews: DataSourceViewType[];
   spaces: SpaceType[];
   mcpServerViews: MCPServerViewType[];
+  isPreviewPanelOpen: boolean;
+  setIsPreviewPanelOpen: React.Dispatch<React.SetStateAction<boolean>>;
 };
 
 export const AssistantBuilderContext =
@@ -17,6 +20,8 @@ export const AssistantBuilderContext =
     dataSourceViews: [],
     spaces: [],
     mcpServerViews: [],
+    isPreviewPanelOpen: true,
+    setIsPreviewPanelOpen: () => {},
   });
 
 export function AssistantBuilderProvider({
@@ -25,9 +30,30 @@ export function AssistantBuilderProvider({
   spaces,
   mcpServerViews,
   children,
-}: AssistantBuilderContextType & {
+}: Omit<
+  AssistantBuilderContextType,
+  "isPreviewPanelOpen" | "setIsPreviewPanelOpen"
+> & {
   children: React.ReactNode;
 }) {
+  const [isPreviewPanelOpen, setIsPreviewPanelOpen] = useState(() => {
+    if (typeof window === "undefined") {
+      return false;
+    }
+    return window.innerWidth >= 1024;
+  });
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(min-width: 1024px)");
+
+    const handleMediaChange = (event: MediaQueryListEvent) => {
+      setIsPreviewPanelOpen(event.matches);
+    };
+    mediaQuery.addEventListener("change", handleMediaChange);
+    return () => {
+      mediaQuery.removeEventListener("change", handleMediaChange);
+    };
+  }, []);
   return (
     <AssistantBuilderContext.Provider
       value={{
@@ -35,6 +61,8 @@ export function AssistantBuilderProvider({
         dataSourceViews,
         spaces,
         mcpServerViews: mcpServerViews.sort(mcpServerViewSortingFn),
+        isPreviewPanelOpen,
+        setIsPreviewPanelOpen,
       }}
     >
       {children}
