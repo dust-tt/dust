@@ -1,6 +1,8 @@
 import "react-image-crop/dist/ReactCrop.css";
 
 import {
+  SidebarRightCloseIcon,
+  SidebarRightOpenIcon,
   Tabs,
   TabsList,
   TabsTrigger,
@@ -8,8 +10,6 @@ import {
   useSendNotification,
 } from "@dust-tt/sparkle";
 import { Button } from "@dust-tt/sparkle";
-import { ChevronDoubleRightIcon } from "@dust-tt/sparkle";
-import { ChevronDoubleLeftIcon } from "@dust-tt/sparkle";
 import assert from "assert";
 import { uniqueId } from "lodash";
 import { useRouter } from "next/router";
@@ -426,7 +426,7 @@ export default function AssistantBuilder({
         <BuilderLayout
           leftPanel={
             <div className="flex h-full flex-col gap-4 pb-6 pt-4">
-              <div className="flex flex-row justify-between gap-4 sm:flex-row">
+              <div className="flex flex-row justify-between sm:flex-row">
                 <Tabs
                   className="w-full"
                   onValueChange={(t) => {
@@ -447,16 +447,20 @@ export default function AssistantBuilder({
                     ))}
                   </TabsList>
                 </Tabs>
-                <Button
-                  icon={
-                    isPreviewPanelOpen
-                      ? ChevronDoubleRightIcon
-                      : ChevronDoubleLeftIcon
-                  }
-                  variant="ghost"
-                  tooltip={isPreviewPanelOpen ? "Hide preview" : "Open preview"}
-                  onClick={() => setIsPreviewPanelOpen(!isPreviewPanelOpen)}
-                />
+                <div className="border-b border-border">
+                  <Button
+                    icon={
+                      isPreviewPanelOpen
+                        ? SidebarRightCloseIcon
+                        : SidebarRightOpenIcon
+                    }
+                    variant="ghost"
+                    tooltip={
+                      isPreviewPanelOpen ? "Hide preview" : "Open preview"
+                    }
+                    onClick={() => setIsPreviewPanelOpen(!isPreviewPanelOpen)}
+                  />
+                </div>
               </div>
               <div className="flex h-full justify-center">
                 <div className="h-full w-full max-w-4xl">

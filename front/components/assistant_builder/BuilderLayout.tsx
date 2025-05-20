@@ -36,13 +36,7 @@ export function BuilderLayout({ leftPanel, rightPanel }: BuilderLayoutProps) {
         direction="horizontal"
         className="h-full w-full"
       >
-        <ResizablePanel
-          defaultSize={70}
-          minSize={30}
-          className={
-            !isResizing ? "transition-all duration-300 ease-in-out" : ""
-          }
-        >
+        <ResizablePanel defaultSize={70} minSize={30}>
           <div className="h-full w-full overflow-y-auto px-6">{leftPanel}</div>
         </ResizablePanel>
 
@@ -62,9 +56,7 @@ export function BuilderLayout({ leftPanel, rightPanel }: BuilderLayoutProps) {
               : "overflow-hidden"
           }
         >
-          <div className="h-full w-full overflow-y-auto px-6 transition-all duration-200 ease-in-out">
-            {rightPanel}
-          </div>
+          <div className="h-full w-full overflow-y-auto px-6">{rightPanel}</div>
         </ResizablePanel>
       </ResizablePanelGroup>
     </div>
