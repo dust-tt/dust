@@ -188,7 +188,7 @@ export function AddToolsDropdown({
             ))}
             {defaultMCPServerViews.map((view) => (
               <MCPDropdownMenuItem
-                key={`${view.id}-${view.label}`} // there can be multiple views with the same id               view={view}
+                key={`${view.id}-${view.label}`} // There can be multiple views with the same id.
                 view={view}
                 onClick={onClickMCPServer}
               />

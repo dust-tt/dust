@@ -6,7 +6,7 @@ import type {
   WhereOptions,
 } from "sequelize";
 
-import { makeUrlForEmojiAndBackgroud } from "@app/components/assistant_builder/avatar_picker/utils";
+import { makeUrlForEmojiAndBackground } from "@app/components/assistant_builder/avatar_picker/utils";
 import type { Authenticator } from "@app/lib/auth";
 import {
   CROSS_WORKSPACE_RESOURCES_WORKSPACE_ID,
@@ -106,7 +106,7 @@ export class TemplateResource extends BaseResource<TemplateModel> {
   get pictureUrl() {
     const [id, unified] = this.emoji ? this.emoji.split("/") : [];
 
-    return makeUrlForEmojiAndBackgroud(
+    return makeUrlForEmojiAndBackground(
       {
         id,
         unified,

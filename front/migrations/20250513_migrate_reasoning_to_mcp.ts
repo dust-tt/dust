@@ -71,7 +71,7 @@ async function migrateWorkspaceReasoningActions({
   const mcpServerView =
     await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
       auth,
-      "reasoning_v2"
+      "reasoning"
     );
   if (!mcpServerView) {
     throw new Error("Reasoning MCP server view not found.");
