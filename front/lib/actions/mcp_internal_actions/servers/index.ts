@@ -67,7 +67,7 @@ export async function getInternalMCPServer(
     case "agent_router":
       return agentRouterServer(auth);
     case "extract_data":
-      return extractDataServer(auth, agentLoopContext.agentLoopRunContext);
+      return extractDataServer(auth, agentLoopContext.runContext);
     default:
       assertNever(internalMCPServerName);
   }

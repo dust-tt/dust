@@ -10,7 +10,6 @@ import {
   DATA_SOURCE_CONFIGURATION_URI_PATTERN,
   TABLE_CONFIGURATION_URI_PATTERN,
 } from "@app/lib/actions/mcp_internal_actions/input_schemas";
-import type { DataSourceConfiguration } from "@app/lib/actions/retrieval";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import {
   isServerSideMCPServerConfiguration,
