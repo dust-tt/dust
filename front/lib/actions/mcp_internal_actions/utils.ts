@@ -447,7 +447,7 @@ export function getMCPServerRequirements(
   );
 
   const mayRequireJsonSchemaConfiguration = server.tools.some(
-    (tool) => tool.inputSchema?.properties?.jsonSchema
+    (tool) => tool.inputSchema?.properties?.jsonSchemaContainer
   );
 
   const requiredStrings = Object.keys(
