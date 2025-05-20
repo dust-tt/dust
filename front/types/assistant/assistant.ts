@@ -231,7 +231,7 @@ export type ModelConfigurationType = {
   description: string;
   shortDescription: string;
   isLegacy: boolean;
-  reasoningDescription?: string; // Only used for the models you can use for reasoning
+  reasoningDescription?: string; // Only used for the models you can use for reasoning.
 
   // Allows configuring parsing of special delimiters in the streamed model output.
   delimitersConfiguration?: {

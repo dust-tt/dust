@@ -122,7 +122,7 @@ export function AddToolsDropdown({
     assert(action);
 
     // For reasoning v2, we set the first reasoning model in the list as the default.
-    // (The higher prioirity model is placed first in the list.)
+    // The higher prioirity model is placed first in the list.
     if (action.type === "MCP" && action.name === "reasoning_v2") {
       const defaultReasoningAction = reasoningModels[0];
 
