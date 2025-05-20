@@ -224,11 +224,8 @@ export function AssistantBrowser({
                 <DropdownMenuItem
                   key={tag.sId}
                   onClick={() => {
-                    if (selectedTags.includes(tag.sId)) {
-                      setSelectedTags(
-                        selectedTags.filter((t) => t !== tag.sId)
-                      );
-                    } else {
+                    setSelectedTab("all");
+                    if (!selectedTags.includes(tag.sId)) {
                       setSelectedTags([...selectedTags, tag.sId]);
                     }
                     setAssistantSearch("");
