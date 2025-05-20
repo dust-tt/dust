@@ -58,7 +58,7 @@ WebCrawlerConfigurationModel.init(
     customCrawler: {
       type: DataTypes.STRING(128),
       allowNull: true,
-      defaultValue: null,
+      defaultValue: "firecrawl",
     },
   },
   {
