@@ -82,10 +82,10 @@ jobs:
 
           # Limited tools for safer review operations
           allowed_tools:
-            - "Bash(git diff --name-only HEAD~1)", # List changed files
-            - "Bash(git diff HEAD~1)", # See actual changes
-            - "View", # Read file contents
-            - "GlobTool", # Find related files
-            - "GrepTool", # Search for patterns
+            - "Bash(git diff --name-only HEAD~1)" # List changed files
+            - "Bash(git diff HEAD~1)" # See actual changes
+            - "View" # Read file contents
+            - "GlobTool" # Find related files
+            - "GrepTool" # Search for patterns
 
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
