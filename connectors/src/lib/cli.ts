@@ -39,34 +39,34 @@ const { INTERACTIVE_CLI } = process.env;
 
 export async function runCommand(adminCommand: AdminCommandType) {
   switch (adminCommand.majorCommand) {
-    case "connectors":
-      return connectors(adminCommand);
-    case "gong":
-      return gong(adminCommand);
-    case "confluence":
-      return confluence(adminCommand);
     case "batch":
       return batch(adminCommand);
-    case "notion":
-      return notion(adminCommand);
+    case "confluence":
+      return confluence(adminCommand);
+    case "connectors":
+      return connectors(adminCommand);
     case "github":
       return github(adminCommand);
+    case "gong":
+      return gong(adminCommand);
     case "google_drive":
       return google_drive(adminCommand);
-    case "slack":
-      return slack(adminCommand);
-    case "webcrawler":
-      return webcrawler(adminCommand);
-    case "temporal":
-      return temporal(adminCommand);
     case "intercom":
       return intercom(adminCommand);
     case "microsoft":
       return microsoft(adminCommand);
-    case "zendesk":
-      return zendesk(adminCommand);
+    case "notion":
+      return notion(adminCommand);
+    case "slack":
+      return slack(adminCommand);
     case "snowflake":
       return snowflake(adminCommand);
+    case "temporal":
+      return temporal(adminCommand);
+    case "webcrawler":
+      return webcrawler(adminCommand);
+    case "zendesk":
+      return zendesk(adminCommand);
     default:
       assertNever(adminCommand);
   }
