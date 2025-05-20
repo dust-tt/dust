@@ -412,7 +412,7 @@ export type SnowflakeFetchTableResponseType = t.TypeOf<
 >;
 
 /**
- * </Snwoflake>
+ * </Snowflake>
  */
 
 export const AdminCommandSchema = t.union([
