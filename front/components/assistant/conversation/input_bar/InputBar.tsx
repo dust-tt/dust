@@ -43,7 +43,7 @@ interface AssistantInputBarProps {
   disableAutoFocus: boolean;
   isFloating?: boolean;
   isFloatingWithoutMargin?: boolean;
-  isLoading?: boolean;
+  disableButton?: boolean;
 }
 
 /**
@@ -61,9 +61,9 @@ export function AssistantInputBar({
   actions = DEFAULT_INPUT_BAR_ACTIONS,
   disableAutoFocus = false,
   isFloating = true,
-  isLoading = false,
+  disableButton = false,
 }: AssistantInputBarProps) {
-  const [disableSendButton, setDisableSendButton] = useState(isLoading);
+  const [disableSendButton, setDisableSendButton] = useState(disableButton);
   const [isFocused, setIsFocused] = useState(false);
   const rainbowEffectRef = useRef<HTMLDivElement>(null);
 
@@ -299,8 +299,8 @@ export function AssistantInputBar({
   }, [isStopping, generationContext.generatingMessages, conversationId]);
 
   useEffect(() => {
-    setDisableSendButton(isLoading);
-  }, [isLoading]);
+    setDisableSendButton(disableButton);
+  }, [disableButton]);
 
   return (
     <div className="flex w-full flex-col">

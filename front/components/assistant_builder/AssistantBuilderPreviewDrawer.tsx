@@ -169,7 +169,7 @@ export default function AssistantBuilderRightPanel({
                     </div>
                     <div className="shrink-0">
                       <AssistantInputBar
-                        isLoading={isSavingDraftAgent}
+                        disableButton={isSavingDraftAgent}
                         owner={owner}
                         onSubmit={handleSubmit}
                         stickyMentions={stickyMentions}
