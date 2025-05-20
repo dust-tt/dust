@@ -8,14 +8,14 @@ import {
   uploadFileToConversationDataSource,
 } from "@app/lib/actions/action_file_helpers";
 import { PROCESS_ACTION_TOP_K } from "@app/lib/actions/constants";
-import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import {
+  ConfigurableToolInputSchemas,
+  DataSourcesToolConfigurationType,
+} from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { getDataSourceConfiguration } from "@app/lib/actions/mcp_internal_actions/servers/utils";
 import type { ProcessActionOutputsType } from "@app/lib/actions/process";
 import { getExtractFileTitle } from "@app/lib/actions/process/utils";
-import {
-  applyDataSourceFilters,
-  DataSourceConfiguration,
-} from "@app/lib/actions/retrieval";
+import { applyDataSourceFilters } from "@app/lib/actions/retrieval";
 import { runActionStreamed } from "@app/lib/actions/server";
 import type {
   ActionGeneratedFileType,
@@ -98,8 +98,6 @@ function createServer(
       const supportedModel = getSupportedModelConfig(model);
       const contextSize = supportedModel.contextSize;
 
-      const now = Date.now();
-
       const prompt = await constructPromptMultiActions(auth, {
         userMessage,
         agentConfiguration,
@@ -110,51 +108,10 @@ function createServer(
         agentsList: null,
       });
 
-      assert(
-        dataSources && dataSources.length > 0,
-        "Extract data action must have at least one data source."
-      );
-
-      const dataSourceConfigurationResults = await concurrentExecutor(
-        dataSources,
-        async (dataSourceToolConfiguration) =>
-          getDataSourceConfiguration(dataSourceToolConfiguration),
-        { concurrency: 10 }
-      );
-
-      // If any of the data sources are invalid, return an error message.
-      if (dataSourceConfigurationResults.some((res) => res.isErr())) {
-        return {
-          isError: false,
-          content: removeNulls(
-            dataSourceConfigurationResults.map((res) =>
-              res.isErr() ? res.error : null
-            )
-          ).map((error) => ({
-            type: "text",
-            text: error.message,
-          })),
-        };
-      }
-
-      const dataSourceConfigurations = removeNulls(
-        dataSourceConfigurationResults.map((res) =>
-          res.isOk() ? res.value : null
-        )
-      );
-
-      const dataSourceViews = await DataSourceViewResource.fetchByIds(
+      const config = await getConfigForProcessDustApp({
         auth,
-        _.uniq(dataSourceConfigurations.map((ds) => ds.dataSourceViewId))
-      );
-      const dataSourceViewsMap = Object.fromEntries(
-        dataSourceViews.map((dsv) => [dsv.sId, dsv])
-      );
-
-      const config = getConfigForProcessDustApp({
         model,
-        dataSourceConfigurations,
-        dataSourceViewsMap,
+        dataSources,
         timeFrame,
       });
 
@@ -258,17 +215,6 @@ function createServer(
         }
       }
 
-      const updateParams: {
-        jsonFileId: number | null;
-        jsonFileSnippet: string | null;
-        outputs: ProcessActionOutputsType | null;
-        runId?: string;
-      } = {
-        jsonFileId: null,
-        jsonFileSnippet: null,
-        outputs: outputs,
-      };
-
       // Generate the JSON file with extraction results
       const fileTitle = getExtractFileTitle({
         schema: actionConfiguration.jsonSchema,
@@ -292,19 +238,6 @@ function createServer(
         contentType: jsonFile.contentType,
         snippet: jsonSnippet,
       };
-
-      // Update the parameters with numeric IDs for database
-      updateParams.jsonFileId = jsonFile.id;
-      updateParams.jsonFileSnippet = jsonSnippet;
-
-      logger.info(
-        {
-          workspaceId: conversation.owner.sId,
-          conversationId: conversation.sId,
-          elapsed: Date.now() - now,
-        },
-        "[ASSISTANT_TRACE] Finished process action run execution"
-      );
 
       return {
         isError: false,
@@ -330,17 +263,20 @@ function createServer(
 
 export default createServer;
 
-function getConfigForProcessDustApp({
+async function getConfigForProcessDustApp({
+  auth,
   model,
-  dataSourceConfigurations,
-  dataSourceViewsMap,
+  dataSources,
   timeFrame,
 }: {
+  auth: Authenticator;
   model: AgentModelConfigurationType;
-  dataSourceConfigurations: DataSourceConfiguration[];
-  dataSourceViewsMap: Record<string, DataSourceViewResource>;
+  dataSources: DataSourcesToolConfigurationType[number][];
   timeFrame: TimeFrame | null;
 }) {
+  const { dataSourceConfigurations, dataSourceViewsMap } =
+    await getDataSourcesConfigurationsAndViewsMap(auth, dataSources);
+
   const config = cloneBaseConfig(
     getDustProdAction("assistant-v2-process").config
   );
@@ -375,4 +311,54 @@ function getConfigForProcessDustApp({
   config.DATASOURCE.top_k = PROCESS_ACTION_TOP_K;
 
   return config;
+}
+
+async function getDataSourcesConfigurationsAndViewsMap(
+  auth: Authenticator,
+  dataSources: DataSourcesToolConfigurationType[number][]
+) {
+  assert(
+    dataSources && dataSources.length > 0,
+    "Extract data action must have at least one data source."
+  );
+
+  const dataSourceConfigurationResults = await concurrentExecutor(
+    dataSources,
+    async (dataSourceToolConfiguration) =>
+      getDataSourceConfiguration(dataSourceToolConfiguration),
+    { concurrency: 10 }
+  );
+
+  // All data sources must be valid.
+  assert(
+    !dataSourceConfigurationResults.some((res) => res.isErr()),
+    "Invalid data source(s): " +
+      removeNulls(
+        dataSourceConfigurationResults.map((res) =>
+          res.isErr() ? res.error : null
+        )
+      )
+        .map((error) => ({
+          type: "text",
+          text: error.message,
+        }))
+        .join("\n")
+  );
+
+  const dataSourceConfigurations = removeNulls(
+    dataSourceConfigurationResults.map((res) => (res.isOk() ? res.value : null))
+  );
+
+  const dataSourceViews = await DataSourceViewResource.fetchByIds(
+    auth,
+    _.uniq(dataSourceConfigurations.map((ds) => ds.dataSourceViewId))
+  );
+  const dataSourceViewsMap = Object.fromEntries(
+    dataSourceViews.map((dsv) => [dsv.sId, dsv])
+  );
+
+  return {
+    dataSourceConfigurations,
+    dataSourceViewsMap,
+  };
 }
