@@ -199,7 +199,7 @@ for all new code and migrate to it from `PQueue` when modifying existing code th
 ### [BACK7] Avoid `Promise.all` on dynamic arrays
 
 Never use `Promise.all` on anything else than static arrays of promises with a known length (8 max).
-To parallelize asyncrhonous handling of dynamic arrays, use `ConcurrentExecutor`.
+To parallelize asynchronous handling of dynamic arrays, use `ConcurrentExecutor`.
 
 ### [BACK8] Favor typeguards over other methods
 
