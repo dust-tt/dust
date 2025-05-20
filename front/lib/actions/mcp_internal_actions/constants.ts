@@ -128,7 +128,7 @@ export const INTERNAL_MCP_SERVERS: Record<
       create_page: "low",
       create_page_from_database: "low",
       create_database: "low",
-      update_page: "low",  
+      update_page: "low",
     },
   },
 
