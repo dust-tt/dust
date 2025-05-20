@@ -1,0 +1,92 @@
+name: Claude Code Review
+
+on:
+  pull_request:
+    types: [review_requested, synchronize] # Runs when review is requested or PR is updated
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  code-review:
+    runs-on: ubuntu-latest
+    steps:
+      # For review_requested events, add a label to the PR
+      - name: Add review-requested label
+        if: github.event.action == 'review_requested'
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              labels: ['claude-review-requested']
+            });
+
+      # Determine if we should run the review
+      - name: Determine if review should run
+        id: should-run
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          result-encoding: string
+          script: |
+            // For review_requested events, always run.
+            if (context.payload.action === 'review_requested') {
+              console.log('Running because review was requested');
+              return 'true';
+            }
+
+            // For synchronize events, check for the label.
+            if (context.payload.action === 'synchronize') {
+              const { data: labels } = await github.rest.issues.listLabelsOnIssue({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.payload.pull_request.number
+              });
+
+              const hasLabel = labels.some(label => label.name === 'claude-review-requested');
+              console.log(`PR has claude-review-requested label: ${hasLabel}`);
+              return hasLabel ? 'true' : 'false';
+            }
+
+            // Default to not running.
+            return 'false';
+
+      # Only proceed if it's a review_requested event or a synchronize with the label
+      - name: Checkout code
+        if: steps.should-run.outputs.result == 'true'
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Fetch full history for accurate diffs
+
+      # Create symlink from CODING_RULES.md to CLAUDE.md
+      - name: Create symlink for Claude documentation
+        if: steps.should-run.outputs.result == 'true'
+        run: |
+          ln -s front/CODING_RULES.md CLAUDE.md
+          ls -la # Verify the symlink was created correctly
+
+      - name: Run Code Review with Claude
+        if: steps.should-run.outputs.result == 'true'
+        id: code-review
+        uses: anthropics/claude-code-action@beta
+        with:
+          # Define the review focus areas
+          prompt: >-
+            Review the PR changes. Focus on code quality, potential bugs, and
+            performance issues. Suggest improvements where appropriate.
+
+          # Limited tools for safer review operations
+          allowed_tools: [
+              "Bash(git diff --name-only HEAD~1)", # List changed files
+              "Bash(git diff HEAD~1)", # See actual changes
+              "View", # Read file contents
+              "GlobTool", # Find related files
+              "GrepTool", # Search for patterns
+            ]
+
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
