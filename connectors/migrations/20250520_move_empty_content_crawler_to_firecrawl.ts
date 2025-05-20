@@ -45,7 +45,7 @@ makeScript(
     });
 
     logger.info(
-      `Found ${webcrawlerConfigs.length} webcrawler configuration that are webcrawler, in empty error state and not in the given workspaces`
+      `Found ${webcrawlerConfigs.length} webcrawler configuration that are webcrawler, with empty error state and not in the given workspaces`
     );
 
     if (execute) {
