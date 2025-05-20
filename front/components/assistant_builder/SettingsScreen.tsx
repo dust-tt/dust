@@ -51,7 +51,7 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types";
-import { Err, Ok } from "@app/types";
+import { Err, isBuilder, Ok } from "@app/types";
 import type { TagType } from "@app/types/tag";
 
 import { AddEditorDropdown } from "../members/AddEditorsDropdown";
@@ -882,9 +882,11 @@ function TagsSection({
     if (tagsSuggestions.status !== "ok") {
       return [];
     }
-
+    const currentTagIds = new Set(builderState.tags.map((t) => t.sId));
     // We make sure we don't suggest tags that doesn't already exists
     return tags
+      .filter((t) => !currentTagIds.has(t.sId))
+      .filter((t) => isBuilder(owner) || t.kind !== "protected")
       .filter(
         (tag) =>
           tagsSuggestions.suggestions?.findIndex(
