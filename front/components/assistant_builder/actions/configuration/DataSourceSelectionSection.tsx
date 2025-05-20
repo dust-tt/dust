@@ -5,6 +5,7 @@ import {
   IconButton,
   Tree,
 } from "@dust-tt/sparkle";
+import Link from "next/link";
 import { useRouter } from "next/router";
 import { useContext, useState } from "react";
 
@@ -93,7 +94,21 @@ export default function DataSourceSelectionSection({
           <EmptyCallToAction
             label={`Select ${viewTypeToLabel(viewType)}`}
             onClick={openDataSourceModal}
-            disabled={!canAddDataSource}
+            disabled={canAddDataSource}
+            disabledTitle="You don't have any Data Sources available"
+            disabledDescription={
+              <>
+                You need to connect Data Sources to Dust before you can use them
+                in your agents.{" "}
+                <Link
+                  href="https://docs.dust.tt/docs/data"
+                  target="_blank"
+                  className="underline"
+                >
+                  Learn more.
+                </Link>
+              </>
+            }
           />
         ) : (
           <Tree>
