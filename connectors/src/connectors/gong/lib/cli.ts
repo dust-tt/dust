@@ -1,5 +1,8 @@
 import { makeGongForceResyncWorkflowId } from "@connectors/connectors/gong";
-import { fetchGongConnector } from "@connectors/connectors/gong/lib/utils";
+import {
+  fetchGongConfiguration,
+  fetchGongConnector,
+} from "@connectors/connectors/gong/lib/utils";
 import { QUEUE_NAME } from "@connectors/connectors/gong/temporal/config";
 import { gongSyncTranscriptsWorkflow } from "@connectors/connectors/gong/temporal/workflows";
 import { getTemporalClient } from "@connectors/lib/temporal";
@@ -16,18 +19,26 @@ export const gong = async ({
   const logger = topLogger.child({ majorCommand: "gong", command, args });
   switch (command) {
     case "force-resync": {
-      if (!args.connectorId) {
+      const { connectorId, fromTs } = args;
+      if (!connectorId) {
         throw new Error("Missing --connectorId argument");
       }
-      const { connectorId } = args;
 
       const connector = await fetchGongConnector({ connectorId });
       if (connector.type !== "gong") {
         throw new Error("Connector is not a Gong connector.");
       }
+      const configuration = await fetchGongConfiguration(connector);
 
+      // If fromTs is not provided, reset the last sync timestamp to run a full sync.
+      if (!fromTs) {
+        await configuration.resetLastSyncTimestamp();
+      } else {
+        await configuration.setLastSyncTimestamp(fromTs);
+      }
+
+      // Run a full sync workflow.
       const client = await getTemporalClient();
-
       const workflow = await client.workflow.start(
         gongSyncTranscriptsWorkflow,
         {
