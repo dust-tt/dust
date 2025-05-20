@@ -652,6 +652,7 @@ export class GroupResource extends BaseResource<GroupModel> {
         },
       ],
       where: {
+        workspaceId: workspace.id,
         kind: {
           // The 'as' clause is tautological but required by TS who does not
           // understand that groupKinds.filter() returns a GroupKind[]
