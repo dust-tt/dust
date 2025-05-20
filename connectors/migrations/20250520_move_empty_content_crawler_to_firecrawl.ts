@@ -26,7 +26,7 @@ makeScript(
     const webcrawlerConfigs = await WebCrawlerConfigurationModel.findAll({
       where: {
         customCrawler: {
-          [Op.ne]: "firecrawl",
+          [Op.is]: null,
         },
       },
       include: [
