@@ -132,9 +132,9 @@ guaranteed to trigger a internal error (and return a 500).
 ### [ERR2] Do not rely on `err as Error`
 
 Never catch and cast what was caught as `Error`. JS allows throwing anything (string, number,
-random object, ...) so the cast may be invalid and hide errors from the logs. Use `normalizeError`
-instead, this util function properly checks the content of the caught object and always returns
-a valid `Error` object.
+random object, ...) so the cast may be invalid and hides errors from the logs. Use `normalizeError`
+instead, this function properly checks the content of the caught object and always returns a valid
+`Error` object.
 
 Example:
 
