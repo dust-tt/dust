@@ -12,6 +12,7 @@ import type { ModelId } from "@connectors/types";
 import type { DataSourceConfig } from "@connectors/types";
 import {
   isTextExtractionSupportedContentType,
+  normalizeError,
   pagePrefixesPerMimeType,
   parseAndStringifyCsv,
   slugify,
@@ -92,7 +93,7 @@ export async function handleCsvFile({
     );
   } catch (err) {
     localLogger.warn({ error: err }, "Error while parsing or upserting table");
-    return new Err(err as Error);
+    return new Err(normalizeError(err));
   }
   return new Ok(null);
 }

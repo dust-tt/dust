@@ -10,6 +10,7 @@ import { getTemporalClient } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types";
+import { normalizeError } from "@connectors/types";
 
 function makeSalesforceSyncWorkflowId(connectorId: ModelId): string {
   return `salesforce-sync-${connectorId}`;
@@ -49,7 +50,7 @@ export async function launchSalesforceSyncWorkflow(
       cronSchedule: `${connector.id % 30} */2 * * *`, // Runs every 30 minutes at minute ${connector.id % 30} (0-29).
     });
   } catch (err) {
-    return new Err(err as Error);
+    return new Err(normalizeError(err));
   }
 
   return new Ok(workflowId);
@@ -87,6 +88,6 @@ export async function stopSalesforceSyncWorkflow(
       },
       "Failed to stop Salesforce workflow."
     );
-    return new Err(e as Error);
+    return new Err(normalizeError(e));
   }
 }

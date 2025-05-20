@@ -3,6 +3,8 @@ import type { Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
 import { v4 as uuidv4 } from "uuid";
 
+import { normalizeError } from "@connectors/types";
+
 import type { RedisUsageTagsType } from "../shared/redis_client";
 import { redisClient } from "../shared/redis_client";
 import { getStatsDClient } from "./statsd";
@@ -118,6 +120,6 @@ export async function expireRateLimiterKey({
 
     return new Ok(isExpired);
   } catch (err) {
-    return new Err(err as Error);
+    return new Err(normalizeError(err));
   }
 }

@@ -10,6 +10,7 @@ import { getTemporalClient } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types";
+import { normalizeError } from "@connectors/types";
 
 function makeBigQuerySyncWorkflowId(connectorId: ModelId): string {
   return `bigquery-sync-${connectorId}`;
@@ -50,7 +51,7 @@ export async function launchBigQuerySyncWorkflow(
       cronSchedule: `${connector.id % 60} * * * *`,
     });
   } catch (err) {
-    return new Err(err as Error);
+    return new Err(normalizeError(err));
   }
 
   return new Ok(workflowId);
@@ -88,6 +89,6 @@ export async function stopBigQuerySyncWorkflow(
       },
       "Failed to stop BigQuery workflow."
     );
-    return new Err(e as Error);
+    return new Err(normalizeError(e));
   }
 }

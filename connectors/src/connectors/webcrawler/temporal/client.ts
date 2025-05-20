@@ -16,7 +16,7 @@ import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { WebCrawlerConfigurationResource } from "@connectors/resources/webcrawler_resource";
 import type { ModelId } from "@connectors/types";
-import { WebcrawlerCustomCrawler } from "@connectors/types";
+import { normalizeError, WebcrawlerCustomCrawler } from "@connectors/types";
 
 import { WebCrawlerQueueNames } from "./config";
 import {
@@ -82,7 +82,7 @@ export async function launchCrawlWebsiteWorkflow(
       },
       `Failed starting workflow.`
     );
-    return new Err(e as Error);
+    return new Err(normalizeError(e));
   }
 }
 
@@ -111,7 +111,7 @@ export async function stopCrawlWebsiteWorkflow(
       },
       `Failed stopping workflow.`
     );
-    return new Err(e as Error);
+    return new Err(normalizeError(e));
   }
 }
 
