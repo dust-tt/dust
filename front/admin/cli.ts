@@ -461,14 +461,9 @@ const transcripts = async (command: string, args: parseArgs.ParsedArgs) => {
       const allWorkspaces = await Workspace.findAll();
       let activeConfigSIds: string[] = [];
       for (const ws of allWorkspaces) {
-        const configs = await LabsTranscriptsConfigurationModel.findAll({
-          where: { workspaceId: ws.id },
-        });
-        for (const configModel of configs) {
-          const config = new LabsTranscriptsConfigurationResource(
-            LabsTranscriptsConfigurationModel,
-            configModel.get()
-          );
+        const configs =
+          await LabsTranscriptsConfigurationResource.findByWorkspaceId(ws.id);
+        for (const config of configs) {
           if (config.isActive === true || !!config.dataSourceViewId) {
             activeConfigSIds.push(config.sId);
             if (execute) {

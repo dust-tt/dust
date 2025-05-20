@@ -99,10 +99,14 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
       return [];
     }
 
+    return LabsTranscriptsConfigurationResource.findByWorkspaceId(owner.id);
+  }
+
+  static async findByWorkspaceId(
+    workspaceId: number
+  ): Promise<LabsTranscriptsConfigurationResource[]> {
     const configurations = await LabsTranscriptsConfigurationModel.findAll({
-      where: {
-        workspaceId: owner.id,
-      },
+      where: { workspaceId },
     });
 
     return configurations.map(
