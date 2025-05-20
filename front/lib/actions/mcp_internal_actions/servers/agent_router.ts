@@ -24,7 +24,7 @@ const createServer = (auth: Authenticator): McpServer => {
 
   server.tool(
     "list_agents",
-    "List all active published agents in the workspace, to know which ones are the best suited for the current conversation. the mention directive allows the user to click on the agent name to select it.",
+    "List all active published agents in the workspace. The mention directive allows the user to click on the agent name to select it.",
     {},
     async () => {
       const owner = auth.getNonNullableWorkspace();
@@ -82,7 +82,7 @@ const createServer = (auth: Authenticator): McpServer => {
 
   server.tool(
     "suggest_agents",
-    "Suggest agents for the current user's query.",
+    "Suggest agents for the current user's query. The mention directive allows the user to click on the agent name to select it.",
     {
       userMessage: z.string().describe("The user's message."),
       conversationId: z.string().describe("The conversation id."),
