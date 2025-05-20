@@ -884,16 +884,14 @@ function TagsSection({
     }
 
     // We make sure we don't suggest tags that doesn't already exists
-    return (
-      tagsSuggestions.suggestions
-        ?.filter(
-          (tag) =>
-            tags.findIndex(
-              (t) => t.name.toLowerCase() === tag.toLowerCase()
-            ) !== -1
-        )
-        .slice(0, 3) ?? []
-    );
+    return tags
+      .filter(
+        (tag) =>
+          tagsSuggestions.suggestions?.findIndex(
+            (t) => tag.name.toLowerCase() === t.toLowerCase()
+          ) !== -1
+      )
+      .slice(0, 3);
   }, [tagsSuggestions, tags]);
 
   const updateTagsSuggestions = useCallback(async () => {
@@ -925,7 +923,6 @@ function TagsSection({
             builderState={builderState}
             setBuilderState={setBuilderState}
             setEdited={setEdited}
-            tags={tags}
             tagsSuggestions={filteredTagsSuggestions}
           />
         )}
@@ -955,7 +952,6 @@ function TagsSuggestions({
   builderState,
   setBuilderState,
   setEdited,
-  tags,
   tagsSuggestions,
 }: {
   builderState: AssistantBuilderState;
@@ -963,25 +959,13 @@ function TagsSuggestions({
     stateFn: (state: AssistantBuilderState) => AssistantBuilderState
   ) => void;
   setEdited: (edited: boolean) => void;
-  tags: TagType[];
-  tagsSuggestions: string[];
+  tagsSuggestions: TagType[];
 }) {
-  const sendNotification = useSendNotification();
-  const addTag = async (name: string) => {
+  const addTag = async (tag: TagType) => {
     const isTagInAssistant =
-      builderState.tags.findIndex((t) => t.name === name) !== -1;
-    const tag: TagType | null = tags.find((t) => t.name === name) ?? null;
+      builderState.tags.findIndex((t) => t.sId === tag.sId) !== -1;
 
-    if (tag === null && !isTagInAssistant) {
-      sendNotification({
-        type: "error",
-        title: "Can't create tag",
-        description: "You cannot create tags in the Assistant Builder",
-      });
-      return;
-    }
-
-    if (tag != null && !isTagInAssistant) {
+    if (!isTagInAssistant) {
       setBuilderState((state) => ({
         ...state,
         tags: state.tags.concat(tag),
@@ -1002,7 +986,7 @@ function TagsSuggestions({
           key={`tag-suggestion-${tag}`}
           size="xs"
           variant="outline"
-          label={tag}
+          label={tag.name}
           onClick={() => addTag(tag)}
         />
       ))}
