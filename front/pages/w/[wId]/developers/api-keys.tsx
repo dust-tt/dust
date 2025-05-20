@@ -88,6 +88,7 @@ export function APIKeys({
 }) {
   const { mutate } = useSWRConfig();
   const [isCopiedWorkspaceId, copyWorkspaceId] = useCopyToClipboard();
+  const [isCopiedName, copyName] = useCopyToClipboard();
   const [isCopiedDomain, copyDomain] = useCopyToClipboard();
   const [isCopiedApiKey, copyApiKey] = useCopyToClipboard();
   const [newApiKeyName, setNewApiKeyName] = useState("");
@@ -176,6 +177,23 @@ export function APIKeys({
                 use it to authenticate with the Dust API.
               </p>
               <br />
+              <div className="mt-4">
+                <Page.H variant="h5">Name</Page.H>
+                <Page.Horizontal align="center">
+                  <pre className="flex-grow overflow-x-auto rounded bg-muted-background p-2 font-mono dark:bg-muted-background-night">
+                    {keys[0]?.name}
+                  </pre>
+                  <IconButton
+                    tooltip="Copy to clipboard"
+                    icon={isCopiedName ? ClipboardCheckIcon : ClipboardIcon}
+                    onClick={async () => {
+                      if (keys[0]?.name) {
+                        await copyName(keys[0].name);
+                      }
+                    }}
+                  />
+                </Page.Horizontal>
+              </div>
               <div className="mt-4">
                 <Page.H variant="h5">Domain</Page.H>
                 <Page.Horizontal align="center">
