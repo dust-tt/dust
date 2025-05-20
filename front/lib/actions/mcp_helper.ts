@@ -96,7 +96,7 @@ export function mcpServerIsRemote(
 export function getMcpServerViewDisplayName(view: MCPServerViewType) {
   // Unreleased servers are displayed with a suffix in the UI.
   if (view.server.version.startsWith("0")) {
-    return `${asDisplayName(view.server.name.slice(0, -9))} (Unreleased)`;
+    return `${asDisplayName(view.server.name)} (Unreleased)`;
   }
   return asDisplayName(view.server.name);
 }
