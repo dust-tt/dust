@@ -303,8 +303,7 @@ export function APIKeys({
       </Page.Horizontal>
       <div className="space-y-4 divide-y divide-gray-200 dark:divide-gray-200-night">
         <ul role="list" className="pt-4">
-          {keys
-            .sort((a, b) => (b.status === "active" ? 1 : -1))
+          {_.sortBy(keys, (key) => key.status[0] + key.name) // Sort by status first (a for active and i for inactive), then by name
             .map((key) => (
               <li key={key.secret} className="px-2 py-4">
                 <div className="flex items-center justify-between">
