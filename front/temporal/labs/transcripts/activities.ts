@@ -74,7 +74,18 @@ export async function retrieveNewTranscriptsActivity(
     );
   }
 
-  const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+  const user = await UserResource.fetchByModelId(
+    transcriptsConfiguration.userId
+  );
+  if (!user) {
+    await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
+    localLogger.error({}, "[retrieveNewTranscripts] User not found. Stopping.");
+    return [];
+  }
+  const auth = await Authenticator.fromUserIdAndWorkspaceId(
+    user.sId,
+    workspace.sId
+  );
 
   if (!auth.workspace()) {
     await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);

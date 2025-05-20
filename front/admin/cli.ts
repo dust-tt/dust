@@ -1,4 +1,5 @@
 import parseArgs from "minimist";
+import fs from "fs/promises";
 
 import { getConversation } from "@app/lib/api/assistant/conversation";
 import { renderConversationForModel } from "@app/lib/api/assistant/preprocessing";
@@ -32,6 +33,8 @@ import {
   removeNulls,
   SUPPORTED_MODEL_CONFIGS,
 } from "@app/types";
+import { LabsTranscriptsConfigurationModel } from "@app/lib/resources/storage/models/labs_transcripts";
+import path from "path";
 
 // `cli` takes an object type and a command as first two arguments and then a list of arguments.
 const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
@@ -390,6 +393,16 @@ const conversation = async (command: string, args: parseArgs.ParsedArgs) => {
   }
 };
 
+// The active IDs file is a JSON array of string configuration sIds, e.g.:
+// ["trc_...", "trc_...", ...]
+// A config is considered 'active' if isActive === true OR dataSourceViewId is set (truthy).
+// You can override the path with --activeIdsFile=/path/to/file.json
+function getActiveIdsFile(args: parseArgs.ParsedArgs) {
+  return args.activeIdsFile
+    ? path.resolve(args.activeIdsFile)
+    : path.join(__dirname, "active_labs_workflow_ids.json");
+}
+
 const transcripts = async (command: string, args: parseArgs.ParsedArgs) => {
   switch (command) {
     case "stop": {
@@ -438,6 +451,76 @@ const transcripts = async (command: string, args: parseArgs.ParsedArgs) => {
         },
         "Transcript retrieval workflow started."
       );
+    }
+    case "pause-all": {
+      const execute = !!args.execute;
+      const activeIdsFile = getActiveIdsFile(args);
+      logger.info(
+        `Pausing all LabsTranscripts workflows and recording active ones... (activeIdsFile: ${activeIdsFile})`
+      );
+      const allWorkspaces = await Workspace.findAll();
+      let activeConfigSIds: string[] = [];
+      for (const ws of allWorkspaces) {
+        const configs = await LabsTranscriptsConfigurationModel.findAll({
+          where: { workspaceId: ws.id },
+        });
+        for (const configModel of configs) {
+          const config = new LabsTranscriptsConfigurationResource(
+            LabsTranscriptsConfigurationModel,
+            configModel.get()
+          );
+          if (config.isActive === true || !!config.dataSourceViewId) {
+            activeConfigSIds.push(config.sId);
+            if (execute) {
+              await stopRetrieveTranscriptsWorkflow(config);
+            } else {
+              logger.info(
+                `[DRY RUN] Would stop workflow for config sId=${config.sId}`
+              );
+            }
+          }
+        }
+      }
+      await fs.writeFile(
+        activeIdsFile,
+        JSON.stringify(activeConfigSIds, null, 2)
+      );
+      logger.info(
+        `Paused all workflows. Active workflow sIds recorded: ${activeConfigSIds.length}`
+      );
+      return;
+    }
+    case "restart-active": {
+      const execute = !!args.execute;
+      const activeIdsFile = getActiveIdsFile(args);
+      logger.info(
+        `Restarting only previously active LabsTranscripts workflows... (activeIdsFile: ${activeIdsFile})`
+      );
+      let activeConfigSIds: string[] = [];
+      try {
+        const data = await fs.readFile(activeIdsFile, "utf-8");
+        activeConfigSIds = JSON.parse(data);
+      } catch (e) {
+        logger.error(`Could not read ${activeIdsFile}: ${e}`);
+        process.exit(1);
+      }
+      for (const sId of activeConfigSIds) {
+        const config =
+          await LabsTranscriptsConfigurationResource.fetchById(sId);
+        if (!config) {
+          logger.warn(`Config sId=${sId} not found, skipping.`);
+          continue;
+        }
+        if (execute) {
+          await launchRetrieveTranscriptsWorkflow(config);
+        } else {
+          logger.info(
+            `[DRY RUN] Would restart workflow for config sId=${config.sId}`
+          );
+        }
+      }
+      logger.info(`Restarted ${activeConfigSIds.length} workflows.`);
+      return;
     }
   }
 };
