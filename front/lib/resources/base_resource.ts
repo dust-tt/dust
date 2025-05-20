@@ -21,11 +21,8 @@ export interface ResourceWithId {
   id: ModelId;
 }
 
-export type LogContextValue = string | number | null;
-export type ResourceLogContext = {
-  key: string;
-  logContext: Record<string, LogContextValue>;
-};
+export type ResourceLogValue = string | number | null;
+export type ResourceLogJSON = Record<string, ResourceLogValue>;
 
 /**
  * BaseResource serves as a foundational class for resource management.
@@ -100,10 +97,22 @@ export abstract class BaseResource<M extends Model & ResourceWithId> {
   ): Promise<Result<undefined | number, Error>>;
 
   /**
-   * Method called if the resource is added to the log context using `req.addResourceToLog`.
-   * The key in the returned value is used as kind of a namespace to avoid key overlap in the `logContext`.
+   * Remove 'Resource' suffix and convert to snake_case
+   * i.e: UserResource -> user
    */
-  toContextLog(): ResourceLogContext {
+  className(): string {
+    return this.constructor.name
+      .replace(/Resource$/, "") // Remove 'Resource' suffix
+      .replace(/[A-Z]/g, (letter, index) =>
+        index === 0 ? letter.toLowerCase() : "_" + letter.toLowerCase()
+      );
+  }
+
+  /**
+   * Method called if the resource is added to the log context using `req.addResourceToLog`.
+   * The className() of the Resource will be used as kind of a namespace to avoid key overlap in the `logContext`.
+   */
+  toLogJSON(): ResourceLogJSON {
     throw new Error("`toContextLog` not implemented");
   }
 }

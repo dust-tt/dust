@@ -1,6 +1,5 @@
 import tracer from "dd-trace";
 import type { NextApiRequest, NextApiResponse } from "next";
-import type { Model } from "sequelize";
 
 import { getSession } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
@@ -10,8 +9,7 @@ import type {
 } from "@app/lib/iam/session";
 import type {
   BaseResource,
-  ResourceLogContext,
-  ResourceWithId,
+  ResourceLogJSON,
 } from "@app/lib/resources/base_resource";
 import type { APIErrorWithStatusCode, WithAPIErrorResponse } from "@app/types";
 
@@ -19,17 +17,16 @@ import logger from "./logger";
 import { statsDClient } from "./statsDClient";
 
 export type RequestContext = {
-  [key: string]: ResourceLogContext["logContext"];
+  [key: string]: ResourceLogJSON;
 };
 
 const EMPTY_LOG_CONTEXT = Object.freeze({});
 
-// Make the elements undefined temporarely avoid updating all NextApiRequest to NextApiRequestWithContext.
+// Make the elements undefined temporarily avoid updating all NextApiRequest to NextApiRequestWithContext.
 export interface NextApiRequestWithContext extends NextApiRequest {
   logContext?: RequestContext;
-  addResourceToLog?: <T extends Model & ResourceWithId>(
-    resource: BaseResource<T>
-  ) => void;
+  // We don't care about the sequelize type, any is ok
+  addResourceToLog?: (resource: BaseResource<any>) => void;
 }
 
 export function withLogging<T>(
@@ -56,11 +53,11 @@ export function withLogging<T>(
     // Use freeze to make sure we cannot update `req.logContext` down the callstack
     req.logContext = EMPTY_LOG_CONTEXT;
     req.addResourceToLog = (resource) => {
-      const { key, logContext } = resource.toContextLog();
+      const logContext = resource.toLogJSON();
 
       req.logContext = Object.freeze({
         ...(req.logContext ?? {}),
-        [key]: logContext,
+        [resource.className()]: logContext,
       });
     };
 
