@@ -10,6 +10,7 @@ import {
   makeSId,
 } from "@app/lib/resources/string_ids";
 import type { ModelId } from "@app/types";
+import { asDisplayName } from "@app/types";
 
 export const getServerTypeAndIdFromSId = (
   mcpServerId: string
@@ -90,4 +91,12 @@ export function mcpServerIsRemote(
 ): server is RemoteMCPServerType {
   const serverType = getServerTypeAndIdFromSId(server.sId).serverType;
   return serverType === "remote";
+}
+
+export function getMcpServerViewDisplayName(view: MCPServerViewType) {
+  // Display the server name without the _internal suffix, which is reserved for internal use.
+  if (view.server.name.endsWith("_internal")) {
+    return `${asDisplayName(view.server.name.slice(0, -9))} (Internal)`;
+  }
+  return asDisplayName(view.server.name);
 }
