@@ -50,6 +50,12 @@ function makeGongSyncScheduleId(connector: ConnectorResource): string {
   return `gong-sync-${connector.id}`;
 }
 
+export function makeGongForceResyncWorkflowId(
+  connector: ConnectorResource
+): string {
+  return `${makeGongSyncScheduleId(connector)}-force-resync`;
+}
+
 export class GongConnectorManager extends BaseConnectorManager<null> {
   static async create({
     dataSourceConfig,

@@ -269,7 +269,7 @@ export class GongClient {
   }) {
     try {
       const transcripts = await this.postRequest(
-        `/calls/transcript`,
+        "/calls/transcript",
         {
           cursor: pageCursor,
           filter: {
@@ -299,7 +299,7 @@ export class GongClient {
   async getUsers({ pageCursor }: { pageCursor: string | null }) {
     try {
       const users = await this.getRequest(
-        `/users`,
+        "/users",
         pageCursor ? { cursor: pageCursor } : {},
         GongPaginatedResults("users", GongUserCodec)
       );
