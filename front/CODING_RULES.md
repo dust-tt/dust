@@ -134,7 +134,7 @@ guaranteed to trigger a internal error (and return a 500).
 Never catch and cast what was caught as `Error`. JS allows throwing anything (string, number,
 random object, ...) so the cast may be invalid and hide errors from the logs. Use `normalizeError`
 instead, this util function properly checks the content of the caught object and always returns
-an `Error`.
+a valid `Error` object.
 
 Example:
 
