@@ -26,6 +26,7 @@ import {
   SheetTitle,
   Spinner,
   useCopyToClipboard,
+  useSendNotification,
 } from "@dust-tt/sparkle";
 import _ from "lodash";
 import type { InferGetServerSidePropsType } from "next";
@@ -104,10 +105,12 @@ export function APIKeys({
     }, {});
   }, [groups]);
 
+  const sendNotification = useSendNotification();
+
   const { submit: handleGenerate, isSubmitting: isGenerating } =
     useSubmitFunction(
       async ({ name, group }: { name: string; group?: GroupType }) => {
-        await fetch(`/api/w/${owner.sId}/keys`, {
+        const response = await fetch(`/api/w/${owner.sId}/keys`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -116,7 +119,22 @@ export function APIKeys({
         });
         await mutate(`/api/w/${owner.sId}/keys`);
         setNewApiKeyName("");
-        setIsNewApiKeyCreatedOpen(true);
+        if (response.status >= 200 && response.status < 300) {
+          setIsNewApiKeyCreatedOpen(true);
+          sendNotification({
+            title: "API Key Created",
+            description:
+              "Your API key will remain visible for 10 minutes only. You can use it to authenticate with the Dust API.",
+            type: "success",
+          });
+          return;
+        }
+        const errorResponse = await response.json();
+        sendNotification({
+          title: "Error creating API key",
+          description: _.get(errorResponse, "error.message", "Unknown error"),
+          type: "error",
+        });
       }
     );
 
