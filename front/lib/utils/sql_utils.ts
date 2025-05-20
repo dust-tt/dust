@@ -1,5 +1,5 @@
-import { injectReplacements } from "sequelize/lib/utils/sql";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { injectReplacements } from "sequelize/lib/utils/sql";
 
 export function getInsertSQL(model: any, data: any) {
   // Build an instance but don't save it
