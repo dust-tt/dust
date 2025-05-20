@@ -142,7 +142,7 @@ export function generateConfiguredInput({
       if (!jsonSchema) {
         return null;
       }
-      return { value: JSON.stringify(jsonSchema), mimeType };
+      return { jsonSchema, mimeType };
     }
 
     case INTERNAL_MIME_TYPES.TOOL_INPUT.STRING: {

@@ -69,12 +69,17 @@ export const ConfigurableToolInputSchemas = {
     .describe("An optional time frame to use for the tool.")
     .nullable(),
   [INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA]: z.object({
-    value: z
-      .string()
-      .refine((v) => validateJsonSchema(v).isValid, {
-        message: "Value must be a valid JSON schema string",
-      })
-      .optional(),
+    jsonSchema: z.custom<JSONSchema>(
+      (val) => {
+        if (typeof val !== "object" || val === null) {
+          return false;
+        }
+        return validateJsonSchema(JSON.stringify(val)).isValid;
+      },
+      {
+        message: "Value must be a valid JSON schema object",
+      }
+    ),
     mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA),
   }),
   // All mime types do not necessarily have a fixed schema,

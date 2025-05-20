@@ -31,11 +31,14 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type {
+  AgentConfigurationType,
   AgentModelConfigurationType,
+  ConversationType,
   TimeFrame,
   UserMessageType,
 } from "@app/types";
 import { isUserMessageType, timeFrameFromNow } from "@app/types";
+import { JSONSchema7 as JSONSchema } from "json-schema";
 
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "extract_data",
@@ -63,51 +66,27 @@ function createServer(
         ConfigurableToolInputSchemas[
           INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
         ],
-      jsonSchema:
+      jsonSchemaContainer:
         ConfigurableToolInputSchemas[
           INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA
         ],
     },
-    async ({ timeFrame, dataSources, jsonSchema }) => {
+    async ({ timeFrame, dataSources, jsonSchemaContainer }) => {
+      // Unwrap variables
       assert(
         agentLoopRunContext,
         "agentLoopContext is required where the tool is called."
       );
-
-      const { agentConfiguration, conversation, actionConfiguration } =
-        agentLoopRunContext;
-
-      assert(
-        isServerSideMCPToolConfiguration(actionConfiguration),
-        "actionConfiguration must be a server side MCP tool configuration"
-      );
-
-      // grab user message
-      const userMessagesFiltered = conversation.content.filter((m) =>
-        isUserMessageType(m[0])
-      );
-      const lastUserMessageTuple = userMessagesFiltered.at(-1);
-      assert(
-        lastUserMessageTuple,
-        "No user message found in conversation content."
-      );
-      const userMessage: UserMessageType =
-        lastUserMessageTuple[0] as UserMessageType;
-
+      const { agentConfiguration, conversation } = agentLoopRunContext;
+      const { jsonSchema } = jsonSchemaContainer;
       const { model } = agentConfiguration;
-      const supportedModel = getSupportedModelConfig(model);
-      const contextSize = supportedModel.contextSize;
 
-      const prompt = await constructPromptMultiActions(auth, {
-        userMessage,
+      // prepare dust app inputs
+      const prompt = await getPromptForProcessDustApp({
+        auth,
         agentConfiguration,
-        fallbackPrompt:
-          "Process the retrieved data to extract structured information based on the provided schema.",
-        model: supportedModel,
-        hasAvailableActions: false,
-        agentsList: null,
+        conversation,
       });
-
       const config = await getConfigForProcessDustApp({
         auth,
         model,
@@ -115,13 +94,14 @@ function createServer(
         timeFrame,
       });
 
+      // Call the dust app
       const res = await runActionStreamed(
         auth,
         "assistant-v2-process",
         config,
         [
           {
-            context_size: contextSize,
+            context_size: getSupportedModelConfig(model).contextSize,
             prompt,
             schema: jsonSchema,
             objective: "n/a",
@@ -130,83 +110,37 @@ function createServer(
         {
           workspaceId: conversation.owner.sId,
           conversationId: conversation.sId,
-          userMessageId: userMessage.sId,
         }
       );
-
       if (res.isErr()) {
-        logger.error(
-          {
-            workspaceId: conversation.owner.sId,
-            conversationId: conversation.sId,
-            error: res.error,
-          },
-          "Error running extract data action"
-        );
-        return {
-          isError: true,
-          content: [
-            {
-              type: "text",
-              created: Date.now(),
-              workspaceId: conversation.owner.sId,
-              conversationId: conversation.sId,
-              text: `Error running extract data action: ${res.error.message}`,
-            },
-          ],
-        };
+        return processToolError({
+          conversation,
+          errorMessage: "Error running extract data action",
+          errorDetails: res.error.message,
+        });
       }
 
-      const { eventStream } = res.value;
+      // Event stream loop
       let outputs: ProcessActionOutputsType | null = null;
-
-      for await (const event of eventStream) {
+      for await (const event of res.value.eventStream) {
         if (event.type === "error") {
-          logger.error(
-            {
-              workspaceId: conversation.owner.sId,
-              conversationId: conversation.sId,
-              error: event.content.message,
-            },
-            "Error running extract data action"
-          );
-          return {
-            isError: true,
-            content: [
-              {
-                type: "text",
-                created: Date.now(),
-                workspaceId: conversation.owner.sId,
-                conversationId: conversation.sId,
-                text: `Error running extract data action: ${event.content.message}`,
-              },
-            ],
-          };
+          return processToolError({
+            conversation,
+            errorMessage: "Error running extract data action",
+            errorDetails:
+              event.content.message ?? "Unknown error from event stream.",
+          });
         }
 
         if (event.type === "block_execution") {
           const e = event.content.execution[0][0];
           if (e.error) {
-            logger.error(
-              {
-                workspaceId: conversation.owner.sId,
-                conversationId: conversation.sId,
-                error: e.error,
-              },
-              "Error running process"
-            );
-            return {
-              isError: true,
-              content: [
-                {
-                  type: "text",
-                  created: Date.now(),
-                  workspaceId: conversation.owner.sId,
-                  conversationId: conversation.sId,
-                  text: `Error running extract data action: ${e.error}`,
-                },
-              ],
-            };
+            return processToolError({
+              conversation,
+              errorMessage: "Error running extract data action",
+              errorDetails:
+                e.error ?? "An unknown error occurred during block execution.",
+            });
           }
 
           if (event.content.block_name === "OUTPUT" && e.value) {
@@ -215,16 +149,13 @@ function createServer(
         }
       }
 
-      // Generate the JSON file with extraction results
-      const fileTitle = getExtractFileTitle({
-        schema: actionConfiguration.jsonSchema,
+      // Generate file and process tool output
+      const { jsonFile, processToolOutput } = await generateProcessToolOutput({
+        auth,
+        conversation,
+        outputs,
+        jsonSchema,
       });
-      const { jsonFile, jsonSnippet } = await generateJSONFileAndSnippet(auth, {
-        title: fileTitle,
-        conversationId: conversation.sId,
-        data: outputs?.data,
-      });
-
       // Upload the file to the conversation data source.
       // This step is critical for file persistence across sessions.
       await uploadFileToConversationDataSource({
@@ -232,29 +163,7 @@ function createServer(
         file: jsonFile,
       });
 
-      const generatedFile: ActionGeneratedFileType = {
-        fileId: jsonFile.sId,
-        title: fileTitle,
-        contentType: jsonFile.contentType,
-        snippet: jsonSnippet,
-      };
-
-      return {
-        isError: false,
-        content: [
-          {
-            type: "resource" as const,
-            resource: {
-              // "text" here is what will be presented to the model,
-              // not necessarily the raw text of the file.
-              text: "Generated JSON file with extraction results",
-              uri: jsonFile.getPublicUrl(auth),
-              mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
-              ...generatedFile,
-            },
-          },
-        ],
-      };
+      return processToolOutput;
     }
   );
 
@@ -275,7 +184,7 @@ async function getConfigForProcessDustApp({
   timeFrame: TimeFrame | null;
 }) {
   const { dataSourceConfigurations, dataSourceViewsMap } =
-    await getDataSourcesConfigurationsAndViewsMap(auth, dataSources);
+    await getDataSourcesDetails(auth, dataSources);
 
   const config = cloneBaseConfig(
     getDustProdAction("assistant-v2-process").config
@@ -313,7 +222,7 @@ async function getConfigForProcessDustApp({
   return config;
 }
 
-async function getDataSourcesConfigurationsAndViewsMap(
+async function getDataSourcesDetails(
   auth: Authenticator,
   dataSources: DataSourcesToolConfigurationType[number][]
 ) {
@@ -360,5 +269,116 @@ async function getDataSourcesConfigurationsAndViewsMap(
   return {
     dataSourceConfigurations,
     dataSourceViewsMap,
+  };
+}
+
+async function getPromptForProcessDustApp({
+  auth,
+  agentConfiguration,
+  conversation,
+}: {
+  auth: Authenticator;
+  agentConfiguration: AgentConfigurationType;
+  conversation: ConversationType;
+}) {
+  const { model } = agentConfiguration;
+  // grab user message
+  const userMessagesFiltered = conversation.content.filter((m) =>
+    isUserMessageType(m[0])
+  );
+  const lastUserMessageTuple = userMessagesFiltered.at(-1);
+  assert(
+    lastUserMessageTuple,
+    "No user message found in conversation content."
+  );
+  const userMessage: UserMessageType =
+    lastUserMessageTuple[0] as UserMessageType;
+
+  return await constructPromptMultiActions(auth, {
+    userMessage,
+    agentConfiguration,
+    fallbackPrompt:
+      "Process the retrieved data to extract structured information based on the provided schema.",
+    model: getSupportedModelConfig(model),
+    hasAvailableActions: false,
+    agentsList: null,
+  });
+}
+
+function processToolError({
+  conversation,
+  errorMessage,
+  errorDetails,
+}: {
+  conversation: ConversationType;
+  errorMessage: string;
+  errorDetails: string;
+}) {
+  logger.error(
+    {
+      workspaceId: conversation.owner.sId,
+      conversationId: conversation.sId,
+      error: errorDetails,
+    },
+    "Error running process"
+  );
+  return {
+    content: [
+      {
+        type: "text" as const,
+        created: Date.now(),
+        workspaceId: conversation.owner.sId,
+        conversationId: conversation.sId,
+        text: `${errorMessage}: ${errorDetails}`,
+      },
+    ],
+    isError: true,
+  };
+}
+
+async function generateProcessToolOutput({
+  auth,
+  conversation,
+  outputs,
+  jsonSchema,
+}: {
+  auth: Authenticator;
+  conversation: ConversationType;
+  outputs: ProcessActionOutputsType | null;
+  jsonSchema: JSONSchema;
+}) {
+  const fileTitle = getExtractFileTitle({
+    schema: jsonSchema,
+  });
+  const { jsonFile, jsonSnippet } = await generateJSONFileAndSnippet(auth, {
+    title: fileTitle,
+    conversationId: conversation.sId,
+    data: outputs?.data,
+  });
+  const generatedFile: ActionGeneratedFileType = {
+    fileId: jsonFile.sId,
+    title: fileTitle,
+    contentType: jsonFile.contentType,
+    snippet: jsonSnippet,
+  };
+
+  return {
+    jsonFile,
+    processToolOutput: {
+      isError: false,
+      content: [
+        {
+          type: "resource" as const,
+          resource: {
+            // "text" here is what will be presented to the model,
+            // not necessarily the raw text of the file.
+            text: "Generated JSON file with extraction results",
+            uri: jsonFile.getPublicUrl(auth),
+            mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
+            ...generatedFile,
+          },
+        },
+      ],
+    },
   };
 }
