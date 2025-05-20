@@ -14,6 +14,12 @@ jobs:
         with:
           fetch-depth: 0 # Fetch full history for accurate diffs
 
+      # Create symlink from CODING_RULES.md to CLAUDE.md
+      - name: Create symlink for Claude documentation
+        run: |
+          ln -s front/CODING_RULES.md CLAUDE.md
+          ls -la # Verify the symlink was created correctly
+
       - name: Run Code Review with Claude
         id: code-review
         uses: anthropics/claude-code-action@beta
