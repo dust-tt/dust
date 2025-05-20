@@ -1,6 +1,7 @@
 import type { CreationOptional, ForeignKey } from "sequelize";
 import { DataTypes } from "sequelize";
 
+import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
@@ -17,7 +18,12 @@ export class AgentReasoningConfiguration extends WorkspaceAwareModel<AgentReason
   declare temperature: number | null;
   declare reasoningEffort: AgentReasoningEffort | null;
 
-  declare agentConfigurationId: ForeignKey<AgentConfiguration["id"]>;
+  // If we have an agentConfigurationId, it means that the agent has the reasoning tool.
+  declare agentConfigurationId: ForeignKey<AgentConfiguration["id"]> | null;
+  // If we have a mcpServerConfigurationId, it means that the MCP server is configured with a reasoning model.
+  declare mcpServerConfigurationId: ForeignKey<
+    AgentMCPServerConfiguration["id"]
+  > | null;
 
   declare sId: string;
 
@@ -73,8 +79,18 @@ AgentReasoningConfiguration.init(
         unique: true,
         fields: ["sId"],
       },
+      // TODO(WORKSPACE_ID_ISOLATION 2025-05-13): Remove index
       {
         fields: ["agentConfigurationId"],
+      },
+      {
+        fields: ["workspaceId", "agentConfigurationId"],
+        name: "agent_reasoning_config_workspace_id_agent_config_id",
+        concurrently: true,
+      },
+      {
+        fields: ["workspaceId", "mcpServerConfigurationId"],
+        name: "agent_reasoning_config_workspace_id_mcp_srv_config_id",
         concurrently: true,
       },
     ],
@@ -83,10 +99,21 @@ AgentReasoningConfiguration.init(
 );
 
 AgentConfiguration.hasMany(AgentReasoningConfiguration, {
-  foreignKey: { name: "agentConfigurationId", allowNull: false },
+  foreignKey: { name: "agentConfigurationId", allowNull: true },
+  onDelete: "RESTRICT",
 });
 AgentReasoningConfiguration.belongsTo(AgentConfiguration, {
-  foreignKey: { name: "agentConfigurationId", allowNull: false },
+  foreignKey: { name: "agentConfigurationId", allowNull: true },
+  onDelete: "RESTRICT",
+});
+
+AgentMCPServerConfiguration.hasMany(AgentReasoningConfiguration, {
+  foreignKey: { name: "mcpServerConfigurationId", allowNull: true },
+  onDelete: "RESTRICT",
+});
+AgentReasoningConfiguration.belongsTo(AgentMCPServerConfiguration, {
+  foreignKey: { name: "mcpServerConfigurationId", allowNull: true },
+  onDelete: "RESTRICT",
 });
 
 export class AgentReasoningAction extends WorkspaceAwareModel<AgentReasoningAction> {
@@ -157,8 +184,13 @@ AgentReasoningAction.init(
     modelName: "agent_reasoning_action",
     sequelize: frontSequelize,
     indexes: [
+      // TODO(WORKSPACE_ID_ISOLATION 2025-05-12): Remove index
       {
         fields: ["agentMessageId"],
+        concurrently: true,
+      },
+      {
+        fields: ["workspaceId", "agentMessageId"],
         concurrently: true,
       },
     ],

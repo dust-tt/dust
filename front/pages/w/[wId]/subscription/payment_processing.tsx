@@ -53,7 +53,9 @@ export default function PaymentProcessing({
     if (router.query.type === "succeeded") {
       if (subscription.plan.code === router.query.plan_code) {
         // Then we remove the query params to avoid going through this logic again.
-        void router.replace({ pathname: `/w/${owner.sId}/congratulations` });
+        void router.replace({
+          pathname: `/w/${owner.sId}/assistant/new?welcome=true`,
+        });
       } else {
         // If the Stripe webhook is not yet received, we try waiting for it and reload the page every 5 seconds until it's done.
         setTimeout(() => {

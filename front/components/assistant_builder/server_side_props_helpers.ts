@@ -16,10 +16,7 @@ import type { DustAppRunConfigurationType } from "@app/lib/actions/dust_app_run"
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { ProcessConfigurationType } from "@app/lib/actions/process";
 import type { ReasoningConfigurationType } from "@app/lib/actions/reasoning";
-import type {
-  DataSourceConfiguration,
-  RetrievalConfigurationType,
-} from "@app/lib/actions/retrieval";
+import type { RetrievalConfigurationType } from "@app/lib/actions/retrieval";
 import type {
   TableDataSourceConfiguration,
   TablesQueryConfigurationType,
@@ -29,14 +26,16 @@ import {
   isBrowseConfiguration,
   isDustAppRunConfiguration,
   isMCPServerConfiguration,
-  isPlatformMCPServerConfiguration,
   isProcessConfiguration,
   isReasoningConfiguration,
   isRetrievalConfiguration,
+  isServerSideMCPServerConfiguration,
   isTablesQueryConfiguration,
   isWebsearchConfiguration,
 } from "@app/lib/actions/types/guards";
+import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration";
 import { getContentNodesForDataSourceView } from "@app/lib/api/data_source_view";
+import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -76,18 +75,24 @@ export async function buildInitialActions({
   dataSourceViews,
   dustApps,
   configuration,
+  mcpServerViews = [],
 }: {
   dataSourceViews: DataSourceViewResource[];
   dustApps: AppResource[];
   configuration: AgentConfigurationType | TemplateAgentConfigurationType;
+  mcpServerViews?: MCPServerViewType[];
 }): Promise<AssistantBuilderActionConfiguration[]> {
   const builderActions: AssistantBuilderActionConfiguration[] = [];
 
   for (const action of configuration.actions) {
+    const mcpServerView = mcpServerViews.find(
+      (mcpServerView) => mcpServerView.server.name === action.name
+    );
     const builderAction = await initializeBuilderAction(
       action,
       dataSourceViews,
-      dustApps
+      dustApps,
+      mcpServerView
     );
 
     if (builderAction) {
@@ -108,7 +113,8 @@ export async function buildInitialActions({
 async function initializeBuilderAction(
   action: AgentActionConfigurationType,
   dataSourceViews: DataSourceViewResource[],
-  dustApps: AppResource[]
+  dustApps: AppResource[],
+  mcpServerView?: MCPServerViewType
 ): Promise<AssistantBuilderActionConfiguration | null> {
   if (isRetrievalConfiguration(action)) {
     return getRetrievalActionConfiguration(action, dataSourceViews);
@@ -125,7 +131,11 @@ async function initializeBuilderAction(
   } else if (isReasoningConfiguration(action)) {
     return getReasoningActionConfiguration(action);
   } else if (isMCPServerConfiguration(action)) {
-    return getMCPServerActionConfiguration(action, dataSourceViews);
+    return getMCPServerActionConfiguration(
+      action,
+      dataSourceViews,
+      mcpServerView
+    );
   } else {
     assertNever(action);
   }
@@ -201,7 +211,7 @@ async function getProcessActionConfiguration(
 
   processConfiguration.configuration.dataSourceConfigurations =
     await renderDataSourcesConfigurations(action, dataSourceViews);
-  processConfiguration.configuration.schema = action.schema;
+  processConfiguration.configuration.jsonSchema = action.jsonSchema;
 
   return processConfiguration;
 }
@@ -233,11 +243,12 @@ function getReasoningActionConfiguration(
 
 async function getMCPServerActionConfiguration(
   action: MCPServerConfigurationType,
-  dataSourceViews: DataSourceViewResource[]
+  dataSourceViews: DataSourceViewResource[],
+  mcpServerView?: MCPServerViewType
 ): Promise<AssistantBuilderActionConfiguration> {
-  assert(isPlatformMCPServerConfiguration(action));
+  assert(isServerSideMCPServerConfiguration(action));
 
-  const builderAction = getDefaultMCPServerActionConfiguration();
+  const builderAction = getDefaultMCPServerActionConfiguration(mcpServerView);
   if (builderAction.type !== "MCP") {
     throw new Error("MCP action configuration is not valid");
   }
@@ -261,8 +272,31 @@ async function getMCPServerActionConfiguration(
       )
     : null;
 
+  builderAction.configuration.dustAppConfiguration =
+    action.dustAppConfiguration;
+
   builderAction.configuration.childAgentId = action.childAgentId;
 
+  const { reasoningModel } = action;
+  if (reasoningModel) {
+    const supportedReasoningModel = REASONING_MODEL_CONFIGS.find(
+      (m) =>
+        m.modelId === reasoningModel.modelId &&
+        m.providerId === reasoningModel.providerId &&
+        (m.reasoningEffort ?? null) === (reasoningModel.reasoningEffort ?? null)
+    );
+    if (supportedReasoningModel) {
+      const { modelId, providerId, reasoningEffort } = supportedReasoningModel;
+      builderAction.configuration.reasoningModel = {
+        modelId,
+        providerId,
+        temperature: null,
+        reasoningEffort: reasoningEffort ?? null,
+      };
+    }
+  }
+
+  builderAction.configuration.timeFrame = action.timeFrame;
   builderAction.configuration.additionalConfiguration =
     action.additionalConfiguration;
 

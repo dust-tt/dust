@@ -11,35 +11,28 @@ import {
   ContentMessage,
   ConversationMessage,
   DocumentIcon,
-  DocumentPileIcon,
-  EyeIcon,
+  InteractiveImageGrid,
   Markdown,
-  Page,
-  Popover,
   Separator,
   useCopyToClipboard,
 } from "@dust-tt/sparkle";
 import { marked } from "marked";
-import Link from "next/link";
-import { useRouter } from "next/router";
-import {
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React from "react";
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 
-import { makeDocumentCitation } from "@app/components/actions/retrieval/utils";
+import {
+  getDocumentIcon,
+  makeDocumentCitation,
+} from "@app/components/actions/retrieval/utils";
 import { makeWebsearchResultsCitation } from "@app/components/actions/websearch/utils";
 import { AgentMessageActions } from "@app/components/assistant/conversation/actions/AgentMessageActions";
 import { ActionValidationContext } from "@app/components/assistant/conversation/ActionValidationProvider";
-import { useConversationsNavigation } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
+import { AssistantHandle } from "@app/components/assistant/conversation/AssistantHandle";
+import { ErrorMessage } from "@app/components/assistant/conversation/ErrorMessage";
 import type { FeedbackSelectorProps } from "@app/components/assistant/conversation/FeedbackSelector";
 import { FeedbackSelector } from "@app/components/assistant/conversation/FeedbackSelector";
+import { FeedbackSelectorPopoverContent } from "@app/components/assistant/conversation/FeedbackSelectorPopoverContent";
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { LabsSalesforceAuthenticationError } from "@app/components/assistant/conversation/LabsSalesforceErrorHandler";
 import {
@@ -49,7 +42,7 @@ import {
 } from "@app/components/markdown/CiteBlock";
 import type { MarkdownCitation } from "@app/components/markdown/MarkdownCitation";
 import {
-  MentionBlock,
+  getMentionPlugin,
   mentionDirective,
 } from "@app/components/markdown/MentionBlock";
 import {
@@ -59,74 +52,30 @@ import {
 } from "@app/components/markdown/VisualizationBlock";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useEventSource } from "@app/hooks/useEventSource";
-import type { RetrievalActionType } from "@app/lib/actions/retrieval";
-import type { AgentActionSpecificEvent } from "@app/lib/actions/types/agent";
 import {
+  isImageProgressOutput,
+  isSearchResultResourceType,
+  isWebsearchResultResourceType,
+} from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import type { RetrievalActionType } from "@app/lib/actions/retrieval";
+import {
+  isMCPActionType,
   isRetrievalActionType,
   isWebsearchActionType,
 } from "@app/lib/actions/types/guards";
 import type { WebsearchActionType } from "@app/lib/actions/websearch";
-import { useSubmitFunction } from "@app/lib/client/utils";
-import { useAgentConfigurationLastAuthor } from "@app/lib/swr/assistants";
 import type {
-  AgentActionSuccessEvent,
-  AgentActionType,
-  AgentErrorEvent,
-  AgentGenerationCancelledEvent,
-  AgentMessageSuccessEvent,
-  AgentMessageType,
-  GenerationTokensEvent,
-  LightAgentConfigurationType,
-  UserType,
-  WorkspaceType,
-} from "@app/types";
+  AgentMessageStateEvent,
+  MessageTemporaryState,
+} from "@app/lib/assistant/state/messageReducer";
+import { messageReducer } from "@app/lib/assistant/state/messageReducer";
+import type { AgentMessageType, UserType, WorkspaceType } from "@app/types";
 import {
   assertNever,
   GLOBAL_AGENTS_SID,
   isSupportedImageContentType,
   removeNulls,
 } from "@app/types";
-
-function cleanUpCitations(message: string): string {
-  const regex = / ?:cite\[[a-zA-Z0-9, ]+\]/g;
-  return message.replace(regex, "");
-}
-
-export const FeedbackSelectorPopoverContent = ({
-  owner,
-  agentMessageToRender,
-}: {
-  owner: WorkspaceType;
-  agentMessageToRender: AgentMessageType;
-}) => {
-  const { agentLastAuthor } = useAgentConfigurationLastAuthor({
-    workspaceId: owner.sId,
-    agentConfigurationId: agentMessageToRender.configuration.sId,
-  });
-
-  return (
-    agentLastAuthor && (
-      <div className="mb-4 mt-2 flex flex-col gap-2">
-        <Page.P variant="secondary">
-          Your feedback is available to editors of the agent. The last agent
-          editor is:
-        </Page.P>
-        <div className="flex flex-row items-center gap-2">
-          {agentLastAuthor.image && (
-            <img
-              src={agentLastAuthor.image}
-              alt={agentLastAuthor.firstName}
-              className="h-8 w-8 rounded-full"
-            />
-          )}
-          <Page.P variant="primary">
-            {agentLastAuthor.firstName} {agentLastAuthor.lastName}
-          </Page.P>
-        </div>
-      </div>
-    )
-  );
-};
 
 interface AgentMessageProps {
   conversationId: string;
@@ -137,7 +86,17 @@ interface AgentMessageProps {
   user: UserType;
 }
 
-export type AgentStateClassification = "thinking" | "acting" | "done";
+function makeInitialMessageStreamState(
+  message: AgentMessageType
+): MessageTemporaryState {
+  return {
+    actionProgress: new Map(),
+    agentState: message.status === "created" ? "thinking" : "done",
+    isRetrying: false,
+    lastUpdated: new Date(),
+    message,
+  };
+}
 
 /**
  *
@@ -151,38 +110,21 @@ export function AgentMessage({
   message,
   messageFeedback,
   owner,
-  user,
 }: AgentMessageProps) {
   const { isDark } = useTheme();
-  const [streamedAgentMessage, setStreamedAgentMessage] =
-    useState<AgentMessageType>(message);
 
-  const [isRetryHandlerProcessing, setIsRetryHandlerProcessing] =
-    useState<boolean>(false);
+  const [messageStreamState, dispatch] = React.useReducer(
+    messageReducer,
+    message,
+    makeInitialMessageStreamState
+  );
 
-  const [references, setReferences] = useState<{
-    [key: string]: MarkdownCitation;
-  }>({});
-
-  const [activeReferences, setActiveReferences] = useState<
-    { index: number; document: MarkdownCitation }[]
-  >([]);
-  const [isCopied, copy] = useCopyToClipboard();
-
-  const { setIsImageUrl } = useConversationsNavigation();
-
-  const isGlobalAgent = useMemo(() => {
-    return Object.values(GLOBAL_AGENTS_SID).includes(
-      message.configuration.sId as GLOBAL_AGENTS_SID
-    );
-  }, [message.configuration.sId]);
-
-  const shouldStream = (() => {
+  const shouldStream = React.useMemo(() => {
     if (message.status !== "created") {
       return false;
     }
 
-    switch (streamedAgentMessage.status) {
+    switch (messageStreamState.message.status) {
       case "succeeded":
       case "failed":
       case "cancelled":
@@ -190,23 +132,27 @@ export function AgentMessage({
       case "created":
         return true;
       default:
-        assertNever(streamedAgentMessage.status);
+        assertNever(messageStreamState.message.status);
     }
-  })();
+  }, [message.status, messageStreamState.message.status]);
 
-  const [lastAgentStateClassification, setLastAgentStateClassification] =
-    useState<AgentStateClassification>(shouldStream ? "thinking" : "done");
-  const [lastTokenClassification, setLastTokenClassification] = useState<
-    null | "tokens" | "chain_of_thought"
-  >(null);
+  const [isRetryHandlerProcessing, setIsRetryHandlerProcessing] =
+    React.useState<boolean>(false);
 
-  useEffect(() => {
-    if (message.status !== "created") {
-      setLastAgentStateClassification("done");
-    }
-  }, [message.status]);
+  const [references, setReferences] = React.useState<{
+    [key: string]: MarkdownCitation;
+  }>({});
 
-  const buildEventSourceURL = useCallback(
+  const [activeReferences, setActiveReferences] = React.useState<
+    { index: number; document: MarkdownCitation }[]
+  >([]);
+  const [isCopied, copy] = useCopyToClipboard();
+
+  const isGlobalAgent = Object.values(GLOBAL_AGENTS_SID).includes(
+    message.configuration.sId as GLOBAL_AGENTS_SID
+  );
+
+  const buildEventSourceURL = React.useCallback(
     (lastEvent: string | null) => {
       const esURL = `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${message.sId}/events`;
       let lastEventId = "";
@@ -223,134 +169,33 @@ export function AgentMessage({
     [conversationId, message.sId, owner.sId]
   );
 
-  const { showValidationDialog } = useContext(ActionValidationContext);
+  const { showValidationDialog } = React.useContext(ActionValidationContext);
 
-  const onEventCallback = useCallback(
+  const onEventCallback = React.useCallback(
     (eventStr: string) => {
       const eventPayload: {
         eventId: string;
-        data:
-          | AgentErrorEvent
-          | AgentActionSpecificEvent
-          | AgentActionSuccessEvent
-          | GenerationTokensEvent
-          | AgentGenerationCancelledEvent
-          | AgentMessageSuccessEvent;
+        data: AgentMessageStateEvent;
       } = JSON.parse(eventStr);
 
-      const updateMessageWithAction = (
-        m: AgentMessageType,
-        action: AgentActionType
-      ): AgentMessageType => {
-        return {
-          ...m,
-          actions: m.actions
-            ? [...m.actions.filter((a) => a.id !== action.id), action]
-            : [action],
-        };
-      };
+      // Handle validation dialog separately.
+      if (eventPayload.data.type === "tool_approve_execution") {
+        showValidationDialog({
+          workspaceId: owner.sId,
+          messageId: message.sId,
+          conversationId: conversationId,
+          action: eventPayload.data.action,
+          inputs: eventPayload.data.inputs,
+          stake: eventPayload.data.stake,
+          metadata: eventPayload.data.metadata,
+        });
 
-      const event = eventPayload.data;
-      switch (event.type) {
-        case "agent_action_success":
-          setStreamedAgentMessage((m) => {
-            return { ...updateMessageWithAction(m, event.action) };
-          });
-          setLastAgentStateClassification("thinking");
-          break;
-
-        case "tool_approve_execution":
-          // Show the validation dialog when this event is received
-          showValidationDialog({
-            workspaceId: owner.sId,
-            messageId: message.sId,
-            conversationId: conversationId,
-            action: event.action,
-            inputs: event.inputs,
-            stake: event.stake,
-            metadata: event.metadata,
-          });
-          break;
-
-        case "browse_params":
-        case "conversation_include_file_params":
-        case "dust_app_run_block":
-        case "dust_app_run_params":
-        case "process_params":
-        case "reasoning_started":
-        case "reasoning_thinking":
-        case "reasoning_tokens":
-        case "retrieval_params":
-        case "search_labels_params":
-        case "tables_query_model_output":
-        case "tables_query_output":
-        case "tables_query_started":
-        case "websearch_params":
-        case "tool_params":
-          setStreamedAgentMessage((m) => {
-            return updateMessageWithAction(m, event.action);
-          });
-          setLastAgentStateClassification("acting");
-          break;
-        case "agent_error":
-          setStreamedAgentMessage((m) => {
-            return { ...m, status: "failed", error: event.error };
-          });
-          setLastAgentStateClassification("done");
-          break;
-
-        case "agent_generation_cancelled":
-          setStreamedAgentMessage((m) => {
-            return { ...m, status: "cancelled" };
-          });
-          setLastAgentStateClassification("done");
-          break;
-        case "agent_message_success": {
-          setStreamedAgentMessage((m) => {
-            return {
-              ...m,
-              ...event.message,
-            };
-          });
-          setLastAgentStateClassification("done");
-          break;
-        }
-
-        case "generation_tokens": {
-          switch (event.classification) {
-            case "closing_delimiter":
-              break;
-            case "opening_delimiter":
-              break;
-            case "tokens":
-              setLastTokenClassification("tokens");
-              setStreamedAgentMessage((m) => {
-                const previousContent = m.content || "";
-                return { ...m, content: previousContent + event.text };
-              });
-              break;
-            case "chain_of_thought":
-              setLastTokenClassification("chain_of_thought");
-              setStreamedAgentMessage((m) => {
-                const currentChainOfThought = m.chainOfThought ?? "";
-                return {
-                  ...m,
-                  chainOfThought: currentChainOfThought + event.text,
-                };
-              });
-              break;
-            default:
-              assertNever(event);
-          }
-          setLastAgentStateClassification("thinking");
-          break;
-        }
-
-        default:
-          assertNever(event);
+        return;
       }
+
+      dispatch(eventPayload.data);
     },
-    [conversationId, message.sId, owner.sId, showValidationDialog]
+    [showValidationDialog, owner.sId, message.sId, conversationId]
   );
 
   useEventSource(
@@ -366,12 +211,12 @@ export function AgentMessage({
       case "failed":
         return message;
       case "cancelled":
-        if (streamedAgentMessage.status === "created") {
-          return { ...streamedAgentMessage, status: "cancelled" };
+        if (messageStreamState.message.status === "created") {
+          return { ...messageStreamState.message, status: "cancelled" };
         }
-        return message;
+        return messageStreamState.message;
       case "created":
-        return streamedAgentMessage;
+        return messageStreamState.message;
       default:
         assertNever(message.status);
     }
@@ -386,9 +231,9 @@ export function AgentMessage({
   // prevents user from scrolling up when the message continues generating
   // (forces it back down), but it cannot be zero otherwise the scroll does not
   // happen.
-  const isAtBottom = useRef(true);
-  const bottomRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
+  const isAtBottom = React.useRef(true);
+  const bottomRef = React.useRef<HTMLDivElement>(null);
+  React.useEffect(() => {
     const observer = new IntersectionObserver(
       ([entry]) => {
         isAtBottom.current = entry.isIntersecting;
@@ -409,14 +254,14 @@ export function AgentMessage({
     };
   }, []);
 
-  // GenerationContext: to know if we are generating or not
-  const generationContext = useContext(GenerationContext);
+  // GenerationContext: to know if we are generating or not.
+  const generationContext = React.useContext(GenerationContext);
   if (!generationContext) {
     throw new Error(
       "AgentMessage must be used within a GenerationContextProvider"
     );
   }
-  useEffect(() => {
+  React.useEffect(() => {
     const isInArray = generationContext.generatingMessages.some(
       (m) => m.messageId === message.sId
     );
@@ -437,7 +282,7 @@ export function AgentMessage({
     conversationId,
   ]);
 
-  const PopoverContent = useCallback(
+  const PopoverContent = React.useCallback(
     () => (
       <FeedbackSelectorPopoverContent
         owner={owner}
@@ -447,8 +292,72 @@ export function AgentMessage({
     [owner, agentMessageToRender]
   );
 
+  async function handleCopyToClipboard() {
+    const messageContent = agentMessageToRender.content || "";
+    let footnotesMarkdown = "";
+    let footnotesHtml = "";
+
+    // 1. Build Key-to-Index Map
+    const keyToIndexMap = new Map<string, number>();
+    if (references && activeReferences) {
+      Object.entries(references).forEach(([key, mdCitation]) => {
+        const activeRefEntry = activeReferences.find(
+          (ar) =>
+            ar.document.href === mdCitation.href &&
+            ar.document.title === mdCitation.title
+        );
+        if (activeRefEntry) {
+          keyToIndexMap.set(key, activeRefEntry.index);
+        }
+      });
+    }
+
+    // 2. Process Message Content for Plain Text numerical citations
+    let processedMessageContent = messageContent;
+    if (keyToIndexMap.size > 0) {
+      const citeDirectiveRegex = /:cite\[([a-zA-Z0-9_,-]+)\]/g;
+      processedMessageContent = messageContent.replace(
+        citeDirectiveRegex,
+        (_match, keysString: string) => {
+          const keys = keysString.split(",").map((k) => k.trim());
+          const resolvedIndices = keys
+            .map((k) => keyToIndexMap.get(k))
+            .filter((idx) => idx !== undefined) as number[];
+
+          if (resolvedIndices.length > 0) {
+            resolvedIndices.sort((a, b) => a - b);
+            return `[${resolvedIndices.join(",")}]`;
+          }
+          return _match;
+        }
+      );
+    }
+
+    if (activeReferences.length > 0) {
+      footnotesMarkdown = "\n\nReferences:\n";
+      footnotesHtml = "<br/><br/><div>References:</div>";
+      const sortedActiveReferences = [...activeReferences].sort(
+        (a, b) => a.index - b.index
+      );
+      for (const ref of sortedActiveReferences) {
+        footnotesMarkdown += `[${ref.index}] ${ref.document.href}\n`;
+        footnotesHtml += `<div>[${ref.index}] <a href="${ref.document.href}">${ref.document.title}</a></div>`;
+      }
+    }
+
+    const markdownText = processedMessageContent + footnotesMarkdown;
+    const htmlContent = (await marked(processedMessageContent)) + footnotesHtml;
+
+    await copy(
+      new ClipboardItem({
+        "text/plain": new Blob([markdownText], { type: "text/plain" }),
+        "text/html": new Blob([htmlContent], { type: "text/html" }),
+      })
+    );
+  }
+
   const buttons =
-    message.status === "failed" || lastAgentStateClassification === "thinking"
+    message.status === "failed" || messageStreamState.agentState === "thinking"
       ? []
       : [
           <Button
@@ -456,22 +365,7 @@ export function AgentMessage({
             tooltip={isCopied ? "Copied!" : "Copy to clipboard"}
             variant="outline"
             size="xs"
-            onClick={async () => {
-              const markdownText = cleanUpCitations(
-                agentMessageToRender.content || ""
-              );
-              // Convert markdown to HTML
-              const htmlContent = await marked(markdownText);
-
-              await copy(
-                new ClipboardItem({
-                  "text/plain": new Blob([markdownText], {
-                    type: "text/plain",
-                  }),
-                  "text/html": new Blob([htmlContent], { type: "text/html" }),
-                })
-              );
-            }}
+            onClick={handleCopyToClipboard}
             icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
             className="text-muted-foreground"
           />,
@@ -509,8 +403,8 @@ export function AgentMessage({
     }
   }
 
-  useEffect(() => {
-    // Retrieval actions
+  React.useEffect(() => {
+    // Retrieval actions.
     const retrievalActionsWithDocs = agentMessageToRender.actions
       .filter((a) => isRetrievalActionType(a) && a.documents)
       .sort((a, b) => a.id - b.id) as RetrievalActionType[];
@@ -524,7 +418,7 @@ export function AgentMessage({
       return acc;
     }, {});
 
-    // Websearch actions
+    // Websearch actions.
     const websearchActionsWithResults = agentMessageToRender.actions
       .filter((a) => isWebsearchActionType(a) && a.output?.results?.length)
       .sort((a, b) => a.id - b.id) as WebsearchActionType[];
@@ -538,8 +432,53 @@ export function AgentMessage({
       return acc;
     }, {});
 
-    // Merge all references
-    setReferences({ ...allDocsReferences, ...allWebReferences });
+    // MCP actions with search results.
+    const searchResultsWithDocs = removeNulls(
+      agentMessageToRender.actions
+        .filter(isMCPActionType)
+        .flatMap((action) =>
+          action.output
+            ?.filter(isSearchResultResourceType)
+            .map((o) => o.resource)
+        )
+    );
+    const allMCPSearchResultsReferences = searchResultsWithDocs.reduce<{
+      [key: string]: MarkdownCitation;
+    }>((acc, d) => {
+      acc[d.ref] = {
+        href: d.uri,
+        title: d.text,
+        icon: getDocumentIcon(d.source.provider),
+      };
+      return acc;
+    }, {});
+
+    const websearchResultsWithDocs = removeNulls(
+      agentMessageToRender.actions
+        .filter(isMCPActionType)
+        .flatMap((action) =>
+          action.output?.filter(isWebsearchResultResourceType)
+        )
+    );
+
+    const allMCPWebsearchResultsReferences = websearchResultsWithDocs.reduce<{
+      [key: string]: MarkdownCitation;
+    }>((acc, d) => {
+      acc[d.resource.reference] = {
+        href: d.resource.uri,
+        title: d.resource.title,
+        icon: <DocumentIcon />,
+      };
+      return acc;
+    }, {});
+
+    // Merge all references.
+    setReferences({
+      ...allDocsReferences,
+      ...allWebReferences,
+      ...allMCPSearchResultsReferences,
+      ...allMCPWebsearchResultsReferences,
+    });
   }, [
     agentMessageToRender.actions,
     agentMessageToRender.status,
@@ -548,7 +487,7 @@ export function AgentMessage({
   ]);
   const { configuration: agentConfiguration } = agentMessageToRender;
 
-  const additionalMarkdownComponents: Components = useMemo(
+  const additionalMarkdownComponents: Components = React.useMemo(
     () => ({
       visualization: getVisualizationPlugin(
         owner,
@@ -557,24 +496,22 @@ export function AgentMessage({
         message.sId
       ),
       sup: CiteBlock,
-      mention: MentionBlock,
+      mention: getMentionPlugin(owner),
     }),
     [owner, conversationId, message.sId, agentConfiguration.sId]
   );
 
-  const additionalMarkdownPlugins: PluggableList = useMemo(
+  const additionalMarkdownPlugins: PluggableList = React.useMemo(
     () => [mentionDirective, getCiteDirective(), visualizationDirective],
     []
   );
 
-  const citations = useMemo(
+  const citations = React.useMemo(
     () => getCitations({ activeReferences }),
     [activeReferences]
   );
 
-  const canMention =
-    agentConfiguration.scope !== "private" ||
-    agentConfiguration.versionAuthorId === user.id;
+  const canMention = agentConfiguration.canRead;
 
   return (
     <ConversationMessage
@@ -582,7 +519,12 @@ export function AgentMessage({
       name={agentConfiguration.name}
       buttons={buttons}
       avatarBusy={agentMessageToRender.status === "created"}
-      renderName={() => AssistantName(agentConfiguration, canMention)}
+      renderName={() => (
+        <AssistantHandle
+          assistant={agentConfiguration}
+          canMention={canMention}
+        />
+      )}
       type="agent"
       citations={citations}
     >
@@ -591,7 +533,8 @@ export function AgentMessage({
           agentMessage: agentMessageToRender,
           references: references,
           streaming: shouldStream,
-          lastTokenClassification: lastTokenClassification,
+          lastTokenClassification:
+            messageStreamState.agentState === "thinking" ? "tokens" : null,
         })}
       </div>
       {/* Invisible div to act as a scroll anchor for detecting when the user has scrolled to the bottom */}
@@ -632,10 +575,25 @@ export function AgentMessage({
       );
     }
 
-    const generatedImages = agentMessage.actions.flatMap((action) =>
-      action.generatedFiles.filter((file) =>
-        isSupportedImageContentType(file.contentType)
+    // Get in-progress images.
+    const inProgressImages = Array.from(
+      messageStreamState.actionProgress.entries()
+    )
+      .filter(([, progress]) =>
+        isImageProgressOutput(progress.progress?.data.output)
       )
+      .map(([actionId, progress]) => ({
+        id: actionId,
+        isLoading: true,
+        progress: progress.progress?.progress,
+      }));
+
+    // Get completed images.
+    const completedImages = messageStreamState.message.actions.flatMap(
+      (action) =>
+        action.generatedFiles.filter((file) =>
+          isSupportedImageContentType(file.contentType)
+        )
     );
 
     const generatedFiles = agentMessage.actions.flatMap((action) =>
@@ -649,7 +607,7 @@ export function AgentMessage({
         <div className="flex flex-col gap-2">
           <AgentMessageActions
             agentMessage={agentMessage}
-            lastAgentStateClassification={lastAgentStateClassification}
+            lastAgentStateClassification={messageStreamState.agentState}
             owner={owner}
           />
 
@@ -665,22 +623,25 @@ export function AgentMessage({
             </ContentMessage>
           ) : null}
         </div>
-        {generatedImages.length > 0 && (
-          <div className="mt-2 grid grid-cols-4 gap-2">
-            {generatedImages.map((image) => (
-              <div key={image.fileId}>
-                <img
-                  className="cursor-zoom-in rounded-md"
-                  src={`/api/w/${owner.sId}/files/${image.fileId}`}
-                  alt={`${image.title}`}
-                  onClick={() => {
-                    setIsImageUrl(`/api/w/${owner.sId}/files/${image.fileId}`);
-                  }}
-                />
-              </div>
-            ))}
-          </div>
+        {(inProgressImages.length > 0 || completedImages.length > 0) && (
+          <InteractiveImageGrid
+            images={[
+              ...completedImages.map((image) => ({
+                imageUrl: `/api/w/${owner.sId}/files/${image.fileId}?action=view`,
+                downloadUrl: `/api/w/${owner.sId}/files/${image.fileId}?action=download`,
+                alt: `${image.title}`,
+                title: `${image.title}`,
+                isLoading: false,
+              })),
+              ...inProgressImages.map(() => ({
+                alt: "",
+                title: "",
+                isLoading: true,
+              })),
+            ]}
+          />
         )}
+
         {agentMessage.content !== null && (
           <div>
             {lastTokenClassification !== "chain_of_thought" &&
@@ -750,31 +711,6 @@ export function AgentMessage({
   }
 }
 
-function AssistantName(
-  assistant: LightAgentConfigurationType,
-  canMention: boolean = true
-) {
-  const router = useRouter();
-  const href = {
-    pathname: router.pathname,
-    query: { ...router.query, assistantDetails: assistant.sId },
-  };
-
-  if (!canMention) {
-    return <span>@{assistant.name}</span>;
-  }
-
-  return (
-    <Link
-      href={href}
-      shallow
-      className="cursor-pointer transition duration-200 hover:text-highlight active:text-highlight-600"
-    >
-      @{assistant.name}
-    </Link>
-  );
-}
-
 function getCitations({
   activeReferences,
 }: {
@@ -795,73 +731,4 @@ function getCitations({
       </Citation>
     );
   });
-}
-
-function ErrorMessage({
-  error,
-  retryHandler,
-}: {
-  error: { code: string; message: string };
-  retryHandler: () => void;
-}) {
-  const fullMessage =
-    "ERROR: " + error.message + (error.code ? ` (code: ${error.code})` : "");
-
-  const { submit: retry, isSubmitting: isRetrying } = useSubmitFunction(
-    async () => retryHandler()
-  );
-
-  return (
-    <div className="flex flex-col gap-9">
-      <div className="flex flex-col gap-1 sm:flex-row">
-        <Chip
-          color="warning"
-          label={"ERROR: " + shortText(error.message)}
-          size="xs"
-        />
-        <Popover
-          trigger={
-            <Button
-              variant="outline"
-              size="xs"
-              icon={EyeIcon}
-              label="See the error"
-            />
-          }
-          content={
-            <div className="flex flex-col gap-3">
-              <div className="text-sm font-normal text-warning-800">
-                {fullMessage}
-              </div>
-              <div className="self-end">
-                <Button
-                  variant="ghost"
-                  size="xs"
-                  icon={DocumentPileIcon}
-                  label={"Copy"}
-                  onClick={() =>
-                    void navigator.clipboard.writeText(fullMessage)
-                  }
-                />
-              </div>
-            </div>
-          }
-        />
-      </div>
-      <div>
-        <Button
-          variant="outline"
-          size="sm"
-          icon={ArrowPathIcon}
-          label="Retry"
-          onClick={retry}
-          disabled={isRetrying}
-        />
-      </div>
-    </div>
-  );
-}
-
-function shortText(text: string, maxLength = 30) {
-  return text.length > maxLength ? text.substring(0, maxLength) + "..." : text;
 }

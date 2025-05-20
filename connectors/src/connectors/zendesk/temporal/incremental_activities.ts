@@ -87,6 +87,12 @@ export async function syncZendeskArticleUpdateBatchActivity({
   if (!connector) {
     throw new Error("[Zendesk] Connector not found.");
   }
+  const configuration =
+    await ZendeskConfigurationResource.fetchByConnectorId(connectorId);
+  if (!configuration) {
+    throw new Error(`[Zendesk] Configuration not found.`);
+  }
+
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
   const loggerArgs = {
     workspaceId: dataSourceConfig.workspaceId,
@@ -126,11 +132,13 @@ export async function syncZendeskArticleUpdateBatchActivity({
         brandSubdomain,
         sectionId: article.section_id,
       });
-      const user = await fetchZendeskUser({
-        accessToken,
-        brandSubdomain,
-        userId: article.author_id,
-      });
+      const user = configuration.hideCustomerDetails
+        ? null
+        : await fetchZendeskUser({
+            accessToken,
+            brandSubdomain,
+            userId: article.author_id,
+          });
 
       if (section && section.category_id) {
         let category = await ZendeskCategoryResource.fetchByCategoryId({
@@ -183,9 +191,10 @@ export async function syncZendeskArticleUpdateBatchActivity({
           (category.permission === "read" || hasHelpCenterPermissions)
         ) {
           return syncArticle({
-            connectorId,
-            category,
             article,
+            connector,
+            configuration,
+            category,
             section,
             user,
             helpCenterIsAllowed: hasHelpCenterPermissions,
@@ -267,14 +276,19 @@ export async function syncZendeskTicketUpdateBatchActivity({
           brandSubdomain,
           ticketId: ticket.id,
         });
-        const users = await listZendeskUsers({
-          accessToken,
-          brandSubdomain,
-          userIds: comments.map((c) => c.author_id),
-        });
+        // If we hide customer details, we don't need to fetch the users at all.
+        // Also guarantees that user information is not included in the ticket content.
+        const users = configuration.hideCustomerDetails
+          ? []
+          : await listZendeskUsers({
+              accessToken,
+              brandSubdomain,
+              userIds: comments.map((c) => c.author_id),
+            });
         return syncTicket({
-          connectorId,
           ticket,
+          connector,
+          configuration,
           brandId,
           users,
           comments,

@@ -8,12 +8,17 @@ import { CreateOrEditSpaceModal } from "@app/components/spaces/CreateOrEditSpace
 import { SpaceCategoriesList } from "@app/components/spaces/SpaceCategoriesList";
 import type { SpaceLayoutPageProps } from "@app/components/spaces/SpaceLayout";
 import { SpaceLayout } from "@app/components/spaces/SpaceLayout";
+import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<
-  SpaceLayoutPageProps & { userId: string; canWriteInSpace: boolean }
+  SpaceLayoutPageProps & {
+    userId: string;
+    canWriteInSpace: boolean;
+    isBuilder: boolean;
+  }
 >(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
   const subscription = auth.subscription();
@@ -45,12 +50,14 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
   }
 
   const canWriteInSpace = space.canWrite(auth);
+  const isBuilder = auth.isBuilder();
 
   return {
     props: {
       canReadInSpace: space.canRead(auth),
       canWriteInSpace,
       isAdmin,
+      isBuilder,
       owner,
       plan,
       space: space.toJSON(),
@@ -62,6 +69,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
 
 export default function Space({
   isAdmin,
+  isBuilder,
   canWriteInSpace,
   owner,
   userId,
@@ -105,6 +113,7 @@ export default function Space({
           );
         }}
         isAdmin={isAdmin}
+        isBuilder={isBuilder}
         onButtonClick={() => setShowSpaceEditionModal(true)}
       />
       <CreateOrEditSpaceModal
@@ -120,8 +129,10 @@ export default function Space({
 
 Space.getLayout = (page: ReactElement, pageProps: any) => {
   return (
-    <SpaceLayout pageProps={pageProps} useBackendSearch>
-      {page}
-    </SpaceLayout>
+    <AppRootLayout>
+      <SpaceLayout pageProps={pageProps} useBackendSearch>
+        {page}
+      </SpaceLayout>
+    </AppRootLayout>
   );
 };

@@ -12,12 +12,13 @@ import {
 import logger from "@connectors/logger/logger";
 import { BaseResource } from "@connectors/resources/base_resource";
 import type { ReadonlyAttributesType } from "@connectors/resources/storage/types";
+import type { ModelId } from "@connectors/types";
 import type {
   SlackAutoReadPattern,
   SlackbotWhitelistType,
   SlackConfigurationType,
 } from "@connectors/types";
-import type { ModelId } from "@connectors/types";
+import { normalizeError } from "@connectors/types";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -64,6 +65,7 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
         botEnabled: otherSlackConfigurationWithBotEnabled ? false : true,
         connectorId,
         slackTeamId,
+        restrictedSpaceAgentsEnabled: true,
       },
       { transaction }
     );
@@ -328,7 +330,7 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
 
       return new Ok(undefined);
     } catch (err) {
-      return new Err(err as Error);
+      return new Err(normalizeError(err));
     }
   }
 
@@ -337,6 +339,7 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
       autoReadChannelPatterns: this.autoReadChannelPatterns,
       botEnabled: this.botEnabled,
       whitelistedDomains: this.whitelistedDomains?.map((d) => d),
+      restrictedSpaceAgentsEnabled: this.restrictedSpaceAgentsEnabled,
     };
   }
 }

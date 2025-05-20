@@ -2,6 +2,7 @@ import type { Result } from "@dust-tt/client";
 import { Err, Ok, removeNulls } from "@dust-tt/client";
 import { BigQuery } from "@google-cloud/bigquery";
 
+import { concurrentExecutor } from "@connectors/lib/async_utils";
 import type {
   RemoteDBDatabase,
   RemoteDBSchema,
@@ -126,10 +127,12 @@ export const fetchDatasets = async ({
 export const fetchTables = async ({
   credentials,
   dataset,
+  fetchTablesDescription,
   connection,
 }: {
   credentials: BigQueryCredentialsWithLocation;
   dataset: string;
+  fetchTablesDescription: boolean;
   connection?: BigQuery;
 }): Promise<Result<Array<RemoteDBTable>, Error>> => {
   const conn = connection ?? connectToBigQuery(credentials);
@@ -143,20 +146,37 @@ export const fetchTables = async ({
     const d = await conn.dataset(dataset);
     const r = await d.getTables();
     const tables = r[0];
-    return new Ok(
-      removeNulls(
-        tables.map((table) => {
+
+    const remoteDBTables: RemoteDBTable[] = removeNulls(
+      await concurrentExecutor(
+        tables,
+        async (table) => {
           if (!table.id) {
             return null;
           }
-          return {
-            name: table.id,
-            database_name: credentials.project_id,
-            schema_name: dataset,
-          };
-        })
+          if (fetchTablesDescription) {
+            const metadata = await table.getMetadata();
+            return {
+              name: table.id!,
+              database_name: credentials.project_id,
+              schema_name: dataset,
+              description: metadata[0].description,
+            };
+          } else {
+            return {
+              name: table.id!,
+              database_name: credentials.project_id,
+              schema_name: dataset,
+            };
+          }
+        },
+        {
+          concurrency: 10,
+        }
       )
     );
+
+    return new Ok(remoteDBTables);
   } catch (error) {
     return new Err(error instanceof Error ? error : new Error(String(error)));
   }
@@ -164,8 +184,10 @@ export const fetchTables = async ({
 
 export const fetchTree = async ({
   credentials,
+  fetchTablesDescription,
 }: {
   credentials: BigQueryCredentialsWithLocation;
+  fetchTablesDescription: boolean;
 }): Promise<Result<RemoteDBTree, Error>> => {
   const databases = await fetchDatabases({ credentials });
 
@@ -187,6 +209,7 @@ export const fetchTree = async ({
                 const tablesRes = await fetchTables({
                   credentials,
                   dataset: schema.name,
+                  fetchTablesDescription,
                 });
                 if (tablesRes.isErr()) {
                   throw tablesRes.error;

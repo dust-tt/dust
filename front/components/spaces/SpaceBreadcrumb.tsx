@@ -1,7 +1,8 @@
+import type { BreadcrumbItem } from "@dust-tt/sparkle";
 import {
+  BoltIcon,
   Breadcrumbs,
   CloudArrowLeftRightIcon,
-  SuitcaseIcon,
 } from "@dust-tt/sparkle";
 import React from "react";
 
@@ -57,11 +58,7 @@ export function SpaceBreadCrumbs({
       ];
     }
 
-    const items: {
-      label: string;
-      icon?: React.ComponentType;
-      href?: string;
-    }[] = [
+    const items: BreadcrumbItem[] = [
       {
         icon: getSpaceIcon(space),
         label: space.kind === "global" ? "Company Data" : space.name,
@@ -85,8 +82,8 @@ export function SpaceBreadCrumbs({
       } else if (category === "actions") {
         return [
           {
-            icon: SuitcaseIcon,
-            label: "Toolsets Admin",
+            icon: BoltIcon,
+            label: "Tools",
           },
         ];
       }

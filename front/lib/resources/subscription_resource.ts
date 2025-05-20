@@ -1,10 +1,6 @@
 import _ from "lodash";
-import type {
-  Attributes,
-  CreationAttributes,
-  ModelStatic,
-  Transaction,
-} from "sequelize";
+import type { Attributes, CreationAttributes, Transaction } from "sequelize";
+import { Op } from "sequelize";
 import type Stripe from "stripe";
 
 import { sendProactiveTrialCancelledEmail } from "@app/lib/api/email";
@@ -15,7 +11,12 @@ import { Plan } from "@app/lib/models/plan";
 import { Workspace } from "@app/lib/models/workspace";
 import type { PlanAttributes } from "@app/lib/plans/free_plans";
 import { FREE_NO_PLAN_DATA } from "@app/lib/plans/free_plans";
-import { isEntreprisePlan, isProPlan } from "@app/lib/plans/plan_codes";
+import {
+  FREE_TEST_PLAN_CODE,
+  isEntreprisePlan,
+  isFreePlan,
+  isProPlan,
+} from "@app/lib/plans/plan_codes";
 import { PRO_PLAN_SEAT_29_CODE } from "@app/lib/plans/plan_codes";
 import { PRO_PLAN_SEAT_39_CODE } from "@app/lib/plans/plan_codes";
 import { renderPlanFromModel } from "@app/lib/plans/renderers";
@@ -31,6 +32,7 @@ import { REPORT_USAGE_METADATA_KEY } from "@app/lib/plans/usage/types";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
+import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { getWorkspaceFirstAdmin } from "@app/lib/workspace";
 import { checkWorkspaceActivity } from "@app/lib/workspace_usage";
@@ -60,11 +62,11 @@ export interface SubscriptionResource
   extends ReadonlyAttributesType<Subscription> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class SubscriptionResource extends BaseResource<Subscription> {
-  static model: ModelStatic<Subscription> = Subscription;
+  static model: ModelStaticWorkspaceAware<Subscription> = Subscription;
   private readonly plan: PlanType;
 
   constructor(
-    model: ModelStatic<Subscription>,
+    model: ModelStaticWorkspaceAware<Subscription>,
     blob: Attributes<Subscription>,
     plan: PlanType
   ) {
@@ -90,7 +92,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
     const workspaceModelBySid = _.keyBy(workspaces, "sId");
 
     const activeSubscriptionByWorkspaceId = _.keyBy(
-      await Subscription.findAll({
+      await this.model.findAll({
         attributes: [
           "endDate",
           "id",
@@ -106,6 +108,8 @@ export class SubscriptionResource extends BaseResource<Subscription> {
           workspaceId: Object.values(workspaceModelBySid).map((w) => w.id),
           status: "active",
         },
+        // WORKSPACE_ISOLATION_BYPASS: workspaceId is filtered just above, but the check is refusing more than 1 elements in the array. It's ok here to have more than 1 element.
+        dangerouslyBypassWorkspaceIsolationSecurity: true,
         include: [
           {
             model: Plan,
@@ -178,9 +182,12 @@ export class SubscriptionResource extends BaseResource<Subscription> {
   static async fetchByStripeId(
     stripeSubscriptionId: string
   ): Promise<SubscriptionResource | null> {
-    const res = await Subscription.findOne({
+    const res = await this.model.findOne({
       where: { stripeSubscriptionId },
       include: [Plan],
+
+      // WORKSPACE_ISOLATION_BYPASS: Used to check if a subscription is not attached to a workspace
+      dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
 
     if (!res) {
@@ -191,6 +198,42 @@ export class SubscriptionResource extends BaseResource<Subscription> {
       Subscription,
       res.get(),
       renderPlanFromModel({ plan: res.plan })
+    );
+  }
+
+  /**
+   * Get all active subscription that are not FREE_TEST_PLAN_CODE
+   */
+  static async internalListAllActiveNoFreeTestPlan(): Promise<
+    SubscriptionResource[]
+  > {
+    const subscriptions = await this.model.findAll({
+      where: {
+        status: "active",
+      },
+      // WORKSPACE_ISOLATION_BYPASS: Internal use to actively down the callstack get the list
+      // of workspaces that are active
+      dangerouslyBypassWorkspaceIsolationSecurity: true,
+      include: [
+        {
+          model: Plan,
+          as: "plan",
+          where: {
+            code: {
+              [Op.ne]: FREE_TEST_PLAN_CODE,
+            },
+          },
+        },
+      ],
+    });
+
+    return subscriptions.map(
+      (sub) =>
+        new SubscriptionResource(
+          this.model,
+          sub.get(),
+          renderPlanFromModel({ plan: sub.plan })
+        )
     );
   }
 
@@ -229,10 +272,12 @@ export class SubscriptionResource extends BaseResource<Subscription> {
     workspaceId,
     planCode,
     stripeSubscriptionId,
+    endDate,
   }: {
     workspaceId: string;
     planCode: string;
     stripeSubscriptionId?: string;
+    endDate: Date | null;
   }): Promise<SubscriptionResource> {
     const workspace = await this.findWorkspaceOrThrow(workspaceId);
     const newPlan = await this.findPlanOrThrow(planCode);
@@ -284,6 +329,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
           status: "active",
           startDate: now,
           stripeSubscriptionId: stripeSubscriptionId ?? null,
+          endDate: endDate,
         },
         { transaction: t }
       );
@@ -321,22 +367,27 @@ export class SubscriptionResource extends BaseResource<Subscription> {
     }
 
     const plan = await this.findPlanOrThrow(enterpriseDetails.planCode);
-
     // End the current subscription if any.
     await this.internalSubscribeWorkspaceToFreePlan({
       workspaceId: owner.sId,
       planCode: plan.code,
       stripeSubscriptionId: enterpriseDetails.stripeSubscriptionId,
+      endDate: null,
     });
   }
 
   /**
    * Internal function to create a PlanInvitation for the workspace.
    */
-  static async pokeUpgradeWorkspaceToPlan(
-    auth: Authenticator,
-    planCode: string
-  ) {
+  static async pokeUpgradeWorkspaceToPlan({
+    auth,
+    planCode,
+    endDate,
+  }: {
+    auth: Authenticator;
+    planCode: string;
+    endDate: Date | null;
+  }) {
     const owner = auth.getNonNullableWorkspace();
 
     if (!auth.isDustSuperUser()) {
@@ -348,6 +399,16 @@ export class SubscriptionResource extends BaseResource<Subscription> {
     // We search for an active subscription for this workspace
     const activeSubscription = auth.subscriptionResource();
     if (activeSubscription && activeSubscription.plan.code === newPlan.code) {
+      // If you are already on this free plan and you want to change the end date, we let you do it.
+      if (isFreePlan(newPlan.code) && activeSubscription.endDate !== endDate) {
+        await Subscription.update(
+          { endDate },
+          {
+            where: { sId: activeSubscription.sId },
+          }
+        );
+        return;
+      }
       throw new Error(
         `Cannot subscribe to plan ${planCode}: already subscribed.`
       );
@@ -396,6 +457,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
     await this.internalSubscribeWorkspaceToFreePlan({
       workspaceId: owner.sId,
       planCode: newPlan.code,
+      endDate,
     });
   }
 

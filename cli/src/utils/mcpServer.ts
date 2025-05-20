@@ -1,9 +1,11 @@
-import express, { Request, Response, NextFunction } from "express";
-import http from "http";
+import type { GetAgentConfigurationsResponseType } from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
+import type { Request, Response } from "express";
+import express from "express";
+import http from "http";
 import { z } from "zod";
-import { GetAgentConfigurationsResponseType } from "@dust-tt/client";
+
 import { getDustClient } from "./dustClient.js";
 import { normalizeError } from "./errors.js";
 
@@ -111,6 +113,14 @@ export async function startMcpServer(
             }
 
             const { conversation, message: createdUserMessage } = convRes.value;
+            if (!createdUserMessage) {
+              const errorMessage = `Failed to create user message`;
+              console.error(`[MCP Tool Error ${toolName}] ${errorMessage}`);
+              return {
+                content: [{ type: "text", text: errorMessage }],
+                isError: true,
+              };
+            }
             const streamRes = await dustClient.streamAgentAnswerEvents({
               conversation: conversation,
               userMessageId: createdUserMessage.sId,
@@ -237,7 +247,7 @@ export async function startMcpServer(
 
   const startHttpServer = (port = requestedPort || 0): Promise<number> =>
     new Promise((resolve, reject) => {
-      httpServer.once("error", (err: NodeJS.ErrnoException) => {
+      httpServer.once("error", (err: Error & { code?: string }) => {
         if (requestedPort && err.code === "EADDRINUSE") {
           reject(new Error(`Port ${requestedPort} is already in use.`));
         } else if (err.code === "EADDRINUSE") {

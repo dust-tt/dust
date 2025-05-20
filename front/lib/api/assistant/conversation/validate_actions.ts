@@ -34,7 +34,7 @@ export async function validateAction({
       actionId,
       approved,
     },
-    "Action validation request"
+    "Tool validation request"
   );
 
   // Publish validation event to the action channel

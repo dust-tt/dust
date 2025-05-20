@@ -18,8 +18,6 @@ import {
   Input,
   Page,
   PlusIcon,
-  ScrollArea,
-  ScrollBar,
   ShapesIcon,
   Sheet,
   SheetContainer,
@@ -35,7 +33,8 @@ import React, { useMemo, useState } from "react";
 import { useSWRConfig } from "swr";
 
 import { subNavigationAdmin } from "@app/components/navigation/config";
-import AppLayout from "@app/components/sparkle/AppLayout";
+import AppContentLayout from "@app/components/sparkle/AppContentLayout";
+import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { GroupResource } from "@app/lib/resources/group_resource";
@@ -257,34 +256,28 @@ export function APIKeys({
                     />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent>
-                    <ScrollArea
-                      className="flex max-h-[300px] flex-col"
-                      hideScrollBar
-                    >
-                      {groups
-                        .sort((a, b) => {
-                          // Put global groups first
-                          if (a.kind === "global" && b.kind !== "global") {
-                            return -1;
-                          }
-                          if (a.kind !== "global" && b.kind === "global") {
-                            return 1;
-                          }
+                    {groups
+                      .sort((a, b) => {
+                        // Put global groups first
+                        if (a.kind === "global" && b.kind !== "global") {
+                          return -1;
+                        }
+                        if (a.kind !== "global" && b.kind === "global") {
+                          return 1;
+                        }
 
-                          // Then sort alphabetically case insensitive
-                          return prettifyGroupName(a)
-                            .toLowerCase()
-                            .localeCompare(prettifyGroupName(b).toLowerCase());
-                        })
-                        .map((group: GroupType) => (
-                          <DropdownMenuItem
-                            key={group.id}
-                            label={prettifyGroupName(group)}
-                            onClick={() => setNewApiKeyGroup(group)}
-                          />
-                        ))}
-                      <ScrollBar className="py-0" />
-                    </ScrollArea>
+                        // Then sort alphabetically case insensitive
+                        return prettifyGroupName(a)
+                          .toLowerCase()
+                          .localeCompare(prettifyGroupName(b).toLowerCase());
+                      })
+                      .map((group: GroupType) => (
+                        <DropdownMenuItem
+                          key={group.id}
+                          label={prettifyGroupName(group)}
+                          onClick={() => setNewApiKeyGroup(group)}
+                        />
+                      ))}
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
@@ -428,7 +421,7 @@ export default function APIKeysPage({
   groups,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   return (
-    <AppLayout
+    <AppContentLayout
       subscription={subscription}
       owner={owner}
       subNavigation={subNavigationAdmin({ owner, current: "api_keys" })}
@@ -444,6 +437,10 @@ export default function APIKeysPage({
         </Page.Vertical>
       </Page.Vertical>
       <div className="h-12" />
-    </AppLayout>
+    </AppContentLayout>
   );
 }
+
+APIKeysPage.getLayout = (page: React.ReactElement) => {
+  return <AppRootLayout>{page}</AppRootLayout>;
+};

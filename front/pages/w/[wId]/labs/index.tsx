@@ -1,5 +1,6 @@
 import {
   BookOpenIcon,
+  Chip,
   ContextItem,
   EyeIcon,
   HubspotLogo,
@@ -15,12 +16,14 @@ import type { InferGetServerSidePropsType } from "next";
 import { ConversationsNavigationProvider } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import { FeatureAccessButton } from "@app/components/labs/FeatureAccessButton";
-import AppLayout from "@app/components/sparkle/AppLayout";
+import AppContentLayout from "@app/components/sparkle/AppContentLayout";
+import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useDataSourceViews } from "@app/lib/swr/data_source_views";
 import { useLabsConnectionConfigurations } from "@app/lib/swr/labs";
 import { useSpaces } from "@app/lib/swr/spaces";
+import { timeAgoFrom } from "@app/lib/utils";
 import type {
   LabsConnectionItemType,
   LabsFeatureItemType,
@@ -47,6 +50,7 @@ const LABS_FEATURES: LabsFeatureItemType[] = [
     icon: BookOpenIcon,
     description:
       "Document monitoring made simple - receive alerts when documents are out of date.",
+    onlyAdminCanManage: false,
   },
   {
     id: "salesforce_personal_connections",
@@ -140,7 +144,7 @@ export default function LabsTranscriptsIndex({
 
   return (
     <ConversationsNavigationProvider>
-      <AppLayout
+      <AppContentLayout
         subscription={subscription}
         owner={owner}
         pageTitle="Dust - Exploratory features"
@@ -170,6 +174,7 @@ export default function LabsTranscriptsIndex({
                       managePath={`/w/${owner.sId}/labs/${item.id}`}
                       owner={owner}
                       canRequestAccess={isAdmin}
+                      canManage={!item.onlyAdminCanManage || isAdmin}
                     />
                   }
                   visual={<Icon visual={item.icon} />}
@@ -185,38 +190,78 @@ export default function LabsTranscriptsIndex({
                     description="These connections are being tested and may require some manual steps."
                   />
 
-                  {visibleConnections.map((item) => (
-                    <ContextItem
-                      key={item.id}
-                      title={item.label}
-                      action={
-                        isConfigurationsLoading ? (
-                          <Spinner />
-                        ) : (
-                          <FeatureAccessButton
-                            accessible={featureFlags.includes(item.featureFlag)}
-                            featureName={`${item.label} connection`}
-                            owner={owner}
-                            canRequestAccess={isAdmin}
-                            connection={item}
-                            dataSourcesViews={dataSourceViews}
-                            spaces={spaces}
-                            isSpacesLoading={isSpacesLoading}
-                            existingConfigurations={configurations}
-                          />
-                        )
-                      }
-                      visual={<ContextItem.Visual visual={item.logo} />}
-                    >
-                      <ContextItem.Description description={item.description} />
-                    </ContextItem>
-                  ))}
+                  {visibleConnections.map((item) => {
+                    const existingConfig = configurations?.find(
+                      (c) => c.provider === item.id
+                    );
+
+                    return (
+                      <ContextItem
+                        key={item.id}
+                        title={item.label}
+                        action={
+                          <div className="flex items-center gap-2">
+                            {existingConfig &&
+                              (existingConfig.lastSyncError ? (
+                                <Chip color="warning">
+                                  Error: {existingConfig.lastSyncError}
+                                </Chip>
+                              ) : existingConfig.syncStatus === "running" ? (
+                                <Chip color="info" isBusy>
+                                  Synchronizing
+                                </Chip>
+                              ) : existingConfig.lastSyncCompletedAt !==
+                                null ? (
+                                <Chip>
+                                  Last Sync:{" "}
+                                  {timeAgoFrom(
+                                    new Date(
+                                      existingConfig.lastSyncCompletedAt
+                                    ).getTime()
+                                  )}{" "}
+                                  ago
+                                </Chip>
+                              ) : (
+                                <Chip color="warning">Last sync: Never</Chip>
+                              ))}
+                            {isConfigurationsLoading ? (
+                              <Spinner />
+                            ) : (
+                              <FeatureAccessButton
+                                accessible={featureFlags.includes(
+                                  item.featureFlag
+                                )}
+                                featureName={`${item.label} connection`}
+                                owner={owner}
+                                canRequestAccess={isAdmin}
+                                canManage={true}
+                                connection={item}
+                                dataSourcesViews={dataSourceViews}
+                                spaces={spaces}
+                                isSpacesLoading={isSpacesLoading}
+                                existingConfigurations={configurations}
+                              />
+                            )}
+                          </div>
+                        }
+                        visual={<ContextItem.Visual visual={item.logo} />}
+                      >
+                        <ContextItem.Description
+                          description={item.description}
+                        />
+                      </ContextItem>
+                    );
+                  })}
                 </>
               )}
             </ContextItem.List>
           </Page.Layout>
         </Page>
-      </AppLayout>
+      </AppContentLayout>
     </ConversationsNavigationProvider>
   );
 }
+
+LabsTranscriptsIndex.getLayout = (page: React.ReactElement) => {
+  return <AppRootLayout>{page}</AppRootLayout>;
+};

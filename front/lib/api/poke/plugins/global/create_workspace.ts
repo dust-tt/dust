@@ -34,6 +34,20 @@ export const createWorkspacePlugin = createPlugin({
         label: "Is Business",
         description: "Is the workspace a business workspace (Pro plan 39€)",
       },
+      planCode: {
+        type: "string",
+        label: "Plan Code (optional)",
+        description:
+          "Code of the plan to subscribe the workspace to. Leave empty to redirect to the paywall for the Pro plan.",
+        required: false,
+      },
+      endDate: {
+        type: "string",
+        label: "End Date (optional)",
+        description:
+          "End date of the subscription, format: YYYY-MM-DD. Leave empty for no end date. If an end date is set, the workspace will automatically downgraded the day after the end date.",
+        required: false,
+      },
     },
   },
   execute: async (auth, _, args) => {
@@ -54,6 +68,8 @@ export const createWorkspacePlugin = createPlugin({
       name,
       isVerified: enableAutoJoin,
       isBusiness: args.isBusiness,
+      planCode: args.planCode,
+      endDate: args.endDate ? new Date(args.endDate) : null,
     });
 
     const newWorkspaceAuth = await Authenticator.internalAdminForWorkspace(
@@ -88,8 +104,10 @@ export const createWorkspacePlugin = createPlugin({
     }
 
     return new Ok({
-      display: "text",
+      display: "textWithLink",
       value: `Workspace created (id: ${workspace.sId}) and invitation sent to ${result.email}.`,
+      link: `poke/${workspace.sId}`,
+      linkText: "View Workspace",
     });
   },
 });

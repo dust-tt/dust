@@ -1,10 +1,27 @@
-import type { LightWorkspaceType } from "@dust-tt/client";
+import type {
+  HeartbeatMCPResponseType,
+  LightWorkspaceType,
+} from "@dust-tt/client";
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
+import type { JSONRPCMessage } from "@modelcontextprotocol/sdk/types.js";
+import assert from "assert";
 
 const logger = console;
 
 const HEARTBEAT_INTERVAL_MS = 4 * 60 * 1000; // 4 minutes.
 const RECONNECT_DELAY_MS = 5 * 1000; // 5 seconds.
+
+function isFailedHeartbeatResponse(
+  response: unknown
+): response is HeartbeatMCPResponseType {
+  return (
+    typeof response === "object" &&
+    response !== null &&
+    "success" in response &&
+    typeof response.success === "boolean" &&
+    !response.success
+  );
+}
 
 /**
  * Custom transport implementation for MCP
@@ -14,35 +31,20 @@ const RECONNECT_DELAY_MS = 5 * 1000; // 5 seconds.
  */
 export class CoEditionTransport implements Transport {
   private eventSource: EventSource | null = null;
-  private requestIdMap = new Map<number, string>();
   private lastEventId: string | null = null;
   private heartbeatTimer: NodeJS.Timeout | null = null;
+  private serverId: string | null = null;
 
   // Required by Transport interface.
-  public onmessage?: (message: any) => void;
+  public onmessage?: (message: JSONRPCMessage) => void;
   public onclose?: () => void;
   public onerror?: (error: Error) => void;
   public sessionId?: string;
 
   constructor(
     private readonly owner: LightWorkspaceType,
-    private readonly serverId: string = CoEditionTransport.generateUUID()
+    private readonly serverName: string = "Co-Edition"
   ) {}
-
-  /**
-   * Generate a UUID v4 for use as a server ID
-   */
-  private static generateUUID(): string {
-    // Simple UUID v4 generation.
-    return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(
-      /[xy]/g,
-      function (c) {
-        const r = (Math.random() * 16) | 0,
-          v = c === "x" ? r : (r & 0x3) | 0x8;
-        return v.toString(16);
-      }
-    );
-  }
 
   /**
    * Register the MCP server with the Dust backend
@@ -54,7 +56,7 @@ export class CoEditionTransport implements Transport {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        serverId: this.serverId,
+        serverName: this.serverName,
       }),
     });
 
@@ -62,6 +64,9 @@ export class CoEditionTransport implements Transport {
       logger.error(`Failed to register MCP server: ${response.statusText}`);
       return false;
     }
+
+    const body = await response.json();
+    this.serverId = body.serverId;
 
     // Setup heartbeat to keep the server registration alive.
     this.setupHeartbeat();
@@ -90,7 +95,8 @@ export class CoEditionTransport implements Transport {
         }),
       });
 
-      if (!response.ok) {
+      const body = await response.json();
+      if (!response.ok || isFailedHeartbeatResponse(body)) {
         logger.error(`Failed to heartbeat MCP server: ${response.statusText}`);
         await this.registerServer();
       }
@@ -124,6 +130,8 @@ export class CoEditionTransport implements Transport {
    * Connect to the SSE stream for the workspace
    */
   private async connectToRequestsStream(): Promise<void> {
+    assert(this.serverId, "Server ID not set");
+
     // Close any existing connection
     if (this.eventSource) {
       this.eventSource.close();
@@ -153,20 +161,15 @@ export class CoEditionTransport implements Transport {
         }
 
         // The actual request is in the data property.
-        const { request, requestId } = eventData.data;
-        if (!request) {
+        const { data } = eventData;
+        if (!data) {
           logger.error("No data field found in the event");
           return;
         }
 
-        // Store the requestId mapped to the request id.
-        if (typeof request.id === "number" && requestId) {
-          this.requestIdMap.set(request.id, requestId);
-        }
-
         // Forward the message to the handler.
         if (this.onmessage) {
-          this.onmessage(request);
+          this.onmessage(data);
         } else {
           logger.error(
             "ERROR: onmessage handler not set - MCP response won't be sent"
@@ -207,39 +210,20 @@ export class CoEditionTransport implements Transport {
    * Send a message to the server
    * This method is required by the Transport interface
    */
-  async send(message: any): Promise<void> {
-    // Get the requestId using the message.id.
-    const requestId = this.requestIdMap.get(message.id);
-    if (!requestId) {
-      logger.error(`No requestId found for message ID: ${message.id}`);
-      this.onerror?.(
-        new Error(`Missing requestId for message ID: ${message.id}`)
-      );
-      return;
-    }
-
-    // Clean up the map entry.
-    if (typeof message.id === "number") {
-      this.requestIdMap.delete(message.id);
-    }
+  async send(message: JSONRPCMessage): Promise<void> {
+    assert(this.serverId, "Server ID not set");
 
     // Send tool results back to Dust via HTTP POST.
-    const params = new URLSearchParams();
-    params.set("serverId", this.serverId);
-
-    const response = await fetch(
-      `/api/w/${this.owner.sId}/mcp/results?${params.toString()}`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          requestId,
-          result: message,
-        }),
-      }
-    );
+    const response = await fetch(`/api/w/${this.owner.sId}/mcp/results`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        result: message,
+        serverId: this.serverId,
+      }),
+    });
 
     if (!response.ok) {
       logger.error("Failed to send MCP result:", response.statusText);
@@ -274,7 +258,7 @@ export class CoEditionTransport implements Transport {
   /**
    * Get the current server ID
    */
-  getServerId(): string {
+  getServerId(): string | null {
     return this.serverId;
   }
 }

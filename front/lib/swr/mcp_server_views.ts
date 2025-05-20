@@ -50,19 +50,20 @@ const getOptimisticDataForCreate = (
   if (!data) {
     return { servers: [], success: true };
   }
-  const mcpServerWithViews = data.servers.find((s) => s.id === server.id);
+  const mcpServerWithViews = data.servers.find((s) => s.sId === server.sId);
 
   if (mcpServerWithViews) {
     return {
       ...data,
       servers: [
-        ...data.servers.filter((v) => v.id !== server.id),
+        ...data.servers.filter((v) => v.sId !== server.sId),
         {
           ...mcpServerWithViews,
           views: [
             ...mcpServerWithViews.views,
             {
-              id: "global",
+              id: -1, // The ID is not known at optimistic data creation time.
+              sId: "global",
               createdAt: Date.now(),
               updatedAt: Date.now(),
               server,
@@ -86,17 +87,19 @@ const getOptimisticDataForRemove = (
   }
 
   const mcpServerWithViews = data.servers.find(
-    (s) => s.id === serverView.server.id
+    (s) => s.sId === serverView.server.sId
   );
 
   if (mcpServerWithViews) {
     return {
       ...data,
       servers: [
-        ...data.servers.filter((v) => v.id !== serverView.server.id),
+        ...data.servers.filter((v) => v.sId !== serverView.server.sId),
         {
           ...mcpServerWithViews,
-          views: mcpServerWithViews.views.filter((v) => v.id !== serverView.id),
+          views: mcpServerWithViews.views.filter(
+            (v) => v.sId !== serverView.sId
+          ),
         },
       ],
     };
@@ -149,7 +152,7 @@ export function useAddMCPServerToSpace(owner: LightWorkspaceType) {
             {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ mcpServerId: server.id }),
+              body: JSON.stringify({ mcpServerId: server.sId }),
             }
           );
 
@@ -200,7 +203,7 @@ export function useRemoveMCPServerViewFromSpace(owner: LightWorkspaceType) {
       await mutateMCPServers(
         async (data) => {
           const response = await fetch(
-            `/api/w/${owner.sId}/spaces/${space.sId}/mcp_views/${serverView.id}`,
+            `/api/w/${owner.sId}/spaces/${space.sId}/mcp_views/${serverView.sId}`,
             {
               method: "DELETE",
             }
@@ -217,10 +220,13 @@ export function useRemoveMCPServerViewFromSpace(owner: LightWorkspaceType) {
                 "Your actions have been removed from the space successfully.",
             });
           } else {
+            const res = await response.json();
             sendNotification({
               type: "error",
               title: "Failed to remove action",
-              description: `Could not remove actions from the space ${space.name}. Please try again.`,
+              description:
+                res.error?.message ||
+                `Could not remove actions from the space ${space.name}. Please try again.`,
             });
           }
 

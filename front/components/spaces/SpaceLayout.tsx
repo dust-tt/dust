@@ -13,7 +13,7 @@ import React, { useCallback, useState } from "react";
 import { CreateOrEditSpaceModal } from "@app/components/spaces/CreateOrEditSpaceModal";
 import { SpaceSearchInput } from "@app/components/spaces/SpaceSearchLayout";
 import SpaceSideBarMenu from "@app/components/spaces/SpaceSideBarMenu";
-import AppLayout from "@app/components/sparkle/AppLayout";
+import AppContentLayout from "@app/components/sparkle/AppContentLayout";
 import { isEntreprisePlan } from "@app/lib/plans/plan_codes";
 import { isPrivateSpacesLimitReached } from "@app/lib/spaces";
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
@@ -89,9 +89,11 @@ export function SpaceLayout({
   );
 
   return (
-    <AppLayout
+    <AppContentLayout
       subscription={subscription}
       owner={owner}
+      hasTopPadding={false}
+      isWideMode
       navChildren={
         <SpaceSideBarMenu
           owner={owner}
@@ -100,7 +102,7 @@ export function SpaceLayout({
         />
       }
     >
-      <div className="flex flex-col pt-4">
+      <div className="flex w-full flex-col pt-8">
         <Page.Vertical gap="lg" align="stretch">
           <SpaceSearchInput
             category={category}
@@ -157,6 +159,6 @@ export function SpaceLayout({
           </DialogContent>
         </Dialog>
       )}
-    </AppLayout>
+    </AppContentLayout>
   );
 }

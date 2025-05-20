@@ -5,9 +5,12 @@ import type {
   InternalAllowedIconType,
   RemoteAllowedIconType,
 } from "@app/lib/actions/mcp_icons";
-import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
+import type {
+  InternalMCPServerNameType,
+  MCPServerAvailability,
+} from "@app/lib/actions/mcp_internal_actions/constants";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata";
-import type { EditedByUser } from "@app/types";
+import type { EditedByUser, ModelId } from "@app/types";
 
 export type MCPToolType = {
   name: string;
@@ -15,24 +18,35 @@ export type MCPToolType = {
   inputSchema: JSONSchema | undefined;
 };
 
-export type MCPToolWithIsDefaultType = MCPToolType & {
-  isDefault: boolean;
+export type MCPToolWithAvailabilityType = MCPToolType & {
+  availability: MCPServerAvailability;
 };
 
-export type MCPToolWithStakeLevelType = MCPToolWithIsDefaultType & {
-  stakeLevel?: MCPToolStakeLevelType;
-  toolServerId?: string;
+export type WithStakeLevelType<T> = T & {
+  stakeLevel: MCPToolStakeLevelType;
 };
+
+export type ServerSideMCPToolTypeWithStakeLevel =
+  WithStakeLevelType<MCPToolWithAvailabilityType> & {
+    toolServerId: string;
+  };
+
+export type ClientSideMCPToolTypeWithStakeLevel =
+  WithStakeLevelType<MCPToolWithAvailabilityType>;
+
+export type MCPToolWithStakeLevelType =
+  | ServerSideMCPToolTypeWithStakeLevel
+  | ClientSideMCPToolTypeWithStakeLevel;
 
 export type MCPServerType = {
-  id: string;
+  sId: string;
   name: string;
   version: string;
   description: string;
   icon: RemoteAllowedIconType | InternalAllowedIconType;
   authorization: AuthorizationInfo | null;
   tools: MCPToolType[];
-  isDefault: boolean;
+  availability: MCPServerAvailability;
 };
 
 export type RemoteMCPServerType = MCPServerType & {
@@ -45,7 +59,8 @@ export type RemoteMCPServerType = MCPServerType & {
 };
 
 export interface MCPServerViewType {
-  id: string;
+  id: ModelId;
+  sId: string;
   createdAt: number;
   updatedAt: number;
   spaceId: string;
@@ -55,7 +70,7 @@ export interface MCPServerViewType {
 
 export type MCPServerDefinitionType = Omit<
   MCPServerType,
-  "tools" | "id" | "isDefault"
+  "tools" | "sId" | "availability"
 >;
 
 type InternalMCPServerType = MCPServerType & {
@@ -65,7 +80,7 @@ type InternalMCPServerType = MCPServerType & {
 
 export type InternalMCPServerDefinitionType = Omit<
   InternalMCPServerType,
-  "tools" | "id" | "isDefault"
+  "tools" | "sId" | "availability"
 >;
 
 export type MCPServerTypeWithViews = MCPServerType & {

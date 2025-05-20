@@ -73,7 +73,7 @@ export function MCPServerDetailsSharing({
   const { mcpServers } = useMCPServers({
     owner,
   });
-  const mcpServerWithViews = mcpServers.find((s) => s.id === mcpServer.id);
+  const mcpServerWithViews = mcpServers.find((s) => s.sId === mcpServer.sId);
   const [loading, setLoading] = useState(false);
 
   const views =
@@ -91,12 +91,14 @@ export function MCPServerDetailsSharing({
   const { addToSpace } = useAddMCPServerToSpace(owner);
   const { removeFromSpace } = useRemoveMCPServerViewFromSpace(owner);
 
-  const rows: RowData[] = availableSpaces.map((space) => ({
-    name: space.name,
-    space: space,
-    serverView: views.find((view) => view.spaceId === space.sId),
-    onClick: () => {},
-  }));
+  const rows: RowData[] = availableSpaces
+    .map((space) => ({
+      name: space.name,
+      space: space,
+      serverView: views.find((view) => view.spaceId === space.sId),
+      onClick: () => {},
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
   const columns: ColumnDef<RowData, any>[] = [
     {
       id: "name",

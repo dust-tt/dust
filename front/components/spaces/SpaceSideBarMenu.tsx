@@ -1,4 +1,5 @@
 import {
+  BoltIcon,
   Button,
   CloudArrowLeftRightIcon,
   CommandLineIcon,
@@ -6,7 +7,6 @@ import {
   NavigationListItem,
   NavigationListLabel,
   PlusIcon,
-  SuitcaseIcon,
   Tree,
 } from "@dust-tt/sparkle";
 import type { ReturnTypeOf } from "@octokit/core/types";
@@ -47,7 +47,6 @@ import type {
   DataSourceViewType,
   LightWorkspaceType,
   SpaceType,
-  WhitelistableFeature,
 } from "@app/types";
 import {
   asDisplayName,
@@ -240,10 +239,10 @@ const SYSTEM_SPACE_ITEMS = [
     flag: null,
   },
   {
-    label: "Toolsets",
-    visual: SuitcaseIcon,
+    label: "Tools",
+    visual: BoltIcon,
     category: "actions" as DataSourceViewCategory,
-    flag: "mcp_actions" as WhitelistableFeature,
+    flag: null,
   },
 ];
 

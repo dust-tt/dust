@@ -46,6 +46,7 @@ import {
   updateDataSourceDocumentParents,
   upsertDataSourceFolder,
 } from "@connectors/lib/data_sources";
+import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import { getActivityLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import {
@@ -111,12 +112,14 @@ export async function getRootNodesToSyncFromResources(
             if (error instanceof GraphError && error.statusCode === 404) {
               return null;
             }
+            if (error instanceof ExternalOAuthTokenError) {
+              throw error;
+            }
             logger.error(
               {
                 connectorId,
                 error,
                 id: resource.internalId,
-                panic: true,
               },
               "Failed to get item"
             );
@@ -350,8 +353,18 @@ export async function markNodeAsSeen(connectorId: ModelId, internalId: string) {
     internalId
   );
 
+  const logger = getActivityLogger(connector);
+
   if (!node) {
-    throw new Error(`Node ${internalId} not found`);
+    logger.error(
+      {
+        connectorId,
+        internalId,
+      },
+      `[MarkNodeAsSeen] Node not found, skipping`
+    );
+
+    return;
   }
 
   // if node was updated more recently than this sync, we don't need to mark it
@@ -379,13 +392,27 @@ export async function syncFiles({
     throw new Error(`Connector ${connectorId} not found`);
   }
 
+  const logger = getActivityLogger(connector);
+
   const parent = await MicrosoftNodeResource.fetchByInternalId(
     connectorId,
     parentInternalId
   );
 
   if (!parent) {
-    throw new Error(`Unexpected: parent node not found: ${parentInternalId}`);
+    logger.error(
+      {
+        connectorId,
+        parentInternalId,
+      },
+      `[SyncFiles] Node not found, skipping`
+    );
+
+    return {
+      count: 0,
+      childNodes: [],
+      nextLink: undefined,
+    };
   }
 
   if (parent.nodeType !== "folder" && parent.nodeType !== "drive") {
@@ -402,7 +429,6 @@ export async function syncFiles({
   }
 
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
-  const logger = getActivityLogger(connector);
 
   logger.info(
     {

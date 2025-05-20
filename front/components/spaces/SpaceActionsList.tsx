@@ -63,8 +63,8 @@ export const SpaceActionsList = ({
     await mutateAvailableMCPServers();
   };
 
-  const onRemoveServer = async (id: string) => {
-    await removeFromSpace(serverViews.find((view) => view.id === id)!, space);
+  const onRemoveServer = async (sId: string) => {
+    await removeFromSpace(serverViews.find((view) => view.sId === sId)!, space);
     await mutateMCPServerViews();
     await mutateAvailableMCPServers();
   };
@@ -100,13 +100,17 @@ export const SpaceActionsList = ({
         id: "actions",
         cell: (info: CellContext<RowData, string>) => (
           <DataTable.MoreButton
-            menuItems={[
-              {
-                label: "Remove toolset from space",
-                onClick: async () => onRemoveServer(info.row.original.id),
-                kind: "item",
-              },
-            ]}
+            menuItems={
+              isAdmin
+                ? [
+                    {
+                      label: "Remove tools from space",
+                      onClick: async () => onRemoveServer(info.row.original.id),
+                      kind: "item",
+                    },
+                  ]
+                : []
+            }
           />
         ),
         meta: {
@@ -119,7 +123,7 @@ export const SpaceActionsList = ({
   const rows: RowData[] = React.useMemo(
     () =>
       serverViews.map((serverView) => ({
-        id: serverView.id,
+        id: serverView.sId,
         name: serverView.server.name,
         description: serverView.server.description,
         avatar: getAvatar(serverView.server),

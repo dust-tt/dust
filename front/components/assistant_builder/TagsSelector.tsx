@@ -1,128 +1,31 @@
 import {
   Button,
   Chip,
-  Dialog,
-  DialogContainer,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSearchbar,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-  Input,
-  Label,
   PlusIcon,
-  ScrollArea,
-  ScrollBar,
 } from "@dust-tt/sparkle";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
-import { useCreateTag, useTags } from "@app/lib/swr/tags";
+import { useTags } from "@app/lib/swr/tags";
+import { tagsSorter } from "@app/lib/utils";
 import type { WorkspaceType } from "@app/types";
-import { isAdmin } from "@app/types";
+import { isAdmin, isBuilder } from "@app/types";
+import type { TagType } from "@app/types/tag";
 
-const MAX_TAG_LENGTH = 100;
-
-const TagCreationDialog = ({
-  owner,
-  isOpen,
-  setIsOpen,
-  setBuilderState,
-  setEdited,
-}: {
-  owner: WorkspaceType;
-  isOpen: boolean;
-  setIsOpen: (isOpen: boolean) => void;
-  builderState: AssistantBuilderState;
-  setBuilderState: (
-    stateFn: (state: AssistantBuilderState) => AssistantBuilderState
-  ) => void;
-  setEdited: (edited: boolean) => void;
-}) => {
-  const [name, setName] = useState("");
-  const { createTag } = useCreateTag({ owner });
-
-  // const ref = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (isOpen) {
-      setName("");
-    }
-  }, [isOpen]);
-
-  const handleCreateTag = async () => {
-    const tag = await createTag(name);
-    if (tag) {
-      setBuilderState((state) => ({
-        ...state,
-        tags: [...state.tags, tag],
-      }));
-      setEdited(true);
-      setIsOpen(false);
-    }
-  };
-
-  return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent size="lg">
-        <DialogHeader>
-          <DialogTitle>Add tag</DialogTitle>
-          <DialogDescription>
-            Create a new tag for your assistant
-          </DialogDescription>
-        </DialogHeader>
-        <DialogContainer>
-          <div className="space-y-2">
-            <Label htmlFor="name">Name</Label>
-            <div className="flex space-x-2">
-              <div className="flex-grow">
-                <Input
-                  maxLength={MAX_TAG_LENGTH}
-                  id="name"
-                  placeholder="Tag name"
-                  value={name}
-                  onChange={(e) => {
-                    setName(e.target.value);
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && name.length > 0) {
-                      void handleCreateTag();
-                    }
-                  }}
-                  autoFocus
-                />
-              </div>
-            </div>
-          </div>
-        </DialogContainer>
-        <DialogFooter
-          leftButtonProps={{
-            label: "Cancel",
-            variant: "ghost",
-          }}
-          rightButtonProps={{
-            label: "Save",
-            variant: "primary",
-            onClick: handleCreateTag,
-            disabled: name.length === 0,
-          }}
-        />
-      </DialogContent>
-    </Dialog>
-  );
-};
+import { TagCreationDialog } from "./TagCreationDialog";
 
 export const TagsSelector = ({
   owner,
   builderState,
   setBuilderState,
   setEdited,
+  suggestionButton,
 }: {
   owner: WorkspaceType;
   builderState: AssistantBuilderState;
@@ -130,6 +33,7 @@ export const TagsSelector = ({
     stateFn: (state: AssistantBuilderState) => AssistantBuilderState
   ) => void;
   setEdited: (edited: boolean) => void;
+  suggestionButton: JSX.Element;
 }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -148,44 +52,54 @@ export const TagsSelector = ({
 
   const filteredTags = useMemo(() => {
     const currentTagIds = new Set(builderState.tags.map((t) => t.sId));
-    return tags.filter(
-      (t) =>
-        !currentTagIds.has(t.sId) &&
-        t.name.toLowerCase().includes(searchText.toLowerCase())
-    );
-  }, [tags, builderState.tags, searchText]);
+    return tags
+      .filter(
+        (t) =>
+          !currentTagIds.has(t.sId) &&
+          t.name.toLowerCase().includes(searchText.toLowerCase())
+      )
+      .filter((t) => isBuilder(owner) || t.kind !== "protected")
+      .sort(tagsSorter);
+  }, [tags, builderState.tags, searchText, owner]);
 
-  const assistantTags = [...(builderState.tags || [])].sort((a, b) =>
-    a.name.localeCompare(b.name)
-  );
+  const assistantTags = [...(builderState.tags || [])].sort(tagsSorter);
+
+  const onTagCreated = (tag: TagType) => {
+    setBuilderState((state) => ({
+      ...state,
+      tags: [...state.tags, tag],
+    }));
+    setEdited(true);
+  };
+
   return (
     <>
       <TagCreationDialog
         owner={owner}
         isOpen={isDialogOpen}
         setIsOpen={setIsDialogOpen}
-        builderState={builderState}
-        setBuilderState={setBuilderState}
-        setEdited={setEdited}
+        onTagCreated={onTagCreated}
       />
       <div className="mb-2 flex flex-wrap gap-2">
         {assistantTags.map((tag) => (
           <Chip
             key={tag.sId}
-            onRemove={() => {
-              setBuilderState((state) => ({
-                ...state,
-                tags: state.tags.filter((t) => t.sId !== tag.sId),
-              }));
-              setEdited(true);
-            }}
+            onRemove={
+              tag.kind === "protected" && !isBuilder(owner)
+                ? undefined
+                : () => {
+                    setBuilderState((state) => ({
+                      ...state,
+                      tags: state.tags.filter((t) => t.sId !== tag.sId),
+                    }));
+                    setEdited(true);
+                  }
+            }
+            size="xs"
             color="golden"
             label={tag.name}
           />
         ))}
-      </div>
-
-      <div className="mb-2 flex flex-row gap-2">
         <DropdownMenu
           open={isMenuOpen}
           onOpenChange={onMenuOpenChange}
@@ -201,59 +115,62 @@ export const TagsSelector = ({
               tooltip="Select a tag"
             />
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="min-w-[300px]">
-            <DropdownMenuSearchbar
-              placeholder="Search"
-              name="input"
-              value={searchText}
-              onChange={setSearchText}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && filteredTags.length > 0) {
+          <DropdownMenuContent
+            className="h-96 min-w-72"
+            dropdownHeaders={
+              <>
+                <DropdownMenuSearchbar
+                  autoFocus
+                  placeholder="Search"
+                  name="input"
+                  value={searchText}
+                  onChange={setSearchText}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && filteredTags.length > 0) {
+                      setBuilderState((state) => ({
+                        ...state,
+                        tags: [...state.tags, filteredTags[0]],
+                      }));
+                      setEdited(true);
+                      onMenuOpenChange(false);
+                    }
+                  }}
+                  button={
+                    isAdmin(owner) ? (
+                      <Button
+                        label="Create"
+                        variant="primary"
+                        icon={PlusIcon}
+                        onClick={() => {
+                          onMenuOpenChange(false);
+                          setIsDialogOpen(true);
+                        }}
+                      />
+                    ) : undefined
+                  }
+                />
+                <DropdownMenuSeparator />
+              </>
+            }
+          >
+            {filteredTags.map((tag) => (
+              <DropdownMenuItem
+                className="p-1"
+                key={tag.sId}
+                onClick={() => {
                   setBuilderState((state) => ({
                     ...state,
-                    tags: [...state.tags, filteredTags[0]],
+                    tags: [...state.tags, tag],
                   }));
                   setEdited(true);
-                  onMenuOpenChange(false);
-                }
-              }}
-            />
-            <DropdownMenuSeparator />
-            <ScrollArea className="flex max-h-[300px] flex-col" hideScrollBar>
-              {filteredTags.map((c) => (
-                <DropdownMenuItem
-                  key={`assistant-picker-${c.sId}`}
-                  label={c.name}
-                  onClick={() => {
-                    setBuilderState((state) => ({
-                      ...state,
-                      tags: [...state.tags, c],
-                    }));
-                    setEdited(true);
-                  }}
-                />
-              ))}
-              <ScrollBar className="py-0" />
-            </ScrollArea>
-            {isAdmin(owner) && (
-              <>
-                <DropdownMenuSeparator />
-                <div className="flex justify-end p-1">
-                  <Button
-                    label="Create"
-                    size="xs"
-                    variant="primary"
-                    icon={PlusIcon}
-                    onClick={() => {
-                      onMenuOpenChange(false);
-                      setIsDialogOpen(true);
-                    }}
-                  />
-                </div>
-              </>
-            )}
+                }}
+              >
+                <Chip size="xs" color="golden" label={tag.name} />
+              </DropdownMenuItem>
+            ))}
           </DropdownMenuContent>
         </DropdownMenu>
+        {suggestionButton}
       </div>
     </>
   );

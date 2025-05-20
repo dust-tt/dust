@@ -1,3 +1,4 @@
+import type { JSONSchema7 } from "json-schema";
 import moment from "moment-timezone";
 import { z } from "zod";
 
@@ -35,7 +36,9 @@ const ModelLLMIdSchema = FlexibleEnumSchema<
   | "gpt-4.1-mini-2025-04-14"
   | "o1"
   | "o1-mini"
+  | "o3"
   | "o3-mini"
+  | "o4-mini"
   | "claude-3-opus-20240229"
   | "claude-3-5-sonnet-20240620"
   | "claude-3-5-sonnet-20241022"
@@ -174,6 +177,7 @@ export const supportedOtherFileFormats = {
   "text/x-groovy": [".groovy"],
   "text/x-perl": [".pl", ".pm"],
   "text/x-perl-script": [".pl", ".pm"],
+  "application/octet-stream": [],
 } as const;
 
 // Supported content types for images.
@@ -239,18 +243,19 @@ export function isSupportedImageContentType(
 }
 
 const UserMessageOriginSchema = FlexibleEnumSchema<
+  | "api"
+  | "email"
+  | "extension"
+  | "github-copilot-chat"
+  | "gsheet"
+  | "make"
+  | "mcp"
+  | "n8n"
+  | "raycast"
   | "slack"
   | "web"
-  | "api"
-  | "gsheet"
   | "zapier"
-  | "n8n"
-  | "make"
   | "zendesk"
-  | "raycast"
-  | "github-copilot-chat"
-  | "extension"
-  | "email"
 >()
   .or(z.null())
   .or(z.undefined());
@@ -711,7 +716,7 @@ const RetrievalDocumentChunkTypeSchema = z.object({
   text: z.string(),
 });
 
-const RetrievalDocumentTypeSchema = z.object({
+export const RetrievalDocumentTypeSchema = z.object({
   chunks: z.array(RetrievalDocumentChunkTypeSchema),
   documentId: z.string(),
   dataSourceView: DataSourceViewSchema.nullable(),
@@ -745,13 +750,10 @@ export type RetrievalActionPublicType = z.infer<
   typeof RetrievalActionTypeSchema
 >;
 
-const ProcessSchemaAllowedTypesSchema = z.enum(["string", "number", "boolean"]);
-
-const ProcessSchemaPropertySchema = z.object({
-  name: z.string(),
-  type: ProcessSchemaAllowedTypesSchema,
-  description: z.string(),
-});
+const ProcessSchemaPropertySchema = z.union([
+  z.custom<JSONSchema7>(),
+  z.null(),
+]);
 
 const ProcessActionOutputsSchema = z.object({
   data: z.array(z.unknown()),
@@ -766,7 +768,7 @@ const ProcessActionTypeSchema = BaseActionSchema.extend({
   params: z.object({
     relativeTimeFrame: TimeFrameSchema.nullable(),
   }),
-  schema: z.array(ProcessSchemaPropertySchema),
+  jsonSchema: ProcessSchemaPropertySchema,
   outputs: ProcessActionOutputsSchema.nullable(),
   functionCallId: z.string().nullable(),
   functionCallName: z.string().nullable(),
@@ -790,35 +792,36 @@ const TablesQueryActionTypeSchema = BaseActionSchema.extend({
 type TablesQueryActionPublicType = z.infer<typeof TablesQueryActionTypeSchema>;
 
 const WhitelistableFeaturesSchema = FlexibleEnumSchema<
-  | "usage_data_api"
-  | "okta_enterprise_connection"
+  | "advanced_notion_management"
+  | "agent_discovery"
+  | "claude_3_7_reasoning"
   | "co_edition"
-  | "labs_transcripts"
+  | "deepseek_feature"
+  | "deepseek_r1_global_agent_feature"
+  | "dev_mcp_actions"
+  | "disable_run_logs"
+  | "document_tracker"
+  | "force_gdrive_labels_scope"
+  | "google_ai_studio_experimental_models_feature"
+  | "index_private_slack_channel"
   | "labs_connection_hubspot"
   | "labs_connection_linear"
-  | "labs_trackers"
   | "labs_salesforce_personal_connections"
-  | "document_tracker"
-  | "openai_o1_feature"
-  | "openai_o1_mini_feature"
-  | "openai_o1_high_reasoning_feature"
+  | "labs_trackers"
+  | "labs_transcripts"
+  | "okta_enterprise_connection"
   | "openai_o1_custom_assistants_feature"
+  | "openai_o1_feature"
   | "openai_o1_high_reasoning_custom_assistants_feature"
-  | "deepseek_feature"
-  | "google_ai_studio_experimental_models_feature"
-  | "snowflake_connector_feature"
-  | "index_private_slack_channel"
-  | "disable_run_logs"
-  | "show_debug_tools"
-  | "deepseek_r1_global_agent_feature"
+  | "openai_o1_high_reasoning_feature"
+  | "openai_o1_mini_feature"
   | "salesforce_feature"
-  | "advanced_notion_management"
   | "search_knowledge_builder"
-  | "force_gdrive_labels_scope"
-  | "claude_3_7_reasoning"
-  | "mcp_actions"
-  | "dev_mcp_actions"
-  | "agent_discovery"
+  | "show_debug_tools"
+  | "snowflake_connector_feature"
+  | "usage_data_api"
+  | "custom_webcrawler"
+  | "exploded_tables_query"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -926,7 +929,7 @@ const AgentConfigurationStatusSchema = z.union([
 ]);
 
 const AgentConfigurationScopeSchema = FlexibleEnumSchema<
-  "global" | "workspace" | "published" | "private"
+  "global" | "workspace" | "published" | "private" | "hidden" | "visible"
 >();
 
 export const AgentConfigurationViewSchema = FlexibleEnumSchema<
@@ -1050,7 +1053,7 @@ const UserMessageContextSchema = z.object({
   email: z.string().optional().nullable(),
   profilePictureUrl: z.string().optional().nullable(),
   origin: UserMessageOriginSchema,
-  localMCPServerIds: z.array(z.string()).optional().nullable(),
+  clientSideMCPServerIds: z.array(z.string()).optional().nullable(),
 });
 
 const UserMessageSchema = z.object({
@@ -1314,6 +1317,45 @@ const MCPParamsEventSchema = z.object({
   action: MCPActionTypeSchema,
 });
 
+const NotificationImageContentSchema = z.object({
+  type: z.literal("image"),
+  mimeType: z.string(),
+});
+
+const NotificationTextContentSchema = z.object({
+  type: z.literal("text"),
+  text: z.string(),
+});
+
+const NotificationContentSchema = z.union([
+  NotificationImageContentSchema,
+  NotificationTextContentSchema,
+]);
+
+const ToolNotificationProgressSchema = z.object({
+  progress: z.number(),
+  total: z.number(),
+  data: z.object({
+    label: z.string(),
+    output: NotificationContentSchema.optional(),
+  }),
+});
+
+export type ToolNotificationProgress = z.infer<
+  typeof ToolNotificationProgressSchema
+>;
+
+const ToolNotificationEventSchema = z.object({
+  type: z.literal("tool_notification"),
+  created: z.number(),
+  configurationId: z.string(),
+  messageId: z.string(),
+  action: MCPActionTypeSchema,
+  notification: ToolNotificationProgressSchema,
+});
+
+export type ToolNotificationEvent = z.infer<typeof ToolNotificationEventSchema>;
+
 const MCPValidationMetadataSchema = z.object({
   mcpServerName: z.string(),
   toolName: z.string(),
@@ -1331,7 +1373,7 @@ const MCPApproveExecutionEventSchema = z.object({
   messageId: z.string(),
   action: MCPActionTypeSchema,
   inputs: z.record(z.any()),
-  stake: z.optional(z.enum(["low", "high"])),
+  stake: z.optional(z.enum(["low", "high", "never_ask"])),
   metadata: MCPValidationMetadataSchema,
 });
 
@@ -1363,6 +1405,7 @@ const AgentActionSpecificEventSchema = z.union([
   TablesQueryStartedEventSchema,
   WebsearchParamsEventSchema,
   MCPParamsEventSchema,
+  ToolNotificationEventSchema,
   MCPApproveExecutionEventSchema,
 ]);
 export type AgentActionSpecificEvent = z.infer<
@@ -1769,6 +1812,21 @@ const AppTypeSchema = z.object({
 
 export type ApiAppType = z.infer<typeof AppTypeSchema>;
 
+const AppImportTypeSchema = z.object({
+  id: ModelIdSchema.optional(),
+  sId: z.string(),
+  name: z.string(),
+  description: z.string().nullable(),
+  savedSpecification: z.string().nullable(),
+  savedConfig: z.string().nullable(),
+  savedRun: z.string().nullable(),
+  dustAPIProjectId: z.string(),
+  datasets: z.array(DatasetSchema).optional(),
+  coreSpecifications: z.record(z.string()).optional(),
+});
+
+export type ApiAppImportType = z.infer<typeof AppImportTypeSchema>;
+
 export const RunAppResponseSchema = z.object({
   run: RunTypeSchema,
 });
@@ -1817,7 +1875,7 @@ export type PostContentFragmentResponseType = z.infer<
 
 export const CreateConversationResponseSchema = z.object({
   conversation: ConversationSchema,
-  message: UserMessageSchema,
+  message: UserMessageSchema.optional(),
 });
 
 export type CreateConversationResponseType = z.infer<
@@ -1901,12 +1959,13 @@ export const PublicPostMessagesRequestBodySchema = z.intersection(
       })
     ),
     context: UserMessageContextSchema.extend({
-      localMCPServerIds: z.array(z.string()).optional().nullable(),
+      clientSideMCPServerIds: z.array(z.string()).optional().nullable(),
     }),
   }),
   z
     .object({
       blocking: z.boolean().optional(),
+      skipToolsValidation: z.boolean().optional(),
     })
     .partial()
 );
@@ -1927,6 +1986,7 @@ export const PublicPostEditMessagesRequestBodySchema = z.object({
       configurationId: z.string(),
     })
   ),
+  skipToolsValidation: z.boolean().optional().default(false),
 });
 
 export type PublicPostEditMessagesRequestBody = z.infer<
@@ -2035,6 +2095,7 @@ export const PublicPostConversationsRequestBodySchema = z.intersection(
   z
     .object({
       blocking: z.boolean().optional(),
+      skipToolsValidation: z.boolean().optional(),
     })
     .partial()
 );
@@ -2100,7 +2161,7 @@ export const GetAppsResponseSchema = z.object({
 });
 
 export const PostAppsRequestSchema = z.object({
-  apps: AppTypeSchema.array(),
+  apps: AppImportTypeSchema.array(),
 });
 
 export type GetAppsResponseType = z.infer<typeof GetAppsResponseSchema>;
@@ -2131,7 +2192,8 @@ export const PatchDataSourceViewRequestSchema = z.union([
       parentsToAdd: z.union([z.array(z.string()), z.undefined()]),
       parentsToRemove: z.array(z.string()).optional(),
     })
-    // For the fields to be not optional, see https://stackoverflow.com/questions/71477015/specify-a-zod-schema-with-a-non-optional-but-possibly-undefined-field
+    // For the fields to be not optional, see:
+    // https://stackoverflow.com/questions/71477015/specify-a-zod-schema-with-a-non-optional-but-possibly-undefined-field
     .transform((o) => ({
       parentsToAdd: o.parentsToAdd,
       parentsToRemove: o.parentsToRemove,
@@ -2200,7 +2262,9 @@ export const PostDataSourceDocumentRequestSchema = z.object({
   upsert_context: z
     .object({
       sync_type: z.union([z.enum(["batch", "incremental"]), z.undefined()]),
-    }) // For the fields to be not optional, see https://stackoverflow.com/questions/71477015/specify-a-zod-schema-with-a-non-optional-but-possibly-undefined-field
+    })
+    // For the fields to be not optional, see:
+    // https://stackoverflow.com/questions/71477015/specify-a-zod-schema-with-a-non-optional-but-possibly-undefined-field
     .transform((o) => ({
       sync_type: o.sync_type,
     }))
@@ -2813,7 +2877,7 @@ export const ACTION_RUNNING_LABELS: Record<
   search_labels_action: "Searching labels",
   tables_query_action: "Querying tables",
   websearch_action: "Searching the web",
-  tool_action: "Calling MCP Server",
+  tool_action: "Using a tool",
 };
 
 // MCP Related.
@@ -2835,9 +2899,27 @@ export type ValidateActionRequestBodyType = z.infer<
   typeof ValidateActionRequestBodySchema
 >;
 
+export const ClientSideMCPServerNameSchema = z.string().min(5).max(30);
+
+export const PublicRegisterMCPRequestBodySchema = z.object({
+  serverName: ClientSideMCPServerNameSchema,
+});
+
+export type PublicRegisterMCPRequestBody = z.infer<
+  typeof PublicRegisterMCPRequestBodySchema
+>;
+
+export const PublicHeartbeatMCPRequestBodySchema = z.object({
+  serverId: z.string(),
+});
+
+export type PublicHeartbeatMCPRequestBody = z.infer<
+  typeof PublicHeartbeatMCPRequestBodySchema
+>;
+
 export const RegisterMCPResponseSchema = z.object({
-  success: z.boolean(),
   expiresAt: z.string(),
+  serverId: z.string(),
 });
 
 export type RegisterMCPResponseType = z.infer<typeof RegisterMCPResponseSchema>;
@@ -2852,12 +2934,21 @@ export type HeartbeatMCPResponseType = z.infer<
 >;
 
 export const PublicPostMCPResultsRequestBodySchema = z.object({
-  requestId: z.string(),
   result: z.unknown(),
+  serverId: z.string(),
 });
 
 export type PublicPostMCPResultsRequestBody = z.infer<
   typeof PublicPostMCPResultsRequestBodySchema
+>;
+
+export const PostMCPRequestsRequestQuerySchema = z.object({
+  serverId: z.string(),
+  lastEventId: z.string().optional(),
+});
+
+export type PostMCPRequestsRequestQueryType = z.infer<
+  typeof PostMCPRequestsRequestQuerySchema
 >;
 
 export const PostMCPResultsResponseSchema = z.object({
@@ -2868,7 +2959,13 @@ export type PostMCPResultsResponseType = z.infer<
   typeof PostMCPResultsResponseSchema
 >;
 
-const MCP_TOOL_STAKE_LEVELS = ["high", "low"] as const;
+const REMOTE_MCP_TOOL_STAKE_LEVELS = ["high", "low"] as const;
+export type RemoteMCPToolStakeLevelPublicType =
+  (typeof REMOTE_MCP_TOOL_STAKE_LEVELS)[number];
+const MCP_TOOL_STAKE_LEVELS = [
+  ...REMOTE_MCP_TOOL_STAKE_LEVELS,
+  "never_ask",
+] as const;
 export type MCPToolStakeLevelPublicType =
   (typeof MCP_TOOL_STAKE_LEVELS)[number];
 

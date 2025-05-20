@@ -5,18 +5,9 @@ module.exports = {
     "eslint:recommended",
     "plugin:@typescript-eslint/recommended",
   ],
-  plugins: ["import", "simple-import-sort"],
+  plugins: ["import", "simple-import-sort", "dust"],
   rules: {
     "import/no-cycle": "error",
-    /**
-    "@typescript-eslint/naming-convention": [
-      "error",
-      {
-        "selector": "variableLike",
-        "format": ["camelCase"]
-      }
-    ],
-    */
     curly: ["error", "all"],
     "react/no-unescaped-entities": 0,
     "@typescript-eslint/consistent-type-imports": "error",
@@ -65,6 +56,9 @@ module.exports = {
     ],
     "simple-import-sort/exports": "error",
     "@typescript-eslint/return-await": ["error", "in-try-catch"],
+    "dust/no-raw-sql": "error",
+    "dust/no-unverified-workspace-bypass": "error",
+    "dust/too-long-index-name": "error",
   },
   overrides: [
     {

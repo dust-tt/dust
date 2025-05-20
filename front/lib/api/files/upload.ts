@@ -10,7 +10,13 @@ import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
 import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
-import type { FileUseCase, Result, SupportedFileContentType } from "@app/types";
+import type {
+  FileUseCase,
+  FileUseCaseMetadata,
+  Result,
+  SupportedFileContentType,
+  SupportedImageContentType,
+} from "@app/types";
 import {
   assertNever,
   Err,
@@ -252,6 +258,7 @@ const getProcessingFunction = ({
         return extractTextFromFileAndUpload;
       }
       break;
+    case "application/octet-stream":
     case "text/plain":
     case "text/markdown":
     case "text/html":
@@ -441,11 +448,13 @@ export async function processAndStoreFromUrl(
   {
     url,
     useCase,
+    useCaseMetadata,
     fileName,
     contentType,
   }: {
     url: string;
     useCase: FileUseCase;
+    useCaseMetadata?: FileUseCaseMetadata;
     fileName?: string;
     contentType?: string;
   }
@@ -498,6 +507,7 @@ export async function processAndStoreFromUrl(
       fileName: fileName || new URL(url).pathname.split("/").pop() || "file",
       fileSize: contentLength ? parseInt(contentLength) : 1024 * 1024 * 10, // Default 10MB if no content-length
       useCase,
+      useCaseMetadata,
     });
 
     return await processAndStoreFile(auth, {
@@ -514,4 +524,57 @@ export async function processAndStoreFromUrl(
       message: `Failed to create file from URL: ${error}`,
     });
   }
+}
+
+interface UploadBase64ImageToFileStorageArgs {
+  base64: string;
+  contentType: SupportedImageContentType;
+  fileName: string;
+  useCase: FileUseCase;
+  useCaseMetadata?: FileUseCaseMetadata;
+}
+
+export async function uploadBase64ImageToFileStorage(
+  auth: Authenticator,
+  {
+    base64,
+    contentType,
+    fileName,
+    useCase,
+    useCaseMetadata,
+  }: UploadBase64ImageToFileStorageArgs
+): Promise<Result<FileResource, ProcessAndStoreFileError>> {
+  // Remove data URL prefix for any supported image type.
+  const base64Data = base64.replace(/^data:image\/[a-z]+;base64,/, "");
+
+  // Convert base64 to buffer.
+  const buffer = Buffer.from(base64Data, "base64");
+
+  const fileSizeInBytes = buffer.length;
+
+  // Upload the buffer to the file storage.
+  const file = await FileResource.makeNew({
+    workspaceId: auth.getNonNullableWorkspace().id,
+    userId: auth.user()?.id ?? null,
+    contentType,
+    fileName,
+    fileSize: fileSizeInBytes,
+    useCase,
+    useCaseMetadata,
+  });
+
+  const res = await processAndStoreFile(auth, {
+    file,
+    content: {
+      type: "readable",
+      value: Readable.from(buffer),
+    },
+  });
+
+  if (res.isErr()) {
+    await file.markAsFailed();
+    return res;
+  }
+
+  return new Ok(file);
 }

@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { apiError } from "@app/logger/withlogging";
 import type { ConversationErrorType } from "@app/types";
-import { ConversationError } from "@app/types";
+import { ConversationError, isOverflowingDBString } from "@app/types";
 
 const STATUS_FOR_ERROR_TYPE: Record<ConversationErrorType, number> = {
   conversation_access_restricted: 403,
@@ -37,4 +37,23 @@ export function apiErrorForConversation(
     },
     error
   );
+}
+
+export function isUserMessageContextOverflowing(context: {
+  username?: string | null;
+  timezone?: string | null;
+  fullName?: string | null;
+  email?: string | null;
+  profilePictureUrl?: string | null;
+}): boolean {
+  if (
+    isOverflowingDBString(context.username) ||
+    isOverflowingDBString(context.timezone) ||
+    isOverflowingDBString(context.fullName) ||
+    isOverflowingDBString(context.email) ||
+    isOverflowingDBString(context.profilePictureUrl, 2048)
+  ) {
+    return true;
+  }
+  return false;
 }

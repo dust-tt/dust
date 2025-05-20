@@ -1,6 +1,7 @@
 import {
   Button,
   DocumentIcon,
+  Icon,
   MagicIcon,
   Page,
   PencilSquareIcon,
@@ -16,8 +17,11 @@ import { AssistantTemplateModal } from "@app/components/assistant_builder/Assist
 import { TemplateGrid } from "@app/components/assistant_builder/TemplateGrid";
 import type { BuilderFlow } from "@app/components/assistant_builder/types";
 import { BUILDER_FLOWS } from "@app/components/assistant_builder/types";
-import AppLayout, { appLayoutBack } from "@app/components/sparkle/AppLayout";
+import AppContentLayout, {
+  appLayoutBack,
+} from "@app/components/sparkle/AppContentLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
+import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useAssistantTemplates } from "@app/lib/swr/assistants";
 import type {
@@ -162,7 +166,7 @@ export default function CreateAssistant({
   };
 
   return (
-    <AppLayout
+    <AppContentLayout
       subscription={subscription}
       hideSidebar
       owner={owner}
@@ -179,7 +183,15 @@ export default function CreateAssistant({
         <Page variant="modal">
           <div className="flex flex-col gap-6 pt-9">
             <div className="flex min-h-[20vh] flex-col justify-end gap-6">
-              <Page.Header title="Start new" icon={PencilSquareIcon} />
+              <div className="flex flex-row items-center gap-2">
+                <Icon
+                  visual={PencilSquareIcon}
+                  size="lg"
+                  className="text-primary-400 dark:text-primary-500"
+                />
+
+                <h2 className="heading-2xl font-semibold">Start new</h2>
+              </div>
               <Link
                 href={`/w/${owner.sId}/builder/assistants/new?flow=${flow}`}
               >
@@ -195,7 +207,17 @@ export default function CreateAssistant({
             </div>
             <Page.Separator />
 
-            <Page.Header title="Start from a template" icon={MagicIcon} />
+            <div className="flex flex-row items-center gap-2">
+              <Icon
+                visual={MagicIcon}
+                size="lg"
+                className="text-primary-400 dark:text-primary-500"
+              />
+
+              <h2 className="heading-2xl font-semibold">
+                Start from a template
+              </h2>
+            </div>
             <div className="flex flex-col gap-6">
               <SearchInput
                 placeholder="Search templates"
@@ -221,15 +243,19 @@ export default function CreateAssistant({
                   ))}
               </div>
             </div>
-            <Page.Separator />
-            <div className="flex flex-col pb-56">
-              <TemplateGrid
-                templates={filteredTemplates.templates}
-                openTemplateModal={openTemplateModal}
-                templateTagsMapping={templateTagsMapping}
-                selectedTags={selectedTags}
-              />
-            </div>
+            {filteredTemplates.templates.length > 0 && (
+              <>
+                <Page.Separator />
+                <div className="flex flex-col pb-56">
+                  <TemplateGrid
+                    templates={filteredTemplates.templates}
+                    openTemplateModal={openTemplateModal}
+                    templateTagsMapping={templateTagsMapping}
+                    selectedTags={selectedTags}
+                  />
+                </div>
+              </>
+            )}
           </div>
         </Page>
         <AssistantTemplateModal
@@ -239,6 +265,10 @@ export default function CreateAssistant({
           onClose={() => closeTemplateModal()}
         />
       </div>
-    </AppLayout>
+    </AppContentLayout>
   );
 }
+
+CreateAssistant.getLayout = (page: React.ReactElement) => {
+  return <AppRootLayout>{page}</AppRootLayout>;
+};

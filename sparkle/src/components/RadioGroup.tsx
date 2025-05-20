@@ -106,13 +106,13 @@ const RadioGroupItem = React.forwardRef<
     );
 
     const wrappedItem = (
-      <div className="s-flex s-items-center s-gap-2">
+      <div className="s-flex s-w-full s-items-center s-gap-2">
         {tooltipMessage ? (
           <Tooltip trigger={item} label={tooltipMessage} />
         ) : (
           item
         )}
-        {icon ? renderIcon(icon) : <></>}
+        {icon && renderIcon(icon)}
         <Label htmlFor={id} {...labelProps}>
           {label}
         </Label>
@@ -165,12 +165,12 @@ const RadioGroupCustomItem = React.forwardRef<
     return (
       <div
         className={cn(
-          "s-flex s-flex-col",
+          "s-flex s-w-full s-flex-col",
           className,
           `s-items-${iconPosition}`
         )}
       >
-        <div className="s-flex s-items-center s-gap-2">
+        <div className="s-flex s-w-full s-items-center s-gap-2">
           {item}
           {customItem}
         </div>

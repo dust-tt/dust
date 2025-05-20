@@ -21,7 +21,9 @@ import { FileDropProvider } from "@app/components/assistant/conversation/FileUpl
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { InputBarProvider } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
-import AppLayout from "@app/components/sparkle/AppLayout";
+import { WelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuide";
+import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
+import AppContentLayout from "@app/components/sparkle/AppContentLayout";
 import { useURLSheet } from "@app/hooks/useURLSheet";
 import { useConversation } from "@app/lib/swr/conversations";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
@@ -97,7 +99,7 @@ const ConversationLayoutContent = ({
   });
 
   const hasCoEditionFeatureFlag = useMemo(
-    () => hasFeature("mcp_actions") && hasFeature("co_edition"),
+    () => hasFeature("co_edition"),
     [hasFeature]
   );
 
@@ -109,9 +111,24 @@ const ConversationLayoutContent = ({
     return null;
   }, [router.query.assistantDetails]);
 
+  // Logic for the welcome tour guide. We display it if the welcome query param is set to true.
+  const { startConversationRef, spaceMenuButtonRef, createAgentButtonRef } =
+    useWelcomeTourGuide();
+
+  const shouldDisplayWelcomeTourGuide = useMemo(() => {
+    return router.query.welcome === "true" && !activeConversationId;
+  }, [router.query.welcome, activeConversationId]);
+
+  const onTourGuideEnd = () => {
+    void router.push(router.asPath.replace("?welcome=true", ""), undefined, {
+      shallow: true,
+    });
+    // Focus back on input bar
+  };
+
   return (
     <InputBarProvider>
-      <AppLayout
+      <AppContentLayout
         subscription={subscription}
         owner={owner}
         isWideMode
@@ -120,11 +137,13 @@ const ConversationLayoutContent = ({
             ? `Dust - ${conversation?.title}`
             : `Dust - New Conversation`
         }
+        noSidePadding
         titleChildren={
           activeConversationId && (
             <ConversationTitle owner={owner} baseUrl={baseUrl} />
           )
         }
+        hasTopPadding={false}
         navChildren={<AssistantSidebarMenu owner={owner} />}
       >
         {conversationError ? (
@@ -133,6 +152,7 @@ const ConversationLayoutContent = ({
           <>
             <AssistantDetails
               owner={owner}
+              user={user}
               assistantId={assistantSId}
               onClose={() => onOpenChangeAssistantModal(false)}
             />
@@ -148,9 +168,19 @@ const ConversationLayoutContent = ({
                 {children}
               </ConversationInnerLayout>
             </CoEditionProvider>
+            {shouldDisplayWelcomeTourGuide && (
+              <WelcomeTourGuide
+                owner={owner}
+                user={user}
+                startConversationRef={startConversationRef}
+                spaceMenuButtonRef={spaceMenuButtonRef}
+                createAgentButtonRef={createAgentButtonRef}
+                onTourGuideEnd={onTourGuideEnd}
+              />
+            )}
           </>
         )}
-      </AppLayout>
+      </AppContentLayout>
     </InputBarProvider>
   );
 };
@@ -179,7 +209,9 @@ function ConversationInnerLayout({
         <ResizablePanel defaultSize={100}>
           <FileDropProvider>
             <GenerationContextProvider>
-              <div className="h-full overflow-y-auto">{children}</div>
+              <div className="h-full overflow-y-auto px-4 sm:px-8">
+                {children}
+              </div>
             </GenerationContextProvider>
           </FileDropProvider>
         </ResizablePanel>

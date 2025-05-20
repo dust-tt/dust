@@ -56,9 +56,8 @@ export function RequestActionsModal({ owner, space }: RequestActionsModal) {
     } else {
       try {
         await sendRequestActionsAccessEmail({
-          userTo: userToId,
           emailMessage: message,
-          serverName: selectedMcpServer.server.name,
+          mcpServerViewId: selectedMcpServer.sId,
           owner,
         });
         sendNotification({
@@ -76,7 +75,7 @@ export function RequestActionsModal({ owner, space }: RequestActionsModal) {
         logger.error(
           {
             userToId,
-            mcpServerId: selectedMcpServer.id,
+            mcpServerId: selectedMcpServer.sId,
             error: e,
           },
           "Error sending email"
@@ -129,7 +128,7 @@ export function RequestActionsModal({ owner, space }: RequestActionsModal) {
                           />
                         ) : (
                           <Button
-                            label="Pick a Toolset"
+                            label="Pick Tools"
                             variant="outline"
                             size="sm"
                             isSelect
@@ -139,7 +138,7 @@ export function RequestActionsModal({ owner, space }: RequestActionsModal) {
                       <DropdownMenuContent>
                         {serverViews.map((v) => (
                           <DropdownMenuItem
-                            key={v.id}
+                            key={v.sId}
                             label={asDisplayName(v.server.name)}
                             icon={() => getAvatar(v.server, "xs")}
                             onClick={() => setSelectedMcpServer(v)}

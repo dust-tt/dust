@@ -6,10 +6,9 @@ import {
   DropdownMenuSearchbar,
   DropdownMenuTrigger,
   PlusIcon,
-  ScrollArea,
   Spinner,
 } from "@dust-tt/sparkle";
-import React, { useState } from "react";
+import { useState } from "react";
 
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerType } from "@app/lib/api/mcp";
@@ -39,17 +38,15 @@ export default function SpaceManagedActionsViewsModel({
   return (
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
-        <Button
-          label="Add Toolset"
-          variant="primary"
-          icon={PlusIcon}
-          size="sm"
-        />
+        <Button label="Add Tools" variant="primary" icon={PlusIcon} size="sm" />
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent className="w-[500px]">
-        <div className="flex flex-row items-center gap-2">
+      <DropdownMenuContent
+        className="w-[500px]"
+        align="end"
+        dropdownHeaders={
           <DropdownMenuSearchbar
+            autoFocus
             className="flex-grow"
             placeholder="Search tools..."
             name="search"
@@ -57,30 +54,29 @@ export default function SpaceManagedActionsViewsModel({
             onChange={setSearchText}
             disabled={isAvailableMCPServersLoading}
           />
-        </div>
-        <ScrollArea className="max-h-[500px]">
-          {isAvailableMCPServersLoading && (
-            <div className="flex justify-center py-4">
-              <Spinner size="sm" />{" "}
-            </div>
-          )}
-          {!isAvailableMCPServersLoading && availableMCPServers.length <= 0 && (
-            <DropdownMenuItem label="No more tools to add" disabled />
-          )}
-          {availableMCPServers
-            .filter((s) => filterMCPServer(s, searchText))
-            .map((server) => (
-              <DropdownMenuItem
-                key={server.id}
-                label={asDisplayName(server.name)}
-                icon={() => getAvatar(server, "xs")}
-                description={server.description}
-                onClick={() => {
-                  onAddServer(server);
-                }}
-              />
-            ))}
-        </ScrollArea>
+        }
+      >
+        {isAvailableMCPServersLoading && (
+          <div className="flex justify-center py-4">
+            <Spinner size="sm" />{" "}
+          </div>
+        )}
+        {!isAvailableMCPServersLoading && availableMCPServers.length <= 0 && (
+          <DropdownMenuItem label="No more tools to add" disabled />
+        )}
+        {availableMCPServers
+          .filter((s) => filterMCPServer(s, searchText))
+          .map((server) => (
+            <DropdownMenuItem
+              key={server.sId}
+              label={asDisplayName(server.name)}
+              icon={() => getAvatar(server, "xs")}
+              description={server.description}
+              onClick={() => {
+                onAddServer(server);
+              }}
+            />
+          ))}
       </DropdownMenuContent>
     </DropdownMenu>
   );

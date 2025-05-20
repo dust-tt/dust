@@ -1,11 +1,12 @@
 import type { AgentActionSpecificEvent } from "@app/lib/actions/types/agent";
+import { maybeTrackTokenUsageCost } from "@app/lib/api/public_api_limits";
 import type { RedisUsageTagsType } from "@app/lib/api/redis";
 import { getRedisClient } from "@app/lib/api/redis";
 import type { EventPayload } from "@app/lib/api/redis-hybrid-manager";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMessage, Message } from "@app/lib/models/assistant/conversation";
-import { createCallbackPromise } from "@app/lib/utils";
+import { createCallbackReader } from "@app/lib/utils";
 import { wakeLock } from "@app/lib/wake_lock";
 import logger from "@app/logger/logger";
 import type {
@@ -46,11 +47,13 @@ export async function postUserMessageWithPubSub(
     content,
     mentions,
     context,
+    skipToolsValidation,
   }: {
     conversation: ConversationType;
     content: string;
     mentions: MentionType[];
     context: UserMessageContext;
+    skipToolsValidation: boolean;
   },
   { resolveAfterFullGeneration }: { resolveAfterFullGeneration: boolean }
 ): Promise<
@@ -67,8 +70,10 @@ export async function postUserMessageWithPubSub(
     content,
     mentions,
     context,
+    skipToolsValidation,
   });
-  return handleUserMessageEvents({
+
+  return handleUserMessageEvents(auth, {
     conversation,
     generator: postMessageEvents,
     resolveAfterFullGeneration,
@@ -82,11 +87,13 @@ export async function editUserMessageWithPubSub(
     message,
     content,
     mentions,
+    skipToolsValidation,
   }: {
     conversation: ConversationType;
     message: UserMessageType;
     content: string;
     mentions: MentionType[];
+    skipToolsValidation: boolean;
   }
 ): Promise<
   Result<
@@ -102,15 +109,33 @@ export async function editUserMessageWithPubSub(
     message,
     content,
     mentions,
+    skipToolsValidation,
   });
-  return handleUserMessageEvents({
+  return handleUserMessageEvents(auth, {
     conversation,
     generator: editMessageEvents,
     resolveAfterFullGeneration: false,
   });
 }
 
-const END_OF_STREAM_EVENTS = ["agent_message_success", "agent_error"];
+type ConversationAsyncEvents =
+  | UserMessageErrorEvent
+  | UserMessageNewEvent
+  | AgentMessageNewEvent
+  | AgentErrorEvent
+  | AgentDisabledErrorEvent
+  | AgentActionSpecificEvent
+  | AgentActionSuccessEvent
+  | GenerationTokensEvent
+  | AgentGenerationCancelledEvent
+  | AgentMessageSuccessEvent
+  | ConversationTitleEvent;
+
+function isEndOfStreamEvent(
+  event: ConversationAsyncEvents
+): event is AgentMessageSuccessEvent | AgentErrorEvent {
+  return ["agent_message_success", "agent_error"].includes(event.type);
+}
 
 function addEndOfStreamToMessageChannel({ channel }: { channel: string }) {
   return publishEvent({
@@ -120,28 +145,18 @@ function addEndOfStreamToMessageChannel({ channel }: { channel: string }) {
   });
 }
 
-async function handleUserMessageEvents({
-  conversation,
-  generator,
-  resolveAfterFullGeneration = false,
-}: {
-  conversation: ConversationType;
-  generator: AsyncGenerator<
-    | UserMessageErrorEvent
-    | UserMessageNewEvent
-    | AgentMessageNewEvent
-    | AgentErrorEvent
-    | AgentDisabledErrorEvent
-    | AgentActionSpecificEvent
-    | AgentActionSuccessEvent
-    | GenerationTokensEvent
-    | AgentGenerationCancelledEvent
-    | AgentMessageSuccessEvent
-    | ConversationTitleEvent,
-    void
-  >;
-  resolveAfterFullGeneration?: boolean;
-}): Promise<
+async function handleUserMessageEvents(
+  auth: Authenticator,
+  {
+    conversation,
+    generator,
+    resolveAfterFullGeneration = false,
+  }: {
+    conversation: ConversationType;
+    generator: AsyncGenerator<ConversationAsyncEvents, void>;
+    resolveAfterFullGeneration?: boolean;
+  }
+): Promise<
   Result<
     {
       userMessage: UserMessageType;
@@ -191,7 +206,6 @@ async function handleUserMessageEvents({
               }
               break;
             }
-            case "tool_approve_execution":
             case "agent_action_success":
             case "agent_error":
             case "agent_generation_cancelled":
@@ -201,7 +215,6 @@ async function handleUserMessageEvents({
             case "dust_app_run_block":
             case "dust_app_run_params":
             case "generation_tokens":
-            case "tool_params":
             case "process_params":
             case "reasoning_started":
             case "reasoning_thinking":
@@ -211,6 +224,9 @@ async function handleUserMessageEvents({
             case "tables_query_model_output":
             case "tables_query_output":
             case "tables_query_started":
+            case "tool_approve_execution":
+            case "tool_notification":
+            case "tool_params":
             case "websearch_params": {
               const pubsubChannel = getMessageChannelId(event.messageId);
 
@@ -227,7 +243,14 @@ async function handleUserMessageEvents({
                 agentMessages.push(event.message);
               }
 
-              if (END_OF_STREAM_EVENTS.includes(event.type)) {
+              if (isEndOfStreamEvent(event)) {
+                // Maybe compute tokens consumed by the runs.
+                if (event.type === "agent_message_success") {
+                  const { runIds } = event;
+
+                  await maybeTrackTokenUsageCost(auth, { dustRunIds: runIds });
+                }
+
                 await addEndOfStreamToMessageChannel({
                   channel: pubsubChannel,
                 });
@@ -357,7 +380,6 @@ export async function retryAgentMessageWithPubSub(
                 );
                 break;
               }
-              case "tool_approve_execution":
               case "agent_action_success":
               case "agent_error":
               case "agent_generation_cancelled":
@@ -368,7 +390,6 @@ export async function retryAgentMessageWithPubSub(
               case "dust_app_run_params":
               case "generation_tokens":
               case "process_params":
-              case "tool_params":
               case "reasoning_started":
               case "reasoning_thinking":
               case "reasoning_tokens":
@@ -377,6 +398,9 @@ export async function retryAgentMessageWithPubSub(
               case "tables_query_model_output":
               case "tables_query_output":
               case "tables_query_started":
+              case "tool_approve_execution":
+              case "tool_notification":
+              case "tool_params":
               case "websearch_params": {
                 const pubsubChannel = getMessageChannelId(event.messageId);
                 await publishEvent({
@@ -385,7 +409,16 @@ export async function retryAgentMessageWithPubSub(
                   event: JSON.stringify(event),
                 });
 
-                if (END_OF_STREAM_EVENTS.includes(event.type)) {
+                if (isEndOfStreamEvent(event)) {
+                  // Maybe compute tokens consumed by the runs.
+                  if (event.type === "agent_message_success") {
+                    const { runIds } = event;
+
+                    await maybeTrackTokenUsageCost(auth, {
+                      dustRunIds: runIds,
+                    });
+                  }
+
                   await addEndOfStreamToMessageChannel({
                     channel: pubsubChannel,
                   });
@@ -449,10 +482,10 @@ export async function* getConversationEvents({
 > {
   const pubsubChannel = getConversationChannelId(conversationId);
 
-  const callbackPromise = createCallbackPromise<EventPayload | "close">();
+  const callbackReader = createCallbackReader<EventPayload | "close">();
   const { history, unsubscribe } = await getRedisHybridManager().subscribe(
     pubsubChannel,
-    callbackPromise.callback,
+    callbackReader.callback,
     lastEventId,
     "conversation_events"
   );
@@ -481,7 +514,7 @@ export async function* getConversationEvents({
         }, TIMEOUT);
       });
       const rawEvent = await Promise.race([
-        callbackPromise.promise,
+        callbackReader.next(),
         timeoutPromise,
       ]);
 
@@ -489,9 +522,6 @@ export async function* getConversationEvents({
       if (rawEvent === "timeout") {
         break;
       }
-
-      // to reset the promise for the next event
-      callbackPromise.reset();
 
       if (rawEvent === "close") {
         break;
@@ -512,6 +542,7 @@ export async function* getConversationEvents({
 }
 
 export async function cancelMessageGenerationEvent(
+  auth: Authenticator,
   messageIds: string[]
 ): Promise<void> {
   const redis = await getRedisClient({ origin: "cancel_message_generation" });
@@ -529,7 +560,10 @@ export async function cancelMessageGenerationEvent(
 
       // Already set the status to cancel
       const dbTask = Message.findOne({
-        where: { sId: messageId },
+        where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
+          sId: messageId,
+        },
       }).then(async (message) => {
         if (message && message.agentMessageId) {
           await AgentMessage.update(
@@ -573,10 +607,10 @@ export async function* getMessagesEvents(
   const start = Date.now();
   const TIMEOUT = 60000; // 1 minute
 
-  const callbackPromise = createCallbackPromise<EventPayload | "close">();
+  const callbackReader = createCallbackReader<EventPayload | "close">();
   const { history, unsubscribe } = await getRedisHybridManager().subscribe(
     pubsubChannel,
-    callbackPromise.callback,
+    callbackReader.callback,
     lastEventId,
     "message_events"
   );
@@ -598,9 +632,7 @@ export async function* getMessagesEvents(
         break;
       }
 
-      const rawEvent = await callbackPromise.promise;
-      // to reset the promise for the next event
-      callbackPromise.reset();
+      const rawEvent = await callbackReader.next();
 
       if (rawEvent === "close") {
         break;

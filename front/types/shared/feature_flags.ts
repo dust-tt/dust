@@ -14,7 +14,6 @@ export const WHITELISTABLE_FEATURES = [
   "labs_salesforce_personal_connections",
   "labs_trackers",
   "labs_transcripts",
-  "mcp_actions",
   "okta_enterprise_connection",
   "openai_o1_custom_assistants_feature",
   "openai_o1_feature",
@@ -24,7 +23,8 @@ export const WHITELISTABLE_FEATURES = [
   "salesforce_feature",
   "show_debug_tools",
   "usage_data_api",
-  "agent_discovery",
+  "custom_webcrawler",
+  "exploded_tables_query",
 ] as const;
 export type WhitelistableFeature = (typeof WHITELISTABLE_FEATURES)[number];
 export function isWhitelistableFeature(

@@ -22,6 +22,7 @@ export const SlackConfigurationTypeSchema = t.type({
   botEnabled: t.boolean,
   whitelistedDomains: t.union([t.array(t.string), t.undefined]),
   autoReadChannelPatterns: SlackAutoReadPatternsSchema,
+  restrictedSpaceAgentsEnabled: t.union([t.boolean, t.undefined]),
 });
 
 export type SlackConfigurationType = t.TypeOf<

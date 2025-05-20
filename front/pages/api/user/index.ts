@@ -82,7 +82,9 @@ async function handler(
       }
       if (user.workspaces[0]?.role === "admin") {
         sendUserOperationMessage({
-          message: `workspace_sid: ${user.workspaces[0]?.sId}; email: [${user.email}]; User Name [${user.firstName} ${user.lastName}].`,
+          message:
+            `workspace_sid: ${user.workspaces[0]?.sId}; email: [${user.email}]; ` +
+            `User Name [${user.firstName} ${user.lastName}].`,
           logger,
           channel: "C075LJ6PUFQ",
         }).catch((err) => {
@@ -93,7 +95,20 @@ async function handler(
         });
       }
 
-      await u.updateName(req.body.firstName, req.body.lastName);
+      const firstName = bodyValidation.right.firstName.trim();
+      const lastName = bodyValidation.right.lastName.trim();
+
+      if (firstName.length === 0 || lastName.length === 0) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "First name and last name cannot be empty.",
+          },
+        });
+      }
+
+      await u.updateName(firstName, lastName);
 
       res.status(200).json({
         success: true,

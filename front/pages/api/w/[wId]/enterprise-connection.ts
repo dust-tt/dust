@@ -11,7 +11,7 @@ import {
 } from "@app/lib/api/enterprise_connection";
 import type { Authenticator } from "@app/lib/auth";
 import { Workspace } from "@app/lib/models/workspace";
-import { WorkspaceHasDomain } from "@app/lib/models/workspace_has_domain";
+import { WorkspaceHasDomainModel } from "@app/lib/models/workspace_has_domain";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type {
@@ -142,11 +142,13 @@ async function handler(
       }
       const { right: body } = bodyValidation;
 
-      const workspaceWithVerifiedDomain = await WorkspaceHasDomain.findOne({
-        where: {
-          workspaceId: workspace.id,
-        },
-      });
+      const workspaceWithVerifiedDomain = await WorkspaceHasDomainModel.findOne(
+        {
+          where: {
+            workspaceId: workspace.id,
+          },
+        }
+      );
 
       if (!workspaceWithVerifiedDomain) {
         return apiError(req, res, {

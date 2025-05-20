@@ -12,7 +12,7 @@ import {
   isBrowseConfiguration,
   isConversationIncludeFileConfiguration,
   isDustAppRunConfiguration,
-  isMCPActionConfiguration,
+  isMCPToolConfiguration,
   isProcessConfiguration,
   isReasoningConfiguration,
   isRetrievalConfiguration,
@@ -21,18 +21,19 @@ import {
   isWebsearchConfiguration,
 } from "@app/lib/actions/types/guards";
 import { getCitationsCount } from "@app/lib/actions/utils";
-import { createLocalMCPServerConfigurations } from "@app/lib/api/actions/mcp_local";
+import { createClientSideMCPServerConfigurations } from "@app/lib/api/actions/mcp_client_side";
 import {
   AgentMessageContentParser,
   getDelimitersConfiguration,
 } from "@app/lib/api/assistant/agent_message_content_parser";
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import {
-  constructPromptMultiActions,
-  renderConversationForModel,
-} from "@app/lib/api/assistant/generation";
+  getAgentConfiguration,
+  getAgentConfigurations,
+} from "@app/lib/api/assistant/configuration";
+import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
 import { getEmulatedAndJITActions } from "@app/lib/api/assistant/jit_actions";
 import { isLegacyAgentConfiguration } from "@app/lib/api/assistant/legacy_agent";
+import { renderConversationForModel } from "@app/lib/api/assistant/preprocessing";
 import config from "@app/lib/api/config";
 import { getRedisClient } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
@@ -66,7 +67,7 @@ const CANCELLATION_CHECK_INTERVAL = 500;
 const MAX_ACTIONS_PER_STEP = 16;
 
 // This interface is used to execute an agent. It is not in charge of creating the AgentMessage,
-// nor updating it (responsability of the caller based on the emitted events).
+// nor updating it (responsibility of the caller based on the emitted events).
 export async function* runAgent(
   auth: Authenticator,
   configuration: LightAgentConfigurationType,
@@ -148,7 +149,7 @@ async function* runMultiActionsAgentLoop(
     const isLastGenerationIteration = i === maxStepsPerRun;
 
     const actions =
-      // If we already executed the maximum number of actions, we don't run any more.
+      // If we already executed the maximum number of actions, we don't run anymore.
       // This will force the agent to run the generation.
       isLastGenerationIteration
         ? []
@@ -190,7 +191,7 @@ async function* runMultiActionsAgentLoop(
 
           // We received the actions to run, but will enforce a limit on the number of actions (16)
           // which is very high. Over that the latency will just be too high. This is a guardrail
-          // against the model outputing something unreasonable.
+          // against the model outputting something unreasonable.
           event.actions = event.actions.slice(0, MAX_ACTIONS_PER_STEP);
 
           const eventStreamGenerators = event.actions.map(
@@ -233,7 +234,7 @@ async function* runMultiActionsAgentLoop(
             }
           }
 
-          // After we are done running actions we update the inter step refsOffset.
+          // After we are done running actions, we update the inter-step refsOffset.
           for (let j = 0; j < event.actions.length; j++) {
             citationsRefsOffset += getCitationsCount({
               agentConfiguration: configuration,
@@ -374,15 +375,18 @@ async function* runMultiActionsAgent(
     conversation,
   });
 
-  // Get local MCP server configurations from user message context.
-  const localMCPActions = createLocalMCPServerConfigurations(
-    userMessage.context.localMCPServerIds
-  );
+  // Get client-side MCP server configurations from user message context.
+  const clientSideMCPActionConfigurations =
+    await createClientSideMCPServerConfigurations(
+      auth,
+      userMessage.context.clientSideMCPServerIds
+    );
 
-  const mcpActions = await tryListMCPTools(auth, {
-    agentActions: [...agentActions, ...localMCPActions],
-    conversationId: conversation.sId,
-    messageId: agentMessage.sId,
+  const { tools: mcpActions, error } = await tryListMCPTools(auth, {
+    agentConfiguration,
+    conversation,
+    agentMessage,
+    clientSideActionConfigurations: clientSideMCPActionConfigurations,
   });
 
   if (!isLastGenerationIteration) {
@@ -401,12 +405,24 @@ async function* runMultiActionsAgent(
     fallbackPrompt += ".";
   }
 
+  const agentsList = agentConfiguration.instructions?.includes(
+    "{ASSISTANTS_LIST}"
+  )
+    ? await getAgentConfigurations({
+        auth,
+        agentsGetView: auth.user() ? "list" : "all",
+        variant: "light",
+      })
+    : null;
+
   const prompt = await constructPromptMultiActions(auth, {
     userMessage,
     agentConfiguration,
     fallbackPrompt,
     model,
     hasAvailableActions: !!availableActions.length,
+    errorContext: error,
+    agentsList,
   });
 
   const MIN_GENERATION_TOKENS = model.generationTokensCount;
@@ -490,7 +506,7 @@ async function* runMultiActionsAgent(
     specifications.push(specRes.value);
   }
 
-  // If we have attachments inject a fake LS action to handle them.
+  // If we have attachments, inject a fake LS action to handle them.
 
   // Check that specifications[].name are unique. This can happen if the user overrides two actions
   // names with the same name (advanced settings). We return an actionable error if that's the case
@@ -899,7 +915,6 @@ async function* runAction(
       auth,
       {
         agentConfiguration: configuration,
-        actionConfiguration,
         conversation,
         agentMessage,
         rawInputs: inputs,
@@ -977,7 +992,6 @@ async function* runAction(
       auth,
       {
         agentConfiguration: configuration,
-        actionConfiguration,
         conversation,
         agentMessage,
         rawInputs: inputs,
@@ -1032,7 +1046,6 @@ async function* runAction(
       actionConfiguration
     ).run(auth, {
       agentConfiguration: configuration,
-      actionConfiguration,
       conversation,
       agentMessage,
       rawInputs: inputs,
@@ -1080,7 +1093,6 @@ async function* runAction(
       actionConfiguration
     ).run(auth, {
       agentConfiguration: configuration,
-      actionConfiguration,
       conversation,
       userMessage,
       agentMessage,
@@ -1131,7 +1143,6 @@ async function* runAction(
       auth,
       {
         agentConfiguration: configuration,
-        actionConfiguration,
         conversation,
         agentMessage,
         rawInputs: inputs,
@@ -1185,7 +1196,6 @@ async function* runAction(
       actionConfiguration
     ).run(auth, {
       agentConfiguration: configuration,
-      actionConfiguration,
       conversation,
       agentMessage,
       rawInputs: inputs,
@@ -1233,7 +1243,6 @@ async function* runAction(
       actionConfiguration
     ).run(auth, {
       agentConfiguration: configuration,
-      actionConfiguration,
       conversation,
       agentMessage,
       rawInputs: inputs,
@@ -1281,7 +1290,6 @@ async function* runAction(
       actionConfiguration
     ).run(auth, {
       agentConfiguration: configuration,
-      actionConfiguration,
       conversation,
       agentMessage,
       rawInputs: inputs,
@@ -1324,7 +1332,6 @@ async function* runAction(
       actionConfiguration
     ).run(auth, {
       agentConfiguration: configuration,
-      actionConfiguration,
       conversation,
       agentMessage,
       rawInputs: inputs,
@@ -1369,17 +1376,19 @@ async function* runAction(
           assertNever(event);
       }
     }
-  } else if (isMCPActionConfiguration(actionConfiguration)) {
+  } else if (isMCPToolConfiguration(actionConfiguration)) {
     const eventStream = getRunnerForActionConfiguration(
       actionConfiguration
     ).run(auth, {
       agentConfiguration: configuration,
-      actionConfiguration,
       conversation,
       agentMessage,
       rawInputs: inputs,
       functionCallId,
       step,
+      stepActionIndex,
+      stepActions,
+      citationsRefsOffset,
     });
 
     for await (const event of eventStream) {
@@ -1416,6 +1425,10 @@ async function* runAction(
           break;
 
         case "tool_approve_execution":
+          yield event;
+          break;
+
+        case "tool_notification":
           yield event;
           break;
 

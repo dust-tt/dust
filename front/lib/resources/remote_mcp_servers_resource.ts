@@ -26,7 +26,9 @@ import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { Result } from "@app/types";
-import { Ok, removeNulls } from "@app/types";
+import { Ok, redactString, removeNulls } from "@app/types";
+
+const SECRET_REDACTION_COOLDOWN_IN_MINUTES = 10;
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
@@ -277,8 +279,19 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
     lastSyncAt: number | null;
     sharedSecret: string;
   } {
+    const currentTime = new Date();
+    const createdAt = new Date(this.createdAt);
+    const timeDifference = Math.abs(
+      currentTime.getTime() - createdAt.getTime()
+    );
+    const differenceInMinutes = Math.ceil(timeDifference / (1000 * 60));
+    const secret =
+      differenceInMinutes > SECRET_REDACTION_COOLDOWN_IN_MINUTES
+        ? redactString(this.sharedSecret, 4)
+        : this.sharedSecret;
+
     return {
-      id: this.sId,
+      sId: this.sId,
 
       name: this.name,
       description: this.description,
@@ -290,12 +303,12 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
       cachedDescription:
         this.cachedDescription ?? DEFAULT_MCP_ACTION_DESCRIPTION,
       authorization: this.authorization,
-      isDefault: false, // So far we don't have defaults remote MCP servers.
+      availability: "manual", // So far we don't have auto remote MCP servers.
 
       // Remote MCP Server specifics
       url: this.url,
       lastSyncAt: this.lastSyncAt?.getTime() ?? null,
-      sharedSecret: this.sharedSecret,
+      sharedSecret: secret,
     };
   }
 }

@@ -111,6 +111,7 @@ export class ConversationIncludeFileActionType extends BaseAction {
   }
 
   static async fileFromConversation(
+    auth: Authenticator,
     fileId: string,
     conversation: ConversationType,
     model: ModelConfigurationType
@@ -142,7 +143,7 @@ export class ConversationIncludeFileActionType extends BaseAction {
           });
         }
 
-        const r = await renderFromAttachmentId(conversation.owner, {
+        const r = await renderFromAttachmentId(auth, {
           contentType: f.contentType,
           excludeImages: false,
           conversationAttachmentId: conversationAttachmentId(f),
@@ -183,13 +184,16 @@ export class ConversationIncludeFileActionType extends BaseAction {
     };
   }
 
-  async renderForMultiActionsModel({
-    conversation,
-    model,
-  }: {
-    conversation: ConversationType;
-    model: ModelConfigurationType;
-  }): Promise<FunctionMessageTypeModel> {
+  async renderForMultiActionsModel(
+    auth: Authenticator,
+    {
+      conversation,
+      model,
+    }: {
+      conversation: ConversationType;
+      model: ModelConfigurationType;
+    }
+  ): Promise<FunctionMessageTypeModel> {
     const finalize = (content: string | ImageContent[]) => {
       return {
         role: "function" as const,
@@ -203,6 +207,7 @@ export class ConversationIncludeFileActionType extends BaseAction {
 
     const fileRes =
       await ConversationIncludeFileActionType.fileFromConversation(
+        auth,
         this.params.fileId,
         conversation,
         model
@@ -358,6 +363,7 @@ export class ConversationIncludeFileConfigurationServerRunner extends BaseAction
     const model = getSupportedModelConfig(agentConfiguration.model);
     const fileRes =
       await ConversationIncludeFileActionType.fileFromConversation(
+        auth,
         fileId,
         conversation,
         model
@@ -453,11 +459,13 @@ export class ConversationIncludeFileConfigurationServerRunner extends BaseAction
 // have `sId` on actions (the `sId` is on the `Message` object linked to the `UserMessage` parent of
 // this action).
 export async function conversationIncludeFileTypesFromAgentMessageIds(
-  agentMessageIds: ModelId[]
+  auth: Authenticator,
+  { agentMessageIds }: { agentMessageIds: ModelId[] }
 ): Promise<ConversationIncludeFileActionType[]> {
   const actions = await AgentConversationIncludeFileAction.findAll({
     where: {
       agentMessageId: agentMessageIds,
+      workspaceId: auth.getNonNullableWorkspace().id,
     },
   });
 

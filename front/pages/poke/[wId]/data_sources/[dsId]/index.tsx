@@ -12,8 +12,6 @@ import {
   Input,
   LockIcon,
   MagnifyingGlassIcon,
-  ScrollArea,
-  ScrollBar,
   SliderToggle,
   Spinner,
   TableIcon,
@@ -133,7 +131,10 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
       dataSource.connectorId
     );
     if (connectorRes.isOk()) {
-      connector = connectorRes.value;
+      connector = {
+        ...connectorRes.value,
+        connectionId: null,
+      };
       const temporalClient = await getTemporalConnectorsNamespaceConnection();
 
       const res = temporalClient.workflow.list({
@@ -1220,6 +1221,8 @@ function SlackWhitelistBot({
 }) {
   const [botName, setBotName] = useState("");
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
+  const [whitelistType, setWhitelistType] =
+    useState<SlackbotWhitelistType>("summon_agent");
 
   const selectedGroupName = groups.find(
     (group) => group.sId === selectedGroup
@@ -1241,32 +1244,52 @@ function SlackWhitelistBot({
         <div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
+              <Button variant="outline" label={whitelistType} />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="min-w-72">
+              <DropdownMenuRadioGroup
+                value={whitelistType ?? undefined}
+                onValueChange={(value) => {
+                  setWhitelistType(value as SlackbotWhitelistType);
+                }}
+              >
+                {["summon_agent", "index_messages"].map((whitelistType) => (
+                  <DropdownMenuRadioItem
+                    value={whitelistType}
+                    key={whitelistType}
+                    label={whitelistType}
+                  />
+                ))}
+              </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+        <div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
               <Button
                 variant="outline"
                 label={selectedGroupName ?? "Select a group"}
               />
             </DropdownMenuTrigger>
             <DropdownMenuContent className="min-w-72">
-              <ScrollArea className="flex max-h-72 flex-col" hideScrollBar>
-                <DropdownMenuRadioGroup
-                  value={selectedGroup ?? undefined}
-                  onValueChange={setSelectedGroup}
-                >
-                  {groups.map((group) => (
-                    <DropdownMenuRadioItem
-                      value={group.sId}
-                      key={group.sId}
-                      label={group.name}
-                    />
-                  ))}
-                </DropdownMenuRadioGroup>
-                <ScrollBar className="py-0" />
-              </ScrollArea>
+              <DropdownMenuRadioGroup
+                value={selectedGroup ?? undefined}
+                onValueChange={setSelectedGroup}
+              >
+                {groups.map((group) => (
+                  <DropdownMenuRadioItem
+                    value={group.sId}
+                    key={group.sId}
+                    label={group.name}
+                  />
+                ))}
+              </DropdownMenuRadioGroup>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
         <Button
-          variant="outline"
+          variant="primary"
           label="Whitelist"
           onClick={async () => {
             if (!botName) {
@@ -1281,7 +1304,7 @@ function SlackWhitelistBot({
               botName,
               wId: owner.sId,
               groupId: selectedGroup,
-              whitelistType: "summon_agent",
+              whitelistType,
             });
             setBotName("");
           }}

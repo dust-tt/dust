@@ -14,6 +14,7 @@ import { FileResource } from "@app/lib/resources/file_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
+import { getSecureFileAction } from "@app/pages/api/w/[wId]/files/[fileId]";
 import type { WithAPIErrorResponse } from "@app/types";
 import { isPublicySupportedUseCase } from "@app/types";
 
@@ -22,9 +23,6 @@ export const config = {
     bodyParser: false, // Disabling Next.js's body parser as formidable has its own.
   },
 };
-
-const validActions = ["view", "download"] as const;
-type Action = (typeof validActions)[number];
 
 /**
  * @ignoreswagger
@@ -112,9 +110,7 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
-      const action: Action = validActions.includes(req.query.action as Action)
-        ? (req.query.action as Action)
-        : "download";
+      const action = getSecureFileAction(req.query.action, file);
 
       // TODO(2024-07-01 flav) Expose the different versions of the file.
       if (action === "view") {
@@ -144,6 +140,17 @@ async function handler(
     }
 
     case "DELETE": {
+      if (!auth.isBuilder() && file.useCase !== "conversation") {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "workspace_auth_error",
+            message:
+              "Only users that are `builders` for the current workspace can delete files.",
+          },
+        });
+      }
+
       const deleteRes = await file.delete(auth);
       if (deleteRes.isErr()) {
         return apiError(req, res, {
@@ -160,6 +167,16 @@ async function handler(
     }
 
     case "POST": {
+      if (!auth.isBuilder() && file.useCase !== "conversation") {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "workspace_auth_error",
+            message:
+              "Only users that are `builders` for the current workspace can modify files.",
+          },
+        });
+      }
       const r = await processAndStoreFile(auth, {
         file,
         content: {

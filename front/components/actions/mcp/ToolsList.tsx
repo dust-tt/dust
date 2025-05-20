@@ -6,12 +6,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   InformationCircleIcon,
+  Label,
 } from "@dust-tt/sparkle";
 
-import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
+import type { RemoteMCPToolStakeLevelType } from "@app/lib/actions/constants";
 import {
-  DEFAULT_MCP_TOOL_STAKE_LEVEL,
-  MCP_TOOL_STAKE_LEVELS,
+  FALLBACK_MCP_TOOL_STAKE_LEVEL,
+  REMOTE_MCP_TOOL_STAKE_LEVELS,
 } from "@app/lib/actions/constants";
 import {
   useMCPServerToolsPermissions,
@@ -41,14 +42,17 @@ export function ToolsList({
     serverId,
   });
 
-  const handleClick = (name: string, permission: MCPToolStakeLevelType) => {
+  const handleClick = (
+    name: string,
+    permission: RemoteMCPToolStakeLevelType
+  ) => {
     void updateToolPermission({
       toolName: name,
       permission,
     });
   };
 
-  const toolPermissionLabel: Record<MCPToolStakeLevelType, string> = {
+  const toolPermissionLabel: Record<RemoteMCPToolStakeLevelType, string> = {
     high: "High (Update data, or sends information)",
     low: "Low (Retrieve data, or generates content)",
   };
@@ -76,11 +80,11 @@ export function ToolsList({
             (tool: { name: string; description: string }, index: number) => {
               const toolPermission = toolsPermissions[tool.name]
                 ? toolsPermissions[tool.name]
-                : DEFAULT_MCP_TOOL_STAKE_LEVEL;
+                : FALLBACK_MCP_TOOL_STAKE_LEVEL;
               return (
                 <div
                   key={index}
-                  className="flex flex-col gap-3 border-b border-border py-5 last:border-b-0 last:pb-0"
+                  className="flex flex-col gap-1 border-b border-border py-5 last:border-b-0 last:pb-0"
                 >
                   <h4 className="heading-base flex-grow text-foreground dark:text-foreground-night">
                     {asDisplayName(tool.name)}
@@ -91,8 +95,10 @@ export function ToolsList({
                     </p>
                   )}
                   {serverType === "remote" && (
-                    <div className="flex w-full flex-row items-center justify-end gap-2">
-                      <p className="heading-sm">Tool stake setting</p>
+                    <div className="flex w-full flex-row items-center justify-end gap-2 pt-2">
+                      <Label className="w-full text-muted-foreground dark:text-muted-foreground-night">
+                        Tool stake setting
+                      </Label>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button
@@ -102,7 +108,7 @@ export function ToolsList({
                           />
                         </DropdownMenuTrigger>
                         <DropdownMenuContent>
-                          {MCP_TOOL_STAKE_LEVELS.map((permission) => (
+                          {REMOTE_MCP_TOOL_STAKE_LEVELS.map((permission) => (
                             <DropdownMenuItem
                               key={permission}
                               onClick={() => {

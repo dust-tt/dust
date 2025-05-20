@@ -60,6 +60,7 @@ ConversationModel.init(
   {
     modelName: "conversation",
     indexes: [
+      // TODO(WORKSPACE_ID_ISOLATION 2025-05-12): Remove index
       {
         unique: true,
         fields: ["sId"],
@@ -67,6 +68,10 @@ ConversationModel.init(
       {
         fields: ["workspaceId"],
         name: "conversations_wId_idx",
+      },
+      {
+        unique: true,
+        fields: ["workspaceId", "sId"],
       },
     ],
     sequelize: frontSequelize,
@@ -109,17 +114,26 @@ ConversationParticipantModel.init(
       {
         fields: ["userId"],
       },
+      // TODO(WORKSPACE_ID_ISOLATION 2025-05-12): Remove index
       {
         fields: ["userId", "conversationId"],
+        unique: true,
+      },
+      {
+        fields: ["workspaceId", "userId", "conversationId"],
         unique: true,
       },
       {
         fields: ["conversationId"],
         concurrently: true,
       },
+      // TODO(WORKSPACE_ID_ISOLATION 2025-05-12): Remove index
       {
         fields: ["userId", "action"],
         concurrently: true,
+      },
+      {
+        fields: ["workspaceId", "userId", "action"],
       },
     ],
   }
@@ -145,7 +159,9 @@ export class UserMessage extends WorkspaceAwareModel<UserMessage> {
 
   declare content: string;
 
-  declare localMCPServerIds: string[];
+  // TODO(MCP Clean-up): Remove these once we have migrated to the new MCP server ids.
+  declare localMCPServerIds?: string[];
+  declare clientSideMCPServerIds: string[];
 
   declare userContextUsername: string;
   declare userContextTimezone: string;
@@ -173,7 +189,13 @@ UserMessage.init(
       type: DataTypes.TEXT,
       allowNull: false,
     },
+    // TODO(MCP Clean-up): Remove these once we have migrated to the new MCP server ids.
     localMCPServerIds: {
+      type: DataTypes.ARRAY(DataTypes.STRING),
+      allowNull: false,
+      defaultValue: [],
+    },
+    clientSideMCPServerIds: {
       type: DataTypes.ARRAY(DataTypes.STRING),
       allowNull: false,
       defaultValue: [],
@@ -225,8 +247,10 @@ export class AgentMessage extends WorkspaceAwareModel<AgentMessage> {
   declare errorCode: string | null;
   declare errorMessage: string | null;
 
-  // Not a relation as global agents are not in the DB
-  // needs both sId and version to uniquely identify the agent configuration
+  declare skipToolsValidation: boolean;
+
+  // Not a relation as global agents are not in the DB + sId is stable across versions. Both sId and
+  // version are needed to uniquely identify the agent configuration.
   declare agentConfigurationId: string;
   declare agentConfigurationVersion: number;
 
@@ -263,6 +287,11 @@ AgentMessage.init(
     errorMessage: {
       type: DataTypes.TEXT,
       allowNull: true,
+    },
+    skipToolsValidation: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
     },
     agentConfigurationId: {
       type: DataTypes.STRING,
@@ -431,9 +460,15 @@ Message.init(
         unique: true,
         fields: ["sId"],
       },
+      // TODO(WORKSPACE_ID_ISOLATION 2025-05-13): Remove index
       {
         unique: true,
         fields: ["conversationId", "rank", "version"],
+      },
+      {
+        unique: true,
+        fields: ["workspaceId", "conversationId", "rank", "version"],
+        concurrently: true,
       },
       {
         fields: ["agentMessageId"],
@@ -450,6 +485,12 @@ Message.init(
       {
         fields: ["parentId"],
         concurrently: true,
+      },
+      {
+        fields: ["workspaceId", "conversationId"],
+      },
+      {
+        fields: ["workspaceId", "conversationId", "sId"],
       },
     ],
     hooks: {
@@ -610,11 +651,19 @@ Mention.init(
     modelName: "mention",
     sequelize: frontSequelize,
     indexes: [
+      // TODO(WORKSPACE_ID_ISOLATION 2025-05-12): Remove index
       {
         fields: ["messageId"],
       },
       {
+        fields: ["workspaceId", "messageId"],
+      },
+      // TODO(WORKSPACE_ID_ISOLATION 2025-05-12): Remove index
+      {
         fields: ["agentConfigurationId", "createdAt"],
+      },
+      {
+        fields: ["workspaceId", "agentConfigurationId", "createdAt"],
       },
     ],
   }

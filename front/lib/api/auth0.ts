@@ -12,7 +12,7 @@ import { config as regionsConfig } from "@app/lib/api/regions/config";
 import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
-import { Err, Ok } from "@app/types";
+import { Err, normalizeError, Ok } from "@app/types";
 
 let auth0ManagemementClient: ManagementClient | null = null;
 
@@ -176,7 +176,7 @@ export async function verifyAuth0Token(
           const signingKey = await getSigningKey(verify, header.kid);
           callback(null, signingKey);
         } catch (err) {
-          callback(err as Error);
+          callback(normalizeError(err));
         }
       },
       {

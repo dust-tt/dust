@@ -28,27 +28,22 @@ export function ConversationParticipants({
     <div className="flex gap-6">
       <Avatar.Stack
         size="sm"
-        nbMoreItems={agents.length > 4 ? agents.length - 4 : 0}
-      >
-        {agents.slice(0, 4).map((agent) => (
-          <Avatar
-            name={agent.name}
-            visual={agent.pictureUrl}
-            size="md"
-            key={agent.configurationId}
-          />
-        ))}
-      </Avatar.Stack>
-      <Avatar.Stack size="sm" nbMoreItems={Math.max(users.length - 4, 0)}>
-        {users.slice(0, 4).map((user, i) => (
-          <Avatar
-            name={user.fullName || user.username}
-            visual={user.pictureUrl}
-            size="md"
-            key={i}
-          />
-        ))}
-      </Avatar.Stack>
+        nbVisibleItems={agents.length > 4 ? agents.length - 4 : 0}
+        avatars={agents.slice(0, 4).map((agent) => ({
+          name: agent.name,
+          visual: agent.pictureUrl,
+          size: "md",
+        }))}
+      />
+      <Avatar.Stack
+        size="sm"
+        nbVisibleItems={Math.max(users.length - 4, 0)}
+        avatars={users.slice(0, 4).map((user) => ({
+          name: user.fullName || user.username,
+          visual: user.pictureUrl,
+          size: "md",
+        }))}
+      />
     </div>
   );
 }

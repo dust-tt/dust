@@ -1,4 +1,5 @@
 import { isLeft } from "fp-ts/lib/Either";
+import { escape } from "html-escaper";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -6,7 +7,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { Workspace } from "@app/lib/models/workspace";
-import { WorkspaceHasDomain } from "@app/lib/models/workspace_has_domain";
+import { WorkspaceHasDomainModel } from "@app/lib/models/workspace_has_domain";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse, WorkspaceType } from "@app/types";
 import { EmbeddingProviderCodec, ModelProviderIdCodec } from "@app/types";
@@ -88,7 +89,7 @@ async function handler(
 
       if ("name" in body) {
         await w.update({
-          name: body.name,
+          name: escape(body.name),
         });
         owner.name = body.name;
       } else if ("ssoEnforced" in body) {
@@ -109,7 +110,7 @@ async function handler(
         owner.defaultEmbeddingProvider = w.defaultEmbeddingProvider;
       } else {
         const { domain, domainAutoJoinEnabled } = body;
-        const [affectedCount] = await WorkspaceHasDomain.update(
+        const [affectedCount] = await WorkspaceHasDomainModel.update(
           {
             domainAutoJoinEnabled,
           },

@@ -1,4 +1,5 @@
 import { chunk } from "lodash";
+import { Op } from "sequelize";
 
 import { hardDeleteDataSource } from "@app/lib/api/data_sources";
 import type { Authenticator } from "@app/lib/auth";
@@ -29,15 +30,22 @@ import { removeNulls } from "@app/types";
 
 const DESTROY_MESSAGE_BATCH = 50;
 
-async function destroyActionsRelatedResources(agentMessageIds: Array<ModelId>) {
+async function destroyActionsRelatedResources(
+  auth: Authenticator,
+  agentMessageIds: Array<ModelId>
+) {
   // First, retrieve the retrieval actions and documents.
   const retrievalActions = await AgentRetrievalAction.findAll({
     attributes: ["id"],
-    where: { agentMessageId: agentMessageIds },
+    where: {
+      agentMessageId: { [Op.in]: agentMessageIds },
+      workspaceId: auth.getNonNullableWorkspace().id,
+    },
   });
 
   // Destroy retrieval resources.
   await RetrievalDocumentResource.deleteAllForActions(
+    auth,
     retrievalActions.map((a) => a.id)
   );
 
@@ -86,16 +94,15 @@ async function destroyMessageRelatedResources(messageIds: Array<ModelId>) {
 }
 
 async function destroyContentFragments(
+  auth: Authenticator,
   messageAndContentFragmentIds: Array<{
     contentFragmentId: ModelId;
     messageId: string;
   }>,
   {
     conversationId,
-    workspaceId,
   }: {
     conversationId: string;
-    workspaceId: string;
   }
 ) {
   const contentFragmentIds = messageAndContentFragmentIds.map(
@@ -105,8 +112,10 @@ async function destroyContentFragments(
     return;
   }
 
-  const contentFragments =
-    await ContentFragmentResource.fetchManyByModelIds(contentFragmentIds);
+  const contentFragments = await ContentFragmentResource.fetchManyByModelIds(
+    auth,
+    contentFragmentIds
+  );
 
   for (const contentFragment of contentFragments) {
     const messageContentFragmentId = messageAndContentFragmentIds.find(
@@ -124,7 +133,7 @@ async function destroyContentFragments(
     const deletionRes = await contentFragment.destroy({
       conversationId,
       messageId,
-      workspaceId,
+      workspaceId: auth.getNonNullableWorkspace().sId,
     });
     if (deletionRes.isErr()) {
       throw deletionRes;
@@ -161,7 +170,6 @@ export async function destroyConversation(
     conversationId: string;
   }
 ) {
-  const workspace = auth.getNonNullableWorkspace();
   const conversationRes =
     await ConversationResource.fetchConversationWithoutContent(
       auth,
@@ -183,7 +191,10 @@ export async function destroyConversation(
       "agentMessageId",
       "contentFragmentId",
     ],
-    where: { conversationId: conversation.id },
+    where: {
+      conversationId: conversation.id,
+      workspaceId: auth.getNonNullableWorkspace().id,
+    },
   });
 
   // To preserve the DB, we delete messages in batches.
@@ -202,7 +213,7 @@ export async function destroyConversation(
       })
     );
 
-    await destroyActionsRelatedResources(agentMessageIds);
+    await destroyActionsRelatedResources(auth, agentMessageIds);
 
     await UserMessage.destroy({
       where: { id: userMessageIds },
@@ -217,8 +228,7 @@ export async function destroyConversation(
       where: { id: agentMessageIds },
     });
 
-    await destroyContentFragments(messageAndContentFragmentIds, {
-      workspaceId: workspace.sId,
+    await destroyContentFragments(auth, messageAndContentFragmentIds, {
       conversationId: conversation.sId,
     });
 

@@ -1,6 +1,6 @@
-import type { CreationAttributes } from "sequelize";
 import type {
   Attributes,
+  CreationAttributes,
   InferAttributes,
   ModelStatic,
   Transaction,
@@ -8,8 +8,11 @@ import type {
 
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
-import { LabsTranscriptsConfigurationModel } from "@app/lib/resources/storage/models/labs_transcripts";
-import { LabsTranscriptsHistoryModel } from "@app/lib/resources/storage/models/labs_transcripts";
+import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import {
+  LabsTranscriptsConfigurationModel,
+  LabsTranscriptsHistoryModel,
+} from "@app/lib/resources/storage/models/labs_transcripts";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type {
@@ -186,12 +189,8 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     return this.update({ isDefaultWorkspaceConfiguration: isDefault });
   }
 
-  async setDataSourceViewId(dataSourceViewId: number | null) {
-    if (dataSourceViewId === undefined) {
-      return;
-    }
-
-    return this.update({ dataSourceViewId });
+  async setDataSourceView(dataSourceView: DataSourceViewResource | null) {
+    return this.update({ dataSourceViewId: dataSourceView?.id ?? null });
   }
 
   static async fetchDefaultConfigurationForWorkspace(
@@ -219,7 +218,7 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, Error>> {
     try {
-      await this.deleteHistory(transaction);
+      await this.deleteHistory(auth, transaction);
       await this.model.destroy({
         where: {
           id: this.id,
@@ -245,11 +244,12 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
   }
 
   async setConversationHistory(
-    fileId: string,
-    conversationId: string
+    auth: Authenticator,
+    { conversationId, fileId }: { conversationId: string; fileId: string }
   ): Promise<InferAttributes<LabsTranscriptsHistoryModel> | null> {
     const history = await LabsTranscriptsHistoryModel.findOne({
       where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
         configurationId: this.id,
         fileId,
       },
@@ -264,9 +264,13 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     return history.get();
   }
 
-  async setStorageStatusForFileId(fileId: string, stored: boolean) {
+  async setStorageStatusForFileId(
+    auth: Authenticator,
+    { fileId, stored }: { fileId: string; stored: boolean }
+  ) {
     const history = await LabsTranscriptsHistoryModel.findOne({
       where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
         configurationId: this.id,
         fileId,
       },
@@ -279,10 +283,12 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
   }
 
   async fetchHistoryForFileId(
+    auth: Authenticator,
     fileId: LabsTranscriptsHistoryModel["fileId"]
   ): Promise<InferAttributes<LabsTranscriptsHistoryModel> | null> {
     const history = await LabsTranscriptsHistoryModel.findOne({
       where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
         configurationId: this.id,
         fileId,
       },
@@ -295,30 +301,14 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     return history.get();
   }
 
-  async listHistory({
-    limit = 20,
-    sort = "DESC",
-  }: {
-    limit: number;
-    sort: "ASC" | "DESC";
-  }): Promise<InferAttributes<LabsTranscriptsHistoryModel>[]> {
-    const histories = await LabsTranscriptsHistoryModel.findAll({
-      where: {
-        configurationId: this.id,
-      },
-      limit,
-      order: [["createdAt", sort]],
-    });
-
-    return histories.map((history) => history.get());
-  }
-
   private async deleteHistory(
+    auth: Authenticator,
     transaction?: Transaction
   ): Promise<Result<undefined, Error>> {
     try {
       await LabsTranscriptsHistoryModel.destroy({
         where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
           configurationId: this.id,
         },
         transaction,
@@ -334,7 +324,6 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     return {
       id: this.id,
       workspaceId: this.workspaceId,
-      connectionId: this.connectionId,
       provider: this.provider,
       agentConfigurationId: this.agentConfigurationId,
       isActive: this.isActive,

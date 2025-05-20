@@ -66,19 +66,19 @@ export type MessageWithRankType = WithRank<MessageType>;
  */
 
 export type UserMessageOrigin =
-  | "slack"
-  | "web"
   | "api"
   | "email"
-  | "gsheet"
-  | "zapier"
-  | "n8n"
-  | "make"
-  | "zendesk"
-  | "raycast"
-  | "github-copilot-chat"
   | "extension"
-  | "email";
+  | "github-copilot-chat"
+  | "gsheet"
+  | "make"
+  | "mcp"
+  | "n8n"
+  | "raycast"
+  | "slack"
+  | "web"
+  | "zapier"
+  | "zendesk";
 
 export type UserMessageContext = {
   username: string;
@@ -87,7 +87,7 @@ export type UserMessageContext = {
   email: string | null;
   profilePictureUrl: string | null;
   origin?: UserMessageOrigin | null;
-  localMCPServerIds?: string[];
+  clientSideMCPServerIds?: string[];
 };
 
 export type UserMessageType = {
@@ -167,6 +167,7 @@ export type AgentMessageType = {
   version: number;
   parentMessageId: string | null;
   configuration: LightAgentConfigurationType;
+  skipToolsValidation: boolean;
   status: AgentMessageStatus;
   actions: AgentActionType[];
   content: string | null;

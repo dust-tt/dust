@@ -17,6 +17,8 @@ import {
   DustIcon,
   EyeIcon,
   FolderIcon,
+  HistoryIcon,
+  Icon,
   IconButton,
   PlusCircleIcon,
   Tree,
@@ -41,7 +43,7 @@ export const TreeExample = () => {
   return (
     <div className="s-flex s-flex-col s-gap-10">
       <div className="s-flex s-gap-10">
-        <div className="s-flex s-w-44 s-flex-col s-gap-3">
+        <div className="s-flex s-flex-col s-gap-3">
           <div className="s-text-xl">Tree</div>
           <div>
             <Tree>
@@ -131,6 +133,21 @@ export const TreeExample = () => {
                       </>
                     }
                   />
+
+                  <Tree.Item
+                    label="t"
+                    visual={DocumentIcon}
+                    type="leaf"
+                    actions={
+                      <div className="s-flex s-grow s-flex-row s-items-center s-justify-between">
+                        <Button size="mini" variant="outline" icon={EyeIcon} />
+                        <div className="s-flex s-flex-row s-items-center s-gap-1 s-text-sm s-text-muted-foreground">
+                          <Icon visual={HistoryIcon} size="xs" />
+                          1y
+                        </div>
+                      </div>
+                    }
+                  />
                 </Tree>
               </Tree.Item>
               <Tree.Item
@@ -151,6 +168,23 @@ export const TreeExample = () => {
                 <Tree>
                   <Tree.Item label="Item 1" visual={DocumentIcon} />
                   <Tree.Item label="Item 2" visual={DocumentIcon} />
+                </Tree>
+              </Tree.Item>
+              <Tree.Item
+                label="Item 8 (loading, with existing nodes)"
+                visual={FolderIcon}
+              >
+                <Tree isLoading>
+                  <Tree.Item
+                    type="leaf"
+                    label="Item 1"
+                    checkbox={{
+                      checked: checked["Item 1"],
+                      onCheckedChange: () => {
+                        check("Item 1");
+                      },
+                    }}
+                  />
                 </Tree>
               </Tree.Item>
             </Tree>
@@ -533,21 +567,21 @@ export const TreeExample = () => {
                     }}
                   />
                   <Tree.Item
-                    label="Item 2"
-                    checkbox={{
-                      checked: checked["Item 2"],
-                      onCheckedChange: () => {
-                        check("Item 2");
-                      },
-                    }}
-                  />
-                  <Tree.Item
                     label="Item 3"
                     type="leaf"
                     checkbox={{
                       checked: "partial",
                       onCheckedChange: () => {
                         return;
+                      },
+                    }}
+                  />
+                  <Tree.Item
+                    label="Item 2"
+                    checkbox={{
+                      checked: checked["Item 2"],
+                      onCheckedChange: () => {
+                        check("Item 2");
                       },
                     }}
                   />

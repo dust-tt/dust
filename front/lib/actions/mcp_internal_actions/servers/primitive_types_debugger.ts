@@ -10,7 +10,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
   version: "1.0.0",
   description:
     "Demo server showing a basic interaction with various configurable blocks.",
-  icon: "GithubLogo",
+  icon: "ActionEmotionLaughIcon",
   authorization: null,
 };
 
@@ -36,6 +36,10 @@ function createServer(): McpServer {
         ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.STRING],
       enabled:
         ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN],
+      category: z.object({
+        value: z.enum(["A", "B", "C"]),
+        mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM),
+      }),
     },
     async (params) => {
       return {

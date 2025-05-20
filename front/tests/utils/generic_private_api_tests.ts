@@ -58,6 +58,7 @@ export const createPrivateApiMockRequest = async ({
   vi.mocked(getSession).mockReturnValue(
     Promise.resolve({
       user: {
+        sid: user.sId,
         sub: user.auth0Sub!,
         email: user.email!,
         email_verified: true,

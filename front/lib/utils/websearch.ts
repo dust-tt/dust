@@ -20,6 +20,7 @@ export type SerpapiParams = {
   location?: string;
   output?: "json" | "html";
   api_key?: string;
+  page?: number;
 };
 
 export type SerperParams = {
@@ -27,14 +28,12 @@ export type SerperParams = {
   api_key: string;
 };
 
-const serpapiDefaultOptions: Omit<
-  BaseWebSearchParams & SerpapiParams,
-  "query"
-> = {
+const serpapiDefaultOptions = {
   provider: "serpapi",
   engine: "google",
   api_key: credentials.SERP_API_KEY,
-};
+  num: 10,
+} satisfies Omit<BaseWebSearchParams & SerpapiParams, "query">;
 
 export type SearchParams = BaseWebSearchParams & (SerpapiParams | SerperParams);
 
@@ -47,7 +46,7 @@ export type SearchResponse = SearchResultItem[];
 
 const serpapiSearch = async (
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  { provider, query, ...options }: BaseWebSearchParams & SerpapiParams
+  { provider, query, page, ...options }: BaseWebSearchParams & SerpapiParams
 ): Promise<Result<SearchResponse, Error>> => {
   if (options.api_key == null) {
     return new Err(
@@ -59,6 +58,10 @@ const serpapiSearch = async (
     _.omitBy(
       {
         q: query,
+        start: page
+          ? page * (options.num ?? serpapiDefaultOptions.num)
+          : undefined,
+        num: options.num ?? serpapiDefaultOptions.num,
         ...options,
       },
       _.isNil

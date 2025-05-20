@@ -2,7 +2,7 @@
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 
-import type { Attributes, CreationAttributes, ModelStatic } from "sequelize";
+import type { Attributes, CreationAttributes } from "sequelize";
 import { Op } from "sequelize";
 
 import type {
@@ -13,33 +13,35 @@ import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { isWebsite } from "@app/lib/data_sources";
 import {
-  RetrievalDocument,
-  RetrievalDocumentChunk,
+  RetrievalDocumentChunkModel,
+  RetrievalDocumentModel,
 } from "@app/lib/models/assistant/actions/retrieval";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
+import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { ModelId, Result } from "@app/types";
 import { removeNulls } from "@app/types";
 
-export type RetrievalDocumentBlob = CreationAttributes<RetrievalDocument>;
+export type RetrievalDocumentBlob = CreationAttributes<RetrievalDocumentModel>;
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface RetrievalDocumentResource
-  extends ReadonlyAttributesType<RetrievalDocument> {}
+  extends ReadonlyAttributesType<RetrievalDocumentModel> {}
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export class RetrievalDocumentResource extends BaseResource<RetrievalDocument> {
-  static model: ModelStatic<RetrievalDocument> = RetrievalDocument;
+export class RetrievalDocumentResource extends BaseResource<RetrievalDocumentModel> {
+  static model: ModelStaticWorkspaceAware<RetrievalDocumentModel> =
+    RetrievalDocumentModel;
 
   constructor(
-    model: ModelStatic<RetrievalDocument>,
-    blob: Attributes<RetrievalDocument>,
+    model: ModelStaticWorkspaceAware<RetrievalDocumentModel>,
+    blob: Attributes<RetrievalDocumentModel>,
     readonly chunks: RetrievalDocumentChunkType[],
     readonly dataSourceView?: DataSourceViewResource
   ) {
-    super(RetrievalDocument, blob);
+    super(RetrievalDocumentModel, blob);
   }
 
   static async makeNew(
@@ -63,7 +65,7 @@ export class RetrievalDocumentResource extends BaseResource<RetrievalDocument> {
       const createdDocuments = [];
 
       for (const { blob, chunks, dataSourceView } of blobs) {
-        const doc = await RetrievalDocument.create(
+        const doc = await this.model.create(
           {
             ...blob,
             dataSourceViewId: dataSourceView.id,
@@ -73,7 +75,7 @@ export class RetrievalDocumentResource extends BaseResource<RetrievalDocument> {
         );
 
         for (const c of chunks) {
-          await RetrievalDocumentChunk.create(
+          await RetrievalDocumentChunkModel.create(
             {
               text: c.text,
               offset: c.offset,
@@ -86,7 +88,7 @@ export class RetrievalDocumentResource extends BaseResource<RetrievalDocument> {
         }
 
         createdDocuments.push(
-          new this(RetrievalDocument, doc.get(), chunks, dataSourceView)
+          new this(this.model, doc.get(), chunks, dataSourceView)
         );
       }
 
@@ -97,15 +99,16 @@ export class RetrievalDocumentResource extends BaseResource<RetrievalDocument> {
   }
 
   static async listAllForActions(auth: Authenticator, actionIds: ModelId[]) {
-    const docs = await RetrievalDocument.findAll({
+    const docs = await this.model.findAll({
       where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
         retrievalActionId: {
           [Op.in]: actionIds,
         },
       },
       include: [
         {
-          model: RetrievalDocumentChunk,
+          model: RetrievalDocumentChunkModel,
           as: "chunks",
         },
       ],
@@ -139,17 +142,20 @@ export class RetrievalDocumentResource extends BaseResource<RetrievalDocument> {
     );
   }
 
-  static async deleteAllForActions(actionIds: ModelId[]) {
-    const retrievalDocuments = await RetrievalDocument.findAll({
+  static async deleteAllForActions(auth: Authenticator, actionIds: ModelId[]) {
+    const retrievalDocuments = await this.model.findAll({
       attributes: ["id"],
-      where: { retrievalActionId: actionIds },
+      where: {
+        retrievalActionId: actionIds,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
     });
 
-    await RetrievalDocumentChunk.destroy({
+    await RetrievalDocumentChunkModel.destroy({
       where: { retrievalDocumentId: retrievalDocuments.map((d) => d.id) },
     });
 
-    await RetrievalDocument.destroy({
+    await this.model.destroy({
       where: { retrievalActionId: actionIds },
     });
   }

@@ -12,12 +12,15 @@ export type CoreDSDocument = {
   document_id: string;
 };
 
+const CORE_DOCUMENT_BATCH_SIZE = 1000;
+
 export async function getCoreDocuments(
   frontDataSourceId: number
 ): Promise<Result<CoreDSDocument[], Error>> {
   const coreReplica = getCoreReplicaDbConnection();
   const frontReplica = getFrontReplicaDbConnection();
 
+  // eslint-disable-next-line dust/no-raw-sql -- Leggit
   const managedDsData = await frontReplica.query(
     'SELECT id, "connectorId", "connectorProvider", "dustAPIProjectId" \
          FROM data_sources WHERE id = :frontDataSourceId',
@@ -55,7 +58,6 @@ export async function getCoreDocuments(
   }
 
   let lastDocumentId = "";
-  const batchSize = 10000;
   const coreDocuments: CoreDSDocument[] = [];
   let batchDocuments: CoreDSDocument[] = [];
 
@@ -72,7 +74,7 @@ export async function getCoreDocuments(
         replacements: {
           coreDsId: coreDs[0].id,
           lastDocumentId,
-          limit: batchSize,
+          limit: CORE_DOCUMENT_BATCH_SIZE,
         },
         type: QueryTypes.SELECT,
       }
@@ -85,7 +87,7 @@ export async function getCoreDocuments(
 
     coreDocuments.push(...batchDocuments);
     lastDocumentId = batchDocuments[batchDocuments.length - 1].document_id;
-  } while (batchDocuments.length === batchSize);
+  } while (batchDocuments.length === CORE_DOCUMENT_BATCH_SIZE);
 
   return new Ok(coreDocuments);
 }

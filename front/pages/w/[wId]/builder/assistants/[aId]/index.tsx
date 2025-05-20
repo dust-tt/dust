@@ -10,12 +10,17 @@ import type {
   AssistantBuilderInitialState,
   BuilderFlow,
 } from "@app/components/assistant_builder/types";
-import { BUILDER_FLOWS } from "@app/components/assistant_builder/types";
+import {
+  BUILDER_FLOWS,
+  getDataVisualizationActionConfiguration,
+} from "@app/components/assistant_builder/types";
+import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { throwIfInvalidAgentConfiguration } from "@app/lib/actions/types/guards";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import config from "@app/lib/api/config";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type {
   AgentConfigurationType,
@@ -24,12 +29,14 @@ import type {
   PlanType,
   SpaceType,
   SubscriptionType,
+  UserType,
   WorkspaceType,
 } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   actions: AssistantBuilderInitialState["actions"];
   agentConfiguration: AgentConfigurationType;
+  agentEditors: UserType[];
   baseUrl: string;
   dataSourceViews: DataSourceViewType[];
   dustApps: AppType[];
@@ -59,16 +66,16 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     await Promise.all([
       getAccessibleSourcesAndApps(auth),
       getAgentConfiguration(auth, context.params?.aId as string, "full"),
-      MCPServerViewResource.ensureAllDefaultActionsAreCreated(auth),
+      MCPServerViewResource.ensureAllAutoToolsAreCreated(auth),
     ]);
 
-  if (configuration?.scope === "workspace" && !auth.isBuilder()) {
+  if (!configuration) {
     return {
       notFound: true,
     };
   }
 
-  if (!configuration) {
+  if (!configuration.canEdit && !auth.isAdmin()) {
     return {
       notFound: true,
     };
@@ -80,18 +87,32 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     ? (context.query.flow as BuilderFlow)
     : "personal_assistants";
 
+  const mcpServerViewsJSON = mcpServerViews.map((v) => v.toJSON());
+
   const actions = await buildInitialActions({
     dataSourceViews,
     dustApps,
     configuration,
+    mcpServerViews: mcpServerViewsJSON,
   });
 
-  const mcpServerViewsJSON = mcpServerViews.map((v) => v.toJSON());
+  const editorGroupRes = await GroupResource.findEditorGroupForAgent(
+    auth,
+    configuration
+  );
+  if (editorGroupRes.isErr()) {
+    throw new Error("Failed to find editor group for agent");
+  }
+
+  const agentEditors = (await editorGroupRes.value.getActiveMembers(auth)).map(
+    (m) => m.toJSON()
+  );
 
   return {
     props: {
       actions,
       agentConfiguration: configuration,
+      agentEditors,
       baseUrl: config.getClientFacingUrl(),
       dataSourceViews: dataSourceViews.map((v) => v.toJSON()),
       dustApps: dustApps.map((a) => a.toJSON()),
@@ -108,6 +129,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 export default function EditAssistant({
   actions,
   agentConfiguration,
+  agentEditors,
   baseUrl,
   spaces,
   dataSourceViews,
@@ -155,11 +177,18 @@ export default function EditAssistant({
             temperature: agentConfiguration.model.temperature,
             responseFormat: agentConfiguration.model.responseFormat,
           },
-          actions,
+          actions: [
+            ...actions,
+            // DATA_VISUALIZATION is not an action, but we need to show it in the UI like an action.
+            ...(agentConfiguration.visualizationEnabled
+              ? [getDataVisualizationActionConfiguration()]
+              : []),
+          ],
           visualizationEnabled: agentConfiguration.visualizationEnabled,
           maxStepsPerRun: agentConfiguration.maxStepsPerRun,
           templateId: agentConfiguration.templateId,
           tags: agentConfiguration.tags,
+          editors: agentEditors,
         }}
         agentConfigurationId={agentConfiguration.sId}
         baseUrl={baseUrl}
@@ -168,3 +197,7 @@ export default function EditAssistant({
     </AssistantBuilderProvider>
   );
 }
+
+EditAssistant.getLayout = (page: React.ReactElement) => {
+  return <AppRootLayout>{page}</AppRootLayout>;
+};

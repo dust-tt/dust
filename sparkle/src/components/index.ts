@@ -8,6 +8,7 @@ export {
 export { AttachmentChip } from "./AttachmentChip";
 export { Avatar } from "./Avatar";
 export { BarHeader } from "./BarHeader";
+export type { BreadcrumbItem } from "./Breadcrumbs";
 export { Breadcrumbs } from "./Breadcrumbs";
 export type {
   ButtonProps,
@@ -58,7 +59,6 @@ export {
   DialogTitle,
   DialogTrigger,
 } from "./Dialog";
-export { DoubleIcon } from "./DoubleIcon";
 export type { DropdownMenuItemProps } from "./Dropdown";
 export {
   DropdownMenu,
@@ -85,9 +85,10 @@ export { EmptyCTA, EmptyCTAButton } from "./EmptyCTA";
 export { FilterChips } from "./FilterChips";
 export { Div3D, Hover3D } from "./Hover3D";
 export { Hoverable } from "./Hoverable";
-export { Icon } from "./Icon";
+export { DoubleIcon, Icon } from "./Icon";
 export { IconButton } from "./IconButton";
 export { Input } from "./Input";
+export { InteractiveImageGrid } from "./InteractiveImageGrid";
 export { Label } from "./Label";
 export type { LinkWrapperProps } from "./LinkWrapper";
 export { LinkWrapper } from "./LinkWrapper";
@@ -102,13 +103,14 @@ export { PaginatedCitationsGrid } from "./PaginatedCitationsGrid";
 export { Pagination } from "./Pagination";
 export { ColorPicker, IconPicker } from "./Picker";
 export {
+  AnchoredPopover,
   Popover,
+  PopoverAnchor,
   PopoverContent,
   PopoverPortal,
   PopoverRoot,
   PopoverTrigger,
 } from "./Popover";
-export { Popup } from "./Popup";
 export { PriceTable } from "./PriceTable";
 export { RadioGroup, RadioGroupCustomItem, RadioGroupItem } from "./RadioGroup";
 export { RainbowEffect } from "./RainbowEffect";
@@ -118,6 +120,7 @@ export {
   ResizablePanelGroup,
 } from "./Resizable";
 export { ScrollArea, ScrollBar } from "./ScrollArea";
+export { SearchDropdownMenu } from "./SearchDropdownMenu";
 export { SearchInput, SearchInputWithPopover } from "./SearchInput";
 export { Separator } from "./Separator";
 export {

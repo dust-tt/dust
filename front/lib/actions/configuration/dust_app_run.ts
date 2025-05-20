@@ -5,7 +5,7 @@ import type { DustAppRunConfigurationType } from "@app/lib/actions/dust_app_run"
 import type { Authenticator } from "@app/lib/auth";
 import { AgentDustAppRunConfiguration } from "@app/lib/models/assistant/actions/dust_app_run";
 import { AppResource } from "@app/lib/resources/app_resource";
-import type { ModelId } from "@app/types";
+import type { AgentFetchVariant, ModelId } from "@app/types";
 
 export async function fetchDustAppRunActionConfigurations(
   auth: Authenticator,
@@ -14,7 +14,7 @@ export async function fetchDustAppRunActionConfigurations(
     variant,
   }: {
     configurationIds: ModelId[];
-    variant: "light" | "full";
+    variant: AgentFetchVariant;
   }
 ): Promise<Map<ModelId, DustAppRunConfigurationType[]>> {
   if (variant !== "full") {
@@ -22,7 +22,10 @@ export async function fetchDustAppRunActionConfigurations(
   }
 
   const dustAppRunConfigurations = await AgentDustAppRunConfiguration.findAll({
-    where: { agentConfigurationId: { [Op.in]: configurationIds } },
+    where: {
+      agentConfigurationId: { [Op.in]: configurationIds },
+      workspaceId: auth.getNonNullableWorkspace().id,
+    },
   });
 
   if (dustAppRunConfigurations.length === 0) {

@@ -23,7 +23,7 @@ const MENTION_COUNT_UPDATE_PERIOD_SEC = 4 * 60 * 60;
 const TTL_KEY_NOT_EXIST = -2;
 const TTL_KEY_NOT_SET = -1;
 
-type AgentUsageCount = {
+export type AgentUsageCount = {
   agentId: string;
   messageCount: number;
   conversationCount: number;
@@ -145,6 +145,7 @@ export async function agentMentionsCount(
     throw new Error("Invalid ranking usage days");
   }
 
+  // eslint-disable-next-line dust/no-raw-sql -- Leggit
   const mentions = await readReplica.query(
     `
     WITH message_counts AS (

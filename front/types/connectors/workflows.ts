@@ -2,11 +2,13 @@ import type { ModelId } from "@app/types";
 
 export function getNotionWorkflowId(
   connectorId: ModelId,
-  isGarbageCollectionRun: boolean
+  workflowType: "sync" | "garbage-collector" | "process-database-upsert-queue"
 ) {
   let wfName = `workflow-notion-${connectorId}`;
-  if (isGarbageCollectionRun) {
+  if (workflowType === "garbage-collector") {
     wfName += "-garbage-collector";
+  } else if (workflowType === "process-database-upsert-queue") {
+    wfName += "-process-database-upsert-queue";
   }
   return wfName;
 }

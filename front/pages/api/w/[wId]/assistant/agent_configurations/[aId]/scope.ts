@@ -6,11 +6,12 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import {
   isMCPServerConfiguration,
-  isPlatformMCPServerConfiguration,
+  isServerSideMCPServerConfiguration,
 } from "@app/lib/actions/types/guards";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import { apiError } from "@app/logger/withlogging";
 import { createOrUpgradeAgentConfiguration } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
 import type { AgentStatus, WithAPIErrorResponse } from "@app/types";
@@ -20,6 +21,8 @@ export const PostAgentScopeRequestBodySchema = t.type({
     t.literal("workspace"),
     t.literal("published"),
     t.literal("private"),
+    t.literal("hidden"),
+    t.literal("visible"),
   ]),
 });
 
@@ -32,16 +35,13 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<void>>,
   auth: Authenticator
 ): Promise<void> {
-  const assistant = await getAgentConfiguration(
+  const agent = await getAgentConfiguration(
     auth,
     req.query.aId as string,
     "full"
   );
-  if (
-    !assistant ||
-    (assistant.scope === "private" &&
-      assistant.versionAuthorId !== auth.user()?.id)
-  ) {
+
+  if (!agent || (!agent.canRead && !auth.isAdmin())) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -65,18 +65,19 @@ async function handler(
         });
       }
 
-      if (assistant.scope === "workspace" && !auth.isBuilder()) {
+      if (!agent.canEdit && !auth.isAdmin()) {
         return apiError(req, res, {
-          status_code: 404,
+          status_code: 403,
           api_error: {
-            type: "app_auth_error",
-            message: "Only builders can modify workspace agents.",
+            type: "invalid_request_error",
+            message: "Only editors can modify agents.",
           },
         });
       }
 
+      //TODO(agent-discovery): Remove this once old scopes are removed
       if (
-        assistant.scope !== "private" &&
+        agent.scope !== "private" &&
         bodyValidation.right.scope === "private"
       ) {
         // switching an agent back to private: the caller must be a user
@@ -92,30 +93,54 @@ async function handler(
         }
       }
 
+      if (bodyValidation.right.scope === "workspace" && !auth.isBuilder()) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Only builders can upgrade agents to workspace scope.",
+          },
+        });
+      }
+
+      // This won't stay long since Agent Discovery initiative removes the scope
+      // endpoint.
+      const group = await GroupResource.fetchByAgentConfiguration({
+        auth,
+        agentConfiguration: agent,
+      });
+      if (!group) {
+        throw new Error(
+          "Unexpected: agent should have exactly one editor group."
+        );
+      }
+      const editors = await group.getActiveMembers(auth);
+
       // Cast the assistant to ensure TypeScript understands the correct types.
       const typedAssistant = {
-        ...assistant,
+        ...agent,
         scope: bodyValidation.right.scope,
-        status: assistant.status as AgentStatus,
-        templateId: assistant.templateId,
+        status: agent.status as AgentStatus,
+        templateId: agent.templateId,
         // Ensure actions are correctly typed.
-        actions: assistant.actions.map((action) => {
+        actions: agent.actions.map((action) => {
           // If MCP actions are present, they must be platform MCP actions.
           if (isMCPServerConfiguration(action)) {
             assert(
-              isPlatformMCPServerConfiguration(action),
+              isServerSideMCPServerConfiguration(action),
               "MCP actions must be platform MCP actions."
             );
           }
 
           return action;
         }),
+        editors,
       };
 
       const agentConfigurationRes = await createOrUpgradeAgentConfiguration({
         auth,
         assistant: typedAssistant,
-        agentConfigurationId: assistant.sId,
+        agentConfigurationId: agent.sId,
       });
 
       if (agentConfigurationRes.isErr()) {

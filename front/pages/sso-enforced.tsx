@@ -10,6 +10,7 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   initiatedLoginUrl: string;
 }>(async (context) => {
   const workspaceId = (context.query.workspaceId as string) ?? null;
+  const returnTo = (context.query.returnTo as string) ?? null;
 
   if (!workspaceId) {
     return {
@@ -19,7 +20,10 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
 
   return {
     props: {
-      initiatedLoginUrl: makeEnterpriseConnectionInitiateLoginUrl(workspaceId),
+      initiatedLoginUrl: makeEnterpriseConnectionInitiateLoginUrl(
+        workspaceId,
+        returnTo
+      ),
     },
   };
 });

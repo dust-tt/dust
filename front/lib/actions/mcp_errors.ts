@@ -3,3 +3,12 @@ export class MCPServerNotFoundError extends Error {
     super(message);
   }
 }
+
+export class McpError extends Error {
+  constructor(
+    message: string,
+    public readonly code: number
+  ) {
+    super(message);
+  }
+}

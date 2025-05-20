@@ -1,10 +1,11 @@
 import type { Client } from "@temporalio/client";
+import type { LoggerOptions } from "pino";
+import type pino from "pino";
 import { QueryTypes } from "sequelize";
 
 import type { CheckFunction } from "@app/lib/production_checks/types";
 import { getConnectorsPrimaryDbConnection } from "@app/lib/production_checks/utils";
 import { getTemporalConnectorsNamespaceConnection } from "@app/lib/temporal";
-import logger from "@app/logger/logger";
 import { getNotionWorkflowId } from "@app/types";
 import { withRetries } from "@app/types";
 
@@ -31,26 +32,58 @@ async function listAllNotionConnectors() {
 async function getDescriptionsAndHistories({
   client,
   notionConnector,
+  logger,
 }: {
   client: Client;
   notionConnector: NotionConnector;
+  logger: pino.Logger<LoggerOptions>;
 }) {
+  logger.info(
+    {
+      connectorId: notionConnector.id,
+    },
+    "Retrieving Notion handles"
+  );
   const incrementalSyncHandle = client.workflow.getHandle(
-    getNotionWorkflowId(notionConnector.id, false)
+    getNotionWorkflowId(notionConnector.id, "sync")
   );
   const garbageCollectorHandle = client.workflow.getHandle(
-    getNotionWorkflowId(notionConnector.id, true)
+    getNotionWorkflowId(notionConnector.id, "garbage-collector")
+  );
+  const processDatabaseUpsertQueueHandle = client.workflow.getHandle(
+    getNotionWorkflowId(notionConnector.id, "process-database-upsert-queue")
+  );
+
+  logger.info(
+    {
+      connectorId: notionConnector.id,
+    },
+    "Retrieved Notion handles"
   );
 
   const descriptions = await Promise.all([
     incrementalSyncHandle.describe(),
     garbageCollectorHandle.describe(),
+    processDatabaseUpsertQueueHandle.describe(),
   ]);
+  logger.info(
+    {
+      connectorId: notionConnector.id,
+    },
+    "Retrieved descriptions"
+  );
 
   const histories = await Promise.all([
     incrementalSyncHandle.fetchHistory(),
     garbageCollectorHandle.fetchHistory(),
+    processDatabaseUpsertQueueHandle.fetchHistory(),
   ]);
+  logger.info(
+    {
+      connectorId: notionConnector.id,
+    },
+    "Retrieved histories"
+  );
 
   return {
     descriptions,
@@ -60,7 +93,8 @@ async function getDescriptionsAndHistories({
 
 async function areTemporalWorkflowsRunning(
   client: Client,
-  notionConnector: NotionConnector
+  notionConnector: NotionConnector,
+  logger: pino.Logger<LoggerOptions>
 ) {
   try {
     const { descriptions, histories } = await withRetries(
@@ -70,7 +104,15 @@ async function areTemporalWorkflowsRunning(
     )({
       client,
       notionConnector,
+      logger,
     });
+
+    logger.info(
+      {
+        connectorId: notionConnector.id,
+      },
+      "getDescriptionsAndHistories completed"
+    );
 
     const latests: (Date | null)[] = histories.map((h) => {
       let latest: Date | null = null;
@@ -138,7 +180,7 @@ export const checkNotionActiveWorkflows: CheckFunction = async (
     heartbeat();
 
     const { isRunning, isNotStalled, details } =
-      await areTemporalWorkflowsRunning(client, notionConnector);
+      await areTemporalWorkflowsRunning(client, notionConnector, logger);
 
     if (!isRunning) {
       missingActiveWorkflows.push({

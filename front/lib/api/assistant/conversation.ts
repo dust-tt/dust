@@ -10,12 +10,12 @@ import {
   getLightAgentConfiguration,
 } from "@app/lib/api/assistant/configuration";
 import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
-import { renderConversationForModel } from "@app/lib/api/assistant/generation";
 import {
   batchRenderMessages,
   canReadMessage,
 } from "@app/lib/api/assistant/messages";
 import { getContentFragmentGroupIds } from "@app/lib/api/assistant/permissions";
+import { renderConversationForModel } from "@app/lib/api/assistant/preprocessing";
 import {
   makeAgentMentionsRateLimitKeyForWorkspace,
   makeMessageRateLimitKeyForWorkspace,
@@ -45,7 +45,7 @@ import {
 } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
-import { isEmailValid } from "@app/lib/utils";
+import { isEmailValid, normalizeArrays } from "@app/lib/utils";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import { launchUpdateUsageWorkflow } from "@app/temporal/usage_queue/client";
@@ -149,15 +149,14 @@ export async function createConversation(
   };
 }
 
-export async function updateConversation(
+export async function updateConversationTitle(
   auth: Authenticator,
-  conversationId: string,
   {
+    conversationId,
     title,
-    visibility,
   }: {
-    title: string | null;
-    visibility: ConversationVisibility;
+    conversationId: string;
+    title: string;
   }
 ): Promise<Result<ConversationType, ConversationError>> {
   const conversation = await ConversationResource.fetchById(
@@ -166,10 +165,10 @@ export async function updateConversation(
   );
 
   if (!conversation) {
-    throw new Error(`Conversation ${conversationId} not found`);
+    return new Err(new ConversationError("conversation_not_found"));
   }
 
-  await conversation.updateVisiblity(visibility, title);
+  await conversation.updateTitle(title);
 
   return getConversation(auth, conversationId);
 }
@@ -204,7 +203,7 @@ export async function deleteConversation(
   if (destroy) {
     await conversation.delete(auth);
   } else {
-    await conversation.updateVisiblity("deleted");
+    await conversation.updateVisibilityToDeleted();
   }
   return new Ok({ success: true });
 }
@@ -233,6 +232,7 @@ export async function getConversation(
   const messages = await Message.findAll({
     where: {
       conversationId: conversation.id,
+      workspaceId: owner.id,
     },
     order: [
       ["rank", "ASC"],
@@ -314,6 +314,7 @@ export async function getConversationMessageType(
     where: {
       conversationId: conversation.id,
       sId: messageId,
+      workspaceId: auth.getNonNullableWorkspace().id,
     },
   });
 
@@ -450,6 +451,39 @@ export async function generateConversationTitle(
   return new Ok(title);
 }
 
+export async function getLastUserMessage(
+  auth: Authenticator,
+  conversation: ConversationWithoutContentType
+): Promise<Result<string, Error>> {
+  const owner = auth.getNonNullableWorkspace();
+
+  const message = await Message.findOne({
+    where: {
+      workspaceId: owner.id,
+      conversationId: conversation.id,
+    },
+    order: [
+      ["rank", "DESC"],
+      ["version", "ASC"],
+    ],
+    include: [
+      {
+        model: UserMessage,
+        as: "userMessage",
+        required: false,
+      },
+    ],
+  });
+
+  const content = message?.userMessage?.content;
+  if (!content) {
+    return new Err(
+      new Error("Error suggesting agents: no content found in conversation.")
+    );
+  }
+  return new Ok(content);
+}
+
 /**
  * Conversation API
  */
@@ -468,6 +502,8 @@ async function getConversationRankVersionLock(
   // Get a lock using the unique lock key (number withing postgresql BigInt range).
   const hash = md5(`conversation_message_rank_version_${conversation.id}`);
   const lockKey = parseInt(hash, 16) % 9999999999;
+  // OK because we need to setup a lock
+  // eslint-disable-next-line dust/no-raw-sql
   await frontSequelize.query("SELECT pg_advisory_xact_lock(:key)", {
     transaction: t,
     replacements: { key: lockKey },
@@ -516,11 +552,13 @@ export async function* postUserMessage(
     content,
     mentions,
     context,
+    skipToolsValidation,
   }: {
     conversation: ConversationType;
     content: string;
     mentions: MentionType[];
     context: UserMessageContext;
+    skipToolsValidation: boolean;
   }
 ): AsyncGenerator<
   | UserMessageErrorEvent
@@ -604,6 +642,20 @@ export async function* postUserMessage(
   const agentConfigurations = removeNulls(results[0]);
 
   for (const agentConfig of agentConfigurations) {
+    if (!canAccessAgent(agentConfig)) {
+      yield {
+        type: "agent_disabled_error",
+        created: Date.now(),
+        configurationId: agentConfig.sId,
+        error: {
+          code: "not_allowed",
+          message:
+            "This agent is either disabled or you don't have access to it.",
+        },
+      };
+      return;
+    }
+
     if (!isProviderWhitelisted(owner, agentConfig.model.providerId)) {
       yield {
         type: "agent_disabled_error",
@@ -664,7 +716,8 @@ export async function* postUserMessage(
               await UserMessage.create(
                 {
                   content,
-                  localMCPServerIds: context.localMCPServerIds ?? [],
+                  // TODO(MCP Clean-up): Rename field in DB.
+                  clientSideMCPServerIds: context.clientSideMCPServerIds ?? [],
                   userContextUsername: context.username,
                   userContextTimezone: context.timezone,
                   userContextFullName: context.fullName,
@@ -736,6 +789,7 @@ export async function* postUserMessage(
                   agentConfigurationId: configuration.sId,
                   agentConfigurationVersion: configuration.version,
                   workspaceId: owner.id,
+                  skipToolsValidation,
                 },
                 { transaction: t }
               );
@@ -772,6 +826,7 @@ export async function* postUserMessage(
                   error: null,
                   configuration,
                   rank: messageRow.rank,
+                  skipToolsValidation: agentMessageRow.skipToolsValidation,
                 } satisfies AgentMessageWithRankType,
               };
             })();
@@ -933,10 +988,28 @@ export async function* postUserMessage(
   void logIfUserUnknown();
 }
 
-/** This method creates a new user message version, and if there are new agent
- *  mentions, run them
- *  TODO: support editing with new agent mentions for any
- *  message (rather than just the last)
+/**
+ * Can a user mention a given configuration
+ */
+function canAccessAgent(
+  agentConfiguration: LightAgentConfigurationType
+): boolean {
+  switch (agentConfiguration.status) {
+    case "active":
+    case "draft":
+      return agentConfiguration.canRead;
+    case "disabled_free_workspace":
+    case "disabled_missing_datasource":
+    case "disabled_by_admin":
+    case "archived":
+      return false;
+    default:
+      assertNever(agentConfiguration.status);
+  }
+}
+
+/**
+ * This method creates a new user message version, and if there are new agent mentions, run them.
  */
 export async function* editUserMessage(
   auth: Authenticator,
@@ -945,11 +1018,13 @@ export async function* editUserMessage(
     message,
     content,
     mentions,
+    skipToolsValidation,
   }: {
     conversation: ConversationType;
     message: UserMessageType;
     content: string;
     mentions: MentionType[];
+    skipToolsValidation: boolean;
   }
 ): AsyncGenerator<
   | UserMessageNewEvent
@@ -1052,6 +1127,20 @@ export async function* editUserMessage(
   const agentConfigurations = removeNulls(results[0]);
 
   for (const agentConfig of agentConfigurations) {
+    if (!canAccessAgent(agentConfig)) {
+      yield {
+        type: "agent_disabled_error",
+        created: Date.now(),
+        configurationId: agentConfig.sId,
+        error: {
+          code: "not_allowed",
+          message:
+            "This agent is either disabled or you don't have access to it.",
+        },
+      };
+      return;
+    }
+
     if (!isProviderWhitelisted(owner, agentConfig.model.providerId)) {
       yield {
         type: "agent_disabled_error",
@@ -1081,6 +1170,7 @@ export async function* editUserMessage(
         where: {
           sId: message.sId,
           conversationId: conversation.id,
+          workspaceId: owner.id,
         },
         include: [
           {
@@ -1098,6 +1188,7 @@ export async function* editUserMessage(
       }
       const newerMessage = await Message.findOne({
         where: {
+          workspaceId: owner.id,
           rank: messageRow.rank,
           conversationId: conversation.id,
           version: messageRow.version + 1,
@@ -1126,8 +1217,8 @@ export async function* editUserMessage(
               await UserMessage.create(
                 {
                   content,
-                  // No support for local MCP servers when editing/retrying a user message.
-                  localMCPServerIds: [],
+                  // No support for client-side MCP servers when editing/retrying a user message.
+                  clientSideMCPServerIds: [],
                   userContextUsername: userMessageRow.userContextUsername,
                   userContextTimezone: userMessageRow.userContextTimezone,
                   userContextFullName: userMessageRow.userContextFullName,
@@ -1213,6 +1304,7 @@ export async function* editUserMessage(
                 agentConfigurationId: configuration.sId,
                 agentConfigurationVersion: configuration.version,
                 workspaceId: owner.id,
+                skipToolsValidation,
               },
               { transaction: t }
             );
@@ -1249,6 +1341,7 @@ export async function* editUserMessage(
                 error: null,
                 configuration,
                 rank: messageRow.rank,
+                skipToolsValidation: agentMessageRow.skipToolsValidation,
               } satisfies AgentMessageWithRankType,
             };
           })();
@@ -1418,6 +1511,7 @@ export async function* retryAgentMessage(
 
       const messageRow = await Message.findOne({
         where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
           conversationId: conversation.id,
           id: message.id,
         },
@@ -1436,6 +1530,7 @@ export async function* retryAgentMessage(
       }
       const newerMessage = await Message.findOne({
         where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
           rank: messageRow.rank,
           conversationId: conversation.id,
           version: messageRow.version + 1,
@@ -1454,6 +1549,7 @@ export async function* retryAgentMessage(
           agentConfigurationVersion:
             messageRow.agentMessage.agentConfigurationVersion,
           workspaceId: auth.getNonNullableWorkspace().id,
+          skipToolsValidation: messageRow.agentMessage.skipToolsValidation,
         },
         { transaction: t }
       );
@@ -1495,6 +1591,7 @@ export async function* retryAgentMessage(
         error: null,
         configuration: message.configuration,
         rank: m.rank,
+        skipToolsValidation: agentMessageRow.skipToolsValidation,
       };
 
       return {
@@ -1789,7 +1886,6 @@ async function* streamRunAgentEvents(
 
       // All other events that won't impact the database and are related to actions or tokens
       // generation.
-      case "tool_approve_execution":
       case "browse_params":
       case "conversation_include_file_params":
       case "dust_app_run_block":
@@ -1804,8 +1900,10 @@ async function* streamRunAgentEvents(
       case "tables_query_model_output":
       case "tables_query_output":
       case "tables_query_started":
-      case "websearch_params":
+      case "tool_approve_execution":
+      case "tool_notification":
       case "tool_params":
+      case "websearch_params":
         yield event;
         break;
 
@@ -1979,26 +2077,10 @@ export async function updateConversationRequestedGroupIds(
     ...requirementsToAdd.map((req) => sortBy(req.map(getModelId))),
   ];
 
-  // Hotfix: Postgres requires all subarrays to be of the same length
-  //
-  // since a requirement (subarray) is a set of groups that are linked with OR logic we can just
-  // repeat the last element of each requirement until all requirements have the maximal length.
-  const longestRequirement = allRequirements.reduce(
-    (max, req) => Math.max(max, req.length),
-    0
-  );
-  // for each requirement, repeatedly add the last id until array is of longest requirement length
-  const updatedRequirements = allRequirements.map((req) => {
-    while (req.length < longestRequirement) {
-      req.push(req[req.length - 1]);
-    }
-    return req;
-  });
-
   await ConversationResource.updateRequestedGroupIds(
     auth,
     conversation.sId,
-    updatedRequirements,
+    normalizeArrays(allRequirements),
     t
   );
 }

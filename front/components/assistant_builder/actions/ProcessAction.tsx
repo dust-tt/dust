@@ -1,61 +1,40 @@
 import {
-  Button,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
+  Checkbox,
+  classNames,
   Hoverable,
   IconButton,
   Input,
-  PlusIcon,
-  SparklesIcon,
-  Spinner,
   TextArea,
-  useSendNotification,
-  XMarkIcon,
 } from "@dust-tt/sparkle";
+import { ChevronDownIcon, ChevronUpIcon } from "lucide-react";
 import React, { useEffect, useState } from "react";
 
 import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/actions/configuration/AssistantBuilderDataSourceModal";
 import DataSourceSelectionSection from "@app/components/assistant_builder/actions/configuration/DataSourceSelectionSection";
+import { JsonSchemaConfigurationSection } from "@app/components/assistant_builder/actions/configuration/JsonSchemaConfigurationSection";
 import { TimeUnitDropdown } from "@app/components/assistant_builder/actions/TimeDropdown";
 import type {
   AssistantBuilderActionConfiguration,
   AssistantBuilderProcessConfiguration,
+  AssistantBuilderTimeFrame,
 } from "@app/components/assistant_builder/types";
-import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
-import type { ProcessSchemaPropertyType } from "@app/lib/actions/process";
-import type { Result, SpaceType, WorkspaceType } from "@app/types";
+import { isValidJsonSchema } from "@app/lib/utils/json_schemas";
+import type { Result } from "@app/types";
+import type { SpaceType, WorkspaceType } from "@app/types";
 import { Err, Ok } from "@app/types";
 
 export function hasErrorActionProcess(
   action: AssistantBuilderActionConfiguration
 ): string | null {
   const errorMessage =
-    "You must select at least one data source and generate a schema will all fields set.";
+    "You must select at least one data source and generate a valid schema";
   if (action.type !== "PROCESS") {
     return "Invalid action type.";
   }
-  if (action.configuration.schema.length === 0) {
+  if (!isValidJsonSchema(action.configuration._jsonSchemaString).isValid) {
     return errorMessage;
-  }
-  for (const prop of action.configuration.schema) {
-    if (!prop.name) {
-      return errorMessage;
-    }
-    if (!prop.description) {
-      return errorMessage;
-    }
-    if (
-      action.configuration.schema.filter((p) => p.name === prop.name).length > 1
-    ) {
-      return errorMessage;
-    }
   }
   if (Object.keys(action.configuration.dataSourceConfigurations).length === 0) {
-    return errorMessage;
-  }
-  if (!action.configuration.timeFrame.value) {
     return errorMessage;
   }
   if (
@@ -72,189 +51,6 @@ export function hasErrorActionProcess(
     return errorMessage;
   }
   return null;
-}
-
-function PropertiesFields({
-  properties,
-  readOnly,
-  onSetProperties,
-  onGenerateFromInstructions,
-}: {
-  properties: ProcessSchemaPropertyType[];
-  readOnly?: boolean;
-  onSetProperties: (properties: ProcessSchemaPropertyType[]) => void;
-  onGenerateFromInstructions: () => void;
-}) {
-  function handlePropertyChange(
-    index: number,
-    field: "name" | "description",
-    value: string
-  ) {
-    const newProperties = [...properties];
-    newProperties[index][field] = value;
-    onSetProperties(newProperties);
-  }
-
-  function handleAddProperty() {
-    const newProperties = [...properties];
-    newProperties.push({
-      name: "",
-      type: "string",
-      description: "",
-    });
-    onSetProperties(newProperties);
-  }
-
-  function handleTypeChange(
-    index: number,
-    value: "string" | "number" | "boolean"
-  ) {
-    const newProperties = [...properties];
-    newProperties[index].type = value;
-    onSetProperties(newProperties);
-  }
-
-  function handleRemoveProperty(index: number) {
-    const newProperties = [...properties];
-    newProperties.splice(index, 1);
-    onSetProperties(newProperties);
-  }
-
-  return (
-    <div className="flex flex-col gap-y-4">
-      {properties.length === 0 ? (
-        <EmptyCallToAction
-          icon={SparklesIcon}
-          label={"Generate from instructions"}
-          onClick={() => {
-            onGenerateFromInstructions();
-          }}
-        />
-      ) : (
-        <div className="mt-4 grid grid-cols-12 gap-x-2 gap-y-2">
-          <React.Fragment>
-            <div className="col-span-2">
-              <label className="block text-sm uppercase text-muted-foreground dark:text-muted-foreground-night">
-                Property
-              </label>
-            </div>
-            <div className="col-span-7">
-              <label className="block text-sm uppercase text-muted-foreground dark:text-muted-foreground-night">
-                Description
-              </label>
-            </div>
-            <div className="col-span-2">
-              <label className="block text-sm uppercase text-muted-foreground dark:text-muted-foreground-night">
-                Type
-              </label>
-            </div>
-            <div className="col-span-1"></div>
-          </React.Fragment>
-
-          {properties.map(
-            (
-              prop: { name: string; type: string; description: string },
-              index: number
-            ) => (
-              <React.Fragment key={index}>
-                <div className="col-span-2">
-                  <Input
-                    placeholder="Name"
-                    name={`name-${index}`}
-                    value={prop["name"]}
-                    onChange={(e) => {
-                      handlePropertyChange(index, "name", e.target.value);
-                    }}
-                    disabled={readOnly}
-                    message={
-                      prop["name"].length === 0
-                        ? "Name is required"
-                        : properties.find(
-                              (p, i) => p.name === prop.name && i !== index
-                            )
-                          ? "Name must be unique"
-                          : undefined
-                    }
-                    messageStatus="error"
-                  />
-                </div>
-
-                <div className="col-span-7">
-                  <Input
-                    placeholder="Description"
-                    name={`description-${index}`}
-                    value={prop["description"]}
-                    onChange={(e) => {
-                      handlePropertyChange(
-                        index,
-                        "description",
-                        e.target.value
-                      );
-                    }}
-                    disabled={readOnly}
-                    message={
-                      prop["description"].length === 0
-                        ? "Description is required"
-                        : undefined
-                    }
-                    messageStatus="error"
-                  />
-                </div>
-
-                <div className="col-span-2">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        isSelect
-                        label={prop["type"]}
-                        variant="ghost"
-                        size="sm"
-                      />
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                      {["string", "number", "boolean"].map((value, i) => (
-                        <DropdownMenuItem
-                          key={`${value}-${i}`}
-                          label={value}
-                          onClick={() => {
-                            handleTypeChange(
-                              index,
-                              value as "string" | "number" | "boolean"
-                            );
-                          }}
-                        />
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-
-                <div className="col-span-1 flex flex-row items-end pb-2">
-                  <IconButton
-                    icon={XMarkIcon}
-                    tooltip="Remove Property"
-                    variant="outline"
-                    onClick={async () => {
-                      handleRemoveProperty(index);
-                    }}
-                  />
-                </div>
-              </React.Fragment>
-            )
-          )}
-        </div>
-      )}
-      <div className="col-span-12">
-        <Button
-          label="Add a field"
-          size="sm"
-          variant="outline"
-          icon={PlusIcon}
-          onClick={handleAddProperty}
-          disabled={readOnly}
-        />
-      </div>
-    </div>
-  );
 }
 
 type ActionProcessProps = {
@@ -294,14 +90,29 @@ export function ActionProcess({
   )) {
   const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
   const [timeFrameError, setTimeFrameError] = useState<string | null>(null);
-  const [isGeneratingSchema, setIsGeneratingSchema] = useState(false);
-  const sendNotification = useSendNotification();
+  const [defaultTimeFrame, setDefaultTimeFrame] =
+    useState<AssistantBuilderTimeFrame>({
+      value: 1,
+      unit: "day",
+    });
+  const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
+  const toggleAdvancedSettings = () => {
+    setShowAdvancedSettings((prev) => !prev);
+  };
 
   useEffect(() => {
     if (actionConfiguration) {
-      if (!actionConfiguration.timeFrame.value) {
+      if (
+        actionConfiguration.timeFrame &&
+        !actionConfiguration.timeFrame.value
+      ) {
         setTimeFrameError("Timeframe must be a number");
       } else {
+        // Set the default time frame to the current time frame if it exists,
+        // so if the user unchecks the checkbox, it won't reset to initial value
+        if (actionConfiguration.timeFrame) {
+          setDefaultTimeFrame(actionConfiguration.timeFrame);
+        }
         setTimeFrameError(null);
       }
     }
@@ -310,55 +121,8 @@ export function ActionProcess({
   if (!actionConfiguration) {
     return null;
   }
-
-  const generateSchemaFromInstructions = async () => {
-    setEdited(true);
-    let fullInstructions = `${instructions}`;
-    if (description) {
-      fullInstructions += `\n\nTool description:\n${description}`;
-    }
-    if (instructions !== null) {
-      setIsGeneratingSchema(true);
-      try {
-        const res = await generateSchema({
-          owner,
-          instructions: fullInstructions,
-        });
-
-        if (res.isOk()) {
-          updateAction((previousAction) => ({
-            ...previousAction,
-            schema: res.value,
-          }));
-        } else {
-          sendNotification({
-            title: "Failed to generate schema.",
-            type: "error",
-            description: `An error occurred while generating the schema: ${res.error.message}`,
-          });
-        }
-      } catch (e) {
-        sendNotification({
-          title: "Failed to generate schema.",
-          type: "error",
-          description: `An error occurred while generating the schema. Please contact us if the error persists.`,
-        });
-      } finally {
-        setIsGeneratingSchema(false);
-      }
-    } else {
-      updateAction((previousAction) => ({
-        ...previousAction,
-        schema: [
-          {
-            name: "data",
-            type: "string" as const,
-            description: "Required data to follow instructions",
-          },
-        ],
-      }));
-    }
-  };
+  const timeFrame = actionConfiguration.timeFrame || defaultTimeFrame;
+  const timeFrameDisabled = !actionConfiguration.timeFrame;
 
   return (
     <>
@@ -433,83 +197,114 @@ export function ActionProcess({
           />
         </div>
       )}
-      <div className={"flex flex-row items-center gap-4 pb-4"}>
-        <div className="text-sm font-semibold text-foreground dark:text-foreground-night">
-          Process data from the last
-        </div>
-        <Input
-          type="text"
-          messageStatus={timeFrameError ? "error" : "default"}
-          value={actionConfiguration.timeFrame.value?.toString() || ""}
-          onChange={(e) => {
-            const value = parseInt(e.target.value, 10);
-            if (!isNaN(value) || !e.target.value) {
-              setEdited(true);
-              updateAction((previousAction) => ({
-                ...previousAction,
-                timeFrame: {
-                  value,
-                  unit: previousAction.timeFrame.unit,
-                },
-              }));
-            }
-          }}
-        />
-        <TimeUnitDropdown
-          timeFrame={actionConfiguration.timeFrame}
-          updateAction={updateAction}
-          onEdit={() => setEdited(true)}
-        />
-      </div>
-      <div className="flex flex-col">
-        <div className="flex flex-row items-start">
-          <div className="flex-grow pb-2 text-sm font-semibold text-foreground dark:text-foreground-night">
-            Schema
+
+      <div className="flex flex-col gap-4 pt-8">
+        <div className="-ml-3 flex flex-row items-center text-lg font-bold text-foreground dark:text-foreground-night">
+          <div className="flex items-center">
+            <IconButton
+              onClick={toggleAdvancedSettings}
+              icon={showAdvancedSettings ? ChevronUpIcon : ChevronDownIcon}
+              variant="highlight"
+            />
+            <span>Advanced Settings</span>
           </div>
-          {actionConfiguration.schema.length > 0 && !isGeneratingSchema && (
-            <div>
-              <Button
-                tooltip="Automatically re-generate the extraction schema based on Instructions"
-                label="Re-generate from Instructions"
-                variant="ghost"
-                icon={SparklesIcon}
-                size="xs"
-                disabled={isGeneratingSchema}
-                onClick={generateSchemaFromInstructions}
-              />
+        </div>
+      </div>
+
+      {showAdvancedSettings && (
+        <>
+          <div className="font-semibold text-muted-foreground dark:text-muted-foreground-night">
+            Time Range
+          </div>
+          <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+            By default, the time frame is determined automatically based on the
+            conversation context. Enable manual time frame selection when you
+            need to specify an exact range for data extraction.
+          </div>
+          <div className={"flex flex-row items-center gap-4 pb-4"}>
+            <Checkbox
+              checked={!!actionConfiguration.timeFrame}
+              onCheckedChange={(checked) => {
+                setEdited(true);
+                updateAction((previousAction) => ({
+                  ...previousAction,
+                  timeFrame: checked ? defaultTimeFrame : undefined,
+                }));
+              }}
+            />
+            <div
+              className={classNames(
+                "text-sm font-semibold",
+                timeFrameDisabled ? "text-slate-400" : "text-element-900"
+              )}
+            >
+              Process data from the last
             </div>
-          )}
-        </div>
-        {isGeneratingSchema ? (
-          <div className="flex items-center justify-center py-8">
-            <Spinner size="lg" />
+            <Input
+              type="text"
+              messageStatus={timeFrameError ? "error" : "default"}
+              value={
+                timeFrame.value && !isNaN(timeFrame.value)
+                  ? timeFrame.value.toString()
+                  : ""
+              }
+              onChange={(e) => {
+                const value = parseInt(e.target.value, 10);
+                if (!isNaN(value) || !e.target.value) {
+                  setEdited(true);
+                  updateAction((previousAction) => ({
+                    ...previousAction,
+                    timeFrame: {
+                      value,
+                      unit: timeFrame.unit,
+                    },
+                  }));
+                }
+              }}
+              disabled={timeFrameDisabled}
+            />
+            <TimeUnitDropdown
+              timeFrame={timeFrame}
+              updateAction={updateAction}
+              onEdit={() => setEdited(true)}
+              disabled={timeFrameDisabled}
+            />
           </div>
-        ) : (
-          <PropertiesFields
-            properties={actionConfiguration.schema}
-            onSetProperties={(schema: ProcessSchemaPropertyType[]) => {
-              setEdited(true);
+          <JsonSchemaConfigurationSection
+            instructions={instructions ?? ""}
+            description={description ?? ""}
+            initialSchema={
+              actionConfiguration?._jsonSchemaString ??
+              (actionConfiguration?.jsonSchema
+                ? JSON.stringify(actionConfiguration.jsonSchema, null, 2)
+                : null)
+            }
+            sectionConfigurationDescription="Optionally, provide a schema for the data to be extracted. If you do not specify a schema, the tool will determine the schema based on the conversation context."
+            setEdited={setEdited}
+            onConfigUpdate={({ _jsonSchemaString, jsonSchema }) =>
               updateAction((previousAction) => ({
                 ...previousAction,
-                schema,
-              }));
-            }}
-            readOnly={false}
-            onGenerateFromInstructions={generateSchemaFromInstructions}
+                _jsonSchemaString,
+                jsonSchema: jsonSchema ?? previousAction.jsonSchema,
+              }))
+            }
+            generateSchema={(instructions: string) =>
+              generateSchema({ owner, instructions })
+            }
           />
-        )}
-      </div>
+        </>
+      )}
     </>
   );
 }
 
-async function generateSchema({
+export async function generateSchema({
   owner,
   instructions,
 }: {
   owner: WorkspaceType;
   instructions: string;
-}): Promise<Result<ProcessSchemaPropertyType[], Error>> {
+}): Promise<Result<Record<string, unknown>, Error>> {
   const res = await fetch(
     `/api/w/${owner.sId}/assistant/builder/process/generate_schema`,
     {
@@ -525,5 +320,5 @@ async function generateSchema({
   if (!res.ok) {
     return new Err(new Error("Failed to generate schema"));
   }
-  return new Ok((await res.json()).schema || []);
+  return new Ok((await res.json()).schema || null);
 }

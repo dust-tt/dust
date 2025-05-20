@@ -1,4 +1,5 @@
 import {
+  BracesIcon,
   Button,
   ChatBubbleBottomCenterTextIcon,
   ClipboardIcon,
@@ -21,7 +22,7 @@ import { useURLSheet } from "@app/hooks/useURLSheet";
 import { useUpdateUserFavorite } from "@app/lib/swr/assistants";
 import { useUser } from "@app/lib/swr/user";
 import type { LightAgentConfigurationType, WorkspaceType } from "@app/types";
-import { isBuilder } from "@app/types";
+import { isAdmin } from "@app/types";
 
 interface AssistantDetailsButtonBarProps {
   agentConfiguration: LightAgentConfigurationType;
@@ -58,9 +59,7 @@ export function AssistantDetailsButtonBar({
     return <></>;
   }
 
-  const allowDeletion =
-    agentConfiguration.scope !== "global" &&
-    (isBuilder(owner) || agentConfiguration.scope !== "workspace");
+  const allowDeletion = agentConfiguration.canEdit || isAdmin(owner);
 
   function AssistantDetailsDropdownMenu() {
     return (
@@ -86,7 +85,7 @@ export function AssistantDetailsButtonBar({
                 e.stopPropagation();
                 await navigator.clipboard.writeText(agentConfiguration.sId);
               }}
-              icon={ClipboardIcon}
+              icon={BracesIcon}
             />
             {agentConfiguration.scope !== "global" && (
               <>
@@ -104,7 +103,7 @@ export function AssistantDetailsButtonBar({
                 />
                 {allowDeletion && (
                   <DropdownMenuItem
-                    label="Delete"
+                    label="Archive"
                     icon={TrashIcon}
                     onClick={() => {
                       setShowDeletionModal(true);
@@ -120,9 +119,7 @@ export function AssistantDetailsButtonBar({
     );
   }
 
-  const canEditAssistant =
-    // builders can all edit, non-builders can only edit personal/shared assistants
-    isBuilder(owner) || !(agentConfiguration.scope === "workspace");
+  const canEditAssistant = agentConfiguration.canEdit || isAdmin(owner);
 
   const isFavoriteDisabled =
     isAgentConfigurationValidating || isUpdatingFavorite;
@@ -168,11 +165,7 @@ export function AssistantDetailsButtonBar({
           onClick={(e) => !canEditAssistant && e.preventDefault()}
           href={`/w/${owner.sId}/builder/assistants/${
             agentConfiguration.sId
-          }?flow=${
-            agentConfiguration.scope
-              ? "workspace_assistants"
-              : "personal_assistants"
-          }`}
+          }?flow=workspace_assistants`}
         >
           <Button
             size="sm"

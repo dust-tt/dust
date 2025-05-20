@@ -16,6 +16,7 @@ import { deleteDataSourceDocument } from "@connectors/lib/data_sources";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
+import type { GongConfigurationResource } from "@connectors/resources/gong_resources";
 import {
   GongTranscriptResource,
   GongUserResource,
@@ -60,11 +61,14 @@ export async function gongSaveSyncSuccessActivity({
 export async function getTranscriptsMetadata({
   callIds,
   connector,
+  configuration,
 }: {
   callIds: string[];
   connector: ConnectorResource;
+  configuration: GongConfigurationResource;
 }): Promise<GongTranscriptMetadata[]> {
   const gongClient = await getGongClient(connector);
+  const { smartTrackersEnabled } = configuration;
 
   const metadata = [];
   let cursor = null;
@@ -72,6 +76,7 @@ export async function getTranscriptsMetadata({
     const { callsMetadata, nextPageCursor } = await gongClient.getCallsMetadata(
       {
         callIds,
+        smartTrackersEnabled,
       }
     );
     metadata.push(...callsMetadata);
@@ -116,16 +121,35 @@ export async function gongSyncTranscriptsActivity({
     return { nextPageCursor: null };
   }
 
+  const transcriptsInDb = await GongTranscriptResource.fetchByCallIds(
+    transcripts.map((t) => t.callId),
+    connector
+  );
+  const transcriptsInDbMap = new Map(transcriptsInDb.map((t) => [t.callId, t]));
+
+  let transcriptsToSync = transcripts;
+  if (!forceResync) {
+    transcriptsToSync = transcripts.filter(
+      (t) => !transcriptsInDbMap.has(t.callId)
+    );
+  }
+  if (transcriptsToSync.length === 0) {
+    return { nextPageCursor: null };
+  }
+
   const callsMetadata = await getTranscriptsMetadata({
-    callIds: transcripts.map((t) => t.callId),
+    callIds: transcriptsToSync.map((t) => t.callId),
     connector,
+    configuration,
   });
+  const callsMetadataMap = new Map(
+    callsMetadata.map((c) => [c.metaData.id, c])
+  );
+
   await concurrentExecutor(
-    transcripts,
+    transcriptsToSync,
     async (transcript) => {
-      const transcriptMetadata = callsMetadata.find(
-        (c) => c.metaData.id === transcript.callId
-      );
+      const transcriptMetadata = callsMetadataMap.get(transcript.callId);
       if (!transcriptMetadata) {
         logger.warn(
           { ...loggerArgs, callId: transcript.callId },

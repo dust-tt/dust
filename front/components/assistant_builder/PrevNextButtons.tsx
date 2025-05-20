@@ -5,13 +5,11 @@ import type { BuilderScreen } from "@app/components/assistant_builder/types";
 
 interface PrevNextButtonsProps {
   screen: BuilderScreen;
-  setScreen: (screen: BuilderScreen) => void;
   setCurrentTab: (tab: string) => void;
 }
 
 export function PrevNextButtons({
   screen,
-  setScreen,
   setCurrentTab,
 }: PrevNextButtonsProps) {
   return (
@@ -25,13 +23,12 @@ export function PrevNextButtons({
           data-gtm-location="assistantBuilder"
           onClick={() => {
             const newScreen = screen === "actions" ? "instructions" : "actions";
-            setScreen(newScreen);
             setCurrentTab(newScreen);
           }}
         />
       )}
       <div className="flex-grow" />
-      {screen !== "naming" && (
+      {screen !== "settings" && (
         <Button
           label="Next"
           size="md"
@@ -39,8 +36,8 @@ export function PrevNextButtons({
           data-gtm-label="nextButton"
           data-gtm-location="assistantBuilder"
           onClick={() => {
-            const newScreen = screen === "instructions" ? "actions" : "naming";
-            setScreen(newScreen);
+            const newScreen =
+              screen === "instructions" ? "actions" : "settings";
             setCurrentTab(newScreen);
           }}
         />

@@ -8,6 +8,7 @@ import type { TagType } from "@app/types/tag";
 import type { ModelId } from "../shared/model_id";
 import type { ModelIdType, ModelProviderIdType } from "./assistant";
 import type { AgentActionType, AgentMessageType } from "./conversation";
+import { UserType } from "@app/types/user";
 
 /**
  * Agent configuration
@@ -43,6 +44,8 @@ export const AGENT_CONFIGURATION_SCOPES = [
   "workspace",
   "published",
   "private",
+  "visible",
+  "hidden",
 ] as const;
 export type AgentConfigurationScope =
   (typeof AGENT_CONFIGURATION_SCOPES)[number];
@@ -59,10 +62,12 @@ export type AgentConfigurationScope =
  * - 'published': Retrieves all agents exclusively with a 'published' scope.
  * - 'global': Retrieves all agents exclusively with a 'global' scope.
  * - 'admin_internal': Grants access to all agents, including private ones.
+ * - 'manage': Retrieves all agents for the manage agents view (same as list, but including disabled agents).
  * - 'archived': Retrieves all agents that are archived. Only available to super
  *   users. Intended strictly for internal use with necessary superuser or admin
  *   authorization.
  */
+// TODO(agent-discovery) remove workspace, published, global
 export type AgentsGetViewType =
   | { agentIds: string[]; allVersions?: boolean }
   | "current_user"
@@ -72,6 +77,7 @@ export type AgentsGetViewType =
   | "published"
   | "global"
   | "admin_internal"
+  | "manage"
   | "archived"
   | "favorites";
 
@@ -93,6 +99,8 @@ export type AgentModelConfigurationType = {
   reasoningEffort?: AgentReasoningEffort;
   responseFormat?: string;
 };
+
+export type AgentFetchVariant = "light" | "full" | "extra_light";
 
 export type LightAgentConfigurationType = {
   id: ModelId;
@@ -120,6 +128,7 @@ export type LightAgentConfigurationType = {
 
   // `lastAuthors` is expensive to compute, so we only compute it when needed.
   lastAuthors?: AgentRecentAuthors;
+  editors?: UserType[];
   usage?: AgentUsageType;
   feedbacks?: { up: number; down: number };
 
@@ -139,6 +148,9 @@ export type LightAgentConfigurationType = {
   requestedGroupIds: string[][];
 
   reasoningEffort?: AgentReasoningEffort;
+
+  canRead: boolean;
+  canEdit: boolean;
 };
 
 export type AgentConfigurationType = LightAgentConfigurationType & {
@@ -161,8 +173,21 @@ export interface TemplateAgentConfigurationType {
   tags: TagType[];
 }
 
+export function isTemplateAgentConfiguration(
+  agentConfiguration:
+    | LightAgentConfigurationType
+    | TemplateAgentConfigurationType
+    | null
+): agentConfiguration is TemplateAgentConfigurationType {
+  return !!(
+    agentConfiguration &&
+    "isTemplate" in agentConfiguration &&
+    agentConfiguration.isTemplate === true
+  );
+}
+
 export const DEFAULT_MAX_STEPS_USE_PER_RUN = 8;
-export const MAX_STEPS_USE_PER_RUN_LIMIT = 12;
+export const MAX_STEPS_USE_PER_RUN_LIMIT = 24;
 
 /**
  * Agent events

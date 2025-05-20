@@ -1,10 +1,11 @@
 import { DustAPI } from "@dust-tt/client";
+
 import AuthService from "./authService.js";
 import TokenStorage from "./tokenStorage.js";
 
 let dustApiInstance: DustAPI | null = null;
 
-const getApiDomain = (region: string | null): string => {
+export const getApiDomain = (region: string | null): string => {
   const url = (() => {
     switch (region) {
       case "europe-west1":

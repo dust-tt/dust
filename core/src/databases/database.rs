@@ -114,9 +114,13 @@ pub async fn get_tables_schema(
                 .zip(schemas.iter())
                 .map(|(table, schema)| {
                     let table_id = table.table_id_for_dbml().replace("__DUST_DOT__", ".");
-                    schema
-                        .as_ref()
-                        .map(|s| s.render_dbml(&table_id, table.description()))
+                    schema.as_ref().map(|s| {
+                        s.render_dbml(
+                            &table_id,
+                            table.description(),
+                            remote_db.should_use_column_description(table),
+                        )
+                    })
                 })
                 .collect::<Vec<_>>();
 

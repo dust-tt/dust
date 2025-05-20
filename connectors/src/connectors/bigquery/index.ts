@@ -82,7 +82,9 @@ export class BigQueryConnectorManager extends BaseConnectorManager<null> {
     }
 
     // We can create the connector.
-    const configBlob = {};
+    const configBlob = {
+      useMetadataForDBML: false,
+    };
     const connector = await ConnectorResource.makeNew(
       "bigquery",
       {
@@ -380,12 +382,86 @@ export class BigQueryConnectorManager extends BaseConnectorManager<null> {
     return this.resume();
   }
 
-  async setConfigurationKey(): Promise<Result<void, Error>> {
-    throw new Error("Method setConfigurationKey not implemented.");
+  async setConfigurationKey({
+    configKey,
+    configValue,
+  }: {
+    configKey: "useMetadataForDBML";
+    configValue: string;
+  }): Promise<Result<void, Error>> {
+    const connector = await ConnectorResource.fetchById(this.connectorId);
+    if (!connector) {
+      return new Err(
+        new Error(`Connector not found (connectorId: ${this.connectorId})`)
+      );
+    }
+
+    switch (configKey) {
+      case "useMetadataForDBML": {
+        const connectorConfig = await BigQueryConfigurationModel.findOne({
+          where: {
+            connectorId: connector.id,
+          },
+        });
+        if (!connectorConfig) {
+          return new Err(
+            new Error(
+              `Connector configuration not found (connectorId: ${connector.id})`
+            )
+          );
+        }
+
+        await connectorConfig.update({
+          useMetadataForDBML: configValue === "true",
+        });
+
+        // Clean lastUpsertedAt for all remote tables to force a full sync with the appropriate tags
+        await RemoteTableModel.update(
+          {
+            lastUpsertedAt: null,
+          },
+          { where: { connectorId: connector.id } }
+        );
+
+        await launchBigQuerySyncWorkflow(connector.id);
+
+        return new Ok(void 0);
+      }
+    }
   }
 
-  async getConfigurationKey(): Promise<Result<string | null, Error>> {
-    throw new Error("Method getConfigurationKey not implemented.");
+  async getConfigurationKey({
+    configKey,
+  }: {
+    configKey: "useMetadataForDBML";
+  }): Promise<Result<string | null, Error>> {
+    const connector = await ConnectorResource.fetchById(this.connectorId);
+    if (!connector) {
+      return new Err(
+        new Error(`Connector not found (connectorId: ${this.connectorId})`)
+      );
+    }
+
+    switch (configKey) {
+      case "useMetadataForDBML": {
+        const connectorConfig = await BigQueryConfigurationModel.findOne({
+          where: {
+            connectorId: connector.id,
+          },
+        });
+        if (!connectorConfig) {
+          return new Err(
+            new Error(
+              `Connector configuration not found (connectorId: ${connector.id})`
+            )
+          );
+        }
+
+        return new Ok(connectorConfig.useMetadataForDBML.toString());
+      }
+      default:
+        return new Err(new Error(`Invalid config key ${configKey}`));
+    }
   }
 
   async garbageCollect(): Promise<Result<string, Error>> {

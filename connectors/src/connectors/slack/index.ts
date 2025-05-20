@@ -44,6 +44,7 @@ import type { DataSourceConfig } from "@connectors/types";
 import {
   INTERNAL_MIME_TYPES,
   isSlackAutoReadPatterns,
+  normalizeError,
   safeParseJSON,
 } from "@connectors/types";
 
@@ -91,6 +92,8 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
         botEnabled: configuration.botEnabled,
         slackTeamId: teamInfo.team.id,
         whitelistedDomains: configuration.whitelistedDomains,
+        restrictedSpaceAgentsEnabled:
+          configuration.restrictedSpaceAgentsEnabled ?? true,
       }
     );
 
@@ -433,7 +436,7 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
           )
         );
       }
-      // Unanhdled error, throwing to get a 500.
+      // Unhandled error, throwing to get a 500.
       throw e;
     }
   }
@@ -570,7 +573,7 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
         return new Err(workflowRes.error);
       }
     } catch (e) {
-      return new Err(e as Error);
+      return new Err(normalizeError(e));
     }
 
     return new Ok(undefined);
@@ -634,6 +637,15 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
         return slackConfig.setAutoReadChannelPatterns(autoReadChannelPatterns);
       }
 
+      case "restrictedSpaceAgentsEnabled": {
+        const enabled = configValue === "true";
+        await slackConfig.model.update(
+          { restrictedSpaceAgentsEnabled: enabled },
+          { where: { id: slackConfig.id } }
+        );
+        return new Ok(undefined);
+      }
+
       default: {
         return new Err(new Error(`Invalid config key ${configKey}`));
       }
@@ -667,6 +679,12 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
         );
 
         return autoReadChannelPatterns;
+      }
+
+      case "restrictedSpaceAgentsEnabled": {
+        const restrictedSpaceAgentsEnabled =
+          await getRestrictedSpaceAgentsEnabled(this.connectorId);
+        return restrictedSpaceAgentsEnabled;
       }
 
       default:
@@ -785,4 +803,20 @@ export async function getAutoReadChannelPatterns(
   }
 
   return new Ok(JSON.stringify(slackConfiguration.autoReadChannelPatterns));
+}
+
+export async function getRestrictedSpaceAgentsEnabled(
+  connectorId: ModelId
+): Promise<Result<string | null, Error>> {
+  const slackConfiguration =
+    await SlackConfigurationResource.fetchByConnectorId(connectorId);
+  if (!slackConfiguration) {
+    return new Err(
+      new Error(
+        `Failed to find a Slack configuration for connector ${connectorId}`
+      )
+    );
+  }
+
+  return new Ok(slackConfiguration.restrictedSpaceAgentsEnabled.toString());
 }

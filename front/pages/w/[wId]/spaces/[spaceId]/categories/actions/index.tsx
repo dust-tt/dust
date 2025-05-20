@@ -5,6 +5,7 @@ import { SpaceActionsList } from "@app/components/spaces/SpaceActionsList";
 import type { SpaceLayoutPageProps } from "@app/components/spaces/SpaceLayout";
 import { SpaceLayout } from "@app/components/spaces/SpaceLayout";
 import { SystemSpaceActionsList } from "@app/components/spaces/SystemSpaceActionsList";
+import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -30,7 +31,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     };
   }
 
-  await MCPServerViewResource.ensureAllDefaultActionsAreCreated(auth);
+  await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
 
   const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
   const space = await SpaceResource.fetchById(auth, spaceId);
@@ -72,5 +73,9 @@ export default function Space({
 }
 
 Space.getLayout = (page: ReactElement, pageProps: any) => {
-  return <SpaceLayout pageProps={pageProps}>{page}</SpaceLayout>;
+  return (
+    <AppRootLayout>
+      <SpaceLayout pageProps={pageProps}>{page}</SpaceLayout>
+    </AppRootLayout>
+  );
 };

@@ -200,12 +200,6 @@ export function ConfigureLabsConnectionModal({
           ? `${connection.label} configuration saved successfully.`
           : "Your settings have been saved successfully.",
       });
-    } else {
-      sendNotification({
-        type: "error",
-        title: "Failed to save",
-        description: "Could not save your settings. Please try again.",
-      });
     }
   };
 

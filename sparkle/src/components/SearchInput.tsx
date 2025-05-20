@@ -208,7 +208,7 @@ function BaseSearchInputWithPopover<T>(
       </PopoverTrigger>
       <PopoverContent
         className={cn(
-          "s-w-[--radix-popover-trigger-width] s-rounded-lg s-border s-bg-background s-shadow-md dark:s-bg-background-night",
+          "s-max-w-[--radix-popover-trigger-width] s-rounded-lg s-border s-bg-background s-shadow-md dark:s-bg-background-night",
           contentClassName
         )}
         sideOffset={0}
@@ -222,7 +222,7 @@ function BaseSearchInputWithPopover<T>(
         mountPortalContainer={mountPortalContainer}
       >
         <div className="s-flex s-flex-col">
-          {items.length > 0 && (
+          {items.length > 0 && (displayItemCount || onSelectAll) && (
             <div className="s-flex s-items-center s-justify-between s-p-2 s-text-sm s-text-gray-500">
               <div>
                 {displayItemCount && (

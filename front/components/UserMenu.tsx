@@ -1,6 +1,7 @@
 import {
   Avatar,
   ChevronDownIcon,
+  cn,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -13,13 +14,13 @@ import {
   DropdownMenuTrigger,
   Icon,
   LightbulbIcon,
-  LightModeIcon,
   LogoutIcon,
+  ShapesIcon,
   StarIcon,
+  TestTubeIcon,
   UserIcon,
+  useSendNotification,
 } from "@dust-tt/sparkle";
-import { useSendNotification } from "@dust-tt/sparkle";
-import { BugIcon, TestTubeIcon } from "lucide-react";
 import { useRouter } from "next/router";
 import { useMemo } from "react";
 
@@ -67,8 +68,6 @@ export function UserMenu({
     [owner, sendNotification, user, featureFlags]
   );
 
-  const theme = localStorage.getItem("theme") || "light";
-
   // Check if user has multiple workspaces
   const hasMultipleWorkspaces = useMemo(() => {
     return (
@@ -79,7 +78,7 @@ export function UserMenu({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger>
-        <div className="flex items-center gap-2">
+        <div className="group flex max-w-[200px] cursor-pointer items-center gap-2">
           <span className="sr-only">Open user menu</span>
           <Avatar
             size="sm"
@@ -88,120 +87,32 @@ export function UserMenu({
                 ? user.image
                 : "https://gravatar.com/avatar/anonymous?d=mp"
             }
-            onClick={() => {
-              "clickable";
-            }}
+            clickable
           />
-          <div className="flex flex-col items-start pr-4">
-            <span className="text-sm font-medium">{user.firstName}</span>
-            <span className="text-sm">{owner.name}</span>
+          <div className="flex flex-col items-start">
+            <span
+              className={cn(
+                "heading-sm transition-colors duration-200",
+                "text-foreground group-hover:text-primary-600 group-active:text-primary-950 dark:text-foreground-night dark:group-hover:text-muted-foreground-night dark:group-active:text-primary-700"
+              )}
+            >
+              {user.firstName}
+            </span>
+            <span className="-mt-1 text-sm text-muted-foreground dark:text-muted-foreground-night">
+              {owner.name}
+            </span>
           </div>
-          <Icon visual={ChevronDownIcon} />
+          <Icon
+            visual={ChevronDownIcon}
+            className="text-muted-foreground group-hover:text-primary-400 group-active:text-primary-950 dark:text-muted-foreground-night dark:group-hover:text-foreground-night dark:group-active:text-primary-700"
+          />
         </div>
       </DropdownMenuTrigger>
 
       <DropdownMenuContent>
-        <DropdownMenuLabel label="Beta" />
-        <DropdownMenuItem
-          label="Exploratory features"
-          icon={TestTubeIcon}
-          href={`/w/${owner.sId}/labs`}
-        />
-
-        {showDebugTools(featureFlags) && (
-          <>
-            <DropdownMenuLabel label="Dev Tools" />
-            {router.route === "/w/[wId]/assistant/[cId]" && (
-              <DropdownMenuItem
-                label="Debug conversation"
-                onClick={() => {
-                  const regexp = new RegExp(`/w/([^/]+)/assistant/([^/]+)`);
-                  const match = window.location.href.match(regexp);
-                  if (match) {
-                    void router.push(
-                      `/poke/${match[1]}/conversations/${match[2]}`
-                    );
-                  }
-                }}
-                icon={BugIcon}
-              />
-            )}
-            {!isOnlyAdmin(owner) && (
-              <DropdownMenuItem
-                label="Become Admin"
-                onClick={() => forceRoleUpdate("admin")}
-                icon={StarIcon}
-              />
-            )}
-            {!isOnlyBuilder(owner) && (
-              <DropdownMenuItem
-                label="Become Builder"
-                onClick={() => forceRoleUpdate("builder")}
-                icon={LightbulbIcon}
-              />
-            )}
-            {!isOnlyUser(owner) && (
-              <DropdownMenuItem
-                label="Become User"
-                onClick={() => forceRoleUpdate("user")}
-                icon={UserIcon}
-              />
-            )}
-          </>
-        )}
-
-        <DropdownMenuLabel label="Preferences" />
-        <DropdownMenuSub>
-          <DropdownMenuSubTrigger label="Theme" icon={LightModeIcon} />
-
-          <DropdownMenuSubContent>
-            <DropdownMenuRadioGroup value={theme}>
-              <DropdownMenuRadioItem
-                value="light"
-                label="Light"
-                onClick={() => {
-                  localStorage.setItem("theme", "light");
-                  window.location.reload();
-                }}
-              />
-              <DropdownMenuRadioItem
-                value="dark"
-                label="Dark"
-                onClick={() => {
-                  localStorage.setItem("theme", "dark");
-                  window.location.reload();
-                }}
-              />
-              <DropdownMenuRadioItem
-                value="system"
-                label="System"
-                onClick={() => {
-                  localStorage.setItem("theme", "system");
-                  window.location.reload();
-                }}
-              />
-            </DropdownMenuRadioGroup>
-          </DropdownMenuSubContent>
-        </DropdownMenuSub>
-
-        <DropdownMenuLabel label="Account" />
-        <DropdownMenuItem
-          label="Profile"
-          icon={UserIcon}
-          href={`/w/${owner.sId}/me`}
-        />
-
-        <DropdownMenuItem
-          onClick={() => {
-            void router.push("/api/auth/logout");
-          }}
-          icon={LogoutIcon}
-          label="Sign&nbsp;out"
-        />
-
         {hasMultipleWorkspaces && (
           <>
-            <DropdownMenuLabel label="Workspaces" />
+            <DropdownMenuLabel label="Workspace" />
             <DropdownMenuRadioGroup value={owner.name}>
               {"workspaces" in user &&
                 user.workspaces.map((w) => (
@@ -223,6 +134,75 @@ export function UserMenu({
                   </DropdownMenuRadioItem>
                 ))}
             </DropdownMenuRadioGroup>
+          </>
+        )}
+
+        <DropdownMenuLabel label="Beta" />
+        <DropdownMenuItem
+          label="Exploratory features"
+          icon={TestTubeIcon}
+          href={`/w/${owner.sId}/labs`}
+        />
+
+        <DropdownMenuLabel label="Account" />
+        <DropdownMenuItem
+          label="Profile"
+          icon={UserIcon}
+          href={`/w/${owner.sId}/me`}
+        />
+
+        <DropdownMenuItem
+          onClick={() => {
+            window.location.href = "/api/auth/logout";
+          }}
+          icon={LogoutIcon}
+          label="Sign&nbsp;out"
+        />
+
+        {showDebugTools(featureFlags) && (
+          <>
+            <DropdownMenuLabel label="Advanced" />
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger label="Dev Tools" icon={ShapesIcon} />
+              <DropdownMenuSubContent>
+                {router.route === "/w/[wId]/assistant/[cId]" && (
+                  <DropdownMenuItem
+                    label="Debug conversation"
+                    onClick={() => {
+                      const regexp = new RegExp(`/w/([^/]+)/assistant/([^/]+)`);
+                      const match = window.location.href.match(regexp);
+                      if (match) {
+                        void router.push(
+                          `/poke/${match[1]}/conversations/${match[2]}`
+                        );
+                      }
+                    }}
+                    icon={ShapesIcon}
+                  />
+                )}
+                {!isOnlyAdmin(owner) && (
+                  <DropdownMenuItem
+                    label="Become Admin"
+                    onClick={() => forceRoleUpdate("admin")}
+                    icon={StarIcon}
+                  />
+                )}
+                {!isOnlyBuilder(owner) && (
+                  <DropdownMenuItem
+                    label="Become Builder"
+                    onClick={() => forceRoleUpdate("builder")}
+                    icon={LightbulbIcon}
+                  />
+                )}
+                {!isOnlyUser(owner) && (
+                  <DropdownMenuItem
+                    label="Become User"
+                    onClick={() => forceRoleUpdate("user")}
+                    icon={UserIcon}
+                  />
+                )}
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
           </>
         )}
       </DropdownMenuContent>

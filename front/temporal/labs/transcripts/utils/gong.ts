@@ -3,14 +3,13 @@ import { getDataSources } from "@app/lib/api/data_sources";
 import type { Authenticator } from "@app/lib/auth";
 import type { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import type { Logger } from "@app/logger/logger";
-import type { ConnectorType } from "@app/types";
+import type { InternalConnectorType } from "@app/types";
 import { ConnectorsAPI, getOAuthConnectionAccessToken } from "@app/types";
 
 const getGongAccessToken = async (connectionId: string, logger: Logger) => {
   const tokRes = await getOAuthConnectionAccessToken({
     config: config.getOAuthAPIConfig(),
     logger,
-    provider: "gong",
     connectionId: connectionId,
   });
   if (tokRes.isErr()) {
@@ -30,7 +29,7 @@ const getGongAccessToken = async (connectionId: string, logger: Logger) => {
 const getGongConnectorFromAuth = async (
   auth: Authenticator,
   localLogger: Logger
-): Promise<ConnectorType | null> => {
+): Promise<InternalConnectorType | null> => {
   const allDataSources = await getDataSources(auth);
 
   const dataSource = allDataSources.find(
@@ -157,8 +156,10 @@ export async function retrieveGongTranscripts(
       continue;
     }
 
-    const history =
-      await transcriptsConfiguration.fetchHistoryForFileId(fileId);
+    const history = await transcriptsConfiguration.fetchHistoryForFileId(
+      auth,
+      fileId
+    );
     if (history) {
       localLogger.info(
         { fileId },

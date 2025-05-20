@@ -3,6 +3,7 @@ import type { Fetcher, KeyedMutator, SWRConfiguration } from "swr";
 
 import type { CursorPaginationParams } from "@app/lib/api/pagination";
 import {
+  emptyArray,
   fetcher,
   fetcherMultiple,
   fetcherWithBody,
@@ -42,7 +43,7 @@ export function useDataSourceViews(
   );
 
   return {
-    dataSourceViews: useMemo(() => (data ? data.dataSourceViews : []), [data]),
+    dataSourceViews: data?.dataSourceViews ?? emptyArray(),
     isDataSourceViewsLoading: disabled ? false : !error && !data,
     isDataSourceViewsError: disabled ? false : error,
     mutateDataSourceViews: mutate,
@@ -175,7 +176,7 @@ export function useDataSourceViewContentNodes({
     isNodesValidating: isValidating,
     mutate,
     mutateRegardlessOfQueryParams,
-    nodes: useMemo(() => (data ? data.nodes : []), [data]),
+    nodes: data?.nodes ?? emptyArray(),
     totalNodesCount: data ? data.total : 0,
     totalNodesCountIsAccurate: data ? data.totalIsAccurate : true,
     nextPageCursor: data?.nextPageCursor || null,
@@ -249,7 +250,7 @@ export function useDataSourceViewSearchTags({
   );
 
   return {
-    tags: useMemo(() => data?.tags || [], [data]),
+    tags: data?.tags ?? emptyArray(),
     isLoading,
     isError: !!error,
     mutate,

@@ -88,6 +88,8 @@ async function handler(
         message,
         content,
         mentions,
+        // For now we never skip tools when interacting with agents from the web client.
+        skipToolsValidation: false,
       });
       if (editedMessageRes.isErr()) {
         return apiError(req, res, editedMessageRes.error);

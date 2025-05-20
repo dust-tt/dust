@@ -1,6 +1,7 @@
 import { faker } from "@faker-js/faker";
 import type { Transaction } from "sequelize";
 
+import { GroupResource } from "@app/lib/resources/group_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { WorkspaceType } from "@app/types";
 
@@ -30,13 +31,23 @@ export class SpaceFactory {
   }
 
   static async regular(workspace: WorkspaceType, t: Transaction) {
+    const name = "space " + faker.string.alphanumeric(8);
+    const group = await GroupResource.makeNew(
+      {
+        name: `Group for space ${name}`,
+        workspaceId: workspace.id,
+        kind: "regular",
+      },
+      { transaction: t }
+    );
+
     return SpaceResource.makeNew(
       {
-        name: "space " + faker.string.alphanumeric(8),
+        name,
         kind: "regular",
         workspaceId: workspace.id,
       },
-      [], // TODO: Add groups
+      [group],
       t
     );
   }

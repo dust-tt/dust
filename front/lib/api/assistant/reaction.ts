@@ -32,6 +32,7 @@ export async function getMessageReactions(
 
   const messages = await Message.findAll({
     where: {
+      workspaceId: owner.id,
       conversationId: conversation.id,
     },
     attributes: ["sId"],
@@ -111,6 +112,7 @@ export async function createMessageReaction(
     where: {
       sId: messageId,
       conversationId: conversation.id,
+      workspaceId: owner.id,
     },
   });
 
@@ -161,6 +163,7 @@ export async function deleteMessageReaction(
     where: {
       sId: messageId,
       conversationId: conversation.id,
+      workspaceId: owner.id,
     },
   });
 

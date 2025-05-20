@@ -28,6 +28,7 @@ export class Plan extends BaseModel<Plan> {
   declare maxMessages: number;
   declare maxMessagesTimeframe: MaxMessagesTimeframeType;
   declare maxUsersInWorkspace: number;
+  declare maxImagesPerWeek: number;
   declare maxVaultsInWorkspace: number;
   declare isSlackbotAllowed: boolean;
   declare isManagedConfluenceAllowed: boolean;
@@ -79,6 +80,11 @@ Plan.init(
     maxMessagesTimeframe: {
       type: DataTypes.ENUM("day", "lifetime"),
       allowNull: false,
+    },
+    maxImagesPerWeek: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
     },
     maxUsersInWorkspace: {
       type: DataTypes.INTEGER,
@@ -224,6 +230,7 @@ Subscription.init(
     indexes: [
       { unique: true, fields: ["sId"] },
       { fields: ["workspaceId", "status"] },
+      { fields: ["workspaceId", "status", "planId"] },
     ],
   }
 );

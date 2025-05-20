@@ -1,4 +1,4 @@
-import type { OAuthConnectionType, OAuthProvider } from "../../oauth/lib";
+import type { OAuthConnectionType } from "../../oauth/lib";
 import type { OAuthAPIError } from "../../oauth/oauth_api";
 import { OAuthAPI } from "../../oauth/oauth_api";
 import type { LoggerInterface } from "../../shared/logger";
@@ -21,12 +21,10 @@ const CACHE = new Map<
 export async function getOAuthConnectionAccessToken({
   config,
   logger,
-  provider,
   connectionId,
 }: {
   config: { url: string; apiKey: string | null };
   logger: LoggerInterface;
-  provider: OAuthProvider;
   connectionId: string;
 }): Promise<
   Result<
@@ -46,7 +44,6 @@ export async function getOAuthConnectionAccessToken({
   }
 
   const res = await new OAuthAPI(config, logger).getAccessToken({
-    provider,
     connectionId,
   });
 

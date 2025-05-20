@@ -1,13 +1,18 @@
 import { Op } from "sequelize";
 
 import type { DustAppRunConfigurationType } from "@app/lib/actions/dust_app_run";
+import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { UnsavedAgentActionConfigurationType } from "@app/lib/actions/types/agent";
-import { isDustAppRunConfiguration } from "@app/lib/actions/types/guards";
+import {
+  isDustAppRunConfiguration,
+  isServerSideMCPServerConfiguration,
+} from "@app/lib/actions/types/guards";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { GroupResource } from "@app/lib/resources/group_resource";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type {
   CombinedResourcePermissions,
   ContentFragmentInputWithContentNode,
@@ -45,7 +50,9 @@ export function getDataSourceViewIdsFromActions(
     (action) =>
       action.type === "retrieval_configuration" ||
       action.type === "process_configuration" ||
-      action.type === "tables_query_configuration"
+      action.type === "tables_query_configuration" ||
+      (action.type === "mcp_server_configuration" &&
+        isServerSideMCPServerConfiguration(action))
   );
 
   return removeNulls(
@@ -59,6 +66,19 @@ export function getDataSourceViewIdsFromActions(
         );
       } else if (action.type === "tables_query_configuration") {
         return action.tables.map((table) => table.dataSourceViewId);
+      } else if (
+        action.type === "mcp_server_configuration" &&
+        isServerSideMCPServerConfiguration(action)
+      ) {
+        if (action.dataSources) {
+          return action.dataSources.map(
+            (dataSource) => dataSource.dataSourceViewId
+          );
+        } else if (action.tables) {
+          return action.tables.map((table) => table.dataSourceViewId);
+        } else {
+          return [];
+        }
       }
       return [];
     })
@@ -111,6 +131,26 @@ export async function getAgentConfigurationGroupIdsFromActions(
       spacePermissions.set(spaceId, new Set());
     }
     const groups = groupsFromRequestedPermissions(app.requestedPermissions());
+    groups.forEach((g) => spacePermissions.get(spaceId)!.add(g));
+  }
+
+  // Collect MCPServerView permissions by space.
+  const mcpServerViews = await MCPServerViewResource.fetchByIds(
+    auth,
+    actions
+      .filter((action) => isServerSideMCPServerConfiguration(action))
+      .map(
+        (action) =>
+          (action as ServerSideMCPServerConfigurationType).mcpServerViewId
+      )
+  );
+
+  for (const view of mcpServerViews) {
+    const { sId: spaceId } = view.space;
+    if (!spacePermissions.has(spaceId)) {
+      spacePermissions.set(spaceId, new Set());
+    }
+    const groups = groupsFromRequestedPermissions(view.requestedPermissions());
     groups.forEach((g) => spacePermissions.get(spaceId)!.add(g));
   }
 

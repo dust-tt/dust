@@ -4,6 +4,7 @@ const sdkAckLabel = "sdk-ack";
 const migrationAckLabel = "migration-ack";
 const documentationAckLabel = "documentation-ack";
 const auth0UpdateLabelAck = "auth0-update-ack";
+const rawSqlAckLabel = "raw-sql-ack";
 
 const hasLabel = (label: string) => {
   return danger.github.issue.labels.some((l) => l.name === label);
@@ -115,7 +116,61 @@ function warnDocumentationAck(documentationAckLabel: string) {
   );
 }
 
-function checkDiffFiles() {
+function checkAppsRegistry() {
+  warn(
+    `File \`front/lib/registry.ts\` has been modified.
+    Please check [Runbook: Update Assistant dust-apps](https://www.notion.so/dust-tt/Runbook-Update-Assistant-dust-apps-18c28599d94180d78dabe92f445157a8)
+    `
+  );
+}
+
+/**
+ * Check if added lines have raw SQL
+ */
+async function checkRawSqlRegistry(filePaths: string[]) {
+  const sqlPatterns = [
+    /\b(SELECT|SELECT\s+DISTINCT)\s+.+?\s+FROM\s+[^\s;]+(WHERE|GROUP BY|HAVING|ORDER BY|LIMIT)?/i,
+    /\bINSERT\s+INTO\s+[^\s;]+\s+(\([^)]+\)\s+)?VALUES\s*\(/i,
+    /\bUPDATE\s+[^\s;]+\s+SET\s+[^\s;]+(WHERE|RETURNING)?/i,
+    /\bDELETE\s+FROM\s+[^\s;]+(WHERE|RETURNING)?/i,
+  ];
+
+  const filesWithRawSql: string[] = [];
+
+  // Check each file for raw SQL
+  await Promise.all(
+    filePaths.map(async (file) => {
+      try {
+        const content = await danger.git.diffForFile(file);
+
+        if (content !== null) {
+          // Check if the file contains raw SQL
+          if (sqlPatterns.some((pattern) => pattern.test(content.added))) {
+            filesWithRawSql.push(file);
+          }
+        }
+      } catch (error) {
+        console.error(`Error checking file ${file}:`, error);
+      }
+    })
+  );
+
+  if (filesWithRawSql.length > 0) {
+    if (hasLabel(rawSqlAckLabel)) {
+      for (const file of filesWithRawSql) {
+        warn(`File "${file}" has been modified and contains raw sql code.`);
+      }
+    } else {
+      for (const file of filesWithRawSql) {
+        fail(
+          `File "${file}" has been modified and contains raw sql code. Please add "${rawSqlAckLabel}" label and verify that those query cannot be made without Sequelize Model.`
+        );
+      }
+    }
+  }
+}
+
+async function checkDiffFiles() {
   const diffFiles = danger.git.modified_files
     .concat(danger.git.created_files)
     .concat(danger.git.deleted_files);
@@ -161,6 +216,22 @@ function checkDiffFiles() {
   if (modifiedSdksFiles.length > 0) {
     checkSDKLabel();
   }
+
+  // dust-apps registry
+  const modifiedAppsRegistry = diffFiles.filter((path) => {
+    return path === "front/lib/registry.ts";
+  });
+
+  if (modifiedAppsRegistry.length > 0) {
+    checkAppsRegistry();
+  }
+
+  const modifiedFrontFiles = diffFiles.filter((path) => {
+    return path.startsWith("front/lib/");
+  });
+  if (modifiedFrontFiles.length > 0) {
+    await checkRawSqlRegistry(modifiedFrontFiles);
+  }
 }
 
-checkDiffFiles();
+void checkDiffFiles();

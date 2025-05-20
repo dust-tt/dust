@@ -13,7 +13,7 @@ import {
   contentNodeMentionDirective,
 } from "@app/components/markdown/ContentNodeMentionBlock";
 import {
-  MentionBlock,
+  getMentionPlugin,
   mentionDirective,
 } from "@app/components/markdown/MentionBlock";
 import type { UserMessageType, WorkspaceType } from "@app/types";
@@ -36,10 +36,10 @@ export function UserMessage({
   const additionalMarkdownComponents: Components = useMemo(
     () => ({
       sup: CiteBlock,
-      mention: MentionBlock,
+      mention: getMentionPlugin(owner),
       content_node_mention: ContentNodeMentionBlock,
     }),
-    []
+    [owner]
   );
 
   const additionalMarkdownPlugins: PluggableList = useMemo(
@@ -48,20 +48,24 @@ export function UserMessage({
   );
 
   return (
-    <ConversationMessage
-      pictureUrl={message.user?.image || message.context.profilePictureUrl}
-      name={message.context.fullName ?? undefined}
-      renderName={(name) => <div className="heading-base">{name}</div>}
-      type="user"
-      citations={citations}
-    >
-      <Markdown
-        content={message.content}
-        isStreaming={false}
-        isLastMessage={isLastMessage}
-        additionalMarkdownComponents={additionalMarkdownComponents}
-        additionalMarkdownPlugins={additionalMarkdownPlugins}
-      />
+    <div className="flex flex-grow flex-col">
+      <div className="max-w-full self-end">
+        <ConversationMessage
+          pictureUrl={message.user?.image || message.context.profilePictureUrl}
+          name={message.context.fullName ?? undefined}
+          renderName={(name) => <div className="heading-base">{name}</div>}
+          type="user"
+          citations={citations}
+        >
+          <Markdown
+            content={message.content}
+            isStreaming={false}
+            isLastMessage={isLastMessage}
+            additionalMarkdownComponents={additionalMarkdownComponents}
+            additionalMarkdownPlugins={additionalMarkdownPlugins}
+          />
+        </ConversationMessage>
+      </div>
       {message.mentions.length === 0 && isLastMessage && (
         <AgentSuggestion
           conversationId={conversationId}
@@ -69,6 +73,6 @@ export function UserMessage({
           userMessage={message}
         />
       )}
-    </ConversationMessage>
+    </div>
   );
 }

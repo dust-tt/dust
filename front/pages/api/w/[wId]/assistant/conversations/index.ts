@@ -2,7 +2,7 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { validateMCPServerAccess } from "@app/lib/api/actions/mcp/local_registry";
+import { validateMCPServerAccess } from "@app/lib/api/actions/mcp/client_side_registry";
 import {
   createConversation,
   getConversation,
@@ -74,12 +74,11 @@ async function handler(
       const { title, visibility, message, contentFragments } =
         bodyValidation.right;
 
-      if (message?.context.localMCPServerIds) {
+      if (message?.context.clientSideMCPServerIds) {
         const hasServerAccess = await concurrentExecutor(
-          message.context.localMCPServerIds,
+          message.context.clientSideMCPServerIds,
           async (serverId) =>
             validateMCPServerAccess(auth, {
-              workspaceId: auth.getNonNullableWorkspace().sId,
               serverId,
             }),
           { concurrency: 10 }
@@ -177,8 +176,11 @@ async function handler(
               email: user.email,
               profilePictureUrl: message.context.profilePictureUrl,
               origin: "web",
-              localMCPServerIds: message.context.localMCPServerIds ?? [],
+              clientSideMCPServerIds:
+                message.context.clientSideMCPServerIds ?? [],
             },
+            // For now we never skip tools when interacting with agents from the web client.
+            skipToolsValidation: false,
           },
           { resolveAfterFullGeneration: false }
         );

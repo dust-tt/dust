@@ -8,6 +8,7 @@ import {
   HTTPError,
   isNotFoundError,
 } from "@connectors/lib/error";
+import logger from "@connectors/logger/logger";
 import type { ModelId } from "@connectors/types";
 
 // Pass-through codec that is used to allow unknown properties.
@@ -56,7 +57,7 @@ export const GongParticipantCodec = t.intersection([
   CatchAllCodec,
 ]);
 
-const GongTranscriptMetadataCodec = t.intersection([
+const GongTranscriptMetadataWithoutTrackersCodec = t.intersection([
   t.type({
     metaData: t.intersection([
       t.type({
@@ -86,6 +87,32 @@ const GongTranscriptMetadataCodec = t.intersection([
     parties: t.union([t.array(GongParticipantCodec), t.undefined]),
   }),
   CatchAllCodec,
+]);
+
+export type GongTranscriptMetadataWithoutTrackers = t.TypeOf<
+  typeof GongTranscriptMetadataWithoutTrackersCodec
+>;
+
+const GongTranscriptMetadataCodec = t.intersection([
+  GongTranscriptMetadataWithoutTrackersCodec,
+  t.type({
+    content: t.intersection([
+      t.type({
+        trackers: t.array(
+          t.intersection([
+            t.type({
+              id: t.string,
+              name: t.string,
+              count: t.number,
+              type: t.string,
+            }),
+            CatchAllCodec,
+          ])
+        ),
+      }),
+      CatchAllCodec,
+    ]),
+  }),
 ]);
 
 export type GongTranscriptMetadata = t.TypeOf<
@@ -137,7 +164,23 @@ export class GongClient {
       // Handle rate limiting
       // https://gong.app.gong.io/settings/api/documentation#overview
       if (response.status === 429) {
-        // TODO(2025-03-04) - Implement this, we can read the Retry-After header.
+        const headers = Object.fromEntries(
+          Array.from(response.headers.entries()).filter(
+            ([key]) =>
+              key.toLowerCase().startsWith("x-") ||
+              key.toLowerCase().startsWith("rate-")
+          )
+        );
+
+        logger.info(
+          {
+            connectorId: this.connectorId,
+            endpoint,
+            headers,
+            provider: "gong",
+          },
+          "Rate limit hit on Gong API."
+        );
       }
 
       if (response.status === 404) {
@@ -293,30 +336,64 @@ export class GongClient {
   async getCallsMetadata({
     callIds,
     pageCursor = null,
+    smartTrackersEnabled = false,
   }: {
     callIds: string[];
     pageCursor?: string | null;
-  }) {
-    try {
-      const callsMetadata = await this.postRequest(
-        `/calls/extensive`,
-        {
-          cursor: pageCursor,
-          filter: {
-            callIds,
-          },
-          contentSelector: {
-            exposedFields: {
-              parties: true,
-            },
-          },
-        },
-        GongPaginatedResults("calls", GongTranscriptMetadataCodec)
-      );
+    smartTrackersEnabled?: boolean;
+  }): Promise<{
+    callsMetadata: GongTranscriptMetadata[];
+    nextPageCursor: string | null;
+  }> {
+    // Calling the endpoint with an empty array of callIds causes a 400 error.
+    if (callIds.length === 0) {
       return {
-        callsMetadata: callsMetadata.calls,
-        nextPageCursor: callsMetadata.records.cursor,
+        callsMetadata: [],
+        nextPageCursor: null,
       };
+    }
+
+    const body = {
+      cursor: pageCursor,
+      filter: {
+        callIds,
+      },
+      contentSelector: {
+        exposedFields: {
+          parties: true,
+        },
+        ...(smartTrackersEnabled ? { content: { transcript: true } } : {}),
+      },
+    };
+    try {
+      if (smartTrackersEnabled) {
+        const callsMetadata = await this.postRequest(
+          "/calls/extensive",
+          body,
+          GongPaginatedResults("calls", GongTranscriptMetadataCodec)
+        );
+        return {
+          callsMetadata: callsMetadata.calls,
+          nextPageCursor: callsMetadata.records.cursor ?? null,
+        };
+      } else {
+        const callsMetadata = await this.postRequest(
+          "/calls/extensive",
+          body,
+          GongPaginatedResults(
+            "calls",
+            GongTranscriptMetadataWithoutTrackersCodec
+          )
+        );
+        // Adding empty trackers to the calls metadata to present a uniformed type.
+        return {
+          callsMetadata: callsMetadata.calls.map((callMetadata) => ({
+            ...callMetadata,
+            content: { trackers: [] },
+          })),
+          nextPageCursor: callsMetadata.records.cursor ?? null,
+        };
+      }
     } catch (err) {
       if (isNotFoundError(err)) {
         return {

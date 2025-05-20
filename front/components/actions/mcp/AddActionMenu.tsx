@@ -6,11 +6,9 @@ import {
   DropdownMenuSearchbar,
   DropdownMenuTrigger,
   PlusIcon,
-  ScrollArea,
   Spinner,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
-import React from "react";
 
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerType } from "@app/lib/api/mcp";
@@ -22,6 +20,7 @@ import { asDisplayName } from "@app/types";
 type AddActionMenuProps = {
   owner: WorkspaceType;
   enabledMCPServers: string[];
+  buttonVariant?: "primary" | "outline";
   createInternalMCPServer: (mcpServer: MCPServerType) => void;
   createRemoteMCPServer: () => void;
   setIsLoading: (isLoading: boolean) => void;
@@ -32,6 +31,7 @@ export const AddActionMenu = ({
   enabledMCPServers,
   createInternalMCPServer,
   createRemoteMCPServer,
+  buttonVariant = "primary",
 }: AddActionMenuProps) => {
   const [searchText, setSearchText] = useState("");
   const { availableMCPServers, isAvailableMCPServersLoading } =
@@ -43,49 +43,47 @@ export const AddActionMenu = ({
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
         <Button
-          label="Add Toolset"
-          variant="primary"
+          label="Add Tools"
+          variant={buttonVariant}
           icon={PlusIcon}
           size="sm"
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-[500px]">
-        <div className="flex flex-row items-center gap-2">
-          <DropdownMenuSearchbar
-            className="flex-grow"
-            placeholder="Search tools..."
-            name="search"
-            value={searchText}
-            onChange={setSearchText}
-            disabled={isAvailableMCPServersLoading}
-          />
-          <Button
-            icon={PlusIcon}
-            label="Add MCP Server"
-            onClick={createRemoteMCPServer}
-          />
-        </div>
-        <ScrollArea className="max-h-[500px]">
-          {isAvailableMCPServersLoading && (
-            <div className="flex justify-center py-4">
-              <Spinner size="sm" />{" "}
-            </div>
-          )}
-          {availableMCPServers
-            .filter((mcpServer) => !enabledMCPServers.includes(mcpServer.id))
-            .filter((mcpServer) => filterMCPServer(mcpServer, searchText))
-            .map((mcpServer) => (
-              <DropdownMenuItem
-                key={mcpServer.id}
-                label={asDisplayName(mcpServer.name)}
-                icon={() => getAvatar(mcpServer, "xs")}
-                description={mcpServer.description}
-                onClick={async () => {
-                  createInternalMCPServer(mcpServer);
-                }}
-              />
-            ))}
-        </ScrollArea>
+        <DropdownMenuSearchbar
+          className="flex-grow"
+          placeholder="Search tools..."
+          name="search"
+          value={searchText}
+          onChange={setSearchText}
+          disabled={isAvailableMCPServersLoading}
+          button={
+            <Button
+              icon={PlusIcon}
+              label="Add MCP Server"
+              onClick={createRemoteMCPServer}
+            />
+          }
+        />
+        {isAvailableMCPServersLoading && (
+          <div className="flex justify-center py-4">
+            <Spinner size="sm" />{" "}
+          </div>
+        )}
+        {availableMCPServers
+          .filter((mcpServer) => !enabledMCPServers.includes(mcpServer.sId))
+          .filter((mcpServer) => filterMCPServer(mcpServer, searchText))
+          .map((mcpServer) => (
+            <DropdownMenuItem
+              key={mcpServer.sId}
+              label={asDisplayName(mcpServer.name)}
+              icon={() => getAvatar(mcpServer, "xs")}
+              description={mcpServer.description}
+              onClick={async () => {
+                createInternalMCPServer(mcpServer);
+              }}
+            />
+          ))}
       </DropdownMenuContent>
     </DropdownMenu>
   );

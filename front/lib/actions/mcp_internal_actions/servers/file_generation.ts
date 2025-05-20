@@ -18,7 +18,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
   version: "1.0.0",
   description: "Agent can generate and convert files.",
   authorization: null,
-  icon: "GithubLogo",
+  icon: "ActionDocumentTextIcon",
 };
 
 const OUTPUT_FORMATS = [
@@ -80,7 +80,7 @@ const createServer = (auth: Authenticator): McpServer => {
 
   server.tool(
     "generate_file",
-    "Generate a file",
+    "Generate a file by converting between formats. Only use this tool when the source_format differs from the output_format. If the formats are the same, the file can be used directly.",
     {
       file_name: z
         .string()
@@ -91,7 +91,7 @@ const createServer = (auth: Authenticator): McpServer => {
         .string()
         .max(64000)
         .describe(
-          "The content of the file to generate. You can either provide the id of a file in the conversation, the url to a file or the content directly."
+          "The content of the file to generate. You can either provide the id of a file in the conversation (note: if the file ID is already in the desired format, no conversion is needed), the url to a file or the content directly."
         ),
       source_format: z
         .string()
@@ -176,7 +176,10 @@ const createServer = (auth: Authenticator): McpServer => {
         const r = getResourceNameAndIdFromSId(input);
         if (r && r.resourceName === "file") {
           const { resourceModelId } = r;
-          const file = await FileResource.fetchByModelId(resourceModelId);
+          const file = await FileResource.fetchByModelIdWithAuth(
+            auth,
+            resourceModelId
+          );
           if (file) {
             url = await convertapi.upload(
               file.getReadStream({ auth, version: "original" }),

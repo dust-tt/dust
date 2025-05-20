@@ -12,6 +12,7 @@ import {
   DropdownMenuPortal,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
+  DropdownMenuSearchbar,
   DropdownMenuSeparator,
   DropdownMenuStaticItem,
   DropdownMenuSub,
@@ -46,6 +47,7 @@ import {
   CloudArrowDownIcon,
   Cog6ToothIcon,
   DocumentIcon,
+  DoubleIcon,
   FolderIcon,
   HandThumbDownIcon,
   HandThumbUpIcon,
@@ -55,8 +57,7 @@ import {
   MagnifyingGlassIcon,
   PlusIcon,
   RobotIcon,
-  ScrollArea,
-  SearchInput,
+  SearchDropdownMenu,
   SuitcaseIcon,
   UserGroupIcon,
   UserIcon,
@@ -86,6 +87,37 @@ export const PickerExamples = () => (
     <div>{AttachFileDemo()}</div>
   </div>
 );
+
+export const SearchDropdownMenuExamples = () => {
+  const [searchInputValue, setSearchInputValue] = React.useState("");
+
+  const items = ["Profile", "Billing", "Team", "Subscription"];
+
+  const filteredItems = items.filter((item) =>
+    item.toLowerCase().includes(searchInputValue.toLowerCase())
+  );
+
+  return (
+    <div className="s-flex s-h-80 s-w-full s-flex-col s-items-center s-justify-center s-gap-4 s-text-foreground dark:s-text-foreground-night">
+      <div>
+        <SearchDropdownMenu
+          searchInputValue={searchInputValue}
+          setSearchInputValue={setSearchInputValue}
+        >
+          {filteredItems.map((item) => (
+            <DropdownMenuItem
+              key={item}
+              label={item}
+              onClick={() => {
+                console.log(item);
+              }}
+            />
+          ))}
+        </SearchDropdownMenu>
+      </div>
+    </div>
+  );
+};
 
 function SimpleDropdownDemo() {
   return (
@@ -135,7 +167,13 @@ function ComplexDropdownDemo() {
       <DropdownMenuContent className="s-w-56">
         <DropdownMenuLabel label="My Account" />
         <DropdownMenuGroup>
-          <DropdownMenuItem icon={UserIcon} label="Profile" />
+          <DropdownMenuItem
+            icon={UserIcon}
+            label="Profile"
+            endComponent={
+              <Button size="mini" icon={ArrowUpOnSquareIcon} variant="ghost" />
+            }
+          />
           <DropdownMenuItem icon={ArrowDownCircleIcon} label="Billing" />
           <DropdownMenuItem icon={Cog6ToothIcon} label="Settings" />
           <DropdownMenuItem icon={UserIcon} label="Keyboard shortcuts" />
@@ -155,6 +193,14 @@ function ComplexDropdownDemo() {
                 />
                 <DropdownMenuSeparator />
                 <DropdownMenuItem icon={UserIcon} label="More..." />
+                <DropdownMenuItem icon={UserIcon} label="More.." />
+                <DropdownMenuItem icon={UserIcon} label="More..." />
+                <DropdownMenuItem icon={UserIcon} label="More.." />
+                <DropdownMenuItem icon={UserIcon} label="More" />
+                <DropdownMenuItem icon={UserIcon} label="More....." />
+                <DropdownMenuItem icon={UserIcon} label="More.." />
+                <DropdownMenuItem icon={UserIcon} label="More" />
+                <DropdownMenuItem icon={UserIcon} label="More...." />
               </DropdownMenuSubContent>
             </DropdownMenuPortal>
           </DropdownMenuSub>
@@ -496,7 +542,7 @@ function AttachFileDemo() {
 
   return (
     <div className="s-flex s-gap-2">
-      <DropdownMenu open={open} onOpenChange={setOpen}>
+      <DropdownMenu open={open} onOpenChange={setOpen} modal={false}>
         <DropdownMenuTrigger asChild>
           <Button
             label={selectedItem || "Attach"}
@@ -505,92 +551,95 @@ function AttachFileDemo() {
             size="sm"
           />
         </DropdownMenuTrigger>
-        <DropdownMenuContent className="s-w-[380px]">
-          <div className="s-flex s-gap-1.5 s-p-1.5">
-            <SearchInput
-              ref={searchInputRef}
-              name="search"
-              onChange={setSearchText}
-              onKeyDown={() => {}}
-              placeholder="Search in Dust"
+        <DropdownMenuContent
+          className="s-w-[380px]"
+          dropdownHeaders={
+            <DropdownMenuSearchbar
               value={searchText}
+              onChange={setSearchText}
+              name="search"
+              placeholder="Search in Dust"
+              button={<Button icon={ArrowUpOnSquareIcon} label="Upload File" />}
             />
-            <Button icon={ArrowUpOnSquareIcon} label="Upload File" />
-          </div>
+          }
+        >
           <DropdownMenuSeparator />
-          <ScrollArea className="s-h-[380px]">
-            {searchText ? (
-              filteredItems.map((item) => {
-                const randomMainIcon =
-                  mainIcons[Math.floor(Math.random() * mainIcons.length)];
-                const randomExtraIcon =
-                  extraIcons[Math.floor(Math.random() * extraIcons.length)];
-                return (
-                  <DropdownMenuItem
-                    key={item}
-                    label={item}
-                    description="Company Space/Notion"
-                    icon={randomMainIcon}
-                    extraIcon={randomExtraIcon}
-                    onClick={() => {
-                      setSelectedItem(item);
-                      setSearchText("");
-                    }}
-                    truncateText
-                  />
-                );
-              })
-            ) : (
-              <div className="s-flex s-h-full s-w-full s-items-center s-justify-center s-py-8">
-                <div className="s-flex s-flex-col s-items-center s-justify-center s-gap-0 s-text-center s-text-base s-font-semibold s-text-primary-400">
-                  <Icon visual={MagnifyingGlassIcon} size="sm" />
-                  Search in Dust
-                </div>
+          {searchText ? (
+            filteredItems.map((item) => {
+              const randomMainIcon =
+                mainIcons[Math.floor(Math.random() * mainIcons.length)];
+              const randomExtraIcon =
+                extraIcons[Math.floor(Math.random() * extraIcons.length)];
+              return (
+                <DropdownMenuItem
+                  key={item}
+                  label={item}
+                  description="Company Space/Notion"
+                  icon={
+                    <DoubleIcon
+                      size="lg"
+                      mainIcon={randomMainIcon}
+                      secondaryIcon={randomExtraIcon}
+                    />
+                  }
+                  onClick={() => {
+                    setSelectedItem(item);
+                    setSearchText("");
+                  }}
+                  truncateText
+                />
+              );
+            })
+          ) : (
+            <div className="s-flex s-h-full s-w-full s-items-center s-justify-center s-py-8">
+              <div className="s-flex s-flex-col s-items-center s-justify-center s-gap-0 s-text-center s-text-base s-font-semibold s-text-primary-400">
+                <Icon visual={MagnifyingGlassIcon} size="sm" />
+                Search in Dust
               </div>
-            )}
-          </ScrollArea>
+            </div>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
       <DropdownMenu open={openAgents} onOpenChange={setOpenAgents}>
         <DropdownMenuTrigger asChild>
           <Button icon={RobotIcon} variant="outline" size="sm" isSelect />
         </DropdownMenuTrigger>
-        <DropdownMenuContent className="s-w-[380px]">
-          <div className="s-flex s-gap-1.5 s-p-1.5">
-            <SearchInput
+        <DropdownMenuContent
+          className="s-h-96 s-w-[380px]"
+          dropdownHeaders={
+            <DropdownMenuSearchbar
               ref={agentsSearchInputRef}
               name="search"
-              onChange={() => {}}
+              value={searchText}
+              onChange={setSearchText}
               onKeyDown={() => {}}
               placeholder="Search Agents"
-              value=""
+              button={<Button icon={PlusIcon} label="Create" />}
             />
-            <Button icon={PlusIcon} label="Create" />
-          </div>
+          }
+        >
           <DropdownMenuSeparator />
-          <ScrollArea className="s-h-[380px]">
-            {filteredAgents.map((agent) => {
-              return (
-                <DropdownMenuItem
-                  key={agent.name}
-                  label={agent.name}
-                  description={agent.description}
-                  icon={() => (
-                    <Avatar
-                      size="sm"
-                      emoji={agent.emoji}
-                      backgroundColor={agent.backgroundColor}
-                    />
-                  )}
-                  onClick={() => {
-                    setSelectedItem(agent.name);
-                    setSearchText("");
-                  }}
-                  truncateText
-                />
-              );
-            })}
-          </ScrollArea>
+          {filteredAgents.map((agent) => {
+            return (
+              <DropdownMenuItem
+                key={agent.name}
+                label={agent.name}
+                description={agent.description}
+                icon={() => (
+                  <Avatar
+                    size="sm"
+                    emoji={agent.emoji}
+                    backgroundColor={agent.backgroundColor}
+                  />
+                )}
+                onClick={() => {
+                  setSelectedItem(agent.name);
+                  setSearchText("");
+                }}
+                truncateText
+              />
+            );
+          })}
         </DropdownMenuContent>
       </DropdownMenu>
       <DropdownMenu open={openToolsets} onOpenChange={setOpenToolsets}>
@@ -602,36 +651,36 @@ function AttachFileDemo() {
             size="sm"
           />
         </DropdownMenuTrigger>
-        <DropdownMenuContent className="s-w-[380px]">
-          <div className="s-flex s-gap-1.5 s-p-1.5">
-            <SearchInput
+        <DropdownMenuContent
+          className="s-h-96 s-w-[380px]"
+          dropdownHeaders={
+            <DropdownMenuSearchbar
               ref={toolsetsSearchInputRef}
               name="search"
-              onChange={() => {}}
+              value={searchText}
+              onChange={setSearchText}
               onKeyDown={() => {}}
-              placeholder="Search Toolsets"
-              value=""
+              placeholder="Search Tools"
+              button={<Button icon={PlusIcon} label="Add MCP Server" />}
             />
-            <Button icon={PlusIcon} label="Add MCP Server" />
-          </div>
+          }
+        >
           <DropdownMenuSeparator />
-          <ScrollArea className="s-h-[380px]">
-            {filteredToolsetList.map((toolset) => {
-              return (
-                <DropdownMenuItem
-                  key={toolset.name}
-                  label={toolset.name}
-                  description={toolset.description}
-                  icon={() => <Avatar size="sm" icon={toolset.icon} />}
-                  onClick={() => {
-                    setSelectedItem(toolset.name);
-                    setSearchText("");
-                  }}
-                  truncateText
-                />
-              );
-            })}
-          </ScrollArea>
+          {filteredToolsetList.map((toolset) => {
+            return (
+              <DropdownMenuItem
+                key={toolset.name}
+                label={toolset.name}
+                description={toolset.description}
+                icon={() => <Avatar size="sm" icon={toolset.icon} />}
+                onClick={() => {
+                  setSelectedItem(toolset.name);
+                  setSearchText("");
+                }}
+                truncateText
+              />
+            );
+          })}
         </DropdownMenuContent>
       </DropdownMenu>
     </div>

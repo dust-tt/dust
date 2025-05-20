@@ -34,10 +34,16 @@ export const ASSISTANT_BUILDER_DRAWER_TABS = [
   "Performance",
 ] as const;
 
-export type AssistantBuilderRightPanelTab =
+export type AssistantBuilderRightPanelTabType =
   (typeof ASSISTANT_BUILDER_DRAWER_TABS)[number];
 
-export type AssistantBuilderRightPanelStatus = {
-  openedAt: number | null;
-  tab: AssistantBuilderRightPanelTab | null;
-};
+export function isAssistantBuilderRightPanelTab(
+  value: unknown
+): value is AssistantBuilderRightPanelTabType {
+  return (
+    typeof value === "string" &&
+    ASSISTANT_BUILDER_DRAWER_TABS.includes(
+      value as AssistantBuilderRightPanelTabType
+    )
+  );
+}

@@ -18,6 +18,7 @@ import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
+import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import logger from "@app/logger/logger";
@@ -48,7 +49,7 @@ export interface TrackerConfigurationResource
   extends ReadonlyAttributesType<TrackerConfigurationModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfigurationModel> {
-  static model: ModelStatic<TrackerConfigurationModel> =
+  static model: ModelStaticWorkspaceAware<TrackerConfigurationModel> =
     TrackerConfigurationModel;
 
   readonly dataSourceConfigurations: TrackerDataSourceConfigurationModel[];
@@ -347,6 +348,7 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
         where: {
           trackerConfigurationId: this.id,
           scope: "maintained",
+          workspaceId: this.workspaceId,
         },
       });
 
@@ -379,6 +381,10 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
     // @ts-expect-error Resource with space does not like my include but it works.
     const trackers = await this.baseFetchWithAuthorization(auth, {
       ...options,
+      where: {
+        ...(options?.where || {}),
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
       includes: [
         ...(options?.includes || []),
         {
@@ -433,9 +439,6 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
     { includeDeleted }: { includeDeleted?: boolean } = {}
   ): Promise<TrackerConfigurationResource[]> {
     return this.baseFetch(auth, {
-      where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
-      },
       includeDeleted,
     });
   }
@@ -497,6 +500,8 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
         lastNotifiedAt: { [Op.or]: [{ [Op.lt]: new Date(lookBackMs) }, null] },
         deletedAt: null,
       },
+      // WORKSPACE_ISOLATION_BYPASS: Allow global query as we have one global workflow for all workspaces
+      dangerouslyBypassWorkspaceIsolationSecurity: true,
       include: [
         {
           model: Workspace,
@@ -561,6 +566,7 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
 
     let dsConfigs = await TrackerDataSourceConfigurationModel.findAll({
       where: {
+        workspaceId: owner.id,
         dataSourceId: dataSourceModelId,
         scope: "watched",
         // TODO(DOC_TRACKER): GIN index.

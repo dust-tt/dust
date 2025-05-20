@@ -254,7 +254,7 @@ export async function processTranscriptActivity(
   );
 
   const hasExistingHistory =
-    await transcriptsConfiguration.fetchHistoryForFileId(fileId);
+    await transcriptsConfiguration.fetchHistoryForFileId(auth, fileId);
   if (hasExistingHistory) {
     localLogger.info(
       {},
@@ -442,6 +442,16 @@ export async function processTranscriptActivity(
       return;
     }
 
+    const canWrite = datasourceView.canWrite(auth);
+    if (!canWrite) {
+      localLogger.error(
+        {},
+        "[processTranscriptActivity] User does not have permission to write to datasource view. Stopping."
+      );
+      await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
+      return;
+    }
+
     const dataSource = datasourceView.dataSource;
 
     if (!dataSource) {
@@ -486,10 +496,10 @@ export async function processTranscriptActivity(
       );
     }
 
-    await transcriptsConfiguration.setStorageStatusForFileId(
+    await transcriptsConfiguration.setStorageStatusForFileId(auth, {
       fileId,
-      shouldStoreTranscript
-    );
+      stored: shouldStoreTranscript,
+    });
 
     localLogger.info(
       {
@@ -622,6 +632,10 @@ export async function processTranscriptActivity(
         content: `Transcript: ${transcriptTitle}`,
         mentions: [{ configurationId: agentConfigurationId }],
         context: baseContext,
+        // When running an agent as trigger of a transcript we have no chance of validating tools so
+        // we skip all of them and run the tools by default. This is in tension with the admin
+        // settings and could be revisited if needed.
+        skipToolsValidation: true,
       },
       { resolveAfterFullGeneration: true }
     );
@@ -679,10 +693,10 @@ export async function processTranscriptActivity(
       allowedTags: sanitizeHtml.defaults.allowedTags.concat(["img"]), // Allow images on top of all defaults from https://www.npmjs.com/package/sanitize-html
     });
 
-    await transcriptsConfiguration.setConversationHistory(
+    await transcriptsConfiguration.setConversationHistory(auth, {
+      conversationId: conversation.sId,
       fileId,
-      conversation.sId
-    );
+    });
 
     await sendEmailWithTemplate({
       to: user.email,

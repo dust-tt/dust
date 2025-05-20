@@ -1,6 +1,5 @@
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
-import type { ReactElement } from "react";
 import { useEffect, useState } from "react";
 
 import { ConversationContainer } from "@app/components/assistant/conversation/ConversationContainer";
@@ -8,6 +7,7 @@ import type { ConversationLayoutProps } from "@app/components/assistant/conversa
 import ConversationLayout from "@app/components/assistant/conversation/ConversationLayout";
 import { useConversationsNavigation } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { CONVERSATION_PARENT_SCROLL_DIV_ID } from "@app/components/assistant/conversation/lib";
+import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 
@@ -15,7 +15,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
   ConversationLayoutProps & {
     // Here, override conversationId.
     conversationId: string | null;
-    isBuilder: boolean;
   }
 >(async (context, auth) => {
   const owner = auth.workspace();
@@ -47,7 +46,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
   return {
     props: {
       user,
-      isBuilder: auth.isBuilder(),
       owner,
       subscription,
       baseUrl: config.getClientFacingUrl(),
@@ -61,7 +59,6 @@ export default function AssistantConversation({
   owner,
   subscription,
   user,
-  isBuilder,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [conversationKey, setConversationKey] = useState<string | null>(null);
   const [agentIdToMention, setAgentIdToMention] = useState<string | null>(null);
@@ -113,14 +110,20 @@ export default function AssistantConversation({
       owner={owner}
       subscription={subscription}
       user={user}
-      isBuilder={isBuilder}
       agentIdToMention={agentIdToMention}
     />
   );
 }
 
-AssistantConversation.getLayout = (page: ReactElement, pageProps: any) => {
-  return <ConversationLayout pageProps={pageProps}>{page}</ConversationLayout>;
+AssistantConversation.getLayout = (
+  page: React.ReactElement,
+  pageProps: any
+) => {
+  return (
+    <AppRootLayout>
+      <ConversationLayout pageProps={pageProps}>{page}</ConversationLayout>
+    </AppRootLayout>
+  );
 };
 
 function getValidConversationId(cId: unknown) {

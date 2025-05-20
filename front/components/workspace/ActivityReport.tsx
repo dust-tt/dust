@@ -76,6 +76,7 @@ export function ActivityReport({
                         handleDownload(item);
                       }}
                       disabled={isDownloading}
+                      isLoading={isDownloading}
                     />
                   }
                 ></ContextItem>

@@ -1,8 +1,11 @@
+import type { EmojiMartData } from "@emoji-mart/data";
+import data from "@emoji-mart/data";
 import type { Meta } from "@storybook/react";
 import React, { useState } from "react";
 
 import { PaintIcon } from "@sparkle/icons";
 import { ActionIcons } from "@sparkle/icons";
+import { EmotionLaughIcon } from "@sparkle/icons/app";
 
 import {
   Button,
@@ -11,6 +14,7 @@ import {
   PopoverTrigger,
 } from "../components";
 import { ColorPicker, IconPicker } from "../components/Picker";
+import { EmojiPicker } from "../index_with_tw_base";
 
 const meta = {
   title: "Components/Picker",
@@ -110,6 +114,7 @@ const ColorPickerExample = () => {
               icon={PaintIcon}
               size="sm"
               className={selectedColor}
+              isSelect
             />
           </PopoverTrigger>
           <PopoverContent className="s-w-fit">
@@ -144,6 +149,7 @@ const IconPickerExample = () => {
               variant="outline"
               size="sm"
               icon={SelectedIcon}
+              isSelect
             />
           </PopoverTrigger>
           <PopoverContent className="s-w-fit s-py-0">
@@ -162,4 +168,38 @@ const IconPickerExample = () => {
   );
 };
 
-export { ColorPickerExample, IconPickerExample };
+const EmojiPickerExample = () => {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <div className="s-mt-14 s-flex s-flex-col s-items-center s-gap-6">
+      <div className="s-w-full s-max-w-2xl">
+        <h3 className="s-mb-4 s-text-lg s-font-medium">Emoji Picker</h3>
+        <PopoverRoot open={isOpen} onOpenChange={setIsOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              label="Pick an Emoji"
+              variant="outline"
+              icon={EmotionLaughIcon}
+              size="sm"
+              isSelect
+            />
+          </PopoverTrigger>
+          <PopoverContent fullWidth>
+            <EmojiPicker
+              theme="light"
+              previewPosition="none"
+              data={data as EmojiMartData}
+              onEmojiSelect={(emoji) => {
+                alert(emoji.native);
+                setIsOpen(false);
+              }}
+            />
+          </PopoverContent>
+        </PopoverRoot>
+      </div>
+    </div>
+  );
+};
+
+export { ColorPickerExample, EmojiPickerExample, IconPickerExample };

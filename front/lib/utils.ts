@@ -1,6 +1,7 @@
 import { isEqual } from "lodash";
 
 import type { LightAgentConfigurationType } from "@app/types";
+import type { TagType } from "@app/types/tag";
 
 export const MODELS_STRING_MAX_LENGTH = 255;
 
@@ -196,6 +197,22 @@ function spreadLength(a: string, b: string) {
   return lastIndex - firstIndex;
 }
 
+export const tagsSorter = (a: TagType, b: TagType) => {
+  if (a.kind !== b.kind) {
+    return a.kind.localeCompare(b.kind);
+  }
+  return a.name.localeCompare(b.name);
+};
+
+/**
+ * Gets a string to use when filtering agents by name, description, and last authors.
+ */
+export const getAgentSearchString = (
+  assistant: LightAgentConfigurationType
+) => {
+  return assistant.name.toLowerCase();
+};
+
 /**
  * Returns true if a is a subfilter of b, i.e. all characters in a are present
  * in b in the same order.
@@ -296,20 +313,27 @@ export function isArrayEqual2DUnordered(
   return isEqual(sort2D(first), sort2D(second));
 }
 
-/**
- * Format a secret by replacing the middle characters with dots.
- * @param key The secret to format.
- * @param visibleChars The number of characters to keep at the end.
- * @param dotCount The number of dots to replace the middle characters with.
- * @returns The formatted secret.
- */
-export function formatSecret(key?: string, visibleChars = 4, dotCount = 30) {
-  if (!key) {
-    return "";
-  }
-  const dots = "•".repeat(dotCount);
-  const end = key.slice(-visibleChars);
-  return `${dots}${end}`;
+// Postgres requires all subarrays to be of the same length.
+// This function ensures that all subarrays are of the same length
+// by repeating the last element of each subarray until all subarrays have the same length.
+// Make sure that it's okay to use this function for your use case.
+export function normalizeArrays<T>(array2D: T[][]): T[][] {
+  // Copy the array to avoid mutating the original array.
+  const array2DCopy = array2D.map((array) => [...array]);
+
+  const longestArray = array2DCopy.reduce(
+    (max, req) => Math.max(max, req.length),
+    0
+  );
+  // for each array, repeatedly add the last id until array is of longest array length
+  const updatedArrays = array2DCopy.map((array) => {
+    while (array.length < longestArray) {
+      array.push(array[array.length - 1]);
+    }
+    return array;
+  });
+
+  return updatedArrays;
 }
 
 // from http://detectmobilebrowsers.com/
@@ -321,26 +345,54 @@ export const isMobile = (navigator: Navigator) =>
     (navigator.userAgent || navigator.vendor).substr(0, 4)
   );
 
-export function createCallbackPromise<T>(): {
-  promise: Promise<T>;
-  callback: (value: T) => void;
-  reset: () => void;
-} {
-  let resolveCallback: (value: T) => void;
+/**
+ * Bridge a push-based callback to a pull-based `.next()` promise stream.
+ */
+export type CallbackReader<T> = {
+  /** Push endpoint fed by the producer (e.g. Redis subscription). */
+  callback: (v: T) => void;
+  /** Pull endpoint for the consumer; resolves with the next value. */
+  next(): Promise<T>;
+};
 
-  let promise = new Promise<T>((resolve) => {
-    resolveCallback = resolve;
-  });
+export function createCallbackReader<T>(): CallbackReader<T> {
+  const buffered: T[] = []; // arrived but unconsumed values
+  let waiterResolver: ((v: T) => void) | undefined; // pending `.next()` resolver
+  let waiterPromise: Promise<T> | undefined; // pending `.next()` promise
 
   return {
-    get promise() {
-      return promise;
+    callback: (v: T) => {
+      // If we already have a waiter on the next callback, resolve it.
+      if (waiterResolver) {
+        waiterResolver(v);
+        waiterResolver = undefined;
+        waiterPromise = undefined;
+      } else {
+        // Otherwise, buffer the value.
+        buffered.push(v);
+      }
     },
-    callback: (value: T) => resolveCallback(value),
-    reset: () => {
-      promise = new Promise<T>((resolve) => {
-        resolveCallback = resolve;
+
+    next: () => {
+      // If we have buffered values, return the first one.
+      const v = buffered.shift();
+      if (v !== undefined) {
+        return Promise.resolve(v);
+      }
+
+      // If we already have a waiter on the next callback, return the same promise.
+      if (waiterPromise) {
+        return waiterPromise;
+      }
+
+      // Otherwise, create a new promise and queue its resolver.
+      const promise = new Promise<T>((resolve) => {
+        waiterResolver = resolve;
       });
+
+      waiterPromise = promise;
+
+      return promise;
     },
   };
 }

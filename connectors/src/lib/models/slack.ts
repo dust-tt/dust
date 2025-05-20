@@ -14,6 +14,7 @@ export class SlackConfigurationModel extends ConnectorBaseModel<SlackConfigurati
   declare updatedAt: CreationOptional<Date>;
   declare slackTeamId: string;
   declare botEnabled: boolean;
+  declare restrictedSpaceAgentsEnabled: boolean;
   // Whitelisted domains are in the format "domain:group_id".
   declare whitelistedDomains?: readonly string[];
   declare autoReadChannelPatterns: SlackAutoReadPattern[];
@@ -49,6 +50,11 @@ SlackConfigurationModel.init(
       allowNull: true,
       defaultValue: [],
     },
+    restrictedSpaceAgentsEnabled: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true,
+    },
   },
   {
     sequelize: sequelizeConnection,
@@ -72,6 +78,7 @@ export class SlackMessages extends ConnectorBaseModel<SlackMessages> {
   declare channelId: string;
   declare messageTs?: string;
   declare documentId: string;
+  declare skipReason?: string;
 }
 SlackMessages.init(
   {
@@ -96,6 +103,10 @@ SlackMessages.init(
     documentId: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    skipReason: {
+      type: DataTypes.STRING,
+      allowNull: true,
     },
   },
   {

@@ -1,39 +1,42 @@
-import type { Icon } from "@dust-tt/sparkle";
 import {
+  BarChartIcon,
+  BoltIcon,
   ChatBubbleThoughtIcon,
   CommandLineIcon,
   MagnifyingGlassIcon,
   PlanetIcon,
   ScanIcon,
-  SuitcaseIcon,
   TableIcon,
   TimeIcon,
 } from "@dust-tt/sparkle";
-import assert from "assert";
 
-import type { AssistantBuilderActionConfiguration } from "@app/components/assistant_builder/types";
+import type {
+  ActionSpecification,
+  AssistantBuilderActionConfiguration,
+} from "@app/components/assistant_builder/types";
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
-import type { RetrievalConfigurationType } from "@app/lib/actions/retrieval";
+import { isInternalMCPServerOfName } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { ActionConfigurationType } from "@app/lib/actions/types/agent";
-import { isPlatformMCPToolConfiguration } from "@app/lib/actions/types/guards";
+import {
+  isMCPInternalInclude,
+  isMCPInternalSearch,
+  isMCPInternalWebsearch,
+  isRetrievalConfiguration,
+  isServerSideMCPToolConfiguration,
+  isWebsearchConfiguration,
+} from "@app/lib/actions/types/guards";
 import type { WebsearchConfigurationType } from "@app/lib/actions/websearch";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
-import type { AgentConfigurationType, WhitelistableFeature } from "@app/types";
+import type { AgentConfigurationType, AgentMessageType } from "@app/types";
 import { assertNever } from "@app/types";
 
 export const WEBSEARCH_ACTION_NUM_RESULTS = 16;
 
 export const ACTION_SPECIFICATIONS: Record<
   AssistantBuilderActionConfiguration["type"],
-  {
-    label: string;
-    description: string;
-    dropDownIcon: NonNullable<React.ComponentProps<typeof Icon>["visual"]>;
-    cardIcon: NonNullable<React.ComponentProps<typeof Icon>["visual"]>;
-    flag: WhitelistableFeature | null;
-  }
+  ActionSpecification
 > = {
   RETRIEVAL_EXHAUSTIVE: {
     label: "Include data",
@@ -87,16 +90,24 @@ export const ACTION_SPECIFICATIONS: Record<
   },
   MCP: {
     label: "More...",
-    description: "Pick from Toolsets added by your Admin",
-    cardIcon: SuitcaseIcon,
-    dropDownIcon: SuitcaseIcon,
-    flag: "mcp_actions",
+    description: "Add additional sets of tools",
+    cardIcon: BoltIcon,
+    dropDownIcon: BoltIcon,
+    flag: null,
   },
+};
+
+export const DATA_VISUALIZATION_SPECIFICATION: ActionSpecification = {
+  label: "Data Visualization",
+  description: "Generate a data visualization",
+  cardIcon: BarChartIcon,
+  dropDownIcon: BarChartIcon,
+  flag: null,
 };
 
 /**
  * This function computes the topK for retrieval actions. This is used by both the action (to
- * compute the topK) and computing the citation counts for retrieval actions.
+ * compute the topK) and computing the citation counts for retrieval actions (mcp included)
  *
  * We share the topK across retrieval actions from the same step. If there are multiple retrieval
  * actions in the same step we get the maximum topK and divide it by the number of retrieval actions
@@ -111,28 +122,41 @@ export function getRetrievalTopK({
 }): number {
   const model = getSupportedModelConfig(agentConfiguration.model);
 
-  const retrievalActions = stepActions.filter(
-    (action) => action.type === "retrieval_configuration"
-  ) as RetrievalConfigurationType[];
+  const retrievalActions = stepActions.filter(isRetrievalConfiguration);
+  const searchActions = stepActions.filter(isMCPInternalSearch);
+  const includeActions = stepActions.filter(isMCPInternalInclude);
 
-  assert(
-    retrievalActions.length > 0,
-    "No retrieval actions found in `getRetrievalTopK`"
-  );
+  const actionsCount =
+    retrievalActions.length + searchActions.length + includeActions.length;
 
-  const topKs = retrievalActions.map((action) => {
-    if (action.topK === "auto") {
-      if (action.query === "none") {
-        return model.recommendedExhaustiveTopK;
+  if (actionsCount === 0) {
+    return 0;
+  }
+
+  const topKs = retrievalActions
+    .map((action) => {
+      if (action.topK === "auto") {
+        if (action.query === "none") {
+          return model.recommendedExhaustiveTopK;
+        } else {
+          return model.recommendedTopK;
+        }
       } else {
-        return model.recommendedTopK;
+        return action.topK;
       }
-    } else {
-      return action.topK;
-    }
-  });
+    })
+    .concat(
+      searchActions.map(() => {
+        return model.recommendedTopK;
+      })
+    )
+    .concat(
+      includeActions.map(() => {
+        return model.recommendedExhaustiveTopK;
+      })
+    );
 
-  return Math.ceil(Math.max(...topKs) / retrievalActions.length);
+  return Math.ceil(Math.max(...topKs) / actionsCount);
 }
 
 /**
@@ -149,39 +173,29 @@ export function getWebsearchNumResults({
 }: {
   stepActions: ActionConfigurationType[];
 }): number {
-  const websearchActions = stepActions.filter(
-    (action) => action.type === "websearch_configuration"
-  ) as WebsearchConfigurationType[];
-
-  assert(
-    websearchActions.length > 0,
-    "No websearch actions found in `getWebsearchNumResults`"
+  const websearchActions: WebsearchConfigurationType[] = stepActions.filter(
+    isWebsearchConfiguration
   );
 
-  const numResults = websearchActions.map(() => {
-    return WEBSEARCH_ACTION_NUM_RESULTS;
-  });
+  const websearchV2Actions = stepActions.filter(isMCPInternalWebsearch);
 
-  return Math.ceil(Math.max(...numResults) / websearchActions.length);
-}
+  const numResults = websearchActions
+    .map(() => {
+      return WEBSEARCH_ACTION_NUM_RESULTS;
+    })
+    .concat(
+      websearchV2Actions.map(() => {
+        return WEBSEARCH_ACTION_NUM_RESULTS;
+      })
+    );
 
-export function getMCPCitationsCount({
-  stepActions,
-}: {
-  stepActions: ActionConfigurationType[];
-}): number {
-  const mcpActions = stepActions.filter(
-    (action) => action.type === "mcp_configuration"
-  ) as MCPToolConfigurationType[];
+  const totalActions = websearchActions.length + websearchV2Actions.length;
 
-  assert(
-    mcpActions.length > 0,
-    "No MCP actions found in `getMCPCitationsCount`"
-  );
+  if (totalActions === 0) {
+    return 0;
+  }
 
-  //TODO(mcp) as mcp server might want to output multiple citations, here we should inspect the arguments
-  // of the tool to determine the number of actions using citations and compute the citations count accordingly.
-  return 0;
+  return Math.ceil(Math.max(...numResults) / totalActions);
 }
 
 /**
@@ -223,7 +237,19 @@ export function getCitationsCount({
     case "reasoning_configuration":
       return 0;
     case "mcp_configuration":
-      return getMCPCitationsCount({
+      if (
+        isServerSideMCPToolConfiguration(action) &&
+        isInternalMCPServerOfName(
+          action.internalMCPServerId,
+          "web_search_&_browse"
+        )
+      ) {
+        return getWebsearchNumResults({
+          stepActions,
+        });
+      }
+      return getRetrievalTopK({
+        agentConfiguration,
         stepActions,
       });
     default:
@@ -278,39 +304,45 @@ export function getMCPApprovalKey({
 
 export async function getExecutionStatusFromConfig(
   auth: Authenticator,
-  actionConfiguration: MCPToolConfigurationType
+  actionConfiguration: MCPToolConfigurationType,
+  agentMessage: AgentMessageType
 ): Promise<{
   stake?: MCPToolStakeLevelType;
   status: "allowed_implicitly" | "pending";
   serverId?: string;
 }> {
-  if (!isPlatformMCPToolConfiguration(actionConfiguration)) {
-    return { status: "pending" };
-  }
-
-  if (actionConfiguration.isDefault) {
+  // If the agent message is marked as "skipToolsValidation" we skip all tools validation
+  // irrespective of the `actionConfiguration.permission`. This is set when the agent message was
+  // created by an API call where the caller explicitly set `skipToolsValidation` to true.
+  if (agentMessage.skipToolsValidation) {
     return { status: "allowed_implicitly" };
   }
 
-  if (
-    !actionConfiguration.permission ||
-    actionConfiguration.permission === "high"
-  ) {
-    return { status: "pending" };
-  }
+  // Permissions:
+  // - "never_ask": Automatically approved
+  // - "low": Ask user for approval and allow to automatically approve next time
+  // - "high": Ask for approval each time
+  // - undefined: Use default permission ("never_ask" for default tools, "high" for other tools)
+  switch (actionConfiguration.permission) {
+    case "never_ask":
+      return { status: "allowed_implicitly" };
+    case "low": {
+      const user = auth.getNonNullableUser();
+      const neverAskSetting = await user.getMetadata(
+        `toolsValidations:${actionConfiguration.toolServerId}`
+      );
 
-  const user = auth.getNonNullableUser();
-  const neverAskSetting = await user.getMetadata(
-    `toolsValidations:${actionConfiguration.toolServerId}`
-  );
-  if (
-    neverAskSetting &&
-    neverAskSetting.value.includes(`${actionConfiguration.name}`)
-  ) {
-    return { status: "allowed_implicitly" };
+      if (
+        neverAskSetting &&
+        neverAskSetting.value.includes(`${actionConfiguration.name}`)
+      ) {
+        return { status: "allowed_implicitly" };
+      }
+      return { status: "pending" };
+    }
+    case "high":
+      return { status: "pending" };
+    default:
+      assertNever(actionConfiguration.permission);
   }
-
-  return {
-    status: "pending",
-  };
 }

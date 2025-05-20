@@ -14,10 +14,13 @@ function makeEnterpriseConnectionName(workspaceId: string) {
   return `workspace-${workspaceId}`;
 }
 
-export function makeEnterpriseConnectionInitiateLoginUrl(workspaceId: string) {
+export function makeEnterpriseConnectionInitiateLoginUrl(
+  workspaceId: string,
+  returnTo: string | null
+) {
   return `${config.getClientFacingUrl()}/api/auth/login?connection=${makeEnterpriseConnectionName(
     workspaceId
-  )}`;
+  )}${returnTo ? `&returnTo=${encodeURIComponent(returnTo)}` : ""}`;
 }
 
 export function makeAudienceUri(owner: LightWorkspaceType) {
@@ -66,6 +69,7 @@ export async function createEnterpriseConnection(
     enabled_clients: [
       config.getAuth0WebApplicationId(),
       config.getAuth0ExtensionApplicationId(),
+      config.getAuth0CliApplicationId(),
     ],
     metadata: {},
   });

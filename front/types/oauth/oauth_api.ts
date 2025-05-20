@@ -134,13 +134,7 @@ export class OAuthAPI {
     return this._resultFromResponse(response);
   }
 
-  async getAccessToken({
-    provider,
-    connectionId,
-  }: {
-    provider: OAuthProvider;
-    connectionId: string;
-  }): Promise<
+  async getAccessToken({ connectionId }: { connectionId: string }): Promise<
     OAuthAPIResponse<{
       connection: OAuthConnectionType;
       access_token: string;
@@ -149,16 +143,7 @@ export class OAuthAPI {
     }>
   > {
     const response = await this._fetchWithError(
-      `${this._url}/connections/${connectionId}/access_token`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          provider,
-        }),
-      }
+      `${this._url}/connections/${connectionId}/access_token`
     );
     return this._resultFromResponse(response);
   }

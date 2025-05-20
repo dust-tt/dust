@@ -26,6 +26,11 @@ export type ModelProviderIdType = (typeof MODEL_PROVIDER_IDS)[number];
 export const REASONING_EFFORT_IDS = ["low", "medium", "high"] as const;
 export type ReasoningEffortIdType = (typeof REASONING_EFFORT_IDS)[number];
 
+export const isReasoningEffortId = (
+  reasoningEffortId: string
+): reasoningEffortId is ReasoningEffortIdType =>
+  REASONING_EFFORT_IDS.includes(reasoningEffortId as ReasoningEffortIdType);
+
 export const DEFAULT_EMBEDDING_PROVIDER_ID = "openai";
 export const EMBEDDING_PROVIDER_IDS = [
   DEFAULT_EMBEDDING_PROVIDER_ID,
@@ -106,6 +111,9 @@ export const GPT_4O_MINI_MODEL_ID = "gpt-4o-mini" as const;
 export const O1_MODEL_ID = "o1" as const;
 export const O1_MINI_MODEL_ID = "o1-mini" as const;
 export const O3_MINI_MODEL_ID = "o3-mini" as const;
+export const O3_MODEL_ID = "o3" as const;
+
+export const O4_MINI_MODEL_ID = "o4-mini" as const;
 export const CLAUDE_3_OPUS_2024029_MODEL_ID = "claude-3-opus-20240229" as const;
 export const CLAUDE_3_5_SONNET_20240620_MODEL_ID =
   "claude-3-5-sonnet-20240620" as const;
@@ -167,7 +175,9 @@ export const MODEL_IDS = [
   GPT_4O_MINI_MODEL_ID,
   O1_MODEL_ID,
   O1_MINI_MODEL_ID,
+  O3_MODEL_ID,
   O3_MINI_MODEL_ID,
+  O4_MINI_MODEL_ID,
   CLAUDE_3_OPUS_2024029_MODEL_ID,
   CLAUDE_3_5_SONNET_20240620_MODEL_ID,
   CLAUDE_3_5_SONNET_20241022_MODEL_ID,
@@ -433,6 +443,26 @@ export const O1_MINI_MODEL_CONFIG: ModelConfigurationType = {
   customAssistantFeatureFlag: "openai_o1_custom_assistants_feature",
   supportsResponseFormat: false,
 };
+
+export const O3_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "openai",
+  modelId: O3_MODEL_ID,
+  displayName: "o3",
+  contextSize: 200_000,
+  recommendedTopK: 32,
+  recommendedExhaustiveTopK: 128, // 65_536
+  largeModel: true,
+  description:
+    "OpenAI's most advanced reasoning model particularly good at coding, math, and science.",
+  shortDescription: "OpenAI's best reasoning model.",
+  isLegacy: false,
+  generationTokensCount: 2048,
+  supportsVision: true,
+  supportsResponseFormat: true,
+  featureFlag: "openai_o1_feature",
+  customAssistantFeatureFlag: "openai_o1_custom_assistants_feature",
+};
+
 export const O3_MINI_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "openai",
   modelId: O3_MINI_MODEL_ID,
@@ -465,6 +495,40 @@ export const O3_MINI_HIGH_REASONING_MODEL_CONFIG: ModelConfigurationType = {
   supportsVision: false,
   reasoningEffort: "high",
   supportsResponseFormat: true,
+};
+
+export const O4_MINI_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "openai",
+  modelId: O4_MINI_MODEL_ID,
+  displayName: "o4-mini",
+  contextSize: 200_000,
+  recommendedTopK: 32,
+  recommendedExhaustiveTopK: 128,
+  largeModel: true,
+  description: "OpenAI's o4 mini model (200k context).",
+  shortDescription: "OpenAI's fast o4 model.",
+  isLegacy: false,
+  generationTokensCount: 100_000,
+  supportsVision: true,
+  supportsResponseFormat: true,
+  reasoningEffort: "medium",
+};
+
+export const O4_MINI_HIGH_REASONING_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "openai",
+  modelId: O4_MINI_MODEL_ID,
+  displayName: "o4-mini (High Reasoning)",
+  contextSize: 200_000,
+  recommendedTopK: 32,
+  recommendedExhaustiveTopK: 128,
+  largeModel: true,
+  description: "OpenAI's o4 mini model (200k context). High reasoning effort.",
+  shortDescription: "OpenAI's fast o4 model.",
+  isLegacy: false,
+  generationTokensCount: 100_000,
+  supportsVision: true,
+  supportsResponseFormat: true,
+  reasoningEffort: "high",
 };
 
 const ANTHROPIC_DELIMITERS_CONFIGURATION = {
@@ -795,7 +859,7 @@ export const GEMINI_2_FLASH_LITE_MODEL_CONFIG: ModelConfigurationType = {
 export const GEMINI_2_5_PRO_PREVIEW_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "google_ai_studio",
   modelId: GEMINI_2_5_PRO_PREVIEW_MODEL_ID,
-  displayName: "Gemini Flash 2.5 Pro Preview",
+  displayName: "Gemini 2.5 Pro Preview",
   contextSize: 1_000_000,
   recommendedTopK: 64,
   recommendedExhaustiveTopK: 128,
@@ -1043,8 +1107,11 @@ export const SUPPORTED_MODEL_CONFIGS: ModelConfigurationType[] = [
   O1_MODEL_CONFIG,
   O1_HIGH_REASONING_MODEL_CONFIG,
   O1_MINI_MODEL_CONFIG,
+  O3_MODEL_CONFIG,
   O3_MINI_MODEL_CONFIG,
   O3_MINI_HIGH_REASONING_MODEL_CONFIG,
+  O4_MINI_MODEL_CONFIG,
+  O4_MINI_HIGH_REASONING_MODEL_CONFIG,
   CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG,
   CLAUDE_3_5_SONNET_20240620_DEPRECATED_MODEL_CONFIG,
   CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG,
@@ -1119,6 +1186,7 @@ export enum GLOBAL_AGENTS_SID {
   O1_MINI = "o1-mini",
   O1_HIGH_REASONING = "o1_high",
   O3_MINI = "o3-mini",
+  O3 = "o3",
   CLAUDE_3_OPUS = "claude-3-opus",
   CLAUDE_3_SONNET = "claude-3-sonnet",
   CLAUDE_3_HAIKU = "claude-3-haiku",
@@ -1142,6 +1210,7 @@ export function getGlobalAgentAuthorName(agentId: string): string {
     case GLOBAL_AGENTS_SID.O1_MINI:
     case GLOBAL_AGENTS_SID.O1_HIGH_REASONING:
     case GLOBAL_AGENTS_SID.O3_MINI:
+    case GLOBAL_AGENTS_SID.O3:
       return "OpenAI";
     case GLOBAL_AGENTS_SID.CLAUDE_INSTANT:
     case GLOBAL_AGENTS_SID.CLAUDE_3_OPUS:
@@ -1173,6 +1242,7 @@ const CUSTOM_ORDER: string[] = [
   GLOBAL_AGENTS_SID.GITHUB,
   GLOBAL_AGENTS_SID.INTERCOM,
   GLOBAL_AGENTS_SID.CLAUDE_3_OPUS,
+  GLOBAL_AGENTS_SID.O3,
   GLOBAL_AGENTS_SID.CLAUDE_3_SONNET,
   GLOBAL_AGENTS_SID.CLAUDE_3_HAIKU,
   GLOBAL_AGENTS_SID.CLAUDE_3_7_SONNET,

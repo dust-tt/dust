@@ -1,8 +1,10 @@
-import React, { FC, useState, useEffect, useCallback } from "react";
+import type { WorkspaceType } from "@dust-tt/client";
 import { Box, Text } from "ink";
-import Spinner from "ink-spinner";
 import SelectInput from "ink-select-input";
-import { WorkspaceType } from "@dust-tt/client";
+import Spinner from "ink-spinner";
+import type { FC} from "react";
+import React, { useCallback,useEffect, useState } from "react";
+
 import { getDustClient } from "../../utils/dustClient.js";
 import TokenStorage from "../../utils/tokenStorage.js";
 
@@ -73,17 +75,17 @@ const WorkspaceSelector: FC<WorkspaceSelectorProps> = ({ onComplete }) => {
       }
     };
 
-    fetchWorkspaces();
+    void fetchWorkspaces();
   }, []);
 
-  const handleSelect = useCallback(async (item: any) => {
-    const extendedItem = item as ExtendedItem;
-    await TokenStorage.saveWorkspaceId(
-      extendedItem.value,
-      extendedItem.workspace.name
-    );
-    onComplete?.();
-  }, []);
+  const handleSelect = useCallback(
+    async (item: any) => {
+      const extendedItem = item as ExtendedItem;
+      await TokenStorage.saveWorkspaceId(extendedItem.value);
+      onComplete?.();
+    },
+    [onComplete]
+  );
 
   if (isLoading) {
     return (

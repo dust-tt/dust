@@ -25,6 +25,7 @@ import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type {
+  AgentConfigurationType,
   GroupKind,
   GroupType,
   LightAgentConfigurationType,
@@ -81,7 +82,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     const defaultGroup = await GroupResource.makeNew(
       {
         workspaceId: workspace.id,
-        name: `Group for Agent ${agent.name}`,
+        name: `Group for Agent ${agent.name} (${agent.sId})`,
         kind: "agent_editors",
       },
       { transaction }
@@ -116,6 +117,27 @@ export class GroupResource extends BaseResource<GroupModel> {
     return defaultGroup;
   }
 
+  static async findAgentIdsForGroups(
+    auth: Authenticator,
+    groupIds: ModelId[]
+  ): Promise<{ agentConfigurationId: ModelId; groupId: ModelId }[]> {
+    const owner = auth.getNonNullableWorkspace();
+
+    const groupAgents = await GroupAgentModel.findAll({
+      where: {
+        groupId: {
+          [Op.in]: groupIds,
+        },
+        workspaceId: owner.id,
+      },
+      attributes: ["agentConfigurationId", "groupId"],
+    });
+    return groupAgents.map((ga) => ({
+      agentConfigurationId: ga.agentConfigurationId,
+      groupId: ga.groupId,
+    }));
+  }
+
   /**
    * Finds the specific editor group associated with an agent configuration.
    */
@@ -135,7 +157,10 @@ export class GroupResource extends BaseResource<GroupModel> {
 
     if (groupAgents.length === 0) {
       return new Err(
-        new Error("Editor group association not found for agent.")
+        new DustError(
+          "group_not_found",
+          "Editor group association not found for agent."
+        )
       );
     }
 
@@ -168,6 +193,70 @@ export class GroupResource extends BaseResource<GroupModel> {
     }
 
     return group;
+  }
+
+  /**
+   * Finds the specific editor groups associated with a set of agent configuration.
+   */
+  static async findEditorGroupsForAgents(
+    auth: Authenticator,
+    agent: LightAgentConfigurationType[]
+  ): Promise<Result<Record<string, GroupResource>, Error>> {
+    const owner = auth.getNonNullableWorkspace();
+
+    const groupAgents = await GroupAgentModel.findAll({
+      where: {
+        agentConfigurationId: agent.map((a) => a.id),
+        workspaceId: owner.id,
+      },
+      attributes: ["groupId", "agentConfigurationId"],
+    });
+
+    if (groupAgents.length === 0) {
+      return new Err(
+        new DustError(
+          "group_not_found",
+          "Editor group association not found for agent."
+        )
+      );
+    }
+
+    const groups = await GroupResource.fetchByIds(
+      auth,
+      groupAgents.map((ga) =>
+        GroupResource.modelIdToSId({
+          id: ga.groupId,
+          workspaceId: owner.id,
+        })
+      )
+    );
+
+    if (groups.isErr()) {
+      return groups;
+    }
+
+    if (groups.value.some((g) => g.kind !== "agent_editors")) {
+      // Should not happen based on creation logic, but good to check.
+      // Might change when we allow other group kinds to be associated with agents.
+      return new Err(
+        new Error("Associated group is not an agent_editors group.")
+      );
+    }
+
+    const r = groupAgents.reduce<Record<string, GroupResource>>((acc, ga) => {
+      if (ga.agentConfigurationId) {
+        const agentConfiguration = agent.find(
+          (a) => a.id === ga.agentConfigurationId
+        );
+        const group = groups.value.find((g) => g.id === ga.groupId);
+        if (group && agentConfiguration) {
+          acc[agentConfiguration.sId] = group;
+        }
+      }
+      return acc;
+    }, {});
+
+    return new Ok(r);
   }
 
   static async makeDefaultsForWorkspace(workspace: LightWorkspaceType) {
@@ -395,6 +484,64 @@ export class GroupResource extends BaseResource<GroupModel> {
     return new Ok(groups);
   }
 
+  static async fetchByAgentConfiguration({
+    auth,
+    agentConfiguration,
+    isDeletionFlow = false,
+  }: {
+    auth: Authenticator;
+    agentConfiguration: AgentConfiguration | AgentConfigurationType;
+    isDeletionFlow?: boolean;
+  }): Promise<GroupResource | null> {
+    const workspace = auth.getNonNullableWorkspace();
+    const groupAgents = await GroupAgentModel.findAll({
+      where: {
+        agentConfigurationId: agentConfiguration.id,
+        workspaceId: workspace.id,
+      },
+      include: [
+        {
+          model: GroupModel,
+          where: {
+            workspaceId: workspace.id,
+            kind: "agent_editors",
+          },
+          required: true,
+        },
+      ],
+    });
+
+    if (
+      agentConfiguration.status === "draft" ||
+      agentConfiguration.scope === "global"
+    ) {
+      if (groupAgents.length === 0) {
+        return null;
+      }
+      throw new Error(
+        "Unexpected: draft or global agent shouldn't have an editor group."
+      );
+    }
+
+    // In the case of agents deletion, it is possible that the agent has no
+    // editor group associated with it, because the group may have been deleted
+    // when deleting another version of the agent with the same sId.
+    if (isDeletionFlow && groupAgents.length === 0) {
+      return null;
+    }
+
+    // In other cases, the agent should always have exactly one editor group.
+    if (groupAgents.length !== 1) {
+      throw new Error(
+        "Unexpected: agent should have exactly one editor group."
+      );
+    }
+
+    const group = await groupAgents[0].getGroup();
+
+    return new this(GroupModel, group.get());
+  }
+
   static async fetchWorkspaceSystemGroup(
     auth: Authenticator
   ): Promise<Result<GroupResource, DustError>> {
@@ -516,6 +663,30 @@ export class GroupResource extends BaseResource<GroupModel> {
     const groups = [...(globalGroup ? [globalGroup] : []), ...userGroups];
 
     return groups.map((group) => new this(GroupModel, group.get()));
+  }
+
+  async isMember(auth: Authenticator): Promise<boolean> {
+    const owner = auth.getNonNullableWorkspace();
+
+    if (this.isGlobal()) {
+      return true;
+    }
+
+    if (this.isSystem()) {
+      return false;
+    }
+
+    const membership = await GroupMembershipModel.findOne({
+      where: {
+        groupId: this.id,
+        workspaceId: owner.id,
+        startAt: { [Op.lte]: new Date() },
+        [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
+        userId: auth.getNonNullableUser().id,
+      },
+    });
+
+    return !!membership;
   }
 
   async getActiveMembers(auth: Authenticator): Promise<UserResource[]> {
@@ -826,6 +997,13 @@ export class GroupResource extends BaseResource<GroupModel> {
       });
 
       await GroupSpaceModel.destroy({
+        where: {
+          groupId: this.id,
+        },
+        transaction,
+      });
+
+      await GroupAgentModel.destroy({
         where: {
           groupId: this.id,
         },

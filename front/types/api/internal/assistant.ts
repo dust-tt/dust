@@ -3,7 +3,7 @@ import * as t from "io-ts";
 
 import { getSupportedNonImageMimeTypes } from "../../files";
 
-export const InternalPostMessagesRequestBodySchema = t.type({
+export const MessageBaseSchema = t.type({
   content: t.refinement(
     t.string,
     (s): s is string => s.length > 0,
@@ -16,10 +16,12 @@ export const InternalPostMessagesRequestBodySchema = t.type({
       profilePictureUrl: t.union([t.string, t.null]),
     }),
     t.partial({
-      localMCPServerIds: t.array(t.string),
+      clientSideMCPServerIds: t.array(t.string),
     }),
   ]),
 });
+
+export const InternalPostMessagesRequestBodySchema = MessageBaseSchema;
 
 const ContentFragmentBaseSchema = t.intersection([
   t.type({
@@ -182,7 +184,7 @@ export const InternalPostConversationsRequestBodySchema = t.type({
     t.literal("deleted"),
     t.literal("test"),
   ]),
-  message: t.union([InternalPostMessagesRequestBodySchema, t.null]),
+  message: t.union([MessageBaseSchema, t.null]),
   contentFragments: t.array(InternalPostContentFragmentRequestBodySchema),
 });
 
@@ -205,6 +207,15 @@ export const InternalPostBuilderSuggestionsRequestBodySchema = t.union([
   t.type({
     type: t.literal("description"),
     inputs: t.type({ instructions: t.string, name: t.string }),
+  }),
+  t.type({
+    type: t.literal("tags"),
+    inputs: t.type({
+      instructions: t.string,
+      description: t.string,
+      isAdmin: t.boolean,
+      tags: t.array(t.string),
+    }),
   }),
 ]);
 

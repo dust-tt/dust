@@ -39,14 +39,41 @@ function isValidViewVersion(
   );
 }
 
-// Declared here because endpoint-specific.
 const VALID_ACTIONS = ["view", "download"] as const;
 type Action = (typeof VALID_ACTIONS)[number];
+
 function isValidAction(
-  // Because coming from the URL, it can be a string or an array of strings.
   action: string | string[] | undefined
 ): action is Action {
   return typeof action === "string" && VALID_ACTIONS.includes(action as Action);
+}
+
+/**
+ * Determines the appropriate action for a file based on security rules.
+ *
+ * Security considerations:
+ * - Only safe file types can be viewed
+ * - All unsafe file types must be downloaded
+ * - Unknown content types are treated as unsafe
+ */
+export function getSecureFileAction(
+  // Because coming from the URL, it can be a string or an array of strings.
+  action: string | string[] | undefined,
+  file: FileResource
+): Action {
+  // If action is not a valid action type, default to download.
+  if (!isValidAction(action)) {
+    return "download";
+  }
+
+  // For view action, check if the file type is safe to display.
+  if (action === "view") {
+    if (!file.isSafeToDisplay()) {
+      return "download";
+    }
+  }
+
+  return action;
 }
 
 async function handler(
@@ -115,10 +142,7 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
-      const action = isValidAction(req.query.action)
-        ? req.query.action
-        : "download";
-
+      const action = getSecureFileAction(req.query.action, file);
       if (action === "view") {
         // Get the version of the file.
         const version = isValidViewVersion(req.query.version)
@@ -145,12 +169,23 @@ async function handler(
 
       // Redirect to a signed URL.
       const url = await file.getSignedUrlForDownload(auth, "original");
-
       res.redirect(url);
       return;
     }
 
     case "DELETE": {
+      // Check if the user is a builder for the workspace or it's a conversation file
+      if (!auth.isBuilder() && file.useCase !== "conversation") {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "workspace_auth_error",
+            message:
+              "Only users that are `builders` for the current workspace can delete files.",
+          },
+        });
+      }
+
       const deleteRes = await file.delete(auth);
       if (deleteRes.isErr()) {
         return apiError(req, res, {
@@ -167,6 +202,17 @@ async function handler(
     }
 
     case "POST": {
+      // Check if the user is a builder for the workspace or it's a conversation file
+      if (!auth.isBuilder() && file.useCase !== "conversation") {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "workspace_auth_error",
+            message:
+              "Only users that are `builders` for the current workspace can modify files.",
+          },
+        });
+      }
       const r = await processAndStoreFile(auth, {
         file,
         content: { type: "incoming_message", value: req },

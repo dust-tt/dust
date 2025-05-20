@@ -1,6 +1,8 @@
 import assert from "assert";
 
 import {
+  DEFAULT_CONVERSATION_EXTRACT_ACTION_DATA_DESCRIPTION,
+  DEFAULT_CONVERSATION_EXTRACT_ACTION_NAME,
   DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_DATA_DESCRIPTION,
   DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME,
   DEFAULT_CONVERSATION_SEARCH_ACTION_DATA_DESCRIPTION,
@@ -18,10 +20,8 @@ import {
   isConversationFileType,
   makeConversationListFilesAction,
 } from "@app/lib/actions/conversation/list_files";
-import type {
-  DataSourceConfiguration,
-  RetrievalConfigurationType,
-} from "@app/lib/actions/retrieval";
+import type { ProcessConfigurationType } from "@app/lib/actions/process";
+import type { RetrievalConfigurationType } from "@app/lib/actions/retrieval";
 import type { TablesQueryConfigurationType } from "@app/lib/actions/tables_query";
 import type {
   ActionConfigurationType,
@@ -31,6 +31,7 @@ import {
   isProcessConfiguration,
   isRetrievalConfiguration,
 } from "@app/lib/actions/types/guards";
+import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration";
 import {
   isMultiSheetSpreadsheetContentType,
   isSearchableFolder,
@@ -124,9 +125,13 @@ async function getJITActions(
   // Check files for the retrieval query action.
   const filesUsableAsRetrievalQuery = files.filter((f) => f.isSearchable);
 
+  // Check files for the process action.
+  const filesUsableForExtracting = files.filter((f) => f.isExtractable);
+
   if (
     filesUsableAsTableQuery.length > 0 ||
-    filesUsableAsRetrievalQuery.length > 0
+    filesUsableAsRetrievalQuery.length > 0 ||
+    filesUsableForExtracting.length > 0
   ) {
     // Get the datasource view for the conversation.
     const conversationDataSourceView =
@@ -221,6 +226,45 @@ async function getJITActions(
       actions.push(action);
     }
 
+    // Add process action for processable files
+    if (filesUsableForExtracting.length > 0) {
+      const dataSources: DataSourceConfiguration[] = filesUsableForExtracting
+        // For each extractable content node, we add its datasourceview with itself as parent filter.
+        .filter((f) => isConversationContentNodeType(f))
+        .map((f) => ({
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          // Cast ok here because of the filter above.
+          dataSourceViewId: (f as ConversationContentNodeType)
+            .nodeDataSourceViewId,
+          filter: {
+            parents: {
+              in: [(f as ConversationContentNodeType).nodeId],
+              not: [],
+            },
+            tags: null,
+          },
+        }));
+      if (conversationDataSourceView) {
+        dataSources.push({
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          dataSourceViewId: conversationDataSourceView.sId,
+          filter: { parents: null, tags: null },
+        });
+      }
+
+      const action: ProcessConfigurationType = {
+        description: DEFAULT_CONVERSATION_EXTRACT_ACTION_DATA_DESCRIPTION,
+        type: "process_configuration",
+        id: -1,
+        name: DEFAULT_CONVERSATION_EXTRACT_ACTION_NAME,
+        sId: generateRandomModelSId(),
+        dataSources,
+        relativeTimeFrame: "auto",
+        jsonSchema: null,
+      };
+      actions.push(action);
+    }
+
     for (const [i, f] of files
       .filter((f) => isConversationContentNodeType(f) && isSearchableFolder(f))
       .entries()) {
@@ -255,6 +299,19 @@ async function getJITActions(
         dataSources,
       };
       actions.push(action);
+
+      // add process action for the folder
+      const processAction: ProcessConfigurationType = {
+        description: `Extract structured data from the documents inside "${folder.title}"`,
+        type: "process_configuration",
+        id: -1,
+        name: `extract_folder_${i}`,
+        sId: generateRandomModelSId(),
+        dataSources,
+        relativeTimeFrame: "auto",
+        jsonSchema: null,
+      };
+      actions.push(processAction);
     }
   }
 

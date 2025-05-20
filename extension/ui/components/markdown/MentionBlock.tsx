@@ -1,13 +1,27 @@
+import { InputBarContext } from "@app/ui/components/input_bar/InputBarContext";
 import { classNames } from "@dust-tt/sparkle";
+import { useContext } from "react";
 import { visit } from "unist-util-visit";
 
-export function MentionBlock({ agentName }: { agentName: string }) {
+export function MentionBlock({
+  agentName,
+  agentSId,
+}: {
+  agentName: string;
+  agentSId: string;
+}) {
+  const { setAnimate, setSelectedAssistant } = useContext(InputBarContext);
+
   return (
     <span
       className={classNames(
-        "inline-block cursor-default font-medium text-highlight",
+        "inline-block cursor-pointer font-medium text-highlight",
         "dark:text-highlight-night"
       )}
+      onClick={() => {
+        setSelectedAssistant({ configurationId: agentSId });
+        setAnimate(true);
+      }}
     >
       @{agentName}
     </span>

@@ -6,7 +6,7 @@ import type {
   Transaction,
 } from "sequelize";
 
-import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
+import type { RemoteMCPToolStakeLevelType } from "@app/lib/actions/constants";
 import type { Authenticator } from "@app/lib/auth";
 import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/assistant/actions/remote_mcp_server_tool_metadata";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -128,7 +128,7 @@ export class RemoteMCPServerToolMetadataResource extends BaseResource<RemoteMCPS
     }: {
       serverId: number;
       toolName: string;
-      permission: MCPToolStakeLevelType;
+      permission: RemoteMCPToolStakeLevelType;
     }
   ) {
     const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
@@ -179,7 +179,7 @@ export class RemoteMCPServerToolMetadataResource extends BaseResource<RemoteMCPS
   toJSON(): {
     remoteMCPServerId: number;
     toolName: string;
-    permission: MCPToolStakeLevelType;
+    permission: RemoteMCPToolStakeLevelType;
   } {
     return {
       remoteMCPServerId: this.remoteMCPServerId,

@@ -11,6 +11,7 @@ import dynamic from "next/dynamic";
 import { useState } from "react";
 
 import ModelPicker from "@app/components/app/ModelPicker";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { supportsResponseFormat } from "@app/lib/providers";
 import { classNames, shallowBlockClone } from "@app/lib/utils";
 import type {
@@ -204,7 +205,7 @@ export default function Chat({
   const [isModelSupportsResponseFormat, setIsModelSupportsResponseFormat] =
     useState(config ? supportsResponseFormat(config) : false);
 
-  const theme = localStorage.getItem("theme");
+  const { isDark } = useTheme();
 
   return (
     <Block
@@ -390,16 +391,32 @@ export default function Chat({
                     <div className="flex w-full font-normal">
                       <div className="w-full leading-5">
                         <CodeEditor
-                          data-color-mode={theme === "dark" ? "dark" : "light"}
+                          data-color-mode={isDark ? "dark" : "light"}
                           readOnly={readOnly}
                           value={responseFormatText}
                           language="json"
-                          placeholder="Define a structured format for chat responses"
+                          placeholder={
+                            "{\n" +
+                            '  "type": "json_schema",\n' +
+                            '  "json_schema": {\n' +
+                            '    "name": "YourSchemaName",\n' +
+                            '    "strict": true,\n' +
+                            '    "schema": {\n' +
+                            '      "type": "object",\n' +
+                            '      "properties": {\n' +
+                            '        "property1":\n' +
+                            '          { "type":"string" }\n' +
+                            "      },\n" +
+                            '      "required": ["property1"],\n' +
+                            '      "additionalProperties": false\n' +
+                            "    }\n" +
+                            "  }\n" +
+                            "}"
+                          }
                           onChange={(e) =>
                             handleResponseFormatChange(e.target.value)
                           }
                           padding={3}
-                          minHeight={80}
                           className={classNames(
                             "rounded-lg",
                             isResponseFormatJsonValid
@@ -410,6 +427,8 @@ export default function Chat({
                             fontSize: 13,
                             fontFamily:
                               "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
+                            overflowY: "auto",
+                            height: "400px",
                           }}
                         />
                       </div>
@@ -426,7 +445,7 @@ export default function Chat({
           <div className="flex w-full font-normal">
             <div className="w-full leading-5">
               <CodeEditor
-                data-color-mode={theme === "dark" ? "dark" : "light"}
+                data-color-mode={isDark ? "dark" : "light"}
                 readOnly={readOnly}
                 value={block.spec.instructions}
                 language="jinja2"
@@ -450,7 +469,7 @@ export default function Chat({
           <div className="flex w-full font-normal">
             <div className="w-full leading-4">
               <CodeEditor
-                data-color-mode={theme === "dark" ? "dark" : "light"}
+                data-color-mode={isDark ? "dark" : "light"}
                 readOnly={readOnly}
                 value={block.spec.messages_code}
                 language="js"
@@ -477,7 +496,7 @@ export default function Chat({
                 <div className="flex w-full font-normal">
                   <div className="w-full leading-4">
                     <CodeEditor
-                      data-color-mode={theme === "dark" ? "dark" : "light"}
+                      data-color-mode={isDark ? "dark" : "light"}
                       readOnly={readOnly}
                       value={block.spec.functions_code}
                       language="js"

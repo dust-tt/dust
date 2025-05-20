@@ -35,11 +35,18 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
       repo: z.string().describe("The name of the repository."),
       title: z.string().describe("The title of the issue."),
       body: z.string().describe("The contents of the issue (GitHub markdown)."),
+      assignees: z
+        .array(z.string())
+        .optional()
+        .describe("Logins for Users to assign to this issue."),
+      labels: z
+        .array(z.string())
+        .optional()
+        .describe("Labels to associate with this issue."),
     },
-    async ({ owner, repo, title, body }) => {
+    async ({ owner, repo, title, body, assignees, labels }) => {
       const accessToken = await getAccessTokenForInternalMCPServer(auth, {
         mcpServerId,
-        provider: "github",
       });
 
       const octokit = new Octokit({ auth: accessToken });
@@ -52,6 +59,8 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
             repo,
             title,
             body,
+            assignees,
+            labels,
           }
         );
 
@@ -94,7 +103,6 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
     async ({ owner, repo, pullNumber }) => {
       const accessToken = await getAccessTokenForInternalMCPServer(auth, {
         mcpServerId,
-        provider: "github",
       });
 
       const octokit = new Octokit({ auth: accessToken });
@@ -209,7 +217,7 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
             return {
               sha: n.commit.oid,
               message: n.commit.message,
-              author: n.commit.author.user.login,
+              author: n.commit.author.user?.login || "unknown",
             };
           }
         );
@@ -217,7 +225,7 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
           (n) => {
             return {
               createdAt: new Date(n.createdAt).getTime(),
-              author: n.author.login,
+              author: n.author?.login || "unknown",
               body: n.body,
             };
           }
@@ -226,7 +234,7 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
           (n) => {
             return {
               createdAt: new Date(n.createdAt).getTime(),
-              author: n.author.login,
+              author: n.author?.login || "unknown",
               body: n.body,
               state: n.state,
               comments: n.comments.nodes.map((c) => {
@@ -240,46 +248,68 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
           }
         );
 
-        // const formatDiffWithLineNumbers = (diff: string) => {
-        //   const lines = diff.split("\n");
-        //   let oldLineNum = 0;
-        //   let newLineNum = 0;
+        // Transforms the diff to inject positions for each lines in the sense of the github pull
+        // request review comments definition.
+        const diffWithPositions = (diff: string) => {
+          const lines = diff.split("\n");
 
-        //   return lines
-        //     .map((line) => {
-        //       if (
-        //         !line.startsWith("+") &&
-        //         !line.startsWith("-") &&
-        //         !line.startsWith(" ") &&
-        //         !line.startsWith("@")
-        //       ) {
-        //         return line;
-        //       }
+          // First pass: calculate global max position
+          let currentFile = null;
+          let position = 0;
+          let globalMaxPosition = 0;
 
-        //       if (line.startsWith("@@")) {
-        //         // Reset line numbers based on hunk header
-        //         const match = line.match(/@@ -(\d+),\d+ \+(\d+),\d+ @@/);
-        //         if (match) {
-        //           oldLineNum = parseInt(match[1]) - 1;
-        //           newLineNum = parseInt(match[2]) - 1;
-        //         }
-        //         return line;
-        //       }
+          for (const line of lines) {
+            if (line.startsWith("diff --git")) {
+              currentFile = null;
+              position = 0;
+              continue;
+            }
 
-        //       if (line.startsWith("-")) {
-        //         oldLineNum++;
-        //         return `${oldLineNum}: ${line}`;
-        //       }
-        //       if (line.startsWith("+")) {
-        //         newLineNum++;
-        //         return `${newLineNum}: ${line}`;
-        //       }
-        //       oldLineNum++;
-        //       newLineNum++;
-        //       return `${newLineNum}: ${line}`;
-        //     })
-        //     .join("\n");
-        // };
+            if (line.startsWith("@@")) {
+              position = 0;
+              continue;
+            }
+
+            if (currentFile !== null) {
+              position++;
+              globalMaxPosition = Math.max(position, globalMaxPosition);
+            } else if (line.startsWith("+++")) {
+              currentFile = line.substring(4).trim();
+            }
+          }
+
+          // Second pass: add positions with consistent space padding
+          const result = [];
+          currentFile = null;
+          position = 0;
+          const digits = globalMaxPosition.toString().length;
+
+          for (const line of lines) {
+            if (line.startsWith("diff --git")) {
+              currentFile = null;
+              position = 0;
+              result.push(line);
+              continue;
+            }
+
+            if (currentFile !== null) {
+              const paddedPosition = position.toString().padStart(digits, " ");
+              if (line.startsWith("@@")) {
+                result.push(line);
+              } else {
+                result.push(`[${paddedPosition}] ${line}`);
+              }
+              position++;
+            } else {
+              result.push(line);
+              if (line.startsWith("+++")) {
+                currentFile = line.substring(4).trim();
+              }
+            }
+          }
+
+          return result.join("\n");
+        };
 
         // Get the actual diff using REST API (not available in GraphQL)
         const diff = await octokit.request(
@@ -295,7 +325,7 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
         );
         // @ts-expect-error - data is a string when mediatType.format is `diff` (wrongly typed as
         // their defauilt response type)
-        const pullDiff = diff.data as string;
+        const pullDiff = diffWithPositions(diff.data as string);
 
         const content =
           `TITLE: ${pullTitle}\n\n` +
@@ -305,7 +335,7 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
           `${(pullCommits || [])
             .map((c) => `${c.sha} ${c.author}: ${c.message}`)
             .join("\n")}\n\n` +
-          `DIFF:\n` +
+          `DIFF (lines are prepended by diff file positions):\n` +
           `${pullDiff}\n\n` +
           `COMMENTS:\n` +
           `${(pullComments || [])
@@ -375,11 +405,12 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
               .describe(
                 "The relative path to the file that necessitates a review comment."
               ),
-            line: z
+            position: z
               .number()
               .optional()
               .describe(
-                "The line number in the file. If not set the review comment will apply to the file."
+                "The position in the diff to add a review comment as prepended in " +
+                  "the diff retrieved by `get_pull_request`"
               ),
             body: z.string().describe("The text of the review comment."),
           })
@@ -390,7 +421,6 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
     async ({ owner, repo, pullNumber, body, event, comments = [] }) => {
       const accessToken = await getAccessTokenForInternalMCPServer(auth, {
         mcpServerId,
-        provider: "github",
       });
 
       const octokit = new Octokit({ auth: accessToken });
@@ -432,6 +462,127 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
   );
 
   server.tool(
+    "list_organization_projects",
+    "List the open projects of a GitHub organization along with their single select fields (generally used as columns)",
+    {
+      owner: z
+        .string()
+        .describe(
+          "The owner of the repository (account or organization name)."
+        ),
+    },
+    async ({ owner }) => {
+      const accessToken = await getAccessTokenForInternalMCPServer(auth, {
+        mcpServerId,
+      });
+
+      const octokit = new Octokit({ auth: accessToken });
+
+      try {
+        const projectsQuery = `
+        query($owner: String!) {
+          organization(login: $owner) {
+            projectsV2(first: 100) {
+              nodes {
+                id
+                title
+                shortDescription
+                url
+                closed
+                fields(first: 100) {
+                  nodes {
+                    ... on ProjectV2SingleSelectField {
+                      id
+                      name
+                      options {
+                        id
+                        name
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }`;
+
+        const results = (await octokit.graphql(projectsQuery, {
+          owner,
+        })) as {
+          organization: {
+            projectsV2: {
+              nodes: {
+                id: string;
+                title: string;
+                shortDescription: string | null;
+                url: string;
+                closed: boolean;
+                fields: {
+                  nodes: {
+                    id: string;
+                    name: string;
+                    options: {
+                      id: string;
+                      name: string;
+                    }[];
+                  }[];
+                };
+              }[];
+            };
+          };
+        };
+
+        const projects = results.organization.projectsV2.nodes
+          .filter((project: any) => !project.closed)
+          .map((project) => ({
+            ...project,
+            fields: {
+              nodes: project.fields.nodes.filter((n) => n.id),
+            },
+          }));
+
+        let content = "";
+        projects.forEach((project) => {
+          content +=
+            `project='${project.title}' node_id=${project.id} ` +
+            `description='${project.shortDescription}'\n`;
+          project.fields.nodes.forEach((field) => {
+            content += `  field='${field.name}' node_id=${field.id}\n`;
+            field.options.forEach((o) => {
+              content += `    option='${o.name}' node_id=${o.id}\n`;
+            });
+          });
+          content += "\n";
+        });
+
+        if (!content) {
+          content = "No open projects found.";
+        }
+
+        return {
+          isError: false,
+          content: [
+            {
+              type: "text",
+              text: content,
+            },
+          ],
+        };
+      } catch (e) {
+        return {
+          isError: true,
+          content: [
+            {
+              type: "text",
+              text: `Error reviewing GitHub repository projects: ${normalizeError(e).message}`,
+            },
+          ],
+        };
+      }
+    }
+  );
+
+  server.tool(
     "add_issue_to_project",
     "Add an existing issue to a GitHub project, optionally setting a field value.",
     {
@@ -451,11 +602,11 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
         .object({
           fieldId: z
             .string()
-            .describe("The ID of the field to update (GraphQL ID)."),
+            .describe("The node ID of the field to update (GraphQL ID)."),
           optionId: z
             .string()
             .describe(
-              "The ID of the option to update the field to (GraphQL ID)."
+              "The node ID of the option to update the field to (GraphQL ID)."
             ),
         })
         .optional()
@@ -466,7 +617,6 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
     async ({ owner, repo, issueNumber, projectId, field }) => {
       const accessToken = await getAccessTokenForInternalMCPServer(auth, {
         mcpServerId,
-        provider: "github",
       });
 
       const octokit = new Octokit({ auth: accessToken });

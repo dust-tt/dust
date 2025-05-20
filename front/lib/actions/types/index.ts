@@ -1,4 +1,9 @@
 import type {
+  ClientSideMCPServerConfigurationType,
+  MCPServerConfigurationType,
+  MCPToolConfigurationType,
+} from "@app/lib/actions/mcp";
+import type {
   ActionConfigurationType,
   AgentActionSpecification,
 } from "@app/lib/actions/types/agent";
@@ -59,13 +64,16 @@ export abstract class BaseAction {
   }
 
   abstract renderForFunctionCall(): FunctionCallType;
-  abstract renderForMultiActionsModel({
-    conversation,
-    model,
-  }: {
-    conversation: ConversationType;
-    model: ModelConfigurationType;
-  }): Promise<FunctionMessageTypeModel>;
+  abstract renderForMultiActionsModel(
+    auth: Authenticator,
+    {
+      conversation,
+      model,
+    }: {
+      conversation: ConversationType;
+      model: ModelConfigurationType;
+    }
+  ): Promise<FunctionMessageTypeModel>;
 }
 
 export type ExtractActionBlob<T extends BaseAction> = Pick<
@@ -97,7 +105,6 @@ export interface BaseActionConfigurationStaticMethods<
 
 export interface BaseActionRunParams {
   agentConfiguration: AgentConfigurationType;
-  actionConfiguration: ActionConfigurationType;
   conversation: ConversationType;
   agentMessage: AgentMessageType;
   rawInputs: Record<string, unknown>;
@@ -133,3 +140,33 @@ export abstract class BaseActionConfigurationServerRunner<
     customParams: Record<string, unknown>
   ): AsyncGenerator<unknown>;
 }
+
+export type AgentLoopRunContextType = {
+  agentConfiguration: AgentConfigurationType;
+  actionConfiguration: MCPToolConfigurationType;
+  clientSideActionConfigurations?: ClientSideMCPServerConfigurationType[];
+  conversation: ConversationType;
+  agentMessage: AgentMessageType;
+  stepActionIndex: number;
+  stepActions: ActionConfigurationType[];
+  citationsRefsOffset: number;
+};
+
+export type AgentLoopListToolsContextType = {
+  agentConfiguration: AgentConfigurationType;
+  agentActionConfiguration: MCPServerConfigurationType;
+  clientSideActionConfigurations?: ClientSideMCPServerConfigurationType[];
+  conversation: ConversationType;
+  agentMessage: AgentMessageType;
+};
+
+export type AgentLoopContextType =
+  | {
+      runContext: AgentLoopRunContextType;
+      listToolsContext?: never;
+    }
+  | {
+      runContext?: never;
+      listToolsContext: AgentLoopListToolsContextType;
+    }
+  | { runContext?: never; listToolsContext?: never };

@@ -14,6 +14,7 @@ import {
   createPlaceholderUserMessage,
   submitMessage,
 } from "@app/components/assistant/conversation/lib";
+import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
 import { DropzoneContainer } from "@app/components/misc/DropzoneContainer";
 import { updateMessagePagesWithOptimisticData } from "@app/lib/client/conversation/event_handlers";
 import { getRandomGreetingForName } from "@app/lib/client/greetings";
@@ -38,7 +39,6 @@ interface ConversationContainerProps {
   owner: WorkspaceType;
   subscription: SubscriptionType;
   user: UserType;
-  isBuilder: boolean;
   agentIdToMention: string | null;
 }
 
@@ -46,7 +46,6 @@ export function ConversationContainer({
   owner,
   subscription,
   user,
-  isBuilder,
   agentIdToMention,
 }: ConversationContainerProps) {
   const { activeConversationId } = useConversationsNavigation();
@@ -116,7 +115,7 @@ export function ConversationContainer({
       input,
       mentions,
       contentFragments,
-      localMCPServerIds: removeNulls([serverId]),
+      clientSideMCPServerIds: removeNulls([serverId]),
     };
 
     try {
@@ -217,7 +216,7 @@ export function ConversationContainer({
           input,
           mentions,
           contentFragments,
-          localMCPServerIds: removeNulls([serverId]),
+          clientSideMCPServerIds: removeNulls([serverId]),
         },
       });
 
@@ -302,6 +301,8 @@ export function ConversationContainer({
     [setStickyMentions]
   );
 
+  const { startConversationRef } = useWelcomeTourGuide();
+
   return (
     <DropzoneContainer
       description="Drag and drop your text files (txt, doc, pdf) and image files (jpg, png) here."
@@ -316,13 +317,10 @@ export function ConversationContainer({
           onStickyMentionsChange={onStickyMentionsChange}
         />
       ) : (
-        <div></div>
-      )}
-
-      {!activeConversationId && (
         <div
           id="assistant-input-header"
           className="flex h-fit min-h-[20vh] w-full max-w-4xl flex-col justify-end gap-8 py-2"
+          ref={startConversationRef}
         >
           <Page.Header title={greeting} />
           <Page.SectionHeader title="Start a conversation" />
@@ -345,7 +343,6 @@ export function ConversationContainer({
             assistantToMention.current = assistant;
           }}
           owner={owner}
-          isBuilder={isBuilder}
         />
       )}
 

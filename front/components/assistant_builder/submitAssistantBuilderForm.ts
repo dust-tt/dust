@@ -1,9 +1,9 @@
 import { isLegacyAssistantBuilderConfiguration } from "@app/components/assistant_builder/legacy_agent";
-import { removeLeadingAt } from "@app/components/assistant_builder/NamingScreen";
+import { removeLeadingAt } from "@app/components/assistant_builder/SettingsScreen";
 import { getTableIdForContentNode } from "@app/components/assistant_builder/shared";
 import type { SlackChannel } from "@app/components/assistant_builder/SlackIntegration";
 import type {
-  AssistantBuilderActionConfiguration,
+  AssistantBuilderActionAndDataVisualizationConfiguration,
   AssistantBuilderState,
 } from "@app/components/assistant_builder/types";
 import {
@@ -14,11 +14,9 @@ import {
   DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/actions/constants";
-import type {
-  DataSourceConfiguration,
-  RetrievalTimeframe,
-} from "@app/lib/actions/retrieval";
+import type { RetrievalTimeframe } from "@app/lib/actions/retrieval";
 import type { TableDataSourceConfiguration } from "@app/lib/actions/tables_query";
+import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration";
 import type {
   AgentConfigurationType,
   DataSourceViewSelectionConfigurations,
@@ -97,8 +95,8 @@ export async function submitAssistantBuilderForm({
   Result<LightAgentConfigurationType | AgentConfigurationType, Error>
 > {
   const { selectedSlackChannels, slackChannelsLinkedWithAgent } = slackData;
-  let { handle, description, instructions, avatarUrl } = builderState;
-  if (!handle || !description || !instructions || !avatarUrl) {
+  let { handle, description, instructions, avatarUrl, editors } = builderState;
+  if (!handle || !description || !instructions || !avatarUrl || !editors) {
     if (!isDraft) {
       // Should be unreachable, we keep this for TS
       throw new Error("Form not valid (unreachable)");
@@ -107,6 +105,7 @@ export async function submitAssistantBuilderForm({
       description = description?.trim() || "Preview";
       instructions = instructions?.trim() || "Preview";
       avatarUrl = avatarUrl ?? "";
+      editors = [];
     }
   }
 
@@ -114,23 +113,27 @@ export async function submitAssistantBuilderForm({
     PostOrPatchAgentConfigurationRequestBody["assistant"]["actions"]
   >;
 
-  const map: (a: AssistantBuilderActionConfiguration) => ActionsType = (a) => {
-    let timeFrame: RetrievalTimeframe = "auto";
+  const map: (
+    a: AssistantBuilderActionAndDataVisualizationConfiguration
+  ) => ActionsType = (a) => {
+    let retrievalTimeFrame: RetrievalTimeframe = "auto";
 
     if (a.type === "RETRIEVAL_EXHAUSTIVE") {
       if (a.configuration.timeFrame) {
-        timeFrame = {
+        retrievalTimeFrame = {
           duration: a.configuration.timeFrame.value,
           unit: a.configuration.timeFrame.unit,
         };
       } else {
-        timeFrame = "none";
+        retrievalTimeFrame = "none";
       }
     } else if (a.type === "PROCESS") {
-      timeFrame = {
-        duration: a.configuration.timeFrame.value,
-        unit: a.configuration.timeFrame.unit,
-      };
+      if (a.configuration.timeFrame) {
+        retrievalTimeFrame = {
+          duration: a.configuration.timeFrame.value,
+          unit: a.configuration.timeFrame.unit,
+        };
+      }
     }
 
     switch (a.type) {
@@ -142,7 +145,7 @@ export async function submitAssistantBuilderForm({
             name: a.name,
             description: a.description,
             query: a.type === "RETRIEVAL_SEARCH" ? "auto" : "none",
-            relativeTimeFrame: timeFrame,
+            relativeTimeFrame: retrievalTimeFrame,
             topK: "auto",
             dataSources: processDataSourcesSelection({
               owner,
@@ -201,9 +204,13 @@ export async function submitAssistantBuilderForm({
             tablesConfigurations,
             dataSourceConfigurations,
             childAgentId,
+            reasoningModel: mcpReasoningModel,
             additionalConfiguration,
+            dustAppConfiguration,
+            timeFrame,
           },
         } = a;
+
         return [
           {
             type: "mcp_server_configuration",
@@ -217,7 +224,16 @@ export async function submitAssistantBuilderForm({
               ? processTableSelection({ owner, tablesConfigurations })
               : null,
             childAgentId,
+            reasoningModel: mcpReasoningModel
+              ? {
+                  providerId: mcpReasoningModel.providerId,
+                  reasoningEffort: mcpReasoningModel.reasoningEffort ?? null,
+                  modelId: mcpReasoningModel.modelId,
+                }
+              : null,
+            timeFrame,
             additionalConfiguration,
+            dustAppConfiguration,
           },
         ];
 
@@ -252,8 +268,8 @@ export async function submitAssistantBuilderForm({
               })
             ),
             tagsFilter: a.configuration.tagsFilter,
-            relativeTimeFrame: timeFrame,
-            schema: a.configuration.schema,
+            relativeTimeFrame: retrievalTimeFrame,
+            jsonSchema: a.configuration.jsonSchema,
           },
         ];
 
@@ -286,6 +302,11 @@ export async function submitAssistantBuilderForm({
             reasoningEffort: reasoningModel.reasoningEffort ?? null,
           },
         ];
+
+      // Data visaulization is boolean value (visualizationEnabled), but in UI we display it
+      // like an action. We need to remove it before sending the request to the API.
+      case "DATA_VISUALIZATION":
+        return [];
 
       default:
         assertNever(a);
@@ -320,6 +341,7 @@ export async function submitAssistantBuilderForm({
       visualizationEnabled: builderState.visualizationEnabled,
       templateId: builderState.templateId,
       tags: builderState.tags,
+      editors: editors.map((e) => ({ sId: e.sId })),
     },
   };
 

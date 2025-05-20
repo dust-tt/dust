@@ -37,7 +37,7 @@ async function handler(
         ),
       });
     case "POST":
-      if (!space.canWrite(auth)) {
+      if (!space.canWrite(auth) || !auth.isBuilder()) {
         return apiError(req, res, {
           status_code: 403,
           api_error: {

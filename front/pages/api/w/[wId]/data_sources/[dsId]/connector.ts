@@ -69,7 +69,12 @@ async function handler(
         });
       }
 
-      res.status(200).json({ connector: connectorRes.value });
+      res.status(200).json({
+        connector: {
+          ...connectorRes.value,
+          connectionId: null,
+        },
+      });
       return;
     }
 

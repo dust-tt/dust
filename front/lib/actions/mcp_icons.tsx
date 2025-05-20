@@ -1,5 +1,24 @@
-import { Avatar } from "@dust-tt/sparkle";
-import { ActionIcons, GithubLogo, LightbulbIcon } from "@dust-tt/sparkle";
+import {
+  ActionBrainIcon,
+  ActionCloudArrowLeftRightIcon,
+  ActionDocumentTextIcon,
+  ActionEmotionLaughIcon,
+  ActionGitBranchIcon,
+  ActionGlobeAltIcon,
+  ActionIcons,
+  ActionImageIcon,
+  ActionLightbulbIcon,
+  ActionLockIcon,
+  ActionMagnifyingGlassIcon,
+  ActionRobotIcon,
+  ActionTableIcon,
+  ActionTimeIcon,
+  Avatar,
+  CommandLineIcon,
+  GithubLogo,
+  HubspotLogo,
+  NotionLogo,
+} from "@dust-tt/sparkle";
 import type React from "react";
 import type { ComponentProps } from "react";
 
@@ -10,8 +29,23 @@ export const DEFAULT_MCP_SERVER_ICON = "ActionCommand1Icon" as const;
 export const REMOTE_ALLOWED_ICONS = Object.keys(ActionIcons);
 
 export const InternalActionIcons = {
+  ActionBrainIcon,
+  ActionCloudArrowLeftRightIcon,
+  ActionDocumentTextIcon,
+  ActionEmotionLaughIcon,
+  ActionGitBranchIcon,
+  ActionGlobeAltIcon,
+  ActionImageIcon,
+  ActionLightbulbIcon,
+  ActionLockIcon,
+  ActionMagnifyingGlassIcon,
+  ActionRobotIcon,
+  ActionTableIcon,
+  ActionTimeIcon,
   GithubLogo,
-  LightbulbIcon,
+  HubspotLogo,
+  CommandLineIcon,
+  NotionLogo,
 };
 
 export const INTERNAL_ALLOWED_ICONS = Object.keys(InternalActionIcons);
@@ -21,7 +55,6 @@ export type RemoteAllowedIconType = keyof typeof ActionIcons;
 export const isRemoteAllowedIconType = (
   icon: string
 ): icon is RemoteAllowedIconType =>
-  typeof icon === "string" &&
   REMOTE_ALLOWED_ICONS.includes(icon as RemoteAllowedIconType);
 
 export type InternalAllowedIconType = keyof typeof InternalActionIcons;
@@ -29,7 +62,6 @@ export type InternalAllowedIconType = keyof typeof InternalActionIcons;
 export const isInternalAllowedIcon = (
   icon: string
 ): icon is InternalAllowedIconType =>
-  typeof icon === "string" &&
   INTERNAL_ALLOWED_ICONS.includes(icon as InternalAllowedIconType);
 
 export const getAvatar = (

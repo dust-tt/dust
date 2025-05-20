@@ -71,7 +71,7 @@ async function handler(
           async (r) => {
             const server = r.toJSON();
             const views = (
-              await MCPServerViewResource.listByMCPServer(auth, server.id)
+              await MCPServerViewResource.listByMCPServer(auth, server.sId)
             ).map((v) => v.toJSON());
             return { ...server, views };
           },
@@ -123,7 +123,19 @@ async function handler(
           });
         }
 
-        const metadata = await fetchRemoteServerMetaDataByURL(auth, url);
+        const r = await fetchRemoteServerMetaDataByURL(auth, url);
+        if (r.isErr()) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message:
+                "Error fetching remote server metadata, URL may be invalid.",
+            },
+          });
+        }
+
+        const metadata = r.value;
 
         const newRemoteMCPServer = await RemoteMCPServerResource.makeNew(auth, {
           workspaceId: auth.getNonNullableWorkspace().id,
@@ -151,7 +163,7 @@ async function handler(
           success: true,
           server: {
             ...metadata,
-            id: newRemoteMCPServer.sId,
+            sId: newRemoteMCPServer.sId,
           },
         });
       } else {

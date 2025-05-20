@@ -37,7 +37,7 @@ import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ConnectorPermission, ContentNode } from "@connectors/types";
 import type { DataSourceConfig } from "@connectors/types";
-import { ConfluenceClientError } from "@connectors/types";
+import { ConfluenceClientError, normalizeError } from "@connectors/types";
 
 const logger = mainLogger.child({
   connector: "confluence",
@@ -74,6 +74,7 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
 
     const confluenceConfigurationBlob = {
       cloudId,
+      ignoreNearRateLimit: false,
       url: cloudUrl,
       userAccountId,
     };
@@ -220,7 +221,7 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
 
       return new Ok(undefined);
     } catch (err) {
-      return new Err(err as Error);
+      return new Err(normalizeError(err));
     }
   }
 
@@ -318,7 +319,7 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
           )
         );
       }
-      // Unanhdled error, throwing to get a 500.
+      // Unhandled error, throwing to get a 500.
       throw e;
     }
   }

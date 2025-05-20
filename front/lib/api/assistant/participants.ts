@@ -68,6 +68,7 @@ export async function fetchConversationParticipants(
   const messages = await Message.findAll({
     where: {
       conversationId: conversation.id,
+      workspaceId: owner.id,
     },
     attributes: [],
     include: [

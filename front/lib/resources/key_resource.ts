@@ -2,12 +2,7 @@
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 import { hash as blake3 } from "blake3";
-import type {
-  Attributes,
-  CreationAttributes,
-  ModelStatic,
-  Transaction,
-} from "sequelize";
+import type { Attributes, CreationAttributes, Transaction } from "sequelize";
 import { Op } from "sequelize";
 import { v4 as uuidv4 } from "uuid";
 
@@ -17,6 +12,7 @@ import type { GroupResource } from "@app/lib/resources/group_resource";
 import { KeyModel } from "@app/lib/resources/storage/models/keys";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
+import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { KeyType, ModelId } from "@app/types";
 import type { LightWorkspaceType, Result } from "@app/types";
 import { formatUserFullName, redactString } from "@app/types";
@@ -33,11 +29,14 @@ export const SECRET_KEY_PREFIX = "sk-";
 export interface KeyResource extends ReadonlyAttributesType<KeyModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class KeyResource extends BaseResource<KeyModel> {
-  static model: ModelStatic<KeyModel> = KeyModel;
+  static model: ModelStaticWorkspaceAware<KeyModel> = KeyModel;
 
   private user?: UserModel;
 
-  constructor(model: ModelStatic<KeyModel>, blob: Attributes<KeyModel>) {
+  constructor(
+    model: ModelStaticWorkspaceAware<KeyModel>,
+    blob: Attributes<KeyModel>
+  ) {
     super(KeyModel, blob);
   }
 
@@ -77,6 +76,9 @@ export class KeyResource extends BaseResource<KeyModel> {
       where: {
         secret,
       },
+      // WORKSPACE_ISOLATION_BYPASS: Used when a request is made from an API Key, at this point we
+      // don't know the workspaceId.
+      dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
 
     if (!key) {

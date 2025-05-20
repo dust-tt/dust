@@ -1,9 +1,13 @@
+import type { Icon } from "@dust-tt/sparkle";
 import { CircleIcon, SquareIcon, TriangleIcon } from "@dust-tt/sparkle";
+import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { uniqueId } from "lodash";
 import type React from "react";
 import type { SVGProps } from "react";
 
 import {
+  DEFAULT_DATA_VISUALIZATION_DESCRIPTION,
+  DEFAULT_DATA_VISUALIZATION_NAME,
   DEFAULT_MCP_ACTION_NAME,
   DEFAULT_PROCESS_ACTION_NAME,
   DEFAULT_REASONING_ACTION_DESCRIPTION,
@@ -13,8 +17,9 @@ import {
   DEFAULT_TABLES_QUERY_ACTION_NAME,
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/actions/constants";
-import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_schemas";
-import type { ProcessSchemaPropertyType } from "@app/lib/actions/process";
+import type { DustAppRunConfigurationType } from "@app/lib/actions/dust_app_run";
+import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/utils";
+import type { ReasoningModelConfiguration } from "@app/lib/actions/reasoning";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { FetchAssistantTemplateResponse } from "@app/pages/api/templates/[tId]";
 import type {
@@ -27,7 +32,10 @@ import type {
   PlanType,
   SubscriptionType,
   SupportedModel,
+  TimeFrame,
   TimeframeUnit,
+  UserType,
+  WhitelistableFeature,
   WorkspaceType,
 } from "@app/types";
 import {
@@ -108,11 +116,12 @@ export type AssistantBuilderTableConfiguration =
 // Process configuration
 
 export type AssistantBuilderProcessConfiguration = {
-  timeFrame: AssistantBuilderTimeFrame;
+  timeFrame?: AssistantBuilderTimeFrame | null;
 } & {
   dataSourceConfigurations: DataSourceViewSelectionConfigurations;
   tagsFilter: AssistantBuilderTagsFilter | null;
-  schema: ProcessSchemaPropertyType[];
+  jsonSchema: JSONSchema | null;
+  _jsonSchemaString?: string | null;
 };
 
 // Websearch configuration (no configuration)
@@ -132,7 +141,10 @@ export type AssistantBuilderMCPServerConfiguration = {
   dataSourceConfigurations: DataSourceViewSelectionConfigurations | null;
   tablesConfigurations: DataSourceViewSelectionConfigurations | null;
   childAgentId: string | null;
+  reasoningModel: ReasoningModelConfiguration | null;
+  timeFrame: TimeFrame | null;
   additionalConfiguration: Record<string, boolean | number | string>;
+  dustAppConfiguration: DustAppRunConfigurationType | null;
 };
 
 // Builder State
@@ -181,6 +193,24 @@ export type AssistantBuilderActionConfigurationWithId =
     id: string;
   };
 
+export interface AssistantBuilderDataVisualizationConfiguration {
+  type: "DATA_VISUALIZATION";
+  configuration: Record<string, never>;
+  name: string;
+  description: string;
+  noConfigurationRequired: true;
+}
+
+// DATA_VISUALIZATION is not an action, but we need to show it in the UI like an action.
+export type AssistantBuilderDataVisualizationConfigurationWithId =
+  AssistantBuilderDataVisualizationConfiguration & {
+    id: string;
+  };
+
+export type AssistantBuilderActionAndDataVisualizationConfiguration =
+  | AssistantBuilderActionConfiguration
+  | AssistantBuilderDataVisualizationConfiguration;
+
 export type TemplateActionType = Omit<
   AssistantBuilderActionConfiguration,
   "configuration"
@@ -191,9 +221,16 @@ export type TemplateActionType = Omit<
 export type AssistantBuilderActionType =
   AssistantBuilderActionConfiguration["type"];
 
+export type AssistantBuilderDataVisualizationType =
+  AssistantBuilderDataVisualizationConfiguration["type"];
+
+export type AssistantBuilderActionState =
+  | AssistantBuilderActionConfigurationWithId
+  | AssistantBuilderDataVisualizationConfigurationWithId;
+
 export type AssistantBuilderSetActionType =
   | {
-      action: AssistantBuilderActionConfigurationWithId;
+      action: AssistantBuilderActionState;
       type: "insert" | "edit" | "pending";
     }
   | {
@@ -206,11 +243,12 @@ export type AssistantBuilderSetActionType =
 
 export type AssistantBuilderPendingAction =
   | {
-      action: AssistantBuilderActionConfigurationWithId;
+      action: AssistantBuilderActionState;
       previousActionName: string | null;
     }
   | {
       action: null;
+      previousActionName: null;
     };
 
 export type AssistantBuilderState = {
@@ -224,11 +262,12 @@ export type AssistantBuilderState = {
     temperature: number;
     responseFormat?: string;
   };
-  actions: Array<AssistantBuilderActionConfigurationWithId>;
+  actions: AssistantBuilderActionState[];
   maxStepsPerRun: number | null;
   visualizationEnabled: boolean;
   templateId: string | null;
   tags: TagType[];
+  editors: UserType[];
 };
 
 export type AssistantBuilderInitialState = {
@@ -242,17 +281,32 @@ export type AssistantBuilderInitialState = {
     temperature: number;
     responseFormat?: string;
   } | null;
-  actions: Array<AssistantBuilderActionConfiguration>;
+  actions: AssistantBuilderActionAndDataVisualizationConfiguration[];
   maxStepsPerRun: number | null;
   visualizationEnabled: boolean;
   templateId: string | null;
   tags: TagType[];
+  editors: UserType[];
+};
+
+export interface ActionSpecification {
+  label: string;
+  description: string;
+  dropDownIcon: NonNullable<React.ComponentProps<typeof Icon>["visual"]>;
+  cardIcon: NonNullable<React.ComponentProps<typeof Icon>["visual"]>;
+  flag: WhitelistableFeature | null;
+}
+
+export type ActionSpecificationWithType = ActionSpecification & {
+  type: AssistantBuilderActionType | "DATA_VISUALIZATION";
 };
 
 // Creates a fresh instance of AssistantBuilderState to prevent unintended mutations of shared state.
 export function getDefaultAssistantState() {
   return {
-    actions: [],
+    // Data Visualization is not an action but we show it like an action.
+    // We enable it by default so we should push it to actions list.
+    actions: [getDataVisualizationActionConfiguration()],
     handle: null,
     scope: "private",
     description: null,
@@ -269,6 +323,7 @@ export function getDefaultAssistantState() {
     visualizationEnabled: true,
     templateId: null,
     tags: [],
+    editors: [],
   } satisfies AssistantBuilderState;
 }
 
@@ -330,12 +385,10 @@ export function getDefaultProcessActionConfiguration() {
     type: "PROCESS",
     configuration: {
       dataSourceConfigurations: {},
-      timeFrame: {
-        value: 1,
-        unit: "day",
-      },
+      timeFrame: null,
       tagsFilter: null,
-      schema: [],
+      jsonSchema: null,
+      _jsonSchemaString: null,
     } as AssistantBuilderProcessConfiguration,
     name: DEFAULT_PROCESS_ACTION_NAME,
     description: "",
@@ -362,9 +415,21 @@ export function getDefaultReasoningActionConfiguration(): AssistantBuilderAction
       reasoningEffort: null,
     },
     name: DEFAULT_REASONING_ACTION_NAME,
+    // Old reasoning is actually configurable, but it is set to true (= non-configurable) because we have a special dropdown menu to configure and
+    // we don't want to show the configuration modal. We will remove this and the dropdown when we fully switch to MCP.
+    noConfigurationRequired: true,
     description: DEFAULT_REASONING_ACTION_DESCRIPTION,
-    noConfigurationRequired: false,
   } satisfies AssistantBuilderActionConfiguration;
+}
+
+export function getDataVisualizationConfiguration(): AssistantBuilderDataVisualizationConfiguration {
+  return {
+    type: "DATA_VISUALIZATION",
+    configuration: {},
+    name: DEFAULT_DATA_VISUALIZATION_NAME,
+    description: DEFAULT_DATA_VISUALIZATION_DESCRIPTION,
+    noConfigurationRequired: true,
+  } satisfies AssistantBuilderDataVisualizationConfiguration;
 }
 
 export function getDefaultMCPServerActionConfiguration(
@@ -375,11 +440,14 @@ export function getDefaultMCPServerActionConfiguration(
   return {
     type: "MCP",
     configuration: {
-      mcpServerViewId: mcpServerView?.id ?? "not-a-valid-sId",
+      mcpServerViewId: mcpServerView?.sId ?? "not-a-valid-sId",
       dataSourceConfigurations: null,
       tablesConfigurations: null,
       childAgentId: null,
+      reasoningModel: null,
+      timeFrame: null,
       additionalConfiguration: {},
+      dustAppConfiguration: null,
     },
     name: mcpServerView?.server.name ?? "",
     description:
@@ -390,6 +458,7 @@ export function getDefaultMCPServerActionConfiguration(
     noConfigurationRequired: requirements.noRequirement,
   };
 }
+
 export function getDefaultActionConfiguration(
   actionType: AssistantBuilderActionType | null
 ): AssistantBuilderActionConfigurationWithId | null {
@@ -428,6 +497,13 @@ export function getDefaultActionConfiguration(
   return null;
 }
 
+export function getDataVisualizationActionConfiguration() {
+  return {
+    id: uniqueId(),
+    ...getDataVisualizationConfiguration(),
+  };
+}
+
 export const BUILDER_FLOWS = [
   "workspace_assistants",
   "personal_assistants",
@@ -446,7 +522,7 @@ export type AssistantBuilderProps = {
   subscription: SubscriptionType;
 };
 
-export const BUILDER_SCREENS = ["instructions", "actions", "naming"] as const;
+export const BUILDER_SCREENS = ["instructions", "actions", "settings"] as const;
 
 export type BuilderScreen = (typeof BUILDER_SCREENS)[number];
 
@@ -473,16 +549,16 @@ export const BUILDER_SCREENS_INFOS: Record<BuilderScreen, BuilderScreenInfos> =
     },
     actions: {
       id: "actions",
-      label: "Tools & Data sources",
+      label: "Tools & Knowledge",
       dataGtm: {
         label: "assistantToolsButton",
         location: "assistantBuilder",
       },
       icon: SquareIcon,
     },
-    naming: {
-      id: "naming",
-      label: "Naming",
+    settings: {
+      id: "settings",
+      label: "Settings",
       dataGtm: {
         label: "assistantNamingButton",
         location: "assistantBuilder",

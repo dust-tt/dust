@@ -7,26 +7,33 @@ import {
 } from "@app/lib/actions/configuration/helpers";
 import { DEFAULT_PROCESS_ACTION_NAME } from "@app/lib/actions/constants";
 import type { ProcessConfigurationType } from "@app/lib/actions/process";
+import type { Authenticator } from "@app/lib/auth";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { AgentProcessConfiguration } from "@app/lib/models/assistant/actions/process";
 import { Workspace } from "@app/lib/models/workspace";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
-import type { ModelId } from "@app/types";
+import type { AgentFetchVariant, ModelId } from "@app/types";
 
-export async function fetchAgentProcessActionConfigurations({
-  configurationIds,
-  variant,
-}: {
-  configurationIds: ModelId[];
-  variant: "light" | "full";
-}): Promise<Map<ModelId, ProcessConfigurationType[]>> {
+export async function fetchAgentProcessActionConfigurations(
+  auth: Authenticator,
+  {
+    configurationIds,
+    variant,
+  }: {
+    configurationIds: ModelId[];
+    variant: AgentFetchVariant;
+  }
+): Promise<Map<ModelId, ProcessConfigurationType[]>> {
   if (variant !== "full") {
     return new Map();
   }
 
   // Find the process configurations for the given agent configurations.
   const processConfiguration = await AgentProcessConfiguration.findAll({
-    where: { agentConfigurationId: { [Op.in]: configurationIds } },
+    where: {
+      agentConfigurationId: { [Op.in]: configurationIds },
+      workspaceId: auth.getNonNullableWorkspace().id,
+    },
   });
 
   if (processConfiguration.length === 0) {
@@ -37,6 +44,7 @@ export async function fetchAgentProcessActionConfigurations({
   const processDatasourceConfigurations =
     await AgentDataSourceConfiguration.findAll({
       where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
         processConfigurationId: {
           [Op.in]: processConfiguration.map((r) => r.id),
         },
@@ -81,7 +89,7 @@ export async function fetchAgentProcessActionConfigurations({
         type: "process_configuration",
         dataSources: dataSourceConfig.map(renderDataSourceConfiguration),
         relativeTimeFrame: renderRetrievalTimeframeType(processConfig),
-        schema: processConfig.schema,
+        jsonSchema: processConfig.jsonSchema,
         name: processConfig.name || DEFAULT_PROCESS_ACTION_NAME,
         description: processConfig.description,
       });

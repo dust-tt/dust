@@ -2,17 +2,21 @@ import {
   ActionBookOpenIcon,
   ActionIcons,
   Button,
+  ClipboardCheckIcon,
+  ClipboardIcon,
   CloudArrowLeftRightIcon,
   ContentMessage,
   ExclamationCircleIcon,
+  ExternalLinkIcon,
   IconPicker,
   Input,
   Label,
+  LinkWrapper,
   PopoverContent,
   PopoverRoot,
   PopoverTrigger,
   Separator,
-  // useCopyToClipboard,
+  useCopyToClipboard,
   useSendNotification,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -28,7 +32,7 @@ import {
   useUpdateRemoteMCPServer,
 } from "@app/lib/swr/mcp_servers";
 import type { LightWorkspaceType } from "@app/types";
-import { asDisplayName } from "@app/types";
+import { asDisplayName, isRedacted } from "@app/types";
 
 interface RemoteMCPFormProps {
   owner: LightWorkspaceType;
@@ -50,8 +54,7 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
   const [syncError, setSyncError] = useState<string | null>(null);
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
-  // const [isSecretVisible, setIsSecretVisible] = useState(false);
-  // const [isCopied, copy] = useCopyToClipboard();
+  const [isCopied, copy] = useCopyToClipboard();
 
   const form = useForm<MCPFormType>({
     resolver: zodResolver(MCPFormSchema),
@@ -62,8 +65,7 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
     },
   });
 
-  const { url } = mcpServer;
-  // const { url, sharedSecret } = mcpServer;
+  const { url, sharedSecret } = mcpServer;
 
   const { mutateMCPServers } = useMCPServers({
     owner,
@@ -71,8 +73,8 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
   });
 
   // Use the serverId from state for the hooks
-  const { updateServer } = useUpdateRemoteMCPServer(owner, mcpServer.id);
-  const { syncServer } = useSyncRemoteMCPServer(owner, mcpServer.id);
+  const { updateServer } = useUpdateRemoteMCPServer(owner, mcpServer.sId);
+  const { syncServer } = useSyncRemoteMCPServer(owner, mcpServer.sId);
 
   const onSubmit = useCallback(
     async (values: MCPFormType) => {
@@ -147,27 +149,23 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
     }
   }, [url, syncServer, mutateMCPServers, sendNotification]);
 
-  // const toggleSecretVisibility = () => {
-  //   setIsSecretVisible(!isSecretVisible);
-  // };
-
-  // const copyToClipboard = async () => {
-  //   if (sharedSecret) {
-  //     await copy(sharedSecret);
-  //     sendNotification({
-  //       title: "Copied to clipboard",
-  //       type: "success",
-  //       description: "The shared secret has been copied to your clipboard.",
-  //     });
-  //   }
-  // };
+  const copyToClipboard = async () => {
+    if (sharedSecret) {
+      await copy(sharedSecret);
+      sendNotification({
+        title: "Copied to clipboard",
+        type: "success",
+        description: "The shared secret has been copied to your clipboard.",
+      });
+    }
+  };
 
   const closePopover = () => {
     setIsPopoverOpen(false);
   };
 
   return (
-    <div className="space-y-5 text-foreground">
+    <div className="space-y-5 text-foreground dark:text-foreground-night">
       {syncError && (
         <ContentMessage
           variant="warning"
@@ -285,7 +283,7 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
                   mcpServer.cachedDescription ?? DEFAULT_MCP_ACTION_DESCRIPTION
                 }
               />
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-gray-500 dark:text-gray-500-night">
                 This is only for internal reference and is not shown to the
                 model.
               </p>
@@ -318,46 +316,55 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
 
       <Separator />
 
-      {/**
-       * TODO(mcp): Show shared secret in the UI.
-       * Shared secret will be added back in the future.
-       * As they are not used right now, they are confusing in the UI.
-       * Will be moved to an "Advanced" section.
-      
-       {sharedSecret && (
-        <>
-          <div className="space-y-2">
-            <Label htmlFor="sharedSecret">Shared Secret</Label>
-            <div className="flex items-center justify-between">
-              <p className="overflow-hidden text-ellipsis whitespace-nowrap">
-                {isSecretVisible ? sharedSecret : formatSecret(sharedSecret)}
-              </p>
-              <div className="flex items-center gap-2">
-                <Button
-                  icon={isSecretVisible ? EyeSlashIcon : EyeIcon}
-                  variant="outline"
-                  size="sm"
-                  onClick={toggleSecretVisibility}
-                  tooltip={isSecretVisible ? "Hide secret" : "Show secret"}
-                />
-                <Button
-                  icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
-                  variant="outline"
-                  size="sm"
-                  onClick={copyToClipboard}
-                  tooltip={isCopied ? "Copied!" : "Copy to clipboard"}
-                />
+      <div className="heading-lg">Advanced</div>
+      <p>
+        For more details on the advanced settings, please refer to the Dust{" "}
+        <LinkWrapper
+          href="https://docs.dust.tt/docs/remote-mcp-server"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          documentation <ExternalLinkIcon className="inline" />
+        </LinkWrapper>
+        .
+      </p>
+      <div className="space-y-2">
+        {sharedSecret && (
+          <>
+            <div className="space-y-2">
+              <Label htmlFor="sharedSecret">Shared Secret</Label>
+              <div className="flex items-center justify-between">
+                <p className="overflow-hidden text-ellipsis whitespace-nowrap">
+                  {sharedSecret}
+                </p>
+                {!isRedacted(sharedSecret) && (
+                  <Button
+                    icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
+                    variant="outline"
+                    size="sm"
+                    onClick={copyToClipboard}
+                    tooltip={isCopied ? "Copied!" : "Copy to clipboard"}
+                  />
+                )}
               </div>
+              {isRedacted(sharedSecret) ? (
+                <p className="text-xs text-gray-500 dark:text-gray-500-night">
+                  This is the secret key used to authenticate your MCP server
+                  with Dust. It is now hidden for security reasons. You can
+                  retrieve it in the calls made to your MCP server.
+                </p>
+              ) : (
+                <p className="text-xs text-gray-500 dark:text-gray-500-night">
+                  This is the secret key used to authenticate your MCP server
+                  with Dust. Keep it secure. It will be hidden after 10 minutes
+                  of creation.
+                </p>
+              )}
             </div>
-            <p className="text-xs text-gray-500">
-              This is the secret key used to authenticate your MCP server with
-              Dust. Keep it secure.
-            </p>
-          </div>
-          <Separator />
-        </>
-      )}
-      */}
+            <Separator />
+          </>
+        )}
+      </div>
     </div>
   );
 }

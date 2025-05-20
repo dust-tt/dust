@@ -55,8 +55,14 @@ AgentTablesQueryConfiguration.init(
         fields: ["sId"],
         name: "agent_tables_query_configuration_s_id",
       },
+      // TODO(WORKSPACE_ID_ISOLATION 2025-05-13): Remove this index.
       {
         fields: ["agentConfigurationId"],
+        concurrently: true,
+      },
+      {
+        fields: ["workspaceId", "agentConfigurationId"],
+        name: "agent_tables_query_config_workspace_id_agent_config_id",
         concurrently: true,
       },
     ],
@@ -115,8 +121,30 @@ AgentTablesQueryConfigurationTable.init(
         fields: ["dataSourceViewId", "tableId", "tablesQueryConfigurationId"],
         name: "agent_tables_query_configuration_table_unique_dsv",
       },
+      {
+        fields: ["workspaceId", "tablesQueryConfigurationId"],
+        concurrently: true,
+        name: "agent_tables_query_config_table_w_id_tables_query_config_id",
+      },
+      // TODO(WORKSPACE_ID_ISOLATION 2025-05-14): Remove index
       { fields: ["dataSourceId"] },
+      {
+        fields: ["workspaceId", "dataSourceId"],
+        concurrently: true,
+        name: "agent_tables_query_config_table_workspace_id_data_source_id",
+      },
+      // TODO(WORKSPACE_ID_ISOLATION 2025-05-14): Remove index
       { fields: ["dataSourceViewId"] },
+      {
+        fields: ["workspaceId", "dataSourceViewId"],
+        concurrently: true,
+        name: "agent_tables_query_config_table_w_id_data_source_view_id",
+      },
+      {
+        fields: ["workspaceId", "mcpServerConfigurationId"],
+        name: "agent_tables_query_config_workspace_id_mcp_srv_config_id",
+        concurrently: true,
+      },
     ],
     sequelize: frontSequelize,
   }
@@ -237,8 +265,13 @@ AgentTablesQueryAction.init(
     modelName: "agent_tables_query_action",
     sequelize: frontSequelize,
     indexes: [
+      // TODO(WORKSPACE_ID_ISOLATION 2025-05-13): Remove index
       {
         fields: ["agentMessageId"],
+        concurrently: true,
+      },
+      {
+        fields: ["workspaceId", "agentMessageId"],
         concurrently: true,
       },
       {

@@ -1,8 +1,13 @@
-import { getMCPServerChannelId } from "@app/lib/api/actions/mcp_local";
+import {
+  getMCPServerChannelId,
+  getMCPServerResultsChannelId,
+  isMCPEventResult,
+} from "@app/lib/api/actions/mcp_client_side";
+import { publishEvent } from "@app/lib/api/assistant/pubsub";
 import type { EventPayload } from "@app/lib/api/redis-hybrid-manager";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import type { Authenticator } from "@app/lib/auth";
-import { createCallbackPromise } from "@app/lib/utils";
+import { createCallbackReader } from "@app/lib/utils";
 import { setTimeoutAsync } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 
@@ -20,10 +25,10 @@ export async function* getMCPEventsForServer(
 ) {
   const channelId = getMCPServerChannelId(auth, { mcpServerId });
 
-  const callbackPromise = createCallbackPromise<EventPayload | "close">();
+  const callbackReader = createCallbackReader<EventPayload | "close">();
   const { history, unsubscribe } = await getRedisHybridManager().subscribe(
     channelId,
-    callbackPromise.callback,
+    callbackReader.callback,
     lastEventId,
     "mcp_events"
   );
@@ -46,7 +51,7 @@ export async function* getMCPEventsForServer(
         break;
       }
       const rawEvent = await Promise.race([
-        callbackPromise.promise,
+        callbackReader.next(),
         setTimeoutAsync(MCP_EVENTS_TIMEOUT),
       ]);
 
@@ -54,9 +59,6 @@ export async function* getMCPEventsForServer(
       if (rawEvent === "timeout") {
         break;
       }
-
-      // Reset the promise for the next event.
-      callbackPromise.reset();
 
       if (rawEvent === "close") {
         break;
@@ -74,4 +76,46 @@ export async function* getMCPEventsForServer(
   } finally {
     unsubscribe();
   }
+}
+
+export async function publishMCPResults(
+  auth: Authenticator,
+  {
+    mcpServerId,
+    result,
+  }: {
+    mcpServerId: string;
+    result?: unknown;
+  }
+) {
+  // Publish MCP action results.
+  await publishEvent({
+    origin: "mcp_client_side_results",
+    channel: getMCPServerResultsChannelId(auth, {
+      mcpServerId,
+    }),
+    event: JSON.stringify({
+      type: "mcp_client_side_results",
+      result,
+    }),
+  });
+
+  // Remove the event from the action channel once we have published the results.
+  await getRedisHybridManager().removeEvent(
+    (event) => {
+      const payload = JSON.parse(event.message["payload"]);
+
+      if (
+        "id" in payload &&
+        isMCPEventResult(result) &&
+        payload.id === result.id
+      ) {
+        return true;
+      }
+
+      // If it's a notification (no id, then let's drop it).
+      return true;
+    },
+    getMCPServerChannelId(auth, { mcpServerId })
+  );
 }

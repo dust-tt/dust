@@ -13,19 +13,15 @@ import type { SlackMessageUpdate } from "@connectors/connectors/slack/chat/block
 import {
   makeAssistantSelectionBlock,
   makeMessageUpdateBlocksAndText,
+  makeToolValidationBlock,
   MAX_SLACK_MESSAGE_LENGTH,
 } from "@connectors/connectors/slack/chat/blocks";
 import { annotateCitations } from "@connectors/connectors/slack/chat/citations";
 import { makeConversationUrl } from "@connectors/connectors/slack/chat/utils";
 import type { SlackUserInfo } from "@connectors/connectors/slack/lib/slack_client";
-import { setTimeoutAsync } from "@connectors/lib/async_utils";
 import type { SlackChatBotMessage } from "@connectors/lib/models/slack";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
-
-// Copied from front/hooks/useEventSource.ts
-const RECONNECT_DELAY = 5000; // 5 seconds.
-const MAX_RECONNECT_ATTEMPTS = 10;
 
 interface StreamConversationToSlackParams {
   assistantName: string;
@@ -52,8 +48,7 @@ export async function streamConversationToSlack(
   dustAPI: DustAPI,
   conversationData: StreamConversationToSlackParams
 ): Promise<Result<undefined, Error>> {
-  const { assistantName, connector, conversation, agentConfigurations } =
-    conversationData;
+  const { assistantName, agentConfigurations } = conversationData;
 
   // Immediately post the conversation URL once available.
   await postSlackMessageUpdate(
@@ -69,31 +64,7 @@ export async function streamConversationToSlack(
     { adhereToRateLimit: false }
   );
 
-  let streamRes: Result<undefined, Error>;
-  let reconnectAttempts = 0;
-  do {
-    streamRes = await streamAgentAnswerToSlack(dustAPI, conversationData);
-
-    if (
-      streamRes.isErr() &&
-      streamRes.error instanceof SlackAnswerRetryableError
-    ) {
-      logger.warn(
-        {
-          connectorId: connector.id,
-          conversationId: conversation.sId,
-          error: streamRes.error,
-        },
-        "Retryable error in Slack answer stream."
-      );
-      await setTimeoutAsync(RECONNECT_DELAY);
-      reconnectAttempts++;
-    } else {
-      return streamRes;
-    }
-  } while (reconnectAttempts < MAX_RECONNECT_ATTEMPTS);
-
-  return streamRes;
+  return streamAgentAnswerToSlack(dustAPI, conversationData);
 }
 
 class SlackAnswerRetryableError extends Error {
@@ -114,6 +85,7 @@ async function streamAgentAnswerToSlack(
     slackChatBotMessage,
     agentConfigurations,
     slack,
+    connector,
   } = conversationData;
 
   const {
@@ -150,9 +122,9 @@ async function streamAgentAnswerToSlack(
       case "tables_query_model_output":
       case "tables_query_output":
       case "tables_query_started":
-      case "websearch_params":
-      case "tool_approve_execution":
       case "tool_params":
+      case "tool_notification":
+      case "websearch_params":
         await postSlackMessageUpdate(
           {
             messageUpdate: {
@@ -170,6 +142,46 @@ async function streamAgentAnswerToSlack(
 
         break;
 
+      case "tool_approve_execution": {
+        logger.info(
+          {
+            connectorId: connector.id,
+            conversationId: conversation.sId,
+            messageId: event.messageId,
+            actionId: event.action.id,
+            toolName: event.metadata.toolName,
+            agentName: event.metadata.agentName,
+          },
+          "Tool validation request"
+        );
+
+        const blockId = JSON.stringify({
+          workspaceId: connector.workspaceId,
+          conversationId: conversation.sId,
+          messageId: event.messageId,
+          actionId: event.action.id,
+          slackThreadTs: mainMessage.message?.thread_ts,
+          messageTs: mainMessage.message?.ts,
+          botId: mainMessage.message?.bot_id,
+          slackBotMessageId: slackChatBotMessage.id,
+        });
+
+        if (slackUserId && !slackUserInfo.is_bot) {
+          await slackClient.chat.postEphemeral({
+            channel: slackChannelId,
+            user: slackUserId,
+            text: "Approve tool execution",
+            blocks: makeToolValidationBlock({
+              agentName: event.metadata.agentName,
+              toolName: event.metadata.toolName,
+              id: blockId,
+            }),
+            thread_ts: slackMessageTs,
+          });
+        }
+        break;
+      }
+
       case "user_message_error": {
         return new Err(
           new Error(
@@ -183,13 +195,6 @@ async function streamAgentAnswerToSlack(
             `Agent message error: code: ${event.error.code} message: ${event.error.message}`
           )
         );
-      }
-      case "error": {
-        const message = `Error: code: ${event.content.code} message: ${event.content.message}`;
-        if (event.content.code === "stream_error") {
-          return new Err(new SlackAnswerRetryableError(message));
-        }
-        return new Err(new Error(message));
       }
 
       case "agent_action_success": {

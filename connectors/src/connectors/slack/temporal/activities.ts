@@ -523,6 +523,8 @@ export async function syncNonThreaded(
       );
     }
 
+    await heartbeat();
+
     for (const message of c.messages) {
       if (message.ts) {
         latestTsSec = parseInt(message.ts);
@@ -831,6 +833,26 @@ export async function syncThread(
     : undefined;
 
   const tags = getTagsForPage(documentId, channelId, channelName, threadTs);
+
+  const firstMessageObject = await SlackMessages.findOne({
+    where: {
+      connectorId: connectorId,
+      channelId: channelId,
+      messageTs: threadTs,
+    },
+  });
+  if (firstMessageObject && firstMessageObject.skipReason) {
+    logger.info(
+      {
+        connectorId,
+        channelId,
+        threadTs,
+        skipReason: firstMessageObject.skipReason,
+      },
+      `Skipping thread : ${firstMessageObject.skipReason}`
+    );
+    return;
+  }
 
   // Only create the document if it doesn't already exist based on the documentId
   const existingMessages = await SlackMessages.findAll({

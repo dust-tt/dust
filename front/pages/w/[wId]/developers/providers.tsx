@@ -15,7 +15,8 @@ import {
   ProviderSetup,
   SERVICE_PROVIDER_CONFIGS,
 } from "@app/components/providers/ProviderSetup";
-import AppLayout from "@app/components/sparkle/AppLayout";
+import AppContentLayout from "@app/components/sparkle/AppContentLayout";
+import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import {
   APP_MODEL_PROVIDER_IDS,
@@ -23,8 +24,8 @@ import {
   serviceProviders,
 } from "@app/lib/providers";
 import { useProviders } from "@app/lib/swr/apps";
-import { formatSecret } from "@app/lib/utils";
 import type { SubscriptionType, UserType, WorkspaceType } from "@app/types";
+import { redactString } from "@app/types";
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
@@ -205,7 +206,7 @@ function ProviderListItem({
           {apiKey && (
             <div className="flex items-center gap-1 font-mono text-xs text-muted-foreground dark:text-muted-foreground-night">
               <span className="shrink-0">API Key:</span>
-              <div className="max-w-72 truncate">{formatSecret(apiKey)}</div>
+              <div className="max-w-72 truncate">{redactString(apiKey, 4)}</div>
             </div>
           )}
         </div>
@@ -224,7 +225,7 @@ export default function ProvidersPage({
   subscription,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   return (
-    <AppLayout
+    <AppContentLayout
       subscription={subscription}
       owner={owner}
       subNavigation={subNavigationAdmin({ owner, current: "providers" })}
@@ -239,6 +240,10 @@ export default function ProvidersPage({
           <Providers owner={owner} />
         </Page.Vertical>
       </Page.Vertical>
-    </AppLayout>
+    </AppContentLayout>
   );
 }
+
+ProvidersPage.getLayout = (page: React.ReactElement) => {
+  return <AppRootLayout>{page}</AppRootLayout>;
+};

@@ -93,7 +93,8 @@ export function CreateMCPServerModal({
         if (createServerRes.success) {
           await createMCPServerConnection({
             connectionId: cRes.value.connection_id,
-            mcpServerId: createServerRes.server.id,
+            mcpServerId: createServerRes.server.sId,
+            provider: authorization.provider,
           });
         } else {
           sendNotification({
@@ -153,7 +154,7 @@ export function CreateMCPServerModal({
       <DialogContent size="lg">
         <DialogHeader>
           <DialogTitle>
-            {internalMCPServer ? "Add Toolset" : "Add MCP Server"}
+            {internalMCPServer ? "Add Tools" : "Add MCP Server"}
           </DialogTitle>
         </DialogHeader>
         <DialogContainer>
@@ -178,12 +179,12 @@ export function CreateMCPServerModal({
           {authorization && (
             <div className="flex flex-col items-center gap-2">
               <Label className="self-start">
-                This toolset requires authentication with{" "}
+                These tools require authentication with{" "}
                 {OAUTH_PROVIDER_NAMES[authorization.provider]}.
               </Label>
               <span className="w-full font-semibold text-red-500">
                 Authentication credentials will be shared by all users of this
-                workspace when they use this action.
+                workspace when they use these tools.
               </span>
             </div>
           )}
