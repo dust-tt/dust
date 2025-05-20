@@ -223,7 +223,7 @@ export function AssistantBrowser({
               {filteredTags.map((tag) => (
                 <DropdownMenuItem
                   key={tag.sId}
-                  onClick={(e) => {
+                  onClick={() => {
                     setSelectedTab("all");
                     setAssistantSearch("");
                     setTimeout(() => {
