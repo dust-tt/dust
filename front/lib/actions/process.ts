@@ -1,4 +1,4 @@
-import _ from "lodash";
+import _, { isObject } from "lodash";
 
 import {
   generateJSONFileAndSnippet,
@@ -44,6 +44,7 @@ import type {
   UserMessageType,
 } from "@app/types";
 import {
+  isString,
   Ok,
   parseTimeFrame,
   removeNulls,
@@ -275,12 +276,12 @@ export class ProcessConfigurationServerRunner extends BaseActionConfigurationSer
     }
     if (!actionConfiguration.jsonSchema) {
       if (rawInputs.schema) {
-        if (typeof rawInputs.schema === "string") {
+        if (isString(rawInputs.schema)) {
           const res = safeParseJSON(rawInputs.schema);
           if (res.isOk()) {
             actionConfiguration.jsonSchema = res.value;
           }
-        } else if (typeof rawInputs.schema === "object") {
+        } else if (isObject(rawInputs.schema)) {
           actionConfiguration.jsonSchema = rawInputs.schema;
         }
       }
