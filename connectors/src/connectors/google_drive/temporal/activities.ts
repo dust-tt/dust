@@ -206,6 +206,7 @@ export async function syncFiles(
     driveObjectId: driveFolderId,
     cacheKey: { connectorId, ts: startSyncTs },
   });
+  await heartbeat();
   if (!driveFolder) {
     // We got a 404 on this folder, we skip it.
     logger.info(
@@ -267,6 +268,7 @@ export async function syncFiles(
   if (!res.data.files) {
     throw new Error("Files list is undefined");
   }
+  await heartbeat();
   const filesToSync = await Promise.all(
     res.data.files
       .filter((file) => file.id && file.createdTime)
@@ -295,6 +297,7 @@ export async function syncFiles(
   const results = await Promise.all(
     filesToSync.map((file) => {
       return queue.add(async () => {
+        await heartbeat();
         if (!file.trashed) {
           return syncOneFile(
             connectorId,
