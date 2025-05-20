@@ -15,7 +15,7 @@ makeScript(
   },
   async ({ execute, skippedWorkspaceFile }, logger) => {
     if (!fs.existsSync(skippedWorkspaceFile)) {
-      logger.error(`File "${skippedWorkspaceFile} doesn't exists`);
+      logger.error(`File "${skippedWorkspaceFile}" doesn't exist`);
       return;
     }
 
