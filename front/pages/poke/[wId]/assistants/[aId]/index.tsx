@@ -1,4 +1,14 @@
-import { ContextItem, Page, TextArea } from "@dust-tt/sparkle";
+import {
+  Button,
+  ContextItem,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  Page,
+  TextArea,
+  UserGroupIcon,
+} from "@dust-tt/sparkle";
 import { JsonViewer } from "@textea/json-viewer";
 import type { InferGetServerSidePropsType } from "next";
 import type { ReactElement } from "react";
@@ -6,7 +16,7 @@ import type { ReactElement } from "react";
 import PokeLayout from "@app/components/poke/PokeLayout";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
-import { getAuthors } from "@app/lib/api/assistant/editors";
+import { getAuthors, getEditors } from "@app/lib/api/assistant/editors";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import type {
   AgentConfigurationType,
@@ -18,6 +28,7 @@ import { SUPPORTED_MODEL_CONFIGS } from "@app/types";
 export const getServerSideProps = withSuperUserAuthRequirements<{
   agentConfigurations: AgentConfigurationType[];
   authors: UserType[];
+  lastVersionEditors: UserType[];
   workspace: WorkspaceType;
 }>(async (context, auth) => {
   const aId = context.params?.aId;
@@ -33,9 +44,12 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
     variant: "full",
   });
 
+  const lastVersionEditors = await getEditors(auth, agentConfigurations[0]);
+
   return {
     props: {
       agentConfigurations,
+      lastVersionEditors,
       authors: await getAuthors(agentConfigurations),
       workspace: auth.getNonNullableWorkspace(),
     },
@@ -45,17 +59,47 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
 const AssistantDetailsPage = ({
   agentConfigurations,
   authors,
+  lastVersionEditors,
   workspace,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) => {
   const { isDark } = useTheme();
   return (
-    <div className="max-w-4xl">
-      <h3 className="text-xl font-bold">
-        Assistant of workspace:{" "}
-        <a href={`/poke/${workspace.sId}`} className="text-highlight-500">
-          {workspace.name}
-        </a>
-      </h3>
+    <div>
+      <div className="flex">
+        <h3 className="flex-grow text-xl font-bold">
+          Assistant of workspace:{" "}
+          <a href={`/poke/${workspace.sId}`} className="text-highlight-500">
+            {workspace.name}
+          </a>
+        </h3>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              icon={UserGroupIcon}
+              onClick={(e: any) => {
+                e.currentTarget.focus();
+              }}
+              label={`Editors`}
+            />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            onCloseAutoFocus={(event) => {
+              event.preventDefault();
+            }}
+          >
+            {lastVersionEditors.length === 0 && (
+              <DropdownMenuItem label="No editors found!" />
+            )}
+            {lastVersionEditors.map((editor) => (
+              <DropdownMenuItem
+                key={editor.id}
+                label={`${editor.fullName} (${editor.email})`}
+              />
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
       <Page.Vertical align="stretch">
         <ContextItem.List>
           {agentConfigurations.map((a) => {
@@ -95,7 +139,13 @@ const AssistantDetailsPage = ({
                     </div>
                     <div className="ml-4 text-sm text-muted-foreground">
                       <div className="font-bold">Instructions:</div>
-                      <TextArea placeholder="" value={a.instructions ?? ""} />
+                      <TextArea
+                        placeholder=""
+                        value={a.instructions ?? ""}
+                        onChange={() => {
+                          // noop
+                        }}
+                      />
                     </div>
                     <div className="ml-4 text-sm text-muted-foreground">
                       <div className="font-bold">
