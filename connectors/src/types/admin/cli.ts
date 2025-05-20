@@ -130,6 +130,7 @@ export const GongCommandSchema = t.type({
   command: t.literal("force-resync"),
   args: t.type({
     connectorId: t.union([t.number, t.undefined]),
+    fromTs: t.union([t.number, t.undefined]),
   }),
 });
 export type GongCommandType = t.TypeOf<typeof GongCommandSchema>;
