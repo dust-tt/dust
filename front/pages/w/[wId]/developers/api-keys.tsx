@@ -88,6 +88,7 @@ export function APIKeys({
 }) {
   const { mutate } = useSWRConfig();
   const [isCopiedWorkspaceId, copyWorkspaceId] = useCopyToClipboard();
+  const [isCopiedName, copyName] = useCopyToClipboard();
   const [isCopiedDomain, copyDomain] = useCopyToClipboard();
   const [isCopiedApiKey, copyApiKey] = useCopyToClipboard();
   const [newApiKeyName, setNewApiKeyName] = useState("");
@@ -184,10 +185,10 @@ export function APIKeys({
                   </pre>
                   <IconButton
                     tooltip="Copy to clipboard"
-                    icon={isCopiedDomain ? ClipboardCheckIcon : ClipboardIcon}
+                    icon={isCopiedName ? ClipboardCheckIcon : ClipboardIcon}
                     onClick={async () => {
                       if (keys[0]?.name) {
-                        await copyApiKey(keys[0].name);
+                        await copyName(keys[0].name);
                       }
                     }}
                   />
