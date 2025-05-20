@@ -223,12 +223,21 @@ export function AssistantBrowser({
               {filteredTags.map((tag) => (
                 <DropdownMenuItem
                   key={tag.sId}
-                  onClick={() => {
+                  onClick={(e) => {
                     setSelectedTab("all");
-                    if (!selectedTags.includes(tag.sId)) {
-                      setSelectedTags([...selectedTags, tag.sId]);
-                    }
                     setAssistantSearch("");
+                    setTimeout(() => {
+                      const element = document.getElementById(
+                        `anchor-${tag.sId}`
+                      );
+                      if (element) {
+                        element.scrollIntoView({
+                          behavior: "smooth",
+                          block: "start",
+                          inline: "nearest",
+                        });
+                      }
+                    }, 300); // Need to wait for the dropdown to close before scrolling
                   }}
                 >
                   <Chip label={tag.name} color="golden" size="xs" />
@@ -389,6 +398,7 @@ export function AssistantBrowser({
               )
               .map((tag) => (
                 <React.Fragment key={tag.sId}>
+                  <a id={`anchor-${tag.sId}`} />
                   <span className="heading-base">{tag.name}</span>
                   <AgentGrid
                     agentConfigurations={agentsByTab.all.filter((a) =>
