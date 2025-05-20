@@ -1,6 +1,7 @@
 import { INTERNAL_MIME_TYPES, removeNulls } from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import assert from "assert";
+import type { JSONSchema7 as JSONSchema } from "json-schema";
 import _ from "lodash";
 
 import {
@@ -8,10 +9,8 @@ import {
   uploadFileToConversationDataSource,
 } from "@app/lib/actions/action_file_helpers";
 import { PROCESS_ACTION_TOP_K } from "@app/lib/actions/constants";
-import {
-  ConfigurableToolInputSchemas,
-  DataSourcesToolConfigurationType,
-} from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { getDataSourceConfiguration } from "@app/lib/actions/mcp_internal_actions/servers/utils";
 import type { ProcessActionOutputsType } from "@app/lib/actions/process";
 import { getExtractFileTitle } from "@app/lib/actions/process/utils";
@@ -21,7 +20,6 @@ import type {
   ActionGeneratedFileType,
   AgentLoopRunContextType,
 } from "@app/lib/actions/types";
-import { isServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import { getSupportedModelConfig } from "@app/lib/assistant";
@@ -38,7 +36,6 @@ import type {
   UserMessageType,
 } from "@app/types";
 import { isUserMessageType, timeFrameFromNow } from "@app/types";
-import { JSONSchema7 as JSONSchema } from "json-schema";
 
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "extract_data",
@@ -294,7 +291,7 @@ async function getPromptForProcessDustApp({
   const userMessage: UserMessageType =
     lastUserMessageTuple[0] as UserMessageType;
 
-  return await constructPromptMultiActions(auth, {
+  return constructPromptMultiActions(auth, {
     userMessage,
     agentConfiguration,
     fallbackPrompt:

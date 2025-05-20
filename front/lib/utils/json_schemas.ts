@@ -25,7 +25,10 @@ export function isJSONSchemaObject(
  * Compares two JSON schemas for equality, only checking the properties, items and required fields.
  * In particular, it ignores the $schema field.
  */
-function areSchemasEqual(schemaA: JSONSchema, schemaB: JSONSchema): boolean {
+export function areSchemasEqual(
+  schemaA: JSONSchema,
+  schemaB: JSONSchema
+): boolean {
   if (schemaA.type !== schemaB.type) {
     return false;
   }

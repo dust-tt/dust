@@ -12,11 +12,10 @@ import type { MCPToolResult } from "@app/lib/actions/mcp_internal_actions/output
 import { isServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import type { MCPServerType, MCPServerViewType } from "@app/lib/api/mcp";
 import {
+  areSchemasEqual,
   findSchemaAtPath,
   followInternalRef,
   isJSONSchemaObject,
-  isSchemaConfigurable,
-  schemasAreEqual,
   setValueAtPath,
 } from "@app/lib/utils/json_schemas";
 import type { WorkspaceType } from "@app/types";
@@ -528,13 +527,13 @@ export function getMCPServerRequirements(
 /**
  * Checks if a JSON schema matches should be idenfied as being configurable for a specific mime type.
  */
-function schemaIsConfigurable(
+function isSchemaConfigurable(
   schema: JSONSchema,
   mimeType: InternalToolInputMimeType
 ): boolean {
   // If the mime type has a static configuration schema, we check that the schema matches it.
   if (mimeType !== INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM) {
-    return schemasAreEqual(schema, ConfigurableToolInputJSONSchemas[mimeType]);
+    return areSchemasEqual(schema, ConfigurableToolInputJSONSchemas[mimeType]);
   }
   // If the mime type does not have a static configuration schema, it supports flexible schemas.
   // We only check that the schema has a `value` property and a `mimeType` property with the correct value.
@@ -571,7 +570,7 @@ export function findMatchingSubSchemas(
     for (const [key, propSchema] of Object.entries(inputSchema.properties)) {
       if (isJSONSchemaObject(propSchema)) {
         // Check if this property's schema matches the target
-        if (schemaIsConfigurable(propSchema, mimeType)) {
+        if (isSchemaConfigurable(propSchema, mimeType)) {
           matches[key] = propSchema;
         }
 
@@ -579,7 +578,7 @@ export function findMatchingSubSchemas(
         // zodToJsonSchema generates references if the same subSchema is repeated.
         if (propSchema.$ref) {
           const refSchema = followInternalRef(inputSchema, propSchema.$ref);
-          if (refSchema && schemaIsConfigurable(refSchema, mimeType)) {
+          if (refSchema && isSchemaConfigurable(refSchema, mimeType)) {
             matches[key] = refSchema;
           }
         }
@@ -643,7 +642,7 @@ export function findMatchingSubSchemas(
       continue;
     }
 
-    if (isJSONSchemaObject(value) && schemaIsConfigurable(value, mimeType)) {
+    if (isJSONSchemaObject(value) && isSchemaConfigurable(value, mimeType)) {
       matches[key] = value;
     } else if (isJSONSchemaObject(value)) {
       const nestedMatches = findMatchingSubSchemas(value, mimeType);
