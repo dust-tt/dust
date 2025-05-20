@@ -48,7 +48,7 @@ const PopoverContent = React.forwardRef<
           "s-border s-border-border dark:s-border-border-night",
           "s-bg-background dark:s-bg-background-night",
           "s-text-primary-950 dark:s-text-primary-950-night",
-          fullWidth ? "s-w-full" : "s-w-72 s-p-4",
+          fullWidth ? "s-grow" : "s-w-72 s-p-4",
           className
         )}
         {...props}
