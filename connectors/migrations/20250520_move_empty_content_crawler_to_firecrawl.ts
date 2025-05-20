@@ -32,7 +32,7 @@ makeScript(
       include: [
         {
           model: ConnectorModel,
-          as: "connectors",
+          as: "connector",
           where: {
             type: "webcrawler",
             errorType: "webcrawling_error_empty_content",
