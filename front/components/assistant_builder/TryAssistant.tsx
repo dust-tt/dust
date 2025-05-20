@@ -40,7 +40,7 @@ export function usePreviewAssistant({
     useState<LightAgentConfigurationType | null>();
   const [animateDrawer, setAnimateDrawer] = useState(false);
   const [isFading, setIsFading] = useState(false);
-  const [isSavingDraftAgent, setIsSavingDraftAgent] = useState(true); // We always make the draft agent on initial page load so we can set it true
+  const [isSavingDraftAgent, setIsSavingDraftAgent] = useState(true); // We always make the draft agent on initial page load so we can set it true.
   const drawerAnimationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const debounceHandle = useRef<NodeJS.Timeout | undefined>(undefined);
   const sendNotification = useSendNotification();
