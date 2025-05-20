@@ -36,7 +36,7 @@ import type {
   RolePermission,
   UserType,
 } from "@app/types";
-import { Err, Ok, removeNulls } from "@app/types";
+import { Err, normalizeError, Ok, removeNulls } from "@app/types";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -1026,7 +1026,7 @@ export class GroupResource extends BaseResource<GroupModel> {
 
       return new Ok(undefined);
     } catch (err) {
-      return new Err(err as Error);
+      return new Err(normalizeError(err));
     }
   }
 
@@ -1138,7 +1138,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       );
       return new Ok(undefined);
     } catch (error) {
-      return new Err(error as Error);
+      return new Err(normalizeError(error));
     }
   }
 

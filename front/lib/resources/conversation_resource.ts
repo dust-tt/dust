@@ -23,7 +23,13 @@ import type {
   LightAgentConfigurationType,
   Result,
 } from "@app/types";
-import { ConversationError, Err, Ok, removeNulls } from "@app/types";
+import {
+  ConversationError,
+  Err,
+  normalizeError,
+  Ok,
+  removeNulls,
+} from "@app/types";
 
 import { GroupResource } from "./group_resource";
 import { frontSequelize } from "./storage";
@@ -473,7 +479,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       });
       return new Ok(undefined);
     } catch (err) {
-      return new Err(err as Error);
+      return new Err(normalizeError(err));
     }
   }
 

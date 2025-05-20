@@ -23,7 +23,7 @@ import type {
   UserProviderType,
   UserType,
 } from "@app/types";
-import { Err, Ok } from "@app/types";
+import { Err, normalizeError, Ok } from "@app/types";
 
 export interface SearchMembersPaginationParams {
   orderColumn: "name";
@@ -226,7 +226,7 @@ export class UserResource extends BaseResource<UserModel> {
 
       return new Ok(undefined);
     } catch (err) {
-      return new Err(err as Error);
+      return new Err(normalizeError(err));
     }
   }
 
@@ -243,7 +243,7 @@ export class UserResource extends BaseResource<UserModel> {
 
       return new Ok(undefined);
     } catch (err) {
-      return new Err(err as Error);
+      return new Err(normalizeError(err));
     }
   }
 

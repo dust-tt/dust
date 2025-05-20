@@ -8,7 +8,7 @@ import {
   scheduleWorkspaceScrubWorkflow,
 } from "@app/temporal/scrub_workspace/workflows";
 import type { Result } from "@app/types";
-import { Err, Ok } from "@app/types";
+import { Err, normalizeError, Ok } from "@app/types";
 
 import { QUEUE_NAME } from "./config";
 
@@ -44,7 +44,7 @@ export async function launchScheduleWorkspaceScrubWorkflow({
       },
       `Failed starting workflow.`
     );
-    return new Err(e as Error);
+    return new Err(normalizeError(e));
   }
 }
 
@@ -80,7 +80,7 @@ export async function launchImmediateWorkspaceScrubWorkflow({
       },
       `Failed starting workflow.`
     );
-    return new Err(e as Error);
+    return new Err(normalizeError(e));
   }
 }
 
@@ -113,7 +113,7 @@ export async function terminateScheduleWorkspaceScrubWorkflow({
       },
       `Failed terminating workflow.`
     );
-    return new Err(e as Error);
+    return new Err(normalizeError(e));
   }
 }
 

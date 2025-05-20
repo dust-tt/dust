@@ -19,7 +19,7 @@ import {
 } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { LightAgentConfigurationType, ModelId, Result } from "@app/types";
-import { Err, Ok, removeNulls } from "@app/types";
+import { Err, normalizeError, Ok, removeNulls } from "@app/types";
 import type { TagKind, TagTypeWithUsage } from "@app/types/tag";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
@@ -262,7 +262,7 @@ export class TagResource extends BaseResource<TagModel> {
 
       return new Ok(undefined);
     } catch (err) {
-      return new Err(err as Error);
+      return new Err(normalizeError(err));
     }
   }
 

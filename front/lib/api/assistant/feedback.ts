@@ -10,7 +10,7 @@ import type {
   Result,
   UserType,
 } from "@app/types";
-import { ConversationError, Err, Ok } from "@app/types";
+import { ConversationError, Err, normalizeError, Ok } from "@app/types";
 
 /**
  * We retrieve the feedbacks for a whole conversation, not just a single message.
@@ -126,7 +126,7 @@ export async function upsertMessageFeedback(
       isConversationShared: isConversationShared ?? false,
     });
   } catch (e) {
-    return new Err(e as Error);
+    return new Err(normalizeError(e));
   }
   return new Ok(undefined);
 }

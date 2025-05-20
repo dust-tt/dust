@@ -36,7 +36,7 @@ import type {
   Result,
   SupportedContentFragmentType,
 } from "@app/types";
-import { CoreAPI, Err, isSupportedImageContentType, Ok } from "@app/types";
+import { CoreAPI, Err, isSupportedImageContentType, normalizeError, Ok } from "@app/types";
 
 export const CONTENT_OUTDATED_MSG =
   "Content is outdated. Please refer to the latest version of this content.";
@@ -237,7 +237,7 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
 
       return new Ok(undefined);
     } catch (err) {
-      return new Err(err as Error);
+      return new Err(normalizeError(err));
     }
   }
 

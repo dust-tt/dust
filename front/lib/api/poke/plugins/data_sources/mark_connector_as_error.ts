@@ -8,7 +8,7 @@ import { CONNECTORS_ERROR_TYPES, ConnectorsAPI, Err, Ok } from "@app/types";
 export const markConnectorAsErrorPlugin = createPlugin({
   manifest: {
     id: "mark-connector-as-error",
-    name: "Mark connector as error",
+    name: "Mark connector as errored",
     description: "Mark a connector as errored with a specific error type",
     resourceTypes: ["data_sources"],
     args: {

@@ -9,7 +9,7 @@ import type { UpdateSpacePermissionsSignal } from "@app/temporal/permissions_que
 import { updateSpacePermissionsSignal } from "@app/temporal/permissions_queue/signals";
 import { updateSpacePermissionsWorkflow } from "@app/temporal/permissions_queue/workflows";
 import type { Result } from "@app/types";
-import { Err, Ok } from "@app/types";
+import { Err, normalizeError, Ok } from "@app/types";
 
 const DEBOUNCE_MS = 10 * 1000; // 10 seconds.
 
@@ -62,6 +62,6 @@ export async function launchUpdateSpacePermissionsWorkflow(
       );
     }
 
-    return new Err(e as Error);
+    return new Err(normalizeError(e));
   }
 }

@@ -4,7 +4,7 @@ import type { RedisUsageTagsType } from "@app/lib/utils/redis_client";
 import { redisClient } from "@app/lib/utils/redis_client";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import type { LoggerInterface, Result } from "@app/types";
-import { Err, Ok } from "@app/types";
+import { Err, normalizeError, Ok } from "@app/types";
 
 export class RateLimitError extends Error {}
 
@@ -117,6 +117,6 @@ export async function expireRateLimiterKey({
 
     return new Ok(isExpired);
   } catch (err) {
-    return new Err(err as Error);
+    return new Err(normalizeError(err));
   }
 }
