@@ -2,7 +2,6 @@ import type {
   Attributes,
   CreationAttributes,
   InferAttributes,
-  ModelStatic,
   Transaction,
 } from "sequelize";
 
@@ -19,9 +18,13 @@ import type {
   LabsTranscriptsConfigurationType,
   LabsTranscriptsProviderType,
   LightWorkspaceType,
+  ModelId,
   Result,
 } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
+
+import type { ModelStaticWorkspaceAware } from "./storage/wrappers/workspace_models";
+import type { ResourceFindOptions } from "./types";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -31,11 +34,11 @@ export interface LabsTranscriptsConfigurationResource
   extends ReadonlyAttributesType<LabsTranscriptsConfigurationModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTranscriptsConfigurationModel> {
-  static model: ModelStatic<LabsTranscriptsConfigurationModel> =
+  static model: ModelStaticWorkspaceAware<LabsTranscriptsConfigurationModel> =
     LabsTranscriptsConfigurationModel;
 
   constructor(
-    model: ModelStatic<LabsTranscriptsConfigurationModel>,
+    model: ModelStaticWorkspaceAware<LabsTranscriptsConfigurationModel>,
     blob: Attributes<LabsTranscriptsConfigurationModel>
   ) {
     super(LabsTranscriptsConfigurationModel, blob);
@@ -58,6 +61,23 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     );
   }
 
+  private static async baseFetch(
+    auth: Authenticator,
+    options: ResourceFindOptions<LabsTranscriptsConfigurationModel> = {},
+    transaction?: Transaction
+  ) {
+    const configs = await this.model.findAll({
+      ...options,
+      where: {
+        ...options.where,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+      transaction,
+    });
+
+    return configs.map((config) => new this(this.model, config.get()));
+  }
+
   static async findByUserAndWorkspace({
     auth,
     userId,
@@ -71,7 +91,7 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
       return null;
     }
 
-    const configuration = await LabsTranscriptsConfigurationModel.findOne({
+    const configuration = await this.model.findOne({
       where: {
         userId,
         workspaceId: owner.id,
@@ -97,19 +117,7 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
       return [];
     }
 
-    const configurations = await LabsTranscriptsConfigurationModel.findAll({
-      where: {
-        workspaceId: owner.id,
-      },
-    });
-
-    return configurations.map(
-      (configuration) =>
-        new LabsTranscriptsConfigurationResource(
-          LabsTranscriptsConfigurationModel,
-          configuration.get()
-        )
-    );
+    return this.baseFetch(auth);
   }
 
   static async findByWorkspaceAndProvider({
@@ -127,9 +135,8 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
       return null;
     }
 
-    const configuration = await LabsTranscriptsConfigurationModel.findOne({
+    const [configuration] = await this.baseFetch(auth, {
       where: {
-        workspaceId: owner.id,
         provider,
         ...(isDefaultWorkspaceConfiguration
           ? { isDefaultWorkspaceConfiguration: true }
@@ -137,12 +144,37 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
       },
     });
 
-    return configuration
-      ? new LabsTranscriptsConfigurationResource(
-          LabsTranscriptsConfigurationModel,
-          configuration.get()
-        )
-      : null;
+    return configuration ?? null;
+  }
+
+  static override async fetchByModelId(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _id: ModelId,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _transaction?: Transaction
+  ): Promise<null> {
+    // Workspace isolation is handled in `fetchByModelIdWithAuth`.
+    throw Error(
+      "Not implemented. `fetchByModelIdWithAuth` should be used instead"
+    );
+  }
+
+  static async fetchByModelIdWithAuth(
+    auth: Authenticator,
+    id: ModelId,
+    transaction?: Transaction
+  ): Promise<LabsTranscriptsConfigurationResource | null> {
+    const [configuration] = await this.baseFetch(
+      auth,
+      {
+        where: {
+          id,
+        },
+      },
+      transaction
+    );
+
+    return configuration ?? null;
   }
 
   async getUser(): Promise<UserResource | null> {

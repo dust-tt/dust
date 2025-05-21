@@ -393,11 +393,21 @@ const conversation = async (command: string, args: parseArgs.ParsedArgs) => {
 const transcripts = async (command: string, args: parseArgs.ParsedArgs) => {
   switch (command) {
     case "stop": {
+      if (!args.wId) {
+        throw new Error("Missing --wId argument");
+      }
       if (!args.cId) {
         throw new Error("Missing --cId argument");
       }
+
+      const auth = await Authenticator.internalAdminForWorkspace(args.wId);
+      const parsedId =
+        typeof args.cId === "string" ? parseInt(args.cId, 10) : args.cId;
       const transcriptsConfiguration =
-        await LabsTranscriptsConfigurationResource.fetchByModelId(args.cId);
+        await LabsTranscriptsConfigurationResource.fetchByModelIdWithAuth(
+          auth,
+          parsedId
+        );
 
       if (!transcriptsConfiguration) {
         throw new Error(
@@ -417,19 +427,29 @@ const transcripts = async (command: string, args: parseArgs.ParsedArgs) => {
       return;
     }
     case "start": {
+      if (!args.wId) {
+        throw new Error("Missing --wId argument");
+      }
       if (!args.cId) {
         throw new Error("Missing --cId argument");
       }
+
+      const auth = await Authenticator.internalAdminForWorkspace(args.wId);
+      const parsedId =
+        typeof args.cId === "string" ? parseInt(args.cId, 10) : args.cId;
       const transcriptsConfiguration =
-        await LabsTranscriptsConfigurationResource.fetchByModelId(args.cId);
+        await LabsTranscriptsConfigurationResource.fetchByModelIdWithAuth(
+          auth,
+          parsedId
+        );
 
       if (!transcriptsConfiguration) {
         throw new Error(
-          `Transcripts configuration not found: cId='${args.cId}'`
+          `Transcripts configuration not found: wId='${args.wId}' cId='${args.cId}'`
         );
       }
 
-      await launchRetrieveTranscriptsWorkflow(transcriptsConfiguration);
+      await launchRetrieveTranscriptsWorkflow(auth, transcriptsConfiguration);
       await transcriptsConfiguration.setIsActive(true);
 
       logger.info(

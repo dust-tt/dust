@@ -4,6 +4,7 @@ import {
   workflowInfo,
 } from "@temporalio/workflow";
 
+import type { Authenticator } from "@app/lib/auth";
 import type { ModelId } from "@app/types";
 
 import type * as activities from "./activities";
@@ -15,9 +16,11 @@ const { retrieveNewTranscriptsActivity, processTranscriptActivity } =
   });
 
 export async function retrieveNewTranscriptsWorkflow(
+  auth: Authenticator,
   transcriptsConfigurationId: ModelId
 ) {
   const filesToProcess = await retrieveNewTranscriptsActivity(
+    auth,
     transcriptsConfigurationId
   );
 
@@ -32,6 +35,7 @@ export async function retrieveNewTranscriptsWorkflow(
       workflowId,
       searchAttributes: parentSearchAttributes,
       args: [
+        auth,
         {
           fileId,
           transcriptsConfigurationId,
@@ -42,12 +46,15 @@ export async function retrieveNewTranscriptsWorkflow(
   }
 }
 
-export async function processTranscriptWorkflow({
-  fileId,
-  transcriptsConfigurationId,
-}: {
-  fileId: string;
-  transcriptsConfigurationId: ModelId;
-}): Promise<void> {
-  await processTranscriptActivity(transcriptsConfigurationId, fileId);
+export async function processTranscriptWorkflow(
+  auth: Authenticator,
+  {
+    fileId,
+    transcriptsConfigurationId,
+  }: {
+    fileId: string;
+    transcriptsConfigurationId: ModelId;
+  }
+): Promise<void> {
+  await processTranscriptActivity(auth, { transcriptsConfigurationId, fileId });
 }
