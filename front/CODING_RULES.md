@@ -269,6 +269,19 @@ class Conversation extends Model { }
 class ConversationModel extends Model { }
 ```
 
+## MCP
+
+### [MCP1] Server description at the top of the file
+
+For MCP internal servers, the object `serverInfo` of type `InternalMCPServerDefinitionType` that
+holds the metadata of the server must be defined at the top of the file.
+
+### [MCP2] Single file internal servers
+
+If possible, MCP internal servers should fit in one file. If not possible, they should be placed
+into a folder that contains a file `server.ts` from where the `createServer` function that
+creates the server will be exported.
+
 ## TESTING
 
 ### [TEST1] Functionally test endpoints
