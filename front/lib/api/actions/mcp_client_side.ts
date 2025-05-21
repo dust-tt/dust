@@ -68,7 +68,10 @@ export function getMCPServerChannelId(
   auth: Authenticator,
   { mcpServerId }: { mcpServerId: string }
 ): string {
-  return `w:${auth.getNonNullableWorkspace().sId}:mcp:${mcpServerId}`;
+  const workspaceId = auth.getNonNullableWorkspace().sId;
+  const userId = auth.getNonNullableUser().sId;
+
+  return `w:${workspaceId}:u:${userId}:mcp:${mcpServerId}`;
 }
 
 /**
