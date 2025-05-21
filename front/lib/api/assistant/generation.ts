@@ -34,6 +34,7 @@ export async function constructPromptMultiActions(
     hasAvailableActions,
     errorContext,
     agentsList,
+    conversationId,
   }: {
     userMessage: UserMessageType;
     agentConfiguration: AgentConfigurationType;
@@ -42,6 +43,7 @@ export async function constructPromptMultiActions(
     hasAvailableActions: boolean;
     errorContext?: string;
     agentsList: LightAgentConfigurationType[] | null;
+    conversationId?: string;
   }
 ) {
   const d = moment(new Date()).tz(userMessage.context.timezone);
@@ -52,6 +54,9 @@ export async function constructPromptMultiActions(
   context += `assistant: @${agentConfiguration.name}\n`;
   context += `local_time: ${d.format("YYYY-MM-DD HH:mm (ddd)")}\n`;
   context += `model_id: ${model.modelId}\n`;
+  if (conversationId) {
+    context += `conversation_id: ${conversationId}\n`;
+  }
   if (owner) {
     context += `workspace: ${owner.name}\n`;
     if (userMessage.context.fullName) {
