@@ -209,16 +209,16 @@ export const getObjectByEmail = async (
   return objects.results[0];
 };
 
-function buildHubspotFilters(
-  filters: Array<{
-    propertyName: string;
-    operator: FilterOperatorEnum;
-    value?: string;
-    values?: string[];
-  }>
-) {
+interface HubspotFilter {
+  propertyName: string;
+  operator: FilterOperatorEnum;
+  value?: string;
+  values?: string[];
+}
+
+function buildHubspotFilters(filters: Array<HubspotFilter>) {
   return filters.map(({ propertyName, operator, value, values }) => {
-    const filter: any = {
+    const filter: HubspotFilter = {
       propertyName,
       operator,
     };
@@ -233,7 +233,11 @@ function buildHubspotFilters(
         operator === FilterOperatorEnum.NotIn
       ) {
         // For string properties, values must be lowercase
-        filter.values = values?.map((v) => v.toLowerCase());
+        if (values?.length) {
+          filter.values = values?.map((v) => v.toLowerCase());
+        } else {
+          throw new Error(`Values array is required for ${operator} operator`);
+        }
       } else {
         filter.value = value;
       }
