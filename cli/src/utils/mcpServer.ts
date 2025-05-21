@@ -28,8 +28,14 @@ function slugify(text: string): string {
 export async function startMcpServer(
   selectedAgents: AgentConfiguration[],
   onServerStart: (url: string) => void,
-  requestedPort?: number
+  requestedPort?: number,
+  isUsingCachedData?: boolean
 ) {
+  if (isUsingCachedData) {
+    console.error(
+      "[MCP Server] Starting with cached agent configurations. Fresh configurations may be applied if updated."
+    );
+  }
   const dustClient = await getDustClient();
   if (!dustClient) {
     throw new Error("Dust client not initialized. Please run 'dust login'.");

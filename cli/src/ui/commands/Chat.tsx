@@ -1,11 +1,10 @@
-import type {
-  CreateConversationResponseType,
-  GetAgentConfigurationsResponseType,
-} from "@dust-tt/client";
+import type { CreateConversationResponseType } from "@dust-tt/client";
+import type { AgentConfigurationType } from "@dust-tt/types";
 import { Box, Text, useInput, useStdout } from "ink";
+import Spinner from "ink-spinner";
 import open from "open";
 import type { FC } from "react";
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 
 import AuthService from "../../utils/authService.js";
 import { getDustClient } from "../../utils/dustClient.js";
@@ -15,11 +14,11 @@ import AgentSelector from "../components/AgentSelector.js";
 import type { ConversationItem } from "../components/Conversation.js";
 import Conversation from "../components/Conversation.js";
 
-type AgentConfiguration =
-  GetAgentConfigurationsResponseType["agentConfigurations"][number];
-
 interface CliChatProps {
-  sId?: string;
+  requestedSId?: string; // sId from CLI flag
+  initialAgentConfiguration: AgentConfigurationType | null; // Pre-fetched agent config for requestedSId
+  allAgentConfigurations: AgentConfigurationType[] | null; // All available agents for selection
+  isUsingCachedData?: boolean;
 }
 
 function getLastConversationItem<T extends ConversationItem>(
@@ -35,11 +34,17 @@ function getLastConversationItem<T extends ConversationItem>(
   return null;
 }
 
-const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
+const CliChat: FC<CliChatProps> = ({
+  requestedSId,
+  initialAgentConfiguration,
+  allAgentConfigurations,
+  isUsingCachedData,
+}) => {
   const [error, setError] = useState<string | null>(null);
-  const [selectedAgent, setSelectedAgent] = useState<AgentConfiguration | null>(
-    null
-  );
+  const [agentConfiguration, setAgentConfiguration] =
+    useState<AgentConfigurationType | null>(null);
+  const [needsSelection, setNeedsSelection] = useState<boolean>(false);
+
   const [isProcessingQuestion, setIsProcessingQuestion] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [conversationItems, setConversationItems] = useState<
@@ -55,19 +60,77 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
   const chainOfThoughtRef = useRef<string>("");
 
   const { stdout } = useStdout();
-
   const { me, isLoading: isMeLoading, error: meError } = useMe();
+
+  useEffect(() => {
+    setError(null); // Clear previous errors on prop change
+    if (initialAgentConfiguration) {
+      setAgentConfiguration(initialAgentConfiguration);
+      setNeedsSelection(false);
+      setConversationItems([
+        {
+          key: "welcome_header",
+          type: "welcome_header",
+          agentName: initialAgentConfiguration.name,
+          agentId: initialAgentConfiguration.sId,
+          isCached: isUsingCachedData,
+        },
+      ]);
+    } else if (requestedSId) {
+      // initialAgentConfiguration is null, but an sId was requested
+      setError(
+        `Agent with sId "${requestedSId}" not found or not loaded. Try without -s to select from a list.`
+      );
+      setAgentConfiguration(null);
+      setNeedsSelection(false);
+    } else if (allAgentConfigurations && allAgentConfigurations.length > 0) {
+      // No specific agent requested, and we have a list to choose from
+      setNeedsSelection(true);
+      setAgentConfiguration(null);
+    } else if (allAgentConfigurations && allAgentConfigurations.length === 0) {
+      setError("No agents available in this workspace.");
+      setAgentConfiguration(null);
+      setNeedsSelection(false);
+    } else {
+      // Still loading from App.tsx or other unhandled case
+      setAgentConfiguration(null);
+      setNeedsSelection(false); // Don't show selector if allAgentConfigurations is null (loading)
+    }
+  }, [
+    requestedSId,
+    initialAgentConfiguration,
+    allAgentConfigurations,
+    isUsingCachedData, // Added to update welcome header if cache status changes
+  ]);
+
+  // Effect to update welcome message if agent name changes (e.g. from background refresh)
+  useEffect(() => {
+    if (agentConfiguration) {
+      setConversationItems((prev) =>
+        prev.map((item) =>
+          item.type === "welcome_header"
+            ? {
+                ...item,
+                agentName: agentConfiguration.name,
+                isCached: isUsingCachedData,
+              }
+            : item
+        )
+      );
+    }
+  }, [agentConfiguration?.name, isUsingCachedData]);
 
   const canSubmit =
     me &&
     !meError &&
     !isMeLoading &&
     !isProcessingQuestion &&
-    !!userInput.trim();
+    !!userInput.trim() &&
+    !!agentConfiguration;
 
   const handleSubmitQuestion = useCallback(
     async (questionText: string) => {
-      if (!selectedAgent || !me || meError || isMeLoading) {
+      if (!agentConfiguration || !me || meError || isMeLoading) {
         return;
       }
 
@@ -105,7 +168,7 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
           {
             key: newAgentMessageHeaderKey,
             type: "agent_message_header",
-            agentName: selectedAgent.name,
+            agentName: agentConfiguration.name,
             index: newAgentMessageHeaderIndex,
           },
         ];
@@ -119,7 +182,7 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
       if (!dustClient) {
         setError("Authentication required. Run `dust login` first.");
         setIsProcessingQuestion(false);
-        setConversationItems((prev) => prev.slice(0, -1));
+        setConversationItems((prev) => prev.slice(0, -1)); // Remove optimistic agent_message_header
         return;
       }
 
@@ -137,7 +200,7 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
             visibility: "workspace",
             message: {
               content: questionText,
-              mentions: [{ configurationId: selectedAgent.sId }],
+              mentions: [{ configurationId: agentConfiguration.sId }],
               context: {
                 timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
                 username: me.username,
@@ -172,7 +235,7 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
             conversationId: conversationId,
             message: {
               content: questionText,
-              mentions: [{ configurationId: selectedAgent.sId }],
+              mentions: [{ configurationId: agentConfiguration.sId }],
               context: {
                 timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
                 username: me.username,
@@ -336,7 +399,8 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
             break;
           }
         }
-      } catch (error) {
+      } catch (err) {
+        // Use 'err' to avoid conflict with outer 'error' state
         if (controller.signal.aborted) {
           setAbortController(null);
           if (updateIntervalRef.current) {
@@ -349,7 +413,14 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
             >(prev, "agent_message_header");
 
             if (!lastAgentMessageHeader) {
-              throw new Error("Unreachable: No agent message header found");
+              // This should not happen if logic is correct
+              return [
+                ...prev,
+                {
+                  key: `agent_message_cancelled_unknown`,
+                  type: "agent_message_cancelled",
+                },
+              ];
             }
 
             return [
@@ -363,19 +434,17 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
 
           chainOfThoughtRef.current = "";
           contentRef.current = "";
-
           setIsProcessingQuestion(false);
-
           return;
         }
 
-        setError(`Error: ${normalizeError(error).message}`);
+        setError(`Error: ${normalizeError(err).message}`);
       } finally {
         setIsProcessingQuestion(false);
         setAbortController(null);
       }
     },
-    [selectedAgent, conversationId, me, meError, isMeLoading]
+    [agentConfiguration, conversationId, me, meError, isMeLoading]
   );
 
   // Handle keyboard events
@@ -577,29 +646,51 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
     );
   }
 
-  // Render agent selector
-  if (!selectedAgent) {
+  // Render agent selector if needed
+  if (needsSelection && allAgentConfigurations) {
     return (
       <AgentSelector
+        availableAgents={allAgentConfigurations}
         selectMultiple={false}
-        requestedSIds={requestedSId ? [requestedSId] : []}
+        // requestedSIds is not directly applicable here as we are in selection mode
         onError={setError}
         onConfirm={(agents) => {
-          setSelectedAgent(agents[0]);
-          setConversationItems([
-            {
-              key: "welcome_header",
-              type: "welcome_header",
-              agentName: agents[0].name,
-              agentId: agents[0].sId,
-            },
-          ]);
+          if (agents && agents.length > 0 && agents[0]) {
+            setAgentConfiguration(agents[0]);
+            setNeedsSelection(false);
+            setConversationItems([
+              {
+                key: "welcome_header",
+                type: "welcome_header",
+                agentName: agents[0].name,
+                agentId: agents[0].sId,
+                // isUsingCachedData will be from props, not relevant at selection confirm
+              },
+            ]);
+          } else {
+            setError("No agent selected. Exiting."); // Should not happen if AgentSelector works correctly
+          }
         }}
       />
     );
   }
 
-  const mentionPrefix = selectedAgent ? `@${selectedAgent.name} ` : "";
+  // If no agent is configured (e.g. still loading from App.tsx, or error during init)
+  if (!agentConfiguration) {
+    // This handles the case where App.tsx hasn't provided initialAgentConfiguration,
+    // and it's not yet time for selection (e.g. allAgentConfigurations is still null)
+    return (
+      <Box>
+        <Text>
+          <Spinner type="dots" /> Loading agent information...
+        </Text>
+      </Box>
+    );
+  }
+
+  const mentionPrefix = agentConfiguration
+    ? `@${agentConfiguration.name} `
+    : "";
 
   // Main chat UI
   return (
