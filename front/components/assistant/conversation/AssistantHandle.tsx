@@ -7,11 +7,13 @@ interface AssistantHandleProps {
     name: string;
   };
   canMention?: boolean;
+  isDisabled?: boolean;
 }
 
 export function AssistantHandle({
   assistant,
   canMention = true,
+  isDisabled = false,
 }: AssistantHandleProps) {
   const router = useRouter();
 
@@ -28,7 +30,7 @@ export function AssistantHandle({
     <Link
       href={href}
       shallow
-      className="cursor-pointer transition duration-200 hover:text-highlight active:text-highlight-600"
+      className={`cursor-pointer ${isDisabled ? "text-gray-600 text-opacity-75" : ""} transition duration-200 hover:text-highlight active:text-highlight-600`}
     >
       @{assistant.name}
     </Link>
