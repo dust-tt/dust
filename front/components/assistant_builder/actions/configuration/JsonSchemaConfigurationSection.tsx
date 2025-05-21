@@ -4,25 +4,30 @@ import {
   TextArea,
   useSendNotification,
 } from "@dust-tt/sparkle";
+import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { useState } from "react";
 
 import { ConfigurationSectionContainer } from "@app/components/assistant_builder/actions/configuration/ConfigurationSectionContainer";
-import type { AssistantBuilderProcessConfiguration } from "@app/components/assistant_builder/types";
 import { isValidJsonSchema } from "@app/lib/utils/json_schemas";
 import type { Result } from "@app/types";
 
 interface JsonSchemaConfigurationSectionProps {
+  // The agent's instructions and tool description, needed to generate the
+  // schema automatically if requested by the user.
   instructions: string;
   description: string;
-  schemaConfigurationDescription: string;
-  schemaEdit: string | null;
-  setSchemaEdit: (schemaEdit: string | null) => void;
+  // A string that explains this schema configuration section, displayed to the
+  // user.
+  sectionConfigurationDescription: string;
+  initialSchema: string | null;
   setEdited: (edited: boolean) => void;
-  updateAction: (
-    setNewActionConfig: (
-      previousAction: AssistantBuilderProcessConfiguration
-    ) => AssistantBuilderProcessConfiguration
-  ) => void;
+  onConfigUpdate: ({
+    _jsonSchemaString,
+    jsonSchema,
+  }: {
+    _jsonSchemaString: string | null;
+    jsonSchema?: JSONSchema | null;
+  }) => void;
   generateSchema: (
     instructions: string
   ) => Promise<Result<Record<string, unknown>, Error>>;
@@ -31,15 +36,15 @@ interface JsonSchemaConfigurationSectionProps {
 export function JsonSchemaConfigurationSection({
   instructions,
   description,
-  schemaConfigurationDescription,
-  schemaEdit,
-  setSchemaEdit,
+  sectionConfigurationDescription,
+  initialSchema,
   setEdited,
-  updateAction,
+  onConfigUpdate,
   generateSchema,
 }: JsonSchemaConfigurationSectionProps) {
   const [isGeneratingSchema, setIsGeneratingSchema] = useState(false);
   const sendNotification = useSendNotification();
+  const [extractSchema, setExtractSchema] = useState(initialSchema);
 
   const generateSchemaFromInstructions = async () => {
     setEdited(true);
@@ -58,13 +63,12 @@ export function JsonSchemaConfigurationSection({
             ? JSON.stringify(schemaObject, null, 2)
             : null;
 
-          setSchemaEdit(schemaString);
+          setExtractSchema(schemaString);
           setEdited(true);
-          updateAction((previousAction) => ({
-            ...previousAction,
+          onConfigUpdate({
             jsonSchema: schemaObject,
             _jsonSchemaString: schemaString,
-          }));
+          });
         } else {
           sendNotification({
             title: "Failed to generate schema.",
@@ -82,20 +86,19 @@ export function JsonSchemaConfigurationSection({
         setIsGeneratingSchema(false);
       }
     } else {
-      setSchemaEdit(null);
+      setExtractSchema(null);
       setEdited(true);
-      updateAction((previousAction) => ({
-        ...previousAction,
+      onConfigUpdate({
         jsonSchema: null,
         _jsonSchemaString: null,
-      }));
+      });
     }
   };
 
   return (
     <ConfigurationSectionContainer
       title="Schema"
-      description={schemaConfigurationDescription}
+      description={sectionConfigurationDescription}
     >
       <Button
         tooltip="Automatically re-generate the extraction schema based on Instructions"
@@ -108,31 +111,31 @@ export function JsonSchemaConfigurationSection({
         className="mb-4"
       />
       <TextArea
-        error={schemaEdit ? isValidJsonSchema(schemaEdit).error : undefined}
+        error={
+          extractSchema ? isValidJsonSchema(extractSchema).error : undefined
+        }
         showErrorLabel={true}
         placeholder={
           '{\n  "type": "object",\n  "properties": {\n    "name": { "type": "string" },\n    ...\n  }\n}'
         }
-        value={schemaEdit ?? ""}
+        value={extractSchema ?? ""}
         disabled={isGeneratingSchema}
         onChange={(e) => {
           const newSchemaString = e.target.value;
-          setSchemaEdit(newSchemaString);
+          setExtractSchema(newSchemaString);
           setEdited(true);
 
           const parsedSchema = isValidJsonSchema(newSchemaString);
           if (parsedSchema.isValid) {
-            updateAction((previousAction) => ({
-              ...previousAction,
+            onConfigUpdate({
               jsonSchema: newSchemaString ? JSON.parse(newSchemaString) : null,
               _jsonSchemaString: newSchemaString,
-            }));
+            });
           } else {
             // If parsing fails, still update the string version but don't update the schema
-            updateAction((previousAction) => ({
-              ...previousAction,
+            onConfigUpdate({
               _jsonSchemaString: newSchemaString,
-            }));
+            });
           }
         }}
       />

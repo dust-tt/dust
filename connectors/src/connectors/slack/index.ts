@@ -44,6 +44,7 @@ import type { DataSourceConfig } from "@connectors/types";
 import {
   INTERNAL_MIME_TYPES,
   isSlackAutoReadPatterns,
+  normalizeError,
   safeParseJSON,
 } from "@connectors/types";
 
@@ -435,7 +436,7 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
           )
         );
       }
-      // Unanhdled error, throwing to get a 500.
+      // Unhandled error, throwing to get a 500.
       throw e;
     }
   }
@@ -572,7 +573,7 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
         return new Err(workflowRes.error);
       }
     } catch (e) {
-      return new Err(e as Error);
+      return new Err(normalizeError(e));
     }
 
     return new Ok(undefined);

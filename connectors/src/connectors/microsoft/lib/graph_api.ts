@@ -23,6 +23,7 @@ import {
   typeAndPathFromInternalId,
 } from "@connectors/connectors/microsoft/lib/utils";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
+import { normalizeError } from "@connectors/types";
 
 export async function clientApiGet(
   logger: LoggerInterface,
@@ -601,7 +602,7 @@ export async function wrapMicrosoftGraphAPIWithResult<T>(
   try {
     return new Ok(await fn());
   } catch (error) {
-    return new Err(error as Error);
+    return new Err(normalizeError(error));
   }
 }
 

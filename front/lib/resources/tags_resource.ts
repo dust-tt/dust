@@ -19,7 +19,7 @@ import {
 } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { LightAgentConfigurationType, ModelId, Result } from "@app/types";
-import { Err, Ok, removeNulls } from "@app/types";
+import { Err, normalizeError, Ok, removeNulls } from "@app/types";
 import type { TagKind, TagTypeWithUsage } from "@app/types/tag";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
@@ -167,6 +167,7 @@ export class TagResource extends BaseResource<TagModel> {
   ): Promise<TagResource[]> {
     const tags = await TagAgentModel.findAll({
       where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
         agentConfigurationId,
       },
     });
@@ -187,9 +188,13 @@ export class TagResource extends BaseResource<TagModel> {
         agentConfigurationId: agentConfigurationIds,
       },
     });
+    const tagIds = [...new Set(tagAgents.map((t) => t.tagId))];
+    if (tagIds.length === 0) {
+      return {};
+    }
     const tags = await this.baseFetch(auth, {
       where: {
-        id: [...new Set(tagAgents.map((t) => t.tagId))],
+        id: tagIds,
       },
     });
 
@@ -257,7 +262,7 @@ export class TagResource extends BaseResource<TagModel> {
 
       return new Ok(undefined);
     } catch (err) {
-      return new Err(err as Error);
+      return new Err(normalizeError(err));
     }
   }
 

@@ -3,7 +3,7 @@ import { WorkflowNotFoundError } from "@temporalio/client";
 import { getTemporalClient } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
-import { Err, Ok } from "@app/types";
+import { Err, normalizeError, Ok } from "@app/types";
 
 import { QUEUE_NAME } from "./config";
 import { runAllChecksWorkflow } from "./workflows";
@@ -44,6 +44,6 @@ export async function launchProductionChecksWorkflow(): Promise<
       },
       `Failed starting workflow.`
     );
-    return new Err(e as Error);
+    return new Err(normalizeError(e));
   }
 }

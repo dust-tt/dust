@@ -6,7 +6,7 @@ import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { RoleType } from "@app/types";
 
-export class MembershipInvitation extends WorkspaceAwareModel<MembershipInvitation> {
+export class MembershipInvitationModel extends WorkspaceAwareModel<MembershipInvitationModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -17,7 +17,7 @@ export class MembershipInvitation extends WorkspaceAwareModel<MembershipInvitati
 
   declare invitedUserId: ForeignKey<UserModel["id"]> | null;
 }
-MembershipInvitation.init(
+MembershipInvitationModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -59,6 +59,6 @@ MembershipInvitation.init(
   }
 );
 
-UserModel.hasMany(MembershipInvitation, {
+UserModel.hasMany(MembershipInvitationModel, {
   foreignKey: "invitedUserId",
 });

@@ -3,6 +3,7 @@ import type {
   LightWorkspaceType,
 } from "@dust-tt/client";
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
+import type { JSONRPCMessage } from "@modelcontextprotocol/sdk/types.js";
 import assert from "assert";
 
 const logger = console;
@@ -30,13 +31,12 @@ function isFailedHeartbeatResponse(
  */
 export class CoEditionTransport implements Transport {
   private eventSource: EventSource | null = null;
-  private requestIdMap = new Map<number, string>();
   private lastEventId: string | null = null;
   private heartbeatTimer: NodeJS.Timeout | null = null;
   private serverId: string | null = null;
 
   // Required by Transport interface.
-  public onmessage?: (message: any) => void;
+  public onmessage?: (message: JSONRPCMessage) => void;
   public onclose?: () => void;
   public onerror?: (error: Error) => void;
   public sessionId?: string;
@@ -161,20 +161,15 @@ export class CoEditionTransport implements Transport {
         }
 
         // The actual request is in the data property.
-        const { request, requestId } = eventData.data;
-        if (!request) {
+        const { data } = eventData;
+        if (!data) {
           logger.error("No data field found in the event");
           return;
         }
 
-        // Store the requestId mapped to the request id.
-        if (typeof request.id === "number" && requestId) {
-          this.requestIdMap.set(request.id, requestId);
-        }
-
         // Forward the message to the handler.
         if (this.onmessage) {
-          this.onmessage(request);
+          this.onmessage(data);
         } else {
           logger.error(
             "ERROR: onmessage handler not set - MCP response won't be sent"
@@ -215,41 +210,20 @@ export class CoEditionTransport implements Transport {
    * Send a message to the server
    * This method is required by the Transport interface
    */
-  async send(message: any): Promise<void> {
+  async send(message: JSONRPCMessage): Promise<void> {
     assert(this.serverId, "Server ID not set");
 
-    // Get the requestId using the message.id.
-    const requestId = this.requestIdMap.get(message.id);
-    if (!requestId) {
-      logger.error(`No requestId found for message ID: ${message.id}`);
-      this.onerror?.(
-        new Error(`Missing requestId for message ID: ${message.id}`)
-      );
-      return;
-    }
-
-    // Clean up the map entry.
-    if (typeof message.id === "number") {
-      this.requestIdMap.delete(message.id);
-    }
-
     // Send tool results back to Dust via HTTP POST.
-    const params = new URLSearchParams();
-    params.set("serverId", this.serverId);
-
-    const response = await fetch(
-      `/api/w/${this.owner.sId}/mcp/results?${params.toString()}`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          requestId,
-          result: message,
-        }),
-      }
-    );
+    const response = await fetch(`/api/w/${this.owner.sId}/mcp/results`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        result: message,
+        serverId: this.serverId,
+      }),
+    });
 
     if (!response.ok) {
       logger.error("Failed to send MCP result:", response.statusText);

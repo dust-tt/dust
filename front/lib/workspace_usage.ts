@@ -70,6 +70,8 @@ interface AgentUsageQueryResult {
   name: string;
   description: string;
   settings: "published" | "unpublished" | "unknown";
+  modelId: string;
+  providerId: string;
   authorEmails: string[];
   messages: number;
   distinctUsersReached: number;
@@ -440,6 +442,8 @@ export async function getAssistantsUsageData(
     SELECT
       ac."name",
       ac."description",
+      ac."modelId",
+      ac."providerId",
       CASE
         WHEN ac."scope" = 'visible' THEN 'published'
         WHEN ac."scope" = 'hidden' THEN 'unpublished'
@@ -466,7 +470,9 @@ export async function getAssistantsUsageData(
     GROUP BY
       ac."name",
       ac."description",
-      ac."scope"
+      ac."scope",
+      ac."modelId",
+      ac."providerId"
     ORDER BY
       "messages" DESC;
     `,

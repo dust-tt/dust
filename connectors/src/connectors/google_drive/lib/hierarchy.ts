@@ -3,6 +3,7 @@ import { Op } from "sequelize";
 
 import { getGoogleDriveObject } from "@connectors/connectors/google_drive/lib/google_drive_api";
 import { GoogleDriveFolders } from "@connectors/lib/models/google_drive";
+import { heartbeat } from "@connectors/lib/temporal";
 import mainLogger from "@connectors/logger/logger";
 import type { ModelId } from "@connectors/types";
 import type { GoogleDriveObjectType } from "@connectors/types";
@@ -31,6 +32,7 @@ async function getFileParents(
   const parents: string[] = [driveFile.id];
   let currentObject = driveFile;
   while (currentObject.parent) {
+    await heartbeat();
     const parent = await getGoogleDriveObject({
       connectorId,
       authCredentials,

@@ -116,9 +116,9 @@ async function handler(
         });
       }
 
-      const { name, icon, description } = req.body;
+      const { name, icon, description, sharedSecret } = req.body;
 
-      if (!name && !icon && !description) {
+      if (!name && !icon && !description && !sharedSecret) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -132,6 +132,7 @@ async function handler(
         name,
         icon,
         description,
+        sharedSecret,
         lastSyncAt: new Date(),
       });
 

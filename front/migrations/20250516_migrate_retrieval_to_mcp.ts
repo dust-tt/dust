@@ -12,8 +12,9 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type Logger from "@app/logger/logger";
-import { getInsertSQL, makeScript } from "@app/scripts/helpers";
+import { makeScript } from "@app/scripts/helpers";
 import type { ModelId } from "@app/types";
+import { getInsertSQL } from "@app/lib/utils/sql_utils";
 
 async function findWorkspacesWithRetrievalConfigurations(): Promise<ModelId[]> {
   const retrievalConfigurations = await AgentRetrievalConfiguration.findAll({

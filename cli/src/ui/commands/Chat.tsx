@@ -445,6 +445,72 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
       return;
     }
 
+    // Handle option+left (meta+b) to move to the previous word
+    if (key.meta && input === "b" && cursorPosition > 0) {
+      let newPosition = cursorPosition - 1;
+
+      while (newPosition > 0 && /\s/.test(userInput[newPosition])) {
+        newPosition--;
+      }
+
+      while (newPosition > 0 && !/\s/.test(userInput[newPosition - 1])) {
+        newPosition--;
+      }
+
+      setCursorPosition(newPosition);
+      return;
+    }
+
+    // Handle option+right (meta+f) to move to the next word
+    if (key.meta && input === "f" && cursorPosition < userInput.length) {
+      let newPosition = cursorPosition;
+
+      while (
+        newPosition < userInput.length &&
+        !/\s/.test(userInput[newPosition])
+      ) {
+        newPosition++;
+      }
+
+      while (
+        newPosition < userInput.length &&
+        /\s/.test(userInput[newPosition])
+      ) {
+        newPosition++;
+      }
+
+      setCursorPosition(newPosition);
+      return;
+    }
+
+    // Handle cmd+left (ctrl+a) to go to beginning of line
+    if (key.ctrl && input === "a") {
+      let newPosition = cursorPosition;
+
+      while (newPosition > 0 && userInput[newPosition - 1] !== "\n") {
+        newPosition--;
+      }
+
+      setCursorPosition(newPosition);
+      return;
+    }
+
+    // Handle cmd+right (ctrl+e) to go to end of line
+    if (key.ctrl && input === "e") {
+      let newPosition = cursorPosition;
+
+      while (
+        newPosition < userInput.length &&
+        userInput[newPosition] !== "\n"
+      ) {
+        newPosition++;
+      }
+
+      setCursorPosition(newPosition);
+      return;
+    }
+
+    // Regular arrow key handling (left/right for character movement)
     if (key.leftArrow && cursorPosition > 0) {
       setCursorPosition(cursorPosition - 1);
       return;

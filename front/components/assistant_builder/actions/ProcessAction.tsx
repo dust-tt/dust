@@ -97,12 +97,6 @@ export function ActionProcess({
       unit: "day",
     });
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
-  const [schemaEdit, setSchemaEdit] = useState(
-    actionConfiguration?._jsonSchemaString ??
-      (actionConfiguration?.jsonSchema
-        ? JSON.stringify(actionConfiguration.jsonSchema, null, 2)
-        : null)
-  );
   const toggleAdvancedSettings = () => {
     setShowAdvancedSettings((prev) => !prev);
   };
@@ -220,80 +214,92 @@ export function ActionProcess({
       </div>
 
       {showAdvancedSettings && (
-        <ConfigurationSectionContainer
-          title="Time Range"
-          description="By default, the time frame is determined automatically based on the
+        <>
+          <ConfigurationSectionContainer
+            title="Time Range"
+            description="By default, the time frame is determined automatically based on the
             conversation context. Enable manual time frame selection when you
             need to specify an exact range for data extraction."
-        >
-          <div className={"flex flex-row items-center gap-4 pb-4"}>
-            <Checkbox
-              checked={!!actionConfiguration.timeFrame}
-              onCheckedChange={(checked) => {
-                setEdited(true);
-                updateAction((previousAction) => ({
-                  ...previousAction,
-                  timeFrame: checked ? defaultTimeFrame : undefined,
-                }));
-              }}
-            />
-            <div
-              className={classNames(
-                "text-sm font-semibold",
-                timeFrameDisabled ? "text-slate-400" : "text-element-900"
-              )}
-            >
-              Process data from the last
-            </div>
-            <Input
-              type="text"
-              messageStatus={timeFrameError ? "error" : "default"}
-              value={
-                timeFrame.value && !isNaN(timeFrame.value)
-                  ? timeFrame.value.toString()
-                  : ""
-              }
-              onChange={(e) => {
-                const value = parseInt(e.target.value, 10);
-                if (!isNaN(value) || !e.target.value) {
+          >
+            <div className={"flex flex-row items-center gap-4 pb-4"}>
+              <Checkbox
+                checked={!!actionConfiguration.timeFrame}
+                onCheckedChange={(checked) => {
                   setEdited(true);
                   updateAction((previousAction) => ({
                     ...previousAction,
-                    timeFrame: {
-                      value,
-                      unit: timeFrame.unit,
-                    },
+                    timeFrame: checked ? defaultTimeFrame : undefined,
                   }));
+                }}
+              />
+              <div
+                className={classNames(
+                  "text-sm font-semibold",
+                  timeFrameDisabled ? "text-slate-400" : "text-element-900"
+                )}
+              >
+                Process data from the last
+              </div>
+              <Input
+                type="text"
+                messageStatus={timeFrameError ? "error" : "default"}
+                value={
+                  timeFrame.value && !isNaN(timeFrame.value)
+                    ? timeFrame.value.toString()
+                    : ""
                 }
-              }}
-              disabled={timeFrameDisabled}
-            />
-            <TimeUnitDropdown
-              timeFrame={timeFrame}
-              updateAction={updateAction}
-              onEdit={() => setEdited(true)}
-              disabled={timeFrameDisabled}
-            />
-          </div>
-        </ConfigurationSectionContainer>
+                onChange={(e) => {
+                  const value = parseInt(e.target.value, 10);
+                  if (!isNaN(value) || !e.target.value) {
+                    setEdited(true);
+                    updateAction((previousAction) => ({
+                      ...previousAction,
+                      timeFrame: {
+                        value,
+                        unit: timeFrame.unit,
+                      },
+                    }));
+                  }
+                }}
+                disabled={timeFrameDisabled}
+              />
+              <TimeUnitDropdown
+                timeFrame={timeFrame}
+                updateAction={updateAction}
+                onEdit={() => setEdited(true)}
+                disabled={timeFrameDisabled}
+              />
+            </div>
+          </ConfigurationSectionContainer>
+          <JsonSchemaConfigurationSection
+            instructions={instructions ?? ""}
+            description={description ?? ""}
+            initialSchema={
+              actionConfiguration?._jsonSchemaString ??
+              (actionConfiguration?.jsonSchema
+                ? JSON.stringify(actionConfiguration.jsonSchema, null, 2)
+                : null)
+            }
+            sectionConfigurationDescription="Optionally, provide a schema for the data to be extracted. If you do not specify a schema, the tool will determine the schema based on the conversation context."
+            setEdited={setEdited}
+            onConfigUpdate={({ _jsonSchemaString, jsonSchema }) =>
+              updateAction((previousAction) => ({
+                ...previousAction,
+                _jsonSchemaString,
+                jsonSchema: jsonSchema ?? previousAction.jsonSchema,
+              }))
+            }
+            generateSchema={(instructions: string) =>
+              generateSchema({ owner, instructions })
+            }
+          />
+        </>
       )}
-      <JsonSchemaConfigurationSection
-        instructions={instructions ?? ""}
-        schemaEdit={schemaEdit ?? ""}
-        setSchemaEdit={setSchemaEdit}
-        setEdited={setEdited}
-        updateAction={updateAction}
-        description={description ?? ""}
-        schemaConfigurationDescription="Optionally, provide a schema for the data to be extracted. If you do not specify a schema, the tool will determine the schema based on the conversation context."
-        generateSchema={(instructions: string) =>
-          generateSchema({ owner, instructions })
-        }
-      />
     </>
   );
 }
 
-async function generateSchema({
+export async function generateSchema({
   owner,
   instructions,
 }: {

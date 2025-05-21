@@ -6,6 +6,7 @@ import { getTemporalClient } from "@connectors/lib/temporal";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types";
+import { normalizeError } from "@connectors/types";
 
 import { getWeekStart } from "../lib/utils";
 import { getChannelsToSync } from "./activities";
@@ -74,7 +75,7 @@ export async function launchSlackSyncWorkflow(
       },
       `Failed starting the Slack sync.`
     );
-    return new Err(e as Error);
+    return new Err(normalizeError(e));
   }
 }
 
@@ -150,7 +151,7 @@ export async function launchSlackSyncOneThreadWorkflow(
       { error: e, connectorId, channelId, threadTs, workflowId },
       "Failed launchSlackSyncOneThreadWorkflow"
     );
-    return new Err(e as Error);
+    return new Err(normalizeError(e));
   }
 }
 
@@ -228,7 +229,7 @@ export async function launchSlackSyncOneMessageWorkflow(
       { error: e, connectorId, channelId, threadTs, workflowId },
       "Failed launchSlackSyncOneMessageWorkflow"
     );
-    return new Err(e as Error);
+    return new Err(normalizeError(e));
   }
 }
 
@@ -267,6 +268,6 @@ export async function launchSlackGarbageCollectWorkflow(connectorId: ModelId) {
       },
       `Failed starting slackGarbageCollector workflow.`
     );
-    return new Err(e as Error);
+    return new Err(normalizeError(e));
   }
 }

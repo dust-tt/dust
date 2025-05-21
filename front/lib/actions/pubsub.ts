@@ -1,7 +1,7 @@
 import type { MCPValidationOutputType } from "@app/lib/actions/constants";
 import type { EventPayload } from "@app/lib/api/redis-hybrid-manager";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
-import { createCallbackPromise } from "@app/lib/utils";
+import { createCallbackReader } from "@app/lib/utils";
 import { setTimeoutAsync } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 
@@ -25,10 +25,10 @@ export async function* getMCPEvents({
 > {
   const pubsubChannel = getMCPChannelid(actionId);
 
-  const callbackPromise = createCallbackPromise<EventPayload | "close">();
+  const reader = createCallbackReader<EventPayload | "close">();
   const { history, unsubscribe } = await getRedisHybridManager().subscribe(
     pubsubChannel,
-    callbackPromise.callback,
+    reader.callback,
     null,
     "action_events"
   );
@@ -43,15 +43,13 @@ export async function* getMCPEvents({
   try {
     while (true) {
       const rawEvent = await Promise.race([
-        callbackPromise.promise,
+        reader.next(),
         setTimeoutAsync(MCP_EVENT_TIMEOUT),
       ]);
 
       if (rawEvent === "timeout") {
         break;
       }
-
-      callbackPromise.reset();
 
       if (rawEvent === "close") {
         break;

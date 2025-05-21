@@ -107,15 +107,22 @@ export function AssistantBrowser({
   const { createAgentButtonRef } = useWelcomeTourGuide();
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const { isDark } = useTheme();
-  const [sortType, setSortType] = useState<"popularity" | "alphabetical">(
-    "popularity"
-  );
+  const [sortType, setSortType] = useState<
+    "popularity" | "alphabetical" | "updated"
+  >("popularity");
 
   const sortAgents = useCallback(
     (a: LightAgentConfigurationType, b: LightAgentConfigurationType) => {
       if (sortType === "popularity") {
         return (
           (b.usage?.messageCount ?? 0) - (a.usage?.messageCount ?? 0) ||
+          a.name.toLowerCase().localeCompare(b.name.toLowerCase())
+        );
+      }
+      if (sortType === "updated") {
+        return (
+          new Date(b.versionCreatedAt ?? 0).getTime() -
+            new Date(a.versionCreatedAt ?? 0).getTime() ||
           a.name.toLowerCase().localeCompare(b.name.toLowerCase())
         );
       }
@@ -224,14 +231,20 @@ export function AssistantBrowser({
                 <DropdownMenuItem
                   key={tag.sId}
                   onClick={() => {
-                    if (selectedTags.includes(tag.sId)) {
-                      setSelectedTags(
-                        selectedTags.filter((t) => t !== tag.sId)
-                      );
-                    } else {
-                      setSelectedTags([...selectedTags, tag.sId]);
-                    }
+                    setSelectedTab("all");
                     setAssistantSearch("");
+                    setTimeout(() => {
+                      const element = document.getElementById(
+                        `anchor-${tag.sId}`
+                      );
+                      if (element) {
+                        element.scrollIntoView({
+                          behavior: "smooth",
+                          block: "start",
+                          inline: "nearest",
+                        });
+                      }
+                    }, 300); // Need to wait for the dropdown to close before scrolling
                   }}
                 >
                   <Chip label={tag.name} color="golden" size="xs" />
@@ -341,6 +354,10 @@ export function AssistantBrowser({
                     label="Alphabetical"
                     onClick={() => setSortType("alphabetical")}
                   />
+                  <DropdownMenuItem
+                    label="Recently updated"
+                    onClick={() => setSortType("updated")}
+                  />
                 </DropdownMenuContent>
               </DropdownMenu>
             </TabsList>
@@ -392,6 +409,7 @@ export function AssistantBrowser({
               )
               .map((tag) => (
                 <React.Fragment key={tag.sId}>
+                  <a id={`anchor-${tag.sId}`} />
                   <span className="heading-base">{tag.name}</span>
                   <AgentGrid
                     agentConfigurations={agentsByTab.all.filter((a) =>

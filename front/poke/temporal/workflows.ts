@@ -18,6 +18,7 @@ const {
   deleteRunOnDustAppsActivity,
   deleteRemoteMCPServersActivity,
   deleteSpacesActivity,
+  deleteTagsActivity,
   deleteTrackersActivity,
   deleteTranscriptsActivity,
   isWorkflowDeletableActivity,
@@ -76,6 +77,7 @@ export async function deleteWorkspaceWorkflow({
     // (we keep the Auth0 sub when relocating).
     deleteFromAuth0: !workspaceHasBeenRelocated,
   });
+  await deleteTagsActivity({ workspaceId });
   await deleteSpacesActivity({ workspaceId });
   await deleteTranscriptsActivity({ workspaceId });
   await deletePluginRunsActivity({ workspaceId });

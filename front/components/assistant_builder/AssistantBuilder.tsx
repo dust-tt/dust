@@ -1,12 +1,15 @@
 import "react-image-crop/dist/ReactCrop.css";
 
 import {
+  SidebarRightCloseIcon,
+  SidebarRightOpenIcon,
   Tabs,
   TabsList,
   TabsTrigger,
   useHashParam,
   useSendNotification,
 } from "@dust-tt/sparkle";
+import { Button } from "@dust-tt/sparkle";
 import assert from "assert";
 import { uniqueId } from "lodash";
 import { useRouter } from "next/router";
@@ -191,7 +194,8 @@ export default function AssistantBuilder({
     agentConfigurationId,
   });
   useNavigationLock(edited && !disableUnsavedChangesPrompt);
-  const { mcpServerViews } = useContext(AssistantBuilderContext);
+  const { mcpServerViews, isPreviewPanelOpen, setIsPreviewPanelOpen } =
+    useContext(AssistantBuilderContext);
 
   const checkUsernameTimeout = React.useRef<NodeJS.Timeout | null>(null);
 
@@ -422,7 +426,7 @@ export default function AssistantBuilder({
         <BuilderLayout
           leftPanel={
             <div className="flex h-full flex-col gap-4 pb-6 pt-4">
-              <div className="flex flex-wrap justify-between gap-4 sm:flex-row">
+              <div className="flex flex-row justify-between sm:flex-row">
                 <Tabs
                   className="w-full"
                   onValueChange={(t) => {
@@ -443,6 +447,20 @@ export default function AssistantBuilder({
                     ))}
                   </TabsList>
                 </Tabs>
+                <div className="border-b border-border">
+                  <Button
+                    icon={
+                      isPreviewPanelOpen
+                        ? SidebarRightCloseIcon
+                        : SidebarRightOpenIcon
+                    }
+                    variant="ghost"
+                    tooltip={
+                      isPreviewPanelOpen ? "Hide preview" : "Open preview"
+                    }
+                    onClick={() => setIsPreviewPanelOpen(!isPreviewPanelOpen)}
+                  />
+                </div>
               </div>
               <div className="flex h-full justify-center">
                 <div className="h-full w-full max-w-4xl">
@@ -475,8 +493,6 @@ export default function AssistantBuilder({
                             setEdited={setEdited}
                             setAction={setAction}
                             pendingAction={pendingAction}
-                            enableReasoningTool={reasoningModels.length > 0}
-                            reasoningModels={reasoningModels}
                           />
                         );
 

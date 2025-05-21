@@ -75,6 +75,9 @@ export async function createSchedule({
       scheduleId,
       policies,
       spec,
+      searchAttributes: {
+        connectorId: connector ? [connector?.id] : undefined,
+      },
     });
 
     // Trigger the schedule to start the workflow immediately.

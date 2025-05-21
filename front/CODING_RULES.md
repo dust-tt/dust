@@ -129,6 +129,31 @@ we don't control), but otherwise errors that may alter the execution upstream sh
 using our `Result<>` pattern. It is OK to throw errors, since we can't catch them these are
 guaranteed to trigger a internal error (and return a 500).
 
+### [ERR2] Do not rely on `err as Error`
+
+Never catch and cast what was caught as `Error`. JS allows throwing anything (string, number,
+random object, ...) so the cast may be invalid and hides errors from the logs. Use `normalizeError`
+instead, this function properly checks the content of the caught object and always returns a valid
+`Error` object.
+
+Example:
+
+```
+// BAD
+try {
+  // Some code.
+} catch (err) {
+  return new Err(err as Err);
+}
+
+// GOOD
+try {
+  // Some code.
+} catch(err) {
+  return new Err(normalizeError(err));
+}
+```
+
 ## BACKEND
 
 ### [BACK1] No sequelize models in API routes
@@ -174,7 +199,7 @@ for all new code and migrate to it from `PQueue` when modifying existing code th
 ### [BACK7] Avoid `Promise.all` on dynamic arrays
 
 Never use `Promise.all` on anything else than static arrays of promises with a known length (8 max).
-To parallelize asyncrhonous handling of dynamic arrays, use `ConcurrentExecutor`.
+To parallelize asynchronous handling of dynamic arrays, use `ConcurrentExecutor`.
 
 ### [BACK8] Favor typeguards over other methods
 

@@ -30,6 +30,7 @@ import type {
   LightWorkspaceType,
   UserType,
 } from "@app/types";
+import { normalizeError } from "@app/types";
 
 export function useAssistantTemplates() {
   const assistantTemplatesFetcher: Fetcher<FetchAssistantTemplatesResponse> =
@@ -147,10 +148,12 @@ export function useSuggestedAgentConfigurations({
   workspaceId,
   conversationId,
   messageId,
+  disabled,
 }: {
   workspaceId: string;
   conversationId: string;
   messageId: string;
+  disabled?: boolean;
 }) {
   const agentConfigurationsFetcher: Fetcher<GetAgentConfigurationsResponseBody> =
     fetcher;
@@ -163,7 +166,7 @@ export function useSuggestedAgentConfigurations({
 
   const { data, error, mutate, mutateRegardlessOfQueryParams } =
     useSWRWithDefaults(key, agentConfigurationsFetcher, {
-      disabled: inCache,
+      disabled: inCache || disabled,
     });
 
   const dataToUse = cachedData || data;
@@ -171,7 +174,7 @@ export function useSuggestedAgentConfigurations({
   return {
     suggestedAgentConfigurations:
       dataToUse?.agentConfigurations ?? emptyArray(),
-    isSuggestedAgentConfigurationsLoading: !error && !dataToUse,
+    isSuggestedAgentConfigurationsLoading: !error && !dataToUse && !disabled,
     isSuggestedAgentConfigurationsError: error,
     mutate,
     mutateRegardlessOfQueryParams,
@@ -645,7 +648,8 @@ export function useUpdateAgentScope({
       } catch (error) {
         sendNotification({
           title: `Error updating agent sharing.`,
-          description: (error as Error).message || "An unknown error occurred",
+          description:
+            normalizeError(error).message || "An unknown error occurred",
           type: "error",
         });
         return false;
@@ -725,7 +729,8 @@ export function useUpdateUserFavorite({
       } catch (error) {
         sendNotification({
           title: `Error updating agent list.`,
-          description: (error as Error).message || "An unknown error occurred",
+          description:
+            normalizeError(error).message || "An unknown error occurred",
           type: "error",
         });
         return false;

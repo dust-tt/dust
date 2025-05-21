@@ -69,7 +69,7 @@ import { DustAppSecret } from "@app/lib/models/dust_app_secret";
 import { ExtensionConfigurationModel } from "@app/lib/models/extension";
 import { FeatureFlag } from "@app/lib/models/feature_flag";
 import { LabsPersonalSalesforceConnection } from "@app/lib/models/labs_personal_salesforce_connection";
-import { MembershipInvitation } from "@app/lib/models/membership_invitation";
+import { MembershipInvitationModel } from "@app/lib/models/membership_invitation";
 import { Plan, Subscription } from "@app/lib/models/plan";
 import { TagModel } from "@app/lib/models/tags";
 import { Workspace } from "@app/lib/models/workspace";
@@ -120,7 +120,7 @@ async function main() {
   await Workspace.sync({ alter: true });
   await WorkspaceHasDomainModel.sync({ alter: true });
   await MembershipModel.sync({ alter: true });
-  await MembershipInvitation.sync({ alter: true });
+  await MembershipInvitationModel.sync({ alter: true });
   await GroupModel.sync({ alter: true });
   await GroupMembershipModel.sync({ alter: true });
   await TagModel.sync({ alter: true });

@@ -48,7 +48,7 @@ import {
 } from "@app/lib/models/assistant/agent";
 import { DustAppSecret } from "@app/lib/models/dust_app_secret";
 import { FeatureFlag } from "@app/lib/models/feature_flag";
-import { MembershipInvitation } from "@app/lib/models/membership_invitation";
+import { MembershipInvitationModel } from "@app/lib/models/membership_invitation";
 import { Subscription } from "@app/lib/models/plan";
 import { Workspace } from "@app/lib/models/workspace";
 import { WorkspaceHasDomainModel } from "@app/lib/models/workspace_has_domain";
@@ -76,6 +76,7 @@ import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { deleteAllConversations } from "@app/temporal/scrub_workspace/activities";
 import { CoreAPI } from "@app/types";
+import { TagResource } from "@app/lib/resources/tags_resource";
 
 const hardDeleteLogger = logger.child({ activity: "hard-delete" });
 
@@ -552,7 +553,7 @@ export async function deleteMembersActivity({
     isWorkspaceRelocationDone(workspace) ||
     isWorkspaceRelocationOngoing(workspace);
 
-  await MembershipInvitation.destroy({
+  await MembershipInvitationModel.destroy({
     where: {
       workspaceId: workspace.id,
     },
@@ -770,4 +771,16 @@ export async function deleteTranscriptsActivity({
       workspaceId: workspace.id,
     },
   });
+}
+
+export async function deleteTagsActivity({
+  workspaceId,
+}: {
+  workspaceId: string;
+}) {
+  const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
+  const tags = await TagResource.findAll(auth);
+  for (const tag of tags) {
+    await tag.delete(auth);
+  }
 }

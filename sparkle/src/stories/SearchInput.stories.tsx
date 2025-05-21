@@ -108,7 +108,7 @@ export function SearchInputWithPopoverScrollableExample() {
           key={item}
           role="option"
           className={cn(
-            "s-cursor-pointer s-px-2 s-py-2 hover:s-bg-primary-100 dark:hover:s-bg-primary-100-night",
+            "s-cursor-pointer s-truncate s-px-2 s-py-2 hover:s-bg-primary-100 dark:hover:s-bg-primary-100-night",
             selected && "s-bg-primary-100"
           )}
           onClick={() => {

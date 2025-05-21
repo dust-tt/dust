@@ -67,7 +67,7 @@ export function ReasoningModelConfigurationSection({
         variant="warning"
         size="sm"
       >
-        There are no reasoning model available on your workspace.
+        There are no reasoning models available on your workspace.
       </ContentMessage>
     );
   }

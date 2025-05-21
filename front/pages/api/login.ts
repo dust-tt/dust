@@ -16,7 +16,7 @@ import {
   createWorkspace,
   findWorkspaceWithVerifiedDomain,
 } from "@app/lib/iam/workspaces";
-import type { MembershipInvitation } from "@app/lib/models/membership_invitation";
+import type { MembershipInvitationModel } from "@app/lib/models/membership_invitation";
 import { Workspace } from "@app/lib/models/workspace";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
@@ -35,7 +35,7 @@ import { Err, Ok } from "@app/types";
 // already exist and mark the invitation as consumed.
 async function handleMembershipInvite(
   user: UserResource,
-  membershipInvite: MembershipInvitation
+  membershipInvite: MembershipInvitationModel
 ): Promise<
   Result<
     {

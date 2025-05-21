@@ -519,10 +519,6 @@ async function listToolsForClientSideMCPServer(
   do {
     const { tools, nextCursor } = await mcpClient.listTools();
 
-    for (const t of tools) {
-      t.inputSchema;
-    }
-
     nextPageCursor = nextCursor;
     allTools = [
       ...allTools,
@@ -534,7 +530,7 @@ async function listToolsForClientSideMCPServer(
     ];
   } while (nextPageCursor);
 
-  // Create the configurations directly here
+  // Create the configurations directly here.
   const clientSideToolConfigs = makeClientSideMCPToolConfigurations(
     config,
     allTools

@@ -2,7 +2,9 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { getSuggestedAgentsForConversation } from "@app/lib/api/assistant/conversation";
+import { getSuggestedAgentsForContent } from "@app/lib/api/assistant/agent_suggestion";
+import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
+import { getLastUserMessage } from "@app/lib/api/assistant/conversation";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -46,9 +48,9 @@ async function handler(
 
   const { cId } = queryValidation.right;
 
+  // Get the conversation.
   const conversationRes =
     await ConversationResource.fetchConversationWithoutContent(auth, cId);
-
   if (conversationRes.isErr()) {
     return apiError(req, res, {
       status_code: 404,
@@ -58,10 +60,32 @@ async function handler(
       },
     });
   }
-
   const conversation = conversationRes.value;
+  // Get the last user message.
+  // We could have passed the usermessage id instead of the conversation id, but user message has a randomly generated sId
+  // and this comes from a route so since we don't want to pass the model id in a route we use the conversation sId.
+  const lastUserMessage = await getLastUserMessage(auth, conversation);
+  if (lastUserMessage.isErr()) {
+    return apiError(req, res, {
+      status_code: 500,
+      api_error: {
+        type: "internal_server_error",
+        message: "Error getting last user message",
+      },
+    });
+  }
 
-  const agentRes = await getSuggestedAgentsForConversation(auth, conversation);
+  const agents = await getAgentConfigurations({
+    auth,
+    agentsGetView: "list",
+    variant: "light",
+  });
+
+  const agentRes = await getSuggestedAgentsForContent(auth, {
+    agents,
+    content: lastUserMessage.value,
+    conversationId: conversation.sId,
+  });
 
   if (agentRes.isErr()) {
     return apiError(req, res, {

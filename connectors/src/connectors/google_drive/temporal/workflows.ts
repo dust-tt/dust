@@ -34,12 +34,13 @@ const {
 // Hotfix: increase timeout on incrementalSync to avoid restarting ongoing activities
 const { incrementalSync } = proxyActivities<typeof activities>({
   startToCloseTimeout: "180 minutes",
-  heartbeatTimeout: "5 minutes",
+  heartbeatTimeout: "10 minutes",
 });
 
 // Temporarily increase timeout on syncFiles until table upsertion is moved to the upsert queue.
 const { syncFiles } = proxyActivities<typeof activities>({
-  startToCloseTimeout: "30 minutes",
+  startToCloseTimeout: "180 minutes",
+  heartbeatTimeout: "5 minutes",
 });
 
 const { reportInitialSyncProgress, syncSucceeded, syncStarted } =

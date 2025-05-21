@@ -128,6 +128,12 @@ export async function syncGongTranscript({
 
   const documentId = makeGongTranscriptInternalId(connector, callId);
 
+  // We add tags for the trackers to the document but not to the prefixes.
+  // These are meant to be used for filtering purposes rather than for semantic search.
+  const trackerTags = transcriptMetadata.content.trackers.map(
+    (tracker) => `tracker:${tracker.name}`
+  );
+
   await upsertDataSourceDocument({
     dataSourceConfig,
     documentId,
@@ -142,6 +148,7 @@ export async function syncGongTranscript({
       `scope:${transcriptMetadata.metaData.scope}`,
       `direction:${transcriptMetadata.metaData.direction}`,
       ...participantEmails.map((email) => `participant:${email}`),
+      ...trackerTags,
     ],
     parents: [documentId, makeGongTranscriptFolderInternalId(connector)],
     parentId: makeGongTranscriptFolderInternalId(connector),

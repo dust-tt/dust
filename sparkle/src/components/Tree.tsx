@@ -58,21 +58,26 @@ export function Tree({
     return child;
   });
 
-  return isLoading ? (
-    <div className={cn("s-py-2 s-pl-4", className)}>
-      <Spinner size="xs" variant="dark" />
-    </div>
-  ) : (
-    <div
-      className={cn(
-        "s-flex s-flex-col s-gap-0.5 s-overflow-hidden",
-        isBoxed &&
-          "s-rounded-xl s-border s-border-border s-bg-muted-background s-px-3 s-py-2 dark:s-border-border-night dark:s-bg-muted-background-night",
-        className
+  return (
+    <>
+      <div
+        className={cn(
+          "s-flex s-flex-col s-gap-0.5 s-overflow-hidden",
+          isBoxed &&
+            "s-rounded-xl s-border s-border-border s-bg-muted-background s-px-3 s-py-2 dark:s-border-border-night dark:s-bg-muted-background-night",
+          className
+        )}
+      >
+        {modifiedChildren}
+      </div>
+      {isLoading && (
+        // add the spinner below modifiedChildren to keep the layout
+        // thus preventing re-render in case of pagination
+        <div className={cn("s-py-2 s-pl-4", className)}>
+          <Spinner size="xs" variant="dark" />
+        </div>
       )}
-    >
-      {modifiedChildren}
-    </div>
+    </>
   );
 }
 

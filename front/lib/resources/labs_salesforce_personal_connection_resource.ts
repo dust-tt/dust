@@ -5,7 +5,7 @@ import { LabsPersonalSalesforceConnection as LabsSalesforcePersonalConnection } 
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { DataSourceType, Result } from "@app/types";
-import { Err, Ok } from "@app/types";
+import { Err, normalizeError, Ok } from "@app/types";
 
 export type LabsPersonalSalesforceConnectionType = {
   connectionId: string;
@@ -90,7 +90,7 @@ export class LabsSalesforcePersonalConnectionResource extends BaseResource<LabsS
       });
       return new Ok(undefined);
     } catch (err) {
-      return new Err(err as Error);
+      return new Err(normalizeError(err));
     }
   }
   // Serialization.

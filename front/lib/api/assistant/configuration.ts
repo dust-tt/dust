@@ -93,6 +93,7 @@ import {
   isTimeFrame,
   isUser,
   MAX_STEPS_USE_PER_RUN_LIMIT,
+  normalizeError,
   Ok,
   removeNulls,
 } from "@app/types";
@@ -675,7 +676,7 @@ export async function getAgentConfigurations<V extends AgentFetchVariant>({
   sort?: SortStrategyType;
   dangerouslySkipPermissionFiltering?: boolean;
 }): Promise<
-  V extends "light" ? LightAgentConfigurationType[] : AgentConfigurationType[]
+  V extends "full" ? AgentConfigurationType[] : LightAgentConfigurationType[]
 > {
   const owner = auth.workspace();
   if (!owner || !auth.isUser()) {
@@ -1743,7 +1744,7 @@ export async function removeGroupFromAgentConfiguration({
 
     return new Ok(undefined);
   } catch (error) {
-    return new Err(error as Error);
+    return new Err(normalizeError(error));
   }
 }
 
@@ -1800,7 +1801,7 @@ export async function updateAgentPermissions(
     return result;
   } catch (error) {
     // Catch errors thrown from within the transaction
-    return new Err(error as Error);
+    return new Err(normalizeError(error));
   }
 }
 

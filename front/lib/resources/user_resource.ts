@@ -9,6 +9,7 @@ import { Op } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
 import { LabsPersonalSalesforceConnection } from "@app/lib/models/labs_personal_salesforce_connection";
+import type { ResourceLogJSON } from "@app/lib/resources/base_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import {
@@ -23,7 +24,7 @@ import type {
   UserProviderType,
   UserType,
 } from "@app/types";
-import { Err, Ok } from "@app/types";
+import { Err, normalizeError, Ok } from "@app/types";
 
 export interface SearchMembersPaginationParams {
   orderColumn: "name";
@@ -226,7 +227,7 @@ export class UserResource extends BaseResource<UserModel> {
 
       return new Ok(undefined);
     } catch (err) {
-      return new Err(err as Error);
+      return new Err(normalizeError(err));
     }
   }
 
@@ -243,7 +244,7 @@ export class UserResource extends BaseResource<UserModel> {
 
       return new Ok(undefined);
     } catch (err) {
-      return new Err(err as Error);
+      return new Err(normalizeError(err));
     }
   }
 
@@ -392,6 +393,12 @@ export class UserResource extends BaseResource<UserModel> {
     return {
       users: users.map((u) => new UserResource(UserModel, u.get())),
       total: count,
+    };
+  }
+
+  toLogJSON(): ResourceLogJSON {
+    return {
+      sId: this.sId,
     };
   }
 }

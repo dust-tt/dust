@@ -1,5 +1,4 @@
 import assert from "assert";
-import { randomBytes } from "crypto";
 import type {
   Attributes,
   CreationAttributes,
@@ -49,7 +48,7 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
     auth: Authenticator,
     blob: Omit<
       CreationAttributes<RemoteMCPServerModel>,
-      "name" | "description" | "spaceId" | "sId" | "sharedSecret" | "lastSyncAt"
+      "name" | "description" | "spaceId" | "sId" | "lastSyncAt"
     >,
     transaction?: Transaction
   ) {
@@ -60,14 +59,12 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
       "The user is not authorized to create an MCP server"
     );
 
-    const sharedSecret = randomBytes(32).toString("hex");
-
     const server = await RemoteMCPServerModel.create(
       {
         ...blob,
         name: blob.cachedName || DEFAULT_MCP_ACTION_NAME,
         description: blob.cachedDescription || DEFAULT_MCP_ACTION_DESCRIPTION,
-        sharedSecret,
+        sharedSecret: blob.sharedSecret,
         lastSyncAt: new Date(),
       },
       { transaction }
@@ -277,7 +274,7 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
     cachedDescription: string | null;
     url: string;
     lastSyncAt: number | null;
-    sharedSecret: string;
+    sharedSecret: string | null;
   } {
     const currentTime = new Date();
     const createdAt = new Date(this.createdAt);
@@ -285,10 +282,11 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
       currentTime.getTime() - createdAt.getTime()
     );
     const differenceInMinutes = Math.ceil(timeDifference / (1000 * 60));
-    const secret =
-      differenceInMinutes > SECRET_REDACTION_COOLDOWN_IN_MINUTES
+    const secret = this.sharedSecret
+      ? differenceInMinutes > SECRET_REDACTION_COOLDOWN_IN_MINUTES
         ? redactString(this.sharedSecret, 4)
-        : this.sharedSecret;
+        : this.sharedSecret
+      : null;
 
     return {
       sId: this.sId,

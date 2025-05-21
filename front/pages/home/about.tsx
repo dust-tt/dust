@@ -263,6 +263,27 @@ const PEOPLE: Record<
     github: "https://github.com/johnoppenheimer",
     linkedIn: "https://www.linkedin.com/in/maximecattet",
   },
+  gaelle: {
+    name: "Gaëlle Caplier",
+    title: "Customer Success",
+    image: "https://avatars.githubusercontent.com/u/49072037?v=4",
+    github: "https://github.com/gcaplier",
+    linkedIn: "https://www.linkedin.com/in/gcaplier/",
+  },
+  lena: {
+    name: "Léna Caloud",
+    title: "Customer Success",
+    image: "https://ca.slack-edge.com/T050RH73H9P-U08S29YC36H-b53f68fd8f87-512",
+    github: "https://github.com/lcaloud",
+    linkedIn: "https://www.linkedin.com/in/lenacaloud/",
+  },
+  ben: {
+    name: "Benjamin Toueg",
+    title: "Software Engineer",
+    image: "https://avatars.githubusercontent.com/u/498190?v=4",
+    github: "https://github.com/btoueg",
+    linkedIn: "https://www.linkedin.com/in/toueg",
+  },
 };
 
 const Person = ({ handle }: { handle: string }) => {

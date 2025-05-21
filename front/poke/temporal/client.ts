@@ -43,7 +43,7 @@ export async function launchScrubDataSourceWorkflow(
         "Failed starting scrub data source workflow."
       );
     }
-    return new Err(e as Error);
+    return new Err(normalizeError(e));
   }
 }
 

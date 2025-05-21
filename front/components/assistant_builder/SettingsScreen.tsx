@@ -27,7 +27,7 @@ import React, {
 import { AvatarPicker } from "@app/components/assistant_builder/avatar_picker/AssistantBuilderAvatarPicker";
 import {
   buildSelectedEmojiType,
-  makeUrlForEmojiAndBackgroud,
+  makeUrlForEmojiAndBackground,
 } from "@app/components/assistant_builder/avatar_picker/utils";
 import {
   DROID_AVATAR_URLS,
@@ -51,7 +51,7 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types";
-import { Err, Ok } from "@app/types";
+import { Err, isBuilder, Ok } from "@app/types";
 import type { TagType } from "@app/types/tag";
 
 import { AddEditorDropdown } from "../members/AddEditorsDropdown";
@@ -202,7 +202,7 @@ export default function SettingsScreen({
     }
   }, [owner, builderState.instructions, builderState.description]);
 
-  const { nonGlobalSpacessUsedInActions } = useBuilderActionInfo(builderState);
+  const { nonGlobalSpacesUsedInActions } = useBuilderActionInfo(builderState);
 
   const updateEmojiFromSuggestions = useCallback(async () => {
     let avatarUrl: string | null = null;
@@ -214,7 +214,7 @@ export default function SettingsScreen({
       const suggestion = emojiSuggestions.value.suggestions[0];
       const emoji = buildSelectedEmojiType(suggestion.emoji);
       if (emoji) {
-        avatarUrl = makeUrlForEmojiAndBackgroud(
+        avatarUrl = makeUrlForEmojiAndBackground(
           {
             id: emoji.id,
             unified: emoji.unified,
@@ -557,16 +557,16 @@ export default function SettingsScreen({
                       builderState.scope === "published" ||
                       builderState.scope === "workspace") && (
                       <>
-                        {nonGlobalSpacessUsedInActions.length === 0 && (
+                        {nonGlobalSpacesUsedInActions.length === 0 && (
                           <>Visible & usable by all members of the workspace.</>
                         )}
-                        {nonGlobalSpacessUsedInActions.length > 0 && (
+                        {nonGlobalSpacesUsedInActions.length > 0 && (
                           <div>
                             Visible & usable by the members of the{" "}
-                            {`space${nonGlobalSpacessUsedInActions.length > 1 ? "s" : ""}`}{" "}
+                            {`space${nonGlobalSpacesUsedInActions.length > 1 ? "s" : ""}`}{" "}
                             :{" "}
                             <b>
-                              {nonGlobalSpacessUsedInActions
+                              {nonGlobalSpacesUsedInActions
                                 .map((v) => v.name)
                                 .join(", ")}
                             </b>
@@ -882,13 +882,18 @@ function TagsSection({
     if (tagsSuggestions.status !== "ok") {
       return [];
     }
-
+    const currentTagIds = new Set(builderState.tags.map((t) => t.sId));
     // We make sure we don't suggest tags that doesn't already exists
-    return (
-      tagsSuggestions.suggestions
-        ?.slice(0, 3)
-        .filter((tag) => tags.findIndex((t) => t.name === tag) !== -1) ?? []
-    );
+    return tags
+      .filter((t) => !currentTagIds.has(t.sId))
+      .filter((t) => isBuilder(owner) || t.kind !== "protected")
+      .filter(
+        (tag) =>
+          tagsSuggestions.suggestions?.findIndex(
+            (t) => tag.name.toLowerCase() === t.toLowerCase()
+          ) !== -1
+      )
+      .slice(0, 3);
   }, [tagsSuggestions, tags]);
 
   const updateTagsSuggestions = useCallback(async () => {
@@ -920,7 +925,6 @@ function TagsSection({
             builderState={builderState}
             setBuilderState={setBuilderState}
             setEdited={setEdited}
-            tags={tags}
             tagsSuggestions={filteredTagsSuggestions}
           />
         )}
@@ -950,7 +954,6 @@ function TagsSuggestions({
   builderState,
   setBuilderState,
   setEdited,
-  tags,
   tagsSuggestions,
 }: {
   builderState: AssistantBuilderState;
@@ -958,25 +961,13 @@ function TagsSuggestions({
     stateFn: (state: AssistantBuilderState) => AssistantBuilderState
   ) => void;
   setEdited: (edited: boolean) => void;
-  tags: TagType[];
-  tagsSuggestions: string[];
+  tagsSuggestions: TagType[];
 }) {
-  const sendNotification = useSendNotification();
-  const addTag = async (name: string) => {
+  const addTag = async (tag: TagType) => {
     const isTagInAssistant =
-      builderState.tags.findIndex((t) => t.name === name) !== -1;
-    const tag: TagType | null = tags.find((t) => t.name === name) ?? null;
+      builderState.tags.findIndex((t) => t.sId === tag.sId) !== -1;
 
-    if (tag === null && !isTagInAssistant) {
-      sendNotification({
-        type: "error",
-        title: "Can't create tag",
-        description: "You cannot create tags in the Assistant Builder",
-      });
-      return;
-    }
-
-    if (tag != null && !isTagInAssistant) {
+    if (!isTagInAssistant) {
       setBuilderState((state) => ({
         ...state,
         tags: state.tags.concat(tag),
@@ -997,7 +988,7 @@ function TagsSuggestions({
           key={`tag-suggestion-${tag}`}
           size="xs"
           variant="outline"
-          label={tag}
+          label={tag.name}
           onClick={() => addTag(tag)}
         />
       ))}

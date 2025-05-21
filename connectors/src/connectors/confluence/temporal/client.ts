@@ -22,7 +22,10 @@ import { getTemporalClient } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types";
-import { makeConfluenceSyncWorkflowId } from "@connectors/types";
+import {
+  makeConfluenceSyncWorkflowId,
+  normalizeError,
+} from "@connectors/types";
 import { isScheduleAlreadyRunning } from "@connectors/types";
 
 export async function launchConfluenceSyncWorkflow(
@@ -76,7 +79,7 @@ export async function launchConfluenceSyncWorkflow(
       cronSchedule: `${minute} ${oddOrEvenHour}/2 * * *`, // Every 2 hours at minute `minute`.
     });
   } catch (err) {
-    return new Err(err as Error);
+    return new Err(normalizeError(err));
   }
 
   return new Ok(workflowId);
@@ -122,7 +125,7 @@ export async function launchConfluenceRemoveSpacesSyncWorkflow(
       },
     });
   } catch (err) {
-    return new Err(err as Error);
+    return new Err(normalizeError(err));
   }
 
   return new Ok(workflowId);
@@ -160,7 +163,7 @@ export async function stopConfluenceSyncWorkflow(
       },
       "Failed to stop Confluence workflow."
     );
-    return new Err(e as Error);
+    return new Err(normalizeError(e));
   }
 }
 

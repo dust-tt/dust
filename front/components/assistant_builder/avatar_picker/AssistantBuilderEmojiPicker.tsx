@@ -16,7 +16,7 @@ import type {
   AvatarPickerTabElement,
   SelectedEmojiType,
 } from "@app/components/assistant_builder/avatar_picker/types";
-import { makeUrlForEmojiAndBackgroud } from "@app/components/assistant_builder/avatar_picker/utils";
+import { makeUrlForEmojiAndBackground } from "@app/components/assistant_builder/avatar_picker/utils";
 import { generateTailwindBackgroundColors } from "@app/types";
 
 const DEFAULT_BACKGROUND_COLOR: avatarUtils.AvatarBackgroundColorType =
@@ -64,7 +64,7 @@ const AssistantBuilderEmojiPicker = React.forwardRef<
     return {
       getUrl: async () => {
         if (selectedEmoji) {
-          return makeUrlForEmojiAndBackgroud(selectedEmoji, selectedBgColor);
+          return makeUrlForEmojiAndBackground(selectedEmoji, selectedBgColor);
         }
 
         return null;

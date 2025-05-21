@@ -107,7 +107,7 @@ export function stripNullBytes(text: string): string {
   return text.replace(/\0/g, "");
 }
 
-// Checks for an escped null Unicode character.
+// Checks for an escaped null Unicode character.
 export function hasNullUnicodeCharacter(text: string): boolean {
   return text.includes("\u0000");
 }
