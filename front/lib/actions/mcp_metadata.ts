@@ -167,14 +167,16 @@ export const connectToMCPServer = async (
                   createSSRFInterceptor()
                 ),
                 headers: {
-                  ...(accessToken
-                    ? { Authorization: `Bearer ${accessToken}` }
-                    : {}),
                   ...(remoteMCPServer.sharedSecret
                     ? {
                         Authorization: `Bearer ${remoteMCPServer.sharedSecret}`,
                       }
                     : {}),
+                  ...(accessToken
+                    ? { Authorization: `Bearer ${accessToken}` }
+                    : {}),
+                  // NOTE: For now, we are not using the access token. Once it's used,
+                  // it will take over the shared secret Bearer. This is intended.
                 },
               },
             };

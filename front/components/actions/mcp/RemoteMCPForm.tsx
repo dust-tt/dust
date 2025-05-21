@@ -289,15 +289,19 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
                 <>
                   <Input
                     {...field}
-                    label="Bearer Token"
+                    label="Bearer Token (Authorization)"
                     isError={!!form.formState.errors.sharedSecret}
                     message={form.formState.errors.sharedSecret?.message}
-                    placeholder="Paste the bearer here"
+                    placeholder="Paste the Bearer Token here"
                   />
                   <p className="text-xs text-gray-500 dark:text-gray-500-night">
                     This will be sent alongside the request made to your server
-                    as a Bearer token.
+                    as a Bearer token in the headers.
                   </p>
+                  {/** NOTE: Once we implemented the OAuth flow for remote servers
+                   * we should remove this field if the server is using OAuth.
+                   * It's one or the other.
+                   */}
                 </>
               )}
             />
