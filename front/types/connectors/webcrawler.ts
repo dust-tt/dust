@@ -61,6 +61,6 @@ export const WEBCRAWLER_DEFAULT_CONFIGURATION: WebCrawlerConfigurationType = {
   maxPageToCrawl: 50,
   crawlMode: "website",
   crawlFrequency: "monthly",
-  customCrawler: null,
+  customCrawler: "firecrawl",
   headers: {},
 };
