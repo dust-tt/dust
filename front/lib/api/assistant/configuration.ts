@@ -67,8 +67,7 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { TemplateResource } from "@app/lib/resources/template_resource";
-import { tagsSorter } from "@app/lib/utils";
-import { normalizeArrays } from "@app/lib/utils";
+import { normalizeArrays, tagsSorter } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import type {
   AgentConfigurationScope,
@@ -91,7 +90,6 @@ import {
   isAdmin,
   isBuilder,
   isTimeFrame,
-  isUser,
   MAX_STEPS_USE_PER_RUN_LIMIT,
   normalizeError,
   Ok,
@@ -631,7 +629,6 @@ async function fetchWorkspaceAgentConfigurationsForView(
     };
 
     const { canRead, canEdit } = getAgentPermissions(
-      auth,
       agentConfigurationType,
       agentIdsForUserAsEditor
     );
@@ -1790,7 +1787,6 @@ export async function updateAgentPermissions(
 }
 
 export function getAgentPermissions(
-  auth: Authenticator,
   agentConfiguration: LightAgentConfigurationType,
   memberAgents: ModelId[]
 ) {
