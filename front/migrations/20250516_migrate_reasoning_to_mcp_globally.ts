@@ -129,6 +129,7 @@ async function migrateWorkspaceReasoningActions(
           name: reasoningConfig.name,
           singleToolDescriptionOverride: reasoningConfig.description,
           appId: null,
+          jsonSchema: null,
         });
 
         revertSql += `UPDATE "agent_reasoning_configurations" SET "agentConfigurationId" = '${reasoningConfig.agentConfigurationId}' WHERE "id" = '${reasoningConfig.id}';\n`;

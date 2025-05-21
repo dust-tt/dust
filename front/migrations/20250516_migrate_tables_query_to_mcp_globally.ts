@@ -149,6 +149,7 @@ async function migrateWorkspaceTablesQueryActions(
               : tablesQueryConfig.name,
           singleToolDescriptionOverride: tablesQueryConfig.description,
           appId: null,
+          jsonSchema: null,
         });
 
         // Reverse: create the tables query configuration.
