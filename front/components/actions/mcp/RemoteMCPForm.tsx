@@ -28,7 +28,7 @@ import {
   useUpdateRemoteMCPServer,
 } from "@app/lib/swr/mcp_servers";
 import type { LightWorkspaceType } from "@app/types";
-import { asDisplayName } from "@app/types";
+import { asDisplayName, normalizeError } from "@app/types";
 
 interface RemoteMCPFormProps {
   owner: LightWorkspaceType;
