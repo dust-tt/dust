@@ -4,13 +4,21 @@ import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_r
 import { getWorkspaceByModelId } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 
-export async function syncRemoteMCPServers(
-  servers: RemoteMCPServerResource[]
-): Promise<void> {
+export async function syncRemoteMCPServers(ids: number[]): Promise<void> {
   logger.info({ msg: "Starting sync of remote_mcp_servers" });
 
   try {
-    for (const server of servers) {
+    for (const id of ids) {
+      // Retrieve the remote MCP server
+      const server = await RemoteMCPServerResource.fetchByModelId(id);
+      if (!server) {
+        logger.error({
+          msg: "Remote MCP server not found",
+          serverId: id,
+        });
+        continue;
+      }
+
       // Retrieve the workspace
       const workspace = await getWorkspaceByModelId(server.workspaceId);
       if (!workspace) {
@@ -69,4 +77,30 @@ export async function syncRemoteMCPServers(
     });
     throw error;
   }
+}
+
+const EMPTY_BATCH = {
+  servers: [],
+  next: async () => EMPTY_BATCH,
+};
+
+/**
+ * Returns a batch of up to 100 RemoteMCPServerResource servers and a function to get the next batch.
+ */
+export async function getBatchRemoteMCPServers(offset = 0, limit = 100) {
+  const resources = await RemoteMCPServerResource.dangerouslyListAllServers(
+    offset,
+    limit
+  );
+  const servers = resources.map((s) => s.id);
+  return {
+    servers,
+    next: async () => {
+      if (servers.length < limit) {
+        // No more servers left
+        return EMPTY_BATCH;
+      }
+      return getBatchRemoteMCPServers(offset + limit, limit);
+    },
+  };
 }

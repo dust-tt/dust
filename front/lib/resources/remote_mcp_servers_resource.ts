@@ -159,6 +159,7 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
     return servers.length > 0 ? servers[0] : null;
   }
 
+  // Admin operations - don't use in non-temporal code.
   static async dangerouslyListAllServers(offset = 0, limit = 100) {
     const servers = await RemoteMCPServerModel.findAll({
       offset,
