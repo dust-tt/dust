@@ -53,7 +53,7 @@ function createServer(
 
   server.tool(
     "process_documents",
-    "Process documents according to timeframe and data sources to extract structured data.",
+    "Process available documents according to timeframe to extract structured data.",
     {
       timeFrame:
         ConfigurableToolInputSchemas[
