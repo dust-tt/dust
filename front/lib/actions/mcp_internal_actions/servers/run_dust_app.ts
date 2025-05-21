@@ -38,6 +38,14 @@ import { ConfigurableToolInputSchemas } from "../input_schemas";
 
 const MIN_GENERATION_TOKENS = 2048;
 
+const serverInfo: InternalMCPServerDefinitionType = {
+  name: "run_dust_app",
+  version: "1.0.0",
+  description: "Run Dust Apps with specified parameters (mcp)",
+  icon: "CommandLineIcon",
+  authorization: null,
+};
+
 interface DustFileOutput {
   __dust_file?: {
     type: string;
@@ -251,14 +259,6 @@ async function prepareParamsWithHistory(
   }
   return params;
 }
-
-const serverInfo: InternalMCPServerDefinitionType = {
-  name: "run_dust_app",
-  version: "1.0.0",
-  description: "Run Dust Apps with specified parameters (mcp)",
-  icon: "CommandLineIcon",
-  authorization: null,
-};
 
 export default async function createServer(
   auth: Authenticator,

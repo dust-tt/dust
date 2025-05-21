@@ -610,6 +610,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       createdAt: this.createdAt.getTime(),
       updatedAt: this.updatedAt.getTime(),
       spaceId: this.space.sId,
+      serverType: this.serverType,
       server:
         this.serverType === "remote"
           ? this.getRemoteMCPServerResource().toJSON()

@@ -9,6 +9,7 @@ import type {
   AssistantBuilderActionType,
   AssistantBuilderDataVisualizationConfiguration,
 } from "@app/components/assistant_builder/types";
+import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/utils";
 import {
   ACTION_SPECIFICATIONS,
@@ -16,7 +17,6 @@ import {
 } from "@app/lib/actions/utils";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { SpaceType } from "@app/types";
-import { asDisplayName } from "@app/types";
 
 const DEFAULT_TOOLS_WITH_CONFIGURATION = [
   "DUST_APP_RUN",
@@ -71,9 +71,9 @@ function getGroupedMCPServerViews({
   );
 
   const mcpServerViewsWithLabel = mcpServerViews.map((view) => {
-    // There can be the same tool available in different spaces, in that case we need to show the space name.
-    const displayName = asDisplayName(view.server.name);
+    const displayName = getMcpServerViewDisplayName(view);
 
+    // There can be the same tool available in different spaces, in that case we need to show the space name.
     if (serverIdToCount[view.server.sId] > 1) {
       const spaceName = spaces.find(
         (space) => space.sId === view.spaceId

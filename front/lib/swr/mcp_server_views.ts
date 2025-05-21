@@ -66,6 +66,7 @@ const getOptimisticDataForCreate = (
               sId: "global",
               createdAt: Date.now(),
               updatedAt: Date.now(),
+              serverType: "internal" as const,
               server,
               editedByUser: null,
               spaceId: space.sId,

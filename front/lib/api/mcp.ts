@@ -64,6 +64,7 @@ export interface MCPServerViewType {
   createdAt: number;
   updatedAt: number;
   spaceId: string;
+  serverType: "remote" | "internal";
   server: MCPServerType;
   editedByUser: EditedByUser | null;
 }
