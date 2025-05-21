@@ -7,7 +7,7 @@ import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "primitive_types_debugger",
-  version: "0.0.1",
+  version: "1.0.0",
   description:
     "Demo server showing a basic interaction with various configurable blocks.",
   icon: "ActionEmotionLaughIcon",

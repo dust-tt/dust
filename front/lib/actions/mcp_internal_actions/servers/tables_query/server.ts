@@ -33,7 +33,7 @@ export const TABLES_QUERY_SECTION_FILE_MIN_COLUMN_LENGTH = 500;
 
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "query_tables",
-  version: "0.0.1",
+  version: "1.0.0",
   description: "Tables, Spreadsheets, Notion DBs (quantitative) (mcp).",
   icon: "ActionTableIcon",
   authorization: null,

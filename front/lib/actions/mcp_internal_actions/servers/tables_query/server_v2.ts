@@ -31,7 +31,7 @@ import { CoreAPI } from "@app/types/core/core_api";
 
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "query_tables_v2",
-  version: "0.0.1",
+  version: "1.0.0",
   description:
     "Tables, Spreadsheets, Notion DBs (quantitative) (mcp, exploded).",
   icon: "ActionTableIcon",

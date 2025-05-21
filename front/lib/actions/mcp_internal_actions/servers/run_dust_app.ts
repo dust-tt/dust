@@ -40,7 +40,7 @@ const MIN_GENERATION_TOKENS = 2048;
 
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "run_dust_app",
-  version: "0.0.1",
+  version: "1.0.0",
   description: "Run Dust Apps with specified parameters (mcp)",
   icon: "CommandLineIcon",
   authorization: null,

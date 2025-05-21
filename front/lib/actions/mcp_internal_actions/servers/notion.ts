@@ -8,7 +8,7 @@ import type { Authenticator } from "@app/lib/auth";
 
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "notion",
-  version: "0.0.1",
+  version: "1.0.0",
   description: "Notion tools to manage pages and databases.",
   authorization: {
     provider: "notion" as const,
