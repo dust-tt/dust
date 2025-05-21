@@ -78,8 +78,8 @@ jobs:
         run: |
           git push origin main
 
-      - name: Publish to npm
+      - name: Publish
         working-directory: sparkle
-        run: npm publish --ignore-scripts
+        run: npm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
