@@ -66,21 +66,6 @@ async function setupTestAgents(
   // Create a few test agents with different configurations
   testAgents = await Promise.all([
     AgentConfigurationFactory.createTestAgent(auth, t, {
-      name: `Test Agent / Workspace / ${user.name}`,
-      description: "Workspace test agent",
-      scope: "workspace",
-    }),
-    AgentConfigurationFactory.createTestAgent(auth, t, {
-      name: `Test Agent / Published / ${user.name}`,
-      description: "Published test agent",
-      scope: "published",
-    }),
-    AgentConfigurationFactory.createTestAgent(auth, t, {
-      name: `Test Agent / Private / ${user.name}`,
-      description: "Private test agent",
-      scope: "private",
-    }),
-    AgentConfigurationFactory.createTestAgent(auth, t, {
       name: `Test Agent / Hidden / ${user.name}`,
       description: "Hidden test agent",
       scope: "hidden",
@@ -150,26 +135,7 @@ describe("GET /api/w/[wId]/assistant/agent_configurations", () => {
       });
 
       await setupTestAgents(workspace, user, t);
-      req.query.view = "workspace";
-      await handler(req, res);
-
-      expect(res._getStatusCode()).toBe(200);
-      const data = JSON.parse(res._getData());
-      expect(data.agentConfigurations).toBeDefined();
-      expect(Array.isArray(data.agentConfigurations)).toBe(true);
-      expect(data.agentConfigurations.length).toBe(1);
-    }
-  );
-
-  itInTransaction(
-    "returns workspace agent configurations successfully",
-    async (t) => {
-      const { req, res, workspace, user } = await createPrivateApiMockRequest({
-        method: "GET",
-      });
-
-      await setupTestAgents(workspace, user, t);
-      req.query.view = "workspace";
+      req.query.view = "published";
       await handler(req, res);
 
       expect(res._getStatusCode()).toBe(200);

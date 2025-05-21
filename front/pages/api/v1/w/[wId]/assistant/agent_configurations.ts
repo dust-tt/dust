@@ -49,6 +49,7 @@ const viewRequiresUser = (view?: string): boolean =>
  *           The view to use when retrieving agents:
  *           - all: Retrieves all non-private agents (default if not authenticated)
  *           - list: Retrieves all active agents accessible to the user (default if authenticated)
+ *           - published: Retrieves all agents with published scope
  *           - global: Retrieves all global agents
  *           - favorites: Retrieves all agents marked as favorites by the user (only available to authenticated users)
  *         schema:
@@ -129,8 +130,8 @@ async function handler(
       let agentConfigurations = await getAgentConfigurations({
         auth,
         agentsGetView:
-          agentsGetView === "published" || agentsGetView === "workspace"
-            ? "all" // workspace and published are deprecated, return all visible agents
+          agentsGetView === "workspace"
+            ? "published" // workspace is deprecated, return all visible agents
             : agentsGetView,
         variant: "light",
       });

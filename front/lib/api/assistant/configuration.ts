@@ -391,7 +391,7 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
     case "published":
       return AgentConfiguration.findAll({
         ...baseAgentsSequelizeQuery,
-        where: baseConditionsAndScopesIn(["published"]),
+        where: baseConditionsAndScopesIn(["published", "visible"]),
       });
 
     case "list":
