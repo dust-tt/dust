@@ -738,7 +738,7 @@ function ActionCard({
             {actionError ? (
               <span className="text-warning-500">{actionError}</span>
             ) : (
-              <p className="">{action.description}</p>
+              action.description
             )}
           </div>
         )}
