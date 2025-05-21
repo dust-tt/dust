@@ -298,11 +298,9 @@ async function getMCPServerActionConfiguration(
 
   builderAction.configuration.timeFrame = action.timeFrame;
   builderAction.configuration.jsonSchema = action.jsonSchema;
-  builderAction.configuration._jsonSchemaString = JSON.stringify(
-    action.jsonSchema,
-    null,
-    2
-  );
+  builderAction.configuration._jsonSchemaString = action.jsonSchema
+    ? JSON.stringify(action.jsonSchema, null, 2)
+    : null;
   builderAction.configuration.additionalConfiguration =
     action.additionalConfiguration;
 
