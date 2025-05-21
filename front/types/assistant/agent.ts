@@ -53,6 +53,7 @@ export type AgentConfigurationScope =
  * - {agentIds: string}: Retrieves specific agents by their sIds.
  * - 'all': All non-private agents (so combines workspace, published and global
  *   agents); used e.g. for non-user calls such as API
+ * - 'published': Retrieves all published agents.
  * - 'global': Retrieves all agents exclusively with a 'global' scope.
  * - 'admin_internal': Grants access to all agents, including private ones.
  * - 'manage': Retrieves all agents for the manage agents view (same as list, but including disabled agents).
@@ -66,6 +67,7 @@ export type AgentsGetViewType =
   | "current_user"
   | "list"
   | "all"
+  | "published"
   | "global"
   | "admin_internal"
   | "manage"
