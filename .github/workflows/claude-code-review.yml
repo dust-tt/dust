@@ -2,7 +2,7 @@ name: Claude Code Review
 
 on:
   pull_request:
-    types: [review_requested, synchronize] # Runs when review is requested or PR is updated
+    types: [review_requested] # Runs when review is requested
 
 permissions:
   contents: write
@@ -29,6 +29,7 @@ jobs:
             });
 
       # Determine if we should run the review
+      # Not used at the moment.
       - name: Determine if review should run
         id: should-run
         uses: actions/github-script@v6
