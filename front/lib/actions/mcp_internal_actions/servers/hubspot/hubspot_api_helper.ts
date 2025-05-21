@@ -209,9 +209,39 @@ export const getObjectByEmail = async (
   return objects.results[0];
 };
 
-/**
- * Get objects by properties.
- */
+function buildHubspotFilters(
+  filters: Array<{
+    propertyName: string;
+    operator: FilterOperatorEnum;
+    value?: string;
+    values?: string[];
+  }>
+) {
+  return filters.map(({ propertyName, operator, value, values }) => {
+    const filter: any = {
+      propertyName,
+      operator,
+    };
+    // Only include value/values if it's not a HAS_PROPERTY or NOT_HAS_PROPERTY operator
+    if (
+      operator !== FilterOperatorEnum.HasProperty &&
+      operator !== FilterOperatorEnum.NotHasProperty
+    ) {
+      // For IN/NOT_IN, the 'values' array must be included, not the value string.
+      if (
+        operator === FilterOperatorEnum.In ||
+        operator === FilterOperatorEnum.NotIn
+      ) {
+        // For string properties, values must be lowercase
+        filter.values = values?.map((v) => v.toLowerCase());
+      } else {
+        filter.value = value;
+      }
+    }
+    return filter;
+  });
+}
+
 export const getObjectsByProperties = async (
   accessToken: string,
   objectType: SimpleObjectType,
@@ -219,6 +249,7 @@ export const getObjectsByProperties = async (
     propertyName: string;
     operator: FilterOperatorEnum;
     value?: string;
+    values?: string[];
   }>
 ): Promise<SimplePublicObject[]> => {
   const hubspotClient = new Client({ accessToken });
@@ -230,20 +261,7 @@ export const getObjectsByProperties = async (
   const objects = await hubspotClient.crm[objectType].searchApi.doSearch({
     filterGroups: [
       {
-        filters: filters.map(({ propertyName, operator, value }) => {
-          const filter: any = {
-            propertyName,
-            operator,
-          };
-          // Only include value if it's not a HAS_PROPERTY or NOT_HAS_PROPERTY operator
-          if (
-            operator !== FilterOperatorEnum.HasProperty &&
-            operator !== FilterOperatorEnum.NotHasProperty
-          ) {
-            filter.value = value;
-          }
-          return filter;
-        }),
+        filters: buildHubspotFilters(filters),
       },
     ],
     properties: propertyNames,
@@ -261,27 +279,14 @@ export const countObjectsByProperties = async (
     propertyName: string;
     operator: FilterOperatorEnum;
     value?: string;
+    values?: string[];
   }>
 ): Promise<number> => {
   const hubspotClient = new Client({ accessToken });
-
   const objects = await hubspotClient.crm[objectType].searchApi.doSearch({
     filterGroups: [
       {
-        filters: filters.map(({ propertyName, operator, value }) => {
-          const filter: any = {
-            propertyName,
-            operator,
-          };
-          // Only include value if it's not a HAS_PROPERTY or NOT_HAS_PROPERTY operator
-          if (
-            operator !== FilterOperatorEnum.HasProperty &&
-            operator !== FilterOperatorEnum.NotHasProperty
-          ) {
-            filter.value = value;
-          }
-          return filter;
-        }),
+        filters: buildHubspotFilters(filters),
       },
     ],
     limit: 1, // We only need to know if there are any objects matching the filters.
