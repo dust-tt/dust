@@ -704,6 +704,7 @@ function ActionCard({
   return (
     <Card
       variant="primary"
+      className="max-h-40"
       onClick={editAction}
       action={
         <CardActionButton
@@ -733,11 +734,11 @@ function ActionCard({
             />
           </div>
         ) : (
-          <div className="w-full text-muted-foreground dark:text-muted-foreground-night">
+          <div className="line-clamp-4 text-muted-foreground dark:text-muted-foreground-night">
             {actionError ? (
               <span className="text-warning-500">{actionError}</span>
             ) : (
-              <>{action.description}</>
+              <p className="">{action.description}</p>
             )}
           </div>
         )}
