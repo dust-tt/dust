@@ -30,7 +30,10 @@ export function AssistantHandle({
     <Link
       href={href}
       shallow
-      className={`cursor-pointer ${isDisabled ? "text-gray-600 text-opacity-75" : ""} transition duration-200 hover:text-highlight active:text-highlight-600`}
+      className={cn(
+        "cursor-pointer transition duration-200 hover:text-highlight active:text-highlight-600",
+        isDisabled && "text-gray-600 text-opacity-75"
+      )}
     >
       @{assistant.name}
     </Link>
