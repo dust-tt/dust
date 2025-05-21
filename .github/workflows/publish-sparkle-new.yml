@@ -46,25 +46,40 @@ jobs:
       contents: write
 
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout main branch
+        uses: actions/checkout@v3
         with:
+          ref: main
           fetch-depth: 0
+          persist-credentials: true
 
       - uses: actions/setup-node@v3
         with:
           node-version: 20.13.0
           registry-url: "https://registry.npmjs.org"
 
-      - name: Version bump
-        working-directory: sparkle
+      - name: Configure git
         run: |
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
-          npm version ${{ github.event.inputs.version_type }} -m "chore(release): bump version to %s [skip ci]"
-          git push --follow-tags
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
 
-      - name: Publish
+      - name: Version bump and commit
+        run: |
+          # Move to sparkle directory for npm version
+          cd sparkle
+          CURRENT_VERSION=$(npm version ${{ github.event.inputs.version_type }} --no-git-tag-version)
+          git add package.json package-lock.json
+          
+          # Commit with version
+          git commit -m "chore(release): bump sparkle version to ${CURRENT_VERSION} [skip ci]"
+          echo "Created version ${CURRENT_VERSION}"
+
+      - name: Push changes
+        run: |
+          git push origin main
+
+      - name: Publish to npm
         working-directory: sparkle
-        run: npm publish
+        run: npm publish --ignore-scripts
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
