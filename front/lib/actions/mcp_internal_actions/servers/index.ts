@@ -2,7 +2,6 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { default as agentRouterServer } from "@app/lib/actions/mcp_internal_actions/servers/agent_router";
-import { default as askAgentServer } from "@app/lib/actions/mcp_internal_actions/servers/ask_agent";
 import { default as generateFileServer } from "@app/lib/actions/mcp_internal_actions/servers/file_generation";
 import { default as githubServer } from "@app/lib/actions/mcp_internal_actions/servers/github";
 import { default as hubspotServer } from "@app/lib/actions/mcp_internal_actions/servers/hubspot/server";
@@ -12,6 +11,7 @@ import { default as notionServer } from "@app/lib/actions/mcp_internal_actions/s
 import { default as primitiveTypesDebuggerServer } from "@app/lib/actions/mcp_internal_actions/servers/primitive_types_debugger";
 import { default as extractDataServer } from "@app/lib/actions/mcp_internal_actions/servers/process";
 import { default as reasoningServer } from "@app/lib/actions/mcp_internal_actions/servers/reasoning";
+import { default as runAgentServer } from "@app/lib/actions/mcp_internal_actions/servers/run_agent";
 import { default as dustAppServer } from "@app/lib/actions/mcp_internal_actions/servers/run_dust_app";
 import { default as searchServer } from "@app/lib/actions/mcp_internal_actions/servers/search";
 import { default as tablesQueryServer } from "@app/lib/actions/mcp_internal_actions/servers/tables_query/server";
@@ -58,8 +58,8 @@ export async function getInternalMCPServer(
       return notionServer(auth, mcpServerId);
     case "include_data":
       return includeDataServer(auth, agentLoopContext);
-    case "ask_agent":
-      return askAgentServer(auth);
+    case "run_agent":
+      return runAgentServer(auth, agentLoopContext);
     case "reasoning":
       return reasoningServer(auth, agentLoopContext.runContext);
     case "run_dust_app":
