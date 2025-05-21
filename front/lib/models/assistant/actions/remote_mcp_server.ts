@@ -23,7 +23,7 @@ export class RemoteMCPServerModel extends WorkspaceAwareModel<RemoteMCPServerMod
   declare cachedTools: MCPToolType[];
 
   declare lastSyncAt: Date | null;
-  declare sharedSecret: string;
+  declare sharedSecret: string | null;
   declare authorization: AuthorizationInfo | null;
 }
 
@@ -79,7 +79,7 @@ RemoteMCPServerModel.init(
     },
     sharedSecret: {
       type: DataTypes.STRING,
-      allowNull: false,
+      allowNull: true,
     },
     authorization: {
       type: DataTypes.JSONB,

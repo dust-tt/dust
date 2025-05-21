@@ -35,6 +35,7 @@ const PostQueryParamsSchema = t.union([
     serverType: t.literal("remote"),
     url: t.string,
     includeGlobal: t.union([t.boolean, t.undefined]),
+    sharedSecret: t.union([t.string, t.undefined]),
   }),
   t.type({
     serverType: t.literal("internal"),
@@ -96,7 +97,7 @@ async function handler(
 
       const body = r.right;
       if (body.serverType === "remote") {
-        const { url } = body;
+        const { url, sharedSecret } = body;
 
         if (!url) {
           return apiError(req, res, {
@@ -147,6 +148,7 @@ async function handler(
             ? metadata.icon
             : DEFAULT_MCP_SERVER_ICON,
           version: metadata.version,
+          sharedSecret: sharedSecret || null,
         });
 
         if (body.includeGlobal) {
