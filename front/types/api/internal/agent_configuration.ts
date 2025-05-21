@@ -2,7 +2,6 @@ import * as t from "io-ts";
 import type { JSONSchema7 } from "json-schema";
 
 import { validateJsonSchema } from "@app/lib/utils/json_schemas";
-
 import type { SupportedModel } from "@app/types/assistant/assistant";
 import {
   isSupportedModel,

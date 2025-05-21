@@ -12,7 +12,6 @@ import { JsonSchemaConfigurationSection } from "@app/components/assistant_builde
 import { ReasoningModelConfigurationSection } from "@app/components/assistant_builder/actions/configuration/ReasoningModelConfigurationSection";
 import { TimeFrameConfigurationSection } from "@app/components/assistant_builder/actions/configuration/TimeFrameConfigurationSection";
 import { DataDescription } from "@app/components/assistant_builder/actions/DataDescription";
-import { MCPToolsList } from "@app/components/assistant_builder/actions/MCPToolsList";
 import { generateSchema } from "@app/components/assistant_builder/actions/ProcessAction";
 import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
 import type {
