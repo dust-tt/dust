@@ -378,6 +378,12 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
         where: baseConditionsAndScopesIn(["workspace", "published", "visible"]),
       });
 
+    case "published":
+      return AgentConfiguration.findAll({
+        ...baseAgentsSequelizeQuery,
+        where: baseConditionsAndScopesIn(["published", "visible"]),
+      });
+
     case "list":
     case "manage":
       const user = auth.user();

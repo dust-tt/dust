@@ -451,14 +451,14 @@ export function AssistantDetails({
       {agentConfiguration?.status === "archived" && (
         <>
           <ContentMessage
-            title="This agent has been deleted."
+            title="This agent has been archived."
             variant="warning"
             icon={InformationCircleIcon}
             size="md"
           >
             It is no longer active and cannot be used.
             <br />
-            <div>
+            <div className="mt-2">
               <Button
                 variant="outline"
                 label="Restore"

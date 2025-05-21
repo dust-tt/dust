@@ -12,7 +12,7 @@ export class GongConfigurationModel extends ConnectorBaseModel<GongConfiguration
   declare lastGarbageCollectionTimestamp: number | null;
   declare baseUrl: string;
   declare retentionPeriodDays: number | null;
-  declare smartTrackersEnabled: boolean;
+  declare trackersEnabled: boolean;
 }
 
 GongConfigurationModel.init(
@@ -43,7 +43,7 @@ GongConfigurationModel.init(
       type: DataTypes.INTEGER,
       allowNull: true,
     },
-    smartTrackersEnabled: {
+    trackersEnabled: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: false,

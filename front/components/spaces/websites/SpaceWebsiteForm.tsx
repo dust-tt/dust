@@ -21,7 +21,6 @@ import { AdvancedSettingsSection } from "@app/components/spaces/websites/Advance
 import type {
   LightWorkspaceType,
   WebCrawlerConfigurationType,
-  WebcrawlerCustomCrawler,
   WebsiteFormAction,
   WebsiteFormState,
 } from "@app/types";
@@ -54,17 +53,6 @@ export function SpaceWebsiteForm({
         type: "SET_FIELD",
         field: "headers",
         value: newHeaders,
-      });
-    },
-    [dispatch]
-  );
-
-  const handleCrawlerChange = useCallback(
-    (crawler: WebcrawlerCustomCrawler | null) => {
-      dispatch({
-        type: "SET_FIELD",
-        field: "customCrawler",
-        value: crawler,
       });
     },
     [dispatch]
@@ -260,9 +248,7 @@ export function SpaceWebsiteForm({
       </Page.Layout>
       <AdvancedSettingsSection
         headers={state.headers}
-        crawler={state.customCrawler}
         onHeadersChange={handleHeadersChange}
-        onCrawlerChange={handleCrawlerChange}
         owner={owner}
       />
     </Page.Layout>

@@ -33,6 +33,7 @@ interface ConversationMessageProps
   buttons?: React.ReactElement<typeof Button>[];
   children?: React.ReactNode;
   citations?: React.ReactElement[];
+  isDisabled?: boolean;
   name?: string;
   pictureUrl?: string | React.ReactNode | null;
   renderName?: (name: string | null) => React.ReactNode;
@@ -81,6 +82,7 @@ export const ConversationMessage = React.forwardRef<
       buttons,
       children,
       citations,
+      isDisabled = false,
       name,
       pictureUrl,
       renderName = (name) => <span>{name}</span>,
@@ -97,6 +99,7 @@ export const ConversationMessage = React.forwardRef<
             avatarUrl={pictureUrl}
             name={name}
             isBusy={avatarBusy}
+            isDisabled={isDisabled}
             renderName={renderName}
           />
 
@@ -156,6 +159,7 @@ interface ConversationMessageHeaderProps
   extends React.HTMLAttributes<HTMLDivElement> {
   avatarUrl?: string | React.ReactNode;
   isBusy?: boolean;
+  isDisabled?: boolean;
   name?: string;
   renderName: (name: string | null) => React.ReactNode;
 }
@@ -163,42 +167,57 @@ interface ConversationMessageHeaderProps
 export const ConversationMessageHeader = React.forwardRef<
   HTMLDivElement,
   ConversationMessageHeaderProps
->(({ avatarUrl, isBusy, name = "", renderName, className, ...props }, ref) => {
-  return (
-    <div
-      ref={ref}
-      className={cn(
-        "s-flex s-items-center s-gap-2 s-p-1 @sm/conversation:s-p-0",
-        className
-      )}
-      {...props}
-    >
-      <Avatar
-        className="@sm:s-hidden"
-        name={name}
-        visual={avatarUrl}
-        busy={isBusy}
-        size="xs"
-      />
-      <Avatar
-        className="s-hidden @sm:s-flex"
-        name={name}
-        visual={avatarUrl}
-        busy={isBusy}
-        size="sm"
-      />
-      <div className="flex items-center gap-2">
-        <div
-          className={cn(
-            "s-text-sm s-font-semibold @sm:s-pb-1 @sm:s-text-base",
-            "s-text-foreground dark:s-text-foreground-night"
-          )}
-        >
-          {renderName(name)}
+>(
+  (
+    {
+      avatarUrl,
+      isBusy,
+      isDisabled,
+      name = "",
+      renderName,
+      className,
+      ...props
+    },
+    ref
+  ) => {
+    return (
+      <div
+        ref={ref}
+        className={cn(
+          "s-flex s-items-center s-gap-2 s-p-1 @sm/conversation:s-p-0",
+          className
+        )}
+        {...props}
+      >
+        <Avatar
+          className="@sm:s-hidden"
+          name={name}
+          visual={avatarUrl}
+          busy={isBusy}
+          disabled={isDisabled}
+          size="xs"
+        />
+        <Avatar
+          className="s-hidden @sm:s-flex"
+          name={name}
+          visual={avatarUrl}
+          busy={isBusy}
+          disabled={isDisabled}
+          size="sm"
+        />
+        <div className="flex items-center gap-2">
+          <div
+            className={cn(
+              "s-text-sm s-font-semibold @sm:s-pb-1 @sm:s-text-base",
+              "s-text-foreground dark:s-text-foreground-night"
+            )}
+          >
+            {renderName(name)}
+          </div>
         </div>
       </div>
-    </div>
-  );
-});
+    );
+  }
+);
 
 ConversationMessageHeader.displayName = "ConversationMessageHeader";

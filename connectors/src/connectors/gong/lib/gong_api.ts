@@ -336,11 +336,11 @@ export class GongClient {
   async getCallsMetadata({
     callIds,
     pageCursor = null,
-    smartTrackersEnabled = false,
+    trackersEnabled = false,
   }: {
     callIds: string[];
     pageCursor?: string | null;
-    smartTrackersEnabled?: boolean;
+    trackersEnabled?: boolean;
   }): Promise<{
     callsMetadata: GongTranscriptMetadata[];
     nextPageCursor: string | null;
@@ -361,12 +361,12 @@ export class GongClient {
       contentSelector: {
         exposedFields: {
           parties: true,
-          ...(smartTrackersEnabled ? { content: { trackers: true } } : {}),
+          ...(trackersEnabled ? { content: { trackers: true } } : {}),
         },
       },
     };
     try {
-      if (smartTrackersEnabled) {
+      if (trackersEnabled) {
         const callsMetadata = await this.postRequest(
           "/calls/extensive",
           body,

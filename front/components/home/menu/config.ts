@@ -211,7 +211,7 @@ const ConnectMenuConfig: MenuConfig = {
   items: [
     {
       title: "Slack Community",
-      href: "https://bit.ly/dust-slack",
+      href: "https://dust-community.tightknit.community/join",
       isExternal: true,
     },
 

@@ -15,7 +15,6 @@ import type { MouseEvent } from "react";
 import React, { useCallback, useRef, useState } from "react";
 import { useSWRConfig } from "swr";
 
-import { ConversationParticipants } from "@app/components/assistant/conversation/ConversationParticipants";
 import { useConversationsNavigation } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { DeleteConversationsDialog } from "@app/components/assistant/conversation/DeleteConversationsDialog";
 import {
@@ -185,64 +184,54 @@ export function ConversationTitle({
             />
           )}
         </div>
-        <div className="flex items-center">
-          <div className="hidden pr-6 lg:flex">
-            <ConversationParticipants
-              conversationId={activeConversationId}
-              owner={owner}
-            />
-          </div>
-          <div className="flex gap-2">
-            <div className="hidden lg:flex">
-              <Button
-                size="sm"
-                variant="ghost"
-                tooltip="Delete Conversation"
-                icon={TrashIcon}
-                onClick={() => setShowDeleteDialog(true)}
-              />
-            </div>
-            <Popover
-              popoverTriggerAsChild
-              trigger={
-                <div>
-                  <div className="hidden sm:flex">
-                    <Button
-                      size="sm"
-                      label="Share"
-                      icon={ArrowUpOnSquareIcon}
-                      variant="ghost"
-                    />
-                  </div>
-                  <div className="flex sm:hidden">
-                    <Button
-                      size="sm"
-                      tooltip="Share"
-                      icon={ArrowUpOnSquareIcon}
-                      variant="ghost"
-                    />
-                  </div>
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant="ghost"
+            tooltip="Delete Conversation"
+            icon={TrashIcon}
+            onClick={() => setShowDeleteDialog(true)}
+          />
+          <Popover
+            popoverTriggerAsChild
+            trigger={
+              <div>
+                <div className="hidden sm:flex">
+                  <Button
+                    size="sm"
+                    label="Share"
+                    icon={ArrowUpOnSquareIcon}
+                    variant="ghost"
+                  />
                 </div>
-              }
-              content={
-                <div className="flex flex-col gap-y-4 py-4">
-                  <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
-                    Share the conversation link with other members of your
-                    workspace to invite them to contribute.
-                  </div>
-                  <div className="flex">
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      label={copyLinkSuccess ? "Copied!" : "Copy the link"}
-                      icon={copyLinkSuccess ? ClipboardCheckIcon : LinkIcon}
-                      onClick={handleClick}
-                    />
-                  </div>
+                <div className="flex sm:hidden">
+                  <Button
+                    size="sm"
+                    tooltip="Share"
+                    icon={ArrowUpOnSquareIcon}
+                    variant="ghost"
+                  />
                 </div>
-              }
-            />
-          </div>
+              </div>
+            }
+            content={
+              <div className="flex flex-col gap-y-4">
+                <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+                  Share the conversation link with other members of your
+                  workspace to invite them to contribute.
+                </div>
+                <div className="flex">
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    label={copyLinkSuccess ? "Copied!" : "Copy the link"}
+                    icon={copyLinkSuccess ? ClipboardCheckIcon : LinkIcon}
+                    onClick={handleClick}
+                  />
+                </div>
+              </div>
+            }
+          />
         </div>
       </div>
     </>
