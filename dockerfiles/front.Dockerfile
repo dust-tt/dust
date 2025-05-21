@@ -51,11 +51,10 @@ ENV HUSKY=0
 WORKDIR /sdks/js
 COPY --from=build /sdks/js .
 
-WORKDIR /app
-COPY --from=build /app/.next .next
-COPY --from=build /app/package*.json ./
-COPY --from=build /app/public public
-RUN npm ci --omit=dev
+WORKDIR /ap
+COPY --from=build /app/.next/standalone ./
+COPY --from=build /app/.next/static ./.next/static
+COPY --from=build /app/public ./public
 RUN rm -r /sdks
 
 FROM gcr.io/distroless/nodejs20-debian12:debug AS runner
@@ -71,9 +70,6 @@ ENV NEXT_PUBLIC_DUST_CLIENT_FACING_URL=$NEXT_PUBLIC_DUST_CLIENT_FACING_URL
 ENV NEXT_PUBLIC_GTM_TRACKING_ID=$NEXT_PUBLIC_GTM_TRACKING_ID
 
 WORKDIR /app
-COPY --from=prod /app/.next .next
-COPY --from=prod /app/node_modules node_modules
-COPY --from=prod /app/package*.json ./
-COPY --from=prod /app/public public
+COPY --from=prod /app ./
 
-CMD ["./node_modules/next/dist/bin/next",  "start"]
+CMD ["server.js"]
