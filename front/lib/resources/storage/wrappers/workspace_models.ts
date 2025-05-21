@@ -86,7 +86,7 @@ function isWorkspaceIsolationBypassEnabled<T>(
  * Models that we know trigger workspace_isolation_violation, but we want to keep observing
  * to avoid breaking anything. We'll only trigger a sample of events
  */
-const SAMPLED_MODELS = ["spaces", "data_source", "groups", "data_source_view"];
+const SAMPLED_MODELS = ["spaces", "data_source", "data_source_view"];
 
 export class WorkspaceAwareModel<M extends Model = any> extends BaseModel<M> {
   declare workspaceId: ForeignKey<Workspace["id"]>;
