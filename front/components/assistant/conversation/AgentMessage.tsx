@@ -432,6 +432,7 @@ export function AgentMessage({
   );
 
   const canMention = agentConfiguration.canRead;
+  const isArchived = agentConfiguration.status === "archived";
 
   return (
     <ConversationMessage
@@ -439,10 +440,15 @@ export function AgentMessage({
       name={agentConfiguration.name}
       buttons={buttons}
       avatarBusy={agentMessageToRender.status === "created"}
+      isDisabled={isArchived}
       renderName={() => (
         <AssistantHandle
-          assistant={agentConfiguration}
+          assistant={{
+            sId: agentConfiguration.sId,
+            name: agentConfiguration.name + (isArchived ? " (archived)" : ""),
+          }}
           canMention={canMention}
+          isDisabled={isArchived}
         />
       )}
       type="agent"
