@@ -308,7 +308,7 @@ export function getDefaultAssistantState() {
     // We enable it by default so we should push it to actions list.
     actions: [getDataVisualizationActionConfiguration()],
     handle: null,
-    scope: "private",
+    scope: "hidden",
     description: null,
     instructions: null,
     avatarUrl: null,

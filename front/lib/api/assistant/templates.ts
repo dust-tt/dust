@@ -35,7 +35,7 @@ export async function generateMockAgentConfigurationFromTemplate(
         ASSISTANT_CREATIVITY_LEVEL_TEMPERATURES[template.presetTemperature],
     },
     name: template.handle,
-    scope: flow === "personal_assistants" ? "private" : "workspace",
+    scope: flow === "personal_assistants" ? "hidden" : "visible",
     pictureUrl: template.pictureUrl,
     visualizationEnabled: false,
     tags: [],

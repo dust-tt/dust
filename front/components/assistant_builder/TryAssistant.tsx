@@ -84,7 +84,7 @@ export function usePreviewAssistant({
         description: "Draft Agent",
         instructions: builderState.instructions,
         avatarUrl: builderState.avatarUrl ?? getDefaultAvatarUrlForPreview(),
-        scope: "private",
+        scope: "hidden",
         generationSettings: builderState.generationSettings,
         actions: builderState.actions,
         maxStepsPerRun: builderState.maxStepsPerRun,

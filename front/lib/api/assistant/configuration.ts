@@ -174,7 +174,7 @@ export async function searchAgentConfigurationsByName(
     where: {
       workspaceId: owner.id,
       status: "active",
-      scope: { [Op.in]: ["workspace", "published"] },
+      scope: { [Op.in]: ["workspace", "published", "visible"] },
       name: {
         [Op.iLike]: `%${name}%`,
       },
