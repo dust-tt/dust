@@ -96,7 +96,7 @@ export function mcpServerIsRemote(
 export function getMcpServerViewDisplayName(view: MCPServerViewType) {
   // Unreleased internal servers are displayed with a suffix in the UI.
   if (view.serverType === "internal" && view.server.version.startsWith("0")) {
-    return `${asDisplayName(view.server.name)} (Unreleased)`;
+    return `${asDisplayName(view.server.name)} (Preview)`;
   }
   return asDisplayName(view.server.name);
 }
