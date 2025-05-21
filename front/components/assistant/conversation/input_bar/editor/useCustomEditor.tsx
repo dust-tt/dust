@@ -10,6 +10,7 @@ import { DataSourceLinkExtension } from "@app/components/assistant/conversation/
 import { MarkdownStyleExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/MarkdownStyleExtension";
 import { MentionStorageExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/MentionStorageExtension";
 import { MentionWithPasteExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/MentionWithPasteExtension";
+import { HardBreakExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/HardBreakExtension";
 import { ParagraphExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/ParagraphExtension";
 import { URLDetectionExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/URLDetectionExtension";
 import { createMarkdownSerializer } from "@app/components/assistant/conversation/input_bar/editor/markdownSerializer";
@@ -229,7 +230,12 @@ const useCustomEditor = ({
         "first:before:text-gray-400 first:before:float-left first:before:content-[attr(data-placeholder)] first:before:pointer-events-none first:before:h-0",
     }),
     MarkdownStyleExtension,
-    ParagraphExtension,
+    HardBreakExtension,
+    ParagraphExtension.configure({
+      HTMLAttributes: {
+        class: "pb-4",
+      },
+    }),
     URLStorageExtension,
   ];
   if (onUrlDetected) {
@@ -316,22 +322,6 @@ const useCustomEditor = ({
 
         // Return false to let other keydown handlers or TipTap's default behavior process the event.
         return false;
-      },
-      clipboardTextParser: (text, $context) => {
-        const blocks = text.replace(/\r\n?|\n/g, "\n").split("\n");
-        const nodes: Node[] = [];
-
-        blocks.forEach((line) => {
-          const nodeJson: JSONContent = { type: "paragraph" };
-          if (line.length > 0) {
-            nodeJson.content = [{ type: "text", text: line }];
-          }
-          const node = Node.fromJSON($context.doc.type.schema, nodeJson);
-          nodes.push(node);
-        });
-
-        const fragment = Fragment.fromArray(nodes);
-        return Slice.maxOpen(fragment);
       },
     },
   });
