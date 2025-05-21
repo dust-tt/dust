@@ -8,7 +8,6 @@ import {
   ConfigurableToolInputSchemas,
 } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
-import type { AgentLoopContextType } from "@app/lib/actions/types";
 import apiConfig from "@app/lib/api/config";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
@@ -17,11 +16,10 @@ import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { Err, getHeaderFromGroupIds, normalizeError, Ok } from "@app/types";
 
-
 const serverInfo: InternalMCPServerDefinitionType = {
-  name: "ask_agent",
+  name: "run_agent",
   version: "1.0.0",
-  description: "Offload a query to another agent.",
+  description: "Run an agent (agent as tool).",
   icon: "ActionRobotIcon",
   authorization: null,
 };
@@ -37,10 +35,7 @@ function parseAgentConfigurationUri(uri: string): Result<string, Error> {
   return new Ok(match[2]);
 }
 
-function createServer(
-  auth: Authenticator,
-  agentLoopContext: AgentLoopContextType
-): McpServer {
+function createServer(auth: Authenticator): McpServer {
   const server = new McpServer(serverInfo);
 
   server.tool(
@@ -48,9 +43,11 @@ function createServer(
     // TODO(mcp): we probably want to make this description configurable to guide the model on when to use this sub-agent.
     "Run an agent.",
     {
-      query: z.string().describe(
-        `The query sent to the agent. This is the question or instruction that will be processed by the agent, which will respond with its own capabilities and knowledge.`
-      ),
+      query: z
+        .string()
+        .describe(
+          `The query sent to the agent. This is the question or instruction that will be processed by the agent, which will respond with its own capabilities and knowledge.`
+        ),
       childAgent:
         ConfigurableToolInputSchemas[
           INTERNAL_MIME_TYPES.TOOL_INPUT.CHILD_AGENT
