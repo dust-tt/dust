@@ -3,8 +3,7 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { describe, expect, it } from "vitest";
 
 import { ConfigurableToolInputJSONSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
-
-import { findMatchingSubSchemas } from "./json_schemas";
+import { findMatchingSubSchemas } from "@app/lib/actions/mcp_internal_actions/utils";
 
 describe("JSON Schema Utilities", () => {
   describe("findMatchingSchemaKeys", () => {

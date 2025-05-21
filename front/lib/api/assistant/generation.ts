@@ -19,9 +19,9 @@ import type {
 /**
  * Generation of the prompt for agents with multiple actions.
  *
- * agentsList is passed by caller so that if there's an {ASSISTANTS_LIST} in the
- * instructions, it can be replaced appropriately. The Extract action doesn't
- * need that replacement, and needs to avoid a dependency on
+ * `agentsList` is passed by caller so that if there's an {ASSISTANTS_LIST} in
+ * the instructions, it can be replaced appropriately. The Extract action
+ * doesn't need that replacement, and needs to avoid a dependency on
  * getAgentConfigurations here, so it passes null.
  */
 export async function constructPromptMultiActions(

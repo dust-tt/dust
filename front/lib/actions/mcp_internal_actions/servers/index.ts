@@ -10,6 +10,7 @@ import { default as imageGenerationDallEServer } from "@app/lib/actions/mcp_inte
 import { default as includeDataServer } from "@app/lib/actions/mcp_internal_actions/servers/include";
 import { default as notionServer } from "@app/lib/actions/mcp_internal_actions/servers/notion";
 import { default as primitiveTypesDebuggerServer } from "@app/lib/actions/mcp_internal_actions/servers/primitive_types_debugger";
+import { default as extractDataServer } from "@app/lib/actions/mcp_internal_actions/servers/process";
 import { default as reasoningServer } from "@app/lib/actions/mcp_internal_actions/servers/reasoning";
 import { default as dustAppServer } from "@app/lib/actions/mcp_internal_actions/servers/run_dust_app";
 import { default as searchServer } from "@app/lib/actions/mcp_internal_actions/servers/search";
@@ -65,6 +66,8 @@ export async function getInternalMCPServer(
       return dustAppServer(auth, agentLoopContext);
     case "agent_router":
       return agentRouterServer(auth);
+    case "extract_data":
+      return extractDataServer(auth, agentLoopContext.runContext);
     default:
       assertNever(internalMCPServerName);
   }

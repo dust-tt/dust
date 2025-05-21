@@ -1,6 +1,7 @@
 import {} from "@dust-tt/client";
 import { Op } from "sequelize";
 
+import { renderDataSourceConfiguration } from "@app/lib/actions/configuration/helpers";
 import type {
   DataSourcesToolConfigurationType,
   TablesConfigurationToolType,
@@ -18,8 +19,10 @@ import type { DataSourceConfiguration } from "@app/lib/api/assistant/configurati
 import type { Authenticator } from "@app/lib/auth";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
+import { Workspace } from "@app/lib/models/workspace";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
+import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import { getResourceNameAndIdFromSId } from "@app/lib/resources/string_ids";
 import type {
   CoreAPISearchFilter,
@@ -65,7 +68,15 @@ async function fetchAgentDataSourceConfiguration(
         workspaceId: sIdParts.workspaceModelId,
       },
       nest: true,
-      include: [{ model: DataSourceModel, as: "dataSource", required: true }],
+      include: [
+        { model: DataSourceModel, as: "dataSource", required: true },
+        {
+          model: DataSourceViewModel,
+          as: "dataSourceView",
+          required: true,
+          include: [{ model: Workspace, as: "workspace", required: true }],
+        },
+      ],
     });
 
   if (!agentDataSourceConfiguration) {
@@ -142,6 +153,22 @@ type CoreSearchArgs = {
   view_filter: CoreAPISearchFilter;
   dataSourceView: DataSourceViewType;
 };
+
+export async function getDataSourceConfiguration(
+  dataSourceToolConfiguration: DataSourcesToolConfigurationType[number]
+): Promise<Result<DataSourceConfiguration, Error>> {
+  const r = await fetchAgentDataSourceConfiguration(
+    dataSourceToolConfiguration
+  );
+
+  if (r.isErr()) {
+    return r;
+  }
+
+  const agentDataSourceConfiguration = r.value;
+
+  return new Ok(renderDataSourceConfiguration(agentDataSourceConfiguration));
+}
 
 export async function getCoreSearchArgs(
   auth: Authenticator,
