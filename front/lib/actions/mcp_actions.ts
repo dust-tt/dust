@@ -85,7 +85,6 @@ const TOOL_NAME_SEPARATOR = "__";
 // Define the new type here for now, or move to a dedicated types file later.
 export interface ServerToolsAndInstructions {
   serverName: string;
-  serverSId?: string; // Or another unique identifier for the server configuration
   instructions?: string;
   tools: MCPToolConfigurationType[];
 }
@@ -498,7 +497,6 @@ export async function tryListMCPTools(
       // Return the server's instructions and its processed tools.
       return new Ok<ServerToolsAndInstructions>({
         serverName: action.name,
-        serverSId: action.sId,
         instructions,
         tools: processedTools,
       });
@@ -684,8 +682,6 @@ async function listMCPServerToolsAndServerInstructions(
     mcpClient = r.value;
 
     const serverInstructions = mcpClient.getInstructions();
-    // console.log below can be kept for debugging or removed if not needed.
-    console.log("instructions for server:", serverInstructions);
 
     let toolsRes: Result<MCPToolConfigurationType[], Error>;
     if (isConnectViaClientSideMCPServer(connectionParams)) {
