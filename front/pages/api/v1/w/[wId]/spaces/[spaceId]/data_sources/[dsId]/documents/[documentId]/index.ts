@@ -140,8 +140,7 @@ export const config = {
  *                 type: string
  *                 description: The text content of the document to upsert.
  *               section:
- *                 type: object
- *                 description: The structured content of the document to upsert.
+ *                 $ref: '#/components/schemas/Section'
  *               source_url:
  *                 type: string
  *                 description: The source URL for the document to upsert.
@@ -243,6 +242,25 @@ export const config = {
  *         description: Method not supported.
  *       500:
  *         description: Internal Server Error.
+ * components:
+ *   schemas:
+ *     Section:
+ *       type: object
+ *       description: A section of a document that can contain nested sections
+ *       properties:
+ *         prefix:
+ *           type: string
+ *           nullable: true
+ *           description: Optional prefix text for the section
+ *         content:
+ *           type: string
+ *           nullable: true
+ *           description: Optional content text for the section
+ *         sections:
+ *           type: array
+ *           items:
+ *             $ref: '#/components/schemas/Section'
+ *           description: Array of nested sections
  */
 
 async function handler(

@@ -1339,6 +1339,303 @@
         }
       }
     },
+    "/api/v1/w/{wId}/mcp/heartbeat": {
+      "post": {
+        "summary": "Update heartbeat for a local MCP server",
+        "description": "Update the heartbeat for a previously registered MCP server.\nThis extends the TTL for the server registration.\n",
+        "tags": [
+          "MCP"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "serverId"
+                ],
+                "properties": {
+                  "serverId": {
+                    "type": "string",
+                    "description": "The ID of the registered MCP server"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Heartbeat updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "expiresAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request. Missing or invalid parameters."
+          },
+          "401": {
+            "description": "Unauthorized. Invalid or missing authentication token."
+          },
+          "403": {
+            "description": "Forbidden. User does not have access to the workspace."
+          },
+          "404": {
+            "description": "Not Found. MCP server not registered or expired."
+          }
+        }
+      }
+    },
+    "/api/v1/w/{wId}/mcp/register": {
+      "post": {
+        "summary": "Register a local MCP server",
+        "description": "Register a client-generated UUID for a local MCP server.\nThe registration is scoped to the current user and workspace.\n",
+        "tags": [
+          "MCP"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "serverName"
+                ],
+                "properties": {
+                  "serverName": {
+                    "type": "string",
+                    "description": "Name of the MCP server"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Server registered successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "expiresAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request. Missing or invalid parameters."
+          },
+          "401": {
+            "description": "Unauthorized. Invalid or missing authentication token."
+          },
+          "403": {
+            "description": "Forbidden. User does not have access to the workspace."
+          }
+        }
+      }
+    },
+    "/api/v1/w/{wId}/mcp/requests": {
+      "get": {
+        "summary": "Stream MCP tool requests for a workspace",
+        "description": "Server-Sent Events (SSE) endpoint that streams MCP tool requests for a workspace.\nThis endpoint is used by local MCP servers to listen for tool requests in real-time.\nThe connection will remain open and events will be sent as new tool requests are made.\n",
+        "tags": [
+          "MCP"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "serverId",
+            "required": true,
+            "description": "ID of the MCP server to filter events for",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "lastEventId",
+            "required": false,
+            "description": "ID of the last event to filter events for",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Connection established successfully. Events will be streamed in Server-Sent Events format.\nEach event will contain a tool request that needs to be processed by the MCP server.\n",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "description": "Type of the event (e.g. \"tool_request\")"
+                    },
+                    "data": {
+                      "type": "object",
+                      "description": "The tool request data"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request. Missing or invalid parameters."
+          },
+          "401": {
+            "description": "Unauthorized. Invalid or missing authentication token."
+          },
+          "403": {
+            "description": "Forbidden. You don't have access to this workspace or MCP server."
+          },
+          "500": {
+            "description": "Internal Server Error."
+          }
+        }
+      }
+    },
+    "/api/v1/w/{wId}/mcp/results": {
+      "post": {
+        "summary": "Submit MCP tool execution results",
+        "description": "Endpoint for local MCP servers to submit the results of tool executions.\nThis endpoint accepts the output from tools that were executed locally.\n",
+        "tags": [
+          "MCP"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "result",
+                  "serverId"
+                ],
+                "properties": {
+                  "result": {
+                    "type": "object",
+                    "description": "The result data from the tool execution"
+                  },
+                  "serverId": {
+                    "type": "string",
+                    "description": "ID of the MCP server submitting the results"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Tool execution results successfully submitted"
+          },
+          "400": {
+            "description": "Bad Request. Missing or invalid parameters."
+          },
+          "401": {
+            "description": "Unauthorized. Invalid or missing authentication token."
+          },
+          "403": {
+            "description": "Forbidden. You don't have access to this workspace or MCP server."
+          },
+          "404": {
+            "description": "Conversation or message not found."
+          },
+          "500": {
+            "description": "Internal Server Error."
+          }
+        }
+      }
+    },
     "/api/v1/w/{wId}/search": {
       "post": {
         "summary": "Search for nodes in the workspace",
@@ -2388,8 +2685,7 @@
                     "description": "The text content of the document to upsert."
                   },
                   "section": {
-                    "type": "object",
-                    "description": "The structured content of the document to upsert."
+                    "$ref": "#/components/schemas/Section"
                   },
                   "source_url": {
                     "type": "string",
@@ -3854,14 +4150,30 @@
     }
   },
   "components": {
-    "securitySchemes": {
-      "BearerAuth": {
-        "type": "http",
-        "scheme": "bearer",
-        "description": "Your DUST API key is a Bearer token."
-      }
-    },
     "schemas": {
+      "Section": {
+        "type": "object",
+        "description": "A section of a document that can contain nested sections",
+        "properties": {
+          "prefix": {
+            "type": "string",
+            "nullable": true,
+            "description": "Optional prefix text for the section"
+          },
+          "content": {
+            "type": "string",
+            "nullable": true,
+            "description": "Optional content text for the section"
+          },
+          "sections": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Section"
+            },
+            "description": "Array of nested sections"
+          }
+        }
+      },
       "User": {
         "type": "object",
         "properties": {
@@ -4763,6 +5075,13 @@
             "example": 150
           }
         }
+      }
+    },
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Your DUST API key is a Bearer token."
       }
     }
   },
