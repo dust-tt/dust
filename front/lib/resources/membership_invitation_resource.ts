@@ -11,7 +11,7 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
-import type { Result } from "@app/types";
+import type { MembershipInvitationType, Result } from "@app/types";
 import { Err, Ok } from "@app/types";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
@@ -41,12 +41,14 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
   static async getPendingForEmail(
     email: string
   ): Promise<MembershipInvitationResource | null> {
-    const pendingInvitation = await MembershipInvitationModel.findOne({
+    const pendingInvitation = await this.model.findOne({
       where: {
         inviteEmail: email,
         status: "pending",
       },
       include: [Workspace],
+      // WORKSPACE_ISOLATION_BYPASS: We don't know the workspace yet, the user is not authed
+      dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
 
     return pendingInvitation
@@ -60,7 +62,7 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
     email: string,
     workspaceId: number
   ): Promise<MembershipInvitationResource | null> {
-    const invitation = await MembershipInvitationModel.findOne({
+    const invitation = await this.model.findOne({
       where: {
         inviteEmail: email,
         workspaceId,
@@ -106,12 +108,14 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
         );
       }
 
-      const membershipInvite = await MembershipInvitationModel.findOne({
+      const membershipInvite = await this.model.findOne({
         where: {
           id: decodedToken.membershipInvitationId,
           status: "pending",
         },
         include: [Workspace],
+        // WORKSPACE_ISOLATION_BYPASS: We don't know the workspace yet, the user is not authed
+        dangerouslyBypassWorkspaceIsolationSecurity: true,
       });
       if (!membershipInvite) {
         return new Err(
@@ -148,7 +152,7 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
     throw new Error("Method not implemented.");
   }
 
-  toJSON() {
+  toJSON(): MembershipInvitationType {
     return {
       createdAt: this.createdAt.getTime(),
       id: this.id,
