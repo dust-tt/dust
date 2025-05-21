@@ -51,7 +51,7 @@ ENV HUSKY=0
 WORKDIR /sdks/js
 COPY --from=build /sdks/js .
 
-WORKDIR /ap
+WORKDIR /app
 COPY --from=build /app/.next/standalone ./
 COPY --from=build /app/.next/static ./.next/static
 COPY --from=build /app/public ./public
