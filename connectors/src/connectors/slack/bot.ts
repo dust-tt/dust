@@ -240,7 +240,7 @@ export async function botValidateToolExecution(
     }
 
     const dustAPI = new DustAPI(
-      apiConfig.getDustAPIConfig(),
+      { url: apiConfig.getDustFrontAPIUrl() },
       {
         apiKey: connector.workspaceAPIKey,
         // We neither need group ids nor user email headers here because validate tool endpoint is not
@@ -248,8 +248,7 @@ export async function botValidateToolExecution(
         extraHeaders: {},
         workspaceId: connector.workspaceId,
       },
-      logger,
-      apiConfig.getDustFrontAPIUrl()
+      logger
     );
 
     const res = await dustAPI.validateAction({
@@ -481,7 +480,7 @@ async function answerMessage(
       : undefined;
 
   const dustAPI = new DustAPI(
-    apiConfig.getDustAPIConfig(),
+    { url: apiConfig.getDustFrontAPIUrl() },
     {
       workspaceId: connector.workspaceId,
       apiKey: connector.workspaceAPIKey,
@@ -490,8 +489,7 @@ async function answerMessage(
         ...getHeaderFromUserEmail(userEmailHeader),
       },
     },
-    logger,
-    apiConfig.getDustFrontAPIUrl()
+    logger
   );
 
   // Do not await this promise, we want to continue the execution of the function in parallel.

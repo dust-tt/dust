@@ -107,13 +107,12 @@ export async function autoReadChannel(
     }
 
     const dustAPI = new DustAPI(
-      apiConfig.getDustAPIConfig(),
+      { url: apiConfig.getDustFrontAPIUrl() },
       {
         workspaceId: connector.workspaceId,
         apiKey: connector.workspaceAPIKey,
       },
-      logger,
-      apiConfig.getDustFrontAPIUrl()
+      logger
     );
 
     // Loop through all the matching patterns. Swallow errors and continue.
