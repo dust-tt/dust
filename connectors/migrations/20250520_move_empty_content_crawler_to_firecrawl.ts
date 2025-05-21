@@ -8,6 +8,7 @@ import { Op } from "sequelize";
 
 import { WebCrawlerConfigurationModel } from "@connectors/lib/models/webcrawler";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
+import { concurrentExecutor } from "@connectors/types";
 
 makeScript(
   {
@@ -51,9 +52,15 @@ makeScript(
 
     if (execute) {
       logger.info("Will execute");
-      for (const crawler of webcrawlerConfigs) {
-        await crawler.update("customCrawler", "firecrawl");
-      }
+      await concurrentExecutor(
+        webcrawlerConfigs,
+        async (crawler) =>
+          WebCrawlerConfigurationModel.update(
+            { customCrawler: "firecrawl" },
+            { where: { id: crawler.id } }
+          ),
+        { concurrency: 10 }
+      );
       logger.info(
         `Set "customCrawler" to "firecrawl" for ${webcrawlerConfigs.length} webcrawler configurations`
       );
