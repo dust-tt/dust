@@ -163,9 +163,7 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
       limit,
       order: [["id", "ASC"]],
     });
-    return servers.map(
-      (server) => server.id
-    );
+    return servers.map((server) => server.id);
   }
 
   // sId
