@@ -97,7 +97,7 @@ export function GongOptionComponent({
         description:
           configKey === GONG_RETENTION_PERIOD_CONFIG_KEY
             ? "Retention period successfully updated."
-            : "Smart trackers synchronization successfully enabled.",
+            : "Trackers synchronization successfully enabled.",
       });
     } else {
       setLoading(false);
@@ -164,7 +164,7 @@ export function GongOptionComponent({
         </ContextItem>
 
         <ContextItem
-          title="Enable Smart Trackers"
+          title="Enable Trackers (Keyword and Smart)"
           visual={<ContextItem.Visual visual={GongLogo} />}
           action={
             <div className="relative">
@@ -184,8 +184,8 @@ export function GongOptionComponent({
         >
           <ContextItem.Description>
             <div className="text-muted-foreground dark:text-muted-foreground-night">
-              If activated, Dust will sync the list of smart trackers associated
-              to each call transcript.
+              If activated, Dust will sync the list of keyword and smart
+              trackers associated to each call transcript.
               <br />
               {/* The procedure to follow to backfill existing transcripts is a full sync. */}
               Only new transcripts will be affected, please contact us at
