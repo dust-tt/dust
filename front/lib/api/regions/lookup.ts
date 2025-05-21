@@ -1,9 +1,9 @@
 import type { RegionType } from "@app/lib/api/regions/config";
 import { config } from "@app/lib/api/regions/config";
 import { isWorkspaceRelocationDone } from "@app/lib/api/workspace";
-import { getPendingMembershipInvitationWithWorkspaceForEmail } from "@app/lib/iam/invitations";
 import { findWorkspaceWithVerifiedDomain } from "@app/lib/iam/workspaces";
 import { Workspace } from "@app/lib/models/workspace";
+import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type {
   UserLookupRequestBodyType,
@@ -22,7 +22,7 @@ export async function lookupUserRegionByEmail(
 ): Promise<boolean> {
   // Check if user exists, has pending invitations or has a workspace with verified domain.
   const [pendingInvite, workspaceWithVerifiedDomain] = await Promise.all([
-    getPendingMembershipInvitationWithWorkspaceForEmail(userLookup.email),
+    MembershipInvitationResource.getPendingForEmail(userLookup.email),
     findWorkspaceWithVerifiedDomain({
       email: userLookup.email,
       email_verified: userLookup.email_verified,
@@ -42,7 +42,12 @@ export async function lookupUserRegionByEmail(
   }
 
   // Check if pending invite exists but workspace has been relocated
-  if (pendingInvite && isWorkspaceRelocationDone(pendingInvite.workspace)) {
+  if (
+    pendingInvite &&
+    isWorkspaceRelocationDone(
+      renderLightWorkspaceType({ workspace: pendingInvite.workspace })
+    )
+  ) {
     return false;
   }
 

@@ -3,15 +3,9 @@ import { verify } from "jsonwebtoken";
 import config from "@app/lib/api/config";
 import { AuthFlowError } from "@app/lib/iam/errors";
 import { MembershipInvitationModel } from "@app/lib/models/membership_invitation";
-import { Workspace } from "@app/lib/models/workspace";
 import type { UserResource } from "@app/lib/resources/user_resource";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
-import type {
-  LightWorkspaceType,
-  MembershipInvitationType,
-  Result,
-} from "@app/types";
+import type { Result } from "@app/types";
 import { Err, Ok } from "@app/types";
 
 export async function getPendingMembershipInvitationForToken(
@@ -73,41 +67,6 @@ export async function getPendingMembershipInvitationForEmailAndWorkspace(
       status: "pending",
     },
   });
-}
-
-export async function getPendingMembershipInvitationWithWorkspaceForEmail(
-  email: string
-): Promise<{
-  invitation: MembershipInvitationType;
-  workspace: LightWorkspaceType;
-} | null> {
-  const pendingInvitation = await MembershipInvitationModel.findOne({
-    where: {
-      inviteEmail: email,
-      status: "pending",
-    },
-    include: [Workspace],
-  });
-
-  if (pendingInvitation) {
-    const workspace = renderLightWorkspaceType({
-      workspace: pendingInvitation.workspace,
-    });
-
-    return {
-      invitation: {
-        createdAt: pendingInvitation.createdAt.getTime(),
-        id: pendingInvitation.id,
-        initialRole: pendingInvitation.initialRole,
-        inviteEmail: pendingInvitation.inviteEmail,
-        sId: pendingInvitation.sId,
-        status: pendingInvitation.status,
-      },
-      workspace,
-    };
-  }
-
-  return null;
 }
 
 export async function markInvitationAsConsumed(
