@@ -84,11 +84,7 @@ async function handler(
         limit,
       });
 
-      if (
-        !agentConfigurations ||
-        (agentConfigurations[0].scope === "private" &&
-          agentConfigurations[0].versionAuthorId !== auth.user()?.id)
-      ) {
+      if (!agentConfigurations || !agentConfigurations[0].canRead) {
         return apiError(req, res, {
           status_code: 404,
           api_error: {

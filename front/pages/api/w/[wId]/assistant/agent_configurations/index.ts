@@ -96,7 +96,10 @@ async function handler(
       }
       let agentConfigurations = await getAgentConfigurations({
         auth,
-        agentsGetView: viewParam,
+        agentsGetView:
+          viewParam === "workspace"
+            ? "published" // workspace is deprecated, return all visible agents
+            : viewParam,
         variant: "light",
         limit,
         sort,
