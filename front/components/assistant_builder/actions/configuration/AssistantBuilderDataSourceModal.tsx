@@ -107,7 +107,7 @@ export default function AssistantBuilderDataSourceModal({
         }
       }}
     >
-      <SheetContent size="xl">
+      <SheetContent size="lg">
         <SheetHeader>
           <SheetTitle>Manage data sources selection</SheetTitle>
         </SheetHeader>

@@ -10,6 +10,7 @@ import { ChevronDownIcon, ChevronUpIcon } from "lucide-react";
 import React, { useEffect, useState } from "react";
 
 import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/actions/configuration/AssistantBuilderDataSourceModal";
+import { ConfigurationSectionContainer } from "@app/components/assistant_builder/actions/configuration/ConfigurationSectionContainer";
 import DataSourceSelectionSection from "@app/components/assistant_builder/actions/configuration/DataSourceSelectionSection";
 import { JsonSchemaConfigurationSection } from "@app/components/assistant_builder/actions/configuration/JsonSchemaConfigurationSection";
 import { TimeUnitDropdown } from "@app/components/assistant_builder/actions/TimeDropdown";
@@ -177,25 +178,26 @@ export function ActionProcess({
       />
 
       {onDescriptionChange && (
-        <div className="flex flex-col gap-4 pt-8">
-          <div className="font-semibold text-muted-foreground dark:text-muted-foreground-night">
-            Tool description
-          </div>
-          <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-            Clarify what the tool should do and what data it should extract. For
-            example:
-            <span className="block text-muted-foreground dark:text-muted-foreground-night">
-              "Extract from the #reading slack channel a list of books,
-              including their title, author, and the reason why they were
-              recommended".
-            </span>
-          </div>
+        <ConfigurationSectionContainer
+          title="Tool Description"
+          description={
+            <>
+              Clarify what the tool should do and what data it should extract.
+              For example:
+              <span className="mt-1 block italic text-muted-foreground dark:text-muted-foreground-night">
+                "Extract from the #reading slack channel a list of books,
+                including their title, author, and the reason why they were
+                recommended."
+              </span>
+            </>
+          }
+        >
           <TextArea
             placeholder={"Extract the list of…"}
             value={description}
             onChange={(e) => onDescriptionChange(e.target.value)}
           />
-        </div>
+        </ConfigurationSectionContainer>
       )}
 
       <div className="flex flex-col gap-4 pt-8">
@@ -213,63 +215,62 @@ export function ActionProcess({
 
       {showAdvancedSettings && (
         <>
-          <div className="font-semibold text-muted-foreground dark:text-muted-foreground-night">
-            Time Range
-          </div>
-          <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-            By default, the time frame is determined automatically based on the
+          <ConfigurationSectionContainer
+            title="Time Range"
+            description="By default, the time frame is determined automatically based on the
             conversation context. Enable manual time frame selection when you
-            need to specify an exact range for data extraction.
-          </div>
-          <div className={"flex flex-row items-center gap-4 pb-4"}>
-            <Checkbox
-              checked={!!actionConfiguration.timeFrame}
-              onCheckedChange={(checked) => {
-                setEdited(true);
-                updateAction((previousAction) => ({
-                  ...previousAction,
-                  timeFrame: checked ? defaultTimeFrame : undefined,
-                }));
-              }}
-            />
-            <div
-              className={classNames(
-                "text-sm font-semibold",
-                timeFrameDisabled ? "text-slate-400" : "text-element-900"
-              )}
-            >
-              Process data from the last
-            </div>
-            <Input
-              type="text"
-              messageStatus={timeFrameError ? "error" : "default"}
-              value={
-                timeFrame.value && !isNaN(timeFrame.value)
-                  ? timeFrame.value.toString()
-                  : ""
-              }
-              onChange={(e) => {
-                const value = parseInt(e.target.value, 10);
-                if (!isNaN(value) || !e.target.value) {
+            need to specify an exact range for data extraction."
+          >
+            <div className={"flex flex-row items-center gap-4 pb-4"}>
+              <Checkbox
+                checked={!!actionConfiguration.timeFrame}
+                onCheckedChange={(checked) => {
                   setEdited(true);
                   updateAction((previousAction) => ({
                     ...previousAction,
-                    timeFrame: {
-                      value,
-                      unit: timeFrame.unit,
-                    },
+                    timeFrame: checked ? defaultTimeFrame : undefined,
                   }));
+                }}
+              />
+              <div
+                className={classNames(
+                  "text-sm font-semibold",
+                  timeFrameDisabled ? "text-slate-400" : "text-element-900"
+                )}
+              >
+                Process data from the last
+              </div>
+              <Input
+                type="text"
+                messageStatus={timeFrameError ? "error" : "default"}
+                value={
+                  timeFrame.value && !isNaN(timeFrame.value)
+                    ? timeFrame.value.toString()
+                    : ""
                 }
-              }}
-              disabled={timeFrameDisabled}
-            />
-            <TimeUnitDropdown
-              timeFrame={timeFrame}
-              updateAction={updateAction}
-              onEdit={() => setEdited(true)}
-              disabled={timeFrameDisabled}
-            />
-          </div>
+                onChange={(e) => {
+                  const value = parseInt(e.target.value, 10);
+                  if (!isNaN(value) || !e.target.value) {
+                    setEdited(true);
+                    updateAction((previousAction) => ({
+                      ...previousAction,
+                      timeFrame: {
+                        value,
+                        unit: timeFrame.unit,
+                      },
+                    }));
+                  }
+                }}
+                disabled={timeFrameDisabled}
+              />
+              <TimeUnitDropdown
+                timeFrame={timeFrame}
+                updateAction={updateAction}
+                onEdit={() => setEdited(true)}
+                disabled={timeFrameDisabled}
+              />
+            </div>
+          </ConfigurationSectionContainer>
           <JsonSchemaConfigurationSection
             instructions={instructions ?? ""}
             description={description ?? ""}

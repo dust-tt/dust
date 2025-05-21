@@ -10,6 +10,7 @@ import {
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
+import { ConfigurationSectionContainer } from "@app/components/assistant_builder/actions/configuration/ConfigurationSectionContainer";
 import { TIME_FRAME_UNIT_TO_LABEL } from "@app/components/assistant_builder/shared";
 import type { TimeFrame, TimeframeUnit } from "@app/types";
 
@@ -31,15 +32,12 @@ export function TimeFrameConfigurationSection({
   const timeFrameDisabled = !timeFrame;
 
   return (
-    <>
-      <div className="font-semibold text-muted-foreground dark:text-muted-foreground-night">
-        Time Range
-      </div>
-      <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-        By default, the time frame is determined automatically based on the
+    <ConfigurationSectionContainer
+      title="Time Range"
+      description="By default, the time frame is determined automatically based on the
         conversation context. Enable manual time frame selection when you need
-        to specify an exact range for data extraction.
-      </div>
+        to specify an exact range for data extraction."
+    >
       <div className="flex flex-row items-center gap-4 pb-4">
         <Checkbox
           checked={!!timeFrame}
@@ -104,6 +102,6 @@ export function TimeFrameConfigurationSection({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-    </>
+    </ConfigurationSectionContainer>
   );
 }

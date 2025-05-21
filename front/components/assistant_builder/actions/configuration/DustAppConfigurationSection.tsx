@@ -14,6 +14,7 @@ import { sortBy } from "lodash";
 import React from "react";
 import { useContext, useMemo } from "react";
 
+import { ConfigurationSectionContainer } from "@app/components/assistant_builder/actions/configuration/ConfigurationSectionContainer";
 import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
 import { SpaceSelector } from "@app/components/assistant_builder/spaces/SpaceSelector";
 import type { DustAppRunConfigurationType } from "@app/lib/actions/dust_app_run";
@@ -81,11 +82,7 @@ export function DustAppConfigurationSection({
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="text-sm font-semibold text-foreground dark:text-foreground-night">
-        Select a Dust App
-      </div>
-
+    <ConfigurationSectionContainer title="Select a Dust App">
       <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
         The agent will execute a{" "}
         <a
@@ -204,6 +201,6 @@ export function DustAppConfigurationSection({
           }}
         />
       )}
-    </div>
+    </ConfigurationSectionContainer>
   );
 }

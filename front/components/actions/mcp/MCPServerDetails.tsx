@@ -1,6 +1,5 @@
 import {
   Button,
-  Chip,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -24,9 +23,9 @@ import { useEffect, useState } from "react";
 
 import { MCPServerDetailsInfo } from "@app/components/actions/mcp/MCPServerDetailsInfo";
 import { MCPServerDetailsSharing } from "@app/components/actions/mcp/MCPServerDetailsSharing";
+import { MCPActionHeader } from "@app/components/actions/MCPActionHeader";
 import { useMCPConnectionManagement } from "@app/hooks/useMCPConnectionManagement";
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
-import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerType } from "@app/lib/api/mcp";
 import {
   useDeleteMCPServer,
@@ -142,24 +141,14 @@ export function MCPServerDetails({
             <VisuallyHidden>
               <SheetTitle />
             </VisuallyHidden>
-            <div className="flex flex-col items-center gap-3 sm:flex-row">
-              {effectiveMCPServer && getAvatar(effectiveMCPServer, "md")}
-              <div className="flex grow flex-col gap-0 pr-9">
-                <div className="heading-lg line-clamp-1 text-foreground dark:text-foreground-night">
-                  {asDisplayName(effectiveMCPServer?.name)}
-                </div>
-                <div className="line-clamp-1 overflow-hidden text-sm text-muted-foreground dark:text-muted-foreground-night">
-                  {effectiveMCPServer?.description}
-                </div>
-                {authorization && !connection && (
-                  <div>
-                    <Chip color="warning" size="xs">
-                      Requires authentication
-                    </Chip>
-                  </div>
-                )}
-              </div>
-            </div>
+            {effectiveMCPServer && (
+              <MCPActionHeader
+                mcpServer={effectiveMCPServer}
+                isAuthorized={Boolean(authorization)}
+                isConnected={Boolean(connection)}
+                isConnectionsLoading={isConnectionsLoading}
+              />
+            )}
 
             <div className="flex w-full flex-row justify-end gap-2 pt-2">
               {authorization && !connection && (

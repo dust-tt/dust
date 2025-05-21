@@ -21,17 +21,23 @@ import {
 import type { LightWorkspaceType } from "@app/types";
 import { asDisplayName } from "@app/types";
 
+interface ToolsListProps {
+  owner: LightWorkspaceType;
+  tools: { name: string; description: string }[];
+  serverType: "remote" | "internal";
+  serverId: string;
+  canUpdate: boolean;
+}
+
+// We disable buttons for Assistant Builder view because it would feel like
+// you can configure per agent
 export function ToolsList({
   owner,
   tools,
   serverType,
   serverId,
-}: {
-  owner: LightWorkspaceType;
-  tools: { name: string; description: string }[];
-  serverType: "remote" | "internal";
-  serverId: string;
-}) {
+  canUpdate,
+}: ToolsListProps) {
   const { toolsPermissions } = useMCPServerToolsPermissions({
     owner,
     serverId,
@@ -53,16 +59,15 @@ export function ToolsList({
   };
 
   const toolPermissionLabel: Record<RemoteMCPToolStakeLevelType, string> = {
-    high: "High (Update data, or sends information)",
-    low: "Low (Retrieve data, or generates content)",
+    high: "High (update data or send information)",
+    low: "Low (retrieve data or generate content)",
   };
 
   return (
-    <div className="mb-2 flex w-full flex-col gap-y-2 pt-2 text-foreground dark:text-foreground-night">
-      <div className="heading-lg">Available Tools</div>
+    <>
       {serverType === "remote" && (
         <ContentMessage
-          className="w-fit"
+          className="mb-4 w-fit"
           icon={InformationCircleIcon}
           title="User Approval Settings"
         >
@@ -74,61 +79,62 @@ export function ToolsList({
           </p>
         </ContentMessage>
       )}
-      <div className="space-y-0">
+      <div>
         {tools && tools.length > 0 ? (
-          tools.map(
-            (tool: { name: string; description: string }, index: number) => {
-              const toolPermission = toolsPermissions[tool.name]
-                ? toolsPermissions[tool.name]
-                : FALLBACK_MCP_TOOL_STAKE_LEVEL;
-              return (
-                <div
-                  key={index}
-                  className="flex flex-col gap-1 border-b border-border py-5 last:border-b-0 last:pb-0"
-                >
-                  <h4 className="heading-base flex-grow text-foreground dark:text-foreground-night">
-                    {asDisplayName(tool.name)}
-                  </h4>
-                  {tool.description && (
-                    <p className="copy-xs text-muted-foreground dark:text-muted-foreground-night">
-                      {tool.description}
-                    </p>
-                  )}
-                  {serverType === "remote" && (
-                    <div className="flex w-full flex-row items-center justify-end gap-2 pt-2">
-                      <Label className="w-full text-muted-foreground dark:text-muted-foreground-night">
-                        Tool stake setting
-                      </Label>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="outline"
-                            label={toolPermissionLabel[toolPermission]}
-                            isSelect
-                          />
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent>
-                          {REMOTE_MCP_TOOL_STAKE_LEVELS.map((permission) => (
-                            <DropdownMenuItem
-                              key={permission}
-                              onClick={() => {
-                                handleClick(tool.name, permission);
-                              }}
-                              label={toolPermissionLabel[permission]}
+          <div className="flex flex-col gap-2">
+            {tools.map(
+              (tool: { name: string; description: string }, index: number) => {
+                const toolPermission = toolsPermissions[tool.name]
+                  ? toolsPermissions[tool.name]
+                  : FALLBACK_MCP_TOOL_STAKE_LEVEL;
+                return (
+                  <div
+                    key={index}
+                    className="flex flex-col gap-1 border-b border-border pb-2 last:border-b-0 last:pb-0"
+                  >
+                    <h4 className="heading-base flex-grow text-foreground dark:text-foreground-night">
+                      {asDisplayName(tool.name)}
+                    </h4>
+                    {tool.description && (
+                      <p className="text-base text-muted-foreground dark:text-muted-foreground-night">
+                        {tool.description}
+                      </p>
+                    )}
+                    {serverType === "remote" && (
+                      <div className="flex w-full flex-row items-center justify-end gap-2 pt-2">
+                        <Label className="w-full text-muted-foreground dark:text-muted-foreground-night">
+                          Tool stake setting
+                        </Label>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild disabled={!canUpdate}>
+                            <Button
+                              variant="outline"
+                              label={toolPermissionLabel[toolPermission]}
                             />
-                          ))}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  )}
-                </div>
-              );
-            }
-          )
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent>
+                            {REMOTE_MCP_TOOL_STAKE_LEVELS.map((permission) => (
+                              <DropdownMenuItem
+                                key={permission}
+                                onClick={() => {
+                                  handleClick(tool.name, permission);
+                                }}
+                                label={toolPermissionLabel[permission]}
+                              />
+                            ))}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    )}
+                  </div>
+                );
+              }
+            )}
+          </div>
         ) : (
           <p className="text-sm text-faint">No tools available</p>
         )}
       </div>
-    </div>
+    </>
   );
 }

@@ -1,19 +1,23 @@
 import { ContentMessage, InformationCircleIcon } from "@dust-tt/sparkle";
 import { useCallback, useContext, useMemo, useState } from "react";
 
+import { ToolsList } from "@app/components/actions/mcp/ToolsList";
 import { AdditionalConfigurationSection } from "@app/components/assistant_builder/actions/configuration/AdditionalConfigurationSection";
 import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/actions/configuration/AssistantBuilderDataSourceModal";
 import { ChildAgentConfigurationSection } from "@app/components/assistant_builder/actions/configuration/ChildAgentConfigurationSection";
+import { ConfigurationSectionContainer } from "@app/components/assistant_builder/actions/configuration/ConfigurationSectionContainer";
 import DataSourceSelectionSection from "@app/components/assistant_builder/actions/configuration/DataSourceSelectionSection";
 import { DustAppConfigurationSection } from "@app/components/assistant_builder/actions/configuration/DustAppConfigurationSection";
 import { ReasoningModelConfigurationSection } from "@app/components/assistant_builder/actions/configuration/ReasoningModelConfigurationSection";
 import { TimeFrameConfigurationSection } from "@app/components/assistant_builder/actions/configuration/TimeFrameConfigurationSection";
-import { MCPToolsList } from "@app/components/assistant_builder/actions/MCPToolsList";
+import { DataDescription } from "@app/components/assistant_builder/actions/DataDescription";
 import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
 import type {
   AssistantBuilderActionConfiguration,
+  AssistantBuilderActionState,
   AssistantBuilderMCPServerConfiguration,
 } from "@app/components/assistant_builder/types";
+import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import type { MCPServerAvailability } from "@app/lib/actions/mcp_internal_actions/constants";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
@@ -64,7 +68,7 @@ function NoActionAvailable({ owner }: NoActionAvailableProps) {
 interface MCPActionProps {
   owner: LightWorkspaceType;
   allowedSpaces: SpaceType[];
-  action: AssistantBuilderActionConfiguration;
+  action: AssistantBuilderActionState;
   isEditing: boolean;
   updateAction: (args: {
     actionName: string;
@@ -74,14 +78,22 @@ interface MCPActionProps {
     ) => AssistantBuilderActionConfiguration["configuration"];
   }) => void;
   setEdited: (edited: boolean) => void;
+  setShowInvalidActionDescError: (
+    showInvalidActionDescError: string | null
+  ) => void;
+  showInvalidActionDescError: string | null;
 }
 
+// To have consistent layout, if you want to add a new section here,
+// please use the `ConfigurationSectionContainer` component and wrap the section in it.
 export function MCPAction({
   owner,
   allowedSpaces,
   action,
   updateAction,
   setEdited,
+  setShowInvalidActionDescError,
+  showInvalidActionDescError,
 }: MCPActionProps) {
   const actionConfiguration =
     action.configuration as AssistantBuilderMCPServerConfiguration;
@@ -93,10 +105,6 @@ export function MCPAction({
   const selectedMCPServerView = mcpServerViews.find(
     (mcpServerView) => mcpServerView.sId === actionConfiguration.mcpServerViewId
   );
-
-  // If there is only one tool, instead of showing the MCPToolsList, we show it
-  // as description.
-  const hasOnlyOneTool = selectedMCPServerView?.server.tools.length === 1;
 
   // MCPServerView on default MCP server will not allow switching to another one.
   const selectedServerAvailability: MCPServerAvailability | null = useMemo(
@@ -129,6 +137,17 @@ export function MCPAction({
   }
 
   const requirements = getMCPServerRequirements(selectedMCPServerView);
+  const withDataSource =
+    requirements.requiresDataSourceConfiguration ||
+    requirements.requiresTableConfiguration;
+
+  // We don't show the "Available Tools" section if there is only one tool.
+  // Because it's redundant with the tool description.
+  const hasOnlyOneTool = selectedMCPServerView?.server.tools.length === 1;
+
+  const spaceName = allowedSpaces.find(
+    (space) => space.sId === selectedMCPServerView?.spaceId
+  )?.name;
 
   if (noMCPServerView) {
     return <NoActionAvailable owner={owner} />;
@@ -170,27 +189,11 @@ export function MCPAction({
         />
       )}
 
-      <div className="text-sm text-foreground dark:text-foreground-night">
-        <div>
-          {hasOnlyOneTool
-            ? selectedMCPServerView?.server.tools[0].description
-            : selectedMCPServerView?.server.description}
+      {selectedServerAvailability === "manual" && spaceName && (
+        <div className="text-sm text-foreground dark:text-foreground-night">
+          Available to you via <b>{spaceName}</b> space.
         </div>
-        <br />
-        {selectedServerAvailability === "manual" && (
-          <div>
-            Available to you via{" "}
-            <b>
-              {
-                allowedSpaces.find(
-                  (space) => space.sId === selectedMCPServerView?.spaceId
-                )?.name
-              }
-            </b>{" "}
-            space.
-          </div>
-        )}
-      </div>
+      )}
 
       {/* Configurable blocks */}
       {requirements.requiresDataSourceConfiguration && (
@@ -271,8 +274,28 @@ export function MCPAction({
           }));
         }}
       />
+      {withDataSource && (
+        <DataDescription
+          updateAction={updateAction}
+          action={action}
+          setShowInvalidActionDescError={setShowInvalidActionDescError}
+          showInvalidActionDescError={showInvalidActionDescError}
+        />
+      )}
+
       {selectedMCPServerView && !hasOnlyOneTool && (
-        <MCPToolsList tools={selectedMCPServerView.server.tools} />
+        <ConfigurationSectionContainer title="Available Tools">
+          <ToolsList
+            owner={owner}
+            tools={selectedMCPServerView.server.tools}
+            serverType={
+              getServerTypeAndIdFromSId(selectedMCPServerView.server.sId)
+                .serverType
+            }
+            serverId={selectedMCPServerView.server.sId}
+            canUpdate={false}
+          />
+        </ConfigurationSectionContainer>
       )}
     </>
   );
