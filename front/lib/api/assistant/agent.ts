@@ -423,6 +423,7 @@ async function* runMultiActionsAgent(
     hasAvailableActions: !!availableActions.length,
     errorContext: error,
     agentsList,
+    conversationId: conversation.sId,
   });
 
   const MIN_GENERATION_TOKENS = model.generationTokensCount;
