@@ -48,7 +48,7 @@ import {
 } from "@app/lib/models/assistant/agent";
 import { DustAppSecret } from "@app/lib/models/dust_app_secret";
 import { FeatureFlag } from "@app/lib/models/feature_flag";
-import { MembershipInvitation } from "@app/lib/models/membership_invitation";
+import { MembershipInvitationModel } from "@app/lib/models/membership_invitation";
 import { Subscription } from "@app/lib/models/plan";
 import { Workspace } from "@app/lib/models/workspace";
 import { WorkspaceHasDomainModel } from "@app/lib/models/workspace_has_domain";
@@ -553,7 +553,7 @@ export async function deleteMembersActivity({
     isWorkspaceRelocationDone(workspace) ||
     isWorkspaceRelocationOngoing(workspace);
 
-  await MembershipInvitation.destroy({
+  await MembershipInvitationModel.destroy({
     where: {
       workspaceId: workspace.id,
     },
