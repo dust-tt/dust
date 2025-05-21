@@ -68,7 +68,7 @@ export async function getTranscriptsMetadata({
   configuration: GongConfigurationResource;
 }): Promise<GongTranscriptMetadata[]> {
   const gongClient = await getGongClient(connector);
-  const { smartTrackersEnabled } = configuration;
+  const { trackersEnabled } = configuration;
 
   const metadata = [];
   let cursor = null;
@@ -76,7 +76,7 @@ export async function getTranscriptsMetadata({
     const { callsMetadata, nextPageCursor } = await gongClient.getCallsMetadata(
       {
         callIds,
-        smartTrackersEnabled,
+        trackersEnabled,
       }
     );
     metadata.push(...callsMetadata);
