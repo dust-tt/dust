@@ -1,5 +1,6 @@
 import moment from "moment-timezone";
 
+import type { ServerToolsAndInstructions } from "@app/lib/actions/mcp_actions";
 import {
   isMCPConfigurationForInternalWebsearch,
   isMCPConfigurationWithDataSource,
@@ -35,6 +36,7 @@ export async function constructPromptMultiActions(
     errorContext,
     agentsList,
     conversationId,
+    serverToolsAndInstructions,
   }: {
     userMessage: UserMessageType;
     agentConfiguration: AgentConfigurationType;
@@ -44,6 +46,7 @@ export async function constructPromptMultiActions(
     errorContext?: string;
     agentsList: LightAgentConfigurationType[] | null;
     conversationId?: string;
+    serverToolsAndInstructions?: ServerToolsAndInstructions[];
   }
 ) {
   const d = moment(new Date()).tz(userMessage.context.timezone);
@@ -105,6 +108,32 @@ export async function constructPromptMultiActions(
       "\nNote: There was an error while building instructions:\n" +
       errorContext +
       "\n";
+  }
+
+  // The following section provides the model with a high-level overview of available external servers
+  // (groups of tools) and their general purpose (if server instructions are provided).
+  // It lists the names of tools available under each server to give context about tool groupings.
+  // Note: Actual tool callability, including detailed descriptions and parameters for each tool,
+  // is determined by the comprehensive tool specifications provided to the model separately.
+  // All discovered tools from all servers are made available for the agent to call, regardless of
+  // whether their server has explicit instructions or is detailed in this specific prompt overview.
+  if (serverToolsAndInstructions && serverToolsAndInstructions.length > 0) {
+    additionalInstructions += "\n\nAVAILABLE EXTERNAL TOOLS AND SERVERS:\n";
+    for (const serverData of serverToolsAndInstructions) {
+      additionalInstructions += `\nSERVER NAME: ${serverData.serverName}\n`;
+      if (serverData.instructions) {
+        additionalInstructions += `SERVER INSTRUCTIONS: ${serverData.instructions}\n`;
+      }
+      if (serverData.tools && serverData.tools.length > 0) {
+        additionalInstructions += `TOOLS AVAILABLE ON THIS SERVER (names only):\n`;
+        for (const tool of serverData.tools) {
+          additionalInstructions += `  - ${tool.name}\n`;
+        }
+      } else {
+        additionalInstructions += `  (No tools reported by this server or tool listing failed.)\n`;
+      }
+    }
+    additionalInstructions += "\n";
   }
 
   const canRetrieveDocuments = agentConfiguration.actions.some(
