@@ -174,7 +174,7 @@ export async function searchAgentConfigurationsByName(
     where: {
       workspaceId: owner.id,
       status: "active",
-      scope: { [Op.in]: ["workspace", "published"] },
+      scope: { [Op.in]: ["workspace", "published", "visible"] },
       name: {
         [Op.iLike]: `%${name}%`,
       },
@@ -221,8 +221,6 @@ function determineGlobalAgentIdsToFetch(
   agentsGetView: AgentsGetViewType
 ): string[] | undefined {
   switch (agentsGetView) {
-    case "workspace":
-    case "published":
     case "archived":
     case "current_user":
       return []; // fetch no global agents
@@ -380,18 +378,6 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
       return AgentConfiguration.findAll({
         ...baseAgentsSequelizeQuery,
         where: baseConditionsAndScopesIn(["workspace", "published", "visible"]),
-      });
-
-    case "workspace":
-      return AgentConfiguration.findAll({
-        ...baseAgentsSequelizeQuery,
-        where: baseConditionsAndScopesIn(["workspace"]),
-      });
-
-    case "published":
-      return AgentConfiguration.findAll({
-        ...baseAgentsSequelizeQuery,
-        where: baseConditionsAndScopesIn(["published"]),
       });
 
     case "list":
@@ -979,9 +965,7 @@ export async function createAgentConfiguration(
         }
 
         assert(
-          isLegacyAllowed(owner, agentConfigurationInstance.scope) ||
-            editors.some((e) => e.sId === auth.user()?.sId) ||
-            isAdmin(owner),
+          editors.some((e) => e.sId === auth.user()?.sId) || isAdmin(owner),
           "Unexpected: current user must be in editor group or admin"
         );
         if (!existingAgent) {
@@ -1820,34 +1804,7 @@ export function getAgentPermissions(
         canRead: member || agentConfiguration.scope === "visible",
         canEdit: member,
       };
-    case "private":
-      const isAuthor = agentConfiguration.versionAuthorId === auth.user()?.id;
-      return { canRead: isAuthor, canEdit: isAuthor };
-    case "workspace":
-      return { canRead: true, canEdit: auth.isBuilder() };
-    case "published":
-      return { canRead: true, canEdit: auth.isUser() };
     default:
       assertNever(agentConfiguration.scope);
   }
-}
-
-/**
- * TODO(agent discovery, 2025-04-30): Delete this function when removing scopes
- * "workspace" and "published"
- */
-function isLegacyAllowed(
-  owner: WorkspaceType,
-  agentConfigurationScope: AgentConfigurationScope
-): boolean {
-  if (agentConfigurationScope === "workspace" && isBuilder(owner)) {
-    return true;
-  }
-  if (agentConfigurationScope === "published" && isUser(owner)) {
-    return true;
-  }
-  if (agentConfigurationScope === "private" && isUser(owner)) {
-    return true;
-  }
-  return false;
 }

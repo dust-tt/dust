@@ -130,7 +130,10 @@ async function handler(
 
       let agentConfigurations = await getAgentConfigurations({
         auth,
-        agentsGetView,
+        agentsGetView:
+          agentsGetView === "published" || agentsGetView === "workspace"
+            ? "all"
+            : agentsGetView,
         variant: "light",
       });
 

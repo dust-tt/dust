@@ -434,9 +434,6 @@ export function AssistantsTable({
             agentConfiguration,
           }));
         }}
-        isPrivateAssistant={
-          showDeleteDialog.agentConfiguration?.scope === "private"
-        }
       />
       <div>
         {rows.length > 0 && (

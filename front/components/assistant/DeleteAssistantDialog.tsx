@@ -22,7 +22,6 @@ import type {
 interface DeleteAssistantDialogProps {
   agentConfiguration?: LightAgentConfigurationType;
   isOpen: boolean;
-  isPrivateAssistant?: boolean;
   onClose: () => void;
   owner: LightWorkspaceType;
 }
@@ -30,7 +29,6 @@ interface DeleteAssistantDialogProps {
 export function DeleteAssistantDialog({
   agentConfiguration,
   isOpen,
-  isPrivateAssistant,
   onClose,
   owner,
 }: DeleteAssistantDialogProps) {
@@ -80,9 +78,7 @@ export function DeleteAssistantDialog({
             variant: "outline",
           }}
           rightButtonProps={{
-            label: isPrivateAssistant
-              ? "Archive the agent"
-              : "Archive for everyone",
+            label: "Archive for everyone",
             disabled: isDeleting,
             variant: "warning",
             onClick: async (e: React.MouseEvent) => {

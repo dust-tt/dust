@@ -17,13 +17,7 @@ import { createOrUpgradeAgentConfiguration } from "@app/pages/api/w/[wId]/assist
 import type { AgentStatus, WithAPIErrorResponse } from "@app/types";
 
 export const PostAgentScopeRequestBodySchema = t.type({
-  scope: t.union([
-    t.literal("workspace"),
-    t.literal("published"),
-    t.literal("private"),
-    t.literal("hidden"),
-    t.literal("visible"),
-  ]),
+  scope: t.union([t.literal("hidden"), t.literal("visible")]),
 });
 
 export type PostAgentScopeRequestBody = t.TypeOf<
