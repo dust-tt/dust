@@ -894,7 +894,7 @@ function TagsSection({
           ) !== -1
       )
       .slice(0, 3);
-  }, [tagsSuggestions, tags]);
+  }, [tagsSuggestions, builderState.tags, tags, owner]);
 
   const updateTagsSuggestions = useCallback(async () => {
     setTagsSuggestionsLoading(true);
