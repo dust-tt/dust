@@ -22,7 +22,7 @@ import type {
   RequireAtLeastOne,
   Result,
 } from "@app/types";
-import { assertNever, Err, Ok } from "@app/types";
+import { assertNever, Err, normalizeError, Ok } from "@app/types";
 
 import type { ModelStaticWorkspaceAware } from "./storage/wrappers/workspace_models";
 
@@ -642,7 +642,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
 
       return new Ok(undefined);
     } catch (err) {
-      return new Err(err as Error);
+      return new Err(normalizeError(err));
     }
   }
 

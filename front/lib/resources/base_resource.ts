@@ -21,6 +21,9 @@ export interface ResourceWithId {
   id: ModelId;
 }
 
+export type ResourceLogValue = string | number | null;
+export type ResourceLogJSON = Record<string, ResourceLogValue>;
+
 /**
  * BaseResource serves as a foundational class for resource management.
  * It encapsulates common CRUD operations for Sequelize models, ensuring a uniform interface
@@ -92,4 +95,26 @@ export abstract class BaseResource<M extends Model & ResourceWithId> {
     auth: Authenticator,
     { transaction }: { transaction?: Transaction }
   ): Promise<Result<undefined | number, Error>>;
+
+  /**
+   * Remove 'Resource' suffix and convert to snake_case
+   * i.e: UserResource -> user
+   * KillSwitchResource -> kill_switch
+   * MCPServerViewResource -> mcp_server_view
+   */
+  className(): string {
+    return this.constructor.name
+      .replace(/Resource$/, "") // Remove 'Resource' suffix
+      .replace(/([A-Z]+)([A-Z][a-z])/g, "$1_$2") // handle UPPERCASE followed by Titlecase
+      .replace(/([a-z])([A-Z])/g, "$1_$2") // handle normal camelCase
+      .toLowerCase();
+  }
+
+  /**
+   * Method called if the resource is added to the log context using `req.addResourceToLog`.
+   * The className() of the Resource will be used as kind of a namespace to avoid key overlap in the `logContext`.
+   */
+  toLogJSON(): ResourceLogJSON {
+    throw new Error("`toContextLog` not implemented");
+  }
 }

@@ -29,6 +29,23 @@ import { compareAgentsForSort } from "@app/types";
 
 const DEFAULT_INPUT_BAR_ACTIONS = [...INPUT_BAR_ACTIONS];
 
+interface AssistantInputBarProps {
+  owner: WorkspaceType;
+  onSubmit: (
+    input: string,
+    mentions: MentionType[],
+    contentFragments: ContentFragmentsType
+  ) => Promise<Result<undefined, DustError>>;
+  conversationId: string | null;
+  stickyMentions?: AgentMention[];
+  additionalAgentConfiguration?: LightAgentConfigurationType;
+  actions?: InputBarContainerProps["actions"];
+  disableAutoFocus: boolean;
+  isFloating?: boolean;
+  isFloatingWithoutMargin?: boolean;
+  disableButton?: boolean;
+}
+
 /**
  *
  * @param additionalAgentConfiguration when trying an agent in a modal or drawer we
@@ -44,22 +61,9 @@ export function AssistantInputBar({
   actions = DEFAULT_INPUT_BAR_ACTIONS,
   disableAutoFocus = false,
   isFloating = true,
-}: {
-  owner: WorkspaceType;
-  onSubmit: (
-    input: string,
-    mentions: MentionType[],
-    contentFragments: ContentFragmentsType
-  ) => Promise<Result<undefined, DustError>>;
-  conversationId: string | null;
-  stickyMentions?: AgentMention[];
-  additionalAgentConfiguration?: LightAgentConfigurationType;
-  actions?: InputBarContainerProps["actions"];
-  disableAutoFocus: boolean;
-  isFloating?: boolean;
-  isFloatingWithoutMargin?: boolean;
-}) {
-  const [disableSendButton, setDisableSendButton] = useState(false);
+  disableButton = false,
+}: AssistantInputBarProps) {
+  const [disableSendButton, setDisableSendButton] = useState(disableButton);
   const [isFocused, setIsFocused] = useState(false);
   const rainbowEffectRef = useRef<HTMLDivElement>(null);
 
@@ -293,6 +297,10 @@ export function AssistantInputBar({
       setIsStopping(false);
     }
   }, [isStopping, generationContext.generatingMessages, conversationId]);
+
+  useEffect(() => {
+    setDisableSendButton(disableButton);
+  }, [disableButton]);
 
   return (
     <div className="flex w-full flex-col">

@@ -1,4 +1,4 @@
-import _ from "lodash";
+import _, { isObject } from "lodash";
 
 import {
   generateJSONFileAndSnippet,
@@ -10,10 +10,7 @@ import {
   PROCESS_ACTION_TOP_K,
 } from "@app/lib/actions/constants";
 import { getExtractFileTitle } from "@app/lib/actions/process/utils";
-import type {
-  DataSourceConfiguration,
-  RetrievalTimeframe,
-} from "@app/lib/actions/retrieval";
+import type { RetrievalTimeframe } from "@app/lib/actions/retrieval";
 import {
   applyDataSourceFilters,
   retrievalAutoTimeFrameInputSpecification,
@@ -47,6 +44,7 @@ import type {
   UserMessageType,
 } from "@app/types";
 import {
+  isString,
   Ok,
   parseTimeFrame,
   removeNulls,
@@ -61,6 +59,7 @@ export const PROCESS_SCHEMA_ALLOWED_TYPES = [
 ] as const;
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 
+import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration";
 import { FileResource } from "@app/lib/resources/file_resource";
 
 // Properties in the process configuration table are stored as an array of objects.
@@ -276,10 +275,14 @@ export class ProcessConfigurationServerRunner extends BaseActionConfigurationSer
       }
     }
     if (!actionConfiguration.jsonSchema) {
-      if (rawInputs.schema && typeof rawInputs.schema === "string") {
-        const res = safeParseJSON(rawInputs.schema);
-        if (res.isOk()) {
-          actionConfiguration.jsonSchema = res.value;
+      if (rawInputs.schema) {
+        if (isString(rawInputs.schema)) {
+          const res = safeParseJSON(rawInputs.schema);
+          if (res.isOk()) {
+            actionConfiguration.jsonSchema = res.value;
+          }
+        } else if (isObject(rawInputs.schema)) {
+          actionConfiguration.jsonSchema = rawInputs.schema;
         }
       }
     }
@@ -362,6 +365,7 @@ export class ProcessConfigurationServerRunner extends BaseActionConfigurationSer
         "Process the retrieved data to extract structured information based on the provided schema.",
       model: supportedModel,
       hasAvailableActions: false,
+      agentsList: null,
     });
 
     const dataSourceViews = await DataSourceViewResource.fetchByIds(

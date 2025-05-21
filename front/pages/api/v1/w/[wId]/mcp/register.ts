@@ -3,15 +3,17 @@ import { PublicRegisterMCPRequestBodySchema } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { fromError } from "zod-validation-error";
 
-import { registerMCPServer } from "@app/lib/api/actions/mcp/client_side_registry";
+import {
+  MCPServerInstanceLimitError,
+  registerMCPServer,
+} from "@app/lib/api/actions/mcp/client_side_registry";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-import { isValidUUIDv4 } from "@app/types";
 
 /**
- * @ignoreswagger
+ * @swagger
  * /api/v1/w/{wId}/mcp/register:
  *   post:
  *     summary: Register a local MCP server
@@ -36,11 +38,11 @@ import { isValidUUIDv4 } from "@app/types";
  *           schema:
  *             type: object
  *             required:
- *               - serverId
+ *               - serverName
  *             properties:
- *               serverId:
+ *               serverName:
  *                 type: string
- *                 description: Client-generated UUID of the MCP server
+ *                 description: Name of the MCP server
  *     responses:
  *       200:
  *         description: Server registered successfully
@@ -76,6 +78,16 @@ async function handler(
     });
   }
 
+  if (auth.isKey()) {
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "invalid_request_error",
+        message: "API keys are not allowed to register MCP servers.",
+      },
+    });
+  }
+
   const r = PublicRegisterMCPRequestBodySchema.safeParse(req.body);
   if (r.error) {
     return apiError(req, res, {
@@ -87,25 +99,38 @@ async function handler(
     });
   }
 
-  const { serverId, serverName } = r.data;
-  if (!isValidUUIDv4(serverId)) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Invalid server ID format. Must be a valid UUID.",
-      },
-    });
-  }
+  const { serverName } = r.data;
 
   // Register the server.
   const registration = await registerMCPServer(auth, {
-    serverId,
     serverName,
     workspaceId: auth.getNonNullableWorkspace().sId,
   });
 
-  res.status(200).json(registration);
+  if (registration.isErr()) {
+    const error = registration.error;
+    // Check if this is a server instance limit error.
+    if (error instanceof MCPServerInstanceLimitError) {
+      return apiError(req, res, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: error.message,
+        },
+      });
+    }
+
+    // Other errors are treated as server errors.
+    return apiError(req, res, {
+      status_code: 500,
+      api_error: {
+        type: "internal_server_error",
+        message: error.message,
+      },
+    });
+  }
+
+  res.status(200).json(registration.value);
 }
 
 export default withPublicAPIAuthentication(handler);

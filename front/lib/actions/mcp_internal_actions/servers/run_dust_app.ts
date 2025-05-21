@@ -15,8 +15,9 @@ import type {
   ServerSideMCPToolConfigurationType,
 } from "@app/lib/actions/mcp";
 import type { MCPToolResultContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { AgentLoopRunContextType } from "@app/lib/actions/types";
-import type { AgentLoopListToolsContextType } from "@app/lib/actions/types";
+import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { isMCPConfigurationForDustAppRun } from "@app/lib/actions/types/guards";
 import { isMCPInternalDustAppRun } from "@app/lib/actions/types/guards";
 import { renderConversationForModel } from "@app/lib/api/assistant/preprocessing";
@@ -30,21 +31,20 @@ import { AppResource } from "@app/lib/resources/app_resource";
 import { sanitizeJSONOutput } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import type { DatasetSchema } from "@app/types";
+import type { SpecificationBlockType } from "@app/types";
 import { getHeaderFromGroupIds, SUPPORTED_MODEL_CONFIGS } from "@app/types";
 
 import { ConfigurableToolInputSchemas } from "../input_schemas";
 
-interface DustAppBlock {
-  type: string;
-  name: string;
-}
+const MIN_GENERATION_TOKENS = 2048;
 
-interface DustAppConfig {
-  [key: string]: {
-    dataset?: string;
-    [key: string]: unknown;
-  };
-}
+const serverInfo: InternalMCPServerDefinitionType = {
+  name: "run_dust_app",
+  version: "1.0.0",
+  description: "Run Dust Apps with specified parameters (mcp)",
+  icon: "CommandLineIcon",
+  authorization: null,
+};
 
 interface DustFileOutput {
   __dust_file?: {
@@ -100,12 +100,12 @@ async function prepareAppContext(
     throw new Error("Could not find Dust app");
   }
 
-  const appSpec = JSON.parse(app.savedSpecification || "[]") as DustAppBlock[];
-  const appConfig = extractConfig(
-    JSON.parse(app.savedSpecification || "{}")
-  ) as DustAppConfig;
+  const parsedSpec = app.parseSavedSpecification();
+  const appConfig = extractConfig(parsedSpec);
 
-  const inputSpec = appSpec.find((b: DustAppBlock) => b.type === "input");
+  const inputSpec = parsedSpec.find(
+    (b: SpecificationBlockType) => b.type === "input"
+  );
   const inputConfig = inputSpec ? appConfig[inputSpec.name] : null;
   const datasetName = inputConfig?.dataset;
 
@@ -122,10 +122,10 @@ async function prepareAppContext(
 }
 
 async function processDustFileOutput(
+  auth: Authenticator,
   sanitizedOutput: DustFileOutput,
   conversation: any,
-  appName: string,
-  auth: Authenticator
+  appName: string
 ): Promise<MCPToolResultContentType[]> {
   const content: MCPToolResultContentType[] = [];
 
@@ -240,7 +240,6 @@ async function prepareParamsWithHistory(
     );
 
     if (model) {
-      const MIN_GENERATION_TOKENS = 2048;
       const allowedTokenCount = model.contextSize - MIN_GENERATION_TOKENS;
 
       const convoRes = await renderConversationForModel(auth, {
@@ -261,26 +260,17 @@ async function prepareParamsWithHistory(
   return params;
 }
 
-const serverInfo: InternalMCPServerDefinitionType = {
-  name: "run_dust_app",
-  version: "1.0.0",
-  description: "Run Dust Apps with specified parameters (mcp)",
-  icon: "CommandLineIcon",
-  authorization: null,
-};
-
 export default async function createServer(
   auth: Authenticator,
-  agentLoopRunContext?: AgentLoopRunContextType,
-  agentLoopListToolsContext?: AgentLoopListToolsContextType
+  agentLoopContext: AgentLoopContextType
 ): Promise<McpServer> {
   const server = new McpServer(serverInfo);
   const owner = auth.getNonNullableWorkspace();
 
-  if (agentLoopListToolsContext) {
+  if (agentLoopContext && agentLoopContext.listToolsContext) {
     if (
       !isMCPConfigurationForDustAppRun(
-        agentLoopListToolsContext.agentActionConfiguration
+        agentLoopContext.listToolsContext.agentActionConfiguration
       )
     ) {
       throw new Error("Invalid Dust app run agent configuration");
@@ -288,7 +278,7 @@ export default async function createServer(
 
     const { app, schema } = await prepareAppContext(
       auth,
-      agentLoopListToolsContext.agentActionConfiguration
+      agentLoopContext.listToolsContext.agentActionConfiguration
     );
 
     if (!app.description) {
@@ -311,14 +301,16 @@ export default async function createServer(
         };
       }
     );
-  } else if (agentLoopRunContext) {
-    if (!isMCPInternalDustAppRun(agentLoopRunContext.actionConfiguration)) {
+  } else if (agentLoopContext && agentLoopContext.runContext) {
+    if (
+      !isMCPInternalDustAppRun(agentLoopContext.runContext.actionConfiguration)
+    ) {
       throw new Error("Invalid Dust app run tool configuration");
     }
 
     const { app, schema, appConfig } = await prepareAppContext(
       auth,
-      agentLoopRunContext.actionConfiguration
+      agentLoopContext.runContext.actionConfiguration
     );
 
     if (!app.description) {
@@ -335,7 +327,7 @@ export default async function createServer(
         params = await prepareParamsWithHistory(
           params,
           schema,
-          agentLoopRunContext,
+          agentLoopContext.runContext,
           auth
         );
 
@@ -366,15 +358,9 @@ export default async function createServer(
         );
 
         if (runRes.isErr()) {
-          return {
-            isError: true,
-            content: [
-              {
-                type: "text",
-                text: `Error running Dust app: ${runRes.error.message}`,
-              },
-            ],
-          };
+          return makeMCPToolTextError(
+            `Error running Dust app: ${runRes.error.message}`
+          );
         }
 
         const { eventStream } = runRes.value;
@@ -382,29 +368,17 @@ export default async function createServer(
 
         for await (const event of eventStream) {
           if (event.type === "error") {
-            return {
-              isError: true,
-              content: [
-                {
-                  type: "text",
-                  text: `Error running Dust app: ${event.content.message}`,
-                },
-              ],
-            };
+            return makeMCPToolTextError(
+              `Error running Dust app: ${event.content.message}`
+            );
           }
 
           if (event.type === "block_execution") {
             const e = event.content.execution[0][0];
             if (e.error) {
-              return {
-                isError: true,
-                content: [
-                  {
-                    type: "text",
-                    text: `Error in block execution: ${e.error}`,
-                  },
-                ],
-              };
+              return makeMCPToolTextError(
+                `Error in block execution: ${e.error}`
+              );
             }
             lastBlockOutput = e.value;
           }
@@ -425,13 +399,13 @@ export default async function createServer(
 
         if (
           containsFileOutput(sanitizedOutput) &&
-          agentLoopRunContext?.conversation
+          agentLoopContext.runContext?.conversation
         ) {
           const fileContent = await processDustFileOutput(
+            auth,
             sanitizedOutput,
-            agentLoopRunContext.conversation,
-            app.name,
-            auth
+            agentLoopContext.runContext.conversation,
+            app.name
           );
           content.push(...fileContent);
         }

@@ -116,8 +116,8 @@ const ConversationLayoutContent = ({
     useWelcomeTourGuide();
 
   const shouldDisplayWelcomeTourGuide = useMemo(() => {
-    return router.query.welcome === "true";
-  }, [router.query.welcome]);
+    return router.query.welcome === "true" && !activeConversationId;
+  }, [router.query.welcome, activeConversationId]);
 
   const onTourGuideEnd = () => {
     void router.push(router.asPath.replace("?welcome=true", ""), undefined, {
@@ -137,7 +137,7 @@ const ConversationLayoutContent = ({
             ? `Dust - ${conversation?.title}`
             : `Dust - New Conversation`
         }
-        isConversationView
+        noSidePadding
         titleChildren={
           activeConversationId && (
             <ConversationTitle owner={owner} baseUrl={baseUrl} />

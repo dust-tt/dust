@@ -4,7 +4,6 @@ import type { Fetcher } from "swr";
 
 import { deleteConversation } from "@app/components/assistant/conversation/lib";
 import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
-import type { FetchConversationMessagesResponse } from "@app/lib/api/assistant/messages";
 import { getVisualizationRetryMessage } from "@app/lib/client/visualization";
 import {
   emptyArray,
@@ -13,11 +12,13 @@ import {
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import type { GetConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations";
+import type { FetchConversationMessageResponse } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/messages/[mId]";
 import type { FetchConversationParticipantsResponse } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/participants";
 import type {
   ConversationError,
   ConversationType,
   ConversationWithoutContentType,
+  FetchConversationMessagesResponse,
   LightWorkspaceType,
 } from "@app/types";
 
@@ -267,4 +268,31 @@ export function useVisualizationRetry({
   );
 
   return handleVisualizationRetry;
+}
+
+export function useConversationMessage({
+  conversationId,
+  workspaceId,
+  messageId,
+}: {
+  conversationId: string | null;
+  workspaceId: string;
+  messageId: string | null;
+}) {
+  const messageFetcher: Fetcher<FetchConversationMessageResponse> = fetcher;
+
+  const { data, error, mutate, isLoading, isValidating } = useSWRWithDefaults(
+    messageId
+      ? `/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages/${messageId}`
+      : null,
+    messageFetcher
+  );
+
+  return {
+    message: data?.message,
+    isMessageError: error,
+    isMessageLoading: isLoading,
+    isValidating,
+    mutateMessage: mutate,
+  };
 }

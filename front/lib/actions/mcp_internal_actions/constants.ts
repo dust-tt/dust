@@ -19,7 +19,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "primitive_types_debugger",
   "query_tables",
   "query_tables_v2",
-  "reasoning_v2",
+  "reasoning",
   "run_dust_app",
   "search",
   "think",
@@ -55,7 +55,10 @@ export const INTERNAL_MCP_SERVERS: Record<
     availability: "manual",
     flag: null,
     tools_stakes: {
+      create_issue: "low",
+      add_issue_to_project: "low",
       get_pull_request: "never_ask",
+      list_organization_projects: "never_ask",
     },
   },
   image_generation: {
@@ -136,10 +139,10 @@ export const INTERNAL_MCP_SERVERS: Record<
     availability: "auto",
     flag: "dev_mcp_actions",
   },
-  reasoning_v2: {
+  reasoning: {
     id: 1007,
     availability: "auto",
-    flag: "dev_mcp_actions",
+    flag: null,
   },
   ask_agent: {
     id: 1008,

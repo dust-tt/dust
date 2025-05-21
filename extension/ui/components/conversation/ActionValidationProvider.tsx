@@ -218,7 +218,7 @@ export function ActionValidationProvider({
                     }
                     contentChildren={
                       <div>
-                        <div className="max-h-80 overflow-auto bg-muted dark:bg-muted-night rounded-lg">
+                        <div className="max-h-80 overflow-auto rounded-lg bg-muted dark:bg-muted-night">
                           <CodeBlock
                             wrapLongLines
                             className="language-json overflow-y-auto"

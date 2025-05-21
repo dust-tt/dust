@@ -19,8 +19,8 @@ import {
 } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { LightAgentConfigurationType, ModelId, Result } from "@app/types";
-import { Err, Ok, removeNulls } from "@app/types";
-import type { TagTypeWithUsage } from "@app/types/tag";
+import { Err, normalizeError, Ok, removeNulls } from "@app/types";
+import type { TagKind, TagTypeWithUsage } from "@app/types/tag";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -111,11 +111,13 @@ export class TagResource extends BaseResource<TagModel> {
     return tags.length > 0 ? tags[0] : null;
   }
 
-  static async findAll(
-    auth: Authenticator,
-    options?: ResourceFindOptions<TagModel>
-  ) {
-    return this.baseFetch(auth, options);
+  static async findAll(auth: Authenticator, { kind }: { kind?: TagKind } = {}) {
+    return this.baseFetch(auth, {
+      where: {
+        ...(kind ? { kind } : {}),
+      },
+      order: [["name", "ASC"]],
+    });
   }
 
   static async findAllWithUsage(
@@ -128,6 +130,7 @@ export class TagResource extends BaseResource<TagModel> {
       attributes: [
         "id",
         "name",
+        "kind",
         "createdAt",
         "updatedAt",
         [
@@ -153,6 +156,7 @@ export class TagResource extends BaseResource<TagModel> {
         }),
         name: tag.name,
         usage: (tag.get({ plain: true }) as any).usage as number,
+        kind: tag.kind,
       };
     });
   }
@@ -163,6 +167,7 @@ export class TagResource extends BaseResource<TagModel> {
   ): Promise<TagResource[]> {
     const tags = await TagAgentModel.findAll({
       where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
         agentConfigurationId,
       },
     });
@@ -183,9 +188,13 @@ export class TagResource extends BaseResource<TagModel> {
         agentConfigurationId: agentConfigurationIds,
       },
     });
+    const tagIds = [...new Set(tagAgents.map((t) => t.tagId))];
+    if (tagIds.length === 0) {
+      return {};
+    }
     const tags = await this.baseFetch(auth, {
       where: {
-        id: [...new Set(tagAgents.map((t) => t.tagId))],
+        id: tagIds,
       },
     });
 
@@ -227,8 +236,8 @@ export class TagResource extends BaseResource<TagModel> {
     });
   }
 
-  async updateName(name: string) {
-    await this.update({ name });
+  async updateTag({ name, kind }: { name: string; kind: TagKind }) {
+    await this.update({ name, kind });
   }
 
   async delete(
@@ -253,7 +262,7 @@ export class TagResource extends BaseResource<TagModel> {
 
       return new Ok(undefined);
     } catch (err) {
-      return new Err(err as Error);
+      return new Err(normalizeError(err));
     }
   }
 
@@ -285,6 +294,7 @@ export class TagResource extends BaseResource<TagModel> {
     return {
       sId: this.sId,
       name: this.name,
+      kind: this.kind,
     };
   }
 }

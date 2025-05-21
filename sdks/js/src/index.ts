@@ -1,9 +1,4 @@
-import type { AxiosRequestConfig } from "axios";
-import axios from "axios";
 import { createParser } from "eventsource-parser";
-import http from "http";
-import https from "https";
-import { Readable } from "stream";
 import { z } from "zod";
 
 import type {
@@ -28,13 +23,13 @@ import type {
   DustAppRunFunctionCallEvent,
   DustAppRunRunStatusEvent,
   DustAppRunTokensEvent,
-  FileUploadedRequestResponseType,
   FileUploadUrlRequestType,
   GenerationTokensEvent,
   HeartbeatMCPResponseType,
   LoggerInterface,
   PatchDataSourceViewRequestType,
   PostMCPResultsResponseType,
+  PublicHeartbeatMCPRequestBody,
   PublicPostContentFragmentRequestBody,
   PublicPostConversationsRequestBody,
   PublicPostMCPResultsRequestBody,
@@ -84,13 +79,14 @@ import {
 } from "./types";
 
 export * from "./internal_mime_types";
+export * from "./mcp_transport";
 export * from "./types";
 
 interface DustResponse {
   status: number;
   ok: boolean;
   url: string;
-  body: Readable | string;
+  body: ReadableStream<Uint8Array> | string;
 }
 
 // Copied from front/hooks/useEventSource.ts
@@ -110,38 +106,40 @@ const textFromResponse = async (response: DustResponse): Promise<string> => {
     return response.body;
   }
 
-  const stream = response.body;
+  // Convert ReadableStream to string
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let result = "";
 
-  return new Promise((resolve, reject) => {
-    const chunks: Buffer[] = [];
-    stream.on("data", (chunk) => chunks.push(Buffer.from(chunk)));
-    stream.on("end", () => resolve(Buffer.concat(chunks).toString("utf-8")));
-    stream.on("error", reject);
-  });
-};
+  try {
+    let done = false;
+    while (!done) {
+      const { value, done: doneReading } = await reader.read();
+      done = doneReading;
+      if (value) {
+        result += decoder.decode(value, { stream: true });
+      }
+    }
 
-const axiosNoKeepAlive = axios.create({
-  httpAgent: new http.Agent({ keepAlive: false }),
-  httpsAgent: new https.Agent({ keepAlive: false }),
-});
-
-const sanitizedError = (e: unknown) => {
-  if (axios.isAxiosError(e)) {
-    return {
-      ...e,
-      config: undefined,
-    };
+    result += decoder.decode();
+  } finally {
+    reader.releaseLock();
   }
-  return e;
+
+  return result;
 };
+
+type RequestMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
 type RequestArgsType = {
-  method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+  method: RequestMethod;
   path: string;
   query?: URLSearchParams;
   body?: Record<string, unknown>;
   overrideWorkspaceId?: string;
   signal?: AbortSignal;
+  headers?: Record<string, string>;
+  stream?: boolean;
 };
 
 export class DustAPI {
@@ -239,14 +237,19 @@ export class DustAPI {
       url += `?${args.query.toString()}`;
     }
 
-    const headers = await this.baseHeaders();
+    const headers = { ...(await this.baseHeaders()), ...args.headers };
     headers["Content-Type"] = "application/json";
+
+    if (args.stream) {
+      headers["Accept"] = "text/event-stream";
+    }
 
     const res = await this._fetchWithError(url, {
       method: args.method,
       headers,
-      data: args.body ? JSON.stringify(args.body) : undefined,
+      body: args.body ? JSON.stringify(args.body) : undefined,
       signal: args.signal,
+      stream: args.stream,
     });
 
     return res;
@@ -341,6 +344,7 @@ export class DustAPI {
         blocking: false,
         inputs,
       },
+      stream: true,
     });
 
     if (res.isErr()) {
@@ -358,9 +362,10 @@ export class DustAPI {
       logger: LoggerInterface
     ) {
       if (!res.ok || !res.body) {
+        const text = await textFromResponse(res);
         return new Err({
           type: "dust_api_error",
-          message: `Error running streamed app: status_code=${res.status}`,
+          message: `Error running streamed app: status_code=${res.status} body=${text}`,
         });
       }
 
@@ -446,6 +451,7 @@ export class DustAPI {
                   pendingEvents.push({
                     type: "final",
                   } as DustAppRunFinalEvent);
+                  break;
                 }
               }
               if (data.content?.run_id && !hasRunId) {
@@ -462,28 +468,35 @@ export class DustAPI {
         }
       });
 
-      const reader = res.body;
-
       const streamEvents = async function* () {
+        if (!res.body || typeof res.body === "string") {
+          throw new Error(
+            "Expected a stream response, but got a string or null"
+          );
+        }
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+
         try {
-          for await (const chunk of reader) {
-            parser.feed(new TextDecoder().decode(chunk));
-            for (const event of pendingEvents) {
-              yield event;
+          for (;;) {
+            const { value, done } = await reader.read();
+
+            if (value) {
+              parser.feed(decoder.decode(value, { stream: true }));
+
+              for (const event of pendingEvents) {
+                yield event;
+              }
+
+              pendingEvents = [];
             }
-            pendingEvents = [];
+
+            if (done) {
+              break;
+            }
           }
-          // while (true) {
-          //   const { done, value } = await reader.read();
-          //   if (done) {
-          //     break;
-          //   }
-          //   parser.feed(new TextDecoder().decode(value));
-          //   for (const event of pendingEvents) {
-          //     yield event;
-          //   }
-          //   pendingEvents = [];
-          // }
+
           if (!hasRunId) {
             // Once the stream is entirely consumed, if we haven't received a run id, reject the
             // promise.
@@ -748,6 +761,7 @@ export class DustAPI {
         method: "GET",
         path,
         signal,
+        stream: true,
       });
     };
 
@@ -795,18 +809,43 @@ export class DustAPI {
           }
         });
 
-        const reader = res.value.response.body;
+        if (
+          !res.value.response.body ||
+          typeof res.value.response.body === "string"
+        ) {
+          throw new Error(
+            "Expected a stream response, but got a string or null"
+          );
+        }
 
-        for await (const chunk of reader) {
-          parser.feed(new TextDecoder().decode(chunk));
-          for (const event of pendingEvents) {
-            yield event;
-            // Check if this is a terminal event
-            if (terminalEventTypes.includes(event.type)) {
-              receivedTerminalEvent = true;
+        const reader = res.value.response.body.getReader();
+        const decoder = new TextDecoder();
+
+        try {
+          for (;;) {
+            const { value, done } = await reader.read();
+            if (value) {
+              parser.feed(decoder.decode(value, { stream: true }));
+
+              for (const event of pendingEvents) {
+                yield event;
+
+                if (terminalEventTypes.includes(event.type)) {
+                  receivedTerminalEvent = true;
+                }
+              }
+              pendingEvents = [];
+            }
+
+            if (done) {
+              break;
             }
           }
-          pendingEvents = [];
+        } catch (e) {
+          logger.error({ error: e }, "Failed processing event stream");
+          throw new Error(`Error processing event stream: ${e}`);
+        } finally {
+          reader.releaseLock();
         }
 
         // Stream ended - check if we need to reconnect
@@ -1045,22 +1084,27 @@ export class DustAPI {
 
     // Upload file to the obtained URL.
     try {
-      const {
-        data: { file: fileUploaded },
-      } = await axiosNoKeepAlive.post<FileUploadedRequestResponseType>(
-        file.uploadUrl,
-        formData,
-        { headers: await this.baseHeaders() }
-      );
-      return new Ok(fileUploaded);
-    } catch (err) {
-      if (axios.isAxiosError(err)) {
+      const headers = await this.baseHeaders();
+
+      const response = await fetch(file.uploadUrl, {
+        method: "POST",
+        headers,
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
         return new Err(
           new Error(
-            err.response?.data?.error?.message || "Failed to upload file"
+            errorData?.error?.message ||
+              `Failed to upload file: ${response.status}`
           )
         );
       }
+
+      const responseData = await response.json();
+      return new Ok(responseData.file);
+    } catch (err) {
       return new Err(
         new Error(err instanceof Error ? err.message : "Unknown error")
       );
@@ -1226,21 +1270,38 @@ export class DustAPI {
 
   private async _fetchWithError(
     url: string,
-    config?: AxiosRequestConfig
+    {
+      method = "GET",
+      headers = {},
+      body,
+      signal,
+      stream = false,
+    }: {
+      method?: RequestMethod;
+      headers?: HeadersInit;
+      body?: string;
+      signal?: AbortSignal;
+      stream?: boolean;
+    } = {}
   ): Promise<Result<{ response: DustResponse; duration: number }, APIError>> {
     const now = Date.now();
     try {
-      const res = await axiosNoKeepAlive<Readable | string>(url, {
-        validateStatus: () => true,
-        responseType: "stream",
-        ...config,
+      const res = await fetch(url, {
+        method,
+        headers,
+        body,
+        signal,
       });
+
+      const responseBody = stream && res.body ? res.body : await res.text();
+
       const response: DustResponse = {
         status: res.status,
-        url: res.config.url || url,
-        body: res.data,
-        ok: res.status >= 200 && res.status < 300,
+        url: res.url,
+        body: responseBody,
+        ok: res.ok,
       };
+
       return new Ok({ response, duration: Date.now() - now });
     } catch (e) {
       const duration = Date.now() - now;
@@ -1254,7 +1315,7 @@ export class DustAPI {
           url,
           duration,
           connectorsError: err,
-          error: sanitizedError(e),
+          error: e,
         },
         "DustAPI error"
       );
@@ -1286,14 +1347,11 @@ export class DustAPI {
   }
 
   async registerMCPServer({
-    serverId,
     serverName,
   }: {
-    serverId: string;
     serverName: string;
   }): Promise<Result<RegisterMCPResponseType, APIError>> {
     const body: PublicRegisterMCPRequestBody = {
-      serverId,
       serverName,
     };
 
@@ -1311,34 +1369,34 @@ export class DustAPI {
   }: {
     serverId: string;
   }): Promise<Result<HeartbeatMCPResponseType, APIError>> {
+    const body: PublicHeartbeatMCPRequestBody = {
+      serverId,
+    };
+
     const res = await this.request({
       method: "POST",
       path: "mcp/heartbeat",
-      body: {
-        serverId,
-      },
+      body,
     });
 
     return this._resultFromResponse(HeartbeatMCPResponseSchema, res);
   }
 
   async postMCPResults({
-    requestId,
     result,
     serverId,
   }: PublicPostMCPResultsRequestBody & { serverId: string }): Promise<
     Result<PostMCPResultsResponseType, APIError>
   > {
-    const params = new URLSearchParams();
-    params.set("serverId", serverId);
+    const body: PublicPostMCPResultsRequestBody = {
+      result,
+      serverId,
+    };
 
     const res = await this.request({
       method: "POST",
-      path: `mcp/results?${params.toString()}`,
-      body: {
-        requestId,
-        result,
-      },
+      path: "mcp/results",
+      body,
     });
 
     return this._resultFromResponse(PostMCPResultsResponseSchema, res);

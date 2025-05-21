@@ -19,10 +19,7 @@ import {
   isRemoteAllowedIconType,
 } from "@app/lib/actions/mcp_icons";
 import { connectToInternalMCPServer } from "@app/lib/actions/mcp_internal_actions";
-import type {
-  AgentLoopListToolsContextType,
-  AgentLoopRunContextType,
-} from "@app/lib/actions/types";
+import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { ClientSideRedisMCPTransport } from "@app/lib/api/actions/mcp_client_side";
 import apiConfig from "@app/lib/api/config";
 import type {
@@ -113,12 +110,10 @@ export const connectToMCPServer = async (
   auth: Authenticator,
   {
     params,
-    agentLoopRunContext,
-    agentLoopListToolsContext,
+    agentLoopContext,
   }: {
     params: MCPConnectionParams;
-    agentLoopRunContext?: AgentLoopRunContextType;
-    agentLoopListToolsContext?: AgentLoopListToolsContextType;
+    agentLoopContext: AgentLoopContextType;
   }
 ): Promise<Result<Client, Error>> => {
   // This is where we route the MCP client to the right server.
@@ -140,8 +135,7 @@ export const connectToMCPServer = async (
             params.mcpServerId,
             server,
             auth,
-            agentLoopRunContext,
-            agentLoopListToolsContext
+            agentLoopContext
           );
           await mcpClient.connect(client);
           break;
@@ -173,12 +167,16 @@ export const connectToMCPServer = async (
                   createSSRFInterceptor()
                 ),
                 headers: {
+                  ...(remoteMCPServer.sharedSecret
+                    ? {
+                        Authorization: `Bearer ${remoteMCPServer.sharedSecret}`,
+                      }
+                    : {}),
                   ...(accessToken
                     ? { Authorization: `Bearer ${accessToken}` }
                     : {}),
-                  ...(remoteMCPServer.sharedSecret
-                    ? { "X-Dust-Secret": remoteMCPServer.sharedSecret }
-                    : {}),
+                  // NOTE: For now, we are not using the access token. Once it's used,
+                  // it will take over the shared secret Bearer. This is intended.
                 },
               },
             };
@@ -303,6 +301,7 @@ export async function fetchRemoteServerMetaDataByURL(
       type: "remoteMCPServerUrl",
       remoteMCPServerUrl: url,
     },
+    agentLoopContext: {},
   });
 
   if (r.isErr()) {

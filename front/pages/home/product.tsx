@@ -15,7 +15,7 @@ import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import { classNames } from "@app/lib/utils";
 
-export async function getServerSideProps() {
+export async function getStaticProps() {
   return {
     props: {
       shape: 0,

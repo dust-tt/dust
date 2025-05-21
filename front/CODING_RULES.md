@@ -53,13 +53,17 @@ function addItem(items: string[], newItem: string) {
 
 ### [GEN6] Comments must be sentences and properly wrapped
 
-Comments must be full sentences (starting with a capital letter and ending with a period) and must
-be wrapped at ~100 characters. Wrapping at clearly higher or lower characer count should be avoided.
-A bit of flexibility is allowed, in particular for long URLs or other long non wrappable strings.
+Comments must be full sentences (generally starting with a capital letter and ending with a period)
+and must be consistently wrapped (see examples below).
 
 Example:
 
 ```
+// BAD
+// new function
+// does something
+// interesting
+
 // BAD
 // this is a comment that is neither a full sentence nor wrapped at 100 characters (clearly higher) / it should be wrapped because otherwise it's really hard to read
 
@@ -68,9 +72,29 @@ Example:
 // is wrapped at a much lower character count than
 // 100. It should be wrapped at ~100 characters.
 
+// BAD
+// Check if the current tag is the page selector.
+// If it is, we are inside a page.
+// This assumes that we don't have nested pages.
+
+// GOOD
+// This function is new and does something interesting.
+// TODO(xxx): improve the efficiency of this.
+
 // GOOD
 // This is a comment that is a full sentence and is wrapped at 100 characters. It is easy to read
 // and supports consistency of our code style.
+
+// GOOD
+// Permissions:
+// - "never_ask": Automatically approved
+// - "low": Ask user for approval and allow to automatically approve next time
+// - "high": Ask for approval each time
+// - undefined: Use default permission ("never_ask" for default tools, "high" for other tools)
+
+// GOOD
+// Check if the current tag is the page selector. If it is, we are inside a page. This assumes that
+// we don't have nested pages.
 ```
 
 ## SECURITY
@@ -104,6 +128,31 @@ Never catch your own errors. `catch` is authorized around external libraries (wh
 we don't control), but otherwise errors that may alter the execution upstream should be returned
 using our `Result<>` pattern. It is OK to throw errors, since we can't catch them these are
 guaranteed to trigger a internal error (and return a 500).
+
+### [ERR2] Do not rely on `err as Error`
+
+Never catch and cast what was caught as `Error`. JS allows throwing anything (string, number,
+random object, ...) so the cast may be invalid and hides errors from the logs. Use `normalizeError`
+instead, this function properly checks the content of the caught object and always returns a valid
+`Error` object.
+
+Example:
+
+```
+// BAD
+try {
+  // Some code.
+} catch (err) {
+  return new Err(err as Err);
+}
+
+// GOOD
+try {
+  // Some code.
+} catch(err) {
+  return new Err(normalizeError(err));
+}
+```
 
 ## BACKEND
 
@@ -150,7 +199,7 @@ for all new code and migrate to it from `PQueue` when modifying existing code th
 ### [BACK7] Avoid `Promise.all` on dynamic arrays
 
 Never use `Promise.all` on anything else than static arrays of promises with a known length (8 max).
-To parallelize asyncrhonous handling of dynamic arrays, use `ConcurrentExecutor`.
+To parallelize asynchronous handling of dynamic arrays, use `ConcurrentExecutor`.
 
 ### [BACK8] Favor typeguards over other methods
 

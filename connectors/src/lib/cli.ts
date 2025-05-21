@@ -6,6 +6,7 @@ import readline from "readline";
 import { getConnectorManager } from "@connectors/connectors";
 import { confluence } from "@connectors/connectors/confluence/lib/cli";
 import { github } from "@connectors/connectors/github/lib/cli";
+import { gong } from "@connectors/connectors/gong/lib/cli";
 import { google_drive } from "@connectors/connectors/google_drive/lib/cli";
 import { intercom } from "@connectors/connectors/intercom/lib/cli";
 import { microsoft } from "@connectors/connectors/microsoft/lib/cli";
@@ -27,7 +28,6 @@ import type {
   BatchCommandType,
   ConnectorPermission,
   ConnectorsCommandType,
-  GetParentsResponseType,
   TemporalCheckQueueResponseType,
   TemporalCommandType,
   TemporalUnprocessedWorkflowsResponseType,
@@ -39,32 +39,34 @@ const { INTERACTIVE_CLI } = process.env;
 
 export async function runCommand(adminCommand: AdminCommandType) {
   switch (adminCommand.majorCommand) {
-    case "connectors":
-      return connectors(adminCommand);
-    case "confluence":
-      return confluence(adminCommand);
     case "batch":
       return batch(adminCommand);
-    case "notion":
-      return notion(adminCommand);
+    case "confluence":
+      return confluence(adminCommand);
+    case "connectors":
+      return connectors(adminCommand);
     case "github":
       return github(adminCommand);
+    case "gong":
+      return gong(adminCommand);
     case "google_drive":
       return google_drive(adminCommand);
-    case "slack":
-      return slack(adminCommand);
-    case "webcrawler":
-      return webcrawler(adminCommand);
-    case "temporal":
-      return temporal(adminCommand);
     case "intercom":
       return intercom(adminCommand);
     case "microsoft":
       return microsoft(adminCommand);
-    case "zendesk":
-      return zendesk(adminCommand);
+    case "notion":
+      return notion(adminCommand);
+    case "slack":
+      return slack(adminCommand);
     case "snowflake":
       return snowflake(adminCommand);
+    case "temporal":
+      return temporal(adminCommand);
+    case "webcrawler":
+      return webcrawler(adminCommand);
+    case "zendesk":
+      return zendesk(adminCommand);
     default:
       assertNever(adminCommand);
   }
@@ -108,9 +110,7 @@ export async function throwOnError<T>(p: Promise<Result<T, Error>>) {
 export const connectors = async ({
   command,
   args,
-}: ConnectorsCommandType): Promise<
-  AdminSuccessResponseType | GetParentsResponseType
-> => {
+}: ConnectorsCommandType): Promise<AdminSuccessResponseType> => {
   if (!args.wId) {
     throw new Error("Missing --wId argument");
   }

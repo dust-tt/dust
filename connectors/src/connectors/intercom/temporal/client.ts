@@ -11,7 +11,7 @@ import { getTemporalClient } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types";
-import { getIntercomSyncWorkflowId } from "@connectors/types";
+import { getIntercomSyncWorkflowId, normalizeError } from "@connectors/types";
 
 export async function launchIntercomSyncWorkflow({
   connectorId,
@@ -86,7 +86,7 @@ export async function launchIntercomSyncWorkflow({
       cronSchedule: "30 * * * *", // Every hour, at 30 of the hour.
     });
   } catch (err) {
-    return new Err(err as Error);
+    return new Err(normalizeError(err));
   }
 
   return new Ok(workflowId);
@@ -124,6 +124,6 @@ export async function stopIntercomSyncWorkflow(
       },
       "[Intercom] Failed stopping workflow."
     );
-    return new Err(e as Error);
+    return new Err(normalizeError(e));
   }
 }

@@ -6,7 +6,7 @@ import logger from "@app/logger/logger";
 import { QUEUE_NAME } from "@app/temporal/usage_queue/config";
 import { updateWorkspaceUsageWorkflow } from "@app/temporal/usage_queue/workflows";
 import type { Result } from "@app/types";
-import { Err, Ok } from "@app/types";
+import { Err, normalizeError, Ok } from "@app/types";
 
 async function shouldProcessUsageUpdate(workflowId: string) {
   // Compute the max usage of the workspace once per hour.
@@ -65,6 +65,6 @@ export async function launchUpdateUsageWorkflow({
         "Failed starting usage workflow."
       );
     }
-    return new Err(e as Error);
+    return new Err(normalizeError(e));
   }
 }

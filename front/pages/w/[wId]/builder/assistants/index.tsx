@@ -15,7 +15,6 @@ import {
   TabsTrigger,
   TrashIcon,
   useHashParam,
-  UserIcon,
 } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
@@ -27,11 +26,9 @@ import { AssistantSidebarMenu } from "@app/components/assistant/conversation/Sid
 import { DeleteAssistantsDialog } from "@app/components/assistant/DeleteAssistantsDialog";
 import { AssistantsTable } from "@app/components/assistant/manager/AssistantsTable";
 import { TagsFilterMenu } from "@app/components/assistant/TagsFilterMenu";
-import { SCOPE_INFO } from "@app/components/assistant_builder/Sharing";
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
 import AppContentLayout from "@app/components/sparkle/AppContentLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
-import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
@@ -48,39 +45,6 @@ import type {
 } from "@app/types";
 import { isAdmin } from "@app/types";
 import type { TagType } from "@app/types/tag";
-
-export const AGENT_MANAGER_TABS_LEGACY = [
-  {
-    label: "Edited by me",
-    icon: UserIcon,
-    id: "current_user",
-    description: "Edited or created by you.",
-  },
-  {
-    label: "Company",
-    icon: SCOPE_INFO["workspace"].icon,
-    id: "workspace",
-    description: SCOPE_INFO["workspace"].text,
-  },
-  {
-    label: "Shared",
-    icon: SCOPE_INFO["published"].icon,
-    id: "published",
-    description: SCOPE_INFO["published"].text,
-  },
-  {
-    id: "global",
-    label: "Default",
-    icon: SCOPE_INFO["global"].icon,
-    description: SCOPE_INFO["global"].text,
-  },
-  {
-    label: "Searching across all agents",
-    icon: MagnifyingGlassIcon,
-    id: "search",
-    description: "Searching across all agents",
-  },
-] as const;
 
 export const AGENT_MANAGER_TABS = [
   // default shown tab = earliest in this list with non-empty agents
@@ -116,30 +80,18 @@ export const AGENT_MANAGER_TABS = [
   },
 ] as const;
 
-const ALL_TABS = [...AGENT_MANAGER_TABS, ...AGENT_MANAGER_TABS_LEGACY];
-
-export type AssistantManagerTabsType = (typeof ALL_TABS)[number]["id"];
+export type AssistantManagerTabsType =
+  (typeof AGENT_MANAGER_TABS)[number]["id"];
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
-  hasAgentDiscovery: boolean;
   user: UserType;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const subscription = auth.subscription();
 
   if (!owner || !subscription) {
-    return {
-      notFound: true,
-    };
-  }
-
-  // TODO(agent-discovery) Remove feature-flag
-  const featureFlags = await getFeatureFlags(owner);
-  const hasAgentDiscovery = featureFlags.includes("agent_discovery");
-
-  if (!auth.isBuilder() && !hasAgentDiscovery) {
     return {
       notFound: true,
     };
@@ -152,25 +104,20 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     props: {
       owner,
       subscription,
-      hasAgentDiscovery,
       user: user.toJSON(),
     },
   };
 });
 
-function isValidTab(
-  tab: string,
-  hasAgentDiscovery: boolean
-): tab is AssistantManagerTabsType {
-  return (hasAgentDiscovery ? AGENT_MANAGER_TABS : AGENT_MANAGER_TABS_LEGACY)
-    .map((tab) => tab.id)
-    .includes(tab as AssistantManagerTabsType);
+function isValidTab(tab: string): tab is AssistantManagerTabsType {
+  return AGENT_MANAGER_TABS.map((tab) => tab.id).includes(
+    tab as AssistantManagerTabsType
+  );
 }
 
 export default function WorkspaceAssistants({
   owner,
   subscription,
-  hasAgentDiscovery,
   user,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [assistantSearch, setAssistantSearch] = useState("");
@@ -186,12 +133,8 @@ export default function WorkspaceAssistants({
       return "search";
     }
 
-    return selectedTab && isValidTab(selectedTab, hasAgentDiscovery)
-      ? selectedTab
-      : hasAgentDiscovery
-        ? "all_custom"
-        : "current_user";
-  }, [assistantSearch, selectedTab, hasAgentDiscovery]);
+    return selectedTab && isValidTab(selectedTab) ? selectedTab : "all_custom";
+  }, [assistantSearch, selectedTab]);
 
   // only fetch the agents that are relevant to the current scope, except when
   // user searches: search across all agents
@@ -216,16 +159,17 @@ export default function WorkspaceAssistants({
     workspaceId: owner.sId,
     agentsGetView: "archived",
     includes: ["usage", "feedbacks"],
-    disabled: !hasAgentDiscovery || selectedTab !== "archived",
+    disabled: selectedTab !== "archived",
   });
 
   const agentsByTab = useMemo(() => {
+    const selectedTagIds = selectedTags.map((tag) => tag.sId);
     const allAgents: LightAgentConfigurationType[] = agentConfigurations
       .filter((a) => {
-        if (selectedTags.length === 0) {
+        if (selectedTagIds.length === 0) {
           return true;
         }
-        return a.tags.some((t) => selectedTags.includes(t));
+        return a.tags.some((t) => selectedTagIds.includes(t.sId));
       })
       .sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
 
@@ -316,11 +260,8 @@ export default function WorkspaceAssistants({
 
     return assistantSearch.trim() !== ""
       ? [searchTab]
-      : (hasAgentDiscovery
-          ? AGENT_MANAGER_TABS
-          : AGENT_MANAGER_TABS_LEGACY
-        ).filter((tab) => tab.id !== "search");
-  }, [assistantSearch, hasAgentDiscovery]);
+      : AGENT_MANAGER_TABS.filter((tab) => tab.id !== "search");
+  }, [assistantSearch]);
 
   const searchBarRef = useRef<HTMLInputElement>(null);
 
@@ -381,7 +322,7 @@ export default function WorkspaceAssistants({
               />
               {!isBatchEdit && (
                 <div className="flex gap-2">
-                  {hasAgentDiscovery && isAdmin(owner) && (
+                  {isAdmin(owner) && (
                     <Button
                       variant="outline"
                       icon={ListSelectIcon}
@@ -392,14 +333,12 @@ export default function WorkspaceAssistants({
                     />
                   )}
 
-                  {hasAgentDiscovery && (
-                    <TagsFilterMenu
-                      tags={uniqueTags}
-                      selectedTags={selectedTags}
-                      setSelectedTags={setSelectedTags}
-                      owner={owner}
-                    />
-                  )}
+                  <TagsFilterMenu
+                    tags={uniqueTags}
+                    selectedTags={selectedTags}
+                    setSelectedTags={setSelectedTags}
+                    owner={owner}
+                  />
                   <Link
                     href={`/w/${owner.sId}/builder/assistants/create?flow=workspace_assistants`}
                   >

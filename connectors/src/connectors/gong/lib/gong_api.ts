@@ -57,7 +57,7 @@ export const GongParticipantCodec = t.intersection([
   CatchAllCodec,
 ]);
 
-const GongTranscriptMetadataCodec = t.intersection([
+const GongTranscriptMetadataWithoutTrackersCodec = t.intersection([
   t.type({
     metaData: t.intersection([
       t.type({
@@ -87,6 +87,32 @@ const GongTranscriptMetadataCodec = t.intersection([
     parties: t.union([t.array(GongParticipantCodec), t.undefined]),
   }),
   CatchAllCodec,
+]);
+
+export type GongTranscriptMetadataWithoutTrackers = t.TypeOf<
+  typeof GongTranscriptMetadataWithoutTrackersCodec
+>;
+
+const GongTranscriptMetadataCodec = t.intersection([
+  GongTranscriptMetadataWithoutTrackersCodec,
+  t.type({
+    content: t.intersection([
+      t.type({
+        trackers: t.array(
+          t.intersection([
+            t.type({
+              id: t.string,
+              name: t.string,
+              count: t.number,
+              type: t.string,
+            }),
+            CatchAllCodec,
+          ])
+        ),
+      }),
+      CatchAllCodec,
+    ]),
+  }),
 ]);
 
 export type GongTranscriptMetadata = t.TypeOf<
@@ -243,7 +269,7 @@ export class GongClient {
   }) {
     try {
       const transcripts = await this.postRequest(
-        `/calls/transcript`,
+        "/calls/transcript",
         {
           cursor: pageCursor,
           filter: {
@@ -273,7 +299,7 @@ export class GongClient {
   async getUsers({ pageCursor }: { pageCursor: string | null }) {
     try {
       const users = await this.getRequest(
-        `/users`,
+        "/users",
         pageCursor ? { cursor: pageCursor } : {},
         GongPaginatedResults("users", GongUserCodec)
       );
@@ -310,10 +336,15 @@ export class GongClient {
   async getCallsMetadata({
     callIds,
     pageCursor = null,
+    smartTrackersEnabled = false,
   }: {
     callIds: string[];
     pageCursor?: string | null;
-  }) {
+    smartTrackersEnabled?: boolean;
+  }): Promise<{
+    callsMetadata: GongTranscriptMetadata[];
+    nextPageCursor: string | null;
+  }> {
     // Calling the endpoint with an empty array of callIds causes a 400 error.
     if (callIds.length === 0) {
       return {
@@ -322,26 +353,47 @@ export class GongClient {
       };
     }
 
-    try {
-      const callsMetadata = await this.postRequest(
-        `/calls/extensive`,
-        {
-          cursor: pageCursor,
-          filter: {
-            callIds,
-          },
-          contentSelector: {
-            exposedFields: {
-              parties: true,
-            },
-          },
+    const body = {
+      cursor: pageCursor,
+      filter: {
+        callIds,
+      },
+      contentSelector: {
+        exposedFields: {
+          parties: true,
+          ...(smartTrackersEnabled ? { content: { trackers: true } } : {}),
         },
-        GongPaginatedResults("calls", GongTranscriptMetadataCodec)
-      );
-      return {
-        callsMetadata: callsMetadata.calls,
-        nextPageCursor: callsMetadata.records.cursor,
-      };
+      },
+    };
+    try {
+      if (smartTrackersEnabled) {
+        const callsMetadata = await this.postRequest(
+          "/calls/extensive",
+          body,
+          GongPaginatedResults("calls", GongTranscriptMetadataCodec)
+        );
+        return {
+          callsMetadata: callsMetadata.calls,
+          nextPageCursor: callsMetadata.records.cursor ?? null,
+        };
+      } else {
+        const callsMetadata = await this.postRequest(
+          "/calls/extensive",
+          body,
+          GongPaginatedResults(
+            "calls",
+            GongTranscriptMetadataWithoutTrackersCodec
+          )
+        );
+        // Adding empty trackers to the calls metadata to present a uniformed type.
+        return {
+          callsMetadata: callsMetadata.calls.map((callMetadata) => ({
+            ...callMetadata,
+            content: { trackers: [] },
+          })),
+          nextPageCursor: callsMetadata.records.cursor ?? null,
+        };
+      }
     } catch (err) {
       if (isNotFoundError(err)) {
         return {

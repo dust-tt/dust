@@ -30,7 +30,19 @@ const migrateWorkspace = async (
 
   let companyTag = await TagResource.findByName(auth, "Company");
   if (!companyTag) {
-    companyTag = await TagResource.makeNew(auth, { name: "Company" });
+    logger.info(
+      {
+        workspace: workspace.sId,
+      },
+      "Creating company tag"
+    );
+
+    if (execute) {
+      companyTag = await TagResource.makeNew(auth, {
+        name: "Company",
+        kind: "protected",
+      });
+    }
   }
 
   for (const agent of agents) {
@@ -55,17 +67,28 @@ const migrateWorkspace = async (
 
       if (execute) {
         await agent.update({ scope: newScope }, { hooks: false, silent: true });
-        if (previousScope === "workspace" && agent.status === "active") {
-          const agentConfigs = await getAgentConfigurations({
-            auth,
-            agentsGetView: { agentIds: [agent.sId] },
-            variant: "light",
-          });
-          const agentConfig = agentConfigs[0];
-          if (
-            agentConfig &&
-            !agentConfig.tags.some((tag) => tag.sId === companyTag.sId)
-          ) {
+      }
+      if (previousScope === "workspace" && agent.status === "active") {
+        const agentConfigs = await getAgentConfigurations({
+          auth,
+          agentsGetView: { agentIds: [agent.sId] },
+          variant: "light",
+        });
+        const agentConfig = agentConfigs[0];
+        if (
+          companyTag &&
+          agentConfig &&
+          !agentConfig.tags.some((tag) => tag.sId === companyTag.sId)
+        ) {
+          logger.info(
+            {
+              workspace: workspace.sId,
+              agent: agent.sId,
+              companyTag: companyTag?.sId,
+            },
+            "Adding company tag to agent"
+          );
+          if (execute) {
             await companyTag.addToAgent(auth, agentConfig);
           }
         }

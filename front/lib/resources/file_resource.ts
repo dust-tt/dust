@@ -24,7 +24,7 @@ import type {
   Result,
   UserType,
 } from "@app/types";
-import { Err, FILE_FORMATS, Ok, removeNulls } from "@app/types";
+import { Err, FILE_FORMATS, normalizeError, Ok, removeNulls } from "@app/types";
 
 import type { ModelStaticWorkspaceAware } from "./storage/wrappers/workspace_models";
 
@@ -159,7 +159,7 @@ export class FileResource extends BaseResource<FileModel> {
 
       return new Ok(undefined);
     } catch (error) {
-      return new Err(error as Error);
+      return new Err(normalizeError(error));
     }
   }
 

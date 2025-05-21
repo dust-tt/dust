@@ -10,6 +10,7 @@ import type { WithAPIErrorResponse } from "@app/types";
 
 const PatchBodySchema = t.type({
   name: t.string,
+  kind: t.union([t.literal("standard"), t.literal("protected")]),
 });
 
 async function handler(
@@ -77,7 +78,7 @@ async function handler(
           status_code: 403,
           api_error: {
             type: "invalid_request_error",
-            message: "Only workspace administrators can delete tags",
+            message: "Only workspace administrators can update tags",
           },
         });
       }
@@ -106,10 +107,9 @@ async function handler(
         });
       }
       const body = r.right;
-      const { name } = body;
+      const { name, kind } = body;
 
-      await tag.updateName(name);
-
+      await tag.updateTag({ name, kind });
       res.status(200).end();
       return;
     }

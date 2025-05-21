@@ -8,7 +8,7 @@ import { TRANSCRIPTS_QUEUE_NAME } from "@app/temporal/labs/transcripts/config";
 import { makeRetrieveTranscriptWorkflowId } from "@app/temporal/labs/transcripts/utils";
 import { retrieveNewTranscriptsWorkflow } from "@app/temporal/labs/transcripts/workflows";
 import type { Result } from "@app/types";
-import { Err, Ok } from "@app/types";
+import { Err, normalizeError, Ok } from "@app/types";
 
 export async function launchRetrieveTranscriptsWorkflow(
   transcriptsConfiguration: LabsTranscriptsConfigurationResource
@@ -44,7 +44,7 @@ export async function launchRetrieveTranscriptsWorkflow(
       },
       "Transcript retrieval workflow failed."
     );
-    return new Err(e as Error);
+    return new Err(normalizeError(e));
   }
 }
 
@@ -77,6 +77,6 @@ export async function stopRetrieveTranscriptsWorkflow(
       },
       "Failed stopping workflow."
     );
-    return new Err(e as Error);
+    return new Err(normalizeError(e));
   }
 }

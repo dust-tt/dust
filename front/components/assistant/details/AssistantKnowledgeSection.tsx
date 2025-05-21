@@ -22,13 +22,13 @@ import { useMemo, useState } from "react";
 import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
 import { DataSourceViewPermissionTree } from "@app/components/DataSourceViewPermissionTree";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
-import type { DataSourceConfiguration } from "@app/lib/actions/retrieval";
 import type { TableDataSourceConfiguration } from "@app/lib/actions/tables_query";
 import {
   isRetrievalConfiguration,
   isServerSideMCPServerConfiguration,
   isTablesQueryConfiguration,
 } from "@app/lib/actions/types/guards";
+import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration";
 import { getContentNodeInternalIdFromTableId } from "@app/lib/api/content_nodes";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";

@@ -223,7 +223,7 @@ export const BaseDustProdActionRegistry = {
     app: {
       appId: "7mjFTd4e45",
       appHash:
-        "430bb302f09d43230f5772f700c7f9823d18be44dd264e002a9d67849ab13d02",
+        "7f1b2f6b514d2309954dd9a92ef01761ff500f81d600eeb716a2ff8d13a76c67",
     },
     config: {
       CREATE_SUGGESTIONS: {
@@ -293,7 +293,7 @@ export const BaseDustProdActionRegistry = {
     app: {
       appId: "fcYLVzSHdU",
       appHash:
-        "b988e0a0b7c347edcfc5f263a0fff591fe4a8cd643ab9480a8bfdd5d79fca6c9",
+        "5764c8eb5d325e01213b3af3cc2230c88f5264ac6ebf438d1ad64e4c71b3a296",
     },
     config: {
       MODEL: {

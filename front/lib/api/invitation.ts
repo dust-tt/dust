@@ -12,7 +12,7 @@ import {
 } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { MAX_UNCONSUMED_INVITATIONS_PER_WORKSPACE_PER_DAY } from "@app/lib/invitations";
-import { MembershipInvitation } from "@app/lib/models/membership_invitation";
+import { MembershipInvitationModel } from "@app/lib/models/membership_invitation";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { isEmailValid } from "@app/lib/utils";
@@ -36,7 +36,7 @@ import { frontSequelize } from "../resources/storage";
 const INVITATION_EXPIRATION_TIME_SEC = 60 * 60 * 24 * 7;
 
 function typeFromModel(
-  invitation: MembershipInvitation
+  invitation: MembershipInvitationModel
 ): MembershipInvitationType {
   return {
     sId: invitation.sId,
@@ -61,7 +61,7 @@ export async function getInvitation(
     return null;
   }
 
-  const invitation = await MembershipInvitation.findOne({
+  const invitation = await MembershipInvitationModel.findOne({
     where: {
       workspaceId: owner.id,
       sId: invitationId,
@@ -92,7 +92,7 @@ export async function updateInvitationStatusAndRole(
     throw new Error("Unauthorized attempt to update invitation status.");
   }
 
-  const existingInvitation = await MembershipInvitation.findOne({
+  const existingInvitation = await MembershipInvitationModel.findOne({
     where: {
       workspaceId: owner.id,
       id: invitation.id,
@@ -118,7 +118,7 @@ export async function updateOrCreateInvitation(
   transaction?: Transaction
 ): Promise<MembershipInvitationType> {
   // check for prior existing pending invitation
-  const existingInvitation = await MembershipInvitation.findOne({
+  const existingInvitation = await MembershipInvitationModel.findOne({
     where: {
       workspaceId: owner.id,
       inviteEmail: sanitizeString(inviteEmail),
@@ -135,7 +135,7 @@ export async function updateOrCreateInvitation(
   }
 
   return typeFromModel(
-    await MembershipInvitation.create(
+    await MembershipInvitationModel.create(
       {
         sId: generateRandomModelSId(),
         workspaceId: owner.id,
@@ -215,7 +215,7 @@ export async function getPendingInvitations(
     );
   }
 
-  const invitations = await MembershipInvitation.findAll({
+  const invitations = await MembershipInvitationModel.findAll({
     where: {
       workspaceId: owner.id,
       status: "pending",
@@ -262,7 +262,7 @@ export async function getRecentPendingAndRevokedInvitations(
   }
   const oneDayAgo = new Date();
   oneDayAgo.setDate(oneDayAgo.getDate() - 1);
-  const invitations = await MembershipInvitation.findAll({
+  const invitations = await MembershipInvitationModel.findAll({
     where: {
       workspaceId: owner.id,
       status: ["pending", "revoked"],
@@ -308,7 +308,7 @@ export async function batchUnrevokeInvitations(
     );
   }
 
-  await MembershipInvitation.update(
+  await MembershipInvitationModel.update(
     {
       status: "pending",
     },

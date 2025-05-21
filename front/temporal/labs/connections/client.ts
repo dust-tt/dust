@@ -16,7 +16,7 @@ import {
   incrementalSyncLabsConnectionWorkflow,
 } from "@app/temporal/labs/connections/workflows";
 import type { Result } from "@app/types";
-import { Err, Ok } from "@app/types";
+import { Err, normalizeError, Ok } from "@app/types";
 
 export async function launchLabsConnectionWorkflow(
   connectionConfiguration: LabsConnectionsConfigurationResource
@@ -78,7 +78,7 @@ export async function launchLabsConnectionWorkflow(
       },
       "Labs connection sync workflow failed."
     );
-    return new Err(e as Error);
+    return new Err(normalizeError(e));
   }
 }
 
@@ -123,6 +123,6 @@ export async function stopLabsConnectionWorkflow(
       },
       "Failed stopping workflow."
     );
-    return new Err(e as Error);
+    return new Err(normalizeError(e));
   }
 }

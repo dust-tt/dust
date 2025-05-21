@@ -11,15 +11,14 @@ import {
   Markdown,
   MoreIcon,
   Page,
-  Spinner,
   Tabs,
   TabsList,
   TabsTrigger,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import { Label } from "@dust-tt/sparkle";
 import { Separator } from "@radix-ui/react-select";
 import { useContext, useEffect } from "react";
+import { useState } from "react";
 
 import { ActionValidationProvider } from "@app/components/assistant/conversation/ActionValidationProvider";
 import { ConversationsNavigationProvider } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
@@ -43,11 +42,11 @@ import { ACTION_SPECIFICATIONS } from "@app/lib/actions/utils";
 import { useUser } from "@app/lib/swr/user";
 import type { FetchAssistantTemplateResponse } from "@app/pages/api/templates/[tId]";
 import type {
-  AssistantBuilderRightPanelStatus,
-  AssistantBuilderRightPanelTab,
+  AssistantBuilderRightPanelTabType,
   ModelConfigurationType,
   WorkspaceType,
 } from "@app/types";
+import { isAssistantBuilderRightPanelTab } from "@app/types";
 
 interface AssistantBuilderRightPanelProps {
   screen: BuilderScreen;
@@ -56,8 +55,6 @@ interface AssistantBuilderRightPanelProps {
   resetToTemplateInstructions: () => Promise<void>;
   resetToTemplateActions: () => Promise<void>;
   owner: WorkspaceType;
-  rightPanelStatus: AssistantBuilderRightPanelStatus;
-  openRightPanelTab: (tabName: AssistantBuilderRightPanelTab) => void;
   builderState: AssistantBuilderState;
   agentConfigurationId: string | null;
   setAction: (action: AssistantBuilderSetActionType) => void;
@@ -71,21 +68,17 @@ export default function AssistantBuilderRightPanel({
   resetToTemplateInstructions,
   resetToTemplateActions,
   owner,
-  rightPanelStatus,
-  openRightPanelTab,
   builderState,
   agentConfigurationId,
   setAction,
   reasoningModels,
 }: AssistantBuilderRightPanelProps) {
-  const {
-    shouldAnimate: shouldAnimatePreviewDrawer,
-    draftAssistant,
-    isFading,
-  } = usePreviewAssistant({
+  const [rightPanelTab, setRightPanelTab] =
+    useState<AssistantBuilderRightPanelTabType>("Preview");
+
+  const { draftAssistant, isFading, isSavingDraftAgent } = usePreviewAssistant({
     owner,
     builderState,
-    isPreviewOpened: rightPanelStatus.tab === "Preview",
     reasoningModels,
   });
 
@@ -102,24 +95,23 @@ export default function AssistantBuilderRightPanel({
     assistant: draftAssistant,
   });
 
+  const isBuilderStateEmpty =
+    !builderState.instructions?.trim() && !builderState.actions.length;
+
   useEffect(() => {
     setConversation(null);
   }, [draftAssistant?.sId, setConversation]);
 
-  useEffect(() => {
-    if (rightPanelStatus.tab === "Template" && screen === "settings") {
-      openRightPanelTab("Preview");
-    }
-  }, [screen, rightPanelStatus.tab, openRightPanelTab]);
-
   return (
     <div className="flex h-full flex-col">
-      <div className="shrink-0 pt-5">
+      <div className="shrink-0 pt-4">
         <Tabs
-          value={rightPanelStatus.tab ?? "Preview"}
-          onValueChange={(t) =>
-            openRightPanelTab(t as AssistantBuilderRightPanelTab)
-          }
+          value={rightPanelTab ?? "Preview"}
+          onValueChange={(t) => {
+            if (isAssistantBuilderRightPanelTab(t)) {
+              setRightPanelTab(t);
+            }
+          }}
           className="hidden lg:block"
         >
           <TabsList>
@@ -145,20 +137,20 @@ export default function AssistantBuilderRightPanel({
       <div
         className={cn(
           "grow-1 mb-5 h-full overflow-y-auto",
-          rightPanelStatus.tab === "Preview" ? "" : "border-b border-border",
-          shouldAnimatePreviewDrawer &&
-            rightPanelStatus.tab === "Preview" &&
-            rightPanelStatus.openedAt != null &&
-            // Only animate the reload if the drawer has been open for at least 1 second.
-            // This is to prevent the animation from triggering right after the drawer is opened.
-            Date.now() - rightPanelStatus.openedAt > 1000
-            ? "animate-reload"
-            : ""
+          rightPanelTab === "Preview" ? "" : "border-b border-border"
         )}
       >
-        {rightPanelStatus.tab === "Preview" && user && (
+        {rightPanelTab === "Preview" && user && (
           <div className="flex h-full w-full flex-1 flex-col justify-between overflow-x-hidden">
-            {draftAssistant ? (
+            {isBuilderStateEmpty ? (
+              <div className="flex h-full w-full items-center justify-center">
+                <div className="text-center">
+                  <span className="block cursor-pointer whitespace-nowrap px-4 py-2 text-muted-foreground">
+                    Start configuring your assistant and try it out!
+                  </span>
+                </div>
+              </div>
+            ) : (
               <ConversationsNavigationProvider>
                 <ActionValidationProvider>
                   <GenerationContextProvider>
@@ -177,11 +169,14 @@ export default function AssistantBuilderRightPanel({
                     </div>
                     <div className="shrink-0">
                       <AssistantInputBar
+                        disableButton={isSavingDraftAgent}
                         owner={owner}
                         onSubmit={handleSubmit}
                         stickyMentions={stickyMentions}
                         conversationId={conversation?.sId || null}
-                        additionalAgentConfiguration={draftAssistant}
+                        additionalAgentConfiguration={
+                          draftAssistant ?? undefined
+                        }
                         actions={["attachment"]}
                         disableAutoFocus
                         isFloating={false}
@@ -190,15 +185,10 @@ export default function AssistantBuilderRightPanel({
                   </GenerationContextProvider>
                 </ActionValidationProvider>
               </ConversationsNavigationProvider>
-            ) : (
-              <div className="flex h-full w-full flex-col items-center justify-center gap-2">
-                <Label>Try out your assistant...</Label>
-                <Spinner />
-              </div>
             )}
           </div>
         )}
-        {rightPanelStatus.tab === "Template" &&
+        {rightPanelTab === "Template" &&
           template &&
           screen === "instructions" && (
             <div className="mb-72 flex flex-col gap-4">
@@ -208,7 +198,7 @@ export default function AssistantBuilderRightPanel({
                   removeTemplate={removeTemplate}
                   resetToTemplateInstructions={resetToTemplateInstructions}
                   resetToTemplateActions={resetToTemplateActions}
-                  openRightPanelTab={openRightPanelTab}
+                  setRightPanelTab={setRightPanelTab}
                 />
               </div>
               {template?.helpInstructions && (
@@ -216,68 +206,67 @@ export default function AssistantBuilderRightPanel({
               )}
             </div>
           )}
-        {rightPanelStatus.tab === "Template" &&
-          template &&
-          screen === "actions" && (
-            <div className="mb-72 flex flex-col gap-4">
-              <div className="flex items-end justify-end pt-2">
-                <TemplateDropDownMenu
-                  screen={screen}
-                  removeTemplate={removeTemplate}
-                  resetToTemplateInstructions={resetToTemplateInstructions}
-                  resetToTemplateActions={resetToTemplateActions}
-                  openRightPanelTab={openRightPanelTab}
-                />
-              </div>
-              <Page.Separator />
-              <div className="flex flex-col gap-4">
-                {template && template.helpActions && (
-                  <>
-                    <div>
-                      <Markdown content={template?.helpActions ?? ""} />
-                    </div>
-                    <Separator />
-                  </>
-                )}
-                {template && template.presetActions.length > 0 && (
-                  <div className="flex flex-col gap-6">
-                    <Page.SectionHeader title="Add those tools" />
-                    {template.presetActions.map((presetAction, index) => (
-                      <div className="flex flex-col gap-2" key={index}>
-                        <div>{presetAction.help}</div>
-                        <TemplateAddActionButton
-                          action={presetAction}
-                          addAction={(presetAction) => {
-                            const action = getDefaultActionConfiguration(
-                              presetAction.type
-                            );
-                            if (!action) {
-                              // Unreachable
-                              return;
-                            }
-                            action.name = presetAction.name;
-                            action.description = presetAction.description;
-                            setAction({
-                              type: action.noConfigurationRequired
-                                ? "insert"
-                                : "pending",
-                              action,
-                            });
-                          }}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+        {rightPanelTab === "Template" && template && screen === "actions" && (
+          <div className="mb-72 flex flex-col gap-4">
+            <div className="flex items-end justify-end pt-2">
+              <TemplateDropDownMenu
+                screen={screen}
+                removeTemplate={removeTemplate}
+                resetToTemplateInstructions={resetToTemplateInstructions}
+                resetToTemplateActions={resetToTemplateActions}
+                setRightPanelTab={setRightPanelTab}
+              />
             </div>
-          )}
-        {rightPanelStatus.tab === "Performance" && agentConfigurationId && (
+            <Page.Separator />
+            <div className="flex flex-col gap-4">
+              {template && template.helpActions && (
+                <>
+                  <div>
+                    <Markdown content={template?.helpActions ?? ""} />
+                  </div>
+                  <Separator />
+                </>
+              )}
+              {template && template.presetActions.length > 0 && (
+                <div className="flex flex-col gap-6">
+                  <Page.SectionHeader title="Add those tools" />
+                  {template.presetActions.map((presetAction, index) => (
+                    <div className="flex flex-col gap-2" key={index}>
+                      <div>{presetAction.help}</div>
+                      <TemplateAddActionButton
+                        action={presetAction}
+                        addAction={(presetAction) => {
+                          const action = getDefaultActionConfiguration(
+                            presetAction.type
+                          );
+                          if (!action) {
+                            // Unreachable
+                            return;
+                          }
+                          action.name = presetAction.name;
+                          action.description = presetAction.description;
+                          setAction({
+                            type: action.noConfigurationRequired
+                              ? "insert"
+                              : "pending",
+                            action,
+                          });
+                        }}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+        {rightPanelTab === "Performance" && agentConfigurationId && (
           <div className="ml-4 mt-4">
             <Page.SectionHeader title="Feedback" />
             <FeedbacksSection
               owner={owner}
               agentConfigurationId={agentConfigurationId}
+              gridMode
             />
           </div>
         )}
@@ -312,7 +301,7 @@ const TemplateAddActionButton = ({
 };
 
 interface TemplateDropDownMenuProps {
-  openRightPanelTab: (tabName: AssistantBuilderRightPanelTab) => void;
+  setRightPanelTab: (tabName: AssistantBuilderRightPanelTabType) => void;
   removeTemplate: () => Promise<void>;
   resetToTemplateActions: () => Promise<void>;
   resetToTemplateInstructions: () => Promise<void>;
@@ -320,7 +309,7 @@ interface TemplateDropDownMenuProps {
 }
 
 const TemplateDropDownMenu = ({
-  openRightPanelTab,
+  setRightPanelTab,
   removeTemplate,
   resetToTemplateActions,
   resetToTemplateInstructions,
@@ -344,7 +333,7 @@ const TemplateDropDownMenu = ({
               validateVariant: "warning",
             });
             if (confirmed) {
-              openRightPanelTab("Preview");
+              setRightPanelTab("Preview");
               await removeTemplate();
             }
           }}

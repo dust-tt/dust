@@ -296,7 +296,6 @@ function BackendSearch({
         value={searchTerm}
         onChange={handleSearchChange}
         disabled={isSearchDisabled}
-        className="max-w-[860px]"
       />
 
       <div

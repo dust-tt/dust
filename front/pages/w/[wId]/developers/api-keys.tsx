@@ -26,6 +26,7 @@ import {
   SheetTitle,
   Spinner,
   useCopyToClipboard,
+  useSendNotification,
 } from "@dust-tt/sparkle";
 import _ from "lodash";
 import type { InferGetServerSidePropsType } from "next";
@@ -87,6 +88,7 @@ export function APIKeys({
 }) {
   const { mutate } = useSWRConfig();
   const [isCopiedWorkspaceId, copyWorkspaceId] = useCopyToClipboard();
+  const [isCopiedName, copyName] = useCopyToClipboard();
   const [isCopiedDomain, copyDomain] = useCopyToClipboard();
   const [isCopiedApiKey, copyApiKey] = useCopyToClipboard();
   const [newApiKeyName, setNewApiKeyName] = useState("");
@@ -104,10 +106,12 @@ export function APIKeys({
     }, {});
   }, [groups]);
 
+  const sendNotification = useSendNotification();
+
   const { submit: handleGenerate, isSubmitting: isGenerating } =
     useSubmitFunction(
       async ({ name, group }: { name: string; group?: GroupType }) => {
-        await fetch(`/api/w/${owner.sId}/keys`, {
+        const response = await fetch(`/api/w/${owner.sId}/keys`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -116,7 +120,22 @@ export function APIKeys({
         });
         await mutate(`/api/w/${owner.sId}/keys`);
         setNewApiKeyName("");
-        setIsNewApiKeyCreatedOpen(true);
+        if (response.status >= 200 && response.status < 300) {
+          setIsNewApiKeyCreatedOpen(true);
+          sendNotification({
+            title: "API Key Created",
+            description:
+              "Your API key will remain visible for 10 minutes only. You can use it to authenticate with the Dust API.",
+            type: "success",
+          });
+          return;
+        }
+        const errorResponse = await response.json();
+        sendNotification({
+          title: "Error creating API key",
+          description: _.get(errorResponse, "error.message", "Unknown error"),
+          type: "error",
+        });
       }
     );
 
@@ -158,6 +177,23 @@ export function APIKeys({
                 use it to authenticate with the Dust API.
               </p>
               <br />
+              <div className="mt-4">
+                <Page.H variant="h5">Name</Page.H>
+                <Page.Horizontal align="center">
+                  <pre className="flex-grow overflow-x-auto rounded bg-muted-background p-2 font-mono dark:bg-muted-background-night">
+                    {keys[0]?.name}
+                  </pre>
+                  <IconButton
+                    tooltip="Copy to clipboard"
+                    icon={isCopiedName ? ClipboardCheckIcon : ClipboardIcon}
+                    onClick={async () => {
+                      if (keys[0]?.name) {
+                        await copyName(keys[0].name);
+                      }
+                    }}
+                  />
+                </Page.Horizontal>
+              </div>
               <div className="mt-4">
                 <Page.H variant="h5">Domain</Page.H>
                 <Page.Horizontal align="center">
@@ -303,8 +339,7 @@ export function APIKeys({
       </Page.Horizontal>
       <div className="space-y-4 divide-y divide-gray-200 dark:divide-gray-200-night">
         <ul role="list" className="pt-4">
-          {keys
-            .sort((a, b) => (b.status === "active" ? 1 : -1))
+          {_.sortBy(keys, (key) => key.status[0] + key.name) // Sort by status first (a for active and i for inactive), then by name
             .map((key) => (
               <li key={key.secret} className="px-2 py-4">
                 <div className="flex items-center justify-between">

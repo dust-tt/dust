@@ -27,7 +27,7 @@ import React, {
 import { AvatarPicker } from "@app/components/assistant_builder/avatar_picker/AssistantBuilderAvatarPicker";
 import {
   buildSelectedEmojiType,
-  makeUrlForEmojiAndBackgroud,
+  makeUrlForEmojiAndBackground,
 } from "@app/components/assistant_builder/avatar_picker/utils";
 import {
   DROID_AVATAR_URLS,
@@ -51,7 +51,7 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types";
-import { Err, Ok } from "@app/types";
+import { Err, isBuilder, Ok } from "@app/types";
 import type { TagType } from "@app/types/tag";
 
 import { AddEditorDropdown } from "../members/AddEditorsDropdown";
@@ -158,7 +158,6 @@ type SettingsScreenProps = {
   setEdited: (edited: boolean) => void;
   assistantHandleError: string | null;
   descriptionError: string | null;
-  isAgentDiscoveryEnabled: boolean;
   slackChannelSelected: SlackChannel[];
   slackDataSource: DataSourceType | undefined;
   setSelectedSlackChannels: (channels: SlackChannel[]) => void;
@@ -173,7 +172,6 @@ export default function SettingsScreen({
   setEdited,
   assistantHandleError,
   descriptionError,
-  isAgentDiscoveryEnabled,
   slackChannelSelected,
   slackDataSource,
   setSelectedSlackChannels,
@@ -204,7 +202,7 @@ export default function SettingsScreen({
     }
   }, [owner, builderState.instructions, builderState.description]);
 
-  const { nonGlobalSpacessUsedInActions } = useBuilderActionInfo(builderState);
+  const { nonGlobalSpacesUsedInActions } = useBuilderActionInfo(builderState);
 
   const updateEmojiFromSuggestions = useCallback(async () => {
     let avatarUrl: string | null = null;
@@ -216,7 +214,7 @@ export default function SettingsScreen({
       const suggestion = emojiSuggestions.value.suggestions[0];
       const emoji = buildSelectedEmojiType(suggestion.emoji);
       if (emoji) {
-        avatarUrl = makeUrlForEmojiAndBackgroud(
+        avatarUrl = makeUrlForEmojiAndBackground(
           {
             id: emoji.id,
             unified: emoji.unified,
@@ -526,125 +524,118 @@ export default function SettingsScreen({
             </div>
           </div>
         </div>
-        {isAgentDiscoveryEnabled && (
-          <>
-            <TagsSection
-              owner={owner}
-              builderState={builderState}
-              setBuilderState={setBuilderState}
-              setEdited={setEdited}
-            />
+        <TagsSection
+          owner={owner}
+          builderState={builderState}
+          setBuilderState={setBuilderState}
+          setEdited={setEdited}
+        />
 
-            <div className="flex flex-row gap-4">
-              <div className="flex flex-[1_0_0] flex-col gap-2">
-                <Page.SectionHeader title="Access" />
-                <div className="flex flex-row items-start gap-2">
-                  <div className="flex flex-1 flex-row items-start gap-2 py-2">
-                    <div className="min-w-12">
-                      <SliderToggle
-                        selected={isVisible}
-                        onClick={() => {
-                          setBuilderState((state) => ({
-                            ...state,
-                            scope: isVisible ? "hidden" : "visible",
-                          }));
-                          setEdited(true);
-                        }}
-                      />
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
-                        {isVisible ? "Published" : "Not published"}
-                      </span>
-                      <span className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
-                        {(builderState.scope === "visible" ||
-                          builderState.scope === "published" ||
-                          builderState.scope === "workspace") && (
-                          <>
-                            {nonGlobalSpacessUsedInActions.length === 0 && (
-                              <>
-                                Visible & usable by all members of the
-                                workspace.
-                              </>
-                            )}
-                            {nonGlobalSpacessUsedInActions.length > 0 && (
-                              <div>
-                                Visible & usable by the members of the{" "}
-                                {`space${nonGlobalSpacessUsedInActions.length > 1 ? "s" : ""}`}{" "}
-                                :{" "}
-                                <b>
-                                  {nonGlobalSpacessUsedInActions
-                                    .map((v) => v.name)
-                                    .join(", ")}
-                                </b>
-                              </div>
-                            )}
-                          </>
+        <div className="flex flex-row gap-4">
+          <div className="flex flex-[1_0_0] flex-col gap-2">
+            <Page.SectionHeader title="Access" />
+            <div className="flex flex-row items-start gap-2">
+              <div className="flex flex-1 flex-row items-start gap-2 py-2">
+                <div className="min-w-12">
+                  <SliderToggle
+                    selected={isVisible}
+                    onClick={() => {
+                      setBuilderState((state) => ({
+                        ...state,
+                        scope: isVisible ? "hidden" : "visible",
+                      }));
+                      setEdited(true);
+                    }}
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
+                    {isVisible ? "Published" : "Not published"}
+                  </span>
+                  <span className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+                    {(builderState.scope === "visible" ||
+                      builderState.scope === "published" ||
+                      builderState.scope === "workspace") && (
+                      <>
+                        {nonGlobalSpacesUsedInActions.length === 0 && (
+                          <>Visible & usable by all members of the workspace.</>
                         )}
-                        {builderState.scope === "hidden" && (
-                          <>Visible & usable by editors only.</>
-                        )}
-                        {builderState.scope === "private" && (
-                          <>Visible and usable by the current user only.</>
-                        )}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex-1">
-                    <Collapsible open={!!(isVisible && slackDataSource)}>
-                      <CollapsibleContent>
-                        <div className="flex flex-1 flex-row items-start gap-2">
+                        {nonGlobalSpacesUsedInActions.length > 0 && (
                           <div>
-                            <Icon visual={SlackLogo} size="sm" />
+                            Visible & usable by the members of the{" "}
+                            {`space${nonGlobalSpacesUsedInActions.length > 1 ? "s" : ""}`}{" "}
+                            :{" "}
+                            <b>
+                              {nonGlobalSpacesUsedInActions
+                                .map((v) => v.name)
+                                .join(", ")}
+                            </b>
                           </div>
-                          <div className="flex flex-col gap-1">
-                            <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
-                              Slack preferences
-                            </span>
-                            <span className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
-                              {slackChannelSelected.length > 0 ? (
-                                <>
-                                  Default agent for:{" "}
-                                  {slackChannelSelected
-                                    .map((c) => c.slackChannelName)
-                                    .join(", ")}
-                                </>
-                              ) : (
-                                <>
-                                  Select channels in which this agent replies by
-                                  default.
-                                </>
-                              )}
-                            </span>
-                            <div className="pt-2">
-                              <Button
-                                size="xs"
-                                variant="outline"
-                                icon={PencilSquareIcon}
-                                label="Select channels"
-                                onClick={() => {
-                                  setSlackDrawerOpened(true);
-                                }}
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      </CollapsibleContent>
-                    </Collapsible>
-                  </div>
+                        )}
+                      </>
+                    )}
+                    {builderState.scope === "hidden" && (
+                      <>Visible & usable by editors only.</>
+                    )}
+                    {builderState.scope === "private" && (
+                      <>Visible and usable by the current user only.</>
+                    )}
+                  </span>
                 </div>
               </div>
+              <div className="flex-1">
+                <Collapsible open={!!(isVisible && slackDataSource)}>
+                  <CollapsibleContent>
+                    <div className="flex flex-1 flex-row items-start gap-2">
+                      <div>
+                        <Icon visual={SlackLogo} size="sm" />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
+                          Slack preferences
+                        </span>
+                        <span className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+                          {slackChannelSelected.length > 0 ? (
+                            <>
+                              Default agent for:{" "}
+                              {slackChannelSelected
+                                .map((c) => c.slackChannelName)
+                                .join(", ")}
+                            </>
+                          ) : (
+                            <>
+                              Select channels in which this agent replies by
+                              default.
+                            </>
+                          )}
+                        </span>
+                        <div className="pt-2">
+                          <Button
+                            size="xs"
+                            variant="outline"
+                            icon={PencilSquareIcon}
+                            label="Select channels"
+                            onClick={() => {
+                              setSlackDrawerOpened(true);
+                            }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+              </div>
             </div>
-            <EditorsMembersList
-              currentUser={currentUser}
-              isVisible={isVisible}
-              owner={owner}
-              builderState={builderState}
-              setBuilderState={setBuilderState}
-              setEdited={setEdited}
-            />
-          </>
-        )}
+          </div>
+        </div>
+        <EditorsMembersList
+          currentUser={currentUser}
+          isVisible={isVisible}
+          owner={owner}
+          builderState={builderState}
+          setBuilderState={setBuilderState}
+          setEdited={setEdited}
+        />
       </div>
     </>
   );
@@ -891,13 +882,18 @@ function TagsSection({
     if (tagsSuggestions.status !== "ok") {
       return [];
     }
-
+    const currentTagIds = new Set(builderState.tags.map((t) => t.sId));
     // We make sure we don't suggest tags that doesn't already exists
-    return (
-      tagsSuggestions.suggestions
-        ?.slice(0, 3)
-        .filter((tag) => tags.findIndex((t) => t.name === tag) !== -1) ?? []
-    );
+    return tags
+      .filter((t) => !currentTagIds.has(t.sId))
+      .filter((t) => isBuilder(owner) || t.kind !== "protected")
+      .filter(
+        (tag) =>
+          tagsSuggestions.suggestions?.findIndex(
+            (t) => tag.name.toLowerCase() === t.toLowerCase()
+          ) !== -1
+      )
+      .slice(0, 3);
   }, [tagsSuggestions, tags]);
 
   const updateTagsSuggestions = useCallback(async () => {
@@ -929,7 +925,6 @@ function TagsSection({
             builderState={builderState}
             setBuilderState={setBuilderState}
             setEdited={setEdited}
-            tags={tags}
             tagsSuggestions={filteredTagsSuggestions}
           />
         )}
@@ -959,7 +954,6 @@ function TagsSuggestions({
   builderState,
   setBuilderState,
   setEdited,
-  tags,
   tagsSuggestions,
 }: {
   builderState: AssistantBuilderState;
@@ -967,25 +961,13 @@ function TagsSuggestions({
     stateFn: (state: AssistantBuilderState) => AssistantBuilderState
   ) => void;
   setEdited: (edited: boolean) => void;
-  tags: TagType[];
-  tagsSuggestions: string[];
+  tagsSuggestions: TagType[];
 }) {
-  const sendNotification = useSendNotification();
-  const addTag = async (name: string) => {
+  const addTag = async (tag: TagType) => {
     const isTagInAssistant =
-      builderState.tags.findIndex((t) => t.name === name) !== -1;
-    const tag: TagType | null = tags.find((t) => t.name === name) ?? null;
+      builderState.tags.findIndex((t) => t.sId === tag.sId) !== -1;
 
-    if (tag === null && !isTagInAssistant) {
-      sendNotification({
-        type: "error",
-        title: "Can't create tag",
-        description: "You cannot create tags in the Assistant Builder",
-      });
-      return;
-    }
-
-    if (tag != null && !isTagInAssistant) {
+    if (!isTagInAssistant) {
       setBuilderState((state) => ({
         ...state,
         tags: state.tags.concat(tag),
@@ -1006,7 +988,7 @@ function TagsSuggestions({
           key={`tag-suggestion-${tag}`}
           size="xs"
           variant="outline"
-          label={tag}
+          label={tag.name}
           onClick={() => addTag(tag)}
         />
       ))}

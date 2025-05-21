@@ -1,0 +1,148 @@
+name: Claude Code Review
+
+on:
+  pull_request:
+    types: [review_requested] # Runs when review is requested
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+  id-token: write
+
+jobs:
+  code-review:
+    runs-on: ubuntu-latest
+    steps:
+      # For review_requested events, add a label to the PR
+      - name: Add review-requested label
+        if: github.event.action == 'review_requested'
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              labels: ['claude-review-requested']
+            });
+
+      # Determine if we should run the review
+      # Not used at the moment.
+      - name: Determine if review should run
+        id: should-run
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          result-encoding: string
+          script: |
+            // For review_requested events, always run.
+            if (context.payload.action === 'review_requested') {
+              console.log('Running because review was requested');
+              return 'true';
+            }
+
+            // For synchronize events, check for the label.
+            if (context.payload.action === 'synchronize') {
+              const { data: labels } = await github.rest.issues.listLabelsOnIssue({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.payload.pull_request.number
+              });
+
+              const hasLabel = labels.some(label => label.name === 'claude-review-requested');
+              console.log(`PR has claude-review-requested label: ${hasLabel}`);
+              return hasLabel ? 'true' : 'false';
+            }
+
+            // Default to not running.
+            return 'false';
+
+      # Only proceed if it's a review_requested event or a synchronize with the label
+      - name: Checkout code
+        if: steps.should-run.outputs.result == 'true'
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Fetch full history for accurate diffs
+
+      # Create symlink from CODING_RULES.md to CLAUDE.md
+      - name: Create symlink for Claude documentation
+        if: steps.should-run.outputs.result == 'true'
+        run: |
+          ln -s front/CODING_RULES.md CLAUDE.md
+          ls -la # Verify the symlink was created correctly
+
+      - name: Run Code Review with Claude
+        if: steps.should-run.outputs.result == 'true'
+        id: code-review
+        uses: anthropics/claude-code-action@beta
+        with:
+          # Define the review focus areas
+          direct_prompt: >-
+            Code Review Agent
+
+            ## Primary Objective:
+            Perform thorough, actionable code reviews that identify genuine issues while avoiding
+            unnecessary commentary. Reviews must adhere to our established coding guidelines.
+
+            ## Review Approach:
+            - Focus on functional correctness, performance, and security
+            - If the code is high quality with no significant issues, respond with "LGTM" (Looks Good To Me)
+            - Do not include trivial stylistic comments, nitpicks, or personal preferences that
+              don't impact code quality or functionality.
+            - Always reference our coding guidelines when evaluating code quality and style
+
+            ## Review Focus Areas:
+            1. Adherence to Coding Guidelines
+              - Review the provided coding guidelines document first
+              - Evaluate code against all standards and conventions specified in our guidelines
+              - Flag deviations from our established patterns and practices
+
+            2. Correctness & Potential Bugs
+              - Flag logic errors and forgotten edge cases
+              - Flag race conditions and concurrency issues
+              - Verify error handling and exception safety
+              - Review type safety and implicit conversions
+
+            3. Performance Concerns
+              - Flag algorithmic inefficiencies and complexity issues
+              - Identify unnecessary computations or memory usage
+              - Check database query performance (missing indexes, N+1 queries)
+              - Verify proper resource management (connections, file handles)
+              - Suggest caching opportunities where appropriate
+              - Check memory management for leaks
+
+            4. Code Quality & Maintainability
+              - Evaluate separation of concerns
+              - Check for appropriate abstractions
+              - Flag duplicated logic
+              - Identify overly complex constructs
+
+            5. Security
+              - Check for proper input validation
+              - Verify authentication/authorization controls
+              - Flag common vulnerabilities (SQL injection, XSS, CSRF)
+              - Review sensitive data handling practices
+
+            ## Output Format:
+            For each issue identified:
+            1. Specify the location (file, line number)
+            2. Describe the problem concisely
+            3. Explain the potential impact
+            4. Suggest a specific improvement with example code when helpful
+            5. When applicable, reference the specific section of our coding guidelines
+
+            If suggesting improvements beyond fixing issues (optimizations, refactorings),
+            clearly label these as optional enhancements rather than required changes.
+
+            Conclude with a short overall assessment of the code quality and the most important areas to address.
+
+            Reference Materials:
+            - Always review and apply the standards in our coding guidelines document before providing feedback
+            - When our guidelines conflict with general best practices, our guidelines take precedence
+
+          # Limited tools for safer review operations
+          allowed_tools: '["Bash(git diff --name-only HEAD~1)", "Bash(git diff HEAD~1)", "View", "GlobTool", "GrepTool"]'
+
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}

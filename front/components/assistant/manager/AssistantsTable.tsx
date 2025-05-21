@@ -5,6 +5,7 @@ import {
   Chip,
   ClipboardIcon,
   DataTable,
+  EyeIcon,
   PencilSquareIcon,
   Tooltip,
   TrashIcon,
@@ -13,13 +14,17 @@ import type { CellContext } from "@tanstack/react-table";
 import { useRouter } from "next/router";
 import { useMemo, useState } from "react";
 
+import { SCOPE_INFO } from "@app/components/assistant/AssistantDetails";
 import { DeleteAssistantDialog } from "@app/components/assistant/DeleteAssistantDialog";
 import { GlobalAgentAction } from "@app/components/assistant/manager/GlobalAgentAction";
 import { TableTagSelector } from "@app/components/assistant/manager/TableTagSelector";
 import { assistantUsageMessage } from "@app/components/assistant/Usage";
-import { SCOPE_INFO } from "@app/components/assistant_builder/Sharing";
 import { useTags } from "@app/lib/swr/tags";
-import { classNames, formatTimestampToFriendlyDate } from "@app/lib/utils";
+import {
+  classNames,
+  formatTimestampToFriendlyDate,
+  tagsSorter,
+} from "@app/lib/utils";
 import type {
   AgentConfigurationScope,
   AgentUsageType,
@@ -127,42 +132,35 @@ const getTableColumns = ({
         className: "w-32",
       },
     },
-    ...(tags.length > 0
-      ? [
-          {
-            header: "Tags",
-            accessorKey: "agentTagsAsString",
-            cell: (info: CellContext<RowData, string>) => (
-              <DataTable.CellContent
-                grow
-                className="flex flex-row items-center"
-              >
-                <div className="group flex flex-row items-center gap-1">
-                  <div className="truncate text-muted-foreground dark:text-muted-foreground-night">
-                    <Tooltip
-                      tooltipTriggerAsChild
-                      label={info.getValue()}
-                      trigger={<span>{info.getValue()}</span>}
-                    />
-                  </div>
-                  <TableTagSelector
-                    tags={tags}
-                    agentTags={info.row.original.agentTags}
-                    agentConfigurationId={info.row.original.sId}
-                    owner={owner}
-                    onChange={mutateAgentConfigurations}
-                  />
-                </div>
-              </DataTable.CellContent>
-            ),
-            isFilterable: true,
-            meta: {
-              className: "w-32 xl:w-64",
-              tooltip: "Tags",
-            },
-          },
-        ]
-      : []),
+    {
+      header: "Tags",
+      accessorKey: "agentTagsAsString",
+      cell: (info: CellContext<RowData, string>) => (
+        <DataTable.CellContent grow className="flex flex-row items-center">
+          <div className="group flex flex-row items-center gap-1">
+            <div className="truncate text-muted-foreground dark:text-muted-foreground-night">
+              <Tooltip
+                tooltipTriggerAsChild
+                label={info.getValue()}
+                trigger={<span>{info.getValue()}</span>}
+              />
+            </div>
+            <TableTagSelector
+              tags={tags}
+              agentTags={info.row.original.agentTags}
+              agentConfigurationId={info.row.original.sId}
+              owner={owner}
+              onChange={mutateAgentConfigurations}
+            />
+          </div>
+        </DataTable.CellContent>
+      ),
+      isFilterable: true,
+      meta: {
+        className: "w-32 xl:w-64",
+        tooltip: "Tags",
+      },
+    },
     {
       header: "Usage",
       accessorKey: "usage.messageCount",
@@ -183,7 +181,7 @@ const getTableColumns = ({
       meta: { className: "w-16", tooltip: "Messages in the last 30 days" },
     },
     {
-      header: "Feedbacks",
+      header: "Feedback",
       accessorFn: (row: RowData) => row.feedbacks,
       cell: (info: CellContext<RowData, { up: number; down: number }>) => {
         if (info.row.original.scope === "global") {
@@ -268,6 +266,8 @@ export function AssistantsTable({
   mutateAgentConfigurations,
 }: AssistantsTableProps) {
   const { tags } = useTags({ owner });
+  const sortedTags = useMemo(() => [...tags].sort(tagsSorter), [tags]);
+
   const [showDeleteDialog, setShowDeleteDialog] = useState<{
     open: boolean;
     agentConfiguration: LightAgentConfigurationType | undefined;
@@ -368,6 +368,17 @@ export function AssistantsTable({
                     kind: "item" as const,
                   },
                   {
+                    label: "More info",
+                    "data-gtm-label": "assistantMoreInfoButton",
+                    "data-gtm-location": "assistantDetails",
+                    icon: EyeIcon,
+                    onClick: (e: React.MouseEvent) => {
+                      e.stopPropagation();
+                      setShowDetails(agentConfiguration);
+                    },
+                    kind: "item" as const,
+                  },
+                  {
                     label: "Duplicate (New)",
                     "data-gtm-label": "assistantDuplicationButton",
                     "data-gtm-location": "assistantDetails",
@@ -434,7 +445,7 @@ export function AssistantsTable({
             data={rows}
             columns={getTableColumns({
               owner,
-              tags,
+              tags: sortedTags,
               isBatchEdit,
               mutateAgentConfigurations,
             })}

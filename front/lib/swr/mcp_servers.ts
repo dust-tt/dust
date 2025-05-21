@@ -194,12 +194,17 @@ export function useCreateRemoteMCPServer(owner: LightWorkspaceType) {
 
   const createWithUrlSync = async (
     url: string,
-    includeGlobal: boolean
+    includeGlobal: boolean,
+    sharedSecret?: string
   ): Promise<CreateMCPServerResponseBody> => {
+    const body: any = { url, serverType: "remote", includeGlobal };
+    if (sharedSecret) {
+      body.sharedSecret = sharedSecret;
+    }
     const response = await fetch(`/api/w/${owner.sId}/mcp`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url, serverType: "remote", includeGlobal }),
+      body: JSON.stringify(body),
     });
 
     if (!response.ok) {
@@ -291,6 +296,7 @@ export function useUpdateRemoteMCPServer(
     name: string;
     icon: string;
     description: string;
+    sharedSecret?: string;
   }): Promise<PatchMCPServerResponseBody> => {
     const response = await fetch(`/api/w/${owner.sId}/mcp/${serverId}`, {
       method: "PATCH",
@@ -369,8 +375,7 @@ export function useCreateMCPServerConnection({
       sendNotification({
         type: "success",
         title: "Provider connected",
-        description:
-          "Your capability provider has been connected successfully.",
+        description: `Successfully connected to provider ${provider}.`,
       });
     } else {
       sendNotification({

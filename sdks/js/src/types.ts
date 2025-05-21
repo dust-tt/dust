@@ -815,6 +815,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "openai_o1_high_reasoning_custom_assistants_feature"
   | "openai_o1_high_reasoning_feature"
   | "openai_o1_mini_feature"
+  | "pro_plan_salesforce_connector"
   | "salesforce_feature"
   | "search_knowledge_builder"
   | "show_debug_tools"
@@ -822,6 +823,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "usage_data_api"
   | "custom_webcrawler"
   | "exploded_tables_query"
+  | "pro_plan_salesforce_connector"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -2899,18 +2901,27 @@ export type ValidateActionRequestBodyType = z.infer<
   typeof ValidateActionRequestBodySchema
 >;
 
+export const ClientSideMCPServerNameSchema = z.string().min(5).max(30);
+
 export const PublicRegisterMCPRequestBodySchema = z.object({
-  serverId: z.string(),
-  serverName: z.string().min(3).max(25),
+  serverName: ClientSideMCPServerNameSchema,
 });
 
 export type PublicRegisterMCPRequestBody = z.infer<
   typeof PublicRegisterMCPRequestBodySchema
 >;
 
+export const PublicHeartbeatMCPRequestBodySchema = z.object({
+  serverId: z.string(),
+});
+
+export type PublicHeartbeatMCPRequestBody = z.infer<
+  typeof PublicHeartbeatMCPRequestBodySchema
+>;
+
 export const RegisterMCPResponseSchema = z.object({
-  success: z.boolean(),
   expiresAt: z.string(),
+  serverId: z.string(),
 });
 
 export type RegisterMCPResponseType = z.infer<typeof RegisterMCPResponseSchema>;
@@ -2925,12 +2936,21 @@ export type HeartbeatMCPResponseType = z.infer<
 >;
 
 export const PublicPostMCPResultsRequestBodySchema = z.object({
-  requestId: z.string(),
   result: z.unknown(),
+  serverId: z.string(),
 });
 
 export type PublicPostMCPResultsRequestBody = z.infer<
   typeof PublicPostMCPResultsRequestBodySchema
+>;
+
+export const PostMCPRequestsRequestQuerySchema = z.object({
+  serverId: z.string(),
+  lastEventId: z.string().optional(),
+});
+
+export type PostMCPRequestsRequestQueryType = z.infer<
+  typeof PostMCPRequestsRequestQuerySchema
 >;
 
 export const PostMCPResultsResponseSchema = z.object({

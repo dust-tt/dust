@@ -10,10 +10,17 @@ import type { SearchLabelsActionType } from "@app/lib/actions/search_labels";
 import type { TablesQueryActionType } from "@app/lib/actions/tables_query";
 import type { WebsearchActionType } from "@app/lib/actions/websearch";
 
+import {
+  ActionGeneratedFileType,
+  BaseAgentActionType,
+} from "@app/lib/actions/types";
 import type { ContentFragmentType } from "../content_fragment";
 import type { ModelId } from "../shared/model_id";
 import type { UserType, WorkspaceType } from "../user";
-import type { LightAgentConfigurationType } from "./agent";
+import type {
+  AgentConfigurationStatus,
+  LightAgentConfigurationType,
+} from "./agent";
 
 /**
  * Mentions
@@ -50,8 +57,13 @@ export type MessageType =
   | UserMessageType
   | ContentFragmentType;
 
+export type LightMessageType =
+  | LightAgentMessageType
+  | UserMessageType
+  | ContentFragmentType;
+
 export type MessageWithContentFragmentsType =
-  | AgentMessageType
+  | LightAgentMessageType
   | (UserMessageType & {
       contenFragments?: ContentFragmentType[];
     });
@@ -60,6 +72,8 @@ export type WithRank<T> = T & {
   rank: number;
 };
 export type MessageWithRankType = WithRank<MessageType>;
+
+export type LightMessageWithRankType = WithRank<LightMessageType>;
 
 /**
  * User messages
@@ -104,7 +118,9 @@ export type UserMessageType = {
 };
 export type UserMessageWithRankType = WithRank<UserMessageType>;
 
-export function isUserMessageType(arg: MessageType): arg is UserMessageType {
+export function isUserMessageType(
+  arg: MessageType | LightMessageType
+): arg is UserMessageType {
   return arg.type === "user_message";
 }
 
@@ -150,6 +166,13 @@ export const ACTION_RUNNING_LABELS: Record<AgentActionType["type"], string> = {
   tool_action: "Using a tool",
 };
 
+export interface CitationType {
+  description?: string;
+  href?: string;
+  title: string;
+  provider: string;
+}
+
 /**
  * Both `action` and `message` are optional (we could have a no-op agent basically).
  *
@@ -157,21 +180,28 @@ export const ACTION_RUNNING_LABELS: Record<AgentActionType["type"], string> = {
  * them together in case of error of either. We store an error only here whether it's an error
  * coming from the action or from the message generation.
  */
-export type AgentMessageType = {
+export type BaseAgentMessageType = {
+  type: "agent_message";
+  sId: string;
+  version: number;
+  parentMessageId: string | null;
+  status: AgentMessageStatus;
+  content: string | null;
+  chainOfThought: string | null;
+  error: {
+    code: string;
+    message: string;
+  } | null;
+};
+
+export type AgentMessageType = BaseAgentMessageType & {
   id: ModelId;
   agentMessageId: ModelId;
   created: number;
-  type: "agent_message";
-  sId: string;
   visibility: MessageVisibility;
-  version: number;
-  parentMessageId: string | null;
   configuration: LightAgentConfigurationType;
   skipToolsValidation: boolean;
-  status: AgentMessageStatus;
   actions: AgentActionType[];
-  content: string | null;
-  chainOfThought: string | null;
   rawContents: Array<{
     step: number;
     content: string;
@@ -180,6 +210,20 @@ export type AgentMessageType = {
     code: string;
     message: string;
   } | null;
+};
+
+export type LightAgentMessageType = BaseAgentMessageType & {
+  configuration: {
+    sId: string;
+    name: string;
+    pictureUrl: string;
+    status: AgentConfigurationStatus;
+    canRead: boolean;
+    requestedGroupIds: string[][];
+  };
+  actions: BaseAgentActionType[];
+  citations: Record<string, CitationType>;
+  generatedFiles: Omit<ActionGeneratedFileType, "snippet">[];
 };
 
 export type AgentMessageWithRankType = WithRank<AgentMessageType>;
@@ -290,7 +334,7 @@ export type SubmitMessageError = {
 export interface FetchConversationMessagesResponse {
   hasMore: boolean;
   lastValue: number | null;
-  messages: MessageWithRankType[];
+  messages: LightMessageWithRankType[];
 }
 
 /**

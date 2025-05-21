@@ -5,7 +5,6 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { validateMCPServerAccess } from "@app/lib/api/actions/mcp/client_side_registry";
 import { getConversation } from "@app/lib/api/assistant/conversation";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
-import type { FetchConversationMessagesResponse } from "@app/lib/api/assistant/messages";
 import { fetchConversationMessages } from "@app/lib/api/assistant/messages";
 import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
@@ -14,7 +13,11 @@ import type { Authenticator } from "@app/lib/auth";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { statsDClient } from "@app/logger/statsDClient";
 import { apiError } from "@app/logger/withlogging";
-import type { UserMessageType, WithAPIErrorResponse } from "@app/types";
+import type {
+  FetchConversationMessagesResponse,
+  UserMessageType,
+  WithAPIErrorResponse,
+} from "@app/types";
 import { InternalPostMessagesRequestBodySchema } from "@app/types";
 
 async function handler(
@@ -114,7 +117,6 @@ async function handler(
           context.clientSideMCPServerIds,
           async (serverId) =>
             validateMCPServerAccess(auth, {
-              workspaceId: auth.getNonNullableWorkspace().sId,
               serverId,
             }),
           { concurrency: 10 }

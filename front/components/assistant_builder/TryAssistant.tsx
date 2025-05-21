@@ -24,26 +24,23 @@ import type {
 } from "@app/types";
 import { Err, Ok } from "@app/types";
 
+interface UsePreviewAssistantProps {
+  owner: WorkspaceType;
+  builderState: AssistantBuilderState;
+  reasoningModels: ModelConfigurationType[];
+}
+
 export function usePreviewAssistant({
   owner,
   builderState,
-  isPreviewOpened,
   reasoningModels,
-}: {
-  owner: WorkspaceType;
-  builderState: AssistantBuilderState;
-  isPreviewOpened: boolean;
-  reasoningModels: ModelConfigurationType[];
-}): {
-  shouldAnimate: boolean;
-  isFading: boolean; // Add isFading to the return type
-  draftAssistant: LightAgentConfigurationType | null;
-} {
+}: UsePreviewAssistantProps) {
   const animationLength = 1000;
   const [draftAssistant, setDraftAssistant] =
     useState<LightAgentConfigurationType | null>();
   const [animateDrawer, setAnimateDrawer] = useState(false);
   const [isFading, setIsFading] = useState(false);
+  const [isSavingDraftAgent, setIsSavingDraftAgent] = useState(true); // We always make the draft agent on initial page load so we can set it true.
   const drawerAnimationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const debounceHandle = useRef<NodeJS.Timeout | undefined>(undefined);
   const sendNotification = useSendNotification();
@@ -73,14 +70,12 @@ export function usePreviewAssistant({
   }, [builderState]);
 
   const submit = useCallback(async () => {
-    if (!isPreviewOpened) {
-      // Preview is not opened, no need to submit
-      return;
-    }
     if (draftAssistant && !hasChanged) {
       // No changes since the last submission
       return;
     }
+
+    setIsSavingDraftAgent(true);
 
     const aRes = await submitAssistantBuilderForm({
       owner,
@@ -107,6 +102,8 @@ export function usePreviewAssistant({
       reasoningModels,
     });
 
+    setIsSavingDraftAgent(false);
+
     if (!aRes.isOk()) {
       sendNotification({
         title: "Error saving Draft Agent",
@@ -124,7 +121,6 @@ export function usePreviewAssistant({
       setHasChanged(false);
     }, animationLength / 2);
   }, [
-    isPreviewOpened,
     draftAssistant,
     hasChanged,
     owner,
@@ -150,6 +146,7 @@ export function usePreviewAssistant({
     shouldAnimate: animateDrawer,
     isFading,
     draftAssistant: draftAssistant ?? null,
+    isSavingDraftAgent,
   };
 }
 

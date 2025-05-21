@@ -1,6 +1,8 @@
-import type { DustAPI } from "@dust-tt/client";
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport";
+import { JSONRPCMessage } from "@modelcontextprotocol/sdk/types";
 import { EventSourcePolyfill } from "event-source-polyfill";
+
+import { DustAPI } from ".";
 
 const logger = console;
 
@@ -15,50 +17,38 @@ const RECONNECT_DELAY_MS = 5 * 1000; // 5 seconds.
  */
 export class DustMcpServerTransport implements Transport {
   private eventSource: EventSource | null = null;
-  private requestIdMap = new Map<number, string>();
   private lastEventId: string | null = null;
   private heartbeatTimer: NodeJS.Timeout | null = null;
+  private serverId: string | null = null;
 
   // Required by Transport interface.
-  public onmessage?: (message: any) => void;
+  public onmessage?: (message: JSONRPCMessage) => void;
   public onclose?: () => void;
   public onerror?: (error: Error) => void;
   public sessionId?: string;
 
   constructor(
     private readonly dustAPI: DustAPI,
-    private readonly serverId: string = this.generateUUID()
+    private readonly serverName: string = "Dust Extension"
   ) {}
-
-  /**
-   * Generate a UUID v4 for use as a server ID
-   */
-  private generateUUID(): string {
-    // Simple UUID v4 generation.
-    return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(
-      /[xy]/g,
-      function (c) {
-        const r = (Math.random() * 16) | 0,
-          v = c === "x" ? r : (r & 0x3) | 0x8;
-        return v.toString(16);
-      }
-    );
-  }
 
   /**
    * Register the MCP server with the Dust backend
    */
   private async registerServer(): Promise<boolean> {
     const registerRes = await this.dustAPI.registerMCPServer({
-      serverId: this.serverId,
+      serverName: this.serverName,
     });
     if (registerRes.isErr()) {
       logger.error(`Failed to register MCP server: ${registerRes.error}`);
       return false;
     }
 
+    const { serverId } = registerRes.value;
+    this.serverId = serverId;
+
     // Setup heartbeat to keep the server registration alive.
-    this.setupHeartbeat();
+    this.setupHeartbeat(serverId);
 
     return true;
   }
@@ -66,7 +56,7 @@ export class DustMcpServerTransport implements Transport {
   /**
    * Send periodic heartbeats to keep the server registration alive.
    */
-  private setupHeartbeat(): void {
+  private setupHeartbeat(serverId: string): void {
     // Clear any existing heartbeat timer.
     if (this.heartbeatTimer) {
       clearInterval(this.heartbeatTimer);
@@ -75,10 +65,15 @@ export class DustMcpServerTransport implements Transport {
     // Set up a new heartbeat timer (every HEARTBEAT_INTERVAL_MS).
     this.heartbeatTimer = setInterval(async () => {
       const heartbeatRes = await this.dustAPI.heartbeatMCPServer({
-        serverId: this.serverId,
+        serverId,
       });
-      if (heartbeatRes.isErr()) {
-        logger.error(`Failed to heartbeat MCP server: ${heartbeatRes.error}`);
+
+      if (heartbeatRes.isErr() || heartbeatRes.value.success === false) {
+        const error = heartbeatRes.isErr()
+          ? heartbeatRes.error
+          : new Error("Server not registered");
+
+        logger.error(`Failed to heartbeat MCP server: ${error}`);
         await this.registerServer();
       }
     }, HEARTBEAT_INTERVAL_MS);
@@ -111,7 +106,12 @@ export class DustMcpServerTransport implements Transport {
    * Connect to the SSE stream for the workspace
    */
   private async connectToRequestsStream(): Promise<void> {
-    // Close any existing connection
+    if (!this.serverId) {
+      logger.error("Server ID is not set");
+      return;
+    }
+
+    // Close any existing connection.
     if (this.eventSource) {
       this.eventSource.close();
       this.eventSource = null;
@@ -138,28 +138,28 @@ export class DustMcpServerTransport implements Transport {
 
     this.eventSource.onmessage = (event) => {
       try {
+        if (event.data === "done") {
+          // Ignore this event.
+          return;
+        }
+
         const eventData = JSON.parse(event.data);
 
-        // Save the eventId for reconnection purposes
+        // Save the eventId for reconnection purposes.
         if (eventData.eventId) {
           this.lastEventId = eventData.eventId;
         }
 
         // The actual request is in the data property.
-        const { request, requestId } = eventData.data;
-        if (!request) {
+        const { data } = eventData;
+        if (!data) {
           logger.error("No data field found in the event");
           return;
         }
 
-        // Store the requestId mapped to the request id.
-        if (typeof request.id === "number" && requestId) {
-          this.requestIdMap.set(request.id, requestId);
-        }
-
         // Forward the message to the handler.
         if (this.onmessage) {
-          this.onmessage(request);
+          this.onmessage(data);
         } else {
           logger.error(
             "ERROR: onmessage handler not set - MCP response won't be sent"
@@ -200,26 +200,15 @@ export class DustMcpServerTransport implements Transport {
    * Send a message to the server
    * This method is required by the Transport interface
    */
-  async send(message: any): Promise<void> {
-    // Get the requestId using the message.id.
-    const requestId = this.requestIdMap.get(message.id);
-    if (!requestId) {
-      logger.error(`No requestId found for message ID: ${message.id}`);
-      this.onerror?.(
-        new Error(`Missing requestId for message ID: ${message.id}`)
-      );
+  async send(message: JSONRPCMessage): Promise<void> {
+    if (!this.serverId) {
+      logger.error("Server ID is not set");
       return;
-    }
-
-    // Clean up the map entry.
-    if (typeof message.id === "number") {
-      this.requestIdMap.delete(message.id);
     }
 
     // Send tool results back to Dust via HTTP POST.
     const postResultsRes = await this.dustAPI.postMCPResults({
       serverId: this.serverId,
-      requestId,
       result: message,
     });
 
@@ -256,7 +245,7 @@ export class DustMcpServerTransport implements Transport {
   /**
    * Get the current server ID
    */
-  getServerId(): string {
-    return this.serverId;
+  getServerId(): string | undefined {
+    return this.serverId ?? undefined;
   }
 }

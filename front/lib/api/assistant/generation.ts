@@ -7,19 +7,23 @@ import {
 } from "@app/lib/actions/types/guards";
 import { isRetrievalConfiguration } from "@app/lib/actions/types/guards";
 import { citationMetaPrompt } from "@app/lib/api/assistant/citations";
-import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import { visualizationSystemPrompt } from "@app/lib/api/assistant/visualization";
 import type { Authenticator } from "@app/lib/auth";
 import type {
   AgentConfigurationType,
+  LightAgentConfigurationType,
   ModelConfigurationType,
   UserMessageType,
 } from "@app/types";
 
 /**
- * Generation execution.
+ * Generation of the prompt for agents with multiple actions.
+ *
+ * agentsList is passed by caller so that if there's an {ASSISTANTS_LIST} in the
+ * instructions, it can be replaced appropriately. The Extract action doesn't
+ * need that replacement, and needs to avoid a dependency on
+ * getAgentConfigurations here, so it passes null.
  */
-
 export async function constructPromptMultiActions(
   auth: Authenticator,
   {
@@ -29,6 +33,7 @@ export async function constructPromptMultiActions(
     model,
     hasAvailableActions,
     errorContext,
+    agentsList,
   }: {
     userMessage: UserMessageType;
     agentConfiguration: AgentConfigurationType;
@@ -36,6 +41,7 @@ export async function constructPromptMultiActions(
     model: ModelConfigurationType;
     hasAvailableActions: boolean;
     errorContext?: string;
+    agentsList: LightAgentConfigurationType[] | null;
   }
 ) {
   const d = moment(new Date()).tz(userMessage.context.timezone);
@@ -72,18 +78,10 @@ export async function constructPromptMultiActions(
   );
 
   // Replacement if instructions includes "{ASSISTANTS_LIST}"
-  if (instructions.includes("{ASSISTANTS_LIST}")) {
-    if (!auth.isUser()) {
-      throw new Error("Unexpected unauthenticated call to `constructPrompt`");
-    }
-    const agents = await getAgentConfigurations({
-      auth,
-      agentsGetView: auth.user() ? "list" : "all",
-      variant: "light",
-    });
+  if (instructions.includes("{ASSISTANTS_LIST}") && agentsList) {
     instructions = instructions.replaceAll(
       "{ASSISTANTS_LIST}",
-      agents
+      agentsList
         .map((agent) => {
           let agentDescription = "";
           agentDescription += `@${agent.name}: `;

@@ -1,0 +1,70 @@
+name: Publish Sparkle
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_type:
+        description: "Type of version bump (major, minor, patch)"
+        required: true
+        default: "patch"
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish_sparkle
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 20.13.0
+          cache: "npm"
+          cache-dependency-path: ./sparkle/package-lock.json
+
+      - name: Build and test
+        working-directory: sparkle
+        run: npm ci && npm run build
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 20.13.0
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Version bump
+        working-directory: sparkle
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          npm version ${{ github.event.inputs.version_type }} -m "chore(release): bump version to %s [skip ci]"
+          git push --follow-tags
+
+      - name: Publish
+        working-directory: sparkle
+        run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

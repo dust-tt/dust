@@ -1,5 +1,4 @@
 import { AssistantFavorites } from "@app/ui/components/assistants/AssistantFavorites";
-import { useAuth } from "@app/ui/components/auth/AuthProvider";
 import type { ProtectedRouteChildrenProps } from "@app/ui/components/auth/ProtectedRoute";
 import { ConversationContainer } from "@app/ui/components/conversation/ConversationContainer";
 import { ConversationsListButton } from "@app/ui/components/conversation/ConversationsListButton";
@@ -7,22 +6,13 @@ import { FileDropProvider } from "@app/ui/components/conversation/FileUploaderCo
 import { DropzoneContainer } from "@app/ui/components/DropzoneContainer";
 import { InputBarProvider } from "@app/ui/components/input_bar/InputBarContext";
 import { UserDropdownMenu } from "@app/ui/components/navigation/UserDropdownMenu";
-import {
-  BarHeader,
-  Button,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@dust-tt/sparkle";
+import { BarHeader } from "@dust-tt/sparkle";
 
 export const MainPage = ({
   user,
   workspace,
   handleLogout,
 }: ProtectedRouteChildrenProps) => {
-  const { handleSelectWorkspace } = useAuth();
-
   const isMac = /macintosh|mac os x/i.test(navigator.userAgent);
   const shortcut = isMac ? "⇧⌘E" : "⇧+Ctrl+E";
 
@@ -31,37 +21,6 @@ export const MainPage = ({
       <BarHeader
         title={""}
         tooltip={"Conversation"}
-        leftActions={
-          <div className="flex flex-col gap-2">
-            {user.workspaces.length > 1 && (
-              <div className="flex flex-row items-center gap-2">
-                <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                  Workspace:
-                </p>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      label={workspace ? workspace.name : "Select workspace"}
-                      variant="ghost"
-                      isSelect
-                    />
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent className="h-96">
-                    {user.workspaces.map((w) => {
-                      return (
-                        <DropdownMenuItem
-                          key={w.sId}
-                          onClick={() => void handleSelectWorkspace(w)}
-                          label={w.name}
-                        />
-                      );
-                    })}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            )}
-          </div>
-        }
         rightActions={
           <div className="flex flex-row items-right space-x-1">
             <ConversationsListButton size="sm" />

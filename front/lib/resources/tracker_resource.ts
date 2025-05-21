@@ -348,6 +348,7 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
         where: {
           trackerConfigurationId: this.id,
           scope: "maintained",
+          workspaceId: this.workspaceId,
         },
       });
 
@@ -380,6 +381,10 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
     // @ts-expect-error Resource with space does not like my include but it works.
     const trackers = await this.baseFetchWithAuthorization(auth, {
       ...options,
+      where: {
+        ...(options?.where || {}),
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
       includes: [
         ...(options?.includes || []),
         {
@@ -434,9 +439,6 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
     { includeDeleted }: { includeDeleted?: boolean } = {}
   ): Promise<TrackerConfigurationResource[]> {
     return this.baseFetch(auth, {
-      where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
-      },
       includeDeleted,
     });
   }
@@ -564,7 +566,7 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
 
     let dsConfigs = await TrackerDataSourceConfigurationModel.findAll({
       where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
+        workspaceId: owner.id,
         dataSourceId: dataSourceModelId,
         scope: "watched",
         // TODO(DOC_TRACKER): GIN index.
