@@ -21,7 +21,7 @@ async function appendRollbackCommand(
 }
 
 function getRedirectUri(): string {
-  return `${apiConfig.getDustAPIConfig().url}/oauth/${PROVIDER}/finalize`;
+  return `${apiConfig.getDustFrontAPIUrl()}/oauth/${PROVIDER}/finalize`;
 }
 
 async function migrateGithubConnectionId(
