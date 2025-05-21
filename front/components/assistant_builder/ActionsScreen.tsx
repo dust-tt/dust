@@ -92,6 +92,7 @@ import {
   useBuilderActionInfo,
 } from "@app/components/assistant_builder/useBuilderActionInfo";
 import { useTools } from "@app/components/assistant_builder/useTools";
+import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import { getInternalMCPServerNameAndWorkspaceId } from "@app/lib/actions/mcp_internal_actions/constants";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/utils";
@@ -158,16 +159,10 @@ export function hasActionError(
 
 function actionIcon(
   action: AssistantBuilderActionAndDataVisualizationConfiguration,
-  mcpServerViews: MCPServerViewType[]
+  mcpServerView: MCPServerViewType | null
 ) {
-  if (action.type === "MCP") {
-    const server = mcpServerViews.find(
-      (v) => v.sId === action.configuration.mcpServerViewId
-    )?.server;
-
-    if (server) {
-      return getAvatar(server, "xs");
-    }
+  if (mcpServerView?.server) {
+    return getAvatar(mcpServerView.server, "xs");
   }
 
   if (action.type === "DATA_VISUALIZATION") {
@@ -182,9 +177,14 @@ function actionIcon(
 }
 
 function actionDisplayName(
-  action: AssistantBuilderActionAndDataVisualizationConfiguration
+  action: AssistantBuilderActionAndDataVisualizationConfiguration,
+  mcpServerView: MCPServerViewType | null
 ) {
-  if (action.type === "MCP" || action.type === "DATA_VISUALIZATION") {
+  if (mcpServerView) {
+    return getMcpServerViewDisplayName(mcpServerView);
+  }
+
+  if (action.type === "DATA_VISUALIZATION") {
     return asDisplayName(action.name);
   }
 
@@ -692,6 +692,14 @@ function ActionCard({
     return null;
   }
 
+  const mcpServerView =
+    action.type === "MCP"
+      ? mcpServerViews.find(
+          (mcpServerView) =>
+            mcpServerView.sId === action.configuration.mcpServerViewId
+        ) ?? null
+      : null;
+
   const actionError = hasActionError(action, mcpServerViews);
   return (
     <Card
@@ -710,8 +718,10 @@ function ActionCard({
     >
       <div className="flex w-full flex-col gap-2 text-sm">
         <div className="flex w-full items-center gap-2 font-medium text-foreground dark:text-foreground-night">
-          {actionIcon(action, mcpServerViews)}
-          <div className="w-full truncate">{actionDisplayName(action)}</div>
+          {actionIcon(action, mcpServerView)}
+          <div className="w-full truncate">
+            {actionDisplayName(action, mcpServerView)}
+          </div>
         </div>
         {isLegacyConfig ? (
           <div className="mx-auto">
@@ -994,7 +1004,7 @@ function ActionEditor({
               />
             )}
             <h2 className="heading-lg line-clamp-1 text-foreground dark:text-foreground-night">
-              {actionDisplayName(action)}
+              {actionDisplayName(action, selectedMCPServerView ?? null)}
             </h2>
           </div>
 
