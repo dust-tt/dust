@@ -1,5 +1,8 @@
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
-import { INTERNAL_MCP_SERVERS } from "@app/lib/actions/mcp_internal_actions/constants";
+import {
+  getInternalMCPServerNameAndWorkspaceId,
+  INTERNAL_MCP_SERVERS,
+} from "@app/lib/actions/mcp_internal_actions/constants";
 import type {
   MCPServerType,
   MCPServerViewType,
@@ -95,8 +98,10 @@ export function mcpServerIsRemote(
 
 export function getMcpServerViewDisplayName(view: MCPServerViewType) {
   // Unreleased internal servers are displayed with a suffix in the UI.
-  if (view.serverType === "internal" && view.server.version.startsWith("0")) {
+  const res = getInternalMCPServerNameAndWorkspaceId(view.server.sId);
+  if (res.isOk() && INTERNAL_MCP_SERVERS[res.value.name].flag != null) {
     return `${asDisplayName(view.server.name)} (Preview)`;
   }
+
   return asDisplayName(view.server.name);
 }
