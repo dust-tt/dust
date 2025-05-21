@@ -88,11 +88,10 @@ const EMPTY_BATCH = {
  * Returns a batch of up to 100 RemoteMCPServerResource servers and a function to get the next batch.
  */
 export async function getBatchRemoteMCPServers(offset = 0, limit = 100) {
-  const resources = await RemoteMCPServerResource.dangerouslyListAllServers(
+  const servers = await RemoteMCPServerResource.dangerouslyListAllServersIds(
     offset,
     limit
   );
-  const servers = resources.map((s) => s.id);
   return {
     servers,
     next: async () => {

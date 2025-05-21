@@ -157,14 +157,14 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
   }
 
   // Admin operations - don't use in non-temporal code.
-  static async dangerouslyListAllServers(offset = 0, limit = 100) {
+  static async dangerouslyListAllServersIds(offset = 0, limit = 100) {
     const servers = await RemoteMCPServerModel.findAll({
       offset,
       limit,
       order: [["id", "ASC"]],
     });
     return servers.map(
-      (server) => new this(RemoteMCPServerModel, server.get())
+      (server) => server.id
     );
   }
 
