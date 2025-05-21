@@ -605,6 +605,8 @@ async function fetchWorkspaceAgentConfigurationsForView(
 
     const tags: TagResource[] = tagsPerAgent[agent.id] ?? [];
 
+    const member = agentIdsForUserAsEditor.includes(agent.id);
+
     const agentConfigurationType: AgentConfigurationType = {
       id: agent.id,
       sId: agent.sId,
@@ -631,17 +633,9 @@ async function fetchWorkspaceAgentConfigurationsForView(
         )
       ),
       tags: tags.map((t) => t.toJSON()).sort(tagsSorter),
-      canRead: false,
-      canEdit: false,
+      canRead: member || agent.scope === "visible",
+      canEdit: member,
     };
-
-    const { canRead, canEdit } = getAgentPermissions(
-      agentConfigurationType,
-      agentIdsForUserAsEditor
-    );
-
-    agentConfigurationType.canRead = canRead;
-    agentConfigurationType.canEdit = canEdit;
 
     agentConfigurationTypes.push(agentConfigurationType);
   }
@@ -1790,24 +1784,5 @@ export async function updateAgentPermissions(
   } catch (error) {
     // Catch errors thrown from within the transaction
     return new Err(normalizeError(error));
-  }
-}
-
-export function getAgentPermissions(
-  agentConfiguration: LightAgentConfigurationType,
-  memberAgents: ModelId[]
-) {
-  switch (agentConfiguration.scope) {
-    case "global":
-      return { canRead: true, canEdit: false };
-    case "hidden":
-    case "visible":
-      const member = memberAgents.includes(agentConfiguration.id);
-      return {
-        canRead: member || agentConfiguration.scope === "visible",
-        canEdit: member,
-      };
-    default:
-      assertNever(agentConfiguration.scope);
   }
 }
