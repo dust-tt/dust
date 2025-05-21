@@ -2,7 +2,7 @@ import { verify } from "jsonwebtoken";
 
 import config from "@app/lib/api/config";
 import { AuthFlowError } from "@app/lib/iam/errors";
-import { MembershipInvitation } from "@app/lib/models/membership_invitation";
+import { MembershipInvitationModel } from "@app/lib/models/membership_invitation";
 import { Workspace } from "@app/lib/models/workspace";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
@@ -16,7 +16,7 @@ import { Err, Ok } from "@app/types";
 
 export async function getPendingMembershipInvitationForToken(
   inviteToken: string | string[] | undefined
-): Promise<Result<MembershipInvitation | null, AuthFlowError>> {
+): Promise<Result<MembershipInvitationModel | null, AuthFlowError>> {
   if (inviteToken && typeof inviteToken === "string") {
     let decodedToken: { membershipInvitationId: number } | null = null;
     try {
@@ -41,7 +41,7 @@ export async function getPendingMembershipInvitationForToken(
       );
     }
 
-    const membershipInvite = await MembershipInvitation.findOne({
+    const membershipInvite = await MembershipInvitationModel.findOne({
       where: {
         id: decodedToken.membershipInvitationId,
         status: "pending",
@@ -65,8 +65,8 @@ export async function getPendingMembershipInvitationForToken(
 export async function getPendingMembershipInvitationForEmailAndWorkspace(
   email: string,
   workspaceId: number
-): Promise<MembershipInvitation | null> {
-  return MembershipInvitation.findOne({
+): Promise<MembershipInvitationModel | null> {
+  return MembershipInvitationModel.findOne({
     where: {
       inviteEmail: email,
       workspaceId,
@@ -81,7 +81,7 @@ export async function getPendingMembershipInvitationWithWorkspaceForEmail(
   invitation: MembershipInvitationType;
   workspace: LightWorkspaceType;
 } | null> {
-  const pendingInvitation = await MembershipInvitation.findOne({
+  const pendingInvitation = await MembershipInvitationModel.findOne({
     where: {
       inviteEmail: email,
       status: "pending",
@@ -111,7 +111,7 @@ export async function getPendingMembershipInvitationWithWorkspaceForEmail(
 }
 
 export async function markInvitationAsConsumed(
-  membershipInvite: MembershipInvitation,
+  membershipInvite: MembershipInvitationModel,
   user: UserResource
 ) {
   membershipInvite.status = "consumed";
