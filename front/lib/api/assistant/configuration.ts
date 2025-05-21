@@ -220,6 +220,7 @@ function determineGlobalAgentIdsToFetch(
 ): string[] | undefined {
   switch (agentsGetView) {
     case "archived":
+    case "published":
     case "current_user":
       return []; // fetch no global agents
     case "global":

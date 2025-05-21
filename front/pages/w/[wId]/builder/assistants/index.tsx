@@ -181,9 +181,6 @@ export default function WorkspaceAssistants({
       archived: archivedAgentConfigurations.sort((a, b) =>
         a.name.toLowerCase().localeCompare(b.name.toLowerCase())
       ),
-      workspace: allAgents.filter((a) => a.scope === "workspace"),
-      published: allAgents.filter((a) => a.scope === "published"),
-      current_user: allAgents.filter((a) => a.lastAuthors?.includes("Me")),
       search: agentConfigurations
         .filter(
           (a) =>
