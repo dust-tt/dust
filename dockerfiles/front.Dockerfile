@@ -72,4 +72,4 @@ ENV NEXT_PUBLIC_GTM_TRACKING_ID=$NEXT_PUBLIC_GTM_TRACKING_ID
 WORKDIR /app
 COPY --from=prod /app ./
 
-CMD ["server.js"]
+CMD [".next/standalone/server.js"]
