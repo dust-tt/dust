@@ -1,5 +1,4 @@
 import { ProtectedRoute } from "@app/ui/components/auth/ProtectedRoute";
-import { ConversationPage } from "@app/ui/pages/ConversationPage";
 import { LoginPage } from "@app/ui/pages/LoginPage";
 import { MainPage } from "@app/ui/pages/MainPage";
 import { RunPage } from "@app/ui/pages/RunPage";
@@ -10,24 +9,11 @@ export const routes = [
     element: <LoginPage />,
   },
   {
-    path: "/conversations/:conversationId",
-    element: (
-      <ProtectedRoute>
-        {({ user, workspace, handleLogout }) => (
-          <ConversationPage
-            user={user}
-            workspace={workspace}
-            handleLogout={handleLogout}
-          />
-        )}
-      </ProtectedRoute>
-    ),
-  },
-  {
     path: "/run",
     element: <ProtectedRoute>{() => <RunPage />}</ProtectedRoute>,
   },
-  // Keep catch-all route last.
+  // Keep catch-all route last. This will handle both root path and /conversations/:conversationId
+  // Since we catch all, we will need to manually handle the conversationId in the MainPage component.
   {
     path: "*",
     element: (
