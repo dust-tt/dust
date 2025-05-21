@@ -32,6 +32,7 @@ makeScript(
       include: [
         {
           model: ConnectorModel,
+          required: true,
           as: "connector",
           where: {
             type: "webcrawler",
