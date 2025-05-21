@@ -1,5 +1,6 @@
 import { groupBy } from "lodash";
 import { useContext, useMemo } from "react";
+import { useCallback } from "react";
 
 import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
 import type {
@@ -17,6 +18,7 @@ import {
 } from "@app/lib/actions/utils";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { SpaceType } from "@app/types";
+import { getInternalMCPServerNameAndWorkspaceId } from "@app/lib/actions/mcp_internal_actions/constants";
 
 const DEFAULT_TOOLS_WITH_CONFIGURATION = [
   "DUST_APP_RUN",
@@ -127,7 +129,25 @@ interface UseToolsProps {
 export const useTools = ({ actions }: UseToolsProps) => {
   const { mcpServerViews, spaces } = useContext(AssistantBuilderContext);
 
-  const nonDefaultMCPActions = useMemo(() => getAvailableNonMCPActions(), []);
+  const hideAction = useCallback(
+    (key: ActionSpecificationWithType) => {
+      switch (key.type) {
+        case "DUST_APP_RUN":
+          return mcpServerViews.some((v) => {
+            const r = getInternalMCPServerNameAndWorkspaceId(v.server.sId);
+            return r.isOk() && r.value.name === "run_dust_app";
+          });
+        default:
+          return false;
+      }
+    },
+    [mcpServerViews]
+  );
+
+  const nonDefaultMCPActions = useMemo(
+    () => getAvailableNonMCPActions().filter((a) => !hideAction(a)),
+    [hideAction]
+  );
 
   const {
     mcpServerViewsWithKnowledge,
