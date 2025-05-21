@@ -49,8 +49,6 @@ const viewRequiresUser = (view?: string): boolean =>
  *           The view to use when retrieving agents:
  *           - all: Retrieves all non-private agents (default if not authenticated)
  *           - list: Retrieves all active agents accessible to the user (default if authenticated)
- *           - workspace: Retrieves all agents with workspace scope
- *           - published: Retrieves all agents with published scope
  *           - global: Retrieves all global agents
  *           - favorites: Retrieves all agents marked as favorites by the user (only available to authenticated users)
  *         schema:
