@@ -956,28 +956,28 @@ export async function createAgentConfiguration(
         throw new Error("Cannot remove reserved tag from agent");
       }
 
-      for (const tag of tags) {
-        const tagResource = await TagResource.fetchById(auth, tag.sId);
-        if (tagResource) {
-          if (
-            !isBuilder(owner) &&
-            tagResource.kind === "protected" &&
-            !existingReservedTags.includes(tagResource.sId)
-          ) {
-            throw new Error("Cannot add reserved tag to agent");
-          }
-          await TagAgentModel.create(
-            {
-              workspaceId: owner.id,
-              tagId: tagResource.id,
-              agentConfigurationId: agentConfigurationInstance.id,
-            },
-            { transaction: t }
-          );
-        }
-      }
-
       if (status === "active") {
+        for (const tag of tags) {
+          const tagResource = await TagResource.fetchById(auth, tag.sId);
+          if (tagResource) {
+            if (
+              !isBuilder(owner) &&
+              tagResource.kind === "protected" &&
+              !existingReservedTags.includes(tagResource.sId)
+            ) {
+              throw new Error("Cannot add reserved tag to agent");
+            }
+            await TagAgentModel.create(
+              {
+                workspaceId: owner.id,
+                tagId: tagResource.id,
+                agentConfigurationId: agentConfigurationInstance.id,
+              },
+              { transaction: t }
+            );
+          }
+        }
+
         assert(
           isLegacyAllowed(owner, agentConfigurationInstance.scope) ||
             editors.some((e) => e.sId === auth.user()?.sId) ||
