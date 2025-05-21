@@ -1,4 +1,5 @@
 import type { StoredUser } from "@app/shared/services/auth";
+import { useAuth } from "@app/ui/components/auth/AuthProvider";
 import { useTheme } from "@app/ui/hooks/useTheme";
 import {
   Avatar,
@@ -26,6 +27,7 @@ export const UserDropdownMenu = ({
   handleLogout,
 }: UserDropdownMenuProps) => {
   const { theme, updateTheme } = useTheme();
+  const { workspace, handleSelectWorkspace } = useAuth();
 
   return (
     <DropdownMenu>
@@ -45,6 +47,23 @@ export const UserDropdownMenu = ({
         </div>
       </DropdownMenuTrigger>
       <DropdownMenuContent>
+        {workspace && (
+          <>
+            <DropdownMenuLabel label="Workspace" />
+            <DropdownMenuRadioGroup value={workspace.sId}>
+              {user.workspaces.map((w) => {
+                return (
+                  <DropdownMenuRadioItem
+                    key={w.sId}
+                    onClick={() => void handleSelectWorkspace(w)}
+                    label={w.name}
+                    value={w.sId}
+                  />
+                );
+              })}
+            </DropdownMenuRadioGroup>
+          </>
+        )}
         <DropdownMenuLabel label="Preferences" />
         <DropdownMenuSub>
           <DropdownMenuSubTrigger label="Theme" icon={LightModeIcon} />
