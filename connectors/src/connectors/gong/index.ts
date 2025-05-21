@@ -41,7 +41,7 @@ const TRANSCRIPTS_FOLDER_TITLE = "Transcripts";
 
 const RETENTION_PERIOD_CONFIG_KEY = "gongRetentionPeriodDays";
 
-const SMART_TRACKERS_CONFIG_KEY = "gongSmartTrackersEnabled";
+const TRACKERS_CONFIG_KEY = "gongTrackersEnabled";
 
 // This function generates a connector-wise unique schedule ID for the Gong sync.
 // The IDs of the workflows spawned by this schedule will follow the pattern:
@@ -79,7 +79,7 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
       },
       {
         baseUrl: baseUrlRes.value,
-        smartTrackersEnabled: false,
+        trackersEnabled: false,
       }
     );
 
@@ -306,8 +306,8 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
     switch (configKey) {
       case RETENTION_PERIOD_CONFIG_KEY:
         return new Ok(configuration.retentionPeriodDays?.toString() || null);
-      case SMART_TRACKERS_CONFIG_KEY:
-        return new Ok(configuration.smartTrackersEnabled.toString());
+      case TRACKERS_CONFIG_KEY:
+        return new Ok(configuration.trackersEnabled.toString());
       default:
         return new Err(new Error(`Invalid config key ${configKey}`));
     }
@@ -357,8 +357,8 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
 
         return new Ok(undefined);
       }
-      case SMART_TRACKERS_CONFIG_KEY: {
-        await configuration.setSmartTrackersEnabled(configValue === "true");
+      case TRACKERS_CONFIG_KEY: {
+        await configuration.setTrackersEnabled(configValue === "true");
 
         return new Ok(undefined);
       }

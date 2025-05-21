@@ -15,7 +15,7 @@ import { normalizeError } from "@app/types";
 
 // TODO(2025-03-17): share these variables between connectors and front.
 const GONG_RETENTION_PERIOD_CONFIG_KEY = "gongRetentionPeriodDays";
-const GONG_SMART_TRACKERS_CONFIG_KEY = "gongSmartTrackersEnabled";
+const GONG_TRACKERS_CONFIG_KEY = "gongTrackersEnabled";
 
 function checkIsNonNegativeInteger(value: string) {
   return /^[0-9]+$/.test(value);
@@ -43,14 +43,14 @@ export function GongOptionComponent({
     configKey: GONG_RETENTION_PERIOD_CONFIG_KEY,
   });
   const {
-    configValue: smartTrackersConfigValue,
-    mutateConfig: mutateSmartTrackersConfig,
+    configValue: trackersConfigValue,
+    mutateConfig: mutateTrackersConfig,
   } = useConnectorConfig({
     owner,
     dataSource,
-    configKey: GONG_SMART_TRACKERS_CONFIG_KEY,
+    configKey: GONG_TRACKERS_CONFIG_KEY,
   });
-  const smartTrackersEnabled = smartTrackersConfigValue === "true";
+  const trackersEnabled = trackersConfigValue === "true";
 
   const [retentionPeriod, setRetentionPeriod] = useState<string>(
     retentionPeriodConfigValue || ""
@@ -87,8 +87,8 @@ export function GongOptionComponent({
     if (res.ok) {
       if (configKey === GONG_RETENTION_PERIOD_CONFIG_KEY) {
         await mutateRetentionPeriodConfig();
-      } else if (configKey === GONG_SMART_TRACKERS_CONFIG_KEY) {
-        await mutateSmartTrackersConfig();
+      } else if (configKey === GONG_TRACKERS_CONFIG_KEY) {
+        await mutateTrackersConfig();
       }
       setLoading(false);
       sendNotification({
@@ -172,11 +172,11 @@ export function GongOptionComponent({
                 size="xs"
                 onClick={async () => {
                   await handleConfigUpdate(
-                    GONG_SMART_TRACKERS_CONFIG_KEY,
-                    (!smartTrackersEnabled).toString()
+                    GONG_TRACKERS_CONFIG_KEY,
+                    (!trackersEnabled).toString()
                   );
                 }}
-                selected={smartTrackersEnabled}
+                selected={trackersEnabled}
                 disabled={readOnly || !isAdmin || loading}
               />
             </div>
