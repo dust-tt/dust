@@ -793,6 +793,7 @@ async function* runMultiActionsAgent(
           configurationId: agentConfiguration.sId,
           messageId: agentMessage.sId,
           actionName: a.name,
+          availableActions: availableActions.map((a) => a.name),
         },
         "Model attempted to run an action that is not part of the agent configuration."
       );
