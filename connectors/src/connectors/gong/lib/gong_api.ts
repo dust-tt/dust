@@ -336,7 +336,7 @@ export class GongClient {
   async getCallsMetadata({
     callIds,
     pageCursor = null,
-    trackersEnabled: trackersEnabled = false,
+    trackersEnabled = false,
   }: {
     callIds: string[];
     pageCursor?: string | null;
