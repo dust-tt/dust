@@ -1,42 +1,26 @@
 import {
   Button,
   CollapsibleComponent,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuTrigger,
   Input,
   Label,
   XMarkIcon,
 } from "@dust-tt/sparkle";
 
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { LightWorkspaceType } from "@app/types";
-import {
-  WebcrawlerCustomCrawler,
-  WebCrawlerHeaderRedactedValue,
-} from "@app/types";
+import { WebCrawlerHeaderRedactedValue } from "@app/types";
 
 type Header = { key: string; value: string };
 
 type AdvancedSettingsProps = {
   headers: Header[];
-  crawler: WebcrawlerCustomCrawler | null;
   onHeadersChange: (headers: Header[]) => void;
-  onCrawlerChange: (crawler: WebcrawlerCustomCrawler | null) => void;
   owner: LightWorkspaceType;
 };
 
 export function AdvancedSettingsSection({
   headers,
-  crawler,
   onHeadersChange,
-  onCrawlerChange,
-  owner,
 }: AdvancedSettingsProps) {
-  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
-
   const updateHeaderField = (
     index: number,
     field: keyof Header,
@@ -99,51 +83,6 @@ export function AdvancedSettingsSection({
             </div>
             <Button variant="outline" label="Add Header" onClick={addHeader} />
           </div>
-
-          {hasFeature("custom_webcrawler") && (
-            <div className="flex w-full flex-col gap-3">
-              <div>
-                <Label>Custom crawler</Label>
-                <p>Select a custom crawler to use</p>
-              </div>
-
-              <div>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      label={crawler ?? "default"}
-                      variant="outline"
-                      size="sm"
-                      isSelect
-                    />
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent>
-                    <DropdownMenuRadioGroup
-                      value={crawler ?? "default"}
-                      onValueChange={(value) => {
-                        if (value === "default") {
-                          onCrawlerChange(null);
-                        } else {
-                          onCrawlerChange(
-                            Object.values(WebcrawlerCustomCrawler).find(
-                              (v) => v === value
-                            ) ?? null
-                          );
-                        }
-                      }}
-                    >
-                      <DropdownMenuRadioItem value="default">
-                        default
-                      </DropdownMenuRadioItem>
-                      <DropdownMenuRadioItem value="firecrawl">
-                        firecrawl
-                      </DropdownMenuRadioItem>
-                    </DropdownMenuRadioGroup>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            </div>
-          )}
         </div>
       }
     />

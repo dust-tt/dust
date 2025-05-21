@@ -49,7 +49,7 @@ function getInitialFormState(
     crawlMode: config?.crawlMode ?? WEBCRAWLER_DEFAULT_CONFIGURATION.crawlMode,
     crawlFrequency:
       config?.crawlFrequency ?? WEBCRAWLER_DEFAULT_CONFIGURATION.crawlFrequency,
-    customCrawler: config?.customCrawler ?? null,
+    customCrawler: WEBCRAWLER_DEFAULT_CONFIGURATION.customCrawler,
     headers: config?.headers
       ? Object.entries(config.headers).map(([k, v]) => ({ key: k, value: v }))
       : [],
