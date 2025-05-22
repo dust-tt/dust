@@ -642,6 +642,7 @@ export class GroupResource extends BaseResource<GroupModel> {
           workspaceId: workspace.id,
           kind: "global",
         },
+        transaction,
       });
 
       if (!globalGroup) {

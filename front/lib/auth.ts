@@ -103,16 +103,20 @@ export class Authenticator {
   }
 
   /**
-   * Create a permisive read-only transaction.
+   * Helper method to create a managed sequelize transaction
+   * with shared options.
    *
    * Use READ_COMMITTED because we do read-only.
    * We just use the transaction to make sure we share a pool connection.
    * Note: READ_UNCOMMITTED is not supported in PG
    */
-  private static createReadTransaction() {
-    return frontSequelize.transaction({
-      isolationLevel: Transaction.ISOLATION_LEVELS.READ_COMMITTED,
-    });
+  private static transaction<T>(
+    callback: (t: Transaction) => Promise<T>
+  ): Promise<T> {
+    return frontSequelize.transaction(
+      { isolationLevel: Transaction.ISOLATION_LEVELS.READ_COMMITTED },
+      callback
+    );
   }
 
   /**
@@ -160,47 +164,47 @@ export class Authenticator {
     session: SessionWithUser | null,
     wId: string
   ): Promise<Authenticator> {
-    const t = await Authenticator.createReadTransaction();
-
-    const [workspace, user] = await Promise.all([
-      Workspace.findOne({
-        where: {
-          sId: wId,
-        },
-        transaction: t,
-      }),
-      session ? UserResource.fetchByAuth0Sub(session.user.sub, t) : null,
-    ]);
-
-    let role = "none" as RoleType;
-    let groups: GroupResource[] = [];
-    let subscription: SubscriptionResource | null = null;
-
-    if (user && workspace) {
-      [role, groups, subscription] = await Promise.all([
-        MembershipResource.getActiveMembershipOfUserInWorkspace({
-          user,
-          workspace: renderLightWorkspaceType({ workspace }),
-          transaction: t,
-        }).then((m) => m?.role ?? "none"),
-        GroupResource.listUserGroupsInWorkspace({
-          user,
-          workspace: renderLightWorkspaceType({ workspace }),
+    return Authenticator.transaction(async (t) => {
+      const [workspace, user] = await Promise.all([
+        Workspace.findOne({
+          where: {
+            sId: wId,
+          },
           transaction: t,
         }),
-        SubscriptionResource.fetchActiveByWorkspace(
-          renderLightWorkspaceType({ workspace }),
-          t
-        ),
+        session ? UserResource.fetchByAuth0Sub(session.user.sub, t) : null,
       ]);
-    }
 
-    return new Authenticator({
-      workspace,
-      user,
-      role,
-      groups,
-      subscription,
+      let role = "none" as RoleType;
+      let groups: GroupResource[] = [];
+      let subscription: SubscriptionResource | null = null;
+
+      if (user && workspace) {
+        [role, groups, subscription] = await Promise.all([
+          MembershipResource.getActiveMembershipOfUserInWorkspace({
+            user,
+            workspace: renderLightWorkspaceType({ workspace }),
+            transaction: t,
+          }).then((m) => m?.role ?? "none"),
+          GroupResource.listUserGroupsInWorkspace({
+            user,
+            workspace: renderLightWorkspaceType({ workspace }),
+            transaction: t,
+          }),
+          SubscriptionResource.fetchActiveByWorkspace(
+            renderLightWorkspaceType({ workspace }),
+            t
+          ),
+        ]);
+      }
+
+      return new Authenticator({
+        workspace,
+        user,
+        role,
+        groups,
+        subscription,
+      });
     });
   }
 
@@ -217,41 +221,41 @@ export class Authenticator {
     session: SessionWithUser | null,
     wId: string | null
   ): Promise<Authenticator> {
-    const t = await Authenticator.createReadTransaction();
-
-    const [workspace, user] = await Promise.all([
-      wId
-        ? Workspace.findOne({
-            where: { sId: wId },
-            transaction: t,
-          })
-        : null,
-      session ? UserResource.fetchByAuth0Sub(session.user.sub) : null,
-    ]);
-
-    let groups: GroupResource[] = [];
-    let subscription: SubscriptionResource | null = null;
-
-    if (workspace) {
-      [groups, subscription] = await Promise.all([
-        user?.isDustSuperUser
-          ? GroupResource.internalFetchAllWorkspaceGroups({
-              workspaceId: workspace.id,
+    return Authenticator.transaction(async (t) => {
+      const [workspace, user] = await Promise.all([
+        wId
+          ? Workspace.findOne({
+              where: { sId: wId },
+              transaction: t,
             })
-          : [],
-        SubscriptionResource.fetchActiveByWorkspace(
-          renderLightWorkspaceType({ workspace }),
-          t
-        ),
+          : null,
+        session ? UserResource.fetchByAuth0Sub(session.user.sub) : null,
       ]);
-    }
 
-    return new Authenticator({
-      workspace,
-      user,
-      role: user?.isDustSuperUser ? "admin" : "none",
-      groups,
-      subscription,
+      let groups: GroupResource[] = [];
+      let subscription: SubscriptionResource | null = null;
+
+      if (workspace) {
+        [groups, subscription] = await Promise.all([
+          user?.isDustSuperUser
+            ? GroupResource.internalFetchAllWorkspaceGroups({
+                workspaceId: workspace.id,
+              })
+            : [],
+          SubscriptionResource.fetchActiveByWorkspace(
+            renderLightWorkspaceType({ workspace }),
+            t
+          ),
+        ]);
+      }
+
+      return new Authenticator({
+        workspace,
+        user,
+        role: user?.isDustSuperUser ? "admin" : "none",
+        groups,
+        subscription,
+      });
     });
   }
   /**
@@ -266,47 +270,47 @@ export class Authenticator {
     uId: string,
     wId: string
   ): Promise<Authenticator> {
-    const t = await Authenticator.createReadTransaction();
-
-    const [workspace, user] = await Promise.all([
-      Workspace.findOne({
-        where: {
-          sId: wId,
-        },
-        transaction: t,
-      }),
-      UserResource.fetchById(uId, t),
-    ]);
-
-    let role: RoleType = "none";
-    let groups: GroupResource[] = [];
-    let subscription: SubscriptionResource | null = null;
-
-    if (user && workspace) {
-      [role, groups, subscription] = await Promise.all([
-        MembershipResource.getActiveMembershipOfUserInWorkspace({
-          user,
-          workspace: renderLightWorkspaceType({ workspace }),
-          transaction: t,
-        }).then((m) => m?.role ?? "none"),
-        GroupResource.listUserGroupsInWorkspace({
-          user,
-          workspace: renderLightWorkspaceType({ workspace }),
+    return Authenticator.transaction(async (t) => {
+      const [workspace, user] = await Promise.all([
+        Workspace.findOne({
+          where: {
+            sId: wId,
+          },
           transaction: t,
         }),
-        SubscriptionResource.fetchActiveByWorkspace(
-          renderLightWorkspaceType({ workspace }),
-          t
-        ),
+        UserResource.fetchById(uId, t),
       ]);
-    }
 
-    return new Authenticator({
-      workspace,
-      user,
-      role,
-      groups,
-      subscription,
+      let role: RoleType = "none";
+      let groups: GroupResource[] = [];
+      let subscription: SubscriptionResource | null = null;
+
+      if (user && workspace) {
+        [role, groups, subscription] = await Promise.all([
+          MembershipResource.getActiveMembershipOfUserInWorkspace({
+            user,
+            workspace: renderLightWorkspaceType({ workspace }),
+            transaction: t,
+          }).then((m) => m?.role ?? "none"),
+          GroupResource.listUserGroupsInWorkspace({
+            user,
+            workspace: renderLightWorkspaceType({ workspace }),
+            transaction: t,
+          }),
+          SubscriptionResource.fetchActiveByWorkspace(
+            renderLightWorkspaceType({ workspace }),
+            t
+          ),
+        ]);
+      }
+
+      return new Authenticator({
+        workspace,
+        user,
+        role,
+        groups,
+        subscription,
+      });
     });
   }
 
@@ -331,68 +335,68 @@ export class Authenticator {
       }
     >
   > {
-    const t = await Authenticator.createReadTransaction();
+    return Authenticator.transaction(async (t) => {
+      const user = await UserResource.fetchByAuth0Sub(token.sub, t);
+      if (!user) {
+        return new Err({ code: "user_not_found" });
+      }
 
-    const user = await UserResource.fetchByAuth0Sub(token.sub, t);
-    if (!user) {
-      return new Err({ code: "user_not_found" });
-    }
+      const workspace = await Workspace.findOne({
+        where: {
+          sId: wId,
+        },
+        transaction: t,
+      });
+      if (!workspace) {
+        return new Err({ code: "workspace_not_found" });
+      }
 
-    const workspace = await Workspace.findOne({
-      where: {
-        sId: wId,
-      },
-      transaction: t,
-    });
-    if (!workspace) {
-      return new Err({ code: "workspace_not_found" });
-    }
+      const strategy =
+        token[`${config.getAuth0NamespaceClaim()}connection.strategy`];
+      if (
+        workspace.ssoEnforced &&
+        strategy &&
+        !isSupportedEnterpriseConnectionStrategy(strategy)
+      ) {
+        return new Err(
+          new SSOEnforcedError(
+            "Access requires Single Sign-On (SSO) authentication. Use your SSO provider to sign in.",
+            workspace.sId
+          )
+        );
+      }
 
-    const strategy =
-      token[`${config.getAuth0NamespaceClaim()}connection.strategy`];
-    if (
-      workspace.ssoEnforced &&
-      strategy &&
-      !isSupportedEnterpriseConnectionStrategy(strategy)
-    ) {
-      return new Err(
-        new SSOEnforcedError(
-          "Access requires Single Sign-On (SSO) authentication. Use your SSO provider to sign in.",
-          workspace.sId
-        )
+      let role = "none" as RoleType;
+      let groups: GroupResource[] = [];
+      let subscription: SubscriptionResource | null = null;
+
+      [role, groups, subscription] = await Promise.all([
+        MembershipResource.getActiveMembershipOfUserInWorkspace({
+          user: user,
+          workspace: renderLightWorkspaceType({ workspace }),
+          transaction: t,
+        }).then((m) => m?.role ?? "none"),
+        GroupResource.listUserGroupsInWorkspace({
+          user,
+          workspace: renderLightWorkspaceType({ workspace }),
+          transaction: t,
+        }),
+        SubscriptionResource.fetchActiveByWorkspace(
+          renderLightWorkspaceType({ workspace }),
+          t
+        ),
+      ]);
+
+      return new Ok(
+        new Authenticator({
+          workspace,
+          groups,
+          user,
+          role,
+          subscription,
+        })
       );
-    }
-
-    let role = "none" as RoleType;
-    let groups: GroupResource[] = [];
-    let subscription: SubscriptionResource | null = null;
-
-    [role, groups, subscription] = await Promise.all([
-      MembershipResource.getActiveMembershipOfUserInWorkspace({
-        user: user,
-        workspace: renderLightWorkspaceType({ workspace }),
-        transaction: t,
-      }).then((m) => m?.role ?? "none"),
-      GroupResource.listUserGroupsInWorkspace({
-        user,
-        workspace: renderLightWorkspaceType({ workspace }),
-        transaction: t,
-      }),
-      SubscriptionResource.fetchActiveByWorkspace(
-        renderLightWorkspaceType({ workspace }),
-        t
-      ),
-    ]);
-
-    return new Ok(
-      new Authenticator({
-        workspace,
-        groups,
-        user,
-        role,
-        subscription,
-      })
-    );
+    });
   }
 
   /**
@@ -586,45 +590,45 @@ export class Authenticator {
     workspaceId: string,
     options?: { dangerouslyRequestAllGroups: boolean }
   ): Promise<Authenticator> {
-    const t = await Authenticator.createReadTransaction();
+    return Authenticator.transaction(async (t) => {
+      const workspace = await Workspace.findOne({
+        where: {
+          sId: workspaceId,
+        },
+        transaction: t,
+      });
+      if (!workspace) {
+        throw new Error(`Could not find workspace with sId ${workspaceId}`);
+      }
 
-    const workspace = await Workspace.findOne({
-      where: {
-        sId: workspaceId,
-      },
-      transaction: t,
-    });
-    if (!workspace) {
-      throw new Error(`Could not find workspace with sId ${workspaceId}`);
-    }
+      const [groups, subscription] = await Promise.all([
+        (async () => {
+          if (options?.dangerouslyRequestAllGroups) {
+            return GroupResource.internalFetchAllWorkspaceGroups({
+              workspaceId: workspace.id,
+              transaction: t,
+            });
+          } else {
+            const globalGroup =
+              await GroupResource.internalFetchWorkspaceGlobalGroup(
+                workspace.id,
+                t
+              );
+            return globalGroup ? [globalGroup] : [];
+          }
+        })(),
+        SubscriptionResource.fetchActiveByWorkspace(
+          renderLightWorkspaceType({ workspace }),
+          t
+        ),
+      ]);
 
-    const [groups, subscription] = await Promise.all([
-      (async () => {
-        if (options?.dangerouslyRequestAllGroups) {
-          return GroupResource.internalFetchAllWorkspaceGroups({
-            workspaceId: workspace.id,
-            transaction: t,
-          });
-        } else {
-          const globalGroup =
-            await GroupResource.internalFetchWorkspaceGlobalGroup(
-              workspace.id,
-              t
-            );
-          return globalGroup ? [globalGroup] : [];
-        }
-      })(),
-      SubscriptionResource.fetchActiveByWorkspace(
-        renderLightWorkspaceType({ workspace }),
-        t
-      ),
-    ]);
-
-    return new Authenticator({
-      workspace,
-      role: "admin",
-      groups,
-      subscription,
+      return new Authenticator({
+        workspace,
+        role: "admin",
+        groups,
+        subscription,
+      });
     });
   }
 
