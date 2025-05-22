@@ -15,7 +15,10 @@ import {
   ConfigurableToolInputSchemas,
   JsonSchemaSchema,
 } from "@app/lib/actions/mcp_internal_actions/input_schemas";
-import { getDataSourceConfiguration, shouldAutoGenerateTags } from "@app/lib/actions/mcp_internal_actions/servers/utils";
+import {
+  getDataSourceConfiguration,
+  shouldAutoGenerateTags,
+} from "@app/lib/actions/mcp_internal_actions/servers/utils";
 import type { ProcessActionOutputsType } from "@app/lib/actions/process";
 import { getExtractFileTitle } from "@app/lib/actions/process/utils";
 import { applyDataSourceFilters } from "@app/lib/actions/retrieval";
@@ -107,9 +110,11 @@ function createServer(
         agentLoopContext.runContext.actionConfiguration
       ) &&
       agentLoopContext.runContext.actionConfiguration.timeFrame !== null);
-      
-  const isTagsModeConfigured = agentLoopContext ? shouldAutoGenerateTags(agentLoopContext) : false;
-  
+
+  const isTagsModeConfigured = agentLoopContext
+    ? shouldAutoGenerateTags(agentLoopContext)
+    : false;
+
   // Create tag schemas if needed for tag auto-mode
   const tagsInputSchema = isTagsModeConfigured
     ? {
