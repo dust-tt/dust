@@ -15,6 +15,7 @@ type AgentConfiguration =
 interface AgentsMCPProps {
   port?: number;
   sId?: string[];
+  transport?: string;
 }
 
 const AgentsMCP: FC<AgentsMCPProps> = ({ port, sId: requestedSIds }) => {

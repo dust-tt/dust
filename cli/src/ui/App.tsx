@@ -33,6 +33,10 @@ interface AppProps {
       shortFlag: "s";
       isMultiple: true;
     };
+    transport: {
+      type: "string";
+      shortFlag: "t";
+    };
   }>;
 }
 
@@ -57,7 +61,7 @@ const App: FC<AppProps> = ({ cli }) => {
     case "logout":
       return <Logout />;
     case "agents-mcp":
-      return <AgentsMCP port={flags.port} sId={flags.sId} />;
+      return <AgentsMCP port={flags.port} sId={flags.sId} transport={flags.transport} />;
     case "chat":
       return <Chat sId={flags.sId?.[0]} />;
     case "help":
