@@ -195,8 +195,7 @@ describe("JSON Schema Utilities", () => {
                             },
                             mimeType: {
                               type: "string",
-                              const:
-                                "application/vnd.dust.tool-input.agent",
+                              const: "application/vnd.dust.tool-input.agent",
                             },
                           },
                           required: ["uri", "mimeType"],

@@ -49,9 +49,7 @@ function createServer(auth: Authenticator): McpServer {
           `The query sent to the agent. This is the question or instruction that will be processed by the agent, which will respond with its own capabilities and knowledge.`
         ),
       childAgent:
-        ConfigurableToolInputSchemas[
-          INTERNAL_MIME_TYPES.TOOL_INPUT.AGENT
-        ],
+        ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.AGENT],
     },
     async ({ query, childAgent: { uri } }) => {
       const childAgentIdRes = parseAgentConfigurationUri(uri);
