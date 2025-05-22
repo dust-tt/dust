@@ -39,6 +39,8 @@ const ModelLLMIdSchema = FlexibleEnumSchema<
   | "o3"
   | "o3-mini"
   | "o4-mini"
+  | "claude-4-opus-20250514"
+  | "claude-4-sonnet-20250514"
   | "claude-3-opus-20240229"
   | "claude-3-5-sonnet-20240620"
   | "claude-3-5-sonnet-20241022"
