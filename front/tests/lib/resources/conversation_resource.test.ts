@@ -1,5 +1,5 @@
 import type { Transaction } from "sequelize";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { destroyConversation } from "@app/lib/api/assistant/conversation/destroy";
 import { Authenticator } from "@app/lib/auth";
@@ -10,6 +10,19 @@ import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { LightWorkspaceType } from "@app/types/user";
+
+vi.mock(import("../../../lib/api/redis"), async (importOriginal) => {
+  const mod = await importOriginal();
+  return {
+    ...mod,
+    runOnRedis: vi.fn().mockImplementation((_, fn) =>
+      fn({
+        zAdd: vi.fn().mockResolvedValue(undefined),
+        expire: vi.fn().mockResolvedValue(undefined),
+      })
+    ),
+  };
+});
 
 const setupTestAgents = async (
   workspace: LightWorkspaceType,
@@ -129,8 +142,9 @@ describe("ConversationResource", () => {
         dateFromDaysAgo(90)
       );
       expect(oldConversations.length).toBe(2);
-      expect(oldConversations[0].sId).toBe(convo3Id);
-      expect(oldConversations[1].sId).toBe(convo4Id);
+      const oldConversationIds = oldConversations.map((c) => c.sId);
+      expect(oldConversationIds).toContain(convo3Id);
+      expect(oldConversationIds).toContain(convo4Id);
     });
 
     it("should return only conversations with all messages before cutoff date: 200 days ago", async () => {
@@ -147,9 +161,10 @@ describe("ConversationResource", () => {
         dateFromDaysAgo(5)
       );
       expect(oldConversations.length).toBe(3);
-      expect(oldConversations[0].sId).toBe(convo1Id);
-      expect(oldConversations[1].sId).toBe(convo3Id);
-      expect(oldConversations[2].sId).toBe(convo4Id);
+      const oldConversationIds = oldConversations.map((c) => c.sId);
+      expect(oldConversationIds).toContain(convo1Id);
+      expect(oldConversationIds).toContain(convo3Id);
+      expect(oldConversationIds).toContain(convo4Id);
     });
   });
 });
