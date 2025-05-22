@@ -3,13 +3,13 @@ import { cva } from "class-variance-authority";
 import * as React from "react";
 import { useRef } from "react";
 
+import { Chip } from "@sparkle/components/Chip";
 import { Icon } from "@sparkle/components/Icon";
 import { LinkWrapper, LinkWrapperProps } from "@sparkle/components/LinkWrapper";
 import { ScrollArea } from "@sparkle/components/ScrollArea";
 import { SearchInput, SearchInputProps } from "@sparkle/components/SearchInput";
 import { CheckIcon, ChevronRightIcon, CircleIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
-import { Chip } from "@sparkle/components/Chip";
 
 const ITEM_VARIANTS = ["default", "warning"] as const;
 
@@ -439,7 +439,7 @@ const DropdownMenuRadioItem = React.forwardRef<
 ));
 DropdownMenuRadioItem.displayName = DropdownMenuPrimitive.RadioItem.displayName;
 
-export interface DropdownMenuTagItemProps
+interface DropdownMenuTagItemProps
   extends Omit<DropdownMenuItemProps, "label" | "icon"> {
   label: string;
   size?: React.ComponentProps<typeof Chip>["size"];
@@ -447,7 +447,7 @@ export interface DropdownMenuTagItemProps
   onRemove?: () => void;
 }
 
-export const DropdownMenuTagItem = React.forwardRef<
+const DropdownMenuTagItem = React.forwardRef<
   HTMLDivElement,
   DropdownMenuTagItemProps
 >(
@@ -650,4 +650,5 @@ export {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
+  DropdownMenuTagItem,
 };
