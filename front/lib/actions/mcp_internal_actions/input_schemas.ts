@@ -12,9 +12,11 @@ export const DATA_SOURCE_CONFIGURATION_URI_PATTERN =
 export const TABLE_CONFIGURATION_URI_PATTERN =
   /^table_configuration:\/\/dust\/w\/(\w+)\/table_configurations\/(\w+)$/;
 
-// URI pattern for configuring the agent to use within an action (agent calls agent, sort of Russian doll situation).
+// URI pattern for configuring the agent to use within an action.
 export const CHILD_AGENT_CONFIGURATION_URI_PATTERN =
-  /^agent:\/\/dust\/w\/(\w+)\/agents\/(\w+)$/;
+  // We accept dashes in the last part, which is the agent sId,
+  // because global agents have dashes in their sId.
+  /^agent:\/\/dust\/w\/(\w+)\/agents\/([\w-]+)$/;
 
 /**
  * Mapping between the mime types we used to identify a configurable resource and the Zod schema used to validate it.
