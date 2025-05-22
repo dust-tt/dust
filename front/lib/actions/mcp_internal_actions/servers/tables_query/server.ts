@@ -204,8 +204,8 @@ function createServer(
         if (event.type === "error") {
           logger.error(
             {
-              workspaceId: owner.id,
-              conversationId: agentLoopRunContext.conversation.id,
+              workspaceId: owner.sId,
+              conversationId: agentLoopRunContext.conversation.sId,
               error: event.content.message,
             },
             "Error running query_tables app"
@@ -221,8 +221,8 @@ function createServer(
           if (e.error) {
             logger.error(
               {
-                workspaceId: owner.id,
-                conversationId: agentLoopRunContext.conversation.id,
+                workspaceId: owner.sId,
+                conversationId: agentLoopRunContext.conversation.sId,
                 error: e.error,
               },
               "Error running query_tables app"
