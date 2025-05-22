@@ -649,6 +649,6 @@ export {
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
-  DropdownMenuTrigger,
   DropdownMenuTagItem,
+  DropdownMenuTrigger,
 };

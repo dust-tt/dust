@@ -3,6 +3,7 @@ import type { Meta } from "@storybook/react";
 import React from "react";
 import { useState } from "react";
 
+import { Spinner } from "@sparkle/components";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -65,7 +66,6 @@ import {
   UserIcon,
 } from "../index_with_tw_base";
 import { Chip } from "../index_with_tw_base";
-import { Spinner } from "@sparkle/components";
 
 const meta = {
   title: "Primitives/Dropdown",
