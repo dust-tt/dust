@@ -78,6 +78,12 @@ const resizeAndUploadToFileStorage: ProcessingFunction = async (
     version: "original",
   });
 
+  // Explicitly disable Sharp's cache to prevent memory accumulation.
+  sharp.cache(false);
+
+  // Set global concurrency limit to prevent too many parallel operations.
+  sharp.concurrency(2);
+
   // Anthropic https://docs.anthropic.com/en/docs/build-with-claude/vision#evaluate-image-size
   // OpenAI https://platform.openai.com/docs/guides/vision#calculating-costs
 

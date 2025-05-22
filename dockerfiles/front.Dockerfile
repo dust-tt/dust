@@ -1,6 +1,7 @@
 FROM node:20.13.0 AS front
 
-RUN apt-get update && apt-get install -y vim redis-tools postgresql-client htop
+RUN apt-get update && \
+  apt-get install -y vim redis-tools postgresql-client htop libjemalloc2 libjemalloc-dev
 
 ARG COMMIT_HASH
 ARG NEXT_PUBLIC_VIZ_URL
@@ -32,5 +33,8 @@ RUN find . -name "*.test.tsx" -delete
 # fake database URIs are needed because Sequelize will throw if the `url` parameter
 # is undefined, and `next build` imports the `models.ts` file while "Collecting page data"
 RUN FRONT_DATABASE_URI="sqlite:foo.sqlite" npm run build
+
+# Preload jemalloc for all processes:
+ENV LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.2
 
 CMD ["npm", "--silent", "run", "start"]
