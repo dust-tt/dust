@@ -1,5 +1,6 @@
-import { isSubmitMessageKey } from "@app/lib/keymaps";
 import { HardBreak } from "@tiptap/extension-hard-break";
+
+import { isSubmitMessageKey } from "@app/lib/keymaps";
 
 export const HardBreakExtension = HardBreak.extend({
   addKeyboardShortcuts() {

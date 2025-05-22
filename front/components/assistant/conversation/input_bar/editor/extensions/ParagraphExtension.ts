@@ -1,5 +1,4 @@
 import { Paragraph } from "@tiptap/extension-paragraph";
-import { HardBreak } from "@tiptap/extension-hard-break";
 
 import { isSubmitMessageKey } from "@app/lib/keymaps";
 
