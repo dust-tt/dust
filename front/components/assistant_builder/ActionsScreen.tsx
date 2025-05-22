@@ -1018,6 +1018,12 @@ function ActionEditor({
 
   const shouldDisplayAdvancedSettings = !["DUST_APP_RUN"].includes(action.type);
 
+  const actionName =
+    action.type === "MCP" &&
+    isDustAppRunConfiguration(action.configuration.dustAppConfiguration)
+      ? action.configuration.dustAppConfiguration.name
+      : action.name;
+
   return (
     <div className="flex flex-col gap-4 px-1">
       <ActionModeSection show={true}>
@@ -1058,7 +1064,7 @@ function ActionEditor({
                   <Input
                     name="actionName"
                     placeholder="My tool name…"
-                    value={action.name}
+                    value={actionName}
                     onChange={(e) => {
                       updateAction({
                         actionName: e.target.value.toLowerCase(),

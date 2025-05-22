@@ -1,20 +1,22 @@
 import fs from "fs";
 import { Op } from "sequelize";
 
+import {
+  ASSISTANT_BUILDER_DUST_APP_RUN_ACTION_CONFIGURATION_DEFAULT_NAME,
+} from "@app/components/assistant_builder/types";
 import { Authenticator } from "@app/lib/auth";
 import { AgentDustAppRunConfiguration } from "@app/lib/models/assistant/actions/dust_app_run";
 import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { Workspace } from "@app/lib/models/workspace";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { AppModel } from "@app/lib/resources/storage/models/apps";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { getInsertSQL } from "@app/lib/utils/sql_utils";
 import type Logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import type { ModelId } from "@app/types";
-import { AppModel } from "@app/lib/resources/storage/models/apps";
-import { ASSISTANT_BUILDER_DUST_APP_RUN_ACTION_CONFIGURATION_DEFAULT_NAME } from "@app/components/assistant_builder/types";
 
 async function findWorkspacesWithDustAppRunConfigurations(): Promise<
   ModelId[]

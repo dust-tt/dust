@@ -10,6 +10,7 @@ import type {
   AssistantBuilderActionType,
   AssistantBuilderDataVisualizationConfiguration,
 } from "@app/components/assistant_builder/types";
+import { ASSISTANT_BUILDER_DUST_APP_RUN_ACTION_CONFIGURATION_DEFAULT_NAME } from "@app/components/assistant_builder/types";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getInternalMCPServerNameAndWorkspaceId } from "@app/lib/actions/mcp_internal_actions/constants";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/utils";
@@ -135,7 +136,11 @@ export const useTools = ({ actions }: UseToolsProps) => {
         case "DUST_APP_RUN":
           return mcpServerViews.some((v) => {
             const r = getInternalMCPServerNameAndWorkspaceId(v.server.sId);
-            return r.isOk() && r.value.name === "run_dust_app";
+            return (
+              r.isOk() &&
+              r.value.name ===
+                ASSISTANT_BUILDER_DUST_APP_RUN_ACTION_CONFIGURATION_DEFAULT_NAME
+            );
           });
         default:
           return false;
