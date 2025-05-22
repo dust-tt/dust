@@ -19,6 +19,7 @@ export const GROUP_KINDS = [
   "global",
   "system",
   "agent_editors",
+  "provisioned",
 ] as const;
 export type GroupKind = (typeof GROUP_KINDS)[number];
 
