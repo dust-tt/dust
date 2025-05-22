@@ -95,6 +95,7 @@ import { useTools } from "@app/components/assistant_builder/useTools";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import { getInternalMCPServerNameAndWorkspaceId } from "@app/lib/actions/mcp_internal_actions/constants";
+import { isDustAppRunConfiguration } from "@app/lib/actions/types/guards";
 import {
   ACTION_SPECIFICATIONS,
   DATA_VISUALIZATION_SPECIFICATION,
@@ -114,7 +115,6 @@ import {
 } from "@app/types";
 
 import { DataDescription } from "./actions/DataDescription";
-import { isDustAppRunConfiguration } from "@app/lib/actions/types/guards";
 
 const DATA_SOURCES_ACTION_CATEGORIES = [
   "RETRIEVAL_SEARCH",
