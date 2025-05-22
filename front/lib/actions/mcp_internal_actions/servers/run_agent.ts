@@ -27,9 +27,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
 function parseAgentConfigurationUri(uri: string): Result<string, Error> {
   const match = uri.match(AGENT_CONFIGURATION_URI_PATTERN);
   if (!match) {
-    return new Err(
-      new Error(`Invalid URI for an agent configuration: ${uri}`)
-    );
+    return new Err(new Error(`Invalid URI for an agent configuration: ${uri}`));
   }
   // Safe to do this because the inputs are already checked against the zod schema here.
   return new Ok(match[2]);
