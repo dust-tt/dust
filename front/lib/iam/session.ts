@@ -9,7 +9,6 @@ import type { ParsedUrlQuery } from "querystring";
 import { getUserWithWorkspaces } from "@app/lib/api/user";
 import { getWorkspaceInfos } from "@app/lib/api/workspace";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { isEnterpriseConnection } from "@app/lib/iam/enterprise";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import {
   fetchUserFromSession,
@@ -74,7 +73,7 @@ export function statisfiesEnforceEntrepriseConnection(
   }
 
   if (owner.ssoEnforced) {
-    return isEnterpriseConnection(session.user);
+    return session.authenticationMethod === "SSO" && session.organizationId;
   }
 
   return true;

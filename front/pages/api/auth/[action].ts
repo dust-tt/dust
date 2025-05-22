@@ -1,8 +1,10 @@
 import { WorkOS } from "@workos-inc/node";
+import { sealData } from "iron-session";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import config from "@app/lib/api/config";
 import { getSession } from "@app/lib/auth";
+import type { SessionCookie } from "@app/lib/iam/provider";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
 
@@ -53,7 +55,7 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
   }
 
   try {
-    const { user, sealedSession, organizationId, authenticationMethod } =
+    const { user, organizationId, authenticationMethod, sealedSession } =
       await workos.userManagement.authenticateWithCode({
         code,
         clientId: config.getWorkOSClientId(),
@@ -63,12 +65,24 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
         },
       });
 
+    if (!sealedSession) {
+      throw new Error("Sealed session not found");
+    }
+
+    const sessionCookie: SessionCookie = {
+      sessionData: sealedSession,
+      organizationId,
+      authenticationMethod,
+    };
+
+    const sealedCookie = await sealData(sessionCookie, {
+      password: config.getWorkOSCookiePassword(),
+    });
+
     logger.info(
       { user, organizationId, authenticationMethod },
       "WorkOS callback"
     );
-
-    //TODO(workos): Add info in sealed session: (organizationId, authenticationMethod).
 
     //TODO(workos): Handle region redirect.
     // const currentRegion = multiRegionsConfig.getCurrentRegion();
@@ -145,7 +159,7 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
 
     res.setHeader(
       "Set-Cookie",
-      `session=${sealedSession}; Path=/; HttpOnly; Secure;SameSite=Lax`
+      `session=${sealedCookie}; Path=/; HttpOnly; Secure;SameSite=Lax`
     );
 
     res.redirect("/api/login");

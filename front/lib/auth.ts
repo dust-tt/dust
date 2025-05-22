@@ -1,4 +1,5 @@
 import { WorkOS } from "@workos-inc/node";
+import { unsealData } from "iron-session";
 import memoizer from "lru-memoizer";
 import type { GetServerSidePropsContext, NextApiRequest } from "next";
 
@@ -6,7 +7,7 @@ import type { Auth0JwtPayload } from "@app/lib/api/auth0";
 import { getUserFromAuth0Token } from "@app/lib/api/auth0";
 import config from "@app/lib/api/config";
 import { SSOEnforcedError } from "@app/lib/iam/errors";
-import type { SessionWithUser } from "@app/lib/iam/provider";
+import type { SessionCookie, SessionWithUser } from "@app/lib/iam/provider";
 import { FeatureFlag } from "@app/lib/models/feature_flag";
 import { Workspace } from "@app/lib/models/workspace";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
@@ -219,7 +220,7 @@ export class Authenticator {
         if (!session) {
           return null;
         } else {
-          //TODO(workos): fetch by email
+          //TODO(workos): Fetch user by email.
           return UserResource.fetchByEmail(session.user.email);
         }
       })(),
@@ -908,10 +909,15 @@ export class Authenticator {
 export async function getSession(
   req: NextApiRequest | GetServerSidePropsContext["req"]
 ): Promise<SessionWithUser | null> {
-  const sessionData = req.cookies["session"];
-  if (!sessionData) {
+  const sessionCookie = req.cookies["session"];
+  if (!sessionCookie) {
     return null;
   }
+
+  const { sessionData, organizationId, authenticationMethod } =
+    await unsealData<SessionCookie>(sessionCookie, {
+      password: config.getWorkOSCookiePassword(),
+    });
 
   const session = workos.userManagement.loadSealedSession({
     sessionData,
@@ -927,6 +933,8 @@ export async function getSession(
   return {
     sessionId: r.sessionId,
     user: r.user,
+    organizationId,
+    authenticationMethod,
   };
 }
 
