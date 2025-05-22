@@ -1,7 +1,9 @@
 import { DropdownMenuCheckboxItemProps } from "@radix-ui/react-dropdown-menu";
 import type { Meta } from "@storybook/react";
 import React from "react";
+import { useState } from "react";
 
+import { Spinner } from "@sparkle/components";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -20,6 +22,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@sparkle/components/Dropdown";
+import { DropdownMenuTagItem } from "@sparkle/components/Dropdown";
 import {
   AnthropicLogo,
   DriveLogo,
@@ -62,6 +65,7 @@ import {
   UserGroupIcon,
   UserIcon,
 } from "../index_with_tw_base";
+import { Chip } from "../index_with_tw_base";
 
 const meta = {
   title: "Primitives/Dropdown",
@@ -729,3 +733,99 @@ function StaticItemDropdownDemo() {
     </DropdownMenu>
   );
 }
+
+export const TagsDropdownExample = () => {
+  const [tags, setTags] = useState([
+    "react",
+    "typescript",
+    "ui",
+    "design-system",
+  ]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleRemoveTag = (tagToRemove: string) => {
+    setTags(tags.filter((tag) => tag !== tagToRemove));
+  };
+
+  const handleAddTag = () => {
+    setIsLoading(true);
+
+    // Simulate API call delay
+    setTimeout(() => {
+      const newTag = `tag-${Math.floor(Math.random() * 1000)}`;
+      setTags([...tags, newTag]);
+      setIsLoading(false);
+    }, 1500);
+  };
+
+  return (
+    <div className="s-flex s-flex-col s-gap-4 s-p-4">
+      <div className="s-flex s-items-center s-gap-2">
+        <DropdownMenu open={true}>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="outline"
+              label="Select Tags"
+              icon={PlusIcon}
+              size="sm"
+              isSelect
+            />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="s-w-80">
+            <DropdownMenuLabel label="Available Tags" />
+            <DropdownMenuSeparator />
+
+            <div className="s-w-full">
+              {tags.map((tag) => (
+                <DropdownMenuTagItem
+                  key={tag}
+                  label={tag}
+                  color="highlight"
+                  className="s-m-0.5"
+                  onRemove={() => handleRemoveTag(tag)}
+                  onClick={() => console.log(tag)}
+                />
+              ))}
+            </div>
+
+            <DropdownMenuSeparator />
+            <div className="s-p-2">
+              <Button
+                label={isLoading ? "Adding..." : "Add Random Tag"}
+                onClick={handleAddTag}
+                className="s-w-full"
+                size="sm"
+                disabled={isLoading}
+                icon={
+                  isLoading
+                    ? () => <Spinner size="xs" variant="color" />
+                    : undefined
+                }
+              />
+            </div>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        <div className="s-text-sm s-text-muted-foreground">
+          Click to view available tags
+        </div>
+      </div>
+
+      <div className="s-flex s-flex-wrap s-gap-2 s-rounded-lg s-border s-border-border s-p-4">
+        <span className="s-mr-2 s-text-sm s-text-muted-foreground">
+          Current tags:
+        </span>
+        {tags.map((tag) => (
+          <div key={tag} className="s-inline-flex">
+            <Chip
+              label={tag}
+              color="highlight"
+              size="xs"
+              onRemove={() => handleRemoveTag(tag)}
+            />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};

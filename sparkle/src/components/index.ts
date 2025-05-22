@@ -76,6 +76,7 @@ export {
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
+  DropdownMenuTagItem,
   DropdownMenuTrigger,
 } from "./Dropdown";
 export { default as DropzoneOverlay } from "./DropzoneOverlay";
