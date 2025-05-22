@@ -6,9 +6,11 @@ import { getSession } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
 
-const workos = new WorkOS(config.getWorkOSApiKey());
+const workos = new WorkOS(config.getWorkOSApiKey(), {
+  clientId: config.getWorkOSClientId(),
+});
 
-//TODO(workos): split in 3 route handlers
+//TODO(workos): This file could be split in 3 route handlers.
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
@@ -32,9 +34,7 @@ async function handleLogin(req: NextApiRequest, res: NextApiResponse) {
     const authorizationUrl = workos.userManagement.getAuthorizationUrl({
       // Specify that we'd like AuthKit to handle the authentication flow
       provider: "authkit",
-
-      //TODO(workos): make it configurable, should be in NEXT_PUBLIC_WORKOS_REDIRECT_URI
-      redirectUri: "http://localhost:3000/api/auth/callback",
+      redirectUri: config.getWorkOSRedirectUri(),
       clientId: config.getWorkOSClientId(),
     });
 
@@ -59,7 +59,7 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
         clientId: config.getWorkOSClientId(),
         session: {
           sealSession: true,
-          cookiePassword: process.env.WORKOS_COOKIE_PASSWORD,
+          cookiePassword: config.getWorkOSCookiePassword(),
         },
       });
 
@@ -68,9 +68,9 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
       "WorkOS callback"
     );
 
-    //TODO(workos): add info in sealed session (organizationId, authenticationMethod)
+    //TODO(workos): Add info in sealed session: (organizationId, authenticationMethod).
 
-    //TODO(workos): handle region redirect
+    //TODO(workos): Handle region redirect.
     // const currentRegion = multiRegionsConfig.getCurrentRegion();
     // let targetRegion: RegionType | null = "us-central1";
 

@@ -196,7 +196,7 @@ const config = {
     return EnvironmentConfig.getEnvVariable("WORKOS_COOKIE_PASSWORD");
   },
   getWorkOSRedirectUri: (): string => {
-    return `${config.getClientFacingUrl()}/api/auth/workos/callback`;
+    return `${config.getClientFacingUrl()}/api/auth/callback`;
   },
 };
 

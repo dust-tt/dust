@@ -20,7 +20,7 @@ import { Err, Ok, sanitizeString } from "@app/types";
 //   providerId: number | string;
 // }
 
-//TODO(workos): what were legacy providers ?
+//TODO(workos): What were legacy providers ?
 // async function fetchUserWithLegacyProvider(
 //   { provider, providerId }: LegacyProviderInfo,
 //   sub: string
@@ -38,7 +38,7 @@ import { Err, Ok, sanitizeString } from "@app/types";
 //   return user;
 // }
 
-//TODO(workos): cleanup legacy provider
+//TODO(workos): Cleanup legacy provider.
 // function mapAuth0ProviderToLegacy(session: Session): LegacyProviderInfo | null {
 //   const { user } = session;
 
@@ -58,13 +58,13 @@ import { Err, Ok, sanitizeString } from "@app/types";
 export async function fetchUserFromSession(session: SessionWithUser) {
   const { email } = session.user;
 
-  //TODO(workos): is it ok to fetch by email ?
+  //TODO(workos): Is it ok to fetch by email ?
   const userWithWorkOS = await UserResource.fetchByEmail(email);
   if (userWithWorkOS) {
     return userWithWorkOS;
   }
 
-  //TODO(workos): no legacy provider info
+  //TODO(workos): No legacy provider info.
   // const legacyProviderInfo = mapAuth0ProviderToLegacy(session);
   // if (!legacyProviderInfo) {
   //   return null;
@@ -146,9 +146,9 @@ export async function createOrUpdateUser(
 
     const u = await UserResource.makeNew({
       sId: generateRandomModelSId(),
-      //TODO(workos): no auth0 sub - should we store workos id somewhere ?
+      //TODO(workos): No auth0 sub - should we store workos id somewhere ?
       auth0Sub: null,
-      //TODO(workos): get the provider info (authenticationMethod from authenticateWithCode, to add in the session)
+      //TODO(workos): Get the provider info (authenticationMethod from authenticateWithCode, to add in the session).
       provider: null,
       username: externalUser.email,
       email: sanitizeString(externalUser.email),

@@ -152,7 +152,7 @@ function canJoinTargetWorkspace(
   return targetWorkspaceId === workspace.sId;
 }
 
-//TODO(workos): handle enterprise connections
+//TODO(workos): We need to handle enterprise connections here.
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function handleEnterpriseSignUpFlow(
   user: UserResource,
@@ -349,7 +349,7 @@ async function handler(
   const targetWorkspaceId = typeof wId === "string" ? wId : undefined;
   // Auth0 flow augments token with a claim for workspace id linked to the enterprise connection.
 
-  //TODO(workos): get the enterprise connection workspace id - get organizationId from authenticateWithCode, store in session
+  //TODO(workos): Get the enterprise connection workspaceId. We can get organizationId from authenticateWithCode, and store in session.
   // const enterpriseConnectionWorkspaceId =
   //   session.user["https://dust.tt/workspaceId"];
 
@@ -379,7 +379,7 @@ async function handler(
   // Login flow: first step is to attempt to find the user.
   const { created: userCreated, user } = await createOrUpdateUser(session);
 
-  //TODO(workos): Handle enterprise connections
+  //TODO(workos): We need to handle enterprise connections here.
   // Prioritize enterprise connections.
   // if (enterpriseConnectionWorkspaceId) {
   //   const { flow, workspace } = await handleEnterpriseSignUpFlow(

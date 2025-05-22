@@ -5,7 +5,7 @@ import type { SessionWithUser } from "@app/lib/iam/provider";
 
 //eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function isEnterpriseConnection(user: SessionWithUser["user"]) {
-  //TODO(workos): handle enterprise connection
+  //TODO(workos): We need to handle enterprise connections here.
   // const userConnectionStrategyClaim = user[connectionStrategyClaim];
   // if (!userConnectionStrategyClaim) {
   //   return false;

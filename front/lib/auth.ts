@@ -47,8 +47,8 @@ import {
   WHITELISTABLE_FEATURES,
 } from "@app/types";
 
-const workos = new WorkOS(process.env.WORKOS_API_KEY, {
-  clientId: process.env.WORKOS_CLIENT_ID,
+const workos = new WorkOS(config.getWorkOSApiKey(), {
+  clientId: config.getWorkOSClientId(),
 });
 
 const { ACTIVATE_ALL_FEATURES_DEV = false } = process.env;
