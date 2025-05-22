@@ -290,7 +290,7 @@ export function WelcomeTourGuide({
             <>
               <div className="heading-lg px-3 pt-4">
                 Explore your workspace{" "}
-                <span className="text-brand-red-rose">tools and content</span>{" "}
+                <span className="text-brand-red-rose">knowledge and tools</span>{" "}
                 in <span className="text-brand-red-rose">spaces</span>.
               </div>
             </>
