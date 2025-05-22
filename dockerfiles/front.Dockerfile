@@ -1,6 +1,4 @@
-FROM node:20.13.0 AS front
-
-RUN apt-get update && apt-get install -y vim redis-tools postgresql-client htop
+FROM node:20.13.0-alpine AS front
 
 ARG COMMIT_HASH
 ARG NEXT_PUBLIC_VIZ_URL
