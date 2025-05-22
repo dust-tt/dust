@@ -52,7 +52,7 @@ export interface AppStoreState {
       userId,
       workspaceId,
     }: {
-      userId: string;
+      userId?: string;
       workspaceId: string;
     }) => void;
   };
@@ -93,20 +93,20 @@ export const createGlobalStateStore = () => {
           setUserId: (userId: string) =>
             set({ userId }, undefined, "setUserId"),
           getAgentConfigurationsCache: ({ userId, workspaceId }) => {
-            if (!userId) {
-              return [];
-            }
+            // if (!userId) {
+            //   return [];
+            // }
 
-            const currentCachedUserId = get().userId;
+            // const currentCachedUserId = get().userId;
             const currentCachedWorkspaceId = get().workspaceId;
 
             if (
-              (currentCachedUserId && userId !== get().userId) ||
-              (currentCachedWorkspaceId &&
-                workspaceId !== currentCachedWorkspaceId)
+              // (currentCachedUserId && userId !== get().userId) ||
+              currentCachedWorkspaceId &&
+              workspaceId !== currentCachedWorkspaceId
             ) {
               get().actions.resetAgentConfigurationsCache({
-                userId,
+                userId: userId || "",
                 workspaceId,
               });
               return [];
@@ -130,20 +130,20 @@ export const createGlobalStateStore = () => {
             return get().agentConfigurationsCache;
           },
           setAgentConfigurationsCache: ({
-            userId,
+            // userId,
             workspaceId,
             agentConfigurationsCache,
           }) =>
             set(
               () => {
-                if (!userId) {
-                  return initialState;
-                }
+                // if (!userId) {
+                //   return initialState;
+                // }
 
                 const currentTimestamp = Date.now();
 
                 return {
-                  userId,
+                  // userId,
                   workspaceId,
                   agentConfigurationsCache,
                   timestamp: currentTimestamp,
@@ -173,13 +173,22 @@ export const createGlobalStateStore = () => {
         storage: createJSONStorage(() => indexedDBStorage),
         version: 0,
         partialize: (state) => ({
-          context: {
-            userId: state.userId,
-            workspaceId: state.workspaceId,
-            timestamp: state.timestamp,
-            agentConfigurationsCache: state.agentConfigurationsCache,
-          },
+          userId: state.userId,
+          workspaceId: state.workspaceId,
+          timestamp: state.timestamp,
+          agentConfigurationsCache: state.agentConfigurationsCache,
         }), // This is used to persist the state to the storage
+        onRehydrateStorage: (state) => {
+          // optional
+          return (state, error) => {
+            if (error) {
+              console.log("an error happened during hydration", error);
+            } else {
+              console.log("state", state);
+              console.log("hydration finished");
+            }
+          };
+        },
       }
     )
   );
