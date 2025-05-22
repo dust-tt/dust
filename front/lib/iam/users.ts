@@ -1,89 +1,91 @@
-import type { Session } from "@auth0/nextjs-auth0";
+import type { User } from "@workos-inc/node";
 import type { PostIdentitiesRequestProviderEnum } from "auth0";
 import { escape } from "html-escaper";
 
 import { getAuth0ManagemementClient } from "@app/lib/api/auth0";
 import { revokeAndTrackMembership } from "@app/lib/api/membership";
 import type { Authenticator } from "@app/lib/auth";
-import type { ExternalUser, SessionWithUser } from "@app/lib/iam/provider";
+import type { SessionWithUser } from "@app/lib/iam/provider";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
-import { guessFirstAndLastNameFromFullName } from "@app/lib/user";
-import type { Result, UserProviderType } from "@app/types";
+import type { Result } from "@app/types";
 import { Err, Ok, sanitizeString } from "@app/types";
 
-interface LegacyProviderInfo {
-  provider: UserProviderType;
-  providerId: number | string;
-}
+// interface LegacyProviderInfo {
+//   provider: UserProviderType;
+//   providerId: number | string;
+// }
 
-async function fetchUserWithLegacyProvider(
-  { provider, providerId }: LegacyProviderInfo,
-  sub: string
-) {
-  const user = await UserResource.fetchByProvider(
-    provider,
-    providerId.toString()
-  );
+//TODO(workos): what were legacy providers ?
+// async function fetchUserWithLegacyProvider(
+//   { provider, providerId }: LegacyProviderInfo,
+//   sub: string
+// ) {
+//   const user = await UserResource.fetchByProvider(
+//     provider,
+//     providerId.toString()
+//   );
 
-  // If a legacy user is found, attach the Auth0 user ID (sub) to the existing user account.
-  if (user) {
-    await user.updateAuth0Sub({ sub, provider });
-  }
+//   // If a legacy user is found, attach the Auth0 user ID (sub) to the existing user account.
+//   if (user) {
+//     await user.updateAuth0Sub({ sub, provider });
+//   }
 
-  return user;
-}
+//   return user;
+// }
 
-export async function fetchUserWithAuth0Sub(sub: string) {
-  const userWithAuth0 = await UserResource.fetchByAuth0Sub(sub);
+//TODO(workos): cleanup legacy provider
+// function mapAuth0ProviderToLegacy(session: Session): LegacyProviderInfo | null {
+//   const { user } = session;
 
-  return userWithAuth0;
-}
+//   const [rawProvider, providerId] = user.sub.split("|");
+//   switch (rawProvider) {
+//     case "google-oauth2":
+//       return { provider: "google", providerId };
 
-function mapAuth0ProviderToLegacy(session: Session): LegacyProviderInfo | null {
-  const { user } = session;
+//     case "github":
+//       return { provider: "github", providerId };
 
-  const [rawProvider, providerId] = user.sub.split("|");
-  switch (rawProvider) {
-    case "google-oauth2":
-      return { provider: "google", providerId };
-
-    case "github":
-      return { provider: "github", providerId };
-
-    default:
-      return { provider: rawProvider, providerId };
-  }
-}
+//     default:
+//       return { provider: rawProvider, providerId };
+//   }
+// }
 
 export async function fetchUserFromSession(session: SessionWithUser) {
-  const { sub } = session.user;
+  const { email } = session.user;
 
-  const userWithAuth0 = await fetchUserWithAuth0Sub(sub);
-  if (userWithAuth0) {
-    return userWithAuth0;
+  //TODO(workos): is it ok to fetch by email ?
+  const userWithWorkOS = await UserResource.fetchByEmail(email);
+  if (userWithWorkOS) {
+    return userWithWorkOS;
   }
 
-  const legacyProviderInfo = mapAuth0ProviderToLegacy(session);
-  if (!legacyProviderInfo) {
-    return null;
-  }
+  //TODO(workos): no legacy provider info
+  // const legacyProviderInfo = mapAuth0ProviderToLegacy(session);
+  // if (!legacyProviderInfo) {
+  //   return null;
+  // }
 
-  return fetchUserWithLegacyProvider(legacyProviderInfo, sub);
+  // return fetchUserWithLegacyProvider(legacyProviderInfo, sub);
+
+  return null;
 }
 
 export async function maybeUpdateFromExternalUser(
   user: UserResource,
-  externalUser: ExternalUser
+  externalUser: User
 ) {
-  if (externalUser.picture && externalUser.picture !== user.imageUrl) {
+  if (
+    externalUser.profilePictureUrl &&
+    externalUser.profilePictureUrl !== user.imageUrl
+  ) {
     void UserModel.update(
       {
-        imageUrl: externalUser.picture,
+        imageUrl: externalUser.profilePictureUrl,
       },
       {
         where: {
@@ -105,23 +107,17 @@ export async function createOrUpdateUser(
     const updateArgs: { [key: string]: string } = {};
 
     // We only update the user's email if the email is verified.
-    if (externalUser.email_verified) {
+    if (externalUser.emailVerified) {
       updateArgs.email = externalUser.email;
     }
 
     // Update the user object from the updated session information.
-    updateArgs.username = externalUser.nickname;
+    updateArgs.username = externalUser.email;
 
     if (!user.firstName && !user.lastName) {
-      if (externalUser.given_name && externalUser.family_name) {
-        updateArgs.firstName = externalUser.given_name;
-        updateArgs.lastName = externalUser.family_name;
-      } else {
-        const { firstName, lastName } = guessFirstAndLastNameFromFullName(
-          externalUser.name
-        );
-        updateArgs.firstName = firstName;
-        updateArgs.lastName = lastName || "";
+      if (externalUser.firstName && externalUser.lastName) {
+        updateArgs.firstName = externalUser.firstName;
+        updateArgs.lastName = externalUser.lastName;
       }
     }
 
@@ -142,23 +138,21 @@ export async function createOrUpdateUser(
 
     return { user, created: false };
   } else {
-    let { firstName, lastName } = guessFirstAndLastNameFromFullName(
-      externalUser.name
-    );
-
-    firstName = escape(externalUser.given_name || firstName);
-    lastName = externalUser.family_name || lastName;
+    const firstName = escape(externalUser.createdAt);
+    let lastName = externalUser.lastName;
     if (lastName) {
       lastName = escape(lastName);
     }
 
     const u = await UserResource.makeNew({
       sId: generateRandomModelSId(),
-      auth0Sub: externalUser.sub,
-      provider: mapAuth0ProviderToLegacy(session)?.provider ?? null,
-      username: externalUser.nickname,
+      //TODO(workos): no auth0 sub - should we store workos id somewhere ?
+      auth0Sub: null,
+      //TODO(workos): get the provider info (authenticationMethod from authenticateWithCode, to add in the session)
+      provider: null,
+      username: externalUser.email,
       email: sanitizeString(externalUser.email),
-      name: externalUser.name,
+      name: `${externalUser.firstName} ${externalUser.lastName}`,
       firstName,
       lastName,
     });

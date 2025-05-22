@@ -152,6 +152,8 @@ function canJoinTargetWorkspace(
   return targetWorkspaceId === workspace.sId;
 }
 
+//TODO(workos): handle enterprise connections
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function handleEnterpriseSignUpFlow(
   user: UserResource,
   enterpriseConnectionWorkspaceId: string
@@ -346,8 +348,10 @@ async function handler(
   const { inviteToken, wId } = req.query;
   const targetWorkspaceId = typeof wId === "string" ? wId : undefined;
   // Auth0 flow augments token with a claim for workspace id linked to the enterprise connection.
-  const enterpriseConnectionWorkspaceId =
-    session.user["https://dust.tt/workspaceId"];
+
+  //TODO(workos): get the enterprise connection workspace id - get organizationId from authenticateWithCode, store in session
+  // const enterpriseConnectionWorkspaceId =
+  //   session.user["https://dust.tt/workspaceId"];
 
   let targetWorkspace: Workspace | null = null;
   // `membershipInvite` is set to a `MembeshipInvitation` if the query includes an `inviteToken`,
@@ -375,36 +379,37 @@ async function handler(
   // Login flow: first step is to attempt to find the user.
   const { created: userCreated, user } = await createOrUpdateUser(session);
 
+  //TODO(workos): Handle enterprise connections
   // Prioritize enterprise connections.
-  if (enterpriseConnectionWorkspaceId) {
-    const { flow, workspace } = await handleEnterpriseSignUpFlow(
-      user,
-      enterpriseConnectionWorkspaceId
-    );
-    if (flow) {
-      res.redirect(`/api/auth/logout?returnTo=/login-error?reason=${flow}`);
+  // if (enterpriseConnectionWorkspaceId) {
+  //   const { flow, workspace } = await handleEnterpriseSignUpFlow(
+  //     user,
+  //     enterpriseConnectionWorkspaceId
+  //   );
+  //   if (flow) {
+  //     res.redirect(`/api/auth/logout?returnTo=/login-error?reason=${flow}`);
+  //     return;
+  //   }
+
+  //   targetWorkspace = workspace;
+  // } else {
+  if (userCreated) {
+    // When user is just created, check whether they have a pending invitation. If they do, it is
+    // assumed they are coming from the invitation link and have seen the join page; we redirect
+    // (after auth0 login) to this URL with inviteToken appended. The user will then end up on the
+    // workspace's welcome page (see comment's PR)
+    const pendingInvitationAndWorkspace =
+      await getPendingMembershipInvitationWithWorkspaceForEmail(user.email);
+    if (pendingInvitationAndWorkspace) {
+      const { invitation: pendingInvitation } = pendingInvitationAndWorkspace;
+      const signUpUrl = getSignUpUrl({
+        signupCallbackUrl: `/api/login?inviteToken=${getMembershipInvitationToken(pendingInvitation.id)}`,
+        invitationEmail: pendingInvitation.inviteEmail,
+      });
+      res.redirect(signUpUrl);
       return;
     }
-
-    targetWorkspace = workspace;
-  } else {
-    if (userCreated) {
-      // When user is just created, check whether they have a pending invitation. If they do, it is
-      // assumed they are coming from the invitation link and have seen the join page; we redirect
-      // (after auth0 login) to this URL with inviteToken appended. The user will then end up on the
-      // workspace's welcome page (see comment's PR)
-      const pendingInvitationAndWorkspace =
-        await getPendingMembershipInvitationWithWorkspaceForEmail(user.email);
-      if (pendingInvitationAndWorkspace) {
-        const { invitation: pendingInvitation } = pendingInvitationAndWorkspace;
-        const signUpUrl = getSignUpUrl({
-          signupCallbackUrl: `/api/login?inviteToken=${getMembershipInvitationToken(pendingInvitation.id)}`,
-          invitationEmail: pendingInvitation.inviteEmail,
-        });
-        res.redirect(signUpUrl);
-        return;
-      }
-    }
+    // }
 
     const loginFctn = membershipInvite
       ? async () => handleMembershipInvite(user, membershipInvite)
