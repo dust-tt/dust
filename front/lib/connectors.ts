@@ -123,7 +123,10 @@ type ProviderWithBoth = BaseProvider & {
   extractor: (url: URL) => NodeCandidate;
 };
 
-type Provider = ProviderWithExtractor | ProviderWithNormalizer | ProviderWithBoth;
+type Provider =
+  | ProviderWithExtractor
+  | ProviderWithNormalizer
+  | ProviderWithBoth;
 
 const providers: Partial<Record<ConnectorProvider, Provider>> = {
   confluence: {
@@ -139,9 +142,14 @@ const providers: Partial<Record<ConnectorProvider, Provider>> = {
     extractor: (url: URL): NodeCandidate => {
       // Extract page node ID from long-format Confluence URLs
       // Example: https://example.atlassian.net/wiki/spaces/SPACE/pages/12345678/Page+Title
-      const pageMatch = url.pathname.match(/\/wiki\/spaces\/[^/]+\/pages\/(\d+)/);
+      const pageMatch = url.pathname.match(
+        /\/wiki\/spaces\/[^/]+\/pages\/(\d+)/
+      );
       if (pageMatch && pageMatch[1]) {
-        return { node: `confluence-page-${pageMatch[1]}`, provider: "confluence" };
+        return {
+          node: `confluence-page-${pageMatch[1]}`,
+          provider: "confluence",
+        };
       }
       return { node: null, provider: "confluence" };
     },
@@ -348,15 +356,10 @@ export function nodeCandidateFromUrl(
 
     for (const provider of Object.values(providers)) {
       if (provider.matcher(urlObj)) {
-        // For Confluence, we need to check if it's a long-format URL
         if (provider.extractor && provider.urlNormalizer) {
-          // Special case for providers with both extractor and urlNormalizer
-          // Check if this is a long-format URL for Confluence
-          if (
-            urlObj.hostname.endsWith("atlassian.net") &&
-            urlObj.pathname.match(/\/wiki\/spaces\/[^/]+\/pages\/\d+/)
-          ) {
-            return provider.extractor(urlObj);
+          const result = provider.extractor(urlObj);
+          if (result.node) {
+            return result;
           } else {
             return provider.urlNormalizer(urlObj);
           }
