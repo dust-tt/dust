@@ -73,7 +73,10 @@ export function statisfiesEnforceEntrepriseConnection(
   }
 
   if (owner.ssoEnforced) {
-    return session.authenticationMethod === "SSO" && session.organizationId;
+    return (
+      session.authenticationMethod === "SSO" &&
+      session.organizationId === owner.workOSOrganizationId
+    );
   }
 
   return true;
