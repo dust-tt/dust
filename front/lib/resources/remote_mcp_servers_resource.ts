@@ -5,6 +5,7 @@ import type {
   ModelStatic,
   Transaction,
 } from "sequelize";
+import { Op } from "sequelize";
 
 import {
   DEFAULT_MCP_ACTION_DESCRIPTION,
@@ -156,6 +157,27 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
     return servers.length > 0 ? servers[0] : null;
   }
 
+  // Admin operations - don't use in non-temporal code.
+  static async dangerouslyListAllServersIds({
+    firstId,
+    limit = 100,
+  }: {
+    firstId?: number;
+    limit?: number;
+  }) {
+    const servers = await RemoteMCPServerModel.findAll({
+      where: {
+        id: {
+          [Op.gte]: firstId,
+        },
+      },
+      limit,
+      order: [["id", "ASC"]],
+    });
+
+    return servers.map((server) => server.id);
+  }
+
   // sId
   get sId(): string {
     return remoteMCPServerNameToSId({
@@ -235,6 +257,7 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
       cachedDescription,
       cachedTools,
       lastSyncAt,
+      clearError,
     }: {
       name?: string;
       description?: string;
@@ -244,6 +267,7 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
       cachedDescription?: string;
       cachedTools?: MCPToolType[];
       lastSyncAt: Date;
+      clearError?: boolean;
     }
   ) {
     // If we update the cachedName or cachedDescription, and the name is currently the default one,
@@ -264,6 +288,23 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
       cachedDescription,
       cachedTools,
       lastSyncAt,
+      lastError: clearError ? null : this.lastError,
+    });
+  }
+
+  async markAsErrored(
+    auth: Authenticator,
+    {
+      lastError,
+      lastSyncAt,
+    }: {
+      lastError: string;
+      lastSyncAt: Date;
+    }
+  ) {
+    await this.update({
+      lastError,
+      lastSyncAt,
     });
   }
 
@@ -274,6 +315,7 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
     cachedDescription: string | null;
     url: string;
     lastSyncAt: number | null;
+    lastError: string | null;
     sharedSecret: string | null;
   } {
     const currentTime = new Date();
@@ -306,6 +348,7 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
       // Remote MCP Server specifics
       url: this.url,
       lastSyncAt: this.lastSyncAt?.getTime() ?? null,
+      lastError: this.lastError,
       sharedSecret: secret,
     };
   }
