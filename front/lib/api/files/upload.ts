@@ -28,7 +28,6 @@ import {
   TextExtraction,
   validateUrl,
 } from "@app/types";
-import { log } from "console";
 
 const UPLOAD_DELAY_AFTER_CREATION_MS = 1000 * 60 * 1; // 1 minute.
 
