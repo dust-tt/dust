@@ -118,7 +118,12 @@ type ProviderWithExtractor = BaseProvider & {
   urlNormalizer?: never;
 };
 
-type Provider = ProviderWithExtractor | ProviderWithNormalizer;
+type ProviderWithBoth = BaseProvider & {
+  urlNormalizer: (url: URL) => UrlCandidate;
+  extractor: (url: URL) => NodeCandidate;
+};
+
+type Provider = ProviderWithExtractor | ProviderWithNormalizer | ProviderWithBoth;
 
 const providers: Partial<Record<ConnectorProvider, Provider>> = {
   confluence: {
@@ -130,6 +135,15 @@ const providers: Partial<Record<ConnectorProvider, Provider>> = {
     },
     urlNormalizer: (url: URL): UrlCandidate => {
       return { url: url.toString(), provider: "confluence" };
+    },
+    extractor: (url: URL): NodeCandidate => {
+      // Extract page node ID from long-format Confluence URLs
+      // Example: https://example.atlassian.net/wiki/spaces/SPACE/pages/12345678/Page+Title
+      const pageMatch = url.pathname.match(/\/wiki\/spaces\/[^/]+\/pages\/(\d+)/);
+      if (pageMatch && pageMatch[1]) {
+        return { node: `confluence-page-${pageMatch[1]}`, provider: "confluence" };
+      }
+      return { node: null, provider: "confluence" };
     },
   },
   google_drive: {
@@ -334,7 +348,19 @@ export function nodeCandidateFromUrl(
 
     for (const provider of Object.values(providers)) {
       if (provider.matcher(urlObj)) {
-        if (provider.extractor) {
+        // For Confluence, we need to check if it's a long-format URL
+        if (provider.extractor && provider.urlNormalizer) {
+          // Special case for providers with both extractor and urlNormalizer
+          // Check if this is a long-format URL for Confluence
+          if (
+            urlObj.hostname.endsWith("atlassian.net") &&
+            urlObj.pathname.match(/\/wiki\/spaces\/[^/]+\/pages\/\d+/)
+          ) {
+            return provider.extractor(urlObj);
+          } else {
+            return provider.urlNormalizer(urlObj);
+          }
+        } else if (provider.extractor) {
           return provider.extractor(urlObj);
         } else {
           return provider.urlNormalizer(urlObj);
