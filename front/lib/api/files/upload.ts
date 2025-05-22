@@ -28,6 +28,7 @@ import {
   TextExtraction,
   validateUrl,
 } from "@app/types";
+import { log } from "console";
 
 const UPLOAD_DELAY_AFTER_CREATION_MS = 1000 * 60 * 1; // 1 minute.
 
@@ -334,6 +335,8 @@ const maybeApplyProcessing: ProcessingFunction = async (
   auth: Authenticator,
   file: FileResource
 ) => {
+  const start = performance.now();
+
   const processing = getProcessingFunction(file);
   if (!processing) {
     return new Err(
@@ -344,6 +347,17 @@ const maybeApplyProcessing: ProcessingFunction = async (
   }
 
   const res = await processing(auth, file);
+
+  const elapsed = performance.now() - start;
+  logger.info(
+    {
+      file: file.toPublicJSON(auth),
+      elapsed,
+      error: res.isErr() ? res.error : undefined,
+    },
+    "Processed file"
+  );
+
   if (res.isErr()) {
     return res;
   } else {
