@@ -4,10 +4,14 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { Ajv } from "ajv";
 import assert from "assert";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
+import { ZodError } from "zod";
 
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import type { ConfigurableToolInputType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
-import { ConfigurableToolInputJSONSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import {
+  ConfigurableToolInputJSONSchemas,
+  JsonSchemaSchema,
+} from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { MCPToolResult } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { isServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import type { MCPServerType, MCPServerViewType } from "@app/lib/api/mcp";
@@ -141,7 +145,22 @@ export function generateConfiguredInput({
       if (!jsonSchema) {
         return null;
       }
-      return { ...jsonSchema, mimeType };
+      try {
+        const validatedSchema = JsonSchemaSchema.parse(jsonSchema);
+        return {
+          ...validatedSchema,
+          mimeType,
+        };
+      } catch (error) {
+        if (error instanceof ZodError) {
+          throw new Error(
+            `Invalid jsonSchema configuration for mimeType JSON_SCHEMA: ${error.errors
+              .map((e) => `${e.path.join(".")}: ${e.message}`)
+              .join(", ")}`
+          );
+        }
+        throw error;
+      }
     }
 
     case INTERNAL_MIME_TYPES.TOOL_INPUT.STRING: {
@@ -324,7 +343,7 @@ export function augmentInputsWithConfiguration({
     return rawInputs;
   }
 
-  const inputs = rawInputs;
+  const inputs = { ...rawInputs };
 
   const ajv = new Ajv({ allErrors: true });
 
