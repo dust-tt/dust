@@ -233,7 +233,7 @@ const useCustomEditor = ({
     HardBreakExtension,
     ParagraphExtension.configure({
       HTMLAttributes: {
-        class: "pb-4",
+        class: "pb-4 whitespace-pre-wrap",
       },
     }),
     URLStorageExtension,
