@@ -63,6 +63,7 @@ export type LightWorkspaceType = {
 
 export type WorkspaceType = LightWorkspaceType & {
   ssoEnforced?: boolean;
+  workOSOrganizationId?: string | null;
 };
 
 export type ExtensionWorkspaceType = WorkspaceType & {

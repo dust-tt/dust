@@ -9,9 +9,7 @@ import type { ParsedUrlQuery } from "querystring";
 import { getUserWithWorkspaces } from "@app/lib/api/user";
 import { getWorkspaceInfos } from "@app/lib/api/workspace";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { isEnterpriseConnection } from "@app/lib/iam/enterprise";
 import type { SessionWithUser } from "@app/lib/iam/provider";
-import { isValidSession } from "@app/lib/iam/provider";
 import {
   fetchUserFromSession,
   maybeUpdateFromExternalUser,
@@ -29,7 +27,7 @@ import { isString } from "@app/types";
 export async function getUserFromSession(
   session: SessionWithUser | null
 ): Promise<UserTypeWithWorkspaces | null> {
-  if (!session || !isValidSession(session)) {
+  if (!session) {
     return null;
   }
 
@@ -75,7 +73,10 @@ export function statisfiesEnforceEntrepriseConnection(
   }
 
   if (owner.ssoEnforced) {
-    return isEnterpriseConnection(session.user);
+    return (
+      session.authenticationMethod === "SSO" &&
+      session.organizationId === owner.workOSOrganizationId
+    );
   }
 
   return true;
@@ -134,9 +135,7 @@ export function makeGetServerSidePropsRequirementsWrapper<
       context: GetServerSidePropsContext<ParsedUrlQuery, PreviewData>
     ) => {
       const session =
-        requireUserPrivilege !== "none"
-          ? await getSession(context.req, context.res)
-          : null;
+        requireUserPrivilege !== "none" ? await getSession(context.req) : null;
       const auth = await getAuthenticator(
         context,
         session,
@@ -157,7 +156,7 @@ export function makeGetServerSidePropsRequirementsWrapper<
       if (requireUserPrivilege !== "none") {
         // If this is a logged page start first by checking if the user is logged in, if not
         // redirect to login to avoid jumping through /subscribe (below).
-        if (!session || !isValidSession(session)) {
+        if (!session) {
           return {
             redirect: {
               permanent: false,
@@ -195,7 +194,7 @@ export function makeGetServerSidePropsRequirementsWrapper<
 
       if (requireUserPrivilege !== "none") {
         // This was checked above already.
-        assert(session && isValidSession(session));
+        assert(session);
 
         const isDustSuperUser = auth?.isDustSuperUser() ?? false;
         if (requireUserPrivilege === "superuser" && !isDustSuperUser) {

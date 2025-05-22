@@ -17,7 +17,7 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   postLoginReturnToUrl: string;
 }>(async (context) => {
   // Fetch session explicitly as this page redirects logged in users to our home page.
-  const session = await getSession(context.req, context.res);
+  const session = await getSession(context.req);
   const user = await getUserFromSession(session);
 
   const { inviteToken } = context.query;

@@ -25,7 +25,7 @@ export async function lookupUserRegionByEmail(
     getPendingMembershipInvitationWithWorkspaceForEmail(userLookup.email),
     findWorkspaceWithVerifiedDomain({
       email: userLookup.email,
-      email_verified: userLookup.email_verified,
+      emailVerified: userLookup.email_verified,
     }),
   ]);
 

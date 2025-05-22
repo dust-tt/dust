@@ -1,17 +1,13 @@
-import { getSession as getAuth0Session } from "@auth0/nextjs-auth0";
+import { WorkOS } from "@workos-inc/node";
+import { unsealData } from "iron-session";
 import memoizer from "lru-memoizer";
-import type {
-  GetServerSidePropsContext,
-  NextApiRequest,
-  NextApiResponse,
-} from "next";
+import type { GetServerSidePropsContext, NextApiRequest } from "next";
 
 import type { Auth0JwtPayload } from "@app/lib/api/auth0";
 import { getUserFromAuth0Token } from "@app/lib/api/auth0";
 import config from "@app/lib/api/config";
 import { SSOEnforcedError } from "@app/lib/iam/errors";
-import type { SessionWithUser } from "@app/lib/iam/provider";
-import { isValidSession } from "@app/lib/iam/provider";
+import type { SessionCookie, SessionWithUser } from "@app/lib/iam/provider";
 import { FeatureFlag } from "@app/lib/models/feature_flag";
 import { Workspace } from "@app/lib/models/workspace";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
@@ -51,6 +47,10 @@ import {
   Ok,
   WHITELISTABLE_FEATURES,
 } from "@app/types";
+
+const workos = new WorkOS(config.getWorkOSApiKey(), {
+  clientId: config.getWorkOSClientId(),
+});
 
 const { ACTIVATE_ALL_FEATURES_DEV = false } = process.env;
 
@@ -158,7 +158,7 @@ export class Authenticator {
         if (!session) {
           return null;
         } else {
-          return UserResource.fetchByAuth0Sub(session.user.sub);
+          return UserResource.fetchByEmail(session.user.email);
         }
       })(),
     ]);
@@ -220,7 +220,8 @@ export class Authenticator {
         if (!session) {
           return null;
         } else {
-          return UserResource.fetchByAuth0Sub(session.user.sub);
+          //TODO(workos): Fetch user by email.
+          return UserResource.fetchByEmail(session.user.email);
         }
       })(),
     ]);
@@ -700,6 +701,7 @@ export class Authenticator {
           role: this._role,
           segmentation: this._workspace.segmentation || null,
           ssoEnforced: this._workspace.ssoEnforced,
+          workOSOrganizationId: this._workspace.workOSOrganizationId,
           whiteListedProviders: this._workspace.whiteListedProviders,
           defaultEmbeddingProvider: this._workspace.defaultEmbeddingProvider,
           metadata: this._workspace.metadata,
@@ -906,15 +908,35 @@ export class Authenticator {
  * @returns Promise<any>
  */
 export async function getSession(
-  req: NextApiRequest | GetServerSidePropsContext["req"],
-  res: NextApiResponse | GetServerSidePropsContext["res"]
+  req: NextApiRequest | GetServerSidePropsContext["req"]
 ): Promise<SessionWithUser | null> {
-  const session = await getAuth0Session(req, res);
-  if (!session || !isValidSession(session)) {
+  const sessionCookie = req.cookies["session"];
+  if (!sessionCookie) {
     return null;
   }
 
-  return session;
+  const { sessionData, organizationId, authenticationMethod } =
+    await unsealData<SessionCookie>(sessionCookie, {
+      password: config.getWorkOSCookiePassword(),
+    });
+
+  const session = workos.userManagement.loadSealedSession({
+    sessionData,
+    cookiePassword: config.getWorkOSCookiePassword(),
+  });
+
+  const r = await session.authenticate();
+
+  if (!r.authenticated) {
+    return null;
+  }
+
+  return {
+    sessionId: r.sessionId,
+    user: r.user,
+    organizationId,
+    authenticationMethod,
+  };
 }
 
 /**

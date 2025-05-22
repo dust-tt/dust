@@ -154,7 +154,7 @@ function canJoinTargetWorkspace(
 
 async function handleEnterpriseSignUpFlow(
   user: UserResource,
-  enterpriseConnectionWorkspaceId: string
+  workOSOrganizationId: string
 ): Promise<{
   flow: "unauthorized" | null;
   workspace: Workspace | null;
@@ -166,7 +166,7 @@ async function handleEnterpriseSignUpFlow(
     }),
     Workspace.findOne({
       where: {
-        sId: enterpriseConnectionWorkspaceId,
+        workOSOrganizationId,
       },
     }),
   ]);
@@ -346,8 +346,9 @@ async function handler(
   const { inviteToken, wId } = req.query;
   const targetWorkspaceId = typeof wId === "string" ? wId : undefined;
   // Auth0 flow augments token with a claim for workspace id linked to the enterprise connection.
-  const enterpriseConnectionWorkspaceId =
-    session.user["https://dust.tt/workspaceId"];
+
+  //TODO(workos): Get the enterprise connection workspaceId. We can get organizationId from authenticateWithCode, and store in session.
+  const workOSOrganizationId = session.organizationId;
 
   let targetWorkspace: Workspace | null = null;
   // `membershipInvite` is set to a `MembeshipInvitation` if the query includes an `inviteToken`,
@@ -376,10 +377,10 @@ async function handler(
   const { created: userCreated, user } = await createOrUpdateUser(session);
 
   // Prioritize enterprise connections.
-  if (enterpriseConnectionWorkspaceId) {
+  if (workOSOrganizationId) {
     const { flow, workspace } = await handleEnterpriseSignUpFlow(
       user,
-      enterpriseConnectionWorkspaceId
+      workOSOrganizationId
     );
     if (flow) {
       res.redirect(`/api/auth/logout?returnTo=/login-error?reason=${flow}`);
