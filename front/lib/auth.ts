@@ -270,47 +270,41 @@ export class Authenticator {
     uId: string,
     wId: string
   ): Promise<Authenticator> {
-    return Authenticator.transaction(async (t) => {
-      const [workspace, user] = await Promise.all([
-        Workspace.findOne({
-          where: {
-            sId: wId,
-          },
-          transaction: t,
+    const [workspace, user] = await Promise.all([
+      Workspace.findOne({
+        where: {
+          sId: wId,
+        },
+      }),
+      UserResource.fetchById(uId),
+    ]);
+
+    let role: RoleType = "none";
+    let groups: GroupResource[] = [];
+    let subscription: SubscriptionResource | null = null;
+
+    if (user && workspace) {
+      [role, groups, subscription] = await Promise.all([
+        MembershipResource.getActiveMembershipOfUserInWorkspace({
+          user,
+          workspace: renderLightWorkspaceType({ workspace }),
+        }).then((m) => m?.role ?? "none"),
+        GroupResource.listUserGroupsInWorkspace({
+          user,
+          workspace: renderLightWorkspaceType({ workspace }),
         }),
-        UserResource.fetchById(uId, t),
+        SubscriptionResource.fetchActiveByWorkspace(
+          renderLightWorkspaceType({ workspace })
+        ),
       ]);
+    }
 
-      let role: RoleType = "none";
-      let groups: GroupResource[] = [];
-      let subscription: SubscriptionResource | null = null;
-
-      if (user && workspace) {
-        [role, groups, subscription] = await Promise.all([
-          MembershipResource.getActiveMembershipOfUserInWorkspace({
-            user,
-            workspace: renderLightWorkspaceType({ workspace }),
-            transaction: t,
-          }).then((m) => m?.role ?? "none"),
-          GroupResource.listUserGroupsInWorkspace({
-            user,
-            workspace: renderLightWorkspaceType({ workspace }),
-            transaction: t,
-          }),
-          SubscriptionResource.fetchActiveByWorkspace(
-            renderLightWorkspaceType({ workspace }),
-            t
-          ),
-        ]);
-      }
-
-      return new Authenticator({
-        workspace,
-        user,
-        role,
-        groups,
-        subscription,
-      });
+    return new Authenticator({
+      workspace,
+      user,
+      role,
+      groups,
+      subscription,
     });
   }
 
