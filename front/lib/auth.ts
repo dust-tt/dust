@@ -588,47 +588,41 @@ export class Authenticator {
    * within the workpsace. */
   static async internalAdminForWorkspace(
     workspaceId: string,
-    options?: { dangerouslyRequestAllGroups: boolean }
+    options?: {
+      dangerouslyRequestAllGroups: boolean;
+    }
   ): Promise<Authenticator> {
-    return Authenticator.transaction(async (t) => {
-      const workspace = await Workspace.findOne({
-        where: {
-          sId: workspaceId,
-        },
-        transaction: t,
-      });
-      if (!workspace) {
-        throw new Error(`Could not find workspace with sId ${workspaceId}`);
-      }
+    const workspace = await Workspace.findOne({
+      where: {
+        sId: workspaceId,
+      },
+    });
+    if (!workspace) {
+      throw new Error(`Could not find workspace with sId ${workspaceId}`);
+    }
 
-      const [groups, subscription] = await Promise.all([
-        (async () => {
-          if (options?.dangerouslyRequestAllGroups) {
-            return GroupResource.internalFetchAllWorkspaceGroups({
-              workspaceId: workspace.id,
-              transaction: t,
-            });
-          } else {
-            const globalGroup =
-              await GroupResource.internalFetchWorkspaceGlobalGroup(
-                workspace.id,
-                t
-              );
-            return globalGroup ? [globalGroup] : [];
-          }
-        })(),
-        SubscriptionResource.fetchActiveByWorkspace(
-          renderLightWorkspaceType({ workspace }),
-          t
-        ),
-      ]);
+    const [groups, subscription] = await Promise.all([
+      (async () => {
+        if (options?.dangerouslyRequestAllGroups) {
+          return GroupResource.internalFetchAllWorkspaceGroups({
+            workspaceId: workspace.id,
+          });
+        } else {
+          const globalGroup =
+            await GroupResource.internalFetchWorkspaceGlobalGroup(workspace.id);
+          return globalGroup ? [globalGroup] : [];
+        }
+      })(),
+      SubscriptionResource.fetchActiveByWorkspace(
+        renderLightWorkspaceType({ workspace })
+      ),
+    ]);
 
-      return new Authenticator({
-        workspace,
-        role: "admin",
-        groups,
-        subscription,
-      });
+    return new Authenticator({
+      workspace,
+      role: "admin",
+      groups,
+      subscription,
     });
   }
 
