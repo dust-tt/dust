@@ -8,6 +8,7 @@ import {
   fetcherWithBody,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { GetDataSourceViewsResponseBody } from "@app/pages/api/w/[wId]/data_source_views";
 import type { PostTagSearchBody } from "@app/pages/api/w/[wId]/data_source_views/tags/search";
 import type { GetDataSourceViewContentNodes } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/content-nodes";
@@ -96,7 +97,10 @@ export function useMultipleDataSourceViewsContentNodes({
         const isFirstIteration = i === MAX_ITERATIONS;
 
         // Loop through the data source views and internal ids to fetch the content-nodes of the current page.
-        const promises = [];
+        const urlAndBodies: {
+          url: string;
+          body: { internalIds: string[]; viewType: ContentNodesViewType };
+        }[] = [];
         for (const {
           dataSourceView,
           internalIds,
@@ -119,11 +123,11 @@ export function useMultipleDataSourceViewsContentNodes({
               viewType,
             };
 
-            promises.push(fetcherWithBody([url, body, "POST"]));
+            urlAndBodies.push({ url, body });
           }
         }
 
-        if (promises.length === 0) {
+        if (urlAndBodies.length === 0) {
           // We have fetched all the content-nodes for all the data source views and internal ids, so we can break the loop.
           break;
         }
@@ -132,7 +136,15 @@ export function useMultipleDataSourceViewsContentNodes({
           dsvIdToPageCursor.clear();
 
           // Wait for all the fetches to be done.
-          const r = await Promise.all<GetDataSourceViewContentNodes>(promises);
+          const r = await concurrentExecutor(
+            urlAndBodies,
+            async (urlAndBody) => {
+              return fetcherWithBody([urlAndBody.url, urlAndBody.body, "POST"]);
+            },
+            {
+              concurrency: 8,
+            }
+          );
 
           //  Append the nodes to the existing ones in the map.
           r.forEach(({ nodes, nextPageCursor }) => {
