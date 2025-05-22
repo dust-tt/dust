@@ -478,7 +478,7 @@ export function AssistantDetails({
             title="This agent has been archived."
             variant="warning"
             icon={InformationCircleIcon}
-            size="md"
+            size="sm"
           >
             It is no longer active and cannot be used.
             <br />
