@@ -13,6 +13,8 @@ import { getInsertSQL } from "@app/lib/utils/sql_utils";
 import type Logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import type { ModelId } from "@app/types";
+import { AppModel } from "@app/lib/resources/storage/models/apps";
+import { ASSISTANT_BUILDER_DUST_APP_RUN_ACTION_CONFIGURATION_DEFAULT_NAME } from "@app/components/assistant_builder/types";
 
 async function findWorkspacesWithDustAppRunConfigurations(): Promise<
   ModelId[]
@@ -76,6 +78,23 @@ async function migrateWorkspaceDustAppRunActions(
     `Found ${dustAppConfigs.length} dust app run configurations to migrate.`
   );
 
+  const appIds = new Set(dustAppConfigs.map((config) => config.appId));
+
+  const apps = await AppModel.findAll({
+    where: {
+      workspaceId: auth.getNonNullableWorkspace().id,
+      sId: { [Op.in]: [...appIds] },
+    },
+  });
+
+  const appsName = apps.reduce(
+    (acc, app) => {
+      acc[app.sId] = app.name;
+      return acc;
+    },
+    {} as Record<string, string>
+  );
+
   if (execute) {
     try {
       await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
@@ -91,7 +110,7 @@ async function migrateWorkspaceDustAppRunActions(
   const mcpServerView =
     await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
       auth,
-      "run_dust_app"
+      ASSISTANT_BUILDER_DUST_APP_RUN_ACTION_CONFIGURATION_DEFAULT_NAME
     );
   if (!mcpServerView) {
     throw new Error("Run Dust App MCP server view not found.");
@@ -119,7 +138,10 @@ async function migrateWorkspaceDustAppRunActions(
           internalMCPServerId: mcpServerView.mcpServerId,
           additionalConfiguration: {},
           timeFrame: null,
+          name: appsName[dustAppConfig.appId],
           appId: dustAppConfig.appId,
+          singleToolDescriptionOverride: null,
+          jsonSchema: null,
         });
 
         revertSql +=
