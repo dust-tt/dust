@@ -169,8 +169,8 @@ describe("JSON Schema Utilities", () => {
       );
     });
 
-    it("should handle complex nested schemas with CHILD_AGENT configuration", () => {
-      // Create a complex schema with deeply nested CHILD_AGENT configuration
+    it("should handle complex nested schemas with AGENT configuration", () => {
+      // Create a complex schema with deeply nested AGENT configuration
       const mainSchema: JSONSchema = {
         type: "object",
         properties: {
@@ -195,8 +195,7 @@ describe("JSON Schema Utilities", () => {
                             },
                             mimeType: {
                               type: "string",
-                              const:
-                                "application/vnd.dust.tool-input.child-agent",
+                              const: "application/vnd.dust.tool-input.agent",
                             },
                           },
                           required: ["uri", "mimeType"],
@@ -213,10 +212,10 @@ describe("JSON Schema Utilities", () => {
         },
       };
 
-      // Look for CHILD_AGENT configuration schema
+      // Look for AGENT configuration schema
       const result = findMatchingSubSchemas(
         mainSchema,
-        INTERNAL_MIME_TYPES.TOOL_INPUT.CHILD_AGENT
+        INTERNAL_MIME_TYPES.TOOL_INPUT.AGENT
       );
       expect(Object.keys(result)).toContain(
         "workflow.steps.items.action.executor"

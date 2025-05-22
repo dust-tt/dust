@@ -357,7 +357,7 @@ export function hasErrorActionMCP(
       requirements.requiresChildAgentConfiguration &&
       !action.configuration.childAgentId
     ) {
-      return "Please select a child agent.";
+      return "Please select an agent.";
     }
     if (
       requirements.requiresReasoningConfiguration &&

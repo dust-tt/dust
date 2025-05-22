@@ -13,7 +13,7 @@ export const TABLE_CONFIGURATION_URI_PATTERN =
   /^table_configuration:\/\/dust\/w\/(\w+)\/table_configurations\/(\w+)$/;
 
 // URI pattern for configuring the agent to use within an action.
-export const CHILD_AGENT_CONFIGURATION_URI_PATTERN =
+export const AGENT_CONFIGURATION_URI_PATTERN =
   // We accept dashes in the last part, which is the agent sId,
   // because global agents have dashes in their sId.
   /^agent:\/\/dust\/w\/(\w+)\/agents\/([\w-]+)$/;
@@ -35,9 +35,9 @@ export const ConfigurableToolInputSchemas = {
       mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE),
     })
   ),
-  [INTERNAL_MIME_TYPES.TOOL_INPUT.CHILD_AGENT]: z.object({
-    uri: z.string().regex(CHILD_AGENT_CONFIGURATION_URI_PATTERN),
-    mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.CHILD_AGENT),
+  [INTERNAL_MIME_TYPES.TOOL_INPUT.AGENT]: z.object({
+    uri: z.string().regex(AGENT_CONFIGURATION_URI_PATTERN),
+    mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.AGENT),
   }),
   [INTERNAL_MIME_TYPES.TOOL_INPUT.STRING]: z.object({
     value: z.string(),
