@@ -1819,8 +1819,8 @@ export function getAgentPermissions(
     case "visible":
       const member = memberAgents.includes(agentConfiguration.id);
       return {
-        canRead: member || agentConfiguration.status === "draft",
-        canEdit: member || agentConfiguration.status === "draft",
+        canRead: member || agentConfiguration.scope === "visible",
+        canEdit: member,
       };
     case "private":
       const isAuthor = agentConfiguration.versionAuthorId === auth.user()?.id;
