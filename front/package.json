@@ -82,6 +82,7 @@
     "googleapis": "^118.0.0",
     "hot-shots": "^10.0.0",
     "html-escaper": "^3.0.3",
+    "idb-keyval": "^6.2.2",
     "io-ts": "^2.2.20",
     "io-ts-reporters": "^2.0.1",
     "io-ts-types": "^0.5.19",
@@ -138,7 +139,8 @@
     "yargs": "^17.7.2",
     "zod": "^3.23.8",
     "zod-to-json-schema": "^3.24.5",
-    "zod-validation-error": "^3.4.0"
+    "zod-validation-error": "^3.4.0",
+    "zustand": "^5.0.5"
   },
   "devDependencies": {
     "@faker-js/faker": "^9.3.0",

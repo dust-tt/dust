@@ -1,5 +1,5 @@
 import { useSendNotification } from "@dust-tt/sparkle";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Fetcher } from "swr";
 import { useSWRConfig } from "swr";
 
@@ -14,6 +14,7 @@ import {
   useSWRInfiniteWithDefaults,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
+import { useUser } from "@app/lib/swr/user";
 import type { FetchAssistantTemplatesResponse } from "@app/pages/api/templates";
 import type { FetchAssistantTemplateResponse } from "@app/pages/api/templates/[tId]";
 import type { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
@@ -31,6 +32,7 @@ import type {
   UserType,
 } from "@app/types";
 import { normalizeError } from "@app/types";
+import { useAppStore } from "@app/lib/stores/AppStoreProvider";
 
 export function useAssistantTemplates() {
   const assistantTemplatesFetcher: Fetcher<FetchAssistantTemplatesResponse> =
@@ -191,6 +193,15 @@ export function useUnifiedAgentConfigurations({
   workspaceId: string;
   disabled?: boolean;
 }) {
+  const { user } = useUser();
+  const { setAgentConfigurationsCache, getAgentConfigurationsCache } =
+    useAppStore((state) => state.actions);
+
+  const agentConfigurationsCache = getAgentConfigurationsCache({
+    userId: user?.sId,
+    workspaceId,
+  });
+
   const {
     agentConfigurations: agentConfigurationsWithAuthors,
     isAgentConfigurationsLoading: isAgentConfigurationsWithAuthorsLoading,
@@ -203,8 +214,26 @@ export function useUnifiedAgentConfigurations({
     disabled,
   });
 
+  useEffect(() => {
+    if (agentConfigurationsWithAuthors.length > 0 && user?.sId) {
+      setAgentConfigurationsCache({
+        userId: user?.sId,
+        workspaceId,
+        agentConfigurationsCache: agentConfigurationsWithAuthors,
+      });
+    }
+  }, [
+    agentConfigurationsWithAuthors,
+    user?.sId,
+    workspaceId,
+    setAgentConfigurationsCache,
+  ]);
+
   return {
-    agentConfigurations: agentConfigurationsWithAuthors,
+    agentConfigurations:
+      agentConfigurationsWithAuthors.length === 0
+        ? agentConfigurationsCache
+        : agentConfigurationsWithAuthors,
     isLoading: isAgentConfigurationsWithAuthorsLoading,
     mutate,
     mutateRegardlessOfQueryParams,
