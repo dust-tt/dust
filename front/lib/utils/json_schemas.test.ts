@@ -191,7 +191,7 @@ describe("JSON Schema Utilities", () => {
                             uri: {
                               type: "string",
                               pattern:
-                                "^agent:\\/\\/dust\\/w\\/(\\w+)\\/agents\\/(\\w+)$",
+                                "^agent:\\/\\/dust\\/w\\/(\\w+)\\/agents\\/([\\w-]+)$",
                             },
                             mimeType: {
                               type: "string",
