@@ -1,9 +1,7 @@
 import fs from "fs";
 import { Op } from "sequelize";
 
-import {
-  ASSISTANT_BUILDER_DUST_APP_RUN_ACTION_CONFIGURATION_DEFAULT_NAME,
-} from "@app/components/assistant_builder/types";
+import { ASSISTANT_BUILDER_DUST_APP_RUN_ACTION_CONFIGURATION_DEFAULT_NAME } from "@app/components/assistant_builder/types";
 import { Authenticator } from "@app/lib/auth";
 import { AgentDustAppRunConfiguration } from "@app/lib/models/assistant/actions/dust_app_run";
 import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
