@@ -168,7 +168,16 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
             operator: z
               .nativeEnum(FilterOperatorEnum)
               .describe("The operator to use for comparison."),
-            value: z.string().describe("The value to compare against."),
+            value: z
+              .string()
+              .optional()
+              .describe("The value to compare against"),
+            values: z
+              .array(z.string())
+              .optional()
+              .describe(
+                "The values to compare against. Required for IN/NOT_IN operators."
+              ),
           })
         )
         .describe("Array of property filters to apply."),
@@ -205,7 +214,16 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
             operator: z
               .nativeEnum(FilterOperatorEnum)
               .describe("The operator to use for comparison."),
-            value: z.string().describe("The value to compare against."),
+            value: z
+              .string()
+              .optional()
+              .describe("The value to compare against"),
+            values: z
+              .array(z.string())
+              .optional()
+              .describe(
+                "The values to compare against. Required for IN/NOT_IN operators."
+              ),
           })
         )
         .describe("Array of property filters to apply."),

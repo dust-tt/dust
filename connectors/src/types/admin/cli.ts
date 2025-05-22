@@ -43,6 +43,7 @@ export const ConfluenceCommandSchema = t.type({
     t.literal("update-parents"),
     t.literal("ignore-near-rate-limit"),
     t.literal("unignore-near-rate-limit"),
+    t.literal("check-space-access"),
   ]),
   args: t.type({
     connectorId: t.union([t.number, t.undefined]),
@@ -67,6 +68,14 @@ export const ConfluenceUpsertPageResponseSchema = t.type({
 });
 export type ConfluenceUpsertPageResponseType = t.TypeOf<
   typeof ConfluenceUpsertPageResponseSchema
+>;
+
+export const ConfluenceCheckSpaceAccessResponseSchema = t.type({
+  hasAccess: t.boolean,
+  space: t.UnknownRecord,
+});
+export type ConfluenceCheckSpaceAccessResponseType = t.TypeOf<
+  typeof ConfluenceCheckSpaceAccessResponseSchema
 >;
 /**
  * </Confluence>
@@ -608,6 +617,7 @@ export const AdminResponseSchema = t.union([
   BatchAllResponseSchema,
   CheckFileGenericResponseSchema,
   ConfluenceMeResponseSchema,
+  ConfluenceCheckSpaceAccessResponseSchema,
   ConfluenceUpsertPageResponseSchema,
   GongForceResyncResponseSchema,
   IntercomCheckConversationResponseSchema,

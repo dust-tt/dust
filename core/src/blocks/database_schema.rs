@@ -194,6 +194,6 @@ pub async fn load_tables_from_identifiers(
                     .map_or(true, |filter| filter.match_filter(table))
             })
         })
-        .map(|t| t.ok_or_else(|| anyhow!("Table not found.")))
+        .map(|t| t.ok_or_else(|| anyhow!("Table not found. The table does not exist anymore or the agent does not have access to it.")))
         .collect()
 }

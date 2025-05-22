@@ -44,6 +44,10 @@ interface EditSpaceManagedDataSourcesViewsProps {
   space: SpaceType;
 }
 
+/*
+ * If you pass a dataSourceView to this component, it will be used to edit the data source view selection.
+ * If you don't pass a dataSourceView, it will allow you to edit data from multiple data sources at once.
+ */
 export function EditSpaceManagedDataSourcesViews({
   dataSourceView,
   isAdmin,
@@ -213,7 +217,7 @@ export function EditSpaceManagedDataSourcesViews({
                 selectionConfiguration.selectedResources.length === 0
               ) {
                 throw new Error(
-                  "We should never have a view with no data in the selection, " +
+                  `We should never have a view with no data in the selection (${existingViewForDs.dataSource.name}), ` +
                     "it should have been removed. Action: check the DataSourceViewSelector component."
                 );
               } else {

@@ -3,12 +3,6 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { getMembershipInvitationToken } from "@app/lib/api/invitation";
 import { evaluateWorkspaceSeatAvailability } from "@app/lib/api/workspace";
 import { AuthFlowError, SSOEnforcedError } from "@app/lib/iam/errors";
-import {
-  getPendingMembershipInvitationForEmailAndWorkspace,
-  getPendingMembershipInvitationForToken,
-  getPendingMembershipInvitationWithWorkspaceForEmail,
-  markInvitationAsConsumed,
-} from "@app/lib/iam/invitations";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { getUserFromSession } from "@app/lib/iam/session";
 import { createOrUpdateUser } from "@app/lib/iam/users";
@@ -16,8 +10,8 @@ import {
   createWorkspace,
   findWorkspaceWithVerifiedDomain,
 } from "@app/lib/iam/workspaces";
-import type { MembershipInvitationModel } from "@app/lib/models/membership_invitation";
 import { Workspace } from "@app/lib/models/workspace";
+import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
@@ -35,7 +29,7 @@ import { Err, Ok } from "@app/types";
 // already exist and mark the invitation as consumed.
 async function handleMembershipInvite(
   user: UserResource,
-  membershipInvite: MembershipInvitationModel
+  membershipInvite: MembershipInvitationResource
 ): Promise<
   Result<
     {
@@ -63,11 +57,7 @@ async function handleMembershipInvite(
     );
   }
 
-  const workspace = await Workspace.findOne({
-    where: {
-      id: membershipInvite.workspaceId,
-    },
-  });
+  const { workspace } = membershipInvite;
 
   if (!workspace) {
     return new Err(
@@ -122,7 +112,7 @@ async function handleMembershipInvite(
     });
   }
 
-  await markInvitationAsConsumed(membershipInvite, user);
+  await membershipInvite.markAsConsumed(user);
 
   return new Ok({ flow: null, workspace });
 }
@@ -189,7 +179,7 @@ async function handleEnterpriseSignUpFlow(
 
   // Look if there is a pending membership invitation for the user at the workspace.
   const pendingMembershipInvitation =
-    await getPendingMembershipInvitationForEmailAndWorkspace(
+    await MembershipInvitationResource.getPendingForEmailAndWorkspace(
       user.email,
       workspace.id
     );
@@ -205,7 +195,7 @@ async function handleEnterpriseSignUpFlow(
   }
 
   if (pendingMembershipInvitation) {
-    await markInvitationAsConsumed(pendingMembershipInvitation, user);
+    await pendingMembershipInvitation.markAsConsumed(user);
   }
 
   return { flow: null, workspace };
@@ -353,7 +343,7 @@ async function handler(
   // `membershipInvite` is set to a `MembeshipInvitation` if the query includes an `inviteToken`,
   // meaning the user is going through the invite by email flow.
   const membershipInviteRes =
-    await getPendingMembershipInvitationForToken(inviteToken);
+    await MembershipInvitationResource.getPendingForToken(inviteToken);
   if (membershipInviteRes.isErr()) {
     const { error } = membershipInviteRes;
 
@@ -393,10 +383,9 @@ async function handler(
       // assumed they are coming from the invitation link and have seen the join page; we redirect
       // (after auth0 login) to this URL with inviteToken appended. The user will then end up on the
       // workspace's welcome page (see comment's PR)
-      const pendingInvitationAndWorkspace =
-        await getPendingMembershipInvitationWithWorkspaceForEmail(user.email);
-      if (pendingInvitationAndWorkspace) {
-        const { invitation: pendingInvitation } = pendingInvitationAndWorkspace;
+      const pendingInvitation =
+        await MembershipInvitationResource.getPendingForEmail(user.email);
+      if (pendingInvitation) {
         const signUpUrl = getSignUpUrl({
           signupCallbackUrl: `/api/login?inviteToken=${getMembershipInvitationToken(pendingInvitation.id)}`,
           invitationEmail: pendingInvitation.inviteEmail,

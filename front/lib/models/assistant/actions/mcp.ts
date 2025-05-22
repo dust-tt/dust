@@ -1,3 +1,4 @@
+import type { JSONSchema7 as JSONSchema } from "json-schema";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
@@ -8,6 +9,7 @@ import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
+import { validateJsonSchema } from "@app/lib/utils/json_schemas";
 import type { TimeFrame } from "@app/types";
 import { isTimeFrame } from "@app/types";
 
@@ -21,6 +23,7 @@ export class AgentMCPServerConfiguration extends WorkspaceAwareModel<AgentMCPSer
 
   declare timeFrame: TimeFrame | null;
   declare additionalConfiguration: Record<string, boolean | number | string>;
+  declare jsonSchema: JSONSchema | null;
 
   declare appId: string | null;
 
@@ -66,6 +69,21 @@ AgentMCPServerConfiguration.init(
           }
           if (!isTimeFrame(value)) {
             throw new Error("Invalid time frame");
+          }
+        },
+      },
+    },
+    jsonSchema: {
+      type: DataTypes.JSONB,
+      allowNull: true,
+      validate: {
+        isValidJSONSchema(value: unknown) {
+          if (typeof value !== "object" && typeof value !== "string") {
+            throw new Error("jsonSchema is not an object or a string");
+          }
+          const validationResult = validateJsonSchema(value);
+          if (!validationResult.isValid) {
+            throw new Error(`Invalid JSON schema: ${validationResult.error}`);
           }
         },
       },

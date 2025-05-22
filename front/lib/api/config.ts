@@ -4,6 +4,15 @@ export const PRODUCTION_DUST_API = "https://dust.tt";
 
 const config = {
   getClientFacingUrl: (): string => {
+    // We override the NEXT_PUBLIC_DUST_CLIENT_FACING_URL in `front-internal` to ensure that the
+    // uploadUrl returned by the file API points to the `http://front-internal-service` and not our
+    // public API URL.
+    const override = EnvironmentConfig.getOptionalEnvVariable(
+      "DUST_INTERNAL_CLIENT_FACING_URL"
+    );
+    if (override) {
+      return override;
+    }
     return EnvironmentConfig.getEnvVariable(
       "NEXT_PUBLIC_DUST_CLIENT_FACING_URL"
     );

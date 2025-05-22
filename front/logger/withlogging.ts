@@ -235,6 +235,11 @@ export function withGetServerSidePropsLogging<
         elapsed,
         tags
       );
+      statsDClient.distribution(
+        "get_server_side_props.response_size.distribution",
+        Buffer.byteLength(JSON.stringify(res)),
+        tags
+      );
 
       logger.info(
         {

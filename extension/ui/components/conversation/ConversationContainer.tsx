@@ -10,6 +10,7 @@ import { useDustAPI } from "@app/shared/lib/dust_api";
 import { getRandomGreetingForName } from "@app/shared/lib/greetings";
 import type { ContentFragmentsType } from "@app/shared/lib/types";
 import type { StoredUser } from "@app/shared/services/auth";
+import { AssistantFavorites } from "@app/ui/components/assistants/AssistantFavorites";
 import { ConversationViewer } from "@app/ui/components/conversation/ConversationViewer";
 import { GenerationContextProvider } from "@app/ui/components/conversation/GenerationContextProvider";
 import { ReachedLimitPopup } from "@app/ui/components/conversation/ReachedLimitPopup";
@@ -273,28 +274,31 @@ export function ConversationContainer({
 
   return (
     <GenerationContextProvider>
-      <div className="pb-2 w-full">
-        <Page.Header title={greeting} />
-        <Page.SectionHeader title="Start a conversation" />
-      </div>
-      <div id="assistant-input-header" className="w-full pb-4">
-        <AssistantInputBar
-          owner={owner}
-          onSubmit={handlePostConversation}
-          stickyMentions={stickyMentions}
-          isTabIncluded={!!includeContent}
-          setIncludeTab={(includeTab) => {
-            setIncludeContent(includeTab);
-          }}
-          isSubmitting={isSubmitting}
-          conversation={conversation ?? undefined}
+      <div className="h-full flex flex-col">
+        <div className="pb-2 w-full">
+          <Page.Header title={greeting} />
+          <Page.SectionHeader title="Start a conversation" />
+        </div>
+        <div id="assistant-input-header" className="w-full pb-4">
+          <AssistantInputBar
+            owner={owner}
+            onSubmit={handlePostConversation}
+            stickyMentions={stickyMentions}
+            isTabIncluded={!!includeContent}
+            setIncludeTab={(includeTab) => {
+              setIncludeContent(includeTab);
+            }}
+            isSubmitting={isSubmitting}
+            conversation={conversation ?? undefined}
+          />
+        </div>
+        <AssistantFavorites user={user} />
+        <ReachedLimitPopup
+          isOpened={planLimitReached}
+          onClose={() => setPlanLimitReached(false)}
+          isTrialing={false} // TODO(Ext): Properly handle this from loading the subscription.
         />
       </div>
-      <ReachedLimitPopup
-        isOpened={planLimitReached}
-        onClose={() => setPlanLimitReached(false)}
-        isTrialing={false} // TODO(Ext): Properly handle this from loading the subscription.
-      />
     </GenerationContextProvider>
   );
 }

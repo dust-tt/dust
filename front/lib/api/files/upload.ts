@@ -1,6 +1,6 @@
 import { isDustMimeType } from "@dust-tt/client";
+import ConvertAPI from "convertapi";
 import type { IncomingMessage } from "http";
-import sharp from "sharp";
 import { Readable } from "stream";
 import { pipeline } from "stream/promises";
 
@@ -20,6 +20,7 @@ import type {
 import {
   assertNever,
   Err,
+  extensionsForContentType,
   isSupportedDelimitedTextContentType,
   isSupportedFileContentType,
   isSupportedImageContentType,
@@ -73,10 +74,17 @@ const resizeAndUploadToFileStorage: ProcessingFunction = async (
   auth: Authenticator,
   file: FileResource
 ) => {
+  /* Skipping sharp() to check if it's the cause of high CPU / memory usage.
   const readStream = file.getReadStream({
     auth,
     version: "original",
   });
+
+  // Explicitly disable Sharp's cache to prevent memory accumulation.
+  sharp.cache(false);
+
+  // Set global concurrency limit to prevent too many parallel operations.
+  sharp.concurrency(2);
 
   // Anthropic https://docs.anthropic.com/en/docs/build-with-claude/vision#evaluate-image-size
   // OpenAI https://platform.openai.com/docs/guides/vision#calculating-costs
@@ -87,10 +95,38 @@ const resizeAndUploadToFileStorage: ProcessingFunction = async (
   // Resize the image, preserving the aspect ratio based on the longest side compatible with both
   // models. In case of GPT, it might incure a resize on their side as well but doing the math here
   // would mean downloading the file first instead of streaming it.
+
   const resizedImageStream = sharp().resize(1568, 1568, {
     fit: sharp.fit.inside, // Ensure longest side is 1568px.
     withoutEnlargement: true, // Avoid upscaling if image is smaller than 1568px.
   });
+  */
+
+  if (!process.env.CONVERTAPI_API_KEY) {
+    throw new Error("CONVERTAPI_API_KEY is not set");
+  }
+
+  const originalFormat = extensionsForContentType(file.contentType)[0].replace(
+    ".",
+    ""
+  );
+  const originalUrl = await file.getSignedUrlForDownload(auth, "original");
+  const convertapi = new ConvertAPI(process.env.CONVERTAPI_API_KEY);
+
+  const result = await convertapi.convert(
+    originalFormat,
+    {
+      File: originalUrl,
+      ScaleProportions: true,
+      ImageResolution: "72",
+      ScaleImage: "true",
+      ScaleIfLarger: "true",
+      ImageHeight: "1538",
+      ImageWidth: "1538",
+    },
+    originalFormat,
+    30
+  );
 
   const writeStream = file.getWriteStream({
     auth,
@@ -98,7 +134,17 @@ const resizeAndUploadToFileStorage: ProcessingFunction = async (
   });
 
   try {
-    await pipeline(readStream, resizedImageStream, writeStream);
+    const createReadableFromUrl = async (url: string): Promise<Readable> => {
+      const response = await fetch(url);
+      if (!response.ok || !response.body) {
+        throw new Error(`Failed to fetch from URL: ${response.statusText}`);
+      }
+      return Readable.fromWeb(response.body as any); // Type assertion needed due to Node.js types mismatch
+    };
+
+    const stream = await createReadableFromUrl(result.file.url);
+
+    await pipeline(stream, writeStream);
     return new Ok(undefined);
   } catch (err) {
     logger.error(
@@ -334,6 +380,8 @@ const maybeApplyProcessing: ProcessingFunction = async (
   auth: Authenticator,
   file: FileResource
 ) => {
+  const start = performance.now();
+
   const processing = getProcessingFunction(file);
   if (!processing) {
     return new Err(
@@ -344,6 +392,17 @@ const maybeApplyProcessing: ProcessingFunction = async (
   }
 
   const res = await processing(auth, file);
+
+  const elapsed = performance.now() - start;
+  logger.info(
+    {
+      file: file.toPublicJSON(auth),
+      elapsed,
+      error: res.isErr() ? res.error : undefined,
+    },
+    "Processed file"
+  );
+
   if (res.isErr()) {
     return res;
   } else {

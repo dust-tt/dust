@@ -32,6 +32,7 @@ import type {
   MCPToolResultContentType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { isMCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { findMatchingSubSchemas } from "@app/lib/actions/mcp_internal_actions/utils";
 import type {
   MCPConnectionParams,
   ServerSideMCPConnectionParams,
@@ -64,7 +65,6 @@ import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_m
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { fromEvent } from "@app/lib/utils/events";
-import { findMatchingSubSchemas } from "@app/lib/utils/json_schemas";
 import logger from "@app/logger/logger";
 import type { ModelId, Result } from "@app/types";
 import { assertNever, Err, normalizeError, Ok, slugify } from "@app/types";
@@ -80,7 +80,14 @@ const EMPTY_INPUT_SCHEMA: JSONSchema7 = { type: "object", properties: {} };
 
 const MAX_TOOL_NAME_LENGTH = 64;
 
-const TOOL_NAME_SEPARATOR = "___";
+const TOOL_NAME_SEPARATOR = "__";
+
+// Define the new type here for now, or move to a dedicated types file later.
+export interface ServerToolsAndInstructions {
+  serverName: string;
+  instructions?: string;
+  tools: MCPToolConfigurationType[];
+}
 
 function makeServerSideMCPToolConfigurations(
   config: ServerSideMCPServerConfigurationType,
@@ -101,6 +108,7 @@ function makeServerSideMCPToolConfigurations(
     childAgentId: config.childAgentId,
     reasoningModel: config.reasoningModel,
     timeFrame: config.timeFrame,
+    jsonSchema: config.jsonSchema,
     additionalConfiguration: config.additionalConfiguration,
     permission: tool.stakeLevel,
     toolServerId: tool.toolServerId,
@@ -387,7 +395,10 @@ type AgentLoopListToolsContextWithoutConfigurationType = Omit<
 export async function tryListMCPTools(
   auth: Authenticator,
   agentLoopListToolsContext: AgentLoopListToolsContextWithoutConfigurationType
-): Promise<{ tools: MCPToolConfigurationType[]; error?: string }> {
+): Promise<{
+  serverToolsAndInstructions: ServerToolsAndInstructions[];
+  error?: string;
+}> {
   const owner = auth.getNonNullableWorkspace();
 
   // Filter for MCP server configurations.
@@ -397,23 +408,26 @@ export async function tryListMCPTools(
   ].filter(isMCPServerConfiguration);
 
   // Discover all the tools exposed by all the mcp servers available.
-  const toolsResults = await concurrentExecutor(
+  const results = await concurrentExecutor(
     mcpServerActions,
     async (action) => {
-      const toolsRes = await listMCPServerTools(auth, action, {
-        ...agentLoopListToolsContext,
-        agentActionConfiguration: action,
-      });
+      const toolsAndInstructionsRes =
+        await listMCPServerToolsAndServerInstructions(auth, action, {
+          ...agentLoopListToolsContext,
+          agentActionConfiguration: action,
+        });
 
-      if (toolsRes.isErr()) {
+      if (toolsAndInstructionsRes.isErr()) {
         logger.error(
           {
             workspaceId: owner.id,
             conversationId: agentLoopListToolsContext.conversation.sId,
             messageId: agentLoopListToolsContext.agentMessage.sId,
-            error: toolsRes.error,
+            error: toolsAndInstructionsRes.error,
           },
-          `Error listing tools from MCP server: ${normalizeError(toolsRes.error)}`
+          `Error listing tools from MCP server: ${normalizeError(
+            toolsAndInstructionsRes.error
+          )}`
         );
         return new Err(
           new Error(
@@ -424,16 +438,17 @@ export async function tryListMCPTools(
         );
       }
 
-      const toolConfigurations = toolsRes.value;
+      const { instructions, tools: rawToolsFromServer } =
+        toolsAndInstructionsRes.value;
 
-      const tools = [];
+      const processedTools = [];
 
-      for (const toolConfig of toolConfigurations) {
+      for (const toolConfig of rawToolsFromServer) {
         const toolName = getPrefixedToolName(action, toolConfig.name);
-        // If we fail here we fail for the entire action because the tool potentially interact
-        // so we end up with a weird state if some of them are added and some are not.
-        // It's more principled to reject the action altogether in this case.
         if (toolName.isErr()) {
+          // If one tool name fails for a server, we skip this server entirely, we might want to
+          // revisit this in the future.
+          // For now, returning an error for the whole server batch.
           return new Err(toolName.error);
         }
 
@@ -443,12 +458,11 @@ export async function tryListMCPTools(
         // has more information to make the right choice.
         // This replicates the current behavior of the Retrieval action for example.
         let extraDescription: string = "";
-
         if (action.description) {
           const hasDataSourceConfiguration =
             Object.keys(
               findMatchingSubSchemas(
-                toolConfigurations[0].inputSchema,
+                toolConfig.inputSchema,
                 INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
               )
             ).length > 0;
@@ -456,7 +470,7 @@ export async function tryListMCPTools(
           const hasTableConfiguration =
             Object.keys(
               findMatchingSubSchemas(
-                toolConfigurations[0].inputSchema,
+                toolConfig.inputSchema,
                 INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE
               )
             ).length > 0;
@@ -472,38 +486,43 @@ export async function tryListMCPTools(
           }
         }
 
-        tools.push({
+        processedTools.push({
           ...toolConfig,
           originalName: toolConfig.name,
           mcpServerName: action.name,
           name: toolName.value,
-          description: toolConfig.description + extraDescription,
+          description: (toolConfig.description ?? "") + extraDescription,
         });
       }
 
-      return new Ok(tools);
+      // Return the server's instructions and its processed tools.
+      return new Ok<ServerToolsAndInstructions>({
+        serverName: action.name,
+        instructions,
+        tools: processedTools,
+      });
     },
     { concurrency: 10 }
   );
 
   // Aggregate results
-  const { tools, errors } = toolsResults.reduce<{
-    tools: MCPToolConfigurationType[];
+  const { serverToolsAndInstructions, errors } = results.reduce<{
+    serverToolsAndInstructions: ServerToolsAndInstructions[];
     errors: string[];
   }>(
     (acc, result) => {
       if (result.isOk()) {
-        acc.tools.push(...result.value);
+        acc.serverToolsAndInstructions.push(result.value);
       } else {
         acc.errors.push(result.error.message);
       }
       return acc;
     },
-    { tools: [], errors: [] }
+    { serverToolsAndInstructions: [], errors: [] }
   );
 
   return {
-    tools,
+    serverToolsAndInstructions,
     error: errors.length > 0 ? errors.join("\n") : undefined,
   };
 }
@@ -632,11 +651,13 @@ async function listToolsForServerSideMCPServer(
   return new Ok(serverSideToolConfigs);
 }
 
-async function listMCPServerTools(
+async function listMCPServerToolsAndServerInstructions(
   auth: Authenticator,
   config: MCPServerConfigurationType,
   agentLoopListToolsContext: AgentLoopListToolsContextType
-): Promise<Result<MCPToolConfigurationType[], Error>> {
+): Promise<
+  Result<{ instructions?: string; tools: MCPToolConfigurationType[] }, Error>
+> {
   const owner = auth.getNonNullableWorkspace();
   let mcpClient;
 
@@ -660,6 +681,8 @@ async function listMCPServerTools(
       return r;
     }
     mcpClient = r.value;
+
+    const serverInstructions = mcpClient.getInstructions();
 
     let toolsRes: Result<MCPToolConfigurationType[], Error>;
     if (isConnectViaClientSideMCPServer(connectionParams)) {
@@ -685,19 +708,20 @@ async function listMCPServerTools(
       return toolsRes;
     }
 
-    const tools = toolsRes.value;
+    const { value: toolsFromServer } = toolsRes;
 
     logger.debug(
       {
         workspaceId: owner.id,
         conversationId: agentLoopListToolsContext.conversation.sId,
         messageId: agentLoopListToolsContext.agentMessage.sId,
-        toolCount: tools.length,
+        toolCount: toolsFromServer.length,
       },
-      `Retrieved ${tools.length} tools from MCP server`
+      `Retrieved ${toolsFromServer.length} tools from MCP server`
     );
 
-    return new Ok(tools);
+    // Return server instructions and the tools from this server.
+    return new Ok({ instructions: serverInstructions, tools: toolsFromServer });
   } catch (error) {
     logger.error(
       {

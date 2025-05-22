@@ -485,7 +485,7 @@ export async function handleMembershipInvitations(
             return {
               success: false,
               email,
-              error_message: `Cannot send invitation : user already has an account on ${regionConfig.getOtherRegionInfo()}.`,
+              error_message: `Cannot send invitation : user already has an account on ${regionConfig.getOtherRegionInfo().name}.`,
             };
           }
           try {

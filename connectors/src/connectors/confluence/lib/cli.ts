@@ -20,6 +20,7 @@ import { default as topLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type {
   AdminSuccessResponseType,
+  ConfluenceCheckSpaceAccessResponseType,
   ConfluenceCommandType,
   ConfluenceMeResponseType,
   ConfluenceUpsertPageResponseType,
@@ -32,8 +33,10 @@ export const confluence = async ({
   | AdminSuccessResponseType
   | ConfluenceUpsertPageResponseType
   | ConfluenceMeResponseType
+  | ConfluenceCheckSpaceAccessResponseType
 > => {
   const logger = topLogger.child({ majorCommand: "confluence", command, args });
+
   switch (command) {
     case "me": {
       if (!args.connectorId) {
@@ -219,6 +222,39 @@ export const confluence = async ({
       await configuration.update({ ignoreNearRateLimit: false });
 
       return { success: true };
+    }
+
+    case "check-space-access": {
+      const { connectorId } = args;
+      if (!connectorId) {
+        throw new Error("Missing --connectorId argument");
+      }
+      if (!args.spaceId) {
+        throw new Error("Missing --spaceId argument");
+      }
+      const spaceId = args.spaceId.toString();
+
+      const connector = await ConnectorResource.fetchById(connectorId);
+      if (!connector) {
+        throw new Error("Connector not found.");
+      }
+      if (connector.type !== "confluence") {
+        throw new Error("Connector is not a Confluence connector.");
+      }
+
+      const confluenceConfig =
+        await fetchConfluenceConfigurationActivity(connectorId);
+      const client = await getConfluenceClient(
+        { cloudId: confluenceConfig?.cloudId },
+        connector
+      );
+
+      // Let errors propagate naturally
+      const space = await client.getSpaceById(spaceId);
+      return {
+        hasAccess: true,
+        space,
+      };
     }
 
     default:

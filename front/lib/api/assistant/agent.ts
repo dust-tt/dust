@@ -382,7 +382,10 @@ async function* runMultiActionsAgent(
       userMessage.context.clientSideMCPServerIds
     );
 
-  const { tools: mcpActions, error } = await tryListMCPTools(auth, {
+  const {
+    serverToolsAndInstructions: mcpActions,
+    error: mcpToolsListingError,
+  } = await tryListMCPTools(auth, {
     agentConfiguration,
     conversation,
     agentMessage,
@@ -391,7 +394,7 @@ async function* runMultiActionsAgent(
 
   if (!isLastGenerationIteration) {
     availableActions.push(...jitActions);
-    availableActions.push(...mcpActions);
+    availableActions.push(...mcpActions.flatMap((s) => s.tools));
   }
 
   let fallbackPrompt = "You are a conversational agent";
@@ -421,9 +424,10 @@ async function* runMultiActionsAgent(
     fallbackPrompt,
     model,
     hasAvailableActions: !!availableActions.length,
-    errorContext: error,
+    errorContext: mcpToolsListingError,
     agentsList,
     conversationId: conversation.sId,
+    serverToolsAndInstructions: mcpActions,
   });
 
   const MIN_GENERATION_TOKENS = model.generationTokensCount;

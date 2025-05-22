@@ -1,7 +1,10 @@
-import { format } from "date-fns";
 import fs from "fs";
 import { Op } from "sequelize";
 
+import {
+  DEFAULT_RETRIEVAL_ACTION_NAME,
+  DEFAULT_RETRIEVAL_NO_QUERY_ACTION_NAME,
+} from "@app/lib/actions/constants";
 import { Authenticator } from "@app/lib/auth";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
@@ -11,10 +14,10 @@ import { Workspace } from "@app/lib/models/workspace";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import { getInsertSQL } from "@app/lib/utils/sql_utils";
 import type Logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import type { ModelId } from "@app/types";
-import { getInsertSQL } from "@app/lib/utils/sql_utils";
 
 async function findWorkspacesWithRetrievalConfigurations(): Promise<ModelId[]> {
   const retrievalConfigurations = await AgentRetrievalConfiguration.findAll({
@@ -141,7 +144,14 @@ async function migrateWorkspaceRetrievalActions(
                   unit: retrievalConfig.relativeTimeFrameUnit,
                 }
               : null,
-          name: retrievalConfig.name,
+          name:
+            !retrievalConfig.name ||
+            [
+              DEFAULT_RETRIEVAL_ACTION_NAME,
+              DEFAULT_RETRIEVAL_NO_QUERY_ACTION_NAME,
+            ].includes(retrievalConfig.name)
+              ? null
+              : retrievalConfig.name,
           singleToolDescriptionOverride: retrievalConfig.description,
           appId: null,
         });

@@ -13,8 +13,8 @@ import {
   getWorkspaceInfos,
   getWorkspaceVerifiedDomain,
 } from "@app/lib/api/workspace";
-import { getPendingMembershipInvitationForToken } from "@app/lib/iam/invitations";
 import { makeGetServerSidePropsRequirementsWrapper } from "@app/lib/iam/session";
+import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
 import { getSignUpUrl } from "@app/lib/signup";
 import type { LightWorkspaceType } from "@app/types";
 
@@ -97,7 +97,7 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
       break;
     case "email_invite": {
       signUpCallbackUrl = `/api/login?inviteToken=${token}`;
-      const res = await getPendingMembershipInvitationForToken(
+      const res = await MembershipInvitationResource.getPendingForToken(
         token ?? undefined
       );
       // Redirect to login error page with specific reason

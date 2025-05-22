@@ -1351,6 +1351,7 @@ export async function createAgentActionConfiguration(
             internalMCPServerId: mcpServerView.internalMCPServerId,
             additionalConfiguration: action.additionalConfiguration,
             timeFrame: action.timeFrame,
+            jsonSchema: action.jsonSchema,
             name: serverName !== action.name ? action.name : null,
             singleToolDescriptionOverride:
               serverDescription !== action.description
@@ -1409,6 +1410,7 @@ export async function createAgentActionConfiguration(
           timeFrame: action.timeFrame,
           additionalConfiguration: action.additionalConfiguration,
           dustAppConfiguration: action.dustAppConfiguration,
+          jsonSchema: action.jsonSchema,
         });
       });
     }

@@ -7,14 +7,11 @@ export const apiConfig = {
       apiKey: EnvironmentConfig.getOptionalEnvVariable("OAUTH_API_KEY") ?? null,
     };
   },
+  getDustFrontInternalAPIUrl: (): string => {
+    return EnvironmentConfig.getEnvVariable("DUST_FRONT_INTERNAL_API");
+  },
   getDustFrontAPIUrl: (): string => {
     return EnvironmentConfig.getEnvVariable("DUST_FRONT_API");
-  },
-  getDustAPIConfig: (): { url: string; nodeEnv: string } => {
-    return {
-      url: EnvironmentConfig.getEnvVariable("DUST_FRONT_API"),
-      nodeEnv: EnvironmentConfig.getEnvVariable("NODE_ENV"),
-    };
   },
   getTextExtractionUrl: (): string => {
     return EnvironmentConfig.getEnvVariable("TEXT_EXTRACTION_URL");
