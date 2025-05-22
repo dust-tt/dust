@@ -9,7 +9,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   // We'll prefix all tools with the server name to avoid conflicts.
   // It's okay to change the name of the server as we don't refer to it directly.
   "agent_router",
-  "ask_agent",
+  "run_agent",
   "extract_data",
   "file_generation",
   "github",
@@ -154,7 +154,7 @@ export const INTERNAL_MCP_SERVERS: Record<
     availability: "auto",
     flag: null,
   },
-  ask_agent: {
+  run_agent: {
     id: 1008,
     availability: "manual",
     flag: "dev_mcp_actions",
