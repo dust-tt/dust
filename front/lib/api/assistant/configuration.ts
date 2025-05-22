@@ -605,7 +605,8 @@ async function fetchWorkspaceAgentConfigurationsForView(
 
     const tags: TagResource[] = tagsPerAgent[agent.id] ?? [];
 
-    const member = agentIdsForUserAsEditor.includes(agent.id);
+    const isAuthor = agent.authorId === auth.user()?.id;
+    const isMember = agentIdsForUserAsEditor.includes(agent.id);
 
     const agentConfigurationType: AgentConfigurationType = {
       id: agent.id,
@@ -633,8 +634,8 @@ async function fetchWorkspaceAgentConfigurationsForView(
         )
       ),
       tags: tags.map((t) => t.toJSON()).sort(tagsSorter),
-      canRead: member || agent.scope === "visible",
-      canEdit: member,
+      canRead: isAuthor || isMember || agent.scope === "visible",
+      canEdit: isAuthor || isMember,
     };
 
     agentConfigurationTypes.push(agentConfigurationType);
