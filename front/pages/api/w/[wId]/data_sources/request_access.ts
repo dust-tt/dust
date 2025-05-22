@@ -119,6 +119,7 @@ async function handler(
   const result = await sendEmailWithTemplate({
     to: dataSource.editedByUser.email,
     from: { name: "Dust team", email: "support@dust.help" },
+    replyTo: emailRequester,
     subject: `[Dust] Request Data source from ${emailRequester}`,
     body,
   });

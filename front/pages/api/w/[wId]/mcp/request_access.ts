@@ -120,6 +120,7 @@ async function handler(
   const result = await sendEmailWithTemplate({
     to: mcpServerView.editedByUser.email,
     from: { name: "Dust team", email: "support@dust.help" },
+    replyTo: emailRequester,
     subject: `[Dust] Tools request from ${emailRequester}`,
     body,
   });
