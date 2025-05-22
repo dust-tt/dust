@@ -114,6 +114,7 @@ import {
 } from "@app/types";
 
 import { DataDescription } from "./actions/DataDescription";
+import { isDustAppRunConfiguration } from "@app/lib/actions/types/guards";
 
 const DATA_SOURCES_ACTION_CATEGORIES = [
   "RETRIEVAL_SEARCH",
@@ -183,6 +184,17 @@ function actionDisplayName(
   mcpServerView: MCPServerViewType | null
 ) {
   if (mcpServerView) {
+    if (
+      action.type === "MCP" &&
+      isDustAppRunConfiguration(action.configuration.dustAppConfiguration)
+    ) {
+      const { dustAppConfiguration } = action.configuration;
+      const displayNameSuffix = dustAppConfiguration?.name
+        ? ` - ${dustAppConfiguration.name}`
+        : "";
+      return getMcpServerViewDisplayName(mcpServerView) + displayNameSuffix;
+    }
+
     return getMcpServerViewDisplayName(mcpServerView);
   }
 
