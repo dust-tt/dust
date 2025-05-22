@@ -20,6 +20,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
   const owner = auth.workspace();
   const user = auth.user()?.toJSON();
   const subscription = auth.subscription();
+  const isAdmin = auth.isAdmin();
 
   if (!owner || !user || !auth.isUser() || !subscription) {
     const { cId } = context.query;
@@ -47,6 +48,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     props: {
       user,
       owner,
+      isAdmin,
       subscription,
       baseUrl: config.getClientFacingUrl(),
       conversationId: getValidConversationId(cId),

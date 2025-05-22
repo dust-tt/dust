@@ -140,6 +140,7 @@ type Step = {
 export function WelcomeTourGuide({
   owner,
   user,
+  isAdmin,
   startConversationRef,
   spaceMenuButtonRef,
   createAgentButtonRef,
@@ -147,6 +148,7 @@ export function WelcomeTourGuide({
 }: {
   owner: WorkspaceType;
   user: UserType;
+  isAdmin: boolean;
   startConversationRef: React.RefObject<HTMLDivElement>;
   spaceMenuButtonRef: React.RefObject<HTMLDivElement>;
   createAgentButtonRef: React.RefObject<HTMLDivElement>;
@@ -271,14 +273,28 @@ export function WelcomeTourGuide({
               ))}
             </div>
           </div>
-          <div className="heading-lg px-3 pt-4">
-            Make your agents smarter by adding&nbsp;
-            <span className="text-brand-red-rose">knowledge and tools</span>.
-          </div>
-          <div className="copy-base px-3 text-muted-foreground dark:text-muted-foreground-night">
-            Set up your connections and your tools in&nbsp;the{" "}
-            <span className="font-semibold text-foreground">spaces</span> tab.
-          </div>
+          {isAdmin ? (
+            <>
+              <div className="heading-lg px-3 pt-4">
+                Make your agents smarter by adding&nbsp;
+                <span className="text-brand-red-rose">knowledge and tools</span>
+                .
+              </div>
+              <div className="copy-base px-3 text-muted-foreground dark:text-muted-foreground-night">
+                Set up your connections and your tools in&nbsp;the{" "}
+                <span className="font-semibold text-foreground">spaces</span>{" "}
+                tab.
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="heading-lg px-3 pt-4">
+                Explore your workspace{" "}
+                <span className="text-brand-red-rose">knowledge and tools</span>{" "}
+                in <span className="text-brand-red-rose">spaces</span>.
+              </div>
+            </>
+          )}
         </>
       ),
     },
