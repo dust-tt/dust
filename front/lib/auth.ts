@@ -5,9 +5,9 @@ import type {
   NextApiRequest,
   NextApiResponse,
 } from "next";
+import { Transaction } from "sequelize";
 
 import type { Auth0JwtPayload } from "@app/lib/api/auth0";
-import { getUserFromAuth0Token } from "@app/lib/api/auth0";
 import config from "@app/lib/api/config";
 import { SSOEnforcedError } from "@app/lib/iam/errors";
 import type { SessionWithUser } from "@app/lib/iam/provider";
@@ -22,6 +22,7 @@ import {
   SECRET_KEY_PREFIX,
 } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { frontSequelize } from "@app/lib/resources/storage";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -102,6 +103,19 @@ export class Authenticator {
   }
 
   /**
+   * Create a permisive read-only transaction.
+   *
+   * Use READ_COMMITTED because we do read-only.
+   * We just use the transaction to make sure we share a pool connection.
+   * Note: READ_UNCOMMITTED is not supported in PG
+   */
+  private static createReadTransaction() {
+    return frontSequelize.transaction({
+      isolationLevel: Transaction.ISOLATION_LEVELS.READ_COMMITTED,
+    });
+  }
+
+  /**
    * Converts an array of arrays of group sIDs into ResourcePermission objects.
    *
    * This utility method creates standard read/write permissions for each group.
@@ -146,21 +160,16 @@ export class Authenticator {
     session: SessionWithUser | null,
     wId: string
   ): Promise<Authenticator> {
+    const t = await Authenticator.createReadTransaction();
+
     const [workspace, user] = await Promise.all([
-      (async () => {
-        return Workspace.findOne({
-          where: {
-            sId: wId,
-          },
-        });
-      })(),
-      (async () => {
-        if (!session) {
-          return null;
-        } else {
-          return UserResource.fetchByAuth0Sub(session.user.sub);
-        }
-      })(),
+      Workspace.findOne({
+        where: {
+          sId: wId,
+        },
+        transaction: t,
+      }),
+      session ? UserResource.fetchByAuth0Sub(session.user.sub, t) : null,
     ]);
 
     let role = "none" as RoleType;
@@ -172,13 +181,16 @@ export class Authenticator {
         MembershipResource.getActiveMembershipOfUserInWorkspace({
           user,
           workspace: renderLightWorkspaceType({ workspace }),
+          transaction: t,
         }).then((m) => m?.role ?? "none"),
         GroupResource.listUserGroupsInWorkspace({
           user,
           workspace: renderLightWorkspaceType({ workspace }),
+          transaction: t,
         }),
         SubscriptionResource.fetchActiveByWorkspace(
-          renderLightWorkspaceType({ workspace })
+          renderLightWorkspaceType({ workspace }),
+          t
         ),
       ]);
     }
@@ -205,24 +217,16 @@ export class Authenticator {
     session: SessionWithUser | null,
     wId: string | null
   ): Promise<Authenticator> {
+    const t = await Authenticator.createReadTransaction();
+
     const [workspace, user] = await Promise.all([
-      (async () => {
-        if (!wId) {
-          return null;
-        }
-        return Workspace.findOne({
-          where: {
-            sId: wId,
-          },
-        });
-      })(),
-      (async () => {
-        if (!session) {
-          return null;
-        } else {
-          return UserResource.fetchByAuth0Sub(session.user.sub);
-        }
-      })(),
+      wId
+        ? Workspace.findOne({
+            where: { sId: wId },
+            transaction: t,
+          })
+        : null,
+      session ? UserResource.fetchByAuth0Sub(session.user.sub) : null,
     ]);
 
     let groups: GroupResource[] = [];
@@ -231,10 +235,13 @@ export class Authenticator {
     if (workspace) {
       [groups, subscription] = await Promise.all([
         user?.isDustSuperUser
-          ? GroupResource.internalFetchAllWorkspaceGroups(workspace.id)
+          ? GroupResource.internalFetchAllWorkspaceGroups({
+              workspaceId: workspace.id,
+            })
           : [],
         SubscriptionResource.fetchActiveByWorkspace(
-          renderLightWorkspaceType({ workspace })
+          renderLightWorkspaceType({ workspace }),
+          t
         ),
       ]);
     }
@@ -259,13 +266,16 @@ export class Authenticator {
     uId: string,
     wId: string
   ): Promise<Authenticator> {
+    const t = await Authenticator.createReadTransaction();
+
     const [workspace, user] = await Promise.all([
       Workspace.findOne({
         where: {
           sId: wId,
         },
+        transaction: t,
       }),
-      UserResource.fetchById(uId),
+      UserResource.fetchById(uId, t),
     ]);
 
     let role: RoleType = "none";
@@ -277,13 +287,16 @@ export class Authenticator {
         MembershipResource.getActiveMembershipOfUserInWorkspace({
           user,
           workspace: renderLightWorkspaceType({ workspace }),
+          transaction: t,
         }).then((m) => m?.role ?? "none"),
         GroupResource.listUserGroupsInWorkspace({
           user,
           workspace: renderLightWorkspaceType({ workspace }),
+          transaction: t,
         }),
         SubscriptionResource.fetchActiveByWorkspace(
-          renderLightWorkspaceType({ workspace })
+          renderLightWorkspaceType({ workspace }),
+          t
         ),
       ]);
     }
@@ -318,7 +331,9 @@ export class Authenticator {
       }
     >
   > {
-    const user = await getUserFromAuth0Token(token);
+    const t = await Authenticator.createReadTransaction();
+
+    const user = await UserResource.fetchByAuth0Sub(token.sub, t);
     if (!user) {
       return new Err({ code: "user_not_found" });
     }
@@ -327,6 +342,7 @@ export class Authenticator {
       where: {
         sId: wId,
       },
+      transaction: t,
     });
     if (!workspace) {
       return new Err({ code: "workspace_not_found" });
@@ -355,13 +371,16 @@ export class Authenticator {
       MembershipResource.getActiveMembershipOfUserInWorkspace({
         user: user,
         workspace: renderLightWorkspaceType({ workspace }),
+        transaction: t,
       }).then((m) => m?.role ?? "none"),
       GroupResource.listUserGroupsInWorkspace({
         user,
         workspace: renderLightWorkspaceType({ workspace }),
+        transaction: t,
       }),
       SubscriptionResource.fetchActiveByWorkspace(
-        renderLightWorkspaceType({ workspace })
+        renderLightWorkspaceType({ workspace }),
+        t
       ),
     ]);
 
@@ -567,10 +586,13 @@ export class Authenticator {
     workspaceId: string,
     options?: { dangerouslyRequestAllGroups: boolean }
   ): Promise<Authenticator> {
+    const t = await Authenticator.createReadTransaction();
+
     const workspace = await Workspace.findOne({
       where: {
         sId: workspaceId,
       },
+      transaction: t,
     });
     if (!workspace) {
       throw new Error(`Could not find workspace with sId ${workspaceId}`);
@@ -579,15 +601,22 @@ export class Authenticator {
     const [groups, subscription] = await Promise.all([
       (async () => {
         if (options?.dangerouslyRequestAllGroups) {
-          return GroupResource.internalFetchAllWorkspaceGroups(workspace.id);
+          return GroupResource.internalFetchAllWorkspaceGroups({
+            workspaceId: workspace.id,
+            transaction: t,
+          });
         } else {
           const globalGroup =
-            await GroupResource.internalFetchWorkspaceGlobalGroup(workspace.id);
+            await GroupResource.internalFetchWorkspaceGlobalGroup(
+              workspace.id,
+              t
+            );
           return globalGroup ? [globalGroup] : [];
         }
       })(),
       SubscriptionResource.fetchActiveByWorkspace(
-        renderLightWorkspaceType({ workspace })
+        renderLightWorkspaceType({ workspace }),
+        t
       ),
     ]);
 
