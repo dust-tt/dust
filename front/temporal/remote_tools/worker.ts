@@ -6,7 +6,8 @@ import { ActivityInboundLogInterceptor } from "@app/lib/temporal_monitoring";
 import logger from "@app/logger/logger";
 import * as activities from "@app/temporal/remote_tools/activities";
 
-import { QUEUE_NAME } from "./config";
+import { QUEUE_NAME } from "@app/temporal/remote_tools/config";
+import TsconfigPathsPlugin from "tsconfig-paths-webpack-plugin";
 
 export async function runRemoteToolsSyncWorker() {
   const { connection, namespace } = await getTemporalWorkerConnection();
@@ -22,6 +23,15 @@ export async function runRemoteToolsSyncWorker() {
           return new ActivityInboundLogInterceptor(ctx, logger);
         },
       ],
+    },
+    bundlerOptions: {
+      // Update the webpack config to use aliases from our tsconfig.json.
+      webpackConfigHook: (config) => {
+        const plugins = config.resolve?.plugins ?? [];
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        config.resolve!.plugins = [...plugins, new TsconfigPathsPlugin({})];
+        return config;
+      },
     },
   });
 

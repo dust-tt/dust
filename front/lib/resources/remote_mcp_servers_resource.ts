@@ -5,6 +5,7 @@ import type {
   ModelStatic,
   Transaction,
 } from "sequelize";
+import { Op } from "sequelize";
 
 import {
   DEFAULT_MCP_ACTION_DESCRIPTION,
@@ -157,12 +158,23 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
   }
 
   // Admin operations - don't use in non-temporal code.
-  static async dangerouslyListAllServersIds(offset = 0, limit = 100) {
+  static async dangerouslyListAllServersIds({
+    firstId,
+    limit = 100,
+  }: {
+    firstId?: number;
+    limit?: number;
+  }) {
     const servers = await RemoteMCPServerModel.findAll({
-      offset,
+      where: {
+        id: {
+          [Op.gte]: firstId,
+        },
+      },
       limit,
       order: [["id", "ASC"]],
     });
+
     return servers.map((server) => server.id);
   }
 

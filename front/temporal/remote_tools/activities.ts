@@ -79,27 +79,18 @@ export async function syncRemoteMCPServers(ids: number[]): Promise<void> {
   }
 }
 
-const EMPTY_BATCH = {
-  servers: [],
-  next: async () => EMPTY_BATCH,
-};
-
 /**
  * Returns a batch of up to 100 RemoteMCPServerResource servers and a function to get the next batch.
  */
-export async function getBatchRemoteMCPServers(offset = 0, limit = 100) {
-  const servers = await RemoteMCPServerResource.dangerouslyListAllServersIds(
-    offset,
-    limit
-  );
-  return {
-    servers,
-    next: async () => {
-      if (servers.length < limit) {
-        // No more servers left
-        return EMPTY_BATCH;
-      }
-      return getBatchRemoteMCPServers(offset + limit, limit);
-    },
-  };
+export async function getBatchRemoteMCPServers({
+  firstId = 0,
+  limit = 100,
+}: {
+  firstId?: number;
+  limit?: number;
+}): Promise<number[]> {
+  return await RemoteMCPServerResource.dangerouslyListAllServersIds({
+    firstId,
+    limit,
+  });
 }
