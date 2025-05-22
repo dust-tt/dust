@@ -7,6 +7,7 @@ import type {
   AgentMessageFeedbackType,
   AgentMessageFeedbackWithMetadataType,
 } from "@app/lib/api/assistant/feedback";
+import { useAppStore } from "@app/lib/stores/AppStoreProvider";
 import {
   emptyArray,
   fetcher,
@@ -32,7 +33,6 @@ import type {
   UserType,
 } from "@app/types";
 import { normalizeError } from "@app/types";
-import { useAppStore } from "@app/lib/stores/AppStoreProvider";
 
 export function useAssistantTemplates() {
   const assistantTemplatesFetcher: Fetcher<FetchAssistantTemplatesResponse> =
