@@ -261,7 +261,7 @@ function createServer(
 
   if (!areTagsDynamic) {
     server.tool(
-      "search_data_sources",
+      "semantic_search",
       "Search the data sources specified by the user." +
         " The search is based on semantic similarity between the query and chunks of information" +
         " from the data sources.",
@@ -270,7 +270,7 @@ function createServer(
     );
   } else {
     server.tool(
-      "search_data_sources",
+      "semantic_search",
       "Search the data sources specified by the user." +
         " The search is based on semantic similarity between the query and chunks of information" +
         " from the data sources.",
@@ -282,8 +282,8 @@ function createServer(
     );
 
     server.tool(
-      "search_labels",
-      "Find exact matching labels (also called tags) before using them in the tool `search_data_sources`" +
+      "find_tags",
+      "Find exact matching labels (also called tags) before using them in the tool `semantic_search`." +
         "Restricting or excluding content succeeds only with existing labels. " +
         "Searching without verifying labels first typically returns no results.",
       {

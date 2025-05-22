@@ -2,6 +2,7 @@
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 import assert from "assert";
+import { keyBy } from "lodash";
 import type {
   Attributes,
   CreationAttributes,
@@ -243,8 +244,10 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
       }
     );
 
+    const dataSourceById = keyBy(dataSources, "id");
+
     for (const dsv of dataSourceViews) {
-      dsv.ds = dataSources.find((ds) => ds.id === dsv.dataSourceId);
+      dsv.ds = dataSourceById[dsv.dataSourceId];
     }
 
     return dataSourceViews;

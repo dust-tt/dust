@@ -41,6 +41,7 @@ export interface ConversationLayoutProps {
   owner: WorkspaceType;
   subscription: SubscriptionType;
   user: UserType;
+  isAdmin: boolean;
 }
 
 export default function ConversationLayout({
@@ -50,7 +51,7 @@ export default function ConversationLayout({
   children: React.ReactNode;
   pageProps: ConversationLayoutProps;
 }) {
-  const { baseUrl, owner, subscription, user } = pageProps;
+  const { baseUrl, owner, subscription, user, isAdmin } = pageProps;
 
   return (
     <ConversationsNavigationProvider
@@ -62,6 +63,7 @@ export default function ConversationLayout({
           owner={owner}
           subscription={subscription}
           user={user}
+          isAdmin={isAdmin}
         >
           {children}
         </ConversationLayoutContent>
@@ -76,6 +78,7 @@ interface ConversationLayoutContentProps {
   owner: LightWorkspaceType;
   subscription: SubscriptionType;
   user: UserType;
+  isAdmin: boolean;
 }
 
 const ConversationLayoutContent = ({
@@ -84,6 +87,7 @@ const ConversationLayoutContent = ({
   owner,
   subscription,
   user,
+  isAdmin,
 }: ConversationLayoutContentProps) => {
   const router = useRouter();
   const { onOpenChange: onOpenChangeAssistantModal } =
@@ -172,6 +176,7 @@ const ConversationLayoutContent = ({
               <WelcomeTourGuide
                 owner={owner}
                 user={user}
+                isAdmin={isAdmin}
                 startConversationRef={startConversationRef}
                 spaceMenuButtonRef={spaceMenuButtonRef}
                 createAgentButtonRef={createAgentButtonRef}

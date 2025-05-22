@@ -105,28 +105,21 @@ export function While({
           <div className="flex flex-initial items-center">condition :</div>
           <div className="flex w-full font-normal">
             <div className="w-full leading-4">
-              <div
-                className={classNames(
-                  "border bg-muted-background",
-                  "border-border"
-                )}
-              >
-                <CodeEditor
-                  data-color-mode={isDark ? "dark" : "light"}
-                  readOnly={readOnly}
-                  value={block.spec.condition_code}
-                  language="js"
-                  placeholder=""
-                  onChange={(e) => handleConditionCodeChange(e.target.value)}
-                  padding={15}
-                  style={{
-                    fontSize: 12,
-                    fontFamily:
-                      "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
-                    backgroundColor: "rgb(241 245 249)",
-                  }}
-                />
-              </div>
+              <CodeEditor
+                data-color-mode={isDark ? "dark" : "light"}
+                readOnly={readOnly}
+                value={block.spec.condition_code}
+                language="js"
+                placeholder=""
+                onChange={(e) => handleConditionCodeChange(e.target.value)}
+                padding={15}
+                className="rounded-lg bg-muted-background dark:bg-muted-background-night"
+                style={{
+                  fontSize: 12,
+                  fontFamily:
+                    "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
+                }}
+              />
             </div>
           </div>
         </div>

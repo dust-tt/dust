@@ -16,13 +16,13 @@ import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import {
   DEFAULT_MCP_SERVER_ICON,
   isInternalAllowedIcon,
-  isRemoteAllowedIconType,
 } from "@app/lib/actions/mcp_icons";
 import { connectToInternalMCPServer } from "@app/lib/actions/mcp_internal_actions";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { ClientSideRedisMCPTransport } from "@app/lib/api/actions/mcp_client_side";
 import apiConfig from "@app/lib/api/config";
 import type {
+  InternalMCPServerDefinitionType,
   MCPServerDefinitionType,
   MCPServerType,
   MCPToolType,
@@ -36,6 +36,8 @@ import {
   assertNever,
   Err,
   getOAuthConnectionAccessToken,
+  isOAuthProvider,
+  isOAuthUseCase,
   Ok,
 } from "@app/types";
 import { createSSRFInterceptor } from "@app/types/shared/utils/ssrf";
@@ -44,6 +46,31 @@ export type AuthorizationInfo = {
   provider: OAuthProvider;
   use_case: OAuthUseCase;
 };
+
+export function isAuthorizationInfo(a: unknown): a is AuthorizationInfo {
+  return (
+    typeof a === "object" &&
+    a !== null &&
+    "provider" in a &&
+    isOAuthProvider(a.provider) &&
+    "use_case" in a &&
+    isOAuthUseCase(a.use_case)
+  );
+}
+
+export function isInternalMCPServerDefinition(
+  server: Implementation
+): server is InternalMCPServerDefinitionType {
+  return (
+    "authorization" in server &&
+    isAuthorizationInfo(server.authorization) &&
+    "description" in server &&
+    typeof server.description === "string" &&
+    "icon" in server &&
+    typeof server.icon === "string" &&
+    isInternalAllowedIcon(server.icon)
+  );
+}
 
 async function getAccessTokenForRemoteMCPServer(
   auth: Authenticator,
@@ -248,20 +275,11 @@ export function extractMetadataFromServerVersion(
     return {
       name: r.name ?? DEFAULT_MCP_ACTION_NAME,
       version: r.version ?? DEFAULT_MCP_ACTION_VERSION,
-      authorization:
-        "authorization" in r && typeof r.authorization === "object"
-          ? (r.authorization as AuthorizationInfo)
-          : null,
-      description:
-        "description" in r && typeof r.description === "string" && r.description
-          ? r.description
-          : DEFAULT_MCP_ACTION_DESCRIPTION,
-      icon:
-        "icon" in r &&
-        typeof r.icon === "string" &&
-        (isRemoteAllowedIconType(r.icon) || isInternalAllowedIcon(r.icon))
-          ? r.icon
-          : DEFAULT_MCP_SERVER_ICON,
+      authorization: isInternalMCPServerDefinition(r) ? r.authorization : null,
+      description: isInternalMCPServerDefinition(r)
+        ? r.description
+        : DEFAULT_MCP_ACTION_DESCRIPTION,
+      icon: isInternalMCPServerDefinition(r) ? r.icon : DEFAULT_MCP_SERVER_ICON,
     };
   }
 

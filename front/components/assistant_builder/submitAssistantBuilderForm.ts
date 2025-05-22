@@ -208,6 +208,7 @@ export async function submitAssistantBuilderForm({
             additionalConfiguration,
             dustAppConfiguration,
             timeFrame,
+            jsonSchema,
           },
         } = a;
 
@@ -234,6 +235,7 @@ export async function submitAssistantBuilderForm({
             timeFrame,
             additionalConfiguration,
             dustAppConfiguration,
+            jsonSchema,
           },
         ];
 

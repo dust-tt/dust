@@ -163,6 +163,7 @@ function _getAgentRouterToolsConfiguration(
       additionalConfiguration: {},
       timeFrame: null,
       dustAppConfiguration: null,
+      jsonSchema: null,
     },
     {
       id: -1,
@@ -179,6 +180,7 @@ function _getAgentRouterToolsConfiguration(
       additionalConfiguration: {},
       timeFrame: null,
       dustAppConfiguration: null,
+      jsonSchema: null,
     },
   ];
 }

@@ -4,7 +4,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import {
-  CHILD_AGENT_CONFIGURATION_URI_PATTERN,
+  AGENT_CONFIGURATION_URI_PATTERN,
   ConfigurableToolInputSchemas,
 } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
@@ -17,19 +17,17 @@ import type { Result } from "@app/types";
 import { Err, getHeaderFromGroupIds, normalizeError, Ok } from "@app/types";
 
 const serverInfo: InternalMCPServerDefinitionType = {
-  name: "ask_agent",
+  name: "run_agent",
   version: "1.0.0",
-  description: "Offload a query to another agent.",
+  description: "Run an agent (agent as tool).",
   icon: "ActionRobotIcon",
   authorization: null,
 };
 
 function parseAgentConfigurationUri(uri: string): Result<string, Error> {
-  const match = uri.match(CHILD_AGENT_CONFIGURATION_URI_PATTERN);
+  const match = uri.match(AGENT_CONFIGURATION_URI_PATTERN);
   if (!match) {
-    return new Err(
-      new Error(`Invalid URI for a child agent configuration: ${uri}`)
-    );
+    return new Err(new Error(`Invalid URI for an agent configuration: ${uri}`));
   }
   // Safe to do this because the inputs are already checked against the zod schema here.
   return new Ok(match[2]);
@@ -39,20 +37,17 @@ function createServer(auth: Authenticator): McpServer {
   const server = new McpServer(serverInfo);
 
   server.tool(
-    "ask_agent",
+    "run_agent",
     // TODO(mcp): we probably want to make this description configurable to guide the model on when to use this sub-agent.
-    "Query another agent.",
+    "Run an agent.",
     {
-      query: z.string().describe(
-        `The text prompt to send to the child agent.
-          This is the question or instruction that will be processed by the selected agent,
-          which will respond with its own capabilities and knowledge.
-          Be specific and clear to get the most relevant response.`
-      ),
+      query: z
+        .string()
+        .describe(
+          `The query sent to the agent. This is the question or instruction that will be processed by the agent, which will respond with its own capabilities and knowledge.`
+        ),
       childAgent:
-        ConfigurableToolInputSchemas[
-          INTERNAL_MIME_TYPES.TOOL_INPUT.CHILD_AGENT
-        ],
+        ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.AGENT],
     },
     async ({ query, childAgent: { uri } }) => {
       const childAgentIdRes = parseAgentConfigurationUri(uri);
@@ -75,7 +70,7 @@ function createServer(auth: Authenticator): McpServer {
 
       const user = auth.getNonNullableUser();
       const convRes = await api.createConversation({
-        title: `MCP ask_agent - ${new Date().toISOString()}`,
+        title: `run_agent - ${new Date().toISOString()}`,
         visibility: "unlisted",
         message: {
           content: query,

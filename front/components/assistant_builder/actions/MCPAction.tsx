@@ -8,9 +8,11 @@ import { ChildAgentConfigurationSection } from "@app/components/assistant_builde
 import { ConfigurationSectionContainer } from "@app/components/assistant_builder/actions/configuration/ConfigurationSectionContainer";
 import DataSourceSelectionSection from "@app/components/assistant_builder/actions/configuration/DataSourceSelectionSection";
 import { DustAppConfigurationSection } from "@app/components/assistant_builder/actions/configuration/DustAppConfigurationSection";
+import { JsonSchemaConfigurationSection } from "@app/components/assistant_builder/actions/configuration/JsonSchemaConfigurationSection";
 import { ReasoningModelConfigurationSection } from "@app/components/assistant_builder/actions/configuration/ReasoningModelConfigurationSection";
 import { TimeFrameConfigurationSection } from "@app/components/assistant_builder/actions/configuration/TimeFrameConfigurationSection";
 import { DataDescription } from "@app/components/assistant_builder/actions/DataDescription";
+import { generateSchema } from "@app/components/assistant_builder/actions/ProcessAction";
 import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
 import type {
   AssistantBuilderActionConfiguration,
@@ -253,12 +255,36 @@ export function MCPAction({
           }}
         />
       )}
-      {requirements.mayRequiresTimeFrameConfiguration && (
+      {requirements.mayRequireTimeFrameConfiguration && (
         <TimeFrameConfigurationSection
           onConfigUpdate={(timeFrame: TimeFrame | null) => {
             handleConfigUpdate((old) => ({ ...old, timeFrame }));
           }}
           timeFrame={actionConfiguration.timeFrame}
+        />
+      )}
+      {requirements.mayRequireJsonSchemaConfiguration && (
+        <JsonSchemaConfigurationSection
+          instructions={action.description}
+          description={action.description}
+          sectionConfigurationDescription="Optionally, provide a schema for the data to be extracted. If you do not specify a schema, the tool will determine the schema based on the conversation context."
+          setEdited={setEdited}
+          onConfigUpdate={({ jsonSchema, _jsonSchemaString }) => {
+            handleConfigUpdate((old) => ({
+              ...old,
+              _jsonSchemaString,
+              jsonSchema: jsonSchema ?? old.jsonSchema,
+            }));
+          }}
+          initialSchema={
+            actionConfiguration._jsonSchemaString ??
+            (actionConfiguration.jsonSchema
+              ? JSON.stringify(actionConfiguration.jsonSchema, null, 2)
+              : null)
+          }
+          generateSchema={(instructions: string) =>
+            generateSchema({ owner, instructions })
+          }
         />
       )}
       <AdditionalConfigurationSection
@@ -331,7 +357,7 @@ export function hasErrorActionMCP(
       requirements.requiresChildAgentConfiguration &&
       !action.configuration.childAgentId
     ) {
-      return "Please select a child agent.";
+      return "Please select an agent.";
     }
     if (
       requirements.requiresReasoningConfiguration &&

@@ -37,7 +37,7 @@ const RESOURCES_PREFIX = {
   // Resources relative to the configuration of an MCP server.
   data_source_configuration: "dsc",
   table_configuration: "tbc",
-  child_agent_configuration: "cac",
+  agent_configuration: "cac",
 
   // Virtual resources (no database modelsassociated).
   internal_mcp_server: "ims",
@@ -48,6 +48,8 @@ export const CROSS_WORKSPACE_RESOURCES_WORKSPACE_ID: ModelId = 0;
 const ALL_RESOURCES_PREFIXES = Object.values(RESOURCES_PREFIX);
 
 type ResourceNameType = keyof typeof RESOURCES_PREFIX;
+
+const sIdCache = new Map<string, string>();
 
 export function makeSId(
   resourceName: ResourceNameType,
@@ -61,7 +63,17 @@ export function makeSId(
 ): string {
   const idsToEncode = [LEGACY_REGION_BIT, LEGACY_SHARD_BIT, workspaceId, id];
 
-  return `${RESOURCES_PREFIX[resourceName]}_${sqids.encode(idsToEncode)}`;
+  // Computing the sId is relatively expensive and we have a lot of them.
+  // We cache them in memory to avoid recomputing them, they are immutable.
+  const key = `${resourceName}_${idsToEncode.join("_")}`;
+  const cached = sIdCache.get(key);
+  if (cached) {
+    return cached;
+  }
+
+  const sId = `${RESOURCES_PREFIX[resourceName]}_${sqids.encode(idsToEncode)}`;
+  sIdCache.set(key, sId);
+  return sId;
 }
 
 function getIdsFromSId(sId: string): Result<

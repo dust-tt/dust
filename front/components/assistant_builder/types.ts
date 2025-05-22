@@ -145,6 +145,8 @@ export type AssistantBuilderMCPServerConfiguration = {
   timeFrame: TimeFrame | null;
   additionalConfiguration: Record<string, boolean | number | string>;
   dustAppConfiguration: DustAppRunConfigurationType | null;
+  jsonSchema: JSONSchema | null;
+  _jsonSchemaString: string | null;
 };
 
 // Builder State
@@ -448,6 +450,8 @@ export function getDefaultMCPServerActionConfiguration(
       timeFrame: null,
       additionalConfiguration: {},
       dustAppConfiguration: null,
+      jsonSchema: null,
+      _jsonSchemaString: null,
     },
     name: mcpServerView?.server.name ?? "",
     description:

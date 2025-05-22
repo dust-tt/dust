@@ -67,6 +67,11 @@ async function handler(
 
   const r = await fetchRemoteServerMetaDataByURL(auth, server.url);
   if (r.isErr()) {
+    await server.markAsErrored(auth, {
+      lastError: r.error.message,
+      lastSyncAt: new Date(),
+    });
+
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -83,6 +88,7 @@ async function handler(
     cachedDescription: metadata.description,
     cachedTools: metadata.tools,
     lastSyncAt: new Date(),
+    clearError: true,
   });
 
   return res.status(200).json({

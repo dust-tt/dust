@@ -2,6 +2,7 @@ import { format } from "date-fns";
 import fs from "fs";
 import { Op } from "sequelize";
 
+import { DEFAULT_TABLES_QUERY_ACTION_NAME } from "@app/lib/actions/constants";
 import { Authenticator } from "@app/lib/auth";
 import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
 import {
@@ -142,9 +143,13 @@ async function migrateWorkspaceTablesQueryActions(
           internalMCPServerId: mcpServerView.internalMCPServerId,
           additionalConfiguration: {},
           timeFrame: null,
-          name: tablesQueryConfig.name,
+          name:
+            tablesQueryConfig.name === DEFAULT_TABLES_QUERY_ACTION_NAME
+              ? null
+              : tablesQueryConfig.name,
           singleToolDescriptionOverride: tablesQueryConfig.description,
           appId: null,
+          jsonSchema: null,
         });
 
         // Reverse: create the tables query configuration.

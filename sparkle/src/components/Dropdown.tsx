@@ -3,6 +3,7 @@ import { cva } from "class-variance-authority";
 import * as React from "react";
 import { useRef } from "react";
 
+import { Chip } from "@sparkle/components/Chip";
 import { Icon } from "@sparkle/components/Icon";
 import { LinkWrapper, LinkWrapperProps } from "@sparkle/components/LinkWrapper";
 import { ScrollArea } from "@sparkle/components/ScrollArea";
@@ -438,6 +439,37 @@ const DropdownMenuRadioItem = React.forwardRef<
 ));
 DropdownMenuRadioItem.displayName = DropdownMenuPrimitive.RadioItem.displayName;
 
+interface DropdownMenuTagItemProps
+  extends Omit<DropdownMenuItemProps, "label" | "icon"> {
+  label: string;
+  size?: React.ComponentProps<typeof Chip>["size"];
+  color?: React.ComponentProps<typeof Chip>["color"];
+  onRemove?: () => void;
+}
+
+const DropdownMenuTagItem = React.forwardRef<
+  HTMLDivElement,
+  DropdownMenuTagItemProps
+>(
+  (
+    { label, size = "xs", color = "primary", onRemove, className, ...props },
+    ref
+  ) => {
+    return (
+      <DropdownMenuPrimitive.Item
+        ref={ref}
+        className={cn(menuStyleClasses.item({ variant: "default" }), className)}
+        {...props}
+        asChild
+      >
+        <Chip label={label} size={size} color={color} onRemove={onRemove} />
+      </DropdownMenuPrimitive.Item>
+    );
+  }
+);
+
+DropdownMenuTagItem.displayName = "DropdownMenuTagItem";
+
 const DropdownMenuLabel = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.Label>,
   MutuallyExclusiveProps<
@@ -617,5 +649,6 @@ export {
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
+  DropdownMenuTagItem,
   DropdownMenuTrigger,
 };

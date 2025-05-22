@@ -2,7 +2,7 @@ name: Claude Code Review
 
 on:
   pull_request:
-    types: [review_requested] # Runs when review is requested
+    types: [labeled] # Runs when label is added
 
 permissions:
   contents: write
@@ -14,22 +14,7 @@ jobs:
   code-review:
     runs-on: ubuntu-latest
     steps:
-      # For review_requested events, add a label to the PR
-      - name: Add review-requested label
-        if: github.event.action == 'review_requested'
-        uses: actions/github-script@v6
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            github.rest.issues.addLabels({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.payload.pull_request.number,
-              labels: ['claude-review-requested']
-            });
-
       # Determine if we should run the review
-      # Not used at the moment.
       - name: Determine if review should run
         id: should-run
         uses: actions/github-script@v6
@@ -37,29 +22,15 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           result-encoding: string
           script: |
-            // For review_requested events, always run.
-            if (context.payload.action === 'review_requested') {
+            if (context.payload.action === 'labeled' && context.payload.label.name === 'claude-review-requested') {
               console.log('Running because review was requested');
               return 'true';
-            }
-
-            // For synchronize events, check for the label.
-            if (context.payload.action === 'synchronize') {
-              const { data: labels } = await github.rest.issues.listLabelsOnIssue({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: context.payload.pull_request.number
-              });
-
-              const hasLabel = labels.some(label => label.name === 'claude-review-requested');
-              console.log(`PR has claude-review-requested label: ${hasLabel}`);
-              return hasLabel ? 'true' : 'false';
             }
 
             // Default to not running.
             return 'false';
 
-      # Only proceed if it's a review_requested event or a synchronize with the label
+      # Only proceed if the label is added.
       - name: Checkout code
         if: steps.should-run.outputs.result == 'true'
         uses: actions/checkout@v4

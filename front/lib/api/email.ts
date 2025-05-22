@@ -188,6 +188,7 @@ interface sendEmailWithTemplateParams {
     email: string;
     name: string;
   };
+  replyTo?: string;
   subject: string;
   body: string;
 }
@@ -197,6 +198,7 @@ interface sendEmailWithTemplateParams {
 export async function sendEmailWithTemplate({
   to,
   from,
+  replyTo,
   subject,
   body,
 }: sendEmailWithTemplateParams): Promise<Result<void, Error>> {
@@ -204,6 +206,7 @@ export async function sendEmailWithTemplate({
   const message = {
     to,
     from,
+    replyTo,
     templateId,
     dynamic_template_data: {
       subject,
