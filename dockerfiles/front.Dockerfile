@@ -1,6 +1,6 @@
-FROM node:20.13.0 AS front
+ARG NODE_VERSION=20.13.0
 
-RUN apt-get update && apt-get install -y vim redis-tools postgresql-client htop
+FROM node:${NODE_VERSION} AS build
 
 ARG COMMIT_HASH
 ARG NEXT_PUBLIC_VIZ_URL
@@ -33,4 +33,43 @@ RUN find . -name "*.test.tsx" -delete
 # is undefined, and `next build` imports the `models.ts` file while "Collecting page data"
 RUN FRONT_DATABASE_URI="sqlite:foo.sqlite" npm run build
 
-CMD ["npm", "--silent", "run", "start"]
+# Production
+FROM node:${NODE_VERSION} AS prod
+RUN apt-get update && apt-get -y install openssl
+
+ARG COMMIT_HASH
+ARG NEXT_PUBLIC_VIZ_URL
+ARG NEXT_PUBLIC_DUST_CLIENT_FACING_URL
+ARG NEXT_PUBLIC_GTM_TRACKING_ID
+
+ENV NEXT_PUBLIC_COMMIT_HASH=$COMMIT_HASH
+ENV NEXT_PUBLIC_VIZ_URL=$NEXT_PUBLIC_VIZ_URL
+ENV NEXT_PUBLIC_DUST_CLIENT_FACING_URL=$NEXT_PUBLIC_DUST_CLIENT_FACING_URL
+ENV NEXT_PUBLIC_GTM_TRACKING_ID=$NEXT_PUBLIC_GTM_TRACKING_ID
+ENV HUSKY=0
+
+WORKDIR /sdks/js
+COPY --from=build /sdks/js .
+
+WORKDIR /app
+COPY --from=build /app/.next/standalone ./
+COPY --from=build /app/.next/static ./.next/static
+COPY --from=build /app/public ./public
+RUN rm -r /sdks
+
+FROM gcr.io/distroless/nodejs20-debian12:debug AS runner
+
+ARG COMMIT_HASH
+ARG NEXT_PUBLIC_VIZ_URL
+ARG NEXT_PUBLIC_DUST_CLIENT_FACING_URL
+ARG NEXT_PUBLIC_GTM_TRACKING_ID
+
+ENV NEXT_PUBLIC_COMMIT_HASH=$COMMIT_HASH
+ENV NEXT_PUBLIC_VIZ_URL=$NEXT_PUBLIC_VIZ_URL
+ENV NEXT_PUBLIC_DUST_CLIENT_FACING_URL=$NEXT_PUBLIC_DUST_CLIENT_FACING_URL
+ENV NEXT_PUBLIC_GTM_TRACKING_ID=$NEXT_PUBLIC_GTM_TRACKING_ID
+
+WORKDIR /app
+COPY --from=prod /app ./
+
+CMD [".next/standalone/server.js"]
