@@ -1,4 +1,6 @@
+import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import { tryListMCPTools } from "@app/lib/actions/mcp_actions";
+import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { getRunnerForActionConfiguration } from "@app/lib/actions/runners";
 import { runActionStreamed } from "@app/lib/actions/server";
 import type {
@@ -42,6 +44,8 @@ import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_con
 import type { KillSwitchType } from "@app/lib/poke/types";
 import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import type {
   AgentActionsEvent,
@@ -788,7 +792,9 @@ async function* runMultiActionsAgent(
   const actions: AgentActionsEvent["actions"] = [];
 
   for (const a of output.actions) {
-    const action = availableActions.find((ac) => ac.name === a.name);
+    let action = availableActions.find((ac) => ac.name === a.name);
+    let args = a.arguments;
+    let spec = specifications.find((s) => s.name === a.name) ?? null;
 
     if (!action) {
       logger.error(
@@ -802,24 +808,91 @@ async function* runMultiActionsAgent(
         },
         "Model attempted to run an action that is not part of the agent configuration."
       );
-      yield {
-        type: "agent_error",
-        created: Date.now(),
-        configurationId: agentConfiguration.sId,
-        messageId: agentMessage.sId,
-        error: {
-          code: "action_not_found",
-          message: `The agent attempted to run an invalid action (${a.name}). This model error can be safely retried.`,
-        },
-      } satisfies AgentErrorEvent;
-      return;
+      if (!a.name) {
+        yield {
+          type: "agent_error",
+          created: Date.now(),
+          configurationId: agentConfiguration.sId,
+          messageId: agentMessage.sId,
+          error: {
+            code: "action_not_found",
+            message: `The agent attempted to run an invalid action (${a.name}). This model error can be safely retried (no name).`,
+          },
+        } satisfies AgentErrorEvent;
+
+        return;
+      } else {
+        const mcpServerVIew =
+          await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
+            auth,
+            "missing_action_catcher"
+          );
+
+        // Could happen if the internal server has not already been added
+        if (!mcpServerVIew) {
+          logger.error(
+            {
+              workspaceId: conversation.owner.sId,
+              conversationId: conversation.sId,
+              configurationId: agentConfiguration.sId,
+              messageId: agentMessage.sId,
+              actionName: a.name,
+              availableActions: availableActions.map((a) => a.name),
+            },
+            "Model attempted to run an action that is not part of the agent configuration."
+          );
+
+          yield {
+            type: "agent_error",
+            created: Date.now(),
+            configurationId: agentConfiguration.sId,
+            messageId: agentMessage.sId,
+            error: {
+              code: "action_not_found",
+              message: `The agent attempted to run an invalid action (${a.name}). This model error can be safely retried (no server).`,
+            },
+          } satisfies AgentErrorEvent;
+          return;
+        }
+
+        const catchAllAction: MCPToolConfigurationType = {
+          id: -1,
+          sId: generateRandomModelSId(),
+          type: "mcp_configuration" as const,
+          name: a.name,
+          originalName: a.name,
+          description: null,
+          dataSources: null,
+          tables: null,
+          childAgentId: null,
+          reasoningModel: null,
+          timeFrame: null,
+          jsonSchema: null,
+          additionalConfiguration: {},
+          mcpServerViewId: mcpServerVIew.sId,
+          dustAppConfiguration: null,
+          internalMCPServerId: mcpServerVIew.internalMCPServerId,
+          inputSchema: {},
+          availability: "auto_hidden_builder",
+          permission: "never_ask",
+          toolServerId: mcpServerVIew.sId,
+          mcpServerName: "missing_action_catcher" as InternalMCPServerNameType,
+        };
+
+        action = catchAllAction;
+        args = {};
+        spec = {
+          description:
+            "The agent attempted to run an invalid action, this will catch it.",
+          inputSchema: {},
+          name: a.name,
+        };
+      }
     }
 
-    const spec = specifications.find((s) => s.name === a.name) ?? null;
-
     actions.push({
-      action,
-      inputs: a.arguments ?? {},
+      action: action!,
+      inputs: args ?? {},
       specification: spec,
       functionCallId: a.functionCallId ?? null,
     });
