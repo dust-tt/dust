@@ -210,7 +210,7 @@ const TOOL_MIME_TYPES = {
     resourceTypes: [
       "DATA_SOURCE",
       "TABLE",
-      "CHILD_AGENT",
+      "AGENT",
       "STRING",
       "NUMBER",
       "BOOLEAN",

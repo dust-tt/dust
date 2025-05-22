@@ -37,7 +37,7 @@ const RESOURCES_PREFIX = {
   // Resources relative to the configuration of an MCP server.
   data_source_configuration: "dsc",
   table_configuration: "tbc",
-  child_agent_configuration: "cac",
+  agent_configuration: "cac",
 
   // Virtual resources (no database modelsassociated).
   internal_mcp_server: "ims",

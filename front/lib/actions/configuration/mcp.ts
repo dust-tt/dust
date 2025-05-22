@@ -97,7 +97,7 @@ export async function fetchMCPServerActionConfigurations(
     where: whereClause,
   });
 
-  // Find the associated child agent configurations.
+  // Find the associated agent configurations.
   const allChildAgentConfigurations =
     await AgentChildAgentConfiguration.findAll({ where: whereClause });
 

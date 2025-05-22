@@ -101,7 +101,7 @@ export function generateConfiguredInput({
         })) || []
       );
 
-    case INTERNAL_MIME_TYPES.TOOL_INPUT.CHILD_AGENT: {
+    case INTERNAL_MIME_TYPES.TOOL_INPUT.AGENT: {
       const { childAgentId } = actionConfiguration;
       if (!childAgentId) {
         // Unreachable, when fetching agent configurations using getAgentConfigurations, we always fill the sId.
@@ -430,7 +430,7 @@ export function getMCPServerRequirements(
     Object.keys(
       findPathsToConfiguration({
         mcpServer: server,
-        mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.CHILD_AGENT,
+        mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.AGENT,
       })
     ).length > 0;
 
