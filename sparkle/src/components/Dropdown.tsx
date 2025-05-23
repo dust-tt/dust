@@ -445,7 +445,7 @@ interface DropdownMenuTagItemProps
   size?: React.ComponentProps<typeof Chip>["size"];
   color?: React.ComponentProps<typeof Chip>["color"];
   onRemove?: () => void;
-  onClick?: (e: React.MouseEvent<HTMLDivElement>) => void;
+  onClick?: () => void;
 }
 
 const DropdownMenuTagItem = React.forwardRef<
@@ -464,21 +464,20 @@ const DropdownMenuTagItem = React.forwardRef<
     },
     ref
   ) => {
-    const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
-      if (onClick) {
-        onClick(e);
-      }
-    };
-
     return (
       <DropdownMenuPrimitive.Item
         ref={ref}
         className={cn(menuStyleClasses.item({ variant: "default" }), className)}
         {...props}
         asChild
-        onClick={handleClick}
       >
-        <Chip label={label} size={size} color={color} onRemove={onRemove} />
+        <Chip
+          label={label}
+          size={size}
+          color={color}
+          onRemove={onRemove}
+          onClick={onClick}
+        />
       </DropdownMenuPrimitive.Item>
     );
   }
