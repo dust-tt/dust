@@ -1,4 +1,4 @@
-import type { User} from "@workos-inc/node";
+import type { User } from "@workos-inc/node";
 import { WorkOS } from "@workos-inc/node";
 
 import config from "@app/lib/api/config";
