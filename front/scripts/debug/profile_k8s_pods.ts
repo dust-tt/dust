@@ -64,18 +64,18 @@ makeScript(
       const localHeap = `heap-${podName}-${timestamp}.heapprofile`;
 
       // Copy files from pod.
-      console.log("Copying profiles from pod...");
+      logger.info("Copying profiles from pod...");
       execKubectl(`kubectl cp ${namespace}/${podName}:${cpuPath} ${localCpu}`);
       execKubectl(
         `kubectl cp ${namespace}/${podName}:${heapPath} ${localHeap}`
       );
 
-      console.log("Profiles saved locally:");
-      console.log(`  CPU:  ${localCpu}`);
-      console.log(`  Heap: ${localHeap}`);
-      console.log("");
-      console.log("To analyze:");
-      console.log(
+      logger.info("Profiles saved locally:");
+      logger.info(`  CPU:  ${localCpu}`);
+      logger.info(`  Heap: ${localHeap}`);
+      logger.info("");
+      logger.info("To analyze:");
+      logger.info(
         "  Chrome DevTools → Performance → Load Profile → select files"
       );
     } catch (err) {
