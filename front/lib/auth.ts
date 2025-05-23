@@ -229,7 +229,7 @@ export class Authenticator {
               transaction: t,
             })
           : null,
-        session ? UserResource.fetchByAuth0Sub(session.user.sub) : null,
+        session ? UserResource.fetchByAuth0Sub(session.user.sub, t) : null,
       ]);
 
       let groups: GroupResource[] = [];
@@ -240,6 +240,7 @@ export class Authenticator {
           user?.isDustSuperUser
             ? GroupResource.internalFetchAllWorkspaceGroups({
                 workspaceId: workspace.id,
+                transaction: t,
               })
             : [],
           SubscriptionResource.fetchActiveByWorkspace(
