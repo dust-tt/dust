@@ -96,19 +96,19 @@ export const TagsFilterMenu = ({
             </div>
           )}
           <DropdownMenuTagList>
-          {filteredTags
-            .filter((tag) => !selectedTags.includes(tag))
-            .map((tag) => (
-              <DropdownMenuTagItem
-                key={tag.sId}
-                label={tag.name}
-                color="golden"
-                className="m-0.5"
-                onClick={() => {
-                  setSelectedTags([...selectedTags, tag]);
-                }}
-              />
-            ))}
+            {filteredTags
+              .filter((tag) => !selectedTags.includes(tag))
+              .map((tag) => (
+                <DropdownMenuTagItem
+                  key={tag.sId}
+                  label={tag.name}
+                  color="golden"
+                  className="m-0.5"
+                  onClick={() => {
+                    setSelectedTags([...selectedTags, tag]);
+                  }}
+                />
+              ))}
           </DropdownMenuTagList>
         </DropdownMenuContent>
       </DropdownMenu>
