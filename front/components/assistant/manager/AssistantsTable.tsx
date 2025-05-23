@@ -89,6 +89,7 @@ const getTableColumns = ({
               className: "w-8",
               tooltip: "Select",
             },
+            sortable: false,
           },
         ]
       : []),
