@@ -1,4 +1,3 @@
-import * as _ from "lodash";
 import type {
   CreationAttributes,
   InferAttributes,
@@ -23,13 +22,7 @@ import type {
   LightAgentConfigurationType,
   Result,
 } from "@app/types";
-import {
-  ConversationError,
-  Err,
-  normalizeError,
-  Ok,
-  removeNulls,
-} from "@app/types";
+import { ConversationError, Err, normalizeError, Ok } from "@app/types";
 
 import { GroupResource } from "./group_resource";
 import { frontSequelize } from "./storage";
@@ -311,16 +304,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     const owner = auth.getNonNullableWorkspace();
     const user = auth.getNonNullableUser();
 
-    const participations = await ConversationParticipantModel.findAll({
-      attributes: ["userId", "updatedAt", "conversationId"],
-      where: {
-        userId: user.id,
-        workspaceId: owner.id,
-        action: "posted",
-      },
-      order: [["updatedAt", "DESC"]],
-    });
-
     const includedConversationVisibilities: ConversationVisibility[] = [
       "unlisted",
       "workspace",
@@ -333,60 +316,46 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       includedConversationVisibilities.push("test");
     }
 
-    const participationsByConversationId = _.groupBy(
-      participations,
-      "conversationId"
-    );
-    const conversationUpdated = (c: ConversationResource) => {
-      const participations = participationsByConversationId[c.id];
-      if (!participations) {
-        return undefined;
-      }
-      return _.sortBy(
-        participations,
-        "updatedAt",
-        "desc"
-      )[0].updatedAt.getTime();
-    };
-
-    const conversations = (
-      await this.model.findAll({
-        where: {
-          workspaceId: owner.id,
-          id: { [Op.in]: _.uniq(participations.map((p) => p.conversationId)) },
-          visibility: { [Op.in]: includedConversationVisibilities },
+    const participations = await ConversationParticipantModel.findAll({
+      attributes: ["userId", "updatedAt", "conversationId"],
+      where: {
+        userId: user.id,
+        workspaceId: owner.id,
+        action: "posted",
+      },
+      include: [
+        {
+          model: ConversationModel,
+          required: true,
+          where: {
+            visibility: { [Op.in]: includedConversationVisibilities },
+          },
         },
-      })
-    )
-      .map((c) => new this(this.model, c.get()))
-      .map(
-        (c) =>
-          ({
-            id: c.id,
-            created: c.createdAt.getTime(),
-            updated: conversationUpdated(c) ?? c.updatedAt.getTime(),
-            sId: c.sId,
-            owner,
-            title: c.title,
-            visibility: c.visibility,
-            requestedGroupIds:
-              c.getConversationRequestedGroupIdsFromModel(auth),
-          }) satisfies ConversationWithoutContentType
-      );
+      ],
+      order: [["updatedAt", "DESC"]],
+    });
 
-    const conversationById = _.keyBy(conversations, "id");
+    return participations.reduce((acc, p) => {
+      const c = p.conversation;
 
-    return removeNulls(
-      participations.map((p) => {
-        const conv: ConversationWithoutContentType | null =
-          conversationById[p.conversationId];
-        if (!conv) {
-          // Deleted / test conversations.
-          return null;
-        }
-        return conv;
-      })
-    );
+      if (c) {
+        acc.push({
+          id: c.id,
+          created: c.createdAt.getTime(),
+          updated: p.updatedAt.getTime(),
+          sId: c.sId,
+          owner,
+          title: c.title,
+          visibility: c.visibility,
+          requestedGroupIds: new this(
+            this.model,
+            c.get()
+          ).getConversationRequestedGroupIdsFromModel(auth),
+        });
+      }
+
+      return acc;
+    }, [] as ConversationWithoutContentType[]);
   }
 
   static async upsertParticipation(
