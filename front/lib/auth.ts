@@ -106,8 +106,8 @@ export class Authenticator {
         id: user?.sId,
         role: role,
         plan: subscription?.getPlan().code,
-        workspace_id: workspace?.sId,
-        workspace_name: workspace?.name,
+        workspaceId: workspace?.sId,
+        workspaceName: workspace?.name,
       });
     }
   }
