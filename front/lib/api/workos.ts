@@ -3,6 +3,7 @@ import type {
   Organization,
   User,
 } from "@workos-inc/node";
+import type { DirectoryGroup, DirectoryUserWithGroups } from "@workos-inc/node";
 import { GeneratePortalLinkIntent, WorkOS } from "@workos-inc/node";
 import { unsealData } from "iron-session";
 import type { GetServerSidePropsContext, NextApiRequest } from "next";
@@ -15,6 +16,7 @@ import type { Result, WorkspaceType } from "@app/types";
 import { Err, Ok } from "@app/types";
 
 import type { RegionType } from "./regions/config";
+
 
 let workos: WorkOS | null = null;
 
@@ -146,4 +148,95 @@ export function generateWorkOSAdminPortalUrl({
     intent,
     returnUrl,
   });
+}
+
+export async function performFullSync(workspace: WorkspaceType): Promise<void> {
+  logger.info(
+    { workspace: workspace.sId },
+    "Starting WorkOS full directory sync"
+  );
+
+  if (!workspace?.workOSOrganizationId) {
+    throw new Error("WorkOS organization not configured");
+  }
+
+  const workOS = getWorkOS();
+
+  const directory = await workOS.directorySync.getDirectory(
+    workspace.workOSOrganizationId
+  );
+  if (!directory) {
+    throw new Error("WorkOS directory not found");
+  }
+
+  await syncAllUsers(workspace, directory.id);
+
+  await syncAllGroups(workspace, directory.id);
+
+  logger.info(
+    { workspaceId: workspace.sId, directoryId: directory.id },
+    "WorkOS full directory sync completed successfully"
+  );
+}
+
+async function syncAllUsers(
+  workspace: WorkspaceType,
+  directoryId: string
+): Promise<void> {
+  logger.info(
+    { workspaceId: workspace.sId, directoryId },
+    "Starting user sync"
+  );
+
+  const workOs = getWorkOS();
+
+  const { autoPagination } = await workOs.directorySync.listUsers({
+    directory: directoryId,
+  });
+  const users = await autoPagination();
+
+  for (const workOsUser of users) {
+    await upsertUser(workspace, workOsUser, directoryId);
+  }
+
+  logger.info({ workspaceId: workspace.sId }, "User sync completed");
+}
+
+async function syncAllGroups(
+  workspace: WorkspaceType,
+  directoryId: string
+): Promise<void> {
+  logger.info(
+    { workspaceId: workspace.sId, directoryId },
+    "Starting group sync"
+  );
+
+  const workOS = getWorkOS();
+
+  const { autoPagination } = await workOS.directorySync.listGroups({
+    directory: directoryId,
+  });
+  const groups = await autoPagination();
+
+  for (const workOSGroup of groups) {
+    await upsertGroup(workspace, workOSGroup, directoryId);
+  }
+
+  logger.info({ workspaceId: workspace.sId }, "Group sync completed");
+}
+
+async function upsertUser(
+  workspace: WorkspaceType,
+  workOSUser: DirectoryUserWithGroups,
+  directoryId: string
+): Promise<void> {
+  logger.info({ workspace, workOSUser, directoryId }, "Upserting user");
+}
+
+async function upsertGroup(
+  workspace: WorkspaceType,
+  workOSGroup: DirectoryGroup,
+  directoryId: string
+): Promise<void> {
+  logger.info({ workspace, workOSGroup, directoryId }, "Upserting group");
 }
