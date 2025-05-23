@@ -274,6 +274,7 @@ export function MCPAction({
               ...old,
               _jsonSchemaString,
               jsonSchema:
+                // only update jsonSchema if it's set (to a valid schema or to null)
                 jsonSchema === undefined ? old.jsonSchema : jsonSchema,
             }));
           }}
