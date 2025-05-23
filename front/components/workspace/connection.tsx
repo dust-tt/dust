@@ -131,7 +131,7 @@ export function EnterpriseConnectionDetails({
 
   return (
     <Page.Vertical gap="sm">
-      <Page.H variant="h5">Single Sign On</Page.H>
+      <Page.H variant="h5">User provisioning</Page.H>
       <CreateEnterpriseConnectionModal
         owner={owner}
         isOpen={isEnterpriseConnectionModalOpened}
