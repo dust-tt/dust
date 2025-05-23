@@ -335,39 +335,33 @@ const getAssociationTypeId = async (
   fromObjectType: string,
   toObjectType: string
 ): Promise<number> => {
-  try {
-    const response = await fetch(
-      `https://api.hubapi.com/crm/v4/associations/${fromObjectType}/${toObjectType}/labels`,
-      {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-        },
-      }
+  const response = await fetch(
+    `https://api.hubapi.com/crm/v4/associations/${fromObjectType}/${toObjectType}/labels`,
+    {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Failed to fetch association types: ${response.status} ${response.statusText}`
     );
-
-    if (!response.ok) {
-      throw new Error(
-        `Failed to fetch association types: ${response.status} ${response.statusText}`
-      );
-    }
-
-    const data = await response.json();
-
-    if (!data.results || data.results.length === 0) {
-      throw new Error(
-        `No association types found for ${fromObjectType} to ${toObjectType}`
-      );
-    }
-
-    // Get the first association type (there should only be one for standard associations)
-    const typeId = data.results[0].typeId;
-
-    return typeId;
-  } catch (error) {
-    throw error;
   }
+
+  const data = await response.json();
+
+  if (!data.results || data.results.length === 0) {
+    throw new Error(
+      `No association types found for ${fromObjectType} to ${toObjectType}`
+    );
+  }
+
+  // Get the first association type (there should only be one for standard associations)
+  return data.results[0].typeId;
 };
 
 /**
