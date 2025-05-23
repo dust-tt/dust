@@ -16,12 +16,8 @@ import { useState } from "react";
 
 import { useUpdateAgentTags } from "@app/lib/swr/tags";
 import { compareForFuzzySort, subFilter, tagsSorter } from "@app/lib/utils";
-import type {
-  LightAgentConfigurationType,
-  WorkspaceType} from "@app/types";
-import {
-  isBuilder
-} from "@app/types";
+import type { LightAgentConfigurationType, WorkspaceType } from "@app/types";
+import { isBuilder } from "@app/types";
 import type { TagType } from "@app/types/tag";
 
 import { DeleteAssistantsDialog } from "./DeleteAssistantsDialog";
