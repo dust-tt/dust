@@ -32,8 +32,7 @@ const Help: FC = () => {
       </Box>
       <Box marginLeft={2}>
         <Text>
-          <Text bold>agents-mcp</Text> Select agents and start a stdio MCP
-          server
+          <Text bold>agents-mcp</Text> Select agents and start an MCP server
         </Text>
       </Box>
       <Box marginTop={1}>
@@ -64,6 +63,12 @@ const Help: FC = () => {
         <Text>
           <Text bold>--sId</Text> Specify agent sId(s) to use directly (can be
           repeated)
+        </Text>
+      </Box>
+      <Box marginLeft={2}>
+        <Text>
+          <Text bold>-t, --transport</Text> Transport type for agents-mcp: sse
+          (default) or stdio
         </Text>
       </Box>
     </Box>
