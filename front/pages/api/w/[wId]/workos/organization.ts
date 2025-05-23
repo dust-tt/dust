@@ -48,7 +48,10 @@ async function handler(
       try {
         const workos = getWorkOS();
         const organization = await workos.organizations.createOrganization({
-          name: `${owner.name} - ${owner.sId}`,
+          name: `${owner.name}`,
+          metadata: {
+            workspaceSId: owner.sId,
+          },
         });
 
         res.status(200).json({ organizationId: organization.id });

@@ -14,6 +14,7 @@ import {
   DropdownMenuTrigger,
   ExternalLinkIcon,
   Page,
+  useSendNotification,
 } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
 
@@ -22,13 +23,7 @@ import {
   useWorkOSAdminPortalUrl,
 } from "@app/lib/swr/workos";
 import { WorkOSPortalIntent } from "@app/lib/types/workos";
-
-interface WorkOSConnectionProps {
-  owner: {
-    sId: string;
-    workOSOrganizationId?: string | null;
-  };
-}
+import logger from "@app/logger/logger";
 
 const ADMIN_PANEL_OPTIONS = {
   domain: [
@@ -67,16 +62,24 @@ const ADMIN_PANEL_OPTIONS = {
   ],
 };
 
+interface WorkOSConnectionProps {
+  owner: {
+    sId: string;
+    workOSOrganizationId?: string | null;
+  };
+}
+
 export function WorkOSConnection({ owner }: WorkOSConnectionProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedIntent, setSelectedIntent] =
-    useState<WorkOSPortalIntent>(
-      WorkOSPortalIntent.DomainVerification
-    );
+  const [selectedIntent, setSelectedIntent] = useState<WorkOSPortalIntent>(
+    WorkOSPortalIntent.DomainVerification
+  );
   const [shouldOpenPortal, setShouldOpenPortal] = useState(false);
   const [workOSOrganizationId, setWorkOSOrganizationId] = useState<
     string | null
   >(owner.workOSOrganizationId ?? null);
+
+  const sendNotification = useSendNotification();
 
   const { createOrganization } = useCreateWorkOSOrganization(owner.sId);
 
@@ -90,26 +93,44 @@ export function WorkOSConnection({ owner }: WorkOSConnectionProps) {
   }, [adminPortalUrl, shouldOpenPortal]);
 
   const handleSetupConnection = async () => {
-    try {
-      const { organizationId } = await createOrganization();
+    const { organizationId } = await createOrganization();
 
-      // Update the workspace with the WorkOS organization ID
-      await fetch(`/api/w/${owner.sId}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+    // Update the workspace with the WorkOS organization ID
+    const r = await fetch(`/api/w/${owner.sId}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        workOSOrganizationId: organizationId,
+      }),
+    });
+
+    if (!r.ok) {
+      logger.error(
+        {
+          workspaceId: owner.sId,
+          organizationId,
         },
-        body: JSON.stringify({
-          workOSOrganizationId: organizationId,
-        }),
+        "Failed to update workspace with WorkOS organization ID"
+      );
+      sendNotification({
+        type: "error",
+        title: "Failed to create WorkOS organization",
+        description:
+          "There was an error creating your WorkOS organization. Please try again.",
       });
-
-      setIsModalOpen(false);
-      setWorkOSOrganizationId(organizationId);
-    } catch (error) {
-      console.error("Failed to create WorkOS organization:", error);
-      alert("Failed to create enterprise connection. Please try again.");
+      return;
     }
+
+    sendNotification({
+      type: "success",
+      title: "WorkOS organization created",
+      description:
+        "Your WorkOS organization has been created. You can now configure your enterprise settings.",
+    });
+    setIsModalOpen(false);
+    setWorkOSOrganizationId(organizationId);
   };
 
   const getSelectedLabel = () => {

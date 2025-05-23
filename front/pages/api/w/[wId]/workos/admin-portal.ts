@@ -1,4 +1,7 @@
 import { GeneratePortalLinkIntent } from "@workos-inc/node";
+import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
@@ -18,6 +21,17 @@ const INTENT_MAP: Record<WorkOSPortalIntent, GeneratePortalLinkIntent> = {
   [WorkOSPortalIntent.CertificateRenewal]:
     GeneratePortalLinkIntent.CertificateRenewal,
 };
+
+const WorkOSAdminPortalQuerySchema = t.type({
+  intent: t.union([
+    t.literal(WorkOSPortalIntent.SSO),
+    t.literal(WorkOSPortalIntent.DSync),
+    t.literal(WorkOSPortalIntent.DomainVerification),
+    t.literal(WorkOSPortalIntent.AuditLogs),
+    t.literal(WorkOSPortalIntent.LogStreams),
+    t.literal(WorkOSPortalIntent.CertificateRenewal),
+  ]),
+});
 
 async function handler(
   req: NextApiRequest,
@@ -50,17 +64,18 @@ async function handler(
   switch (req.method) {
     case "GET":
       try {
-        const intent = req.query.intent as WorkOSPortalIntent;
-        if (!intent || !Object.values(WorkOSPortalIntent).includes(intent)) {
+        const result = WorkOSAdminPortalQuerySchema.decode(req.query);
+        if (isLeft(result)) {
           return apiError(req, res, {
             status_code: 400,
             api_error: {
               type: "invalid_request_error",
-              message: "Invalid or missing intent parameter",
+              message: reporter.formatValidationErrors(result.left).join(", "),
             },
           });
         }
 
+        const { intent } = result.right;
         const workos = getWorkOS();
         const { link } = await workos.portal.generateLink({
           intent: INTENT_MAP[intent],
