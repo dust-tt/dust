@@ -104,20 +104,28 @@ export class UserResource extends BaseResource<UserModel> {
     return users.map((user) => new UserResource(UserModel, user.get()));
   }
 
-  static async fetchById(userId: string): Promise<UserResource | null> {
+  static async fetchById(
+    userId: string,
+    transaction?: Transaction
+  ): Promise<UserResource | null> {
     const user = await UserModel.findOne({
       where: {
         sId: userId,
       },
+      transaction,
     });
     return user ? new UserResource(UserModel, user.get()) : null;
   }
 
-  static async fetchByAuth0Sub(sub: string): Promise<UserResource | null> {
+  static async fetchByAuth0Sub(
+    sub: string,
+    transaction?: Transaction
+  ): Promise<UserResource | null> {
     const user = await UserModel.findOne({
       where: {
         auth0Sub: sub,
       },
+      transaction,
     });
     return user ? new UserResource(UserModel, user.get()) : null;
   }

@@ -312,10 +312,15 @@ export class GroupResource extends BaseResource<GroupModel> {
   // Internal fetcher for Authenticator only
 
   // Use with care as this gives access to all groups in the workspace.
-  static async internalFetchAllWorkspaceGroups(
-    workspaceId: ModelId,
-    groupKinds: GroupKind[] = ["global", "regular", "system"]
-  ): Promise<GroupResource[]> {
+  static async internalFetchAllWorkspaceGroups({
+    workspaceId,
+    groupKinds = ["global", "regular", "system"],
+    transaction,
+  }: {
+    workspaceId: ModelId;
+    groupKinds?: GroupKind[];
+    transaction?: Transaction;
+  }): Promise<GroupResource[]> {
     const groups = await this.model.findAll({
       where: {
         workspaceId,
@@ -323,6 +328,7 @@ export class GroupResource extends BaseResource<GroupModel> {
           [Op.in]: groupKinds,
         },
       },
+      transaction,
     });
 
     return groups.map((group) => new this(GroupModel, group.get()));
@@ -378,13 +384,15 @@ export class GroupResource extends BaseResource<GroupModel> {
   }
 
   static async internalFetchWorkspaceGlobalGroup(
-    workspaceId: ModelId
+    workspaceId: ModelId,
+    transaction?: Transaction
   ): Promise<GroupResource | null> {
     const group = await this.model.findOne({
       where: {
         workspaceId,
         kind: "global",
       },
+      transaction,
     });
 
     if (!group) {
@@ -607,16 +615,19 @@ export class GroupResource extends BaseResource<GroupModel> {
     user,
     workspace,
     groupKinds = ["global", "regular", "agent_editors"],
+    transaction,
   }: {
     user: UserResource;
     workspace: LightWorkspaceType;
     groupKinds?: Omit<GroupKind, "system">[];
+    transaction?: Transaction;
   }): Promise<GroupResource[]> {
     // First we need to check if the user is a member of the workspace.
     const workspaceMembership =
       await MembershipResource.getActiveMembershipOfUserInWorkspace({
         user,
         workspace,
+        transaction,
       });
     if (!workspaceMembership) {
       return [];
@@ -631,6 +642,7 @@ export class GroupResource extends BaseResource<GroupModel> {
           workspaceId: workspace.id,
           kind: "global",
         },
+        transaction,
       });
 
       if (!globalGroup) {
@@ -659,6 +671,7 @@ export class GroupResource extends BaseResource<GroupModel> {
           [Op.in]: groupKinds.filter((k) => k !== "global") as GroupKind[],
         },
       },
+      transaction,
     });
 
     const groups = [...(globalGroup ? [globalGroup] : []), ...userGroups];
