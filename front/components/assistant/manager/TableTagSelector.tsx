@@ -35,7 +35,6 @@ export const TableTagSelector = ({
   const { isDark } = useTheme();
   const updateAgentTags = useUpdateAgentTags({
     owner,
-    agentConfigurationId,
   });
   return (
     <DropdownMenu>
@@ -69,7 +68,7 @@ export const TableTagSelector = ({
                   setIsLoading(true);
                   e.stopPropagation();
                   e.preventDefault();
-                  await updateAgentTags({
+                  await updateAgentTags(agentConfigurationId, {
                     addTagIds: isChecked ? [] : [t.sId],
                     removeTagIds: isChecked ? [t.sId] : [],
                   });

@@ -213,15 +213,9 @@ export function useUpdateTag({
   };
 }
 
-export function useUpdateAgentTags({
-  owner,
-  agentConfigurationId,
-}: {
-  owner: LightWorkspaceType;
-  agentConfigurationId: string;
-}) {
+export function useUpdateAgentTags({ owner }: { owner: LightWorkspaceType }) {
   const updateAgentTags = useCallback(
-    async (body: PatchAgentTagsRequestBody) => {
+    async (agentConfigurationId: string, body: PatchAgentTagsRequestBody) => {
       await fetch(
         `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfigurationId}/tags`,
         {
@@ -233,7 +227,7 @@ export function useUpdateAgentTags({
         }
       );
     },
-    [owner, agentConfigurationId]
+    [owner]
   );
 
   return updateAgentTags;
