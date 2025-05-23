@@ -132,7 +132,7 @@ const Spinner: React.FC<SpinnerProps> = ({ size = "md", variant = "mono" }) => {
   }
 
   // Handle color variant
-  if (variant == "color") {
+  if (variant === "color") {
     let anim;
     switch (size) {
       case "xs":
@@ -155,7 +155,7 @@ const Spinner: React.FC<SpinnerProps> = ({ size = "md", variant = "mono" }) => {
     );
   }
 
-  if (variant == "light") {
+  if (variant === "light") {
     let anim;
     switch (size) {
       case "xs":
@@ -178,7 +178,7 @@ const Spinner: React.FC<SpinnerProps> = ({ size = "md", variant = "mono" }) => {
     );
   }
 
-  if (variant == "dark") {
+  if (variant === "dark") {
     let anim;
     switch (size) {
       case "xs":
