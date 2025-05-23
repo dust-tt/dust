@@ -15,9 +15,17 @@ import animLightXS from "@sparkle/lottie/spinnerLightXS";
 type SpinnerSizeType = (typeof SPINNER_SIZES)[number];
 const SPINNER_SIZES = ["xs", "sm", "md", "lg", "xl", "xxl"] as const;
 
+type SpinnerVariant =
+  | "mono"
+  | "revert"
+  | "light"
+  | "dark"
+  | "color"
+  | SpinnerVariantType;
+
 export interface SpinnerProps {
   size?: SpinnerSizeType;
-  variant?: "mono" | "color" | SpinnerVariantType;
+  variant?: SpinnerVariant;
 }
 
 // Generate all possible color-shade combinations
@@ -90,7 +98,13 @@ const Spinner: React.FC<SpinnerProps> = ({ size = "md", variant = "mono" }) => {
   const fullSize = parseInt(pxSizeClasses[size], 10);
 
   // Handle custom color variants
-  if (variant !== "mono" && variant !== "color") {
+  if (
+    variant !== "revert" &&
+    variant !== "mono" &&
+    variant !== "color" &&
+    variant !== "light" &&
+    variant !== "dark"
+  ) {
     let anim;
     switch (size) {
       case "xs":
@@ -141,6 +155,52 @@ const Spinner: React.FC<SpinnerProps> = ({ size = "md", variant = "mono" }) => {
     );
   }
 
+  if (variant == "light") {
+    let anim;
+    switch (size) {
+      case "xs":
+        anim = animLightXS;
+        break;
+      case "xl":
+      case "xxl":
+        anim = animLightLG;
+        break;
+      default:
+        anim = animLight;
+    }
+    return (
+      <Lottie
+        animationData={anim}
+        style={{ width: `${fullSize}px`, height: `${fullSize}px` }}
+        loop
+        autoplay
+      />
+    );
+  }
+
+  if (variant == "dark") {
+    let anim;
+    switch (size) {
+      case "xs":
+        anim = animDarkXS;
+        break;
+      case "xl":
+      case "xxl":
+        anim = animDarkLG;
+        break;
+      default:
+        anim = animDark;
+    }
+    return (
+      <Lottie
+        animationData={anim}
+        style={{ width: `${fullSize}px`, height: `${fullSize}px` }}
+        loop
+        autoplay
+      />
+    );
+  }
+
   // Handle mono variant (default)
   let lightAnim;
   let darkAnim;
@@ -162,14 +222,14 @@ const Spinner: React.FC<SpinnerProps> = ({ size = "md", variant = "mono" }) => {
   return (
     <>
       <Lottie
-        animationData={darkAnim}
+        animationData={variant && variant === "mono" ? darkAnim : lightAnim}
         className="s-block dark:s-hidden"
         style={{ width: `${fullSize}px`, height: `${fullSize}px` }}
         loop
         autoplay
       />
       <Lottie
-        animationData={lightAnim}
+        animationData={variant && variant === "mono" ? lightAnim : darkAnim}
         className="s-hidden dark:s-block"
         style={{ width: `${fullSize}px`, height: `${fullSize}px` }}
         loop
