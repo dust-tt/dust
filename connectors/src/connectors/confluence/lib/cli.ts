@@ -1,6 +1,7 @@
 import assert from "assert";
 import fs from "fs/promises";
 
+import { listConfluenceSpaces } from "@connectors/connectors/confluence/lib/confluence_api";
 import {
   confluenceUpdatePagesParentIdsActivity,
   fetchConfluenceConfigurationActivity,
@@ -13,6 +14,7 @@ import {
 } from "@connectors/connectors/confluence/temporal/workflows";
 import {
   ConfluenceConfiguration,
+  ConfluencePage,
   ConfluenceSpace,
 } from "@connectors/lib/models/confluence";
 import { getTemporalClient } from "@connectors/lib/temporal";
@@ -23,6 +25,7 @@ import type {
   ConfluenceCheckSpaceAccessResponseType,
   ConfluenceCommandType,
   ConfluenceMeResponseType,
+  ConfluenceResolveSpaceFromUrlResponseType,
   ConfluenceUpsertPageResponseType,
 } from "@connectors/types";
 
@@ -34,6 +37,7 @@ export const confluence = async ({
   | ConfluenceUpsertPageResponseType
   | ConfluenceMeResponseType
   | ConfluenceCheckSpaceAccessResponseType
+  | ConfluenceResolveSpaceFromUrlResponseType
 > => {
   const logger = topLogger.child({ majorCommand: "confluence", command, args });
 
@@ -254,6 +258,93 @@ export const confluence = async ({
       return {
         hasAccess: true,
         space,
+      };
+    }
+
+    case "resolve-space-from-url": {
+      const { connectorId } = args;
+      if (!connectorId) {
+        throw new Error("Missing --connectorId argument");
+      }
+      if (!args.url) {
+        throw new Error("Missing --url argument");
+      }
+
+      const connector = await ConnectorResource.fetchById(connectorId);
+      if (!connector) {
+        throw new Error("Connector not found.");
+      }
+      if (connector.type !== "confluence") {
+        throw new Error("Connector is not a Confluence connector.");
+      }
+
+      // Parse space key from URL
+      const spaceKeyMatch = args.url.match(/\/wiki\/spaces\/([^/]+)/);
+      if (!spaceKeyMatch) {
+        return {
+          found: false,
+        };
+      }
+      const spaceKey = spaceKeyMatch[1];
+
+      // List all spaces in the connector to find matching space
+      const spacesResult = await listConfluenceSpaces(connector);
+      if (spacesResult.isErr()) {
+        throw new Error(`Failed to list spaces: ${spacesResult.error.message}`);
+      }
+
+      const matchingSpace = spacesResult.value.find(
+        (space) => space.key === spaceKey
+      );
+      if (!matchingSpace) {
+        return {
+          found: false,
+        };
+      }
+
+      // Test access to the space
+      const confluenceConfig =
+        await fetchConfluenceConfigurationActivity(connectorId);
+      const client = await getConfluenceClient(
+        { cloudId: confluenceConfig?.cloudId },
+        connector
+      );
+
+      let hasAccess = false;
+      try {
+        await client.getSpaceById(matchingSpace.id);
+        hasAccess = true;
+      } catch (error) {
+        logger.info(
+          { spaceId: matchingSpace.id, error },
+          "Space access check failed"
+        );
+      }
+
+      // Get space information from database
+      const dbSpace = await ConfluenceSpace.findOne({
+        where: {
+          connectorId,
+          spaceId: matchingSpace.id,
+        },
+      });
+
+      // Count pages in this space
+      const pageCount = await ConfluencePage.count({
+        where: {
+          connectorId,
+          spaceId: matchingSpace.id,
+        },
+      });
+
+      return {
+        found: true,
+        spaceId: matchingSpace.id,
+        spaceKey: matchingSpace.key,
+        spaceName: matchingSpace.name,
+        hasAccess,
+        lastSyncedAt: dbSpace?.updatedAt?.toISOString(),
+        pageCount,
       };
     }
 
