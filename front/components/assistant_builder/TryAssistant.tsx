@@ -37,26 +37,23 @@ export function usePreviewAssistant({
   const animationLength = 1000;
   const [draftAssistant, setDraftAssistant] =
     useState<LightAgentConfigurationType | null>();
-  const [animateDrawer, setAnimateDrawer] = useState(false);
   const [isFading, setIsFading] = useState(false);
-  const [isSavingDraftAgent, setIsSavingDraftAgent] = useState(false);
+  const [isSavingDraftAgent, setIsSavingDraftAgent] = useState(true);
   const drawerAnimationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const sendNotification = useSendNotification();
 
   const previousBuilderState = useRef<AssistantBuilderState>(builderState);
   const [hasChanged, setHasChanged] = useState(false);
-  const hasAttemptedInitialCreation = useRef(false);
+  const initialCreationAttempted = useRef(false);
 
   const animate = () => {
     if (drawerAnimationTimeoutRef.current) {
       clearTimeout(drawerAnimationTimeoutRef.current);
       drawerAnimationTimeoutRef.current = null;
     }
-    setAnimateDrawer(true);
-    setIsFading(true); // Start fading conversation
+    setIsFading(true);
     drawerAnimationTimeoutRef.current = setTimeout(() => {
-      setAnimateDrawer(false);
-      setIsFading(false); // Stop fading
+      setIsFading(false);
     }, animationLength);
   };
 
@@ -111,12 +108,8 @@ export function usePreviewAssistant({
     }
 
     animate();
-
-    // Use setTimeout to delay the execution of setDraftAssistant by 500 milliseconds
-    setTimeout(() => {
-      setDraftAssistant(aRes.value);
-      setHasChanged(false);
-    }, animationLength / 2);
+    setDraftAssistant(aRes.value);
+    setHasChanged(false);
 
     return aRes.value;
   }, [
@@ -140,11 +133,17 @@ export function usePreviewAssistant({
   useEffect(() => {
     const hasContent =
       builderState.instructions?.trim() || builderState.actions.length > 0;
-    if (hasContent && !hasAttemptedInitialCreation.current) {
-      hasAttemptedInitialCreation.current = true;
+    if (hasContent && !initialCreationAttempted.current) {
+      initialCreationAttempted.current = true;
       createDraftAgent().catch(console.error);
+    } else if (!hasContent && !initialCreationAttempted.current) {
+      setIsSavingDraftAgent(false);
     }
-  }, [createDraftAgent]);
+  }, [
+    builderState.actions.length,
+    builderState.instructions,
+    createDraftAgent,
+  ]);
 
   useEffect(() => {
     return () => {
@@ -155,7 +154,6 @@ export function usePreviewAssistant({
   }, []);
 
   return {
-    shouldAnimate: animateDrawer,
     isFading,
     draftAssistant: draftAssistant ?? null,
     isSavingDraftAgent,
