@@ -26,8 +26,8 @@ interface MultiPageSheetProps {
   pages: MultiPageSheetPage[];
   currentPageId: string;
   onPageChange: (pageId: string) => void;
-  size?: "md" | "lg" | "xl";
-  side?: "top" | "bottom" | "left" | "right";
+  size?: React.ComponentProps<typeof SheetContent>["size"];
+  side?: React.ComponentProps<typeof SheetContent>["side"];
   trapFocusScope?: boolean;
   showNavigation?: boolean;
   footerContent?: React.ReactNode;
