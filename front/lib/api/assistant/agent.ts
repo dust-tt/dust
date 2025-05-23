@@ -65,7 +65,7 @@ import type {
   UserMessageType,
   WorkspaceType,
 } from "@app/types";
-import { assertNever, SUPPORTED_MODEL_CONFIGS } from "@app/types";
+import { assertNever, removeNulls, SUPPORTED_MODEL_CONFIGS } from "@app/types";
 
 const CANCELLATION_CHECK_INTERVAL = 500;
 const MAX_ACTIONS_PER_STEP = 16;
@@ -792,9 +792,18 @@ async function* runMultiActionsAgent(
   const actions: AgentActionsEvent["actions"] = [];
 
   for (const a of output.actions) {
-    let action = availableActions.find((ac) => ac.name === a.name);
+    // Sometimes models will return a name with a triple underscore instead of a double underscore, we dynamically handle it.
+    const actionNamesFromLLM: string[] = removeNulls([
+      a.name,
+      a.name?.replace("___", "__") ?? null,
+    ]);
+
+    let action = availableActions.find((ac) =>
+      actionNamesFromLLM.includes(ac.name)
+    );
     let args = a.arguments;
-    let spec = specifications.find((s) => s.name === a.name) ?? null;
+    let spec =
+      specifications.find((s) => actionNamesFromLLM.includes(s.name)) ?? null;
 
     if (!action) {
       logger.error(
