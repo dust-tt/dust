@@ -24,6 +24,7 @@ import {
   isGithubRequestErrorRepositoryAccessBlocked,
   isGithubRequestRedirectCountExceededError,
   RepositoryAccessBlockedError,
+  RepositoryNotFoundError,
 } from "@connectors/connectors/github/lib/errors";
 import type {
   DiscussionCommentNode,
@@ -853,15 +854,26 @@ export async function processRepository({
         parents: string[];
       }[];
     },
-    RepositoryAccessBlockedError | ExternalOAuthTokenError
+    | RepositoryAccessBlockedError
+    | ExternalOAuthTokenError
+    | RepositoryNotFoundError
   >
 > {
   const octokit = await getOctokit(connector);
 
-  const { data } = await octokit.rest.repos.get({
-    owner: repoLogin,
-    repo: repoName,
-  });
+  let data;
+  try {
+    const response = await octokit.rest.repos.get({
+      owner: repoLogin,
+      repo: repoName,
+    });
+    data = response.data;
+  } catch (err) {
+    if (isGithubRequestErrorNotFound(err)) {
+      return new Err(new RepositoryNotFoundError(err));
+    }
+    throw err;
+  }
   const defaultBranch = data.default_branch;
 
   logger.info({ defaultBranch, size: data.size }, "Retrieved repository info");

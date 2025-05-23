@@ -10,6 +10,7 @@ import {
   isGraphQLNotFound,
   isGraphQLRepositoryNotFound,
   RepositoryAccessBlockedError,
+  RepositoryNotFoundError,
 } from "@connectors/connectors/github/lib/errors";
 import type {
   GithubIssue as GithubIssueType,
@@ -1094,11 +1095,12 @@ export async function githubCodeSyncActivity({
   if (repoRes.isErr()) {
     if (
       repoRes.error instanceof ExternalOAuthTokenError ||
-      repoRes.error instanceof RepositoryAccessBlockedError
+      repoRes.error instanceof RepositoryAccessBlockedError ||
+      repoRes.error instanceof RepositoryNotFoundError
     ) {
       logger.info(
         { err: repoRes.error },
-        "Missing Github repository tarball: Garbage collecting repo."
+        "Missing Github repository: Garbage collecting repo."
       );
 
       await garbageCollectCodeSync(
