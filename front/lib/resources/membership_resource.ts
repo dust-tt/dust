@@ -186,7 +186,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
 
     let count = rows.length;
 
-    // Only do the count if we are paginating, otherwise we can use the lenght of the rows as there is no limit by default
+    // Only do the count if we are paginating, otherwise we can use the length of the rows as there is no limit by default
     if (paginationParams) {
       // Need a separate query to get the total count, findAndCountAll does not support pagination based on where clause.
       count = await MembershipModel.count(findOptions);
