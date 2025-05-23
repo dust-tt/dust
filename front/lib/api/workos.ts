@@ -17,7 +17,6 @@ import { Err, Ok } from "@app/types";
 
 import type { RegionType } from "./regions/config";
 
-
 let workos: WorkOS | null = null;
 
 export type SessionCookie = {
@@ -164,21 +163,27 @@ export async function syncWorkOSDirectoriesForWorkspace(
 
   const workOS = getWorkOS();
 
-  const directory = await workOS.directorySync.getDirectory(
-    workspace.workOSOrganizationId
-  );
-  if (!directory) {
-    throw new Error("WorkOS directory not found");
+  const { data: directories } = await workOS.directorySync.listDirectories({
+    organizationId: workspace.workOSOrganizationId,
+  });
+
+  logger.info({ directories }, "directories");
+
+  for (const directory of directories) {
+    logger.info(
+      { workspaceId: workspace.sId, directoryId: directory.id },
+      "[WorkOS] Syncing directory."
+    );
+
+    await syncAllUsers(workspace, directory.id);
+
+    await syncAllGroups(workspace, directory.id);
+
+    logger.info(
+      { workspaceId: workspace.sId, directoryId: directory.id },
+      "[WorkOS] Directory successfully synced."
+    );
   }
-
-  await syncAllUsers(workspace, directory.id);
-
-  await syncAllGroups(workspace, directory.id);
-
-  logger.info(
-    { workspaceId: workspace.sId, directoryId: directory.id },
-    "WorkOS full directory sync completed successfully"
-  );
 }
 
 async function syncAllUsers(

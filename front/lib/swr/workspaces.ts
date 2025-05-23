@@ -159,7 +159,7 @@ export function useFeatureFlags({
   };
 }
 
-export function useWorkOSFullSync(owner: WorkspaceType) {
+export function useSyncWorkOSDirectoriesAndUsers(owner: WorkspaceType) {
   const sendNotification = useSendNotification();
 
   const triggerFullSync = async () => {
@@ -174,14 +174,14 @@ export function useWorkOSFullSync(owner: WorkspaceType) {
       const result = await res.json();
       sendNotification({
         type: "success",
-        title: "WorkOS Sync Completed",
+        title: "Sync Completed",
       });
       return result;
     } else {
       const errorData = await getErrorFromResponse(res);
       sendNotification({
         type: "error",
-        title: "WorkOS Sync Failed",
+        title: "Sync Failed",
         description: errorData.message,
       });
     }
