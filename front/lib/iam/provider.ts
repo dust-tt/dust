@@ -1,6 +1,6 @@
 import type { AuthenticationResponse, User } from "@workos-inc/node";
 
-import type { RegionType } from "../api/regions/config";
+import type { RegionType } from "@app/lib/api/regions/config";
 
 export type SessionCookie = {
   sessionData: string;
