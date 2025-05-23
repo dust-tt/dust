@@ -7,7 +7,6 @@ import {
   ChatBubbleLeftRightIcon,
   ChatBubbleThoughtIcon,
   Chip,
-  CompanyIcon,
   ContentMessage,
   DropdownMenu,
   DropdownMenuContent,
@@ -69,29 +68,6 @@ export const SCOPE_INFO: Record<
     text: string;
   }
 > = {
-  // TODO(agent-discovery) remove once all agents are migrated to the new scope
-  workspace: {
-    shortLabel: "Company",
-    label: "Company Agent",
-    color: "golden",
-    icon: CompanyIcon,
-    text: "Activated by default for all members of the workspace.",
-  },
-  published: {
-    shortLabel: "Shared",
-    label: "Shared Agent",
-    color: "green",
-    icon: UserGroupIcon,
-    text: "Anyone in the workspace can view and edit.",
-  },
-  private: {
-    shortLabel: "Personal",
-    label: "Personal Agent",
-    color: "blue",
-    icon: LockIcon,
-    text: "Only I can view and edit.",
-  },
-  // END-TODO(agent-discovery)
   global: {
     shortLabel: "Default",
     label: "Default Agent",

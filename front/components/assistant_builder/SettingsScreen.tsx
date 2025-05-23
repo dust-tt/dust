@@ -348,10 +348,7 @@ export default function SettingsScreen({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const isVisible =
-    builderState.scope === "visible" ||
-    builderState.scope === "published" ||
-    builderState.scope === "workspace";
+  const isVisible = builderState.scope === "visible";
 
   return (
     <>
@@ -553,9 +550,7 @@ export default function SettingsScreen({
                     {isVisible ? "Published" : "Not published"}
                   </span>
                   <span className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
-                    {(builderState.scope === "visible" ||
-                      builderState.scope === "published" ||
-                      builderState.scope === "workspace") && (
+                    {builderState.scope === "visible" && (
                       <>
                         {nonGlobalSpacesUsedInActions.length === 0 && (
                           <>Visible & usable by all members of the workspace.</>
@@ -576,9 +571,6 @@ export default function SettingsScreen({
                     )}
                     {builderState.scope === "hidden" && (
                       <>Visible & usable by editors only.</>
-                    )}
-                    {builderState.scope === "private" && (
-                      <>Visible and usable by the current user only.</>
                     )}
                   </span>
                 </div>
@@ -894,7 +886,7 @@ function TagsSection({
           ) !== -1
       )
       .slice(0, 3);
-  }, [tagsSuggestions, tags]);
+  }, [tagsSuggestions, builderState.tags, tags, owner]);
 
   const updateTagsSuggestions = useCallback(async () => {
     setTagsSuggestionsLoading(true);

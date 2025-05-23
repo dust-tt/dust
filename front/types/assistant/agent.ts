@@ -34,16 +34,11 @@ export type AgentConfigurationStatus = AgentStatus | GlobalAgentStatus;
 /**
  * Agent configuration scope
  * - 'global' scope are Dust agents, not editable, inside-list for all, cannot be overriden
- * - 'workspace' scope are editable by builders only,  inside-list by default but user can change it
- * - 'published' scope are editable by everybody, outside-list by default
- * - 'private' scope are editable by author only, inside-list for author, cannot be overriden (so no
- *   entry in the table
+ * - 'visible' scope are published agents
+ * - 'hidden' scope are unpuiblished agents, visible by editors only
  */
 export const AGENT_CONFIGURATION_SCOPES = [
   "global",
-  "workspace",
-  "published",
-  "private",
   "visible",
   "hidden",
 ] as const;
@@ -58,8 +53,7 @@ export type AgentConfigurationScope =
  * - {agentIds: string}: Retrieves specific agents by their sIds.
  * - 'all': All non-private agents (so combines workspace, published and global
  *   agents); used e.g. for non-user calls such as API
- * - 'workspace': Retrieves all agents exclusively with a 'workspace' scope.
- * - 'published': Retrieves all agents exclusively with a 'published' scope.
+ * - 'published': Retrieves all published agents.
  * - 'global': Retrieves all agents exclusively with a 'global' scope.
  * - 'admin_internal': Grants access to all agents, including private ones.
  * - 'manage': Retrieves all agents for the manage agents view (same as list, but including disabled agents).
@@ -73,7 +67,6 @@ export type AgentsGetViewType =
   | "current_user"
   | "list"
   | "all"
-  | "workspace"
   | "published"
   | "global"
   | "admin_internal"

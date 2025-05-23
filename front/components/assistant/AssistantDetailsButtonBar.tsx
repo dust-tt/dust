@@ -72,7 +72,6 @@ export function AssistantDetailsButtonBar({
             setShowDeletionModal(false);
             onOpenChangeAssistantModal(false);
           }}
-          isPrivateAssistant={agentConfiguration.scope === "private"}
         />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
