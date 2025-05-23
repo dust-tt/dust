@@ -113,6 +113,9 @@ export class Authenticator {
   private static transaction<T>(
     callback: (t?: Transaction) => Promise<T>
   ): Promise<T> {
+    // Skipping in test as in doesn't behave well with itInTransaction.
+    // The transaction in the test is not passed here, so data fed when
+    // initializing script is not accessible here.
     if (process.env.NODE_ENV === "test") {
       return callback();
     }
