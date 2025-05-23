@@ -28,7 +28,7 @@ import { useCallback, useState } from "react";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import {
   useFeatureFlags,
-  useWorkOSFullSync,
+  useSyncWorkOSDirectoriesAndUsers,
   useWorkspaceEnterpriseConnection,
 } from "@app/lib/swr/workspaces";
 import type {
@@ -67,7 +67,7 @@ interface WorkOSSyncButtonProps {
 // TODO: find a more appropriate location for this component.
 export function WorkOSSyncButton({ owner }: WorkOSSyncButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
-  const { triggerFullSync } = useWorkOSFullSync(owner);
+  const { triggerFullSync } = useSyncWorkOSDirectoriesAndUsers(owner);
 
   const handleSync = async () => {
     setIsLoading(true);
