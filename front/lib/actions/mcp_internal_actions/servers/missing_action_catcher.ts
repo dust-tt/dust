@@ -28,13 +28,14 @@ const createServer = (
 
     server.tool(actionName, "", {}, async () => {
       return {
-        isError: false,
+        isError: true,
         content: [
           {
             type: "text",
             text:
-              `There is no tool named "${actionName}" in the agent configuration. ` +
-              "This answer to the function call is a catch-all. Please verify that the function name is correct : " +
+              `Tool "${actionName}" not found. ` +
+              "This answer to the function call is a catch-all. " +
+              "Please verify that the function name is correct : " +
               "pay attention to case sensitivity and separators between words in the name. " +
               "It's safe to retry automatically with another name.",
           },
