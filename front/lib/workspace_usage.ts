@@ -11,6 +11,7 @@ import {
 } from "@app/lib/models/assistant/conversation";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { getFrontReplicaDbConnection } from "@app/lib/resources/storage";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import type {
@@ -55,6 +56,12 @@ type UserUsageQueryResult = {
   messageCount: number;
   lastMessageSent: string;
   activeDaysCount: number;
+};
+
+type TotalUserUsageQueryResult = {
+  userId: number;
+  userName: string;
+  userEmail: string;
 };
 
 type BuilderUsageQueryResult = {
@@ -317,6 +324,55 @@ export async function getUserUsageData(
   return generateCsvFromQueryResult(userUsage);
 }
 
+/**
+ * Is membership active between the given period
+ */
+function isMembershipActiveIn(
+  membership: MembershipResource,
+  startDate: Date,
+  endDate: Date
+): boolean {
+  return (
+    membership.startAt <= endDate &&
+    (!membership.endAt || membership.endAt >= startDate)
+  );
+}
+
+export async function getTotalUserUsageData(
+  startDate: Date,
+  endDate: Date,
+  workspace: WorkspaceType
+): Promise<string> {
+  const { memberships } = await MembershipResource.getMembershipsForWorkspace({
+    workspace,
+    includeUser: true,
+  });
+
+  const userUsage: TotalUserUsageQueryResult[] = memberships.reduce(
+    (acc, membership) => {
+      if (
+        membership.user != null &&
+        isMembershipActiveIn(membership, startDate, endDate)
+      ) {
+        acc.push({
+          userId: membership.user.id,
+          userName: `${membership.user.firstName} ${membership.user.lastName}`,
+          userEmail: membership.user.email,
+        });
+      }
+
+      return acc;
+    },
+    [] as TotalUserUsageQueryResult[]
+  );
+
+  if (!userUsage.length) {
+    return "No data available for the selected period.";
+  }
+
+  return generateCsvFromQueryResult(userUsage);
+}
+
 export async function getBuildersUsageData(
   startDate: Date,
   endDate: Date,
@@ -527,6 +583,7 @@ function generateCsvFromQueryResult(
   rows:
     | WorkspaceUsageQueryResult[]
     | UserUsageQueryResult[]
+    | TotalUserUsageQueryResult[]
     | AgentUsageQueryResult[]
     | MessageUsageQueryResult[]
     | BuilderUsageQueryResult[]
