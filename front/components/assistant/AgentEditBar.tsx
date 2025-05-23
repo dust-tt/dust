@@ -14,7 +14,7 @@ import {
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
-import { useBatchUpdateAgentTags } from "@app/lib/swr/tags";
+import { useBatchUpdateAgents } from "@app/lib/swr/assistants";
 import { compareForFuzzySort, subFilter, tagsSorter } from "@app/lib/utils";
 import type { LightAgentConfigurationType, WorkspaceType } from "@app/types";
 import { isBuilder } from "@app/types";
@@ -41,7 +41,7 @@ export const AgentEditBar = ({
   const [tagSearch, setTagSearch] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  const batchUpdateAgentTags = useBatchUpdateAgentTags({
+  const batchUpdateAgents = useBatchUpdateAgents({
     owner,
   });
 
@@ -124,7 +124,7 @@ export const AgentEditBar = ({
                       )
                     ) {
                       // Remove tag from all selected agents
-                      await batchUpdateAgentTags(agentIds, {
+                      await batchUpdateAgents(agentIds, {
                         removeTagIds: [t.sId],
                       });
                     } else {
@@ -133,7 +133,7 @@ export const AgentEditBar = ({
                         (a) =>
                           !a.tags.find((agentTag) => agentTag.sId === t.sId)
                       );
-                      await batchUpdateAgentTags(
+                      await batchUpdateAgents(
                         toAdd.map((a) => a.sId),
                         {
                           addTagIds: [t.sId],
