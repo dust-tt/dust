@@ -475,6 +475,7 @@ const DropdownMenuTagItem = React.forwardRef<
         ref={ref}
         className={cn(menuStyleClasses.item({ variant: "default" }), className)}
         {...props}
+        asChild
         onClick={handleClick}
       >
         <Chip label={label} size={size} color={color} onRemove={onRemove} />
