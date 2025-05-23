@@ -5,4 +5,4 @@ export enum WorkOSPortalIntent {
   AuditLogs = "audit_logs",
   LogStreams = "log_streams",
   CertificateRenewal = "certificate_renewal",
-} 
+}

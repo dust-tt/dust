@@ -27,6 +27,7 @@ import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { ChangeMemberModal } from "@app/components/workspace/ChangeMemberModal";
 import type { EnterpriseConnectionStrategyDetails } from "@app/components/workspace/connection";
 import { EnterpriseConnectionDetails } from "@app/components/workspace/connection";
+import { WorkOSConnection } from "@app/components/workspace/WorkOSConnection";
 import config from "@app/lib/api/config";
 import {
   makeAudienceUri,
@@ -49,7 +50,6 @@ import type {
   WorkspaceDomain,
   WorkspaceType,
 } from "@app/types";
-import { WorkOSConnection } from "@app/components/workspace/WorkOSConnection";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   user: UserType;

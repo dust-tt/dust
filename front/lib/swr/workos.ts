@@ -1,7 +1,7 @@
 import useSWR from "swr";
-import { WorkOSPortalIntent } from "@app/lib/types/workos";
 
 import { fetcher } from "@app/lib/swr/swr";
+import type { WorkOSPortalIntent } from "@app/lib/types/workos";
 
 export function useWorkOSAdminPortalUrl(
   workspaceId: string,
@@ -20,10 +20,11 @@ export function useWorkOSAdminPortalUrl(
 }
 
 export function useCreateWorkOSOrganization(workspaceId: string) {
-
   const createOrganization = async () => {
-    if (!workspaceId) return;
-    
+    if (!workspaceId) {
+      return;
+    }
+
     const response = await fetch(`/api/w/${workspaceId}/workos/organization`, {
       method: "POST",
       headers: {
@@ -43,4 +44,4 @@ export function useCreateWorkOSOrganization(workspaceId: string) {
   return {
     createOrganization,
   };
-} 
+}

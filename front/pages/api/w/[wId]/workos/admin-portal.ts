@@ -1,20 +1,22 @@
+import { GeneratePortalLinkIntent } from "@workos-inc/node";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { getWorkOS } from "@app/lib/api/workos";
 import type { Authenticator } from "@app/lib/auth";
+import { WorkOSPortalIntent } from "@app/lib/types/workos";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-import { WorkOSPortalIntent } from "@app/lib/types/workos";
-import { GeneratePortalLinkIntent } from "@workos-inc/node";
 
 const INTENT_MAP: Record<WorkOSPortalIntent, GeneratePortalLinkIntent> = {
   [WorkOSPortalIntent.SSO]: GeneratePortalLinkIntent.SSO,
   [WorkOSPortalIntent.DSync]: GeneratePortalLinkIntent.DSync,
-  [WorkOSPortalIntent.DomainVerification]: GeneratePortalLinkIntent.DomainVerification,
+  [WorkOSPortalIntent.DomainVerification]:
+    GeneratePortalLinkIntent.DomainVerification,
   [WorkOSPortalIntent.AuditLogs]: GeneratePortalLinkIntent.AuditLogs,
   [WorkOSPortalIntent.LogStreams]: GeneratePortalLinkIntent.LogStreams,
-  [WorkOSPortalIntent.CertificateRenewal]: GeneratePortalLinkIntent.CertificateRenewal,
+  [WorkOSPortalIntent.CertificateRenewal]:
+    GeneratePortalLinkIntent.CertificateRenewal,
 };
 
 async function handler(
@@ -90,4 +92,4 @@ async function handler(
   }
 }
 
-export default withSessionAuthenticationForWorkspace(handler); 
+export default withSessionAuthenticationForWorkspace(handler);

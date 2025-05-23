@@ -1,10 +1,27 @@
-import { Button, Dialog, DialogContainer, DialogContent, DialogFooter, DialogHeader, DialogTitle, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuGroup, DropdownMenuLabel, DropdownMenuTrigger, Page, ExternalLinkIcon } from "@dust-tt/sparkle";
-import { useCallback, useState, useEffect } from "react";
-import { WorkOSPortalIntent } from "@app/lib/types/workos";
+import {
+  Button,
+  Dialog,
+  DialogContainer,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+  ExternalLinkIcon,
+  Page,
+} from "@dust-tt/sparkle";
+import { useEffect, useState } from "react";
 
-import { useCreateWorkOSOrganization, useWorkOSAdminPortalUrl } from "@app/lib/swr/workos";
-import { useWorkspaceEnterpriseConnection } from "@app/lib/swr/workspaces";
-import { use } from "dd-trace";
+import {
+  useCreateWorkOSOrganization,
+  useWorkOSAdminPortalUrl,
+} from "@app/lib/swr/workos";
+import { WorkOSPortalIntent } from "@app/lib/types/workos";
 
 interface WorkOSConnectionProps {
   owner: {
@@ -15,51 +32,51 @@ interface WorkOSConnectionProps {
 
 const ADMIN_PANEL_OPTIONS = {
   domain: [
-    { 
-      value: WorkOSPortalIntent.DomainVerification, 
+    {
+      value: WorkOSPortalIntent.DomainVerification,
       label: "Domain Verification",
-      description: "Verify your organization's domain for SSO and email domain matching"
+      description:
+        "Verify your organization's domain for SSO and email domain matching",
     },
   ],
   config: [
-    { 
-      value: WorkOSPortalIntent.SSO, 
+    {
+      value: WorkOSPortalIntent.SSO,
       label: "SSO Settings",
-      description: "Configure Single Sign-On (SSO) with your identity provider"
+      description: "Configure Single Sign-On (SSO) with your identity provider",
     },
-    { 
-      value: WorkOSPortalIntent.DSync, 
+    {
+      value: WorkOSPortalIntent.DSync,
       label: "Directory Sync",
-      description: "Set up and manage directory synchronization with your identity provider"
+      description:
+        "Set up and manage directory synchronization with your identity provider",
     },
   ],
   logs: [
-    { 
-      value: WorkOSPortalIntent.AuditLogs, 
+    {
+      value: WorkOSPortalIntent.AuditLogs,
       label: "Audit Logs",
-      description: "View and export audit logs for SSO and directory sync activities"
+      description:
+        "View and export audit logs for SSO and directory sync activities",
     },
-    { 
-      value: WorkOSPortalIntent.LogStreams, 
+    {
+      value: WorkOSPortalIntent.LogStreams,
       label: "Log Streams",
-      description: "Configure and manage log streaming for security monitoring"
+      description: "Configure and manage log streaming for security monitoring",
     },
   ],
 };
 
 export function WorkOSConnection({ owner }: WorkOSConnectionProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedIntent, setSelectedIntent] = useState<WorkOSPortalIntent>(WorkOSPortalIntent.DomainVerification);
+  const [selectedIntent, setSelectedIntent] = useState<WorkOSPortalIntent>(
+    WorkOSPortalIntent.DomainVerification
+  );
   const [shouldOpenPortal, setShouldOpenPortal] = useState(false);
 
-  const { createOrganization } = useCreateWorkOSOrganization(
-    owner.sId
-  );
+  const { createOrganization } = useCreateWorkOSOrganization(owner.sId);
 
-  const { adminPortalUrl } = useWorkOSAdminPortalUrl(
-    owner.sId,
-    selectedIntent
-  );
+  const { adminPortalUrl } = useWorkOSAdminPortalUrl(owner.sId, selectedIntent);
 
   useEffect(() => {
     if (adminPortalUrl && shouldOpenPortal) {
@@ -92,8 +109,15 @@ export function WorkOSConnection({ owner }: WorkOSConnectionProps) {
   };
 
   const getSelectedLabel = () => {
-    const allOptions = [...ADMIN_PANEL_OPTIONS.domain, ...ADMIN_PANEL_OPTIONS.config, ...ADMIN_PANEL_OPTIONS.logs];
-    return allOptions.find(opt => opt.value === selectedIntent)?.label || "Select Panel";
+    const allOptions = [
+      ...ADMIN_PANEL_OPTIONS.domain,
+      ...ADMIN_PANEL_OPTIONS.config,
+      ...ADMIN_PANEL_OPTIONS.logs,
+    ];
+    return (
+      allOptions.find((opt) => opt.value === selectedIntent)?.label ||
+      "Select Panel"
+    );
   };
 
   return (
@@ -117,22 +141,26 @@ export function WorkOSConnection({ owner }: WorkOSConnectionProps) {
                 />
               </DropdownMenuTrigger>
               <DropdownMenuContent>
-                {Object.entries(ADMIN_PANEL_OPTIONS).map(([category, options]) => (
-                  <DropdownMenuGroup key={category}>
-                    <DropdownMenuLabel>{category.charAt(0).toUpperCase() + category.slice(1)}</DropdownMenuLabel>
-                    {options.map((option) => (
-                      <DropdownMenuItem
-                        key={option.value}
-                        onClick={() => {
-                          setSelectedIntent(option.value);
-                          setShouldOpenPortal(true);
-                        }}
-                        label={option.label}
-                        description={option.description}
-                      />
-                    ))}
-                  </DropdownMenuGroup>
-                ))}
+                {Object.entries(ADMIN_PANEL_OPTIONS).map(
+                  ([category, options]) => (
+                    <DropdownMenuGroup key={category}>
+                      <DropdownMenuLabel>
+                        {category.charAt(0).toUpperCase() + category.slice(1)}
+                      </DropdownMenuLabel>
+                      {options.map((option) => (
+                        <DropdownMenuItem
+                          key={option.value}
+                          onClick={() => {
+                            setSelectedIntent(option.value);
+                            setShouldOpenPortal(true);
+                          }}
+                          label={option.label}
+                          description={option.description}
+                        />
+                      ))}
+                    </DropdownMenuGroup>
+                  )
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -155,7 +183,8 @@ export function WorkOSConnection({ owner }: WorkOSConnectionProps) {
             <div className="flex flex-col gap-4">
               <Page.P variant="secondary">
                 This will create a WorkOS organization for your workspace.
-                You'll be able to configure your enterprise settings in the WorkOS admin portal.
+                You'll be able to configure your enterprise settings in the
+                WorkOS admin portal.
               </Page.P>
             </div>
           </DialogContainer>

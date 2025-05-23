@@ -31,7 +31,9 @@ async function handler(
 
   switch (req.method) {
     case "POST":
-      const bodyValidation = CreateWorkOSOrganizationBodySchema.decode(req.body);
+      const bodyValidation = CreateWorkOSOrganizationBodySchema.decode(
+        req.body
+      );
       if (isLeft(bodyValidation)) {
         const pathError = reporter.formatValidationErrors(bodyValidation.left);
         return apiError(req, res, {
@@ -73,4 +75,4 @@ async function handler(
   }
 }
 
-export default withSessionAuthenticationForWorkspace(handler); 
+export default withSessionAuthenticationForWorkspace(handler);
