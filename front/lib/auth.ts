@@ -1,4 +1,3 @@
-import { WorkOS } from "@workos-inc/node";
 import { unsealData } from "iron-session";
 import memoizer from "lru-memoizer";
 import type { GetServerSidePropsContext, NextApiRequest } from "next";
@@ -48,9 +47,7 @@ import {
   WHITELISTABLE_FEATURES,
 } from "@app/types";
 
-const workos = new WorkOS(config.getWorkOSApiKey(), {
-  clientId: config.getWorkOSClientId(),
-});
+import { getWorkOS } from "./api/workos";
 
 const { ACTIVATE_ALL_FEATURES_DEV = false } = process.env;
 
@@ -920,7 +917,7 @@ export async function getSession(
       password: config.getWorkOSCookiePassword(),
     });
 
-  const session = workos.userManagement.loadSealedSession({
+  const session = getWorkOS().userManagement.loadSealedSession({
     sessionData,
     cookiePassword: config.getWorkOSCookiePassword(),
   });
