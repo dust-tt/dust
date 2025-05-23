@@ -69,10 +69,14 @@ const ADMIN_PANEL_OPTIONS = {
 
 export function WorkOSConnection({ owner }: WorkOSConnectionProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedIntent, setSelectedIntent] = useState<WorkOSPortalIntent>(
-    WorkOSPortalIntent.DomainVerification
-  );
+  const [selectedIntent, setSelectedIntent] =
+    useState<WorkOSPortalIntent>(
+      WorkOSPortalIntent.DomainVerification
+    );
   const [shouldOpenPortal, setShouldOpenPortal] = useState(false);
+  const [workOSOrganizationId, setWorkOSOrganizationId] = useState<
+    string | null
+  >(owner.workOSOrganizationId ?? null);
 
   const { createOrganization } = useCreateWorkOSOrganization(owner.sId);
 
@@ -100,8 +104,8 @@ export function WorkOSConnection({ owner }: WorkOSConnectionProps) {
         }),
       });
 
-      location.reload();
       setIsModalOpen(false);
+      setWorkOSOrganizationId(organizationId);
     } catch (error) {
       console.error("Failed to create WorkOS organization:", error);
       alert("Failed to create enterprise connection. Please try again.");
@@ -124,12 +128,12 @@ export function WorkOSConnection({ owner }: WorkOSConnectionProps) {
     <Page.Vertical gap="sm">
       <Page.H variant="h5">Enterprise Connection</Page.H>
       <Page.P variant="secondary">
-        {owner.workOSOrganizationId
+        {workOSOrganizationId
           ? "Manage your enterprise Identity Provider (IdP) settings and user provisioning."
           : "Create a connection to your enterprise Identity Provider (IdP). This allows you to provision users and groups from your IdP to Dust."}
       </Page.P>
       <div className="flex flex-col items-start gap-3">
-        {owner.workOSOrganizationId ? (
+        {workOSOrganizationId ? (
           <div className="flex flex-row gap-2">
             <DropdownMenu>
               <DropdownMenuTrigger>
@@ -144,8 +148,8 @@ export function WorkOSConnection({ owner }: WorkOSConnectionProps) {
                 {Object.entries(ADMIN_PANEL_OPTIONS).map(
                   ([category, options]) => (
                     <DropdownMenuGroup key={category}>
-                      <DropdownMenuLabel>
-                        {category.charAt(0).toUpperCase() + category.slice(1)}
+                      <DropdownMenuLabel className="capitalize">
+                        {category}
                       </DropdownMenuLabel>
                       {options.map((option) => (
                         <DropdownMenuItem
