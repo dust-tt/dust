@@ -651,7 +651,7 @@ module.exports = {
           night: colors.gray[200],
           light: { DEFAULT: colors.gray[600], night: colors.gray[300] },
           dark: { DEFAULT: colors.gray[950], night: colors.gray[100] },
-          muted: { DEFAULT: colors.gray[400], night: colors.gray[600] },
+          muted: { DEFAULT: colors.gray[500], night: colors.gray[500] },
           950: { DEFAULT: colors.gray[950], night: colors.gray[100] },
           900: { DEFAULT: colors.gray[900], night: colors.gray[100] },
           800: { DEFAULT: colors.gray[800], night: colors.gray[200] },
