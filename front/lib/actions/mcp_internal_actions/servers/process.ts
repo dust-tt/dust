@@ -3,6 +3,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import assert from "assert";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import _ from "lodash";
+import { z } from "zod";
 
 import {
   generateJSONFileAndSnippet,
@@ -94,15 +95,37 @@ function createServer(
       ) &&
       agentLoopContext.runContext.actionConfiguration.jsonSchema !== null);
 
+  const isTimeFrameConfigured =
+    (agentLoopContext?.listToolsContext &&
+      isServerSideMCPServerConfiguration(
+        agentLoopContext.listToolsContext.agentActionConfiguration
+      ) &&
+      agentLoopContext.listToolsContext.agentActionConfiguration.timeFrame !==
+        null) ||
+    (agentLoopContext?.runContext &&
+      isServerSideMCPToolConfiguration(
+        agentLoopContext.runContext.actionConfiguration
+      ) &&
+      agentLoopContext.runContext.actionConfiguration.timeFrame !== null);
+
   server.tool(
     "process_documents",
     "Process available documents according to timeframe to extract structured data.",
     // `Extract an array of data points from available documents, according to a ${isJsonSchemaConfigured ? "user-configured" : ""} JSON schema.`,
     {
-      timeFrame:
-        ConfigurableToolInputSchemas[
-          INTERNAL_MIME_TYPES.TOOL_INPUT.NULLABLE_TIME_FRAME
-        ],
+      timeFrame: isTimeFrameConfigured
+        ? ConfigurableToolInputSchemas[
+            INTERNAL_MIME_TYPES.TOOL_INPUT.NULLABLE_TIME_FRAME
+          ]
+        : z
+            .object({
+              duration: z.number(),
+              unit: z.enum(["hour", "day", "week", "month", "year"]),
+            })
+            .describe(
+              "The time frame to use for documents retrieval (e.g. last 7 days, last 2 months). Leave null to search all documents regardless of time."
+            )
+            .nullable(),
       dataSources:
         ConfigurableToolInputSchemas[
           INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
@@ -129,6 +152,12 @@ function createServer(
       // Thus the any cast.
       if ("mimeType" in jsonSchema) {
         delete (jsonSchema as any).mimeType;
+      }
+
+      // Similarly, if timeFrame was pre-configured by the user, it has an additional mimeType property.
+      // We remove it here before passing the timeFrame to the dust app.
+      if (timeFrame && "mimeType" in timeFrame) {
+        delete (timeFrame as any).mimeType;
       }
 
       // prepare dust app inputs
