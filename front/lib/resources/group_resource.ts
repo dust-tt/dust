@@ -1100,6 +1100,11 @@ export class GroupResource extends BaseResource<GroupModel> {
   isRegular(): boolean {
     return this.kind === "regular";
   }
+
+  isProvisioned(): boolean {
+    return this.kind === "provisioned";
+  }
+
   /**
    * Associates a group with an agent configuration.
    */
