@@ -357,6 +357,8 @@ export function nodeCandidateFromUrl(
     for (const provider of Object.values(providers)) {
       if (provider.matcher(urlObj)) {
         if (provider.extractor && provider.urlNormalizer) {
+          // For providers with both extractor and urlNormalizer, we try to
+          // extract the nodeId first, since it avoids a search in the database.
           const result = provider.extractor(urlObj);
           if (result.node) {
             return result;
