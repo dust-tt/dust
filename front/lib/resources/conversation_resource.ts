@@ -195,11 +195,15 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return mentions;
   }
 
-  static async listAllBeforeDate(
-    auth: Authenticator,
-    cutoffDate: Date,
-    batchSize: number = 1000
-  ): Promise<ConversationResource[]> {
+  static async listAllBeforeDate({
+    auth,
+    cutoffDate,
+    batchSize = 1000,
+  }: {
+    auth: Authenticator;
+    cutoffDate: Date;
+    batchSize?: number;
+  }): Promise<ConversationResource[]> {
     const workspaceId = auth.getNonNullableWorkspace().id;
     const inactiveConversations = await Message.findAll({
       attributes: [
