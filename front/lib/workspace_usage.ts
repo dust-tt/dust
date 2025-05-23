@@ -236,67 +236,73 @@ export async function getUserUsageData(
   workspace: WorkspaceType
 ): Promise<string> {
   const wId = workspace.id;
-  const userMessages = await Message.findAll({
-    attributes: [
-      "userMessage.userId",
-      "userMessage.userContextFullName",
-      "userMessage.userContextEmail",
-      [Sequelize.fn("COUNT", Sequelize.col("userMessage.id")), "count"],
-      [
-        Sequelize.cast(
-          Sequelize.fn("MAX", Sequelize.col("userMessage.createdAt")),
-          "DATE"
-        ),
-        "lastMessageSent",
-      ],
-      [
-        Sequelize.fn(
-          "COUNT",
-          Sequelize.fn(
-            "DISTINCT",
-            Sequelize.fn("DATE", Sequelize.col("userMessage.createdAt"))
-          )
-        ),
-        "activeDaysCount",
-      ],
-    ],
-    where: {
-      workspaceId: wId,
-      createdAt: {
-        [Op.gt]: startDate,
-        [Op.lt]: endDate,
-      },
-    },
-    include: [
-      {
-        model: UserMessage,
-        as: "userMessage",
-        required: true,
-        attributes: [],
-        where: {
-          userId: {
-            [Op.not]: null,
-          },
-        },
-      },
-      {
-        model: ConversationModel,
-        as: "conversation",
-        attributes: [],
-        required: true,
+
+  const userMessages = await getFrontReplicaDbConnection().transaction(
+    async (t) => {
+      return Message.findAll({
+        attributes: [
+          "userMessage.userId",
+          "userMessage.userContextFullName",
+          "userMessage.userContextEmail",
+          [Sequelize.fn("COUNT", Sequelize.col("userMessage.id")), "count"],
+          [
+            Sequelize.cast(
+              Sequelize.fn("MAX", Sequelize.col("userMessage.createdAt")),
+              "DATE"
+            ),
+            "lastMessageSent",
+          ],
+          [
+            Sequelize.fn(
+              "COUNT",
+              Sequelize.fn(
+                "DISTINCT",
+                Sequelize.fn("DATE", Sequelize.col("userMessage.createdAt"))
+              )
+            ),
+            "activeDaysCount",
+          ],
+        ],
         where: {
           workspaceId: wId,
+          createdAt: {
+            [Op.gt]: startDate,
+            [Op.lt]: endDate,
+          },
         },
-      },
-    ],
-    group: [
-      "userMessage.userId",
-      "userMessage.userContextFullName",
-      "userMessage.userContextEmail",
-    ],
-    order: [["count", "DESC"]],
-    raw: true,
-  });
+        include: [
+          {
+            model: UserMessage,
+            as: "userMessage",
+            required: true,
+            attributes: [],
+            where: {
+              userId: {
+                [Op.not]: null,
+              },
+            },
+          },
+          {
+            model: ConversationModel,
+            as: "conversation",
+            attributes: [],
+            required: true,
+            where: {
+              workspaceId: wId,
+            },
+          },
+        ],
+        group: [
+          "userMessage.userId",
+          "userMessage.userContextFullName",
+          "userMessage.userContextEmail",
+        ],
+        order: [["count", "DESC"]],
+        raw: true,
+        transaction: t,
+      });
+    }
+  );
   const userUsage: UserUsageQueryResult[] = userMessages.map((result) => {
     return {
       userId: (result as unknown as { userId: string }).userId,
@@ -323,48 +329,56 @@ export async function getBuildersUsageData(
   workspace: WorkspaceType
 ): Promise<string> {
   const wId = workspace.id;
-  const agentConfigurations = await AgentConfiguration.findAll({
-    attributes: [
-      [
-        Sequelize.fn("COUNT", Sequelize.col("agent_configuration.sId")),
-        "agentsEditionsCount",
-      ],
-      "user.email",
-      "user.firstName",
-      "user.lastName",
-      [
-        Sequelize.fn(
-          "COUNT",
-          Sequelize.literal('DISTINCT "agent_configuration"."sId"')
-        ),
-        "distinctAgentsEditionsCount",
-      ],
-      [
-        Sequelize.cast(
-          Sequelize.fn("MAX", Sequelize.col("agent_configuration.updatedAt")),
-          "DATE"
-        ),
-        "lastEditAt",
-      ],
-    ],
-    where: {
-      workspaceId: wId,
-      createdAt: {
-        [Op.gt]: startDate,
-        [Op.lt]: endDate,
-      },
-    },
-    include: [
-      {
-        model: UserModel,
-        as: "user",
-        attributes: [],
-        required: true,
-      },
-    ],
-    raw: true,
-    group: ["authorId", "user.email", "user.firstName", "user.lastName"],
-  });
+  const agentConfigurations = await getFrontReplicaDbConnection().transaction(
+    async (t) => {
+      return AgentConfiguration.findAll({
+        attributes: [
+          [
+            Sequelize.fn("COUNT", Sequelize.col("agent_configuration.sId")),
+            "agentsEditionsCount",
+          ],
+          "user.email",
+          "user.firstName",
+          "user.lastName",
+          [
+            Sequelize.fn(
+              "COUNT",
+              Sequelize.literal('DISTINCT "agent_configuration"."sId"')
+            ),
+            "distinctAgentsEditionsCount",
+          ],
+          [
+            Sequelize.cast(
+              Sequelize.fn(
+                "MAX",
+                Sequelize.col("agent_configuration.updatedAt")
+              ),
+              "DATE"
+            ),
+            "lastEditAt",
+          ],
+        ],
+        where: {
+          workspaceId: wId,
+          createdAt: {
+            [Op.gt]: startDate,
+            [Op.lt]: endDate,
+          },
+        },
+        include: [
+          {
+            model: UserModel,
+            as: "user",
+            attributes: [],
+            required: true,
+          },
+        ],
+        raw: true,
+        group: ["authorId", "user.email", "user.firstName", "user.lastName"],
+        transaction: t,
+      });
+    }
+  );
   const buildersUsage: BuilderUsageQueryResult[] = agentConfigurations.map(
     (result) => {
       const castResult = result as unknown as {
@@ -496,12 +510,16 @@ export async function getFeedbacksUsageData(
   endDate: Date,
   workspace: WorkspaceType
 ): Promise<string> {
-  const feedbacks =
-    await AgentMessageFeedbackResource.getFeedbackUsageDataForWorkspace({
-      startDate,
-      endDate,
-      workspace,
-    });
+  const feedbacks = await getFrontReplicaDbConnection().transaction(
+    async (t) => {
+      return AgentMessageFeedbackResource.getFeedbackUsageDataForWorkspace({
+        startDate,
+        endDate,
+        workspace,
+        transaction: t,
+      });
+    }
+  );
 
   if (feedbacks.length === 0) {
     return "No data available for the selected period.";
