@@ -6,7 +6,6 @@ import type { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import {
   ConversationModel,
-  Message,
   UserMessage,
 } from "@app/lib/models/assistant/conversation";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
@@ -236,17 +235,14 @@ export async function getUserUsageData(
   workspace: WorkspaceType
 ): Promise<string> {
   const wId = workspace.id;
-  const userMessages = await Message.findAll({
+  const userMessages = await UserMessage.findAll({
     attributes: [
-      "userMessage.userId",
-      "userMessage.userContextFullName",
-      "userMessage.userContextEmail",
-      [Sequelize.fn("COUNT", Sequelize.col("userMessage.id")), "count"],
+      "userId",
+      "userContextFullName",
+      "userContextEmail",
+      [Sequelize.fn("COUNT", Sequelize.col("id")), "count"],
       [
-        Sequelize.cast(
-          Sequelize.fn("MAX", Sequelize.col("userMessage.createdAt")),
-          "DATE"
-        ),
+        Sequelize.cast(Sequelize.fn("MAX", Sequelize.col("createdAt")), "DATE"),
         "lastMessageSent",
       ],
       [
@@ -254,7 +250,7 @@ export async function getUserUsageData(
           "COUNT",
           Sequelize.fn(
             "DISTINCT",
-            Sequelize.fn("DATE", Sequelize.col("userMessage.createdAt"))
+            Sequelize.fn("DATE", Sequelize.col("createdAt"))
           )
         ),
         "activeDaysCount",
@@ -267,43 +263,16 @@ export async function getUserUsageData(
         [Op.lt]: endDate,
       },
     },
-    include: [
-      {
-        model: UserMessage,
-        as: "userMessage",
-        required: true,
-        attributes: [],
-        where: {
-          userId: {
-            [Op.not]: null,
-          },
-        },
-      },
-      {
-        model: ConversationModel,
-        as: "conversation",
-        attributes: [],
-        required: true,
-        where: {
-          workspaceId: wId,
-        },
-      },
-    ],
-    group: [
-      "userMessage.userId",
-      "userMessage.userContextFullName",
-      "userMessage.userContextEmail",
-    ],
+    group: ["userId", "userContextFullName", "userContextEmail"],
     order: [["count", "DESC"]],
     raw: true,
   });
+
   const userUsage: UserUsageQueryResult[] = userMessages.map((result) => {
     return {
-      userId: (result as unknown as { userId: string }).userId,
-      userName: (result as unknown as { userContextFullName: string })
-        .userContextFullName,
-      userEmail: (result as unknown as { userContextEmail: string })
-        .userContextEmail,
+      userId: result.userId,
+      userName: result.userContextFullName ?? "",
+      userEmail: result.userContextEmail ?? "",
       messageCount: (result as unknown as { count: number }).count,
       lastMessageSent: (result as unknown as { lastMessageSent: string })
         .lastMessageSent,
