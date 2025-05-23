@@ -13,7 +13,9 @@ export class GroupModel extends WorkspaceAwareModel<GroupModel> {
   declare name: string;
   declare kind: GroupKind;
 
+  // Group ID, we map a group on Work OS to a group in db.
   declare workOSGroupId: string | null;
+  // Directory ID on the provider's side (e.g. Okta directory).
   declare directoryId: string | null;
 }
 
