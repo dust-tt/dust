@@ -51,6 +51,13 @@ export class RepositoryAccessBlockedError extends Error {
   }
 }
 
+export class RepositoryNotFoundError extends Error {
+  constructor(readonly innerError?: RequestError) {
+    super(innerError?.message || "Repository not found");
+    this.name = "RepositoryNotFoundError";
+  }
+}
+
 export function isGraphQLRepositoryNotFound(
   error: unknown
 ): error is GraphqlResponseError<unknown> {
