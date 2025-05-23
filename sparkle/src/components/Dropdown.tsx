@@ -27,18 +27,26 @@ export const menuStyleClasses = {
   ),
   item: cva(
     cn(
-      "s-relative s-flex s-gap-2 s-cursor-pointer s-select-none s-items-center s-outline-none s-rounded-md s-text-sm s-font-semibold s-px-2 s-py-2 s-transition-colors s-duration-300 data-[disabled]:s-pointer-events-none",
+      "s-relative s-flex s-gap-2 s-cursor-pointer s-select-none s-items-center s-outline-none s-rounded-md s-text-sm s-font-semibold s-transition-colors s-duration-300 data-[disabled]:s-pointer-events-none",
       "data-[disabled]:s-text-primary-400 dark:data-[disabled]:s-text-primary-400-night"
     ),
     {
       variants: {
         variant: {
           default: cn(
+            "s-p-2",
+            "focus:s-text-foreground dark:focus:s-text-foreground-night",
+            "hover:s-bg-muted-background dark:hover:s-bg-primary-900",
+            "focus:s-bg-muted-background dark:focus:s-bg-primary-900"
+          ),
+          tags: cn(
+            "s-p-0.5",
             "focus:s-text-foreground dark:focus:s-text-foreground-night",
             "hover:s-bg-muted-background dark:hover:s-bg-primary-900",
             "focus:s-bg-muted-background dark:focus:s-bg-primary-900"
           ),
           warning: cn(
+            "s-p-2",
             "s-text-warning-500 dark:s-text-warning-500-night",
             "hover:s-bg-warning-50 dark:hover:s-bg-warning-50-night",
             "focus:s-bg-warning-50 dark:focus:s-bg-warning-50-night",
@@ -467,9 +475,8 @@ const DropdownMenuTagItem = React.forwardRef<
     return (
       <DropdownMenuPrimitive.Item
         ref={ref}
-        className={cn(menuStyleClasses.item({ variant: "default" }), className)}
+        className={cn(menuStyleClasses.item({ variant: "tags" }), className)}
         {...props}
-        asChild
       >
         <Chip
           label={label}
@@ -484,6 +491,24 @@ const DropdownMenuTagItem = React.forwardRef<
 );
 
 DropdownMenuTagItem.displayName = "DropdownMenuTagItem";
+
+interface DropdownMenuTagListProps {
+  children: React.ReactNode;
+  className?: string;
+}
+
+const DropdownMenuTagList = React.forwardRef<
+  HTMLDivElement,
+  DropdownMenuTagListProps
+>(({ children, className }, ref) => {
+  return (
+    <div ref={ref} className={cn("s-flex s-flex-wrap", className)}>
+      {children}
+    </div>
+  );
+});
+
+DropdownMenuTagList.displayName = "DropdownMenuTagList";
 
 const DropdownMenuLabel = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.Label>,
@@ -665,5 +690,6 @@ export {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTagItem,
+  DropdownMenuTagList,
   DropdownMenuTrigger,
 };
