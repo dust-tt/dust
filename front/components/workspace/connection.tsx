@@ -64,6 +64,7 @@ interface WorkOSSyncButtonProps {
   owner: WorkspaceType;
 }
 
+// TODO: find a more appropriate location for this component.
 export function WorkOSSyncButton({ owner }: WorkOSSyncButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
   const { triggerFullSync } = useWorkOSFullSync(owner);
