@@ -1,4 +1,7 @@
+import { GraphqlResponseError } from "@octokit/graphql";
 import { RequestError } from "octokit";
+
+import { normalizeError } from "@connectors/types/api";
 
 export function isGithubRequestErrorNotFound(
   error: unknown
@@ -46,4 +49,25 @@ export class RepositoryAccessBlockedError extends Error {
     super(innerError?.message);
     this.name = "RepositoryAccessBlockedError";
   }
+}
+
+export function isGraphQLRepositoryNotFound(
+  error: unknown
+): error is GraphqlResponseError<unknown> {
+  if (!(error instanceof GraphqlResponseError)) {
+    return false;
+  }
+
+  if (!error.errors || !Array.isArray(error.errors)) {
+    return false;
+  }
+
+  return error.errors.some((e) => {
+    const normalizedError = normalizeError(e);
+    return (
+      "type" in e &&
+      e.type === "NOT_FOUND" &&
+      normalizedError.message.includes("Could not resolve to a Repository")
+    );
+  });
 }
