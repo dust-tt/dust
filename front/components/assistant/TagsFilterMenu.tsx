@@ -1,13 +1,12 @@
 import {
   Button,
-  Chip,
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuSearchbar,
   DropdownMenuTrigger,
   TagIcon,
 } from "@dust-tt/sparkle";
+import { DropdownMenuTagItem } from "@dust-tt/sparkle";
 import { useState } from "react";
 
 import { compareForFuzzySort, subFilter, tagsSorter } from "@app/lib/utils";
@@ -62,12 +61,13 @@ export const TagsFilterMenu = ({
           <Button
             variant="outline"
             icon={TagIcon}
-            label={"Tags"}
+            label="Tags"
             counterValue={selectedTags.length.toString()}
             isCounter={selectedTags.length > 0}
           />
         </DropdownMenuTrigger>
         <DropdownMenuContent
+          className="w-96"
           dropdownHeaders={
             <DropdownMenuSearchbar
               name="tagSearch"
@@ -97,14 +97,15 @@ export const TagsFilterMenu = ({
           {filteredTags
             .filter((tag) => !selectedTags.includes(tag))
             .map((tag) => (
-              <DropdownMenuItem
+              <DropdownMenuTagItem
                 key={tag.sId}
+                label={tag.name}
+                color="highlight"
+                className="m-0.5"
                 onClick={() => {
                   setSelectedTags([...selectedTags, tag]);
                 }}
-              >
-                <Chip label={tag.name} size="xs" color="golden" />
-              </DropdownMenuItem>
+              ></DropdownMenuTagItem>
             ))}
         </DropdownMenuContent>
       </DropdownMenu>
