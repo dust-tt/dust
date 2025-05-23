@@ -150,7 +150,9 @@ export function generateWorkOSAdminPortalUrl({
   });
 }
 
-export async function performFullSync(workspace: WorkspaceType): Promise<void> {
+export async function syncWorkOSDirectoriesForWorkspace(
+  workspace: WorkspaceType
+): Promise<void> {
   logger.info(
     { workspace: workspace.sId },
     "Starting WorkOS full directory sync"
