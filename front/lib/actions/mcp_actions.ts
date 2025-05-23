@@ -76,7 +76,21 @@ const DEFAULT_MCP_REQUEST_TIMEOUT_MS = 2 * 60 * 1000; // 2 minutes.
 const MCP_NOTIFICATION_EVENT_NAME = "mcp-notification";
 const MCP_TOOL_DONE_EVENT_NAME = "TOOL_DONE" as const;
 
-const EMPTY_INPUT_SCHEMA: JSONSchema7 = { type: "object", properties: {} };
+const EMPTY_INPUT_SCHEMA: JSONSchema7 = {
+  properties: {},
+  required: [],
+  type: "object",
+};
+
+function isEmptyInputSchema(schema: JSONSchema7): boolean {
+  // By default, empty tools yields an empty input schema.
+  const isContentConsideredEmpty =
+    schema.properties === undefined &&
+    schema.required === undefined &&
+    schema.type === "object";
+
+  return isContentConsideredEmpty;
+}
 
 const MAX_TOOL_NAME_LENGTH = 64;
 
@@ -98,7 +112,10 @@ function makeServerSideMCPToolConfigurations(
     type: "mcp_configuration",
     name: tool.name,
     description: tool.description ?? null,
-    inputSchema: tool.inputSchema || EMPTY_INPUT_SCHEMA,
+    inputSchema:
+      !tool.inputSchema || isEmptyInputSchema(tool.inputSchema)
+        ? EMPTY_INPUT_SCHEMA
+        : tool.inputSchema,
     id: config.id,
     mcpServerViewId: config.mcpServerViewId,
     internalMCPServerId: config.internalMCPServerId,
@@ -129,7 +146,10 @@ function makeClientSideMCPToolConfigurations(
     clientSideMcpServerId: config.clientSideMcpServerId,
     description: tool.description ?? null,
     id: config.id,
-    inputSchema: tool.inputSchema || EMPTY_INPUT_SCHEMA,
+    inputSchema:
+      !tool.inputSchema || isEmptyInputSchema(tool.inputSchema)
+        ? EMPTY_INPUT_SCHEMA
+        : tool.inputSchema,
     mcpServerName: config.name,
     name: tool.name,
     originalName: tool.name,
