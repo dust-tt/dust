@@ -44,6 +44,7 @@ export const ConfluenceCommandSchema = t.type({
     t.literal("ignore-near-rate-limit"),
     t.literal("unignore-near-rate-limit"),
     t.literal("check-space-access"),
+    t.literal("resolve-space-from-url"),
   ]),
   args: t.type({
     connectorId: t.union([t.number, t.undefined]),
@@ -51,6 +52,7 @@ export const ConfluenceCommandSchema = t.type({
     spaceId: t.union([t.number, t.undefined]),
     file: t.union([t.string, t.undefined]),
     keyInFile: t.union([t.string, t.undefined]),
+    url: t.union([t.string, t.undefined]),
   }),
 });
 export type ConfluenceCommandType = t.TypeOf<typeof ConfluenceCommandSchema>;
@@ -76,6 +78,23 @@ export const ConfluenceCheckSpaceAccessResponseSchema = t.type({
 });
 export type ConfluenceCheckSpaceAccessResponseType = t.TypeOf<
   typeof ConfluenceCheckSpaceAccessResponseSchema
+>;
+
+export const ConfluenceResolveSpaceFromUrlResponseSchema = t.intersection([
+  t.type({
+    found: t.boolean,
+  }),
+  t.partial({
+    spaceId: t.string,
+    spaceKey: t.string,
+    spaceName: t.string,
+    hasAccess: t.boolean,
+    lastSyncedAt: t.string,
+    pageCount: t.number,
+  }),
+]);
+export type ConfluenceResolveSpaceFromUrlResponseType = t.TypeOf<
+  typeof ConfluenceResolveSpaceFromUrlResponseSchema
 >;
 /**
  * </Confluence>
@@ -618,6 +637,7 @@ export const AdminResponseSchema = t.union([
   CheckFileGenericResponseSchema,
   ConfluenceMeResponseSchema,
   ConfluenceCheckSpaceAccessResponseSchema,
+  ConfluenceResolveSpaceFromUrlResponseSchema,
   ConfluenceUpsertPageResponseSchema,
   GongForceResyncResponseSchema,
   IntercomCheckConversationResponseSchema,
