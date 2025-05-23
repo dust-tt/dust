@@ -7,6 +7,7 @@ import {
   TagIcon,
 } from "@dust-tt/sparkle";
 import { DropdownMenuTagItem } from "@dust-tt/sparkle";
+import { DropdownMenuTagList } from "@dust-tt/sparkle";
 import { useState } from "react";
 
 import { compareForFuzzySort, subFilter, tagsSorter } from "@app/lib/utils";
@@ -94,19 +95,21 @@ export const TagsFilterMenu = ({
               No tags found
             </div>
           )}
+          <DropdownMenuTagList>
           {filteredTags
             .filter((tag) => !selectedTags.includes(tag))
             .map((tag) => (
               <DropdownMenuTagItem
                 key={tag.sId}
                 label={tag.name}
-                color="highlight"
+                color="golden"
                 className="m-0.5"
                 onClick={() => {
                   setSelectedTags([...selectedTags, tag]);
                 }}
-              ></DropdownMenuTagItem>
+              />
             ))}
+          </DropdownMenuTagList>
         </DropdownMenuContent>
       </DropdownMenu>
     </>
