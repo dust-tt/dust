@@ -114,6 +114,10 @@ export const O3_MINI_MODEL_ID = "o3-mini" as const;
 export const O3_MODEL_ID = "o3" as const;
 
 export const O4_MINI_MODEL_ID = "o4-mini" as const;
+export const CLAUDE_4_OPUS_20250514_MODEL_ID =
+  "claude-4-opus-20250514" as const;
+export const CLAUDE_4_SONNET_20250514_MODEL_ID =
+  "claude-4-sonnet-20250514" as const;
 export const CLAUDE_3_OPUS_2024029_MODEL_ID = "claude-3-opus-20240229" as const;
 export const CLAUDE_3_5_SONNET_20240620_MODEL_ID =
   "claude-3-5-sonnet-20240620" as const;
@@ -178,6 +182,8 @@ export const MODEL_IDS = [
   O3_MODEL_ID,
   O3_MINI_MODEL_ID,
   O4_MINI_MODEL_ID,
+  CLAUDE_4_OPUS_20250514_MODEL_ID,
+  CLAUDE_4_SONNET_20250514_MODEL_ID,
   CLAUDE_3_OPUS_2024029_MODEL_ID,
   CLAUDE_3_5_SONNET_20240620_MODEL_ID,
   CLAUDE_3_5_SONNET_20241022_MODEL_ID,
@@ -653,6 +659,45 @@ export const CLAUDE_3_7_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   toolUseMetaPrompt: ANTHROPIC_TOOL_USE_META_PROMPT,
   tokenCountAdjustment: 1.15,
 };
+
+export const CLAUDE_4_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "anthropic",
+  modelId: CLAUDE_4_OPUS_20250514_MODEL_ID,
+  displayName: "Claude 4 Opus",
+  contextSize: 200_000,
+  recommendedTopK: 16,
+  recommendedExhaustiveTopK: 128,
+  largeModel: true,
+  description:
+    "Anthropic's Claude 4 Opus model, the most powerful model in the Claude 4 family (200k context).",
+  shortDescription: "Anthropic's most powerful model.",
+  isLegacy: false,
+  delimitersConfiguration: ANTHROPIC_DELIMITERS_CONFIGURATION,
+  generationTokensCount: 64_000,
+  supportsVision: true,
+  toolUseMetaPrompt: ANTHROPIC_TOOL_USE_META_PROMPT,
+  tokenCountAdjustment: 1.15,
+  featureFlag: "claude_4_opus_feature",
+};
+
+export const CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "anthropic",
+  modelId: CLAUDE_4_SONNET_20250514_MODEL_ID,
+  displayName: "Claude 4 Sonnet",
+  contextSize: 200_000,
+  recommendedTopK: 16,
+  recommendedExhaustiveTopK: 128,
+  largeModel: true,
+  description:
+    "Anthropic's Claude 4 Sonnet model, balancing power and efficiency (200k context).",
+  shortDescription: "Anthropic's balanced Claude 4 model.",
+  isLegacy: false,
+  delimitersConfiguration: ANTHROPIC_DELIMITERS_CONFIGURATION,
+  generationTokensCount: 64_000,
+  supportsVision: true,
+  toolUseMetaPrompt: ANTHROPIC_TOOL_USE_META_PROMPT,
+  tokenCountAdjustment: 1.15,
+};
 export const CLAUDE_3_7_SONNET_REASONING_MODEL_CONFIG: ModelConfigurationType =
   {
     providerId: "anthropic",
@@ -1112,6 +1157,8 @@ export const SUPPORTED_MODEL_CONFIGS: ModelConfigurationType[] = [
   O3_MINI_HIGH_REASONING_MODEL_CONFIG,
   O4_MINI_MODEL_CONFIG,
   O4_MINI_HIGH_REASONING_MODEL_CONFIG,
+  CLAUDE_4_OPUS_DEFAULT_MODEL_CONFIG,
+  CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG,
   CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG,
   CLAUDE_3_5_SONNET_20240620_DEPRECATED_MODEL_CONFIG,
   CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG,

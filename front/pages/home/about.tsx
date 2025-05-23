@@ -86,7 +86,7 @@ const PEOPLE: Record<
     title: "Software Engineer",
     image: "https://avatars.githubusercontent.com/u/3803406",
     linkedIn: "https://www.linkedin.com/in/popdaph/",
-    github: "https://www.linkedin.com/in/popdaph/",
+    github: "https://github.com/popdaph",
   },
   yutcam: {
     name: "Pauline Pham",

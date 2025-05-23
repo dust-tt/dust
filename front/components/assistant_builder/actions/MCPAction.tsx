@@ -273,7 +273,9 @@ export function MCPAction({
             handleConfigUpdate((old) => ({
               ...old,
               _jsonSchemaString,
-              jsonSchema: jsonSchema ?? old.jsonSchema,
+              jsonSchema:
+                // only update jsonSchema if it's set (to a valid schema or to null)
+                jsonSchema === undefined ? old.jsonSchema : jsonSchema,
             }));
           }}
           initialSchema={
@@ -357,7 +359,7 @@ export function hasErrorActionMCP(
       requirements.requiresChildAgentConfiguration &&
       !action.configuration.childAgentId
     ) {
-      return "Please select a child agent.";
+      return "Please select an agent.";
     }
     if (
       requirements.requiresReasoningConfiguration &&

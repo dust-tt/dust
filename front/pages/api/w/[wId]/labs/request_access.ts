@@ -98,6 +98,7 @@ async function handler(
     to: "support@dust.tt",
     from: { name: "Dust team", email: "support@dust.help" },
     subject: `[Dust] Labs Feature Request: ${featureName} from ${emailRequester}`,
+    replyTo: emailRequester,
     body,
   });
 

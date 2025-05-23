@@ -4,7 +4,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import {
-  CHILD_AGENT_CONFIGURATION_URI_PATTERN,
+  AGENT_CONFIGURATION_URI_PATTERN,
   ConfigurableToolInputSchemas,
 } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
@@ -25,11 +25,9 @@ const serverInfo: InternalMCPServerDefinitionType = {
 };
 
 function parseAgentConfigurationUri(uri: string): Result<string, Error> {
-  const match = uri.match(CHILD_AGENT_CONFIGURATION_URI_PATTERN);
+  const match = uri.match(AGENT_CONFIGURATION_URI_PATTERN);
   if (!match) {
-    return new Err(
-      new Error(`Invalid URI for a child agent configuration: ${uri}`)
-    );
+    return new Err(new Error(`Invalid URI for an agent configuration: ${uri}`));
   }
   // Safe to do this because the inputs are already checked against the zod schema here.
   return new Ok(match[2]);
@@ -49,9 +47,7 @@ function createServer(auth: Authenticator): McpServer {
           `The query sent to the agent. This is the question or instruction that will be processed by the agent, which will respond with its own capabilities and knowledge.`
         ),
       childAgent:
-        ConfigurableToolInputSchemas[
-          INTERNAL_MIME_TYPES.TOOL_INPUT.CHILD_AGENT
-        ],
+        ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.AGENT],
     },
     async ({ query, childAgent: { uri } }) => {
       const childAgentIdRes = parseAgentConfigurationUri(uri);

@@ -3,6 +3,7 @@ import { cva } from "class-variance-authority";
 import * as React from "react";
 import { useRef } from "react";
 
+import { Chip } from "@sparkle/components/Chip";
 import { Icon } from "@sparkle/components/Icon";
 import { LinkWrapper, LinkWrapperProps } from "@sparkle/components/LinkWrapper";
 import { ScrollArea } from "@sparkle/components/ScrollArea";
@@ -26,18 +27,26 @@ export const menuStyleClasses = {
   ),
   item: cva(
     cn(
-      "s-relative s-flex s-gap-2 s-cursor-pointer s-select-none s-items-center s-outline-none s-rounded-md s-text-sm s-font-semibold s-px-2 s-py-2 s-transition-colors s-duration-300 data-[disabled]:s-pointer-events-none",
+      "s-relative s-flex s-gap-2 s-cursor-pointer s-select-none s-items-center s-outline-none s-rounded-md s-text-sm s-font-semibold s-transition-colors s-duration-300 data-[disabled]:s-pointer-events-none",
       "data-[disabled]:s-text-primary-400 dark:data-[disabled]:s-text-primary-400-night"
     ),
     {
       variants: {
         variant: {
           default: cn(
+            "s-p-2",
+            "focus:s-text-foreground dark:focus:s-text-foreground-night",
+            "hover:s-bg-muted-background dark:hover:s-bg-primary-900",
+            "focus:s-bg-muted-background dark:focus:s-bg-primary-900"
+          ),
+          tags: cn(
+            "s-p-0.5",
             "focus:s-text-foreground dark:focus:s-text-foreground-night",
             "hover:s-bg-muted-background dark:hover:s-bg-primary-900",
             "focus:s-bg-muted-background dark:focus:s-bg-primary-900"
           ),
           warning: cn(
+            "s-p-2",
             "s-text-warning-500 dark:s-text-warning-500-night",
             "hover:s-bg-warning-50 dark:hover:s-bg-warning-50-night",
             "focus:s-bg-warning-50 dark:focus:s-bg-warning-50-night",
@@ -438,6 +447,72 @@ const DropdownMenuRadioItem = React.forwardRef<
 ));
 DropdownMenuRadioItem.displayName = DropdownMenuPrimitive.RadioItem.displayName;
 
+interface DropdownMenuTagItemProps
+  extends Omit<DropdownMenuItemProps, "label" | "icon" | "onClick"> {
+  label: string;
+  size?: React.ComponentProps<typeof Chip>["size"];
+  color?: React.ComponentProps<typeof Chip>["color"];
+  icon?: React.ComponentProps<typeof Chip>["icon"];
+  onRemove?: () => void;
+  onClick?: () => void;
+}
+
+const DropdownMenuTagItem = React.forwardRef<
+  HTMLDivElement,
+  DropdownMenuTagItemProps
+>(
+  (
+    {
+      label,
+      size = "xs",
+      color = "primary",
+      icon,
+      onRemove,
+      className,
+      onClick,
+      ...props
+    },
+    ref
+  ) => {
+    return (
+      <DropdownMenuPrimitive.Item
+        ref={ref}
+        className={cn(menuStyleClasses.item({ variant: "tags" }), className)}
+        {...props}
+      >
+        <Chip
+          label={label}
+          size={size}
+          color={color}
+          onRemove={onRemove}
+          onClick={onClick}
+          icon={icon}
+        />
+      </DropdownMenuPrimitive.Item>
+    );
+  }
+);
+
+DropdownMenuTagItem.displayName = "DropdownMenuTagItem";
+
+interface DropdownMenuTagListProps {
+  children: React.ReactNode;
+  className?: string;
+}
+
+const DropdownMenuTagList = React.forwardRef<
+  HTMLDivElement,
+  DropdownMenuTagListProps
+>(({ children, className }, ref) => {
+  return (
+    <div ref={ref} className={cn("s-flex s-flex-wrap", className)}>
+      {children}
+    </div>
+  );
+});
+
+DropdownMenuTagList.displayName = "DropdownMenuTagList";
+
 const DropdownMenuLabel = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.Label>,
   MutuallyExclusiveProps<
@@ -617,5 +692,7 @@ export {
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
+  DropdownMenuTagItem,
+  DropdownMenuTagList,
   DropdownMenuTrigger,
 };
