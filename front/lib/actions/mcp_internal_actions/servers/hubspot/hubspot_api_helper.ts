@@ -1,5 +1,6 @@
 import { Client } from "@hubspot/api-client";
 import { FilterOperatorEnum } from "@hubspot/api-client/lib/codegen/crm/contacts";
+import { AssociationSpecAssociationCategoryEnum } from "@hubspot/api-client/lib/codegen/crm/objects/models/AssociationSpec";
 import type { SimplePublicObject } from "@hubspot/api-client/lib/codegen/crm/objects/models/SimplePublicObject";
 import type { SimplePublicObjectInputForCreate } from "@hubspot/api-client/lib/codegen/crm/objects/models/SimplePublicObjectInputForCreate";
 import type { PublicOwner } from "@hubspot/api-client/lib/codegen/crm/owners/models/PublicOwner";
@@ -321,4 +322,152 @@ export const getLatestObjects = async (
   });
 
   return objects.results;
+};
+
+/**
+ * Get the correct association type ID for associating an object with a deal.
+ * @param fromObjectType The type of object being associated (e.g., "tasks", "notes")
+ * @param toObjectType The type of object being associated to (e.g., "deals")
+ * @returns The association type ID
+ */
+const getAssociationTypeId = async (
+  accessToken: string,
+  fromObjectType: string,
+  toObjectType: string
+): Promise<number> => {
+  try {
+    const response = await fetch(
+      `https://api.hubapi.com/crm/v4/associations/${fromObjectType}/${toObjectType}/labels`,
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(
+        `Failed to fetch association types: ${response.status} ${response.statusText}`
+      );
+    }
+
+    const data = await response.json();
+
+    if (!data.results || data.results.length === 0) {
+      throw new Error(
+        `No association types found for ${fromObjectType} to ${toObjectType}`
+      );
+    }
+
+    // Get the first association type (there should only be one for standard associations)
+    const typeId = data.results[0].typeId;
+
+    return typeId;
+  } catch (error) {
+    throw error;
+  }
+};
+
+/**
+ * Create a task associated with a deal.
+ */
+export const createTask = async ({
+  accessToken,
+  dealId,
+  taskProperties,
+}: {
+  accessToken: string;
+  dealId: string;
+  taskProperties: {
+    hs_timestamp: string;
+    hs_task_subject: string;
+    hs_task_body?: string;
+    hs_task_status?: string;
+    hs_task_priority?: string;
+  };
+}): Promise<SimplePublicObject> => {
+  const hubspotClient = new Client({ accessToken });
+
+  // Get the association type ID
+  const associationTypeId = await getAssociationTypeId(
+    accessToken,
+    "tasks",
+    "deals"
+  );
+
+  // Create the task with the association to the deal
+  const task = await hubspotClient.crm.objects.basicApi.create("tasks", {
+    properties: {
+      hs_timestamp: taskProperties.hs_timestamp,
+      hs_task_subject: taskProperties.hs_task_subject,
+      hs_task_body: taskProperties.hs_task_body || "",
+      hs_task_status: taskProperties.hs_task_status || "NOT_STARTED",
+      hs_task_priority: taskProperties.hs_task_priority || "MEDIUM",
+    },
+    associations: [
+      {
+        to: { id: dealId },
+        types: [
+          {
+            associationCategory:
+              AssociationSpecAssociationCategoryEnum.HubspotDefined,
+            associationTypeId,
+          },
+        ],
+      },
+    ],
+  });
+
+  return task;
+};
+
+/**
+ * Create a note associated with a deal.
+ */
+export const createNote = async ({
+  accessToken,
+  dealId,
+  noteProperties,
+}: {
+  accessToken: string;
+  dealId: string;
+  noteProperties: {
+    hs_note_body: string;
+    hs_timestamp: string;
+  };
+}): Promise<SimplePublicObject> => {
+  const hubspotClient = new Client({ accessToken });
+
+  // Get the association type ID
+  const associationTypeId = await getAssociationTypeId(
+    accessToken,
+    "notes",
+    "deals"
+  );
+
+  const data = {
+    properties: {
+      hs_timestamp: noteProperties.hs_timestamp,
+      hs_note_body: noteProperties.hs_note_body,
+    },
+    associations: [
+      {
+        to: { id: dealId },
+        types: [
+          {
+            associationCategory:
+              AssociationSpecAssociationCategoryEnum.HubspotDefined,
+            associationTypeId,
+          },
+        ],
+      },
+    ],
+  };
+
+  // Create the note using the CRM API
+  const note = await hubspotClient.crm.objects.basicApi.create("notes", data);
+
+  return note;
 };
