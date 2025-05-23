@@ -181,11 +181,11 @@ export class Authenticator {
 
       if (user && workspace) {
         [role, groups, subscription] = await Promise.all([
-          MembershipResource.getActiveMembershipOfUserInWorkspace({
+          MembershipResource.getActiveRoleForUserInWorkspace({
             user,
             workspace: renderLightWorkspaceType({ workspace }),
             transaction: t,
-          }).then((m) => m?.role ?? "none"),
+          }),
           GroupResource.listUserGroupsInWorkspace({
             user,
             workspace: renderLightWorkspaceType({ workspace }),
@@ -285,10 +285,10 @@ export class Authenticator {
 
     if (user && workspace) {
       [role, groups, subscription] = await Promise.all([
-        MembershipResource.getActiveMembershipOfUserInWorkspace({
+        MembershipResource.getActiveRoleForUserInWorkspace({
           user,
           workspace: renderLightWorkspaceType({ workspace }),
-        }).then((m) => m?.role ?? "none"),
+        }),
         GroupResource.listUserGroupsInWorkspace({
           user,
           workspace: renderLightWorkspaceType({ workspace }),
@@ -365,11 +365,11 @@ export class Authenticator {
       let subscription: SubscriptionResource | null = null;
 
       [role, groups, subscription] = await Promise.all([
-        MembershipResource.getActiveMembershipOfUserInWorkspace({
+        MembershipResource.getActiveRoleForUserInWorkspace({
           user: user,
           workspace: renderLightWorkspaceType({ workspace }),
           transaction: t,
-        }).then((m) => m?.role ?? "none"),
+        }),
         GroupResource.listUserGroupsInWorkspace({
           user,
           workspace: renderLightWorkspaceType({ workspace }),

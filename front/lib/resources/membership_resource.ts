@@ -333,6 +333,32 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     return memberships[0];
   }
 
+  static async getActiveRoleForUserInWorkspace({
+    user,
+    workspace,
+    transaction,
+  }: {
+    user: UserResource;
+    workspace: LightWorkspaceType;
+    transaction?: Transaction;
+  }): Promise<Attributes<MembershipModel>["role"] | "none"> {
+    const membership = await this.model.findOne({
+      where: {
+        userId: user.id,
+        workspaceId: workspace.id,
+        startAt: {
+          [Op.lte]: new Date(),
+        },
+        endAt: {
+          [Op.or]: [{ [Op.eq]: null }, { [Op.gte]: new Date() }],
+        },
+      },
+      transaction,
+    });
+
+    return membership?.role ?? "none";
+  }
+
   static async getActiveMembershipOfUserInWorkspace({
     user,
     workspace,
