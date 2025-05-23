@@ -1,4 +1,4 @@
-import type { DirectoryGroup, DirectoryUserWithGroups } from "@workOS-inc/node";
+import type { DirectoryGroup, DirectoryUserWithGroups } from "@workos-inc/node";
 import type { User } from "@workos-inc/node";
 import { WorkOS } from "@workos-inc/node";
 
