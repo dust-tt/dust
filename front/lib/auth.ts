@@ -5,7 +5,7 @@ import type {
   NextApiRequest,
   NextApiResponse,
 } from "next";
-import { Transaction } from "sequelize";
+import type { Transaction } from "sequelize";
 
 import type { Auth0JwtPayload } from "@app/lib/api/auth0";
 import config from "@app/lib/api/config";
@@ -113,15 +113,7 @@ export class Authenticator {
   private static transaction<T>(
     callback: (t: Transaction) => Promise<T>
   ): Promise<T> {
-    return frontSequelize.transaction(
-      {
-        isolationLevel:
-          process.env.NODE_ENV === "test"
-            ? Transaction.ISOLATION_LEVELS.REPEATABLE_READ
-            : Transaction.ISOLATION_LEVELS.READ_COMMITTED,
-      },
-      callback
-    );
+    return frontSequelize.transaction(callback);
   }
 
   /**
