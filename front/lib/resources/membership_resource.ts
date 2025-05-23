@@ -343,6 +343,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     transaction?: Transaction;
   }): Promise<Attributes<MembershipModel>["role"] | "none"> {
     const membership = await this.model.findOne({
+      attributes: ["role"],
       where: {
         userId: user.id,
         workspaceId: workspace.id,
