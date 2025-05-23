@@ -51,4 +51,16 @@ export class SpaceFactory {
       t
     );
   }
+
+  static async conversations(workspace: WorkspaceType, t: Transaction) {
+    return SpaceResource.makeNew(
+      {
+        name: "space " + faker.string.alphanumeric(8),
+        kind: "conversations",
+        workspaceId: workspace.id,
+      },
+      [],
+      t
+    );
+  }
 }
