@@ -54,44 +54,6 @@ export const JsonSchemaSchema = z.object({
   properties: z.record(z.string(), JsonPropertySchema).optional(),
 });
 
-// The full, recursive schema for a JSON schema is not yet supported by MCP call
-// tool, and anyways its full validation is not needed. Therefore, we describe 2
-// levels of depth then use z.any(). As an added bonus, it is arguably better
-// for the tool call to generate a good argument.
-const JsonTypeSchema = z.union([
-  z.literal("object"),
-  z.literal("string"),
-  z.literal("number"),
-  z.literal("integer"),
-  z.literal("boolean"),
-  z.literal("array"),
-  z.literal("null"),
-]);
-
-const JsonPropertySchema = z.object({
-  type: JsonTypeSchema,
-  description: z.string(),
-  properties: z
-    .record(
-      z.string(),
-      z.object({
-        type: JsonTypeSchema,
-        description: z.string(),
-        properties: z.record(z.string(), z.any()).optional(),
-        required: z.array(z.string()).optional(),
-      })
-    )
-    .optional(),
-  required: z.array(z.string()).optional(),
-});
-
-// The double "Schema" is intentional, it's a zod schema for a JSON schema.
-export const JsonSchemaSchema = z.object({
-  type: z.literal("object"),
-  required: z.array(z.string()).optional(),
-  properties: z.record(z.string(), JsonPropertySchema).optional(),
-});
-
 /**
  * Mapping between the mime types we used to identify a configurable resource and the Zod schema used to validate it.
  * Not all mime types have a fixed schema, for instance the ENUM mime type is flexible.
