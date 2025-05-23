@@ -17,19 +17,18 @@ import {
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import { Separator } from "@radix-ui/react-select";
-import { useContext, useEffect } from "react";
+import { useContext, useEffect, useRef } from "react";
 import { useState } from "react";
 
 import { ActionValidationProvider } from "@app/components/assistant/conversation/ActionValidationProvider";
-import { ConversationsNavigationProvider } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
+import {
+  ConversationsNavigationProvider,
+} from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import ConversationViewer from "@app/components/assistant/conversation/ConversationViewer";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { AssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import { FeedbacksSection } from "@app/components/assistant_builder/FeedbacksSection";
-import {
-  usePreviewAssistant,
-  useTryAssistantCore,
-} from "@app/components/assistant_builder/TryAssistant";
+import { usePreviewAssistant, useTryAssistantCore } from "@app/components/assistant_builder/TryAssistant";
 import type {
   AssistantBuilderSetActionType,
   AssistantBuilderState,
@@ -41,11 +40,7 @@ import { ConfirmContext } from "@app/components/Confirm";
 import { ACTION_SPECIFICATIONS } from "@app/lib/actions/utils";
 import { useUser } from "@app/lib/swr/user";
 import type { FetchAssistantTemplateResponse } from "@app/pages/api/templates/[tId]";
-import type {
-  AssistantBuilderRightPanelTabType,
-  ModelConfigurationType,
-  WorkspaceType,
-} from "@app/types";
+import type { AssistantBuilderRightPanelTabType, ModelConfigurationType, WorkspaceType } from "@app/types";
 import { isAssistantBuilderRightPanelTab } from "@app/types";
 
 interface AssistantBuilderRightPanelProps {
@@ -76,10 +71,15 @@ export default function AssistantBuilderRightPanel({
   const [rightPanelTab, setRightPanelTab] =
     useState<AssistantBuilderRightPanelTabType>("Preview");
 
+  // Track input focus state for draft agent creation
+  const [isInputFocused, setIsInputFocused] = useState(false);
+  const inputContainerRef = useRef<HTMLDivElement>(null);
+
   const { draftAssistant, isFading, isSavingDraftAgent } = usePreviewAssistant({
     owner,
     builderState,
     reasoningModels,
+    isInputFocused,
   });
 
   const { user } = useUser();
@@ -101,6 +101,24 @@ export default function AssistantBuilderRightPanel({
   useEffect(() => {
     setConversation(null);
   }, [draftAssistant?.sId, setConversation]);
+
+  useEffect(() => {
+    const container = inputContainerRef.current;
+    if (!container) {
+      return;
+    }
+
+    const onFocusIn = () => setIsInputFocused(true);
+    const onFocusOut = () => setIsInputFocused(false);
+
+    container.addEventListener("focusin", onFocusIn);
+    container.addEventListener("focusout", onFocusOut);
+
+    return () => {
+      container.removeEventListener("focusin", onFocusIn);
+      container.removeEventListener("focusout", onFocusOut);
+    };
+  }, []);
 
   return (
     <div className="flex h-full flex-col">
@@ -167,7 +185,7 @@ export default function AssistantBuilderRightPanel({
                         />
                       )}
                     </div>
-                    <div className="shrink-0">
+                    <div className="shrink-0" ref={inputContainerRef}>
                       <AssistantInputBar
                         disableButton={isSavingDraftAgent}
                         owner={owner}
