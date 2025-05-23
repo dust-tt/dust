@@ -5,7 +5,7 @@ import type {
   NextApiRequest,
   NextApiResponse,
 } from "next";
-import type { Transaction } from "sequelize";
+import { Transaction } from "sequelize";
 
 import type { Auth0JwtPayload } from "@app/lib/api/auth0";
 import config from "@app/lib/api/config";
@@ -111,9 +111,16 @@ export class Authenticator {
    * Note: READ_UNCOMMITTED is not supported in PG
    */
   private static transaction<T>(
-    callback: (t: Transaction) => Promise<T>
+    callback: (t?: Transaction) => Promise<T>
   ): Promise<T> {
-    return frontSequelize.transaction(callback);
+    if (process.env.NODE_ENV === "test") {
+      return callback();
+    }
+
+    return frontSequelize.transaction(
+      { isolationLevel: Transaction.ISOLATION_LEVELS.READ_COMMITTED },
+      callback
+    );
   }
 
   /**
