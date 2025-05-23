@@ -110,8 +110,11 @@ async function handleGoogleDriveExport(
       if (e.response?.status === 403) {
         const skippableReasons = ["exportRestricted"];
 
-        const body = Buffer.from(e.response.data).toString("utf-8").trim();
-        const parsedBody = JSON.parse(body);
+        const parsedBody =
+          typeof e.response.data === "string"
+            ? JSON.parse(e.response.data)
+            : e.response.data;
+
         const errors: { reason: string }[] | undefined =
           parsedBody.error?.errors;
         const firstSkippableReason = errors?.find((error) =>
@@ -180,8 +183,10 @@ async function handleFileExport(
       if (e.response?.status === 403) {
         const skippableReasons = ["cannotDownloadAbusiveFile"];
         try {
-          const body = Buffer.from(e.response.data).toString("utf-8").trim();
-          const parsedBody = JSON.parse(body);
+          const parsedBody =
+            typeof e.response.data === "string"
+              ? JSON.parse(e.response.data)
+              : e.response.data;
           const errors: { reason: string }[] | undefined =
             parsedBody.error?.errors;
           const firstSkippableReason = errors?.find((error) =>
