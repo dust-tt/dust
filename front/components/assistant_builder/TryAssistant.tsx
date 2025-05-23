@@ -28,19 +28,21 @@ interface UsePreviewAssistantProps {
   owner: WorkspaceType;
   builderState: AssistantBuilderState;
   reasoningModels: ModelConfigurationType[];
+  isInputFocused: boolean;
 }
 
 export function usePreviewAssistant({
   owner,
   builderState,
   reasoningModels,
+  isInputFocused,
 }: UsePreviewAssistantProps) {
   const animationLength = 1000;
   const [draftAssistant, setDraftAssistant] =
     useState<LightAgentConfigurationType | null>();
   const [animateDrawer, setAnimateDrawer] = useState(false);
   const [isFading, setIsFading] = useState(false);
-  const [isSavingDraftAgent, setIsSavingDraftAgent] = useState(true); // We always make the draft agent on initial page load so we can set it true.
+  const [isSavingDraftAgent, setIsSavingDraftAgent] = useState(false);
   const drawerAnimationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const debounceHandle = useRef<NodeJS.Timeout | undefined>(undefined);
   const sendNotification = useSendNotification();
@@ -72,6 +74,12 @@ export function usePreviewAssistant({
   const submit = useCallback(async () => {
     if (draftAssistant && !hasChanged) {
       // No changes since the last submission
+      return;
+    }
+
+    // Only create draft agent if input is focused
+    if (!isInputFocused) {
+      setIsSavingDraftAgent(false);
       return;
     }
 
@@ -123,6 +131,7 @@ export function usePreviewAssistant({
   }, [
     draftAssistant,
     hasChanged,
+    isInputFocused,
     owner,
     builderState.handle,
     builderState.instructions,
@@ -141,6 +150,13 @@ export function usePreviewAssistant({
   useEffect(() => {
     debounce(debounceHandle, submit, 1500);
   }, [submit]);
+
+  // Reset saving state when input is not focused
+  useEffect(() => {
+    if (!isInputFocused) {
+      setIsSavingDraftAgent(false);
+    }
+  }, [isInputFocused]);
 
   return {
     shouldAnimate: animateDrawer,
