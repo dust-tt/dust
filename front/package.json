@@ -17,7 +17,8 @@
     "coverage": "vitest --coverage",
     "initdb": "./admin/init_db.sh",
     "create-db-migration": "./create_db_migration_file.sh",
-    "prepare": "cd .. && husky .husky"
+    "prepare": "cd .. && husky .husky",
+    "debug:profiler": "tsx ./scripts/debug/run_profiler.ts"
   },
   "dependencies": {
     "@auth0/nextjs-auth0": "^3.5.0",

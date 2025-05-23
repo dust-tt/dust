@@ -9,9 +9,15 @@ import config from "@app/lib/api/config";
 import { setTimeoutAsync } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
+import type { WithAPIErrorResponse } from "@app/types";
 
 const CPU_PROFILE_DURATION_MS = 30000;
 const HEAP_PROFILE_DURATION_MS = 30000;
+
+export interface GetProfilerResponse {
+  cpu: string;
+  heap: string;
+}
 
 async function saveProfile({
   extension,
@@ -89,7 +95,7 @@ async function profileHeap() {
 
 export default async function handler(
   req: NextApiRequest,
-  res: NextApiResponse
+  res: NextApiResponse<WithAPIErrorResponse<GetProfilerResponse>>
 ) {
   if (req.method !== "GET") {
     return apiError(req, res, {
@@ -119,10 +125,7 @@ export default async function handler(
 
   logger.info({ cpuProfile, heapProfile }, "Profiler completed");
   res.status(200).json({
-    message: "Profiler completed",
-    profiles: {
-      cpu: cpuProfile,
-      heap: heapProfile,
-    },
+    cpu: cpuProfile,
+    heap: heapProfile,
   });
 }
