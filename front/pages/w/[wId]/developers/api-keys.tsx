@@ -96,6 +96,7 @@ export function APIKeys({
     _.find(groups, (g) => g.kind === "global") || groups[0]
   );
   const [isNewApiKeyCreatedOpen, setIsNewApiKeyCreatedOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
 
   const { isValidating, keys } = useKeys(owner);
 
@@ -337,9 +338,17 @@ export function APIKeys({
           </DialogContent>
         </Dialog>
       </Page.Horizontal>
+      <Input
+        name="Search API keys"
+        placeholder="Search by name"
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
+        className="mb-4"
+      />
       <div className="space-y-4 divide-y divide-gray-200 dark:divide-gray-200-night">
         <ul role="list" className="pt-4">
           {_.sortBy(keys, (key) => key.status[0] + key.name) // Sort by status first (a for active and i for inactive), then by name
+            .filter((key) => key.name.toLowerCase().includes(searchTerm.toLowerCase()))
             .map((key) => (
               <li key={key.secret} className="px-2 py-4">
                 <div className="flex items-center justify-between">
