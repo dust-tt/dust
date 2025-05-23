@@ -114,7 +114,12 @@ export class Authenticator {
     callback: (t: Transaction) => Promise<T>
   ): Promise<T> {
     return frontSequelize.transaction(
-      { isolationLevel: Transaction.ISOLATION_LEVELS.READ_COMMITTED },
+      {
+        isolationLevel:
+          process.env.NODE_ENV === "test"
+            ? Transaction.ISOLATION_LEVELS.REPEATABLE_READ
+            : Transaction.ISOLATION_LEVELS.READ_COMMITTED,
+      },
       callback
     );
   }
