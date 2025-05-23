@@ -10,7 +10,6 @@ import { getDefaultAvatarUrlForPreview } from "@app/components/assistant_builder
 import { submitAssistantBuilderForm } from "@app/components/assistant_builder/submitAssistantBuilderForm";
 import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
 import type { DustError } from "@app/lib/error";
-import { debounce } from "@app/lib/utils/debounce";
 import type {
   AgentMention,
   ContentFragmentsType,
@@ -28,14 +27,12 @@ interface UsePreviewAssistantProps {
   owner: WorkspaceType;
   builderState: AssistantBuilderState;
   reasoningModels: ModelConfigurationType[];
-  isInputFocused: boolean;
 }
 
 export function usePreviewAssistant({
   owner,
   builderState,
   reasoningModels,
-  isInputFocused,
 }: UsePreviewAssistantProps) {
   const animationLength = 1000;
   const [draftAssistant, setDraftAssistant] =
@@ -44,12 +41,11 @@ export function usePreviewAssistant({
   const [isFading, setIsFading] = useState(false);
   const [isSavingDraftAgent, setIsSavingDraftAgent] = useState(false);
   const drawerAnimationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const debounceHandle = useRef<NodeJS.Timeout | undefined>(undefined);
   const sendNotification = useSendNotification();
 
-  // Some state to keep track of the previous builderState
   const previousBuilderState = useRef<AssistantBuilderState>(builderState);
   const [hasChanged, setHasChanged] = useState(false);
+  const hasAttemptedInitialCreation = useRef(false);
 
   const animate = () => {
     if (drawerAnimationTimeoutRef.current) {
@@ -71,16 +67,9 @@ export function usePreviewAssistant({
     }
   }, [builderState]);
 
-  const submit = useCallback(async () => {
+  const createDraftAgent = useCallback(async () => {
     if (draftAssistant && !hasChanged) {
-      // No changes since the last submission
-      return;
-    }
-
-    // Only create draft agent if input is focused
-    if (!isInputFocused) {
-      setIsSavingDraftAgent(false);
-      return;
+      return draftAssistant;
     }
 
     setIsSavingDraftAgent(true);
@@ -118,7 +107,7 @@ export function usePreviewAssistant({
         description: aRes.error.message,
         type: "error",
       });
-      return;
+      throw new Error(aRes.error.message);
     }
 
     animate();
@@ -128,10 +117,11 @@ export function usePreviewAssistant({
       setDraftAssistant(aRes.value);
       setHasChanged(false);
     }, animationLength / 2);
+
+    return aRes.value;
   }, [
     draftAssistant,
     hasChanged,
-    isInputFocused,
     owner,
     builderState.handle,
     builderState.instructions,
@@ -148,21 +138,28 @@ export function usePreviewAssistant({
   ]);
 
   useEffect(() => {
-    debounce(debounceHandle, submit, 1500);
-  }, [submit]);
-
-  // Reset saving state when input is not focused
-  useEffect(() => {
-    if (!isInputFocused) {
-      setIsSavingDraftAgent(false);
+    const hasContent =
+      builderState.instructions?.trim() || builderState.actions.length > 0;
+    if (hasContent && !hasAttemptedInitialCreation.current) {
+      hasAttemptedInitialCreation.current = true;
+      createDraftAgent().catch(console.error);
     }
-  }, [isInputFocused]);
+  }, [createDraftAgent]);
+
+  useEffect(() => {
+    return () => {
+      if (drawerAnimationTimeoutRef.current) {
+        clearTimeout(drawerAnimationTimeoutRef.current);
+      }
+    };
+  }, []);
 
   return {
     shouldAnimate: animateDrawer,
     isFading,
     draftAssistant: draftAssistant ?? null,
     isSavingDraftAgent,
+    createDraftAgent,
   };
 }
 
@@ -171,11 +168,13 @@ export function useTryAssistantCore({
   user,
   assistant,
   openWithConversation,
+  createDraftAgent,
 }: {
   owner: WorkspaceType;
   user: UserType | null;
   openWithConversation?: ConversationType;
   assistant: LightAgentConfigurationType | null;
+  createDraftAgent?: () => Promise<LightAgentConfigurationType>;
 }) {
   const [stickyMentions, setStickyMentions] = useState<AgentMention[]>([
     { configurationId: assistant?.sId as string },
@@ -197,6 +196,21 @@ export function useTryAssistantCore({
         message: "No user found",
       });
     }
+
+    // Create or update draft agent before submitting message if createDraftAgent is provided
+    let currentAssistant = assistant;
+    if (createDraftAgent) {
+      try {
+        currentAssistant = await createDraftAgent();
+      } catch (error) {
+        return new Err({
+          code: "internal_error",
+          name: "Draft Agent Creation Failed",
+          message: "Failed to create draft agent before submitting message",
+        });
+      }
+    }
+
     const messageData = { input, mentions, contentFragments };
     if (!conversation) {
       const result = await createConversationWithMessage({
@@ -204,7 +218,7 @@ export function useTryAssistantCore({
         user,
         messageData,
         visibility: "test",
-        title: `Trying @${assistant?.name}`,
+        title: `Trying @${currentAssistant?.name}`,
       });
       if (result.isOk()) {
         setConversation(result.value);

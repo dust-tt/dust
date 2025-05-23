@@ -17,18 +17,18 @@ import {
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import { Separator } from "@radix-ui/react-select";
-import { useContext, useEffect, useRef } from "react";
-import { useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 
 import { ActionValidationProvider } from "@app/components/assistant/conversation/ActionValidationProvider";
-import {
-  ConversationsNavigationProvider,
-} from "@app/components/assistant/conversation/ConversationsNavigationProvider";
+import { ConversationsNavigationProvider } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import ConversationViewer from "@app/components/assistant/conversation/ConversationViewer";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { AssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import { FeedbacksSection } from "@app/components/assistant_builder/FeedbacksSection";
-import { usePreviewAssistant, useTryAssistantCore } from "@app/components/assistant_builder/TryAssistant";
+import {
+  usePreviewAssistant,
+  useTryAssistantCore,
+} from "@app/components/assistant_builder/TryAssistant";
 import type {
   AssistantBuilderSetActionType,
   AssistantBuilderState,
@@ -40,7 +40,11 @@ import { ConfirmContext } from "@app/components/Confirm";
 import { ACTION_SPECIFICATIONS } from "@app/lib/actions/utils";
 import { useUser } from "@app/lib/swr/user";
 import type { FetchAssistantTemplateResponse } from "@app/pages/api/templates/[tId]";
-import type { AssistantBuilderRightPanelTabType, ModelConfigurationType, WorkspaceType } from "@app/types";
+import type {
+  AssistantBuilderRightPanelTabType,
+  ModelConfigurationType,
+  WorkspaceType,
+} from "@app/types";
 import { isAssistantBuilderRightPanelTab } from "@app/types";
 
 interface AssistantBuilderRightPanelProps {
@@ -71,16 +75,12 @@ export default function AssistantBuilderRightPanel({
   const [rightPanelTab, setRightPanelTab] =
     useState<AssistantBuilderRightPanelTabType>("Preview");
 
-  // Track input focus state for draft agent creation
-  const [isInputFocused, setIsInputFocused] = useState(false);
-  const inputContainerRef = useRef<HTMLDivElement>(null);
-
-  const { draftAssistant, isFading, isSavingDraftAgent } = usePreviewAssistant({
-    owner,
-    builderState,
-    reasoningModels,
-    isInputFocused,
-  });
+  const { draftAssistant, isFading, isSavingDraftAgent, createDraftAgent } =
+    usePreviewAssistant({
+      owner,
+      builderState,
+      reasoningModels,
+    });
 
   const { user } = useUser();
   const {
@@ -93,32 +93,22 @@ export default function AssistantBuilderRightPanel({
     owner,
     user,
     assistant: draftAssistant,
+    createDraftAgent,
   });
 
   const isBuilderStateEmpty =
     !builderState.instructions?.trim() && !builderState.actions.length;
 
-  useEffect(() => {
-    setConversation(null);
-  }, [draftAssistant?.sId, setConversation]);
+  const previousDraftSId = useRef<string | undefined>(undefined);
 
   useEffect(() => {
-    const container = inputContainerRef.current;
-    if (!container) {
-      return;
+    if (
+      draftAssistant?.sId &&
+      previousDraftSId.current !== draftAssistant.sId
+    ) {
+      previousDraftSId.current = draftAssistant.sId;
     }
-
-    const onFocusIn = () => setIsInputFocused(true);
-    const onFocusOut = () => setIsInputFocused(false);
-
-    container.addEventListener("focusin", onFocusIn);
-    container.addEventListener("focusout", onFocusOut);
-
-    return () => {
-      container.removeEventListener("focusin", onFocusIn);
-      container.removeEventListener("focusout", onFocusOut);
-    };
-  }, []);
+  }, [draftAssistant?.sId]);
 
   return (
     <div className="flex h-full flex-col">
@@ -185,7 +175,7 @@ export default function AssistantBuilderRightPanel({
                         />
                       )}
                     </div>
-                    <div className="shrink-0" ref={inputContainerRef}>
+                    <div className="shrink-0">
                       <AssistantInputBar
                         disableButton={isSavingDraftAgent}
                         owner={owner}
