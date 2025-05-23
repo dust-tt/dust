@@ -4,7 +4,7 @@ import type {
   InferAttributes,
   Transaction,
 } from "sequelize";
-import { literal, Op, Sequelize } from "sequelize";
+import { col, fn, literal, Op, Sequelize, where } from "sequelize";
 
 import { Authenticator } from "@app/lib/auth";
 import {
@@ -197,20 +197,32 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
   static async listAllBeforeDate(
     auth: Authenticator,
-    date: Date
+    cutoffDate: Date
   ): Promise<ConversationResource[]> {
-    const conversations = await this.baseFetch(
-      auth,
-      { includeDeleted: true, includeTest: true },
-      {
-        where: {
-          updatedAt: {
-            [Op.lt]: date,
-          },
+    const workspaceId = auth.getNonNullableWorkspace().id;
+    const inactiveConversations = await Message.findAll({
+      attributes: [
+        "conversationId",
+        [fn("MAX", col("createdAt")), "lastMessageDate"],
+      ],
+      where: {
+        workspaceId,
+      },
+      group: ["conversationId"],
+      having: where(fn("MAX", col("createdAt")), "<", cutoffDate),
+      order: [[fn("MAX", col("createdAt")), "DESC"]],
+    });
+
+    const conversations = await ConversationModel.findAll({
+      where: {
+        workspaceId,
+        id: {
+          [Op.in]: inactiveConversations.map((m) => m.conversationId),
         },
-      }
-    );
-    return conversations;
+      },
+    });
+
+    return conversations.map((c) => new this(this.model, c.get()));
   }
 
   static canAccessConversation(
