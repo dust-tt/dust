@@ -1,4 +1,5 @@
 import { getSession as getAuth0Session } from "@auth0/nextjs-auth0";
+import tracer from "dd-trace";
 import memoizer from "lru-memoizer";
 import type {
   GetServerSidePropsContext,
@@ -100,6 +101,15 @@ export class Authenticator {
     this._role = role;
     this._subscription = subscription || null;
     this._key = key;
+    if (user) {
+      tracer.setUser({
+        id: user?.sId,
+        role: role,
+        plan: subscription?.getPlan().code,
+        workspaceId: workspace?.sId,
+        workspaceName: workspace?.name,
+      });
+    }
   }
 
   /**
