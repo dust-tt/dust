@@ -112,7 +112,7 @@ export function useUpdateTranscriptsConfiguration({
     data: Partial<PatchTranscriptsConfiguration>
   ): Promise<Result<undefined, Error>> => {
     const response = await fetch(
-      `/api/w/${owner.sId}/labs/transcripts/${transcriptsConfiguration.id}`,
+      `/api/w/${owner.sId}/labs/transcripts/${transcriptsConfiguration.sId}`,
       {
         method: "PATCH",
         headers: {

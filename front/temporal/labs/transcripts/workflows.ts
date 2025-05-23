@@ -4,10 +4,9 @@ import {
   workflowInfo,
 } from "@temporalio/workflow";
 
-import type { ModelId } from "@app/types";
-
 import type * as activities from "./activities";
 import { makeProcessTranscriptWorkflowId } from "./utils";
+import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 
 const { retrieveNewTranscriptsActivity, processTranscriptActivity } =
   proxyActivities<typeof activities>({
@@ -15,19 +14,20 @@ const { retrieveNewTranscriptsActivity, processTranscriptActivity } =
   });
 
 export async function retrieveNewTranscriptsWorkflow(
-  transcriptsConfigurationId: ModelId
+  transcriptsConfiguration: LabsTranscriptsConfigurationResource
 ) {
   const filesToProcess = await retrieveNewTranscriptsActivity(
-    transcriptsConfigurationId
+    transcriptsConfiguration.sId
   );
 
   const { searchAttributes: parentSearchAttributes, memo } = workflowInfo();
 
   for (const fileId of filesToProcess) {
     const workflowId = makeProcessTranscriptWorkflowId({
-      transcriptsConfigurationId,
+      transcriptsConfiguration,
       fileId,
     });
+    const transcriptsConfigurationId = transcriptsConfiguration.sId;
     await executeChild(processTranscriptWorkflow, {
       workflowId,
       searchAttributes: parentSearchAttributes,
@@ -47,7 +47,7 @@ export async function processTranscriptWorkflow({
   transcriptsConfigurationId,
 }: {
   fileId: string;
-  transcriptsConfigurationId: ModelId;
+  transcriptsConfigurationId: string;
 }): Promise<void> {
   await processTranscriptActivity(transcriptsConfigurationId, fileId);
 }
