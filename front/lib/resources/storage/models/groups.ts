@@ -12,6 +12,9 @@ export class GroupModel extends WorkspaceAwareModel<GroupModel> {
 
   declare name: string;
   declare kind: GroupKind;
+
+  declare workOSGroupId: string | null;
+  declare directoryId: string | null;
 }
 
 GroupModel.init(
@@ -34,12 +37,21 @@ GroupModel.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
+    workOSGroupId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    directoryId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
   },
   {
     modelName: "groups",
     sequelize: frontSequelize,
     indexes: [
       { unique: true, fields: ["workspaceId", "name"] },
+      { unique: true, fields: ["workspaceId", "workOSGroupId"] },
       { fields: ["workspaceId", "kind"] },
     ],
   }
