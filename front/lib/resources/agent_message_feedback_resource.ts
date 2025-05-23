@@ -198,10 +198,12 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     startDate,
     endDate,
     workspace,
+    transaction,
   }: {
     startDate: Date;
     endDate: Date;
     workspace: WorkspaceType;
+    transaction?: Transaction;
   }) {
     const agentMessageFeedback = await AgentMessageFeedback.findAll({
       where: {
@@ -225,6 +227,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
         },
       ],
       order: [["id", "ASC"]],
+      transaction,
     });
 
     return agentMessageFeedback
