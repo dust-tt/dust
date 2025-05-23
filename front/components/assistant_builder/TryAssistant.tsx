@@ -44,7 +44,6 @@ export function usePreviewAssistant({
 
   const previousBuilderState = useRef<AssistantBuilderState>(builderState);
   const [hasChanged, setHasChanged] = useState(false);
-  const initialCreationAttempted = useRef(false);
 
   const animate = () => {
     if (drawerAnimationTimeoutRef.current) {
@@ -133,17 +132,12 @@ export function usePreviewAssistant({
   useEffect(() => {
     const hasContent =
       builderState.instructions?.trim() || builderState.actions.length > 0;
-    if (hasContent && !initialCreationAttempted.current) {
-      initialCreationAttempted.current = true;
+    if (hasContent && !draftAssistant && isSavingDraftAgent) {
       createDraftAgent().catch(console.error);
-    } else if (!hasContent && !initialCreationAttempted.current) {
+    } else if (!hasContent) {
       setIsSavingDraftAgent(false);
     }
-  }, [
-    builderState.actions.length,
-    builderState.instructions,
-    createDraftAgent,
-  ]);
+  }, []);
 
   useEffect(() => {
     return () => {
