@@ -195,10 +195,15 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return mentions;
   }
 
-  static async listAllBeforeDate(
-    auth: Authenticator,
-    cutoffDate: Date
-  ): Promise<ConversationResource[]> {
+  static async listAllBeforeDate({
+    auth,
+    cutoffDate,
+    batchSize = 1000,
+  }: {
+    auth: Authenticator;
+    cutoffDate: Date;
+    batchSize?: number;
+  }): Promise<ConversationResource[]> {
     const workspaceId = auth.getNonNullableWorkspace().id;
     const inactiveConversations = await Message.findAll({
       attributes: [
@@ -213,16 +218,22 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       order: [[fn("MAX", col("createdAt")), "DESC"]],
     });
 
-    const conversations = await ConversationModel.findAll({
-      where: {
-        workspaceId,
-        id: {
-          [Op.in]: inactiveConversations.map((m) => m.conversationId),
+    // We batch to avoid a big where in clause.
+    const results: ConversationResource[] = [];
+    for (let i = 0; i < inactiveConversations.length; i += batchSize) {
+      const batch = inactiveConversations.slice(i, i + batchSize);
+      const conversations = await ConversationModel.findAll({
+        where: {
+          workspaceId,
+          id: {
+            [Op.in]: batch.map((m) => m.conversationId),
+          },
         },
-      },
-    });
+      });
+      results.push(...conversations.map((c) => new this(this.model, c.get())));
+    }
 
-    return conversations.map((c) => new this(this.model, c.get()));
+    return results;
   }
 
   static canAccessConversation(

@@ -137,10 +137,10 @@ describe("ConversationResource", () => {
     });
 
     it("should return only conversations with all messages before cutoff date: 90 days ago", async () => {
-      const oldConversations = await ConversationResource.listAllBeforeDate(
+      const oldConversations = await ConversationResource.listAllBeforeDate({
         auth,
-        dateFromDaysAgo(90)
-      );
+        cutoffDate: dateFromDaysAgo(90),
+      });
       expect(oldConversations.length).toBe(2);
       const oldConversationIds = oldConversations.map((c) => c.sId);
       expect(oldConversationIds).toContain(convo3Id);
@@ -148,23 +148,32 @@ describe("ConversationResource", () => {
     });
 
     it("should return only conversations with all messages before cutoff date: 200 days ago", async () => {
-      const oldConversations = await ConversationResource.listAllBeforeDate(
+      const oldConversations = await ConversationResource.listAllBeforeDate({
         auth,
-        dateFromDaysAgo(200)
-      );
+        cutoffDate: dateFromDaysAgo(200),
+      });
       expect(oldConversations.length).toBe(0);
     });
 
     it("should return only conversations with all messages before cutoff date: 5 days ago", async () => {
-      const oldConversations = await ConversationResource.listAllBeforeDate(
+      const oldConversations = await ConversationResource.listAllBeforeDate({
         auth,
-        dateFromDaysAgo(5)
-      );
+        cutoffDate: dateFromDaysAgo(5),
+      });
       expect(oldConversations.length).toBe(3);
       const oldConversationIds = oldConversations.map((c) => c.sId);
       expect(oldConversationIds).toContain(convo1Id);
       expect(oldConversationIds).toContain(convo3Id);
       expect(oldConversationIds).toContain(convo4Id);
+    });
+
+    it("should return all old conversations no matter the batch size", async () => {
+      const oldConversations = await ConversationResource.listAllBeforeDate({
+        auth,
+        cutoffDate: dateFromDaysAgo(1),
+        batchSize: 1,
+      });
+      expect(oldConversations.length).toBe(4);
     });
   });
 });
