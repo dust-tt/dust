@@ -1,4 +1,5 @@
 import { createPlugin } from "@app/lib/api/poke/types";
+import { Workspace } from "@app/lib/models/workspace";
 import { WorkspaceHasDomainModel } from "@app/lib/models/workspace_has_domain";
 import { isDomain } from "@app/lib/utils";
 import { Err, Ok } from "@app/types";
@@ -35,8 +36,14 @@ export const addAuthorizedDomain = createPlugin({
     // Check if domain exists in any workspace
     const existingDomain = await WorkspaceHasDomainModel.findOne({
       where: { domain },
+      include: [
+        {
+          model: Workspace,
+          as: "workspace",
+          required: true,
+        },
+      ],
     });
-
     if (existingDomain) {
       if (existingDomain.workspaceId === workspace.id) {
         return new Ok({
@@ -45,7 +52,9 @@ export const addAuthorizedDomain = createPlugin({
         });
       }
       return new Err(
-        new Error("This domain is already authorized for another workspace.")
+        new Error(
+          `This domain is already authorized for workspace ${existingDomain.workspace.sId}.`
+        )
       );
     }
 
