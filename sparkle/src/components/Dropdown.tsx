@@ -452,6 +452,7 @@ interface DropdownMenuTagItemProps
   label: string;
   size?: React.ComponentProps<typeof Chip>["size"];
   color?: React.ComponentProps<typeof Chip>["color"];
+  icon?: React.ComponentProps<typeof Chip>["icon"];
   onRemove?: () => void;
   onClick?: () => void;
 }
@@ -465,6 +466,7 @@ const DropdownMenuTagItem = React.forwardRef<
       label,
       size = "xs",
       color = "primary",
+      icon,
       onRemove,
       className,
       onClick,
@@ -484,6 +486,7 @@ const DropdownMenuTagItem = React.forwardRef<
           color={color}
           onRemove={onRemove}
           onClick={onClick}
+          icon={icon}
         />
       </DropdownMenuPrimitive.Item>
     );
