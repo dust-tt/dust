@@ -28,6 +28,7 @@ import { useCallback, useState } from "react";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import {
   useFeatureFlags,
+  useWorkOSFullSync,
   useWorkspaceEnterpriseConnection,
 } from "@app/lib/swr/workspaces";
 import type {
@@ -57,6 +58,33 @@ export interface EnterpriseConnectionStrategyDetails {
   // SAML Specific.
   audienceUri: string;
   samlAcsUrl: string;
+}
+
+interface WorkOSSyncButtonProps {
+  owner: WorkspaceType;
+}
+
+export function WorkOSSyncButton({ owner }: WorkOSSyncButtonProps) {
+  const [isLoading, setIsLoading] = useState(false);
+  const { triggerFullSync } = useWorkOSFullSync(owner);
+
+  const handleSync = async () => {
+    setIsLoading(true);
+    try {
+      await triggerFullSync();
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <Button
+      variant="primary"
+      onClick={handleSync}
+      disabled={isLoading}
+      label={isLoading ? "Syncing..." : "Sync WorkOS Directories & Groups"}
+    />
+  );
 }
 
 export function EnterpriseConnectionDetails({
@@ -183,6 +211,11 @@ export function EnterpriseConnectionDetails({
             }}
           />
         )}
+        {/* Debug button: will be replaced by an actual admin console */}
+        <Page.P variant="secondary">Synchronize your directories.</Page.P>
+        <div className="flex w-full flex-col items-start gap-3">
+          <WorkOSSyncButton owner={owner} />
+        </div>
         <Dialog open={showNoInviteLinkPopup}>
           <DialogContent>
             <DialogHeader>Free plan</DialogHeader>
