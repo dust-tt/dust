@@ -1,5 +1,3 @@
-import { UniqueConstraintError } from "sequelize";
-
 import { createPlugin } from "@app/lib/api/poke/types";
 import { WorkspaceHasDomainModel } from "@app/lib/models/workspace_has_domain";
 import { isDomain } from "@app/lib/utils";
@@ -34,24 +32,33 @@ export const addAuthorizedDomain = createPlugin({
       return new Err(new Error("Invalid domain format."));
     }
 
-    try {
-      await WorkspaceHasDomainModel.create({
-        domain,
-        domainAutoJoinEnabled: args.autoJoinEnabled,
-        workspaceId: workspace.id,
-      });
+    // Check if domain exists in any workspace
+    const existingDomain = await WorkspaceHasDomainModel.findOne({
+      where: { domain },
+    });
 
-      return new Ok({
-        display: "text",
-        value: `Domain ${domain} has been added to the workspace${args.autoJoinEnabled ? " with auto-join enabled" : ""}.`,
-      });
-    } catch (err) {
-      if (err instanceof UniqueConstraintError) {
-        return new Err(
-          new Error("This domain is already authorized for another workspace.")
-        );
+    if (existingDomain) {
+      if (existingDomain.workspaceId === workspace.id) {
+        return new Ok({
+          display: "text",
+          value: `Domain ${domain} is already authorized for this workspace.`,
+        });
       }
-      return new Err(new Error("Failed to add domain to workspace."));
+      return new Err(
+        new Error("This domain is already authorized for another workspace.")
+      );
     }
+
+    // Create the domain since it doesn't exist
+    await WorkspaceHasDomainModel.create({
+      domain,
+      domainAutoJoinEnabled: args.autoJoinEnabled,
+      workspaceId: workspace.id,
+    });
+
+    return new Ok({
+      display: "text",
+      value: `Domain ${domain} has been added to the workspace${args.autoJoinEnabled ? " with auto-join enabled" : ""}.`,
+    });
   },
 });
