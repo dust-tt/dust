@@ -80,7 +80,7 @@ const EMPTY_INPUT_SCHEMA: JSONSchema7 = { type: "object", properties: {} };
 
 const MAX_TOOL_NAME_LENGTH = 64;
 
-const TOOL_NAME_SEPARATOR = "__";
+export const TOOL_NAME_SEPARATOR = "__";
 
 // Define the new type here for now, or move to a dedicated types file later.
 export interface ServerToolsAndInstructions {

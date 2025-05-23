@@ -1,5 +1,8 @@
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
-import { tryListMCPTools } from "@app/lib/actions/mcp_actions";
+import {
+  TOOL_NAME_SEPARATOR,
+  tryListMCPTools,
+} from "@app/lib/actions/mcp_actions";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { getRunnerForActionConfiguration } from "@app/lib/actions/runners";
 import { runActionStreamed } from "@app/lib/actions/server";
@@ -795,7 +798,7 @@ async function* runMultiActionsAgent(
     // Sometimes models will return a name with a triple underscore instead of a double underscore, we dynamically handle it.
     const actionNamesFromLLM: string[] = removeNulls([
       a.name,
-      a.name?.replace("___", "__") ?? null,
+      a.name?.replace("___", TOOL_NAME_SEPARATOR) ?? null,
     ]);
 
     let action = availableActions.find((ac) =>
@@ -806,18 +809,18 @@ async function* runMultiActionsAgent(
       specifications.find((s) => actionNamesFromLLM.includes(s.name)) ?? null;
 
     if (!action) {
-      logger.error(
-        {
-          workspaceId: conversation.owner.sId,
-          conversationId: conversation.sId,
-          configurationId: agentConfiguration.sId,
-          messageId: agentMessage.sId,
-          actionName: a.name,
-          availableActions: availableActions.map((a) => a.name),
-        },
-        "Model attempted to run an action that is not part of the agent configuration."
-      );
       if (!a.name) {
+        logger.error(
+          {
+            workspaceId: conversation.owner.sId,
+            conversationId: conversation.sId,
+            configurationId: agentConfiguration.sId,
+            messageId: agentMessage.sId,
+            actionName: a.name,
+            availableActions: availableActions.map((a) => a.name),
+          },
+          "Model attempted to run an action that is not part of the agent configuration (no name)."
+        );
         yield {
           type: "agent_error",
           created: Date.now(),
@@ -831,14 +834,14 @@ async function* runMultiActionsAgent(
 
         return;
       } else {
-        const mcpServerVIew =
+        const mcpServerView =
           await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
             auth,
             "missing_action_catcher"
           );
 
         // Could happen if the internal server has not already been added
-        if (!mcpServerVIew) {
+        if (!mcpServerView) {
           logger.error(
             {
               workspaceId: conversation.owner.sId,
@@ -848,7 +851,7 @@ async function* runMultiActionsAgent(
               actionName: a.name,
               availableActions: availableActions.map((a) => a.name),
             },
-            "Model attempted to run an action that is not part of the agent configuration."
+            "Model attempted to run an action that is not part of the agent configuration (no server)."
           );
 
           yield {
@@ -864,6 +867,18 @@ async function* runMultiActionsAgent(
           return;
         }
 
+        logger.warn(
+          {
+            workspaceId: conversation.owner.sId,
+            conversationId: conversation.sId,
+            configurationId: agentConfiguration.sId,
+            messageId: agentMessage.sId,
+            actionName: a.name,
+            availableActions: availableActions.map((a) => a.name),
+          },
+          "Model attempted to run an action that is not part of the agent configuration but we'll try to catch it."
+        );
+
         const catchAllAction: MCPToolConfigurationType = {
           id: -1,
           sId: generateRandomModelSId(),
@@ -878,13 +893,13 @@ async function* runMultiActionsAgent(
           timeFrame: null,
           jsonSchema: null,
           additionalConfiguration: {},
-          mcpServerViewId: mcpServerVIew.sId,
+          mcpServerViewId: mcpServerView.sId,
           dustAppConfiguration: null,
-          internalMCPServerId: mcpServerVIew.internalMCPServerId,
+          internalMCPServerId: mcpServerView.internalMCPServerId,
           inputSchema: {},
           availability: "auto_hidden_builder",
           permission: "never_ask",
-          toolServerId: mcpServerVIew.sId,
+          toolServerId: mcpServerView.sId,
           mcpServerName: "missing_action_catcher" as InternalMCPServerNameType,
         };
 

@@ -25,7 +25,6 @@ const createServer = (
     if (!actionName) {
       throw new Error("No action name found");
     }
-    console.log("actionName", actionName);
 
     server.tool(actionName, "", {}, async () => {
       return {
@@ -33,7 +32,11 @@ const createServer = (
         content: [
           {
             type: "text",
-            text: `There is no tool named "${actionName}" in the agent configuration. This answer to the function call is a catch-all. Please verify that the function name is correct : pay attention to case sensitivity and separators between words in the name. It's safe to retry automatically with another name.`,
+            text:
+              `There is no tool named "${actionName}" in the agent configuration. ` +
+              "This answer to the function call is a catch-all. Please verify that the function name is correct : " +
+              "pay attention to case sensitivity and separators between words in the name. " +
+              "It's safe to retry automatically with another name.",
           },
         ],
       };
