@@ -14,7 +14,7 @@ import {
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
-import { useUpdateAgentTags } from "@app/lib/swr/tags";
+import { useBatchUpdateAgentTags } from "@app/lib/swr/tags";
 import { compareForFuzzySort, subFilter, tagsSorter } from "@app/lib/utils";
 import type { LightAgentConfigurationType, WorkspaceType } from "@app/types";
 import { isBuilder } from "@app/types";
@@ -41,7 +41,7 @@ export const AgentEditBar = ({
   const [tagSearch, setTagSearch] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  const updateAgentTags = useUpdateAgentTags({
+  const batchUpdateAgentTags = useBatchUpdateAgentTags({
     owner,
   });
 
@@ -116,29 +116,29 @@ export const AgentEditBar = ({
                   key={t.sId}
                   onClick={async () => {
                     setIsLoading(true);
+                    const agentIds = selectedAgents.map((a) => a.sId);
+
                     if (
                       selectedAgents.every((a) =>
                         a.tags.find((agentTag) => agentTag.sId === t.sId)
                       )
                     ) {
-                      for (const a of selectedAgents) {
-                        // Remove
-                        await updateAgentTags(a.sId, {
-                          addTagIds: [],
-                          removeTagIds: [t.sId],
-                        });
-                      }
+                      // Remove tag from all selected agents
+                      await batchUpdateAgentTags(agentIds, {
+                        removeTagIds: [t.sId],
+                      });
                     } else {
+                      // Add tag to agents that don't have it
                       const toAdd = selectedAgents.filter(
                         (a) =>
                           !a.tags.find((agentTag) => agentTag.sId === t.sId)
                       );
-                      for (const a of toAdd) {
-                        await updateAgentTags(a.sId, {
+                      await batchUpdateAgentTags(
+                        toAdd.map((a) => a.sId),
+                        {
                           addTagIds: [t.sId],
-                          removeTagIds: [],
-                        });
-                      }
+                        }
+                      );
                     }
                     void mutateAgentConfigurations();
                     setIsLoading(false);
