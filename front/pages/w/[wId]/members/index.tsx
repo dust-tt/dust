@@ -49,6 +49,7 @@ import type {
   WorkspaceDomain,
   WorkspaceType,
 } from "@app/types";
+import { WorkOSConnection } from "@app/components/workspace/WorkOSConnection";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   user: UserType;
@@ -248,6 +249,7 @@ export default function WorkspaceAdmin({
           strategyDetails={enterpriseConnectionStrategyDetails}
           workspaceVerifiedDomain={workspaceVerifiedDomain}
         />
+        <WorkOSConnection owner={owner} />
         <div className="flex flex-row gap-2">
           <SearchInput
             placeholder="Search members (email)"
