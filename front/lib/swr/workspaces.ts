@@ -1,13 +1,20 @@
+import { useSendNotification } from "@dust-tt/sparkle";
 import { useCallback, useMemo } from "react";
 import type { Fetcher } from "swr";
 
-import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import {
+  emptyArray,
+  fetcher,
+  getErrorFromResponse,
+  useSWRWithDefaults,
+} from "@app/lib/swr/swr";
 import type { GetWorkspaceFeatureFlagsResponseType } from "@app/pages/api/w/[wId]/feature-flags";
 import type { GetSubscriptionsResponseBody } from "@app/pages/api/w/[wId]/subscriptions";
 import type { GetWorkspaceAnalyticsResponse } from "@app/pages/api/w/[wId]/workspace-analytics";
 import type {
   WhitelistableFeature,
   WorkspaceEnterpriseConnection,
+  WorkspaceType,
 } from "@app/types";
 
 export function useWorkspaceSubscriptions({
@@ -150,4 +157,35 @@ export function useFeatureFlags({
     isFeatureFlagsError: error,
     hasFeature,
   };
+}
+
+export function useWorkOSFullSync(owner: WorkspaceType) {
+  const sendNotification = useSendNotification();
+
+  const triggerFullSync = async () => {
+    const res = await fetch(`/api/w/${owner.sId}/workos/sync`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (res.ok) {
+      const result = await res.json();
+      sendNotification({
+        type: "success",
+        title: "WorkOS Sync Completed",
+      });
+      return result;
+    } else {
+      const errorData = await getErrorFromResponse(res);
+      sendNotification({
+        type: "error",
+        title: "WorkOS Sync Failed",
+        description: errorData.message,
+      });
+    }
+  };
+
+  return { triggerFullSync };
 }
