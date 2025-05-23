@@ -16,19 +16,19 @@ interface FunctionCardData {
 function FunctionsSection() {
   const cards: FunctionCardData[] = [
     {
-      title: "RevOps & Sales",
+      title: "Sales",
       color: "green",
       features: [
-        "Create customer profiles from CRM, notes, and emails",
-        "Flag at-risk deals and identify failure trends",
-        "Analyze calls to improve pitches and understand blockers",
-        "Generate SQL from natural language for real-time metrics",
+        "Create account snapshots from past interactions and CRM data",
+        "Generate targeted outreach using call transcripts and insights",
+        "Answer prospect questions and RFPs with product and competitor insights",
+        "Analyze calls to improve pitch delivery and objection handling",
       ],
       visualSrc: "/static/landing/functions/sales.png",
       href: "/home/solutions/sales",
     },
     {
-      title: "PMM & Marketing",
+      title: "Marketing",
       color: "rose",
       features: [
         "Write on-brand content in minutes",
@@ -46,31 +46,19 @@ function FunctionsSection() {
         "Connect agents to knowledge base for instant responses",
         "Identify product improvements from ticket patterns",
         "Auto-create FAQs from resolved tickets",
-        "Provide real-time guidance based on best practices",
+        "Auto-route tickets based on queries and expertise",
       ],
       visualSrc: "/static/landing/functions/customersupport.png",
       href: "/home/solutions/customer-support",
     },
     {
-      title: "Product & Design",
-      color: "golden",
-      features: [
-        "Improve product copy per company guidelines",
-        "Analyze customer sentiment across platforms",
-        "Extract competitor insights automatically",
-        "Generate and refine user stories",
-      ],
-      visualSrc: "/static/landing/functions/product_and_design.png",
-      href: "/home/solutions/product",
-    },
-    {
       title: "Engineering",
       color: "green",
       features: [
-        "Review code against internal standards",
-        "Auto-create docs from code and comments",
-        "Compile incident timelines and draft postmortems",
-        "Generate SQL from natural language",
+        "Accelerate debugging using code context, docs, and issue history in your IDE",
+        "Streamline incidents with automated runbooks, communication, and documentation",
+        "Auto-review code to ensure standards and security compliance at scale",
+        "Auto-generate and update documentation from code changes",
       ],
       visualSrc: "/static/landing/functions/engineering.png",
       href: "/home/solutions/engineering",
