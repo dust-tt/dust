@@ -1,16 +1,18 @@
-import { WorkOS } from "@workos-inc/node";
 import { sealData } from "iron-session";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import config from "@app/lib/api/config";
+import type { RegionType } from "@app/lib/api/regions/config";
+import {
+  config as multiRegionsConfig,
+  SUPPORTED_REGIONS,
+} from "@app/lib/api/regions/config";
+import { checkUserRegionAffinity } from "@app/lib/api/regions/lookup";
+import { getWorkOS, setRegionForUser } from "@app/lib/api/workos";
 import { getSession } from "@app/lib/auth";
 import type { SessionCookie } from "@app/lib/iam/provider";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
-
-const workos = new WorkOS(config.getWorkOSApiKey(), {
-  clientId: config.getWorkOSClientId(),
-});
 
 //TODO(workos): This file could be split in 3 route handlers.
 export default async function handler(
@@ -33,7 +35,7 @@ export default async function handler(
 
 async function handleLogin(req: NextApiRequest, res: NextApiResponse) {
   try {
-    const authorizationUrl = workos.userManagement.getAuthorizationUrl({
+    const authorizationUrl = getWorkOS().userManagement.getAuthorizationUrl({
       // Specify that we'd like AuthKit to handle the authentication flow
       provider: "authkit",
       redirectUri: config.getWorkOSRedirectUri(),
@@ -49,30 +51,41 @@ async function handleLogin(req: NextApiRequest, res: NextApiResponse) {
 }
 
 async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
-  const { code } = req.query;
+  const { code, state } = req.query;
   if (!code || typeof code !== "string") {
     return res.redirect("/login-error");
   }
 
   try {
-    const { user, organizationId, authenticationMethod, sealedSession } =
-      await workos.userManagement.authenticateWithCode({
-        code,
-        clientId: config.getWorkOSClientId(),
-        session: {
-          sealSession: true,
-          cookiePassword: config.getWorkOSCookiePassword(),
-        },
-      });
+    const {
+      user,
+      organizationId,
+      authenticationMethod,
+      sealedSession,
+      accessToken,
+    } = await getWorkOS().userManagement.authenticateWithCode({
+      code,
+      clientId: config.getWorkOSClientId(),
+      session: {
+        sealSession: true,
+        cookiePassword: config.getWorkOSCookiePassword(),
+      },
+    });
 
     if (!sealedSession) {
       throw new Error("Sealed session not found");
     }
 
+    // Decode and inspect JWT content
+    const decodedPayload = JSON.parse(
+      Buffer.from(accessToken.split(".")[1], "base64").toString()
+    );
+
     const sessionCookie: SessionCookie = {
       sessionData: sealedSession,
       organizationId,
       authenticationMethod,
+      region: decodedPayload["https://dust.tt/region"],
     };
 
     const sealedCookie = await sealData(sessionCookie, {
@@ -84,76 +97,76 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
       "WorkOS callback"
     );
 
-    //TODO(workos): Handle region redirect.
-    // const currentRegion = multiRegionsConfig.getCurrentRegion();
-    // let targetRegion: RegionType | null = "us-central1";
+    const currentRegion = multiRegionsConfig.getCurrentRegion();
+    let targetRegion: RegionType | null = "us-central1";
 
     // If user has a region, redirect to the region page.
-    // const userSessionRegion = getRegionForUserSession({ user: user });
-    // if (userSessionRegion) {
-    //   targetRegion = userSessionRegion;
-    // } else {
-    //   // For new users or users without region, perform lookup.
-    //   const regionWithAffinityRes = await checkUserRegionAffinity({
-    //     email: user.email,
-    //     email_verified: true, // WorkOS handles email verification
-    //   });
+    const userSessionRegion = sessionCookie.region;
 
-    //   if (regionWithAffinityRes.isErr()) {
-    //     throw regionWithAffinityRes.error;
-    //   }
+    if (userSessionRegion) {
+      targetRegion = userSessionRegion;
+    } else {
+      // For new users or users without region, perform lookup.
+      const regionWithAffinityRes = await checkUserRegionAffinity({
+        email: user.email,
+        email_verified: true, // WorkOS handles email verification
+      });
 
-    //   if (regionWithAffinityRes.value.hasAffinity) {
-    //     targetRegion = regionWithAffinityRes.value.region;
-    //   } else {
-    //     targetRegion = multiRegionsConfig.getCurrentRegion();
-    //   }
+      if (regionWithAffinityRes.isErr()) {
+        throw regionWithAffinityRes.error;
+      }
 
-    //   // await setRegionForUser({ user: profile }, targetRegion);
-    // }
+      if (regionWithAffinityRes.value.hasAffinity) {
+        targetRegion = regionWithAffinityRes.value.region;
+      } else {
+        targetRegion = multiRegionsConfig.getCurrentRegion();
+      }
 
-    // // Safety check for target region
-    // if (targetRegion && !SUPPORTED_REGIONS.includes(targetRegion)) {
-    //   logger.error(
-    //     {
-    //       targetRegion,
-    //       currentRegion,
-    //     },
-    //     "Invalid target region during WorkOS callback"
-    //   );
-    //   targetRegion = multiRegionsConfig.getCurrentRegion();
-    //   await setRegionForUser({ user: profile }, targetRegion);
-    // }
+      await setRegionForUser(user, targetRegion);
+    }
 
-    // // If wrong region, redirect to login with prompt=none on correct domain
-    // if (targetRegion !== currentRegion) {
-    //   logger.info(
-    //     {
-    //       targetRegion,
-    //       currentRegion,
-    //     },
-    //     "Redirecting to correct region"
-    //   );
-    //   const targetRegionInfo = multiRegionsConfig.getOtherRegionInfo();
-    //   const params = new URLSearchParams();
+    // Safety check for target region
+    if (targetRegion && !SUPPORTED_REGIONS.includes(targetRegion)) {
+      logger.error(
+        {
+          targetRegion,
+          currentRegion,
+        },
+        "Invalid target region during WorkOS callback"
+      );
+      targetRegion = multiRegionsConfig.getCurrentRegion();
+      await setRegionForUser(user, targetRegion);
+    }
 
-    //   let returnTo = "/";
-    //   try {
-    //     const stateObj = JSON.parse(state as string);
-    //     if (stateObj.returnTo) {
-    //       const url = new URL(stateObj.returnTo);
-    //       returnTo = url.pathname + url.search;
-    //     }
-    //   } catch {
-    //     // Fallback if URL parsing fails
-    //   }
+    // If wrong region, redirect to login with prompt=none on correct domain
+    if (targetRegion !== currentRegion) {
+      logger.info(
+        {
+          targetRegion,
+          currentRegion,
+        },
+        "Redirecting to correct region"
+      );
+      const targetRegionInfo = multiRegionsConfig.getOtherRegionInfo();
+      const params = new URLSearchParams();
 
-    //   params.set("returnTo", returnTo);
-    //   res.redirect(
-    //     `${targetRegionInfo.url}/api/auth/workos/login?${params.toString()}`
-    //   );
-    //   return;
-    // }
+      let returnTo = "/";
+      try {
+        const stateObj = JSON.parse(state as string);
+        if (stateObj.returnTo) {
+          const url = new URL(stateObj.returnTo);
+          returnTo = url.pathname + url.search;
+        }
+      } catch {
+        // Fallback if URL parsing fails
+      }
+
+      params.set("returnTo", returnTo);
+      res.redirect(
+        `${targetRegionInfo.url}/api/auth/workos/login?${params.toString()}`
+      );
+      return;
+    }
 
     // Set session cookie and redirect to returnTo URL
 
@@ -178,7 +191,7 @@ async function handleLogout(req: NextApiRequest, res: NextApiResponse) {
   if (session) {
     // Logout from WorkOS
     try {
-      await workos.userManagement.revokeSession({
+      await getWorkOS().userManagement.revokeSession({
         sessionId: session.sessionId,
       });
     } catch (error) {
