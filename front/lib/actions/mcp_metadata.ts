@@ -111,6 +111,7 @@ export const isConnectViaMCPServerId = (
 interface ConnectViaRemoteMCPServerUrl {
   type: "remoteMCPServerUrl";
   remoteMCPServerUrl: string;
+  headers?: Record<string, string>;
 }
 
 interface ConnectViaClientSideMCPServer {
@@ -232,7 +233,7 @@ export const connectToMCPServer = async (
             // @ts-expect-error: looks like undici typing is not up to date
             createSSRFInterceptor()
           ),
-          headers: {},
+          headers: { ...(params.headers ?? {}) },
         },
       };
       try {
@@ -337,12 +338,14 @@ export function extractMetadataFromTools(tools: Tool[]): MCPToolType[] {
 
 export async function fetchRemoteServerMetaDataByURL(
   auth: Authenticator,
-  url: string
+  url: string,
+  headers?: Record<string, string>
 ): Promise<Result<Omit<MCPServerType, "sId">, Error>> {
   const r = await connectToMCPServer(auth, {
     params: {
       type: "remoteMCPServerUrl",
       remoteMCPServerUrl: url,
+      headers,
     },
   });
 
