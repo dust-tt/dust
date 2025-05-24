@@ -20,7 +20,7 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/servers/tables_query/server";
 import { fetchAgentTableConfigurations } from "@app/lib/actions/mcp_internal_actions/servers/utils";
 import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
-import type { AgentLoopRunContextType } from "@app/lib/actions/types";
+import type { AgentLoopContextType } from "@app/lib/actions/types";
 import config from "@app/lib/api/config";
 import type { CSVRecord } from "@app/lib/api/csv";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
@@ -40,7 +40,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
 
 function createServer(
   auth: Authenticator,
-  agentLoopRunContext?: AgentLoopRunContextType
+  agentLoopContext?: AgentLoopContextType
 ): McpServer {
   const server = new McpServer(serverInfo);
 
@@ -131,9 +131,11 @@ function createServer(
     },
     async ({ tables, query, fileName }) => {
       // TODO(mcp): @fontanierh: we should not have a strict dependency on the agentLoopRunContext.
-      if (!agentLoopRunContext) {
-        throw new Error("Unreachable: missing agentLoopRunContext.");
+      if (!agentLoopContext?.runContext) {
+        throw new Error("Unreachable: missing agentLoopContext.");
       }
+
+      const agentLoopRunContext = agentLoopContext.runContext;
 
       // Fetch table configurations
       const agentTableConfigurationsRes = await fetchAgentTableConfigurations(

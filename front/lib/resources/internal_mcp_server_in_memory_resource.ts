@@ -67,7 +67,6 @@ export class InternalMCPServerInMemoryResource {
             type: "mcpServerId",
             mcpServerId: id,
           },
-          agentLoopContext: {},
         });
 
         if (s.isErr()) {

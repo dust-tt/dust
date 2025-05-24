@@ -30,7 +30,7 @@ export const connectToInternalMCPServer = async (
   mcpServerId: string,
   transport: InMemoryTransport,
   auth: Authenticator,
-  agentLoopContext: AgentLoopContextType
+  agentLoopContext?: AgentLoopContextType
 ): Promise<McpServer> => {
   const res = getInternalMCPServerNameAndWorkspaceId(mcpServerId);
   if (res.isErr()) {

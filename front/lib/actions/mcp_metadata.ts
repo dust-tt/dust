@@ -140,7 +140,7 @@ export const connectToMCPServer = async (
     agentLoopContext,
   }: {
     params: MCPConnectionParams;
-    agentLoopContext: AgentLoopContextType;
+    agentLoopContext?: AgentLoopContextType;
   }
 ): Promise<Result<Client, Error>> => {
   // This is where we route the MCP client to the right server.
@@ -319,7 +319,6 @@ export async function fetchRemoteServerMetaDataByURL(
       type: "remoteMCPServerUrl",
       remoteMCPServerUrl: url,
     },
-    agentLoopContext: {},
   });
 
   if (r.isErr()) {

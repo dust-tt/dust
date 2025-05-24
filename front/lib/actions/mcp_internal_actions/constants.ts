@@ -16,6 +16,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "hubspot",
   "image_generation",
   "include_data",
+  "missing_action_catcher",
   "notion",
   "primitive_types_debugger",
   "query_tables",
@@ -136,6 +137,11 @@ export const INTERNAL_MCP_SERVERS: Record<
     id: 12,
     availability: "auto",
     flag: "dev_mcp_actions",
+  },
+  missing_action_catcher: {
+    id: 13,
+    availability: "auto_hidden_builder",
+    flag: null,
   },
 
   // Dev
