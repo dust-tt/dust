@@ -16,6 +16,7 @@ import type {
 import {
   isMCPProgressNotificationType,
   isResourceWithName,
+  isSubAgentToolApproveExecutionOutput,
   isToolGeneratedFile,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
@@ -154,6 +155,7 @@ type MCPApproveExecutionEvent = {
   created: number;
   configurationId: string;
   messageId: string;
+  conversationId: string;
   action: MCPActionType;
   inputs: Record<string, unknown>;
   stake?: MCPToolStakeLevelType;
@@ -476,6 +478,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
         created: Date.now(),
         configurationId: agentConfiguration.sId,
         messageId: agentMessage.sId,
+        conversationId: conversation.sId,
         action: mcpAction,
         inputs: rawInputs,
         stake: actionConfiguration.permission,
@@ -635,14 +638,30 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       } else if (event.type === "notification") {
         const { notification } = event;
         if (isMCPProgressNotificationType(notification)) {
-          yield {
-            type: "tool_notification",
-            created: Date.now(),
-            configurationId: agentConfiguration.sId,
-            messageId: agentMessage.sId,
-            action: mcpAction,
-            notification: notification.params,
-          };
+          // Check if this is a tool_approve_execution wrapped in a notification
+          const dataOutput = notification.params.data.output;
+          if (isSubAgentToolApproveExecutionOutput(dataOutput)) {
+            yield {
+              type: "tool_approve_execution",
+              created: Date.now(),
+              messageId: agentMessage.sId,
+              conversationId: conversation.sId,
+              configurationId: dataOutput.configurationId,
+              action: dataOutput.action,
+              inputs: dataOutput.inputs,
+              stake: dataOutput.stake,
+              metadata: dataOutput.metadata,
+            };
+          } else {
+            yield {
+              type: "tool_notification",
+              created: Date.now(),
+              configurationId: agentConfiguration.sId,
+              messageId: agentMessage.sId,
+              action: mcpAction,
+              notification: notification.params,
+            };
+          }
         }
       }
     }
@@ -856,27 +875,26 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
 
     statsDClient.increment("mcp_actions_success.count", 1, tags);
 
+    const newAction = new MCPActionType({
+      ...actionBaseParams,
+      generatedFiles: removeNulls(cleanContent.map((c) => c.file)).map((f) => ({
+        fileId: f.sId,
+        contentType: f.contentType,
+        title: f.fileName,
+        snippet: f.snippet,
+      })),
+      executionState: status,
+      id: action.id,
+      isError: false,
+      output: outputItems.map(hideFileContentForModel),
+      type: "tool_action",
+    });
     yield {
       type: "tool_success",
       created: Date.now(),
       configurationId: agentConfiguration.sId,
       messageId: agentMessage.sId,
-      action: new MCPActionType({
-        ...actionBaseParams,
-        generatedFiles: removeNulls(cleanContent.map((c) => c.file)).map(
-          (f) => ({
-            fileId: f.sId,
-            contentType: f.contentType,
-            title: f.fileName,
-            snippet: f.snippet,
-          })
-        ),
-        executionState: status,
-        id: action.id,
-        isError: false,
-        output: outputItems.map(hideFileContentForModel),
-        type: "tool_action",
-      }),
+      action: newAction,
     };
   }
 }

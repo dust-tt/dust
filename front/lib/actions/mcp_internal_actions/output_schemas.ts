@@ -424,8 +424,27 @@ const NotificationImageContentSchema = z.object({
 
 type ImageProgressOutput = z.infer<typeof NotificationImageContentSchema>;
 
+const SubAgentToolApproveExecutionOutputSchema = z.object({
+  type: z.literal("sub_agent_tool_approve_execution"),
+  configurationId: z.string(),
+  conversationId: z.string(),
+  messageId: z.string(),
+  action: z.any(),
+  inputs: z.record(z.any()),
+  stake: z.optional(z.enum(["low", "high", "never_ask"])),
+  metadata: z.object({
+    toolName: z.string(),
+    mcpServerName: z.string(),
+    agentName: z.string(),
+  }),
+});
+
 export const ProgressNotificationOutputSchema = z
-  .union([NotificationImageContentSchema, TextContentSchema])
+  .union([
+    NotificationImageContentSchema,
+    TextContentSchema,
+    SubAgentToolApproveExecutionOutputSchema,
+  ])
   .optional();
 
 type ProgressNotificationOutput = z.infer<
@@ -467,4 +486,16 @@ export function isMCPProgressNotificationType(
   notification: Notification
 ): notification is MCPProgressNotificationType {
   return MCPProgressNotificationSchema.safeParse(notification).success;
+}
+
+export type SubAgentToolApproveExecutionOutputType = z.infer<
+  typeof SubAgentToolApproveExecutionOutputSchema
+>;
+
+export function isSubAgentToolApproveExecutionOutput(
+  output: ProgressNotificationOutput
+): output is SubAgentToolApproveExecutionOutputType {
+  return (
+    output !== undefined && output.type === "sub_agent_tool_approve_execution"
+  );
 }
