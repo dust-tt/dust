@@ -5,7 +5,9 @@ import { z } from "zod";
 import {
   ALL_OBJECTS,
   countObjectsByProperties,
+  createNote,
   createObject,
+  createTask,
   getLatestObjects,
   getObjectByEmail,
   getObjectById,
@@ -267,6 +269,72 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
         return makeMCPToolJSONSuccess({
           message: "Operation completed successfully",
           result: objects,
+        });
+      });
+    }
+  );
+
+  server.tool(
+    "create_task",
+    "Creates a new task associated with a deal in Hubspot.",
+    {
+      dealId: z
+        .string()
+        .describe("The ID of the deal to associate the task with."),
+      taskProperties: z.object({
+        hs_timestamp: z.string().describe("The timestamp of the task."),
+        hs_task_subject: z.string().describe("The subject of the task."),
+        hs_task_body: z
+          .string()
+          .optional()
+          .describe("The body/description of the task."),
+        hs_task_status: z
+          .string()
+          .optional()
+          .describe("The status of the task."),
+        hs_task_priority: z
+          .string()
+          .optional()
+          .describe("The priority of the task."),
+      }),
+    },
+    async ({ dealId, taskProperties }) => {
+      return withAuth(auth, mcpServerId, async (accessToken) => {
+        const result = await createTask({
+          accessToken,
+          dealId,
+          taskProperties,
+        });
+        return makeMCPToolJSONSuccess({
+          message: "Task created successfully",
+          result,
+        });
+      });
+    }
+  );
+
+  server.tool(
+    "create_note",
+    "Creates a new note associated with a deal in Hubspot.",
+    {
+      dealId: z
+        .string()
+        .describe("The ID of the deal to associate the note with."),
+      noteProperties: z.object({
+        hs_note_body: z.string().describe("The content of the note."),
+        hs_timestamp: z.string().describe("The timestamp of the note."),
+      }),
+    },
+    async ({ dealId, noteProperties }) => {
+      return withAuth(auth, mcpServerId, async (accessToken) => {
+        const result = await createNote({
+          accessToken,
+          dealId,
+          noteProperties,
+        });
+        return makeMCPToolJSONSuccess({
+          message: "Note created successfully",
+          result,
         });
       });
     }
