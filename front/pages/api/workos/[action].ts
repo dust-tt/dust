@@ -171,10 +171,10 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
 
     // Set session cookie and redirect to returnTo URL
 
-    res.setHeader(
-      "Set-Cookie",
-      `workos_session=${sealedCookie}; Path=/; HttpOnly; Secure;SameSite=Lax`
-    );
+    res.setHeader("Set-Cookie", [
+      `workos_session=${sealedCookie}; Path=/; HttpOnly; Secure;SameSite=Lax`,
+      `sessionType=workos; Path=/; Secure;SameSite=Lax`,
+    ]);
 
     res.redirect("/api/login");
   } catch (error) {
