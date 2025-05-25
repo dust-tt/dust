@@ -46,6 +46,7 @@ export async function validateAction({
       created: Date.now(),
       actionId: actionId,
       messageId: messageId,
+      conversationId: conversationId,
     }),
   });
 

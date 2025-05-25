@@ -16,6 +16,7 @@ import type {
 import {
   isMCPProgressNotificationType,
   isResourceWithName,
+  isSubAgentToolApproveExecutionOutput,
   isToolGeneratedFile,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
@@ -154,6 +155,7 @@ type MCPApproveExecutionEvent = {
   created: number;
   configurationId: string;
   messageId: string;
+  conversationId: string;
   action: MCPActionType;
   inputs: Record<string, unknown>;
   stake?: MCPToolStakeLevelType;
@@ -476,6 +478,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
         created: Date.now(),
         configurationId: agentConfiguration.sId,
         messageId: agentMessage.sId,
+        conversationId: conversation.sId,
         action: mcpAction,
         inputs: rawInputs,
         stake: actionConfiguration.permission,
@@ -635,14 +638,31 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       } else if (event.type === "notification") {
         const { notification } = event;
         if (isMCPProgressNotificationType(notification)) {
-          yield {
-            type: "tool_notification",
-            created: Date.now(),
-            configurationId: agentConfiguration.sId,
-            messageId: agentMessage.sId,
-            action: mcpAction,
-            notification: notification.params,
-          };
+          // Check if this is a tool_approve_execution from a sub agent.
+          const notificationOutput = notification.params.data.output;
+          if (isSubAgentToolApproveExecutionOutput(notificationOutput)) {
+            const { properties: subAgentProperties } = notificationOutput;
+            yield {
+              type: "tool_approve_execution",
+              created: Date.now(),
+              messageId: agentMessage.sId,
+              conversationId: conversation.sId,
+              configurationId: subAgentProperties.configurationId,
+              action: subAgentProperties.action,
+              inputs: subAgentProperties.inputs,
+              stake: subAgentProperties.stake,
+              metadata: subAgentProperties.metadata,
+            };
+          } else {
+            yield {
+              type: "tool_notification",
+              created: Date.now(),
+              configurationId: agentConfiguration.sId,
+              messageId: agentMessage.sId,
+              action: mcpAction,
+              notification: notification.params,
+            };
+          }
         }
       }
     }
