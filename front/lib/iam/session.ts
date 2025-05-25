@@ -72,11 +72,11 @@ export function statisfiesEnforceEntrepriseConnection(
     return true;
   }
 
+  // TODO(workos): Should we add the organizationId and/or workspaceId checks?
   if (owner.ssoEnforced) {
-    return (
-      session.authenticationMethod === "SSO" &&
-      session.organizationId === owner.workOSOrganizationId
-    );
+    return session.isSSO;
+    //&& session.organizationId === owner.workOSOrganizationId
+    //&& session.workspaceId === owner.sId
   }
 
   return true;
@@ -135,7 +135,9 @@ export function makeGetServerSidePropsRequirementsWrapper<
       context: GetServerSidePropsContext<ParsedUrlQuery, PreviewData>
     ) => {
       const session =
-        requireUserPrivilege !== "none" ? await getSession(context.req) : null;
+        requireUserPrivilege !== "none"
+          ? await getSession(context.req, context.res)
+          : null;
       const auth = await getAuthenticator(
         context,
         session,

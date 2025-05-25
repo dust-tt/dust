@@ -36,8 +36,8 @@ import type {
   SAMLConnectionTypeDetails,
 } from "@app/pages/api/w/[wId]/enterprise-connection";
 import type {
+  Auth0SupportedEnterpriseConnectionStrategies,
   PlanType,
-  SupportedEnterpriseConnectionStrategies,
   WorkspaceDomain,
   WorkspaceEnterpriseConnection,
   WorkspaceType,
@@ -250,7 +250,7 @@ function PlatformHelpLink({
 }: {
   hint: string;
   link: string;
-  strategy: SupportedEnterpriseConnectionStrategies;
+  strategy: Auth0SupportedEnterpriseConnectionStrategies;
 }) {
   const basePlatformUrl =
     strategy === "okta"
@@ -672,7 +672,7 @@ function StrategyModalContent({
 }: {
   onConnectionCreated: () => void;
   owner: WorkspaceType;
-  strategy: SupportedEnterpriseConnectionStrategies;
+  strategy: Auth0SupportedEnterpriseConnectionStrategies;
   strategyDetails: EnterpriseConnectionStrategyDetails;
 }) {
   const sendNotification = useSendNotification();
@@ -750,7 +750,7 @@ function CreateEnterpriseConnectionModal({
   strategyDetails: EnterpriseConnectionStrategyDetails;
 }) {
   const [selectedStrategy, setSelectedStrategy] =
-    useState<SupportedEnterpriseConnectionStrategies | null>(null);
+    useState<Auth0SupportedEnterpriseConnectionStrategies | null>(null);
 
   return (
     <Sheet
@@ -778,7 +778,7 @@ function CreateEnterpriseConnectionModal({
                   value={selectedStrategy ?? ""}
                   onValueChange={(v) => {
                     setSelectedStrategy(
-                      v as SupportedEnterpriseConnectionStrategies
+                      v as Auth0SupportedEnterpriseConnectionStrategies
                     );
                   }}
                   className="flex-col gap-2"

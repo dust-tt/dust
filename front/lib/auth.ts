@@ -1,12 +1,15 @@
-import { unsealData } from "iron-session";
 import memoizer from "lru-memoizer";
-import type { GetServerSidePropsContext, NextApiRequest } from "next";
+import type {
+  GetServerSidePropsContext,
+  NextApiRequest,
+  NextApiResponse,
+} from "next";
 
 import type { Auth0JwtPayload } from "@app/lib/api/auth0";
-import { getUserFromAuth0Token } from "@app/lib/api/auth0";
+import { getAuth0Session, getUserFromAuth0Token } from "@app/lib/api/auth0";
 import config from "@app/lib/api/config";
 import { SSOEnforcedError } from "@app/lib/iam/errors";
-import type { SessionCookie, SessionWithUser } from "@app/lib/iam/provider";
+import type { SessionWithUser } from "@app/lib/iam/provider";
 import { FeatureFlag } from "@app/lib/models/feature_flag";
 import { Workspace } from "@app/lib/models/workspace";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
@@ -47,7 +50,7 @@ import {
   WHITELISTABLE_FEATURES,
 } from "@app/types";
 
-import { getWorkOS } from "./api/workos";
+import { getWorkOSSession } from "./api/workos";
 
 const { ACTIVATE_ALL_FEATURES_DEV = false } = process.env;
 
@@ -154,7 +157,10 @@ export class Authenticator {
       (async () => {
         if (!session) {
           return null;
-        } else {
+        } else if (session.type === "auth0") {
+          return UserResource.fetchByAuth0Sub(session.user.sub);
+        } else if (session.type === "workos") {
+          //TODO(workos): Fetch user by email.
           return UserResource.fetchByEmail(session.user.email);
         }
       })(),
@@ -216,7 +222,9 @@ export class Authenticator {
       (async () => {
         if (!session) {
           return null;
-        } else {
+        } else if (session.type === "auth0") {
+          return UserResource.fetchByAuth0Sub(session.user.sub);
+        } else if (session.type === "workos") {
           //TODO(workos): Fetch user by email.
           return UserResource.fetchByEmail(session.user.email);
         }
@@ -905,35 +913,13 @@ export class Authenticator {
  * @returns Promise<any>
  */
 export async function getSession(
-  req: NextApiRequest | GetServerSidePropsContext["req"]
+  req: NextApiRequest | GetServerSidePropsContext["req"],
+  res: NextApiResponse | GetServerSidePropsContext["res"]
 ): Promise<SessionWithUser | null> {
-  const sessionCookie = req.cookies["session"];
-  if (!sessionCookie) {
-    return null;
-  }
-
-  const { sessionData, organizationId, authenticationMethod } =
-    await unsealData<SessionCookie>(sessionCookie, {
-      password: config.getWorkOSCookiePassword(),
-    });
-
-  const session = getWorkOS().userManagement.loadSealedSession({
-    sessionData,
-    cookiePassword: config.getWorkOSCookiePassword(),
-  });
-
-  const r = await session.authenticate();
-
-  if (!r.authenticated) {
-    return null;
-  }
-
-  return {
-    sessionId: r.sessionId,
-    user: r.user,
-    organizationId,
-    authenticationMethod,
-  };
+  const session =
+    (await getWorkOSSession(req)) || (await getAuth0Session(req, res)) || null;
+  console.log("======== session", session);
+  return session;
 }
 
 /**

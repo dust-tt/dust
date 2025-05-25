@@ -1,20 +1,39 @@
 import type { Session } from "@auth0/nextjs-auth0";
+import { getSession } from "@auth0/nextjs-auth0";
 import { ManagementClient } from "auth0";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import jwt from "jsonwebtoken";
 import jwksClient from "jwks-rsa";
-import type { NextApiRequest } from "next";
+import type {
+  GetServerSidePropsContext,
+  NextApiRequest,
+  NextApiResponse,
+} from "next";
 
 import config from "@app/lib/api/config";
 import type { RegionType } from "@app/lib/api/regions/config";
 import { config as regionsConfig } from "@app/lib/api/regions/config";
+import type { ExternalUser } from "@app/lib/iam/provider";
+import type { SessionWithUser } from "@app/lib/iam/provider";
 import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
-import type { Result } from "@app/types";
-import { Err, normalizeError, Ok } from "@app/types";
+import type {
+  Auth0SupportedEnterpriseConnectionStrategies,
+  Result,
+} from "@app/types";
+import {
+  auth0SupportedEnterpriseConnectionStrategies,
+  Err,
+  normalizeError,
+  Ok,
+} from "@app/types";
 
 let auth0ManagemementClient: ManagementClient | null = null;
+
+// This code runs in SSR, where environment variables are replaced at build time.
+const connectionStrategyClaim = `${process.env.AUTH0_CLAIM_NAMESPACE}connection.strategy`;
+const workspaceIdClaim = `${process.env.AUTH0_CLAIM_NAMESPACE}workspaceId`;
 
 export const SUPPORTED_METHODS = [
   "GET",
@@ -54,6 +73,40 @@ export const Auth0JwtPayloadSchema = t.intersection([
 
 export type Auth0JwtPayload = t.TypeOf<typeof Auth0JwtPayloadSchema> &
   jwt.JwtPayload;
+
+export function isExternalUser(user: Session["user"]): user is ExternalUser {
+  return (
+    typeof user === "object" &&
+    "email" in user &&
+    "email_verified" in user &&
+    "name" in user &&
+    "nickname" in user &&
+    "sub" in user
+  );
+}
+
+export function isAuth0Session(session: unknown): session is Session {
+  return typeof session === "object" && session !== null && "user" in session;
+}
+
+export async function getAuth0Session(
+  req: NextApiRequest | GetServerSidePropsContext["req"],
+  res: NextApiResponse | GetServerSidePropsContext["res"]
+): Promise<SessionWithUser | undefined> {
+  // Auth0 session
+  const session = await getSession(req, res);
+  if (session && isExternalUser(session.user)) {
+    return {
+      type: "auth0" as const,
+      sessionId: session.sessionId,
+      user: session.user,
+      organizationId: undefined,
+      workspaceId: getConnectionWorkspaceId(session),
+      isSSO: isEnterpriseConnection(session),
+      authenticationMethod: getConnectionStrategy(session),
+    };
+  }
+}
 
 export function getRequiredScope(
   req: NextApiRequest,
@@ -268,4 +321,31 @@ export async function getAuth0UsersFromEmail(emails: string[]) {
   }
 
   return auth0Users;
+}
+
+export function getConnectionWorkspaceId(session: Session): string | undefined {
+  const userWorkspaceIdClaim = session?.user[workspaceIdClaim];
+  if (!userWorkspaceIdClaim) {
+    return undefined;
+  }
+  return userWorkspaceIdClaim;
+}
+
+export function getConnectionStrategy(session: Session): string | undefined {
+  const userConnectionStrategyClaim = session?.user[connectionStrategyClaim];
+  if (!userConnectionStrategyClaim) {
+    return undefined;
+  }
+  return userConnectionStrategyClaim;
+}
+
+export function isEnterpriseConnection(session: Session) {
+  const userConnectionStrategyClaim = getConnectionStrategy(session);
+  if (!userConnectionStrategyClaim) {
+    return false;
+  }
+
+  return auth0SupportedEnterpriseConnectionStrategies.includes(
+    userConnectionStrategyClaim as Auth0SupportedEnterpriseConnectionStrategies
+  );
 }

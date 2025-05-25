@@ -17,8 +17,8 @@ export async function createWorkspace(session: SessionWithUser) {
   return createWorkspaceInternal({
     email: externalUser.email,
     //TODO(workos): name of the workspace based on the first name or email ?
-    name: externalUser.firstName || externalUser.email,
-    isVerified: externalUser.emailVerified,
+    name: externalUser.nickname,
+    isVerified: externalUser.email_verified,
     isBusiness: false,
     planCode: null,
     endDate: null,
@@ -110,9 +110,9 @@ export async function createWorkspaceInternal({
 
 export async function findWorkspaceWithVerifiedDomain(user: {
   email: string;
-  emailVerified: boolean;
+  email_verified: boolean;
 }): Promise<WorkspaceHasDomainModel | null> {
-  if (!user.emailVerified) {
+  if (!user.email_verified) {
     return null;
   }
 
