@@ -167,7 +167,7 @@ export async function getActiveChildPageRefs(
   });
 
   const activeChildPageIds = childPages
-    .filter((p) => p.status === "current" && p.type === "page")
+    .filter((p) => p.status === "current")
     .map((p) => p.id);
 
   if (activeChildPageIds.length === 0) {

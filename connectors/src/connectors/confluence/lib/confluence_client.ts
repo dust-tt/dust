@@ -9,8 +9,6 @@ import logger from "@connectors/logger/logger";
 import { statsDClient } from "@connectors/logger/withlogging";
 import { ConfluenceClientError, EnvironmentConfig } from "@connectors/types";
 
-const DEFAULT_PAGE_LIMIT = 100;
-
 const CatchAllCodec = t.record(t.string, t.unknown); // Catch-all for unknown properties.
 
 const ConfluenceAccessibleResourcesCodec = t.array(
@@ -65,7 +63,7 @@ const ConfluencePageCodec = t.intersection([
 const SearchConfluencePageCodec = t.intersection([
   t.type({
     id: t.string,
-    type: t.string,
+    type: t.literal("page"),
     status: t.string,
     title: t.string,
 
@@ -586,12 +584,12 @@ export class ConfluenceClient {
   }
 
   async getChildPages({
-    limit = DEFAULT_PAGE_LIMIT,
+    limit,
     pageCursor,
     parentPageId,
     spaceKey,
   }: {
-    limit?: number;
+    limit: number;
     pageCursor: string | null;
     parentPageId: string;
     spaceKey: string;
@@ -608,7 +606,7 @@ export class ConfluenceClient {
         "childTypes.page", // To know if it has children.
         "ancestors", // To get parent info.
       ].join(","),
-      limit: "2", // limit.toString(),
+      limit: limit.toString(),
     });
 
     if (pageCursor) {
