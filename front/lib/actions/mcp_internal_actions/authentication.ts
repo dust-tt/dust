@@ -3,6 +3,7 @@ import type { Authenticator } from "@app/lib/auth";
 import type { MCPServerConnectionConnectionType } from "@app/lib/resources/mcp_server_connection_resource";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import logger from "@app/logger/logger";
+import type { OAuthConnectionType } from "@app/types";
 import { getOAuthConnectionAccessToken } from "@app/types";
 
 // Dedicated function to get an access token for a given provider for internal MCP servers.
@@ -16,7 +17,31 @@ export async function getAccessTokenForInternalMCPServer(
     mcpServerId: string;
     connectionType: MCPServerConnectionConnectionType;
   }
-) {
+): Promise<string | null> {
+  const connection = await getConnectionForInternalMCPServer(auth, {
+    mcpServerId,
+    connectionType,
+  });
+  return connection?.access_token ?? null;
+}
+
+// Dedicated function to get the connection details for a given provider for internal MCP servers.
+// Not using the one from mcp_metadata.ts to avoid circular dependency.
+export async function getConnectionForInternalMCPServer(
+  auth: Authenticator,
+  {
+    mcpServerId,
+    connectionType,
+  }: {
+    mcpServerId: string;
+    connectionType: MCPServerConnectionConnectionType;
+  }
+): Promise<{
+  connection: OAuthConnectionType;
+  access_token: string;
+  access_token_expiry: number | null;
+  scrubbed_raw_json: unknown;
+} | null> {
   const connection = await MCPServerConnectionResource.findByMCPServer({
     auth,
     mcpServerId,
@@ -28,6 +53,7 @@ export async function getAccessTokenForInternalMCPServer(
       logger,
       connectionId: connection.value.connectionId,
     });
-    return token.isOk() ? token.value.access_token : null;
+    return token.isOk() ? token.value : null;
   }
+  return null;
 }
