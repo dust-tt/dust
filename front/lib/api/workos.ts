@@ -13,17 +13,16 @@ import { unsealData } from "iron-session";
 import type { GetServerSidePropsContext, NextApiRequest } from "next";
 
 import config from "@app/lib/api/config";
+import type { RegionType } from "@app/lib/api/regions/config";
 import type { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkOSPortalIntent } from "@app/lib/types/workos";
 import logger from "@app/logger/logger";
 import type { Result, WorkspaceType } from "@app/types";
 import { Err, Ok, sanitizeString } from "@app/types";
-
-import { generateRandomModelSId } from "../resources/string_ids";
-import type { RegionType } from "./regions/config";
 
 let workos: WorkOS | null = null;
 
