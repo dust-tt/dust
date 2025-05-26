@@ -1501,6 +1501,7 @@ export async function* retryAgentMessage(
       error: {
         code: "message_access_denied",
         message: "The message to retry is not accessible.",
+        metadata: null,
       },
     };
     return;
@@ -1629,6 +1630,7 @@ export async function* retryAgentMessage(
       error: {
         code: "message_not_found",
         message: "The message to retry was not found",
+        metadata: null,
       },
     };
     return;
@@ -1838,6 +1840,7 @@ async function* streamRunAgentEvents(
       error: {
         code: "agent_not_allowed",
         message: "Agent cannot be used by this user",
+        metadata: null,
       },
     };
     return;
@@ -1851,6 +1854,7 @@ async function* streamRunAgentEvents(
           status: "failed",
           errorCode: event.error.code,
           errorMessage: event.error.message,
+          errorMetadata: event.error.metadata,
         });
 
         logger.error(

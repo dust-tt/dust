@@ -364,6 +364,7 @@ async function* runMultiActionsAgent(
         message:
           `The model you selected (${agentConfiguration.model.modelId}) ` +
           `does not support multi-actions.`,
+        metadata: null,
       },
     };
     return;
@@ -473,6 +474,7 @@ async function* runMultiActionsAgent(
       error: {
         code: "conversation_render_error",
         message: `Error rendering conversation for model: ${modelConversationRes.error.message}`,
+        metadata: null,
       },
     } satisfies AgentErrorEvent;
 
@@ -506,6 +508,7 @@ async function* runMultiActionsAgent(
         error: {
           code: "build_spec_error",
           message: `Failed to build the specification for action ${a.sId},`,
+          metadata: null,
         },
       } satisfies AgentErrorEvent;
 
@@ -536,6 +539,7 @@ async function* runMultiActionsAgent(
           message:
             `Duplicate action name in agent configuration: ${spec.name}. ` +
             "Your agents actions must have unique names.",
+          metadata: null,
         },
       } satisfies AgentErrorEvent;
 
@@ -604,6 +608,7 @@ async function* runMultiActionsAgent(
       error: {
         code: "multi_actions_error",
         message: `Error running multi-actions agent action: [${res.error.type}] ${res.error.message}`,
+        metadata: null,
       },
     } satisfies AgentErrorEvent;
 
@@ -672,6 +677,7 @@ async function* runMultiActionsAgent(
         error: {
           code: "multi_actions_error",
           message: `Error running agent: ${event.content.message}`,
+          metadata: null,
         },
       } satisfies AgentErrorEvent;
       return;
@@ -714,6 +720,7 @@ async function* runMultiActionsAgent(
           error: {
             code: "multi_actions_error",
             message: `Error running agent: ${e.error}`,
+            metadata: null,
           },
         } satisfies AgentErrorEvent;
         return;
@@ -787,6 +794,7 @@ async function* runMultiActionsAgent(
         code: "tool_use_limit_reached",
         message:
           "The agent attempted to use too many tools. This model error can be safely retried.",
+        metadata: null,
       },
     } satisfies AgentErrorEvent;
     return;
@@ -828,7 +836,10 @@ async function* runMultiActionsAgent(
           messageId: agentMessage.sId,
           error: {
             code: "action_not_found",
-            message: `The agent attempted to run an invalid action (${a.name}). This model error can be safely retried (no name).`,
+            message:
+              `The agent attempted to run an invalid action (no name). ` +
+              `This model error can be safely retried.`,
+            metadata: null,
           },
         } satisfies AgentErrorEvent;
 
@@ -861,7 +872,10 @@ async function* runMultiActionsAgent(
             messageId: agentMessage.sId,
             error: {
               code: "action_not_found",
-              message: `The agent attempted to run an invalid action (${a.name}). This model error can be safely retried (no server).`,
+              message:
+                `The agent attempted to run an invalid action (${a.name}). ` +
+                `This model error can be safely retried (no server).`,
+              metadata: null,
             },
           } satisfies AgentErrorEvent;
           return;
@@ -1007,6 +1021,7 @@ async function* runAction(
         error: {
           code: "retrieval_action_disabled",
           message: "Retrieval action is temporarily disabled",
+          metadata: null,
         },
       };
       return;
@@ -1045,6 +1060,7 @@ async function* runAction(
             error: {
               code: event.error.code,
               message: event.error.message,
+              metadata: null,
             },
           };
           return;
@@ -1084,6 +1100,7 @@ async function* runAction(
         error: {
           code: "parameters_generation_error",
           message: "No specification found for Dust app run action.",
+          metadata: null,
         },
       };
       return;
@@ -1120,6 +1137,7 @@ async function* runAction(
             error: {
               code: event.error.code,
               message: event.error.message,
+              metadata: null,
             },
           };
           return;
@@ -1171,6 +1189,7 @@ async function* runAction(
             error: {
               code: event.error.code,
               message: event.error.message,
+              metadata: null,
             },
           };
           return;
@@ -1218,6 +1237,7 @@ async function* runAction(
             error: {
               code: event.error.code,
               message: event.error.message,
+              metadata: null,
             },
           };
           return;
@@ -1273,6 +1293,7 @@ async function* runAction(
             error: {
               code: event.error.code,
               message: event.error.message,
+              metadata: null,
             },
           };
           return;
@@ -1320,6 +1341,7 @@ async function* runAction(
             error: {
               code: event.error.code,
               message: event.error.message,
+              metadata: null,
             },
           };
           return;
@@ -1367,6 +1389,7 @@ async function* runAction(
             error: {
               code: event.error.code,
               message: event.error.message,
+              metadata: null,
             },
           };
           return;
@@ -1408,7 +1431,11 @@ async function* runAction(
             created: event.created,
             configurationId: configuration.sId,
             messageId: agentMessage.sId,
-            error: event.error,
+            error: {
+              code: event.error.code,
+              message: event.error.message,
+              metadata: null,
+            },
           };
           return;
         case "reasoning_started":
@@ -1453,6 +1480,7 @@ async function* runAction(
             error: {
               code: event.error.code,
               message: event.error.message,
+              metadata: null,
             },
           };
           return;
@@ -1505,6 +1533,7 @@ async function* runAction(
             error: {
               code: event.error.code,
               message: event.error.message,
+              metadata: null,
             },
           };
           return;
