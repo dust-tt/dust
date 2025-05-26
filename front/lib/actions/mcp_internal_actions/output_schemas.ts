@@ -381,6 +381,21 @@ export const isBrowseResultResourceType = (
   );
 };
 
+// Personal authentication required error.
+
+export const PersonalAuthenticationRequiredErrorResourceSchema = z.object({
+  mimeType: z.literal(
+    INTERNAL_MIME_TYPES.TOOL_ERROR.PERSONAL_AUTHENTICATION_REQUIRED
+  ),
+  text: z.string(),
+  uri: z.literal(""),
+  mcpServerId: z.string(),
+});
+
+export type PersonalAuthenticationRequiredErrorResourceType = z.infer<
+  typeof PersonalAuthenticationRequiredErrorResourceSchema
+>;
+
 // Generic output types and schemas.
 
 const EmbeddedResourceSchema = z.object({
@@ -395,6 +410,7 @@ const EmbeddedResourceSchema = z.object({
     TextResourceContentsSchema,
     ThinkingOutputSchema,
     ToolGeneratedFileSchema,
+    PersonalAuthenticationRequiredErrorResourceSchema,
   ]),
 });
 

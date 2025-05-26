@@ -1533,7 +1533,7 @@ async function* runAction(
             error: {
               code: event.error.code,
               message: event.error.message,
-              metadata: null,
+              metadata: event.error.metadata,
             },
           };
           return;

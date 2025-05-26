@@ -21,6 +21,7 @@ import type {
   ServerSideMCPToolConfigurationType,
 } from "@app/lib/actions/mcp";
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
+import { MCPServerPersonalAuthenticationRequiredError } from "@app/lib/actions/mcp_internal_actions/authentication";
 import {
   getInternalMCPServerAvailability,
   getInternalMCPServerNameAndWorkspaceId,
@@ -30,6 +31,7 @@ import type {
   MCPProgressNotificationType,
   MCPToolResult,
   MCPToolResultContentType,
+  PersonalAuthenticationRequiredErrorResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { isMCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { findMatchingSubSchemas } from "@app/lib/actions/mcp_internal_actions/utils";
@@ -167,7 +169,10 @@ type MCPCallToolEvent =
     }
   | {
       type: "result";
-      result: Result<MCPToolResult["content"], Error | McpError>;
+      result: Result<
+        MCPToolResult["content"],
+        Error | McpError | MCPServerPersonalAuthenticationRequiredError
+      >;
     };
 
 /**
@@ -297,6 +302,11 @@ export async function* tryCallMCPTool(
 
     // Tool is done now, wait for the actual result.
     const toolCallResult = await toolPromise;
+
+    // Type inference is not working here because of them using passthrough in the zod schema.
+    const content: MCPToolResultContentType[] = (toolCallResult.content ??
+      []) as MCPToolResultContentType[];
+
     // Do not raise an error here as it will break the conversation.
     // Let the model decide what to do.
     if (toolCallResult.isError) {
@@ -309,10 +319,31 @@ export async function* tryCallMCPTool(
         },
         `Error calling MCP tool in tryCallMCPTool().`
       );
+
+      // Special handling for personal authentication required errors which return a resource with a
+      // specific mime type.
+      const personalAuthenticationRequiredError = content.find(
+        (c) =>
+          c.type === "resource" &&
+          c.resource.mimeType ===
+            INTERNAL_MIME_TYPES.TOOL_ERROR.PERSONAL_AUTHENTICATION_REQUIRED
+      ) as
+        | { resource: PersonalAuthenticationRequiredErrorResourceType }
+        | undefined;
+
+      if (personalAuthenticationRequiredError) {
+        // If we discovered such an error we return a typed error to the caller.
+        yield {
+          type: "result",
+          result: new Err(
+            new MCPServerPersonalAuthenticationRequiredError(
+              personalAuthenticationRequiredError.resource.mcpServerId
+            )
+          ),
+        };
+        return;
+      }
     }
-    // Type inference is not working here because of them using passthrough in the zod schema.
-    const content: MCPToolResultContentType[] = (toolCallResult.content ??
-      []) as MCPToolResultContentType[];
 
     if (content.length >= MAX_OUTPUT_ITEMS) {
       yield {
