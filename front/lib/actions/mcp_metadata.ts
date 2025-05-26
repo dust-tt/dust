@@ -31,11 +31,8 @@ import type {
   MCPToolType,
 } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
-import type {
-  MCPServerConnectionConnectionType} from "@app/lib/resources/mcp_server_connection_resource";
-import {
-  MCPServerConnectionResource,
-} from "@app/lib/resources/mcp_server_connection_resource";
+import type { MCPServerConnectionConnectionType } from "@app/lib/resources/mcp_server_connection_resource";
+import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import logger from "@app/logger/logger";
 import type { OAuthProvider, OAuthUseCase, Result } from "@app/types";
