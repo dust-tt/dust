@@ -91,7 +91,7 @@ function ActionDetails({
       onClick={hasActions ? onClick : undefined}
       className={hasActions ? "cursor-pointer" : ""}
     >
-      <Chip size="sm" isBusy label={label ?? "Thinking"} />
+      <Chip size="sm" isBusy label={label} />
     </div>
   ) : (
     <Button
