@@ -4,6 +4,7 @@ import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_ac
 import { default as agentRouterServer } from "@app/lib/actions/mcp_internal_actions/servers/agent_router";
 import { default as generateFileServer } from "@app/lib/actions/mcp_internal_actions/servers/file_generation";
 import { default as githubServer } from "@app/lib/actions/mcp_internal_actions/servers/github";
+import { default as gmailServer } from "@app/lib/actions/mcp_internal_actions/servers/gmail";
 import { default as hubspotServer } from "@app/lib/actions/mcp_internal_actions/servers/hubspot/server";
 import { default as imageGenerationDallEServer } from "@app/lib/actions/mcp_internal_actions/servers/image_generation";
 import { default as includeDataServer } from "@app/lib/actions/mcp_internal_actions/servers/include";
@@ -20,7 +21,6 @@ import { default as tablesQueryServer } from "@app/lib/actions/mcp_internal_acti
 import { default as tablesQueryServerV2 } from "@app/lib/actions/mcp_internal_actions/servers/tables_query/server_v2";
 import { default as thinkServer } from "@app/lib/actions/mcp_internal_actions/servers/think";
 import { default as webtoolsServer } from "@app/lib/actions/mcp_internal_actions/servers/webtools";
-import { default as gmailServer } from "@app/lib/actions/mcp_internal_actions/servers/gmail";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
 import { assertNever } from "@app/types";
