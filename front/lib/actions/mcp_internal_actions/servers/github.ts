@@ -1,8 +1,12 @@
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { Octokit } from "@octokit/core";
 import { z } from "zod";
 
-import { getAccessTokenForInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/authentication";
+import {
+  getAccessTokenForInternalMCPServer,
+  MCPServerPersonalAuthenticationRequiredError,
+} from "@app/lib/actions/mcp_internal_actions/authentication";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { normalizeError } from "@app/types";
@@ -479,6 +483,24 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
         mcpServerId,
         connectionType: "workspace",
       });
+
+      return {
+        isError: true,
+        content: [
+          {
+            type: "resource",
+            resource: {
+              mimeType:
+                INTERNAL_MIME_TYPES.TOOL_ERROR.PERSONAL_AUTHENTICATION_REQUIRED,
+              uri: "",
+              text: new MCPServerPersonalAuthenticationRequiredError(
+                mcpServerId
+              ).message,
+              mcpServerId,
+            },
+          },
+        ],
+      };
 
       const octokit = new Octokit({ auth: accessToken });
 

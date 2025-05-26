@@ -57,3 +57,26 @@ export async function getConnectionForInternalMCPServer(
   }
   return null;
 }
+
+const MCPServerRequiresPersonalAuthenticationErrorName =
+  "MCPServerRequiresPersonalAuthenticationError";
+
+export class MCPServerPersonalAuthenticationRequiredError extends Error {
+  mcpServerId: string;
+
+  constructor(mcpServerId: string) {
+    super(`MCP server ${mcpServerId} requires personal authentication`);
+    this.name = MCPServerRequiresPersonalAuthenticationErrorName;
+    this.mcpServerId = mcpServerId;
+  }
+
+  static is(
+    error: unknown
+  ): error is MCPServerPersonalAuthenticationRequiredError {
+    return (
+      error instanceof Error &&
+      error.name === MCPServerRequiresPersonalAuthenticationErrorName &&
+      "mcpServerId" in error
+    );
+  }
+}
