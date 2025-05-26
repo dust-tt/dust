@@ -1,16 +1,16 @@
 import {
   Button,
+  CheckIcon,
   ChevronDownIcon,
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTagItem,
+  DropdownMenuTagList,
   DropdownMenuTrigger,
   Spinner,
 } from "@dust-tt/sparkle";
-import { DropdownMenuTagList } from "@dust-tt/sparkle";
-import { DropdownMenuTagItem } from "@dust-tt/sparkle";
-import { DropdownMenuSeparator } from "@dust-tt/sparkle";
-import { DropdownMenuLabel } from "@dust-tt/sparkle";
-import { CheckIcon } from "@dust-tt/sparkle";
 import { useState } from "react";
 
 import { useTheme } from "@app/components/sparkle/ThemeContext";

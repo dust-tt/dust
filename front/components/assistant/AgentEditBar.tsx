@@ -6,6 +6,8 @@ import {
   DropdownMenuItem,
   DropdownMenuSearchbar,
   DropdownMenuSeparator,
+  DropdownMenuTagItem,
+  DropdownMenuTagList,
   DropdownMenuTrigger,
   Spinner,
   TagIcon,
@@ -98,6 +100,7 @@ export const AgentEditBar = ({
             />
           </DropdownMenuTrigger>
           <DropdownMenuContent
+            className="w-60"
             dropdownHeaders={
               <>
                 <DropdownMenuSearchbar
@@ -110,44 +113,46 @@ export const AgentEditBar = ({
               </>
             }
           >
-            {filteredTags.map((t) => {
-              return (
-                <DropdownMenuItem
-                  key={t.sId}
-                  onClick={async () => {
-                    setIsLoading(true);
-                    const agentIds = selectedAgents.map((a) => a.sId);
+            <DropdownMenuTagList>
+              {filteredTags.map((t) => {
+                return (
+                  <DropdownMenuTagItem
+                    key={t.sId}
+                    label={t.name}
+                    color="golden"
+                    onClick={async () => {
+                      setIsLoading(true);
+                      const agentIds = selectedAgents.map((a) => a.sId);
 
-                    if (
-                      selectedAgents.every((a) =>
-                        a.tags.find((agentTag) => agentTag.sId === t.sId)
-                      )
-                    ) {
-                      // Remove tag from all selected agents
-                      await batchUpdateAgents(agentIds, {
-                        removeTagIds: [t.sId],
-                      });
-                    } else {
-                      // Add tag to agents that don't have it
-                      const toAdd = selectedAgents.filter(
-                        (a) =>
-                          !a.tags.find((agentTag) => agentTag.sId === t.sId)
-                      );
-                      await batchUpdateAgents(
-                        toAdd.map((a) => a.sId),
-                        {
-                          addTagIds: [t.sId],
-                        }
-                      );
-                    }
-                    void mutateAgentConfigurations();
-                    setIsLoading(false);
-                  }}
-                >
-                  <Chip size="xs" label={t.name} color="golden" />
-                </DropdownMenuItem>
-              );
-            })}
+                      if (
+                        selectedAgents.every((a) =>
+                          a.tags.find((agentTag) => agentTag.sId === t.sId)
+                        )
+                      ) {
+                        // Remove tag from all selected agents
+                        await batchUpdateAgents(agentIds, {
+                          removeTagIds: [t.sId],
+                        });
+                      } else {
+                        // Add tag to agents that don't have it
+                        const toAdd = selectedAgents.filter(
+                          (a) =>
+                            !a.tags.find((agentTag) => agentTag.sId === t.sId)
+                        );
+                        await batchUpdateAgents(
+                          toAdd.map((a) => a.sId),
+                          {
+                            addTagIds: [t.sId],
+                          }
+                        );
+                      }
+                      void mutateAgentConfigurations();
+                      setIsLoading(false);
+                    }}
+                  />
+                );
+              })}
+            </DropdownMenuTagList>
           </DropdownMenuContent>
         </DropdownMenu>
 
