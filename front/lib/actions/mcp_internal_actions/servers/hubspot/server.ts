@@ -5,16 +5,28 @@ import { z } from "zod";
 import {
   ALL_OBJECTS,
   countObjectsByProperties,
-  createObject,
+  createCommunication,
+  createCompany,
+  createContact,
+  createDeal,
+  createLead,
+  createMeeting,
+  createNote,
+  createTask,
+  createTicket,
+  getAssociatedMeetings,
+  getCompany,
+  getContact,
+  getDeal,
+  getFilePublicUrl,
   getLatestObjects,
+  getMeeting,
   getObjectByEmail,
-  getObjectById,
   getObjectProperties,
-  getObjectsByProperties,
   MAX_COUNT_LIMIT,
   MAX_LIMIT,
+  searchCrmObjects,
   SIMPLE_OBJECTS,
-  updateObject,
 } from "@app/lib/actions/mcp_internal_actions/servers/hubspot/hubspot_api_helper";
 import {
   ERROR_MESSAGES,
@@ -31,7 +43,8 @@ import type { Authenticator } from "@app/lib/auth";
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "hubspot",
   version: "1.0.0",
-  description: "Hubspot tools.",
+  description:
+    "Supports creating, retrieving, and searching CRM objects (contacts, companies, deals, etc.), managing engagements, and accessing object properties, etc.",
   authorization: {
     provider: "hubspot" as const,
     use_case: "platform_actions" as const,
@@ -65,69 +78,32 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
   );
 
   server.tool(
-    "create_object",
-    `Creates a new object in Hubspot. Supports ${SIMPLE_OBJECTS.join(", ")}.`,
+    "create_contact",
+    "Creates a new contact in Hubspot, with optional associations.",
     {
-      objectType: z.enum(SIMPLE_OBJECTS),
       properties: z
         .record(z.string())
-        .describe("An object containing the valid properties for the object."),
+        .describe("An object containing the properties for the contact."),
+      associations: z
+        .array(
+          z.object({
+            toObjectId: z.string(),
+            toObjectType: z.string().describe("e.g., companies, deals"),
+          })
+        )
+        .optional()
+        .describe("Optional array of associations to create."),
     },
-    async ({ objectType, properties }) => {
+    async ({ properties, associations }) => {
       return withAuth(auth, mcpServerId, async (accessToken) => {
-        const result = await createObject({
+        const result = await createContact({
           accessToken,
-          objectType,
-          objectProperties: { properties, associations: [] },
+          properties,
+          associations,
         });
         return makeMCPToolJSONSuccess({
-          message: "Operation completed successfully",
+          message: "Contact created successfully.",
           result,
-        });
-      });
-    }
-  );
-
-  server.tool(
-    "update_object",
-    `Updates an existing object in Hubspot. Supports ${SIMPLE_OBJECTS.join(", ")}.`,
-    {
-      objectType: z.enum(SIMPLE_OBJECTS),
-      objectId: z.string().describe("The ID of the object to update."),
-      properties: z.record(z.string()).describe("The properties to update."),
-    },
-    async ({ objectType, objectId, properties }) => {
-      return withAuth(auth, mcpServerId, async (accessToken) => {
-        const result = await updateObject({
-          accessToken,
-          objectType,
-          objectId,
-          objectProperties: { properties, associations: [] },
-        });
-        return makeMCPToolJSONSuccess({
-          message: "Operation completed successfully",
-          result,
-        });
-      });
-    }
-  );
-
-  server.tool(
-    "get_object_by_id",
-    `Retrieves a Hubspot object using its unique ID. Supports ${ALL_OBJECTS.join(", ")}.`,
-    {
-      objectType: z.enum(ALL_OBJECTS),
-      objectId: z.string().describe("The ID of the object to get."),
-    },
-    async ({ objectType, objectId }) => {
-      return withAuth(auth, mcpServerId, async (accessToken) => {
-        const object = await getObjectById(accessToken, objectType, objectId);
-        if (!object) {
-          return makeMCPToolTextError(ERROR_MESSAGES.OBJECT_NOT_FOUND);
-        }
-        return makeMCPToolJSONSuccess({
-          message: "Operation completed successfully",
-          result: object,
         });
       });
     }
@@ -149,52 +125,6 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
         return makeMCPToolJSONSuccess({
           message: "Operation completed successfully",
           result: object,
-        });
-      });
-    }
-  );
-
-  server.tool(
-    "get_objects_by_properties",
-    `Searches for objects in Hubspot matching properties. Supports ${SIMPLE_OBJECTS.join(", ")}. Max limit is ${MAX_LIMIT} objects retrieved.`,
-    {
-      objectType: z.enum(SIMPLE_OBJECTS),
-      filters: z
-        .array(
-          z.object({
-            propertyName: z
-              .string()
-              .describe("The name of the property to search by."),
-            operator: z
-              .nativeEnum(FilterOperatorEnum)
-              .describe("The operator to use for comparison."),
-            value: z
-              .string()
-              .optional()
-              .describe("The value to compare against"),
-            values: z
-              .array(z.string())
-              .optional()
-              .describe(
-                "The values to compare against. Required for IN/NOT_IN operators."
-              ),
-          })
-        )
-        .describe("Array of property filters to apply."),
-    },
-    async ({ objectType, filters }) => {
-      return withAuth(auth, mcpServerId, async (accessToken) => {
-        const objects = await getObjectsByProperties(
-          accessToken,
-          objectType,
-          filters
-        );
-        if (!objects.length) {
-          return makeMCPToolTextError(ERROR_MESSAGES.NO_OBJECTS_FOUND);
-        }
-        return makeMCPToolJSONSuccess({
-          message: "Operation completed successfully",
-          result: objects,
         });
       });
     }
@@ -253,12 +183,12 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
 
   server.tool(
     "get_latest_objects",
-    `Retrieves the latest objects from Hubspot. Supports ${SIMPLE_OBJECTS.join(", ")}. Max limit is ${MAX_LIMIT} objects.`,
+    `Get latest objects from Hubspot. Supports ${SIMPLE_OBJECTS.join(", ")}. Limit is ${MAX_LIMIT}.`,
     {
       objectType: z.enum(SIMPLE_OBJECTS),
       limit: z.number().optional(),
     },
-    async ({ objectType, limit = 5 }) => {
+    async ({ objectType, limit = MAX_LIMIT }) => {
       return withAuth(auth, mcpServerId, async (accessToken) => {
         const objects = await getLatestObjects(accessToken, objectType, limit);
         if (!objects.length) {
@@ -272,7 +202,482 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
     }
   );
 
+  server.tool(
+    "create_company",
+    "Creates a new company in Hubspot, with optional associations.",
+    {
+      properties: z
+        .record(z.string())
+        .describe("An object containing the properties for the company."),
+      associations: z
+        .array(
+          z.object({
+            toObjectId: z.string(),
+            toObjectType: z.string().describe("e.g., contacts, deals"),
+          })
+        )
+        .optional()
+        .describe("Optional array of associations to create."),
+    },
+    async ({ properties, associations }) => {
+      return withAuth(auth, mcpServerId, async (accessToken) => {
+        const result = await createCompany({
+          accessToken,
+          properties,
+          associations,
+        });
+        return makeMCPToolJSONSuccess({
+          message: "Company created successfully.",
+          result,
+        });
+      });
+    }
+  );
+
+  server.tool(
+    "create_deal",
+    "Creates a new deal in Hubspot, with optional associations.",
+    {
+      properties: z
+        .record(z.string())
+        .describe("An object containing the properties for the deal."),
+      associations: z
+        .array(
+          z.object({
+            toObjectId: z.string(),
+            toObjectType: z.string().describe("e.g., contacts, companies"),
+          })
+        )
+        .optional()
+        .describe("Optional array of associations to create."),
+    },
+    async ({ properties, associations }) => {
+      return withAuth(auth, mcpServerId, async (accessToken) => {
+        const result = await createDeal({
+          accessToken,
+          properties,
+          associations,
+        });
+        return makeMCPToolJSONSuccess({
+          message: "Deal created successfully.",
+          result,
+        });
+      });
+    }
+  );
+
+  server.tool(
+    "create_lead",
+    "Creates a new lead in Hubspot (as a Deal), with optional associations. Ensure properties correctly define it as a lead.",
+    {
+      properties: z
+        .record(z.string())
+        .describe(
+          "Properties for the lead (deal), including those that identify it as a lead."
+        ),
+      associations: z
+        .array(
+          z.object({
+            toObjectId: z.string(),
+            toObjectType: z.string().describe("e.g., contacts, companies"),
+          })
+        )
+        .optional()
+        .describe("Optional array of associations to create."),
+    },
+    async ({ properties, associations }) => {
+      return withAuth(auth, mcpServerId, async (accessToken) => {
+        const result = await createLead({
+          accessToken,
+          properties,
+          associations,
+        });
+        return makeMCPToolJSONSuccess({
+          message: "Lead (as Deal) created successfully.",
+          result,
+        });
+      });
+    }
+  );
+
+  server.tool(
+    "create_task",
+    "Creates a new task in Hubspot, with optional associations.",
+    {
+      properties: z
+        .record(z.string())
+        .describe(
+          "Properties for the task (e.g., hs_task_subject, hs_task_body, hs_timestamp, hs_task_status, hs_task_priority)."
+        ),
+      associations: z
+        .array(
+          z.object({
+            toObjectId: z.string(),
+            toObjectType: z
+              .string()
+              .describe("e.g., contacts, companies, deals"),
+          })
+        )
+        .optional()
+        .describe("Optional array of associations to create."),
+    },
+    async (input) => {
+      return withAuth(auth, mcpServerId, async (accessToken) => {
+        const result = await createTask({
+          accessToken,
+          properties: input.properties,
+          associations: input.associations,
+        });
+        return makeMCPToolJSONSuccess({
+          message: "Task created successfully.",
+          result,
+        });
+      });
+    }
+  );
+
+  server.tool(
+    "create_ticket",
+    "Creates a new ticket in Hubspot, with optional associations.",
+    {
+      properties: z.record(z.string()).describe("Properties for the ticket."),
+      associations: z
+        .array(
+          z.object({
+            toObjectId: z.string(),
+            toObjectType: z
+              .string()
+              .describe("e.g., contacts, companies, deals"),
+          })
+        )
+        .optional()
+        .describe("Optional array of associations to create."),
+    },
+    async (input) => {
+      return withAuth(auth, mcpServerId, async (accessToken) => {
+        const result = await createTicket({
+          accessToken,
+          properties: input.properties,
+          associations: input.associations,
+        });
+        return makeMCPToolJSONSuccess({
+          message: "Ticket created successfully.",
+          result,
+        });
+      });
+    }
+  );
+
+  server.tool(
+    "create_note",
+    "Creates a new note in Hubspot, with optional associations.",
+    {
+      properties: z
+        .object({
+          hs_note_body: z.string().describe("The content of the note."),
+          hs_timestamp: z
+            .string()
+            .datetime({
+              message: "Timestamp must be a valid ISO 8601 date string",
+            })
+            .optional()
+            .describe(
+              "The timestamp of the note (ISO 8601 format). Defaults to current time if not provided."
+            ),
+        })
+        .describe("Properties for the note."),
+      associations: z
+        .object({
+          contactIds: z.array(z.string()).optional(),
+          companyIds: z.array(z.string()).optional(),
+          dealIds: z.array(z.string()).optional(),
+          ticketIds: z.array(z.string()).optional(),
+          ownerIds: z.array(z.string()).optional(),
+        })
+        .optional()
+        .describe("Direct IDs of objects to associate the note with."),
+    },
+    async ({ properties, associations }) => {
+      return withAuth(auth, mcpServerId, async (accessToken) => {
+        const result = await createNote({
+          accessToken,
+          properties,
+          associations,
+        });
+        return makeMCPToolJSONSuccess({
+          message: "Note created successfully.",
+          result,
+        });
+      });
+    }
+  );
+
+  server.tool(
+    "create_communication",
+    "Creates a new communication (WhatsApp, LinkedIn, SMS) in Hubspot as an engagement. Requires hs_communication_channel_type in properties.",
+    {
+      properties: z
+        .record(z.any())
+        .describe(
+          "Properties, including hs_engagement_type (e.g., 'COMMUNICATION'), hs_communication_channel_type, and message content (e.g., hs_communication_body)."
+        ),
+      associations: z
+        .object({
+          contactIds: z.array(z.string()).optional(),
+          companyIds: z.array(z.string()).optional(),
+          dealIds: z.array(z.string()).optional(),
+          ticketIds: z.array(z.string()).optional(),
+        })
+        .optional()
+        .describe("Direct IDs of objects to associate the communication with."),
+    },
+    async ({ properties, associations }) => {
+      return withAuth(auth, mcpServerId, async (accessToken) => {
+        const result = await createCommunication({
+          accessToken,
+          properties,
+          associations,
+        });
+        return makeMCPToolJSONSuccess({
+          message: `Communication (channel: ${properties.hs_communication_channel_type || "unknown"}) created successfully.`,
+          result,
+        });
+      });
+    }
+  );
+
+  server.tool(
+    "create_meeting",
+    "Creates a new meeting in Hubspot as an engagement. Ensure hs_engagement_type='MEETING' and meeting details are in properties.",
+    {
+      properties: z
+        .record(z.any())
+        .describe(
+          "Properties, including hs_engagement_type='MEETING', hs_meeting_title, hs_meeting_start_time, etc."
+        ),
+      associations: z
+        .object({
+          contactIds: z.array(z.string()).optional(),
+          companyIds: z.array(z.string()).optional(),
+          dealIds: z.array(z.string()).optional(),
+          ticketIds: z.array(z.string()).optional(),
+        })
+        .optional()
+        .describe("Direct IDs of objects to associate the meeting with."),
+    },
+    async ({ properties, associations }) => {
+      return withAuth(auth, mcpServerId, async (accessToken) => {
+        const result = await createMeeting({
+          accessToken,
+          properties,
+          associations,
+        });
+        return makeMCPToolJSONSuccess({
+          message: "Meeting created successfully.",
+          result,
+        });
+      });
+    }
+  );
+
+  // Definition for getContact tool
+  server.tool(
+    "get_contact",
+    "Retrieves a Hubspot contact by its ID.",
+    {
+      contactId: z.string().describe("The ID of the contact to retrieve."),
+    },
+    async ({ contactId }) => {
+      return withAuth(auth, mcpServerId, async (accessToken) => {
+        const result = await getContact(accessToken, contactId);
+        if (!result) {
+          return makeMCPToolTextError(ERROR_MESSAGES.OBJECT_NOT_FOUND);
+        }
+        return makeMCPToolJSONSuccess({
+          message: "Contact retrieved successfully.",
+          result,
+        });
+      });
+    }
+  );
+
+  // Definition for getCompany tool
+  server.tool(
+    "get_company",
+    "Retrieves a Hubspot company by its ID.",
+    {
+      companyId: z.string().describe("The ID of the company to retrieve."),
+    },
+    async ({ companyId }) => {
+      return withAuth(auth, mcpServerId, async (accessToken) => {
+        const result = await getCompany(accessToken, companyId);
+        if (!result) {
+          return makeMCPToolTextError(ERROR_MESSAGES.OBJECT_NOT_FOUND);
+        }
+        return makeMCPToolJSONSuccess({
+          message: "Company retrieved successfully.",
+          result,
+        });
+      });
+    }
+  );
+
+  // Definition for getDeal tool
+  server.tool(
+    "get_deal",
+    "Retrieves a Hubspot deal by its ID.",
+    {
+      dealId: z.string().describe("The ID of the deal to retrieve."),
+    },
+    async ({ dealId }) => {
+      return withAuth(auth, mcpServerId, async (accessToken) => {
+        const result = await getDeal(accessToken, dealId);
+        if (!result) {
+          return makeMCPToolTextError(ERROR_MESSAGES.OBJECT_NOT_FOUND);
+        }
+        return makeMCPToolJSONSuccess({
+          message: "Deal retrieved successfully.",
+          result,
+        });
+      });
+    }
+  );
+
+  // Definition for getMeeting tool
+  server.tool(
+    "get_meeting",
+    "Retrieves a Hubspot meeting (engagement) by its ID.",
+    {
+      meetingId: z
+        .string()
+        .describe("The ID of the meeting (engagement) to retrieve."),
+    },
+    async ({ meetingId }) => {
+      return withAuth(auth, mcpServerId, async (accessToken) => {
+        const result = await getMeeting(accessToken, meetingId);
+        if (!result) {
+          return makeMCPToolTextError(
+            ERROR_MESSAGES.OBJECT_NOT_FOUND + " Or it was not a meeting."
+          );
+        }
+        return makeMCPToolJSONSuccess({
+          message: "Meeting retrieved successfully.",
+          result,
+        });
+      });
+    }
+  );
+
+  // Definition for getFilePublicUrl tool
+  server.tool(
+    "get_file_public_url",
+    "Retrieves a publicly available URL for a file in HubSpot.",
+    {
+      fileId: z.string().describe("The ID of the file."),
+    },
+    async ({ fileId }) => {
+      return withAuth(auth, mcpServerId, async (accessToken) => {
+        const result = await getFilePublicUrl(accessToken, fileId);
+        if (!result) {
+          return makeMCPToolTextError(
+            "File not found or public URL not available."
+          );
+        }
+        return makeMCPToolJSONSuccess({
+          message: "File public URL retrieved successfully.",
+          result: { url: result }, // Return as an object for consistency
+        });
+      });
+    }
+  );
+
+  // Definition for getAssociatedMeetings tool
+  server.tool(
+    "get_associated_meetings",
+    "Retrieves meetings associated with a specific object (contact, company, or deal).",
+    {
+      fromObjectType: z
+        .enum(["contacts", "companies", "deals"])
+        .describe("The type of the object (contacts, companies, or deals)."),
+      fromObjectId: z.string().describe("The ID of the object."),
+    },
+    async ({ fromObjectType, fromObjectId }) => {
+      return withAuth(auth, mcpServerId, async (accessToken) => {
+        const result = await getAssociatedMeetings(
+          accessToken,
+          fromObjectType,
+          fromObjectId
+        );
+        if (result === null) {
+          return makeMCPToolTextError("Error retrieving associated meetings.");
+        }
+        return makeMCPToolJSONSuccess({
+          message: "Associated meetings retrieved successfully.",
+          result,
+        });
+      });
+    }
+  );
+
+  // Definition for searchCrmObjects tool
+  const searchableObjectTypes = z.enum([
+    "contacts",
+    "companies",
+    "deals",
+    "tickets",
+    "products",
+    "line_items",
+    "quotes",
+    "feedback_submissions",
+  ]); // Add other searchable types as needed
+  server.tool(
+    "search_crm_objects",
+    "Searches CRM objects of a specific type based on filters, query, and properties.",
+    {
+      objectType: searchableObjectTypes,
+      filters: z
+        .array(
+          z.object({
+            propertyName: z.string(),
+            operator: z.nativeEnum(FilterOperatorEnum),
+            value: z.string().optional(),
+            values: z.array(z.string()).optional(),
+          })
+        )
+        .optional()
+        .describe("Array of property filters."),
+      query: z.string().optional().describe("Free-text query string."),
+      propertiesToReturn: z
+        .array(z.string())
+        .optional()
+        .describe("Specific properties to return."),
+      limit: z.number().optional().default(MAX_LIMIT),
+      after: z.string().optional().describe("Pagination cursor."),
+    },
+    async (input) => {
+      return withAuth(auth, mcpServerId, async (accessToken) => {
+        const result = await searchCrmObjects({
+          accessToken,
+          objectType: input.objectType,
+          filters: input.filters,
+          query: input.query,
+          propertiesToReturn: input.propertiesToReturn,
+          limit: input.limit,
+          after: input.after,
+        });
+        if (!result) {
+          return makeMCPToolTextError("Search failed or returned no results.");
+        }
+        return makeMCPToolJSONSuccess({
+          message: "CRM objects searched successfully.",
+          result,
+        });
+      });
+    }
+  );
+
   return server;
 };
 
 export default createServer;
+export { serverInfo };

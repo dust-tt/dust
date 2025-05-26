@@ -7,7 +7,6 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { ZodError } from "zod";
 
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
-import { MCPServerPersonalAuthenticationRequiredError } from "@app/lib/actions/mcp_internal_actions/authentication";
 import type { ConfigurableToolInputType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import {
   ConfigurableToolInputJSONSchemas,
@@ -32,27 +31,6 @@ export function makeMCPToolTextError(text: string): MCPToolResult {
       {
         type: "text",
         text,
-      },
-    ],
-  };
-}
-
-export function makeMCPToolPersonalAuthenticationRequiredError(
-  mcpServerId: string
-): MCPToolResult {
-  return {
-    isError: true,
-    content: [
-      {
-        type: "resource",
-        resource: {
-          mimeType:
-            INTERNAL_MIME_TYPES.TOOL_ERROR.PERSONAL_AUTHENTICATION_REQUIRED,
-          uri: "",
-          text: new MCPServerPersonalAuthenticationRequiredError(mcpServerId)
-            .message,
-          mcpServerId,
-        },
       },
     ],
   };

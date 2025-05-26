@@ -64,7 +64,7 @@ export default function ProfilePage({
 
             <Separator />
 
-            <Page.SectionHeader title="Tools Confirmation Preferences" />
+            <Page.SectionHeader title="Tools Connections & Confirmation Preferences" />
             <UserToolsTable owner={owner} />
           </Page.Layout>
         </Page>

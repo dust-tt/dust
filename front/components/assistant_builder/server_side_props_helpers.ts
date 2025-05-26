@@ -1,4 +1,5 @@
 import assert from "assert";
+import { tracer } from "dd-trace";
 
 import type { AssistantBuilderActionConfiguration } from "@app/components/assistant_builder/types";
 import {
@@ -51,24 +52,26 @@ import type {
 import { assertNever, slugify } from "@app/types";
 
 export const getAccessibleSourcesAndApps = async (auth: Authenticator) => {
-  const accessibleSpaces = (
-    await SpaceResource.listWorkspaceSpaces(auth)
-  ).filter((space) => !space.isSystem() && space.canRead(auth));
+  return tracer.trace("getAccessibleSourcesAndApps", async () => {
+    const accessibleSpaces = (
+      await SpaceResource.listWorkspaceSpaces(auth)
+    ).filter((space) => !space.isSystem() && space.canRead(auth));
 
-  const [dsViews, allDustApps, allMCPServerViews] = await Promise.all([
-    DataSourceViewResource.listBySpaces(auth, accessibleSpaces, {
-      includeEditedBy: true,
-    }),
-    AppResource.listByWorkspace(auth),
-    MCPServerViewResource.listBySpaces(auth, accessibleSpaces),
-  ]);
+    const [dsViews, allDustApps, allMCPServerViews] = await Promise.all([
+      DataSourceViewResource.listBySpaces(auth, accessibleSpaces, {
+        includeEditedBy: true,
+      }),
+      AppResource.listByWorkspace(auth),
+      MCPServerViewResource.listBySpaces(auth, accessibleSpaces),
+    ]);
 
-  return {
-    spaces: accessibleSpaces,
-    dataSourceViews: dsViews,
-    dustApps: allDustApps,
-    mcpServerViews: allMCPServerViews,
-  };
+    return {
+      spaces: accessibleSpaces,
+      dataSourceViews: dsViews,
+      dustApps: allDustApps,
+      mcpServerViews: allMCPServerViews,
+    };
+  });
 };
 
 export async function buildInitialActions({

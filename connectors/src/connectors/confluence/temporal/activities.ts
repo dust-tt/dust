@@ -674,7 +674,6 @@ export async function confluenceGetActiveChildPageRefsActivity({
   return getActiveChildPageRefs(client, {
     pageCursor,
     parentPageId,
-    spaceId,
     spaceKey,
   });
 }
@@ -799,7 +798,6 @@ export async function confluenceGetTopLevelPageIdsActivity({
     {
       pageCursor,
       parentPageId: rootPageId,
-      spaceId,
       spaceKey,
     }
   );

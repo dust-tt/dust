@@ -59,7 +59,10 @@ export function CreateMCPServerDialog({
   );
 
   const { createWithUrlSync } = useCreateRemoteMCPServer(owner);
-  const { createMCPServerConnection } = useCreateMCPServerConnection({ owner });
+  const { createMCPServerConnection } = useCreateMCPServerConnection({
+    owner,
+    connectionType: "workspace",
+  });
   const { createInternalMCPServer } = useCreateInternalMCPServer(owner);
 
   useEffect(() => {

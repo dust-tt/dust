@@ -34,27 +34,14 @@ export function usePreviewAssistant({
   builderState,
   reasoningModels,
 }: UsePreviewAssistantProps) {
-  const animationLength = 1000;
   const [draftAssistant, setDraftAssistant] =
     useState<LightAgentConfigurationType | null>(null);
-  const [isFading, setIsFading] = useState(false);
   const [isSavingDraftAgent, setIsSavingDraftAgent] = useState(false);
   const [draftCreationFailed, setDraftCreationFailed] = useState(false);
 
-  const drawerAnimationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const sendNotification = useSendNotification();
   const lastBuilderStateRef = useRef<AssistantBuilderState>(builderState);
-
-  const animate = useCallback(() => {
-    if (drawerAnimationTimeoutRef.current) {
-      clearTimeout(drawerAnimationTimeoutRef.current);
-      drawerAnimationTimeoutRef.current = null;
-    }
-    setIsFading(true);
-    drawerAnimationTimeoutRef.current = setTimeout(() => {
-      setIsFading(false);
-    }, animationLength);
-  }, [animationLength]);
+  const nameDebounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const createDraftAgent =
     useCallback(async (): Promise<LightAgentConfigurationType | null> => {
@@ -96,7 +83,6 @@ export function usePreviewAssistant({
         return null;
       }
 
-      animate();
       setDraftAssistant(aRes.value);
       lastBuilderStateRef.current = builderState;
       setIsSavingDraftAgent(false);
@@ -108,7 +94,6 @@ export function usePreviewAssistant({
       builderState,
       reasoningModels,
       sendNotification,
-      animate,
     ]);
 
   useEffect(() => {
@@ -145,16 +130,32 @@ export function usePreviewAssistant({
     }
   }, [builderState]);
 
+  // Debounced draft creation for assistant name changes
+  useEffect(() => {
+    const previousHandle = lastBuilderStateRef.current.handle;
+    const currentHandle = builderState.handle;
+
+    // Only trigger debounced creation if handle changed and we have content
+    if (previousHandle !== currentHandle && currentHandle?.trim()) {
+      if (nameDebounceTimeoutRef.current) {
+        clearTimeout(nameDebounceTimeoutRef.current);
+      }
+
+      nameDebounceTimeoutRef.current = setTimeout(() => {
+        void createDraftAgent();
+      }, 1000);
+    }
+  }, [builderState.handle, createDraftAgent]);
+
   useEffect(() => {
     return () => {
-      if (drawerAnimationTimeoutRef.current) {
-        clearTimeout(drawerAnimationTimeoutRef.current);
+      if (nameDebounceTimeoutRef.current) {
+        clearTimeout(nameDebounceTimeoutRef.current);
       }
     };
   }, []);
 
   return {
-    isFading,
     draftAssistant,
     isSavingDraftAgent,
     createDraftAgent,
@@ -200,6 +201,24 @@ export function useTryAssistantCore({
     if (createDraftAgent) {
       try {
         currentAssistant = await createDraftAgent();
+        if (!currentAssistant) {
+          return new Err({
+            code: "internal_error",
+            name: "Draft Agent Creation Failed",
+            message: "Failed to create draft agent before submitting message",
+          });
+        }
+
+        // Update sticky mentions with the newly created draft agent
+        setStickyMentions([{ configurationId: currentAssistant.sId }]);
+
+        // Update mentions in the message data to use the newly created draft agent
+        const updatedMentions = mentions.map((mention) =>
+          mention.configurationId === assistant?.sId && currentAssistant?.sId
+            ? { ...mention, configurationId: currentAssistant.sId }
+            : mention
+        );
+        mentions = updatedMentions;
       } catch (error) {
         return new Err({
           code: "internal_error",

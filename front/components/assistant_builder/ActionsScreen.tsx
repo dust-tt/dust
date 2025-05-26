@@ -973,6 +973,7 @@ function ActionEditor({
 
   const { connections, isConnectionsLoading } = useMCPServerConnections({
     owner,
+    connectionType: "workspace",
     disabled: !selectedMCPServerView?.server.authorization,
   });
 
