@@ -79,7 +79,7 @@ export async function getWorkOSSession(
 }
 
 // Store the region in the user's app_metadata to redirect to the right region.
-// A JWT Template include this metadta in https://dust.tt/region ( https://dashboard.workos.com/environment_01JGCT54YDGZAAD731M0GQKZGM/authentication/edit-jwt-template )
+// A JWT Template includes this metadata in https://dust.tt/region (https://dashboard.workos.com/environment_01JGCT54YDGZAAD731M0GQKZGM/authentication/edit-jwt-template)
 export async function setRegionForUser(user: User, region: RegionType) {
   // Update user metadata
   await getWorkOS().userManagement.updateUser({
