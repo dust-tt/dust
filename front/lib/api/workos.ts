@@ -309,8 +309,13 @@ async function upsertUser({
     });
     localLogger.info("[WorkOS] User successfully created.");
   } else {
-    localLogger.info("[WorkOS] User already exists.");
-    // TODO(2025-05-26 aubin): reconciliate users here.
+    await user.updateInfo(
+      getUserNicknameFromEmail(workOSUser.email),
+      workOSUser.firstName || user.firstName,
+      workOSUser.lastName || user.lastName,
+      workOSUser.email
+    );
+    localLogger.info("[WorkOS] User successfully updated.");
   }
 }
 
@@ -334,17 +339,15 @@ async function upsertGroup(
 
   localLogger.info("[WorkOS] Upserting group");
 
-  const group = await GroupResource.fetchByWorkOSGroupId(auth, workOSGroup.id);
+  let group = await GroupResource.fetchByWorkOSGroupId(auth, workOSGroup.id);
 
   if (!group) {
-    await GroupResource.makeNew({
+    group = await GroupResource.makeNew({
       name: workOSGroup.name,
       workspaceId: workspace.id,
       workOSGroupId: workOSGroup.id,
       kind: "provisioned",
     });
     localLogger.info("[WorkOS] Group successfully created.");
-  } else {
-    localLogger.info("[WorkOS] Group already exists.");
   }
 }
