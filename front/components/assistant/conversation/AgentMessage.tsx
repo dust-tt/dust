@@ -166,8 +166,8 @@ export function AgentMessage({
       if (eventPayload.data.type === "tool_approve_execution") {
         showValidationDialog({
           workspaceId: owner.sId,
-          messageId: message.sId,
-          conversationId: conversationId,
+          messageId: eventPayload.data.messageId,
+          conversationId: eventPayload.data.conversationId,
           action: eventPayload.data.action,
           inputs: eventPayload.data.inputs,
           stake: eventPayload.data.stake,

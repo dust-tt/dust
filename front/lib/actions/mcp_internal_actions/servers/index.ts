@@ -59,7 +59,7 @@ export async function getInternalMCPServer(
     case "include_data":
       return includeDataServer(auth, agentLoopContext);
     case "run_agent":
-      return runAgentServer(auth);
+      return runAgentServer(auth, agentLoopContext.runContext);
     case "reasoning":
       return reasoningServer(auth, agentLoopContext.runContext);
     case "run_dust_app":

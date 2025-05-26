@@ -645,8 +645,8 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
             yield {
               type: "tool_approve_execution",
               created: Date.now(),
-              messageId: agentMessage.sId,
-              conversationId: conversation.sId,
+              messageId: subAgentProperties.messageId,
+              conversationId: subAgentProperties.conversationId,
               configurationId: subAgentProperties.configurationId,
               action: subAgentProperties.action,
               inputs: subAgentProperties.inputs,

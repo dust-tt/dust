@@ -143,8 +143,8 @@ function createServer(
                       properties: {
                         type: "sub_agent_tool_approve_execution",
                         configurationId: event.configurationId,
-                        conversationId: conversation.sId,
-                        messageId: event.messageId,
+                        conversationId: agentLoopRunContext?.conversation.sId,
+                        messageId: agentLoopRunContext?.agentMessage.sId,
                         action: event.action,
                         inputs: event.inputs,
                         stake: event.stake,
