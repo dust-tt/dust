@@ -25,11 +25,11 @@ import { ConnectMCPServerDialog } from "@app/components/actions/mcp/ConnectMCPSe
 import { MCPServerDetailsInfo } from "@app/components/actions/mcp/MCPServerDetailsInfo";
 import { MCPServerDetailsSharing } from "@app/components/actions/mcp/MCPServerDetailsSharing";
 import { MCPActionHeader } from "@app/components/actions/MCPActionHeader";
-import { useMCPConnectionManagement } from "@app/hooks/useMCPConnectionManagement";
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import type { MCPServerType } from "@app/lib/api/mcp";
 import {
   useDeleteMCPServer,
+  useDeleteMCPServerConnection,
   useMCPServer,
   useMCPServerConnections,
 } from "@app/lib/swr/mcp_servers";
@@ -77,6 +77,7 @@ export function MCPServerDetails({
 
   const { connections, isConnectionsLoading } = useMCPServerConnections({
     owner,
+    connectionType: "workspace",
     disabled: !authorization,
   });
 
@@ -85,7 +86,7 @@ export function MCPServerDetails({
   );
 
   const [isLoading, setIsLoading] = useState(false);
-  const { deleteMCPServerConnection } = useMCPConnectionManagement({
+  const { deleteMCPServerConnection } = useDeleteMCPServerConnection({
     owner,
   });
 
@@ -182,7 +183,7 @@ export function MCPServerDetails({
                     size="sm"
                     onClick={() => {
                       void deleteMCPServerConnection({
-                        connectionId: connection.sId,
+                        connection,
                       });
                     }}
                   />

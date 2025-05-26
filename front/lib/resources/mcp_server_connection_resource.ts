@@ -20,6 +20,7 @@ import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
+import logger from "@app/logger/logger";
 import type { ModelId, Result } from "@app/types";
 import {
   Err,
@@ -166,10 +167,33 @@ export class MCPServerConnectionResource extends BaseResource<MCPServerConnectio
 
   static async listByWorkspace({
     auth,
+    connectionType,
   }: {
     auth: Authenticator;
+    connectionType: MCPServerConnectionConnectionType;
   }): Promise<MCPServerConnectionResource[]> {
-    return this.baseFetch(auth);
+    if (connectionType === "personal") {
+      return this.baseFetch(auth, {
+        where: {
+          connectionType: "personal",
+          userId: auth.getNonNullableUser().id,
+        },
+      });
+    } else {
+      if (!auth.isAdmin()) {
+        logger.error(
+          "Only admins can list workspace connections",
+          auth.getNonNullableUser().id
+        );
+
+        return [];
+      }
+      return this.baseFetch(auth, {
+        where: {
+          connectionType: "workspace",
+        },
+      });
+    }
   }
 
   // Deletion.
@@ -242,6 +266,12 @@ export class MCPServerConnectionResource extends BaseResource<MCPServerConnectio
 }
 
 export type MCPServerConnectionConnectionType = "workspace" | "personal";
+
+export const isMCPServerConnectionConnectionType = (
+  connectionType: unknown
+): connectionType is MCPServerConnectionConnectionType => {
+  return connectionType === "workspace" || connectionType === "personal";
+};
 
 export interface MCPServerConnectionType {
   sId: string;

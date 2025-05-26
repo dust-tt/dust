@@ -5,6 +5,10 @@ import type { Fetcher } from "swr";
 import type { RemoteMCPToolStakeLevelType } from "@app/lib/actions/constants";
 import { mcpServersSortingFn } from "@app/lib/actions/mcp_helper";
 import type { MCPServerTypeWithViews } from "@app/lib/api/mcp";
+import type {
+  MCPServerConnectionConnectionType,
+  MCPServerConnectionType,
+} from "@app/lib/resources/mcp_server_connection_resource";
 import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type {
   CreateMCPServerResponseBody,
@@ -21,7 +25,7 @@ import type { PatchMCPServerToolsPermissionsResponseBody } from "@app/pages/api/
 import type {
   GetConnectionsResponseBody,
   PostConnectionResponseBody,
-} from "@app/pages/api/w/[wId]/mcp/connections";
+} from "@app/pages/api/w/[wId]/mcp/connections/[connectionType]";
 import type { LightWorkspaceType, OAuthProvider, SpaceType } from "@app/types";
 
 /**
@@ -294,15 +298,17 @@ export function useUpdateRemoteMCPServer(
 
 export function useMCPServerConnections({
   owner,
+  connectionType,
   disabled,
 }: {
   owner: LightWorkspaceType;
+  connectionType: MCPServerConnectionConnectionType;
   disabled?: boolean;
 }) {
   const connectionsFetcher: Fetcher<GetConnectionsResponseBody> = fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(
-    `/api/w/${owner.sId}/mcp/connections`,
+    `/api/w/${owner.sId}/mcp/connections/${connectionType}`,
     connectionsFetcher,
     {
       disabled,
@@ -319,11 +325,14 @@ export function useMCPServerConnections({
 
 export function useCreateMCPServerConnection({
   owner,
+  connectionType,
 }: {
   owner: LightWorkspaceType;
+  connectionType: MCPServerConnectionConnectionType;
 }) {
   const { mutateConnections } = useMCPServerConnections({
     disabled: true,
+    connectionType,
     owner,
   });
   const sendNotification = useSendNotification();
@@ -336,17 +345,20 @@ export function useCreateMCPServerConnection({
     mcpServerId: string;
     provider: OAuthProvider;
   }): Promise<PostConnectionResponseBody> => {
-    const response = await fetch(`/api/w/${owner.sId}/mcp/connections`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        connectionId,
-        mcpServerId,
-        provider,
-      }),
-    });
+    const response = await fetch(
+      `/api/w/${owner.sId}/mcp/connections/${connectionType}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          connectionId,
+          mcpServerId,
+          provider,
+        }),
+      }
+    );
     if (response.ok) {
       sendNotification({
         type: "success",
@@ -375,19 +387,29 @@ export function useDeleteMCPServerConnection({
 }: {
   owner: LightWorkspaceType;
 }) {
-  const { mutateConnections } = useMCPServerConnections({
-    disabled: true,
-    owner,
-  });
+  const { mutateConnections: mutateWorkspaceConnections } =
+    useMCPServerConnections({
+      disabled: true,
+      connectionType: "workspace",
+      owner,
+    });
+
+  const { mutateConnections: mutatePersonalConnections } =
+    useMCPServerConnections({
+      disabled: true,
+      connectionType: "personal",
+      owner,
+    });
+
   const sendNotification = useSendNotification();
 
   const deleteMCPServerConnection = async ({
-    connectionId,
+    connection,
   }: {
-    connectionId: string;
+    connection: MCPServerConnectionType;
   }): Promise<{ success: boolean }> => {
     const response = await fetch(
-      `/api/w/${owner.sId}/mcp/connections/${connectionId}`,
+      `/api/w/${owner.sId}/mcp/connections/${connection.connectionType}/${connection.sId}`,
       {
         method: "DELETE",
         headers: {
@@ -402,7 +424,11 @@ export function useDeleteMCPServerConnection({
         description:
           "Your capability provider has been disconnected successfully.",
       });
-      void mutateConnections();
+      if (connection.connectionType === "workspace") {
+        void mutateWorkspaceConnections();
+      } else if (connection.connectionType === "personal") {
+        void mutatePersonalConnections();
+      }
     } else {
       sendNotification({
         type: "error",

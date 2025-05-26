@@ -40,7 +40,10 @@ export function ConnectMCPServerDialog({
     string
   > | null>(null);
 
-  const { createMCPServerConnection } = useCreateMCPServerConnection({ owner });
+  const { createMCPServerConnection } = useCreateMCPServerConnection({
+    owner,
+    connectionType: "workspace",
+  });
 
   const resetState = useCallback(() => {
     setIsLoading(false);

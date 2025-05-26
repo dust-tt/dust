@@ -8,7 +8,10 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import { checkConnectionOwnership } from "@app/lib/api/oauth";
 import type { Authenticator } from "@app/lib/auth";
 import type { MCPServerConnectionType } from "@app/lib/resources/mcp_server_connection_resource";
-import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
+import {
+  isMCPServerConnectionConnectionType,
+  MCPServerConnectionResource,
+} from "@app/lib/resources/mcp_server_connection_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 
@@ -36,10 +39,23 @@ async function handler(
   >,
   auth: Authenticator
 ): Promise<void> {
+  if (!isMCPServerConnectionConnectionType(req.query.connectionType)) {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Invalid connection type",
+      },
+    });
+  }
+
+  const connectionType = req.query.connectionType;
+
   switch (req.method) {
     case "GET":
       const connections = await MCPServerConnectionResource.listByWorkspace({
         auth,
+        connectionType,
       });
       return res.status(200).json({
         connections: connections.map((c) => c.toJSON()),
@@ -83,7 +99,7 @@ async function handler(
         auth,
         {
           connectionId,
-          connectionType: "workspace",
+          connectionType,
           serverType,
           internalMCPServerId: serverType === "internal" ? mcpServerId : null,
           remoteMCPServerId: serverType === "remote" ? id : null,
