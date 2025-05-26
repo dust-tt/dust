@@ -75,7 +75,7 @@ export default function AssistantBuilderRightPanel({
   const [rightPanelTab, setRightPanelTab] =
     useState<AssistantBuilderRightPanelTabType>("Preview");
 
-  const { draftAssistant, isFading, isSavingDraftAgent, createDraftAgent } =
+  const { draftAssistant, isSavingDraftAgent, createDraftAgent } =
     usePreviewAssistant({
       owner,
       builderState,
@@ -167,7 +167,6 @@ export default function AssistantBuilderRightPanel({
                           conversationId={conversation.sId}
                           onStickyMentionsChange={setStickyMentions}
                           isInModal
-                          isFading={isFading}
                           key={conversation.sId}
                         />
                       )}

@@ -34,28 +34,14 @@ export function usePreviewAssistant({
   builderState,
   reasoningModels,
 }: UsePreviewAssistantProps) {
-  const animationLength = 1000;
   const [draftAssistant, setDraftAssistant] =
     useState<LightAgentConfigurationType | null>(null);
-  const [isFading, setIsFading] = useState(false);
   const [isSavingDraftAgent, setIsSavingDraftAgent] = useState(false);
   const [draftCreationFailed, setDraftCreationFailed] = useState(false);
 
-  const drawerAnimationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const sendNotification = useSendNotification();
   const lastBuilderStateRef = useRef<AssistantBuilderState>(builderState);
   const nameDebounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  const animate = useCallback(() => {
-    if (drawerAnimationTimeoutRef.current) {
-      clearTimeout(drawerAnimationTimeoutRef.current);
-      drawerAnimationTimeoutRef.current = null;
-    }
-    setIsFading(true);
-    drawerAnimationTimeoutRef.current = setTimeout(() => {
-      setIsFading(false);
-    }, animationLength);
-  }, [animationLength]);
 
   const createDraftAgent =
     useCallback(async (): Promise<LightAgentConfigurationType | null> => {
@@ -97,7 +83,6 @@ export function usePreviewAssistant({
         return null;
       }
 
-      animate();
       setDraftAssistant(aRes.value);
       lastBuilderStateRef.current = builderState;
       setIsSavingDraftAgent(false);
@@ -109,7 +94,6 @@ export function usePreviewAssistant({
       builderState,
       reasoningModels,
       sendNotification,
-      animate,
     ]);
 
   useEffect(() => {
@@ -174,9 +158,6 @@ export function usePreviewAssistant({
 
   useEffect(() => {
     return () => {
-      if (drawerAnimationTimeoutRef.current) {
-        clearTimeout(drawerAnimationTimeoutRef.current);
-      }
       if (nameDebounceTimeoutRef.current) {
         clearTimeout(nameDebounceTimeoutRef.current);
       }
@@ -184,7 +165,6 @@ export function usePreviewAssistant({
   }, []);
 
   return {
-    isFading,
     draftAssistant,
     isSavingDraftAgent,
     createDraftAgent,
