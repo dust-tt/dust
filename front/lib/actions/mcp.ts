@@ -677,12 +677,11 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
           configurationId: agentConfiguration.sId,
           messageId: agentMessage.sId,
           error: {
-            code: "tool_error",
+            code: "mcp_server_personal_authentication_required",
             message:
               `The tool ${actionConfiguration.originalName} requires personal ` +
               `authentication, please authenticate to use it.`,
             metadata: {
-              mcp_server_personal_authentication_required: true,
               mcp_server_id: toolCallResult.error.mcpServerId,
             },
           },
