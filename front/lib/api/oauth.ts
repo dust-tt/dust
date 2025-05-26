@@ -6,6 +6,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { isManaged } from "@app/lib/data_sources";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import logger from "@app/logger/logger";
 import type {
   OAuthAPIError,
@@ -22,9 +23,6 @@ import {
   OAuthAPI,
   Ok,
 } from "@app/types";
-
-import { MCPServerConnection } from "../models/assistant/actions/mcp_server_connection";
-import { MCPServerConnectionResource } from "../resources/mcp_server_connection_resource";
 
 export type OAuthError = {
   code:
