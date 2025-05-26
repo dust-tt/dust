@@ -39,10 +39,39 @@ export default function DustPlatform() {
         <div
           className={classNames(
             "col-span-12 grid grid-cols-1 gap-8",
-            "md:grid-cols-2"
-            // "lg:col-span-10 lg:col-start-1"
+            "md:grid-cols-3"
           )}
         >
+          <ImgBlock
+            title={<>MCP: Integrate custom tools into Dust agents</>}
+            content={[
+              <>
+                Seamlessly connect your own and external tools to Dust agents
+                using MCP servers. Customize agent capabilities, manage
+                authentication, and control access—all through a flexible
+                integration framework.
+              </>,
+            ]}
+          >
+            <Hover3D
+              depth={-20}
+              perspective={1000}
+              className={classNames("relative")}
+            >
+              <Div3D depth={-20}>
+                <img src="/static/landing/api/MCP1.png" />
+              </Div3D>
+              <Div3D depth={40} className="absolute top-0">
+                <img src="/static/landing/api/MCP2.png" />
+              </Div3D>
+              <Div3D depth={0} className="absolute top-0">
+                <img src="/static/landing/api/MCP3.png" />
+              </Div3D>
+              <Div3D depth={40} className="absolute top-0">
+                <img src="/static/landing/api/MCP4.png" />
+              </Div3D>
+            </Hover3D>
+          </ImgBlock>
           <ImgBlock
             title={<>Dust Apps: Expand your agents' capabilities</>}
             content={[

@@ -80,14 +80,19 @@ export class SubscriptionResource extends BaseResource<Subscription> {
   }
 
   static async fetchActiveByWorkspace(
-    workspace: LightWorkspaceType
+    workspace: LightWorkspaceType,
+    transaction?: Transaction
   ): Promise<SubscriptionResource> {
-    const res = await SubscriptionResource.fetchActiveByWorkspaces([workspace]);
+    const res = await SubscriptionResource.fetchActiveByWorkspaces(
+      [workspace],
+      transaction
+    );
     return res[workspace.sId];
   }
 
   static async fetchActiveByWorkspaces(
-    workspaces: LightWorkspaceType[]
+    workspaces: LightWorkspaceType[],
+    transaction?: Transaction
   ): Promise<{ [key: string]: SubscriptionResource }> {
     const workspaceModelBySid = _.keyBy(workspaces, "sId");
 
@@ -117,6 +122,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
             required: true,
           },
         ],
+        transaction,
       }),
       "workspaceId"
     );

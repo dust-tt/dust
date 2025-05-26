@@ -171,5 +171,4 @@ export type AgentLoopContextType =
   | {
       runContext?: never;
       listToolsContext: AgentLoopListToolsContextType;
-    }
-  | { runContext?: never; listToolsContext?: never };
+    };

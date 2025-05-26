@@ -38,6 +38,7 @@ import {
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import {
+  DEFAULT_CONVERSATIONS_SLIDING_WINDOW,
   IntercomHelpCenterModel,
   IntercomTeamModel,
   IntercomWorkspaceModel,
@@ -75,7 +76,7 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
     const intercomConfigurationBlob = {
       intercomWorkspaceId: intercomWorkspace.id,
       name: intercomWorkspace.name,
-      conversationsSlidingWindow: 90,
+      conversationsSlidingWindow: DEFAULT_CONVERSATIONS_SLIDING_WINDOW,
       region: intercomWorkspace.region,
       syncAllConversations: "disabled" as const,
       shouldSyncNotes: true,

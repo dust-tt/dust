@@ -124,9 +124,9 @@ export const UseCases: UseCaseProps = {
     "Customize and automate tasks without writing a single line of code.",
   items: [
     {
-      title: "Debugging",
+      title: "Code debugging",
       content:
-        "Fix code errors by retrieving internal documentation, updates, and Slack discussions. Stay focused on your core work.",
+        "Streamline debugging within your IDE by surfacing relevant code context, documentation, and recent issues.",
       images: ["/static/landing/engineering/debuggingAgent.png"],
     },
     {
@@ -136,16 +136,16 @@ export const UseCases: UseCaseProps = {
       images: ["/static/landing/engineering/incidentHandling.png"],
     },
     {
-      title: "Team updates",
+      title: "Code review",
       content:
-        "Generate concise summaries of code changes, incidents, and technical discussions to keep everyone aligned.",
-      images: ["/static/landing/engineering/teamUpdates.png"],
+        "Automate code reviews to maintain engineering standards and security at scale.",
+      images: ["/static/landing/engineering/autoreview.png"],
     },
     {
-      title: "External doc parser",
+      title: "Code to doc",
       content:
-        "Chat with any technical documentation to quickly find answers and follow step-by-step guidance.",
-      images: ["/static/landing/engineering/docParser.png"],
+        "Generate and maintain technical and external-facing documentation automatically from code changes.",
+      images: ["/static/landing/engineering/teamUpdates.png"],
     },
   ],
 };

@@ -1,10 +1,10 @@
 import { useSendNotification } from "@dust-tt/sparkle";
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import type { Fetcher } from "swr";
 
 import type { RemoteMCPToolStakeLevelType } from "@app/lib/actions/constants";
 import { mcpServersSortingFn } from "@app/lib/actions/mcp_helper";
-import type { MCPServerType, MCPServerTypeWithViews } from "@app/lib/api/mcp";
+import type { MCPServerTypeWithViews } from "@app/lib/api/mcp";
 import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type {
   CreateMCPServerResponseBody,
@@ -192,58 +192,34 @@ export function useCreateRemoteMCPServer(owner: LightWorkspaceType) {
     owner,
   });
 
-  const createWithUrlSync = async (
-    url: string,
-    includeGlobal: boolean,
-    sharedSecret?: string
-  ): Promise<CreateMCPServerResponseBody> => {
-    const body: any = { url, serverType: "remote", includeGlobal };
-    if (sharedSecret) {
-      body.sharedSecret = sharedSecret;
-    }
-    const response = await fetch(`/api/w/${owner.sId}/mcp`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
+  const createWithUrlSync = useCallback(
+    async (
+      url: string,
+      includeGlobal: boolean,
+      sharedSecret?: string
+    ): Promise<CreateMCPServerResponseBody> => {
+      const body: any = { url, serverType: "remote", includeGlobal };
+      if (sharedSecret) {
+        body.sharedSecret = sharedSecret;
+      }
+      const response = await fetch(`/api/w/${owner.sId}/mcp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(
-        error.api_error?.message || "Failed to synchronize server"
-      );
-    }
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error?.message || "Failed to synchronize server");
+      }
 
-    await mutateMCPServers();
-    return response.json();
-  };
+      await mutateMCPServers();
+      return response.json();
+    },
+    [mutateMCPServers, owner.sId]
+  );
 
   return { createWithUrlSync };
-}
-
-/**
- * Hook to create a new MCP server from a URL
- */
-export function useFetchRemoteMCPServer(owner: LightWorkspaceType) {
-  const fetchRemoteMCPServer = async (
-    url: string
-  ): Promise<{ server: Omit<MCPServerType, "id"> }> => {
-    const response = await fetch(`/api/w/${owner.sId}/mcp/fetch?url=${url}`, {
-      method: "GET",
-      headers: { "Content-Type": "application/json" },
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(
-        error.api_error?.message || "Failed to synchronize server"
-      );
-    }
-
-    return response.json();
-  };
-
-  return { fetchRemoteMCPServer };
 }
 
 /**

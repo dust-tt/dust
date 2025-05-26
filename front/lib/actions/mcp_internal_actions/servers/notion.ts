@@ -447,6 +447,7 @@ const getNotionClient = async (
 ): Promise<Client | null> => {
   const accessToken = await getAccessTokenForInternalMCPServer(auth, {
     mcpServerId,
+    connectionType: "workspace",
   });
   if (!accessToken) {
     return null;

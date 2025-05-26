@@ -1,4 +1,5 @@
 import { getSession as getAuth0Session } from "@auth0/nextjs-auth0";
+import tracer from "dd-trace";
 import memoizer from "lru-memoizer";
 import type {
   GetServerSidePropsContext,
@@ -7,7 +8,6 @@ import type {
 } from "next";
 
 import type { Auth0JwtPayload } from "@app/lib/api/auth0";
-import { getUserFromAuth0Token } from "@app/lib/api/auth0";
 import config from "@app/lib/api/config";
 import { SSOEnforcedError } from "@app/lib/iam/errors";
 import type { SessionWithUser } from "@app/lib/iam/provider";
@@ -99,6 +99,15 @@ export class Authenticator {
     this._role = role;
     this._subscription = subscription || null;
     this._key = key;
+    if (user) {
+      tracer.setUser({
+        id: user?.sId,
+        role: role,
+        plan: subscription?.getPlan().code,
+        workspaceId: workspace?.sId,
+        workspaceName: workspace?.name,
+      });
+    }
   }
 
   /**
@@ -147,20 +156,12 @@ export class Authenticator {
     wId: string
   ): Promise<Authenticator> {
     const [workspace, user] = await Promise.all([
-      (async () => {
-        return Workspace.findOne({
-          where: {
-            sId: wId,
-          },
-        });
-      })(),
-      (async () => {
-        if (!session) {
-          return null;
-        } else {
-          return UserResource.fetchByAuth0Sub(session.user.sub);
-        }
-      })(),
+      Workspace.findOne({
+        where: {
+          sId: wId,
+        },
+      }),
+      session ? UserResource.fetchByAuth0Sub(session.user.sub) : null,
     ]);
 
     let role = "none" as RoleType;
@@ -169,10 +170,10 @@ export class Authenticator {
 
     if (user && workspace) {
       [role, groups, subscription] = await Promise.all([
-        MembershipResource.getActiveMembershipOfUserInWorkspace({
+        MembershipResource.getActiveRoleForUserInWorkspace({
           user,
           workspace: renderLightWorkspaceType({ workspace }),
-        }).then((m) => m?.role ?? "none"),
+        }),
         GroupResource.listUserGroupsInWorkspace({
           user,
           workspace: renderLightWorkspaceType({ workspace }),
@@ -206,23 +207,12 @@ export class Authenticator {
     wId: string | null
   ): Promise<Authenticator> {
     const [workspace, user] = await Promise.all([
-      (async () => {
-        if (!wId) {
-          return null;
-        }
-        return Workspace.findOne({
-          where: {
-            sId: wId,
-          },
-        });
-      })(),
-      (async () => {
-        if (!session) {
-          return null;
-        } else {
-          return UserResource.fetchByAuth0Sub(session.user.sub);
-        }
-      })(),
+      wId
+        ? Workspace.findOne({
+            where: { sId: wId },
+          })
+        : null,
+      session ? UserResource.fetchByAuth0Sub(session.user.sub) : null,
     ]);
 
     let groups: GroupResource[] = [];
@@ -231,7 +221,9 @@ export class Authenticator {
     if (workspace) {
       [groups, subscription] = await Promise.all([
         user?.isDustSuperUser
-          ? GroupResource.internalFetchAllWorkspaceGroups(workspace.id)
+          ? GroupResource.internalFetchAllWorkspaceGroups({
+              workspaceId: workspace.id,
+            })
           : [],
         SubscriptionResource.fetchActiveByWorkspace(
           renderLightWorkspaceType({ workspace })
@@ -274,10 +266,10 @@ export class Authenticator {
 
     if (user && workspace) {
       [role, groups, subscription] = await Promise.all([
-        MembershipResource.getActiveMembershipOfUserInWorkspace({
+        MembershipResource.getActiveRoleForUserInWorkspace({
           user,
           workspace: renderLightWorkspaceType({ workspace }),
-        }).then((m) => m?.role ?? "none"),
+        }),
         GroupResource.listUserGroupsInWorkspace({
           user,
           workspace: renderLightWorkspaceType({ workspace }),
@@ -318,7 +310,7 @@ export class Authenticator {
       }
     >
   > {
-    const user = await getUserFromAuth0Token(token);
+    const user = await UserResource.fetchByAuth0Sub(token.sub);
     if (!user) {
       return new Err({ code: "user_not_found" });
     }
@@ -352,10 +344,10 @@ export class Authenticator {
     let subscription: SubscriptionResource | null = null;
 
     [role, groups, subscription] = await Promise.all([
-      MembershipResource.getActiveMembershipOfUserInWorkspace({
+      MembershipResource.getActiveRoleForUserInWorkspace({
         user: user,
         workspace: renderLightWorkspaceType({ workspace }),
-      }).then((m) => m?.role ?? "none"),
+      }),
       GroupResource.listUserGroupsInWorkspace({
         user,
         workspace: renderLightWorkspaceType({ workspace }),
@@ -565,7 +557,9 @@ export class Authenticator {
    * within the workpsace. */
   static async internalAdminForWorkspace(
     workspaceId: string,
-    options?: { dangerouslyRequestAllGroups: boolean }
+    options?: {
+      dangerouslyRequestAllGroups: boolean;
+    }
   ): Promise<Authenticator> {
     const workspace = await Workspace.findOne({
       where: {
@@ -579,7 +573,9 @@ export class Authenticator {
     const [groups, subscription] = await Promise.all([
       (async () => {
         if (options?.dangerouslyRequestAllGroups) {
-          return GroupResource.internalFetchAllWorkspaceGroups(workspace.id);
+          return GroupResource.internalFetchAllWorkspaceGroups({
+            workspaceId: workspace.id,
+          });
         } else {
           const globalGroup =
             await GroupResource.internalFetchWorkspaceGlobalGroup(workspace.id);

@@ -193,6 +193,10 @@ const config = {
       "MULTI_ACTIONS_AGENT_ANTHROPIC_BETA_FLAGS"
     )?.split(",");
   },
+  // Profiler.
+  getProfilerSecret: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable("DEBUG_PROFILER_SECRET");
+  },
 };
 
 export default config;
