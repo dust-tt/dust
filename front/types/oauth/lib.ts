@@ -47,12 +47,16 @@ export const OAUTH_PROVIDER_NAMES: Record<OAuthProvider, string> = {
   hubspot: "Hubspot",
 };
 
+export type RequiredAuthCredentials = {
+  label: string;
+  value: string | number | undefined;
+  message?: string;
+  isValidFunction?: (value: string | number | undefined) => boolean;
+};
+
 export const getProviderRequiredAuthCredentials = async (
   authentication: AuthorizationInfo | null
-): Promise<Record<
-  string,
-  { label: string; value: string | number | undefined }
-> | null> => {
+): Promise<Record<string, RequiredAuthCredentials> | null> => {
   if (!authentication) {
     return null;
   }
@@ -63,9 +67,25 @@ export const getProviderRequiredAuthCredentials = async (
         const { code_verifier, code_challenge } = await getPKCEConfig();
 
         return {
-          client_id: { label: "oAuth client Id", value: undefined },
-          client_secret: { label: "oAuth client secret", value: undefined },
-          instance_url: { label: "Instance URL", value: undefined },
+          instance_url: {
+            label: "Instance URL",
+            value: undefined,
+            message:
+              "Must be a valid Salesforce domain in https and ending with .salesforce.com",
+            isValidFunction: isValidSalesforceDomain,
+          },
+          client_id: {
+            label: "OAuth client Id",
+            message: "The client ID from your Salesforce connected app.",
+            value: undefined,
+            isValidFunction: isValidSalesforceClientId,
+          },
+          client_secret: {
+            label: "OAuth client secret",
+            value: undefined,
+            message: "The client secret from your Salesforce connected app.",
+            isValidFunction: isValidSalesforceClientSecret,
+          },
           code_verifier: { label: "Code verifier", value: code_verifier },
           code_challenge: { label: "Code challenge", value: code_challenge },
         };
