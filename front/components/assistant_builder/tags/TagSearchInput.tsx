@@ -1,6 +1,10 @@
-import { Chip, SearchDropdownMenu, Spinner } from "@dust-tt/sparkle";
-import { DropdownMenuTagItem } from "@dust-tt/sparkle";
-import { DropdownMenuTagList } from "@dust-tt/sparkle";
+import {
+  Chip,
+  DropdownMenuTagItem,
+  DropdownMenuTagList,
+  SearchDropdownMenu,
+  Spinner,
+} from "@dust-tt/sparkle";
 
 import type { DataSourceTag } from "@app/types";
 
