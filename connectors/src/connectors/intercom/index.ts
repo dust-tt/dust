@@ -75,7 +75,7 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
     const intercomConfigurationBlob = {
       intercomWorkspaceId: intercomWorkspace.id,
       name: intercomWorkspace.name,
-      conversationsSlidingWindow: 90,
+      conversationsSlidingWindow: 180,
       region: intercomWorkspace.region,
       syncAllConversations: "disabled" as const,
       shouldSyncNotes: true,
