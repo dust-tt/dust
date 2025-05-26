@@ -8,6 +8,7 @@ import {
   ScanIcon,
 } from "@dust-tt/sparkle";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
+import { useState } from "react";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import type { ActionDetailsComponentBaseProps } from "@app/components/actions/types";
@@ -17,6 +18,27 @@ import {
   isExtractResultResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { isTimeFrame } from "@app/types/shared/utils/time_frame";
+
+interface MCPExtractActionQueryProps {
+  action: MCPActionType;
+  queryResource?: {
+    text: string;
+    mimeType: string;
+    uri: string;
+  };
+}
+
+interface MCPExtractActionResultsProps {
+  resultResource?: {
+    text: string;
+    uri: string;
+    mimeType: string;
+    fileId: string;
+    title: string;
+    contentType: string;
+    snippet: string | null;
+  };
+}
 
 export function MCPExtractActionDetails({
   action,
@@ -93,14 +115,7 @@ export function MCPExtractActionDetails({
 function MCPExtractActionQuery({
   action,
   queryResource,
-}: {
-  action: MCPActionType;
-  queryResource?: {
-    text: string;
-    mimeType: string;
-    uri: string;
-  };
-}) {
+}: MCPExtractActionQueryProps) {
   const timeFrameParam = action.params?.timeFrame;
 
   if (queryResource) {
@@ -111,7 +126,7 @@ function MCPExtractActionQuery({
     );
   }
 
-  // Fallback: Format timeframe description from params
+  // Fallback: Format timeframe description from params.
   const timeFrameAsString =
     timeFrameParam && isTimeFrame(timeFrameParam)
       ? "the last " +
@@ -129,17 +144,9 @@ function MCPExtractActionQuery({
 
 function MCPExtractActionResults({
   resultResource,
-}: {
-  resultResource?: {
-    text: string;
-    uri: string;
-    mimeType: string;
-    fileId: string;
-    title: string;
-    contentType: string;
-    snippet: string | null;
-  };
-}) {
+}: MCPExtractActionResultsProps) {
+  const [isDownloading, setIsDownloading] = useState(false);
+
   if (!resultResource) {
     return (
       <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
@@ -148,11 +155,14 @@ function MCPExtractActionResults({
     );
   }
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
+    setIsDownloading(true);
     try {
       window.open(resultResource.uri, "_blank");
     } catch (error) {
       console.error("Download failed:", error);
+    } finally {
+      setIsDownloading(false);
     }
   };
 
@@ -164,6 +174,7 @@ function MCPExtractActionResults({
           containerClassName="my-2"
           onClick={handleDownload}
           tooltip={resultResource.title}
+          isLoading={isDownloading}
         >
           <CitationIcons>
             <Icon visual={ScanIcon} />
