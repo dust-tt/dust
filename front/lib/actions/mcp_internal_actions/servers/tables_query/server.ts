@@ -12,13 +12,14 @@ import type { MCPToolResultContentType } from "@app/lib/actions/mcp_internal_act
 import { fetchAgentTableConfigurations } from "@app/lib/actions/mcp_internal_actions/servers/utils";
 import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
 import { runActionStreamed } from "@app/lib/actions/server";
-import type { AgentLoopRunContextType } from "@app/lib/actions/types";
+import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { renderConversationForModel } from "@app/lib/api/assistant/preprocessing";
 import type { CSVRecord } from "@app/lib/api/csv";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
+import type { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
 import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { LabsSalesforcePersonalConnectionResource } from "@app/lib/resources/labs_salesforce_personal_connection_resource";
@@ -42,7 +43,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
 
 function createServer(
   auth: Authenticator,
-  agentLoopRunContext?: AgentLoopRunContextType
+  agentLoopContext?: AgentLoopContextType
 ): McpServer {
   const server = new McpServer(serverInfo);
 
@@ -55,9 +56,11 @@ function createServer(
         ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE],
     },
     async ({ tables }) => {
-      if (!agentLoopRunContext) {
+      if (!agentLoopContext?.runContext) {
         throw new Error("Unreachable: missing agentLoopRunContext.");
       }
+
+      const agentLoopRunContext = agentLoopContext.runContext;
 
       const owner = auth.getNonNullableWorkspace();
 
@@ -145,14 +148,25 @@ function createServer(
       const dataSourceViewsMap = new Map(
         dataSourceViews.map((dsv) => [dsv.id, dsv])
       );
-      const configuredTables = agentTableConfigurations.map((t) => ({
-        workspace_id: owner.sId,
-        table_id: t.tableId,
-        // Note: This value is passed to the registry for lookup.
-        // The registry will return the associated data source's dustAPIDataSourceId.
-        data_source_id: dataSourceViewsMap.get(t.dataSourceViewId)?.sId,
-        remote_database_secret_id: personalConnectionIds[t.dataSourceViewId],
-      }));
+
+      const configuredTables = agentTableConfigurations.map(
+        (t: AgentTablesQueryConfigurationTable) => {
+          const dataSourceViewId = dataSourceViewsMap.get(
+            t.dataSourceViewId
+          )?.sId;
+
+          return {
+            workspace_id: owner.sId,
+            table_id: t.tableId,
+            // Note: This value is passed to the registry for lookup.
+            // The registry will return the associated data source's dustAPIDataSourceId.
+            data_source_id: dataSourceViewId,
+            remote_database_secret_id: dataSourceViewId
+              ? personalConnectionIds[dataSourceViewId]
+              : null,
+          };
+        }
+      );
       if (configuredTables.length === 0) {
         return makeMCPToolTextError(
           "The agent does not have access to any tables. Please edit the agent's Query Tables tool to add tables, or remove the tool."

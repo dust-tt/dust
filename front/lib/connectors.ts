@@ -118,7 +118,15 @@ type ProviderWithExtractor = BaseProvider & {
   urlNormalizer?: never;
 };
 
-type Provider = ProviderWithExtractor | ProviderWithNormalizer;
+type ProviderWithBoth = BaseProvider & {
+  urlNormalizer: (url: URL) => UrlCandidate;
+  extractor: (url: URL) => NodeCandidate;
+};
+
+type Provider =
+  | ProviderWithExtractor
+  | ProviderWithNormalizer
+  | ProviderWithBoth;
 
 const providers: Partial<Record<ConnectorProvider, Provider>> = {
   confluence: {
@@ -130,6 +138,20 @@ const providers: Partial<Record<ConnectorProvider, Provider>> = {
     },
     urlNormalizer: (url: URL): UrlCandidate => {
       return { url: url.toString(), provider: "confluence" };
+    },
+    extractor: (url: URL): NodeCandidate => {
+      // Extract page node ID from long-format Confluence URLs
+      // Example: https://example.atlassian.net/wiki/spaces/SPACE/pages/12345678/Page+Title
+      const pageMatch = url.pathname.match(
+        /\/wiki\/spaces\/[^/]+\/pages\/(\d+)/
+      );
+      if (pageMatch && pageMatch[1]) {
+        return {
+          node: `confluence-page-${pageMatch[1]}`,
+          provider: "confluence",
+        };
+      }
+      return { node: null, provider: "confluence" };
     },
   },
   google_drive: {
@@ -334,7 +356,16 @@ export function nodeCandidateFromUrl(
 
     for (const provider of Object.values(providers)) {
       if (provider.matcher(urlObj)) {
-        if (provider.extractor) {
+        if (provider.extractor && provider.urlNormalizer) {
+          // For providers with both extractor and urlNormalizer, we try to
+          // extract the nodeId first, since it avoids a search in the database.
+          const result = provider.extractor(urlObj);
+          if (result.node) {
+            return result;
+          } else {
+            return provider.urlNormalizer(urlObj);
+          }
+        } else if (provider.extractor) {
           return provider.extractor(urlObj);
         } else {
           return provider.urlNormalizer(urlObj);

@@ -141,9 +141,11 @@ export class MCPServerConnectionResource extends BaseResource<MCPServerConnectio
   static async findByMCPServer({
     auth,
     mcpServerId,
+    connectionType,
   }: {
     auth: Authenticator;
     mcpServerId: string;
+    connectionType: MCPServerConnectionConnectionType;
   }): Promise<Result<MCPServerConnectionResource, DustError>> {
     const { serverType, id } = getServerTypeAndIdFromSId(mcpServerId);
 
@@ -153,6 +155,7 @@ export class MCPServerConnectionResource extends BaseResource<MCPServerConnectio
         ...(serverType === "remote"
           ? { remoteMCPServerId: id }
           : { internalMCPServerId: mcpServerId }),
+        connectionType,
       },
     });
 
@@ -238,6 +241,8 @@ export class MCPServerConnectionResource extends BaseResource<MCPServerConnectio
   }
 }
 
+export type MCPServerConnectionConnectionType = "workspace" | "personal";
+
 export interface MCPServerConnectionType {
   sId: string;
   createdAt: Date;
@@ -248,7 +253,7 @@ export interface MCPServerConnectionType {
     email: string | null;
     userId: string | null;
   };
-  connectionType: string;
+  connectionType: MCPServerConnectionConnectionType;
   serverType: string;
   remoteMCPServerId: string | null;
   internalMCPServerId: string | null;

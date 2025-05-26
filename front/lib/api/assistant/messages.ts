@@ -234,6 +234,7 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
       let error: {
         code: string;
         message: string;
+        metadata: Record<string, string | number | boolean> | null;
       } | null = null;
 
       if (
@@ -243,6 +244,7 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
         error = {
           code: agentMessage.errorCode,
           message: agentMessage.errorMessage,
+          metadata: agentMessage.errorMetadata,
         };
       }
 

@@ -17,8 +17,7 @@ import {
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import { Separator } from "@radix-ui/react-select";
-import { useContext, useEffect } from "react";
-import { useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 
 import { ActionValidationProvider } from "@app/components/assistant/conversation/ActionValidationProvider";
 import { ConversationsNavigationProvider } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
@@ -76,31 +75,35 @@ export default function AssistantBuilderRightPanel({
   const [rightPanelTab, setRightPanelTab] =
     useState<AssistantBuilderRightPanelTabType>("Preview");
 
-  const { draftAssistant, isFading, isSavingDraftAgent } = usePreviewAssistant({
-    owner,
-    builderState,
-    reasoningModels,
-  });
+  const { draftAssistant, isFading, isSavingDraftAgent, createDraftAgent } =
+    usePreviewAssistant({
+      owner,
+      builderState,
+      reasoningModels,
+    });
 
   const { user } = useUser();
-  const {
-    conversation,
-    setConversation,
-    stickyMentions,
-    setStickyMentions,
-    handleSubmit,
-  } = useTryAssistantCore({
-    owner,
-    user,
-    assistant: draftAssistant,
-  });
+  const { conversation, stickyMentions, setStickyMentions, handleSubmit } =
+    useTryAssistantCore({
+      owner,
+      user,
+      assistant: draftAssistant,
+      createDraftAgent,
+    });
 
   const isBuilderStateEmpty =
     !builderState.instructions?.trim() && !builderState.actions.length;
 
+  const previousDraftSId = useRef<string | undefined>(undefined);
+
   useEffect(() => {
-    setConversation(null);
-  }, [draftAssistant?.sId, setConversation]);
+    if (
+      draftAssistant?.sId &&
+      previousDraftSId.current !== draftAssistant.sId
+    ) {
+      previousDraftSId.current = draftAssistant.sId;
+    }
+  }, [draftAssistant?.sId]);
 
   return (
     <div className="flex h-full flex-col">

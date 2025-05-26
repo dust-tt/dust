@@ -3,6 +3,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import assert from "assert";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import _ from "lodash";
+import { z } from "zod";
 
 import {
   generateJSONFileAndSnippet,
@@ -14,7 +15,10 @@ import {
   ConfigurableToolInputSchemas,
   JsonSchemaSchema,
 } from "@app/lib/actions/mcp_internal_actions/input_schemas";
-import { getDataSourceConfiguration } from "@app/lib/actions/mcp_internal_actions/servers/utils";
+import {
+  getDataSourceConfiguration,
+  shouldAutoGenerateTags,
+} from "@app/lib/actions/mcp_internal_actions/servers/utils";
 import type { ProcessActionOutputsType } from "@app/lib/actions/process";
 import { getExtractFileTitle } from "@app/lib/actions/process/utils";
 import { applyDataSourceFilters } from "@app/lib/actions/retrieval";
@@ -94,15 +98,61 @@ function createServer(
       ) &&
       agentLoopContext.runContext.actionConfiguration.jsonSchema !== null);
 
+  const isTimeFrameConfigured =
+    (agentLoopContext?.listToolsContext &&
+      isServerSideMCPServerConfiguration(
+        agentLoopContext.listToolsContext.agentActionConfiguration
+      ) &&
+      agentLoopContext.listToolsContext.agentActionConfiguration.timeFrame !==
+        null) ||
+    (agentLoopContext?.runContext &&
+      isServerSideMCPToolConfiguration(
+        agentLoopContext.runContext.actionConfiguration
+      ) &&
+      agentLoopContext.runContext.actionConfiguration.timeFrame !== null);
+
+  const isTagsModeConfigured = agentLoopContext
+    ? shouldAutoGenerateTags(agentLoopContext)
+    : false;
+
+  // Create tag schemas if needed for tag auto-mode
+  const tagsInputSchema = isTagsModeConfigured
+    ? {
+        tagsIn: z
+          .array(z.string())
+          .describe(
+            "A list of labels (also called tags) to restrict the search based on the user request and past conversation context." +
+              "If multiple labels are provided, the search will return documents that have at least one of the labels." +
+              "You can't check that all labels are present, only that at least one is present." +
+              "If no labels are provided, the search will return all documents regardless of their labels."
+          ),
+        tagsNot: z
+          .array(z.string())
+          .describe(
+            "A list of labels (also called tags) to exclude from the search based on the user request and past conversation context." +
+              "Any document having one of these labels will be excluded from the search."
+          ),
+      }
+    : {};
+
   server.tool(
     "process_documents",
     "Process available documents according to timeframe to extract structured data.",
     // `Extract an array of data points from available documents, according to a ${isJsonSchemaConfigured ? "user-configured" : ""} JSON schema.`,
     {
-      timeFrame:
-        ConfigurableToolInputSchemas[
-          INTERNAL_MIME_TYPES.TOOL_INPUT.NULLABLE_TIME_FRAME
-        ],
+      timeFrame: isTimeFrameConfigured
+        ? ConfigurableToolInputSchemas[
+            INTERNAL_MIME_TYPES.TOOL_INPUT.NULLABLE_TIME_FRAME
+          ]
+        : z
+            .object({
+              duration: z.number(),
+              unit: z.enum(["hour", "day", "week", "month", "year"]),
+            })
+            .describe(
+              "The time frame to use for documents retrieval (e.g. last 7 days, last 2 months). Leave null to search all documents regardless of time."
+            )
+            .nullable(),
       dataSources:
         ConfigurableToolInputSchemas[
           INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
@@ -114,8 +164,9 @@ function createServer(
         : JsonSchemaSchema.describe(
             EXTRACT_TOOL_JSON_SCHEMA_ARGUMENT_DESCRIPTION
           ),
+      ...tagsInputSchema,
     },
-    async ({ timeFrame, dataSources, jsonSchema }) => {
+    async ({ timeFrame, dataSources, jsonSchema, tagsIn, tagsNot }) => {
       // Unwrap and prepare variables.
       assert(
         agentLoopContext?.runContext,
@@ -131,6 +182,12 @@ function createServer(
         delete (jsonSchema as any).mimeType;
       }
 
+      // Similarly, if timeFrame was pre-configured by the user, it has an additional mimeType property.
+      // We remove it here before passing the timeFrame to the dust app.
+      if (timeFrame && "mimeType" in timeFrame) {
+        delete (timeFrame as any).mimeType;
+      }
+
       // prepare dust app inputs
       const prompt = await getPromptForProcessDustApp({
         auth,
@@ -142,6 +199,8 @@ function createServer(
         model,
         dataSources,
         timeFrame,
+        tagsIn,
+        tagsNot,
       });
 
       // Call the dust app
@@ -228,11 +287,15 @@ async function getConfigForProcessDustApp({
   model,
   dataSources,
   timeFrame,
+  tagsIn,
+  tagsNot,
 }: {
   auth: Authenticator;
   model: AgentModelConfigurationType;
   dataSources: DataSourcesToolConfigurationType[number][];
   timeFrame: TimeFrame | null;
+  tagsIn?: string[];
+  tagsNot?: string[];
 }) {
   const { dataSourceConfigurations, dataSourceViewsMap } =
     await getDataSourcesDetails(auth, dataSources);
@@ -258,8 +321,8 @@ async function getConfigForProcessDustApp({
     config,
     dataSourceConfigurations,
     dataSourceViewsMap,
-    null, // TODO(pr,mcp-extract): add globalTagsIn
-    null // TODO(pr,mcp-extract): add globalTagsNot
+    tagsIn || null,
+    tagsNot || null
   );
 
   if (timeFrame) {

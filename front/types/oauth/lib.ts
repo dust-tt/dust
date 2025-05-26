@@ -5,6 +5,7 @@ export const OAUTH_USE_CASES = [
   "labs_transcripts",
   "platform_actions",
   "salesforce_personal",
+  "personal_actions",
 ] as const;
 
 export type OAuthUseCase = (typeof OAUTH_USE_CASES)[number];

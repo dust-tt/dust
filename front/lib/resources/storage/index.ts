@@ -65,6 +65,9 @@ export const frontSequelize = new Sequelize(
         }
       },
     },
+    dialectOptions: {
+      appName: "front master",
+    },
   }
 );
 
@@ -76,6 +79,9 @@ export function getFrontReplicaDbConnection() {
       dbConfig.getRequiredFrontReplicaDatabaseURI() as string,
       {
         logging: false,
+        dialectOptions: {
+          appName: "front replica",
+        },
       }
     );
   }
