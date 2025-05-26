@@ -420,10 +420,11 @@ const PROVIDER_STRATEGIES: Record<
     },
     isExtraConfigValid: (extraConfig, useCase) => {
       if (useCase === "personal_actions") {
-        if (!extraConfig.mcp_server_id) {
-          return false;
+        // If we have an mcp_server_id it means the admin already setup the connection and we have
+        // everything we need, otherwise we'll need the instance_url and client_id.
+        if (extraConfig.mcp_server_id) {
+          return true;
         }
-        return true;
       }
 
       if (useCase === "salesforce_personal") {
@@ -492,63 +493,64 @@ const PROVIDER_STRATEGIES: Record<
             ...extraConfig,
           },
         };
-      } else if (useCase === "personal_actions") {
+      }
+
+      if (useCase === "personal_actions") {
         // For personal actions we reuse the existing connection credential id from the existing
-        // workspace connection (setup by admin).
+        // workspace connection (setup by admin) if we have it, otherwise we fallback to assuming
+        // we have client_secret and instance_url (initial admin setup).
         const { mcp_server_id, ...restConfig } = extraConfig;
 
-        if (!mcp_server_id) {
-          return null;
-        }
+        if (mcp_server_id) {
+          const mcpServerConnectionRes =
+            await MCPServerConnectionResource.findByMCPServer({
+              auth,
+              mcpServerId: mcp_server_id,
+              connectionType: "workspace",
+            });
 
-        const mcpServerConnectionRes =
-          await MCPServerConnectionResource.findByMCPServer({
-            auth,
-            mcpServerId: mcp_server_id,
-            connectionType: "workspace",
+          if (mcpServerConnectionRes.isErr()) {
+            return null;
+          }
+
+          const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);
+          const connectionRes = await oauthApi.getAccessToken({
+            connectionId: mcpServerConnectionRes.value.connectionId,
           });
+          if (connectionRes.isErr()) {
+            return null;
+          }
+          const connection = connectionRes.value.connection;
+          const connectionId = connection.connection_id;
 
-        if (mcpServerConnectionRes.isErr()) {
-          return null;
-        }
-
-        const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);
-        const connectionRes = await oauthApi.getAccessToken({
-          connectionId: mcpServerConnectionRes.value.connectionId,
-        });
-        if (connectionRes.isErr()) {
-          return null;
-        }
-        const connection = connectionRes.value.connection;
-        const connectionId = connection.connection_id;
-
-        return {
-          credential: {
-            content: {
-              from_connection_id: connectionId,
+          return {
+            credential: {
+              content: {
+                from_connection_id: connectionId,
+              },
+              metadata: { workspace_id: workspaceId, user_id: userId },
             },
-            metadata: { workspace_id: workspaceId, user_id: userId },
-          },
-          cleanedConfig: {
-            client_id: connection.metadata.client_id as string,
-            instance_url: connection.metadata.instance_url as string,
-            ...restConfig,
-          },
-        };
-      } else {
-        const { client_secret, ...restConfig } = extraConfig;
-        // Keep client_id in metadata in clear text.
-        return {
-          credential: {
-            content: {
-              client_secret,
-              client_id: extraConfig.client_id,
+            cleanedConfig: {
+              client_id: connection.metadata.client_id as string,
+              instance_url: connection.metadata.instance_url as string,
+              ...restConfig,
             },
-            metadata: { workspace_id: workspaceId, user_id: userId },
-          },
-          cleanedConfig: restConfig,
-        };
+          };
+        }
       }
+
+      const { client_secret, ...restConfig } = extraConfig;
+      // Keep client_id in metadata in clear text.
+      return {
+        credential: {
+          content: {
+            client_secret,
+            client_id: extraConfig.client_id,
+          },
+          metadata: { workspace_id: workspaceId, user_id: userId },
+        },
+        cleanedConfig: restConfig,
+      };
     },
   },
   hubspot: {
