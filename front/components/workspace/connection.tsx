@@ -28,7 +28,6 @@ import { useCallback, useState } from "react";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import {
   useFeatureFlags,
-  useSyncWorkOSDirectoriesAndUsers,
   useWorkspaceEnterpriseConnection,
 } from "@app/lib/swr/workspaces";
 import type {
@@ -58,41 +57,6 @@ export interface EnterpriseConnectionStrategyDetails {
   // SAML Specific.
   audienceUri: string;
   samlAcsUrl: string;
-}
-
-interface WorkOSSyncButtonProps {
-  owner: WorkspaceType;
-}
-
-// TODO: find a more appropriate location for this component.
-export function WorkOSSyncButton({ owner }: WorkOSSyncButtonProps) {
-  const [isLoading, setIsLoading] = useState(false);
-  const { triggerFullSync } = useSyncWorkOSDirectoriesAndUsers(owner);
-
-  const handleSync = async () => {
-    setIsLoading(true);
-    await triggerFullSync();
-    setIsLoading(false);
-  };
-
-  return owner.workOSOrganizationId ? (
-    <Button
-      variant="primary"
-      onClick={handleSync}
-      disabled={isLoading}
-      label={isLoading ? "Syncing..." : "Sync WorkOS Directories & Groups"}
-    />
-  ) : (
-    <Button
-      variant="primary"
-      disabled
-      label={
-        isLoading
-          ? "Syncing..."
-          : "Your workspace is not linked to a WorkOS organization."
-      }
-    />
-  );
 }
 
 export function EnterpriseConnectionDetails({
@@ -219,11 +183,6 @@ export function EnterpriseConnectionDetails({
             }}
           />
         )}
-        {/* Debug button: will be replaced by an actual admin console */}
-        <Page.P variant="secondary">Synchronize your directories.</Page.P>
-        <div className="flex w-full flex-col items-start gap-3">
-          <WorkOSSyncButton owner={owner} />
-        </div>
         <Dialog open={showNoInviteLinkPopup}>
           <DialogContent>
             <DialogHeader>Free plan</DialogHeader>
