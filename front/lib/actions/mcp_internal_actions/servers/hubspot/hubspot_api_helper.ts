@@ -352,52 +352,53 @@ export const createDeal = async ({
 };
 
 /**
- * Create an engagement in Hubspot.
- * Note: Engagements are generic (notes, emails, tasks, meetings, calls).
- * For specific types like tasks or notes, it's often better to use their dedicated "object" creation endpoints (e.g., POST /crm/v3/objects/tasks).
- * This function uses the engagements API, which might have different association behavior or property requirements.
+ * Create a note in Hubspot.
  */
-export const createEngagement = async ({
+export const createNote = async ({
   accessToken,
-  properties, // Must include hs_engagement_type, hs_timestamp, and other type-specific props (hs_note_body, hs_task_subject etc)
-  associations, // Direct association IDs, e.g., { contactIds: ["123"], dealIds: ["456"] }
+  properties,
+  associations,
 }: {
   accessToken: string;
-  properties: Record<string, any>;
+  properties: {
+    hs_note_body: string;
+    hs_timestamp?: string;
+    [key: string]: any;
+  };
   associations?: {
     contactIds?: string[];
     companyIds?: string[];
     dealIds?: string[];
-    ownerIds?: string[]; // Association with owners is less common here and usually handled via a specific property (e.g., hubspot_owner_id) on the engagement itself.
+    ownerIds?: string[];
     ticketIds?: string[];
   };
 }): Promise<SimplePublicObject> => {
   const hubspotClient = new Client({ accessToken });
 
-  const finalProperties = { ...properties }; // Create a copy to avoid mutating the original
+  const propertiesForApi = { ...properties };
 
-  if (!finalProperties.hs_engagement_type) {
+  if (!propertiesForApi.hs_note_body) {
     throw normalizeError(
-      new Error(
-        "hs_engagement_type is required in properties to create an engagement."
-      )
+      new Error("hs_note_body is required to create a note.")
     );
   }
+
+  if (!propertiesForApi.hs_timestamp) {
+    propertiesForApi.hs_timestamp = new Date().toISOString();
+  }
+  // hs_engagement_type should not be part of propertiesForApi for the "notes" endpoint
+  // If it was passed, it won't cause issues here, but it's not used by the notes API directly.
+  // Consider explicitly deleting it if it could be problematic: delete propertiesForApi.hs_engagement_type;
 
   const builtAssociations: SimplePublicObjectInputForCreate["associations"] =
     [];
 
-  // Transform direct associations (contactIds, etc.) into the standard association format
-  // This requires knowing the object type string for each ID type (contacts, companies, deals)
-  // and using getAssociationTypeId("engagements", toObjectType)
   if (associations) {
     const associationMappings = [
       { ids: associations.contactIds, toObjectType: "contacts" },
       { ids: associations.companyIds, toObjectType: "companies" },
       { ids: associations.dealIds, toObjectType: "deals" },
       { ids: associations.ticketIds, toObjectType: "tickets" },
-      // Owners are usually associated via a specific property (e.g., hubspot_owner_id) on the engagement itself,
-      // rather than this general association mechanism, but including for completeness if ever needed.
       { ids: associations.ownerIds, toObjectType: "owners" },
     ];
 
@@ -405,7 +406,7 @@ export const createEngagement = async ({
       if (mapping.ids && mapping.ids.length > 0) {
         const associationTypeId = await getAssociationTypeId(
           accessToken,
-          "engagements", // fromObjectType for engagement associations.
+          "notes", // fromObjectType is "notes"
           mapping.toObjectType
         );
         for (const id of mapping.ids) {
@@ -426,20 +427,20 @@ export const createEngagement = async ({
     }
   }
 
-  const engagementInput: SimplePublicObjectInputForCreate = {
-    properties: finalProperties,
+  const noteInput: SimplePublicObjectInputForCreate = {
+    properties: propertiesForApi,
     associations: builtAssociations,
   };
 
   try {
-    const createdEngagement = await hubspotClient.crm.objects.basicApi.create(
-      "engagements",
-      engagementInput
+    const createdNote = await hubspotClient.crm.objects.basicApi.create(
+      "notes",
+      noteInput
     );
-    return createdEngagement;
+    return createdNote;
   } catch (error) {
     console.error(
-      `Error creating engagement (type: ${finalProperties.hs_engagement_type}). Input: ${JSON.stringify(engagementInput, null, 2)}`,
+      `Error creating note. Input: ${JSON.stringify(noteInput, null, 2)}`,
       error
     );
     throw normalizeError(error);

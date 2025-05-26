@@ -9,9 +9,9 @@ import {
   createCompany,
   createContact,
   createDeal,
-  createEngagement,
   createLead,
   createMeeting,
+  createNote,
   createTask,
   createTicket,
   getAssociatedMeetings,
@@ -368,39 +368,43 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
   );
 
   server.tool(
-    "create_engagement",
-    "Creates a new engagement (note, call, email, meeting, task) in Hubspot.",
+    "create_note",
+    "Creates a new note in Hubspot, with optional associations.",
     {
       properties: z
-        .record(z.any())
-        .describe(
-          "Properties for the engagement, including hs_engagement_type and type-specific data like hs_note_body, hs_meeting_title, etc."
-        ),
+        .object({
+          hs_note_body: z.string().describe("The content of the note."),
+          hs_timestamp: z
+            .string()
+            .datetime({
+              message: "Timestamp must be a valid ISO 8601 date string",
+            })
+            .optional()
+            .describe(
+              "The timestamp of the note (ISO 8601 format). Defaults to current time if not provided."
+            ),
+        })
+        .describe("Properties for the note."),
       associations: z
         .object({
           contactIds: z.array(z.string()).optional(),
           companyIds: z.array(z.string()).optional(),
           dealIds: z.array(z.string()).optional(),
           ticketIds: z.array(z.string()).optional(),
-          ownerIds: z
-            .array(z.string())
-            .optional()
-            .describe(
-              "Less common for direct association here, usually via hubspot_owner_id property."
-            ),
+          ownerIds: z.array(z.string()).optional(),
         })
         .optional()
-        .describe("Direct IDs of objects to associate the engagement with."),
+        .describe("Direct IDs of objects to associate the note with."),
     },
     async ({ properties, associations }) => {
       return withAuth(auth, mcpServerId, async (accessToken) => {
-        const result = await createEngagement({
+        const result = await createNote({
           accessToken,
           properties,
           associations,
         });
         return makeMCPToolJSONSuccess({
-          message: `Engagement (type: ${properties.hs_engagement_type || "unknown"}) created successfully.`,
+          message: "Note created successfully.",
           result,
         });
       });

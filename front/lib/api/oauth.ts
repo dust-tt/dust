@@ -555,29 +555,44 @@ const PROVIDER_STRATEGIES: Record<
   },
   hubspot: {
     setupUri: ({ connection }) => {
+      // For platform_actions, we need to request all scopes needed by the agent.
+      // For data_source_sync, we only need the scopes to read the data.
+      // TODO(MCP): Check if we can get more granular scopes for data_source_sync.
       const scopes = [
-        "crm.objects.companies.read",
-        "crm.objects.companies.write",
+        "oauth",
         "crm.objects.contacts.read",
         "crm.objects.contacts.write",
-        "crm.objects.custom.read",
-        "crm.objects.custom.write",
+        "crm.schemas.contacts.read",
+        "crm.objects.companies.read",
+        "crm.objects.companies.write",
+        "crm.schemas.companies.read",
         "crm.objects.deals.read",
         "crm.objects.deals.write",
-        "crm.objects.leads.read",
-        "crm.objects.leads.write",
-        "crm.objects.owners.read",
-        "crm.schemas.companies.read",
-        "crm.schemas.contacts.read",
-        "crm.schemas.custom.read",
         "crm.schemas.deals.read",
-        "oauth",
+        "crm.objects.engagements.read",
+        "crm.objects.engagements.write",
+        "crm.schemas.engagements.read",
+        "crm.objects.notes.read",
+        "crm.objects.notes.write",
+        "crm.schemas.notes.read",
+        "crm.objects.tasks.read",
+        "crm.objects.tasks.write",
+        "crm.schemas.tasks.read",
+        "crm.objects.tickets.read",
+        "crm.objects.tickets.write",
+        "crm.schemas.tickets.read",
+        "crm.objects.owners.read",
+        "crm.schemas.custom.read", // For properties of other/custom objects (covers products, etc.)
+        "crm.objects.custom.read", // For reading other/custom objects (covers products, etc.)
+        "crm.associations.read", // For getAssociatedMeetings and building associations
+        "files.read", // For getFilePublicUrl
+        "timeline", // General context
       ];
       return (
         `https://app.hubspot.com/oauth/authorize` +
         `?client_id=${config.getOAuthHubspotClientId()}` +
-        `&scope=${encodeURIComponent(scopes.join(" "))}` +
         `&redirect_uri=${encodeURIComponent(finalizeUriForProvider("hubspot"))}` +
+        `&scope=${encodeURIComponent(scopes.join(" "))}` +
         `&state=${connection.connection_id}`
       );
     },
