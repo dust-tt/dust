@@ -63,8 +63,8 @@ export const getProviderRequiredAuthCredentials = async (
         const { code_verifier, code_challenge } = await getPKCEConfig();
 
         return {
-          client_id: { label: "oAuth client Id", value: undefined },
-          client_secret: { label: "oAuth client secret", value: undefined },
+          client_id: { label: "OAuth client Id", value: undefined },
+          client_secret: { label: "OAuth client secret", value: undefined },
           instance_url: { label: "Instance URL", value: undefined },
           code_verifier: { label: "Code verifier", value: code_verifier },
           code_challenge: { label: "Code challenge", value: code_challenge },
