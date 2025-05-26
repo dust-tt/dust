@@ -9,8 +9,9 @@ import {
   Label,
   useSendNotification,
 } from "@dust-tt/sparkle";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
+import { MCPServerOAuthConnexion } from "@app/components/actions/mcp/MCPServerOAuthConnexion";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata";
 import type { MCPServerType } from "@app/lib/api/mcp";
 import {
@@ -20,6 +21,7 @@ import {
 } from "@app/lib/swr/mcp_servers";
 import type { WorkspaceType } from "@app/types";
 import {
+  asDisplayName,
   OAUTH_PROVIDER_NAMES,
   setupOAuthConnection,
   validateUrl,
@@ -34,7 +36,7 @@ type RemoteMCPServerDetailsProps = {
   setIsOpen: (isOpen: boolean) => void;
 };
 
-export function CreateMCPServerModal({
+export function CreateMCPServerDialog({
   owner,
   internalMCPServer,
   setMCPServer,
@@ -47,6 +49,10 @@ export function CreateMCPServerModal({
   const [sharedSecret, setSharedSecret] = useState<string | undefined>(
     undefined
   );
+  const [authCredentials, setAuthCredentials] = useState<Record<
+    string,
+    string
+  > | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [authorization, setAuthorization] = useState<AuthorizationInfo | null>(
     null
@@ -54,8 +60,8 @@ export function CreateMCPServerModal({
 
   const { createWithUrlSync } = useCreateRemoteMCPServer(owner);
   const { createMCPServerConnection } = useCreateMCPServerConnection({ owner });
-
   const { createInternalMCPServer } = useCreateInternalMCPServer(owner);
+
   useEffect(() => {
     if (internalMCPServer) {
       setAuthorization(internalMCPServer.authorization);
@@ -63,6 +69,14 @@ export function CreateMCPServerModal({
       setAuthorization(null);
     }
   }, [internalMCPServer]);
+
+  const resetState = useCallback(() => {
+    setIsLoading(false);
+    setError(null);
+    setUrl("");
+    setSharedSecret(undefined);
+    setAuthCredentials(null);
+  }, [setIsLoading]);
 
   const handleSave = async (e: Event) => {
     if (internalMCPServer) {
@@ -75,7 +89,7 @@ export function CreateMCPServerModal({
           owner,
           provider: authorization.provider,
           useCase: authorization.use_case,
-          extraConfig: {},
+          extraConfig: authCredentials ?? {},
         });
         if (cRes.isErr()) {
           sendNotification({
@@ -145,20 +159,25 @@ export function CreateMCPServerModal({
             error instanceof Error ? error.message : "An error occurred",
         });
       } finally {
-        setIsLoading(false);
-        setError(null);
-        setUrl("");
-        setSharedSecret(undefined);
+        resetState();
       }
     }
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        setIsOpen(open);
+        resetState();
+      }}
+    >
       <DialogContent size="lg">
         <DialogHeader>
           <DialogTitle>
-            {internalMCPServer ? "Add Tools" : "Add MCP Server"}
+            {internalMCPServer
+              ? `Add ${asDisplayName(internalMCPServer.name)}`
+              : "Add MCP Server"}
           </DialogTitle>
         </DialogHeader>
         <DialogContainer>
@@ -197,27 +216,17 @@ export function CreateMCPServerModal({
               </div>
             </>
           )}
-          {authorization && (
-            <div className="flex flex-col items-center gap-2">
-              <Label className="self-start">
-                These tools require authentication with{" "}
-                {OAUTH_PROVIDER_NAMES[authorization.provider]}.
-              </Label>
-              <span className="w-full font-semibold text-red-500">
-                Authentication credentials will be shared by all users of this
-                workspace when they use these tools.
-              </span>
-            </div>
-          )}
+          <MCPServerOAuthConnexion
+            authorization={authorization}
+            authCredentials={authCredentials}
+            setAuthCredentials={setAuthCredentials}
+          />
         </DialogContainer>
         <DialogFooter
           leftButtonProps={{
             label: "Cancel",
             variant: "ghost",
-            onClick: () => {
-              setUrl("");
-              setError(null);
-            },
+            onClick: resetState,
           }}
           rightButtonProps={{
             label: authorization ? "Save and connect" : "Save",

@@ -9,7 +9,7 @@ import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useState } from "react";
 
 import { AddActionMenu } from "@app/components/actions/mcp/AddActionMenu";
-import { CreateMCPServerModal } from "@app/components/actions/mcp/CreateMCPServerModal";
+import { CreateMCPServerDialog } from "@app/components/actions/mcp/CreateMCPServerDialog";
 import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
 import { mcpServersSortingFn } from "@app/lib/actions/mcp_helper";
@@ -241,7 +241,7 @@ export const AdminActionsList = ({
 
   return (
     <>
-      <CreateMCPServerModal
+      <CreateMCPServerDialog
         isOpen={isCreateOpen}
         internalMCPServer={internalMCPServerToCreate}
         setIsOpen={setIsCreateOpen}

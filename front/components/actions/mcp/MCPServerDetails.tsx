@@ -21,6 +21,7 @@ import {
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { useEffect, useState } from "react";
 
+import { ConnectMCPServerDialog } from "@app/components/actions/mcp/ConnectMCPServerDialog";
 import { MCPServerDetailsInfo } from "@app/components/actions/mcp/MCPServerDetailsInfo";
 import { MCPServerDetailsSharing } from "@app/components/actions/mcp/MCPServerDetailsSharing";
 import { MCPActionHeader } from "@app/components/actions/MCPActionHeader";
@@ -84,13 +85,21 @@ export function MCPServerDetails({
   );
 
   const [isLoading, setIsLoading] = useState(false);
-  const { createAndSaveMCPServerConnection, deleteMCPServerConnection } =
-    useMCPConnectionManagement({
-      owner,
-    });
+  const { deleteMCPServerConnection } = useMCPConnectionManagement({
+    owner,
+  });
+
+  const [isConnectDialogOpen, setIsConnectDialogOpen] = useState(false);
 
   return (
     <>
+      <ConnectMCPServerDialog
+        owner={owner}
+        mcpServer={mcpServer}
+        setIsLoading={setIsLoading}
+        isOpen={isConnectDialogOpen}
+        setIsOpen={setIsConnectDialogOpen}
+      />
       <Dialog
         open={mcpServerToDelete !== undefined}
         onOpenChange={(open) => {
@@ -159,10 +168,7 @@ export function MCPServerDetails({
                     label={"Connect"}
                     size="sm"
                     onClick={() => {
-                      void createAndSaveMCPServerConnection({
-                        authorizationInfo: authorization,
-                        mcpServerId: effectiveMCPServer?.sId,
-                      });
+                      setIsConnectDialogOpen(true);
                     }}
                   />
                 </div>
