@@ -18,12 +18,10 @@ import type { FetchAssistantTemplatesResponse } from "@app/pages/api/templates";
 import type { FetchAssistantTemplateResponse } from "@app/pages/api/templates/[tId]";
 import type { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
 import type { GetAgentConfigurationAnalyticsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/analytics";
-import type { PostAgentScopeRequestBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/scope";
 import type { GetAgentUsageResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/usage";
 import type { GetSlackChannelsLinkedWithAgentResponseBody } from "@app/pages/api/w/[wId]/assistant/builder/slack/channels_linked_with_agent";
 import type { PostAgentUserFavoriteRequestBody } from "@app/pages/api/w/[wId]/members/me/agent_favorite";
 import type {
-  AgentConfigurationScope,
   AgentConfigurationType,
   AgentsGetViewType,
   LightAgentConfigurationType,
@@ -583,87 +581,6 @@ export function useBatchDeleteAgentConfigurations({
   };
 
   return doDelete;
-}
-
-export function useUpdateAgentScope({
-  owner,
-  agentConfigurationId,
-}: {
-  owner: LightWorkspaceType;
-  agentConfigurationId: string | null;
-}) {
-  const sendNotification = useSendNotification();
-  const { mutateAgentConfiguration: mutateCurrentAgentConfiguration } =
-    useAgentConfiguration({
-      workspaceId: owner.sId,
-      agentConfigurationId,
-      disabled: true,
-    });
-  const { mutate: mutateAgentConfigurations } = useUnifiedAgentConfigurations({
-    workspaceId: owner.sId,
-    disabled: true,
-  });
-
-  const doUpdate = useCallback(
-    async (scope: Exclude<AgentConfigurationScope, "global">) => {
-      const body: PostAgentScopeRequestBody = {
-        scope,
-      };
-
-      try {
-        if (!agentConfigurationId) {
-          throw new Error(
-            "Cannot update scope of a non-existing agent. Action: make sure agentConfigurationId is not null."
-          );
-        }
-
-        const res = await fetch(
-          `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfigurationId}/scope`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(body),
-          }
-        );
-
-        if (res.ok) {
-          sendNotification({
-            title: `Agent sharing updated.`,
-            type: "success",
-          });
-          await mutateAgentConfigurations();
-          await mutateCurrentAgentConfiguration();
-          return true;
-        } else {
-          const data = await res.json();
-          sendNotification({
-            title: `Error updating agent sharing.`,
-            description: data.error.message,
-            type: "error",
-          });
-          return false;
-        }
-      } catch (error) {
-        sendNotification({
-          title: `Error updating agent sharing.`,
-          description:
-            normalizeError(error).message || "An unknown error occurred",
-          type: "error",
-        });
-        return false;
-      }
-    },
-    [
-      agentConfigurationId,
-      mutateAgentConfigurations,
-      mutateCurrentAgentConfiguration,
-      owner.sId,
-      sendNotification,
-    ]
-  );
-  return doUpdate;
 }
 
 export function useUpdateUserFavorite({

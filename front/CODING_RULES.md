@@ -97,6 +97,75 @@ Example:
 // we don't have nested pages.
 ```
 
+### [GEN7] Avoid loops with quadratic or worse complexity
+
+Loops with quadratic O(n²) or worse cubic O(n³) complexity can severely hurt performance as data
+sizes grow. Common quadratic patterns include nested loops over related datasets, repeated searches
+within loops, and chained array operations that each iterate over the data.
+
+Always prefer linear O(n) or logarithmic O(n log n) solutions using data structures like Map, Set,
+or sorted arrays. When quadratic complexity is unavoidable, ensure array sizes are small (< 100
+elements) and comment the code appropriately with expected array sizes and execution time. For
+larger datasets or longer operations, implement async processing or move to separate workflows.
+
+Example:
+
+```
+// BAD - O(n²) nested loop
+function findDuplicates(items: Item[], otherItems: Item[]) {
+  const duplicates = [];
+  for (const item of items) {
+    for (const other of otherItems) {
+      if (item.id === other.id) {
+        duplicates.push(item);
+      }
+    }
+  }
+  return duplicates;
+}
+
+// GOOD - O(n) using Set lookup
+function findDuplicates(items: Item[], otherItems: Item[]) {
+  const otherIds = new Set(otherItems.map(item => item.id));
+  return items.filter(item => otherIds.has(item.id));
+}
+
+// BAD - O(n²) repeated find operation in map
+const enrichedAgents = agents.map(agent => ({
+  ...agent,
+  isFavorite: members.find(m => m.favoriteAgentId === agent.sId) !== undefined
+}));
+
+// GOOD - O(n) using Set for constant-time lookup
+const favoriteAgentIds = new Set(members.map(m => m.favoriteAgentId));
+const enrichedAgents = agents.map(agent => ({
+  ...agent,
+  isFavorite: favoriteAgentIds.has(agent.sId)
+}));
+
+// BAD - O(n²) nested loops without bounds checking
+for (const workspace of workspaces) {
+  for (const member of workspace.members) {
+    processWorkspaceMember(workspace, member);
+  }
+}
+
+// GOOD - Comment when quadratic is acceptable due to small array sizes
+function validatePermissions(userRoles: string[], requiredPermissions: string[]) {
+  // O(n²) acceptable: both arrays guaranteed to be small (< 20 elements each).
+  return requiredPermissions.every(permission =>
+    userRoles.some(role => hasPermission(role, permission))
+  );
+}
+```
+
+When quadratic complexity cannot be avoided:
+
+- Comment the expected maximum array sizes and execution time
+- Add runtime assertions if sizes could exceed safe limits
+- Consider moving to background processing for larger datasets
+- Implement proper async handling with progress indicators for long operations
+
 ## SECURITY
 
 ### [SEC1] No sensitive data outside of HTTP bodies or headers

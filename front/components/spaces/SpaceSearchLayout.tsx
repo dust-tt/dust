@@ -466,7 +466,9 @@ function SearchResultsTable({
   const addToSpace = React.useCallback(
     async (node: DataSourceViewContentNode, spaceId: string) => {
       const existingViewForSpace = dataSourceViews.find(
-        (d) => d.spaceId === spaceId && d.sId === node.dataSourceView.sId
+        (d) =>
+          d.spaceId === spaceId &&
+          d.dataSource.sId === node.dataSourceView.dataSource.sId
       );
 
       try {

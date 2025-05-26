@@ -7,6 +7,7 @@ import { default as githubServer } from "@app/lib/actions/mcp_internal_actions/s
 import { default as hubspotServer } from "@app/lib/actions/mcp_internal_actions/servers/hubspot/server";
 import { default as imageGenerationDallEServer } from "@app/lib/actions/mcp_internal_actions/servers/image_generation";
 import { default as includeDataServer } from "@app/lib/actions/mcp_internal_actions/servers/include";
+import { default as missingActionCatcherServer } from "@app/lib/actions/mcp_internal_actions/servers/missing_action_catcher";
 import { default as notionServer } from "@app/lib/actions/mcp_internal_actions/servers/notion";
 import { default as primitiveTypesDebuggerServer } from "@app/lib/actions/mcp_internal_actions/servers/primitive_types_debugger";
 import { default as extractDataServer } from "@app/lib/actions/mcp_internal_actions/servers/process";
@@ -31,7 +32,7 @@ export async function getInternalMCPServer(
     internalMCPServerName: InternalMCPServerNameType;
     mcpServerId: string;
   },
-  agentLoopContext: AgentLoopContextType
+  agentLoopContext?: AgentLoopContextType
 ): Promise<McpServer> {
   switch (internalMCPServerName) {
     case "github":
@@ -43,17 +44,19 @@ export async function getInternalMCPServer(
     case "file_generation":
       return generateFileServer(auth);
     case "query_tables":
-      return tablesQueryServer(auth, agentLoopContext.runContext);
+      return tablesQueryServer(auth, agentLoopContext);
     case "query_tables_v2":
-      return tablesQueryServerV2(auth, agentLoopContext.runContext);
+      return tablesQueryServerV2(auth, agentLoopContext);
     case "primitive_types_debugger":
       return primitiveTypesDebuggerServer();
     case "think":
       return thinkServer();
     case "web_search_&_browse":
-      return webtoolsServer(agentLoopContext.runContext);
+      return webtoolsServer(agentLoopContext);
     case "search":
       return searchServer(auth, agentLoopContext);
+    case "missing_action_catcher":
+      return missingActionCatcherServer(auth, agentLoopContext);
     case "notion":
       return notionServer(auth, mcpServerId);
     case "include_data":
@@ -61,13 +64,13 @@ export async function getInternalMCPServer(
     case "run_agent":
       return runAgentServer(auth);
     case "reasoning":
-      return reasoningServer(auth, agentLoopContext.runContext);
+      return reasoningServer(auth, agentLoopContext);
     case "run_dust_app":
       return dustAppServer(auth, agentLoopContext);
     case "agent_router":
       return agentRouterServer(auth);
     case "extract_data":
-      return extractDataServer(auth, agentLoopContext.runContext);
+      return extractDataServer(auth, agentLoopContext);
     default:
       assertNever(internalMCPServerName);
   }

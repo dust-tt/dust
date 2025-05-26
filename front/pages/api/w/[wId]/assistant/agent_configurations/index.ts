@@ -198,20 +198,6 @@ async function handler(
         });
       }
 
-      //TODO(agent-discovery): Remove this once old scopes are removed
-      if (
-        bodyValidation.right.assistant.scope === "workspace" &&
-        !auth.isBuilder()
-      ) {
-        return apiError(req, res, {
-          status_code: 404,
-          api_error: {
-            type: "app_auth_error",
-            message: "Only builders can create workspace agents.",
-          },
-        });
-      }
-
       const maxStepsPerRun = bodyValidation.right.assistant.maxStepsPerRun;
 
       const isLegacyConfiguration =

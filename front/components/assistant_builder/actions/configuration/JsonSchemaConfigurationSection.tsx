@@ -125,6 +125,16 @@ export function JsonSchemaConfigurationSection({
           setExtractSchema(newSchemaString);
           setEdited(true);
 
+          // If the new schema string is empty,  we reset the jsonSchema to
+          // null. Storing a null jsonSchema in the database indicates that
+          // the model will auto-generate the schema.
+          if (newSchemaString === "") {
+            onConfigUpdate({
+              jsonSchema: null,
+              _jsonSchemaString: null,
+            });
+            return;
+          }
           const parsedSchema = validateJsonSchema(newSchemaString);
           if (parsedSchema.isValid) {
             onConfigUpdate({

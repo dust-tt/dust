@@ -262,7 +262,7 @@ async function prepareParamsWithHistory(
 
 export default async function createServer(
   auth: Authenticator,
-  agentLoopContext: AgentLoopContextType
+  agentLoopContext?: AgentLoopContextType
 ): Promise<McpServer> {
   const server = new McpServer(serverInfo);
   const owner = auth.getNonNullableWorkspace();

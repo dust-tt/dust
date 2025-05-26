@@ -12,7 +12,7 @@ import type { MCPToolResultContentType } from "@app/lib/actions/mcp_internal_act
 import { fetchAgentTableConfigurations } from "@app/lib/actions/mcp_internal_actions/servers/utils";
 import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
 import { runActionStreamed } from "@app/lib/actions/server";
-import type { AgentLoopRunContextType } from "@app/lib/actions/types";
+import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { renderConversationForModel } from "@app/lib/api/assistant/preprocessing";
 import type { CSVRecord } from "@app/lib/api/csv";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
@@ -42,7 +42,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
 
 function createServer(
   auth: Authenticator,
-  agentLoopRunContext?: AgentLoopRunContextType
+  agentLoopContext?: AgentLoopContextType
 ): McpServer {
   const server = new McpServer(serverInfo);
 
@@ -55,9 +55,11 @@ function createServer(
         ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE],
     },
     async ({ tables }) => {
-      if (!agentLoopRunContext) {
+      if (!agentLoopContext?.runContext) {
         throw new Error("Unreachable: missing agentLoopRunContext.");
       }
+
+      const agentLoopRunContext = agentLoopContext.runContext;
 
       const owner = auth.getNonNullableWorkspace();
 

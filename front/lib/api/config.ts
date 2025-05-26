@@ -207,6 +207,11 @@ const config = {
   getWorkOSRedirectUri: (): string => {
     return `${config.getClientFacingUrl()}/api/auth/callback`;
   },
+
+  // Profiler.
+  getProfilerSecret: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable("DEBUG_PROFILER_SECRET");
+  },
 };
 
 export default config;

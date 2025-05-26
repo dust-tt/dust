@@ -8,7 +8,9 @@ import { Op } from "sequelize";
 
 import {
   isGraphQLNotFound,
+  isGraphQLRepositoryNotFound,
   RepositoryAccessBlockedError,
+  RepositoryNotFoundError,
 } from "@connectors/connectors/github/lib/errors";
 import type {
   GithubIssue as GithubIssueType,
@@ -70,6 +72,7 @@ import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types";
 import type { DataSourceConfig } from "@connectors/types";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
+import { normalizeError } from "@connectors/types/api";
 
 // Only allow documents up to 5mb to be processed.
 const MAX_DOCUMENT_TXT_LEN = 5000000;
@@ -565,7 +568,7 @@ export async function githubGetRepoDiscussionsResultPageActivity(
   repoLogin: string,
   cursor: string | null,
   loggerArgs: Record<string, string | number>
-): Promise<{ cursor: string | null; discussionNumbers: number[] }> {
+): Promise<{ cursor: string | null; discussionNumbers: number[] } | null> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error(`Connector not found (connectorId: ${connectorId})`);
@@ -577,17 +580,34 @@ export async function githubGetRepoDiscussionsResultPageActivity(
     ...loggerArgs,
   });
   logger.info("Fetching GitHub discussions result page.");
-  const { cursor: nextCursor, discussions } = await getRepoDiscussionsPage(
-    connector,
-    repoName,
-    repoLogin,
-    cursor
-  );
 
-  return {
-    cursor: nextCursor,
-    discussionNumbers: discussions.map((discussion) => discussion.number),
-  };
+  try {
+    const { cursor: nextCursor, discussions } = await getRepoDiscussionsPage(
+      connector,
+      repoName,
+      repoLogin,
+      cursor
+    );
+
+    return {
+      cursor: nextCursor,
+      discussionNumbers: discussions.map((discussion) => discussion.number),
+    };
+  } catch (err) {
+    if (isGraphQLRepositoryNotFound(err)) {
+      logger.info(
+        {
+          connectorId,
+          repoName,
+          repoOwner: repoLogin,
+          error: normalizeError(err).message,
+        },
+        "Skipping repository - repository not found"
+      );
+      return null;
+    }
+    throw err;
+  }
 }
 
 export async function githubSaveStartSyncActivity(
@@ -1075,11 +1095,12 @@ export async function githubCodeSyncActivity({
   if (repoRes.isErr()) {
     if (
       repoRes.error instanceof ExternalOAuthTokenError ||
-      repoRes.error instanceof RepositoryAccessBlockedError
+      repoRes.error instanceof RepositoryAccessBlockedError ||
+      repoRes.error instanceof RepositoryNotFoundError
     ) {
       logger.info(
         { err: repoRes.error },
-        "Missing Github repository tarball: Garbage collecting repo."
+        "Missing Github repository: Garbage collecting repo."
       );
 
       await garbageCollectCodeSync(

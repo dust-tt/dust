@@ -129,12 +129,12 @@ const labelVariants = cva("", {
 type SpinnerVariant = NonNullable<SpinnerProps["variant"]>;
 
 const spinnerVariantsMap: Record<ButtonVariantType, SpinnerVariant> = {
-  primary: "gray50",
-  highlight: "gray50",
-  warning: "gray50",
-  outline: "gray500",
-  ghost: "gray500",
-  "ghost-secondary": "gray400",
+  primary: "revert",
+  highlight: "light",
+  warning: "light",
+  outline: "mono",
+  ghost: "mono",
+  "ghost-secondary": "mono",
 };
 
 const chevronVariantMap = {
