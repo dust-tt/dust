@@ -147,7 +147,7 @@ export const INTERNAL_MCP_SERVERS: Record<
   salesforce: {
     id: 14,
     availability: "manual",
-    flag: "tool_personal_credentials",
+    flag: "salesforce_tool",
   },
 
   // Dev
