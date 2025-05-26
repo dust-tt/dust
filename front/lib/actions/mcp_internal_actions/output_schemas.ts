@@ -398,6 +398,52 @@ export type PersonalAuthenticationRequiredErrorResourceType = z.infer<
   typeof PersonalAuthenticationRequiredErrorResourceSchema
 >;
 
+// Extract data outputs: query and results.
+
+export const ExtractQueryResourceSchema = z.object({
+  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.EXTRACT_QUERY),
+  text: z.string(),
+  uri: z.literal(""),
+});
+
+export type ExtractQueryResourceType = z.infer<
+  typeof ExtractQueryResourceSchema
+>;
+
+export const isExtractQueryResourceType = (
+  outputBlock: MCPToolResultContentType
+): outputBlock is { type: "resource"; resource: ExtractQueryResourceType } => {
+  return (
+    outputBlock.type === "resource" &&
+    ExtractQueryResourceSchema.safeParse(outputBlock.resource).success
+  );
+};
+
+export const ExtractResultResourceSchema = z.object({
+  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.EXTRACT_RESULT),
+  uri: z.string(),
+  text: z.string(),
+
+  // File metadata
+  fileId: z.string(),
+  title: z.string(),
+  contentType: z.string(),
+  snippet: z.string().nullable(),
+});
+
+export type ExtractResultResourceType = z.infer<
+  typeof ExtractResultResourceSchema
+>;
+
+export const isExtractResultResourceType = (
+  outputBlock: MCPToolResultContentType
+): outputBlock is { type: "resource"; resource: ExtractResultResourceType } => {
+  return (
+    outputBlock.type === "resource" &&
+    ExtractResultResourceSchema.safeParse(outputBlock.resource).success
+  );
+};
+
 // Generic output types and schemas.
 
 const EmbeddedResourceSchema = z.object({
@@ -409,6 +455,8 @@ const EmbeddedResourceSchema = z.object({
     ExampleRowsResourceSchema,
     SearchQueryResourceSchema,
     SearchResultResourceSchema,
+    ExtractQueryResourceSchema,
+    ExtractResultResourceSchema,
     TextResourceContentsSchema,
     ThinkingOutputSchema,
     ToolGeneratedFileSchema,

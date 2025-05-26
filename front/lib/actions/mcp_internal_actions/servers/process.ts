@@ -489,23 +489,30 @@ async function generateProcessToolOutput({
       isError: false,
       content: [
         {
-          type: "text" as const,
-          text:
-            "Extracted from " +
-            outputs?.total_documents +
-            " documents over " +
-            timeFrameAsString +
-            ".",
+          type: "resource" as const,
+          resource: {
+            mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.EXTRACT_QUERY,
+            text:
+              "Extracted from " +
+              outputs?.total_documents +
+              " documents over " +
+              timeFrameAsString +
+              ".",
+            uri: "",
+          },
         },
         {
           type: "resource" as const,
           resource: {
+            mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.EXTRACT_RESULT,
             text:
               "This file contains data extracted from available documents according to the provided schema. Here is  a preview of its contents: \n" +
               generatedFile.snippet,
             uri: jsonFile.getPublicUrl(auth),
-            mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
-            ...generatedFile,
+            fileId: generatedFile.fileId,
+            title: generatedFile.title,
+            contentType: generatedFile.contentType,
+            snippet: generatedFile.snippet,
           },
         },
       ],
