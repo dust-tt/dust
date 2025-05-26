@@ -683,6 +683,8 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
               `authentication, please authenticate to use it.`,
             metadata: {
               mcp_server_id: toolCallResult.error.mcpServerId,
+              provider: toolCallResult.error.provider,
+              use_case: toolCallResult.error.useCase,
             },
           },
         };

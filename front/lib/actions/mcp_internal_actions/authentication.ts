@@ -6,8 +6,14 @@ import type { Authenticator } from "@app/lib/auth";
 import type { MCPServerConnectionConnectionType } from "@app/lib/resources/mcp_server_connection_resource";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import logger from "@app/logger/logger";
-import type { OAuthConnectionType } from "@app/types";
+import type {
+  OAuthConnectionType,
+  OAuthProvider,
+  OAuthUseCase,
+} from "@app/types";
 import { getOAuthConnectionAccessToken } from "@app/types";
+
+import type { AuthorizationInfo } from "../mcp_metadata";
 
 // Dedicated function to get an access token for a given provider for internal MCP servers.
 // Not using the one from mcp_metadata.ts to avoid circular dependency.
@@ -66,11 +72,19 @@ const MCPServerRequiresPersonalAuthenticationErrorName =
 
 export class MCPServerPersonalAuthenticationRequiredError extends Error {
   mcpServerId: string;
+  provider: OAuthProvider;
+  useCase: OAuthUseCase;
 
-  constructor(mcpServerId: string) {
+  constructor(
+    mcpServerId: string,
+    provider: OAuthProvider,
+    useCase: OAuthUseCase
+  ) {
     super(`MCP server ${mcpServerId} requires personal authentication`);
     this.name = MCPServerRequiresPersonalAuthenticationErrorName;
     this.mcpServerId = mcpServerId;
+    this.provider = provider;
+    this.useCase = useCase;
   }
 
   static is(
@@ -85,7 +99,8 @@ export class MCPServerPersonalAuthenticationRequiredError extends Error {
 }
 
 export function makeMCPToolPersonalAuthenticationRequiredError(
-  mcpServerId: string
+  mcpServerId: string,
+  authorization: AuthorizationInfo
 ): MCPToolResult {
   return {
     isError: true,
@@ -96,9 +111,14 @@ export function makeMCPToolPersonalAuthenticationRequiredError(
           mimeType:
             INTERNAL_MIME_TYPES.TOOL_ERROR.PERSONAL_AUTHENTICATION_REQUIRED,
           uri: "",
-          text: new MCPServerPersonalAuthenticationRequiredError(mcpServerId)
-            .message,
+          text: new MCPServerPersonalAuthenticationRequiredError(
+            mcpServerId,
+            authorization.provider,
+            authorization.use_case
+          ).message,
           mcpServerId,
+          provider: authorization.provider,
+          useCase: authorization.use_case,
         },
       },
     ],
