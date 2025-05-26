@@ -555,29 +555,36 @@ const PROVIDER_STRATEGIES: Record<
   },
   hubspot: {
     setupUri: ({ connection }) => {
+      // For platform_actions, we need to request all scopes needed by the agent.
+      // For data_source_sync, we only need the scopes to read the data.
+      // TODO(MCP): Check if we can get more granular scopes for data_source_sync.
       const scopes = [
-        "crm.objects.companies.read",
-        "crm.objects.companies.write",
+        "oauth",
         "crm.objects.contacts.read",
         "crm.objects.contacts.write",
-        "crm.objects.custom.read",
-        "crm.objects.custom.write",
+        "crm.schemas.contacts.read",
+        "crm.objects.companies.read",
+        "crm.objects.companies.write",
+        "crm.schemas.companies.read",
         "crm.objects.deals.read",
         "crm.objects.deals.write",
-        "crm.objects.leads.read",
-        "crm.objects.leads.write",
-        "crm.objects.owners.read",
-        "crm.schemas.companies.read",
-        "crm.schemas.contacts.read",
-        "crm.schemas.custom.read",
         "crm.schemas.deals.read",
-        "oauth",
+        "tickets", // For tickets (covers read, write, schemas)
+        "crm.objects.owners.read", // For owners
+        "crm.schemas.custom.read", // For reading schemas of custom objects, and potentially useful for standard object properties
+        "crm.objects.custom.read", // For reading custom object data
+        "files", // For files (replaces files.read)
+        "sales-email-read", // For reading engagement details (especially emails, meetings, calls)
+        "timeline", // For timeline events, potentially associations
+        "crm.lists.read", // For addContactToList and future list operations
+        "crm.lists.write", // For addContactToList and future list operations
+        "automation", // For enrollContactInWorkflow and future automation operations
       ];
       return (
         `https://app.hubspot.com/oauth/authorize` +
         `?client_id=${config.getOAuthHubspotClientId()}` +
-        `&scope=${encodeURIComponent(scopes.join(" "))}` +
         `&redirect_uri=${encodeURIComponent(finalizeUriForProvider("hubspot"))}` +
+        `&scope=${encodeURIComponent(scopes.join(" "))}` +
         `&state=${connection.connection_id}`
       );
     },
