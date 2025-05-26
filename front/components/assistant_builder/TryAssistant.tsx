@@ -243,8 +243,8 @@ export function useTryAssistantCore({
 
         // Update mentions in the message data to use the newly created draft agent
         const updatedMentions = mentions.map((mention) =>
-          mention.configurationId === assistant?.sId
-            ? { ...mention, configurationId: currentAssistant?.sId as string }
+          mention.configurationId === assistant?.sId && currentAssistant?.sId
+            ? { ...mention, configurationId: currentAssistant.sId }
             : mention
         );
         mentions = updatedMentions;
