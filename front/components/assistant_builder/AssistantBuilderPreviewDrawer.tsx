@@ -83,18 +83,13 @@ export default function AssistantBuilderRightPanel({
     });
 
   const { user } = useUser();
-  const {
-    conversation,
-    setConversation,
-    stickyMentions,
-    setStickyMentions,
-    handleSubmit,
-  } = useTryAssistantCore({
-    owner,
-    user,
-    assistant: draftAssistant,
-    createDraftAgent,
-  });
+  const { conversation, stickyMentions, setStickyMentions, handleSubmit } =
+    useTryAssistantCore({
+      owner,
+      user,
+      assistant: draftAssistant,
+      createDraftAgent,
+    });
 
   const isBuilderStateEmpty =
     !builderState.instructions?.trim() && !builderState.actions.length;

@@ -36,14 +36,16 @@ export function usePreviewAssistant({
 }: UsePreviewAssistantProps) {
   const animationLength = 1000;
   const [draftAssistant, setDraftAssistant] =
-    useState<LightAgentConfigurationType | null>();
+    useState<LightAgentConfigurationType | null>(null);
   const [isFading, setIsFading] = useState(false);
   const [isSavingDraftAgent, setIsSavingDraftAgent] = useState(true);
+  const [draftCreationFailed, setDraftCreationFailed] = useState(false);
+
   const drawerAnimationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const sendNotification = useSendNotification();
   const lastBuilderStateRef = useRef<AssistantBuilderState>(builderState);
 
-  const animate = () => {
+  const animate = useCallback(() => {
     if (drawerAnimationTimeoutRef.current) {
       clearTimeout(drawerAnimationTimeoutRef.current);
       drawerAnimationTimeoutRef.current = null;
@@ -52,60 +54,96 @@ export function usePreviewAssistant({
     drawerAnimationTimeoutRef.current = setTimeout(() => {
       setIsFading(false);
     }, animationLength);
-  };
+  }, [animationLength]);
 
-  const createDraftAgent = useCallback(async () => {
-    // Check if builder state has changed since last draft creation
-    if (draftAssistant && isEqual(lastBuilderStateRef.current, builderState)) {
-      return draftAssistant;
-    }
+  const createDraftAgent =
+    useCallback(async (): Promise<LightAgentConfigurationType | null> => {
+      if (
+        draftAssistant &&
+        isEqual(lastBuilderStateRef.current, builderState)
+      ) {
+        return draftAssistant;
+      }
 
-    setIsSavingDraftAgent(true);
+      setIsSavingDraftAgent(true);
+      setDraftCreationFailed(false);
 
-    const aRes = await submitAssistantBuilderForm({
-      owner,
-      builderState: {
-        ...builderState,
-        description: "Draft Agent",
-        avatarUrl: builderState.avatarUrl ?? getDefaultAvatarUrlForPreview(),
-        scope: "hidden",
-      },
-      agentConfigurationId: null,
-      slackData: {
-        selectedSlackChannels: [],
-        slackChannelsLinkedWithAgent: [],
-      },
-      isDraft: true,
-      reasoningModels,
-    });
-
-    setIsSavingDraftAgent(false);
-
-    if (!aRes.isOk()) {
-      sendNotification({
-        title: "Error saving Draft Agent",
-        description: aRes.error.message,
-        type: "error",
+      const aRes = await submitAssistantBuilderForm({
+        owner,
+        builderState: {
+          ...builderState,
+          description: "Draft Agent",
+          avatarUrl: builderState.avatarUrl ?? getDefaultAvatarUrlForPreview(),
+          scope: "hidden",
+        },
+        agentConfigurationId: null,
+        slackData: {
+          selectedSlackChannels: [],
+          slackChannelsLinkedWithAgent: [],
+        },
+        isDraft: true,
+        reasoningModels,
       });
-      throw new Error(aRes.error.message);
-    }
 
-    animate();
-    setDraftAssistant(aRes.value);
-    lastBuilderStateRef.current = builderState;
+      if (!aRes.isOk()) {
+        sendNotification({
+          title: "Error saving Draft Agent",
+          description: aRes.error.message,
+          type: "error",
+        });
+        setIsSavingDraftAgent(false);
+        setDraftCreationFailed(true);
+        return null;
+      }
 
-    return aRes.value;
-  }, [draftAssistant, owner, builderState, reasoningModels, sendNotification]);
+      animate();
+      setDraftAssistant(aRes.value);
+      lastBuilderStateRef.current = builderState;
+      setIsSavingDraftAgent(false);
+
+      return aRes.value;
+    }, [
+      draftAssistant,
+      owner,
+      builderState,
+      reasoningModels,
+      sendNotification,
+      animate,
+    ]);
 
   useEffect(() => {
-    const hasContent =
-      builderState.instructions?.trim() || builderState.actions.length > 0;
-    if (hasContent && !draftAssistant && isSavingDraftAgent) {
-      createDraftAgent().catch(console.error);
-    } else if (!hasContent) {
-      setIsSavingDraftAgent(false);
+    const createDraftAgentIfNeeded = async () => {
+      const hasContent =
+        builderState.instructions?.trim() || builderState.actions.length > 0;
+
+      if (
+        hasContent &&
+        !draftAssistant &&
+        isSavingDraftAgent &&
+        !draftCreationFailed
+      ) {
+        await createDraftAgent();
+      } else if (!hasContent) {
+        setIsSavingDraftAgent(false);
+        setDraftCreationFailed(false);
+      }
+    };
+
+    void createDraftAgentIfNeeded();
+  }, [
+    builderState.instructions,
+    builderState.actions.length,
+    draftAssistant,
+    isSavingDraftAgent,
+    draftCreationFailed,
+    createDraftAgent,
+  ]);
+
+  useEffect(() => {
+    if (!isEqual(lastBuilderStateRef.current, builderState)) {
+      setDraftCreationFailed(false);
     }
-  }, []);
+  }, [builderState]);
 
   useEffect(() => {
     return () => {
@@ -117,7 +155,7 @@ export function usePreviewAssistant({
 
   return {
     isFading,
-    draftAssistant: draftAssistant ?? null,
+    draftAssistant,
     isSavingDraftAgent,
     createDraftAgent,
   };
@@ -134,7 +172,7 @@ export function useTryAssistantCore({
   user: UserType | null;
   openWithConversation?: ConversationType;
   assistant: LightAgentConfigurationType | null;
-  createDraftAgent?: () => Promise<LightAgentConfigurationType>;
+  createDraftAgent?: () => Promise<LightAgentConfigurationType | null>;
 }) {
   const [stickyMentions, setStickyMentions] = useState<AgentMention[]>([
     { configurationId: assistant?.sId as string },
