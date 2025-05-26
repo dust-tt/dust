@@ -38,6 +38,7 @@ import {
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import {
+  DEFAULT_CONVERSATIONS_SLIDING_WINDOW,
   IntercomHelpCenterModel,
   IntercomTeamModel,
   IntercomWorkspaceModel,
@@ -50,8 +51,6 @@ import type {
   ContentNodesViewType,
 } from "@connectors/types";
 import type { DataSourceConfig } from "@connectors/types";
-
-const DEFAULT_CONVERSATIONS_SLIDING_WINDOW = 180;
 
 export class IntercomConnectorManager extends BaseConnectorManager<null> {
   static async create({
