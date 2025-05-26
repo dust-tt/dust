@@ -2,11 +2,11 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import jsforce from "jsforce";
 import { z } from "zod";
 
-import { getConnectionForInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/authentication";
 import {
-  makeMCPToolJSONSuccess,
+  getConnectionForInternalMCPServer,
   makeMCPToolPersonalAuthenticationRequiredError,
-} from "@app/lib/actions/mcp_internal_actions/utils";
+} from "@app/lib/actions/mcp_internal_actions/authentication";
+import { makeMCPToolJSONSuccess } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 

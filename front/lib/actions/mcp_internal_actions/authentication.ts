@@ -1,3 +1,6 @@
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+
+import type { MCPToolResult } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import apiConfig from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import type { MCPServerConnectionConnectionType } from "@app/lib/resources/mcp_server_connection_resource";
@@ -79,4 +82,25 @@ export class MCPServerPersonalAuthenticationRequiredError extends Error {
       "mcpServerId" in error
     );
   }
+}
+
+export function makeMCPToolPersonalAuthenticationRequiredError(
+  mcpServerId: string
+): MCPToolResult {
+  return {
+    isError: true,
+    content: [
+      {
+        type: "resource",
+        resource: {
+          mimeType:
+            INTERNAL_MIME_TYPES.TOOL_ERROR.PERSONAL_AUTHENTICATION_REQUIRED,
+          uri: "",
+          text: new MCPServerPersonalAuthenticationRequiredError(mcpServerId)
+            .message,
+          mcpServerId,
+        },
+      },
+    ],
+  };
 }
