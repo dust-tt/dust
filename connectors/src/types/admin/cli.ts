@@ -244,7 +244,7 @@ export const IntercomCommandSchema = t.type({
     conversationId: t.union([t.number, t.undefined]),
     day: t.union([t.string, t.undefined]),
     helpCenterId: t.union([t.number, t.undefined]),
-    retentionPeriodDays: t.union([t.string, t.undefined]),
+    retentionPeriodDays: t.union([t.number, t.undefined]),
   }),
 });
 export type IntercomCommandType = t.TypeOf<typeof IntercomCommandSchema>;

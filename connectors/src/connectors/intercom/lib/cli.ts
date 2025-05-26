@@ -237,7 +237,7 @@ export const intercom = async ({
       if (!args.retentionPeriodDays) {
         throw new Error("Missing --retentionPeriodDays argument");
       }
-      const retentionPeriodDays = parseInt(args.retentionPeriodDays, 10);
+      const { retentionPeriodDays } = args;
       if (isNaN(retentionPeriodDays) || retentionPeriodDays < 0) {
         throw new Error(
           `Invalid --retentionPeriodDays argument: ${retentionPeriodDays}`
