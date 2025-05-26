@@ -12,7 +12,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
   description: "Gmail tools.",
   /**
    * authorization: {
-   * provider: "google_drive" as const,
+   * provider: "gmail" as const,
    * use_case: "personal_actions" as const,
    * },
    */
