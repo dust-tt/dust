@@ -200,6 +200,24 @@ export function useTryAssistantCore({
     if (createDraftAgent) {
       try {
         currentAssistant = await createDraftAgent();
+        if (!currentAssistant) {
+          return new Err({
+            code: "internal_error",
+            name: "Draft Agent Creation Failed",
+            message: "Failed to create draft agent before submitting message",
+          });
+        }
+
+        // Update sticky mentions with the newly created draft agent
+        setStickyMentions([{ configurationId: currentAssistant.sId }]);
+
+        // Update mentions in the message data to use the newly created draft agent
+        const updatedMentions = mentions.map((mention) =>
+          mention.configurationId === assistant?.sId
+            ? { ...mention, configurationId: currentAssistant?.sId as string }
+            : mention
+        );
+        mentions = updatedMentions;
       } catch (error) {
         return new Err({
           code: "internal_error",
