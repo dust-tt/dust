@@ -1,26 +1,14 @@
-import { GeneratePortalLinkIntent } from "@workos-inc/node";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import { getWorkOS } from "@app/lib/api/workos";
+import { generateWorkOSAdminPortalUrl } from "@app/lib/api/workos";
 import type { Authenticator } from "@app/lib/auth";
 import { WorkOSPortalIntent } from "@app/lib/types/workos";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-
-const INTENT_MAP: Record<WorkOSPortalIntent, GeneratePortalLinkIntent> = {
-  [WorkOSPortalIntent.SSO]: GeneratePortalLinkIntent.SSO,
-  [WorkOSPortalIntent.DSync]: GeneratePortalLinkIntent.DSync,
-  [WorkOSPortalIntent.DomainVerification]:
-    GeneratePortalLinkIntent.DomainVerification,
-  [WorkOSPortalIntent.AuditLogs]: GeneratePortalLinkIntent.AuditLogs,
-  [WorkOSPortalIntent.LogStreams]: GeneratePortalLinkIntent.LogStreams,
-  [WorkOSPortalIntent.CertificateRenewal]:
-    GeneratePortalLinkIntent.CertificateRenewal,
-};
 
 const WorkOSAdminPortalQuerySchema = t.type({
   intent: t.union([
@@ -76,17 +64,15 @@ async function handler(
         }
 
         const { intent } = result.right;
-        const workos = getWorkOS();
-        const { link } = await workos.portal.generateLink({
-          intent: INTENT_MAP[intent],
+        const { link } = await generateWorkOSAdminPortalUrl({
           organization: owner.workOSOrganizationId,
+          workOSIntent: intent,
           returnUrl: `${req.headers.origin}/w/${owner.sId}/members`,
         });
 
         res.status(200).json({ url: link });
         return;
       } catch (error) {
-        console.error("Failed to generate WorkOS admin portal URL:", error);
         return apiError(req, res, {
           status_code: 500,
           api_error: {

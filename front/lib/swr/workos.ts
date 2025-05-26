@@ -37,8 +37,25 @@ export function useCreateWorkOSOrganization(workspaceId: string) {
       throw new Error("Failed to create WorkOS organization");
     }
 
-    const result = await response.json();
-    return result;
+    const { organizationId } = await response.json();
+    const result = await fetch(`/api/w/${workspaceId}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        workOSOrganizationId: organizationId,
+      }),
+    });
+
+    if (!result.ok) {
+      throw new Error("Failed to update workspace with WorkOS organization ID");
+    }
+
+    return {
+      ok: true,
+      organizationId,
+    };
   };
 
   return {

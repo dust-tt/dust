@@ -4,7 +4,7 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import { getWorkOS } from "@app/lib/api/workos";
+import { createWorkOSOrganization } from "@app/lib/api/workos";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
@@ -45,27 +45,23 @@ async function handler(
         });
       }
 
-      try {
-        const workos = getWorkOS();
-        const organization = await workos.organizations.createOrganization({
-          name: `${owner.name}`,
-          metadata: {
-            workspaceSId: owner.sId,
-          },
-        });
+      const r = createWorkOSOrganization({
+        workspace: owner,
+      });
 
-        res.status(200).json({ organizationId: organization.id });
-        return;
-      } catch (error) {
-        console.error("Failed to create WorkOS organization:", error);
+      if (r.isErr()) {
         return apiError(req, res, {
           status_code: 500,
           api_error: {
             type: "internal_server_error",
-            message: "Failed to create WorkOS organization",
+            message: r.error.message || "Failed to create WorkOS organization",
           },
         });
       }
+      const organization = await r.value;
+
+      res.status(200).json({ organizationId: organization.id });
+      return;
 
     default:
       return apiError(req, res, {

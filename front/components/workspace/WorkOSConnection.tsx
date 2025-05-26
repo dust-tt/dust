@@ -82,7 +82,6 @@ export function WorkOSConnection({ owner }: WorkOSConnectionProps) {
   const sendNotification = useSendNotification();
 
   const { createOrganization } = useCreateWorkOSOrganization(owner.sId);
-
   const { adminPortalUrl } = useWorkOSAdminPortalUrl(owner.sId, selectedIntent);
 
   useEffect(() => {
@@ -93,26 +92,14 @@ export function WorkOSConnection({ owner }: WorkOSConnectionProps) {
   }, [adminPortalUrl, shouldOpenPortal]);
 
   const handleSetupConnection = async () => {
-    const { organizationId } = await createOrganization();
+    const r = await createOrganization();
 
-    // Update the workspace with the WorkOS organization ID
-    const r = await fetch(`/api/w/${owner.sId}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        workOSOrganizationId: organizationId,
-      }),
-    });
-
-    if (!r.ok) {
+    if (!r || !r.ok) {
       logger.error(
         {
           workspaceId: owner.sId,
-          organizationId,
         },
-        "Failed to update workspace with WorkOS organization ID"
+        "Failed to setup WorkOS organization ID for workspace"
       );
       sendNotification({
         type: "error",
@@ -130,7 +117,7 @@ export function WorkOSConnection({ owner }: WorkOSConnectionProps) {
         "Your WorkOS organization has been created. You can now configure your enterprise settings.",
     });
     setIsModalOpen(false);
-    setWorkOSOrganizationId(organizationId);
+    setWorkOSOrganizationId(r.organizationId);
   };
 
   const getSelectedLabel = () => {
