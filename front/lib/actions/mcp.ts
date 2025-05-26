@@ -665,9 +665,9 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
         isError: true,
       });
 
-      // If we got a personal authentication error, we emit a `tool_error` which will get turned into
-      // an `agent_error` with metadata set such that we can disaply a invitation to connect to the
-      // user.
+      // If we got a personal authentication error, we emit a `tool_error` which will get turned
+      // into an `agent_error` with metadata set such that we can display a invitation to connect to
+      // the user.
       if (
         MCPServerPersonalAuthenticationRequiredError.is(toolCallResult?.error)
       ) {
