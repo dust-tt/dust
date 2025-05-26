@@ -696,7 +696,7 @@ function StaticItemDropdownDemo() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button label="System Status" variant="outline" size="sm" disabled />
+        <Button label="System Status" variant="outline" size="sm" />
       </DropdownMenuTrigger>
       <DropdownMenuContent className="s-w-[250px]">
         <DropdownMenuLabel label="System Metrics" />
