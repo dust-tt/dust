@@ -5,7 +5,7 @@ import { z } from "zod";
 import { getConnectionForInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/authentication";
 import {
   makeMCPToolJSONSuccess,
-  makeMCPToolTextError,
+  makeMCPToolPersonalAuthenticationRequiredError,
 } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
@@ -62,7 +62,7 @@ You can use it to list the objects in Salesforce: standard and custom objects.
         | undefined;
 
       if (!accessToken || !instanceUrl) {
-        return makeMCPToolTextError("No access token or instance URL found");
+        return makeMCPToolPersonalAuthenticationRequiredError(mcpServerId);
       }
 
       const conn = new jsforce.Connection({
@@ -103,7 +103,7 @@ You can use it to list the objects in Salesforce: standard and custom objects.
         | undefined;
 
       if (!accessToken || !instanceUrl) {
-        return makeMCPToolTextError("No access token or instance URL found");
+        return makeMCPToolPersonalAuthenticationRequiredError(mcpServerId);
       }
       const conn = new jsforce.Connection({
         instanceUrl,
