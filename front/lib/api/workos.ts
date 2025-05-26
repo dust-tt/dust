@@ -1,5 +1,6 @@
 import type {
   AuthenticationResponse,
+  Directory,
   Organization,
   User,
 } from "@workos-inc/node";
@@ -10,11 +11,13 @@ import type { GetServerSidePropsContext, NextApiRequest } from "next";
 
 import config from "@app/lib/api/config";
 import type { SessionWithUser } from "@app/lib/iam/provider";
+import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkOSPortalIntent } from "@app/lib/types/workos";
 import logger from "@app/logger/logger";
 import type { Result, WorkspaceType } from "@app/types";
-import { Err, Ok } from "@app/types";
+import { Err, Ok, sanitizeString } from "@app/types";
 
+import { generateRandomModelSId } from "../resources/string_ids";
 import type { RegionType } from "./regions/config";
 
 let workos: WorkOS | null = null;
@@ -35,6 +38,10 @@ export function getWorkOS() {
   }
 
   return workos;
+}
+
+export function getWorkOSUserNickname(user: User) {
+  return user.email.split("@")[0] ?? "";
 }
 
 export async function getWorkOSSession(
@@ -66,7 +73,7 @@ export async function getWorkOSSession(
         email: r.user.email,
         email_verified: r.user.emailVerified,
         name: r.user.email ?? "",
-        nickname: r.user.lastName ?? "",
+        nickname: getWorkOSUserNickname(r.user) ?? "",
         sub: r.user.id,
       },
       // TODO(workos): Should we resolve the workspaceId and remove organizationId from here?
@@ -154,11 +161,11 @@ export async function syncWorkOSDirectoriesForWorkspace(
 ): Promise<void> {
   logger.info(
     { workspace: workspace.sId },
-    "Starting WorkOS full directory sync"
+    "[WorkOS] Starting WorkOS full directory sync."
   );
 
   if (!workspace?.workOSOrganizationId) {
-    throw new Error("WorkOS organization not configured");
+    throw new Error("WorkOS organization not configured.");
   }
 
   const workOS = getWorkOS();
@@ -167,17 +174,15 @@ export async function syncWorkOSDirectoriesForWorkspace(
     organizationId: workspace.workOSOrganizationId,
   });
 
-  logger.info({ directories }, "directories");
-
   for (const directory of directories) {
     logger.info(
       { workspaceId: workspace.sId, directoryId: directory.id },
       "[WorkOS] Syncing directory."
     );
 
-    await syncAllUsers(workspace, directory.id);
+    await syncAllUsers(workspace, directory);
 
-    await syncAllGroups(workspace, directory.id);
+    await syncAllGroups(workspace, directory);
 
     logger.info(
       { workspaceId: workspace.sId, directoryId: directory.id },
@@ -188,62 +193,114 @@ export async function syncWorkOSDirectoriesForWorkspace(
 
 async function syncAllUsers(
   workspace: WorkspaceType,
-  directoryId: string
+  directory: Directory
 ): Promise<void> {
   logger.info(
-    { workspaceId: workspace.sId, directoryId },
-    "Starting user sync"
+    {
+      workspaceId: workspace.sId,
+      directoryId: directory.id,
+    },
+    "[WorkOS] Starting user sync."
   );
 
   const workOs = getWorkOS();
 
   // TODO(2025-05-26 aubin): paginate here.
   const { data: users } = await workOs.directorySync.listUsers({
-    directory: directoryId,
+    directory: directory.id,
   });
 
   for (const workOsUser of users) {
-    await upsertUser(workspace, workOsUser, directoryId);
+    await upsertUser(workspace, workOsUser, directory);
   }
 
-  logger.info({ workspaceId: workspace.sId }, "User sync completed");
+  logger.info(
+    {
+      workspaceId: workspace.sId,
+      directoryId: directory.id,
+    },
+    "[WorkOS] User sync completed."
+  );
 }
 
 async function syncAllGroups(
   workspace: WorkspaceType,
-  directoryId: string
+  directory: Directory
 ): Promise<void> {
   logger.info(
-    { workspaceId: workspace.sId, directoryId },
-    "Starting group sync"
+    {
+      workspaceId: workspace.sId,
+      directoryId: directory.id,
+    },
+    "[WorkOS] Starting group sync"
   );
 
   const workOS = getWorkOS();
 
   // TODO(2025-05-26 aubin): paginate here.
   const { data: groups } = await workOS.directorySync.listGroups({
-    directory: directoryId,
+    directory: directory.id,
   });
 
   for (const workOSGroup of groups) {
-    await upsertGroup(workspace, workOSGroup, directoryId);
+    await upsertGroup(workspace, workOSGroup, directory);
   }
 
-  logger.info({ workspaceId: workspace.sId }, "Group sync completed");
+  logger.info(
+    {
+      workspaceId: workspace.sId,
+      directoryId: directory.id,
+    },
+    "[WorkOS] Group sync completed."
+  );
 }
 
 async function upsertUser(
   workspace: WorkspaceType,
   workOSUser: DirectoryUserWithGroups,
-  directoryId: string
+  directory: Directory
 ): Promise<void> {
-  logger.info({ workspace, workOSUser, directoryId }, "Upserting user");
+  const localLogger = logger.child({
+    workspaceId: workspace.sId,
+    workOSUserEmail: workOSUser.email,
+    workOSUserId: workOSUser.id,
+    directoryId: directory.id,
+  });
+
+  localLogger.info("[WorkOS] Upserting user.");
+  if (!workOSUser.email) {
+    localLogger.error("[WorkOS] Cannot sync a user without an email.");
+    return;
+  }
+
+  const user = await UserResource.fetchByEmail(workOSUser.email);
+  if (!user) {
+    await UserResource.makeNew({
+      sId: generateRandomModelSId(),
+      auth0Sub: null,
+      provider: directory.type,
+      providerId: workOSUser.id,
+      name: workOSUser.lastName ?? workOSUser.email,
+      username: workOSUser.email,
+      email: sanitizeString(workOSUser.email),
+      firstName: workOSUser.firstName ?? "",
+      lastName: workOSUser.lastName ?? null,
+      imageUrl: null,
+    });
+    localLogger.info("[WorkOS] User successfully created.");
+  }
 }
 
 async function upsertGroup(
   workspace: WorkspaceType,
   workOSGroup: DirectoryGroup,
-  directoryId: string
+  directory: Directory
 ): Promise<void> {
-  logger.info({ workspace, workOSGroup, directoryId }, "Upserting group");
+  const localLogger = logger.child({
+    workspaceId: workspace.sId,
+    workOSGroupId: workOSGroup.id,
+    directoryId: directory.id,
+  });
+
+  localLogger.info("[WorkOS] Upserting group");
 }

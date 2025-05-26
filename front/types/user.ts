@@ -1,3 +1,4 @@
+import type { DirectoryType } from "@workos-inc/node";
 import * as t from "io-ts";
 
 import type {
@@ -77,7 +78,8 @@ export type UserProviderType =
   | "okta"
   | "samlp"
   | "waad"
-  | null;
+  | null
+  | DirectoryType;
 
 export type UserType = {
   sId: string;
