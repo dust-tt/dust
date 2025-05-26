@@ -1,11 +1,22 @@
-import type { User } from "@workos-inc/node";
+import type { AuthenticationResponse, User } from "@workos-inc/node";
 import { WorkOS } from "@workos-inc/node";
+import { unsealData } from "iron-session";
+import type { GetServerSidePropsContext, NextApiRequest } from "next";
 
 import config from "@app/lib/api/config";
+import type { SessionWithUser } from "@app/lib/iam/provider";
 
 import type { RegionType } from "./regions/config";
 
 let workos: WorkOS | null = null;
+
+export type SessionCookie = {
+  sessionData: string;
+  organizationId?: string;
+  authenticationMethod: AuthenticationResponse["authenticationMethod"];
+  region: RegionType;
+  workspaceId: string;
+};
 
 export function getWorkOS() {
   if (!workos) {
@@ -15,6 +26,47 @@ export function getWorkOS() {
   }
 
   return workos;
+}
+
+export async function getWorkOSSession(
+  req: NextApiRequest | GetServerSidePropsContext["req"]
+): Promise<SessionWithUser | undefined> {
+  const workOSSessionCookie = req.cookies["workos_session"];
+  if (workOSSessionCookie) {
+    const { sessionData, organizationId, authenticationMethod, workspaceId } =
+      await unsealData<SessionCookie>(workOSSessionCookie, {
+        password: config.getWorkOSCookiePassword(),
+      });
+
+    const session = getWorkOS().userManagement.loadSealedSession({
+      sessionData,
+      cookiePassword: config.getWorkOSCookiePassword(),
+    });
+
+    const r = await session.authenticate();
+
+    if (!r.authenticated) {
+      return undefined;
+    }
+
+    return {
+      type: "workos" as const,
+      sessionId: r.sessionId,
+      user: {
+        sid: r.user.id,
+        email: r.user.email,
+        email_verified: r.user.emailVerified,
+        name: r.user.email ?? "",
+        nickname: r.user.lastName ?? "",
+        sub: r.user.id,
+      },
+      // TODO(workos): Should we resolve the workspaceId and remove organizationId from here?
+      organizationId,
+      workspaceId,
+      isSSO: authenticationMethod === "SSO",
+      authenticationMethod,
+    };
+  }
 }
 
 // Store the region in the user's app_metadata to redirect to the right region.

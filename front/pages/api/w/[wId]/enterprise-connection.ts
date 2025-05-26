@@ -15,7 +15,7 @@ import { WorkspaceHasDomainModel } from "@app/lib/models/workspace_has_domain";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type {
-  SupportedEnterpriseConnectionStrategies,
+  Auth0SupportedEnterpriseConnectionStrategies,
   WithAPIErrorResponse,
   WorkspaceEnterpriseConnection,
 } from "@app/types";
@@ -97,7 +97,7 @@ async function handler(
           connection: {
             name: enterpriseConnection.name,
             strategy:
-              enterpriseConnection.strategy as SupportedEnterpriseConnectionStrategies,
+              enterpriseConnection.strategy as Auth0SupportedEnterpriseConnectionStrategies,
           },
         });
       }

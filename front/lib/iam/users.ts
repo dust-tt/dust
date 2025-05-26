@@ -1,17 +1,17 @@
-import type { User } from "@workos-inc/node";
 import type { PostIdentitiesRequestProviderEnum } from "auth0";
 import { escape } from "html-escaper";
 
 import { getAuth0ManagemementClient } from "@app/lib/api/auth0";
 import { revokeAndTrackMembership } from "@app/lib/api/membership";
 import type { Authenticator } from "@app/lib/auth";
-import type { SessionWithUser } from "@app/lib/iam/provider";
+import type { ExternalUser, SessionWithUser } from "@app/lib/iam/provider";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
+import { guessFirstAndLastNameFromFullName } from "@app/lib/user";
 import type { Result } from "@app/types";
 import { Err, Ok, sanitizeString } from "@app/types";
 
@@ -77,15 +77,12 @@ export async function fetchUserFromSession(session: SessionWithUser) {
 
 export async function maybeUpdateFromExternalUser(
   user: UserResource,
-  externalUser: User
+  externalUser: ExternalUser
 ) {
-  if (
-    externalUser.profilePictureUrl &&
-    externalUser.profilePictureUrl !== user.imageUrl
-  ) {
+  if (externalUser.picture && externalUser.picture !== user.imageUrl) {
     void UserModel.update(
       {
-        imageUrl: externalUser.profilePictureUrl,
+        imageUrl: externalUser.picture,
       },
       {
         where: {
@@ -107,17 +104,23 @@ export async function createOrUpdateUser(
     const updateArgs: { [key: string]: string } = {};
 
     // We only update the user's email if the email is verified.
-    if (externalUser.emailVerified) {
+    if (externalUser.email_verified) {
       updateArgs.email = externalUser.email;
     }
 
     // Update the user object from the updated session information.
-    updateArgs.username = externalUser.email;
+    updateArgs.username = externalUser.nickname;
 
     if (!user.firstName && !user.lastName) {
-      if (externalUser.firstName && externalUser.lastName) {
-        updateArgs.firstName = externalUser.firstName;
-        updateArgs.lastName = externalUser.lastName;
+      if (externalUser.given_name && externalUser.family_name) {
+        updateArgs.firstName = externalUser.given_name;
+        updateArgs.lastName = externalUser.family_name;
+      } else {
+        const { firstName, lastName } = guessFirstAndLastNameFromFullName(
+          externalUser.name
+        );
+        updateArgs.firstName = firstName;
+        updateArgs.lastName = lastName || "";
       }
     }
 
@@ -138,8 +141,12 @@ export async function createOrUpdateUser(
 
     return { user, created: false };
   } else {
-    const firstName = escape(externalUser.createdAt);
-    let lastName = externalUser.lastName;
+    let { firstName, lastName } = guessFirstAndLastNameFromFullName(
+      externalUser.name
+    );
+
+    firstName = escape(externalUser.given_name || firstName);
+    lastName = externalUser.family_name || lastName;
     if (lastName) {
       lastName = escape(lastName);
     }
@@ -147,12 +154,11 @@ export async function createOrUpdateUser(
     const u = await UserResource.makeNew({
       sId: generateRandomModelSId(),
       //TODO(workos): No auth0 sub - should we store workos id somewhere ?
-      auth0Sub: null,
-      //TODO(workos): Get the provider info (authenticationMethod from authenticateWithCode, to add in the session).
-      provider: null,
-      username: externalUser.email,
+      auth0Sub: externalUser.sub,
+      provider: null, ///session.provider,
+      username: externalUser.nickname,
       email: sanitizeString(externalUser.email),
-      name: `${externalUser.firstName} ${externalUser.lastName}`,
+      name: externalUser.name,
       firstName,
       lastName,
     });

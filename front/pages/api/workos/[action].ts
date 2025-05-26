@@ -8,9 +8,9 @@ import {
   SUPPORTED_REGIONS,
 } from "@app/lib/api/regions/config";
 import { checkUserRegionAffinity } from "@app/lib/api/regions/lookup";
+import type { SessionCookie } from "@app/lib/api/workos";
 import { getWorkOS, setRegionForUser } from "@app/lib/api/workos";
 import { getSession } from "@app/lib/auth";
-import type { SessionCookie } from "@app/lib/iam/provider";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
 
@@ -86,6 +86,7 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
       organizationId,
       authenticationMethod,
       region: decodedPayload["https://dust.tt/region"],
+      workspaceId: decodedPayload["https://dust.tt/workspaceId"],
     };
 
     const sealedCookie = await sealData(sessionCookie, {
@@ -163,17 +164,17 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
 
       params.set("returnTo", returnTo);
       res.redirect(
-        `${targetRegionInfo.url}/api/auth/workos/login?${params.toString()}`
+        `${targetRegionInfo.url}/api/workos/login?${params.toString()}`
       );
       return;
     }
 
     // Set session cookie and redirect to returnTo URL
 
-    res.setHeader(
-      "Set-Cookie",
-      `session=${sealedCookie}; Path=/; HttpOnly; Secure;SameSite=Lax`
-    );
+    res.setHeader("Set-Cookie", [
+      `workos_session=${sealedCookie}; Path=/; HttpOnly; Secure;SameSite=Lax`,
+      `sessionType=workos; Path=/; Secure;SameSite=Lax`,
+    ]);
 
     res.redirect("/api/login");
   } catch (error) {
@@ -186,9 +187,9 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
 async function handleLogout(req: NextApiRequest, res: NextApiResponse) {
   const returnTo = req.query.returnTo || config.getClientFacingUrl();
 
-  const session = await getSession(req);
+  const session = await getSession(req, res);
 
-  if (session) {
+  if (session && session.type === "workos") {
     // Logout from WorkOS
     try {
       await getWorkOS().userManagement.revokeSession({
@@ -201,7 +202,7 @@ async function handleLogout(req: NextApiRequest, res: NextApiResponse) {
 
   res.setHeader(
     "Set-Cookie",
-    "session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=Lax"
+    "workos_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=Lax"
   );
 
   res.redirect(returnTo as string);
