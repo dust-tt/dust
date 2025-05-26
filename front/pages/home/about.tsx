@@ -290,7 +290,7 @@ const PEOPLE: Record<
     image: "https://avatars.githubusercontent.com/u/192242584?v=4",
     github: "https://github.com/jgr142",
     linkedIn: "https://www.linkedin.com/in/joshuagisiger",
-  }
+  },
 };
 
 const Person = ({ handle }: { handle: string }) => {
