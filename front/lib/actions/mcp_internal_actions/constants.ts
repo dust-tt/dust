@@ -26,6 +26,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "search",
   "think",
   "web_search_&_browse",
+  "salesforce",
 ] as const;
 
 // Whether the server is available by default in the global space.
@@ -142,6 +143,11 @@ export const INTERNAL_MCP_SERVERS: Record<
     id: 13,
     availability: "auto_hidden_builder",
     flag: null,
+  },
+  salesforce: {
+    id: 14,
+    availability: "manual",
+    flag: "salesforce_tool",
   },
 
   // Dev
