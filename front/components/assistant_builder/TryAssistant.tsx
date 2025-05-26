@@ -38,7 +38,7 @@ export function usePreviewAssistant({
   const [draftAssistant, setDraftAssistant] =
     useState<LightAgentConfigurationType | null>(null);
   const [isFading, setIsFading] = useState(false);
-  const [isSavingDraftAgent, setIsSavingDraftAgent] = useState(true);
+  const [isSavingDraftAgent, setIsSavingDraftAgent] = useState(false);
   const [draftCreationFailed, setDraftCreationFailed] = useState(false);
 
   const drawerAnimationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -119,7 +119,7 @@ export function usePreviewAssistant({
       if (
         hasContent &&
         !draftAssistant &&
-        isSavingDraftAgent &&
+        !isSavingDraftAgent &&
         !draftCreationFailed
       ) {
         await createDraftAgent();
