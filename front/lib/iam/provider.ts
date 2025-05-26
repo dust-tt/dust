@@ -1,16 +1,25 @@
-import type { AuthenticationResponse, User } from "@workos-inc/node";
+export interface ExternalUser {
+  sid: string;
+  email: string;
+  email_verified: boolean;
+  name: string;
+  nickname: string;
+  sub: string;
 
-import type { RegionType } from "@app/lib/api/regions/config";
+  // Google-specific fields.
+  family_name?: string;
+  given_name?: string;
 
-export type SessionCookie = {
-  sessionData: string;
-  organizationId?: string;
-  authenticationMethod: AuthenticationResponse["authenticationMethod"];
-  region: RegionType;
-};
+  // Always optional.
+  picture?: string;
+}
+
 export type SessionWithUser = {
+  type: "workos" | "auth0";
   sessionId: string;
-  user: User;
+  user: ExternalUser;
+  workspaceId?: string;
   organizationId?: string;
-  authenticationMethod: AuthenticationResponse["authenticationMethod"];
+  isSSO: boolean;
+  authenticationMethod: string | undefined;
 };

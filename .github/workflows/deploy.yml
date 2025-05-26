@@ -57,15 +57,19 @@ jobs:
           exit 1
 
   prepare:
-    needs: [ check-branch ]
+    needs: [check-branch]
     runs-on: ubuntu-latest
     outputs:
       short_sha: ${{ steps.short_sha.outputs.short_sha }}
+      long_sha: ${{ steps.short_sha.outputs.long_sha }}
     steps:
       - uses: actions/checkout@v3
       - name: Get short sha
         id: short_sha
         run: echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+      - name: Get long sha
+        id: long_sha
+        run: echo "long_sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
 
   notify-start:
     needs: [prepare]
@@ -141,6 +145,7 @@ jobs:
           workload_identity_provider: "projects/357744735673/locations/global/workloadIdentityPools/github-pool-apps/providers/github-provider-apps"
           depot_token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
           commit_sha: ${{ needs.prepare.outputs.short_sha }}
+          commit_sha_long: ${{ needs.prepare.outputs.long_sha }}
 
       - name: Notify Failure
         if: failure()

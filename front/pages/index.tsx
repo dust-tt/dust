@@ -1,11 +1,12 @@
 import type { ReactElement } from "react";
-import React from "react";
 
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import { getSession } from "@app/lib/auth";
-import { getUserFromSession } from "@app/lib/iam/session";
-import { makeGetServerSidePropsRequirementsWrapper } from "@app/lib/iam/session";
+import {
+  getUserFromSession,
+  makeGetServerSidePropsRequirementsWrapper,
+} from "@app/lib/iam/session";
 import { getPersistedNavigationSelection } from "@app/lib/persisted_navigation_selection";
 import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
@@ -17,7 +18,7 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   postLoginReturnToUrl: string;
 }>(async (context) => {
   // Fetch session explicitly as this page redirects logged in users to our home page.
-  const session = await getSession(context.req);
+  const session = await getSession(context.req, context.res);
   const user = await getUserFromSession(session);
 
   const { inviteToken } = context.query;

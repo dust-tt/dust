@@ -205,7 +205,12 @@ const config = {
     return EnvironmentConfig.getEnvVariable("WORKOS_COOKIE_PASSWORD");
   },
   getWorkOSRedirectUri: (): string => {
-    return `${config.getClientFacingUrl()}/api/auth/callback`;
+    return `${config.getClientFacingUrl()}/api/workos/callback`;
+  },
+
+  // Profiler.
+  getProfilerSecret: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable("DEBUG_PROFILER_SECRET");
   },
 };
 

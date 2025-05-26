@@ -264,14 +264,20 @@ export async function githubRepoDiscussionsSyncWorkflow({
   });
   const promises: Promise<void>[] = [];
 
-  const { cursor, discussionNumbers } =
-    await githubGetRepoDiscussionsResultPageActivity(
-      connectorId,
-      repoName,
-      repoLogin,
-      nextCursor,
-      { repoId }
-    );
+  const result = await githubGetRepoDiscussionsResultPageActivity(
+    connectorId,
+    repoName,
+    repoLogin,
+    nextCursor,
+    { repoId }
+  );
+
+  if (!result) {
+    // Repository not found, skip
+    return null;
+  }
+
+  const { cursor, discussionNumbers } = result;
 
   for (const discussionNumber of discussionNumbers) {
     promises.push(

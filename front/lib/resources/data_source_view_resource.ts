@@ -258,21 +258,33 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     fetchDataSourceViewOptions?: FetchDataSourceViewOptions,
     includeConversationDataSources?: boolean
   ) {
+    const options: ResourceFindOptions<DataSourceViewModel> = {
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+    };
+
+    if (!includeConversationDataSources) {
+      // We make an extra request to fetch the conversation space first.
+      // This allows early filtering of the data source views as there is no way to know
+      // if a datasource view is related to a conversation from it's attributes alone.
+      const conversationSpace =
+        await SpaceResource.fetchWorkspaceConversationsSpace(auth);
+      options.where = {
+        ...options.where,
+        vaultId: {
+          [Op.notIn]: [conversationSpace.id],
+        },
+      };
+    }
+
     const dataSourceViews = await this.baseFetch(
       auth,
       fetchDataSourceViewOptions,
-      {
-        where: {
-          workspaceId: auth.getNonNullableWorkspace().id,
-        },
-      }
+      options
     );
 
-    return dataSourceViews.filter(
-      (dsv) =>
-        (!dsv.space.isConversations() || includeConversationDataSources) &&
-        dsv.canReadOrAdministrate(auth)
-    );
+    return dataSourceViews.filter((dsv) => dsv.canReadOrAdministrate(auth));
   }
 
   static async listBySpace(

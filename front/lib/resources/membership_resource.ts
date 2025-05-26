@@ -184,8 +184,13 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
 
-    // Need a separate query to get the total count, findAndCountAll does not support pagination based on where clause.
-    const count = await MembershipModel.count(findOptions);
+    let count = rows.length;
+
+    // Only do the count if we are paginating, otherwise we can use the length of the rows as there is no limit by default
+    if (paginationParams) {
+      // Need a separate query to get the total count, findAndCountAll does not support pagination based on where clause.
+      count = await MembershipModel.count(findOptions);
+    }
 
     let nextPageParams: MembershipsPaginationParams | undefined;
     if (paginationParams?.limit && rows.length === paginationParams.limit) {
@@ -331,6 +336,33 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       );
     }
     return memberships[0];
+  }
+
+  static async getActiveRoleForUserInWorkspace({
+    user,
+    workspace,
+    transaction,
+  }: {
+    user: UserResource;
+    workspace: LightWorkspaceType;
+    transaction?: Transaction;
+  }): Promise<Attributes<MembershipModel>["role"] | "none"> {
+    const membership = await this.model.findOne({
+      attributes: ["role"],
+      where: {
+        userId: user.id,
+        workspaceId: workspace.id,
+        startAt: {
+          [Op.lte]: new Date(),
+        },
+        endAt: {
+          [Op.or]: [{ [Op.eq]: null }, { [Op.gte]: new Date() }],
+        },
+      },
+      transaction,
+    });
+
+    return membership?.role ?? "none";
   }
 
   static async getActiveMembershipOfUserInWorkspace({

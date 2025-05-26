@@ -83,13 +83,26 @@ export default function LandingLayout({
             <Button
               variant="highlight"
               size="sm"
-              label="Sign in"
+              label="Sign in with Auth0"
               icon={LoginIcon}
               onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                 if (e.shiftKey) {
                   window.location.href = `/api/auth/login?prompt=login&returnTo=${postLoginReturnToUrl}`;
                 } else {
                   window.location.href = `/api/auth/login?returnTo=${postLoginReturnToUrl}`;
+                }
+              }}
+            />
+            <Button
+              variant="highlight"
+              size="sm"
+              label="Sign in with WorkOS"
+              icon={LoginIcon}
+              onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
+                if (e.shiftKey) {
+                  window.location.href = `/api/workos/login?prompt=login&returnTo=${postLoginReturnToUrl}`;
+                } else {
+                  window.location.href = `/api/workos/login?returnTo=${postLoginReturnToUrl}`;
                 }
               }}
             />

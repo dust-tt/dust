@@ -151,13 +151,24 @@ export function UserMenu({
           href={`/w/${owner.sId}/me`}
         />
 
-        <DropdownMenuItem
-          onClick={() => {
-            window.location.href = "/api/auth/logout";
-          }}
-          icon={LogoutIcon}
-          label="Sign&nbsp;out"
-        />
+        {document.cookie.includes("sessionType=auth0") && (
+          <DropdownMenuItem
+            onClick={() => {
+              window.location.href = "/api/auth/logout";
+            }}
+            icon={LogoutIcon}
+            label="Sign&nbsp;out Auth0"
+          />
+        )}
+        {document.cookie.includes("sessionType=workos") && (
+          <DropdownMenuItem
+            onClick={() => {
+              window.location.href = "/api/workos/logout";
+            }}
+            icon={LogoutIcon}
+            label="Sign&nbsp;out WorkOS"
+          />
+        )}
 
         {showDebugTools(featureFlags) && (
           <>

@@ -47,7 +47,7 @@ export function withLogging<T>(
     }
     const now = new Date();
 
-    const session = await getSession(req);
+    const session = await getSession(req, res);
     const sessionId = session?.sessionId || "unknown";
 
     // Use freeze to make sure we cannot update `req.logContext` down the callstack

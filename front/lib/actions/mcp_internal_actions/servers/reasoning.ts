@@ -9,7 +9,7 @@ import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_acti
 import type { MCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
 import { runReasoning } from "@app/lib/actions/reasoning";
-import type { AgentLoopRunContextType } from "@app/lib/actions/types";
+import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { isModelId, isModelProviderId, isReasoningEffortId } from "@app/types";
@@ -25,7 +25,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
 
 function createServer(
   auth: Authenticator,
-  agentLoopRunContext?: AgentLoopRunContextType
+  agentLoopContext?: AgentLoopContextType
 ): McpServer {
   const server = new McpServer(serverInfo);
 
@@ -42,9 +42,11 @@ function createServer(
       { model: { modelId, providerId, temperature, reasoningEffort } },
       { sendNotification, _meta }
     ) => {
-      if (!agentLoopRunContext) {
+      if (!agentLoopContext?.runContext) {
         throw new Error("Unreachable: missing agentLoopRunContext.");
       }
+
+      const agentLoopRunContext = agentLoopContext.runContext;
 
       if (
         !isModelId(modelId) ||

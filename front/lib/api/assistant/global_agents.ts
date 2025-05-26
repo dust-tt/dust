@@ -38,7 +38,7 @@ import {
   CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
   DEFAULT_MAX_STEPS_USE_PER_RUN,
   FIREWORKS_DEEPSEEK_R1_MODEL_CONFIG,
-  GEMINI_PRO_DEFAULT_MODEL_CONFIG,
+  GEMINI_2_5_PRO_PREVIEW_MODEL_CONFIG,
   getLargeWhitelistedModel,
   getSmallWhitelistedModel,
   GLOBAL_AGENTS_SID,
@@ -955,7 +955,7 @@ function _getGeminiProGlobalAgent({
   auth: Authenticator;
   settings: GlobalAgentSettings | null;
 }): AgentConfigurationType {
-  let status = settings?.status ?? "disabled_by_admin";
+  let status = settings?.status ?? "active";
   if (!auth.isUpgraded()) {
     status = "disabled_free_workspace";
   }
@@ -966,15 +966,15 @@ function _getGeminiProGlobalAgent({
     versionCreatedAt: null,
     versionAuthorId: null,
     name: "gemini-pro",
-    description: GEMINI_PRO_DEFAULT_MODEL_CONFIG.description,
-    instructions: `Never start your messages with "[assistant:"`,
+    description: GEMINI_2_5_PRO_PREVIEW_MODEL_CONFIG.description,
+    instructions: "",
     pictureUrl: "https://dust.tt/static/systemavatar/gemini_avatar_full.png",
     status,
     scope: "global",
     userFavorite: false,
     model: {
-      providerId: GEMINI_PRO_DEFAULT_MODEL_CONFIG.providerId,
-      modelId: GEMINI_PRO_DEFAULT_MODEL_CONFIG.modelId,
+      providerId: GEMINI_2_5_PRO_PREVIEW_MODEL_CONFIG.providerId,
+      modelId: GEMINI_2_5_PRO_PREVIEW_MODEL_CONFIG.modelId,
       temperature: 0.7,
     },
     actions: [

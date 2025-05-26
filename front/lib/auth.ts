@@ -1,12 +1,16 @@
-import { unsealData } from "iron-session";
+import tracer from "dd-trace";
 import memoizer from "lru-memoizer";
-import type { GetServerSidePropsContext, NextApiRequest } from "next";
+import type {
+  GetServerSidePropsContext,
+  NextApiRequest,
+  NextApiResponse,
+} from "next";
 
 import type { Auth0JwtPayload } from "@app/lib/api/auth0";
-import { getUserFromAuth0Token } from "@app/lib/api/auth0";
+import { getAuth0Session } from "@app/lib/api/auth0";
 import config from "@app/lib/api/config";
 import { SSOEnforcedError } from "@app/lib/iam/errors";
-import type { SessionCookie, SessionWithUser } from "@app/lib/iam/provider";
+import type { SessionWithUser } from "@app/lib/iam/provider";
 import { FeatureFlag } from "@app/lib/models/feature_flag";
 import { Workspace } from "@app/lib/models/workspace";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
@@ -47,7 +51,7 @@ import {
   WHITELISTABLE_FEATURES,
 } from "@app/types";
 
-import { getWorkOS } from "./api/workos";
+import { getWorkOSSession } from "./api/workos";
 
 const { ACTIVATE_ALL_FEATURES_DEV = false } = process.env;
 
@@ -96,6 +100,15 @@ export class Authenticator {
     this._role = role;
     this._subscription = subscription || null;
     this._key = key;
+    if (user) {
+      tracer.setUser({
+        id: user?.sId,
+        role: role,
+        plan: subscription?.getPlan().code,
+        workspaceId: workspace?.sId,
+        workspaceName: workspace?.name,
+      });
+    }
   }
 
   /**
@@ -144,20 +157,17 @@ export class Authenticator {
     wId: string
   ): Promise<Authenticator> {
     const [workspace, user] = await Promise.all([
-      (async () => {
-        return Workspace.findOne({
-          where: {
-            sId: wId,
-          },
-        });
-      })(),
-      (async () => {
-        if (!session) {
-          return null;
-        } else {
-          return UserResource.fetchByEmail(session.user.email);
-        }
-      })(),
+      Workspace.findOne({
+        where: {
+          sId: wId,
+        },
+      }),
+      session?.type === "auth0"
+        ? UserResource.fetchByAuth0Sub(session.user.sub)
+        : //TODO(workos): Fetch user by email.
+          session?.type === "workos"
+          ? UserResource.fetchByEmail(session.user.email)
+          : null,
     ]);
 
     let role = "none" as RoleType;
@@ -166,10 +176,10 @@ export class Authenticator {
 
     if (user && workspace) {
       [role, groups, subscription] = await Promise.all([
-        MembershipResource.getActiveMembershipOfUserInWorkspace({
+        MembershipResource.getActiveRoleForUserInWorkspace({
           user,
           workspace: renderLightWorkspaceType({ workspace }),
-        }).then((m) => m?.role ?? "none"),
+        }),
         GroupResource.listUserGroupsInWorkspace({
           user,
           workspace: renderLightWorkspaceType({ workspace }),
@@ -203,24 +213,17 @@ export class Authenticator {
     wId: string | null
   ): Promise<Authenticator> {
     const [workspace, user] = await Promise.all([
-      (async () => {
-        if (!wId) {
-          return null;
-        }
-        return Workspace.findOne({
-          where: {
-            sId: wId,
-          },
-        });
-      })(),
-      (async () => {
-        if (!session) {
-          return null;
-        } else {
-          //TODO(workos): Fetch user by email.
-          return UserResource.fetchByEmail(session.user.email);
-        }
-      })(),
+      wId
+        ? Workspace.findOne({
+            where: { sId: wId },
+          })
+        : null,
+      session?.type === "auth0"
+        ? UserResource.fetchByAuth0Sub(session.user.sub)
+        : //TODO(workos): Fetch user by email.
+          session?.type === "workos"
+          ? UserResource.fetchByEmail(session.user.email)
+          : null,
     ]);
 
     let groups: GroupResource[] = [];
@@ -229,7 +232,9 @@ export class Authenticator {
     if (workspace) {
       [groups, subscription] = await Promise.all([
         user?.isDustSuperUser
-          ? GroupResource.internalFetchAllWorkspaceGroups(workspace.id)
+          ? GroupResource.internalFetchAllWorkspaceGroups({
+              workspaceId: workspace.id,
+            })
           : [],
         SubscriptionResource.fetchActiveByWorkspace(
           renderLightWorkspaceType({ workspace })
@@ -272,10 +277,10 @@ export class Authenticator {
 
     if (user && workspace) {
       [role, groups, subscription] = await Promise.all([
-        MembershipResource.getActiveMembershipOfUserInWorkspace({
+        MembershipResource.getActiveRoleForUserInWorkspace({
           user,
           workspace: renderLightWorkspaceType({ workspace }),
-        }).then((m) => m?.role ?? "none"),
+        }),
         GroupResource.listUserGroupsInWorkspace({
           user,
           workspace: renderLightWorkspaceType({ workspace }),
@@ -316,7 +321,7 @@ export class Authenticator {
       }
     >
   > {
-    const user = await getUserFromAuth0Token(token);
+    const user = await UserResource.fetchByAuth0Sub(token.sub);
     if (!user) {
       return new Err({ code: "user_not_found" });
     }
@@ -350,10 +355,10 @@ export class Authenticator {
     let subscription: SubscriptionResource | null = null;
 
     [role, groups, subscription] = await Promise.all([
-      MembershipResource.getActiveMembershipOfUserInWorkspace({
+      MembershipResource.getActiveRoleForUserInWorkspace({
         user: user,
         workspace: renderLightWorkspaceType({ workspace }),
-      }).then((m) => m?.role ?? "none"),
+      }),
       GroupResource.listUserGroupsInWorkspace({
         user,
         workspace: renderLightWorkspaceType({ workspace }),
@@ -563,7 +568,9 @@ export class Authenticator {
    * within the workpsace. */
   static async internalAdminForWorkspace(
     workspaceId: string,
-    options?: { dangerouslyRequestAllGroups: boolean }
+    options?: {
+      dangerouslyRequestAllGroups: boolean;
+    }
   ): Promise<Authenticator> {
     const workspace = await Workspace.findOne({
       where: {
@@ -577,7 +584,9 @@ export class Authenticator {
     const [groups, subscription] = await Promise.all([
       (async () => {
         if (options?.dangerouslyRequestAllGroups) {
-          return GroupResource.internalFetchAllWorkspaceGroups(workspace.id);
+          return GroupResource.internalFetchAllWorkspaceGroups({
+            workspaceId: workspace.id,
+          });
         } else {
           const globalGroup =
             await GroupResource.internalFetchWorkspaceGlobalGroup(workspace.id);
@@ -905,35 +914,13 @@ export class Authenticator {
  * @returns Promise<any>
  */
 export async function getSession(
-  req: NextApiRequest | GetServerSidePropsContext["req"]
+  req: NextApiRequest | GetServerSidePropsContext["req"],
+  res: NextApiResponse | GetServerSidePropsContext["res"]
 ): Promise<SessionWithUser | null> {
-  const sessionCookie = req.cookies["session"];
-  if (!sessionCookie) {
-    return null;
-  }
-
-  const { sessionData, organizationId, authenticationMethod } =
-    await unsealData<SessionCookie>(sessionCookie, {
-      password: config.getWorkOSCookiePassword(),
-    });
-
-  const session = getWorkOS().userManagement.loadSealedSession({
-    sessionData,
-    cookiePassword: config.getWorkOSCookiePassword(),
-  });
-
-  const r = await session.authenticate();
-
-  if (!r.authenticated) {
-    return null;
-  }
-
-  return {
-    sessionId: r.sessionId,
-    user: r.user,
-    organizationId,
-    authenticationMethod,
-  };
+  const session =
+    (await getWorkOSSession(req)) || (await getAuth0Session(req, res)) || null;
+  logger.info({ session }, "Getting session");
+  return session;
 }
 
 /**

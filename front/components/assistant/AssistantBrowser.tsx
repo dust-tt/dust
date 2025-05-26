@@ -149,11 +149,6 @@ export function AssistantBrowser({
         .slice(0, 6)
         .sort(sortAgents),
       untagged: allAgents.filter((a) => a.tags.length === 0),
-      // TODO(agent-discovery): Remove this once old scopes are removed
-      personal: allAgents.filter((a) => a.scope === "private"),
-      published: allAgents.filter((a) => a.scope === "published"),
-      workspace: allAgents.filter((a) => a.scope === "workspace"),
-      // END-TODO(agent-discovery)
     };
   }, [agentConfigurations, sortAgents]);
 
