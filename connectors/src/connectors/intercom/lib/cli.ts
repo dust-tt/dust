@@ -230,25 +230,25 @@ export const intercom = async ({
         })),
       };
     }
-    case "set-retention-period": {
+    case "set-conversations-sliding-window": {
       if (!connector) {
         throw new Error(`Connector ${connectorId} not found`);
       }
-      if (!args.retentionPeriodDays) {
-        throw new Error("Missing --retentionPeriodDays argument");
+      if (!args.conversationsSlidingWindow) {
+        throw new Error("Missing --conversationsSlidingWindow argument");
       }
-      const { retentionPeriodDays } = args;
-      if (isNaN(retentionPeriodDays) || retentionPeriodDays < 0) {
+      const { conversationsSlidingWindow } = args;
+      if (isNaN(conversationsSlidingWindow) || conversationsSlidingWindow < 0) {
         throw new Error(
-          `Invalid --retentionPeriodDays argument: ${retentionPeriodDays}`
+          `Invalid --conversationsSlidingWindow argument: ${conversationsSlidingWindow}`
         );
       }
       logger.info(
         {
           connectorId,
-          retentionPeriodDays,
+          conversationsSlidingWindow,
         },
-        "[Admin] Setting retention period"
+        "[Admin] Setting conversations sliding window."
       );
       const workspace = await IntercomWorkspaceModel.findOne({
         where: {
@@ -259,7 +259,7 @@ export const intercom = async ({
         throw new Error(`No workspace found for connector ${connector.id}`);
       }
       await workspace.update({
-        conversationsSlidingWindow: retentionPeriodDays,
+        conversationsSlidingWindow,
       });
       return { success: true };
     }
