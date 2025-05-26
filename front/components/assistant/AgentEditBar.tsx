@@ -1,9 +1,7 @@
 import {
   Button,
-  Chip,
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuSearchbar,
   DropdownMenuSeparator,
   DropdownMenuTagItem,
