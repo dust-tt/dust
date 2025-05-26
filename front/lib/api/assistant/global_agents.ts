@@ -35,6 +35,7 @@ import {
   CLAUDE_3_7_SONNET_DEFAULT_MODEL_CONFIG,
   CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG,
   CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG,
+  CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG,
   CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
   DEFAULT_MAX_STEPS_USE_PER_RUN,
   FIREWORKS_DEEPSEEK_R1_MODEL_CONFIG,
@@ -762,6 +763,50 @@ function _getClaude3GlobalAgent({
     model: {
       providerId: CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG.providerId,
       modelId: CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG.modelId,
+      temperature: 0.7,
+    },
+    actions: [],
+    maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
+    visualizationEnabled: true,
+    templateId: null,
+    requestedGroupIds: [],
+    tags: [],
+    canRead: true,
+    canEdit: false,
+  };
+}
+
+function _getClaude4SonnetGlobalAgent({
+  auth,
+  settings,
+}: {
+  auth: Authenticator;
+  settings: GlobalAgentSettings | null;
+}): AgentConfigurationType {
+  let status = settings?.status ?? "active";
+  if (!auth.isUpgraded()) {
+    status = "disabled_free_workspace";
+  }
+
+  return {
+    id: -1,
+    sId: GLOBAL_AGENTS_SID.CLAUDE_4_SONNET,
+    version: 0,
+    versionCreatedAt: null,
+    versionAuthorId: null,
+    name: "claude-4-sonnet",
+    description: CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG.description,
+    instructions:
+      "Only use visualization if it is strictly necessary to visualize " +
+      "data or if it was explicitly requested by the user. " +
+      "Do not use visualization if markdown is sufficient.",
+    pictureUrl: "https://dust.tt/static/systemavatar/claude_avatar_full.png",
+    status,
+    scope: "global",
+    userFavorite: false,
+    model: {
+      providerId: CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG.providerId,
+      modelId: CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG.modelId,
       temperature: 0.7,
     },
     actions: [],
@@ -1511,6 +1556,9 @@ function getGlobalAgent(
     case GLOBAL_AGENTS_SID.CLAUDE_INSTANT:
       agentConfiguration = _getClaudeInstantGlobalAgent({ settings });
       break;
+    case GLOBAL_AGENTS_SID.CLAUDE_4_SONNET:
+      agentConfiguration = _getClaude4SonnetGlobalAgent({ auth, settings });
+      break;
     case GLOBAL_AGENTS_SID.CLAUDE_3_OPUS:
       agentConfiguration = _getClaude3OpusGlobalAgent({ auth, settings });
       break;
@@ -1612,6 +1660,8 @@ export function isGlobalAgentId(sId: string): boolean {
 const RETIRED_GLOABL_AGENTS_SID = [
   GLOBAL_AGENTS_SID.CLAUDE_2,
   GLOBAL_AGENTS_SID.CLAUDE_INSTANT,
+  GLOBAL_AGENTS_SID.CLAUDE_3_SONNET,
+  GLOBAL_AGENTS_SID.CLAUDE_3_7_SONNET,
   GLOBAL_AGENTS_SID.GPT35_TURBO,
   GLOBAL_AGENTS_SID.MISTRAL_SMALL,
   GLOBAL_AGENTS_SID.MISTRAL_MEDIUM,

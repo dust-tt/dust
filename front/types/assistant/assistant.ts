@@ -1234,6 +1234,7 @@ export enum GLOBAL_AGENTS_SID {
   O1_HIGH_REASONING = "o1_high",
   O3_MINI = "o3-mini",
   O3 = "o3",
+  CLAUDE_4_SONNET = "claude-4-sonnet",
   CLAUDE_3_OPUS = "claude-3-opus",
   CLAUDE_3_SONNET = "claude-3-sonnet",
   CLAUDE_3_HAIKU = "claude-3-haiku",
@@ -1260,6 +1261,7 @@ export function getGlobalAgentAuthorName(agentId: string): string {
     case GLOBAL_AGENTS_SID.O3:
       return "OpenAI";
     case GLOBAL_AGENTS_SID.CLAUDE_INSTANT:
+    case GLOBAL_AGENTS_SID.CLAUDE_4_SONNET:
     case GLOBAL_AGENTS_SID.CLAUDE_3_OPUS:
     case GLOBAL_AGENTS_SID.CLAUDE_3_SONNET:
     case GLOBAL_AGENTS_SID.CLAUDE_3_7_SONNET:
@@ -1281,6 +1283,7 @@ export function getGlobalAgentAuthorName(agentId: string): string {
 
 const CUSTOM_ORDER: string[] = [
   GLOBAL_AGENTS_SID.DUST,
+  GLOBAL_AGENTS_SID.CLAUDE_4_SONNET,
   GLOBAL_AGENTS_SID.GPT4,
   GLOBAL_AGENTS_SID.O3_MINI,
   GLOBAL_AGENTS_SID.SLACK,
