@@ -2,10 +2,7 @@ import { useSendNotification } from "@dust-tt/sparkle";
 import { isEqual } from "lodash";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import {
-  createConversationWithMessage,
-  submitMessage,
-} from "@app/components/assistant/conversation/lib";
+import { createConversationWithMessage, submitMessage } from "@app/components/assistant/conversation/lib";
 import { getDefaultAvatarUrlForPreview } from "@app/components/assistant_builder/avatar_picker/utils";
 import { submitAssistantBuilderForm } from "@app/components/assistant_builder/submitAssistantBuilderForm";
 import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
@@ -138,8 +135,7 @@ export function usePreviewAssistant({
     // Only trigger debounced creation if handle changed and we have content
     if (
       previousHandle !== currentHandle &&
-      currentHandle?.trim() &&
-      (builderState.instructions?.trim() || builderState.actions.length > 0)
+      currentHandle?.trim()
     ) {
       if (nameDebounceTimeoutRef.current) {
         clearTimeout(nameDebounceTimeoutRef.current);
@@ -151,8 +147,6 @@ export function usePreviewAssistant({
     }
   }, [
     builderState.handle,
-    builderState.instructions,
-    builderState.actions.length,
     createDraftAgent,
   ]);
 
