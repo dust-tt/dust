@@ -43,7 +43,8 @@ import type { Authenticator } from "@app/lib/auth";
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "hubspot",
   version: "1.0.0",
-  description: "Hubspot tools.",
+  description:
+    "Supports creating, retrieving, and searching CRM objects (contacts, companies, deals, etc.), managing engagements, and accessing object properties, etc.",
   authorization: {
     provider: "hubspot" as const,
     use_case: "platform_actions" as const,
