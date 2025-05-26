@@ -2,6 +2,7 @@ import { cn, CodeBlock, CollapsibleComponent } from "@dust-tt/sparkle";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import { MCPBrowseActionDetails } from "@app/components/actions/mcp/details/MCPBrowseActionDetails";
+import { MCPExtractActionDetails } from "@app/components/actions/mcp/details/MCPExtractActionDetails";
 import { MCPIncludeActionDetails } from "@app/components/actions/mcp/details/MCPIncludeActionDetails";
 import { MCPReasoningActionDetails } from "@app/components/actions/mcp/details/MCPReasoningActionDetails";
 import { MCPSearchActionDetails } from "@app/components/actions/mcp/details/MCPSearchActionDetails";
@@ -15,6 +16,7 @@ import {
   isReasoningSuccessOutput,
   isSearchResultResourceType,
   isSqlQueryOutput,
+  isToolGeneratedFile,
   isWebsearchResultResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { ACTION_SPECIFICATIONS } from "@app/lib/actions/utils";
@@ -33,6 +35,11 @@ export function MCPActionDetails(
   // Hack to find out whether the output comes from the reasoning tool, links back to the TODO above.
   const isReasoning = props.action.output?.some(isReasoningSuccessOutput);
 
+  // Detect extract/process action by checking for generated JSON files and process_documents function name
+  const isExtract =
+    props.action.output?.some(isToolGeneratedFile) &&
+    props.action.functionCallName === "process_documents";
+
   if (isSearch) {
     return <MCPSearchActionDetails {...props} />;
   } else if (isInclude) {
@@ -45,6 +52,8 @@ export function MCPActionDetails(
     return <MCPTablesQueryActionDetails {...props} />;
   } else if (isReasoning) {
     return <MCPReasoningActionDetails {...props} />;
+  } else if (isExtract) {
+    return <MCPExtractActionDetails {...props} />;
   } else {
     return <GenericActionDetails {...props} />;
   }
