@@ -245,6 +245,7 @@ export const intercom = async ({
       }
       logger.info(
         {
+          connectorId,
           retentionPeriodDays,
         },
         "[Admin] Setting retention period"
