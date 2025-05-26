@@ -729,7 +729,7 @@ export function useBatchUpdateAgents({ owner }: { owner: LightWorkspaceType }) {
       body: { addTagIds?: string[]; removeTagIds?: string[] }
     ) => {
       await fetch(
-        `/api/w/${owner.sId}/assistant/agent_configurations/batch_update`,
+        `/api/w/${owner.sId}/assistant/agent_configurations/batch_update_tags`,
         {
           method: "POST",
           headers: {
