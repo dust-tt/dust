@@ -246,6 +246,7 @@ export class AgentMessage extends WorkspaceAwareModel<AgentMessage> {
 
   declare errorCode: string | null;
   declare errorMessage: string | null;
+  declare errorMetadata: Record<string, string | number | boolean> | null;
 
   declare skipToolsValidation: boolean;
 
@@ -287,6 +288,31 @@ AgentMessage.init(
     errorMessage: {
       type: DataTypes.TEXT,
       allowNull: true,
+    },
+    errorMetadata: {
+      type: DataTypes.JSONB,
+      allowNull: true,
+      defaultValue: null,
+      validate: {
+        isValidJSON(value: any) {
+          if (value !== null && typeof value !== "object") {
+            throw new Error("errorMetadata must be an object or null");
+          }
+          if (
+            value !== null &&
+            !Object.values(value).every(
+              (v) =>
+                typeof v === "string" ||
+                typeof v === "number" ||
+                typeof v === "boolean"
+            )
+          ) {
+            throw new Error(
+              "errorMetadata values must be string | number | boolean"
+            );
+          }
+        },
+      },
     },
     skipToolsValidation: {
       type: DataTypes.BOOLEAN,

@@ -4,11 +4,11 @@ import type {
   AgentActionSpecification,
 } from "@app/lib/actions/types/agent";
 import type { TagType } from "@app/types/tag";
+import type { UserType } from "@app/types/user";
 
 import type { ModelId } from "../shared/model_id";
 import type { ModelIdType, ModelProviderIdType } from "./assistant";
 import type { AgentActionType, AgentMessageType } from "./conversation";
-import { UserType } from "@app/types/user";
 
 /**
  * Agent configuration
@@ -197,7 +197,8 @@ export type AgentMessageErrorEvent = {
   };
 };
 
-// Generic event sent when an error occured (whether it's during the action or the message generation).
+// Generic event sent when an error occured (whether it's during the action or the message
+// generation).
 export type AgentErrorEvent = {
   type: "agent_error";
   created: number;
@@ -206,6 +207,7 @@ export type AgentErrorEvent = {
   error: {
     code: string;
     message: string;
+    metadata: Record<string, string | number | boolean> | null;
   };
 };
 
