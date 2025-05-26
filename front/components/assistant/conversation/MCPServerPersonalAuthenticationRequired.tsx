@@ -4,14 +4,10 @@ import {
   Chip,
   CloudArrowLeftRightIcon,
 } from "@dust-tt/sparkle";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { useSubmitFunction } from "@app/lib/client/utils";
-import {
-  useLabsCreateSalesforcePersonalConnection,
-  useLabsSalesforceDataSourcesWithPersonalConnection,
-} from "@app/lib/swr/labs";
-import { useCreateMCPServerConnection } from "@app/lib/swr/mcp_servers";
+import { useCreatePersonalConnection } from "@app/lib/swr/mcp_servers";
 import type {
   LightWorkspaceType,
   OAuthProvider,
@@ -31,31 +27,14 @@ export function MCPServerPersonalAuthenticationRequired({
   useCase: OAuthUseCase;
   retryHandler: () => void;
 }) {
-  // const { dataSources } = useLabsSalesforceDataSourcesWithPersonalConnection({
-  //   owner,
-  // });
-  // const dataSource = dataSources[0];
-  // const { createPersonalConnection } =
-  //   useLabsCreateSalesforcePersonalConnection(owner);
-
-  // useEffect(() => {
-  //   if (dataSource && dataSource.personalConnection) {
-  //     retryHandler();
-  //   }
-  // }, [dataSource, retryHandler]);
+  const { createPersonalConnection } = useCreatePersonalConnection(owner);
 
   const { submit: retry, isSubmitting: isRetrying } = useSubmitFunction(
     async () => retryHandler()
   );
 
-  // const { createMCPServerConnection } = useCreateMCPServerConnection({ owner });
+  const [isConnected, setIsConnected] = useState<boolean>(false);
 
-  const [isConnected, setIsConnected] = useState<boolean>(true);
-
-  console.log("MCPServerPersonalAuthenticationRequired rendered", isConnected);
-  console.log("mcpServerId", mcpServerId);
-  console.log("provider", provider);
-  console.log("useCase", useCase);
   return (
     <div className="flex flex-col gap-9">
       <div className="flex flex-col gap-1 sm:flex-row">
@@ -72,8 +51,16 @@ export function MCPServerPersonalAuthenticationRequired({
           size="xs"
           icon={CloudArrowLeftRightIcon}
           onClick={async () => {
-            setIsConnected(true);
-            // await createPersonalConnection(dataSource);
+            const success = await createPersonalConnection(
+              mcpServerId,
+              provider,
+              useCase
+            );
+            if (!success) {
+              setIsConnected(false);
+            } else {
+              setIsConnected(true);
+            }
           }}
         />
       </div>
