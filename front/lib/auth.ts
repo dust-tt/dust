@@ -918,7 +918,7 @@ export async function getSession(
 ): Promise<SessionWithUser | null> {
   const session =
     (await getWorkOSSession(req)) || (await getAuth0Session(req, res)) || null;
-  console.log("======== session", session);
+  logger.info({ session }, "Getting session");
   return session;
 }
 
