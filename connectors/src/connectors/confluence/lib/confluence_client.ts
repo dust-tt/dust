@@ -63,7 +63,7 @@ const ConfluencePageCodec = t.intersection([
 const SearchConfluencePageCodec = t.intersection([
   t.type({
     id: t.string,
-    type: t.string,
+    type: t.literal("page"),
     status: t.string,
     title: t.string,
 
@@ -103,6 +103,10 @@ const SearchConfluencePageCodec = t.intersection([
   CatchAllCodec,
 ]);
 
+export type ConfluenceSearchPageType = t.TypeOf<
+  typeof SearchConfluencePageCodec
+>;
+
 const ConfluencePageWithBodyCodec = t.intersection([
   ConfluencePageCodec,
   t.type({
@@ -125,18 +129,6 @@ const ConfluencePageWithBodyCodec = t.intersection([
 export type ConfluencePageWithBodyType = t.TypeOf<
   typeof ConfluencePageWithBodyCodec
 >;
-
-const ConfluenceChildPagesCodec = t.intersection([
-  t.type({
-    id: t.string,
-    status: t.string,
-    title: t.string,
-    spaceId: t.string,
-  }),
-  t.partial({
-    childPosition: t.number,
-  }),
-]);
 
 const ConfluenceUserProfileCodec = t.intersection([
   t.type({
@@ -430,12 +422,14 @@ export class ConfluenceClient {
         "status:error",
       ]);
 
+      const text = await response.text();
+
       throw new ConfluenceClientError(
         `Confluence API responded with status: ${response.status}: ${this.apiUrl}${endpoint}`,
         {
           type: "http_response_error",
           status: response.status,
-          data: { url: `${this.apiUrl}${endpoint}`, response },
+          data: { url: `${this.apiUrl}${endpoint}`, response, text },
         }
       );
     }
@@ -590,17 +584,29 @@ export class ConfluenceClient {
   }
 
   async getChildPages({
-    parentPageId,
-    pageCursor,
     limit,
+    pageCursor,
+    parentPageId,
+    spaceKey,
   }: {
-    parentPageId: string;
+    limit: number;
     pageCursor: string | null;
-    limit?: number;
+    parentPageId: string;
+    spaceKey: string;
   }) {
+    // Build CQL query to get pages with specific IDs.
+    const cqlQuery = `type=page AND space="${spaceKey}" AND parent=${parentPageId}`;
+
     const params = new URLSearchParams({
-      sort: "id",
-      limit: limit?.toString() ?? "100",
+      cql: cqlQuery,
+      expand: [
+        "version", // To check if page changed.
+        "restrictions.read.restrictions.user", // To check user permissions.
+        "restrictions.read.restrictions.group", // To check group permissions.
+        "childTypes.page", // To know if it has children.
+        "ancestors", // To get parent info.
+      ].join(","),
+      limit: limit.toString(),
     });
 
     if (pageCursor) {
@@ -608,24 +614,20 @@ export class ConfluenceClient {
     }
 
     try {
-      const pages = await this.request(
-        `${
-          this.restApiBaseUrl
-        }/pages/${parentPageId}/children?${params.toString()}`,
-        ConfluencePaginatedResults(ConfluenceChildPagesCodec)
+      const res = await this.request(
+        `${this.legacyRestApiBaseUrl}/content/search?${params.toString()}`,
+        ConfluencePaginatedResults(SearchConfluencePageCodec)
       );
-      const nextPageCursor = extractCursorFromLinks(pages._links);
 
       return {
-        pages: pages.results,
-        nextPageCursor,
+        nextPageCursor: extractCursorFromLinks(res._links),
+        pages: res.results,
       };
     } catch (err) {
       if (err instanceof ConfluenceClientError && err.status === 404) {
-        // If the child page is not found, return empty array.
         return {
-          pages: [],
           nextPageCursor: null,
+          pages: [],
         };
       }
 
@@ -715,11 +717,11 @@ export class ConfluenceClient {
       cql: cqlQuery,
       limit: limit?.toString() ?? "25",
       expand: [
-        "version", // to check if page changed.
-        "restrictions.read.restrictions.user", // to check user permissions.
-        "restrictions.read.restrictions.group", // to check group permissions.
-        "childTypes.page", // to know if it has children.
-        "ancestors", // to get parent info.
+        "version", // To check if page changed.
+        "restrictions.read.restrictions.user", // To check user permissions.
+        "restrictions.read.restrictions.group", // To check group permissions.
+        "childTypes.page", // To know if it has children.
+        "ancestors", // To get parent info.
       ].join(","),
     });
 
