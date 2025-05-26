@@ -26,7 +26,15 @@ import type {
   GetConnectionsResponseBody,
   PostConnectionResponseBody,
 } from "@app/pages/api/w/[wId]/mcp/connections/[connectionType]";
-import type { LightWorkspaceType, OAuthProvider, SpaceType } from "@app/types";
+import type {
+  LightWorkspaceType,
+  OAuthProvider,
+  OAuthUseCase,
+  SpaceType,
+} from "@app/types";
+import { setupOAuthConnection } from "@app/types";
+
+import { getPKCEConfig } from "../utils/pkce";
 
 /**
  * Hook to fetch a specific remote MCP server by ID
@@ -344,7 +352,7 @@ export function useCreateMCPServerConnection({
     connectionId: string;
     mcpServerId: string;
     provider: OAuthProvider;
-  }): Promise<PostConnectionResponseBody> => {
+  }): Promise<PostConnectionResponseBody | null> => {
     const response = await fetch(
       `/api/w/${owner.sId}/mcp/connections/${connectionType}`,
       {
@@ -365,18 +373,16 @@ export function useCreateMCPServerConnection({
         title: "Provider connected",
         description: `Successfully connected to provider ${provider}.`,
       });
+      void mutateConnections();
+      return response.json();
     } else {
       sendNotification({
         type: "error",
         title: "Failed to connect provider",
         description: "Could not connect to your provider. Please try again.",
       });
+      return null;
     }
-
-    if (response.ok) {
-      void mutateConnections();
-    }
-    return response.json();
   };
 
   return { createMCPServerConnection };
@@ -518,4 +524,72 @@ export function useUpdateMCPServerToolsPermissions({
   };
 
   return { updateToolPermission };
+}
+
+export function useCreatePersonalConnection(owner: LightWorkspaceType) {
+  const { createMCPServerConnection } = useCreateMCPServerConnection({
+    owner,
+    connectionType: "personal",
+  });
+
+  const sendNotification = useSendNotification();
+
+  const createPersonalConnection = async (
+    mcpServerId: string,
+    provider: OAuthProvider,
+    useCase: OAuthUseCase
+  ): Promise<boolean> => {
+    try {
+      const extraConfig: {
+        mcp_server_id: string;
+        code_verifier?: string;
+        code_challenge?: string;
+      } = {
+        mcp_server_id: mcpServerId,
+      };
+
+      // TODO(spolu): clean that up
+      if (provider === "salesforce") {
+        const { code_verifier, code_challenge } = await getPKCEConfig();
+        extraConfig.code_verifier = code_verifier;
+        extraConfig.code_challenge = code_challenge;
+      }
+
+      const cRes = await setupOAuthConnection({
+        dustClientFacingUrl: `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}`,
+        owner,
+        provider,
+        useCase,
+        extraConfig,
+      });
+
+      if (cRes.isErr()) {
+        sendNotification({
+          type: "error",
+          title: "Failed to connect provider",
+          description: cRes.error.message,
+        });
+        return false;
+      }
+
+      const result = await createMCPServerConnection({
+        connectionId: cRes.value.connection_id,
+        mcpServerId,
+        provider,
+      });
+
+      return result !== null;
+    } catch (error) {
+      sendNotification({
+        type: "error",
+        title: "Failed to connect provider",
+        description:
+          "Unexpected error trying to connect to your provider. Please try again. Error: " +
+          error,
+      });
+    }
+    return false;
+  };
+
+  return { createPersonalConnection };
 }

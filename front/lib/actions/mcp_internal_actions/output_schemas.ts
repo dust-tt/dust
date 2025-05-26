@@ -390,6 +390,8 @@ export const PersonalAuthenticationRequiredErrorResourceSchema = z.object({
   text: z.string(),
   uri: z.literal(""),
   mcpServerId: z.string(),
+  provider: z.string(),
+  useCase: z.string(),
 });
 
 export type PersonalAuthenticationRequiredErrorResourceType = z.infer<

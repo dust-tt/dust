@@ -68,7 +68,7 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { fromEvent } from "@app/lib/utils/events";
 import logger from "@app/logger/logger";
-import type { ModelId, Result } from "@app/types";
+import type { ModelId, OAuthProvider, OAuthUseCase, Result } from "@app/types";
 import { assertNever, Err, normalizeError, Ok, slugify } from "@app/types";
 
 const MAX_OUTPUT_ITEMS = 128;
@@ -337,7 +337,11 @@ export async function* tryCallMCPTool(
           type: "result",
           result: new Err(
             new MCPServerPersonalAuthenticationRequiredError(
-              personalAuthenticationRequiredError.resource.mcpServerId
+              personalAuthenticationRequiredError.resource.mcpServerId,
+              personalAuthenticationRequiredError.resource
+                .provider as OAuthProvider,
+              personalAuthenticationRequiredError.resource
+                .useCase as OAuthUseCase
             )
           ),
         };

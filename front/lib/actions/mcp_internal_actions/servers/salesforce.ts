@@ -62,7 +62,10 @@ You can use it to list the objects in Salesforce: standard and custom objects.
         | undefined;
 
       if (!accessToken || !instanceUrl) {
-        return makeMCPToolPersonalAuthenticationRequiredError(mcpServerId);
+        return makeMCPToolPersonalAuthenticationRequiredError(
+          mcpServerId,
+          serverInfo.authorization!
+        );
       }
 
       const conn = new jsforce.Connection({
@@ -103,7 +106,10 @@ You can use it to list the objects in Salesforce: standard and custom objects.
         | undefined;
 
       if (!accessToken || !instanceUrl) {
-        return makeMCPToolPersonalAuthenticationRequiredError(mcpServerId);
+        return makeMCPToolPersonalAuthenticationRequiredError(
+          mcpServerId,
+          serverInfo.authorization!
+        );
       }
       const conn = new jsforce.Connection({
         instanceUrl,
