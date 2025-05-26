@@ -2,12 +2,12 @@ use crate::oauth::{
     encryption::{seal_str, unseal_str},
     providers::{
         confluence::ConfluenceConnectionProvider, github::GithubConnectionProvider,
-        gong::GongConnectionProvider, google_drive::GoogleDriveConnectionProvider,
-        hubspot::HubspotConnectionProvider, intercom::IntercomConnectionProvider,
-        microsoft::MicrosoftConnectionProvider, mock::MockConnectionProvider,
-        notion::NotionConnectionProvider, salesforce::SalesforceConnectionProvider,
-        slack::SlackConnectionProvider, zendesk::ZendeskConnectionProvider,
-        gmail::GmailConnectionProvider,
+        gmail::GmailConnectionProvider, gong::GongConnectionProvider,
+        google_drive::GoogleDriveConnectionProvider, hubspot::HubspotConnectionProvider,
+        intercom::IntercomConnectionProvider, microsoft::MicrosoftConnectionProvider,
+        mock::MockConnectionProvider, notion::NotionConnectionProvider,
+        salesforce::SalesforceConnectionProvider, slack::SlackConnectionProvider,
+        zendesk::ZendeskConnectionProvider,
     },
     store::OAuthStore,
 };

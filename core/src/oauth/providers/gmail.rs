@@ -89,28 +89,20 @@ impl Provider for GmailConnectionProvider {
 
         let access_token = match raw_json["access_token"].as_str() {
             Some(token) => token,
-            None => Err(anyhow!(
-                "Missing `access_token` in response from Gmail"
-            ))?,
+            None => Err(anyhow!("Missing `access_token` in response from Gmail"))?,
         };
 
         let expires_in = match raw_json.get("expires_in") {
             Some(serde_json::Value::Number(n)) => match n.as_u64() {
                 Some(n) => n,
-                None => Err(anyhow!(
-                    "Invalid `expires_in` in response from Gmail"
-                ))?,
+                None => Err(anyhow!("Invalid `expires_in` in response from Gmail"))?,
             },
-            _ => Err(anyhow!(
-                "Missing `expires_in` in response from Gmail"
-            ))?,
+            _ => Err(anyhow!("Missing `expires_in` in response from Gmail"))?,
         };
 
         let refresh_token = match raw_json["refresh_token"].as_str() {
             Some(token) => token,
-            None => Err(anyhow!(
-                "Missing `refresh_token` in response from Gmail"
-            ))?,
+            None => Err(anyhow!("Missing `refresh_token` in response from Gmail"))?,
         };
 
         Ok(FinalizeResult {
@@ -132,9 +124,7 @@ impl Provider for GmailConnectionProvider {
     ) -> Result<RefreshResult, ProviderError> {
         let refresh_token = match connection.unseal_refresh_token() {
             Ok(Some(token)) => token,
-            Ok(None) => Err(anyhow!(
-                "Missing `refresh_token` in Gmail connection"
-            ))?,
+            Ok(None) => Err(anyhow!("Missing `refresh_token` in Gmail connection"))?,
             Err(e) => Err(e)?,
         };
 
@@ -159,21 +149,15 @@ impl Provider for GmailConnectionProvider {
 
         let access_token = match raw_json["access_token"].as_str() {
             Some(token) => token,
-            None => Err(anyhow!(
-                "Missing `access_token` in response from Gmail"
-            ))?,
+            None => Err(anyhow!("Missing `access_token` in response from Gmail"))?,
         };
 
         let expires_in = match raw_json.get("expires_in") {
             Some(serde_json::Value::Number(n)) => match n.as_u64() {
                 Some(n) => n,
-                None => Err(anyhow!(
-                    "Invalid `expires_in` in response from Gmail"
-                ))?,
+                None => Err(anyhow!("Invalid `expires_in` in response from Gmail"))?,
             },
-            _ => Err(anyhow!(
-                "Missing `expires_in` in response from Gmail"
-            ))?,
+            _ => Err(anyhow!("Missing `expires_in` in response from Gmail"))?,
         };
 
         match raw_json["scope"].as_str() {
@@ -183,9 +167,7 @@ impl Provider for GmailConnectionProvider {
 
         match raw_json["token_type"].as_str() {
             Some(_) => (),
-            None => Err(anyhow!(
-                "Missing `token_type` in response from Gmail"
-            ))?,
+            None => Err(anyhow!("Missing `token_type` in response from Gmail"))?,
         };
 
         // Gmail does not return a new refresh token when refreshing an access token. So we
@@ -248,4 +230,4 @@ impl Provider for GmailConnectionProvider {
             }
         }
     }
-} 
+}
