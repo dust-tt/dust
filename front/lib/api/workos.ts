@@ -1,10 +1,13 @@
 import type {
-  AuthenticationResponse,
-  Directory,
-  Organization,
-  User,
+  AuthenticationResponse as WorkOSAuthenticationResponse,
+  Directory as WorkOSDirectory,
+  Organization as WorkOSOrganization,
+  User as WorkOSUser,
 } from "@workos-inc/node";
-import type { DirectoryGroup, DirectoryUserWithGroups } from "@workos-inc/node";
+import type {
+  DirectoryGroup as WorkOSGroup,
+  DirectoryUserWithGroups as WorkOSUserWithGroups,
+} from "@workos-inc/node";
 import { GeneratePortalLinkIntent, WorkOS } from "@workos-inc/node";
 import { unsealData } from "iron-session";
 import type { GetServerSidePropsContext, NextApiRequest } from "next";
@@ -27,7 +30,7 @@ let workos: WorkOS | null = null;
 export type SessionCookie = {
   sessionData: string;
   organizationId?: string;
-  authenticationMethod: AuthenticationResponse["authenticationMethod"];
+  authenticationMethod: WorkOSAuthenticationResponse["authenticationMethod"];
   region: RegionType;
   workspaceId: string;
 };
@@ -89,7 +92,7 @@ export async function getWorkOSSession(
 
 // Store the region in the user's app_metadata to redirect to the right region.
 // A JWT Template includes this metadata in https://dust.tt/region (https://dashboard.workos.com/environment_01JGCT54YDGZAAD731M0GQKZGM/authentication/edit-jwt-template)
-export async function setRegionForUser(user: User, region: RegionType) {
+export async function setRegionForUser(user: WorkOSUser, region: RegionType) {
   // Update user metadata
   await getWorkOS().userManagement.updateUser({
     userId: user.id,
@@ -103,7 +106,7 @@ export function createWorkOSOrganization({
   workspace,
 }: {
   workspace: WorkspaceType;
-}): Result<Promise<Organization>, Error> {
+}): Result<Promise<WorkOSOrganization>, Error> {
   if (workspace.workOSOrganizationId) {
     return new Err(
       new Error("A WorkOS organization already exists for this workspace.")
@@ -200,7 +203,7 @@ async function syncAllUsers({
   directory,
 }: {
   workspace: WorkspaceType;
-  directory: Directory;
+  directory: WorkOSDirectory;
 }): Promise<void> {
   logger.info(
     {
@@ -237,7 +240,7 @@ async function syncAllGroups(
     directory,
   }: {
     workspace: WorkspaceType;
-    directory: Directory;
+    directory: WorkOSDirectory;
   }
 ): Promise<void> {
   logger.info(
@@ -274,8 +277,8 @@ async function upsertUser({
   workOSUser,
 }: {
   workspace: WorkspaceType;
-  workOSUser: DirectoryUserWithGroups;
-  directory: Directory;
+  workOSUser: WorkOSUserWithGroups;
+  directory: WorkOSDirectory;
 }): Promise<void> {
   const localLogger = logger.child({
     workspaceId: workspace.sId,
@@ -320,8 +323,8 @@ async function upsertGroup(
     workOSGroup,
   }: {
     workspace: WorkspaceType;
-    workOSGroup: DirectoryGroup;
-    directory: Directory;
+    workOSGroup: WorkOSGroup;
+    directory: WorkOSDirectory;
   }
 ): Promise<void> {
   const localLogger = logger.child({
