@@ -207,6 +207,7 @@ export const IntercomCommandSchema = t.type({
     t.literal("fetch-articles"),
     t.literal("check-missing-conversations"),
     t.literal("check-teams"),
+    t.literal("set-retention-period"),
   ]),
   args: t.type({
     force: t.union([t.literal("true"), t.undefined]),
@@ -214,6 +215,7 @@ export const IntercomCommandSchema = t.type({
     conversationId: t.union([t.number, t.undefined]),
     day: t.union([t.string, t.undefined]),
     helpCenterId: t.union([t.number, t.undefined]),
+    retentionPeriodDays: t.union([t.string, t.undefined]),
   }),
 });
 export type IntercomCommandType = t.TypeOf<typeof IntercomCommandSchema>;
