@@ -1,4 +1,9 @@
-import { Input, Label } from "@dust-tt/sparkle";
+import {
+  ContentMessage,
+  InformationCircleIcon,
+  Input,
+  Label,
+} from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
 
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata";
@@ -47,11 +52,20 @@ export function MCPServerOAuthConnexion({
       <div className="flex flex-col items-center gap-2">
         {requiredCredentials ? (
           <>
-            <Label className="self-start">
-              These tools require authentication with{" "}
+            <span className="text-500 w-full font-semibold">
+              These tools require admin authentication with{" "}
               {OAUTH_PROVIDER_NAMES[authorization.provider]}, we need the
-              following information to set them up:
-            </Label>
+              following information to set them up. Please follow{" "}
+              <a
+                href="https://docs.dust.tt/docs/salesforce"
+                className="text-highlight-600"
+                target="_blank"
+              >
+                this guide
+              </a>{" "}
+              to learn how to set up a Salesforce app to get the Client ID and
+              Client Secret.
+            </span>
             {Object.entries(requiredCredentials).map(([key, value]) =>
               requiredCredentials[key].value ? null : (
                 <div key={key} className="w-full">
@@ -77,19 +91,31 @@ export function MCPServerOAuthConnexion({
           </Label>
         )}
 
-        {authorization.use_case === "platform_actions" && (
-          <span className="w-full font-semibold text-red-500">
-            Authentication credentials will be shared by all users of this
-            workspace when they use these tools.
-          </span>
-        )}
-        {authorization.use_case === "personal_actions" && (
-          <span className="text-500 w-full font-semibold">
-            Once setup for the workspace, each user will link their own{" "}
-            {OAUTH_PROVIDER_NAMES[authorization.provider]} credentials when
-            interacting with these tools for the first time.
-          </span>
-        )}
+        <div className="w-full pt-4">
+          {authorization.use_case === "platform_actions" && (
+            <ContentMessage
+              size="md"
+              variant="warning"
+              title="These tools are using workspace level credentials."
+              icon={InformationCircleIcon}
+            >
+              Authentication credentials will be shared by all users of this
+              workspace when they use these tools.
+            </ContentMessage>
+          )}
+          {authorization.use_case === "personal_actions" && (
+            <ContentMessage
+              size="md"
+              variant="highlight"
+              title="These tools are using personal level credentials."
+              icon={InformationCircleIcon}
+            >
+              Once setup for the workspace, each user will have to connect their
+              own {OAUTH_PROVIDER_NAMES[authorization.provider]} credentials to
+              interact with these tools.
+            </ContentMessage>
+          )}
+        </div>
       </div>
     )
   );
