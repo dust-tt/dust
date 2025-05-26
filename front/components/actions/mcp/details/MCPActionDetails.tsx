@@ -12,11 +12,11 @@ import type { ActionDetailsComponentBaseProps } from "@app/components/actions/ty
 import type { MCPActionType } from "@app/lib/actions/mcp";
 import {
   isBrowseResultResourceType,
+  isExtractResultResourceType,
   isIncludeResultResourceType,
   isReasoningSuccessOutput,
   isSearchResultResourceType,
   isSqlQueryOutput,
-  isToolGeneratedFile,
   isWebsearchResultResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { ACTION_SPECIFICATIONS } from "@app/lib/actions/utils";
@@ -30,15 +30,11 @@ export function MCPActionDetails(
   const isWebsearch = props.action.output?.some(isWebsearchResultResourceType);
   const isBrowse = props.action.output?.some(isBrowseResultResourceType);
   const isTablesQuery = props.action.output?.some(isSqlQueryOutput);
+  const isExtract = props.action.output?.some(isExtractResultResourceType);
 
   // TODO(mcp): rationalize the display of results for MCP to remove the need for specific checks.
   // Hack to find out whether the output comes from the reasoning tool, links back to the TODO above.
   const isReasoning = props.action.output?.some(isReasoningSuccessOutput);
-
-  // Detect extract/process action by checking for generated JSON files and process_documents function name
-  const isExtract =
-    props.action.output?.some(isToolGeneratedFile) &&
-    props.action.functionCallName === "process_documents";
 
   if (isSearch) {
     return <MCPSearchActionDetails {...props} />;

@@ -12,15 +12,22 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import type { ActionDetailsComponentBaseProps } from "@app/components/actions/types";
 import type { MCPActionType } from "@app/lib/actions/mcp";
-import { isToolGeneratedFile } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import {
+  isExtractQueryResourceType,
+  isExtractResultResourceType,
+} from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { isTimeFrame } from "@app/types/shared/utils/time_frame";
 
 export function MCPExtractActionDetails({
   action,
   defaultOpen,
 }: ActionDetailsComponentBaseProps<MCPActionType>) {
-  const generatedFile = action.output
-    ?.filter(isToolGeneratedFile)
+  const queryResource = action.output
+    ?.filter(isExtractQueryResourceType)
+    .map((o) => o.resource)?.[0];
+
+  const resultResource = action.output
+    ?.filter(isExtractResultResourceType)
     .map((o) => o.resource)?.[0];
 
   const jsonSchema = action.params?.jsonSchema as JSONSchema | undefined;
@@ -36,7 +43,10 @@ export function MCPExtractActionDetails({
           <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
             Query
           </span>
-          <MCPExtractActionQuery action={action} />
+          <MCPExtractActionQuery
+            action={action}
+            queryResource={queryResource}
+          />
         </div>
 
         {jsonSchema && (
@@ -71,7 +81,7 @@ export function MCPExtractActionDetails({
               </span>
             }
             contentChildren={
-              <MCPExtractActionResults generatedFile={generatedFile} />
+              <MCPExtractActionResults resultResource={resultResource} />
             }
           />
         </div>
@@ -80,21 +90,28 @@ export function MCPExtractActionDetails({
   );
 }
 
-function MCPExtractActionQuery({ action }: { action: MCPActionType }) {
+function MCPExtractActionQuery({
+  action,
+  queryResource,
+}: {
+  action: MCPActionType;
+  queryResource?: {
+    text: string;
+    mimeType: string;
+    uri: string;
+  };
+}) {
   const timeFrameParam = action.params?.timeFrame;
 
-  // Extract document count from action output text
-  const outputText = action.output
-    ?.filter((o): o is { type: "text"; text: string } => o.type === "text")
-    .map((o) => o.text)
-    .join(" ");
+  if (queryResource) {
+    return (
+      <p className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+        {queryResource.text}
+      </p>
+    );
+  }
 
-  const documentCountMatch = outputText?.match(
-    /Extracted from (\d+) documents?/
-  );
-  const documentCount = documentCountMatch ? documentCountMatch[1] : null;
-
-  // Format timeframe description
+  // Fallback: Format timeframe description from params
   const timeFrameAsString =
     timeFrameParam && isTimeFrame(timeFrameParam)
       ? "the last " +
@@ -103,28 +120,27 @@ function MCPExtractActionQuery({ action }: { action: MCPActionType }) {
           : `${timeFrameParam.unit}`)
       : "all time";
 
-  const baseDescription = documentCount
-    ? `Extracted from ${documentCount} documents over ${timeFrameAsString}.`
-    : `Extracted from documents over ${timeFrameAsString}.`;
-
   return (
     <p className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
-      {baseDescription}
+      Extracted from documents over {timeFrameAsString}.
     </p>
   );
 }
 
 function MCPExtractActionResults({
-  generatedFile,
+  resultResource,
 }: {
-  generatedFile?: {
+  resultResource?: {
+    text: string;
+    uri: string;
+    mimeType: string;
     fileId: string;
     title: string;
+    contentType: string;
     snippet: string | null;
-    uri: string;
   };
 }) {
-  if (!generatedFile) {
+  if (!resultResource) {
     return (
       <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
         No data was extracted.
@@ -134,7 +150,7 @@ function MCPExtractActionResults({
 
   const handleDownload = () => {
     try {
-      window.open(generatedFile.uri, "_blank");
+      window.open(resultResource.uri, "_blank");
     } catch (error) {
       console.error("Download failed:", error);
     }
@@ -147,16 +163,16 @@ function MCPExtractActionResults({
           className="w-48 min-w-48 max-w-48"
           containerClassName="my-2"
           onClick={handleDownload}
-          tooltip={generatedFile.title}
+          tooltip={resultResource.title}
         >
           <CitationIcons>
             <Icon visual={ScanIcon} />
           </CitationIcons>
-          <CitationTitle>{generatedFile.title}</CitationTitle>
+          <CitationTitle>{resultResource.title}</CitationTitle>
         </Citation>
       </div>
 
-      {generatedFile.snippet && (
+      {resultResource.snippet && (
         <CollapsibleComponent
           rootProps={{ defaultOpen: false }}
           triggerChildren={
@@ -170,7 +186,7 @@ function MCPExtractActionResults({
                 className="language-json max-h-60 overflow-y-auto"
                 wrapLongLines={true}
               >
-                {generatedFile.snippet}
+                {resultResource.snippet}
               </CodeBlock>
             </div>
           }
