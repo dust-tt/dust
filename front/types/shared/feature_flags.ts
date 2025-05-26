@@ -29,7 +29,7 @@ export const WHITELISTABLE_FEATURES = [
   "exploded_tables_query",
   "salesforce_tool",
   "gmail_tool",
-  "agent_builder_v2"
+  "agent_builder_v2",
 ] as const;
 export type WhitelistableFeature = (typeof WHITELISTABLE_FEATURES)[number];
 export function isWhitelistableFeature(
