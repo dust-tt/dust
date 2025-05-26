@@ -34,48 +34,58 @@ export function MCPServerPersonalAuthenticationRequired({
   );
 
   const [isConnected, setIsConnected] = useState<boolean>(false);
+  const [isConnecting, setIsConnecting] = useState<boolean>(false);
 
   return (
     <div className="flex flex-col gap-9">
-      <div className="flex flex-col gap-1 sm:flex-row">
-        <Chip
-          color="info"
-          label={
-            "The agent took an action that requires personal authentication"
-          }
-          size="xs"
-        />
-        <Button
-          label={`Connect`}
-          variant="outline"
-          size="xs"
-          icon={CloudArrowLeftRightIcon}
-          onClick={async () => {
-            const success = await createPersonalConnection(
-              mcpServerId,
-              provider,
-              useCase
-            );
-            if (!success) {
-              setIsConnected(false);
-            } else {
-              setIsConnected(true);
-            }
-          }}
-        />
-      </div>
       {isConnected ? (
-        <div>
+        <div className="flex flex-col gap-1 sm:flex-row">
+          <Chip
+            color="success"
+            label={"You are now connected. The agent message can be retried"}
+            size="xs"
+          />
           <Button
+            label={`Retry`}
             variant="outline"
-            size="sm"
+            size="xs"
             icon={ArrowPathIcon}
-            label="Retry"
-            onClick={retry}
             disabled={isRetrying}
+            onClick={retry}
           />
         </div>
-      ) : null}
+      ) : (
+        <div className="flex flex-col gap-1 sm:flex-row">
+          <Chip
+            color="info"
+            label={
+              "The agent took an action that requires personal authentication"
+            }
+            size="xs"
+          />
+          <Button
+            label={`Connect`}
+            variant="outline"
+            size="xs"
+            icon={CloudArrowLeftRightIcon}
+            disabled={isConnecting}
+            onClick={async () => {
+              setIsConnecting(true);
+              const success = await createPersonalConnection(
+                mcpServerId,
+                provider,
+                useCase
+              );
+              setIsConnecting(false);
+              if (!success) {
+                setIsConnected(false);
+              } else {
+                setIsConnected(true);
+              }
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 }
