@@ -28,6 +28,7 @@ export const WHITELISTABLE_FEATURES = [
   "custom_webcrawler",
   "exploded_tables_query",
   "salesforce_tool",
+  "gmail_tool",
 ] as const;
 export type WhitelistableFeature = (typeof WHITELISTABLE_FEATURES)[number];
 export function isWhitelistableFeature(

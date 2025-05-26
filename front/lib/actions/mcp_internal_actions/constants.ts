@@ -27,6 +27,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "think",
   "web_search_&_browse",
   "salesforce",
+  "gmail",
 ] as const;
 
 // Whether the server is available by default in the global space.
@@ -148,6 +149,11 @@ export const INTERNAL_MCP_SERVERS: Record<
     id: 14,
     availability: "manual",
     flag: "salesforce_tool",
+  },
+  gmail: {
+    id: 15,
+    availability: "manual",
+    flag: "gmail_tool",
   },
 
   // Dev

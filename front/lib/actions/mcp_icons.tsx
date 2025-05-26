@@ -16,6 +16,7 @@ import {
   Avatar,
   CommandLineIcon,
   GithubLogo,
+  GmailLogo,
   HubspotLogo,
   NotionLogo,
   SalesforceLogo,
@@ -48,6 +49,7 @@ export const InternalActionIcons = {
   CommandLineIcon,
   NotionLogo,
   SalesforceLogo,
+  GmailLogo,
 };
 
 export const INTERNAL_ALLOWED_ICONS = Object.keys(InternalActionIcons);
