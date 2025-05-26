@@ -9,8 +9,8 @@ import type { Property } from "@hubspot/api-client/lib/codegen/crm/properties/mo
 import { normalizeError } from "@app/types";
 
 const MAX_ENUM_OPTIONS_DISPLAYED = 50;
-export const MAX_LIMIT = 50; // Hubspot API limit is 200 but it's too big for us.
-export const MAX_COUNT_LIMIT = 10000; // Hubspot API limit.
+export const MAX_LIMIT = 50; // Hubspot API results are capped at 200, but this limit is set lower for internal use.
+export const MAX_COUNT_LIMIT = 10000; // This is the Hubspot API limit for total count.
 
 export const SIMPLE_OBJECTS = ["contacts", "companies", "deals"] as const;
 type SimpleObjectType = (typeof SIMPLE_OBJECTS)[number];
@@ -68,101 +68,6 @@ export const getObjectProperties = async ({
       options,
     };
   });
-};
-
-/**
- * Create an object from a list of properties.
- * The object will be created with the properties passed in the `objectProperties` parameter.
- */
-export const createObject = async ({
-  accessToken,
-  objectType,
-  objectProperties,
-}: {
-  accessToken: string;
-  objectType: SimpleObjectType;
-  objectProperties: SimplePublicObjectInputForCreate;
-}): Promise<SimplePublicObject> => {
-  const hubspotClient = new Client({ accessToken });
-
-  switch (objectType) {
-    case "contacts":
-      return hubspotClient.crm.contacts.basicApi.create(objectProperties);
-    case "companies":
-      return hubspotClient.crm.companies.basicApi.create(objectProperties);
-    case "deals":
-      return hubspotClient.crm.deals.basicApi.create(objectProperties);
-    default:
-      throw new Error(`Unsupported object type: ${objectType}`);
-  }
-};
-
-/**
- * Update a contact.
- * The contact will be updated with the properties passed in the `contactProperties` parameter.
- */
-export const updateObject = async ({
-  accessToken,
-  objectType,
-  objectId,
-  objectProperties,
-}: {
-  accessToken: string;
-  objectType: SimpleObjectType;
-  objectId: string;
-  objectProperties: SimplePublicObjectInputForCreate;
-}): Promise<SimplePublicObject> => {
-  const hubspotClient = new Client({ accessToken });
-
-  switch (objectType) {
-    case "contacts":
-      return hubspotClient.crm.contacts.basicApi.update(
-        objectId,
-        objectProperties
-      );
-    case "companies":
-      return hubspotClient.crm.companies.basicApi.update(
-        objectId,
-        objectProperties
-      );
-    case "deals":
-      return hubspotClient.crm.deals.basicApi.update(
-        objectId,
-        objectProperties
-      );
-    default:
-      throw new Error(`Unsupported object type: ${objectType}`);
-  }
-};
-
-/**
- * Get an object by ID.
- * An object ID is unique, so there will only be zero or one object with a given ID.
- */
-export const getObjectById = async (
-  accessToken: string,
-  objectType: SimpleObjectType | SpecialObjectType,
-  objectId: string
-): Promise<SimplePublicObject | PublicOwner | null> => {
-  const hubspotClient = new Client({ accessToken });
-
-  if (objectType === "owners") {
-    const owner = await hubspotClient.crm.owners.ownersApi.getById(
-      parseInt(objectId)
-    );
-    return owner;
-  }
-
-  const object = await hubspotClient.crm.objects.basicApi.getById(
-    objectType,
-    objectId
-  );
-
-  if (!object) {
-    return null;
-  }
-
-  return object;
 };
 
 /**
@@ -249,36 +154,6 @@ function buildHubspotFilters(filters: Array<HubspotFilter>) {
   });
 }
 
-export const getObjectsByProperties = async (
-  accessToken: string,
-  objectType: SimpleObjectType,
-  filters: Array<{
-    propertyName: string;
-    operator: FilterOperatorEnum;
-    value?: string;
-    values?: string[];
-  }>
-): Promise<SimplePublicObject[]> => {
-  const hubspotClient = new Client({ accessToken });
-
-  const availableProperties =
-    await hubspotClient.crm.properties.coreApi.getAll(objectType);
-  const propertyNames = availableProperties.results.map((p) => p.name);
-
-  const objects = await hubspotClient.crm[objectType].searchApi.doSearch({
-    filterGroups: [
-      {
-        filters: buildHubspotFilters(filters),
-      },
-    ],
-    properties: propertyNames,
-    sorts: ["createdate:desc"],
-    limit: MAX_LIMIT,
-  });
-
-  return objects.results;
-};
-
 export const countObjectsByProperties = async (
   accessToken: string,
   objectType: SimpleObjectType,
@@ -296,7 +171,7 @@ export const countObjectsByProperties = async (
         filters: buildHubspotFilters(filters),
       },
     ],
-    limit: 1, // We only need to know if there are any objects matching the filters.
+    limit: 1, // We only need to know if there are any objects matching the filters, so 1 is sufficient.
   });
 
   return objects.total;
@@ -493,13 +368,15 @@ export const createEngagement = async ({
     contactIds?: string[];
     companyIds?: string[];
     dealIds?: string[];
-    ownerIds?: string[]; // Less common for direct engagement association, but possible
+    ownerIds?: string[]; // Association with owners is less common here and usually handled via a specific property (e.g., hubspot_owner_id) on the engagement itself.
     ticketIds?: string[];
   };
 }): Promise<SimplePublicObject> => {
   const hubspotClient = new Client({ accessToken });
 
-  if (!properties.hs_engagement_type) {
+  const finalProperties = { ...properties }; // Create a copy to avoid mutating the original
+
+  if (!finalProperties.hs_engagement_type) {
     throw normalizeError(
       new Error(
         "hs_engagement_type is required in properties to create an engagement."
@@ -528,7 +405,7 @@ export const createEngagement = async ({
       if (mapping.ids && mapping.ids.length > 0) {
         const associationTypeId = await getAssociationTypeId(
           accessToken,
-          "engagements", // fromObjectType
+          "engagements", // fromObjectType for engagement associations.
           mapping.toObjectType
         );
         for (const id of mapping.ids) {
@@ -550,7 +427,7 @@ export const createEngagement = async ({
   }
 
   const engagementInput: SimplePublicObjectInputForCreate = {
-    properties,
+    properties: finalProperties,
     associations: builtAssociations,
   };
 
@@ -562,10 +439,10 @@ export const createEngagement = async ({
     return createdEngagement;
   } catch (error) {
     console.error(
-      `Error creating engagement (type: ${properties.hs_engagement_type}). Input: ${JSON.stringify(engagementInput, null, 2)}`,
+      `Error creating engagement (type: ${finalProperties.hs_engagement_type}). Input: ${JSON.stringify(engagementInput, null, 2)}`,
       error
     );
-    throw normalizeError(error as Error);
+    throw normalizeError(error);
   }
 };
 
@@ -615,7 +492,7 @@ export const createLead = async ({
     }
   }
 
-  // Creating a Deal, as Leads are often a type of Deal.
+  // Creating a Deal, as Leads are often a type of Deal in HubSpot.
   // The `properties` should contain fields that mark this deal as a lead.
   const leadData: SimplePublicObjectInputForCreate = {
     properties,
@@ -740,10 +617,12 @@ export const createCommunication = async ({
 }): Promise<SimplePublicObject> => {
   const hubspotClient = new Client({ accessToken });
 
-  if (!properties.hs_engagement_type) {
-    properties.hs_engagement_type = "COMMUNICATION"; // Default if not provided
+  const finalProperties = { ...properties }; // Create a copy
+
+  if (!finalProperties.hs_engagement_type) {
+    finalProperties.hs_engagement_type = "COMMUNICATION"; // Default if not provided, mutate the copy
   }
-  if (!properties.hs_communication_channel_type) {
+  if (!finalProperties.hs_communication_channel_type) {
     throw normalizeError(
       new Error(
         "hs_communication_channel_type is required in properties for createCommunication."
@@ -764,7 +643,7 @@ export const createCommunication = async ({
       if (mapping.ids && mapping.ids.length > 0) {
         const associationTypeId = await getAssociationTypeId(
           accessToken,
-          "engagements", // Communications are engagements
+          "engagements", // Communications are a type of engagement.
           mapping.toObjectType
         );
         for (const id of mapping.ids) {
@@ -786,7 +665,7 @@ export const createCommunication = async ({
   }
 
   const communicationData: SimplePublicObjectInputForCreate = {
-    properties,
+    properties: finalProperties,
     associations: builtAssociations,
   };
 
@@ -798,10 +677,10 @@ export const createCommunication = async ({
     return communication;
   } catch (error) {
     console.error(
-      `Error creating communication (engagement type: ${properties.hs_engagement_type}, channel: ${properties.hs_communication_channel_type}). Input: ${JSON.stringify(communicationData, null, 2)}`,
+      `Error creating communication (engagement type: ${finalProperties.hs_engagement_type}, channel: ${finalProperties.hs_communication_channel_type}). Input: ${JSON.stringify(communicationData, null, 2)}`,
       error
     );
-    throw normalizeError(error as Error);
+    throw normalizeError(error);
   }
 };
 
@@ -811,7 +690,7 @@ export const createCommunication = async ({
  */
 export const createMeeting = async ({
   accessToken,
-  properties, // Must include hs_engagement_type="MEETING" and meeting details (hs_meeting_title, hs_meeting_start_time etc)
+  properties, // Must include hs_engagement_type="MEETING" and meeting details (e.g. hs_meeting_title, hs_meeting_start_time etc).
   associations, // Direct association IDs, e.g., { contactIds: ["123"], dealIds: ["456"] }
 }: {
   accessToken: string;
@@ -825,9 +704,11 @@ export const createMeeting = async ({
 }): Promise<SimplePublicObject> => {
   const hubspotClient = new Client({ accessToken });
 
+  const finalProperties = { ...properties }; // Create a copy
+
   // Ensure hs_engagement_type is set for meetings
-  if (!properties.hs_engagement_type) {
-    properties.hs_engagement_type = "MEETING";
+  if (!finalProperties.hs_engagement_type) {
+    finalProperties.hs_engagement_type = "MEETING"; // Mutate the copy
   }
   // Add checks for essential meeting properties like start_time, title if needed
 
@@ -866,7 +747,7 @@ export const createMeeting = async ({
   }
 
   const meetingInput: SimplePublicObjectInputForCreate = {
-    properties,
+    properties: finalProperties,
     associations: builtAssociations,
   };
 
@@ -878,10 +759,10 @@ export const createMeeting = async ({
     return meeting;
   } catch (error) {
     console.error(
-      `Error creating meeting engagement (type: ${properties.hs_engagement_type}). Input: ${JSON.stringify(meetingInput, null, 2)}`,
+      `Error creating meeting engagement (type: ${finalProperties.hs_engagement_type}). Input: ${JSON.stringify(meetingInput, null, 2)}`,
       error
     );
-    throw normalizeError(error as Error);
+    throw normalizeError(error);
   }
 };
 
@@ -924,9 +805,9 @@ const getAssociationTypeId = async (
     throw normalizeError(e);
   }
 
-  // Assuming the first result is the one we need for standard associations.
+  // Assuming the first result is the one needed for standard associations.
   // HubSpot's API may return multiple if custom association types exist between the objects.
-  // For standard object-to-object associations (e.g. contact to company), typically one primary ID is used.
+  // For standard object-to-object associations (e.g., contact to company), typically one primary ID is used.
   return data.results[0].typeId;
 };
 
@@ -952,7 +833,7 @@ export const getContact = async (
       return null;
     }
     console.error(`Error fetching contact ${contactId}:`, error);
-    throw normalizeError(error as Error);
+    throw normalizeError(error);
   }
 };
 
@@ -973,7 +854,7 @@ export const getCompany = async (
       return null;
     }
     console.error(`Error fetching company ${companyId}:`, error);
-    throw normalizeError(error as Error);
+    throw normalizeError(error);
   }
 };
 
@@ -993,7 +874,7 @@ export const getDeal = async (
       return null;
     }
     console.error(`Error fetching deal ${dealId}:`, error);
-    throw normalizeError(error as Error);
+    throw normalizeError(error);
   }
 };
 
@@ -1005,34 +886,25 @@ export const getMeeting = async (
   accessToken: string,
   meetingId: string
 ): Promise<SimplePublicObject | null> => {
-  // Assuming engagements API returns SimplePublicObject or compatible
+  // Assuming engagements API returns SimplePublicObject or a compatible type.
   const hubspotClient = new Client({ accessToken });
   try {
     // Meetings are engagements, so we use the engagements API if available and appropriate.
-    // If crm.engagements.basicApi.getById exists:
-    // const meeting = await hubspotClient.crm.engagements.basicApi.getById(meetingId);
-    // If not, or if meetings are also gettable via crm.objects.basicApi:
+    // If crm.engagements.basicApi.getById exists, it could be used here.
+    // If not, or if meetings are also gettable via crm.objects.basicApi, that path is used.
+    // We might need to check if this engagement is indeed a meeting, e.g., by its `hs_engagement_type` property.
+    // For now, this function returns whatever engagement is found with that ID.
     const meeting = await hubspotClient.crm.objects.basicApi.getById(
       "engagements",
       meetingId
     );
-    // We might need to check if this engagement is indeed a meeting, e.g., by its `hs_engagement_type` property.
-    // if (meeting && meeting.properties.hs_engagement_type === "MEETING") {
-    //   return meeting;
-    // } else if (meeting) {
-    //   // Found an engagement but it's not a meeting
-    //   console.warn(`Engagement ${meetingId} found, but it is not a MEETING (type: ${meeting.properties.hs_engagement_type}).`);
-    //   return null;
-    // } else {
-    //   return null; // Should be caught by 404 below if not found at all
-    // }
     return meeting; // For now, return whatever engagement is found with that ID.
   } catch (error: any) {
     if (error.code === 404) {
       return null;
     }
     console.error(`Error fetching meeting (engagement) ${meetingId}:`, error);
-    throw normalizeError(error as Error);
+    throw normalizeError(error);
   }
 };
 
@@ -1050,7 +922,7 @@ export const getFilePublicUrl = async (
   try {
     // The HubSpot Node.js client has a files API.
     // The method to get a signed URL might vary slightly based on client version.
-    // Common pattern: client.files.filesApi.getSignedUrl(fileId, options)
+    // A common pattern is: client.files.filesApi.getSignedUrl(fileId, options).
     // Let's try to get the file details first, which often include a public URL or a way to generate one.
     const file = await hubspotClient.files.filesApi.getById(fileId);
 
@@ -1081,7 +953,7 @@ export const getFilePublicUrl = async (
       }
       return null;
     } else {
-      return null; // Should be caught by 404 below if not found
+      return null; // This should be caught by the 404 case below if the file is not found at all.
     }
   } catch (error: any) {
     if (error.code === 404) {
@@ -1089,7 +961,7 @@ export const getFilePublicUrl = async (
       return null;
     }
     console.error(`Error fetching file ${fileId} public URL:`, error);
-    throw normalizeError(error as Error);
+    throw normalizeError(error);
   }
 };
 
@@ -1107,7 +979,7 @@ export const getAssociatedMeetings = async (
 ): Promise<SimplePublicObject[] | null> => {
   const hubspotClient = new Client({ accessToken });
   const associatedMeetingDetails: SimplePublicObject[] = [];
-  const toObjectType = "meetings"; // The object type to fetch associations for
+  const toObjectType = "meetings"; // This is the object type to fetch associations for.
 
   try {
     // 1. Get IDs of associated meetings using the generic associations API
@@ -1144,13 +1016,13 @@ export const getAssociatedMeetings = async (
       console.warn(
         `Error 404 when fetching associated meetings for ${fromObjectType}/${fromObjectId} to ${toObjectType}. This might mean the object does not exist or no such associations exist.`
       );
-      return []; // Return empty array in case of 404, indicating no associated meetings found or accessible.
+      return []; // Return an empty array in case of 404, indicating no associated meetings found or accessible.
     }
     console.error(
       `Error fetching associated meetings for ${fromObjectType}/${fromObjectId}:`,
       error
     );
-    throw normalizeError(error as Error);
+    throw normalizeError(error);
   }
 };
 
@@ -1181,8 +1053,8 @@ export const searchCrmObjects = async ({
     | "line_items"
     | "quotes"
     | "feedback_submissions"
-    | "products"; // Extend with other searchable standard objects
-  filters?: Array<HubspotFilter>; // Reusing HubspotFilter interface from before
+    | "products"; // Extend with other searchable standard objects as needed.
+  filters?: Array<HubspotFilter>; // Reusing HubspotFilter interface defined earlier.
   query?: string;
   propertiesToReturn?: string[];
   limit?: number;
@@ -1190,10 +1062,10 @@ export const searchCrmObjects = async ({
 }): Promise<{ results: SimplePublicObject[]; paging?: any } | null> => {
   const hubspotClient = new Client({ accessToken });
 
-  // Ensure propertiesToReturn is populated, otherwise default properties are returned.
-  // If an empty array is explicitly passed, it might fetch no properties or default, depending on API.
+  // Ensure propertiesToReturn is populated; otherwise, default properties are returned by the API.
+  // If an empty array is explicitly passed, it might fetch no properties or default properties, depending on the API.
   // For robust control, fetching all available properties if `propertiesToReturn` is undefined or empty might be desired,
-  // similar to getObjectsByProperties.
+  // similar to how getObjectsByProperties (now removed) behaved.
   let finalPropertiesToReturn = propertiesToReturn;
   if (!finalPropertiesToReturn || finalPropertiesToReturn.length === 0) {
     // Fetch all property names for the object type if not specified
@@ -1206,16 +1078,16 @@ export const searchCrmObjects = async ({
         `Error fetching all properties for ${objectType} to include in search:`,
         propError
       );
-      // Fallback to an empty array, API will return default properties
+      // Fallback to an empty array; the API will return default properties in this case.
       finalPropertiesToReturn = [];
     }
   }
 
   const searchRequest: any = {
     filterGroups: filters ? [{ filters: buildHubspotFilters(filters) }] : [],
-    sorts: [{ propertyName: "createdate", direction: "DESCENDING" }], // Default sort
+    sorts: [{ propertyName: "createdate", direction: "DESCENDING" }], // Default sort order.
     properties: finalPropertiesToReturn,
-    limit: Math.min(limit, MAX_LIMIT), // Ensure limit doesn't exceed MAX_LIMIT
+    limit: Math.min(limit, MAX_LIMIT), // Ensure the limit doesn't exceed MAX_LIMIT.
     after: after,
   };
 
@@ -1224,12 +1096,12 @@ export const searchCrmObjects = async ({
   }
 
   try {
-    // The search API is typically under hubspotClient.crm.{objectType}.searchApi.doSearch
-    // However, a more generic path might exist or we might need a switch for objectType.
-    // For standard objects, it's usually client.crm.objects.basicApi.search which takes objectType in path.
+    // The search API is typically under hubspotClient.crm.{objectType}.searchApi.doSearch.
+    // However, a more generic path might exist, or a switch for objectType might be needed.
+    // For standard objects, it's usually client.crm.objects.basicApi.search, which takes objectType in the path.
     // Let's use client.crm.objects.searchApi.doSearch if that's the modern way.
-    // The client structure is: client.crm.objects.searchApi.doSearch(objectType, publicObjectSearchRequest)
-    // This seems not to be available directly. The specific object clients are preferred.
+    // The client structure: client.crm.objects.searchApi.doSearch(objectType, publicObjectSearchRequest) seems not to be available directly.
+    // The specific object clients are preferred for reliability.
 
     let searchResponse;
     switch (objectType) {
@@ -1250,15 +1122,13 @@ export const searchCrmObjects = async ({
           await hubspotClient.crm.tickets.searchApi.doSearch(searchRequest);
         break;
       // For other object types like products, line_items, quotes, feedback_submissions, a similar pattern would apply.
-      // These might be under crm.objects.ObjectTypeApi.doSearch or require their own client sections if they exist.
-      // e.g., hubspotClient.crm.products.searchApi.doSearch(searchRequest);
-      // For now, we'll throw an error for unhandled types to make it explicit.
+      // These might be under crm.objects.ObjectTypeApi.doSearch or require their own client sections if they exist (e.g., hubspotClient.crm.products.searchApi.doSearch(searchRequest)).
+      // For now, an error will be thrown for unhandled types to make it explicit.
       default:
-        // Attempt with generic crm.objects.basicApi.search if it exists and objectType is a string
-        // This is speculative as `crm.objects.searchApi` is not directly on the client.
+        // An attempt with generic crm.objects.basicApi.search (if it exists and objectType is a string) is speculative.
         // The structure client.crm.objects.basicApi.search(objectType, publicObjectSearchRequest) also seems unlikely.
-        // The most reliable way is individual object type search APIs as above.
-        // Let's assume for now that objectType will be one of the handled ones or we error.
+        // The most reliable way is to use individual object type search APIs as shown above.
+        // It is assumed for now that objectType will be one of the handled ones, or an error will be thrown.
         throw new Error(
           `Search for object type "${objectType}" is not explicitly implemented. Add to switch.`
         );
@@ -1270,6 +1140,6 @@ export const searchCrmObjects = async ({
     };
   } catch (error: any) {
     console.error(`Error searching ${objectType}:`, error);
-    throw normalizeError(error as Error);
+    throw normalizeError(error);
   }
 };

@@ -600,11 +600,10 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
       return withAuth(auth, mcpServerId, async (accessToken) => {
         const result = await getAssociatedMeetings(
           accessToken,
-          fromObjectType as "contacts" | "companies" | "deals",
+          fromObjectType,
           fromObjectId
         );
         if (result === null) {
-          // Check for null explicitly as an empty array is a valid success case
           return makeMCPToolTextError("Error retrieving associated meetings.");
         }
         return makeMCPToolJSONSuccess({
@@ -654,7 +653,7 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
       return withAuth(auth, mcpServerId, async (accessToken) => {
         const result = await searchCrmObjects({
           accessToken,
-          objectType: input.objectType as any, // Cast as helper has more specific types
+          objectType: input.objectType,
           filters: input.filters,
           query: input.query,
           propertiesToReturn: input.propertiesToReturn,
