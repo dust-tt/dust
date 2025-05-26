@@ -51,6 +51,8 @@ import type {
 } from "@connectors/types";
 import type { DataSourceConfig } from "@connectors/types";
 
+const DEFAULT_CONVERSATIONS_SLIDING_WINDOW = 180;
+
 export class IntercomConnectorManager extends BaseConnectorManager<null> {
   static async create({
     dataSourceConfig,
@@ -75,7 +77,7 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
     const intercomConfigurationBlob = {
       intercomWorkspaceId: intercomWorkspace.id,
       name: intercomWorkspace.name,
-      conversationsSlidingWindow: 90,
+      conversationsSlidingWindow: DEFAULT_CONVERSATIONS_SLIDING_WINDOW,
       region: intercomWorkspace.region,
       syncAllConversations: "disabled" as const,
       shouldSyncNotes: true,
