@@ -492,6 +492,19 @@ export class GroupResource extends BaseResource<GroupModel> {
     return new Ok(groups);
   }
 
+  static async fetchByWorkOSGroupId(
+    auth: Authenticator,
+    workOSGroupId: string
+  ): Promise<GroupResource | null> {
+    const [group] = await this.baseFetch(auth, {
+      where: {
+        workOSGroupId,
+      },
+    });
+
+    return group ?? null;
+  }
+
   static async fetchByAgentConfiguration({
     auth,
     agentConfiguration,

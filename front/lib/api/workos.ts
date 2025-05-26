@@ -10,7 +10,9 @@ import { unsealData } from "iron-session";
 import type { GetServerSidePropsContext, NextApiRequest } from "next";
 
 import config from "@app/lib/api/config";
+import type { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkOSPortalIntent } from "@app/lib/types/workos";
 import logger from "@app/logger/logger";
@@ -40,8 +42,8 @@ export function getWorkOS() {
   return workos;
 }
 
-export function getWorkOSUserNickname(user: User) {
-  return user.email.split("@")[0] ?? "";
+export function getUserNicknameFromEmail(email: string) {
+  return email.split("@")[0] ?? "";
 }
 
 export async function getWorkOSSession(
@@ -73,7 +75,7 @@ export async function getWorkOSSession(
         email: r.user.email,
         email_verified: r.user.emailVerified,
         name: r.user.email ?? "",
-        nickname: getWorkOSUserNickname(r.user) ?? "",
+        nickname: getUserNicknameFromEmail(r.user.email) ?? "",
         sub: r.user.id,
       },
       // TODO(workos): Should we resolve the workspaceId and remove organizationId from here?
@@ -157,8 +159,10 @@ export function generateWorkOSAdminPortalUrl({
 }
 
 export async function syncWorkOSDirectoriesForWorkspace(
-  workspace: WorkspaceType
+  auth: Authenticator
 ): Promise<void> {
+  const workspace = auth.getNonNullableWorkspace();
+
   logger.info(
     { workspace: workspace.sId },
     "[WorkOS] Starting WorkOS full directory sync."
@@ -180,9 +184,9 @@ export async function syncWorkOSDirectoriesForWorkspace(
       "[WorkOS] Syncing directory."
     );
 
-    await syncAllUsers(workspace, directory);
+    await syncAllUsers({ workspace, directory });
 
-    await syncAllGroups(workspace, directory);
+    await syncAllGroups(auth, { workspace, directory });
 
     logger.info(
       { workspaceId: workspace.sId, directoryId: directory.id },
@@ -191,10 +195,13 @@ export async function syncWorkOSDirectoriesForWorkspace(
   }
 }
 
-async function syncAllUsers(
-  workspace: WorkspaceType,
-  directory: Directory
-): Promise<void> {
+async function syncAllUsers({
+  workspace,
+  directory,
+}: {
+  workspace: WorkspaceType;
+  directory: Directory;
+}): Promise<void> {
   logger.info(
     {
       workspaceId: workspace.sId,
@@ -210,8 +217,8 @@ async function syncAllUsers(
     directory: directory.id,
   });
 
-  for (const workOsUser of users) {
-    await upsertUser(workspace, workOsUser, directory);
+  for (const workOSUser of users) {
+    await upsertUser({ workspace, workOSUser, directory });
   }
 
   logger.info(
@@ -224,8 +231,14 @@ async function syncAllUsers(
 }
 
 async function syncAllGroups(
-  workspace: WorkspaceType,
-  directory: Directory
+  auth: Authenticator,
+  {
+    workspace,
+    directory,
+  }: {
+    workspace: WorkspaceType;
+    directory: Directory;
+  }
 ): Promise<void> {
   logger.info(
     {
@@ -243,7 +256,7 @@ async function syncAllGroups(
   });
 
   for (const workOSGroup of groups) {
-    await upsertGroup(workspace, workOSGroup, directory);
+    await upsertGroup(auth, { workspace, workOSGroup, directory });
   }
 
   logger.info(
@@ -255,11 +268,15 @@ async function syncAllGroups(
   );
 }
 
-async function upsertUser(
-  workspace: WorkspaceType,
-  workOSUser: DirectoryUserWithGroups,
-  directory: Directory
-): Promise<void> {
+async function upsertUser({
+  workspace,
+  directory,
+  workOSUser,
+}: {
+  workspace: WorkspaceType;
+  workOSUser: DirectoryUserWithGroups;
+  directory: Directory;
+}): Promise<void> {
   const localLogger = logger.child({
     workspaceId: workspace.sId,
     workOSUserEmail: workOSUser.email,
@@ -279,22 +296,33 @@ async function upsertUser(
       sId: generateRandomModelSId(),
       auth0Sub: null,
       provider: directory.type,
+      // TODO: not sure what the providerId is here, it does not seem to be used.
       providerId: workOSUser.id,
       name: workOSUser.lastName ?? workOSUser.email,
-      username: workOSUser.email,
+      username: getUserNicknameFromEmail(workOSUser.email),
       email: sanitizeString(workOSUser.email),
       firstName: workOSUser.firstName ?? "",
       lastName: workOSUser.lastName ?? null,
       imageUrl: null,
     });
     localLogger.info("[WorkOS] User successfully created.");
+  } else {
+    localLogger.info("[WorkOS] User already exists.");
+    // TODO(2025-05-26 aubin): reconciliate users here.
   }
 }
 
 async function upsertGroup(
-  workspace: WorkspaceType,
-  workOSGroup: DirectoryGroup,
-  directory: Directory
+  auth: Authenticator,
+  {
+    workspace,
+    directory,
+    workOSGroup,
+  }: {
+    workspace: WorkspaceType;
+    workOSGroup: DirectoryGroup;
+    directory: Directory;
+  }
 ): Promise<void> {
   const localLogger = logger.child({
     workspaceId: workspace.sId,
@@ -303,4 +331,18 @@ async function upsertGroup(
   });
 
   localLogger.info("[WorkOS] Upserting group");
+
+  const group = await GroupResource.fetchByWorkOSGroupId(auth, workOSGroup.id);
+
+  if (!group) {
+    await GroupResource.makeNew({
+      name: workOSGroup.name,
+      workspaceId: workspace.id,
+      workOSGroupId: workOSGroup.id,
+      kind: "provisioned",
+    });
+    localLogger.info("[WorkOS] Group successfully created.");
+  } else {
+    localLogger.info("[WorkOS] Group already exists.");
+  }
 }

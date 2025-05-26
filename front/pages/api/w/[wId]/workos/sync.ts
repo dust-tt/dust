@@ -24,7 +24,7 @@ async function handler(
 
   switch (req.method) {
     case "POST":
-      await syncWorkOSDirectoriesForWorkspace(auth.getNonNullableWorkspace());
+      await syncWorkOSDirectoriesForWorkspace(auth);
       return res.status(201).json({
         success: true,
       });
