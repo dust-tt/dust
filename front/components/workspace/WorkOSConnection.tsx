@@ -153,18 +153,6 @@ export function WorkOSConnection({ owner }: WorkOSConnectionProps) {
     setWorkOSOrganizationId(r.organizationId);
   };
 
-  const getSelectedLabel = () => {
-    const allOptions = [
-      ...ADMIN_PANEL_OPTIONS.domain,
-      ...ADMIN_PANEL_OPTIONS.config,
-      ...ADMIN_PANEL_OPTIONS.logs,
-    ];
-    return (
-      allOptions.find((opt) => opt.value === selectedIntent)?.label ||
-      "Select Panel"
-    );
-  };
-
   return (
     <Page.Vertical gap="sm">
       <Page.H variant="h5">Enterprise Connection</Page.H>
@@ -179,7 +167,7 @@ export function WorkOSConnection({ owner }: WorkOSConnectionProps) {
             <DropdownMenu>
               <DropdownMenuTrigger>
                 <Button
-                  label={getSelectedLabel()}
+                  label="Select Panel"
                   size="sm"
                   isSelect
                   icon={ExternalLinkIcon}
