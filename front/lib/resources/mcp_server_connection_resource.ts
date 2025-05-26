@@ -164,25 +164,6 @@ export class MCPServerConnectionResource extends BaseResource<MCPServerConnectio
       : new Err(new DustError("resource_not_found", "Connection not found"));
   }
 
-  static async findByProviderAndUseCaseForWorkspace({
-    auth,
-    provider,
-    useCase,
-  }: {
-    auth: Authenticator;
-    provider: string;
-    useCase: string;
-  }): Promise<MCPServerConnectionResource[]> {
-    const connections = await this.baseFetch(auth, {
-      where: {
-        connectionType: provider,
-        serverType: useCase,
-      },
-    });
-
-    return connections;
-  }
-
   static async listByWorkspace({
     auth,
   }: {
