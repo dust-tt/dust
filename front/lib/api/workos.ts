@@ -1,15 +1,18 @@
-import type { AuthenticationResponse, Organization, User } from "@workos-inc/node";
+import type {
+  AuthenticationResponse,
+  Organization,
+  User,
+} from "@workos-inc/node";
 import { GeneratePortalLinkIntent, WorkOS } from "@workos-inc/node";
 import { unsealData } from "iron-session";
 import type { GetServerSidePropsContext, NextApiRequest } from "next";
 
 import config from "@app/lib/api/config";
+import type { SessionWithUser } from "@app/lib/iam/provider";
 import { WorkOSPortalIntent } from "@app/lib/types/workos";
 import logger from "@app/logger/logger";
 import type { Result, WorkspaceType } from "@app/types";
 import { Err, Ok } from "@app/types";
-import config from "@app/lib/api/config";
-import type { SessionWithUser } from "@app/lib/iam/provider";
 
 import type { RegionType } from "./regions/config";
 
