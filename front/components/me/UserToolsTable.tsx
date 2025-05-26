@@ -14,6 +14,7 @@ import { useMCPServerViewsFromSpaces } from "@app/lib/swr/mcp_server_views";
 import { useSpaces } from "@app/lib/swr/spaces";
 import { useDeleteMetadata } from "@app/lib/swr/user";
 import type { LightWorkspaceType } from "@app/types";
+import { asDisplayName } from "@app/types";
 
 interface UserTableRow {
   id: string;
@@ -35,6 +36,10 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
   const { spaces } = useSpaces({ workspaceId: owner.sId });
   const { serverViews, isLoading: isMCPServerViewsLoading } =
     useMCPServerViewsFromSpaces(owner, spaces);
+  // const { connections, isConnectionsLoading } = useMCPServerConnections({
+  //   owner,
+  //   connectionType: "workspace",
+  // });
 
   const { deleteMetadata } = useDeleteMetadata("toolsValidations");
 
@@ -63,6 +68,15 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
     if (!serverViews) {
       return [];
     }
+
+    // const connectionsByInternalServerId = keyBy(
+    //   connections,
+    //   "remoteMCPServerId"
+    // );
+    // const connectionsByRemoteServerId = keyBy(
+    //   connections,
+    //   "internalMCPServerId"
+    // );
 
     return serverViews
       .filter(
@@ -95,13 +109,15 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
         },
         cell: ({ row }) => (
           <DataTable.CellContent>
-            <div className="flex flex-row items-center gap-2 py-3">
+            <div className="flex flex-row items-center gap-3 py-3">
               <Avatar visual={row.original.visual} size="sm" />
-              <div className="flex flex-col">
-                <div className="flex-grow">{row.original.name}</div>
-                <span className="line-clamp-1 text-sm text-muted-foreground dark:text-muted-foreground-night">
-                  {row.original.description || "No description available"}
-                </span>
+              <div className="flex flex-grow flex-col gap-0 overflow-hidden truncate">
+                <div className="truncate text-sm font-semibold text-foreground dark:text-foreground-night">
+                  {asDisplayName(row.original.name)}
+                </div>
+                <div className="truncate text-sm text-muted-foreground dark:text-muted-foreground-night">
+                  {row.original.description}
+                </div>
               </div>
             </div>
           </DataTable.CellContent>

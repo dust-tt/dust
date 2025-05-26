@@ -96,6 +96,7 @@ export const AdminActionsList = ({
 
   const { connections } = useMCPServerConnections({
     owner,
+    connectionType: "workspace",
   });
 
   const { createInternalMCPServer } = useCreateInternalMCPServer(owner);
