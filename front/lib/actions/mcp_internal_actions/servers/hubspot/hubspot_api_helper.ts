@@ -6,6 +6,8 @@ import type { SimplePublicObjectInputForCreate } from "@hubspot/api-client/lib/c
 import type { PublicOwner } from "@hubspot/api-client/lib/codegen/crm/owners/models/PublicOwner";
 import type { Property } from "@hubspot/api-client/lib/codegen/crm/properties/models/Property";
 
+import { normalizeError } from "@app/types";
+
 const MAX_ENUM_OPTIONS_DISPLAYED = 50;
 export const MAX_LIMIT = 50; // Hubspot API limit is 200 but it's too big for us.
 export const MAX_COUNT_LIMIT = 10000; // Hubspot API limit.
@@ -347,17 +349,19 @@ const getAssociationTypeId = async (
   );
 
   if (!response.ok) {
-    throw new Error(
+    const e = new Error(
       `Failed to fetch association types: ${response.status} ${response.statusText}`
     );
+    normalizeError(e);
   }
 
   const data = await response.json();
 
   if (!data.results || data.results.length === 0) {
-    throw new Error(
+    const e = new Error(
       `No association types found for ${fromObjectType} to ${toObjectType}`
     );
+    normalizeError(e);
   }
 
   // Get the first association type (there should only be one for standard associations)
