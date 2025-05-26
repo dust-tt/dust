@@ -226,5 +226,25 @@ export const intercom = async ({
         })),
       };
     }
+    case "set-retention-period": {
+      if (!connector) {
+        throw new Error(`Connector ${connectorId} not found`);
+      }
+      if (!args.retentionPeriodDays) {
+        throw new Error("Missing --retentionPeriodDays argument");
+      }
+      const retentionPeriodDays = Number(args.retentionPeriodDays);
+      if (isNaN(retentionPeriodDays)) {
+        throw new Error("Invalid --retentionPeriodDays argument");
+      }
+      if (retentionPeriodDays < 0) {
+        throw new Error("Invalid --retentionPeriodDays argument");
+      }
+      logger.info(
+        {
+          retentionPeriodDays,
+        },
+        "[Admin] Setting retention period"
+      );
   }
 };
