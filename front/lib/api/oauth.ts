@@ -553,6 +553,104 @@ const PROVIDER_STRATEGIES: Record<
       };
     },
   },
+  gmail: {
+    setupUri: ({ connection, clientId }) => {
+      const scopes = [
+        "https://www.googleapis.com/auth/gmail.readonly",
+        "https://www.googleapis.com/auth/gmail.compose",
+      ];
+      const qs = querystring.stringify({
+        response_type: "code",
+        client_id: clientId,
+        state: connection.connection_id,
+        redirect_uri: finalizeUriForProvider("gmail"),
+        scope: scopes.join(" "),
+        access_type: "offline",
+        prompt: "consent",
+      });
+      return `https://accounts.google.com/o/oauth2/auth?${qs}`;
+    },
+    codeFromQuery: (query) => {
+      return getStringFromQuery(query, "code");
+    },
+    connectionIdFromQuery: (query) => {
+      return getStringFromQuery(query, "state");
+    },
+    isExtraConfigValid: (extraConfig, useCase) => {
+      if (useCase === "personal_actions") {
+        // If we have an mcp_server_id it means the admin already setup the connection and we have
+        // everything we need, otherwise we'll need the client_id and client_secret.
+        if (extraConfig.mcp_server_id) {
+          return true;
+        }
+        return !!(extraConfig.client_id && extraConfig.client_secret);
+      }
+      return Object.keys(extraConfig).length === 0;
+    },
+    getRelatedCredential: async (
+      auth,
+      extraConfig,
+      workspaceId,
+      userId,
+      useCase
+    ) => {
+      if (useCase === "personal_actions") {
+        // For personal actions we reuse the existing connection credential id from the existing
+        // workspace connection (setup by admin) if we have it, otherwise we fallback to assuming
+        // we have client_secret (initial admin setup).
+        const { mcp_server_id, ...restConfig } = extraConfig;
+
+        if (mcp_server_id) {
+          const mcpServerConnectionRes =
+            await MCPServerConnectionResource.findByMCPServer({
+              auth,
+              mcpServerId: mcp_server_id,
+              connectionType: "workspace",
+            });
+
+          if (mcpServerConnectionRes.isErr()) {
+            return null;
+          }
+
+          const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);
+          const connectionRes = await oauthApi.getAccessToken({
+            connectionId: mcpServerConnectionRes.value.connectionId,
+          });
+          if (connectionRes.isErr()) {
+            return null;
+          }
+          const connection = connectionRes.value.connection;
+          const connectionId = connection.connection_id;
+
+          return {
+            credential: {
+              content: {
+                from_connection_id: connectionId,
+              },
+              metadata: { workspace_id: workspaceId, user_id: userId },
+            },
+            cleanedConfig: {
+              client_id: connection.metadata.client_id as string,
+              ...restConfig,
+            },
+          };
+        }
+      }
+
+      const { client_secret, ...restConfig } = extraConfig;
+      // Keep client_id in metadata in clear text.
+      return {
+        credential: {
+          content: {
+            client_secret,
+            client_id: extraConfig.client_id,
+          },
+          metadata: { workspace_id: workspaceId, user_id: userId },
+        },
+        cleanedConfig: restConfig,
+      };
+    },
+  },
   hubspot: {
     setupUri: ({ connection }) => {
       const scopes = [
