@@ -44,6 +44,7 @@ export function usePreviewAssistant({
   const drawerAnimationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const sendNotification = useSendNotification();
   const lastBuilderStateRef = useRef<AssistantBuilderState>(builderState);
+  const nameDebounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const animate = useCallback(() => {
     if (drawerAnimationTimeoutRef.current) {
@@ -145,10 +146,39 @@ export function usePreviewAssistant({
     }
   }, [builderState]);
 
+  // Debounced draft creation for assistant name changes
+  useEffect(() => {
+    const previousHandle = lastBuilderStateRef.current.handle;
+    const currentHandle = builderState.handle;
+
+    // Only trigger debounced creation if handle changed and we have content
+    if (
+      previousHandle !== currentHandle &&
+      currentHandle?.trim() &&
+      (builderState.instructions?.trim() || builderState.actions.length > 0)
+    ) {
+      if (nameDebounceTimeoutRef.current) {
+        clearTimeout(nameDebounceTimeoutRef.current);
+      }
+
+      nameDebounceTimeoutRef.current = setTimeout(() => {
+        void createDraftAgent();
+      }, 1000);
+    }
+  }, [
+    builderState.handle,
+    builderState.instructions,
+    builderState.actions.length,
+    createDraftAgent,
+  ]);
+
   useEffect(() => {
     return () => {
       if (drawerAnimationTimeoutRef.current) {
         clearTimeout(drawerAnimationTimeoutRef.current);
+      }
+      if (nameDebounceTimeoutRef.current) {
+        clearTimeout(nameDebounceTimeoutRef.current);
       }
     };
   }, []);

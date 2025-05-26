@@ -102,8 +102,10 @@ export default function AssistantBuilderRightPanel({
       previousDraftSId.current !== draftAssistant.sId
     ) {
       previousDraftSId.current = draftAssistant.sId;
+      // Update sticky mentions to use the new draft assistant
+      setStickyMentions([{ configurationId: draftAssistant.sId }]);
     }
-  }, [draftAssistant?.sId]);
+  }, [draftAssistant?.sId, setStickyMentions]);
 
   return (
     <div className="flex h-full flex-col">
