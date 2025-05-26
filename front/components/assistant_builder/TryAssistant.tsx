@@ -41,9 +41,7 @@ export function usePreviewAssistant({
   const [isSavingDraftAgent, setIsSavingDraftAgent] = useState(true);
   const drawerAnimationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const sendNotification = useSendNotification();
-
-  const previousBuilderState = useRef<AssistantBuilderState>(builderState);
-  const [hasChanged, setHasChanged] = useState(false);
+  const lastBuilderStateRef = useRef<AssistantBuilderState>(builderState);
 
   const animate = () => {
     if (drawerAnimationTimeoutRef.current) {
@@ -56,15 +54,9 @@ export function usePreviewAssistant({
     }, animationLength);
   };
 
-  useEffect(() => {
-    if (!isEqual(previousBuilderState.current, builderState)) {
-      setHasChanged(true);
-      previousBuilderState.current = builderState;
-    }
-  }, [builderState]);
-
   const createDraftAgent = useCallback(async () => {
-    if (draftAssistant && !hasChanged) {
+    // Check if builder state has changed since last draft creation
+    if (draftAssistant && isEqual(lastBuilderStateRef.current, builderState)) {
       return draftAssistant;
     }
 
@@ -73,18 +65,10 @@ export function usePreviewAssistant({
     const aRes = await submitAssistantBuilderForm({
       owner,
       builderState: {
-        handle: builderState.handle,
+        ...builderState,
         description: "Draft Agent",
-        instructions: builderState.instructions,
         avatarUrl: builderState.avatarUrl ?? getDefaultAvatarUrlForPreview(),
         scope: "hidden",
-        generationSettings: builderState.generationSettings,
-        actions: builderState.actions,
-        maxStepsPerRun: builderState.maxStepsPerRun,
-        visualizationEnabled: builderState.visualizationEnabled,
-        templateId: builderState.templateId,
-        tags: builderState.tags,
-        editors: builderState.editors,
       },
       agentConfigurationId: null,
       slackData: {
@@ -108,26 +92,10 @@ export function usePreviewAssistant({
 
     animate();
     setDraftAssistant(aRes.value);
-    setHasChanged(false);
+    lastBuilderStateRef.current = builderState;
 
     return aRes.value;
-  }, [
-    draftAssistant,
-    hasChanged,
-    owner,
-    builderState.handle,
-    builderState.instructions,
-    builderState.avatarUrl,
-    builderState.generationSettings,
-    builderState.actions,
-    builderState.editors,
-    builderState.maxStepsPerRun,
-    builderState.templateId,
-    builderState.visualizationEnabled,
-    builderState.tags,
-    reasoningModels,
-    sendNotification,
-  ]);
+  }, [draftAssistant, owner, builderState, reasoningModels, sendNotification]);
 
   useEffect(() => {
     const hasContent =
