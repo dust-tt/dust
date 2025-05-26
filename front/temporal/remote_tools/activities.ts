@@ -33,7 +33,15 @@ export async function syncRemoteMCPServers(ids: number[]): Promise<void> {
       const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
 
       // Fetch the remote server metadata
-      const r = await fetchRemoteServerMetaDataByURL(auth, server.url);
+      const r = await fetchRemoteServerMetaDataByURL(
+        auth,
+        server.url,
+        server.sharedSecret
+          ? {
+              Authorization: `Bearer ${server.sharedSecret}`,
+            }
+          : undefined
+      );
 
       if (r.isErr()) {
         logger.error(
@@ -89,7 +97,7 @@ export async function getBatchRemoteMCPServers({
   firstId?: number;
   limit?: number;
 }): Promise<number[]> {
-  return await RemoteMCPServerResource.dangerouslyListAllServersIds({
+  return RemoteMCPServerResource.dangerouslyListAllServersIds({
     firstId,
     limit,
   });

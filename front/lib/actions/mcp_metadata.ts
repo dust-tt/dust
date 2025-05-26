@@ -1,5 +1,8 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import type { SSEClientTransportOptions } from "@modelcontextprotocol/sdk/client/sse.js";
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
+import type { StreamableHTTPClientTransportOptions } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import type { Implementation, Tool } from "@modelcontextprotocol/sdk/types.js";
 import { Ajv } from "ajv";
@@ -108,6 +111,7 @@ export const isConnectViaMCPServerId = (
 interface ConnectViaRemoteMCPServerUrl {
   type: "remoteMCPServerUrl";
   remoteMCPServerUrl: string;
+  headers?: Record<string, string>;
 }
 
 interface ConnectViaClientSideMCPServer {
@@ -140,7 +144,7 @@ export const connectToMCPServer = async (
     agentLoopContext,
   }: {
     params: MCPConnectionParams;
-    agentLoopContext: AgentLoopContextType;
+    agentLoopContext?: AgentLoopContextType;
   }
 ): Promise<Result<Client, Error>> => {
   // This is where we route the MCP client to the right server.
@@ -208,8 +212,7 @@ export const connectToMCPServer = async (
               },
             };
 
-            const sseTransport = new SSEClientTransport(url, req);
-            await mcpClient.connect(sseTransport);
+            await connectToRemoteMCPServer(mcpClient, url, req);
           } catch (e: unknown) {
             return new Err(
               new Error("Error establishing connection to remote MCP server.")
@@ -230,12 +233,11 @@ export const connectToMCPServer = async (
             // @ts-expect-error: looks like undici typing is not up to date
             createSSRFInterceptor()
           ),
-          headers: {},
+          headers: { ...(params.headers ?? {}) },
         },
       };
       try {
-        const sseTransport = new SSEClientTransport(url, req);
-        await mcpClient.connect(sseTransport);
+        await connectToRemoteMCPServer(mcpClient, url, req);
       } catch (e: unknown) {
         return new Err(
           new Error("Error establishing connection to remote MCP server.")
@@ -267,6 +269,30 @@ export const connectToMCPServer = async (
 
   return new Ok(mcpClient);
 };
+
+// Try to connect via streamableHttpTransport first, and if that fails, fall back to sseTransport.
+async function connectToRemoteMCPServer(
+  mcpClient: Client,
+  url: URL,
+  req: SSEClientTransportOptions | StreamableHTTPClientTransportOptions
+) {
+  try {
+    const streamableHttpTransport = new StreamableHTTPClientTransport(url, req);
+    await mcpClient.connect(streamableHttpTransport);
+  } catch (error) {
+    // Check if error message contains "HTTP 4xx" as suggested by the official doc.
+    // Doc is here https://github.com/modelcontextprotocol/typescript-sdk?tab=readme-ov-file#client-side-compatibility.
+    if (error instanceof Error && /HTTP 4\d\d/.test(error.message)) {
+      console.log(
+        "Error establishing connection to remote MCP server via streamableHttpTransport, falling back to sseTransport."
+      );
+      const sseTransport = new SSEClientTransport(url, req);
+      await mcpClient.connect(sseTransport);
+    } else {
+      throw error;
+    }
+  }
+}
 
 export function extractMetadataFromServerVersion(
   r: Implementation | undefined
@@ -312,14 +338,15 @@ export function extractMetadataFromTools(tools: Tool[]): MCPToolType[] {
 
 export async function fetchRemoteServerMetaDataByURL(
   auth: Authenticator,
-  url: string
+  url: string,
+  headers?: Record<string, string>
 ): Promise<Result<Omit<MCPServerType, "sId">, Error>> {
   const r = await connectToMCPServer(auth, {
     params: {
       type: "remoteMCPServerUrl",
       remoteMCPServerUrl: url,
+      headers,
     },
-    agentLoopContext: {},
   });
 
   if (r.isErr()) {

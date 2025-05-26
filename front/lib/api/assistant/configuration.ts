@@ -67,8 +67,7 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { TemplateResource } from "@app/lib/resources/template_resource";
-import { tagsSorter } from "@app/lib/utils";
-import { normalizeArrays } from "@app/lib/utils";
+import { normalizeArrays, tagsSorter } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import type {
   AgentConfigurationScope,
@@ -91,7 +90,6 @@ import {
   isAdmin,
   isBuilder,
   isTimeFrame,
-  isUser,
   MAX_STEPS_USE_PER_RUN_LIMIT,
   normalizeError,
   Ok,
@@ -221,9 +219,8 @@ function determineGlobalAgentIdsToFetch(
   agentsGetView: AgentsGetViewType
 ): string[] | undefined {
   switch (agentsGetView) {
-    case "workspace":
-    case "published":
     case "archived":
+    case "published":
     case "current_user":
       return []; // fetch no global agents
     case "global":
@@ -380,12 +377,6 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
       return AgentConfiguration.findAll({
         ...baseAgentsSequelizeQuery,
         where: baseConditionsAndScopesIn(["workspace", "published", "visible"]),
-      });
-
-    case "workspace":
-      return AgentConfiguration.findAll({
-        ...baseAgentsSequelizeQuery,
-        where: baseConditionsAndScopesIn(["workspace"]),
       });
 
     case "published":
@@ -614,6 +605,9 @@ async function fetchWorkspaceAgentConfigurationsForView(
 
     const tags: TagResource[] = tagsPerAgent[agent.id] ?? [];
 
+    const isAuthor = agent.authorId === auth.user()?.id;
+    const isMember = agentIdsForUserAsEditor.includes(agent.id);
+
     const agentConfigurationType: AgentConfigurationType = {
       id: agent.id,
       sId: agent.sId,
@@ -640,18 +634,9 @@ async function fetchWorkspaceAgentConfigurationsForView(
         )
       ),
       tags: tags.map((t) => t.toJSON()).sort(tagsSorter),
-      canRead: false,
-      canEdit: false,
+      canRead: isAuthor || isMember || agent.scope === "visible",
+      canEdit: isAuthor || isMember,
     };
-
-    const { canRead, canEdit } = getAgentPermissions(
-      auth,
-      agentConfigurationType,
-      agentIdsForUserAsEditor
-    );
-
-    agentConfigurationType.canRead = canRead;
-    agentConfigurationType.canEdit = canEdit;
 
     agentConfigurationTypes.push(agentConfigurationType);
   }
@@ -979,9 +964,7 @@ export async function createAgentConfiguration(
         }
 
         assert(
-          isLegacyAllowed(owner, agentConfigurationInstance.scope) ||
-            editors.some((e) => e.sId === auth.user()?.sId) ||
-            isAdmin(owner),
+          editors.some((e) => e.sId === auth.user()?.sId) || isAdmin(owner),
           "Unexpected: current user must be in editor group or admin"
         );
         if (!existingAgent) {
@@ -1805,54 +1788,4 @@ export async function updateAgentPermissions(
     // Catch errors thrown from within the transaction
     return new Err(normalizeError(error));
   }
-}
-
-export function getAgentPermissions(
-  auth: Authenticator,
-  agentConfiguration: LightAgentConfigurationType,
-  memberAgents: ModelId[]
-) {
-  switch (agentConfiguration.scope) {
-    case "global":
-      return { canRead: true, canEdit: false };
-    case "hidden":
-    case "visible":
-      const member = memberAgents.includes(agentConfiguration.id);
-      return {
-        canRead:
-          member ||
-          agentConfiguration.scope === "visible" ||
-          agentConfiguration.status === "draft",
-        canEdit: member || agentConfiguration.status === "draft",
-      };
-    case "private":
-      const isAuthor = agentConfiguration.versionAuthorId === auth.user()?.id;
-      return { canRead: isAuthor, canEdit: isAuthor };
-    case "workspace":
-      return { canRead: true, canEdit: auth.isBuilder() };
-    case "published":
-      return { canRead: true, canEdit: auth.isUser() };
-    default:
-      assertNever(agentConfiguration.scope);
-  }
-}
-
-/**
- * TODO(agent discovery, 2025-04-30): Delete this function when removing scopes
- * "workspace" and "published"
- */
-function isLegacyAllowed(
-  owner: WorkspaceType,
-  agentConfigurationScope: AgentConfigurationScope
-): boolean {
-  if (agentConfigurationScope === "workspace" && isBuilder(owner)) {
-    return true;
-  }
-  if (agentConfigurationScope === "published" && isUser(owner)) {
-    return true;
-  }
-  if (agentConfigurationScope === "private" && isUser(owner)) {
-    return true;
-  }
-  return false;
 }

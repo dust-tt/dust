@@ -47,9 +47,7 @@ export function AssistantUsageSection({
         <div className="text-xs">{usageSentence}</div>
       )}
 
-      {(agentConfiguration.scope === "workspace" ||
-        agentConfiguration.scope === "published" ||
-        agentConfiguration.scope === "hidden" ||
+      {(agentConfiguration.scope === "hidden" ||
         agentConfiguration.scope === "visible") && (
         <div className="grid grid-cols-1 gap-2 text-xs text-muted-foreground sm:grid-cols-2">
           {agentConfiguration.lastAuthors && (

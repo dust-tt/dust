@@ -6,7 +6,7 @@ import type {
   BrowseResultResourceType,
   WebsearchResultResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import type { AgentLoopRunContextType } from "@app/lib/actions/types";
+import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { actionRefsOffset } from "@app/lib/actions/utils";
 import { getWebsearchNumResults } from "@app/lib/actions/utils";
 import { getRefs } from "@app/lib/api/assistant/citations";
@@ -31,9 +31,7 @@ export const serverInfo: InternalMCPServerDefinitionType = {
   },
 };
 
-const createServer = (
-  agentLoopRunContext?: AgentLoopRunContextType
-): McpServer => {
+const createServer = (agentLoopContext?: AgentLoopContextType): McpServer => {
   const server = new McpServer(serverInfo);
 
   server.tool(
@@ -59,11 +57,13 @@ const createServer = (
         ),
     },
     async ({ query, page }) => {
-      if (!agentLoopRunContext) {
+      if (!agentLoopContext?.runContext) {
         throw new Error(
           "agentLoopRunContext is required where the tool is called."
         );
       }
+
+      const agentLoopRunContext = agentLoopContext.runContext;
 
       const numResults = getWebsearchNumResults({
         stepActions: agentLoopRunContext.stepActions,

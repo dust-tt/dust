@@ -8,16 +8,24 @@ import animColorXS from "@sparkle/lottie/spinnerColorXS";
 import animDark from "@sparkle/lottie/spinnerDark";
 import animDarkLG from "@sparkle/lottie/spinnerDarkLG";
 import animDarkXS from "@sparkle/lottie/spinnerDarkXS";
-import animLightXS from "@sparkle/lottie/spinnerLight";
+import animLight from "@sparkle/lottie/spinnerLight";
 import animLightLG from "@sparkle/lottie/spinnerLightLG";
-import animSimpleLight from "@sparkle/lottie/spinnerLightXS";
+import animLightXS from "@sparkle/lottie/spinnerLightXS";
 
 type SpinnerSizeType = (typeof SPINNER_SIZES)[number];
 const SPINNER_SIZES = ["xs", "sm", "md", "lg", "xl", "xxl"] as const;
 
+type SpinnerVariant =
+  | "mono"
+  | "revert"
+  | "light"
+  | "dark"
+  | "color"
+  | SpinnerVariantType;
+
 export interface SpinnerProps {
   size?: SpinnerSizeType;
-  variant?: SpinnerVariantType;
+  variant?: SpinnerVariant;
 }
 
 // Generate all possible color-shade combinations
@@ -25,9 +33,10 @@ const colorVariants = Object.entries(customColors).flatMap(([color, shades]) =>
   Object.keys(shades).map((shade) => `${color}${shade}` as const)
 );
 
-const SPINNER_VARIANTS = ["color", "light", "dark", ...colorVariants] as const;
+const SPINNER_VARIANTS = ["color", ...colorVariants] as const;
 
 type SpinnerVariantType = (typeof SPINNER_VARIANTS)[number];
+
 const pxSizeClasses: Record<SpinnerSizeType, string> = {
   xs: "16",
   sm: "20",
@@ -48,8 +57,6 @@ const hexToRgba = (hex: string): [number, number, number, number] => {
 };
 
 const colors: Record<Exclude<SpinnerVariantType, "color">, LottieColorType> = {
-  light: [1, 1, 1, 1],
-  dark: hexToRgba(customColors.gray[900]),
   ...Object.fromEntries(
     colorVariants.map((variant) => {
       const color = variant.match(/[a-z]+/)?.[0] as keyof typeof customColors;
@@ -87,53 +94,148 @@ const replaceColors = (obj: any, newColor: LottieColorType): any => {
   return obj;
 };
 
-const Spinner: React.FC<SpinnerProps> = ({
-  size = "md",
-  variant = "color",
-}) => {
+const Spinner: React.FC<SpinnerProps> = ({ size = "md", variant = "mono" }) => {
   const fullSize = parseInt(pxSizeClasses[size], 10);
 
-  let anim;
+  // Handle custom color variants
+  if (
+    variant !== "revert" &&
+    variant !== "mono" &&
+    variant !== "color" &&
+    variant !== "light" &&
+    variant !== "dark"
+  ) {
+    let anim;
+    switch (size) {
+      case "xs":
+        anim = animLightXS;
+        break;
+      case "xl":
+      case "xxl":
+        anim = animLightLG;
+        break;
+      default:
+        anim = animLight;
+    }
+    const animationData = replaceColors(
+      JSON.parse(JSON.stringify(anim)),
+      colors[variant]
+    );
+    return (
+      <Lottie
+        animationData={animationData}
+        style={{ width: `${fullSize}px`, height: `${fullSize}px` }}
+        loop
+        autoplay
+      />
+    );
+  }
 
+  // Handle color variant
+  if (variant === "color") {
+    let anim;
+    switch (size) {
+      case "xs":
+        anim = animColorXS;
+        break;
+      case "xl":
+      case "xxl":
+        anim = animColorLG;
+        break;
+      default:
+        anim = animColor;
+    }
+    return (
+      <Lottie
+        animationData={anim}
+        style={{ width: `${fullSize}px`, height: `${fullSize}px` }}
+        loop
+        autoplay
+      />
+    );
+  }
+
+  if (variant === "light") {
+    let anim;
+    switch (size) {
+      case "xs":
+        anim = animLightXS;
+        break;
+      case "xl":
+      case "xxl":
+        anim = animLightLG;
+        break;
+      default:
+        anim = animLight;
+    }
+    return (
+      <Lottie
+        animationData={anim}
+        style={{ width: `${fullSize}px`, height: `${fullSize}px` }}
+        loop
+        autoplay
+      />
+    );
+  }
+
+  if (variant === "dark") {
+    let anim;
+    switch (size) {
+      case "xs":
+        anim = animDarkXS;
+        break;
+      case "xl":
+      case "xxl":
+        anim = animDarkLG;
+        break;
+      default:
+        anim = animDark;
+    }
+    return (
+      <Lottie
+        animationData={anim}
+        style={{ width: `${fullSize}px`, height: `${fullSize}px` }}
+        loop
+        autoplay
+      />
+    );
+  }
+
+  // Handle mono variant (default)
+  let lightAnim;
+  let darkAnim;
   switch (size) {
     case "xs":
-      anim =
-        variant === "light"
-          ? animSimpleLight
-          : variant === "dark"
-            ? animDarkXS
-            : animColorXS;
+      lightAnim = animLightXS;
+      darkAnim = animDarkXS;
       break;
     case "xl":
     case "xxl":
-      anim =
-        variant === "light"
-          ? animLightLG
-          : variant === "dark"
-            ? animDarkLG
-            : animColorLG;
+      lightAnim = animLightLG;
+      darkAnim = animDarkLG;
       break;
     default:
-      anim =
-        variant === "light"
-          ? animLightXS
-          : variant === "dark"
-            ? animDark
-            : animColor;
+      lightAnim = animLight;
+      darkAnim = animDark;
   }
 
-  const animationData =
-    variant === "color"
-      ? anim
-      : replaceColors(JSON.parse(JSON.stringify(anim)), colors[variant]);
-
   return (
-    <Lottie
-      animationData={animationData}
-      style={{ width: `${fullSize}px`, height: `${fullSize}px` }}
-      loop
-      autoplay
-    />
+    <>
+      <Lottie
+        animationData={variant && variant === "mono" ? darkAnim : lightAnim}
+        className="s-block dark:s-hidden"
+        style={{ width: `${fullSize}px`, height: `${fullSize}px` }}
+        loop
+        autoplay
+      />
+      <Lottie
+        animationData={variant && variant === "mono" ? lightAnim : darkAnim}
+        className="s-hidden dark:s-block"
+        style={{ width: `${fullSize}px`, height: `${fullSize}px` }}
+        loop
+        autoplay
+      />
+    </>
   );
 };
 

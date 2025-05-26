@@ -26,7 +26,7 @@ export class AgentConfigurationFactory {
   ): Promise<LightAgentConfigurationType> {
     const name = overrides.name ?? "Test Agent";
     const description = overrides.description ?? "Test Agent Description";
-    const scope = overrides.scope ?? "workspace";
+    const scope = overrides.scope ?? "visible";
     const providerId = overrides.model?.providerId ?? "openai";
     const modelId = overrides.model?.modelId ?? "gpt-4-turbo";
     const temperature = overrides.model?.temperature ?? 0.7;

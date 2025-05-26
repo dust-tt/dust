@@ -1,3 +1,4 @@
+export * from "./add_authorized_domain";
 export * from "./check_seat_count";
 export * from "./compute_statistics";
 export * from "./conversations_retention";

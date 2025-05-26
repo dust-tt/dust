@@ -124,7 +124,15 @@ async function handler(
           });
         }
 
-        const r = await fetchRemoteServerMetaDataByURL(auth, url);
+        const r = await fetchRemoteServerMetaDataByURL(
+          auth,
+          url,
+          sharedSecret
+            ? {
+                Authorization: `Bearer ${sharedSecret}`,
+              }
+            : undefined
+        );
         if (r.isErr()) {
           return apiError(req, res, {
             status_code: 400,

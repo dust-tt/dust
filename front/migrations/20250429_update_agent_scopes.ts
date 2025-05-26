@@ -21,6 +21,7 @@ const migrateWorkspace = async (
   const agents = await AgentConfiguration.findAll({
     where: {
       workspaceId: workspace.id,
+      scope: ["workspace", "published", "private"],
     },
     order: [
       ["sId", "ASC"],
@@ -47,50 +48,46 @@ const migrateWorkspace = async (
 
   for (const agent of agents) {
     const previousScope = agent.scope;
-    if (
-      previousScope === "workspace" ||
-      previousScope === "published" ||
-      previousScope === "private"
-    ) {
-      const newScope = previousScope === "private" ? "hidden" : "visible";
-      logger.info(
-        {
-          workspace: workspace.sId,
-          id: agent.id,
-          agent: agent.sId,
-          version: agent.version,
-          previousScope,
-          newScope,
-        },
-        "Migrating agent scope"
-      );
+    // @ts-ignore
+    const newScope = previousScope === "private" ? "hidden" : "visible";
+    logger.info(
+      {
+        workspace: workspace.sId,
+        id: agent.id,
+        agent: agent.sId,
+        version: agent.version,
+        previousScope,
+        newScope,
+      },
+      "Migrating agent scope"
+    );
 
-      if (execute) {
-        await agent.update({ scope: newScope }, { hooks: false, silent: true });
-      }
-      if (previousScope === "workspace" && agent.status === "active") {
-        const agentConfigs = await getAgentConfigurations({
-          auth,
-          agentsGetView: { agentIds: [agent.sId] },
-          variant: "light",
-        });
-        const agentConfig = agentConfigs[0];
-        if (
-          companyTag &&
-          agentConfig &&
-          !agentConfig.tags.some((tag) => tag.sId === companyTag.sId)
-        ) {
-          logger.info(
-            {
-              workspace: workspace.sId,
-              agent: agent.sId,
-              companyTag: companyTag?.sId,
-            },
-            "Adding company tag to agent"
-          );
-          if (execute) {
-            await companyTag.addToAgent(auth, agentConfig);
-          }
+    if (execute) {
+      await agent.update({ scope: newScope }, { hooks: false, silent: true });
+    }
+    // @ts-ignore
+    if (previousScope === "workspace" && agent.status === "active") {
+      const agentConfigs = await getAgentConfigurations({
+        auth,
+        agentsGetView: { agentIds: [agent.sId] },
+        variant: "light",
+      });
+      const agentConfig = agentConfigs[0];
+      if (
+        companyTag &&
+        agentConfig &&
+        !agentConfig.tags.some((tag) => tag.sId === companyTag.sId)
+      ) {
+        logger.info(
+          {
+            workspace: workspace.sId,
+            agent: agent.sId,
+            companyTag: companyTag?.sId,
+          },
+          "Adding company tag to agent"
+        );
+        if (execute) {
+          await companyTag.addToAgent(auth, agentConfig);
         }
       }
     }

@@ -65,7 +65,15 @@ async function handler(
     });
   }
 
-  const r = await fetchRemoteServerMetaDataByURL(auth, server.url);
+  const r = await fetchRemoteServerMetaDataByURL(
+    auth,
+    server.url,
+    server.sharedSecret
+      ? {
+          Authorization: `Bearer ${server.sharedSecret}`,
+        }
+      : undefined
+  );
   if (r.isErr()) {
     await server.markAsErrored(auth, {
       lastError: r.error.message,

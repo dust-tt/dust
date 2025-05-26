@@ -4,6 +4,7 @@ RUN apt-get update && \
   apt-get install -y vim redis-tools postgresql-client htop libjemalloc2 libjemalloc-dev
 
 ARG COMMIT_HASH
+ARG COMMIT_HASH_LONG
 ARG NEXT_PUBLIC_VIZ_URL
 ARG NEXT_PUBLIC_DUST_CLIENT_FACING_URL
 ARG NEXT_PUBLIC_GTM_TRACKING_ID
@@ -36,5 +37,8 @@ RUN FRONT_DATABASE_URI="sqlite:foo.sqlite" npm run build
 
 # Preload jemalloc for all processes:
 ENV LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.2
+
+ENV DD_GIT_REPOSITORY_URL=https://github.com/dust-tt/dust/
+ENV DD_GIT_COMMIT_SHA=${COMMIT_HASH_LONG}
 
 CMD ["npm", "--silent", "run", "start"]

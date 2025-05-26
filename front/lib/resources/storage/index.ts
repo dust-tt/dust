@@ -1,5 +1,6 @@
 import assert from "assert";
 import { default as cls } from "cls-hooked";
+import { basename } from "path";
 import { Sequelize } from "sequelize";
 
 import { dbConfig } from "@app/lib/resources/storage/config";
@@ -65,6 +66,9 @@ export const frontSequelize = new Sequelize(
         }
       },
     },
+    dialectOptions: {
+      appName: `${basename(dbConfig.getRequiredFrontDatabaseURI())} master`,
+    },
   }
 );
 
@@ -76,6 +80,9 @@ export function getFrontReplicaDbConnection() {
       dbConfig.getRequiredFrontReplicaDatabaseURI() as string,
       {
         logging: false,
+        dialectOptions: {
+          appName: `${basename(dbConfig.getRequiredFrontDatabaseURI())} replica`,
+        },
       }
     );
   }

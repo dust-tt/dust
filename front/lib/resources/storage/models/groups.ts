@@ -12,6 +12,9 @@ export class GroupModel extends WorkspaceAwareModel<GroupModel> {
 
   declare name: string;
   declare kind: GroupKind;
+
+  // Directory ID on the provider's side (e.g. Okta directory).
+  declare directoryId: string | null;
 }
 
 GroupModel.init(
@@ -33,6 +36,10 @@ GroupModel.init(
     kind: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    directoryId: {
+      type: DataTypes.STRING,
+      allowNull: true,
     },
   },
   {

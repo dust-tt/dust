@@ -44,6 +44,9 @@ export function CreateMCPServerModal({
 }: RemoteMCPServerDetailsProps) {
   const sendNotification = useSendNotification();
   const [url, setUrl] = useState("");
+  const [sharedSecret, setSharedSecret] = useState<string | undefined>(
+    undefined
+  );
   const [error, setError] = useState<string | null>(null);
   const [authorization, setAuthorization] = useState<AuthorizationInfo | null>(
     null
@@ -122,7 +125,7 @@ export function CreateMCPServerModal({
 
       try {
         setIsLoading(true);
-        const result = await createWithUrlSync(url, true);
+        const result = await createWithUrlSync(url, true, sharedSecret);
 
         if (result.success) {
           sendNotification({
@@ -145,6 +148,7 @@ export function CreateMCPServerModal({
         setIsLoading(false);
         setError(null);
         setUrl("");
+        setSharedSecret(undefined);
       }
     }
   };
@@ -159,22 +163,39 @@ export function CreateMCPServerModal({
         </DialogHeader>
         <DialogContainer>
           {!internalMCPServer && (
-            <div className="space-y-2">
-              <Label htmlFor="url">URL</Label>
-              <div className="flex space-x-2">
-                <div className="flex-grow">
-                  <Input
-                    id="url"
-                    placeholder="https://example.com/api/mcp"
-                    value={url}
-                    onChange={(e) => setUrl(e.target.value)}
-                    isError={!!error}
-                    message={error}
-                    autoFocus
-                  />
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="url">URL</Label>
+                <div className="flex space-x-2">
+                  <div className="flex-grow">
+                    <Input
+                      id="url"
+                      placeholder="https://example.com/api/mcp"
+                      value={url}
+                      onChange={(e) => setUrl(e.target.value)}
+                      isError={!!error}
+                      message={error}
+                      autoFocus
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
+              <div className="space-y-2">
+                <Label htmlFor="sharedSecret">
+                  Bearer Token (if the server requires authentication)
+                </Label>
+                <div className="flex space-x-2">
+                  <div className="flex-grow">
+                    <Input
+                      id="sharedSecret"
+                      placeholder="Paste the Bearer Token here (optional)"
+                      value={sharedSecret}
+                      onChange={(e) => setSharedSecret(e.target.value)}
+                    />
+                  </div>
+                </div>
+              </div>
+            </>
           )}
           {authorization && (
             <div className="flex flex-col items-center gap-2">

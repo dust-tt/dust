@@ -1,6 +1,7 @@
 import "react-image-crop/dist/ReactCrop.css";
 
 import {
+  Button,
   SidebarRightCloseIcon,
   SidebarRightOpenIcon,
   Tabs,
@@ -9,22 +10,25 @@ import {
   useHashParam,
   useSendNotification,
 } from "@dust-tt/sparkle";
-import { Button } from "@dust-tt/sparkle";
 import assert from "assert";
 import { uniqueId } from "lodash";
 import { useRouter } from "next/router";
 import React, { useCallback, useContext, useEffect, useState } from "react";
 
-import { hasActionError } from "@app/components/assistant_builder/ActionsScreen";
-import ActionsScreen from "@app/components/assistant_builder/ActionsScreen";
+import ActionsScreen, {
+  hasActionError,
+} from "@app/components/assistant_builder/ActionsScreen";
 import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
 import AssistantBuilderRightPanel from "@app/components/assistant_builder/AssistantBuilderPreviewDrawer";
 import { BuilderLayout } from "@app/components/assistant_builder/BuilderLayout";
-import { INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT } from "@app/components/assistant_builder/InstructionScreen";
-import { InstructionScreen } from "@app/components/assistant_builder/InstructionScreen";
+import {
+  INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT,
+  InstructionScreen,
+} from "@app/components/assistant_builder/InstructionScreen";
 import { PrevNextButtons } from "@app/components/assistant_builder/PrevNextButtons";
-import { validateHandle } from "@app/components/assistant_builder/SettingsScreen";
-import SettingsScreen from "@app/components/assistant_builder/SettingsScreen";
+import SettingsScreen, {
+  validateHandle,
+} from "@app/components/assistant_builder/SettingsScreen";
 import { submitAssistantBuilderForm } from "@app/components/assistant_builder/submitAssistantBuilderForm";
 import type {
   AssistantBuilderPendingAction,
@@ -35,9 +39,9 @@ import type {
 } from "@app/components/assistant_builder/types";
 import {
   BUILDER_SCREENS,
+  BUILDER_SCREENS_INFOS,
   getDefaultAssistantState,
 } from "@app/components/assistant_builder/types";
-import { BUILDER_SCREENS_INFOS } from "@app/components/assistant_builder/types";
 import { useNavigationLock } from "@app/components/assistant_builder/useNavigationLock";
 import { useSlackChannel } from "@app/components/assistant_builder/useSlackChannels";
 import { useTemplate } from "@app/components/assistant_builder/useTemplate";
@@ -52,36 +56,17 @@ import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { useKillSwitches } from "@app/lib/swr/kill";
 import { useModels } from "@app/lib/swr/models";
 import { useUser } from "@app/lib/swr/user";
-import type { AgentConfigurationScope, WorkspaceType } from "@app/types";
 import {
+  assertNever,
   CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG,
   GPT_4_1_MINI_MODEL_CONFIG,
   isAdmin,
   isBuilder,
-  isUser,
   SUPPORTED_MODEL_CONFIGS,
 } from "@app/types";
-import { assertNever } from "@app/types";
 
 function isValidTab(tab: string): tab is BuilderScreen {
   return BUILDER_SCREENS.includes(tab as BuilderScreen);
-}
-
-/**
- * TODO(agent discovery, 2025-04-30): Delete this function when removing scopes
- * "workspace" and "published"
- */
-function isLegacyAllowed(
-  owner: WorkspaceType,
-  agentConfigurationScope: AgentConfigurationScope
-): boolean {
-  if (agentConfigurationScope === "workspace" && isBuilder(owner)) {
-    return true;
-  }
-  if (agentConfigurationScope === "published" && isUser(owner)) {
-    return true;
-  }
-  return false;
 }
 
 export default function AssistantBuilder({
@@ -187,8 +172,7 @@ export default function AssistantBuilder({
   } = useSlackChannel({
     initialChannels: [],
     workspaceId: owner.sId,
-    isPrivateAssistant:
-      builderState.scope === "private" || builderState.scope === "hidden",
+    isPrivateAssistant: builderState.scope === "hidden",
     isBuilder: isBuilder(owner),
     isEdited: edited,
     agentConfigurationId,
@@ -207,8 +191,7 @@ export default function AssistantBuilder({
     }
     if (agentConfigurationId && initialBuilderState) {
       assert(
-        isLegacyAllowed(owner, initialBuilderState.scope) ||
-          isAdmin(owner) ||
+        isAdmin(owner) ||
           initialBuilderState.editors.some((m) => m.sId === user.sId),
         "Unreachable: User is not in editors nor admin"
       );
