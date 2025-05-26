@@ -1,4 +1,5 @@
 import assert from "assert";
+import { tracer } from "dd-trace";
 import type { Order, Transaction } from "sequelize";
 import {
   Op,
@@ -145,18 +146,20 @@ export async function getAgentConfiguration<V extends AgentFetchVariant>(
   | (V extends "light" ? LightAgentConfigurationType : AgentConfigurationType)
   | null
 > {
-  const res = await getAgentConfigurations({
-    auth,
-    agentsGetView: { agentIds: [agentId] },
-    variant,
+  return tracer.trace("getAgentConfiguration", async () => {
+    const res = await getAgentConfigurations({
+      auth,
+      agentsGetView: { agentIds: [agentId] },
+      variant,
+    });
+    // `as` is required here because the type collapses to `LightAgentConfigurationType |
+    // AgentConfigurationType` as we access the first element of the array.
+    return (
+      (res[0] as V extends "light"
+        ? LightAgentConfigurationType
+        : AgentConfigurationType) || null
+    );
   });
-  // `as` is required here because the type collapses to `LightAgentConfigurationType |
-  // AgentConfigurationType` as we access the first element of the array.
-  return (
-    (res[0] as V extends "light"
-      ? LightAgentConfigurationType
-      : AgentConfigurationType) || null
-  );
 }
 
 /**

@@ -155,41 +155,43 @@ export class Authenticator {
     session: SessionWithUser | null,
     wId: string
   ): Promise<Authenticator> {
-    const [workspace, user] = await Promise.all([
-      Workspace.findOne({
-        where: {
-          sId: wId,
-        },
-      }),
-      session ? UserResource.fetchByAuth0Sub(session.user.sub) : null,
-    ]);
-
-    let role = "none" as RoleType;
-    let groups: GroupResource[] = [];
-    let subscription: SubscriptionResource | null = null;
-
-    if (user && workspace) {
-      [role, groups, subscription] = await Promise.all([
-        MembershipResource.getActiveRoleForUserInWorkspace({
-          user,
-          workspace: renderLightWorkspaceType({ workspace }),
+    return tracer.trace("fromSession", async () => {
+      const [workspace, user] = await Promise.all([
+        Workspace.findOne({
+          where: {
+            sId: wId,
+          },
         }),
-        GroupResource.listUserGroupsInWorkspace({
-          user,
-          workspace: renderLightWorkspaceType({ workspace }),
-        }),
-        SubscriptionResource.fetchActiveByWorkspace(
-          renderLightWorkspaceType({ workspace })
-        ),
+        session ? UserResource.fetchByAuth0Sub(session.user.sub) : null,
       ]);
-    }
 
-    return new Authenticator({
-      workspace,
-      user,
-      role,
-      groups,
-      subscription,
+      let role = "none" as RoleType;
+      let groups: GroupResource[] = [];
+      let subscription: SubscriptionResource | null = null;
+
+      if (user && workspace) {
+        [role, groups, subscription] = await Promise.all([
+          MembershipResource.getActiveRoleForUserInWorkspace({
+            user,
+            workspace: renderLightWorkspaceType({ workspace }),
+          }),
+          GroupResource.listUserGroupsInWorkspace({
+            user,
+            workspace: renderLightWorkspaceType({ workspace }),
+          }),
+          SubscriptionResource.fetchActiveByWorkspace(
+            renderLightWorkspaceType({ workspace })
+          ),
+        ]);
+      }
+
+      return new Authenticator({
+        workspace,
+        user,
+        role,
+        groups,
+        subscription,
+      });
     });
   }
 
