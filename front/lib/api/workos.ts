@@ -197,10 +197,10 @@ async function syncAllUsers(
 
   const workOs = getWorkOS();
 
-  const { autoPagination } = await workOs.directorySync.listUsers({
+  // TODO(2025-05-26 aubin): paginate here.
+  const { data: users } = await workOs.directorySync.listUsers({
     directory: directoryId,
   });
-  const users = await autoPagination();
 
   for (const workOsUser of users) {
     await upsertUser(workspace, workOsUser, directoryId);
@@ -220,10 +220,10 @@ async function syncAllGroups(
 
   const workOS = getWorkOS();
 
-  const { autoPagination } = await workOS.directorySync.listGroups({
+  // TODO(2025-05-26 aubin): paginate here.
+  const { data: groups } = await workOS.directorySync.listGroups({
     directory: directoryId,
   });
-  const groups = await autoPagination();
 
   for (const workOSGroup of groups) {
     await upsertGroup(workspace, workOSGroup, directoryId);
