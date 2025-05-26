@@ -569,24 +569,16 @@ const PROVIDER_STRATEGIES: Record<
         "crm.objects.deals.read",
         "crm.objects.deals.write",
         "crm.schemas.deals.read",
-        "crm.objects.engagements.read",
-        "crm.objects.engagements.write",
-        "crm.schemas.engagements.read",
-        "crm.objects.notes.read",
-        "crm.objects.notes.write",
-        "crm.schemas.notes.read",
-        "crm.objects.tasks.read",
-        "crm.objects.tasks.write",
-        "crm.schemas.tasks.read",
-        "crm.objects.tickets.read",
-        "crm.objects.tickets.write",
-        "crm.schemas.tickets.read",
-        "crm.objects.owners.read",
-        "crm.schemas.custom.read", // For properties of other/custom objects (covers products, etc.)
-        "crm.objects.custom.read", // For reading other/custom objects (covers products, etc.)
-        "crm.associations.read", // For getAssociatedMeetings and building associations
-        "files.read", // For getFilePublicUrl
-        "timeline", // General context
+        "tickets", // For tickets (covers read, write, schemas)
+        "crm.objects.owners.read", // For owners
+        "crm.schemas.custom.read", // For reading schemas of custom objects, and potentially useful for standard object properties
+        "crm.objects.custom.read", // For reading custom object data
+        "files", // For files (replaces files.read)
+        "sales-email-read", // For reading engagement details (especially emails, meetings, calls)
+        "timeline", // For timeline events, potentially associations
+        "crm.lists.read", // For addContactToList and future list operations
+        "crm.lists.write", // For addContactToList and future list operations
+        "automation", // For enrollContactInWorkflow and future automation operations
       ];
       return (
         `https://app.hubspot.com/oauth/authorize` +
