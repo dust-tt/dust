@@ -23,6 +23,9 @@ import {
   Ok,
 } from "@app/types";
 
+import { MCPServerConnection } from "../models/assistant/actions/mcp_server_connection";
+import { MCPServerConnectionResource } from "../resources/mcp_server_connection_resource";
+
 export type OAuthError = {
   code:
     | "connection_creation_failed"
@@ -418,6 +421,13 @@ const PROVIDER_STRATEGIES: Record<
       return getStringFromQuery(query, "state");
     },
     isExtraConfigValid: (extraConfig, useCase) => {
+      if (useCase === "personal_actions") {
+        if (!extraConfig.mcp_server_id) {
+          return false;
+        }
+        return true;
+      }
+
       if (useCase === "salesforce_personal") {
         return true;
       }
@@ -482,6 +492,49 @@ const PROVIDER_STRATEGIES: Record<
             client_id: connection.metadata.client_id as string,
             instance_url: connection.metadata.instance_url as string,
             ...extraConfig,
+          },
+        };
+      } else if (useCase === "personal_actions") {
+        // For personal actions we reuse the existing connection credential id from the existing
+        // workspace connection (setup by admin).
+        const { mcp_server_id, ...restConfig } = extraConfig;
+
+        if (!mcp_server_id) {
+          return null;
+        }
+
+        const mcpServerConnectionRes =
+          await MCPServerConnectionResource.findByMCPServer({
+            auth,
+            mcpServerId: mcp_server_id,
+            connectionType: "workspace",
+          });
+
+        if (mcpServerConnectionRes.isErr()) {
+          return null;
+        }
+
+        const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);
+        const connectionRes = await oauthApi.getAccessToken({
+          connectionId: mcpServerConnectionRes.value.connectionId,
+        });
+        if (connectionRes.isErr()) {
+          return null;
+        }
+        const connection = connectionRes.value.connection;
+        const connectionId = connection.connection_id;
+
+        return {
+          credential: {
+            content: {
+              from_connection_id: connectionId,
+            },
+            metadata: { workspace_id: workspaceId, user_id: userId },
+          },
+          cleanedConfig: {
+            client_id: connection.metadata.client_id as string,
+            instance_url: connection.metadata.instance_url as string,
+            ...restConfig,
           },
         };
       } else {

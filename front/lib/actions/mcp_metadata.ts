@@ -31,7 +31,11 @@ import type {
   MCPToolType,
 } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
-import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
+import type {
+  MCPServerConnectionConnectionType} from "@app/lib/resources/mcp_server_connection_resource";
+import {
+  MCPServerConnectionResource,
+} from "@app/lib/resources/mcp_server_connection_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import logger from "@app/logger/logger";
 import type { OAuthProvider, OAuthUseCase, Result } from "@app/types";
@@ -77,7 +81,8 @@ export function isInternalMCPServerDefinition(
 
 async function getAccessTokenForRemoteMCPServer(
   auth: Authenticator,
-  remoteMCPServer: RemoteMCPServerResource
+  remoteMCPServer: RemoteMCPServerResource,
+  connectionType: MCPServerConnectionConnectionType
 ) {
   const metadata = remoteMCPServer.toJSON();
 
@@ -85,6 +90,7 @@ async function getAccessTokenForRemoteMCPServer(
     const connection = await MCPServerConnectionResource.findByMCPServer({
       auth,
       mcpServerId: metadata.sId,
+      connectionType,
     });
     if (connection.isOk()) {
       const token = await getOAuthConnectionAccessToken({
@@ -185,7 +191,8 @@ export const connectToMCPServer = async (
 
           const accessToken = await getAccessTokenForRemoteMCPServer(
             auth,
-            remoteMCPServer
+            remoteMCPServer,
+            "workspace"
           );
 
           const url = new URL(remoteMCPServer.url);
