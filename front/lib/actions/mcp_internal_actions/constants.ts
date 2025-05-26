@@ -149,6 +149,10 @@ export const INTERNAL_MCP_SERVERS: Record<
     id: 14,
     availability: "manual",
     flag: "salesforce_tool",
+    tools_stakes: {
+      execute_query: "low",
+      list_objects: "low",
+    },
   },
   gmail: {
     id: 15,
