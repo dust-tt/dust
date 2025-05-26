@@ -484,24 +484,6 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
         connectionType: "workspace",
       });
 
-      return {
-        isError: true,
-        content: [
-          {
-            type: "resource",
-            resource: {
-              mimeType:
-                INTERNAL_MIME_TYPES.TOOL_ERROR.PERSONAL_AUTHENTICATION_REQUIRED,
-              uri: "",
-              text: new MCPServerPersonalAuthenticationRequiredError(
-                mcpServerId
-              ).message,
-              mcpServerId,
-            },
-          },
-        ],
-      };
-
       const octokit = new Octokit({ auth: accessToken });
 
       try {
