@@ -38,7 +38,7 @@ export function UserMenu({
   owner: WorkspaceType;
 }) {
   const router = useRouter();
-  const { featureFlags } = useFeatureFlags({
+  const { featureFlags, hasFeature } = useFeatureFlags({
     workspaceId: owner.sId,
   });
 
@@ -151,24 +151,39 @@ export function UserMenu({
           href={`/w/${owner.sId}/me`}
         />
 
-        {document.cookie.includes("sessionType=auth0") && (
+        {!hasFeature("workos") && (
           <DropdownMenuItem
-            onClick={() => {
-              window.location.href = "/api/auth/logout";
-            }}
+            label="Sign&nbsp;out"
             icon={LogoutIcon}
-            label="Sign&nbsp;out Auth0"
+            onClick={(e: React.MouseEvent<HTMLDivElement>) => {
+              if (e.metaKey) {
+                // Cmd + click leads to Workos logout
+                window.location.href = "/api/workos/logout";
+              } else {
+                window.location.href = "/api/auth/logout";
+              }
+            }}
           />
         )}
-        {document.cookie.includes("sessionType=workos") && (
-          <DropdownMenuItem
-            onClick={() => {
-              window.location.href = "/api/workos/logout";
-            }}
-            icon={LogoutIcon}
-            label="Sign&nbsp;out WorkOS"
-          />
-        )}
+        {hasFeature("workos") &&
+          document.cookie.includes("sessionType=auth0") && (
+            <DropdownMenuItem
+              onClick={() => {
+                window.location.href = "/api/auth/logout";
+              }}
+              icon={LogoutIcon}
+              label="Sign&nbsp;out Auth0"
+            />
+          ) &&
+          document.cookie.includes("sessionType=workos") && (
+            <DropdownMenuItem
+              onClick={() => {
+                window.location.href = "/api/workos/logout";
+              }}
+              icon={LogoutIcon}
+              label="Sign&nbsp;out WorkOS"
+            />
+          )}
 
         {showDebugTools(featureFlags) && (
           <>

@@ -50,6 +50,7 @@ import type {
   WorkspaceDomain,
   WorkspaceType,
 } from "@app/types";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   user: UserType;
@@ -122,6 +123,10 @@ export default function WorkspaceAdmin({
     useState(false);
   const [inviteBlockedPopupReason, setInviteBlockedPopupReason] =
     useState<WorkspaceLimit | null>(null);
+
+  const { hasFeature } = useFeatureFlags({
+    workspaceId: owner.sId,
+  });
 
   const { domain = "", domainAutoJoinEnabled = false } =
     workspaceVerifiedDomain ?? {};
@@ -249,7 +254,7 @@ export default function WorkspaceAdmin({
           strategyDetails={enterpriseConnectionStrategyDetails}
           workspaceVerifiedDomain={workspaceVerifiedDomain}
         />
-        <WorkOSConnection owner={owner} />
+        {hasFeature("workos") && <WorkOSConnection owner={owner} />}
         <div className="flex flex-row gap-2">
           <SearchInput
             placeholder="Search members (email)"
