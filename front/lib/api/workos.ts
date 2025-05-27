@@ -309,7 +309,7 @@ async function upsertUser({
     user,
     externalUser,
   });
-  localLogger.info("[WorkOS] User successfully created or updated.");
+  localLogger.info("[WorkOS] User successfully upserted.");
 }
 
 async function upsertGroup(
