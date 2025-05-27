@@ -23,6 +23,7 @@ export const OAUTH_PROVIDERS = [
   "confluence",
   "github",
   "google_drive",
+  "gmail",
   "intercom",
   "notion",
   "slack",
@@ -37,6 +38,7 @@ export const OAUTH_PROVIDER_NAMES: Record<OAuthProvider, string> = {
   confluence: "Confluence",
   github: "GitHub",
   google_drive: "Google Drive",
+  gmail: "Gmail",
   intercom: "Intercom",
   notion: "Notion",
   slack: "Slack",
@@ -72,6 +74,18 @@ export const getProviderRequiredAuthCredentials = async (
       } else {
         return null;
       }
+    case "gmail":
+      if (authentication.use_case === "personal_actions") {
+        const { code_verifier, code_challenge } = await getPKCEConfig();
+
+        return {
+          client_id: { label: "oAuth client Id", value: undefined },
+          client_secret: { label: "oAuth client secret", value: undefined },
+          code_verifier: { label: "Code verifier", value: code_verifier },
+          code_challenge: { label: "Code challenge", value: code_challenge },
+        };
+      }
+      return null;
     case "hubspot":
       return null;
     case "zendesk":
