@@ -56,6 +56,7 @@ export const getProviderAdditionalClientSideAuthCredentials = async (
   }
   switch (authentication.provider) {
     case "salesforce":
+    case "gmail":
       if (authentication.use_case === "personal_actions") {
         const { code_verifier, code_challenge } = await getPKCEConfig();
         return {
@@ -64,7 +65,6 @@ export const getProviderAdditionalClientSideAuthCredentials = async (
         };
       }
       return null;
-    case "gmail":
     case "hubspot":
     case "zendesk":
     case "slack":
@@ -90,12 +90,12 @@ export const getProviderRequiredAuthCredentials = async (
   if (!authentication) {
     return null;
   }
+  const additionalCredentials =
+    await getProviderAdditionalClientSideAuthCredentials(authentication);
 
   switch (authentication.provider) {
     case "salesforce":
       if (authentication.use_case === "personal_actions") {
-        const additionalCredentials =
-          await getProviderAdditionalClientSideAuthCredentials(authentication);
         const result: Record<
           string,
           { label: string; value: string | number | undefined }
@@ -116,9 +116,6 @@ export const getProviderRequiredAuthCredentials = async (
       return null;
     case "gmail":
       if (authentication.use_case === "personal_actions") {
-        const additionalCredentials =
-          await getProviderAdditionalClientSideAuthCredentials(authentication);
-
         const result: Record<
           string,
           { label: string; value: string | number | undefined }
@@ -146,9 +143,6 @@ export const getProviderRequiredAuthCredentials = async (
     case "github":
     case "google_drive":
     case "intercom":
-      const additionalCredentials =
-        await getProviderAdditionalClientSideAuthCredentials(authentication);
-
       if (!additionalCredentials) {
         return null;
       }
