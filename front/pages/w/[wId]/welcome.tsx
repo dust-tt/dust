@@ -75,23 +75,25 @@ export default function Welcome({
   const [isFormValid, setIsFormValid] = useState<boolean>(false);
 
   const teams = [
-    "customer_success",
-    "customer_support",
-    "data",
-    "design",
-    "engineering",
-    "finance",
-    "people",
-    "legal",
-    "marketing",
-    "operations",
-    "product",
-    "sales",
-    "other",
+    { value: "customer_success", label: "Customer Success" },
+    { value: "customer_support", label: "Customer Support" },
+    { value: "data", label: "Data" },
+    { value: "design", label: "Design" },
+    { value: "engineering", label: "Engineering" },
+    { value: "finance", label: "Finance" },
+    { value: "people", label: "People (HR)" },
+    { value: "legal", label: "Legal" },
+    { value: "marketing", label: "Marketing" },
+    { value: "operations", label: "Operations" },
+    { value: "product", label: "Product" },
+    { value: "sales", label: "Sales" },
+    { value: "other", label: "Other" },
   ];
 
   useEffect(() => {
-    setIsFormValid(firstName !== "" && lastName !== "" && teams.includes(team));
+    setIsFormValid(
+      firstName !== "" && lastName !== "" && teams.some((t) => t.value === team)
+    );
   }, [firstName, lastName, team]);
 
   const { submit, isSubmitting } = useSubmitFunction(async () => {
@@ -176,7 +178,9 @@ export default function Welcome({
                 <Button
                   variant="outline"
                   className="justify-between text-muted-foreground"
-                  label={team || "Select team"}
+                  label={
+                    teams.find((t) => t.value === team)?.label || "Select team"
+                  }
                   isSelect={true}
                 />
               </DropdownMenuTrigger>
@@ -184,9 +188,9 @@ export default function Welcome({
                 <DropdownMenuRadioGroup value={team} onValueChange={setTeam}>
                   {teams.map((teamOption) => (
                     <DropdownMenuRadioItem
-                      key={teamOption}
-                      value={teamOption}
-                      label={teamOption}
+                      key={teamOption.value}
+                      value={teamOption.value}
+                      label={teamOption.label}
                     />
                   ))}
                 </DropdownMenuRadioGroup>
