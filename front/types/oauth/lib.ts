@@ -99,6 +99,7 @@ export type OAuthCredentialInput = {
   label: string;
   value: string | undefined;
   helpMessage?: string;
+  validator?: (value: string) => boolean;
 };
 
 export type OAuthCredentialInputs = Partial<
@@ -126,18 +127,21 @@ export const getProviderRequiredOAuthCredentialInputs = async (
             label: "OAuth Client ID",
             value: undefined,
             helpMessage: "The client ID from your Salesforce connected app.",
+            validator: isValidClientIdOrSecret,
           },
           client_secret: {
             label: "OAuth Client Secret",
             value: undefined,
             helpMessage:
               "The client secret from your Salesforce connected app.",
+            validator: isValidClientIdOrSecret,
           },
           instance_url: {
             label: "Instance URL",
             value: undefined,
             helpMessage:
               "Must be a valid Salesforce domain in https and ending with « .salesforce.com ».",
+            validator: isValidSalesforceDomain,
           },
         };
         if (!additionalCredentials) {
@@ -158,11 +162,13 @@ export const getProviderRequiredOAuthCredentialInputs = async (
             label: "OAuth Client ID",
             value: undefined,
             helpMessage: "The client ID from your Gmail connected app.",
+            validator: isValidClientIdOrSecret,
           },
           client_secret: {
             label: "OAuth Client Secret",
             value: undefined,
             helpMessage: "The client secret from your Gmail connected app.",
+            validator: isValidClientIdOrSecret,
           },
         };
         if (!additionalCredentials) {
@@ -243,11 +249,7 @@ export function isValidSalesforceDomain(s: unknown): s is string {
   );
 }
 
-export function isValidSalesforceClientId(s: unknown): s is string {
-  return typeof s === "string" && s.trim().length > 0;
-}
-
-export function isValidSalesforceClientSecret(s: unknown): s is string {
+export function isValidClientIdOrSecret(s: unknown): s is string {
   return typeof s === "string" && s.trim().length > 0;
 }
 

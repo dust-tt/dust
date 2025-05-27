@@ -52,6 +52,7 @@ export function CreateMCPServerDialog({
   const [authCredentials, setAuthCredentials] =
     useState<OAuthCredentials | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isFormValid, setIsFormValid] = useState(true);
   const [authorization, setAuthorization] = useState<AuthorizationInfo | null>(
     null
   );
@@ -79,7 +80,7 @@ export function CreateMCPServerDialog({
     setAuthCredentials(null);
   }, [setIsLoading]);
 
-  const handleSave = async (e: Event) => {
+  const handleSave = async (e: React.MouseEvent<HTMLButtonElement>) => {
     if (internalMCPServer) {
       setIsLoading(true);
 
@@ -221,6 +222,7 @@ export function CreateMCPServerDialog({
             authorization={authorization}
             authCredentials={authCredentials}
             setAuthCredentials={setAuthCredentials}
+            setIsFormValid={setIsFormValid}
           />
         </DialogContainer>
         <DialogFooter
@@ -232,7 +234,15 @@ export function CreateMCPServerDialog({
           rightButtonProps={{
             label: authorization ? "Save and connect" : "Save",
             variant: "primary",
-            onClick: handleSave,
+            onClick: (e: React.MouseEvent<HTMLButtonElement>) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (isFormValid) {
+                void handleSave(e);
+                setIsOpen(false);
+              }
+            },
+            disabled: !isFormValid,
           }}
         />
       </DialogContent>

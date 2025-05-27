@@ -18,15 +18,18 @@ type MCPServerOauthConnexionProps = {
   authorization: AuthorizationInfo | null;
   authCredentials: OAuthCredentials | null;
   setAuthCredentials: (authCredentials: OAuthCredentials) => void;
+  setIsFormValid: (isFormValid: boolean) => void;
 };
 
 export function MCPServerOAuthConnexion({
   authorization,
   authCredentials,
   setAuthCredentials,
+  setIsFormValid,
 }: MCPServerOauthConnexionProps) {
   const [inputs, setInputs] = useState<OAuthCredentialInputs | null>(null);
 
+  // We fetch the credential inputs for this provider and use case.
   useEffect(() => {
     const fetchCredentialInputs = async () => {
       const credentialInputs =
@@ -45,6 +48,29 @@ export function MCPServerOAuthConnexion({
     };
     void fetchCredentialInputs();
   }, [authorization, setAuthCredentials]);
+
+  // We check if the form is valid.
+  useEffect(() => {
+    if (inputs && authCredentials) {
+      let isFormValid = true;
+      for (const [key, value] of Object.entries(authCredentials)) {
+        if (!isSupportedOAuthCredential(key)) {
+          // Can't happen but to make typescript happy.
+          continue;
+        }
+        if (!value) {
+          isFormValid = false;
+          break;
+        }
+        const input = inputs[key];
+        if (input && input.validator && !input.validator(value)) {
+          isFormValid = false;
+          break;
+        }
+      }
+      setIsFormValid(isFormValid);
+    }
+  }, [authCredentials, inputs, setIsFormValid]);
 
   return (
     authorization && (
@@ -73,12 +99,13 @@ export function MCPServerOAuthConnexion({
                 // Can't happen but to make typescript happy.
                 return null;
               }
+              const value = authCredentials?.[key] ?? "";
               return (
                 <div key={key} className="w-full">
                   <Label htmlFor={key}>{inputData.label}</Label>
                   <Input
                     id={key}
-                    value={authCredentials?.[key] ?? ""}
+                    value={value}
                     onChange={(e) =>
                       setAuthCredentials({
                         ...authCredentials,
@@ -86,6 +113,13 @@ export function MCPServerOAuthConnexion({
                       })
                     }
                     message={inputData.helpMessage}
+                    messageStatus={
+                      value.length > 0 &&
+                      inputData.validator &&
+                      !inputData.validator(value)
+                        ? "error"
+                        : undefined
+                    }
                   />
                 </div>
               );
