@@ -202,6 +202,8 @@ const NO_RETRY_AFTER_DELAY = -1;
 const MAX_RATE_LIMIT_RETRY_COUNT = 5;
 // If Confluence returns a retry-after header with a delay greater than this value, we cap it.
 const MAX_RETRY_AFTER_DELAY = 300_000; // 5 minutes
+// If Confluence indicates that we are approaching the rate limit, we delay by this value.
+const NEAR_RATE_LIMIT_DELAY = 120_000; // 2 minutes
 
 // Space types that we support indexing in Dust.
 export const CONFLUENCE_SUPPORTED_SPACE_TYPES = [
@@ -469,9 +471,8 @@ export class ConfluenceClient {
       );
     }
 
-    // When approaching the rate limit, we defer the handling of the backoff to Temporal.
-    // We have no accurate estimation of the time we should wait here, the goal here is more to warm up the exponential
-    // backoff to slow down the queries as soon as they approach the rate limit.
+    // When approaching the rate limit (20% of any budget remains), we fake a 429 to slow down
+    // the query pace. We delay by NEAR_RATE_LIMIT_DELAY ms.
     if (
       !bypassThrottle &&
       !this.ignoreNearRateLimit &&
@@ -487,7 +488,11 @@ export class ConfluenceClient {
         {
           type: "http_response_error",
           status: 429, // We fake a 429 here to make sure the error is caught in the cast_known_errors.
-          data: { url: `${this.apiUrl}${endpoint}`, response },
+          data: {
+            url: `${this.apiUrl}${endpoint}`,
+            response,
+            retryAfterMs: NEAR_RATE_LIMIT_DELAY,
+          },
         }
       );
     }
