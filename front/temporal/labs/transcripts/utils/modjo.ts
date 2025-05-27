@@ -340,7 +340,7 @@ export async function retrieveModjoTranscriptContent(
     localLogger.error(
       {
         fileId,
-        transcriptsConfigurationId: transcriptsConfiguration.id,
+        transcriptsConfigurationId: transcriptsConfiguration.sId,
       },
       "[processTranscriptActivity] Error fetching call from Modjo. Skipping."
     );
@@ -364,7 +364,7 @@ export async function retrieveModjoTranscriptContent(
     localLogger.error(
       {
         fileId,
-        transcriptsConfigurationId: transcriptsConfiguration.id,
+        transcriptsConfigurationId: transcriptsConfiguration.sId,
       },
       "[processTranscriptActivity] Call data not found from Modjo. Skipping."
     );
