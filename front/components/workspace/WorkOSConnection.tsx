@@ -73,7 +73,6 @@ export function WorkOSConnection({ owner }: WorkOSConnectionProps) {
     }
   }, [adminPortalUrl, shouldOpenPortal]);
 
-
   const getSelectedLabel = () => {
     const allOptions = [
       ...ADMIN_PANEL_OPTIONS.domain,

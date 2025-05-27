@@ -50,6 +50,8 @@ import type {
   WorkspaceType,
 } from "@app/types";
 import { Ok, sendUserOperationMessage } from "@app/types";
+import { DomainDataState } from "@workos-inc/node";
+import { createWorkOSOrganization } from "@app/lib/api/workos";
 
 const DEFAULT_PLAN_WHEN_NO_SUBSCRIPTION: PlanAttributes = FREE_NO_PLAN_DATA;
 const FREE_NO_PLAN_SUBSCRIPTION_ID = -1;
@@ -309,6 +311,30 @@ export class SubscriptionResource extends BaseResource<Subscription> {
           `Cannot subscribe to plan ${planCode}: new plan has less users allowed than currently in workspace.`
         );
       }
+    }
+
+    if (newPlan.isWorkOSAllowed) {
+      const r = createWorkOSOrganization({
+        workspace,
+      });
+
+      if (r.isErr()) {
+        throw new Error(
+          `Cannot subscribe to plan ${planCode}: error while creating WorkOS organization: ${r.error.message}`
+        );
+      }
+      const organization = await r.value;
+      
+      Workspace.update(
+        {
+          workOSOrganizationId: organization.id,
+        },
+        {
+          where: {
+            id: workspace.id,
+          },
+        }
+      );
     }
 
     // Proceed to the termination of the active subscription (if any) and creation of the new one
