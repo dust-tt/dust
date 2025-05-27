@@ -370,50 +370,85 @@ export class ConfluenceClient {
       // https://developer.atlassian.com/cloud/confluence/rate-limiting/
       //
       // Current strategy:
-      // 1. If Confluence provides a retry-after header, we honor it immediately
-      //    by sleeping in the client. This is not ideal but provides the most
-      //    accurate rate limit handling until we can use Temporal's nextRetryDelay.
-      // 2. If no retry-after header is provided, we throw a transient error and
-      //    let Temporal handle the retry with exponential backoff.
-      //
-      // Once we upgrade to Temporal SDK >= X.Y.Z, we should:
-      // - Remove the client-side sleep
-      // - Use ApplicationFailure.create() with nextRetryDelay
-      // - See: https://docs.temporal.io/develop/typescript/failure-detection#activity-next-retry-delay
+      // 1. If Confluence provides a retry-after header smaller than MAX_RETRY_AFTER_DELAY,
+      //    we honor it immediately by sleeping in the activity unless we have already retried
+      //    MAX_RATE_LIMIT_RETRY_COUNT times.
+      // 2. If Confluence provides a retry-after header greater than MAX_RETRY_AFTER_DELAY,
+      //    we throw a transient error with the right retryAfterMs to let Temporal replay the
+      //    current activity with the right delay.
+      // 3. If Confluence does not provide a retry-after header, we throw a transient error and
+      //    let Temporal retry in MAX_RETRY_AFTER_DELAY ms.
       if (response.status === 429) {
+        const delayMs = getRetryAfterDuration(response);
+
         statsDClient.increment("external.api.calls", 1, [
           "provider:confluence",
           "status:rate_limited",
         ]);
 
+        // Case 1: Attempt activity-side retry if conditions are met.
         if (retryCount < MAX_RATE_LIMIT_RETRY_COUNT) {
-          const delayMs = getRetryAfterDuration(response);
-          logger.warn(
-            {
-              endpoint,
-              delayMs,
-            },
-            "[Confluence] Rate limit hit"
-          );
-
-          // Only retry rate-limited requests when the server provides a Retry-After delay.
           if (
             delayMs !== NO_RETRY_AFTER_DELAY &&
             delayMs < MAX_RETRY_AFTER_DELAY
           ) {
+            logger.warn(
+              {
+                endpoint,
+                delayMs,
+                retryCount,
+              },
+              "[Confluence] Rate limit hit. Performing activity-side retry."
+            );
             await setTimeoutAsync(delayMs);
             return this.request(endpoint, codec, {
               retryCount: retryCount + 1,
-              bypassThrottle: bypassThrottle,
+              bypassThrottle,
             });
           }
         }
 
-        // Otherwise throw regular error to let downstream handle retries (e.g: Temporal).
+        // If activity-side retry was not performed, throw an error for Temporal to handle.
+        // Determine the appropriate retryAfterMs and log the reason.
+        let retryAfterMsForTemporal: number;
+        let logReason: string;
+
+        if (delayMs !== NO_RETRY_AFTER_DELAY) {
+          // Server provided a delay (relevant for Case 2 or if retries exhausted).
+          retryAfterMsForTemporal = delayMs;
+          if (retryCount >= MAX_RATE_LIMIT_RETRY_COUNT) {
+            logReason = `Activity retries exhausted. Server suggested delay ${delayMs}ms.`;
+          } else {
+            // delayMs >= MAX_RETRY_AFTER_DELAY, as activity-side retry wasn't done.
+            logReason =
+              `Server suggested delay ${delayMs}ms is >= MAX_RETRY_AFTER_DELAY ` +
+              `(${MAX_RETRY_AFTER_DELAY}ms).`;
+          }
+        } else {
+          // Server did not provide delay (Case 3 or retries exhausted without delay).
+          retryAfterMsForTemporal = MAX_RETRY_AFTER_DELAY;
+          if (retryCount >= MAX_RATE_LIMIT_RETRY_COUNT) {
+            logReason = "Activity retries exhausted. No server delay provided.";
+          } else {
+            logReason = "No server delay provided.";
+          }
+        }
+
+        logger.warn(
+          {
+            endpoint,
+            delayMs,
+            retryCount,
+            retryAfterMsForTemporal,
+          },
+          `[Confluence] Rate limit hit. Throwing for Temporal. Reason: ${logReason}`
+        );
+
         throw new ConfluenceClientError("Confluence API rate limit exceeded", {
           type: "http_response_error",
           status: response.status,
           data: { url: `${this.apiUrl}${endpoint}`, response },
+          retryAfterMs: retryAfterMsForTemporal,
         });
       }
 
