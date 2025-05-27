@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { Editor } from "@tiptap/react";
 
 import type {
   EditorSuggestion,
@@ -14,7 +15,10 @@ interface MentionDropdownState {
   triggerRect: DOMRect | null;
 }
 
-export const useMentionDropdown = (editorSuggestions: EditorSuggestions) => {
+export const useMentionDropdown = (
+  editorSuggestions: EditorSuggestions,
+  editorRef: React.MutableRefObject<Editor | null>
+) => {
   const [state, setState] = useState<MentionDropdownState>({
     isOpen: false,
     query: "",
@@ -26,6 +30,13 @@ export const useMentionDropdown = (editorSuggestions: EditorSuggestions) => {
   const commandRef = useRef<
     ((props: { id: string; label: string }) => void) | null
   >(null);
+
+  // Store the current suggestion range for text replacement
+  const rangeRef = useRef<{ from: number; to: number } | null>(null);
+
+  // Use refs to store current state for the onKeyDown handler to avoid stale closure
+  const currentStateRef = useRef(state);
+  currentStateRef.current = state;
 
   const updateSuggestions = useCallback(
     (query: string) => {
@@ -46,16 +57,35 @@ export const useMentionDropdown = (editorSuggestions: EditorSuggestions) => {
     [editorSuggestions]
   );
 
-  const selectSuggestion = useCallback((suggestion: EditorSuggestion) => {
-    if (commandRef.current) {
-      commandRef.current({ id: suggestion.id, label: suggestion.label });
-    }
-    setState((prev) => ({
-      ...prev,
-      isOpen: false,
-      triggerRect: null,
-    }));
-  }, []);
+  const selectSuggestion = useCallback(
+    (suggestion: EditorSuggestion) => {
+      const editor = editorRef.current;
+
+      if (editor && rangeRef.current) {
+        // Delete the typed text and insert the mention
+        editor
+          .chain()
+          .focus()
+          .deleteRange(rangeRef.current)
+          .insertContent({
+            type: "mention",
+            attrs: { id: suggestion.id, label: suggestion.label },
+          })
+          .insertContent(" ") // Add space after mention
+          .run();
+      } else if (commandRef.current) {
+        // Fallback to the original command if editor/range not available
+        commandRef.current({ id: suggestion.id, label: suggestion.label });
+      }
+
+      setState((prev) => ({
+        ...prev,
+        isOpen: false,
+        triggerRect: null,
+      }));
+    },
+    [editorRef]
+  );
 
   const setSelectedIndex = useCallback((index: number) => {
     setState((prev) => ({
@@ -94,6 +124,9 @@ export const useMentionDropdown = (editorSuggestions: EditorSuggestions) => {
             }
 
             commandRef.current = props.command;
+            // Store the range for text replacement
+            rangeRef.current = props.range;
+
             const rect = props.clientRect();
             if (!rect) {
               return;
@@ -111,6 +144,9 @@ export const useMentionDropdown = (editorSuggestions: EditorSuggestions) => {
               return;
             }
 
+            // Update the range for text replacement
+            rangeRef.current = props.range;
+
             const rect = props.clientRect();
             if (rect) {
               updateSuggestions(props.query || "");
@@ -122,6 +158,8 @@ export const useMentionDropdown = (editorSuggestions: EditorSuggestions) => {
           },
           onKeyDown: (props: any) => {
             const { event } = props;
+            // Use current state ref to avoid stale closure
+            const currentState = currentStateRef.current;
 
             switch (event.key) {
               case "ArrowUp":
@@ -147,8 +185,10 @@ export const useMentionDropdown = (editorSuggestions: EditorSuggestions) => {
               case "Enter":
               case "Tab":
                 event.preventDefault();
-                if (state.suggestions[state.selectedIndex]) {
-                  selectSuggestion(state.suggestions[state.selectedIndex]);
+                if (currentState.suggestions[currentState.selectedIndex]) {
+                  selectSuggestion(
+                    currentState.suggestions[currentState.selectedIndex]
+                  );
                 }
                 return true;
               case "Escape":
@@ -161,18 +201,12 @@ export const useMentionDropdown = (editorSuggestions: EditorSuggestions) => {
           onExit: () => {
             closeDropdown();
             commandRef.current = null;
+            rangeRef.current = null;
           },
         };
       },
     };
-  }, [
-    editorSuggestions,
-    state.selectedIndex,
-    state.suggestions,
-    updateSuggestions,
-    selectSuggestion,
-    closeDropdown,
-  ]);
+  }, [editorSuggestions, updateSuggestions, selectSuggestion, closeDropdown]);
 
   return {
     isOpen: state.isOpen,

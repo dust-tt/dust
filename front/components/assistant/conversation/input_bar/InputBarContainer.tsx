@@ -6,6 +6,7 @@ import {
   useSendNotification,
 } from "@dust-tt/sparkle";
 import { EditorContent } from "@tiptap/react";
+import { Editor } from "@tiptap/react";
 import React, {
   useCallback,
   useContext,
@@ -86,6 +87,9 @@ const InputBarContainer = ({
   const [selectedNode, setSelectedNode] =
     useState<DataSourceViewContentNode | null>(null);
 
+  // Create a ref to hold the editor instance
+  const editorRef = useRef<Editor | null>(null);
+
   const handleUrlDetected = useCallback(
     (candidate: UrlCandidate | NodeCandidate | null) => {
       if (candidate) {
@@ -95,7 +99,8 @@ const InputBarContainer = ({
     []
   );
 
-  const mentionDropdown = useMentionDropdown(suggestions);
+  // Pass the editor ref to the mention dropdown hook
+  const mentionDropdown = useMentionDropdown(suggestions, editorRef);
 
   const { editor, editorService } = useCustomEditor({
     suggestions,
@@ -106,13 +111,10 @@ const InputBarContainer = ({
     suggestionHandler: mentionDropdown.getSuggestionHandler(),
   });
 
-  // Update the hook with the actual editor once it's created
+  // Update the editor ref when the editor is created
   useEffect(() => {
-    if (editor) {
-      mentionDropdown.getSuggestionHandler();
-    }
-  }, [editor, mentionDropdown]);
-
+    editorRef.current = editor;
+  }, [editor]);
   useUrlHandler(editor, selectedNode, nodeOrUrlCandidate);
 
   const { spaces, isSpacesLoading } = useSpaces({ workspaceId: owner.sId });
