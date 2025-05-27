@@ -16,10 +16,12 @@ import React, {
 } from "react";
 
 import { AssistantPicker } from "@app/components/assistant/AssistantPicker";
+import { MentionDropdown } from "@app/components/assistant/conversation/input_bar/editor/MentionDropdown";
 import useAssistantSuggestions from "@app/components/assistant/conversation/input_bar/editor/useAssistantSuggestions";
 import type { CustomEditorProps } from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
 import useCustomEditor from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
 import useHandleMentions from "@app/components/assistant/conversation/input_bar/editor/useHandleMentions";
+import { useMentionDropdown } from "@app/components/assistant/conversation/input_bar/editor/useMentionDropdown";
 import useUrlHandler from "@app/components/assistant/conversation/input_bar/editor/useUrlHandler";
 import { InputBarAttachmentsPicker } from "@app/components/assistant/conversation/input_bar/InputBarAttachmentsPicker";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
@@ -93,13 +95,23 @@ const InputBarContainer = ({
     []
   );
 
+  const mentionDropdown = useMentionDropdown(suggestions);
+
   const { editor, editorService } = useCustomEditor({
     suggestions,
     onEnterKeyDown,
     resetEditorContainerSize,
     disableAutoFocus,
     onUrlDetected: handleUrlDetected,
+    suggestionHandler: mentionDropdown.getSuggestionHandler(),
   });
+
+  // Update the hook with the actual editor once it's created
+  useEffect(() => {
+    if (editor) {
+      mentionDropdown.getSuggestionHandler();
+    }
+  }, [editor, mentionDropdown]);
 
   useUrlHandler(editor, selectedNode, nodeOrUrlCandidate);
 
@@ -318,6 +330,16 @@ const InputBarContainer = ({
           }}
         />
       </div>
+
+      <MentionDropdown
+        suggestions={mentionDropdown.suggestions}
+        onSelect={mentionDropdown.onSelect}
+        isOpen={mentionDropdown.isOpen}
+        onOpenChange={mentionDropdown.onOpenChange}
+        triggerRect={mentionDropdown.triggerRect}
+        selectedIndex={mentionDropdown.selectedIndex}
+        onSelectedIndexChange={mentionDropdown.onSelectedIndexChange}
+      />
     </div>
   );
 };
