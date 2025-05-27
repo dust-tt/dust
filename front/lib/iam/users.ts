@@ -93,13 +93,15 @@ export async function maybeUpdateFromExternalUser(
   }
 }
 
-export async function createOrUpdateUser(
-  session: SessionWithUser
-): Promise<{ user: UserResource; created: boolean }> {
-  const { user: externalUser } = session;
-
-  const user = await fetchUserFromSession(session);
-
+export async function createOrUpdateUser({
+  platform,
+  user,
+  externalUser,
+}: {
+  platform: SessionWithUser["type"];
+  user: UserResource | null;
+  externalUser: ExternalUser;
+}): Promise<{ user: UserResource; created: boolean }> {
   if (user) {
     const updateArgs: { [key: string]: string } = {};
 
@@ -153,29 +155,14 @@ export async function createOrUpdateUser(
 
     const u = await UserResource.makeNew({
       sId: generateRandomModelSId(),
-      auth0Sub: session.type === "auth0" ? externalUser.sub : null,
-      workOSId: session.type === "workos" ? externalUser.sub : null,
+      auth0Sub: platform === "auth0" ? externalUser.sub : null,
+      workOSId: platform === "workos" ? externalUser.sub : null,
       provider: null, ///session.provider,
       username: externalUser.nickname,
       email: sanitizeString(externalUser.email),
       name: externalUser.name,
       firstName,
       lastName,
-    });
-
-    ServerSideTracking.trackSignup({
-      user: {
-        sId: u.sId,
-        id: u.id,
-        createdAt: u.createdAt.getTime(),
-        provider: u.provider,
-        username: u.username,
-        email: u.email,
-        firstName: u.firstName,
-        lastName: u.lastName,
-        image: u.imageUrl,
-        fullName: u.name,
-      },
     });
 
     return { user: u, created: true };

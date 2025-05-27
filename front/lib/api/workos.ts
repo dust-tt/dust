@@ -16,13 +16,13 @@ import config from "@app/lib/api/config";
 import type { RegionType } from "@app/lib/api/regions/config";
 import type { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
+import { createOrUpdateUser } from "@app/lib/iam/users";
 import { GroupResource } from "@app/lib/resources/group_resource";
-import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkOSPortalIntent } from "@app/lib/types/workos";
 import logger from "@app/logger/logger";
 import type { Result, WorkspaceType } from "@app/types";
-import { Err, Ok, sanitizeString } from "@app/types";
+import { Err, Ok } from "@app/types";
 
 let workos: WorkOS | null = null;
 
@@ -295,33 +295,21 @@ async function upsertUser({
   }
 
   const user = await UserResource.fetchByEmail(workOSUser.email);
-  if (!user) {
-    await UserResource.makeNew({
-      sId: generateRandomModelSId(),
-      auth0Sub: null,
-      workOSId: workOSUser.id,
-      provider: directory.type,
-      // TODO: not sure what the providerId is here, it does not seem to be used.
-      providerId: null,
-      name: workOSUser.lastName ?? workOSUser.email,
-      username: getUserNicknameFromEmail(workOSUser.email),
-      email: sanitizeString(workOSUser.email),
-      firstName: workOSUser.firstName ?? "",
-      lastName: workOSUser.lastName ?? null,
-      imageUrl: null,
-    });
-    localLogger.info("[WorkOS] User successfully created.");
-  } else {
-    await user.updateInfo(
-      getUserNicknameFromEmail(workOSUser.email),
-      workOSUser.firstName || user.firstName,
-      workOSUser.lastName || user.lastName,
-      workOSUser.email
-    );
-    await user.updateWorkOSId({ workOSId: workOSUser.id });
+  const externalUser = {
+    sid: workOSUser.id,
+    email: workOSUser.email,
+    email_verified: true,
+    name: workOSUser.email ?? "",
+    nickname: getUserNicknameFromEmail(workOSUser.email) ?? "",
+    sub: workOSUser.id,
+  };
 
-    localLogger.info("[WorkOS] User successfully updated.");
-  }
+  await createOrUpdateUser({
+    platform: "workos",
+    user,
+    externalUser,
+  });
+  localLogger.info("[WorkOS] User successfully created or updated.");
 }
 
 async function upsertGroup(
