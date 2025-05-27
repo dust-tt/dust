@@ -31,7 +31,7 @@ const useInputBarStore = create<InputBarState & { actions: InputBarActions }>()(
     {
       name: "input-bar-storage",
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      partialize: ({ actions, ...state }) => ({ ...state }),
+      partialize: ({ actions, ...state }) => state,
     }
   )
 );
