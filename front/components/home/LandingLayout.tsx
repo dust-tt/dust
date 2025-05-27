@@ -20,7 +20,6 @@ import { MobileNavigation } from "@app/components/home/menu/MobileNavigation";
 // import Particles, { shapeNamesArray } from "@app/components/home/Particles";
 import ScrollingHeader from "@app/components/home/ScrollingHeader";
 import { classNames } from "@app/lib/utils";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 
 export interface LandingLayoutProps {
   shape: number;
