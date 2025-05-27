@@ -11,9 +11,7 @@ type InputBarActions = {
   updateConversation: (id: string, content: JSONContent) => void;
 };
 
-export const useInputBarStore = create<
-  InputBarState & { actions: InputBarActions }
->()(
+const useInputBarStore = create<InputBarState & { actions: InputBarActions }>()(
   persist(
     (set) => ({
       conversations: {},
