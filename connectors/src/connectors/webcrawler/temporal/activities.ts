@@ -770,7 +770,41 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
     "Webcrawler activity started"
   );
 
-  const stats = await crawler.run([rootUrl]);
+  let stats;
+  try {
+    stats = await crawler.run([rootUrl]);
+  } catch (error: unknown) {
+    // Check if this is a URL validation error from the crawler
+    if (
+      error &&
+      typeof error === "object" &&
+      "errors" in error &&
+      Array.isArray((error as { errors: unknown[] }).errors) &&
+      (error as { errors: unknown[] }).errors.some(
+        (e: unknown) =>
+          Array.isArray(e) &&
+          e[1]?.errors?.some(
+            (err: unknown) =>
+              Array.isArray(err) &&
+              err[0] === "url" &&
+              err[1]?.constraint === "s.string.url"
+          )
+      )
+    ) {
+      childLogger.error(
+        {
+          url: rootUrl,
+          configId: webCrawlerConfig.id,
+          error: error,
+        },
+        "Invalid URL format detected"
+      );
+      await syncFailed(connector.id, "webcrawling_error");
+      return;
+    }
+
+    throw error;
+  }
 
   await crawler.teardown();
 
