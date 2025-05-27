@@ -335,11 +335,9 @@ async function upsertGroup(
   const group = await GroupResource.fetchByWorkOSGroupId(auth, workOSGroup.id);
 
   if (!group) {
-    await GroupResource.makeNew({
-      name: workOSGroup.name,
-      workspaceId: workspace.id,
-      workOSGroupId: workOSGroup.id,
-      kind: "provisioned",
+    await GroupResource.makeNewProvisionedGroup({
+      workspace,
+      workOSGroup,
     });
     localLogger.info("[WorkOS] Group successfully created.");
   }

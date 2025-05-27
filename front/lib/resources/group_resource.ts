@@ -1,3 +1,4 @@
+import type { DirectoryGroup as WorkOSGroup } from "@workos-inc/node";
 import { assert } from "console";
 import type {
   Attributes,
@@ -285,6 +286,21 @@ export class GroupResource extends BaseResource<GroupModel> {
       systemGroup,
       globalGroup,
     };
+  }
+
+  static async makeNewProvisionedGroup({
+    workspace,
+    workOSGroup,
+  }: {
+    workspace: LightWorkspaceType;
+    workOSGroup: WorkOSGroup;
+  }) {
+    await this.makeNew({
+      kind: "provisioned",
+      name: workOSGroup.name,
+      workOSGroupId: workOSGroup.id,
+      workspaceId: workspace.id,
+    });
   }
 
   // sId
