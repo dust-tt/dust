@@ -37,6 +37,7 @@ export function ConnectMCPServerDialog({
   const sendNotification = useSendNotification();
   const [authCredentials, setAuthCredentials] =
     useState<OAuthCredentials | null>(null);
+  const [isFormValid, setIsFormValid] = useState(true);
 
   const { createMCPServerConnection } = useCreateMCPServerConnection({
     owner,
@@ -101,6 +102,7 @@ export function ConnectMCPServerDialog({
             authorization={mcpServer?.authorization ?? null}
             authCredentials={authCredentials}
             setAuthCredentials={setAuthCredentials}
+            setIsFormValid={setIsFormValid}
           />
         </DialogContainer>
         <DialogFooter
@@ -112,7 +114,15 @@ export function ConnectMCPServerDialog({
           rightButtonProps={{
             label: mcpServer?.authorization ? "Save and connect" : "Save",
             variant: "primary",
-            onClick: handleSave,
+            onClick: (e: React.MouseEvent<HTMLButtonElement>) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (isFormValid) {
+                void handleSave();
+                setIsOpen(false);
+              }
+            },
+            disabled: !isFormValid,
           }}
         />
       </DialogContent>
