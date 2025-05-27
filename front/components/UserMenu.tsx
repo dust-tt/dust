@@ -157,7 +157,7 @@ export function UserMenu({
             icon={LogoutIcon}
             onClick={(e: React.MouseEvent<HTMLDivElement>) => {
               if (e.metaKey) {
-                // Cmd + click leads to Workos logout
+                // Command + click (Mac) or Control + click (Windows/Linux) leads to WorkOS logout.
                 window.location.href = "/api/workos/logout";
               } else {
                 window.location.href = "/api/auth/logout";
