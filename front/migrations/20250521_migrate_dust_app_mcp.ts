@@ -1,4 +1,5 @@
 import fs from "fs";
+import path from "path";
 import { Op } from "sequelize";
 
 import { ASSISTANT_BUILDER_DUST_APP_RUN_ACTION_CONFIGURATION_DEFAULT_NAME } from "@app/components/assistant_builder/types";
@@ -218,6 +219,11 @@ makeScript(
       });
     }
 
+    const migrationDir = "migration_dust_app_run";
+    if (execute) {
+      fs.mkdirSync(migrationDir, { recursive: true });
+    }
+
     let revertSql = "";
     for (const workspace of workspaces) {
       const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
@@ -229,7 +235,10 @@ makeScript(
 
       if (execute) {
         fs.writeFileSync(
-          `${now}_dust_app_run_to_mcp_revert_${workspace.sId}.sql`,
+          path.join(
+            migrationDir,
+            `${now}_dust_app_run_to_mcp_revert_${workspace.sId}.sql`
+          ),
           workspaceRevertSql
         );
       }
@@ -237,7 +246,10 @@ makeScript(
     }
 
     if (execute) {
-      fs.writeFileSync(`${now}_dust_app_run_to_mcp_revert_all.sql`, revertSql);
+      fs.writeFileSync(
+        path.join(migrationDir, `${now}_dust_app_run_to_mcp_revert_all.sql`),
+        revertSql
+      );
     }
   }
 );
