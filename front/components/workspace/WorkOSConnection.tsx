@@ -78,23 +78,15 @@ export function WorkOSSyncButton({ owner }: WorkOSSyncButtonProps) {
     setIsLoading(false);
   };
 
-  return owner.workOSOrganizationId ? (
-    <Button
-      variant="primary"
-      onClick={handleSync}
-      disabled={isLoading}
-      label={isLoading ? "Syncing..." : "Sync WorkOS Directories & Groups"}
-    />
-  ) : (
-    <Button
-      variant="primary"
-      disabled
-      label={
-        isLoading
-          ? "Syncing..."
-          : "Your workspace is not linked to a WorkOS organization."
-      }
-    />
+  return (
+    owner.workOSOrganizationId && (
+      <Button
+        variant="primary"
+        onClick={handleSync}
+        disabled={isLoading}
+        label={isLoading ? "Syncing..." : "Sync WorkOS Directories & Groups"}
+      />
+    )
   );
 }
 
