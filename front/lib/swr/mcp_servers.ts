@@ -408,42 +408,51 @@ export function useDeleteMCPServerConnection({
 
   const sendNotification = useSendNotification();
 
-  const deleteMCPServerConnection = async ({
-    connection,
-  }: {
-    connection: MCPServerConnectionType;
-  }): Promise<{ success: boolean }> => {
-    const response = await fetch(
-      `/api/w/${owner.sId}/mcp/connections/${connection.connectionType}/${connection.sId}`,
-      {
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-        },
+  const deleteMCPServerConnection = useCallback(
+    async ({
+      connection,
+    }: {
+      connection: MCPServerConnectionType;
+    }): Promise<{ success: boolean }> => {
+      const response = await fetch(
+        `/api/w/${owner.sId}/mcp/connections/${connection.connectionType}/${connection.sId}`,
+        {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      if (response.ok) {
+        sendNotification({
+          type: "success",
+          title: "Provider disconnected",
+          description:
+            "Your capability provider has been disconnected successfully.",
+        });
+        if (connection.connectionType === "workspace") {
+          void mutateWorkspaceConnections();
+        } else if (connection.connectionType === "personal") {
+          void mutatePersonalConnections();
+        }
+      } else {
+        sendNotification({
+          type: "error",
+          title: "Failed to disconnect provider",
+          description:
+            "Could not disconnect to your provider. Please try again.",
+        });
       }
-    );
-    if (response.ok) {
-      sendNotification({
-        type: "success",
-        title: "Provider disconnected",
-        description:
-          "Your capability provider has been disconnected successfully.",
-      });
-      if (connection.connectionType === "workspace") {
-        void mutateWorkspaceConnections();
-      } else if (connection.connectionType === "personal") {
-        void mutatePersonalConnections();
-      }
-    } else {
-      sendNotification({
-        type: "error",
-        title: "Failed to disconnect provider",
-        description: "Could not disconnect to your provider. Please try again.",
-      });
-    }
 
-    return response.json();
-  };
+      return response.json();
+    },
+    [
+      owner.sId,
+      sendNotification,
+      mutateWorkspaceConnections,
+      mutatePersonalConnections,
+    ]
+  );
 
   return { deleteMCPServerConnection };
 }
