@@ -61,11 +61,28 @@ export default function Welcome({
   const router = useRouter();
   const [firstName, setFirstName] = useState<string>(user.firstName);
   const [lastName, setLastName] = useState<string>(user.lastName || "");
+  const [team, setTeam] = useState<string>("");
   const [isFormValid, setIsFormValid] = useState<boolean>(false);
 
+  const teams = [
+    "customer_success",
+    "customer_support",
+    "data",
+    "design",
+    "engineering",
+    "finance",
+    "people",
+    "legal",
+    "marketing",
+    "operations",
+    "product",
+    "sales",
+    "other",
+  ];
+
   useEffect(() => {
-    setIsFormValid(firstName !== "" && lastName !== "");
-  }, [firstName, lastName]);
+    setIsFormValid(firstName !== "" && lastName !== "" && teams.includes(team));
+  }, [firstName, lastName, team]);
 
   const { submit, isSubmitting } = useSubmitFunction(async () => {
     const updateUserFullNameRes = await fetch("/api/user", {
@@ -76,6 +93,13 @@ export default function Welcome({
       body: JSON.stringify({ firstName, lastName }),
     });
     if (updateUserFullNameRes.ok) {
+      await fetch("/api/user/metadata/team", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ value: team }),
+      });
     }
     await router.push(
       `/w/${owner.sId}/assistant/new?welcome=true${
