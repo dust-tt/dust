@@ -16,7 +16,7 @@ import type { ConnectorResource } from "@connectors/resources/connector_resource
 import type { ModelId } from "@connectors/types";
 import { getOAuthConnectionAccessToken } from "@connectors/types";
 
-const PAGE_FETCH_LIMIT = 250;
+const PAGE_FETCH_LIMIT = 100;
 
 export async function getConfluenceCloudInformation(accessToken: string) {
   const client = new ConfluenceClient(accessToken);
