@@ -250,7 +250,6 @@ const useCustomEditor = ({
     extensions,
     content,
     onUpdate: ({ editor }) => {
-      console.log(updateConversation);
       updateConversation(conversationId, editor.getJSON());
     },
   });

@@ -18,13 +18,16 @@ export const useInputBarStore = create<
     (set) => ({
       conversations: {},
       actions: {
-        updateConversation: (id, content) =>
-          set((prevState) => ({
-            conversations: {
-              ...prevState.conversations,
-              [id]: content,
-            },
-          })),
+        updateConversation: (id, content) => {
+          if (id !== "new") {
+            set((prevState) => ({
+              conversations: {
+                ...prevState.conversations,
+                [id]: content,
+              },
+            }));
+          }
+        },
       },
     }),
     {
