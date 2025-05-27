@@ -101,9 +101,16 @@ export function getMcpServerViewDisplayName(
   view: MCPServerViewType,
   action?: AssistantBuilderActionConfiguration
 ) {
+  return getMcpServerDisplayName(view.server, action);
+}
+
+export function getMcpServerDisplayName(
+  server: MCPServerType,
+  action?: AssistantBuilderActionConfiguration
+) {
   // Unreleased internal servers are displayed with a suffix in the UI.
-  const res = getInternalMCPServerNameAndWorkspaceId(view.server.sId);
-  let displayName = asDisplayName(view.server.name);
+  const res = getInternalMCPServerNameAndWorkspaceId(server.sId);
+  let displayName = asDisplayName(server.name);
 
   if (res.isOk()) {
     if (INTERNAL_MCP_SERVERS[res.value.name].flag != null) {

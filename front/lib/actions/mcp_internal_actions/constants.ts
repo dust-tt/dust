@@ -176,6 +176,10 @@ export const INTERNAL_MCP_SERVERS: Record<
     id: 15,
     availability: "manual",
     flag: "gmail_tool",
+    tools_stakes: {
+      get_drafts: "never_ask",
+      create_draft: "low",
+    },
   },
 
   // Dev

@@ -4,6 +4,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { keyBy } from "lodash";
 import { useCallback, useMemo, useState } from "react";
 
+import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { MCPServerConnectionType } from "@app/lib/resources/mcp_server_connection_resource";
@@ -16,7 +17,6 @@ import { useSpaces } from "@app/lib/swr/spaces";
 import { useDeleteMetadata } from "@app/lib/swr/user";
 import { classNames } from "@app/lib/utils";
 import type { LightWorkspaceType } from "@app/types";
-import { asDisplayName } from "@app/types";
 
 interface UserTableRow {
   id: string;
@@ -120,7 +120,7 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
               {getAvatar(row.original.serverView.server)}
               <div className="flex flex-grow flex-col gap-0 overflow-hidden truncate">
                 <div className="truncate text-sm font-semibold text-foreground dark:text-foreground-night">
-                  {asDisplayName(row.original.serverView.server.name)}
+                  {getMcpServerViewDisplayName(row.original.serverView)}
                 </div>
                 <div className="truncate text-sm text-muted-foreground dark:text-muted-foreground-night">
                   {row.original.serverView.server.description}
