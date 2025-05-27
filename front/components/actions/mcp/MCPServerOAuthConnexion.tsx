@@ -7,15 +7,17 @@ import {
 import { useEffect, useState } from "react";
 
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata";
+import type { OAuthCredentialInputs, OAuthCredentials } from "@app/types";
 import {
-  getProviderRequiredAuthCredentials,
+  getProviderRequiredOAuthCredentialInputs,
+  isSupportedOAuthCredential,
   OAUTH_PROVIDER_NAMES,
 } from "@app/types";
 
 type MCPServerOauthConnexionProps = {
   authorization: AuthorizationInfo | null;
-  authCredentials: Record<string, string> | null;
-  setAuthCredentials: (authCredentials: Record<string, string>) => void;
+  authCredentials: OAuthCredentials | null;
+  setAuthCredentials: (authCredentials: OAuthCredentials) => void;
 };
 
 export function MCPServerOAuthConnexion({
@@ -23,39 +25,35 @@ export function MCPServerOAuthConnexion({
   authCredentials,
   setAuthCredentials,
 }: MCPServerOauthConnexionProps) {
-  const [requiredCredentials, setRequiredCredentials] = useState<Record<
-    string,
-    { label: string; value: string | number | undefined }
-  > | null>(null);
+  const [inputs, setInputs] = useState<OAuthCredentialInputs | null>(null);
 
   useEffect(() => {
-    const fetchCredentials = async () => {
-      const credentials =
-        await getProviderRequiredAuthCredentials(authorization);
-      setRequiredCredentials(credentials);
+    const fetchCredentialInputs = async () => {
+      const credentialInputs =
+        await getProviderRequiredOAuthCredentialInputs(authorization);
+      setInputs(credentialInputs);
       // Set the auth credentials to the values in the credentials object
       // that already have a value as we will not ask the user for these values.
-      if (credentials) {
+      if (credentialInputs) {
         setAuthCredentials(
-          Object.entries(credentials).reduce(
+          Object.entries(credentialInputs).reduce(
             (acc, [key, { value }]) => ({ ...acc, [key]: value }),
             {}
           )
         );
       }
     };
-    void fetchCredentials();
+    void fetchCredentialInputs();
   }, [authorization, setAuthCredentials]);
 
   return (
     authorization && (
       <div className="flex flex-col items-center gap-2">
-        {requiredCredentials ? (
+        {inputs ? (
           <>
             <span className="text-500 w-full font-semibold">
               These tools require admin authentication with{" "}
-              {OAUTH_PROVIDER_NAMES[authorization.provider]}, we need the
-              following information to set them up. Please follow{" "}
+              {OAUTH_PROVIDER_NAMES[authorization.provider]}. Please follow{" "}
               <a
                 href="https://docs.dust.tt/docs/salesforce"
                 className="text-highlight-600"
@@ -66,10 +64,18 @@ export function MCPServerOAuthConnexion({
               to learn how to set up a Salesforce app to get the Client ID and
               Client Secret.
             </span>
-            {Object.entries(requiredCredentials).map(([key, value]) =>
-              requiredCredentials[key].value ? null : (
+            {Object.entries(inputs).map(([key, inputData]) => {
+              if (inputData.value) {
+                // If the credential is already set, we don't need to ask the user for it.
+                return null;
+              }
+              if (!isSupportedOAuthCredential(key)) {
+                // Can't happen but to make typescript happy.
+                return null;
+              }
+              return (
                 <div key={key} className="w-full">
-                  <Label htmlFor={key}>{value.label}</Label>
+                  <Label htmlFor={key}>{inputData.label}</Label>
                   <Input
                     id={key}
                     value={authCredentials?.[key] ?? ""}
@@ -79,10 +85,11 @@ export function MCPServerOAuthConnexion({
                         [key]: e.target.value,
                       })
                     }
+                    message={inputData.helpMessage}
                   />
                 </div>
-              )
-            )}
+              );
+            })}
           </>
         ) : (
           <Label className="self-start">
