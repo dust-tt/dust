@@ -59,7 +59,7 @@ export interface InputBarContainerProps {
   fileUploaderService: FileUploaderService;
   onNodeSelect?: (node: DataSourceViewContentNode) => void;
   attachedNodes: DataSourceViewContentNode[];
-  conversationId: string;
+  conversationId: string | null;
 }
 
 const InputBarContainer = ({

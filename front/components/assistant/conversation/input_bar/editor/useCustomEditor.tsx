@@ -199,7 +199,7 @@ export interface CustomEditorProps {
   resetEditorContainerSize: () => void;
   disableAutoFocus: boolean;
   onUrlDetected?: (candidate: UrlCandidate | NodeCandidate | null) => void;
-  conversationId: string;
+  conversationId: string | null;
 }
 
 const useCustomEditor = ({

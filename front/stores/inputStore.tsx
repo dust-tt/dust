@@ -8,7 +8,7 @@ type InputBarState = {
 };
 
 type InputBarActions = {
-  updateConversation: (id: string, content: JSONContent) => void;
+  updateConversation: (id: string | null, content: JSONContent) => void;
 };
 
 const useInputBarStore = create<InputBarState & { actions: InputBarActions }>()(
@@ -17,7 +17,7 @@ const useInputBarStore = create<InputBarState & { actions: InputBarActions }>()(
       conversations: {},
       actions: {
         updateConversation: (id, content) => {
-          if (id !== "new") {
+          if (id !== null) {
             set((prevState) => ({
               conversations: {
                 ...prevState.conversations,
@@ -36,10 +36,10 @@ const useInputBarStore = create<InputBarState & { actions: InputBarActions }>()(
   )
 );
 
-export const useChatDraft = (cId: string) => {
+export const useChatDraft = (cId: string | null) => {
   return useInputBarStore(
     useShallow((state) => ({
-      conversation: state.conversations[cId],
+      conversation: cId !== null ? state.conversations[cId] : null,
       updateConversation: state.actions.updateConversation,
     }))
   );
