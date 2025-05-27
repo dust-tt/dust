@@ -63,10 +63,10 @@ export default function Welcome({
   const router = useRouter();
   const [firstName, setFirstName] = useState<string>(user.firstName);
   const [lastName, setLastName] = useState<string>(user.lastName || "");
-  const [team, setTeam] = useState<string>("");
+  const [jobType, setJobType] = useState<string>("");
   const [isFormValid, setIsFormValid] = useState<boolean>(false);
 
-  const teams = [
+  const jobTypes = [
     { value: "customer_success", label: "Customer Success" },
     { value: "customer_support", label: "Customer Support" },
     { value: "data", label: "Data" },
@@ -84,9 +84,11 @@ export default function Welcome({
 
   useEffect(() => {
     setIsFormValid(
-      firstName !== "" && lastName !== "" && teams.some((t) => t.value === team)
+      firstName !== "" &&
+        lastName !== "" &&
+        jobTypes.some((jt) => jt.value === jobType)
     );
-  }, [firstName, lastName, team]);
+  }, [firstName, lastName, jobType]);
 
   const { submit, isSubmitting } = useSubmitFunction(async () => {
     const updateUserFullNameRes = await fetch("/api/user", {
@@ -97,12 +99,12 @@ export default function Welcome({
       body: JSON.stringify({ firstName, lastName }),
     });
     if (updateUserFullNameRes.ok) {
-      await fetch("/api/user/metadata/team", {
+      await fetch("/api/user/metadata/jobType", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ value: team }),
+        body: JSON.stringify({ value: jobType }),
       });
     }
     await router.push(
@@ -162,7 +164,7 @@ export default function Welcome({
         </div>
         <div>
           <p className="pb-2 text-muted-foreground">
-            Pick your team to get relevant feature updates:
+            Pick your job type to get relevant feature updates:
           </p>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
             <DropdownMenu>
@@ -171,18 +173,22 @@ export default function Welcome({
                   variant="outline"
                   className="justify-between text-muted-foreground"
                   label={
-                    teams.find((t) => t.value === team)?.label || "Select team"
+                    jobTypes.find((t) => t.value === jobType)?.label ||
+                    "Select job type"
                   }
                   isSelect={true}
                 />
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-[var(--radix-dropdown-menu-trigger-width)]">
-                <DropdownMenuRadioGroup value={team} onValueChange={setTeam}>
-                  {teams.map((teamOption) => (
+                <DropdownMenuRadioGroup
+                  value={jobType}
+                  onValueChange={setJobType}
+                >
+                  {jobTypes.map((jobTypeOption) => (
                     <DropdownMenuRadioItem
-                      key={teamOption.value}
-                      value={teamOption.value}
-                      label={teamOption.label}
+                      key={jobTypeOption.value}
+                      value={jobTypeOption.value}
+                      label={jobTypeOption.label}
                     />
                   ))}
                 </DropdownMenuRadioGroup>
