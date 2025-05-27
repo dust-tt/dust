@@ -859,33 +859,7 @@ const ExtensionWorkspaceSchema = WorkspaceSchema.extend({
 });
 
 const UserProviderSchema = FlexibleEnumSchema<
-  // Legacy ones.
-  | "auth0"
-  | "github"
-  | "google"
-  | "okta"
-  | "samlp"
-  | "waad"
-  // Type copied from WorkOS.
-  | "azure scim v2.0"
-  | "bamboohr"
-  | "breathe hr"
-  | "cezanne hr"
-  | "cyberark scim v2.0"
-  | "fourth hr"
-  | "gsuite directory"
-  | "generic scim v2.0"
-  | "hibob"
-  | "jump cloud scim v2.0"
-  | "okta scim v2.0"
-  | "onelogin scim v2.0"
-  | "people hr"
-  | "personio"
-  | "pingfederate scim v2.0"
-  | "rippling scim v2.0"
-  | "sftp"
-  | "sftp workday"
-  | "workday"
+  "auth0" | "github" | "google" | "okta" | "samlp" | "waad"
 >().nullable();
 
 const UserSchema = z.object({

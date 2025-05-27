@@ -78,8 +78,7 @@ export type UserProviderType =
   | "okta"
   | "samlp"
   | "waad"
-  | null
-  | DirectoryType;
+  | null;
 
 export type UserType = {
   sId: string;
