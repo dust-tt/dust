@@ -1,11 +1,27 @@
-import { useCallback, useEffect, useRef, useState } from "react";
 import type { Editor } from "@tiptap/react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import type {
   EditorSuggestion,
   EditorSuggestions,
 } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
 import { filterSuggestions } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
+
+interface CommandFunction {
+  (props: { id: string; label: string }): void;
+}
+
+interface Range {
+  from: number;
+  to: number;
+}
+
+interface SuggestionProps {
+  command: CommandFunction;
+  range: Range;
+  query: string;
+  clientRect: () => DOMRect | null;
+}
 
 interface MentionDropdownState {
   isOpen: boolean;
@@ -27,12 +43,10 @@ export const useMentionDropdown = (
     triggerRect: null,
   });
 
-  const commandRef = useRef<
-    ((props: { id: string; label: string }) => void) | null
-  >(null);
+  const commandRef = useRef<CommandFunction | null>(null);
 
   // Store the current suggestion range for text replacement
-  const rangeRef = useRef<{ from: number; to: number } | null>(null);
+  const rangeRef = useRef<Range | null>(null);
 
   // Use refs to store current state for the onKeyDown handler to avoid stale closure
   const currentStateRef = useRef(state);
@@ -109,7 +123,6 @@ export const useMentionDropdown = (
     }
   }, [editorSuggestions, state.isOpen, state.query, updateSuggestions]);
 
-  // Create a custom suggestion handler that replaces the tippy-based one
   const getSuggestionHandler = useCallback(() => {
     return {
       items: ({ query }: { query: string }) => {
@@ -118,7 +131,7 @@ export const useMentionDropdown = (
       },
       render: () => {
         return {
-          onStart: (props: any) => {
+          onStart: (props: SuggestionProps) => {
             if (!props.clientRect) {
               return;
             }
@@ -139,7 +152,7 @@ export const useMentionDropdown = (
               triggerRect: rect,
             }));
           },
-          onUpdate: (props: any) => {
+          onUpdate: (props: SuggestionProps) => {
             if (!props.clientRect) {
               return;
             }
@@ -158,7 +171,6 @@ export const useMentionDropdown = (
           },
           onKeyDown: (props: any) => {
             const { event } = props;
-            // Use current state ref to avoid stale closure
             const currentState = currentStateRef.current;
 
             switch (event.key) {
