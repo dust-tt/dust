@@ -38,7 +38,7 @@ export function UserMenu({
   owner: WorkspaceType;
 }) {
   const router = useRouter();
-  const { featureFlags } = useFeatureFlags({
+  const { featureFlags, hasFeature } = useFeatureFlags({
     workspaceId: owner.sId,
   });
 
@@ -151,22 +151,24 @@ export function UserMenu({
           href={`/w/${owner.sId}/me`}
         />
 
-        {document.cookie.includes("sessionType=auth0") && (
+        {!hasFeature("workos") && (
           <DropdownMenuItem
+            label="Sign&nbsp;out"
+            icon={LogoutIcon}
             onClick={() => {
               window.location.href = "/api/auth/logout";
             }}
-            icon={LogoutIcon}
-            label="Sign&nbsp;out Auth0"
           />
         )}
-        {document.cookie.includes("sessionType=workos") && (
+        {hasFeature("workos") && (
           <DropdownMenuItem
             onClick={() => {
-              window.location.href = "/api/workos/logout";
+              document.cookie.includes("sessionType=workos")
+                ? (window.location.href = "/api/workos/logout")
+                : (window.location.href = "/api/auth/logout");
             }}
             icon={LogoutIcon}
-            label="Sign&nbsp;out WorkOS"
+            label="Sign&nbsp;out"
           />
         )}
 
