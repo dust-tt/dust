@@ -2,8 +2,7 @@ import * as t from "io-ts";
 
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata";
 import { getPKCEConfig } from "@app/lib/utils/pkce";
-
-import { assertNever } from "../shared/utils/assert_never";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export const OAUTH_USE_CASES = [
   "connection",
@@ -50,15 +49,17 @@ export const OAUTH_PROVIDER_NAMES: Record<OAuthProvider, string> = {
 };
 
 export const getProviderAdditionalClientSideAuthCredentials = async (
-  provider: OAuthProvider,
-  useCase?: string
+  authentication: AuthorizationInfo | null
 ): Promise<Record<
   string,
   { label: string; value: string | number | undefined }
 > | null> => {
-  switch (provider) {
+  if (!authentication) {
+    return null;
+  }
+  switch (authentication.provider) {
     case "salesforce":
-      if (useCase === "personal_actions") {
+      if (authentication.use_case === "personal_actions") {
         const { code_verifier, code_challenge } = await getPKCEConfig();
         return {
           code_verifier: { label: "Code verifier", value: code_verifier },
@@ -79,7 +80,7 @@ export const getProviderAdditionalClientSideAuthCredentials = async (
     case "intercom":
       return null;
     default:
-      assertNever(provider);
+      assertNever(authentication.provider);
   }
 };
 
@@ -97,11 +98,7 @@ export const getProviderRequiredAuthCredentials = async (
     case "salesforce":
       if (authentication.use_case === "personal_actions") {
         const additionalCredentials =
-          await getProviderAdditionalClientSideAuthCredentials(
-            authentication.provider,
-            authentication.use_case
-          );
-
+          await getProviderAdditionalClientSideAuthCredentials(authentication);
         return {
           client_id: { label: "OAuth client Id", value: undefined },
           client_secret: { label: "OAuth client secret", value: undefined },
@@ -132,10 +129,7 @@ export const getProviderRequiredAuthCredentials = async (
     case "github":
     case "google_drive":
     case "intercom":
-      return await getProviderAdditionalClientSideAuthCredentials(
-        authentication.provider,
-        authentication.use_case
-      );
+      return getProviderAdditionalClientSideAuthCredentials(authentication);
     default:
       assertNever(authentication.provider);
   }
