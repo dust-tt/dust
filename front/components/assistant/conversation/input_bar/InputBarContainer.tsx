@@ -59,6 +59,7 @@ export interface InputBarContainerProps {
   fileUploaderService: FileUploaderService;
   onNodeSelect?: (node: DataSourceViewContentNode) => void;
   attachedNodes: DataSourceViewContentNode[];
+  conversationId: string;
 }
 
 const InputBarContainer = ({
@@ -74,6 +75,7 @@ const InputBarContainer = ({
   fileUploaderService,
   onNodeSelect,
   attachedNodes,
+  conversationId,
 }: InputBarContainerProps) => {
   const suggestions = useAssistantSuggestions(agentConfigurations, owner);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -99,6 +101,7 @@ const InputBarContainer = ({
     resetEditorContainerSize,
     disableAutoFocus,
     onUrlDetected: handleUrlDetected,
+    conversationId,
   });
 
   useUrlHandler(editor, selectedNode, nodeOrUrlCandidate);

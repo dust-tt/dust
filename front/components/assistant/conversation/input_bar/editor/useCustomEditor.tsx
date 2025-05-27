@@ -18,6 +18,7 @@ import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isSubmitMessageKey } from "@app/lib/keymaps";
 import { isMobile } from "@app/lib/utils";
 
+import { useChatDraft } from "../inputStore";
 import { URLStorageExtension } from "./extensions/URLStorageExtension";
 
 export interface EditorMention {
@@ -198,6 +199,7 @@ export interface CustomEditorProps {
   resetEditorContainerSize: () => void;
   disableAutoFocus: boolean;
   onUrlDetected?: (candidate: UrlCandidate | NodeCandidate | null) => void;
+  conversationId: string;
 }
 
 const useCustomEditor = ({
@@ -206,7 +208,11 @@ const useCustomEditor = ({
   suggestions,
   disableAutoFocus,
   onUrlDetected,
+  conversationId,
 }: CustomEditorProps) => {
+  const { conversation: content, updateConversation } =
+    useChatDraft(conversationId);
+
   const extensions = [
     StarterKit.configure({
       hardBreak: false, // Disable the built-in Shift+Enter.
@@ -242,6 +248,11 @@ const useCustomEditor = ({
   const editor = useEditor({
     autofocus: disableAutoFocus ? false : "end",
     extensions,
+    content,
+    onUpdate: ({ editor }) => {
+      console.log(updateConversation);
+      updateConversation(conversationId, editor.getJSON());
+    },
   });
 
   // Sync the extension's MentionStorage suggestions whenever the local suggestions state updates.

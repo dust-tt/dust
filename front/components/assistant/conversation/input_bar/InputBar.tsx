@@ -372,6 +372,7 @@ export function AssistantInputBar({
                 }
                 onNodeSelect={handleNodesAttachmentSelect}
                 attachedNodes={attachedNodes}
+                conversationId={conversationId ?? "new"}
               />
             </div>
           </div>
