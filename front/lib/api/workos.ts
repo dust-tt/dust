@@ -316,6 +316,8 @@ async function upsertUser({
       workOSUser.lastName || user.lastName,
       workOSUser.email
     );
+    await user.updateWorkOSId({ workOSId: workOSUser.id });
+
     localLogger.info("[WorkOS] User successfully updated.");
   }
 }
@@ -340,10 +342,10 @@ async function upsertGroup(
 
   localLogger.info("[WorkOS] Upserting group");
 
-  let group = await GroupResource.fetchByWorkOSGroupId(auth, workOSGroup.id);
+  const group = await GroupResource.fetchByWorkOSGroupId(auth, workOSGroup.id);
 
   if (!group) {
-    group = await GroupResource.makeNew({
+    await GroupResource.makeNew({
       name: workOSGroup.name,
       workspaceId: workspace.id,
       workOSGroupId: workOSGroup.id,

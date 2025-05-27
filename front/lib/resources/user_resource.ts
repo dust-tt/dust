@@ -182,6 +182,12 @@ export class UserResource extends BaseResource<UserModel> {
     });
   }
 
+  async updateWorkOSId({ workOSId }: { workOSId: string }) {
+    return this.update({
+      workOSId,
+    });
+  }
+
   async updateName(firstName: string, lastName: string | null) {
     firstName = escape(firstName);
     if (lastName) {
