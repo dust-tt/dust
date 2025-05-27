@@ -49,6 +49,40 @@ export const OAUTH_PROVIDER_NAMES: Record<OAuthProvider, string> = {
   hubspot: "Hubspot",
 };
 
+export const getProviderAdditionalClientSideAuthCredentials = async (
+  provider: OAuthProvider,
+  useCase?: string
+): Promise<Record<
+  string,
+  { label: string; value: string | number | undefined }
+> | null> => {
+  switch (provider) {
+    case "salesforce":
+      if (useCase === "personal_actions") {
+        const { code_verifier, code_challenge } = await getPKCEConfig();
+        return {
+          code_verifier: { label: "Code verifier", value: code_verifier },
+          code_challenge: { label: "Code challenge", value: code_challenge },
+        };
+      }
+      return null;
+    case "gmail":
+    case "hubspot":
+    case "zendesk":
+    case "slack":
+    case "gong":
+    case "microsoft":
+    case "notion":
+    case "confluence":
+    case "github":
+    case "google_drive":
+    case "intercom":
+      return null;
+    default:
+      assertNever(provider);
+  }
+};
+
 export const getProviderRequiredAuthCredentials = async (
   authentication: AuthorizationInfo | null
 ): Promise<Record<
@@ -62,18 +96,20 @@ export const getProviderRequiredAuthCredentials = async (
   switch (authentication.provider) {
     case "salesforce":
       if (authentication.use_case === "personal_actions") {
-        const { code_verifier, code_challenge } = await getPKCEConfig();
+        const additionalCredentials =
+          await getProviderAdditionalClientSideAuthCredentials(
+            authentication.provider,
+            authentication.use_case
+          );
 
         return {
           client_id: { label: "OAuth client Id", value: undefined },
           client_secret: { label: "OAuth client secret", value: undefined },
           instance_url: { label: "Instance URL", value: undefined },
-          code_verifier: { label: "Code verifier", value: code_verifier },
-          code_challenge: { label: "Code challenge", value: code_challenge },
+          ...(additionalCredentials || {}),
         };
-      } else {
-        return null;
       }
+      return null;
     case "gmail":
       if (authentication.use_case === "personal_actions") {
         const { code_verifier, code_challenge } = await getPKCEConfig();
@@ -87,25 +123,19 @@ export const getProviderRequiredAuthCredentials = async (
       }
       return null;
     case "hubspot":
-      return null;
     case "zendesk":
-      return null;
     case "slack":
-      return null;
     case "gong":
-      return null;
     case "microsoft":
-      return null;
     case "notion":
-      return null;
     case "confluence":
-      return null;
     case "github":
-      return null;
     case "google_drive":
-      return null;
     case "intercom":
-      return null;
+      return await getProviderAdditionalClientSideAuthCredentials(
+        authentication.provider,
+        authentication.use_case
+      );
     default:
       assertNever(authentication.provider);
   }
