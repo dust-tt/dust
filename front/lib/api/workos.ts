@@ -308,6 +308,7 @@ async function upsertGroup(
   const localLogger = logger.child({
     workspaceId: workspace.sId,
     workOSGroupId: workOSGroup.id,
+    workOSGroupName: workOSGroup.name,
     directoryId: directory.id,
   });
 
