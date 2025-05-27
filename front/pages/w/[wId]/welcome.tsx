@@ -23,8 +23,6 @@ export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
   user: UserType;
   owner: WorkspaceType;
   isAdmin: boolean;
-  defaultExpertise: string;
-  defaultAdminInterest: string;
   conversationId: string | null;
   baseUrl: string;
 }>(async (context, auth) => {
@@ -40,10 +38,6 @@ export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
     };
   }
   const isAdmin = auth.isAdmin();
-
-  const expertise = await user.getMetadata("expertise");
-  const adminInterest = isAdmin ? await user.getMetadata("interest") : null;
-
   // If user was in onboarding flow "domain_conversation_link"
   // We will redirect to the conversation page after onboarding.
   const conversationId =
@@ -54,8 +48,6 @@ export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
       user: user.toJSON(),
       owner,
       isAdmin,
-      defaultExpertise: expertise?.value || "",
-      defaultAdminInterest: adminInterest?.value || "",
       conversationId,
       baseUrl: config.getClientFacingUrl(),
     },
