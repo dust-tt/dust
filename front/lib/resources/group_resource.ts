@@ -288,19 +288,33 @@ export class GroupResource extends BaseResource<GroupModel> {
     };
   }
 
-  static async makeNewProvisionedGroup({
-    workspace,
-    workOSGroup,
-  }: {
-    workspace: LightWorkspaceType;
-    workOSGroup: WorkOSGroup;
-  }) {
+  static async makeNewProvisionedGroup(
+    auth: Authenticator,
+    {
+      workspace,
+      workOSGroup,
+    }: {
+      workspace: LightWorkspaceType;
+      workOSGroup: WorkOSGroup;
+    }
+  ): Promise<{ success: boolean }> {
+    const groupsWithSameName = await this.baseFetch(auth, {
+      where: {
+        name: workOSGroup.name, // Relying on the index (workspaceId, name).
+      },
+    });
+    if (groupsWithSameName.length > 0) {
+      return { success: false };
+    }
+
     await this.makeNew({
       kind: "provisioned",
       name: workOSGroup.name,
       workOSGroupId: workOSGroup.id,
       workspaceId: workspace.id,
     });
+
+    return { success: true };
   }
 
   // sId
