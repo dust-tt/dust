@@ -4,6 +4,7 @@ import { Op } from "sequelize";
 import type Stripe from "stripe";
 
 import { sendProactiveTrialCancelledEmail } from "@app/lib/api/email";
+import { createWorkOSOrganization } from "@app/lib/api/workos";
 import { getWorkspaceInfos } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { Subscription } from "@app/lib/models/plan";
@@ -50,8 +51,6 @@ import type {
   WorkspaceType,
 } from "@app/types";
 import { Ok, sendUserOperationMessage } from "@app/types";
-import { DomainDataState } from "@workos-inc/node";
-import { createWorkOSOrganization } from "@app/lib/api/workos";
 
 const DEFAULT_PLAN_WHEN_NO_SUBSCRIPTION: PlanAttributes = FREE_NO_PLAN_DATA;
 const FREE_NO_PLAN_SUBSCRIPTION_ID = -1;
@@ -324,8 +323,8 @@ export class SubscriptionResource extends BaseResource<Subscription> {
         );
       }
       const organization = await r.value;
-      
-      Workspace.update(
+
+      await Workspace.update(
         {
           workOSOrganizationId: organization.id,
         },
