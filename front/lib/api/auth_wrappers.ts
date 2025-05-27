@@ -59,6 +59,34 @@ export function withSessionAuthentication<T>(
   );
 }
 
+export function withSessionAuthenticationForPoke<T>(
+  handler: (
+    req: NextApiRequestWithContext,
+    res: NextApiResponse<WithAPIErrorResponse<T>>,
+    session: SessionWithUser
+  ) => Promise<void> | void,
+  { isStreaming = false }: { isStreaming?: boolean } = {}
+) {
+  return withSessionAuthentication(
+    async (req, res, session) => {
+      const auth = await Authenticator.fromSuperUserSession(session, null);
+
+      if (!auth.isDustSuperUser()) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "user_not_found",
+            message: "Could not find the user.",
+          },
+        });
+      }
+
+      return handler(req, res, session);
+    },
+    { isStreaming }
+  );
+}
+
 /**
  * This function is a wrapper for API routes that require session authentication for a workspace.
  * It must be used on all routes that require workspace authentication (prefix: /w/[wId]/).
@@ -81,6 +109,7 @@ export function withSessionAuthenticationForWorkspace<T>(
   opts: {
     isStreaming?: boolean;
     allowUserOutsideCurrentWorkspace?: boolean;
+    doesNotRequireCanUseProduct?: boolean;
   } = {}
 ) {
   return withSessionAuthentication(
@@ -106,6 +135,19 @@ export function withSessionAuthenticationForWorkspace<T>(
       const owner = auth.workspace();
       const plan = auth.plan();
       if (!owner || !plan) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "workspace_not_found",
+            message: "The workspace was not found.",
+          },
+        });
+      }
+
+      if (
+        !opts.doesNotRequireCanUseProduct &&
+        !auth?.subscription()?.plan.limits.canUseProduct
+      ) {
         return apiError(req, res, {
           status_code: 404,
           api_error: {
