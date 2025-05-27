@@ -1,4 +1,4 @@
-import { AssistantBuilderActionConfiguration } from "@app/components/assistant_builder/types";
+import type { AssistantBuilderActionConfiguration } from "@app/components/assistant_builder/types";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
   getInternalMCPServerNameAndWorkspaceId,
