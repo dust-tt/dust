@@ -1,3 +1,4 @@
+import { AssistantBuilderActionConfiguration } from "@app/components/assistant_builder/types";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
   getInternalMCPServerNameAndWorkspaceId,
@@ -14,7 +15,6 @@ import {
 } from "@app/lib/resources/string_ids";
 import type { ModelId } from "@app/types";
 import { asDisplayName } from "@app/types";
-import { AssistantBuilderActionConfiguration } from "@app/components/assistant_builder/types";
 
 export const getServerTypeAndIdFromSId = (
   mcpServerId: string
