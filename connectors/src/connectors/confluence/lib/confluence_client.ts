@@ -491,8 +491,8 @@ export class ConfluenceClient {
           data: {
             url: `${this.apiUrl}${endpoint}`,
             response,
-            retryAfterMs: NEAR_RATE_LIMIT_DELAY,
           },
+          retryAfterMs: NEAR_RATE_LIMIT_DELAY,
         }
       );
     }
