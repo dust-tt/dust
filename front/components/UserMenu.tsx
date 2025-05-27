@@ -155,35 +155,22 @@ export function UserMenu({
           <DropdownMenuItem
             label="Sign&nbsp;out"
             icon={LogoutIcon}
-            onClick={(e: React.MouseEvent<HTMLDivElement>) => {
-              if (e.metaKey) {
-                // Command + click (Mac) or Control + click (Windows/Linux) leads to WorkOS logout.
-                window.location.href = "/api/workos/logout";
-              } else {
-                window.location.href = "/api/auth/logout";
-              }
+            onClick={() => {
+              window.location.href = "/api/auth/logout";
             }}
           />
         )}
-        {hasFeature("workos") &&
-          document.cookie.includes("sessionType=auth0") && (
-            <DropdownMenuItem
-              onClick={() => {
-                window.location.href = "/api/auth/logout";
-              }}
-              icon={LogoutIcon}
-              label="Sign&nbsp;out Auth0"
-            />
-          ) &&
-          document.cookie.includes("sessionType=workos") && (
-            <DropdownMenuItem
-              onClick={() => {
-                window.location.href = "/api/workos/logout";
-              }}
-              icon={LogoutIcon}
-              label="Sign&nbsp;out WorkOS"
-            />
-          )}
+        {hasFeature("workos") && (
+          <DropdownMenuItem
+            onClick={() => {
+              document.cookie.includes("sessionType=workos")
+                ? (window.location.href = "/api/workos/logout")
+                : (window.location.href = "/api/auth/logout");
+            }}
+            icon={LogoutIcon}
+            label="Sign&nbsp;out"
+          />
+        )}
 
         {showDebugTools(featureFlags) && (
           <>
