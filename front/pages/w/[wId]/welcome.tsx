@@ -1,10 +1,13 @@
 import {
   Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
   DustLogoSquare,
   Input,
   Page,
-  RadioGroup,
-  RadioGroupItem,
 } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
@@ -20,8 +23,6 @@ export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
   user: UserType;
   owner: WorkspaceType;
   isAdmin: boolean;
-  defaultExpertise: string;
-  defaultAdminInterest: string;
   conversationId: string | null;
   baseUrl: string;
 }>(async (context, auth) => {
@@ -37,10 +38,6 @@ export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
     };
   }
   const isAdmin = auth.isAdmin();
-
-  const expertise = await user.getMetadata("expertise");
-  const adminInterest = isAdmin ? await user.getMetadata("interest") : null;
-
   // If user was in onboarding flow "domain_conversation_link"
   // We will redirect to the conversation page after onboarding.
   const conversationId =
@@ -51,8 +48,6 @@ export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
       user: user.toJSON(),
       owner,
       isAdmin,
-      defaultExpertise: expertise?.value || "",
-      defaultAdminInterest: adminInterest?.value || "",
       conversationId,
       baseUrl: config.getClientFacingUrl(),
     },
@@ -63,26 +58,37 @@ export default function Welcome({
   user,
   owner,
   isAdmin,
-  defaultExpertise,
-  defaultAdminInterest,
   conversationId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
   const [firstName, setFirstName] = useState<string>(user.firstName);
   const [lastName, setLastName] = useState<string>(user.lastName || "");
-  const [expertise, setExpertise] = useState<string>(defaultExpertise);
-  const [adminInterest, setAdminInterest] =
-    useState<string>(defaultAdminInterest);
+  const [jobType, setJobType] = useState<string>("");
   const [isFormValid, setIsFormValid] = useState<boolean>(false);
+
+  const jobTypes = [
+    { value: "customer_success", label: "Customer Success" },
+    { value: "customer_support", label: "Customer Support" },
+    { value: "data", label: "Data" },
+    { value: "design", label: "Design" },
+    { value: "engineering", label: "Engineering" },
+    { value: "finance", label: "Finance" },
+    { value: "people", label: "People (HR)" },
+    { value: "legal", label: "Legal" },
+    { value: "marketing", label: "Marketing" },
+    { value: "operations", label: "Operations" },
+    { value: "product", label: "Product" },
+    { value: "sales", label: "Sales" },
+    { value: "other", label: "Other" },
+  ];
 
   useEffect(() => {
     setIsFormValid(
       firstName !== "" &&
         lastName !== "" &&
-        expertise !== "" &&
-        (isAdmin ? adminInterest !== "" : true)
+        jobTypes.some((jt) => jt.value === jobType)
     );
-  }, [firstName, lastName, expertise, adminInterest, isAdmin]);
+  }, [firstName, lastName, jobType]);
 
   const { submit, isSubmitting } = useSubmitFunction(async () => {
     const updateUserFullNameRes = await fetch("/api/user", {
@@ -93,22 +99,13 @@ export default function Welcome({
       body: JSON.stringify({ firstName, lastName }),
     });
     if (updateUserFullNameRes.ok) {
-      await fetch("/api/user/metadata/expertise", {
+      await fetch("/api/user/metadata/job_type", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ value: expertise }),
+        body: JSON.stringify({ value: jobType }),
       });
-      if (isAdmin) {
-        await fetch("/api/user/metadata/interest", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ value: adminInterest }),
-        });
-      }
     }
     await router.push(
       `/w/${owner.sId}/assistant/new?welcome=true${
@@ -141,7 +138,7 @@ export default function Welcome({
         {!isAdmin && (
           <div>
             <p className="text-muted-foreground dark:text-muted-foreground-night">
-              You will be joining the workspace:{" "}
+              You'll be joining the workspace:{" "}
               <span className="">{owner.name}</span>.
             </p>
           </div>
@@ -165,45 +162,39 @@ export default function Welcome({
             />
           </div>
         </div>
-        {isAdmin && (
-          <div>
-            <p className="pb-2">I'm looking at Dust:</p>
-            <RadioGroup
-              value={adminInterest}
-              onValueChange={setAdminInterest}
-              className="flex flex-col gap-2 sm:flex-row"
-            >
-              <RadioGroupItem
-                value="personnal"
-                id="personal"
-                label="Just for me"
-              />
-              <RadioGroupItem
-                value="team"
-                id="team"
-                label="For me and my team"
-              />
-            </RadioGroup>
-          </div>
-        )}
         <div>
-          <p className="pb-2 text-muted-foreground dark:text-muted-foreground-night">
-            How much do you know about AI agents?
+          <p className="pb-2 text-muted-foreground">
+            Pick your job type to get relevant feature updates:
           </p>
-          <RadioGroup
-            value={expertise}
-            id={expertise}
-            onValueChange={setExpertise}
-            className="flex flex-col gap-2 sm:flex-row"
-          >
-            <RadioGroupItem value="beginner" id="beginner" label="Nothing!" />
-            <RadioGroupItem
-              value="intermediate"
-              id="intermediate"
-              label="I know the basics"
-            />
-            <RadioGroupItem value="advanced" id="advanced" label="I'm a pro" />
-          </RadioGroup>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="justify-between text-muted-foreground"
+                  label={
+                    jobTypes.find((t) => t.value === jobType)?.label ||
+                    "Select job type"
+                  }
+                  isSelect={true}
+                />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-[var(--radix-dropdown-menu-trigger-width)]">
+                <DropdownMenuRadioGroup
+                  value={jobType}
+                  onValueChange={setJobType}
+                >
+                  {jobTypes.map((jobTypeOption) => (
+                    <DropdownMenuRadioItem
+                      key={jobTypeOption.value}
+                      value={jobTypeOption.value}
+                      label={jobTypeOption.label}
+                    />
+                  ))}
+                </DropdownMenuRadioGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
         <div className="flex justify-end">
           <Button
