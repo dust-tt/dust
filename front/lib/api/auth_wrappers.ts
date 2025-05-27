@@ -73,7 +73,7 @@ export function withSessionAuthenticationForPoke<T>(
 
       if (!auth.isDustSuperUser()) {
         return apiError(req, res, {
-          status_code: 404,
+          status_code: 401,
           api_error: {
             type: "not_authenticated",
             message: "The user does not have permission",
