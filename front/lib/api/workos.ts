@@ -206,14 +206,6 @@ async function syncAllUsers({
   workspace: WorkspaceType;
   directory: WorkOSDirectory;
 }): Promise<void> {
-  logger.info(
-    {
-      workspaceId: workspace.sId,
-      directoryId: directory.id,
-    },
-    "[WorkOS] Starting user sync."
-  );
-
   const workOs = getWorkOS();
 
   // TODO(2025-05-26 aubin): paginate here.
@@ -224,14 +216,6 @@ async function syncAllUsers({
   for (const workOSUser of users) {
     await upsertUser({ workspace, workOSUser, directory });
   }
-
-  logger.info(
-    {
-      workspaceId: workspace.sId,
-      directoryId: directory.id,
-    },
-    "[WorkOS] User sync completed."
-  );
 }
 
 async function syncAllGroups(
@@ -244,14 +228,6 @@ async function syncAllGroups(
     directory: WorkOSDirectory;
   }
 ): Promise<WorkOSGroup[]> {
-  logger.info(
-    {
-      workspaceId: workspace.sId,
-      directoryId: directory.id,
-    },
-    "[WorkOS] Starting group sync"
-  );
-
   const workOS = getWorkOS();
 
   const groups = [];
@@ -273,14 +249,6 @@ async function syncAllGroups(
       await upsertGroup(auth, { workspace, workOSGroup, directory });
     }
   } while (nextPageCursor);
-
-  logger.info(
-    {
-      workspaceId: workspace.sId,
-      directoryId: directory.id,
-    },
-    "[WorkOS] Group sync completed."
-  );
 
   return groups;
 }
