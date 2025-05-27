@@ -297,6 +297,7 @@ async function upsertUser({
     await UserResource.makeNew({
       sId: generateRandomModelSId(),
       auth0Sub: null,
+      workOSId: workOSUser.id,
       provider: directory.type,
       // TODO: not sure what the providerId is here, it does not seem to be used.
       providerId: workOSUser.id,
