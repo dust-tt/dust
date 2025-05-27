@@ -12,7 +12,10 @@ import {
 import { useEffect, useState } from "react";
 
 import { useWorkOSAdminPortalUrl } from "@app/lib/swr/workos";
+import { useSyncWorkOSDirectoriesAndUsers } from "@app/lib/swr/workspaces";
 import { WorkOSPortalIntent } from "@app/lib/types/workos";
+import logger from "@app/logger/logger";
+import type { WorkspaceType } from "@app/types";
 
 const ADMIN_PANEL_OPTIONS = {
   domain: [
@@ -51,11 +54,34 @@ const ADMIN_PANEL_OPTIONS = {
   ],
 };
 
-interface WorkOSConnectionProps {
-  owner: {
-    sId: string;
-    workOSOrganizationId?: string | null;
+interface WorkOSSyncButtonProps {
+  owner: WorkspaceType;
+}
+
+export function WorkOSSyncButton({ owner }: WorkOSSyncButtonProps) {
+  const [isLoading, setIsLoading] = useState(false);
+  const { triggerFullSync } = useSyncWorkOSDirectoriesAndUsers(owner);
+
+  const handleSync = async () => {
+    setIsLoading(true);
+    await triggerFullSync();
+    setIsLoading(false);
   };
+
+  return (
+    owner.workOSOrganizationId && (
+      <Button
+        variant="primary"
+        onClick={handleSync}
+        disabled={isLoading}
+        label={isLoading ? "Syncing..." : "Sync WorkOS Directories & Groups"}
+      />
+    )
+  );
+}
+
+interface WorkOSConnectionProps {
+  owner: WorkspaceType;
 }
 
 export function WorkOSConnection({ owner }: WorkOSConnectionProps) {
@@ -99,7 +125,7 @@ export function WorkOSConnection({ owner }: WorkOSConnectionProps) {
             <DropdownMenu>
               <DropdownMenuTrigger>
                 <Button
-                  label={getSelectedLabel()}
+                  label="Select Panel"
                   size="sm"
                   isSelect
                   icon={ExternalLinkIcon}
@@ -129,8 +155,49 @@ export function WorkOSConnection({ owner }: WorkOSConnectionProps) {
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
-        </div>
-      )}
+        ) : (
+          <Button
+            label="Setup Enterprise Connection"
+            size="sm"
+            variant="primary"
+            onClick={() => setIsModalOpen(true)}
+          />
+        )}
+      </div>
+
+      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+        <DialogContent size="md">
+          <DialogHeader>
+            <DialogTitle>Setup Enterprise Connection</DialogTitle>
+          </DialogHeader>
+          <DialogContainer>
+            <div className="flex flex-col gap-4">
+              <Page.P variant="secondary">
+                This will create a WorkOS organization for your workspace.
+                You'll be able to configure your enterprise settings in the
+                WorkOS admin portal.
+              </Page.P>
+            </div>
+          </DialogContainer>
+          <DialogFooter
+            leftButtonProps={{
+              label: "Cancel",
+              variant: "outline",
+              onClick: () => setIsModalOpen(false),
+            }}
+            rightButtonProps={{
+              label: "Create Connection",
+              variant: "primary",
+              onClick: handleSetupConnection,
+            }}
+          />
+        </DialogContent>
+      </Dialog>
+      {/* Debug button: will be replaced by an actual admin console */}
+      <Page.P variant="secondary">Synchronize your directories.</Page.P>
+      <div className="flex w-full flex-col items-start gap-3">
+        <WorkOSSyncButton owner={owner} />
+      </div>
     </Page.Vertical>
   );
 }

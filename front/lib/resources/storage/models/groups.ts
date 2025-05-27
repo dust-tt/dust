@@ -13,8 +13,8 @@ export class GroupModel extends WorkspaceAwareModel<GroupModel> {
   declare name: string;
   declare kind: GroupKind;
 
-  // Directory ID on the provider's side (e.g. Okta directory).
-  declare directoryId: string | null;
+  // Group ID on workOS, unique across all directories.
+  declare workOSGroupId: string | null;
 }
 
 GroupModel.init(
@@ -37,7 +37,7 @@ GroupModel.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
-    directoryId: {
+    workOSGroupId: {
       type: DataTypes.STRING,
       allowNull: true,
     },
@@ -47,6 +47,7 @@ GroupModel.init(
     sequelize: frontSequelize,
     indexes: [
       { unique: true, fields: ["workspaceId", "name"] },
+      { unique: true, fields: ["workspaceId", "workOSGroupId"] },
       { fields: ["workspaceId", "kind"] },
     ],
   }
