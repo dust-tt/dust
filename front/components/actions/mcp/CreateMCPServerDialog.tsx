@@ -19,7 +19,7 @@ import {
   useCreateMCPServerConnection,
   useCreateRemoteMCPServer,
 } from "@app/lib/swr/mcp_servers";
-import type { WorkspaceType } from "@app/types";
+import type { OAuthCredentials, WorkspaceType } from "@app/types";
 import {
   asDisplayName,
   OAUTH_PROVIDER_NAMES,
@@ -49,10 +49,8 @@ export function CreateMCPServerDialog({
   const [sharedSecret, setSharedSecret] = useState<string | undefined>(
     undefined
   );
-  const [authCredentials, setAuthCredentials] = useState<Record<
-    string,
-    string
-  > | null>(null);
+  const [authCredentials, setAuthCredentials] =
+    useState<OAuthCredentials | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [authorization, setAuthorization] = useState<AuthorizationInfo | null>(
     null

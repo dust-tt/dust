@@ -1,6 +1,7 @@
 import * as t from "io-ts";
 
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata";
+import type { PCKEConfig } from "@app/lib/utils/pkce";
 import { getPKCEConfig } from "@app/lib/utils/pkce";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
@@ -50,7 +51,7 @@ export const OAUTH_PROVIDER_NAMES: Record<OAuthProvider, string> = {
 
 export const getProviderAdditionalClientSideAuthCredentials = async (
   authentication: AuthorizationInfo | null
-): Promise<Record<string, string | number | undefined> | null> => {
+): Promise<PCKEConfig | null> => {
   if (!authentication) {
     return null;
   }
@@ -58,11 +59,7 @@ export const getProviderAdditionalClientSideAuthCredentials = async (
     case "salesforce":
     case "gmail":
       if (authentication.use_case === "personal_actions") {
-        const { code_verifier, code_challenge } = await getPKCEConfig();
-        return {
-          code_verifier,
-          code_challenge,
-        };
+        return getPKCEConfig();
       }
       return null;
     case "hubspot":
@@ -81,12 +78,40 @@ export const getProviderAdditionalClientSideAuthCredentials = async (
   }
 };
 
-export const getProviderRequiredAuthCredentials = async (
+const SUPPORTED_OAUTH_CREDENTIALS = [
+  "client_id",
+  "client_secret",
+  "instance_url",
+  "code_verifier",
+  "code_challenge",
+] as const;
+
+export type SupportedOAuthCredentials =
+  (typeof SUPPORTED_OAUTH_CREDENTIALS)[number];
+
+export const isSupportedOAuthCredential = (
+  obj: unknown
+): obj is SupportedOAuthCredentials => {
+  return SUPPORTED_OAUTH_CREDENTIALS.includes(obj as SupportedOAuthCredentials);
+};
+
+export type OAuthCredentialInput = {
+  label: string;
+  value: string | undefined;
+  helpMessage?: string;
+};
+
+export type OAuthCredentialInputs = Partial<
+  Record<SupportedOAuthCredentials, OAuthCredentialInput>
+>;
+
+export type OAuthCredentials = Partial<
+  Record<SupportedOAuthCredentials, string>
+>;
+
+export const getProviderRequiredOAuthCredentialInputs = async (
   authentication: AuthorizationInfo | null
-): Promise<Record<
-  string,
-  { label: string; value: string | number | undefined }
-> | null> => {
+): Promise<OAuthCredentialInputs | null> => {
   if (!authentication) {
     return null;
   }
@@ -96,40 +121,58 @@ export const getProviderRequiredAuthCredentials = async (
   switch (authentication.provider) {
     case "salesforce":
       if (authentication.use_case === "personal_actions") {
-        const result: Record<
-          string,
-          { label: string; value: string | number | undefined }
-        > = {
-          client_id: { label: "OAuth client Id", value: undefined },
-          client_secret: { label: "OAuth client secret", value: undefined },
-          instance_url: { label: "Instance URL", value: undefined },
+        const result: OAuthCredentialInputs = {
+          client_id: {
+            label: "OAuth Client ID",
+            value: undefined,
+            helpMessage: "The client ID from your Salesforce connected app.",
+          },
+          client_secret: {
+            label: "OAuth Client Secret",
+            value: undefined,
+            helpMessage:
+              "The client secret from your Salesforce connected app.",
+          },
+          instance_url: {
+            label: "Instance URL",
+            value: undefined,
+            helpMessage:
+              "Must be a valid Salesforce domain in https and ending with « .salesforce.com ».",
+          },
         };
-
-        if (additionalCredentials) {
-          Object.entries(additionalCredentials).forEach(([key, value]) => {
-            result[key] = { label: key, value };
-          });
+        if (!additionalCredentials) {
+          return result;
         }
-
+        Object.entries(additionalCredentials).forEach(([key, value]) => {
+          if (isSupportedOAuthCredential(key)) {
+            result[key] = { label: key, value };
+          }
+        });
         return result;
       }
       return null;
     case "gmail":
       if (authentication.use_case === "personal_actions") {
-        const result: Record<
-          string,
-          { label: string; value: string | number | undefined }
-        > = {
-          client_id: { label: "oAuth client Id", value: undefined },
-          client_secret: { label: "oAuth client secret", value: undefined },
+        const result: OAuthCredentialInputs = {
+          client_id: {
+            label: "OAuth Client ID",
+            value: undefined,
+            helpMessage: "The client ID from your Gmail connected app.",
+          },
+          client_secret: {
+            label: "OAuth Client Secret",
+            value: undefined,
+            helpMessage: "The client secret from your Gmail connected app.",
+          },
         };
-
-        if (additionalCredentials) {
-          Object.entries(additionalCredentials).forEach(([key, value]) => {
-            result[key] = { label: key, value };
-          });
+        if (!additionalCredentials) {
+          return result;
         }
-
+        Object.entries(additionalCredentials).forEach(([key, value]) => {
+          if (isSupportedOAuthCredential(key)) {
+            result[key] = { label: key, value };
+          }
+        });
         return result;
       }
       return null;
@@ -146,15 +189,12 @@ export const getProviderRequiredAuthCredentials = async (
       if (!additionalCredentials) {
         return null;
       }
-
-      const result: Record<
-        string,
-        { label: string; value: string | number | undefined }
-      > = {};
+      const result: OAuthCredentialInputs = {};
       Object.entries(additionalCredentials).forEach(([key, value]) => {
-        result[key] = { label: key, value };
+        if (isSupportedOAuthCredential(key)) {
+          result[key] = { label: key, value };
+        }
       });
-
       return Object.keys(result).length > 0 ? result : null;
     default:
       assertNever(authentication.provider);
