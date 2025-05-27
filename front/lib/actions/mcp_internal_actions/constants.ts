@@ -111,9 +111,9 @@ export const INTERNAL_MCP_SERVERS: Record<
       create_company: "high",
       create_deal: "high",
       create_lead: "high",
-      create_task: "low",
-      create_ticket: "low",
-      create_note: "low",
+      create_task: "high",
+      create_ticket: "high",
+      create_note: "high",
       create_communication: "high",
       create_meeting: "high",
 
