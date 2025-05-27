@@ -549,7 +549,7 @@ export function useCreatePersonalConnection(owner: LightWorkspaceType) {
           use_case: useCase,
         });
       if (additionalCredentials) {
-        Object.entries(additionalCredentials).forEach(([key, { value }]) => {
+        Object.entries(additionalCredentials).forEach(([key, value]) => {
           if (typeof value === "string") {
             extraConfig[key] = value;
           }

@@ -50,10 +50,7 @@ export const OAUTH_PROVIDER_NAMES: Record<OAuthProvider, string> = {
 
 export const getProviderAdditionalClientSideAuthCredentials = async (
   authentication: AuthorizationInfo | null
-): Promise<Record<
-  string,
-  { label: string; value: string | number | undefined }
-> | null> => {
+): Promise<Record<string, string | number | undefined> | null> => {
   if (!authentication) {
     return null;
   }
@@ -62,8 +59,8 @@ export const getProviderAdditionalClientSideAuthCredentials = async (
       if (authentication.use_case === "personal_actions") {
         const { code_verifier, code_challenge } = await getPKCEConfig();
         return {
-          code_verifier: { label: "Code verifier", value: code_verifier },
-          code_challenge: { label: "Code challenge", value: code_challenge },
+          code_verifier,
+          code_challenge,
         };
       }
       return null;
@@ -99,24 +96,38 @@ export const getProviderRequiredAuthCredentials = async (
       if (authentication.use_case === "personal_actions") {
         const additionalCredentials =
           await getProviderAdditionalClientSideAuthCredentials(authentication);
-        return {
+        const result: Record<string, { label: string; value: string | number | undefined }> = {
           client_id: { label: "OAuth client Id", value: undefined },
           client_secret: { label: "OAuth client secret", value: undefined },
           instance_url: { label: "Instance URL", value: undefined },
-          ...(additionalCredentials || {}),
         };
+        
+        if (additionalCredentials) {
+          Object.entries(additionalCredentials).forEach(([key, value]) => {
+            result[key] = { label: key, value };
+          });
+        }
+        
+        return result;
       }
       return null;
     case "gmail":
       if (authentication.use_case === "personal_actions") {
-        const { code_verifier, code_challenge } = await getPKCEConfig();
-
-        return {
+        const additionalCredentials =
+          await getProviderAdditionalClientSideAuthCredentials(authentication);
+        
+        const result: Record<string, { label: string; value: string | number | undefined }> = {
           client_id: { label: "oAuth client Id", value: undefined },
           client_secret: { label: "oAuth client secret", value: undefined },
-          code_verifier: { label: "Code verifier", value: code_verifier },
-          code_challenge: { label: "Code challenge", value: code_challenge },
         };
+        
+        if (additionalCredentials) {
+          Object.entries(additionalCredentials).forEach(([key, value]) => {
+            result[key] = { label: key, value };
+          });
+        }
+        
+        return result;
       }
       return null;
     case "hubspot":
@@ -129,7 +140,19 @@ export const getProviderRequiredAuthCredentials = async (
     case "github":
     case "google_drive":
     case "intercom":
-      return getProviderAdditionalClientSideAuthCredentials(authentication);
+      const additionalCredentials = 
+        await getProviderAdditionalClientSideAuthCredentials(authentication);
+      
+      if (!additionalCredentials) {
+        return null;
+      }
+      
+      const result: Record<string, { label: string; value: string | number | undefined }> = {};
+      Object.entries(additionalCredentials).forEach(([key, value]) => {
+        result[key] = { label: key, value };
+      });
+      
+      return Object.keys(result).length > 0 ? result : null;
     default:
       assertNever(authentication.provider);
   }
