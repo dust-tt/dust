@@ -1,9 +1,4 @@
-import {
-  Button,
-  DustLogoSquare,
-  Input,
-  Page,
-} from "@dust-tt/sparkle";
+import { Button, DustLogoSquare, Input, Page } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
