@@ -4,7 +4,7 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import { generateWorkOSAdminPortalUrl } from "@app/lib/api/workos";
+import { generateWorkOSAdminPortalUrl } from "@app/lib/api/workos/organization";
 import type { Authenticator } from "@app/lib/auth";
 import { WorkOSPortalIntent } from "@app/lib/types/workos";
 import { apiError } from "@app/logger/withlogging";

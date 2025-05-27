@@ -51,7 +51,7 @@ import {
   WHITELISTABLE_FEATURES,
 } from "@app/types";
 
-import { getWorkOSSession } from "./api/workos";
+import { getWorkOSSession } from "./api/workos/user";
 
 const { ACTIVATE_ALL_FEATURES_DEV = false } = process.env;
 

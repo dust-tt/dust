@@ -14,7 +14,6 @@ import { useEffect, useState } from "react";
 import { useWorkOSAdminPortalUrl } from "@app/lib/swr/workos";
 import { useSyncWorkOSDirectoriesAndUsers } from "@app/lib/swr/workspaces";
 import { WorkOSPortalIntent } from "@app/lib/types/workos";
-import logger from "@app/logger/logger";
 import type { WorkspaceType } from "@app/types";
 
 const ADMIN_PANEL_OPTIONS = {
@@ -69,14 +68,12 @@ export function WorkOSSyncButton({ owner }: WorkOSSyncButtonProps) {
   };
 
   return (
-    owner.workOSOrganizationId && (
-      <Button
-        variant="primary"
-        onClick={handleSync}
-        disabled={isLoading}
-        label={isLoading ? "Syncing..." : "Sync WorkOS Directories & Groups"}
-      />
-    )
+    <Button
+      variant="primary"
+      onClick={handleSync}
+      disabled={isLoading}
+      label={isLoading ? "Syncing..." : "Sync WorkOS Directories & Groups"}
+    />
   );
 }
 
@@ -98,18 +95,6 @@ export function WorkOSConnection({ owner }: WorkOSConnectionProps) {
       setShouldOpenPortal(false);
     }
   }, [adminPortalUrl, shouldOpenPortal]);
-
-  const getSelectedLabel = () => {
-    const allOptions = [
-      ...ADMIN_PANEL_OPTIONS.domain,
-      ...ADMIN_PANEL_OPTIONS.config,
-      ...ADMIN_PANEL_OPTIONS.logs,
-    ];
-    return (
-      allOptions.find((opt) => opt.value === selectedIntent)?.label ||
-      "Select Panel"
-    );
-  };
 
   return (
     <Page.Vertical gap="sm">
@@ -155,49 +140,14 @@ export function WorkOSConnection({ owner }: WorkOSConnectionProps) {
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
-        ) : (
-          <Button
-            label="Setup Enterprise Connection"
-            size="sm"
-            variant="primary"
-            onClick={() => setIsModalOpen(true)}
-          />
-        )}
-      </div>
 
-      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent size="md">
-          <DialogHeader>
-            <DialogTitle>Setup Enterprise Connection</DialogTitle>
-          </DialogHeader>
-          <DialogContainer>
-            <div className="flex flex-col gap-4">
-              <Page.P variant="secondary">
-                This will create a WorkOS organization for your workspace.
-                You'll be able to configure your enterprise settings in the
-                WorkOS admin portal.
-              </Page.P>
-            </div>
-          </DialogContainer>
-          <DialogFooter
-            leftButtonProps={{
-              label: "Cancel",
-              variant: "outline",
-              onClick: () => setIsModalOpen(false),
-            }}
-            rightButtonProps={{
-              label: "Create Connection",
-              variant: "primary",
-              onClick: handleSetupConnection,
-            }}
-          />
-        </DialogContent>
-      </Dialog>
-      {/* Debug button: will be replaced by an actual admin console */}
-      <Page.P variant="secondary">Synchronize your directories.</Page.P>
-      <div className="flex w-full flex-col items-start gap-3">
-        <WorkOSSyncButton owner={owner} />
-      </div>
+          {/* Debug button: will be replaced by an actual admin console */}
+          <Page.P variant="secondary">Synchronize your directories.</Page.P>
+          <div className="flex w-full flex-col items-start gap-3">
+            <WorkOSSyncButton owner={owner} />
+          </div>
+        </div>
+      )}
     </Page.Vertical>
   );
 }

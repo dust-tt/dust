@@ -4,7 +4,7 @@ import { Op } from "sequelize";
 import type Stripe from "stripe";
 
 import { sendProactiveTrialCancelledEmail } from "@app/lib/api/email";
-import { createWorkOSOrganization } from "@app/lib/api/workos";
+import { createWorkOSOrganization } from "@app/lib/api/workos/organization";
 import { getWorkspaceInfos } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { Subscription } from "@app/lib/models/plan";
