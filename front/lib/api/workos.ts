@@ -190,6 +190,8 @@ export async function syncWorkOSDirectoriesForWorkspace(
 
     await syncAllGroups(auth, { workspace, directory });
 
+    // TODO(2025-05-27 aubin): update group memberships.
+
     logger.info(
       { workspaceId: workspace.sId, directoryId: directory.id },
       "[WorkOS] Directory successfully synced."
