@@ -11,6 +11,7 @@ export class UserModel extends BaseModel<UserModel> {
 
   declare sId: string;
   declare auth0Sub: string | null;
+  declare workOSId: string | null;
   declare provider: UserProviderType;
   declare providerId: string | null;
 
@@ -50,6 +51,10 @@ UserModel.init(
     auth0Sub: {
       type: DataTypes.STRING,
       // TODO(2024-03-01 flav) Set to false once new login flow is released.
+      allowNull: true,
+    },
+    workOSId: {
+      type: DataTypes.STRING,
       allowNull: true,
     },
     username: {
