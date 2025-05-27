@@ -59,6 +59,34 @@ export function withSessionAuthentication<T>(
   );
 }
 
+export function withSessionAuthenticationForPoke<T>(
+  handler: (
+    req: NextApiRequestWithContext,
+    res: NextApiResponse<WithAPIErrorResponse<T>>,
+    session: SessionWithUser
+  ) => Promise<void> | void,
+  { isStreaming = false }: { isStreaming?: boolean } = {}
+) {
+  return withSessionAuthentication(
+    async (req, res, session) => {
+      const auth = await Authenticator.fromSuperUserSession(session, null);
+
+      if (!auth.isDustSuperUser()) {
+        return apiError(req, res, {
+          status_code: 401,
+          api_error: {
+            type: "not_authenticated",
+            message: "The user does not have permission",
+          },
+        });
+      }
+
+      return handler(req, res, session);
+    },
+    { isStreaming }
+  );
+}
+
 /**
  * This function is a wrapper for API routes that require session authentication for a workspace.
  * It must be used on all routes that require workspace authentication (prefix: /w/[wId]/).
@@ -81,6 +109,7 @@ export function withSessionAuthenticationForWorkspace<T>(
   opts: {
     isStreaming?: boolean;
     allowUserOutsideCurrentWorkspace?: boolean;
+    doesNotRequireCanUseProduct?: boolean;
   } = {}
 ) {
   return withSessionAuthentication(
@@ -113,6 +142,28 @@ export function withSessionAuthenticationForWorkspace<T>(
             message: "The workspace was not found.",
           },
         });
+      }
+
+      if (
+        !opts.doesNotRequireCanUseProduct &&
+        !auth?.subscription()?.plan.limits.canUseProduct
+      ) {
+        logger.warn(
+          {
+            user: auth.getNonNullableUser().id,
+            workspaceId: wId,
+            url: req.url,
+            method: req.method,
+          },
+          "workspace_can_use_product_required_error"
+        );
+        // return apiError(req, res, {
+        //   status_code: 403,
+        //   api_error: {
+        //     type: "workspace_can_use_product_required_error",
+        //     message: "The workspace was not found.",
+        //   },
+        // });
       }
 
       const maintenance = owner.metadata?.maintenance;

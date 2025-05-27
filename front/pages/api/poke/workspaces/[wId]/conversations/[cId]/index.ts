@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
-import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
+import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { getPokeConversation } from "@app/lib/poke/conversations";
@@ -66,4 +66,4 @@ async function handler(
   }
 }
 
-export default withSessionAuthentication(handler);
+export default withSessionAuthenticationForPoke(handler);
