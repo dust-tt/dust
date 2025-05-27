@@ -14,6 +14,7 @@ import { getInsertSQL } from "@app/lib/utils/sql_utils";
 import type Logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import type { ModelId } from "@app/types";
+import { DEFAULT_PROCESS_ACTION_NAME } from "@app/lib/actions/constants";
 
 async function findWorkspacesWithProcessConfigurations(): Promise<ModelId[]> {
   const processConfigurations = await AgentProcessConfiguration.findAll({
@@ -53,7 +54,9 @@ async function migrateWorkspaceExtractActions(
     workspaceId: auth.getNonNullableWorkspace().sId,
   });
 
-  logger.info("Starting migration of extract actions (process configurations) to MCP.");
+  logger.info(
+    "Starting migration of extract actions (process configurations) to MCP."
+  );
 
   // Find all existing process configurations that are linked to an agent configuration
   // (non-MCP version) and not yet linked to an MCP server configuration.
@@ -128,7 +131,11 @@ async function migrateWorkspaceExtractActions(
                   unit: processConfig.relativeTimeFrameUnit,
                 }
               : null,
-          name: null,
+          name:
+            !processConfig.name ||
+            processConfig.name === DEFAULT_PROCESS_ACTION_NAME
+              ? null
+              : processConfig.name,
           singleToolDescriptionOverride: processConfig.description,
           appId: null,
           jsonSchema: processConfig.jsonSchema,
