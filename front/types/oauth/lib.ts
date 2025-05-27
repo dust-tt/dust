@@ -96,7 +96,10 @@ export const getProviderRequiredAuthCredentials = async (
       if (authentication.use_case === "personal_actions") {
         const additionalCredentials =
           await getProviderAdditionalClientSideAuthCredentials(authentication);
-        const result: Record<string, { label: string; value: string | number | undefined }> = {
+        const result: Record<
+          string,
+          { label: string; value: string | number | undefined }
+        > = {
           client_id: { label: "OAuth client Id", value: undefined },
           client_secret: { label: "OAuth client secret", value: undefined },
           instance_url: { label: "Instance URL", value: undefined },
@@ -116,7 +119,10 @@ export const getProviderRequiredAuthCredentials = async (
         const additionalCredentials =
           await getProviderAdditionalClientSideAuthCredentials(authentication);
 
-        const result: Record<string, { label: string; value: string | number | undefined }> = {
+        const result: Record<
+          string,
+          { label: string; value: string | number | undefined }
+        > = {
           client_id: { label: "oAuth client Id", value: undefined },
           client_secret: { label: "oAuth client secret", value: undefined },
         };
@@ -147,7 +153,10 @@ export const getProviderRequiredAuthCredentials = async (
         return null;
       }
 
-      const result: Record<string, { label: string; value: string | number | undefined }> = {};
+      const result: Record<
+        string,
+        { label: string; value: string | number | undefined }
+      > = {};
       Object.entries(additionalCredentials).forEach(([key, value]) => {
         result[key] = { label: key, value };
       });
