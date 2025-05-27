@@ -1,6 +1,4 @@
 import {
-  ActionMoonIcon,
-  ActionSunIcon,
   Button,
   DropdownMenu,
   DropdownMenuContent,
@@ -9,6 +7,8 @@ import {
   DropdownMenuTrigger,
   Label,
   LightModeIcon,
+  MoonIcon,
+  SunIcon,
   useSendNotification,
 } from "@dust-tt/sparkle";
 import { Page } from "@dust-tt/sparkle";
@@ -52,9 +52,9 @@ export function Preferences() {
               variant="outline"
               icon={
                 theme === "light"
-                  ? ActionSunIcon
+                  ? SunIcon
                   : theme === "dark"
-                    ? ActionMoonIcon
+                    ? MoonIcon
                     : LightModeIcon
               }
               label={
@@ -70,14 +70,14 @@ export function Preferences() {
           </DropdownMenuTrigger>
           <DropdownMenuContent>
             <DropdownMenuItem
-              icon={ActionSunIcon}
+              icon={SunIcon}
               onClick={() => {
                 setTheme("light");
               }}
               label="Light"
             />
             <DropdownMenuItem
-              icon={ActionMoonIcon}
+              icon={MoonIcon}
               onClick={() => {
                 setTheme("dark");
               }}
