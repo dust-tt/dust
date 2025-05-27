@@ -153,8 +153,8 @@ export async function createOrUpdateUser(
 
     const u = await UserResource.makeNew({
       sId: generateRandomModelSId(),
-      //TODO(workos): No auth0 sub - should we store workos id somewhere ?
-      auth0Sub: externalUser.sub,
+      auth0Sub: session.type === "auth0" ? externalUser.sub : null,
+      workOSId: session.type === "workos" ? externalUser.sub : null,
       provider: null, ///session.provider,
       username: externalUser.nickname,
       email: sanitizeString(externalUser.email),
