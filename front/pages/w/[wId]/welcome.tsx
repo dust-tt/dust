@@ -1,4 +1,14 @@
-import { Button, DustLogoSquare, Input, Page } from "@dust-tt/sparkle";
+import {
+  Button,
+  DustLogoSquare,
+  Input,
+  Page,
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+} from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
@@ -154,6 +164,34 @@ export default function Welcome({
               value={lastName}
               onChange={(e) => setLastName(e.target.value)}
             />
+          </div>
+        </div>
+        <div>
+          <p className="pb-2 text-muted-foreground">
+            Pick your team to get relevant feature updates:
+          </p>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="justify-between text-muted-foreground"
+                  label={team || "Select team"}
+                  isSelect={true}
+                />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-[var(--radix-dropdown-menu-trigger-width)]">
+                <DropdownMenuRadioGroup value={team} onValueChange={setTeam}>
+                  {teams.map((teamOption) => (
+                    <DropdownMenuRadioItem
+                      key={teamOption}
+                      value={teamOption}
+                      label={teamOption}
+                    />
+                  ))}
+                </DropdownMenuRadioGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
         <div className="flex justify-end">
