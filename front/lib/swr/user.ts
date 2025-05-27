@@ -32,9 +32,9 @@ export function useUserMetadata(key: string) {
   };
 }
 
-export function useDeleteMetadata(key: string) {
+export function useDeleteMetadata(prefix: string) {
   const deleteMetadata = async (spec?: string) => {
-    const fullKey = spec ? `${key}:${spec}` : key;
+    const fullKey = spec ? `${prefix}:${spec}` : prefix;
     await fetch(`/api/user/metadata/${encodeURIComponent(fullKey)}`, {
       method: "DELETE",
     });

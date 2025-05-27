@@ -1,18 +1,20 @@
-import {
-  Avatar,
-  DataTable,
-  Label,
-  SearchInput,
-  Spinner,
-} from "@dust-tt/sparkle";
+import { Chip, DataTable, Label, SearchInput, Spinner } from "@dust-tt/sparkle";
 import { useSendNotification } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
+import { keyBy } from "lodash";
 import { useCallback, useMemo, useState } from "react";
 
 import { getAvatar } from "@app/lib/actions/mcp_icons";
+import type { MCPServerViewType } from "@app/lib/api/mcp";
+import type { MCPServerConnectionType } from "@app/lib/resources/mcp_server_connection_resource";
 import { useMCPServerViewsFromSpaces } from "@app/lib/swr/mcp_server_views";
+import {
+  useDeleteMCPServerConnection,
+  useMCPServerConnections,
+} from "@app/lib/swr/mcp_servers";
 import { useSpaces } from "@app/lib/swr/spaces";
 import { useDeleteMetadata } from "@app/lib/swr/user";
+import { classNames } from "@app/lib/utils";
 import type { LightWorkspaceType } from "@app/types";
 import { asDisplayName } from "@app/types";
 
@@ -20,6 +22,8 @@ interface UserTableRow {
   id: string;
   name: string;
   description: string;
+  serverView: MCPServerViewType;
+  connection: MCPServerConnectionType | undefined;
   visual: React.ReactNode;
   onClick?: () => void;
   moreMenuItems?: any[];
@@ -36,11 +40,10 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
   const { spaces } = useSpaces({ workspaceId: owner.sId });
   const { serverViews, isLoading: isMCPServerViewsLoading } =
     useMCPServerViewsFromSpaces(owner, spaces);
-  // const { connections, isConnectionsLoading } = useMCPServerConnections({
-  //   owner,
-  //   connectionType: "workspace",
-  // });
-
+  const { connections, isConnectionsLoading } = useMCPServerConnections({
+    owner,
+    connectionType: "personal",
+  });
   const { deleteMetadata } = useDeleteMetadata("toolsValidations");
 
   const handleDeleteToolMetadata = useCallback(
@@ -63,20 +66,20 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
     [sendNotification, deleteMetadata]
   );
 
+  const { deleteMCPServerConnection } = useDeleteMCPServerConnection({
+    owner,
+  });
+
   // Prepare data for the actions table
   const actionsTableData = useMemo(() => {
     if (!serverViews) {
       return [];
     }
 
-    // const connectionsByInternalServerId = keyBy(
-    //   connections,
-    //   "remoteMCPServerId"
-    // );
-    // const connectionsByRemoteServerId = keyBy(
-    //   connections,
-    //   "internalMCPServerId"
-    // );
+    const connectionsByServerId = keyBy(
+      connections,
+      (c) => c.internalMCPServerId ?? `${c.remoteMCPServerId}`
+    );
 
     return serverViews
       .filter(
@@ -92,11 +95,13 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
         id: serverView.sId,
         name: serverView.server.name,
         description: serverView.server.description,
+        serverView: serverView,
+        connection: connectionsByServerId[serverView.server.sId],
         visual: getAvatar(serverView.server),
         onClick: () => {},
         moreMenuItems: [],
       }));
-  }, [serverViews, searchQuery]);
+  }, [serverViews, connections, searchQuery]);
 
   // Define columns for the actions table
   const actionColumns = useMemo<ColumnDef<UserTableRow>[]>(
@@ -108,17 +113,25 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
           return rowA.original.name.localeCompare(rowB.original.name);
         },
         cell: ({ row }) => (
-          <DataTable.CellContent>
-            <div className="flex flex-row items-center gap-3 py-3">
-              <Avatar visual={row.original.visual} size="sm" />
+          <DataTable.CellContent grow>
+            <div
+              className={classNames("flex flex-row items-center gap-3 py-3")}
+            >
+              {getAvatar(row.original.serverView.server)}
               <div className="flex flex-grow flex-col gap-0 overflow-hidden truncate">
                 <div className="truncate text-sm font-semibold text-foreground dark:text-foreground-night">
-                  {asDisplayName(row.original.name)}
+                  {asDisplayName(row.original.serverView.server.name)}
                 </div>
                 <div className="truncate text-sm text-muted-foreground dark:text-muted-foreground-night">
-                  {row.original.description}
+                  {row.original.serverView.server.description}
                 </div>
               </div>
+
+              {row.original.connection && (
+                <Chip color="success" size="xs">
+                  Connected
+                </Chip>
+              )}
             </div>
           </DataTable.CellContent>
         ),
@@ -137,6 +150,18 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
                 onClick: () => handleDeleteToolMetadata(row.original.id),
                 kind: "item",
               },
+              ...(row.original.connection
+                ? [
+                    {
+                      label: "Disconnect",
+                      onClick: () =>
+                        deleteMCPServerConnection({
+                          connection: row.original.connection!,
+                        }),
+                      kind: "item" as const,
+                    },
+                  ]
+                : []),
             ]}
           />
         ),
@@ -145,7 +170,7 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
         },
       },
     ],
-    [handleDeleteToolMetadata]
+    [deleteMCPServerConnection, handleDeleteToolMetadata]
   );
 
   return (
@@ -159,12 +184,16 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
         />
       </div>
 
-      {isMCPServerViewsLoading ? (
+      {isMCPServerViewsLoading || isConnectionsLoading ? (
         <div className="flex justify-center p-6">
           <Spinner />
         </div>
       ) : actionsTableData.length > 0 ? (
-        <DataTable data={actionsTableData} columns={actionColumns} />
+        <DataTable
+          data={actionsTableData}
+          columns={actionColumns}
+          sorting={[{ id: "name", desc: false }]}
+        />
       ) : (
         <Label>
           {searchQuery ? "No matching tools found" : "No tools available"}

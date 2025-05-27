@@ -1,4 +1,4 @@
-import assert from "assert";
+import { keyBy } from "lodash";
 import type { WhereOptions } from "sequelize";
 import type {
   Attributes,
@@ -20,7 +20,6 @@ import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
-import logger from "@app/logger/logger";
 import type { ModelId, Result } from "@app/types";
 import {
   Err,
@@ -52,12 +51,18 @@ export class MCPServerConnectionResource extends BaseResource<MCPServerConnectio
 
   static async makeNew(
     auth: Authenticator,
-    blob: CreationAttributes<MCPServerConnection>
+    blob: Omit<
+      CreationAttributes<MCPServerConnection>,
+      "userId" | "workspaceId"
+    >
   ) {
-    assert(
-      auth.isAdmin(),
-      "Only the admin can create an MCP server connection"
-    );
+    if (blob.connectionType === "workspace" && !auth.isAdmin()) {
+      throw new DustError(
+        "internal_error",
+        "Only the admin can create a workspace connection"
+      );
+    }
+
     const user = auth.getNonNullableUser();
     const server = await MCPServerConnection.create({
       ...blob,
@@ -158,6 +163,9 @@ export class MCPServerConnectionResource extends BaseResource<MCPServerConnectio
           : { internalMCPServerId: mcpServerId }),
         connectionType,
       },
+      // Only returns the latest connection for a given MCP server.
+      order: [["createdAt", "DESC"]],
+      limit: 1,
     });
 
     return connections.length > 0
@@ -172,28 +180,37 @@ export class MCPServerConnectionResource extends BaseResource<MCPServerConnectio
     auth: Authenticator;
     connectionType: MCPServerConnectionConnectionType;
   }): Promise<MCPServerConnectionResource[]> {
-    if (connectionType === "personal") {
-      return this.baseFetch(auth, {
-        where: {
-          connectionType: "personal",
-          userId: auth.getNonNullableUser().id,
-        },
-      });
-    } else {
-      if (!auth.isAdmin()) {
-        logger.error(
-          "Only admins can list workspace connections",
-          auth.getNonNullableUser().id
-        );
+    const connections: MCPServerConnectionResource[] = [];
 
-        return [];
-      }
-      return this.baseFetch(auth, {
-        where: {
-          connectionType: "workspace",
-        },
-      });
+    if (connectionType === "personal") {
+      connections.push(
+        ...(await this.baseFetch(auth, {
+          where: {
+            connectionType: "personal",
+            userId: auth.getNonNullableUser().id,
+          },
+          order: [["createdAt", "DESC"]],
+        }))
+      );
+    } else {
+      connections.push(
+        ...(await this.baseFetch(auth, {
+          where: {
+            connectionType: "workspace",
+          },
+          order: [["createdAt", "DESC"]],
+        }))
+      );
     }
+
+    // Only return the latest connection for a given MCP server.
+    // Ideally we would filter in the query directly.
+    const connectionsByServerId = keyBy(
+      connections,
+      (c) => c.internalMCPServerId ?? `${c.remoteMCPServerId}`
+    );
+
+    return Object.values(connectionsByServerId);
   }
 
   // Deletion.
@@ -202,10 +219,24 @@ export class MCPServerConnectionResource extends BaseResource<MCPServerConnectio
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, Error>> {
-    assert(
-      auth.isAdmin(),
-      "Only the admin can delete an MCP server connection"
-    );
+    if (this.connectionType === "workspace" && !auth.isAdmin()) {
+      return new Err(
+        new DustError(
+          "internal_error",
+          "Only admins can delete a workspace connection"
+        )
+      );
+    } else if (
+      this.connectionType === "personal" &&
+      this.userId !== auth.getNonNullableUser().id
+    ) {
+      return new Err(
+        new DustError(
+          "internal_error",
+          "Only the user or admins can delete a personal connection"
+        )
+      );
+    }
 
     try {
       await this.model.destroy({
@@ -214,6 +245,30 @@ export class MCPServerConnectionResource extends BaseResource<MCPServerConnectio
         },
         transaction,
       });
+
+      // If connectionType is personal, delete all connections for the same server of the same user.
+      if (this.connectionType === "personal") {
+        await this.model.destroy({
+          where: {
+            userId: this.userId,
+            connectionType: this.connectionType,
+            internalMCPServerId: this.internalMCPServerId,
+            remoteMCPServerId: this.remoteMCPServerId,
+            workspaceId: this.workspaceId,
+          },
+          transaction,
+        });
+        //if connectionType is workspace, delete all workspace and personal connections, regardless of the user.
+      } else if (this.connectionType === "workspace") {
+        await this.model.destroy({
+          where: {
+            remoteMCPServerId: this.remoteMCPServerId,
+            internalMCPServerId: this.internalMCPServerId,
+            workspaceId: this.workspaceId,
+          },
+          transaction,
+        });
+      }
       return new Ok(undefined);
     } catch (err) {
       return new Err(normalizeError(err));
