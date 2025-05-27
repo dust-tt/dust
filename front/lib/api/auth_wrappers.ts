@@ -148,22 +148,13 @@ export function withSessionAuthenticationForWorkspace<T>(
         !opts.doesNotRequireCanUseProduct &&
         !auth?.subscription()?.plan.limits.canUseProduct
       ) {
-        logger.warn(
-          {
-            user: auth.getNonNullableUser().id,
-            workspaceId: wId,
-            url: req.url,
-            method: req.method,
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "workspace_can_use_product_required_error",
+            message: "The workspace was not found.",
           },
-          "workspace_can_use_product_required_error"
-        );
-        // return apiError(req, res, {
-        //   status_code: 403,
-        //   api_error: {
-        //     type: "workspace_can_use_product_required_error",
-        //     message: "The workspace was not found.",
-        //   },
-        // });
+        });
       }
 
       const maintenance = owner.metadata?.maintenance;
