@@ -75,8 +75,8 @@ export function withSessionAuthenticationForPoke<T>(
         return apiError(req, res, {
           status_code: 404,
           api_error: {
-            type: "user_not_found",
-            message: "Could not find the user.",
+            type: "not_authenticated",
+            message: "The user does not have permission",
           },
         });
       }
