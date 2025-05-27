@@ -1,13 +1,10 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
-import {
-  makeMCPToolJSONSuccess,
-  makeMCPToolPersonalAuthenticationRequiredError,
-  makeMCPToolTextError,
-} from "@app/lib/actions/mcp_internal_actions/utils";
+import { makeMCPToolPersonalAuthenticationRequiredError } from "@app/lib/actions/mcp_internal_actions/authentication";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { getConnectionForInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/authentication";
+import { makeMCPToolJSONSuccess } from "@app/lib/actions/mcp_internal_actions/utils";
 
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "gmail",
@@ -30,12 +27,12 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
     });
 
     const accessToken = connection?.access_token;
-    const instanceUrl = connection?.connection.metadata.instance_url as
-      | string
-      | undefined;
 
-    if (!accessToken || !instanceUrl) {
-      return makeMCPToolPersonalAuthenticationRequiredError(mcpServerId);
+    if (!accessToken) {
+      return makeMCPToolPersonalAuthenticationRequiredError(
+        mcpServerId,
+        serverInfo.authorization!
+      );
     }
 
     return makeMCPToolJSONSuccess({
