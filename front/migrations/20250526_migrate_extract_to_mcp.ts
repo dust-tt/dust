@@ -128,7 +128,7 @@ async function migrateWorkspaceExtractActions(
                   unit: processConfig.relativeTimeFrameUnit,
                 }
               : null,
-          name: processConfig.name,
+          name: null,
           singleToolDescriptionOverride: processConfig.description,
           appId: null,
           jsonSchema: processConfig.jsonSchema,
