@@ -25,7 +25,10 @@ import { ConnectMCPServerDialog } from "@app/components/actions/mcp/ConnectMCPSe
 import { MCPServerDetailsInfo } from "@app/components/actions/mcp/MCPServerDetailsInfo";
 import { MCPServerDetailsSharing } from "@app/components/actions/mcp/MCPServerDetailsSharing";
 import { MCPActionHeader } from "@app/components/actions/MCPActionHeader";
-import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
+import {
+  getMcpServerDisplayName,
+  getServerTypeAndIdFromSId,
+} from "@app/lib/actions/mcp_helper";
 import type { MCPServerType } from "@app/lib/api/mcp";
 import {
   useDeleteMCPServer,
@@ -34,7 +37,6 @@ import {
   useMCPServerConnections,
 } from "@app/lib/swr/mcp_servers";
 import type { WorkspaceType } from "@app/types";
-import { asDisplayName } from "@app/types";
 
 type MCPServerDetailsProps = {
   owner: WorkspaceType;
@@ -115,7 +117,10 @@ export function MCPServerDetails({
           </DialogHeader>
           <DialogContainer>
             Are you sure you want to remove the action "
-            {asDisplayName(mcpServerToDelete?.name)}"?
+            {mcpServerToDelete
+              ? getMcpServerDisplayName(mcpServerToDelete)
+              : ""}
+            "?
             <div className="mt-2">
               <b>This action cannot be undone.</b>
             </div>

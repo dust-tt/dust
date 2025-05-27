@@ -11,7 +11,7 @@ import {
 } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import OnboardingLayout from "@app/components/sparkle/OnboardingLayout";
 import config from "@app/lib/api/config";
@@ -66,21 +66,24 @@ export default function Welcome({
   const [jobType, setJobType] = useState<string>("");
   const [isFormValid, setIsFormValid] = useState<boolean>(false);
 
-  const jobTypes = [
-    { value: "customer_success", label: "Customer Success" },
-    { value: "customer_support", label: "Customer Support" },
-    { value: "data", label: "Data" },
-    { value: "design", label: "Design" },
-    { value: "engineering", label: "Engineering" },
-    { value: "finance", label: "Finance" },
-    { value: "people", label: "People (HR)" },
-    { value: "legal", label: "Legal" },
-    { value: "marketing", label: "Marketing" },
-    { value: "operations", label: "Operations" },
-    { value: "product", label: "Product" },
-    { value: "sales", label: "Sales" },
-    { value: "other", label: "Other" },
-  ];
+  const jobTypes = useMemo(
+    () => [
+      { value: "customer_success", label: "Customer Success" },
+      { value: "customer_support", label: "Customer Support" },
+      { value: "data", label: "Data" },
+      { value: "design", label: "Design" },
+      { value: "engineering", label: "Engineering" },
+      { value: "finance", label: "Finance" },
+      { value: "people", label: "People (HR)" },
+      { value: "legal", label: "Legal" },
+      { value: "marketing", label: "Marketing" },
+      { value: "operations", label: "Operations" },
+      { value: "product", label: "Product" },
+      { value: "sales", label: "Sales" },
+      { value: "other", label: "Other" },
+    ],
+    []
+  );
 
   useEffect(() => {
     setIsFormValid(
@@ -88,7 +91,7 @@ export default function Welcome({
         lastName !== "" &&
         jobTypes.some((jt) => jt.value === jobType)
     );
-  }, [firstName, lastName, jobType]);
+  }, [firstName, lastName, jobType, jobTypes]);
 
   const { submit, isSubmitting } = useSubmitFunction(async () => {
     const updateUserFullNameRes = await fetch("/api/user", {

@@ -10,14 +10,11 @@ import {
 import { useCallback, useState } from "react";
 
 import { MCPServerOAuthConnexion } from "@app/components/actions/mcp/MCPServerOAuthConnexion";
+import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
 import type { MCPServerType } from "@app/lib/api/mcp";
 import { useCreateMCPServerConnection } from "@app/lib/swr/mcp_servers";
 import type { OAuthCredentials, WorkspaceType } from "@app/types";
-import {
-  asDisplayName,
-  OAUTH_PROVIDER_NAMES,
-  setupOAuthConnection,
-} from "@app/types";
+import { OAUTH_PROVIDER_NAMES, setupOAuthConnection } from "@app/types";
 
 type ConnectMCPServerDialogProps = {
   owner: WorkspaceType;
@@ -95,7 +92,9 @@ export function ConnectMCPServerDialog({
     >
       <DialogContent size="lg">
         <DialogHeader>
-          <DialogTitle>Connect {asDisplayName(mcpServer?.name)}</DialogTitle>
+          <DialogTitle>
+            Connect {mcpServer ? getMcpServerDisplayName(mcpServer) : ""}
+          </DialogTitle>
         </DialogHeader>
         <DialogContainer>
           <MCPServerOAuthConnexion

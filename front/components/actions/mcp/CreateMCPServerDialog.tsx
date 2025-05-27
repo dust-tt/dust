@@ -12,6 +12,7 @@ import {
 import { useCallback, useEffect, useState } from "react";
 
 import { MCPServerOAuthConnexion } from "@app/components/actions/mcp/MCPServerOAuthConnexion";
+import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata";
 import type { MCPServerType } from "@app/lib/api/mcp";
 import {
@@ -21,7 +22,6 @@ import {
 } from "@app/lib/swr/mcp_servers";
 import type { OAuthCredentials, WorkspaceType } from "@app/types";
 import {
-  asDisplayName,
   OAUTH_PROVIDER_NAMES,
   setupOAuthConnection,
   validateUrl,
@@ -178,7 +178,7 @@ export function CreateMCPServerDialog({
         <DialogHeader>
           <DialogTitle>
             {internalMCPServer
-              ? `Add ${asDisplayName(internalMCPServer.name)}`
+              ? `Add ${getMcpServerDisplayName(internalMCPServer)}`
               : "Add MCP Server"}
           </DialogTitle>
         </DialogHeader>
