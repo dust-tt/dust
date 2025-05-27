@@ -1,4 +1,3 @@
-import type { Editor } from "@tiptap/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import type {
@@ -15,10 +14,7 @@ interface MentionDropdownState {
   triggerRect: DOMRect | null;
 }
 
-export const useMentionDropdown = (
-  editor: Editor | null,
-  editorSuggestions: EditorSuggestions
-) => {
+export const useMentionDropdown = (editorSuggestions: EditorSuggestions) => {
   const [state, setState] = useState<MentionDropdownState>({
     isOpen: false,
     query: "",
