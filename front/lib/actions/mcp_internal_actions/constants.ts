@@ -95,7 +95,7 @@ export const INTERNAL_MCP_SERVERS: Record<
     availability: "manual",
     flag: "dev_mcp_actions",
     tools_stakes: {
-      // Get operations
+      // Get operations.
       get_object_properties: "never_ask",
       get_object_by_email: "never_ask",
       get_latest_objects: "never_ask",
@@ -106,7 +106,7 @@ export const INTERNAL_MCP_SERVERS: Record<
       get_file_public_url: "never_ask",
       get_associated_meetings: "never_ask",
 
-      // Create operations
+      // Create operations.
       create_contact: "high",
       create_company: "high",
       create_deal: "high",
@@ -117,7 +117,7 @@ export const INTERNAL_MCP_SERVERS: Record<
       create_communication: "high",
       create_meeting: "high",
 
-      // Other operations
+      // Other operations.
       count_objects_by_properties: "never_ask",
       search_crm_objects: "never_ask",
     },
