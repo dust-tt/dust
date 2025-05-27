@@ -17,8 +17,8 @@ import { makeGetAssistantSuggestions } from "@app/components/assistant/conversat
 import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isSubmitMessageKey } from "@app/lib/keymaps";
 import { isMobile } from "@app/lib/utils";
+import { useChatDraft } from "@app/stores/inputStore";
 
-import { useChatDraft } from "../inputStore";
 import { URLStorageExtension } from "./extensions/URLStorageExtension";
 
 export interface EditorMention {
