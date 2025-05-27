@@ -10,7 +10,6 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
-import { ServerSideTracking } from "@app/lib/tracking/server";
 import { guessFirstAndLastNameFromFullName } from "@app/lib/user";
 import type { Result } from "@app/types";
 import { Err, Ok, sanitizeString } from "@app/types";
