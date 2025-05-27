@@ -204,7 +204,7 @@ export function WelcomeTourGuide({
         <>
           <div
             className={cn(
-              "relative flex overflow-hidden rounded-t-2xl p-4 text-center",
+              "relative flex aspect-video overflow-hidden rounded-t-2xl p-4 text-center",
               "bg-brand-support-green"
             )}
           >
@@ -242,7 +242,7 @@ export function WelcomeTourGuide({
       side: "bottom",
       body: (
         <>
-          <div className="flex flex-col items-center justify-center gap-4 rounded-t-2xl bg-brand-support-rose p-6 text-center">
+          <div className="flex aspect-video flex-col items-center justify-center gap-4 rounded-t-2xl bg-brand-support-rose p-6 text-center">
             <div className="grid grid-cols-6 gap-2">
               {connections.map((c) => (
                 <Tooltip
@@ -302,7 +302,7 @@ export function WelcomeTourGuide({
       anchorRef: createAgentButtonRef,
       body: (
         <>
-          <div className="flex flex-col items-center justify-center gap-0 rounded-t-2xl bg-brand-support-golden p-6 text-center">
+          <div className="flex aspect-video flex-col items-center justify-center gap-0 rounded-t-2xl bg-brand-support-golden p-6 text-center">
             <div className="grid grid-cols-4 gap-2">
               {EXAMPLE_AGENTS.map((agent) => (
                 <Tooltip
