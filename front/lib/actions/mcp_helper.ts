@@ -14,6 +14,7 @@ import {
 } from "@app/lib/resources/string_ids";
 import type { ModelId } from "@app/types";
 import { asDisplayName } from "@app/types";
+import { AssistantBuilderActionConfiguration } from "@app/components/assistant_builder/types";
 
 export const getServerTypeAndIdFromSId = (
   mcpServerId: string
@@ -96,12 +97,22 @@ export function mcpServerIsRemote(
   return serverType === "remote";
 }
 
-export function getMcpServerViewDisplayName(view: MCPServerViewType) {
+export function getMcpServerViewDisplayName(
+  view: MCPServerViewType,
+  action?: AssistantBuilderActionConfiguration
+) {
   // Unreleased internal servers are displayed with a suffix in the UI.
   const res = getInternalMCPServerNameAndWorkspaceId(view.server.sId);
-  if (res.isOk() && INTERNAL_MCP_SERVERS[res.value.name].flag != null) {
-    return `${asDisplayName(view.server.name)} (Preview)`;
-  }
+  let displayName = asDisplayName(view.server.name);
 
-  return asDisplayName(view.server.name);
+  if (res.isOk()) {
+    if (INTERNAL_MCP_SERVERS[res.value.name].flag != null) {
+      displayName += " (Preview)";
+    }
+    // Will append Dust App name.
+    if (res.value.name === "run_dust_app" && action) {
+      displayName += " - " + action.name;
+    }
+  }
+  return displayName;
 }

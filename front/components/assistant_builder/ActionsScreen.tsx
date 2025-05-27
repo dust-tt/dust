@@ -95,7 +95,6 @@ import { useTools } from "@app/components/assistant_builder/useTools";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import { getInternalMCPServerNameAndWorkspaceId } from "@app/lib/actions/mcp_internal_actions/constants";
-import { isDustAppRunConfiguration } from "@app/lib/actions/types/guards";
 import {
   ACTION_SPECIFICATIONS,
   DATA_VISUALIZATION_SPECIFICATION,
@@ -183,19 +182,8 @@ function actionDisplayName(
   action: AssistantBuilderActionAndDataVisualizationConfiguration,
   mcpServerView: MCPServerViewType | null
 ) {
-  if (mcpServerView) {
-    if (
-      action.type === "MCP" &&
-      isDustAppRunConfiguration(action.configuration.dustAppConfiguration)
-    ) {
-      const { dustAppConfiguration } = action.configuration;
-      const displayNameSuffix = dustAppConfiguration?.name
-        ? ` - ${dustAppConfiguration.name}`
-        : "";
-      return getMcpServerViewDisplayName(mcpServerView) + displayNameSuffix;
-    }
-
-    return getMcpServerViewDisplayName(mcpServerView);
+  if (mcpServerView && action.type === "MCP") {
+    return getMcpServerViewDisplayName(mcpServerView, action);
   }
 
   if (action.type === "DATA_VISUALIZATION") {
@@ -1018,12 +1006,6 @@ function ActionEditor({
 
   const shouldDisplayAdvancedSettings = !["DUST_APP_RUN"].includes(action.type);
 
-  const actionName =
-    action.type === "MCP" &&
-    isDustAppRunConfiguration(action.configuration.dustAppConfiguration)
-      ? action.configuration.dustAppConfiguration.name
-      : action.name;
-
   return (
     <div className="flex flex-col gap-4 px-1">
       <ActionModeSection show={true}>
@@ -1064,7 +1046,7 @@ function ActionEditor({
                   <Input
                     name="actionName"
                     placeholder="My tool name…"
-                    value={actionName}
+                    value={action.name}
                     onChange={(e) => {
                       updateAction({
                         actionName: e.target.value.toLowerCase(),
