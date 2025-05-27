@@ -6,7 +6,6 @@ import {
 
 import type * as activities from "./activities";
 import { makeProcessTranscriptWorkflowId } from "./utils";
-import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 
 const { retrieveNewTranscriptsActivity, processTranscriptActivity } =
   proxyActivities<typeof activities>({
@@ -14,20 +13,19 @@ const { retrieveNewTranscriptsActivity, processTranscriptActivity } =
   });
 
 export async function retrieveNewTranscriptsWorkflow(
-  transcriptsConfiguration: LabsTranscriptsConfigurationResource
+  transcriptsConfigurationId: string
 ) {
   const filesToProcess = await retrieveNewTranscriptsActivity(
-    transcriptsConfiguration.sId
+    transcriptsConfigurationId
   );
 
   const { searchAttributes: parentSearchAttributes, memo } = workflowInfo();
 
   for (const fileId of filesToProcess) {
     const workflowId = makeProcessTranscriptWorkflowId({
-      transcriptsConfiguration,
+      transcriptsConfigurationId,
       fileId,
     });
-    const transcriptsConfigurationId = transcriptsConfiguration.sId;
     await executeChild(processTranscriptWorkflow, {
       workflowId,
       searchAttributes: parentSearchAttributes,

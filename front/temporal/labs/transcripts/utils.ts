@@ -8,11 +8,11 @@ export function makeRetrieveTranscriptWorkflowId(
 }
 
 export function makeProcessTranscriptWorkflowId({
-  transcriptsConfiguration,
+  transcriptsConfigurationId,
   fileId,
 }: {
-  transcriptsConfiguration: LabsTranscriptsConfigurationResource;
+  transcriptsConfigurationId: string;
   fileId: string;
 }): string {
-  return `labs-transcripts-process-${transcriptsConfiguration.id}-${fileId}`;
+  return `labs-transcripts-process-${transcriptsConfigurationId}-${fileId}`;
 }
