@@ -3,8 +3,6 @@ import {
   DustLogoSquare,
   Input,
   Page,
-  RadioGroup,
-  RadioGroupItem,
 } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
@@ -63,26 +61,16 @@ export default function Welcome({
   user,
   owner,
   isAdmin,
-  defaultExpertise,
-  defaultAdminInterest,
   conversationId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
   const [firstName, setFirstName] = useState<string>(user.firstName);
   const [lastName, setLastName] = useState<string>(user.lastName || "");
-  const [expertise, setExpertise] = useState<string>(defaultExpertise);
-  const [adminInterest, setAdminInterest] =
-    useState<string>(defaultAdminInterest);
   const [isFormValid, setIsFormValid] = useState<boolean>(false);
 
   useEffect(() => {
-    setIsFormValid(
-      firstName !== "" &&
-        lastName !== "" &&
-        expertise !== "" &&
-        (isAdmin ? adminInterest !== "" : true)
-    );
-  }, [firstName, lastName, expertise, adminInterest, isAdmin]);
+    setIsFormValid(firstName !== "" && lastName !== "");
+  }, [firstName, lastName]);
 
   const { submit, isSubmitting } = useSubmitFunction(async () => {
     const updateUserFullNameRes = await fetch("/api/user", {
@@ -93,22 +81,6 @@ export default function Welcome({
       body: JSON.stringify({ firstName, lastName }),
     });
     if (updateUserFullNameRes.ok) {
-      await fetch("/api/user/metadata/expertise", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ value: expertise }),
-      });
-      if (isAdmin) {
-        await fetch("/api/user/metadata/interest", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ value: adminInterest }),
-        });
-      }
     }
     await router.push(
       `/w/${owner.sId}/assistant/new?welcome=true${
@@ -164,46 +136,6 @@ export default function Welcome({
               onChange={(e) => setLastName(e.target.value)}
             />
           </div>
-        </div>
-        {isAdmin && (
-          <div>
-            <p className="pb-2">I'm looking at Dust:</p>
-            <RadioGroup
-              value={adminInterest}
-              onValueChange={setAdminInterest}
-              className="flex flex-col gap-2 sm:flex-row"
-            >
-              <RadioGroupItem
-                value="personnal"
-                id="personal"
-                label="Just for me"
-              />
-              <RadioGroupItem
-                value="team"
-                id="team"
-                label="For me and my team"
-              />
-            </RadioGroup>
-          </div>
-        )}
-        <div>
-          <p className="pb-2 text-muted-foreground dark:text-muted-foreground-night">
-            How much do you know about AI agents?
-          </p>
-          <RadioGroup
-            value={expertise}
-            id={expertise}
-            onValueChange={setExpertise}
-            className="flex flex-col gap-2 sm:flex-row"
-          >
-            <RadioGroupItem value="beginner" id="beginner" label="Nothing!" />
-            <RadioGroupItem
-              value="intermediate"
-              id="intermediate"
-              label="I know the basics"
-            />
-            <RadioGroupItem value="advanced" id="advanced" label="I'm a pro" />
-          </RadioGroup>
         </div>
         <div className="flex justify-end">
           <Button
