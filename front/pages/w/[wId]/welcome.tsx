@@ -99,7 +99,7 @@ export default function Welcome({
       body: JSON.stringify({ firstName, lastName }),
     });
     if (updateUserFullNameRes.ok) {
-      await fetch("/api/user/metadata/jobType", {
+      await fetch("/api/user/metadata/job_type", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
