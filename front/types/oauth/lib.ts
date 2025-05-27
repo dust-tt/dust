@@ -101,13 +101,13 @@ export const getProviderRequiredAuthCredentials = async (
           client_secret: { label: "OAuth client secret", value: undefined },
           instance_url: { label: "Instance URL", value: undefined },
         };
-        
+
         if (additionalCredentials) {
           Object.entries(additionalCredentials).forEach(([key, value]) => {
             result[key] = { label: key, value };
           });
         }
-        
+
         return result;
       }
       return null;
@@ -115,18 +115,18 @@ export const getProviderRequiredAuthCredentials = async (
       if (authentication.use_case === "personal_actions") {
         const additionalCredentials =
           await getProviderAdditionalClientSideAuthCredentials(authentication);
-        
+
         const result: Record<string, { label: string; value: string | number | undefined }> = {
           client_id: { label: "oAuth client Id", value: undefined },
           client_secret: { label: "oAuth client secret", value: undefined },
         };
-        
+
         if (additionalCredentials) {
           Object.entries(additionalCredentials).forEach(([key, value]) => {
             result[key] = { label: key, value };
           });
         }
-        
+
         return result;
       }
       return null;
@@ -140,18 +140,18 @@ export const getProviderRequiredAuthCredentials = async (
     case "github":
     case "google_drive":
     case "intercom":
-      const additionalCredentials = 
+      const additionalCredentials =
         await getProviderAdditionalClientSideAuthCredentials(authentication);
-      
+
       if (!additionalCredentials) {
         return null;
       }
-      
+
       const result: Record<string, { label: string; value: string | number | undefined }> = {};
       Object.entries(additionalCredentials).forEach(([key, value]) => {
         result[key] = { label: key, value };
       });
-      
+
       return Object.keys(result).length > 0 ? result : null;
     default:
       assertNever(authentication.provider);
