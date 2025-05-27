@@ -33,8 +33,7 @@ import type {
   SpaceType,
 } from "@app/types";
 import { setupOAuthConnection } from "@app/types";
-
-import { getPKCEConfig } from "../utils/pkce";
+import { getProviderAdditionalClientSideAuthCredentials } from "@app/types/oauth/lib";
 
 /**
  * Hook to fetch a specific remote MCP server by ID
@@ -540,19 +539,21 @@ export function useCreatePersonalConnection(owner: LightWorkspaceType) {
     useCase: OAuthUseCase
   ): Promise<boolean> => {
     try {
-      const extraConfig: {
-        mcp_server_id: string;
-        code_verifier?: string;
-        code_challenge?: string;
-      } = {
+      const extraConfig: Record<string, string> = {
         mcp_server_id: mcpServerId,
       };
 
-      // TODO(spolu): clean that up
-      if (provider === "salesforce") {
-        const { code_verifier, code_challenge } = await getPKCEConfig();
-        extraConfig.code_verifier = code_verifier;
-        extraConfig.code_challenge = code_challenge;
+      const additionalCredentials =
+        await getProviderAdditionalClientSideAuthCredentials({
+          provider,
+          use_case: useCase,
+        });
+      if (additionalCredentials) {
+        Object.entries(additionalCredentials).forEach(([key, value]) => {
+          if (typeof value === "string") {
+            extraConfig[key] = value;
+          }
+        });
       }
 
       const cRes = await setupOAuthConnection({
