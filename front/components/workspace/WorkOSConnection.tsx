@@ -22,8 +22,10 @@ import {
   useCreateWorkOSOrganization,
   useWorkOSAdminPortalUrl,
 } from "@app/lib/swr/workos";
+import { useSyncWorkOSDirectoriesAndUsers } from "@app/lib/swr/workspaces";
 import { WorkOSPortalIntent } from "@app/lib/types/workos";
 import logger from "@app/logger/logger";
+import type { WorkspaceType } from "@app/types";
 
 const ADMIN_PANEL_OPTIONS = {
   domain: [
@@ -62,11 +64,34 @@ const ADMIN_PANEL_OPTIONS = {
   ],
 };
 
-interface WorkOSConnectionProps {
-  owner: {
-    sId: string;
-    workOSOrganizationId?: string | null;
+interface WorkOSSyncButtonProps {
+  owner: WorkspaceType;
+}
+
+export function WorkOSSyncButton({ owner }: WorkOSSyncButtonProps) {
+  const [isLoading, setIsLoading] = useState(false);
+  const { triggerFullSync } = useSyncWorkOSDirectoriesAndUsers(owner);
+
+  const handleSync = async () => {
+    setIsLoading(true);
+    await triggerFullSync();
+    setIsLoading(false);
   };
+
+  return (
+    owner.workOSOrganizationId && (
+      <Button
+        variant="primary"
+        onClick={handleSync}
+        disabled={isLoading}
+        label={isLoading ? "Syncing..." : "Sync WorkOS Directories & Groups"}
+      />
+    )
+  );
+}
+
+interface WorkOSConnectionProps {
+  owner: WorkspaceType;
 }
 
 export function WorkOSConnection({ owner }: WorkOSConnectionProps) {
@@ -120,18 +145,6 @@ export function WorkOSConnection({ owner }: WorkOSConnectionProps) {
     setWorkOSOrganizationId(r.organizationId);
   };
 
-  const getSelectedLabel = () => {
-    const allOptions = [
-      ...ADMIN_PANEL_OPTIONS.domain,
-      ...ADMIN_PANEL_OPTIONS.config,
-      ...ADMIN_PANEL_OPTIONS.logs,
-    ];
-    return (
-      allOptions.find((opt) => opt.value === selectedIntent)?.label ||
-      "Select Panel"
-    );
-  };
-
   return (
     <Page.Vertical gap="sm">
       <Page.H variant="h5">Enterprise Connection</Page.H>
@@ -146,7 +159,7 @@ export function WorkOSConnection({ owner }: WorkOSConnectionProps) {
             <DropdownMenu>
               <DropdownMenuTrigger>
                 <Button
-                  label={getSelectedLabel()}
+                  label="Select Panel"
                   size="sm"
                   isSelect
                   icon={ExternalLinkIcon}
@@ -214,6 +227,11 @@ export function WorkOSConnection({ owner }: WorkOSConnectionProps) {
           />
         </DialogContent>
       </Dialog>
+      {/* Debug button: will be replaced by an actual admin console */}
+      <Page.P variant="secondary">Synchronize your directories.</Page.P>
+      <div className="flex w-full flex-col items-start gap-3">
+        <WorkOSSyncButton owner={owner} />
+      </div>
     </Page.Vertical>
   );
 }

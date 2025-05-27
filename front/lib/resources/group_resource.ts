@@ -1,3 +1,4 @@
+import type { DirectoryGroup as WorkOSGroup } from "@workos-inc/node";
 import { assert } from "console";
 import type {
   Attributes,
@@ -287,6 +288,35 @@ export class GroupResource extends BaseResource<GroupModel> {
     };
   }
 
+  static async makeNewProvisionedGroup(
+    auth: Authenticator,
+    {
+      workspace,
+      workOSGroup,
+    }: {
+      workspace: LightWorkspaceType;
+      workOSGroup: WorkOSGroup;
+    }
+  ): Promise<{ success: boolean }> {
+    const groupsWithSameName = await this.baseFetch(auth, {
+      where: {
+        name: workOSGroup.name, // Relying on the index (workspaceId, name).
+      },
+    });
+    if (groupsWithSameName.length > 0) {
+      return { success: false };
+    }
+
+    await this.makeNew({
+      kind: "provisioned",
+      name: workOSGroup.name,
+      workOSGroupId: workOSGroup.id,
+      workspaceId: workspace.id,
+    });
+
+    return { success: true };
+  }
+
   // sId
 
   get sId(): string {
@@ -490,6 +520,19 @@ export class GroupResource extends BaseResource<GroupModel> {
     }
 
     return new Ok(groups);
+  }
+
+  static async fetchByWorkOSGroupId(
+    auth: Authenticator,
+    workOSGroupId: string
+  ): Promise<GroupResource | null> {
+    const [group] = await this.baseFetch(auth, {
+      where: {
+        workOSGroupId,
+      },
+    });
+
+    return group ?? null;
   }
 
   static async fetchByAgentConfiguration({

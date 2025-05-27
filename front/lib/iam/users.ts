@@ -10,7 +10,6 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
-import { ServerSideTracking } from "@app/lib/tracking/server";
 import { guessFirstAndLastNameFromFullName } from "@app/lib/user";
 import type { Result } from "@app/types";
 import { Err, Ok, sanitizeString } from "@app/types";
@@ -93,13 +92,15 @@ export async function maybeUpdateFromExternalUser(
   }
 }
 
-export async function createOrUpdateUser(
-  session: SessionWithUser
-): Promise<{ user: UserResource; created: boolean }> {
-  const { user: externalUser } = session;
-
-  const user = await fetchUserFromSession(session);
-
+export async function createOrUpdateUser({
+  platform,
+  user,
+  externalUser,
+}: {
+  platform: SessionWithUser["type"];
+  user: UserResource | null;
+  externalUser: ExternalUser;
+}): Promise<{ user: UserResource; created: boolean }> {
   if (user) {
     const updateArgs: { [key: string]: string } = {};
 
@@ -153,29 +154,14 @@ export async function createOrUpdateUser(
 
     const u = await UserResource.makeNew({
       sId: generateRandomModelSId(),
-      //TODO(workos): No auth0 sub - should we store workos id somewhere ?
-      auth0Sub: externalUser.sub,
+      auth0Sub: platform === "auth0" ? externalUser.sub : null,
+      workOSId: platform === "workos" ? externalUser.sub : null,
       provider: null, ///session.provider,
       username: externalUser.nickname,
       email: sanitizeString(externalUser.email),
       name: externalUser.name,
       firstName,
       lastName,
-    });
-
-    ServerSideTracking.trackSignup({
-      user: {
-        sId: u.sId,
-        id: u.id,
-        createdAt: u.createdAt.getTime(),
-        provider: u.provider,
-        username: u.username,
-        email: u.email,
-        firstName: u.firstName,
-        lastName: u.lastName,
-        image: u.imageUrl,
-        fullName: u.name,
-      },
     });
 
     return { user: u, created: true };
