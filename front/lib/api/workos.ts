@@ -302,7 +302,7 @@ async function upsertUser({
       workOSId: workOSUser.id,
       provider: directory.type,
       // TODO: not sure what the providerId is here, it does not seem to be used.
-      providerId: workOSUser.id,
+      providerId: null,
       name: workOSUser.lastName ?? workOSUser.email,
       username: getUserNicknameFromEmail(workOSUser.email),
       email: sanitizeString(workOSUser.email),
