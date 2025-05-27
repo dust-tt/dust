@@ -64,7 +64,7 @@ export const MentionDropdown = ({
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent
-        className="h-60 w-72"
+        className="w-72"
         align="start"
         side="bottom"
         sideOffset={4}
