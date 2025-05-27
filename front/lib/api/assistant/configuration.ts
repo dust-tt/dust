@@ -1464,13 +1464,18 @@ async function createAgentDataSourcesConfiguration(
     {} as Record<string, DataSourceViewResource>
   );
 
-  const agentDataSourceConfigBlobs = dataSourceConfigurations.map(
-    (dsConfig) => {
+  const agentDataSourceConfigBlobs = removeNulls(
+    dataSourceConfigurations.map((dsConfig) => {
       const dataSourceView = dataSourceViewsMap[dsConfig.dataSourceViewId];
-      assert(
-        dataSourceView,
-        "Can't create AgentDataSourceConfiguration for retrieval: DataSourceView not found."
-      );
+      if (!dataSourceView) {
+        logger.warn(
+          {
+            dataSourceViewId: dsConfig.dataSourceViewId,
+          },
+          "createAgentDataSourcesConfiguration: skip dataSourceView not found"
+        );
+        return null;
+      }
 
       const tagsFilter = dsConfig.filter.tags;
       let tagsMode: "auto" | "custom" | null = null;
@@ -1500,7 +1505,7 @@ async function createAgentDataSourcesConfiguration(
         tagsNotIn,
         workspaceId: owner.id,
       };
-    }
+    })
   );
 
   return AgentDataSourceConfiguration.bulkCreate(agentDataSourceConfigBlobs, {
@@ -1537,24 +1542,31 @@ async function createTableDataSourceConfiguration(
     {} as Record<string, DataSourceViewResource>
   );
 
-  const tableConfigBlobs = tableConfigurations.map((tc) => {
-    const dataSourceView = dataSourceViewsMap[tc.dataSourceViewId];
-    assert(
-      dataSourceView,
-      "Can't create TableDataSourceConfiguration for query tables: DataSourceView not found."
-    );
+  const tableConfigBlobs = removeNulls(
+    tableConfigurations.map((tc) => {
+      const dataSourceView = dataSourceViewsMap[tc.dataSourceViewId];
+      if (!dataSourceView) {
+        logger.warn(
+          {
+            dataSourceViewId: tc.dataSourceViewId,
+          },
+          "createTableDataSourceConfiguration: skip dataSourceView not found"
+        );
+        return null;
+      }
 
-    const { dataSource } = dataSourceView;
+      const { dataSource } = dataSourceView;
 
-    return {
-      dataSourceId: dataSource.id,
-      dataSourceViewId: dataSourceView.id,
-      tableId: tc.tableId,
-      tablesQueryConfigurationId: tablesQueryConfig?.id || null,
-      mcpServerConfigurationId: mcpConfig?.id || null,
-      workspaceId: owner.id,
-    };
-  });
+      return {
+        dataSourceId: dataSource.id,
+        dataSourceViewId: dataSourceView.id,
+        tableId: tc.tableId,
+        tablesQueryConfigurationId: tablesQueryConfig?.id || null,
+        mcpServerConfigurationId: mcpConfig?.id || null,
+        workspaceId: owner.id,
+      };
+    })
+  );
 
   return AgentTablesQueryConfigurationTable.bulkCreate(tableConfigBlobs, {
     transaction: t,

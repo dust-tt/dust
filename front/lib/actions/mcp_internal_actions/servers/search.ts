@@ -155,6 +155,18 @@ function createServer(
       coreSearchArgsResults.map((res) => (res.isOk() ? res.value : null))
     );
 
+    if (coreSearchArgs.length === 0) {
+      return {
+        isError: true,
+        content: [
+          {
+            type: "text",
+            text: "Search action must have at least one data source configured.",
+          },
+        ],
+      };
+    }
+
     // Now we can search each data source.
     const searchResults = await coreAPI.searchDataSources(
       query,
@@ -318,6 +330,18 @@ function createServer(
         const coreSearchArgs = removeNulls(
           coreSearchArgsResults.map((res) => (res.isOk() ? res.value : null))
         );
+
+        if (coreSearchArgs.length === 0) {
+          return {
+            isError: true,
+            content: [
+              {
+                type: "text",
+                text: "Search action must have at least one data source configured.",
+              },
+            ],
+          };
+        }
 
         const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
         const result = await coreAPI.searchTags({
