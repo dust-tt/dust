@@ -80,7 +80,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   const enterpriseConnectionStrategyDetails: EnterpriseConnectionStrategyDetails =
     {
       callbackUrl: config.getAuth0TenantUrl(),
-      initiateLoginUrl: makeEnterpriseConnectionInitiateLoginUrl(
+      initiateLoginUrl: await makeEnterpriseConnectionInitiateLoginUrl(
         owner.sId,
         null
       ),
