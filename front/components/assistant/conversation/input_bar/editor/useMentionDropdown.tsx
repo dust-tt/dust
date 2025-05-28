@@ -29,6 +29,7 @@ interface MentionDropdownState {
   suggestions: EditorSuggestion[];
   selectedIndex: number;
   triggerRect: DOMRect | null;
+  isLoading: boolean;
 }
 
 export const useMentionDropdown = (
@@ -41,6 +42,7 @@ export const useMentionDropdown = (
     suggestions: [],
     selectedIndex: 0,
     triggerRect: null,
+    isLoading: editorSuggestions.isLoading,
   });
 
   const commandRef = useRef<CommandFunction | null>(null);
@@ -122,6 +124,14 @@ export const useMentionDropdown = (
       updateSuggestions(state.query);
     }
   }, [editorSuggestions, state.isOpen, state.query, updateSuggestions]);
+
+  // Update loading state when editorSuggestions.isLoading changes
+  useEffect(() => {
+    setState((prev) => ({
+      ...prev,
+      isLoading: editorSuggestions.isLoading,
+    }));
+  }, [editorSuggestions.isLoading]);
 
   const getSuggestionHandler = useCallback(() => {
     return {
@@ -225,6 +235,7 @@ export const useMentionDropdown = (
     suggestions: state.suggestions,
     selectedIndex: state.selectedIndex,
     triggerRect: state.triggerRect,
+    isLoading: state.isLoading,
     onSelect: selectSuggestion,
     onOpenChange: closeDropdown,
     onSelectedIndexChange: setSelectedIndex,
