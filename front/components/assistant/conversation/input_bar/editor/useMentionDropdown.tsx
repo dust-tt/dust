@@ -16,12 +16,12 @@ interface Range {
   to: number;
 }
 
-interface SuggestionProps {
+export type SuggestionProps = {
   command: CommandFunction;
   range: Range;
   query: string;
   clientRect: () => DOMRect | null;
-}
+};
 
 export interface MentionDropdownState {
   isOpen: boolean;
