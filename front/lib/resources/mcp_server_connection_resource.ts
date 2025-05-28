@@ -162,6 +162,10 @@ export class MCPServerConnectionResource extends BaseResource<MCPServerConnectio
           ? { remoteMCPServerId: id }
           : { internalMCPServerId: mcpServerId }),
         connectionType,
+        userId:
+          connectionType === "personal"
+            ? auth.getNonNullableUser().id
+            : undefined,
       },
       // Only returns the latest connection for a given MCP server.
       order: [["createdAt", "DESC"]],
