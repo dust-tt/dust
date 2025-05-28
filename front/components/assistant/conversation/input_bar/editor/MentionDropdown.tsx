@@ -11,25 +11,29 @@ import type { EditorSuggestion } from "@app/components/assistant/conversation/in
 import { classNames } from "@app/lib/utils";
 
 interface MentionDropdownProps {
-  suggestions: EditorSuggestion[];
-  onSelect: (suggestion: EditorSuggestion) => void;
-  isOpen: boolean;
-  onOpenChange: (open: boolean) => void;
-  triggerRect?: DOMRect | null;
-  selectedIndex: number;
-  onSelectedIndexChange: (index: number) => void;
-  isLoading: boolean;
+  mentionDropdownState: {
+    suggestions: EditorSuggestion[];
+    onSelect: (suggestion: EditorSuggestion) => void;
+    isOpen: boolean;
+    onOpenChange: (open: boolean) => void;
+    triggerRect?: DOMRect | null;
+    selectedIndex: number;
+    onSelectedIndexChange: (index: number) => void;
+    isLoading: boolean;
+  };
 }
 
 export const MentionDropdown = ({
-  suggestions,
-  onSelect,
-  isOpen,
-  onOpenChange,
-  triggerRect,
-  selectedIndex,
-  onSelectedIndexChange,
-  isLoading,
+  mentionDropdownState: {
+    suggestions,
+    onSelect,
+    isOpen,
+    onOpenChange,
+    triggerRect,
+    selectedIndex,
+    onSelectedIndexChange,
+    isLoading,
+  },
 }: MentionDropdownProps) => {
   const triggerRef = useRef<HTMLDivElement>(null);
   const [virtualTriggerStyle, setVirtualTriggerStyle] =

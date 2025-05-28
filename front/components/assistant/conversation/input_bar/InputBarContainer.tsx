@@ -333,16 +333,7 @@ const InputBarContainer = ({
         />
       </div>
 
-      <MentionDropdown
-        suggestions={mentionDropdown.suggestions}
-        onSelect={mentionDropdown.onSelect}
-        isOpen={mentionDropdown.isOpen}
-        onOpenChange={mentionDropdown.onOpenChange}
-        triggerRect={mentionDropdown.triggerRect}
-        selectedIndex={mentionDropdown.selectedIndex}
-        onSelectedIndexChange={mentionDropdown.onSelectedIndexChange}
-        isLoading={mentionDropdown.isLoading}
-      />
+      <MentionDropdown mentionDropdownState={mentionDropdown} />
     </div>
   );
 };
