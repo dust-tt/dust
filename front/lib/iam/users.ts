@@ -102,7 +102,7 @@ export async function createOrUpdateUser({
 }): Promise<{ user: UserResource; created: boolean }> {
   if (user) {
     const updateArgs: { [key: string]: string } = {};
-    console.log("====================", externalUser);
+
     // We only update the user's email if the email is verified.
     if (externalUser.email_verified) {
       updateArgs.email = externalUser.email;
