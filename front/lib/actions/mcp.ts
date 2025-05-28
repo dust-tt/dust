@@ -641,17 +641,9 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
           // Check if this is a tool_approve_execution from a sub agent.
           const notificationOutput = notification.params.data.output;
           if (isMCPToolApproveExecutionNotificationType(notificationOutput)) {
-            const subAgentProperties = notificationOutput.resource;
             yield {
-              type: "tool_approve_execution",
               created: Date.now(),
-              messageId: subAgentProperties.messageId,
-              conversationId: subAgentProperties.conversationId,
-              configurationId: subAgentProperties.configurationId,
-              actionId: subAgentProperties.actionId,
-              inputs: subAgentProperties.inputs,
-              stake: subAgentProperties.stake,
-              metadata: subAgentProperties.metadata,
+              ...notificationOutput.resource,
             };
           } else {
             yield {

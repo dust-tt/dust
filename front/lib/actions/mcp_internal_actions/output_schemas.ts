@@ -443,7 +443,7 @@ const ToolApproveExecutionContentSchema = z.object({
   }),
 });
 
-type ToolApproveExcustionOutput = z.infer<
+type ToolApproveExcustionOutputType = z.infer<
   typeof ToolApproveExecutionContentSchema
 >;
 
@@ -498,10 +498,7 @@ export function isMCPProgressNotificationType(
 
 export function isMCPToolApproveExecutionNotificationType(
   notificationOutput: ProgressNotificationOutput
-): notificationOutput is ToolApproveExcustionOutput {
-  return (
-    notificationOutput !== undefined &&
-    notificationOutput.type === "resource" &&
-    notificationOutput.resource.type === "tool_approve_execution"
-  );
+): notificationOutput is ToolApproveExcustionOutputType {
+  return ToolApproveExecutionContentSchema.safeParse(notificationOutput)
+    .success;
 }
