@@ -2,7 +2,6 @@ import {
   Avatar,
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
 import { Spinner } from "@dust-tt/sparkle";
@@ -51,11 +50,6 @@ export const MentionDropdown = ({
     }
   }, [triggerRect]);
 
-  // Reset selected index when suggestions change
-  useEffect(() => {
-    onSelectedIndexChange(0);
-  }, [suggestions, onSelectedIndexChange]);
-
   return (
     <DropdownMenu open={isOpen} onOpenChange={onOpenChange}>
       <DropdownMenuTrigger asChild>
@@ -78,22 +72,28 @@ export const MentionDropdown = ({
             <Spinner />
           </div>
         ) : suggestions.length > 0 ? (
-          suggestions.map((suggestion, index) => (
-            <DropdownMenuItem
-              key={suggestion.id}
-              icon={() => <Avatar size="xs" visual={suggestion.pictureUrl} />}
-              className={classNames(
-                "flex cursor-pointer flex-col items-center gap-2 px-2 py-2",
-                index === selectedIndex
-                  ? "bg-muted-background dark:bg-primary-900"
-                  : ""
-              )}
-              onClick={() => onSelect(suggestion)}
-              onMouseEnter={() => onSelectedIndexChange(index)}
-              onSelect={(e) => e.preventDefault()}
-              label={suggestion.label}
-            />
-          ))
+          <div className="flex flex-col gap-y-1 p-1">
+            {suggestions.map((suggestion, index) => (
+              <div
+                key={suggestion.id}
+                className="flex flex-initial items-center gap-x-2 px-2 py-1"
+              >
+                <Avatar size="xs" visual={suggestion.pictureUrl} />
+                <button
+                  className={classNames(
+                    "flex-initial cursor-pointer text-left text-sm font-semibold",
+                    index === selectedIndex
+                      ? "text-highlight-500"
+                      : "text-foreground dark:text-foreground-night"
+                  )}
+                  onClick={() => onSelect(suggestion)}
+                  onMouseEnter={() => onSelectedIndexChange(index)}
+                >
+                  {suggestion.label}
+                </button>
+              </div>
+            ))}
+          </div>
         ) : (
           <div className="flex h-12 w-full items-center justify-center text-sm text-muted-foreground">
             No result
