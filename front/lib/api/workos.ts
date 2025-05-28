@@ -1,12 +1,10 @@
 import type {
   AuthenticationResponse as WorkOSAuthenticationResponse,
   Directory as WorkOSDirectory,
-  Organization as WorkOSOrganization,
-  User as WorkOSUser,
-} from "@workos-inc/node";
-import type {
   DirectoryGroup as WorkOSGroup,
   DirectoryUserWithGroups as WorkOSUserWithGroups,
+  Organization as WorkOSOrganization,
+  User as WorkOSUser,
 } from "@workos-inc/node";
 import { GeneratePortalLinkIntent, WorkOS } from "@workos-inc/node";
 import { unsealData } from "iron-session";
@@ -206,16 +204,27 @@ async function syncAllUsers({
   workspace: WorkspaceType;
   directory: WorkOSDirectory;
 }): Promise<void> {
-  const workOs = getWorkOS();
+  const workOS = getWorkOS();
 
-  // TODO(2025-05-26 aubin): paginate here.
-  const { data: users } = await workOs.directorySync.listUsers({
-    directory: directory.id,
-  });
+  const users: WorkOSUserWithGroups[] = [];
+  let nextPageCursor: string | undefined = undefined;
 
-  for (const workOSUser of users) {
-    await upsertUser({ workspace, workOSUser, directory });
-  }
+  do {
+    const {
+      data,
+      listMetadata: { after },
+    } = await workOS.directorySync.listUsers({
+      directory: directory.id,
+      after: nextPageCursor,
+    });
+
+    nextPageCursor = after as string | undefined; // Issue with the typing in the SDK.
+    users.push(...data);
+
+    for (const workOSUser of users) {
+      await upsertUser({ workspace, workOSUser, directory });
+    }
+  } while (nextPageCursor);
 }
 
 async function syncAllGroups(
@@ -230,8 +239,8 @@ async function syncAllGroups(
 ): Promise<WorkOSGroup[]> {
   const workOS = getWorkOS();
 
-  const groups = [];
-  let nextPageCursor = undefined;
+  const groups: WorkOSGroup[] = [];
+  let nextPageCursor: string | undefined = undefined;
 
   do {
     const {
@@ -241,8 +250,8 @@ async function syncAllGroups(
       directory: directory.id,
       after: nextPageCursor,
     });
-    nextPageCursor = after;
 
+    nextPageCursor = after;
     groups.push(...data);
 
     for (const workOSGroup of data) {
