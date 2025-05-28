@@ -12,7 +12,7 @@ import { createOrUpdateUser } from "@app/lib/iam/users";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
-import type { UserType, WorkspaceType } from "@app/types";
+import { Err, Ok, Result, UserType, WorkspaceType } from "@app/types";
 import { handleEnterpriseSignUpFlow } from "@app/lib/api/signup";
 
 type UserGroupMapping = {
@@ -210,17 +210,19 @@ async function syncGroupMembershipForGroup(
   }
 
   const setResult = await group.setMembers(auth, users);
-  if (setResult.isOk()) {
-    localLogger.info(
-      { groupId: group.sId, userCount: users.length },
-      "[WorkOS] Successfully synced group membership."
-    );
-  } else {
+
+  if (setResult.isErr()) {
     localLogger.error(
       { groupId: group.sId, error: setResult.error },
       "[WorkOS] Failed to sync group membership."
     );
+    throw setResult.error;
   }
+
+  localLogger.info(
+    { groupId: group.sId, userCount: users.length },
+    "[WorkOS] Successfully synced group membership."
+  );
 }
 
 async function garbageCollectEmptyGroups(
