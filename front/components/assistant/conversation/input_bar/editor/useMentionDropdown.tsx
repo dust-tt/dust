@@ -54,32 +54,12 @@ export const useMentionDropdown = (
   const currentStateRef = useRef(state);
   currentStateRef.current = state;
 
-  const updateSuggestions = (query: string) => {
-    const { suggestions, fallbackSuggestions } = editorSuggestions;
-    const filteredSuggestions = filterSuggestions(
+  const updateQuery = (query: string) => {
+    setState((prev) => ({
+      ...prev,
       query,
-      suggestions,
-      fallbackSuggestions
-    );
-
-    setState((prev) => {
-      // Only update if query or suggestions actually changed
-      if (
-        prev.query === query &&
-        prev.suggestions.length === filteredSuggestions.length &&
-        prev.suggestions.every(
-          (item, index) => item.id === filteredSuggestions[index]?.id
-        )
-      ) {
-        return prev;
-      }
-      return {
-        ...prev,
-        suggestions: filteredSuggestions,
-        query,
-        selectedIndex: 0,
-      };
-    });
+      selectedIndex: 0,
+    }));
   };
 
   const selectSuggestion = useCallback(
@@ -127,42 +107,25 @@ export const useMentionDropdown = (
     }));
   }, []);
 
-  // Re-filter suggestions when editorSuggestions change and dropdown is open
+  // Single source of truth: filter suggestions whenever data or query changes
   useEffect(() => {
-    if (state.isOpen) {
-      const { suggestions, fallbackSuggestions } = editorSuggestions;
-      const filteredSuggestions = filterSuggestions(
-        state.query,
-        suggestions,
-        fallbackSuggestions
-      );
+    const filteredSuggestions = filterSuggestions(
+      state.query,
+      editorSuggestions.suggestions,
+      editorSuggestions.fallbackSuggestions
+    );
 
-      setState((prev) => {
-        // Only update if suggestions actually changed by comparing length and content
-        if (
-          prev.suggestions.length === filteredSuggestions.length &&
-          prev.suggestions.every(
-            (item, index) => item.id === filteredSuggestions[index]?.id
-          )
-        ) {
-          return prev;
-        }
-        return {
-          ...prev,
-          suggestions: filteredSuggestions,
-          selectedIndex: 0,
-        };
-      });
-    }
-  }, [editorSuggestions, state.isOpen, state.query]);
-
-  // Update loading state when editorSuggestions.isLoading changes
-  useEffect(() => {
     setState((prev) => ({
       ...prev,
       isLoading: editorSuggestions.isLoading,
+      suggestions: filteredSuggestions,
     }));
-  }, [editorSuggestions.isLoading]);
+  }, [
+    editorSuggestions.suggestions,
+    editorSuggestions.fallbackSuggestions,
+    editorSuggestions.isLoading,
+    state.query,
+  ]);
 
   const getSuggestionHandler = () => {
     return {
@@ -182,7 +145,7 @@ export const useMentionDropdown = (
               return;
             }
 
-            updateSuggestions(props.query || "");
+            updateQuery(props.query || "");
             setState((prev) => ({
               ...prev,
               isOpen: true,
@@ -199,7 +162,7 @@ export const useMentionDropdown = (
 
             const rect = props.clientRect();
             if (rect) {
-              updateSuggestions(props.query || "");
+              updateQuery(props.query || "");
               setState((prev) => ({
                 ...prev,
                 triggerRect: rect,
