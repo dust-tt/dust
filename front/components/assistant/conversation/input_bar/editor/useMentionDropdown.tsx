@@ -167,7 +167,7 @@ export const useMentionDropdown = (
     }));
   }, [editorSuggestions.isLoading]);
 
-  const getSuggestionHandler = useCallback(() => {
+  const getSuggestionHandler = () => {
     return {
       items: ({ query }: { query: string }) => {
         const { suggestions, fallbackSuggestions } = editorSuggestions;
@@ -262,7 +262,7 @@ export const useMentionDropdown = (
         };
       },
     };
-  }, [editorSuggestions, updateSuggestions, selectSuggestion, closeDropdown]);
+  }
 
   return {
     isOpen: state.isOpen,
