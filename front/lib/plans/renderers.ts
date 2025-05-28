@@ -46,6 +46,7 @@ export function renderPlanFromModel({
         maxVaults: plan.maxVaultsInWorkspace,
       },
       canUseProduct: plan.canUseProduct,
+      isWorkOSAllowed: plan.isWorkOSAllowed,
     },
     trialPeriodDays: plan.trialPeriodDays,
   };
