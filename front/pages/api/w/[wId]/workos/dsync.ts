@@ -5,7 +5,8 @@ import { getWorkOS } from "@app/lib/api/workos/client";
 import type { Authenticator } from "@app/lib/auth";
 import type { WorkOSConnectionSyncStatus } from "@app/lib/types/workos";
 import { apiError } from "@app/logger/withlogging";
-import { normalizeError, type APIErrorWithStatusCode, type WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types";
+import { normalizeError } from "@app/types";
 
 async function handler(
   req: NextApiRequest,
@@ -59,7 +60,8 @@ async function handler(
       status_code: 400,
       api_error: {
         type: "workos_multiple_directories_not_supported",
-        message: "You cannot have multiple directories configured for WorkOS Directory Sync.",
+        message:
+          "You cannot have multiple directories configured for WorkOS Directory Sync.",
       },
     });
   }
@@ -73,11 +75,13 @@ async function handler(
 
   return res.status(200).json({
     status,
-    connection: directory ? {
-      id: directory.id,
-      state: directory.state,
-      type: directory.type,
-    }: undefined,
+    connection: directory
+      ? {
+          id: directory.id,
+          state: directory.state,
+          type: directory.type,
+        }
+      : undefined,
   });
 }
 

@@ -74,35 +74,39 @@ export function WorkOSConnection({ owner }: WorkOSConnectionProps) {
     }
 
     return (
+      <Page.Vertical>
         <Page.Vertical>
-          <Page.Vertical>
-              <Page.H variant="h6">Single Sign-On (SSO)</Page.H>
-              <Page.P variant="secondary">
-                {!ssoStatus || ssoStatus.status === "not_configured"
-                  ? "Configure SSO to enable secure authentication for your organization."
-                  : ssoStatus.status === "configured"
-                  ? `Connected to ${ssoStatus.connection?.type}`
-                  : `Configuring ${ssoStatus.connection?.type}...`}
-              </Page.P>
-            {(!ssoStatus || ssoStatus.status !== "configured") && (
-              <Button
-                variant="primary"
-                onClick={() => handleOpenPortal(WorkOSPortalIntent.SSO)}
-                label={
-                  ssoStatus?.status === "configuring"
-                    ? "Continue SSO Setup"
-                    : "Configure SSO"
-                }
-                icon={ExternalLinkIcon}
-              />
-            )}
-          </Page.Vertical>
-          {ssoStatus?.status === "configuring" && (
-            <ContentMessage title="Configuration in progress" variant="primary" icon={Spinner}>
-              SSO configuration is in progress. Click to continue setup.
-            </ContentMessage>
+          <Page.H variant="h6">Single Sign-On (SSO)</Page.H>
+          <Page.P variant="secondary">
+            {!ssoStatus || ssoStatus.status === "not_configured"
+              ? "Configure SSO to enable secure authentication for your organization."
+              : ssoStatus.status === "configured"
+                ? `Connected to ${ssoStatus.connection?.type}`
+                : `Configuring ${ssoStatus.connection?.type}...`}
+          </Page.P>
+          {(!ssoStatus || ssoStatus.status !== "configured") && (
+            <Button
+              variant="primary"
+              onClick={() => handleOpenPortal(WorkOSPortalIntent.SSO)}
+              label={
+                ssoStatus?.status === "configuring"
+                  ? "Continue SSO Setup"
+                  : "Configure SSO"
+              }
+              icon={ExternalLinkIcon}
+            />
           )}
         </Page.Vertical>
+        {ssoStatus?.status === "configuring" && (
+          <ContentMessage
+            title="Configuration in progress"
+            variant="primary"
+            icon={Spinner}
+          >
+            SSO configuration is in progress. Click to continue setup.
+          </ContentMessage>
+        )}
+      </Page.Vertical>
     );
   };
 
@@ -112,40 +116,45 @@ export function WorkOSConnection({ owner }: WorkOSConnectionProps) {
     }
 
     return (
+      <Page.Vertical>
         <Page.Vertical>
-          <Page.Vertical>
-            <div>
-              <Page.H variant="h6">Directory Sync</Page.H>
-              <Page.P variant="secondary">
-                {!dsyncStatus || dsyncStatus.status === "not_configured"
-                  ? "Sync your organization's users and groups from your identity provider."
-                  : dsyncStatus.status === "configured"
+          <div>
+            <Page.H variant="h6">Directory Sync</Page.H>
+            <Page.P variant="secondary">
+              {!dsyncStatus || dsyncStatus.status === "not_configured"
+                ? "Sync your organization's users and groups from your identity provider."
+                : dsyncStatus.status === "configured"
                   ? `Syncing with ${dsyncStatus.connection?.type}`
                   : `Configuring ${dsyncStatus.connection?.type}...`}
-              </Page.P>
-            </div>
-            {(!dsyncStatus || dsyncStatus.status !== "configured") && (
-              <Button
-                variant="primary"
-                onClick={() => handleOpenPortal(WorkOSPortalIntent.DSync)}
-                label={
-                  dsyncStatus?.status === "configuring"
-                    ? "Continue Directory Sync Setup"
-                    : "Configure Directory Sync"
-                }
-                icon={ExternalLinkIcon}
-              />
-            )}
-          </Page.Vertical>
-          {dsyncStatus?.status === "configuring" && (
-            <ContentMessage title="Configuration in progress" variant="primary" icon={Spinner}>
-              Directory Sync configuration is in progress. Click to continue setup.
-            </ContentMessage>
-          )}
-          {dsyncStatus?.status === "configured" && (
-            <WorkOSSyncButton owner={owner} />
+            </Page.P>
+          </div>
+          {(!dsyncStatus || dsyncStatus.status !== "configured") && (
+            <Button
+              variant="primary"
+              onClick={() => handleOpenPortal(WorkOSPortalIntent.DSync)}
+              label={
+                dsyncStatus?.status === "configuring"
+                  ? "Continue Directory Sync Setup"
+                  : "Configure Directory Sync"
+              }
+              icon={ExternalLinkIcon}
+            />
           )}
         </Page.Vertical>
+        {dsyncStatus?.status === "configuring" && (
+          <ContentMessage
+            title="Configuration in progress"
+            variant="primary"
+            icon={Spinner}
+          >
+            Directory Sync configuration is in progress. Click to continue
+            setup.
+          </ContentMessage>
+        )}
+        {dsyncStatus?.status === "configured" && (
+          <WorkOSSyncButton owner={owner} />
+        )}
+      </Page.Vertical>
     );
   };
 

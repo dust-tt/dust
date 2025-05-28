@@ -5,7 +5,7 @@ import { getWorkOS } from "@app/lib/api/workos/client";
 import type { Authenticator } from "@app/lib/auth";
 import type { WorkOSConnectionSyncStatus } from "@app/lib/types/workos";
 import { apiError } from "@app/logger/withlogging";
-import type { APIErrorWithStatusCode, WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types";
 
 export default withSessionAuthenticationForWorkspace(async function handler(
   req: NextApiRequest,

@@ -11,7 +11,13 @@ export type WorkOSConnectionSyncStatus = {
   status: "not_configured" | "configuring" | "configured";
   connection?: {
     id: string;
-    state: "draft" | "active" | "inactive" | "validating" | "deleting" | "invalid_credentials";
+    state:
+      | "draft"
+      | "active"
+      | "inactive"
+      | "validating"
+      | "deleting"
+      | "invalid_credentials";
     type: string;
   };
 };
