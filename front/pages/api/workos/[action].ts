@@ -39,6 +39,7 @@ async function handleLogin(req: NextApiRequest, res: NextApiResponse) {
     const { organizationId } = req.query;
     let connectionId: string | undefined = undefined;
     if (organizationId && typeof organizationId === "string") {
+      // TODO(workos): We will want to cache this data
       const connections = await getWorkOS().sso.listConnections({
         organizationId,
       });
