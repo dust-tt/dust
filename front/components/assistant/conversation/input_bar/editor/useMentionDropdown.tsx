@@ -1,4 +1,5 @@
 import type { Editor } from "@tiptap/react";
+import type { SuggestionKeyDownProps } from "@tiptap/suggestion";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import type {
@@ -20,7 +21,7 @@ export type SuggestionProps = {
   command: CommandFunction;
   range: Range;
   query: string;
-  clientRect: () => DOMRect | null;
+  clientRect?: (() => DOMRect | null) | null;
 };
 
 export interface MentionDropdownState {
@@ -169,7 +170,7 @@ export const useMentionDropdown = (
               }));
             }
           },
-          onKeyDown: (props: any) => {
+          onKeyDown: (props: SuggestionKeyDownProps) => {
             const { event } = props;
             const currentState = currentStateRef.current;
 
