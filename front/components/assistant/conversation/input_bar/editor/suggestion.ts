@@ -10,6 +10,7 @@ export interface EditorSuggestion {
 export interface EditorSuggestions {
   suggestions: EditorSuggestion[];
   fallbackSuggestions: EditorSuggestion[];
+  isLoading: boolean;
 }
 
 const SUGGESTION_DISPLAY_LIMIT = 7;

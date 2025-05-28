@@ -19,6 +19,7 @@ interface MentionDropdownProps {
   triggerRect?: DOMRect | null;
   selectedIndex: number;
   onSelectedIndexChange: (index: number) => void;
+  isLoading: boolean;
 }
 
 export const MentionDropdown = ({
@@ -29,6 +30,7 @@ export const MentionDropdown = ({
   triggerRect,
   selectedIndex,
   onSelectedIndexChange,
+  isLoading,
 }: MentionDropdownProps) => {
   const triggerRef = useRef<HTMLDivElement>(null);
   const [virtualTriggerStyle, setVirtualTriggerStyle] =
@@ -71,7 +73,11 @@ export const MentionDropdown = ({
         onCloseAutoFocus={(e) => e.preventDefault()}
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
-        {suggestions.length > 0 ? (
+        {isLoading ? (
+          <div className="flex h-12 w-full items-center justify-center">
+            <Spinner />
+          </div>
+        ) : suggestions.length > 0 ? (
           suggestions.map((suggestion, index) => (
             <DropdownMenuItem
               key={suggestion.id}
@@ -89,8 +95,8 @@ export const MentionDropdown = ({
             />
           ))
         ) : (
-          <div className="flex h-full w-full items-center justify-center">
-            <Spinner />
+          <div className="flex h-12 w-full items-center justify-center text-sm text-muted-foreground">
+            No result
           </div>
         )}
       </DropdownMenuContent>

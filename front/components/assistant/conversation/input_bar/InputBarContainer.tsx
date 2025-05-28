@@ -341,6 +341,7 @@ const InputBarContainer = ({
         triggerRect={mentionDropdown.triggerRect}
         selectedIndex={mentionDropdown.selectedIndex}
         onSelectedIndexChange={mentionDropdown.onSelectedIndexChange}
+        isLoading={mentionDropdown.isLoading}
       />
     </div>
   );
