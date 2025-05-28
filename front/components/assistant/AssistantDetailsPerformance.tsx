@@ -26,15 +26,17 @@ const PERIODS = [
   { value: 30, label: "Last 30 days" },
 ];
 
+interface AssistantDetailsPerformanceProps {
+  agentConfiguration: AgentConfigurationType;
+  owner: WorkspaceType;
+  gridMode: boolean;
+}
+
 export function AssistantDetailsPerformance({
   agentConfiguration,
   owner,
   gridMode,
-}: {
-  agentConfiguration: AgentConfigurationType;
-  owner: WorkspaceType;
-  gridMode: boolean;
-}) {
+}: AssistantDetailsPerformanceProps) {
   const [period, setPeriod] = useState(30);
   const { agentAnalytics, isAgentAnayticsLoading } = useAgentAnalytics({
     workspaceId: owner.sId,
