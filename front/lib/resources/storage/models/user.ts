@@ -94,6 +94,7 @@ UserModel.init(
       { fields: ["username"] },
       { fields: ["provider", "providerId"] },
       { fields: ["auth0Sub"], unique: true, concurrently: true },
+      { fields: ["workOSId"], unique: true, concurrently: true },
       { unique: true, fields: ["sId"] },
       { fields: ["email"] },
     ],
