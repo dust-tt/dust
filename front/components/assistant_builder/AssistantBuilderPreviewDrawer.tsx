@@ -19,6 +19,7 @@ import {
 import { Separator } from "@radix-ui/react-select";
 import { useContext, useEffect, useRef, useState } from "react";
 
+import { AssistantDetailsPerformance } from "@app/components/assistant/AssistantDetailsPerformance";
 import { ActionValidationProvider } from "@app/components/assistant/conversation/ActionValidationProvider";
 import { ConversationsNavigationProvider } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import ConversationViewer from "@app/components/assistant/conversation/ConversationViewer";
@@ -44,9 +45,8 @@ import type {
   ModelConfigurationType,
   WorkspaceType,
 } from "@app/types";
-import { isAssistantBuilderRightPanelTab } from "@app/types";
 import type { AgentConfigurationType } from "@app/types";
-import { AssistantDetailsPerformance } from "@app/components/assistant/AssistantDetailsPerformance";
+import { isAssistantBuilderRightPanelTab } from "@app/types";
 
 interface AssistantBuilderRightPanelProps {
   screen: BuilderScreen;

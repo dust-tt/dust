@@ -25,6 +25,7 @@ import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { useEffect, useState } from "react";
 
 import { AssistantDetailsButtonBar } from "@app/components/assistant/AssistantDetailsButtonBar";
+import { AssistantDetailsPerformance } from "@app/components/assistant/AssistantDetailsPerformance";
 import { AssistantKnowledgeSection } from "@app/components/assistant/details/AssistantKnowledgeSection";
 import { AssistantToolsSection } from "@app/components/assistant/details/AssistantToolsSection";
 import { AssistantUsageSection } from "@app/components/assistant/details/AssistantUsageSection";
@@ -43,7 +44,6 @@ import { GLOBAL_AGENTS_SID, isAdmin } from "@app/types";
 
 import { AddEditorDropdown } from "../members/AddEditorsDropdown";
 import { MembersList } from "../members/MembersList";
-import { AssistantDetailsPerformance } from "@app/components/assistant/AssistantDetailsPerformance";
 
 export const SCOPE_INFO: Record<
   AgentConfigurationScope,

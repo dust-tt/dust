@@ -1,8 +1,3 @@
-import type { AgentConfigurationType } from "@app/types";
-import type { WorkspaceType } from "@app/types";
-import { removeNulls } from "@app/types";
-import { useState } from "react";
-import { useAgentAnalytics } from "@app/lib/swr/assistants";
 import { Page } from "@dust-tt/sparkle";
 import { DropdownMenu } from "@dust-tt/sparkle";
 import { DropdownMenuTrigger } from "@dust-tt/sparkle";
@@ -17,7 +12,13 @@ import { HandThumbUpIcon } from "@dust-tt/sparkle";
 import { HandThumbDownIcon } from "@dust-tt/sparkle";
 import { ChatBubbleLeftRightIcon } from "@dust-tt/sparkle";
 import { ChatBubbleThoughtIcon } from "@dust-tt/sparkle";
+import { useState } from "react";
+
 import { FeedbacksSection } from "@app/components/assistant_builder/FeedbacksSection";
+import { useAgentAnalytics } from "@app/lib/swr/assistants";
+import type { AgentConfigurationType } from "@app/types";
+import type { WorkspaceType } from "@app/types";
+import { removeNulls } from "@app/types";
 
 const PERIODS = [
   { value: 7, label: "Last 7 days" },

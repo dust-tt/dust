@@ -38,12 +38,12 @@ import type {
   WhitelistableFeature,
   WorkspaceType,
 } from "@app/types";
+import type { AgentConfigurationType } from "@app/types";
 import {
   assertNever,
   CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG,
   DEFAULT_MAX_STEPS_USE_PER_RUN,
 } from "@app/types";
-import type { AgentConfigurationType } from "@app/types";
 import type { TagType } from "@app/types/tag";
 
 export const ACTION_MODES = [
