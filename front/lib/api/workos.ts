@@ -19,7 +19,7 @@ import { GroupResource } from "@app/lib/resources/group_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkOSPortalIntent } from "@app/lib/types/workos";
 import logger from "@app/logger/logger";
-import type { Result, WorkspaceType } from "@app/types";
+import type { Result, UserType, WorkspaceType } from "@app/types";
 import { Err, Ok } from "@app/types";
 
 let workos: WorkOS | null = null;
@@ -159,7 +159,7 @@ export function generateWorkOSAdminPortalUrl({
 }
 
 type UserGroupMapping = {
-  workOSUserId: string;
+  user: UserType;
   workOSGroupIds: string[];
 };
 
@@ -230,12 +230,12 @@ async function syncAllUsers({
     nextPageCursor = after as string | undefined; // Issue with the typing in the SDK.
 
     for (const workOSUser of data) {
-      await upsertUser({ workspace, workOSUser, directory });
+      const user = await upsertUser({ workspace, workOSUser, directory });
 
       // Collect user-group mappings for later processing.
-      if (workOSUser.email) {
+      if (user) {
         userGroupMappings.push({
-          workOSUserId: workOSUser.id,
+          user: user.toJSON(),
           workOSGroupIds: workOSUser.groups.map((group) => group.id),
         });
       }
@@ -300,23 +300,23 @@ async function syncGroupMemberships(
   localLogger.info("[WorkOS] Starting group memberships sync.");
 
   // Build a map of the WorkOS group ID to the list of user IDs.
-  const groupToUsersMap = new Map<string, string[]>();
+  const groupToUsersMap = new Map<string, UserType[]>();
 
-  for (const { workOSUserId, workOSGroupIds } of userGroupMappings) {
+  for (const { user, workOSGroupIds } of userGroupMappings) {
     for (const workOSGroupId of workOSGroupIds) {
       if (!groupToUsersMap.has(workOSGroupId)) {
         groupToUsersMap.set(workOSGroupId, []);
       }
-      groupToUsersMap.get(workOSGroupId)?.push(workOSUserId);
+      groupToUsersMap.get(workOSGroupId)?.push(user);
     }
   }
 
   // For each group, sync its membership
-  for (const [workOSGroupId, userEmails] of groupToUsersMap.entries()) {
+  for (const [workOSGroupId, users] of groupToUsersMap.entries()) {
     await syncGroupMembershipForGroup(auth, {
       workspace,
       workOSGroupId,
-      userEmails,
+      users,
     });
   }
 
@@ -331,11 +331,11 @@ async function syncGroupMembershipForGroup(
   {
     workspace,
     workOSGroupId,
-    userEmails,
+    users,
   }: {
     workspace: WorkspaceType;
     workOSGroupId: string;
-    userEmails: string[];
+    users: UserType[];
   }
 ): Promise<void> {
   const localLogger = logger.child({
@@ -352,24 +352,7 @@ async function syncGroupMembershipForGroup(
     return;
   }
 
-  // Find all users by email.
-  const users: UserResource[] = [];
-  for (const userEmail of userEmails) {
-    const user = await UserResource.fetchByEmail(userEmail);
-    if (user) {
-      users.push(user);
-    } else {
-      localLogger.warn(
-        { userEmail },
-        "[WorkOS] User not found for group membership sync."
-      );
-    }
-  }
-
-  const setResult = await group.setMembers(
-    auth,
-    users.map((user) => user.toJSON())
-  );
+  const setResult = await group.setMembers(auth, users);
   if (setResult.isOk()) {
     localLogger.info(
       { groupId: group.sId, userCount: users.length },
@@ -390,7 +373,7 @@ async function garbageCollectEmptyGroups(
     groupToUsersMap,
   }: {
     workspace: WorkspaceType;
-    groupToUsersMap: Map<string, string[]>;
+    groupToUsersMap: Map<string, UserType[]>;
   }
 ): Promise<void> {
   const allGroups = await GroupResource.listAllWorkspaceGroups(auth, {
@@ -435,7 +418,7 @@ async function upsertUser({
   workspace: WorkspaceType;
   workOSUser: WorkOSUserWithGroups;
   directory: WorkOSDirectory;
-}): Promise<void> {
+}): Promise<UserResource | null> {
   const localLogger = logger.child({
     workspaceId: workspace.sId,
     workOSUserEmail: workOSUser.email,
@@ -446,7 +429,7 @@ async function upsertUser({
   localLogger.info("[WorkOS] Upserting user.");
   if (!workOSUser.email) {
     localLogger.error("[WorkOS] Cannot sync a user without an email.");
-    return;
+    return null;
   }
 
   const user = await UserResource.fetchByEmail(workOSUser.email);
@@ -459,12 +442,14 @@ async function upsertUser({
     sub: workOSUser.id,
   };
 
-  await createOrUpdateUser({
+  const { user: createdOrUpdatedUser } = await createOrUpdateUser({
     platform: "workos",
     user,
     externalUser,
   });
   localLogger.info("[WorkOS] User successfully upserted.");
+
+  return createdOrUpdatedUser;
 }
 
 async function upsertGroup(
