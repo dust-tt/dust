@@ -1,7 +1,9 @@
-import { GeneratePortalLinkIntent } from "@workos-inc/node";
+import { DomainDataState, GeneratePortalLinkIntent } from "@workos-inc/node";
+import assert from "assert";
 
 import { getWorkOS } from "@app/lib/api/workos/client";
 import { Workspace } from "@app/lib/models/workspace";
+import { WorkspaceHasDomainModel } from "@app/lib/models/workspace_has_domain";
 import { WorkOSPortalIntent } from "@app/lib/types/workos";
 import logger from "@app/logger/logger";
 import type { Result, WorkspaceType } from "@app/types";
@@ -18,23 +20,28 @@ export async function createWorkOSOrganization({
     );
   }
 
+  const domain = await WorkspaceHasDomainModel.findOne({
+    where: {
+      workspaceId: workspace.id,
+    },
+  });
+  assert(
+    domain,
+    "Workspace must have a domain to create a WorkOS organization"
+  );
+
+  let organization;
   try {
-    const organization = await getWorkOS().organizations.createOrganization({
+    organization = await getWorkOS().organizations.createOrganization({
       name: workspace.name,
       metadata: { workspaceSId: workspace.sId },
-    });
-
-    await Workspace.update(
-      {
-        workOSOrganizationId: organization.id,
-      },
-      {
-        where: {
-          id: workspace.id,
+      domainData: [
+        {
+          domain: domain.domain,
+          state: DomainDataState.Verified,
         },
-      }
-    );
-    return new Ok(undefined);
+      ],
+    });
   } catch (error) {
     const e = normalizeError(error);
     logger.error(e, "Failed to create WorkOS organization");
@@ -42,6 +49,18 @@ export async function createWorkOSOrganization({
       new Error(`Failed to create WorkOS organization: ${e.message}`)
     );
   }
+
+  await Workspace.update(
+    {
+      workOSOrganizationId: organization.id,
+    },
+    {
+      where: {
+        id: workspace.id,
+      },
+    }
+  );
+  return new Ok(undefined);
 }
 
 // Mapping WorkOSPortalIntent to GeneratePortalLinkIntent,
