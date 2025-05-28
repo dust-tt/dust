@@ -1351,7 +1351,7 @@ const NotificationResourceSchema = z.object({
   metadata: MCPValidationMetadataSchema,
 });
 
-const NotifcationResourceContentSchema = z.object({
+const NotificationResourceContentSchema = z.object({
   type: z.literal("resource"),
   resource: NotificationResourceSchema,
 });
@@ -1359,7 +1359,7 @@ const NotifcationResourceContentSchema = z.object({
 const NotificationContentSchema = z.union([
   NotificationImageContentSchema,
   NotificationTextContentSchema,
-  NotifcationResourceContentSchema,
+  NotificationResourceContentSchema,
 ]);
 
 const ToolNotificationProgressSchema = z.object({
