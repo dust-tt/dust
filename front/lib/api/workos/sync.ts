@@ -4,6 +4,7 @@ import type {
   DirectoryUserWithGroups as WorkOSUserWithGroups,
 } from "@workos-inc/node";
 
+import { handleEnterpriseSignUpFlow } from "@app/lib/api/signup";
 import { getWorkOS } from "@app/lib/api/workos/client";
 import { getUserNicknameFromEmail } from "@app/lib/api/workos/user";
 import type { Authenticator } from "@app/lib/auth";
@@ -12,8 +13,7 @@ import { createOrUpdateUser } from "@app/lib/iam/users";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
-import { Err, Ok, Result, UserType, WorkspaceType } from "@app/types";
-import { handleEnterpriseSignUpFlow } from "@app/lib/api/signup";
+import type { UserType, WorkspaceType } from "@app/types";
 
 type UserGroupMapping = {
   user: UserType;
