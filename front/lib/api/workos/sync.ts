@@ -7,12 +7,12 @@ import type {
 import { getWorkOS } from "@app/lib/api/workos/client";
 import { getUserNicknameFromEmail } from "@app/lib/api/workos/user";
 import type { Authenticator } from "@app/lib/auth";
+import type { ExternalUser } from "@app/lib/iam/provider";
 import { createOrUpdateUser } from "@app/lib/iam/users";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
 import type { UserType, WorkspaceType } from "@app/types";
-import { ExternalUser } from "@app/lib/iam/provider";
 
 type UserGroupMapping = {
   user: UserType;
