@@ -355,6 +355,13 @@ export async function fetchRemoteServerMetaDataByURL(
   });
 
   if (r.isErr()) {
+    logger.error(
+      {
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        error: r.error,
+      },
+      "Error connecting to remote MCP server"
+    );
     return new Err(r.error);
   }
 
@@ -373,6 +380,13 @@ export async function fetchRemoteServerMetaDataByURL(
       availability: "manual",
     });
   } catch (e: unknown) {
+    logger.error(
+      {
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        error: e,
+      },
+      "Error fetching metadata from remote MCP server"
+    );
     return new Err(
       new Error("Error getting metadata from the remote MCP server.")
     );
