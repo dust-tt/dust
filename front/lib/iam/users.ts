@@ -93,7 +93,6 @@ export async function maybeUpdateFromExternalUser(
 }
 
 export async function createOrUpdateUser({
-  platform,
   user,
   externalUser,
 }: {
@@ -125,6 +124,10 @@ export async function createOrUpdateUser({
       }
     }
 
+    if (externalUser.workOSId) {
+      updateArgs.workOSId = externalUser.workOSId;
+    }
+
     if (Object.keys(updateArgs).length > 0) {
       const needsUpdate = Object.entries(updateArgs).some(
         ([key, value]) => user[key as keyof typeof user] !== value
@@ -135,7 +138,8 @@ export async function createOrUpdateUser({
           updateArgs.username || user.name,
           updateArgs.firstName || user.firstName,
           updateArgs.lastName || user.lastName,
-          updateArgs.email || user.email
+          updateArgs.email || user.email,
+          updateArgs.workOSId || user.workOSId
         );
       }
     }
@@ -154,8 +158,8 @@ export async function createOrUpdateUser({
 
     const u = await UserResource.makeNew({
       sId: generateRandomModelSId(),
-      auth0Sub: platform === "auth0" ? externalUser.sub : null,
-      workOSId: platform === "workos" ? externalUser.sub : null,
+      auth0Sub: externalUser.auth0Sub,
+      workOSId: externalUser.workOSId,
       provider: null, ///session.provider,
       username: externalUser.nickname,
       email: sanitizeString(externalUser.email),

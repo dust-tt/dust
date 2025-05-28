@@ -130,6 +130,19 @@ export class UserResource extends BaseResource<UserModel> {
     return user ? new UserResource(UserModel, user.get()) : null;
   }
 
+  static async fetchByWorkOSId(
+    workOSId: string,
+    transaction?: Transaction
+  ): Promise<UserResource | null> {
+    const user = await UserModel.findOne({
+      where: {
+        workOSId,
+      },
+      transaction,
+    });
+    return user ? new UserResource(UserModel, user.get()) : null;
+  }
+
   static async fetchByEmail(email: string): Promise<UserResource | null> {
     const users = await this.listByEmail(email.toLowerCase());
     return users.length > 0 ? users[0] : null;
@@ -203,7 +216,8 @@ export class UserResource extends BaseResource<UserModel> {
     username: string,
     firstName: string,
     lastName: string | null,
-    email: string
+    email: string,
+    workOSId: string | null
   ) {
     firstName = escape(firstName);
     if (lastName) {
@@ -215,6 +229,7 @@ export class UserResource extends BaseResource<UserModel> {
       firstName,
       lastName,
       email: lowerCaseEmail,
+      workOSId,
     });
   }
 

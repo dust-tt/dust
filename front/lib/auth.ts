@@ -161,11 +161,10 @@ export class Authenticator {
           sId: wId,
         },
       }),
-      session?.type === "auth0"
-        ? UserResource.fetchByAuth0Sub(session.user.sub)
-        : //TODO(workos): Fetch user by email.
-          session?.type === "workos"
-          ? UserResource.fetchByEmail(session.user.email)
+      session?.type === "auth0" && session.user.auth0Sub
+        ? UserResource.fetchByAuth0Sub(session.user.auth0Sub)
+        : session?.type === "workos" && session.user.workOSId
+          ? UserResource.fetchByWorkOSId(session.user.workOSId)
           : null,
     ]);
 
@@ -217,11 +216,10 @@ export class Authenticator {
             where: { sId: wId },
           })
         : null,
-      session?.type === "auth0"
-        ? UserResource.fetchByAuth0Sub(session.user.sub)
-        : //TODO(workos): Fetch user by email.
-          session?.type === "workos"
-          ? UserResource.fetchByEmail(session.user.email)
+      session?.type === "auth0" && session.user.auth0Sub
+        ? UserResource.fetchByAuth0Sub(session.user.auth0Sub)
+        : session?.type === "workos" && session.user.workOSId
+          ? UserResource.fetchByWorkOSId(session.user.workOSId)
           : null,
     ]);
 

@@ -149,12 +149,12 @@ async function upsertUser({
 
   const user = await UserResource.fetchByEmail(workOSUser.email);
   const externalUser = {
-    sid: workOSUser.id,
     email: workOSUser.email,
     email_verified: true,
     name: workOSUser.email ?? "",
     nickname: getUserNicknameFromEmail(workOSUser.email) ?? "",
-    sub: workOSUser.id,
+    auth0Sub: null,
+    workOSId: workOSUser.id,
   };
 
   await createOrUpdateUser({
