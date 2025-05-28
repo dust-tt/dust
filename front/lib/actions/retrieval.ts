@@ -311,7 +311,7 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
         );
       } else {
         let description =
-          "Retrieve from the data sources the fixed content specified by the user. " +
+          "Retrieve from the data sources the content specified by the user (most recent first). " +
           "This tool does not take any argument.";
         if (
           actionConfiguration.relativeTimeFrame === "auto" ||
