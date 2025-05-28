@@ -15,8 +15,8 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
   isMCPProgressNotificationType,
+  isMCPToolApproveExecutionNotificationType,
   isResourceWithName,
-  isSubAgentToolApproveExecutionOutput,
   isToolGeneratedFile,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
@@ -150,13 +150,13 @@ export type MCPToolConfigurationType =
   | ServerSideMCPToolConfigurationType
   | ClientSideMCPToolConfigurationType;
 
-type MCPApproveExecutionEvent = {
+export type MCPApproveExecutionEvent = {
   type: "tool_approve_execution";
   created: number;
   configurationId: string;
   messageId: string;
   conversationId: string;
-  action: MCPActionType;
+  actionId: number;
   inputs: Record<string, unknown>;
   stake?: MCPToolStakeLevelType;
   metadata: MCPValidationMetadataType;
@@ -479,7 +479,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
         configurationId: agentConfiguration.sId,
         messageId: agentMessage.sId,
         conversationId: conversation.sId,
-        action: mcpAction,
+        actionId: mcpAction.id,
         inputs: rawInputs,
         stake: actionConfiguration.permission,
         metadata: {
@@ -640,15 +640,15 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
         if (isMCPProgressNotificationType(notification)) {
           // Check if this is a tool_approve_execution from a sub agent.
           const notificationOutput = notification.params.data.output;
-          if (isSubAgentToolApproveExecutionOutput(notificationOutput)) {
-            const { properties: subAgentProperties } = notificationOutput;
+          if (isMCPToolApproveExecutionNotificationType(notificationOutput)) {
+            const subAgentProperties = notificationOutput.resource;
             yield {
               type: "tool_approve_execution",
               created: Date.now(),
               messageId: subAgentProperties.messageId,
               conversationId: subAgentProperties.conversationId,
               configurationId: subAgentProperties.configurationId,
-              action: subAgentProperties.action,
+              actionId: subAgentProperties.actionId,
               inputs: subAgentProperties.inputs,
               stake: subAgentProperties.stake,
               metadata: subAgentProperties.metadata,

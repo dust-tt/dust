@@ -152,7 +152,7 @@ export default function AssistantBuilderRightPanel({
               </div>
             ) : (
               <ConversationsNavigationProvider>
-                <ActionValidationProvider>
+                <ActionValidationProvider workspaceId={owner.sId}>
                   <GenerationContextProvider>
                     <div className="flex-grow overflow-y-auto">
                       {conversation && (

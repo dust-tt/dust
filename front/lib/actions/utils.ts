@@ -327,7 +327,15 @@ export async function getExecutionStatusFromConfig(
     case "never_ask":
       return { status: "allowed_implicitly" };
     case "low": {
-      const user = auth.getNonNullableUser();
+      const user = auth.user();
+
+      // TODO(2025-05-27 yuka): for sub agents, we create a conversation via public API to avoid circular dependency.
+      // But `user` will be null since no user will be attached if API key authentication is used. As a temporay
+      // solution, we always show the validation dialog but we should get the current user in another way.
+      if (!user) {
+        return { status: "pending" };
+      }
+
       const neverAskSetting = await user.getMetadata(
         `toolsValidations:${actionConfiguration.toolServerId}`
       );

@@ -3,6 +3,7 @@ import type { Notification } from "@modelcontextprotocol/sdk/types.js";
 import { NotificationSchema } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
+import { MCP_TOOL_STAKE_LEVELS } from "@app/lib/actions/constants";
 import type { SupportedFileContentType } from "@app/types";
 import { FILE_FORMATS } from "@app/types";
 
@@ -424,16 +425,33 @@ const NotificationImageContentSchema = z.object({
 
 type ImageProgressOutput = z.infer<typeof NotificationImageContentSchema>;
 
-const NotificationObjectContentSchema = z.object({
-  type: z.literal("object"),
-  properties: z.record(z.any()),
+const ToolApproveExecutionContentSchema = z.object({
+  type: z.literal("resource"),
+  resource: z.object({
+    type: z.literal("tool_approve_execution"),
+    configurationId: z.string(),
+    conversationId: z.string(),
+    messageId: z.string(),
+    actionId: z.number(),
+    inputs: z.record(z.unknown()),
+    stake: z.enum(MCP_TOOL_STAKE_LEVELS).optional(),
+    metadata: z.object({
+      mcpServerName: z.string(),
+      toolName: z.string(),
+      agentName: z.string(),
+    }),
+  }),
 });
+
+type ToolApproveExcustionOutput = z.infer<
+  typeof ToolApproveExecutionContentSchema
+>;
 
 export const ProgressNotificationOutputSchema = z
   .union([
     NotificationImageContentSchema,
     TextContentSchema,
-    NotificationObjectContentSchema,
+    ToolApproveExecutionContentSchema,
   ])
   .optional();
 
@@ -478,16 +496,12 @@ export function isMCPProgressNotificationType(
   return MCPProgressNotificationSchema.safeParse(notification).success;
 }
 
-export type SubAgentToolApproveExecutionOutputType = z.infer<
-  typeof NotificationObjectContentSchema
->;
-
-export function isSubAgentToolApproveExecutionOutput(
-  output?: ProgressNotificationOutput
-): output is SubAgentToolApproveExecutionOutputType {
+export function isMCPToolApproveExecutionNotificationType(
+  notificationOutput: ProgressNotificationOutput
+): notificationOutput is ToolApproveExcustionOutput {
   return (
-    output !== undefined &&
-    output.type === "object" &&
-    output.properties.type === "sub_agent_tool_approve_execution"
+    notificationOutput !== undefined &&
+    notificationOutput.type === "resource" &&
+    notificationOutput.resource.type === "tool_approve_execution"
   );
 }

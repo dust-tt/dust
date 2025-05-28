@@ -165,10 +165,9 @@ export function AgentMessage({
       // Handle validation dialog separately.
       if (eventPayload.data.type === "tool_approve_execution") {
         showValidationDialog({
-          workspaceId: owner.sId,
           messageId: eventPayload.data.messageId,
           conversationId: eventPayload.data.conversationId,
-          action: eventPayload.data.action,
+          actionId: eventPayload.data.actionId,
           inputs: eventPayload.data.inputs,
           stake: eventPayload.data.stake,
           metadata: eventPayload.data.metadata,
@@ -179,7 +178,7 @@ export function AgentMessage({
 
       dispatch(eventPayload.data);
     },
-    [showValidationDialog, owner.sId, message.sId, conversationId]
+    [showValidationDialog]
   );
 
   useEventSource(

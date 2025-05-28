@@ -7,6 +7,7 @@ import {
   AGENT_CONFIGURATION_URI_PATTERN,
   ConfigurableToolInputSchemas,
 } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import type { MCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { AgentLoopRunContextType } from "@app/lib/actions/types";
 import apiConfig from "@app/lib/api/config";
@@ -53,7 +54,7 @@ function createServer(
       childAgent:
         ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.AGENT],
     },
-    async ({ query, childAgent: { uri } }, { sendNotification, _meta }) => {
+    async ({ query, childAgent: { uri } }, { sendNotification }) => {
       const childAgentIdRes = parseAgentConfigurationUri(uri);
       if (childAgentIdRes.isErr()) {
         return makeMCPToolTextError(childAgentIdRes.error.message);
@@ -129,31 +130,35 @@ function createServer(
           } else if (event.type === "agent_message_success") {
             break;
           } else if (event.type === "tool_approve_execution") {
-            if (_meta?.progressToken) {
-              await sendNotification({
+            if (agentLoopRunContext) {
+              // We need to show the validation dialog in the main conversation so we use conversationId and messageId from agentLoopRunContext.
+              // This is not really a progress notifcation but this is the closest among other methods from ServerNotification.
+              const notification: MCPProgressNotificationType = {
                 method: "notifications/progress",
                 params: {
                   progress: 0,
                   total: 1,
-                  progressToken: _meta?.progressToken,
+                  progressToken: 0,
                   data: {
-                    label: "Waiting for tool approval",
+                    label: "Waiting for tool approval...",
                     output: {
-                      type: "object",
-                      properties: {
-                        type: "sub_agent_tool_approve_execution",
+                      type: "resource",
+                      resource: {
+                        type: "tool_approve_execution",
                         configurationId: event.configurationId,
-                        conversationId: agentLoopRunContext?.conversation.sId,
-                        messageId: agentLoopRunContext?.agentMessage.sId,
-                        action: event.action,
-                        inputs: event.inputs,
-                        stake: event.stake,
+                        conversationId: agentLoopRunContext.conversation.sId,
+                        messageId: agentLoopRunContext.agentMessage.sId,
+                        actionId: event.actionId,
                         metadata: event.metadata,
+                        stake: event.stake,
+                        inputs: event.inputs,
                       },
                     },
                   },
                 },
-              });
+              };
+
+              await sendNotification(notification);
             }
           }
         }
