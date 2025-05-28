@@ -18,6 +18,7 @@ import { isSubmitMessageKey } from "@app/lib/keymaps";
 import { isMobile } from "@app/lib/utils";
 
 import { URLStorageExtension } from "./extensions/URLStorageExtension";
+import { SuggestionProps } from "@app/components/assistant/conversation/input_bar/editor/useMentionDropdown";
 
 export interface EditorMention {
   id: string;
@@ -197,7 +198,14 @@ export interface CustomEditorProps {
   resetEditorContainerSize: () => void;
   disableAutoFocus: boolean;
   onUrlDetected?: (candidate: UrlCandidate | NodeCandidate | null) => void;
-  suggestionHandler: any;
+  suggestionHandler: {
+    render: () => {
+      onKeyDown: (props: any) => true | false;
+      onStart: (props: SuggestionProps) => void;
+      onExit: () => void;
+      onUpdate: (props: SuggestionProps) => void;
+    };
+  };
 }
 
 const useCustomEditor = ({
