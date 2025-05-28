@@ -104,7 +104,7 @@ export type TagsManagerProps = {
 };
 
 export function TagsManager({ open, setOpen, owner }: TagsManagerProps) {
-  const { isTagsLoading, tags } = useTagsUsage({ owner });
+  const { isTagsLoading, tags } = useTagsUsage({ owner, disabled: !open });
   const [tagActionModal, setTagActionModal] = useState<{
     type: "delete" | "edit";
     tag: TagTypeWithUsage;
