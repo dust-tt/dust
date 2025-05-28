@@ -16,10 +16,11 @@ import type { WithAPIErrorResponse } from "@app/types";
  * @swagger
  * /api/v1/w/{wId}/mcp/register:
  *   post:
- *     summary: Register a local MCP server
+ *     summary: Register a client-side MCP server
  *     description: |
- *       Register a client-generated UUID for a local MCP server.
+ *       Register a client-side MCP server to Dust.
  *       The registration is scoped to the current user and workspace.
+ *       A serverId identifier is generated and returned in the response.
  *     tags:
  *       - MCP
  *     security:
@@ -51,8 +52,8 @@ import type { WithAPIErrorResponse } from "@app/types";
  *             schema:
  *               type: object
  *               properties:
- *                 success:
- *                   type: boolean
+ *                 serverId:
+ *                   type: string
  *                 expiresAt:
  *                   type: string
  *                   format: date-time
