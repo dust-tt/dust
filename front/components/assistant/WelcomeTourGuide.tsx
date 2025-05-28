@@ -175,8 +175,8 @@ export function WelcomeTourGuide({
           <div
             ref={centeredRef}
             className={cn(
-              "flex w-full items-center justify-center p-6 text-center",
-              "dark:bg-brand-support-blue-night aspect-video rounded-t-2xl bg-brand-support-blue"
+              "flex aspect-video w-full items-center justify-center rounded-t-2xl p-6 text-center",
+              "bg-brand-support-blue dark:bg-brand-support-blue-night"
             )}
           >
             <ConfettiBackground variant="confetti" referentSize={centeredRef} />
@@ -205,7 +205,7 @@ export function WelcomeTourGuide({
           <div
             className={cn(
               "relative flex aspect-video overflow-hidden rounded-t-2xl p-4 text-center",
-              "dark:bg-brand-support-green-night bg-brand-support-green"
+              "bg-brand-support-green dark:bg-brand-support-green-night"
             )}
           >
             <div className="flex gap-1">
@@ -245,7 +245,7 @@ export function WelcomeTourGuide({
           <div
             className={cn(
               "flex aspect-video flex-col items-center justify-center gap-4 rounded-t-2xl p-6 text-center",
-              "dark:bg-brand-support-rose-night bg-brand-support-rose"
+              "bg-brand-support-rose dark:bg-brand-support-rose-night"
             )}
           >
             <div className="grid grid-cols-6 gap-2">
