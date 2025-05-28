@@ -5,8 +5,8 @@ import {
   FullscreenIcon,
   useSendNotification,
 } from "@dust-tt/sparkle";
+import type { Editor } from "@tiptap/react";
 import { EditorContent } from "@tiptap/react";
-import { Editor } from "@tiptap/react";
 import React, {
   useCallback,
   useContext,
