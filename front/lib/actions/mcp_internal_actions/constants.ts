@@ -168,7 +168,7 @@ export const INTERNAL_MCP_SERVERS: Record<
     availability: "manual",
     flag: "salesforce_tool",
     tools_stakes: {
-      execute_query: "low",
+      execute_read_query: "low",
       list_objects: "low",
     },
   },

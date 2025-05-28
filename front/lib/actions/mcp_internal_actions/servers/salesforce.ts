@@ -25,9 +25,10 @@ const SF_API_VERSION = "57.0";
 
 const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
   const server = new McpServer(serverInfo, {
-    instructions: `You have access to the following tools: execute_query & list_objects.
-# execute_query
-You can use it to execute SOQL queries on Salesforce: queries can be used to retrieve data or to discover data.
+    instructions: `You have access to the following tools: execute_read_query & list_objects.
+# execute_read_query
+You can use it to execute SOQL read queries on Salesforce: queries can be used to retrieve data or to discover data.
+We do not want to write data.
 
 **Custom objects / fields**
 If you are attempting to use a custom object or field, be sure to append the '__c' after the custom object or field name.
@@ -46,10 +47,10 @@ You can use it to list the objects in Salesforce: standard and custom objects.
   });
 
   server.tool(
-    "execute_query",
-    "Execute a query on Salesforce",
+    "execute_read_query",
+    "Execute a read query on Salesforce",
     {
-      query: z.string().describe("The SOQL query to execute"),
+      query: z.string().describe("The SOQL read query to execute"),
     },
     async ({ query }) => {
       const connection = await getConnectionForInternalMCPServer(auth, {
