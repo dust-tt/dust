@@ -87,3 +87,11 @@ export class TablesError extends Error {
     this.name = "TablesError";
   }
 }
+
+// Error for malicious or invalid URLs in webcrawler configuration
+export class WebcrawlerUrlValidationError extends Error {
+  constructor(readonly innerError?: Error) {
+    super(innerError?.message || "Invalid or malicious URL detected");
+    this.name = "WebcrawlerUrlValidationError";
+  }
+}

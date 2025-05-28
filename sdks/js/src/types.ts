@@ -826,9 +826,9 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "usage_data_api"
   | "custom_webcrawler"
   | "exploded_tables_query"
-  | "pro_plan_salesforce_connector"
   | "salesforce_tool"
   | "gmail_tool"
+  | "agent_builder_v2"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;

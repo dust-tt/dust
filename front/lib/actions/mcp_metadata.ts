@@ -67,7 +67,8 @@ export function isInternalMCPServerDefinition(
 ): server is InternalMCPServerDefinitionType {
   return (
     "authorization" in server &&
-    isAuthorizationInfo(server.authorization) &&
+    (isAuthorizationInfo(server.authorization) ||
+      server.authorization === null) &&
     "description" in server &&
     typeof server.description === "string" &&
     "icon" in server &&

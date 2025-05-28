@@ -27,15 +27,21 @@ import { useMemo } from "react";
 import { usePersistedNavigationSelection } from "@app/hooks/usePersistedNavigationSelection";
 import { forceUserRole, showDebugTools } from "@app/lib/development";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import type { UserTypeWithWorkspaces, WorkspaceType } from "@app/types";
+import type {
+  SubscriptionType,
+  UserTypeWithWorkspaces,
+  WorkspaceType,
+} from "@app/types";
 import { isOnlyAdmin, isOnlyBuilder, isOnlyUser } from "@app/types";
 
 export function UserMenu({
   user,
   owner,
+  subscription,
 }: {
   user: UserTypeWithWorkspaces;
   owner: WorkspaceType;
+  subscription: SubscriptionType | null;
 }) {
   const router = useRouter();
   const { featureFlags } = useFeatureFlags({
@@ -137,19 +143,25 @@ export function UserMenu({
           </>
         )}
 
-        <DropdownMenuLabel label="Beta" />
-        <DropdownMenuItem
-          label="Exploratory features"
-          icon={TestTubeIcon}
-          href={`/w/${owner.sId}/labs`}
-        />
+        {subscription?.plan.limits.canUseProduct && (
+          <>
+            <DropdownMenuLabel label="Beta" />
+            <DropdownMenuItem
+              label="Exploratory features"
+              icon={TestTubeIcon}
+              href={`/w/${owner.sId}/labs`}
+            />
+          </>
+        )}
 
         <DropdownMenuLabel label="Account" />
-        <DropdownMenuItem
-          label="Profile"
-          icon={UserIcon}
-          href={`/w/${owner.sId}/me`}
-        />
+        {subscription?.plan.limits.canUseProduct && (
+          <DropdownMenuItem
+            label="Profile"
+            icon={UserIcon}
+            href={`/w/${owner.sId}/me`}
+          />
+        )}
 
         <DropdownMenuItem
           onClick={() => {

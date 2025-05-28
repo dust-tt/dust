@@ -10,14 +10,11 @@ import {
 import { useCallback, useState } from "react";
 
 import { MCPServerOAuthConnexion } from "@app/components/actions/mcp/MCPServerOAuthConnexion";
+import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
 import type { MCPServerType } from "@app/lib/api/mcp";
 import { useCreateMCPServerConnection } from "@app/lib/swr/mcp_servers";
-import type { WorkspaceType } from "@app/types";
-import {
-  asDisplayName,
-  OAUTH_PROVIDER_NAMES,
-  setupOAuthConnection,
-} from "@app/types";
+import type { OAuthCredentials, WorkspaceType } from "@app/types";
+import { OAUTH_PROVIDER_NAMES, setupOAuthConnection } from "@app/types";
 
 type ConnectMCPServerDialogProps = {
   owner: WorkspaceType;
@@ -35,12 +32,14 @@ export function ConnectMCPServerDialog({
   setIsOpen,
 }: ConnectMCPServerDialogProps) {
   const sendNotification = useSendNotification();
-  const [authCredentials, setAuthCredentials] = useState<Record<
-    string,
-    string
-  > | null>(null);
+  const [authCredentials, setAuthCredentials] =
+    useState<OAuthCredentials | null>(null);
+  const [isFormValid, setIsFormValid] = useState(true);
 
-  const { createMCPServerConnection } = useCreateMCPServerConnection({ owner });
+  const { createMCPServerConnection } = useCreateMCPServerConnection({
+    owner,
+    connectionType: "workspace",
+  });
 
   const resetState = useCallback(() => {
     setIsLoading(false);
@@ -93,13 +92,16 @@ export function ConnectMCPServerDialog({
     >
       <DialogContent size="lg">
         <DialogHeader>
-          <DialogTitle>Connect {asDisplayName(mcpServer?.name)}</DialogTitle>
+          <DialogTitle>
+            Connect {mcpServer ? getMcpServerDisplayName(mcpServer) : ""}
+          </DialogTitle>
         </DialogHeader>
         <DialogContainer>
           <MCPServerOAuthConnexion
             authorization={mcpServer?.authorization ?? null}
             authCredentials={authCredentials}
             setAuthCredentials={setAuthCredentials}
+            setIsFormValid={setIsFormValid}
           />
         </DialogContainer>
         <DialogFooter
@@ -111,7 +113,15 @@ export function ConnectMCPServerDialog({
           rightButtonProps={{
             label: mcpServer?.authorization ? "Save and connect" : "Save",
             variant: "primary",
-            onClick: handleSave,
+            onClick: (e: React.MouseEvent<HTMLButtonElement>) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (isFormValid) {
+                void handleSave();
+                setIsOpen(false);
+              }
+            },
+            disabled: !isFormValid,
           }}
         />
       </DialogContent>

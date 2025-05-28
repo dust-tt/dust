@@ -63,7 +63,7 @@ const ConfluencePageCodec = t.intersection([
 const SearchConfluencePageCodec = t.intersection([
   t.type({
     id: t.string,
-    type: t.string,
+    type: t.literal("page"),
     status: t.string,
     title: t.string,
 
@@ -103,6 +103,10 @@ const SearchConfluencePageCodec = t.intersection([
   CatchAllCodec,
 ]);
 
+export type ConfluenceSearchPageType = t.TypeOf<
+  typeof SearchConfluencePageCodec
+>;
+
 const ConfluencePageWithBodyCodec = t.intersection([
   ConfluencePageCodec,
   t.type({
@@ -125,18 +129,6 @@ const ConfluencePageWithBodyCodec = t.intersection([
 export type ConfluencePageWithBodyType = t.TypeOf<
   typeof ConfluencePageWithBodyCodec
 >;
-
-const ConfluenceChildPagesCodec = t.intersection([
-  t.type({
-    id: t.string,
-    status: t.string,
-    title: t.string,
-    spaceId: t.string,
-  }),
-  t.partial({
-    childPosition: t.number,
-  }),
-]);
 
 const ConfluenceUserProfileCodec = t.intersection([
   t.type({
@@ -210,6 +202,8 @@ const NO_RETRY_AFTER_DELAY = -1;
 const MAX_RATE_LIMIT_RETRY_COUNT = 5;
 // If Confluence returns a retry-after header with a delay greater than this value, we cap it.
 const MAX_RETRY_AFTER_DELAY = 300_000; // 5 minutes
+// If Confluence indicates that we are approaching the rate limit, we delay by this value.
+const NEAR_RATE_LIMIT_DELAY = 120_000; // 2 minutes
 
 // Space types that we support indexing in Dust.
 export const CONFLUENCE_SUPPORTED_SPACE_TYPES = [
@@ -378,50 +372,85 @@ export class ConfluenceClient {
       // https://developer.atlassian.com/cloud/confluence/rate-limiting/
       //
       // Current strategy:
-      // 1. If Confluence provides a retry-after header, we honor it immediately
-      //    by sleeping in the client. This is not ideal but provides the most
-      //    accurate rate limit handling until we can use Temporal's nextRetryDelay.
-      // 2. If no retry-after header is provided, we throw a transient error and
-      //    let Temporal handle the retry with exponential backoff.
-      //
-      // Once we upgrade to Temporal SDK >= X.Y.Z, we should:
-      // - Remove the client-side sleep
-      // - Use ApplicationFailure.create() with nextRetryDelay
-      // - See: https://docs.temporal.io/develop/typescript/failure-detection#activity-next-retry-delay
+      // 1. If Confluence provides a retry-after header smaller than MAX_RETRY_AFTER_DELAY,
+      //    we honor it immediately by sleeping in the activity unless we have already retried
+      //    MAX_RATE_LIMIT_RETRY_COUNT times.
+      // 2. If Confluence provides a retry-after header greater than MAX_RETRY_AFTER_DELAY,
+      //    we throw a transient error with the right retryAfterMs to let Temporal replay the
+      //    current activity with the right delay.
+      // 3. If Confluence does not provide a retry-after header, we throw a transient error and
+      //    let Temporal retry in MAX_RETRY_AFTER_DELAY ms.
       if (response.status === 429) {
+        const delayMs = getRetryAfterDuration(response);
+
         statsDClient.increment("external.api.calls", 1, [
           "provider:confluence",
           "status:rate_limited",
         ]);
 
+        // Case 1: Attempt activity-side retry if conditions are met.
         if (retryCount < MAX_RATE_LIMIT_RETRY_COUNT) {
-          const delayMs = getRetryAfterDuration(response);
-          logger.warn(
-            {
-              endpoint,
-              delayMs,
-            },
-            "[Confluence] Rate limit hit"
-          );
-
-          // Only retry rate-limited requests when the server provides a Retry-After delay.
           if (
             delayMs !== NO_RETRY_AFTER_DELAY &&
             delayMs < MAX_RETRY_AFTER_DELAY
           ) {
+            logger.warn(
+              {
+                endpoint,
+                delayMs,
+                retryCount,
+              },
+              "[Confluence] Rate limit hit. Performing activity-side retry."
+            );
             await setTimeoutAsync(delayMs);
             return this.request(endpoint, codec, {
               retryCount: retryCount + 1,
-              bypassThrottle: bypassThrottle,
+              bypassThrottle,
             });
           }
         }
 
-        // Otherwise throw regular error to let downstream handle retries (e.g: Temporal).
+        // If activity-side retry was not performed, throw an error for Temporal to handle.
+        // Determine the appropriate retryAfterMs and log the reason.
+        let retryAfterMsForTemporal: number;
+        let logReason: string;
+
+        if (delayMs !== NO_RETRY_AFTER_DELAY) {
+          // Server provided a delay (relevant for Case 2 or if retries exhausted).
+          retryAfterMsForTemporal = delayMs;
+          if (retryCount >= MAX_RATE_LIMIT_RETRY_COUNT) {
+            logReason = `Activity retries exhausted. Server suggested delay ${delayMs}ms.`;
+          } else {
+            // delayMs >= MAX_RETRY_AFTER_DELAY, as activity-side retry wasn't done.
+            logReason =
+              `Server suggested delay ${delayMs}ms is >= MAX_RETRY_AFTER_DELAY ` +
+              `(${MAX_RETRY_AFTER_DELAY}ms).`;
+          }
+        } else {
+          // Server did not provide delay (Case 3 or retries exhausted without delay).
+          retryAfterMsForTemporal = MAX_RETRY_AFTER_DELAY;
+          if (retryCount >= MAX_RATE_LIMIT_RETRY_COUNT) {
+            logReason = "Activity retries exhausted. No server delay provided.";
+          } else {
+            logReason = "No server delay provided.";
+          }
+        }
+
+        logger.warn(
+          {
+            endpoint,
+            delayMs,
+            retryCount,
+            retryAfterMsForTemporal,
+          },
+          `[Confluence] Rate limit hit. Throwing for Temporal. Reason: ${logReason}`
+        );
+
         throw new ConfluenceClientError("Confluence API rate limit exceeded", {
           type: "http_response_error",
           status: response.status,
           data: { url: `${this.apiUrl}${endpoint}`, response },
+          retryAfterMs: retryAfterMsForTemporal,
         });
       }
 
@@ -430,19 +459,20 @@ export class ConfluenceClient {
         "status:error",
       ]);
 
+      const text = await response.text();
+
       throw new ConfluenceClientError(
         `Confluence API responded with status: ${response.status}: ${this.apiUrl}${endpoint}`,
         {
           type: "http_response_error",
           status: response.status,
-          data: { url: `${this.apiUrl}${endpoint}`, response },
+          data: { url: `${this.apiUrl}${endpoint}`, response, text },
         }
       );
     }
 
-    // When approaching the rate limit, we defer the handling of the backoff to Temporal.
-    // We have no accurate estimation of the time we should wait here, the goal here is more to warm up the exponential
-    // backoff to slow down the queries as soon as they approach the rate limit.
+    // When approaching the rate limit (20% of any budget remains), we fake a 429 to slow down
+    // the query pace. We delay by NEAR_RATE_LIMIT_DELAY ms.
     if (
       !bypassThrottle &&
       !this.ignoreNearRateLimit &&
@@ -458,7 +488,11 @@ export class ConfluenceClient {
         {
           type: "http_response_error",
           status: 429, // We fake a 429 here to make sure the error is caught in the cast_known_errors.
-          data: { url: `${this.apiUrl}${endpoint}`, response },
+          data: {
+            url: `${this.apiUrl}${endpoint}`,
+            response,
+          },
+          retryAfterMs: NEAR_RATE_LIMIT_DELAY,
         }
       );
     }
@@ -590,17 +624,29 @@ export class ConfluenceClient {
   }
 
   async getChildPages({
-    parentPageId,
-    pageCursor,
     limit,
+    pageCursor,
+    parentPageId,
+    spaceKey,
   }: {
-    parentPageId: string;
+    limit: number;
     pageCursor: string | null;
-    limit?: number;
+    parentPageId: string;
+    spaceKey: string;
   }) {
+    // Build CQL query to get pages with specific IDs.
+    const cqlQuery = `type=page AND space="${spaceKey}" AND parent=${parentPageId}`;
+
     const params = new URLSearchParams({
-      sort: "id",
-      limit: limit?.toString() ?? "100",
+      cql: cqlQuery,
+      expand: [
+        "version", // To check if page changed.
+        "restrictions.read.restrictions.user", // To check user permissions.
+        "restrictions.read.restrictions.group", // To check group permissions.
+        "childTypes.page", // To know if it has children.
+        "ancestors", // To get parent info.
+      ].join(","),
+      limit: limit.toString(),
     });
 
     if (pageCursor) {
@@ -608,24 +654,20 @@ export class ConfluenceClient {
     }
 
     try {
-      const pages = await this.request(
-        `${
-          this.restApiBaseUrl
-        }/pages/${parentPageId}/children?${params.toString()}`,
-        ConfluencePaginatedResults(ConfluenceChildPagesCodec)
+      const res = await this.request(
+        `${this.legacyRestApiBaseUrl}/content/search?${params.toString()}`,
+        ConfluencePaginatedResults(SearchConfluencePageCodec)
       );
-      const nextPageCursor = extractCursorFromLinks(pages._links);
 
       return {
-        pages: pages.results,
-        nextPageCursor,
+        nextPageCursor: extractCursorFromLinks(res._links),
+        pages: res.results,
       };
     } catch (err) {
       if (err instanceof ConfluenceClientError && err.status === 404) {
-        // If the child page is not found, return empty array.
         return {
-          pages: [],
           nextPageCursor: null,
+          pages: [],
         };
       }
 
@@ -715,11 +757,11 @@ export class ConfluenceClient {
       cql: cqlQuery,
       limit: limit?.toString() ?? "25",
       expand: [
-        "version", // to check if page changed.
-        "restrictions.read.restrictions.user", // to check user permissions.
-        "restrictions.read.restrictions.group", // to check group permissions.
-        "childTypes.page", // to know if it has children.
-        "ancestors", // to get parent info.
+        "version", // To check if page changed.
+        "restrictions.read.restrictions.user", // To check user permissions.
+        "restrictions.read.restrictions.group", // To check group permissions.
+        "childTypes.page", // To know if it has children.
+        "ancestors", // To get parent info.
       ].join(","),
     });
 

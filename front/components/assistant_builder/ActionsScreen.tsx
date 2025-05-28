@@ -182,8 +182,8 @@ function actionDisplayName(
   action: AssistantBuilderActionAndDataVisualizationConfiguration,
   mcpServerView: MCPServerViewType | null
 ) {
-  if (mcpServerView) {
-    return getMcpServerViewDisplayName(mcpServerView);
+  if (mcpServerView && action.type === "MCP") {
+    return getMcpServerViewDisplayName(mcpServerView, action);
   }
 
   if (action.type === "DATA_VISUALIZATION") {
@@ -973,6 +973,7 @@ function ActionEditor({
 
   const { connections, isConnectionsLoading } = useMCPServerConnections({
     owner,
+    connectionType: "workspace",
     disabled: !selectedMCPServerView?.server.authorization,
   });
 

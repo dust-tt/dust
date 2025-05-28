@@ -2,7 +2,6 @@ import type { LoggerInterface } from "@dust-tt/client";
 import { removeNulls } from "@dust-tt/client";
 import type { Client } from "@microsoft/microsoft-graph-client";
 import { GraphError } from "@microsoft/microsoft-graph-client";
-import { heartbeat } from "@temporalio/activity";
 import * as _ from "lodash";
 
 import { getClient } from "@connectors/connectors/microsoft";
@@ -47,6 +46,7 @@ import {
   upsertDataSourceFolder,
 } from "@connectors/lib/data_sources";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
+import { heartbeat } from "@connectors/lib/temporal";
 import { getActivityLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import {
@@ -662,7 +662,7 @@ export async function syncDeltaForRootNodesInDrive({
   }
 
   for (const driveItem of sortedChangedItems) {
-    heartbeat();
+    await heartbeat();
     if (!driveItem.parentReference) {
       throw new Error(`Unexpected: parent reference missing: ${driveItem}`);
     }

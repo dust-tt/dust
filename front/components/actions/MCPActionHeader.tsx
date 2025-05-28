@@ -1,8 +1,8 @@
 import { Chip } from "@dust-tt/sparkle";
 
+import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerType } from "@app/lib/api/mcp";
-import { asDisplayName } from "@app/types";
 
 interface MCPActionHeaderProps {
   mcpServer: MCPServerType;
@@ -22,7 +22,7 @@ export function MCPActionHeader({
       {getAvatar(mcpServer, "md")}
       <div className="flex grow flex-col gap-0 pr-9">
         <h2 className="heading-lg line-clamp-1 text-foreground dark:text-foreground-night">
-          {asDisplayName(mcpServer.name)}
+          {getMcpServerDisplayName(mcpServer)}
         </h2>
         <div className="line-clamp-1 overflow-hidden text-sm text-muted-foreground dark:text-muted-foreground-night">
           {mcpServer.description}

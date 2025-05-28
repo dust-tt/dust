@@ -12,6 +12,7 @@ import {
 import { useCallback, useEffect, useState } from "react";
 
 import { MCPServerOAuthConnexion } from "@app/components/actions/mcp/MCPServerOAuthConnexion";
+import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata";
 import type { MCPServerType } from "@app/lib/api/mcp";
 import {
@@ -19,9 +20,8 @@ import {
   useCreateMCPServerConnection,
   useCreateRemoteMCPServer,
 } from "@app/lib/swr/mcp_servers";
-import type { WorkspaceType } from "@app/types";
+import type { OAuthCredentials, WorkspaceType } from "@app/types";
 import {
-  asDisplayName,
   OAUTH_PROVIDER_NAMES,
   setupOAuthConnection,
   validateUrl,
@@ -49,17 +49,19 @@ export function CreateMCPServerDialog({
   const [sharedSecret, setSharedSecret] = useState<string | undefined>(
     undefined
   );
-  const [authCredentials, setAuthCredentials] = useState<Record<
-    string,
-    string
-  > | null>(null);
+  const [authCredentials, setAuthCredentials] =
+    useState<OAuthCredentials | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isFormValid, setIsFormValid] = useState(true);
   const [authorization, setAuthorization] = useState<AuthorizationInfo | null>(
     null
   );
 
   const { createWithUrlSync } = useCreateRemoteMCPServer(owner);
-  const { createMCPServerConnection } = useCreateMCPServerConnection({ owner });
+  const { createMCPServerConnection } = useCreateMCPServerConnection({
+    owner,
+    connectionType: "workspace",
+  });
   const { createInternalMCPServer } = useCreateInternalMCPServer(owner);
 
   useEffect(() => {
@@ -78,7 +80,7 @@ export function CreateMCPServerDialog({
     setAuthCredentials(null);
   }, [setIsLoading]);
 
-  const handleSave = async (e: Event) => {
+  const handleSave = async (e: React.MouseEvent<HTMLButtonElement>) => {
     if (internalMCPServer) {
       setIsLoading(true);
 
@@ -176,7 +178,7 @@ export function CreateMCPServerDialog({
         <DialogHeader>
           <DialogTitle>
             {internalMCPServer
-              ? `Add ${asDisplayName(internalMCPServer.name)}`
+              ? `Add ${getMcpServerDisplayName(internalMCPServer)}`
               : "Add MCP Server"}
           </DialogTitle>
         </DialogHeader>
@@ -220,6 +222,7 @@ export function CreateMCPServerDialog({
             authorization={authorization}
             authCredentials={authCredentials}
             setAuthCredentials={setAuthCredentials}
+            setIsFormValid={setIsFormValid}
           />
         </DialogContainer>
         <DialogFooter
@@ -231,7 +234,15 @@ export function CreateMCPServerDialog({
           rightButtonProps={{
             label: authorization ? "Save and connect" : "Save",
             variant: "primary",
-            onClick: handleSave,
+            onClick: (e: React.MouseEvent<HTMLButtonElement>) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (isFormValid) {
+                void handleSave(e);
+                setIsOpen(false);
+              }
+            },
+            disabled: !isFormValid,
           }}
         />
       </DialogContent>

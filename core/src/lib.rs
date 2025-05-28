@@ -130,6 +130,7 @@ pub mod oauth {
     pub mod providers {
         pub mod confluence;
         pub mod github;
+        pub mod gmail;
         pub mod gong;
         pub mod google_drive;
         pub mod hubspot;
