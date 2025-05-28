@@ -4,7 +4,8 @@ import type {
   DirectoryUserWithGroups as WorkOSUserWithGroups,
 } from "@workos-inc/node";
 
-import { getUserNicknameFromEmail, getWorkOS } from "@app/lib/api/workos/utils";
+import { getWorkOS } from "@app/lib/api/workos/client";
+import { getUserNicknameFromEmail } from "@app/lib/api/workos/user";
 import type { Authenticator } from "@app/lib/auth";
 import { createOrUpdateUser } from "@app/lib/iam/users";
 import { GroupResource } from "@app/lib/resources/group_resource";

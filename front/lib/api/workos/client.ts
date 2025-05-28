@@ -13,7 +13,3 @@ export function getWorkOS() {
 
   return workos;
 }
-
-export function getUserNicknameFromEmail(email: string) {
-  return email.split("@")[0] ?? "";
-}

@@ -7,7 +7,7 @@ import type { GetServerSidePropsContext, NextApiRequest } from "next";
 
 import config from "@app/lib/api/config";
 import type { RegionType } from "@app/lib/api/regions/config";
-import { getUserNicknameFromEmail, getWorkOS } from "@app/lib/api/workos/utils";
+import { getWorkOS } from "@app/lib/api/workos/client";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 
 export type SessionCookie = {
@@ -17,6 +17,10 @@ export type SessionCookie = {
   region: RegionType;
   workspaceId: string;
 };
+
+export function getUserNicknameFromEmail(email: string) {
+  return email.split("@")[0] ?? "";
+}
 
 export async function getWorkOSSession(
   req: NextApiRequest | GetServerSidePropsContext["req"]

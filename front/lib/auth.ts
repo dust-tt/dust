@@ -9,6 +9,7 @@ import type {
 import type { Auth0JwtPayload } from "@app/lib/api/auth0";
 import { getAuth0Session } from "@app/lib/api/auth0";
 import config from "@app/lib/api/config";
+import { getWorkOSSession } from "@app/lib/api/workos/user";
 import { SSOEnforcedError } from "@app/lib/iam/errors";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { FeatureFlag } from "@app/lib/models/feature_flag";
@@ -50,8 +51,6 @@ import {
   Ok,
   WHITELISTABLE_FEATURES,
 } from "@app/types";
-
-import { getWorkOSSession } from "./api/workos/user";
 
 const { ACTIVATE_ALL_FEATURES_DEV = false } = process.env;
 

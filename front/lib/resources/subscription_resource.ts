@@ -313,7 +313,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
     }
 
     if (newPlan.isWorkOSAllowed) {
-      const r = createWorkOSOrganization({
+      const r = await createWorkOSOrganization({
         workspace,
       });
 
@@ -321,19 +321,12 @@ export class SubscriptionResource extends BaseResource<Subscription> {
         throw new Error(
           `Cannot subscribe to plan ${planCode}: error while creating WorkOS organization: ${r.error.message}`
         );
+      } else {
+        logger.info(
+          { workspaceId: workspace.sId },
+          "WorkOS organization created successfully."
+        );
       }
-      const organization = await r.value;
-
-      await Workspace.update(
-        {
-          workOSOrganizationId: organization.id,
-        },
-        {
-          where: {
-            id: workspace.id,
-          },
-        }
-      );
     }
 
     // Proceed to the termination of the active subscription (if any) and creation of the new one

@@ -8,9 +8,9 @@ import {
   SUPPORTED_REGIONS,
 } from "@app/lib/api/regions/config";
 import { checkUserRegionAffinity } from "@app/lib/api/regions/lookup";
+import { getWorkOS } from "@app/lib/api/workos/client";
 import type { SessionCookie } from "@app/lib/api/workos/user";
 import { setRegionForUser } from "@app/lib/api/workos/user";
-import { getWorkOS } from "@app/lib/api/workos/utils";
 import { getSession } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";

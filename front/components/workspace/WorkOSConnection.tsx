@@ -102,7 +102,7 @@ export function WorkOSConnection({ owner }: WorkOSConnectionProps) {
       <Page.P variant="secondary">
         {owner.workOSOrganizationId
           ? "Manage your enterprise Identity Provider (IdP) settings and user provisioning."
-          : "Your WorkOS organization will be automatically created when your workspace plan becomes Enterprise."}
+          : "Your WorkOS organization will be automatically created when your is upgraded to an eligible plan."}
       </Page.P>
       {owner.workOSOrganizationId && (
         <div className="flex flex-col items-start gap-3">

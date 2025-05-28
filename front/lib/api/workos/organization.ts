@@ -1,17 +1,17 @@
-import type { Organization as WorkOSOrganization } from "@workos-inc/node";
 import { GeneratePortalLinkIntent } from "@workos-inc/node";
 
-import { getWorkOS } from "@app/lib/api/workos/utils";
+import { getWorkOS } from "@app/lib/api/workos/client";
+import { Workspace } from "@app/lib/models/workspace";
 import { WorkOSPortalIntent } from "@app/lib/types/workos";
 import logger from "@app/logger/logger";
 import type { Result, WorkspaceType } from "@app/types";
-import { Err, Ok } from "@app/types";
+import { Err, normalizeError, Ok } from "@app/types";
 
-export function createWorkOSOrganization({
+export async function createWorkOSOrganization({
   workspace,
 }: {
   workspace: WorkspaceType;
-}): Result<Promise<WorkOSOrganization>, Error> {
+}): Promise<Result<undefined, Error>> {
   if (workspace.workOSOrganizationId) {
     return new Err(
       new Error("A WorkOS organization already exists for this workspace.")
@@ -19,15 +19,28 @@ export function createWorkOSOrganization({
   }
 
   try {
-    const organization = getWorkOS().organizations.createOrganization({
+    const organization = await getWorkOS().organizations.createOrganization({
       name: workspace.name,
       metadata: { workspaceSId: workspace.sId },
     });
 
-    return new Ok(organization);
+    await Workspace.update(
+      {
+        workOSOrganizationId: organization.id,
+      },
+      {
+        where: {
+          id: workspace.id,
+        },
+      }
+    );
+    return new Ok(undefined);
   } catch (error) {
-    logger.error(error, "Failed to create WorkOS organization");
-    return new Err(new Error("Failed to create WorkOS organization"));
+    const e = normalizeError(error);
+    logger.error(e, "Failed to create WorkOS organization");
+    return new Err(
+      new Error(`Failed to create WorkOS organization: ${e.message}`)
+    );
   }
 }
 
