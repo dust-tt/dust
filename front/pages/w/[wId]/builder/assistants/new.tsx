@@ -207,7 +207,7 @@ export default function CreateAssistant({
               }
             : null
         }
-        agentConfigurationId={null}
+        agentConfiguration={null}
         defaultIsEdited={assistantTemplate !== null}
         baseUrl={baseUrl}
         defaultTemplate={assistantTemplate}

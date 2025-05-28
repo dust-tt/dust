@@ -195,7 +195,7 @@ export default function EditAssistant({
           tags: agentConfiguration.tags,
           editors: agentEditors,
         }}
-        agentConfigurationId={agentConfiguration.sId}
+        agentConfiguration={agentConfiguration}
         baseUrl={baseUrl}
         defaultTemplate={null}
       />

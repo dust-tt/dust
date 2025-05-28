@@ -43,6 +43,7 @@ import {
   CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG,
   DEFAULT_MAX_STEPS_USE_PER_RUN,
 } from "@app/types";
+import type { AgentConfigurationType } from "@app/types";
 import type { TagType } from "@app/types/tag";
 
 export const ACTION_MODES = [
@@ -515,7 +516,7 @@ export const BUILDER_FLOWS = [
 export type BuilderFlow = (typeof BUILDER_FLOWS)[number];
 
 export type AssistantBuilderProps = {
-  agentConfigurationId: string | null;
+  agentConfiguration: AgentConfigurationType | null;
   baseUrl: string;
   defaultIsEdited?: boolean;
   defaultTemplate: FetchAssistantTemplateResponse | null;
