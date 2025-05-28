@@ -23,7 +23,7 @@ interface SuggestionProps {
   clientRect: () => DOMRect | null;
 }
 
-interface MentionDropdownState {
+export interface MentionDropdownState {
   isOpen: boolean;
   query: string;
   suggestions: EditorSuggestion[];
