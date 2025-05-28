@@ -6,6 +6,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { isManaged } from "@app/lib/data_sources";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import logger from "@app/logger/logger";
 import type {
   OAuthAPIError,
@@ -418,6 +419,14 @@ const PROVIDER_STRATEGIES: Record<
       return getStringFromQuery(query, "state");
     },
     isExtraConfigValid: (extraConfig, useCase) => {
+      if (useCase === "personal_actions") {
+        // If we have an mcp_server_id it means the admin already setup the connection and we have
+        // everything we need, otherwise we'll need the instance_url and client_id.
+        if (extraConfig.mcp_server_id) {
+          return true;
+        }
+      }
+
       if (useCase === "salesforce_personal") {
         return true;
       }
@@ -484,47 +493,196 @@ const PROVIDER_STRATEGIES: Record<
             ...extraConfig,
           },
         };
-      } else {
-        const { client_secret, ...restConfig } = extraConfig;
-        // Keep client_id in metadata in clear text.
-        return {
-          credential: {
-            content: {
-              client_secret,
-              client_id: extraConfig.client_id,
-            },
-            metadata: { workspace_id: workspaceId, user_id: userId },
-          },
-          cleanedConfig: restConfig,
-        };
       }
+
+      if (useCase === "personal_actions") {
+        // For personal actions we reuse the existing connection credential id from the existing
+        // workspace connection (setup by admin) if we have it, otherwise we fallback to assuming
+        // we have client_secret and instance_url (initial admin setup).
+        const { mcp_server_id, ...restConfig } = extraConfig;
+
+        if (mcp_server_id) {
+          const mcpServerConnectionRes =
+            await MCPServerConnectionResource.findByMCPServer({
+              auth,
+              mcpServerId: mcp_server_id,
+              connectionType: "workspace",
+            });
+
+          if (mcpServerConnectionRes.isErr()) {
+            return null;
+          }
+
+          const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);
+          const connectionRes = await oauthApi.getAccessToken({
+            connectionId: mcpServerConnectionRes.value.connectionId,
+          });
+          if (connectionRes.isErr()) {
+            return null;
+          }
+          const connection = connectionRes.value.connection;
+          const connectionId = connection.connection_id;
+
+          return {
+            credential: {
+              content: {
+                from_connection_id: connectionId,
+              },
+              metadata: { workspace_id: workspaceId, user_id: userId },
+            },
+            cleanedConfig: {
+              client_id: connection.metadata.client_id as string,
+              instance_url: connection.metadata.instance_url as string,
+              ...restConfig,
+            },
+          };
+        }
+      }
+
+      const { client_secret, ...restConfig } = extraConfig;
+      // Keep client_id in metadata in clear text.
+      return {
+        credential: {
+          content: {
+            client_secret,
+            client_id: extraConfig.client_id,
+          },
+          metadata: { workspace_id: workspaceId, user_id: userId },
+        },
+        cleanedConfig: restConfig,
+      };
+    },
+  },
+  gmail: {
+    setupUri: ({ connection, clientId }) => {
+      const scopes = [
+        "https://www.googleapis.com/auth/gmail.readonly",
+        "https://www.googleapis.com/auth/gmail.compose",
+      ];
+      const qs = querystring.stringify({
+        response_type: "code",
+        client_id: clientId,
+        state: connection.connection_id,
+        redirect_uri: finalizeUriForProvider("gmail"),
+        scope: scopes.join(" "),
+        access_type: "offline",
+        prompt: "consent",
+      });
+      return `https://accounts.google.com/o/oauth2/auth?${qs}`;
+    },
+    codeFromQuery: (query) => {
+      return getStringFromQuery(query, "code");
+    },
+    connectionIdFromQuery: (query) => {
+      return getStringFromQuery(query, "state");
+    },
+    isExtraConfigValid: (extraConfig, useCase) => {
+      if (useCase === "personal_actions") {
+        // If we have an mcp_server_id it means the admin already setup the connection and we have
+        // everything we need, otherwise we'll need the client_id and client_secret.
+        if (extraConfig.mcp_server_id) {
+          return true;
+        }
+        return !!(extraConfig.client_id && extraConfig.client_secret);
+      }
+      return Object.keys(extraConfig).length === 0;
+    },
+    getRelatedCredential: async (
+      auth,
+      extraConfig,
+      workspaceId,
+      userId,
+      useCase
+    ) => {
+      if (useCase === "personal_actions") {
+        // For personal actions we reuse the existing connection credential id from the existing
+        // workspace connection (setup by admin) if we have it, otherwise we fallback to assuming
+        // we have client_secret (initial admin setup).
+        const { mcp_server_id, ...restConfig } = extraConfig;
+
+        if (mcp_server_id) {
+          const mcpServerConnectionRes =
+            await MCPServerConnectionResource.findByMCPServer({
+              auth,
+              mcpServerId: mcp_server_id,
+              connectionType: "workspace",
+            });
+
+          if (mcpServerConnectionRes.isErr()) {
+            return null;
+          }
+
+          const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);
+          const connectionRes = await oauthApi.getAccessToken({
+            connectionId: mcpServerConnectionRes.value.connectionId,
+          });
+          if (connectionRes.isErr()) {
+            return null;
+          }
+          const connection = connectionRes.value.connection;
+          const connectionId = connection.connection_id;
+
+          return {
+            credential: {
+              content: {
+                from_connection_id: connectionId,
+              },
+              metadata: { workspace_id: workspaceId, user_id: userId },
+            },
+            cleanedConfig: {
+              client_id: connection.metadata.client_id as string,
+              ...restConfig,
+            },
+          };
+        }
+      }
+
+      const { client_secret, ...restConfig } = extraConfig;
+      // Keep client_id in metadata in clear text.
+      return {
+        credential: {
+          content: {
+            client_secret,
+            client_id: extraConfig.client_id,
+          },
+          metadata: { workspace_id: workspaceId, user_id: userId },
+        },
+        cleanedConfig: restConfig,
+      };
     },
   },
   hubspot: {
     setupUri: ({ connection }) => {
+      // For platform_actions, we need to request all scopes needed by the agent.
+      // For data_source_sync, we only need the scopes to read the data.
+      // TODO(MCP): Check if we can get more granular scopes for data_source_sync.
       const scopes = [
-        "crm.objects.companies.read",
-        "crm.objects.companies.write",
+        "oauth",
         "crm.objects.contacts.read",
         "crm.objects.contacts.write",
-        "crm.objects.custom.read",
-        "crm.objects.custom.write",
+        "crm.schemas.contacts.read",
+        "crm.objects.companies.read",
+        "crm.objects.companies.write",
+        "crm.schemas.companies.read",
         "crm.objects.deals.read",
         "crm.objects.deals.write",
-        "crm.objects.leads.read",
-        "crm.objects.leads.write",
-        "crm.objects.owners.read",
-        "crm.schemas.companies.read",
-        "crm.schemas.contacts.read",
-        "crm.schemas.custom.read",
         "crm.schemas.deals.read",
-        "oauth",
+        "tickets", // For tickets (covers read, write, schemas)
+        "crm.objects.owners.read", // For owners
+        "crm.schemas.custom.read", // For reading schemas of custom objects, and potentially useful for standard object properties
+        "crm.objects.custom.read", // For reading custom object data
+        "files", // For files (replaces files.read)
+        "sales-email-read", // For reading engagement details (especially emails, meetings, calls)
+        "timeline", // For timeline events, potentially associations
+        "crm.lists.read", // For addContactToList and future list operations
+        "crm.lists.write", // For addContactToList and future list operations
+        "automation", // For enrollContactInWorkflow and future automation operations
       ];
       return (
         `https://app.hubspot.com/oauth/authorize` +
         `?client_id=${config.getOAuthHubspotClientId()}` +
-        `&scope=${encodeURIComponent(scopes.join(" "))}` +
         `&redirect_uri=${encodeURIComponent(finalizeUriForProvider("hubspot"))}` +
+        `&scope=${encodeURIComponent(scopes.join(" "))}` +
         `&state=${connection.connection_id}`
       );
     },

@@ -1,3 +1,4 @@
+import tracer from "dd-trace";
 import type { InferGetServerSidePropsType } from "next";
 
 import AssistantBuilder from "@app/components/assistant_builder/AssistantBuilder";
@@ -47,83 +48,87 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   spaces: SpaceType[];
   subscription: SubscriptionType;
 }>(async (context, auth) => {
-  const owner = auth.workspace();
-  const plan = auth.plan();
-  const subscription = auth.subscription();
-  if (
-    !owner ||
-    !plan ||
-    !subscription ||
-    !auth.isUser() ||
-    !context.params?.aId
-  ) {
-    return {
-      notFound: true,
-    };
-  }
+  return tracer.trace("getServerSideProps", async () => {
+    const owner = auth.workspace();
+    const plan = auth.plan();
+    const subscription = auth.subscription();
+    if (
+      !owner ||
+      !plan ||
+      !subscription ||
+      !auth.isUser() ||
+      !context.params?.aId
+    ) {
+      return {
+        notFound: true,
+      };
+    }
 
-  const [{ spaces, dataSourceViews, dustApps, mcpServerViews }, configuration] =
-    await Promise.all([
+    const [
+      { spaces, dataSourceViews, dustApps, mcpServerViews },
+      configuration,
+    ] = await Promise.all([
       getAccessibleSourcesAndApps(auth),
       getAgentConfiguration(auth, context.params?.aId as string, "full"),
       MCPServerViewResource.ensureAllAutoToolsAreCreated(auth),
     ]);
 
-  if (!configuration) {
-    return {
-      notFound: true,
-    };
-  }
+    if (!configuration) {
+      return {
+        notFound: true,
+      };
+    }
 
-  if (!configuration.canEdit && !auth.isAdmin()) {
-    return {
-      notFound: true,
-    };
-  }
+    if (!configuration.canEdit && !auth.isAdmin()) {
+      return {
+        notFound: true,
+      };
+    }
 
-  const flow: BuilderFlow = BUILDER_FLOWS.includes(
-    context.query.flow as BuilderFlow
-  )
-    ? (context.query.flow as BuilderFlow)
-    : "personal_assistants";
+    const flow: BuilderFlow = BUILDER_FLOWS.includes(
+      context.query.flow as BuilderFlow
+    )
+      ? (context.query.flow as BuilderFlow)
+      : "personal_assistants";
 
-  const mcpServerViewsJSON = mcpServerViews.map((v) => v.toJSON());
+    const mcpServerViewsJSON = mcpServerViews.map((v) => v.toJSON());
 
-  const actions = await buildInitialActions({
-    dataSourceViews,
-    dustApps,
-    configuration,
-    mcpServerViews: mcpServerViewsJSON,
-  });
-
-  const editorGroupRes = await GroupResource.findEditorGroupForAgent(
-    auth,
-    configuration
-  );
-  if (editorGroupRes.isErr()) {
-    throw new Error("Failed to find editor group for agent");
-  }
-
-  const agentEditors = (await editorGroupRes.value.getActiveMembers(auth)).map(
-    (m) => m.toJSON()
-  );
-
-  return {
-    props: {
-      actions,
-      agentConfiguration: configuration,
-      agentEditors,
-      baseUrl: config.getClientFacingUrl(),
-      dataSourceViews: dataSourceViews.map((v) => v.toJSON()),
-      dustApps: dustApps.map((a) => a.toJSON()),
+    const actions = await buildInitialActions({
+      dataSourceViews,
+      dustApps,
+      configuration,
       mcpServerViews: mcpServerViewsJSON,
-      flow,
-      owner,
-      plan,
-      subscription,
-      spaces: spaces.map((s) => s.toJSON()),
-    },
-  };
+    });
+
+    const editorGroupRes = await GroupResource.findEditorGroupForAgent(
+      auth,
+      configuration
+    );
+    if (editorGroupRes.isErr()) {
+      throw new Error("Failed to find editor group for agent");
+    }
+
+    const agentEditors = (
+      await editorGroupRes.value.getActiveMembers(auth)
+    ).map((m) => m.toJSON());
+
+    return {
+      props: {
+        actions,
+        agentConfiguration: configuration,
+        agentEditors,
+        baseUrl: config.getClientFacingUrl(),
+        dataSourceViews: dataSourceViews.map((v) => v.toJSON()),
+        dustApps: dustApps.map((a) => a.toJSON()),
+        mcpServerViews: mcpServerViewsJSON,
+        flow,
+        owner,
+        plan,
+        subscription,
+        spaces: spaces.map((s) => s.toJSON()),
+      },
+    };
+  });
 });
 
 export default function EditAssistant({
@@ -190,7 +195,7 @@ export default function EditAssistant({
           tags: agentConfiguration.tags,
           editors: agentEditors,
         }}
-        agentConfigurationId={agentConfiguration.sId}
+        agentConfiguration={agentConfiguration}
         baseUrl={baseUrl}
         defaultTemplate={null}
       />

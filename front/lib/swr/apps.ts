@@ -152,7 +152,10 @@ export function useKeys(owner: LightWorkspaceType) {
   const keysFetcher: Fetcher<GetKeysResponseBody> = fetcher;
   const { data, error, isValidating } = useSWRWithDefaults(
     `/api/w/${owner.sId}/keys`,
-    keysFetcher
+    keysFetcher,
+    {
+      revalidateOnFocus: false,
+    }
   );
 
   return {

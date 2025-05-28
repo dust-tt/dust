@@ -1,4 +1,3 @@
-import { getWeekBoundaries } from "@app/shared/lib/utils";
 import type { ConnectorProvider } from "@dust-tt/client";
 
 type BaseProvider = {
@@ -146,10 +145,7 @@ const providers: Partial<Record<ConnectorProvider, Provider>> = {
     },
     extractor: (url: URL): NodeCandidate => {
       // Try each type of extraction in order
-      const node =
-        extractMessageNodeId(url) ||
-        extractThreadNodeId(url) ||
-        extractChannelNodeId(url);
+      const node = extractThreadNodeId(url) || extractChannelNodeId(url);
       return node
         ? { node, provider: "slack" }
         : { node: null, provider: "slack" };
@@ -216,28 +212,20 @@ function extractThreadNodeId(url: URL): string | null {
   }
 
   const threadTs = url.searchParams.get("thread_ts");
-  if (!threadTs) {
-    return null;
+
+  // If there is a thread_ts parameter, the link was copied from inside the
+  // thread, not from the root message of the thread.
+  // Example: https://dust4ai.slack.com/archives/C05V0P20A72/p1748353621866279?thread_ts=1748353030.562719&cid=C05V0P20A72
+  if (threadTs) {
+    const channelId = pathParts[channelIndex + 1];
+    return `slack-${channelId}-thread-${threadTs}`;
   }
 
-  const channelId = pathParts[channelIndex + 1];
-  return `slack-${channelId}-thread-${threadTs}`;
-}
-
-// Extract a message node ID from a Slack archives URL
-function extractMessageNodeId(url: URL): string | null {
-  function formatDateForId(date: Date): string {
-    return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
-  }
-
-  const pathParts = url.pathname.split("/");
-  const channelIndex = pathParts.indexOf("archives");
-
-  if (
-    channelIndex === -1 ||
-    channelIndex + 1 >= pathParts.length ||
-    pathParts.length <= channelIndex + 2
-  ) {
+  // Otherwise, the link may have been copied from the root message of the
+  // thread, in which case we can use the channel ID and the 'p' timestamp in
+  // the URL, which is the timestamp representing the thread..
+  // Example: https://dust4ai.slack.com/archives/C05V0P20A72/p1748353030562719
+  if (pathParts.length <= channelIndex + 2) {
     return null;
   }
 
@@ -248,18 +236,12 @@ function extractMessageNodeId(url: URL): string | null {
     return null;
   }
 
-  // Extract timestamp and convert to date
+  // Extract timestamp and convert to thread timestamp (with dot at decimal 6 before last digit)
   const timestamp = messagePart.substring(1);
-  const messageDate = new Date(parseInt(timestamp) / 1000);
+  // add a dot at decimal 6 before last digit
+  const inferredThreadTs = timestamp.slice(0, -6) + "." + timestamp.slice(-6);
 
-  // Calculate week boundaries
-  const { startDate, endDate } = getWeekBoundaries(messageDate);
-
-  // Format dates for node ID
-  const startDateStr = formatDateForId(startDate);
-  const endDateStr = formatDateForId(endDate);
-
-  return `slack-${channelId}-messages-${startDateStr}-${endDateStr}`;
+  return `slack-${channelId}-thread-${inferredThreadTs}`;
 }
 
 export function nodeCandidateFromUrl(

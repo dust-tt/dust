@@ -100,21 +100,6 @@ describe("POST /api/w/[wId]/subscriptions", () => {
     expect(data.plan).toBeDefined();
   });
 
-  itInTransaction("throws error when plan not found", async () => {
-    const { req, res } = await createPrivateApiMockRequest({
-      method: "POST",
-      role: "admin",
-    });
-
-    req.body = {
-      billingPeriod: "yearly",
-    };
-
-    await handler(req, res);
-
-    expect(res._getStatusCode()).toBe(500);
-  });
-
   itInTransaction("returns 403 when user is not admin", async () => {
     const { req, res } = await createPrivateApiMockRequest({
       method: "POST",

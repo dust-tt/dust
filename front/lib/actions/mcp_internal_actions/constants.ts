@@ -26,6 +26,8 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "search",
   "think",
   "web_search_&_browse",
+  "salesforce",
+  "gmail",
 ] as const;
 
 // Whether the server is available by default in the global space.
@@ -93,13 +95,31 @@ export const INTERNAL_MCP_SERVERS: Record<
     availability: "manual",
     flag: "dev_mcp_actions",
     tools_stakes: {
+      // Get operations.
       get_object_properties: "never_ask",
-      get_objects_by_properties: "low",
-      get_object_by_email: "low",
-      get_object_by_id: "low",
-      count_objects_by_properties: "low",
-      create_object: "high",
-      update_object: "high",
+      get_object_by_email: "never_ask",
+      get_latest_objects: "never_ask",
+      get_contact: "never_ask",
+      get_company: "never_ask",
+      get_deal: "never_ask",
+      get_meeting: "never_ask",
+      get_file_public_url: "never_ask",
+      get_associated_meetings: "never_ask",
+
+      // Create operations.
+      create_contact: "high",
+      create_company: "high",
+      create_deal: "high",
+      create_lead: "high",
+      create_task: "high",
+      create_ticket: "high",
+      create_note: "high",
+      create_communication: "high",
+      create_meeting: "high",
+
+      // Other operations.
+      count_objects_by_properties: "never_ask",
+      search_crm_objects: "never_ask",
     },
   },
   agent_router: {
@@ -142,6 +162,24 @@ export const INTERNAL_MCP_SERVERS: Record<
     id: 13,
     availability: "auto_hidden_builder",
     flag: null,
+  },
+  salesforce: {
+    id: 14,
+    availability: "manual",
+    flag: "salesforce_tool",
+    tools_stakes: {
+      execute_read_query: "low",
+      list_objects: "low",
+    },
+  },
+  gmail: {
+    id: 15,
+    availability: "manual",
+    flag: "gmail_tool",
+    tools_stakes: {
+      get_drafts: "never_ask",
+      create_draft: "low",
+    },
   },
 
   // Dev

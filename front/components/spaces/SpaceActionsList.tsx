@@ -5,6 +5,7 @@ import * as React from "react";
 import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
 import { useQueryParams } from "@app/hooks/useQueryParams";
+import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerType } from "@app/lib/api/mcp";
 import {
@@ -14,7 +15,6 @@ import {
 } from "@app/lib/swr/mcp_server_views";
 import { useAvailableMCPServers } from "@app/lib/swr/mcp_servers";
 import type { LightWorkspaceType, SpaceType } from "@app/types";
-import { asDisplayName } from "@app/types";
 
 import { RequestActionsModal } from "./mcp/RequestActionsModal";
 import SpaceManagedActionsViewsModel from "./SpaceManagedActionsViewsModal";
@@ -81,7 +81,7 @@ export const SpaceActionsList = ({
             </div>
           </DataTable.CellContent>
         ),
-        accessorFn: (row: RowData) => asDisplayName(row.name),
+        accessorFn: (row: RowData) => row.name,
         meta: {
           className: "w-80",
         },
@@ -124,7 +124,7 @@ export const SpaceActionsList = ({
     () =>
       serverViews.map((serverView) => ({
         id: serverView.sId,
-        name: serverView.server.name,
+        name: getMcpServerViewDisplayName(serverView),
         description: serverView.server.description,
         avatar: getAvatar(serverView.server),
       })) || [],

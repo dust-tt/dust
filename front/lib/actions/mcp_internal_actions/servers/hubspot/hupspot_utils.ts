@@ -19,6 +19,7 @@ export const withAuth = async (
 ): Promise<CallToolResult> => {
   const accessToken = await getAccessTokenForInternalMCPServer(auth, {
     mcpServerId,
+    connectionType: "workspace",
   });
   if (!accessToken) {
     return makeMCPToolTextError(ERROR_MESSAGES.NO_ACCESS_TOKEN);

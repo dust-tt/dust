@@ -4,6 +4,7 @@ import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_ac
 import { default as agentRouterServer } from "@app/lib/actions/mcp_internal_actions/servers/agent_router";
 import { default as generateFileServer } from "@app/lib/actions/mcp_internal_actions/servers/file_generation";
 import { default as githubServer } from "@app/lib/actions/mcp_internal_actions/servers/github";
+import { default as gmailServer } from "@app/lib/actions/mcp_internal_actions/servers/gmail";
 import { default as hubspotServer } from "@app/lib/actions/mcp_internal_actions/servers/hubspot/server";
 import { default as imageGenerationDallEServer } from "@app/lib/actions/mcp_internal_actions/servers/image_generation";
 import { default as includeDataServer } from "@app/lib/actions/mcp_internal_actions/servers/include";
@@ -14,6 +15,7 @@ import { default as extractDataServer } from "@app/lib/actions/mcp_internal_acti
 import { default as reasoningServer } from "@app/lib/actions/mcp_internal_actions/servers/reasoning";
 import { default as runAgentServer } from "@app/lib/actions/mcp_internal_actions/servers/run_agent";
 import { default as dustAppServer } from "@app/lib/actions/mcp_internal_actions/servers/run_dust_app";
+import { default as salesforceServer } from "@app/lib/actions/mcp_internal_actions/servers/salesforce";
 import { default as searchServer } from "@app/lib/actions/mcp_internal_actions/servers/search";
 import { default as tablesQueryServer } from "@app/lib/actions/mcp_internal_actions/servers/tables_query/server";
 import { default as tablesQueryServerV2 } from "@app/lib/actions/mcp_internal_actions/servers/tables_query/server_v2";
@@ -71,6 +73,10 @@ export async function getInternalMCPServer(
       return agentRouterServer(auth);
     case "extract_data":
       return extractDataServer(auth, agentLoopContext);
+    case "salesforce":
+      return salesforceServer(auth, mcpServerId);
+    case "gmail":
+      return gmailServer(auth, mcpServerId);
     default:
       assertNever(internalMCPServerName);
   }

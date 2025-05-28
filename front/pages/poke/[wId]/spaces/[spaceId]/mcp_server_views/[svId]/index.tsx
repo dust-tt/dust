@@ -4,6 +4,7 @@ import type { ReactElement } from "react";
 
 import { ViewMCPServerViewTable } from "@app/components/poke/mcp_server_views/view";
 import PokeLayout from "@app/components/poke/PokeLayout";
+import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { mcpServerViewToPokeJSON } from "@app/lib/poke/utils";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -46,7 +47,7 @@ export default function MCPServerViewPage({
   return (
     <>
       <h3 className="text-xl font-bold">
-        MCP Server View: {mcpServerView.server.name} in space:{" "}
+        MCP Server View: {getMcpServerViewDisplayName(mcpServerView)} in space:{" "}
         <a
           href={`/poke/${owner.sId}/spaces/${mcpServerView.spaceId}`}
           className="text-highlight-500"
@@ -76,7 +77,7 @@ MCPServerViewPage.getLayout = (
 ) => {
   return (
     <PokeLayout
-      title={`${owner.name} - ${mcpServerView.server.name} in ${
+      title={`${owner.name} - ${getMcpServerViewDisplayName(mcpServerView)} in ${
         mcpServerView.space?.name || mcpServerView.spaceId
       }`}
     >

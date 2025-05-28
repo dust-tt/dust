@@ -273,8 +273,7 @@ export const withDefaultUserAuthRequirementsNoWorkspaceCheck =
   makeGetServerSidePropsRequirementsWrapper({
     requireUserPrivilege: "user",
     requireCanUseProduct: true,
-    // This is a special case where we don't want to check
-    // if the user is in the current workspace.
+    // This is a special case where we don't want to check if the user is in the current workspace.
     allowUserOutsideCurrentWorkspace: true,
   });
 

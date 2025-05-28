@@ -1,10 +1,13 @@
 import {
   Button,
+  CheckIcon,
   ChevronDownIcon,
-  Chip,
   DropdownMenu,
-  DropdownMenuCheckboxItem,
   DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTagItem,
+  DropdownMenuTagList,
   DropdownMenuTrigger,
   Spinner,
 } from "@dust-tt/sparkle";
@@ -35,7 +38,6 @@ export const TableTagSelector = ({
   const { isDark } = useTheme();
   const updateAgentTags = useUpdateAgentTags({
     owner,
-    agentConfigurationId,
   });
   return (
     <DropdownMenu>
@@ -57,30 +59,42 @@ export const TableTagSelector = ({
           />
         )}
       </DropdownMenuTrigger>
-      <DropdownMenuContent mountPortalContainer={document.body}>
-        {tags
-          .filter((t) => isBuilder(owner) || t.kind !== "protected")
-          .map((t) => {
-            const isChecked = agentTags.some((x) => x.sId === t.sId);
-            return (
-              <DropdownMenuCheckboxItem
-                key={t.sId}
-                onClick={async (e: React.MouseEvent) => {
-                  setIsLoading(true);
-                  e.stopPropagation();
-                  e.preventDefault();
-                  await updateAgentTags({
-                    addTagIds: isChecked ? [] : [t.sId],
-                    removeTagIds: isChecked ? [t.sId] : [],
-                  });
-                  await onChange();
-                }}
-                checked={isChecked}
-              >
-                <Chip size="xs" label={t.name} color="golden" />
-              </DropdownMenuCheckboxItem>
-            );
-          })}
+      <DropdownMenuContent
+        mountPortalContainer={document.body}
+        className="w-60"
+      >
+        <DropdownMenuLabel label="Available tags" />
+        <DropdownMenuSeparator />
+        <DropdownMenuTagList>
+          {tags
+            .filter((t) => isBuilder(owner) || t.kind !== "protected")
+            .map((t) => {
+              const isChecked = agentTags.some((x) => x.sId === t.sId);
+              return (
+                <div
+                  key={t.sId}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
+                >
+                  <DropdownMenuTagItem
+                    label={t.name}
+                    color="golden"
+                    icon={isChecked ? CheckIcon : undefined}
+                    onClick={async () => {
+                      setIsLoading(true);
+                      await updateAgentTags(agentConfigurationId, {
+                        addTagIds: isChecked ? [] : [t.sId],
+                        removeTagIds: isChecked ? [t.sId] : [],
+                      });
+                      await onChange();
+                    }}
+                  />
+                </div>
+              );
+            })}
+        </DropdownMenuTagList>
         {isLoading && (
           <div className="absolute inset-0 flex items-center justify-center bg-white/50 dark:bg-black/50">
             <Spinner variant={isDark ? "light" : "dark"} />

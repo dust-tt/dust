@@ -208,6 +208,7 @@ export async function syncTicket({
     );
 
     const metadata = [
+      `ticketId:${ticket.id}`,
       `priority:${ticket.priority}`,
       `ticketType:${ticket.type}`,
       `channel:${ticket.via?.channel}`,
@@ -234,7 +235,10 @@ export async function syncTicket({
       additionalPrefixes: {
         metadata: metadata
           // We remove IDs from the prefixes since they do not hold any semantic meaning.
-          .filter((field) => !["organizationId", "groupId"].includes(field))
+          .filter(
+            (field) =>
+              !["ticketId", "organizationId", "groupId"].includes(field)
+          )
           .join(", "),
         labels: ticket.tags.join(", ") || "none",
       },
@@ -254,7 +258,6 @@ export async function syncTicket({
       documentUrl: ticketUrl,
       timestampMs: updatedAtDate.getTime(),
       tags: [
-        `title:${ticket.subject}`,
         `updatedAt:${updatedAtDate.getTime()}`,
         `createdAt:${createdAtDate.getTime()}`,
         ...metadata,
@@ -264,7 +267,7 @@ export async function syncTicket({
       parentId: parents[1],
       loggerArgs: { ...loggerArgs, ticketId: ticket.id },
       upsertContext: { sync_type: "batch" },
-      title: ticket.subject,
+      title: `#${ticket.id}: ${ticket.subject}`,
       mimeType: INTERNAL_MIME_TYPES.ZENDESK.TICKET,
       async: true,
     });

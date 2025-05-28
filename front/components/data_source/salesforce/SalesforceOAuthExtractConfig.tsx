@@ -3,11 +3,7 @@ import { useEffect } from "react";
 
 import type { ConnectorOauthExtraConfigProps } from "@app/lib/connector_providers";
 import { getPKCEConfig } from "@app/lib/utils/pkce";
-import {
-  isValidSalesforceClientId,
-  isValidSalesforceClientSecret,
-  isValidSalesforceDomain,
-} from "@app/types";
+import { isValidClientIdOrSecret, isValidSalesforceDomain } from "@app/types";
 
 export function SalesforceOauthExtraConfig({
   extraConfig,
@@ -32,9 +28,9 @@ export function SalesforceOauthExtraConfig({
       !!extraConfig.instance_url &&
         isValidSalesforceDomain(extraConfig.instance_url) &&
         !!extraConfig.client_id &&
-        isValidSalesforceClientId(extraConfig.client_id) &&
+        isValidClientIdOrSecret(extraConfig.client_id) &&
         !!extraConfig.client_secret &&
-        isValidSalesforceClientSecret(extraConfig.client_secret) &&
+        isValidClientIdOrSecret(extraConfig.client_secret) &&
         !!extraConfig.code_verifier &&
         !!extraConfig.code_challenge
     );

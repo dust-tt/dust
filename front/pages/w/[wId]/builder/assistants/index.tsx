@@ -20,10 +20,10 @@ import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import { AgentEditBar } from "@app/components/assistant/AgentEditBar";
 import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
 import { ConversationsNavigationProvider } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
-import { DeleteAssistantsDialog } from "@app/components/assistant/DeleteAssistantsDialog";
 import { AssistantsTable } from "@app/components/assistant/manager/AssistantsTable";
 import { TagsFilterMenu } from "@app/components/assistant/TagsFilterMenu";
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
@@ -127,7 +127,6 @@ export default function WorkspaceAssistants({
   const [selectedTags, setSelectedTags] = useState<TagType[]>([]);
   const [isBatchEdit, setIsBatchEdit] = useState(false);
   const [selection, setSelection] = useState<string[]>([]);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const activeTab = useMemo(() => {
     if (assistantSearch.trim() !== "") {
       return "search";
@@ -287,17 +286,6 @@ export default function WorkspaceAssistants({
         hasTopPadding={false}
         isWideMode
       >
-        <DeleteAssistantsDialog
-          owner={owner}
-          agentConfigurations={selectedAgents}
-          isOpen={isDeleteDialogOpen}
-          onClose={() => setIsDeleteDialogOpen(false)}
-          onSave={() => {
-            setSelection([]);
-            setIsDeleteDialogOpen(false);
-            setIsBatchEdit(false);
-          }}
-        />
         <AssistantDetails
           owner={owner}
           user={user}
@@ -365,25 +353,16 @@ export default function WorkspaceAssistants({
             </div>
             <div className="flex flex-col pt-3">
               {isBatchEdit ? (
-                <div className="mb-2 flex flex-row gap-2">
-                  <Button
-                    variant="outline"
-                    label="Cancel editing"
-                    onClick={() => {
-                      setIsBatchEdit(false);
-                      setSelection([]);
-                    }}
-                  />
-                  <Button
-                    variant="warning"
-                    icon={TrashIcon}
-                    label="Archive selection"
-                    disabled={selection.length === 0}
-                    onClick={() => {
-                      setIsDeleteDialogOpen(true);
-                    }}
-                  />
-                </div>
+                <AgentEditBar
+                  onClose={() => {
+                    setIsBatchEdit(false);
+                    setSelection([]);
+                  }}
+                  owner={owner}
+                  selectedAgents={selectedAgents}
+                  tags={uniqueTags}
+                  mutateAgentConfigurations={mutateAgentConfigurations}
+                />
               ) : (
                 <Tabs value={activeTab}>
                   <TabsList>

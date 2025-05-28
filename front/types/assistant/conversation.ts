@@ -8,12 +8,12 @@ import type { ReasoningActionType } from "@app/lib/actions/reasoning";
 import type { RetrievalActionType } from "@app/lib/actions/retrieval";
 import type { SearchLabelsActionType } from "@app/lib/actions/search_labels";
 import type { TablesQueryActionType } from "@app/lib/actions/tables_query";
-import type { WebsearchActionType } from "@app/lib/actions/websearch";
-
-import {
+import type {
   ActionGeneratedFileType,
   BaseAgentActionType,
 } from "@app/lib/actions/types";
+import type { WebsearchActionType } from "@app/lib/actions/websearch";
+
 import type { ContentFragmentType } from "../content_fragment";
 import type { ModelId } from "../shared/model_id";
 import type { UserType, WorkspaceType } from "../user";
@@ -191,6 +191,7 @@ export type BaseAgentMessageType = {
   error: {
     code: string;
     message: string;
+    metadata: Record<string, string | number | boolean> | null;
   } | null;
 };
 
@@ -206,10 +207,6 @@ export type AgentMessageType = BaseAgentMessageType & {
     step: number;
     content: string;
   }>;
-  error: {
-    code: string;
-    message: string;
-  } | null;
 };
 
 export type LightAgentMessageType = BaseAgentMessageType & {

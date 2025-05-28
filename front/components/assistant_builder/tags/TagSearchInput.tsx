@@ -1,6 +1,7 @@
 import {
   Chip,
-  DropdownMenuItem,
+  DropdownMenuTagItem,
+  DropdownMenuTagList,
   SearchDropdownMenu,
   Spinner,
 } from "@dust-tt/sparkle";
@@ -38,19 +39,25 @@ export const TagSearchInput = ({
         disabled={disabled}
       >
         {availableTags.length > 0 ? (
-          availableTags.map((tag) => (
-            <DropdownMenuItem
-              key={tag.tag}
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                onTagAdd(tag);
-                setSearchInputValue("");
-              }}
-            >
-              <Chip label={tag.tag} size="xs" />
-            </DropdownMenuItem>
-          ))
+          <DropdownMenuTagList>
+            {availableTags.map((tag) => (
+              <div
+                key={tag.tag}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
+              >
+                <DropdownMenuTagItem
+                  label={tag.tag}
+                  onClick={() => {
+                    onTagAdd(tag);
+                    setSearchInputValue("");
+                  }}
+                />
+              </div>
+            ))}
+          </DropdownMenuTagList>
         ) : isLoading ? (
           <div className="flex justify-center py-8">
             <Spinner variant="dark" size="md" />
