@@ -3,7 +3,7 @@ export interface ExternalUser {
   email_verified: boolean;
   name: string;
   nickname: string;
-  sub: string | null;
+  auth0Sub: string | null;
   workOSId: string | null;
   // Google-specific fields.
   family_name?: string;

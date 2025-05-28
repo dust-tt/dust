@@ -158,7 +158,7 @@ export async function createOrUpdateUser({
 
     const u = await UserResource.makeNew({
       sId: generateRandomModelSId(),
-      auth0Sub: externalUser.sub,
+      auth0Sub: externalUser.auth0Sub,
       workOSId: externalUser.workOSId,
       provider: null, ///session.provider,
       username: externalUser.nickname,

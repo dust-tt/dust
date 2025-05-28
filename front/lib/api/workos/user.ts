@@ -51,7 +51,7 @@ export async function getWorkOSSession(
         email_verified: r.user.emailVerified,
         name: r.user.email ?? "",
         nickname: getUserNicknameFromEmail(r.user.email) ?? "",
-        sub: null,
+        auth0Sub: null,
         workOSId: r.user.id,
       },
       // TODO(workos): Should we resolve the workspaceId and remove organizationId from here?

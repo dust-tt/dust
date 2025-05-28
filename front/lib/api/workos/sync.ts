@@ -153,7 +153,7 @@ async function upsertUser({
     email_verified: true,
     name: workOSUser.email ?? "",
     nickname: getUserNicknameFromEmail(workOSUser.email) ?? "",
-    sub: null,
+    auth0Sub: null,
     workOSId: workOSUser.id,
   };
 

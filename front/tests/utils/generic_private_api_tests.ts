@@ -60,7 +60,7 @@ export const createPrivateApiMockRequest = async ({
       type: "auth0",
       sessionId: "test-session-id",
       user: {
-        sub: user.auth0Sub!,
+        auth0Sub: user.auth0Sub!,
         workOSId: null,
         email: user.email!,
         email_verified: true,
