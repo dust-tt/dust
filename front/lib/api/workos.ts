@@ -321,7 +321,7 @@ async function syncGroupMemberships(
   }
 
   // Also handle groups that have no members in WorkOS (should be emptied)
-  await syncEmptyGroups(auth, { workspace, groupToUsersMap });
+  await garbageCollectEmptyGroups(auth, { workspace, groupToUsersMap });
 
   localLogger.info("[WorkOS] Group memberships sync completed.");
 }
@@ -341,10 +341,9 @@ async function syncGroupMembershipForGroup(
   const localLogger = logger.child({
     workspaceId: workspace.sId,
     workOSGroupId,
-    userEmails,
   });
 
-  // Find the group by WorkOS group ID
+  // Find the group by WorkOS group ID.
   const group = await GroupResource.fetchByWorkOSGroupId(auth, workOSGroupId);
   if (!group) {
     localLogger.warn(
@@ -353,16 +352,7 @@ async function syncGroupMembershipForGroup(
     return;
   }
 
-  // Skip global and system groups as they have special membership rules
-  if (group.isGlobal() || group.isSystem()) {
-    localLogger.info(
-      { groupKind: group.kind },
-      "[WorkOS] Skipping membership sync for special group type."
-    );
-    return;
-  }
-
-  // Find all users by email
+  // Find all users by email.
   const users: UserResource[] = [];
   for (const userEmail of userEmails) {
     const user = await UserResource.fetchByEmail(userEmail);
@@ -376,14 +366,13 @@ async function syncGroupMembershipForGroup(
     }
   }
 
-  // Convert UserResource to UserType for the setMembers method
-  const userTypes = users.map((user) => user.toJSON());
-
-  // Use setMembers to sync the group membership (adds new, removes old)
-  const setResult = await group.setMembers(auth, userTypes);
+  const setResult = await group.setMembers(
+    auth,
+    users.map((user) => user.toJSON())
+  );
   if (setResult.isOk()) {
     localLogger.info(
-      { groupId: group.sId, userCount: userTypes.length },
+      { groupId: group.sId, userCount: users.length },
       "[WorkOS] Successfully synced group membership."
     );
   } else {
@@ -394,7 +383,7 @@ async function syncGroupMembershipForGroup(
   }
 }
 
-async function syncEmptyGroups(
+async function garbageCollectEmptyGroups(
   auth: Authenticator,
   {
     workspace,
@@ -404,35 +393,36 @@ async function syncEmptyGroups(
     groupToUsersMap: Map<string, string[]>;
   }
 ): Promise<void> {
-  const localLogger = logger.child({
-    workspaceId: workspace.sId,
-  });
-
-  // Get all provisioned groups in the workspace
   const allGroups = await GroupResource.listAllWorkspaceGroups(auth, {
     groupKinds: ["provisioned"],
   });
 
-  // Find groups that have WorkOS IDs but are not in our current sync data
+  // Find groups that have WorkOS IDs but are not in our current sync data.
   for (const group of allGroups) {
     if (group.workOSGroupId && !groupToUsersMap.has(group.workOSGroupId)) {
-      // This group exists in our DB but has no members in WorkOS, so empty it
+      // This group exists in our DB but has no members in WorkOS, so we empty it.
       const setResult = await group.setMembers(auth, []);
-      if (setResult.isOk()) {
-        localLogger.info(
-          { groupId: group.sId, workOSGroupId: group.workOSGroupId },
-          "[WorkOS] Emptied group with no WorkOS members."
-        );
-      } else {
-        localLogger.error(
+
+      if (setResult.isErr()) {
+        logger.error(
           {
+            workspaceId: workspace.sId,
             groupId: group.sId,
             workOSGroupId: group.workOSGroupId,
             error: setResult.error,
           },
           "[WorkOS] Failed to empty group with no WorkOS members."
         );
+        throw setResult.error;
       }
+      logger.info(
+        {
+          workspaceId: workspace.sId,
+          groupId: group.sId,
+          workOSGroupId: group.workOSGroupId,
+        },
+        "[WorkOS] Emptied group with no WorkOS members."
+      );
     }
   }
 }
