@@ -74,7 +74,7 @@ export default function AssistantBuilder({
   subscription,
   plan,
   initialBuilderState,
-  agentConfigurationId,
+  agentConfiguration,
   flow,
   defaultIsEdited,
   baseUrl,
@@ -175,7 +175,7 @@ export default function AssistantBuilder({
     isPrivateAssistant: builderState.scope === "hidden",
     isBuilder: isBuilder(owner),
     isEdited: edited,
-    agentConfigurationId,
+    agentConfigurationId: agentConfiguration?.sId ?? null,
   });
   useNavigationLock(edited && !disableUnsavedChangesPrompt);
   const { mcpServerViews, isPreviewPanelOpen, setIsPreviewPanelOpen } =
@@ -189,14 +189,14 @@ export default function AssistantBuilder({
     if (isUserError || isUserLoading || !user) {
       return;
     }
-    if (agentConfigurationId && initialBuilderState) {
+    if (agentConfiguration?.sId && initialBuilderState) {
       assert(
         isAdmin(owner) ||
           initialBuilderState.editors.some((m) => m.sId === user.sId),
         "Unreachable: User is not in editors nor admin"
       );
     }
-    if (!agentConfigurationId) {
+    if (!agentConfiguration?.sId) {
       setBuilderState((state) => ({
         ...state,
         editors: state.editors.some((m) => m.sId === user.sId)
@@ -209,7 +209,7 @@ export default function AssistantBuilder({
     isUserError,
     user,
     owner,
-    agentConfigurationId,
+    agentConfiguration?.sId,
     initialBuilderState,
   ]);
 
@@ -330,7 +330,7 @@ export default function AssistantBuilder({
       const res = await submitAssistantBuilderForm({
         owner,
         builderState,
-        agentConfigurationId,
+        agentConfigurationId: agentConfiguration?.sId ?? null,
         slackData: {
           selectedSlackChannels: selectedSlackChannels || [],
           slackChannelsLinkedWithAgent,
@@ -369,7 +369,7 @@ export default function AssistantBuilder({
     Boolean(template !== null && builderState.instructions)
   );
 
-  const modalTitle = agentConfigurationId
+  const modalTitle = agentConfiguration
     ? `Edit @${builderState.handle}`
     : "New Agent";
 
@@ -461,7 +461,9 @@ export default function AssistantBuilder({
                             instructionsError={instructionsError}
                             doTypewriterEffect={doTypewriterEffect}
                             setDoTypewriterEffect={setDoTypewriterEffect}
-                            agentConfigurationId={agentConfigurationId}
+                            agentConfigurationId={
+                              agentConfiguration?.sId ?? null
+                            }
                             models={models}
                             setIsInstructionDiffMode={setIsInstructionDiffMode}
                             isInstructionDiffMode={isInstructionDiffMode}
@@ -482,7 +484,9 @@ export default function AssistantBuilder({
                       case "settings":
                         return (
                           <SettingsScreen
-                            agentConfigurationId={agentConfigurationId}
+                            agentConfigurationId={
+                              agentConfiguration?.sId ?? null
+                            }
                             baseUrl={baseUrl}
                             owner={owner}
                             builderState={builderState}
@@ -526,7 +530,7 @@ export default function AssistantBuilder({
               }}
               owner={owner}
               builderState={builderState}
-              agentConfigurationId={agentConfigurationId}
+              agentConfiguration={agentConfiguration}
               setAction={setAction}
               reasoningModels={reasoningModels}
             />
