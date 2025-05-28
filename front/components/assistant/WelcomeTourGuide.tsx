@@ -83,7 +83,7 @@ const FAKE_AGENTS = [
   {
     name: "TrendTracker",
     emoji: "😻",
-    backgroundColor: "bg-rose-50 dark:bg-rose-50-night",
+    backgroundColor: "bg-rose-50 dark:bg-rose-200",
   },
 ] as const;
 
@@ -91,42 +91,42 @@ const EXAMPLE_AGENTS = [
   {
     name: "FeedbackHelper",
     emoji: "❤️",
-    backgroundColor: "bg-rose-100",
+    backgroundColor: "bg-rose-100 dark:bg-rose-100-night",
   },
   {
     name: "RiskAnalyzer",
     emoji: "💀",
-    backgroundColor: "bg-lime-800",
+    backgroundColor: "bg-lime-800 dark:bg-lime-800-night",
   },
   {
     name: "EngagementPro",
     emoji: "😂",
-    backgroundColor: "bg-golden-200",
+    backgroundColor: "bg-golden-200 dark:bg-golden-200-night",
   },
   {
     name: "RunbookMaster",
     emoji: "🧑‍🚀",
-    backgroundColor: "bg-violet-800",
+    backgroundColor: "bg-violet-800 dark:bg-violet-800-night",
   },
   {
     name: "BrandSpecialist",
     emoji: "👕",
-    backgroundColor: "bg-blue-200",
+    backgroundColor: "bg-blue-200 dark:bg-blue-200-night",
   },
   {
     name: "CrisisManager",
     emoji: "🚒",
-    backgroundColor: "bg-red-200",
+    backgroundColor: "bg-red-200 dark:bg-red-200-night",
   },
   {
     name: "PerformanceCoach",
     emoji: "🏆",
-    backgroundColor: "bg-yellow-200",
+    backgroundColor: "bg-yellow-200 dark:bg-yellow-200-night",
   },
   {
     name: "StrategyPlanner",
     emoji: "🎯",
-    backgroundColor: "bg-pink-100",
+    backgroundColor: "bg-pink-100 dark:bg-pink-100-night",
   },
 ] as const;
 
@@ -176,7 +176,7 @@ export function WelcomeTourGuide({
             ref={centeredRef}
             className={cn(
               "flex w-full items-center justify-center p-6 text-center",
-              "aspect-video rounded-t-2xl bg-brand-support-blue"
+              "dark:bg-brand-support-blue-night aspect-video rounded-t-2xl bg-brand-support-blue"
             )}
           >
             <ConfettiBackground variant="confetti" referentSize={centeredRef} />
@@ -205,7 +205,7 @@ export function WelcomeTourGuide({
           <div
             className={cn(
               "relative flex aspect-video overflow-hidden rounded-t-2xl p-4 text-center",
-              "bg-brand-support-green"
+              "dark:bg-brand-support-green-night bg-brand-support-green"
             )}
           >
             <div className="flex gap-1">
@@ -242,7 +242,12 @@ export function WelcomeTourGuide({
       side: "bottom",
       body: (
         <>
-          <div className="flex aspect-video flex-col items-center justify-center gap-4 rounded-t-2xl bg-brand-support-rose p-6 text-center">
+          <div
+            className={cn(
+              "flex aspect-video flex-col items-center justify-center gap-4 rounded-t-2xl p-6 text-center",
+              "dark:bg-brand-support-rose-night bg-brand-support-rose"
+            )}
+          >
             <div className="grid grid-cols-6 gap-2">
               {connections.map((c) => (
                 <Tooltip
@@ -282,7 +287,9 @@ export function WelcomeTourGuide({
               </div>
               <div className="copy-base px-3 text-muted-foreground dark:text-muted-foreground-night">
                 Set up your connections and your tools in&nbsp;the{" "}
-                <span className="font-semibold text-foreground">spaces</span>{" "}
+                <span className="font-semibold text-foreground dark:text-foreground-night">
+                  spaces
+                </span>{" "}
                 tab.
               </div>
             </>
