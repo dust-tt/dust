@@ -114,12 +114,12 @@ const AssistantDetailsPage = ({
               >
                 <ContextItem.Description>
                   <div className="flex flex-col gap-2">
-                    <div className="ml-4 pt-2 text-sm text-muted-foreground">
+                    <div className="ml-4 pt-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
                       <div>Created at: {`${a.versionCreatedAt}`}</div>
                       <div>Scope: {a.scope}</div>
                       <div>Description: {a.description}</div>
                     </div>
-                    <div className="ml-4 text-sm text-muted-foreground">
+                    <div className="ml-4 text-sm text-muted-foreground dark:text-muted-foreground-night">
                       <div className="font-bold">Author:</div>
                       <div>ID: {a.versionAuthorId}</div>
                       {author && (
@@ -130,7 +130,7 @@ const AssistantDetailsPage = ({
                         </div>
                       )}
                     </div>
-                    <div className="ml-4 text-sm text-muted-foreground">
+                    <div className="ml-4 text-sm text-muted-foreground dark:text-muted-foreground-night">
                       <div className="font-bold">Model:</div>
                       <div>
                         {SUPPORTED_MODEL_CONFIGS.find(
@@ -145,7 +145,7 @@ const AssistantDetailsPage = ({
                       />
                     </div>
 
-                    <div className="ml-4 text-sm text-muted-foreground">
+                    <div className="ml-4 text-sm text-muted-foreground dark:text-muted-foreground-night">
                       <div className="font-bold">Actions:</div>
                       <div>maxStepPerRun: {a.maxStepsPerRun}</div>
                       {a.actions.map((action, index) => (
@@ -168,7 +168,7 @@ const AssistantDetailsPage = ({
                         </div>
                       ))}
                     </div>
-                    <div className="ml-4 text-sm text-muted-foreground">
+                    <div className="ml-4 text-sm text-muted-foreground dark:text-muted-foreground-night">
                       <div className="font-bold">Instructions:</div>
                       <TextArea
                         placeholder=""
