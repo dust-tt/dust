@@ -118,6 +118,34 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
     .array(dbSortSchema)
     .describe("Array of sort objects as per Notion API.");
 
+  async function getNotionOrThrow() {
+    const notion = await getNotionClient(auth, mcpServerId);
+    if (!notion) {
+      throw new Error("No access token found");
+    }
+    return notion;
+  }
+
+  function errorResponse(e: Error): {
+    isError: true;
+    content: { type: "text"; text: string }[];
+  } {
+    return {
+      isError: true,
+      content: [{ type: "text", text: e.message }],
+    };
+  }
+
+  function successResponse(content: string): {
+    isError: false;
+    content: { type: "text"; text: string }[];
+  } {
+    return {
+      isError: false,
+      content: [{ type: "text", text: content }],
+    };
+  }
+
   server.tool(
     "search",
     "Search for pages, databases, or blocks in Notion.",
@@ -140,13 +168,7 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
     },
     async ({ query, filter, sort, start_cursor, page_size }) => {
       try {
-        const notion = await getNotionClient(auth, mcpServerId);
-        if (!notion) {
-          return {
-            isError: true,
-            content: [{ type: "text", text: "No access token found" }],
-          };
-        }
+        const notion = await getNotionOrThrow();
         const result = await notion.search({
           query,
           filter,
@@ -154,12 +176,9 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
           start_cursor,
           page_size,
         });
-        return {
-          isError: false,
-          content: [{ type: "text", text: JSON.stringify(result) }],
-        };
+        return successResponse(JSON.stringify(result));
       } catch (e: any) {
-        return { isError: true, content: [{ type: "text", text: e.message }] };
+        return errorResponse(e);
       }
     }
   );
@@ -172,20 +191,11 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
     },
     async ({ pageId }) => {
       try {
-        const notion = await getNotionClient(auth, mcpServerId);
-        if (!notion) {
-          return {
-            isError: true,
-            content: [{ type: "text", text: "No access token found" }],
-          };
-        }
+        const notion = await getNotionOrThrow();
         const result = await notion.pages.retrieve({ page_id: pageId });
-        return {
-          isError: false,
-          content: [{ type: "text", text: JSON.stringify(result) }],
-        };
+        return successResponse(JSON.stringify(result));
       } catch (e: any) {
-        return { isError: true, content: [{ type: "text", text: e.message }] };
+        return errorResponse(e);
       }
     }
   );
@@ -198,22 +208,13 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
     },
     async ({ databaseId }) => {
       try {
-        const notion = await getNotionClient(auth, mcpServerId);
-        if (!notion) {
-          return {
-            isError: true,
-            content: [{ type: "text", text: "No access token found" }],
-          };
-        }
+        const notion = await getNotionOrThrow();
         const result = await notion.databases.retrieve({
           database_id: databaseId,
         });
-        return {
-          isError: false,
-          content: [{ type: "text", text: JSON.stringify(result) }],
-        };
+        return successResponse(JSON.stringify(result));
       } catch (e: any) {
-        return { isError: true, content: [{ type: "text", text: e.message }] };
+        return errorResponse(e);
       }
     }
   );
@@ -233,13 +234,7 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
     },
     async ({ databaseId, filter, sorts, start_cursor, page_size }) => {
       try {
-        const notion = await getNotionClient(auth, mcpServerId);
-        if (!notion) {
-          return {
-            isError: true,
-            content: [{ type: "text", text: "No access token found" }],
-          };
-        }
+        const notion = await getNotionOrThrow();
         const result = await notion.databases.query({
           database_id: databaseId,
           filter: filter as any,
@@ -247,12 +242,9 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
           start_cursor,
           page_size,
         });
-        return {
-          isError: false,
-          content: [{ type: "text", text: JSON.stringify(result) }],
-        };
+        return successResponse(JSON.stringify(result));
       } catch (e: any) {
-        return { isError: true, content: [{ type: "text", text: e.message }] };
+        return errorResponse(e);
       }
     }
   );
@@ -272,13 +264,7 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
     },
     async ({ databaseId, filter, sorts, start_cursor, page_size }) => {
       try {
-        const notion = await getNotionClient(auth, mcpServerId);
-        if (!notion) {
-          return {
-            isError: true,
-            content: [{ type: "text", text: "No access token found" }],
-          };
-        }
+        const notion = await getNotionOrThrow();
         const result = await notion.databases.query({
           database_id: databaseId,
           filter: filter as any,
@@ -286,12 +272,9 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
           start_cursor,
           page_size,
         });
-        return {
-          isError: false,
-          content: [{ type: "text", text: JSON.stringify(result) }],
-        };
+        return successResponse(JSON.stringify(result));
       } catch (e: any) {
-        return { isError: true, content: [{ type: "text", text: e.message }] };
+        return errorResponse(e);
       }
     }
   );
@@ -309,31 +292,22 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
     },
     async ({ parent, properties, icon, cover }) => {
       try {
-        const notion = await getNotionClient(auth, mcpServerId);
-        if (!notion) {
-          return {
-            isError: true,
-            content: [{ type: "text", text: "No access token found" }],
-          };
-        }
+        const notion = await getNotionOrThrow();
         const result = await notion.pages.create({
           parent,
           properties,
           icon,
           cover,
         });
-        return {
-          isError: false,
-          content: [{ type: "text", text: JSON.stringify(result) }],
-        };
+        return successResponse(JSON.stringify(result));
       } catch (e: any) {
-        return { isError: true, content: [{ type: "text", text: e.message }] };
+        return errorResponse(e);
       }
     }
   );
 
   server.tool(
-    "create_page_from_database",
+    "insert_row_into_database",
     "Create a new Notion page in a database.",
     {
       databaseId: z.string().describe("The Notion database ID."),
@@ -343,25 +317,16 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
     },
     async ({ databaseId, properties, icon, cover }) => {
       try {
-        const notion = await getNotionClient(auth, mcpServerId);
-        if (!notion) {
-          return {
-            isError: true,
-            content: [{ type: "text", text: "No access token found" }],
-          };
-        }
+        const notion = await getNotionOrThrow();
         const result = await notion.pages.create({
           parent: { database_id: databaseId, type: "database_id" },
           properties,
           icon,
           cover,
         });
-        return {
-          isError: false,
-          content: [{ type: "text", text: JSON.stringify(result) }],
-        };
+        return successResponse(JSON.stringify(result));
       } catch (e: any) {
-        return { isError: true, content: [{ type: "text", text: e.message }] };
+        return errorResponse(e);
       }
     }
   );
@@ -384,13 +349,7 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
     },
     async ({ parent, title, properties, icon, cover }) => {
       try {
-        const notion = await getNotionClient(auth, mcpServerId);
-        if (!notion) {
-          return {
-            isError: true,
-            content: [{ type: "text", text: "No access token found" }],
-          };
-        }
+        const notion = await getNotionOrThrow();
         const result = await notion.databases.create({
           parent,
           title,
@@ -398,12 +357,9 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
           icon,
           cover,
         });
-        return {
-          isError: false,
-          content: [{ type: "text", text: JSON.stringify(result) }],
-        };
+        return successResponse(JSON.stringify(result));
       } catch (e: any) {
-        return { isError: true, content: [{ type: "text", text: e.message }] };
+        return errorResponse(e);
       }
     }
   );
@@ -417,23 +373,267 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
     },
     async ({ pageId, properties }) => {
       try {
-        const notion = await getNotionClient(auth, mcpServerId);
-        if (!notion) {
-          return {
-            isError: true,
-            content: [{ type: "text", text: "No access token found" }],
-          };
-        }
+        const notion = await getNotionOrThrow();
         const result = await notion.pages.update({
           page_id: pageId,
           properties,
         });
-        return {
-          isError: false,
-          content: [{ type: "text", text: JSON.stringify(result) }],
-        };
+        return successResponse(JSON.stringify(result));
       } catch (e: any) {
-        return { isError: true, content: [{ type: "text", text: e.message }] };
+        return errorResponse(e);
+      }
+    }
+  );
+
+  server.tool(
+    "append_block_children",
+    "Append blocks as children to a parent block or page.",
+    {
+      blockId: z.string().describe("The ID of the parent block or page."),
+      children: z
+        .array(z.any())
+        .describe(
+          "Array of block objects to append as children (see Notion API). https://developers.notion.com/reference/patch-block-children"
+        ),
+    },
+    async ({ blockId, children }) => {
+      try {
+        const notion = await getNotionOrThrow();
+        const result = await notion.blocks.children.append({
+          block_id: blockId,
+          children,
+        });
+        return successResponse(JSON.stringify(result));
+      } catch (e: any) {
+        return errorResponse(e);
+      }
+    }
+  );
+
+  server.tool(
+    "retrieve_block",
+    "Retrieve a Notion block by its ID.",
+    {
+      blockId: z.string().describe("The Notion block ID."),
+    },
+    async ({ blockId }) => {
+      try {
+        const notion = await getNotionOrThrow();
+        const result = await notion.blocks.retrieve({ block_id: blockId });
+        return successResponse(JSON.stringify(result));
+      } catch (e: any) {
+        return errorResponse(e);
+      }
+    }
+  );
+
+  server.tool(
+    "retrieve_block_children",
+    "Retrieve the children of a Notion block or page by its ID.",
+    {
+      blockId: z.string().describe("The Notion block or page ID."),
+      start_cursor: z
+        .string()
+        .optional()
+        .describe("Start cursor for pagination."),
+      page_size: z.number().optional().describe("Page size for pagination."),
+    },
+    async ({ blockId, start_cursor, page_size }) => {
+      try {
+        const notion = await getNotionOrThrow();
+        const result = await notion.blocks.children.list({
+          block_id: blockId,
+          start_cursor,
+          page_size,
+        });
+        return successResponse(JSON.stringify(result));
+      } catch (e: any) {
+        return errorResponse(e);
+      }
+    }
+  );
+
+  server.tool(
+    "add_page_content",
+    "Add a single content block to a Notion page. For multiple blocks, call this action multiple times. Only supports adding to Notion pages. Blocks that can contain children include: page, toggle, to-do, bulleted list, numbered list, callout, and quote.",
+    {
+      blockId: z.string().describe("The ID of the parent block or page."),
+      children: z
+        .array(z.any())
+        .describe(
+          "Array of block objects to append as children (see Notion API). https://developers.notion.com/reference/patch-block-children"
+        ),
+    },
+    async ({ blockId, children }) => {
+      try {
+        const notion = await getNotionOrThrow();
+        const result = await notion.blocks.children.append({
+          block_id: blockId,
+          children,
+        });
+        return successResponse(JSON.stringify(result));
+      } catch (e: any) {
+        return errorResponse(e);
+      }
+    }
+  );
+
+  server.tool(
+    "create_comment",
+    "Create a comment on a Notion page or in an existing discussion thread. Provide either a parent page ID or a discussion ID. Inline comments to start a new thread are not supported via the public API.",
+    {
+      parent_page_id: z
+        .string()
+        .optional()
+        .describe(
+          "The ID of the parent page (optional, required if not using discussion_id)."
+        ),
+      discussion_id: z
+        .string()
+        .optional()
+        .describe(
+          "The ID of the discussion thread (optional, required if not using parent_page_id)."
+        ),
+      comment: z.string().describe("The comment text."),
+    },
+    async ({ parent_page_id, discussion_id, comment }) => {
+      try {
+        const notion = await getNotionOrThrow();
+        if (!parent_page_id && !discussion_id) {
+          return errorResponse(
+            new Error(
+              "Either parent_page_id or discussion_id must be provided."
+            )
+          );
+        }
+        const params: any = {
+          rich_text: [{ type: "text", text: { content: comment } }],
+        };
+        if (parent_page_id) {
+          params.parent = { page_id: parent_page_id };
+        }
+        if (discussion_id) {
+          params.discussion_id = discussion_id;
+        }
+        const result = await notion.comments.create(params);
+        return successResponse(JSON.stringify(result));
+      } catch (e: any) {
+        return errorResponse(e);
+      }
+    }
+  );
+
+  server.tool(
+    "delete_block",
+    "Archive (delete) a block, page, or database in Notion by setting it to archived: true. In the Notion UI, this moves the block to the 'trash,' where it can be restored if needed.",
+    {
+      blockId: z
+        .string()
+        .describe("The ID of the block, page, or database to delete."),
+    },
+    async ({ blockId }) => {
+      try {
+        const notion = await getNotionOrThrow();
+        const result = await notion.blocks.update({
+          block_id: blockId,
+          archived: true,
+        });
+        return successResponse(JSON.stringify(result));
+      } catch (e: any) {
+        return errorResponse(e);
+      }
+    }
+  );
+
+  server.tool(
+    "fetch_comments",
+    "Retrieve a list of unresolved comment objects from a specified page or block in Notion.",
+    {
+      blockId: z
+        .string()
+        .describe("The ID of the page or block to fetch comments from."),
+    },
+    async ({ blockId }) => {
+      try {
+        const notion = await getNotionOrThrow();
+        const result = await notion.comments.list({ block_id: blockId });
+        return successResponse(JSON.stringify(result.results));
+      } catch (e: any) {
+        return errorResponse(e);
+      }
+    }
+  );
+
+  server.tool(
+    "update_row_database",
+    "Update a specific property value in a row (page) of a Notion database. Value formats depend on the property type (e.g., text, number, select, date, people, URL, files, checkbox).",
+    {
+      pageId: z.string().describe("The Notion page ID."),
+      properties: propertiesSchema,
+    },
+    async ({ pageId, properties }) => {
+      try {
+        const notion = await getNotionOrThrow();
+        const result = await notion.pages.update({
+          page_id: pageId,
+          properties,
+        });
+        return successResponse(JSON.stringify(result));
+      } catch (e: any) {
+        return errorResponse(e);
+      }
+    }
+  );
+
+  server.tool(
+    "update_schema_database",
+    "Update the schema (columns/properties) of an existing Notion database.",
+    {
+      databaseId: z.string().describe("The Notion database ID."),
+      properties: propertiesSchema,
+    },
+    async ({ databaseId, properties }) => {
+      try {
+        const notion = await getNotionOrThrow();
+        const result = await notion.databases.update({
+          database_id: databaseId,
+          properties,
+        });
+        return successResponse(JSON.stringify(result));
+      } catch (e: any) {
+        return errorResponse(e);
+      }
+    }
+  );
+
+  server.tool(
+    "list_users",
+    "List all users in the Notion workspace.",
+    {},
+    async () => {
+      try {
+        const notion = await getNotionOrThrow();
+        const users = await notion.users.list({});
+        return successResponse(JSON.stringify(users.results));
+      } catch (e: any) {
+        return errorResponse(e);
+      }
+    }
+  );
+
+  server.tool(
+    "get_about_user",
+    "Get information about a specific user by userId.",
+    {
+      userId: z.string().describe("The Notion user ID."),
+    },
+    async ({ userId }) => {
+      try {
+        const notion = await getNotionOrThrow();
+        const user = await notion.users.retrieve({ user_id: userId });
+        return successResponse(JSON.stringify(user));
+      } catch (e: any) {
+        return errorResponse(e);
       }
     }
   );
