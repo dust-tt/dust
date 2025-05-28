@@ -13,6 +13,7 @@ import { GroupResource } from "@app/lib/resources/group_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
 import type { UserType, WorkspaceType } from "@app/types";
+import { handleEnterpriseSignUpFlow } from "@app/lib/api/signup";
 
 type UserGroupMapping = {
   user: UserType;
@@ -304,6 +305,14 @@ async function upsertUser({
     externalUser,
   });
   localLogger.info("[WorkOS] User successfully upserted.");
+
+  // Create the membership.
+  if (createdOrUpdatedUser && workspace.workOSOrganizationId) {
+    await handleEnterpriseSignUpFlow(
+      createdOrUpdatedUser,
+      workspace.workOSOrganizationId
+    );
+  }
 
   return createdOrUpdatedUser;
 }
