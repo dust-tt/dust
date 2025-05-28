@@ -483,6 +483,12 @@ async function generateProcessToolOutput({
         : `${timeFrame.unit}`)
     : "all time";
 
+  const extractResult =
+    "PROCESSED OUTPUTS:\n" +
+    (outputs?.data && outputs.data.length > 0
+      ? outputs.data.map((d) => JSON.stringify(d)).join("\n")
+      : "(none)");
+
   return {
     jsonFile,
     processToolOutput: {
@@ -505,9 +511,7 @@ async function generateProcessToolOutput({
           type: "resource" as const,
           resource: {
             mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.EXTRACT_RESULT,
-            text:
-              "This file contains data extracted from available documents according to the provided schema. Here is  a preview of its contents: \n" +
-              generatedFile.snippet,
+            text: extractResult,
             uri: jsonFile.getPublicUrl(auth),
             fileId: generatedFile.fileId,
             title: generatedFile.title,
