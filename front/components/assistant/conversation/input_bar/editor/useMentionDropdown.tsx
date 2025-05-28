@@ -54,36 +54,33 @@ export const useMentionDropdown = (
   const currentStateRef = useRef(state);
   currentStateRef.current = state;
 
-  const updateSuggestions = useCallback(
-    (query: string) => {
-      const { suggestions, fallbackSuggestions } = editorSuggestions;
-      const filteredSuggestions = filterSuggestions(
-        query,
-        suggestions,
-        fallbackSuggestions
-      );
+  const updateSuggestions = (query: string) => {
+    const { suggestions, fallbackSuggestions } = editorSuggestions;
+    const filteredSuggestions = filterSuggestions(
+      query,
+      suggestions,
+      fallbackSuggestions
+    );
 
-      setState((prev) => {
-        // Only update if query or suggestions actually changed
-        if (
-          prev.query === query &&
-          prev.suggestions.length === filteredSuggestions.length &&
-          prev.suggestions.every(
-            (item, index) => item.id === filteredSuggestions[index]?.id
-          )
-        ) {
-          return prev;
-        }
-        return {
-          ...prev,
-          suggestions: filteredSuggestions,
-          query,
-          selectedIndex: 0,
-        };
-      });
-    },
-    [editorSuggestions]
-  );
+    setState((prev) => {
+      // Only update if query or suggestions actually changed
+      if (
+        prev.query === query &&
+        prev.suggestions.length === filteredSuggestions.length &&
+        prev.suggestions.every(
+          (item, index) => item.id === filteredSuggestions[index]?.id
+        )
+      ) {
+        return prev;
+      }
+      return {
+        ...prev,
+        suggestions: filteredSuggestions,
+        query,
+        selectedIndex: 0,
+      };
+    });
+  };
 
   const selectSuggestion = useCallback(
     (suggestion: EditorSuggestion) => {
@@ -169,10 +166,6 @@ export const useMentionDropdown = (
 
   const getSuggestionHandler = () => {
     return {
-      items: ({ query }: { query: string }) => {
-        const { suggestions, fallbackSuggestions } = editorSuggestions;
-        return filterSuggestions(query, suggestions, fallbackSuggestions);
-      },
       render: () => {
         return {
           onStart: (props: SuggestionProps) => {
@@ -262,7 +255,7 @@ export const useMentionDropdown = (
         };
       },
     };
-  }
+  };
 
   return {
     isOpen: state.isOpen,
