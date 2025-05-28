@@ -55,6 +55,10 @@ function createServer(
         ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.AGENT],
     },
     async ({ query, childAgent: { uri } }, { sendNotification }) => {
+      if (!agentLoopRunContext) {
+        throw new Error("Unreachable: missing agentLoopRunContext.");
+      }
+
       const childAgentIdRes = parseAgentConfigurationUri(uri);
       if (childAgentIdRes.isErr()) {
         return makeMCPToolTextError(childAgentIdRes.error.message);
@@ -91,7 +95,7 @@ function createServer(
         },
         contentFragment: undefined,
         skipToolsValidation:
-          agentLoopRunContext?.agentMessage.skipToolsValidation ?? false,
+          agentLoopRunContext.agentMessage.skipToolsValidation ?? false,
       });
 
       if (convRes.isErr()) {
@@ -130,36 +134,34 @@ function createServer(
           } else if (event.type === "agent_message_success") {
             break;
           } else if (event.type === "tool_approve_execution") {
-            if (agentLoopRunContext) {
-              // We need to show the validation dialog in the main conversation so we use conversationId and messageId from agentLoopRunContext.
-              // This is not really a progress notifcation but this is the closest among other methods from ServerNotification.
-              const notification: MCPProgressNotificationType = {
-                method: "notifications/progress",
-                params: {
-                  progress: 0,
-                  total: 1,
-                  progressToken: 0,
-                  data: {
-                    label: "Waiting for tool approval...",
-                    output: {
-                      type: "resource",
-                      resource: {
-                        type: "tool_approve_execution",
-                        configurationId: event.configurationId,
-                        conversationId: agentLoopRunContext.conversation.sId,
-                        messageId: agentLoopRunContext.agentMessage.sId,
-                        actionId: event.actionId,
-                        metadata: event.metadata,
-                        stake: event.stake,
-                        inputs: event.inputs,
-                      },
+            // We need to show the validation dialog in the main conversation so we use conversationId and messageId from agentLoopRunContext.
+            // This is not really a progress notifcation but this is the closest among other methods from ServerNotification.
+            const notification: MCPProgressNotificationType = {
+              method: "notifications/progress",
+              params: {
+                progress: 0,
+                total: 1,
+                progressToken: 0,
+                data: {
+                  label: "Waiting for tool approval...",
+                  output: {
+                    type: "resource",
+                    resource: {
+                      type: "tool_approve_execution",
+                      configurationId: event.configurationId,
+                      conversationId: agentLoopRunContext.conversation.sId,
+                      messageId: agentLoopRunContext.agentMessage.sId,
+                      actionId: event.actionId,
+                      metadata: event.metadata,
+                      stake: event.stake,
+                      inputs: event.inputs,
                     },
                   },
                 },
-              };
+              },
+            };
 
-              await sendNotification(notification);
-            }
+            await sendNotification(notification);
           }
         }
       } catch (streamError) {
