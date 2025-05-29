@@ -17,6 +17,9 @@ const serverInfo: InternalMCPServerDefinitionType = {
   icon: "NotionLogo",
 };
 
+const uuidRegex =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
   const server = new McpServer(serverInfo);
 
@@ -25,7 +28,10 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
       type: z
         .literal("page_id")
         .describe("Must be 'page_id' for a page parent."),
-      page_id: z.string().describe("The ID of the parent page."),
+      page_id: z
+        .string()
+        .regex(uuidRegex)
+        .describe("The ID of the parent page."),
     })
     .strict();
 
@@ -117,6 +123,7 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
   const dbSortsArraySchema = z
     .array(dbSortSchema)
     .describe("Array of sort objects as per Notion API.");
+  const MinimalBlockSchema = z.object({ type: z.string() }).passthrough();
 
   async function getNotionOrThrow() {
     const notion = await getNotionClient(auth, mcpServerId);
@@ -284,7 +291,7 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
     "Create a new Notion page.",
     {
       parent: parentPageSchema.describe(
-        "Parent object (see Notion API). Must include type: 'page_id' and a valid page_id."
+        "The existing parent page where the new page is inserted. Must be a valid page ID."
       ),
       properties: propertiesSchema,
       icon: z.any().optional().describe("Icon (optional)."),
@@ -386,31 +393,6 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
   );
 
   server.tool(
-    "append_block_children",
-    "Append blocks as children to a parent block or page.",
-    {
-      blockId: z.string().describe("The ID of the parent block or page."),
-      children: z
-        .array(z.any())
-        .describe(
-          "Array of block objects to append as children (see Notion API). https://developers.notion.com/reference/patch-block-children"
-        ),
-    },
-    async ({ blockId, children }) => {
-      try {
-        const notion = await getNotionOrThrow();
-        const result = await notion.blocks.children.append({
-          block_id: blockId,
-          children,
-        });
-        return successResponse(JSON.stringify(result));
-      } catch (e: any) {
-        return errorResponse(e);
-      }
-    }
-  );
-
-  server.tool(
     "retrieve_block",
     "Retrieve a Notion block by its ID.",
     {
@@ -459,7 +441,7 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
     {
       blockId: z.string().describe("The ID of the parent block or page."),
       children: z
-        .array(z.any())
+        .array(MinimalBlockSchema)
         .describe(
           "Array of block objects to append as children (see Notion API). https://developers.notion.com/reference/patch-block-children"
         ),
@@ -469,7 +451,7 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
         const notion = await getNotionOrThrow();
         const result = await notion.blocks.children.append({
           block_id: blockId,
-          children,
+          children: children as any,
         });
         return successResponse(JSON.stringify(result));
       } catch (e: any) {
@@ -484,6 +466,7 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
     {
       parent_page_id: z
         .string()
+        .regex(uuidRegex)
         .optional()
         .describe(
           "The ID of the parent page (optional, required if not using discussion_id)."
