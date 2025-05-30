@@ -485,8 +485,8 @@ export class ConfluenceClient {
       );
     }
 
-    // When approaching the rate limit (20% of any budget remains), we fake a 429 to slow down
-    // the query pace. We delay by NEAR_RATE_LIMIT_DELAY ms.
+    // When approaching the rate limit (30% of any budget remains), we slow down
+    // the query pace by waiting NEAR_RATE_LIMIT_DELAY ms.
     if (
       !bypassThrottle &&
       !this.ignoreNearRateLimit &&
@@ -497,15 +497,17 @@ export class ConfluenceClient {
         "status:near_rate_limit",
       ]);
 
-      throw new ConfluenceClientError(`Near rate limit`, {
-        type: "http_response_error",
-        status: 429, // We fake a 429 here to make sure the error is caught in the cast_known_errors.
-        data: {
-          url: `${this.apiUrl}${endpoint}`,
-          response,
+      const delayMs =
+        NEAR_RATE_LIMIT_DELAY + sampleJitter();
+      logger.warn(
+        {
+          endpoint,
+          delayMs,
+          retryCount,
         },
-        retryAfterMs: NEAR_RATE_LIMIT_DELAY + sampleJitter(),
-      });
+        "[Confluence] Rate limit nearly hit."
+      );
+      await setTimeoutAsync(delayMs);
     }
 
     statsDClient.increment("external.api.calls", 1, [
