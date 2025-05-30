@@ -12,7 +12,6 @@ import {
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
-
 import OnboardingLayout from "@app/components/sparkle/OnboardingLayout";
 import config from "@app/lib/api/config";
 import { useSubmitFunction } from "@app/lib/client/utils";
