@@ -17,6 +17,7 @@ import OnboardingLayout from "@app/components/sparkle/OnboardingLayout";
 import config from "@app/lib/api/config";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthPaywallWhitelisted } from "@app/lib/iam/session";
+import { ServerSideTracking } from "@app/lib/tracking/server";
 import type { UserType, WorkspaceType } from "@app/types";
 import type { JobType } from "@app/types/jobt_type";
 import { JOB_TYPE_OPTIONS } from "@app/types/jobt_type";
@@ -94,6 +95,14 @@ export default function Welcome({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ value: jobType }),
+      });
+
+      void ServerSideTracking.trackCreateMembership({
+        user: user,
+        workspace: owner, // Use owner instead of undefined workspace
+        role: isAdmin ? "admin" : "user",
+        startAt: new Date(), // Current timestamp for membership start
+        jobType: jobType, // Pass the selected job type
       });
     }
     await router.push(
