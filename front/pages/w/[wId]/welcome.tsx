@@ -19,7 +19,7 @@ import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthPaywallWhitelisted } from "@app/lib/iam/session";
 import type { UserType, WorkspaceType } from "@app/types";
 import type { JobType } from "@app/types/jobt_type";
-import { JOB_TYPE_OPTIONS } from "@app/types/jobt_type";
+import { isJobType, JOB_TYPE_OPTIONS } from "@app/types/jobt_type";
 
 export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
   user: UserType;
@@ -178,8 +178,12 @@ export default function Welcome({
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-[var(--radix-dropdown-menu-trigger-width)]">
                 <DropdownMenuRadioGroup
-                  value={jobType}
-                  onValueChange={(value) => setJobType(value as JobType)}
+                  value={jobType || ""}
+                  onValueChange={(value) => {
+                    if (isJobType(isJobType(value))) {
+                      setJobType(value as JobType);
+                    }
+                  }}
                 >
                   {jobTypes.map((jobTypeOption) => (
                     <DropdownMenuRadioItem
