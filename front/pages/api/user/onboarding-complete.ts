@@ -11,7 +11,6 @@ import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-import { isJobType } from "@app/types/jobt_type";
 
 export type PostOnboardingCompleteResponseBody = {
   success: boolean;
