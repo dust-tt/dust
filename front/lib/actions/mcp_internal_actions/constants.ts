@@ -9,10 +9,10 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   // We'll prefix all tools with the server name to avoid conflicts.
   // It's okay to change the name of the server as we don't refer to it directly.
   "agent_router",
-  "run_agent",
   "extract_data",
   "file_generation",
   "github",
+  "gmail",
   "hubspot",
   "image_generation",
   "include_data",
@@ -22,12 +22,12 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "query_tables",
   "query_tables_v2",
   "reasoning",
+  "run_agent",
   "run_dust_app",
+  "salesforce",
   "search",
   "think",
   "web_search_&_browse",
-  "salesforce",
-  "gmail",
 ] as const;
 
 // Whether the server is available by default in the global space.
