@@ -228,7 +228,7 @@ export default function Subscription({
             title: "Free trial cancelled",
             description: "Redirecting...",
           });
-          await router.push(`/w/${owner.sId}/subscribe`);
+          await router.push(`/w/${owner.sId}/subscription`);
         }
       } finally {
         setShowCancelFreeTrialDialog(false);
