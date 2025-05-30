@@ -428,7 +428,7 @@ export class ConfluenceClient {
         if (delayMs !== NO_RETRY_AFTER_DELAY) {
           // Server provided a delay (relevant for Case 2 or if retries exhausted).
           retryAfterMsForTemporal =
-            delayMs + Math.random() * RETRY_AFTER_JITTER;
+            delayMs + Math.floor(Math.random() * RETRY_AFTER_JITTER);
           if (retryCount >= MAX_RATE_LIMIT_RETRY_COUNT) {
             logReason = `Activity retries exhausted. Server suggested delay ${delayMs}ms.`;
           } else {
@@ -502,7 +502,8 @@ export class ConfluenceClient {
           response,
         },
         retryAfterMs:
-          NEAR_RATE_LIMIT_DELAY + Math.random() * RETRY_AFTER_JITTER,
+          NEAR_RATE_LIMIT_DELAY +
+          Math.floor(Math.random() * RETRY_AFTER_JITTER),
       });
     }
 
