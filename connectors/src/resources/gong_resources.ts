@@ -29,8 +29,8 @@ function hoursToMs(hours: number) {
 const GC_FREQUENCY_MS = daysToMs(1); // Every day.
 // Transcripts are searched based on start time of the call.
 // The delay needs to be greater than meeting duration + Gong processing time.
-// We use 6 hours as a semi-arbitrary upper bound for the delay.
-const TRANSCRIPT_DELAY_TIME_UPPER_BOUND_MS = hoursToMs(6);
+// We use 3 hours as a semi-arbitrary upper bound for the delay.
+const TRANSCRIPT_DELAY_TIME_UPPER_BOUND_MS = hoursToMs(3);
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
