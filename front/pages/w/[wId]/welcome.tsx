@@ -12,14 +12,15 @@ import {
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
+
 import OnboardingLayout from "@app/components/sparkle/OnboardingLayout";
 import config from "@app/lib/api/config";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthPaywallWhitelisted } from "@app/lib/iam/session";
+import { fetcherWithBody } from "@app/lib/swr/swr";
 import type { UserType, WorkspaceType } from "@app/types";
 import type { JobType } from "@app/types/jobt_type";
 import { isJobType, JOB_TYPE_OPTIONS } from "@app/types/jobt_type";
-import { fetcherWithBody } from "@app/lib/swr/swr";
 
 export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
   user: UserType;
