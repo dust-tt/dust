@@ -180,7 +180,7 @@ export default function Welcome({
                 <DropdownMenuRadioGroup
                   value={jobType || ""}
                   onValueChange={(value) => {
-                    if (isJobType(isJobType(value))) {
+                    if (isJobType(value)) {
                       setJobType(value as JobType);
                     }
                   }}
