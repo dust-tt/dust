@@ -1064,7 +1064,7 @@ export async function createAgentConfiguration(
     if (error instanceof SyntaxError) {
       return new Err(new Error(error.message));
     }
-    throw error;
+    return new Err(normalizeError(error));
   }
 }
 
