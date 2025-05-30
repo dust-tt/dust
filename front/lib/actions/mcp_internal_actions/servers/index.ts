@@ -2,6 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { default as agentRouterServer } from "@app/lib/actions/mcp_internal_actions/servers/agent_router";
+import { default as contentNodesServer } from "@app/lib/actions/mcp_internal_actions/servers/content_nodes";
 import { default as generateFileServer } from "@app/lib/actions/mcp_internal_actions/servers/file_generation";
 import { default as githubServer } from "@app/lib/actions/mcp_internal_actions/servers/github";
 import { default as gmailServer } from "@app/lib/actions/mcp_internal_actions/servers/gmail";
@@ -77,6 +78,8 @@ export async function getInternalMCPServer(
       return salesforceServer(auth, mcpServerId);
     case "gmail":
       return gmailServer(auth, mcpServerId);
+    case "content_nodes":
+      return contentNodesServer();
     default:
       assertNever(internalMCPServerName);
   }
