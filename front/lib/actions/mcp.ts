@@ -689,6 +689,9 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
               mcp_server_id: toolCallResult.error.mcpServerId,
               provider: toolCallResult.error.provider,
               use_case: toolCallResult.error.useCase,
+              ...(toolCallResult.error.scope && {
+                scope: toolCallResult.error.scope,
+              }),
             },
           },
         };

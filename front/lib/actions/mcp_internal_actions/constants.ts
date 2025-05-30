@@ -29,6 +29,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "search",
   "think",
   "web_search_&_browse",
+  "google_calendar",
 ] as const;
 
 // Whether the server is available by default in the global space.
@@ -194,6 +195,19 @@ export const INTERNAL_MCP_SERVERS: Record<
     tools_stakes: {
       get_drafts: "never_ask",
       create_draft: "low",
+    },
+  },
+  google_calendar: {
+    id: 16,
+    availability: "manual",
+    flag: "google_calendar_tool",
+    tools_stakes: {
+      "list-calendars": "never_ask",
+      "list-events": "never_ask",
+      "get-event": "never_ask",
+      "create-event": "low",
+      "update-event": "low",
+      "delete-event": "low",
     },
   },
 

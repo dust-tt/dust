@@ -45,6 +45,26 @@ function finalizeUriForProvider(provider: OAuthProvider): string {
   return config.getClientFacingUrl() + `/oauth/${provider}/finalize`;
 }
 
+export enum GMAIL_SCOPE_TYPES {
+  EMAIL = "EMAIL",
+  CALENDAR = "CALENDAR",
+}
+export type GmailScope =
+  (typeof GMAIL_SCOPE_TYPES)[keyof typeof GMAIL_SCOPE_TYPES];
+
+const PROVIDER_SCOPES: Record<string, Record<string, string[]>> = {
+  gmail: {
+    [GMAIL_SCOPE_TYPES.EMAIL]: [
+      "https://www.googleapis.com/auth/gmail.readonly",
+      "https://www.googleapis.com/auth/gmail.compose",
+    ],
+    [GMAIL_SCOPE_TYPES.CALENDAR]: [
+      "https://www.googleapis.com/auth/calendar",
+      "https://www.googleapis.com/auth/calendar.events",
+    ],
+  },
+};
+
 const PROVIDER_STRATEGIES: Record<
   OAuthProvider,
   {
@@ -555,17 +575,17 @@ const PROVIDER_STRATEGIES: Record<
     },
   },
   gmail: {
-    setupUri: ({ connection, clientId }) => {
-      const scopes = [
-        "https://www.googleapis.com/auth/gmail.readonly",
-        "https://www.googleapis.com/auth/gmail.compose",
-      ];
+    setupUri: ({ connection, clientId, extraConfig }) => {
+      if (!extraConfig || !extraConfig.scope) {
+        throw new Error("Missing authorization scope");
+      }
+
       const qs = querystring.stringify({
         response_type: "code",
         client_id: clientId,
         state: connection.connection_id,
         redirect_uri: finalizeUriForProvider("gmail"),
-        scope: scopes.join(" "),
+        scope: PROVIDER_SCOPES.gmail[extraConfig.scope].join(" "),
         access_type: "offline",
         prompt: "consent",
       });

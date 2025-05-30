@@ -29,6 +29,7 @@ import type {
   MCPServerType,
   MCPToolType,
 } from "@app/lib/api/mcp";
+import type { GmailScope } from "@app/lib/api/oauth";
 import type { Authenticator } from "@app/lib/auth";
 import type { MCPServerConnectionConnectionType } from "@app/lib/resources/mcp_server_connection_resource";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
@@ -49,6 +50,7 @@ import { createSSRFInterceptor } from "@app/types/shared/utils/ssrf";
 export type AuthorizationInfo = {
   provider: OAuthProvider;
   use_case: OAuthUseCase;
+  scope?: GmailScope;
 };
 
 export function isAuthorizationInfo(a: unknown): a is AuthorizationInfo {
@@ -336,6 +338,9 @@ export function extractMetadataFromServerVersion(
         ? r.description
         : DEFAULT_MCP_ACTION_DESCRIPTION,
       icon: isInternalMCPServerDefinition(r) ? r.icon : DEFAULT_MCP_SERVER_ICON,
+      documentationUrl: isInternalMCPServerDefinition(r)
+        ? r.documentationUrl
+        : undefined,
     };
   }
 
