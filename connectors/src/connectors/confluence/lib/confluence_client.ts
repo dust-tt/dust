@@ -485,7 +485,7 @@ export class ConfluenceClient {
       );
     }
 
-    // When approaching the rate limit (30% of any budget remains), we slow down
+    // When approaching the rate limit (THROTTLE_TRIGGER_RATIO of the budget remains), we slow down
     // the query pace by waiting NEAR_RATE_LIMIT_DELAY ms.
     if (
       !bypassThrottle &&
