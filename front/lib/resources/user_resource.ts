@@ -130,9 +130,29 @@ export class UserResource extends BaseResource<UserModel> {
     return user ? new UserResource(UserModel, user.get()) : null;
   }
 
+  static async fetchByWorkOSId(
+    workOSId: string,
+    transaction?: Transaction
+  ): Promise<UserResource | null> {
+    const user = await UserModel.findOne({
+      where: {
+        workOSId,
+      },
+      transaction,
+    });
+    return user ? new UserResource(UserModel, user.get()) : null;
+  }
+
   static async fetchByEmail(email: string): Promise<UserResource | null> {
     const users = await this.listByEmail(email.toLowerCase());
-    return users.length > 0 ? users[0] : null;
+    const sortedUsers = users.sort((a, b) => {
+      // Best effort strategy as user db entries are not updated often.
+      return b.updatedAt.getTime() - a.updatedAt.getTime();
+    });
+    const usersWithAuth0Sub = sortedUsers.filter((u) => u.auth0Sub !== null);
+
+    // Most recently updated user with an Auth0 sub if any, otherwise most recently updated user.
+    return usersWithAuth0Sub[0] ?? sortedUsers[0] ?? null;
   }
 
   static async fetchByProvider(
@@ -203,7 +223,8 @@ export class UserResource extends BaseResource<UserModel> {
     username: string,
     firstName: string,
     lastName: string | null,
-    email: string
+    email: string,
+    workOSId: string | null
   ) {
     firstName = escape(firstName);
     if (lastName) {
@@ -215,6 +236,7 @@ export class UserResource extends BaseResource<UserModel> {
       firstName,
       lastName,
       email: lowerCaseEmail,
+      workOSId,
     });
   }
 

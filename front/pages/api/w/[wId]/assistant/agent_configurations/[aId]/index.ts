@@ -133,7 +133,7 @@ async function handler(
 
       if (agentConfigurationRes.isErr()) {
         return apiError(req, res, {
-          status_code: 500,
+          status_code: 400,
           api_error: {
             type: "assistant_saving_error",
             message: `Error updating agent: ${agentConfigurationRes.error.message}`,

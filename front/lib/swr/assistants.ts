@@ -721,3 +721,29 @@ export function useRestoreAgentConfiguration({
 
   return doRestore;
 }
+
+export function useBatchUpdateAgents({ owner }: { owner: LightWorkspaceType }) {
+  const batchUpdateAgentTags = useCallback(
+    async (
+      agentIds: string[],
+      body: { addTagIds?: string[]; removeTagIds?: string[] }
+    ) => {
+      await fetch(
+        `/api/w/${owner.sId}/assistant/agent_configurations/batch_update_tags`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            agentIds,
+            ...body,
+          }),
+        }
+      );
+    },
+    [owner]
+  );
+
+  return batchUpdateAgentTags;
+}

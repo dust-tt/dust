@@ -8,6 +8,7 @@ import type {
 } from "@app/lib/actions/constants";
 import type { DustAppRunConfigurationType } from "@app/lib/actions/dust_app_run";
 import { tryCallMCPTool } from "@app/lib/actions/mcp_actions";
+import { MCPServerPersonalAuthenticationRequiredError } from "@app/lib/actions/mcp_internal_actions/authentication";
 import type { MCPServerAvailability } from "@app/lib/actions/mcp_internal_actions/constants";
 import type {
   MCPToolResultContentType,
@@ -191,6 +192,7 @@ type MCPErrorEvent = {
   error: {
     code: string;
     message: string;
+    metadata: Record<string, string | number | boolean> | null;
   };
 };
 
@@ -425,6 +427,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
           error: {
             code: "tool_error",
             message: "Invalid Unicode character in inputs, please retry.",
+            metadata: null,
           },
         };
         return;
@@ -538,6 +541,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
           error: {
             code: "tool_error",
             message: `Error checking action validation status: ${JSON.stringify(error)}`,
+            metadata: null,
           },
         };
         return;
@@ -620,7 +624,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
 
     let toolCallResult: Result<
       MCPToolResultContentType[],
-      Error | McpError
+      Error | McpError | MCPServerPersonalAuthenticationRequiredError
     > | null = null;
     for await (const event of tryCallMCPTool(
       auth,
@@ -660,6 +664,32 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       await action.update({
         isError: true,
       });
+
+      // If we got a personal authentication error, we emit a `tool_error` which will get turned
+      // into an `agent_error` with metadata set such that we can display a invitation to connect to
+      // the user.
+      if (
+        MCPServerPersonalAuthenticationRequiredError.is(toolCallResult?.error)
+      ) {
+        yield {
+          type: "tool_error",
+          created: Date.now(),
+          configurationId: agentConfiguration.sId,
+          messageId: agentMessage.sId,
+          error: {
+            code: "mcp_server_personal_authentication_required",
+            message:
+              `The tool ${actionConfiguration.originalName} requires personal ` +
+              `authentication, please authenticate to use it.`,
+            metadata: {
+              mcp_server_id: toolCallResult.error.mcpServerId,
+              provider: toolCallResult.error.provider,
+              use_case: toolCallResult.error.useCase,
+            },
+          },
+        };
+        return;
+      }
 
       const { error: toolErr } = toolCallResult ?? {};
       let errorMessage: string;

@@ -1,3 +1,4 @@
+import { cva, type VariantProps } from "class-variance-authority";
 import React from "react";
 
 import { Tooltip } from "@sparkle/components/Tooltip";
@@ -7,11 +8,27 @@ import {
   TrashIcon,
   XMarkIcon,
 } from "@sparkle/icons/app";
-import { classNames } from "@sparkle/lib/utils";
+import { cn } from "@sparkle/lib/utils";
 
 import { Button } from "./Button";
 
-interface BarHeaderProps {
+const barHeaderVariants = cva(
+  "s-flex s-h-16 s-flex-row s-items-center s-gap-3 s-border-b s-px-4",
+  {
+    variants: {
+      variant: {
+        full: "s-fixed s-left-0 s-right-0 s-top-0 s-z-30 s-backdrop-blur s-border-border-dark/70 s-bg-background/80 dark:s-border-border-dark-night/70 dark:s-bg-background-night/80",
+        default:
+          "s-relative s-z-10 s-border-structure-200 s-bg-structure-50 dark:s-border-structure-200-night dark:s-bg-structure-50-night",
+      },
+    },
+    defaultVariants: {
+      variant: "full",
+    },
+  }
+);
+
+interface BarHeaderProps extends VariantProps<typeof barHeaderVariants> {
   title: string;
   tooltip?: string;
   leftActions?: React.ReactNode;
@@ -24,24 +41,17 @@ export function BarHeader({
   tooltip,
   leftActions,
   rightActions,
-  className = "",
+  className,
+  variant,
 }: BarHeaderProps) {
-  const titleClasses = classNames(
+  const titleClasses = cn(
     "s-text-foreground dark:s-text-foreground-night",
     "s-heading-base s-truncate s-grow"
   );
-  const buttonBarClasses = "s-flex s-gap-1";
 
   return (
-    <div
-      className={classNames(
-        "s-fixed s-left-0 s-right-0 s-top-0 s-z-30 s-flex s-h-16 s-flex-row s-items-center s-gap-3 s-border-b s-px-4 s-backdrop-blur",
-        "s-border-border-dark/70 s-bg-background/80",
-        "dark:s-border-border-dark-night/70 dark:s-bg-background-night/80",
-        className
-      )}
-    >
-      {leftActions && <div className={buttonBarClasses}>{leftActions}</div>}
+    <div className={cn(barHeaderVariants({ variant }), className)}>
+      {leftActions && <div className="s-flex s-gap-1">{leftActions}</div>}
       <div className={titleClasses}>
         {tooltip ? (
           <Tooltip
@@ -53,7 +63,7 @@ export function BarHeader({
           title
         )}
       </div>
-      {rightActions && <div className={buttonBarClasses}>{rightActions}</div>}
+      {rightActions && <div className="s-flex s-gap-1">{rightActions}</div>}
     </div>
   );
 }

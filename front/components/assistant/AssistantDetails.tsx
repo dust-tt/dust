@@ -3,18 +3,9 @@ import {
   Avatar,
   BarChartIcon,
   Button,
-  CardGrid,
-  ChatBubbleLeftRightIcon,
-  ChatBubbleThoughtIcon,
   Chip,
   ContentMessage,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
   DustIcon,
-  HandThumbDownIcon,
-  HandThumbUpIcon,
   InformationCircleIcon,
   LockIcon,
   Page,
@@ -29,22 +20,18 @@ import {
   TabsList,
   TabsTrigger,
   UserGroupIcon,
-  ValueCard,
 } from "@dust-tt/sparkle";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { useEffect, useState } from "react";
 
 import { AssistantDetailsButtonBar } from "@app/components/assistant/AssistantDetailsButtonBar";
+import { AssistantDetailsPerformance } from "@app/components/assistant/AssistantDetailsPerformance";
 import { AssistantKnowledgeSection } from "@app/components/assistant/details/AssistantKnowledgeSection";
 import { AssistantToolsSection } from "@app/components/assistant/details/AssistantToolsSection";
 import { AssistantUsageSection } from "@app/components/assistant/details/AssistantUsageSection";
 import { ReadOnlyTextArea } from "@app/components/assistant/ReadOnlyTextArea";
 import { RestoreAssistantDialog } from "@app/components/assistant/RestoreAssistantDialog";
-import { FeedbacksSection } from "@app/components/assistant_builder/FeedbacksSection";
-import {
-  useAgentAnalytics,
-  useAgentConfiguration,
-} from "@app/lib/swr/assistants";
+import { useAgentConfiguration } from "@app/lib/swr/assistants";
 import { useEditors, useUpdateEditors } from "@app/lib/swr/editors";
 import type {
   AgentConfigurationScope,
@@ -53,7 +40,7 @@ import type {
   UserTypeWithWorkspaces,
   WorkspaceType,
 } from "@app/types";
-import { GLOBAL_AGENTS_SID, isAdmin, removeNulls } from "@app/types";
+import { GLOBAL_AGENTS_SID, isAdmin } from "@app/types";
 
 import { AddEditorDropdown } from "../members/AddEditorsDropdown";
 import { MembersList } from "../members/MembersList";
@@ -88,12 +75,6 @@ export const SCOPE_INFO: Record<
     text: "Visible agents.",
   },
 } as const;
-
-const PERIODS = [
-  { value: 7, label: "Last 7 days" },
-  { value: 15, label: "Last 15 days" },
-  { value: 30, label: "Last 30 days" },
-];
 
 type AssistantDetailsProps = {
   owner: WorkspaceType;
@@ -149,166 +130,6 @@ function AssistantDetailsInfo({
         agentConfiguration={agentConfiguration}
         owner={owner}
       />
-    </>
-  );
-}
-
-function AssistantDetailsPerformance({
-  agentConfiguration,
-  owner,
-}: {
-  agentConfiguration: AgentConfigurationType;
-  owner: WorkspaceType;
-}) {
-  const [period, setPeriod] = useState(30);
-  const { agentAnalytics, isAgentAnayticsLoading } = useAgentAnalytics({
-    workspaceId: owner.sId,
-    agentConfigurationId: agentConfiguration.sId,
-    period,
-  });
-
-  return (
-    <>
-      <div className="flex flex-row items-center justify-between gap-3">
-        <Page.H variant="h5">Analytics</Page.H>
-        <div className="self-end">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                label={PERIODS.find((p) => p.value === period)?.label}
-                variant="outline"
-                isSelect
-              />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              {PERIODS.map((p) => (
-                <DropdownMenuItem
-                  key={p.value}
-                  label={p.label}
-                  onClick={() => {
-                    setPeriod(p.value);
-                  }}
-                />
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </div>
-
-      {isAgentAnayticsLoading ? (
-        <div className="w-full p-6">
-          <Spinner variant="dark" />
-        </div>
-      ) : (
-        <CardGrid>
-          <ValueCard
-            title="Active Users"
-            content={
-              <div className="heading-lg text-foreground dark:text-foreground-night">
-                <div className="heading-lg flex flex-col gap-1">
-                  {agentAnalytics?.users ? (
-                    <>
-                      <div className="truncate text-foreground dark:text-foreground-night">
-                        {agentAnalytics.users.length}
-                      </div>
-
-                      <Avatar.Stack
-                        size="md"
-                        hasMagnifier={false}
-                        avatars={removeNulls(
-                          agentAnalytics.users.map((top) => top.user)
-                        )
-                          .slice(0, 5)
-                          .map((user) => ({
-                            size: "sm",
-                            name: user.fullName,
-                            visual: user.image,
-                          }))}
-                      />
-                    </>
-                  ) : (
-                    "-"
-                  )}
-                </div>
-              </div>
-            }
-            className="h-32"
-          />
-
-          <ValueCard
-            title="Reactions"
-            content={
-              <div className="heading-lg flex flex-row gap-2">
-                {agentConfiguration.scope !== "global" &&
-                agentAnalytics?.feedbacks ? (
-                  <>
-                    <div className="flex flex-row items-center">
-                      <div>
-                        <HandThumbUpIcon className="h-6 w-6 pr-2 text-muted-foreground dark:text-muted-foreground-night" />
-                      </div>
-                      <div>{agentAnalytics.feedbacks.positiveFeedbacks}</div>
-                    </div>
-                    <div className="flex flex-row items-center">
-                      <div>
-                        <HandThumbDownIcon className="h-6 w-6 pr-2 text-muted-foreground dark:text-muted-foreground-night" />
-                      </div>
-                      <div>{agentAnalytics.feedbacks.negativeFeedbacks}</div>
-                    </div>
-                  </>
-                ) : (
-                  "-"
-                )}
-              </div>
-            }
-            className="h-32"
-          />
-          <ValueCard
-            title="Conversations"
-            content={
-              <div className="heading-lg flex flex-row gap-2">
-                <div className="flex flex-row items-center">
-                  <div>
-                    <ChatBubbleLeftRightIcon className="h-6 w-6 pr-2 text-muted-foreground dark:text-muted-foreground-night" />
-                  </div>
-                  <div>
-                    {agentAnalytics?.mentions
-                      ? `${agentAnalytics.mentions.conversationCount}`
-                      : "-"}
-                  </div>
-                </div>
-              </div>
-            }
-            className="h-32"
-          />
-          <ValueCard
-            title="Messages"
-            content={
-              <div className="heading-lg flex flex-row gap-2">
-                <div className="flex flex-row items-center">
-                  <div>
-                    <ChatBubbleThoughtIcon className="h-6 w-6 pr-2 text-muted-foreground dark:text-muted-foreground-night" />
-                  </div>
-                  <div>
-                    {agentAnalytics?.mentions
-                      ? `${agentAnalytics.mentions.messageCount}`
-                      : "-"}
-                  </div>
-                </div>
-              </div>
-            }
-            className="h-32"
-          />
-        </CardGrid>
-      )}
-      {agentConfiguration.scope !== "global" && (
-        <div>
-          <Page.SectionHeader title="Feedback" />
-          <FeedbacksSection
-            owner={owner}
-            agentConfigurationId={agentConfiguration.sId}
-          />
-        </div>
-      )}
     </>
   );
 }
@@ -544,6 +365,7 @@ export function AssistantDetails({
                     <AssistantDetailsPerformance
                       agentConfiguration={agentConfiguration}
                       owner={owner}
+                      gridMode={false}
                     />
                   )}
                   {showEditorsTabs && selectedTab === "editors" && (

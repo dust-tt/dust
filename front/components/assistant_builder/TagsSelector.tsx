@@ -3,9 +3,10 @@ import {
   Chip,
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuSearchbar,
   DropdownMenuSeparator,
+  DropdownMenuTagItem,
+  DropdownMenuTagList,
   DropdownMenuTrigger,
   PlusIcon,
 } from "@dust-tt/sparkle";
@@ -116,7 +117,7 @@ export const TagsSelector = ({
             />
           </DropdownMenuTrigger>
           <DropdownMenuContent
-            className="h-96 min-w-72"
+            className="h-96 w-96"
             dropdownHeaders={
               <>
                 <DropdownMenuSearchbar
@@ -153,21 +154,22 @@ export const TagsSelector = ({
               </>
             }
           >
-            {filteredTags.map((tag) => (
-              <DropdownMenuItem
-                className="p-1"
-                key={tag.sId}
-                onClick={() => {
-                  setBuilderState((state) => ({
-                    ...state,
-                    tags: [...state.tags, tag],
-                  }));
-                  setEdited(true);
-                }}
-              >
-                <Chip size="xs" color="golden" label={tag.name} />
-              </DropdownMenuItem>
-            ))}
+            <DropdownMenuTagList>
+              {filteredTags.map((tag) => (
+                <DropdownMenuTagItem
+                  color="golden"
+                  key={tag.sId}
+                  label={tag.name}
+                  onClick={() => {
+                    setBuilderState((state) => ({
+                      ...state,
+                      tags: [...state.tags, tag],
+                    }));
+                    setEdited(true);
+                  }}
+                />
+              ))}
+            </DropdownMenuTagList>
           </DropdownMenuContent>
         </DropdownMenu>
         {suggestionButton}

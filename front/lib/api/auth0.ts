@@ -74,15 +74,26 @@ export const Auth0JwtPayloadSchema = t.intersection([
 export type Auth0JwtPayload = t.TypeOf<typeof Auth0JwtPayloadSchema> &
   jwt.JwtPayload;
 
-export function isExternalUser(user: Session["user"]): user is ExternalUser {
-  return (
+function getAuth0ExternalUser(
+  user?: Session["user"]
+): ExternalUser | undefined {
+  if (
     typeof user === "object" &&
     "email" in user &&
     "email_verified" in user &&
     "name" in user &&
     "nickname" in user &&
     "sub" in user
-  );
+  ) {
+    return {
+      email: user.email,
+      email_verified: user.email_verified,
+      name: user.name,
+      nickname: user.nickname,
+      auth0Sub: user.sub,
+      workOSId: user["https://dust.tt/workos_user_id"] ?? null,
+    };
+  }
 }
 
 export function isAuth0Session(session: unknown): session is Session {
@@ -95,11 +106,12 @@ export async function getAuth0Session(
 ): Promise<SessionWithUser | undefined> {
   // Auth0 session
   const session = await getSession(req, res);
-  if (session && isExternalUser(session.user)) {
+  const externalUser = getAuth0ExternalUser(session?.user);
+  if (session && externalUser) {
     return {
       type: "auth0" as const,
       sessionId: session.sessionId,
-      user: session.user,
+      user: externalUser,
       organizationId: undefined,
       workspaceId: getConnectionWorkspaceId(session),
       isSSO: isEnterpriseConnection(session),

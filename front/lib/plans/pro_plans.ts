@@ -92,10 +92,10 @@ export const upsertProPlans = async () => {
     });
     if (plan === null) {
       await Plan.create(planData);
-      console.log(`Pro plan ${planData.code} created.`);
+      // console.log(`Pro plan ${planData.code} created.`);
     } else {
       await plan.update(planData);
-      console.log(`Pro plan ${planData.code} updated.`);
+      // console.log(`Pro plan ${planData.code} updated.`);
     }
   }
 };

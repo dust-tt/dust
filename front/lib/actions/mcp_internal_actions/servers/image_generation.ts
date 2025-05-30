@@ -119,53 +119,72 @@ const createServer = (auth: Authenticator): McpServer => {
         };
       }
 
-      const credentials = dustManagedCredentials();
-      const openai = new OpenAI({
-        apiKey: credentials.OPENAI_API_KEY,
-      });
+      try {
+        const credentials = dustManagedCredentials();
+        const openai = new OpenAI({
+          apiKey: credentials.OPENAI_API_KEY,
+        });
 
-      const result = await openai.images.generate({
-        model: "gpt-image-1",
-        moderation: "low",
-        output_format: DEFAULT_IMAGE_OUTPUT_FORMAT,
-        prompt,
-        quality,
-        size,
-        user: `workspace-${workspace.sId}`,
-      });
+        const result = await openai.images.generate({
+          model: "gpt-image-1",
+          moderation: "low",
+          output_format: DEFAULT_IMAGE_OUTPUT_FORMAT,
+          prompt,
+          quality,
+          size,
+          user: `workspace-${workspace.sId}`,
+        });
 
-      statsDClient.increment(
-        "tools.image_generation.usage.input_tokens",
-        result.usage?.input_tokens ?? 0
-      );
-      statsDClient.increment(
-        "tools.image_generation.usage.output_tokens",
-        result.usage?.output_tokens ?? 0
-      );
+        statsDClient.increment(
+          "tools.image_generation.usage.input_tokens",
+          result.usage?.input_tokens ?? 0
+        );
+        statsDClient.increment(
+          "tools.image_generation.usage.output_tokens",
+          result.usage?.output_tokens ?? 0
+        );
 
-      if (!result.data) {
+        if (!result.data) {
+          return {
+            isError: true,
+            content: [
+              {
+                type: "text",
+                text: "No image generated.",
+              },
+            ],
+          };
+        }
+
+        const fileName = `${name}.${DEFAULT_IMAGE_OUTPUT_FORMAT}`;
+
+        return {
+          isError: false,
+          content: result.data.map((r) => ({
+            type: "image" as const,
+            mimeType: DEFAULT_IMAGE_MIME_TYPE,
+            data: r.b64_json!,
+            name: fileName,
+          })),
+        };
+      } catch (error) {
+        logger.error(
+          {
+            error,
+          },
+          "Error generating image."
+        );
+
         return {
           isError: true,
           content: [
             {
               type: "text",
-              text: "No image generated.",
+              text: "Error generating image.",
             },
           ],
         };
       }
-
-      const fileName = `${name}.${DEFAULT_IMAGE_OUTPUT_FORMAT}`;
-
-      return {
-        isError: false,
-        content: result.data.map((r) => ({
-          type: "image" as const,
-          mimeType: DEFAULT_IMAGE_MIME_TYPE,
-          data: r.b64_json!,
-          name: fileName,
-        })),
-      };
     }
   );
 

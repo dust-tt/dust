@@ -291,7 +291,7 @@ async fn fetch_and_encode_images(
 }
 
 fn get_max_tokens(model_id: &str) -> u64 {
-    if model_id.starts_with("claude-3-7-sonnet") {
+    if model_id.starts_with("claude-3-7-sonnet") || model_id.starts_with("claude-4") {
         64000
     } else if model_id.starts_with("claude-3-5-sonnet") {
         8192

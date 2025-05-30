@@ -33,7 +33,7 @@ makeScript(
     logger.info(`Profiling pod ${podName}...`);
 
     try {
-      const command = `kubectl exec -n ${namespace} ${podName} -- npm run debug:profiler`;
+      const command = `kubectl exec -n ${namespace} ${podName} -- npm run debug:profiler -- --execute`;
       const output = execKubectl(command);
 
       logger.info(`Profiling output: ${output}`);

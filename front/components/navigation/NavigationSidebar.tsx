@@ -173,7 +173,7 @@ export const NavigationSidebar = React.forwardRef<
             "text-foreground dark:text-foreground-night"
           )}
         >
-          <UserMenu user={user} owner={owner} />
+          <UserMenu user={user} owner={owner} subscription={subscription} />
           <div className="flex-grow" />
           <HelpDropdown owner={owner} user={user} />
         </div>

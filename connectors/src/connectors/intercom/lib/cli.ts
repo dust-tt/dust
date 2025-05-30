@@ -11,10 +11,12 @@ import {
   IntercomArticleModel,
   IntercomConversationModel,
   IntercomTeamModel,
+  IntercomWorkspaceModel,
 } from "@connectors/lib/models/intercom";
 import { default as topLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type {
+  AdminSuccessResponseType,
   IntercomCheckConversationResponseType,
   IntercomCheckMissingConversationsResponseType,
   IntercomCheckTeamsResponseType,
@@ -35,7 +37,9 @@ type IntercomResponse =
 export const intercom = async ({
   command,
   args,
-}: IntercomCommandType): Promise<IntercomResponse> => {
+}: IntercomCommandType): Promise<
+  IntercomResponse | AdminSuccessResponseType
+> => {
   const logger = topLogger.child({ majorCommand: "intercom", command, args });
 
   const connectorId = args.connectorId ? args.connectorId.toString() : null;
@@ -225,6 +229,39 @@ export const intercom = async ({
           isTeamOnDB: teamsOnDb.some((t) => t.teamId === team.id),
         })),
       };
+    }
+    case "set-conversations-sliding-window": {
+      if (!connector) {
+        throw new Error(`Connector ${connectorId} not found`);
+      }
+      if (!args.conversationsSlidingWindow) {
+        throw new Error("Missing --conversationsSlidingWindow argument");
+      }
+      const { conversationsSlidingWindow } = args;
+      if (isNaN(conversationsSlidingWindow) || conversationsSlidingWindow < 0) {
+        throw new Error(
+          `Invalid --conversationsSlidingWindow argument: ${conversationsSlidingWindow}`
+        );
+      }
+      logger.info(
+        {
+          connectorId,
+          conversationsSlidingWindow,
+        },
+        "[Admin] Setting conversations sliding window."
+      );
+      const workspace = await IntercomWorkspaceModel.findOne({
+        where: {
+          connectorId: connector.id,
+        },
+      });
+      if (!workspace) {
+        throw new Error(`No workspace found for connector ${connector.id}`);
+      }
+      await workspace.update({
+        conversationsSlidingWindow,
+      });
+      return { success: true };
     }
   }
 };

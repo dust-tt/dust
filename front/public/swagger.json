@@ -1418,8 +1418,8 @@
     },
     "/api/v1/w/{wId}/mcp/register": {
       "post": {
-        "summary": "Register a local MCP server",
-        "description": "Register a client-generated UUID for a local MCP server.\nThe registration is scoped to the current user and workspace.\n",
+        "summary": "Register a client-side MCP server",
+        "description": "Register a client-side MCP server to Dust.\nThe registration is scoped to the current user and workspace.\nA serverId identifier is generated and returned in the response.\n",
         "tags": [
           "MCP"
         ],
@@ -1466,8 +1466,8 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "success": {
-                      "type": "boolean"
+                    "serverId": {
+                      "type": "string"
                     },
                     "expiresAt": {
                       "type": "string",

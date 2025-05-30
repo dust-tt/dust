@@ -1,4 +1,9 @@
-export async function getPKCEConfig() {
+export type PCKEConfig = {
+  code_verifier: string;
+  code_challenge: string;
+};
+
+export async function getPKCEConfig(): Promise<PCKEConfig> {
   // Generate verifier
   const generateVerifier = () => {
     const array = new Uint8Array(32);

@@ -38,6 +38,7 @@ import type {
   WhitelistableFeature,
   WorkspaceType,
 } from "@app/types";
+import type { AgentConfigurationType } from "@app/types";
 import {
   assertNever,
   CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG,
@@ -515,7 +516,7 @@ export const BUILDER_FLOWS = [
 export type BuilderFlow = (typeof BUILDER_FLOWS)[number];
 
 export type AssistantBuilderProps = {
-  agentConfigurationId: string | null;
+  agentConfiguration: AgentConfigurationType | null;
   baseUrl: string;
   defaultIsEdited?: boolean;
   defaultTemplate: FetchAssistantTemplateResponse | null;

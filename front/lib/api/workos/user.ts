@@ -47,12 +47,12 @@ export async function getWorkOSSession(
       type: "workos" as const,
       sessionId: r.sessionId,
       user: {
-        sid: r.user.id,
         email: r.user.email,
         email_verified: r.user.emailVerified,
         name: r.user.email ?? "",
         nickname: getUserNicknameFromEmail(r.user.email) ?? "",
-        sub: r.user.id,
+        auth0Sub: null,
+        workOSId: r.user.id,
       },
       // TODO(workos): Should we resolve the workspaceId and remove organizationId from here?
       organizationId,

@@ -155,46 +155,47 @@ export class Authenticator {
     session: SessionWithUser | null,
     wId: string
   ): Promise<Authenticator> {
-    const [workspace, user] = await Promise.all([
-      Workspace.findOne({
-        where: {
-          sId: wId,
-        },
-      }),
-      session?.type === "auth0"
-        ? UserResource.fetchByAuth0Sub(session.user.sub)
-        : //TODO(workos): Fetch user by email.
-          session?.type === "workos"
-          ? UserResource.fetchByEmail(session.user.email)
-          : null,
-    ]);
-
-    let role = "none" as RoleType;
-    let groups: GroupResource[] = [];
-    let subscription: SubscriptionResource | null = null;
-
-    if (user && workspace) {
-      [role, groups, subscription] = await Promise.all([
-        MembershipResource.getActiveRoleForUserInWorkspace({
-          user,
-          workspace: renderLightWorkspaceType({ workspace }),
+    return tracer.trace("fromSession", async () => {
+      const [workspace, user] = await Promise.all([
+        Workspace.findOne({
+          where: {
+            sId: wId,
+          },
         }),
-        GroupResource.listUserGroupsInWorkspace({
-          user,
-          workspace: renderLightWorkspaceType({ workspace }),
-        }),
-        SubscriptionResource.fetchActiveByWorkspace(
-          renderLightWorkspaceType({ workspace })
-        ),
+        session?.type === "auth0" && session.user.auth0Sub
+          ? UserResource.fetchByAuth0Sub(session.user.auth0Sub)
+          : session?.type === "workos" && session.user.workOSId
+            ? UserResource.fetchByWorkOSId(session.user.workOSId)
+            : null,
       ]);
-    }
 
-    return new Authenticator({
-      workspace,
-      user,
-      role,
-      groups,
-      subscription,
+      let role = "none" as RoleType;
+      let groups: GroupResource[] = [];
+      let subscription: SubscriptionResource | null = null;
+
+      if (user && workspace) {
+        [role, groups, subscription] = await Promise.all([
+          MembershipResource.getActiveRoleForUserInWorkspace({
+            user,
+            workspace: renderLightWorkspaceType({ workspace }),
+          }),
+          GroupResource.listUserGroupsInWorkspace({
+            user,
+            workspace: renderLightWorkspaceType({ workspace }),
+          }),
+          SubscriptionResource.fetchActiveByWorkspace(
+            renderLightWorkspaceType({ workspace })
+          ),
+        ]);
+      }
+
+      return new Authenticator({
+        workspace,
+        user,
+        role,
+        groups,
+        subscription,
+      });
     });
   }
 
@@ -217,11 +218,10 @@ export class Authenticator {
             where: { sId: wId },
           })
         : null,
-      session?.type === "auth0"
-        ? UserResource.fetchByAuth0Sub(session.user.sub)
-        : //TODO(workos): Fetch user by email.
-          session?.type === "workos"
-          ? UserResource.fetchByEmail(session.user.email)
+      session?.type === "auth0" && session.user.auth0Sub
+        ? UserResource.fetchByAuth0Sub(session.user.auth0Sub)
+        : session?.type === "workos" && session.user.workOSId
+          ? UserResource.fetchByWorkOSId(session.user.workOSId)
           : null,
     ]);
 

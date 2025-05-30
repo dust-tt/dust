@@ -5,6 +5,8 @@ import type { IntercomSyncAllConversationsStatus } from "@connectors/connectors/
 import { sequelizeConnection } from "@connectors/resources/storage";
 import { ConnectorBaseModel } from "@connectors/resources/storage/wrappers/model_with_connectors";
 
+export const DEFAULT_CONVERSATIONS_SLIDING_WINDOW = 180;
+
 export class IntercomWorkspaceModel extends ConnectorBaseModel<IntercomWorkspaceModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
@@ -40,7 +42,7 @@ IntercomWorkspaceModel.init(
     conversationsSlidingWindow: {
       type: DataTypes.INTEGER,
       allowNull: false,
-      defaultValue: 90,
+      defaultValue: DEFAULT_CONVERSATIONS_SLIDING_WINDOW,
     },
     syncAllConversations: {
       type: DataTypes.STRING,

@@ -11,7 +11,7 @@ export function makeProcessTranscriptWorkflowId({
   transcriptsConfigurationId,
   fileId,
 }: {
-  transcriptsConfigurationId: ModelId;
+  transcriptsConfigurationId: string;
   fileId: string;
 }): string {
   return `labs-transcripts-process-${transcriptsConfigurationId}-${fileId}`;

@@ -27,18 +27,24 @@ import { useMemo } from "react";
 import { usePersistedNavigationSelection } from "@app/hooks/usePersistedNavigationSelection";
 import { forceUserRole, showDebugTools } from "@app/lib/development";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import type { UserTypeWithWorkspaces, WorkspaceType } from "@app/types";
+import type {
+  SubscriptionType,
+  UserTypeWithWorkspaces,
+  WorkspaceType,
+} from "@app/types";
 import { isOnlyAdmin, isOnlyBuilder, isOnlyUser } from "@app/types";
 
 export function UserMenu({
   user,
   owner,
+  subscription,
 }: {
   user: UserTypeWithWorkspaces;
   owner: WorkspaceType;
+  subscription: SubscriptionType | null;
 }) {
   const router = useRouter();
-  const { featureFlags, hasFeature } = useFeatureFlags({
+  const { featureFlags } = useFeatureFlags({
     workspaceId: owner.sId,
   });
 
@@ -137,38 +143,40 @@ export function UserMenu({
           </>
         )}
 
-        <DropdownMenuLabel label="Beta" />
-        <DropdownMenuItem
-          label="Exploratory features"
-          icon={TestTubeIcon}
-          href={`/w/${owner.sId}/labs`}
-        />
+        {subscription?.plan.limits.canUseProduct && (
+          <>
+            <DropdownMenuLabel label="Beta" />
+            <DropdownMenuItem
+              label="Exploratory features"
+              icon={TestTubeIcon}
+              href={`/w/${owner.sId}/labs`}
+            />
+          </>
+        )}
 
         <DropdownMenuLabel label="Account" />
-        <DropdownMenuItem
-          label="Profile"
-          icon={UserIcon}
-          href={`/w/${owner.sId}/me`}
-        />
-
-        {!hasFeature("workos") && (
+        {subscription?.plan.limits.canUseProduct && (
           <DropdownMenuItem
-            label="Sign&nbsp;out"
-            icon={LogoutIcon}
-            onClick={() => {
-              window.location.href = "/api/auth/logout";
-            }}
+            label="Profile"
+            icon={UserIcon}
+            href={`/w/${owner.sId}/me`}
           />
         )}
-        {hasFeature("workos") && (
+
+        <DropdownMenuItem
+          label="Sign&nbsp;out"
+          icon={LogoutIcon}
+          onClick={() => {
+            window.location.href = "/api/auth/logout";
+          }}
+        />
+        {document.cookie.includes("sessionType=workos") && (
           <DropdownMenuItem
             onClick={() => {
-              document.cookie.includes("sessionType=workos")
-                ? (window.location.href = "/api/workos/logout")
-                : (window.location.href = "/api/auth/logout");
+              window.location.href = "/api/workos/logout";
             }}
             icon={LogoutIcon}
-            label="Sign&nbsp;out"
+            label="Sign&nbsp;out from WorkOS"
           />
         )}
 

@@ -161,6 +161,22 @@ export const MODEL_PRICING: Record<
     input: 3.0,
     output: 15.0,
   },
+  "claude-4-sonnet-20250514": {
+    input: 3.0,
+    output: 15.0,
+  },
+  "claude-4-sonnet-latest": {
+    input: 3.0,
+    output: 15.0,
+  },
+  "claude-4-opus-20250514": {
+    input: 15.0,
+    output: 75.0,
+  },
+  "claude-4-opus-latest": {
+    input: 15.0,
+    output: 75.0,
+  },
   "mistral-embed": {
     input: 0.1,
     output: 0.1,
