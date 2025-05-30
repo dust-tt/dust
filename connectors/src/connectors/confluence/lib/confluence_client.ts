@@ -497,8 +497,7 @@ export class ConfluenceClient {
         "status:near_rate_limit",
       ]);
 
-      const delayMs =
-        NEAR_RATE_LIMIT_DELAY + sampleJitter();
+      const delayMs = NEAR_RATE_LIMIT_DELAY + sampleJitter();
       logger.warn(
         {
           endpoint,
