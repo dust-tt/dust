@@ -545,7 +545,8 @@ export function useCreatePersonalConnection(owner: LightWorkspaceType) {
   const createPersonalConnection = async (
     mcpServerId: string,
     provider: OAuthProvider,
-    useCase: OAuthUseCase
+    useCase: OAuthUseCase,
+    scope?: string
   ): Promise<boolean> => {
     try {
       const extraConfig: Record<string, string> = {
@@ -563,6 +564,9 @@ export function useCreatePersonalConnection(owner: LightWorkspaceType) {
             extraConfig[key] = value;
           }
         });
+      }
+      if (scope) {
+        extraConfig.scope = scope;
       }
 
       const cRes = await setupOAuthConnection({

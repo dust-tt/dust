@@ -91,7 +91,10 @@ export function CreateMCPServerDialog({
           owner,
           provider: authorization.provider,
           useCase: authorization.use_case,
-          extraConfig: authCredentials ?? {},
+          extraConfig: {
+            ...(authCredentials ?? {}),
+            ...(authorization.scope ? { scope: authorization.scope } : {}),
+          },
         });
         if (cRes.isErr()) {
           sendNotification({
@@ -223,6 +226,7 @@ export function CreateMCPServerDialog({
             authCredentials={authCredentials}
             setAuthCredentials={setAuthCredentials}
             setIsFormValid={setIsFormValid}
+            documentationUrl={internalMCPServer?.documentationUrl}
           />
         </DialogContainer>
         <DialogFooter
