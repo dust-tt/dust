@@ -266,4 +266,30 @@ export class ServerSideTracking {
       );
     }
   }
+
+  static async trackUpdateUserMetadata({
+    user,
+    workspace,
+    role,
+    metadata,
+  }: {
+    user: UserType;
+    workspace: LightWorkspaceType;
+    role: MembershipRoleType;
+    metadata: { [key: string]: string | number | boolean | null | undefined };
+  }) {
+    try {
+      await CustomerioServerSideTracking.trackUpdateUserMetadata({
+        user,
+        workspace,
+        role,
+        metadata,
+      });
+    } catch (err) {
+      logger.error(
+        { userId: user.sId, workspaceId: workspace.sId, err },
+        "Failed to track update user metadata role on Customer.io"
+      );
+    }
+  }
 }

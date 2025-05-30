@@ -130,6 +130,32 @@ export class CustomerioServerSideTracking {
     });
   }
 
+  static async trackUpdateUserMetadata({
+    user,
+    workspace,
+    role,
+    metadata,
+  }: {
+    user: UserType;
+    workspace: LightWorkspaceType;
+    role: MembershipRoleType;
+    metadata: { [key: string]: string | number | boolean | null | undefined };
+  }) {
+    await CustomerioServerSideTracking._identifyWorkspace({
+      workspace,
+    });
+    await CustomerioServerSideTracking._identifyUser({
+      user,
+      workspaces: [
+        {
+          sId: workspace.sId,
+          role,
+          metadata,
+        },
+      ],
+    });
+  }
+
   static async backfillUser({ user }: { user: UserType }) {
     const u = await UserResource.fetchById(user.sId);
 
@@ -262,6 +288,9 @@ export class CustomerioServerSideTracking {
       startAt?: Date;
       endAt?: Date | null;
       role: MembershipRoleType;
+      metadata?: {
+        [key: string]: string | number | boolean | null | undefined;
+      };
     }>;
   }) {
     if (!config.getCustomerIoEnabled()) {
@@ -296,6 +325,12 @@ export class CustomerioServerSideTracking {
             ? Math.floor(w.endAt.getTime() / 1000)
             : null;
         }
+        if (w.metadata !== undefined) {
+          Object.entries(w.metadata).forEach(([key, value]) => {
+            if (value !== undefined) {
+              relAttributes[key] = value;
+            }
+          });
         }
         return {
           identifiers: {
