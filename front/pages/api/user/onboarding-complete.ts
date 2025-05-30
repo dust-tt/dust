@@ -12,13 +12,14 @@ import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
+import { isJobType } from "@app/types/job_type";
 
 export type PostOnboardingCompleteResponseBody = {
   success: boolean;
 };
 
 const PostOnboardingCompleteBodySchema = t.type({
-  metadata: t.record(t.string, t.union([t.string, t.number, t.boolean])),
+  jobType: t.string,
 });
 
 async function handler(
@@ -84,24 +85,34 @@ async function handler(
     });
   }
 
-  const { metadata } = bodyValidation.right;
+  const { jobType } = bodyValidation.right;
 
-  if (!metadata || Object.keys(metadata).length === 0) {
-    return res.status(200).json({ success: true }); // TODO: REVIEW: personal choice, change if needed
+  if (!isJobType(jobType)) {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Job type is invalid.",
+      },
+    });
   }
 
+  const metadata = {
+    job_type: jobType,
+  };
+
   try {
-    // Go through each key of the metadata to store
+    // Go through each key of the jobType to store
     for (const [key, value] of Object.entries(metadata)) {
       await u.setMetadata(key, String(value));
     }
 
     // Then track
-    await ServerSideTracking.trackUpdateUserMetadata({
+    await ServerSideTracking.trackCompleteUserOnboarding({
       user: user,
       workspace: renderLightWorkspaceType({ workspace }),
       role: workspace.role !== "none" ? workspace.role : "user",
-      metadata,
+      jobType,
     });
 
     logger.info(

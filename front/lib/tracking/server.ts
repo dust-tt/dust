@@ -18,6 +18,7 @@ import type {
 } from "@app/types";
 
 import type { UserResource } from "../resources/user_resource";
+import { JobType } from "@app/types/job_type";
 
 export class ServerSideTracking {
   static trackSignup(args: { user: UserType }) {
@@ -267,28 +268,28 @@ export class ServerSideTracking {
     }
   }
 
-  static async trackUpdateUserMetadata({
+  static async trackCompleteUserOnboarding({
     user,
     workspace,
     role,
-    metadata,
+    jobType,
   }: {
     user: UserType;
     workspace: LightWorkspaceType;
     role: MembershipRoleType;
-    metadata: { [key: string]: string | number | boolean | null | undefined };
+    jobType?: JobType;
   }) {
     try {
-      await CustomerioServerSideTracking.trackUpdateUserMetadata({
+      await CustomerioServerSideTracking.trackCompleteUserOnboarding({
         user,
         workspace,
         role,
-        metadata,
+        jobType,
       });
     } catch (err) {
       logger.error(
         { userId: user.sId, workspaceId: workspace.sId, err },
-        "Failed to track update user metadata on Customer.io"
+        "Failed to track update user onboardingInfo on Customer.io"
       );
     }
   }
