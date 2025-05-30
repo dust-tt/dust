@@ -30,9 +30,8 @@ export async function createWorkOSOrganization({
     "Workspace must have a domain to create a WorkOS organization"
   );
 
-  let organization;
   try {
-    organization = await getWorkOS().organizations.createOrganization({
+    const organization = await getWorkOS().organizations.createOrganization({
       name: workspace.name,
       metadata: { workspaceSId: workspace.sId },
       domainData: [
@@ -42,6 +41,17 @@ export async function createWorkOSOrganization({
         },
       ],
     });
+
+    await Workspace.update(
+      {
+        workOSOrganizationId: organization.id,
+      },
+      {
+        where: {
+          id: workspace.id,
+        },
+      }
+    );
   } catch (error) {
     const e = normalizeError(error);
     logger.error(e, "Failed to create WorkOS organization");
@@ -49,17 +59,6 @@ export async function createWorkOSOrganization({
       new Error(`Failed to create WorkOS organization: ${e.message}`)
     );
   }
-
-  await Workspace.update(
-    {
-      workOSOrganizationId: organization.id,
-    },
-    {
-      where: {
-        id: workspace.id,
-      },
-    }
-  );
   return new Ok(undefined);
 }
 
