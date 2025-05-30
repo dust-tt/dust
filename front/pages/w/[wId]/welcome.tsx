@@ -18,6 +18,7 @@ import config from "@app/lib/api/config";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthPaywallWhitelisted } from "@app/lib/iam/session";
 import type { UserType, WorkspaceType } from "@app/types";
+import { JOB_TYPE_OPTIONS } from "@app/types/jobt_type";
 
 export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
   user: UserType;
@@ -66,24 +67,7 @@ export default function Welcome({
   const [jobType, setJobType] = useState<string>("");
   const [isFormValid, setIsFormValid] = useState<boolean>(false);
 
-  const jobTypes = useMemo(
-    () => [
-      { value: "customer_success", label: "Customer Success" },
-      { value: "customer_support", label: "Customer Support" },
-      { value: "data", label: "Data" },
-      { value: "design", label: "Design" },
-      { value: "engineering", label: "Engineering" },
-      { value: "finance", label: "Finance" },
-      { value: "people", label: "People (HR)" },
-      { value: "legal", label: "Legal" },
-      { value: "marketing", label: "Marketing" },
-      { value: "operations", label: "Operations" },
-      { value: "product", label: "Product" },
-      { value: "sales", label: "Sales" },
-      { value: "other", label: "Other" },
-    ],
-    []
-  );
+  const jobTypes = JOB_TYPE_OPTIONS;
 
   useEffect(() => {
     setIsFormValid(
