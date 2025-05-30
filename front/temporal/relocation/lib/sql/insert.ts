@@ -8,6 +8,10 @@ const JSONB_COLUMNS = [
     tableName: "agent_dust_app_run_actions",
     columns: ["params", "output"],
   },
+  {
+    tableName: "agent_configurations",
+    columns: ["responseFormat"],
+  },
 ];
 
 export function generateParameterizedInsertStatements(
