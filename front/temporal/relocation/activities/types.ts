@@ -24,6 +24,7 @@ export interface ReadTableChunkParams {
   sourceRegion: RegionType;
   tableName: string;
   workspaceId: string;
+  fileName?: string;
 }
 
 export const CORE_API_CONCURRENCY_LIMIT = 48;

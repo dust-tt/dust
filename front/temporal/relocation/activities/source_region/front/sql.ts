@@ -150,6 +150,7 @@ export async function readFrontTableChunk({
   sourceRegion,
   tableName,
   workspaceId,
+  fileName,
 }: ReadTableChunkParams) {
   const localLogger = logger.child({
     destRegion,
@@ -157,6 +158,7 @@ export async function readFrontTableChunk({
     sourceRegion,
     tableName,
     workspaceId,
+    fileName,
   });
 
   localLogger.info("[SQL Table] Reading table chunk");
@@ -190,6 +192,7 @@ export async function readFrontTableChunk({
     workspaceId,
     type: "front",
     operation: `read_table_chunk_${tableName}`,
+    fileName,
   });
 
   localLogger.info(
