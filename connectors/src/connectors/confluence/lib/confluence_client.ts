@@ -237,15 +237,20 @@ function getRetryAfterDuration(response: Response): number {
 }
 
 function checkNearRateLimit(response: Response): boolean {
-  const nearLimit = response.headers.get(RATE_LIMIT_HEADERS.nearLimit);
-  const remaining = response.headers.get(RATE_LIMIT_HEADERS.remaining);
-  const limit = response.headers.get(RATE_LIMIT_HEADERS.limit);
+  const nearLimitHeader = response.headers.get(RATE_LIMIT_HEADERS.nearLimit);
+  const remainingHeader = response.headers.get(RATE_LIMIT_HEADERS.remaining);
+  const limitHeader = response.headers.get(RATE_LIMIT_HEADERS.limit);
+
+  const remaining = remainingHeader ? parseInt(remainingHeader, 10) : null;
+  const limit = limitHeader ? parseInt(limitHeader, 10) : null;
 
   return (
-    nearLimit?.toLowerCase() === "true" ||
+    nearLimitHeader?.toLowerCase() === "true" ||
     (!!remaining &&
       !!limit &&
-      parseInt(remaining, 10) / parseInt(limit, 10) < THROTTLE_TRIGGER_RATIO)
+      // If we have no request remaining, we are already rate limited. This should be unreachable.
+      remaining > 0 &&
+      remaining / limit < THROTTLE_TRIGGER_RATIO)
   );
 }
 
@@ -498,7 +503,8 @@ export class ConfluenceClient {
             url: `${this.apiUrl}${endpoint}`,
             response,
           },
-          retryAfterMs: NEAR_RATE_LIMIT_DELAY,
+          retryAfterMs:
+            NEAR_RATE_LIMIT_DELAY + Math.random() * RETRY_AFTER_JITTER,
         }
       );
     }
