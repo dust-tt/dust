@@ -74,12 +74,17 @@ export const NavigationSidebar = React.forwardRef<
     [navs, activePath]
   );
 
+  // We display the banner if the end date is in 60 days or less.
+  const endDate = subscription.endDate;
+  const shouldDisplaySubscriptionEndBanner =
+    endDate && endDate < Date.now() + 60 * 24 * 60 * 60 * 1000;
+
   return (
     <div ref={ref} className="flex min-w-0 grow flex-col">
       <div className="flex flex-col gap-2 pt-3">
         <AppStatusBanner />
-        {subscription.endDate && (
-          <SubscriptionEndBanner endDate={subscription.endDate} />
+        {shouldDisplaySubscriptionEndBanner && endDate && (
+          <SubscriptionEndBanner endDate={endDate} />
         )}
         {subscription.paymentFailingSince && isAdmin(owner) && (
           <SubscriptionPastDueBanner />
