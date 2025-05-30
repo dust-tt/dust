@@ -607,7 +607,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       return;
     }
 
-    // We put back the preconfigured inputs (data sources for instance) from the agent configuration, if any.
+    // We put back the preconfigured inputs (data sources for instance) from the agent configuration if any.
     const inputs = augmentInputsWithConfiguration({
       owner: auth.getNonNullableWorkspace(),
       rawInputs,
