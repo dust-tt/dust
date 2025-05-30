@@ -225,7 +225,7 @@ function hideFileContentForModel({
     workspaceId: workspaceId,
     id: fileId,
   });
-  let contentType = "unknown";
+  let contentType;
   switch (content.type) {
     case "text":
       contentType = "text/plain";
