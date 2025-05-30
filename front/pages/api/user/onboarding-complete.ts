@@ -11,16 +11,14 @@ import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
+import { UserResource } from "@app/lib/resources/user_resource";
 
 export type PostOnboardingCompleteResponseBody = {
   success: boolean;
 };
 
 const PostOnboardingCompleteBodySchema = t.type({
-  metadata: t.record(
-    t.string,
-    t.union([t.string, t.number, t.boolean, t.null, t.undefined])
-  ),
+  metadata: t.record(t.string, t.union([t.string, t.number, t.boolean])),
 });
 
 async function handler(
@@ -63,6 +61,17 @@ async function handler(
     });
   }
 
+  const u = await UserResource.fetchByModelId(user.id);
+  if (!u) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "user_not_found",
+        message: "Could not find the user.",
+      },
+    });
+  }
+
   // Get the first workspace (assuming onboarding is for the primary workspace)
   const workspace = user.workspaces[0];
   if (!workspace) {
@@ -82,6 +91,12 @@ async function handler(
   }
 
   try {
+    // Go through each key of the metadata to store
+    for (const [key, value] of Object.entries(metadata)) {
+      await u.setMetadata(key, String(value));
+    }
+
+    // Then track
     await ServerSideTracking.trackUpdateUserMetadata({
       user: user,
       workspace: renderLightWorkspaceType({ workspace }),

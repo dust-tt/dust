@@ -91,12 +91,6 @@ export default function Welcome({
 
     if (updateUserFullNameRes.ok) {
       await fetcherWithBody([
-        "/api/user/metadata/job_type",
-        { value: jobType },
-        "POST",
-      ]);
-
-      await fetcherWithBody([
         "/api/user/onboarding-complete",
         { metadata: { jobType } },
         "POST",
