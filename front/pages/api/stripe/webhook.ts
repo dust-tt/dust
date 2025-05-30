@@ -450,6 +450,39 @@ async function handler(
           if (!previousAttributes) {
             break;
           } // should not happen by definition of the subscription.updated event
+
+          if (stripeSubscription.status === "trialing") {
+            // We check if the trialing subscription is being canceled.
+            if (
+              stripeSubscription.cancel_at_period_end &&
+              stripeSubscription.cancel_at
+            ) {
+              const endDate = new Date(stripeSubscription.cancel_at * 1000);
+              const subscription = await Subscription.findOne({
+                where: { stripeSubscriptionId: stripeSubscription.id },
+                include: [Workspace],
+              });
+              if (!subscription) {
+                logger.warn(
+                  {
+                    event,
+                    stripeSubscriptionId: stripeSubscription.id,
+                  },
+                  "[Stripe Webhook] Subscription not found."
+                );
+                // We return a 200 here to handle multiple regions, DD will watch
+                // the warnings and create an alert if this log appears in all regions.
+                return res.status(200).json({ success: true });
+              }
+              await subscription.update({
+                endDate,
+                // If the subscription is canceled, we set the requestCancelAt date to now.
+                // If the subscription is reactivated, we unset the requestCancelAt date.
+                requestCancelAt: endDate ? now : null,
+              });
+            }
+          }
+
           if (
             // The subscription is canceled (but not yet ended) or reactivated
             stripeSubscription.status === "active" &&
