@@ -829,7 +829,13 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
               );
 
               return {
-                content: block,
+                content: {
+                  type: block.type,
+                  resource: {
+                    ...block.resource,
+                    text: stripNullBytes(block.resource.text),
+                  },
+                },
                 file,
               };
             }
@@ -870,7 +876,15 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
               };
             } else {
               return {
-                content: block,
+                content: {
+                  type: block.type,
+                  resource: {
+                    ...block.resource,
+                    ...("text" in block.resource
+                      ? { text: stripNullBytes(block.resource.text) }
+                      : {}),
+                  },
+                },
                 file: null,
               };
             }
