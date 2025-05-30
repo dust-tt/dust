@@ -494,19 +494,16 @@ export class ConfluenceClient {
         "status:near_rate_limit",
       ]);
 
-      throw new ConfluenceClientError(
-        `Near rate limit: ${this.apiUrl}${endpoint}`,
-        {
-          type: "http_response_error",
-          status: 429, // We fake a 429 here to make sure the error is caught in the cast_known_errors.
-          data: {
-            url: `${this.apiUrl}${endpoint}`,
-            response,
-          },
-          retryAfterMs:
-            NEAR_RATE_LIMIT_DELAY + Math.random() * RETRY_AFTER_JITTER,
-        }
-      );
+      throw new ConfluenceClientError(`Near rate limit`, {
+        type: "http_response_error",
+        status: 429, // We fake a 429 here to make sure the error is caught in the cast_known_errors.
+        data: {
+          url: `${this.apiUrl}${endpoint}`,
+          response,
+        },
+        retryAfterMs:
+          NEAR_RATE_LIMIT_DELAY + Math.random() * RETRY_AFTER_JITTER,
+      });
     }
 
     statsDClient.increment("external.api.calls", 1, [
