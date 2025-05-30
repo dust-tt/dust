@@ -107,7 +107,10 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
     {
       to: z.array(z.string()).describe("The email addresses of the recipients"),
       cc: z.array(z.string()).optional().describe("The email addresses to CC"),
-      bcc: z.array(z.string()).optional().describe("The email addresses to BCC"),
+      bcc: z
+        .array(z.string())
+        .optional()
+        .describe("The email addresses to BCC"),
       subject: z.string().describe("The subject line of the email"),
       contentType: z
         .enum(["text/plain", "text/html"])
@@ -139,7 +142,9 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
         "MIME-Version: 1.0",
         "",
         body,
-      ].filter(Boolean).join("\n");
+      ]
+        .filter(Boolean)
+        .join("\n");
 
       // Encode the message in base64 as required by the Gmail API.
       const encodedMessage = Buffer.from(message)
