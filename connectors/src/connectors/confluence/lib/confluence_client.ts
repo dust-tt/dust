@@ -503,7 +503,8 @@ export class ConfluenceClient {
             url: `${this.apiUrl}${endpoint}`,
             response,
           },
-          retryAfterMs: NEAR_RATE_LIMIT_DELAY,
+          retryAfterMs:
+            NEAR_RATE_LIMIT_DELAY + Math.random() * RETRY_AFTER_JITTER,
         }
       );
     }
