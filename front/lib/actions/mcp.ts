@@ -101,9 +101,10 @@ export type ServerSideMCPServerConfigurationType =
     timeFrame: TimeFrame | null;
     jsonSchema: JSONSchema | null;
     additionalConfiguration: Record<string, boolean | number | string>;
-    mcpServerViewId: string; // Hold the sId of the MCP server view.
+    mcpServerViewId: string; // Contains the sId of the MCP server view.
     dustAppConfiguration: DustAppRunConfigurationType | null;
-    internalMCPServerId: string | null; // As convenience, hold the sId of the internal server if it is an internal server.
+    // Out of convenience, we hold the sId of the internal server if it is an internal server.
+    internalMCPServerId: string | null;
   };
 
 export type ClientSideMCPServerConfigurationType =
@@ -606,7 +607,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       return;
     }
 
-    // We put back the preconfigured inputs (data sources for instance) from the agent configuration if any.
+    // We put back the preconfigured inputs (data sources for instance) from the agent configuration, if any.
     const inputs = augmentInputsWithConfiguration({
       owner: auth.getNonNullableWorkspace(),
       rawInputs,
@@ -667,8 +668,8 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       });
 
       // If we got a personal authentication error, we emit a `tool_error` which will get turned
-      // into an `agent_error` with metadata set such that we can display a invitation to connect to
-      // the user.
+      // into an `agent_error` with metadata set such that we can display an invitation to connect
+      // to the user.
       if (
         MCPServerPersonalAuthenticationRequiredError.is(toolCallResult?.error)
       ) {
