@@ -15,6 +15,8 @@ import logger from "@app/logger/logger";
 import { CoreAPI, removeNulls } from "@app/types";
 
 const serverInfo: InternalMCPServerDefinitionType = {
+  // TODO(2025-05-30 aubin): find a better name (currently not great in Agent Builder).
+  // Maybe browse_internal_data?
   name: "content_nodes",
   version: "1.0.0",
   description: "Tools to browse and search within the content nodes hierarchy.",
