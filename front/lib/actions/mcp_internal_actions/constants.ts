@@ -170,6 +170,7 @@ export const INTERNAL_MCP_SERVERS: Record<
     tools_stakes: {
       execute_read_query: "low",
       list_objects: "low",
+      describe_object: "low",
     },
   },
   gmail: {
