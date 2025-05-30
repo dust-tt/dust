@@ -3,6 +3,9 @@ import type { Connection } from "auth0";
 import { getAuth0ManagemementClient } from "@app/lib/api/auth0";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
+import { Workspace } from "@app/lib/models/workspace";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type {
   IdpSpecificConnectionTypeDetails,
   SAMLConnectionTypeDetails,
@@ -14,10 +17,26 @@ function makeEnterpriseConnectionName(workspaceId: string) {
   return `workspace-${workspaceId}`;
 }
 
-export function makeEnterpriseConnectionInitiateLoginUrl(
+export async function makeEnterpriseConnectionInitiateLoginUrl(
   workspaceId: string,
   returnTo: string | null
 ) {
+  const workspace = await Workspace.findOne({
+    where: {
+      sId: workspaceId,
+    },
+  });
+
+  if (!workspace) {
+    return `${config.getClientFacingUrl()}/api/auth/login`;
+  }
+
+  const w = renderLightWorkspaceType({ workspace });
+  const featureFlags = await getFeatureFlags(w);
+  if (featureFlags.includes("workos") && workspace.workOSOrganizationId) {
+    return `${config.getClientFacingUrl()}/api/workos/login?organizationId=${workspace.workOSOrganizationId}`;
+  }
+
   return `${config.getClientFacingUrl()}/api/auth/login?connection=${makeEnterpriseConnectionName(
     workspaceId
   )}${returnTo ? `&returnTo=${encodeURIComponent(returnTo)}` : ""}`;
