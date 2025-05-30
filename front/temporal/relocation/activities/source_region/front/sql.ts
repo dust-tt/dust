@@ -180,6 +180,34 @@ export async function readFrontTableChunk({
     }
   );
 
+  // Apply template ID mapping for agent_configurations
+  // because some templates have a different ID in EU region
+  if (
+    tableName === "agent_configurations" &&
+    sourceRegion === "us-central1" &&
+    destRegion === "europe-west1"
+  ) {
+    const templateIdMapping: Record<number, number> = {
+      64: 274877906952, // prospectQuestions
+      65: 274877906944, // accountSnapshot
+      66: 274877906953, // research
+      68: 274877906957, // discoveryPrep
+      69: 274877906948, // docBuilder
+      70: 274877906954, // ticketClassify
+      71: 274877906958, // incidentCommunication
+      72: 274877906956, // dataCatalogExplorer
+      73: 274877906950, // ITHelpDesk
+      74: 274877906955, // askLegal
+      75: 274877906951, // legalReview
+    };
+
+    for (const row of rows as [{ id: ModelId; templateId: number | null }]) {
+      if (row.templateId != null && templateIdMapping[row.templateId]) {
+        row.templateId = templateIdMapping[row.templateId];
+      }
+    }
+  }
+
   const blob: RelocationBlob = {
     statements: {
       [tableName]: generateParameterizedInsertStatements(tableName, rows, {

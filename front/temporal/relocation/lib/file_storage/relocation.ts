@@ -18,6 +18,7 @@ export async function writeToRelocationStorage(
   { workspaceId, type, operation, fileName }: RelocationStorageOptions
 ): Promise<string> {
   const timestamp = Date.now();
+  // default to timestamp if custom fileName if not provided
   const path = `${RELOCATION_PATH_PREFIX}/${workspaceId}/${type}/${operation}/${fileName ?? timestamp}.json`;
 
   const relocationBucket = getBucketInstance(config.getGcsRelocationBucket(), {
