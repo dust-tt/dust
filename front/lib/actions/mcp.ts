@@ -661,7 +661,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
           actionName: actionConfiguration.name,
           error: toolCallResult
             ? toolCallResult.error.message
-            : "No tool result",
+            : "No tool call result",
         },
         "Error calling MCP tool on run."
       );
