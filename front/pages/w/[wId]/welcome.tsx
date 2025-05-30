@@ -19,6 +19,7 @@ import { withDefaultUserAuthPaywallWhitelisted } from "@app/lib/iam/session";
 import type { UserType, WorkspaceType } from "@app/types";
 import type { JobType } from "@app/types/jobt_type";
 import { isJobType, JOB_TYPE_OPTIONS } from "@app/types/jobt_type";
+import { fetcherWithBody } from "@app/lib/swr/swr";
 
 export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
   user: UserType;
@@ -79,29 +80,24 @@ export default function Welcome({
   }, [firstName, lastName, jobType, jobTypes]);
 
   const { submit, isSubmitting } = useSubmitFunction(async () => {
-    const updateUserFullNameRes = await fetch("/api/user", {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ firstName, lastName }),
-    });
-    if (updateUserFullNameRes.ok) {
-      await fetch("/api/user/metadata/job_type", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ value: jobType }),
-      });
+    const updateUserFullNameRes = await fetcherWithBody([
+      "/api/user",
+      { firstName, lastName },
+      "PATCH",
+    ]);
 
-      await fetch("/api/user/onboarding-complete", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ jobType }),
-      });
+    if (updateUserFullNameRes.ok) {
+      await fetcherWithBody([
+        "/api/user/metadata/job_type",
+        { value: jobType },
+        "POST",
+      ]);
+
+      await fetcherWithBody([
+        "/api/user/onboarding-complete",
+        { jobType },
+        "POST",
+      ]);
     }
     await router.push(
       `/w/${owner.sId}/assistant/new?welcome=true${
