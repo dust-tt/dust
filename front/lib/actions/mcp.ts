@@ -732,9 +732,11 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
 
         switch (block.type) {
           case "text": {
-            // Return as is.
             return {
-              content: block,
+              content: {
+                type: block.type,
+                text: stripNullBytes(block.text),
+              },
               file: null,
             };
           }
@@ -752,7 +754,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
               return {
                 content: {
                   type: "text",
-                  text: "The generated image has a mime type that is not supported.",
+                  text: "The mime type of the image generated is not supported.",
                 },
                 file: null,
               };
