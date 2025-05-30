@@ -165,7 +165,7 @@ function canJoinTargetWorkspace(
 
 export async function handleEnterpriseSignUpFlow(
   user: UserResource,
-  workOSOrganizationId: string
+  enterpriseConnectionWorkspaceId: string
 ): Promise<{
   flow: "unauthorized" | null;
   workspace: Workspace | null;
@@ -177,7 +177,7 @@ export async function handleEnterpriseSignUpFlow(
     }),
     Workspace.findOne({
       where: {
-        workOSOrganizationId,
+        sId: enterpriseConnectionWorkspaceId,
       },
     }),
   ]);
