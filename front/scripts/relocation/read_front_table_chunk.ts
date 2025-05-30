@@ -42,6 +42,9 @@ makeScript(
       type: "string",
       required: true,
     },
+    fileName: {
+      type: "string",
+    },
   },
   async ({
     destRegion,
@@ -50,6 +53,7 @@ makeScript(
     sourceRegion,
     tableName,
     workspaceId,
+    fileName,
     execute,
   }) => {
     if (!isRegionType(sourceRegion) || !isRegionType(destRegion)) {
@@ -73,6 +77,7 @@ makeScript(
           tableName,
           workspaceId,
           limit,
+          fileName,
         });
         logger.info(res, "readFrontTableChunk");
       } catch (err) {
