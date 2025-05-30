@@ -253,7 +253,10 @@ function logRateLimitHeaders(
 ) {
   const rateLimitHeaders: Record<string, string> = {};
   response.headers.forEach((value, key) => {
-    if (key.toLowerCase().startsWith("x-ratelimit")) {
+    if (
+      key.toLowerCase().startsWith("x-ratelimit") ||
+      key.toLowerCase() === "retry-after"
+    ) {
       rateLimitHeaders[key] = value;
     }
   });
