@@ -236,6 +236,10 @@ function getRetryAfterDuration(response: Response): number {
   return NO_RETRY_AFTER_DELAY;
 }
 
+function sampleJitter(): number {
+  return Math.floor(Math.random() * RETRY_AFTER_JITTER);
+}
+
 function checkNearRateLimit(response: Response): boolean {
   const nearLimitHeader = response.headers.get(RATE_LIMIT_HEADERS.nearLimit);
   const remainingHeader = response.headers.get(RATE_LIMIT_HEADERS.remaining);
@@ -427,8 +431,7 @@ export class ConfluenceClient {
 
         if (delayMs !== NO_RETRY_AFTER_DELAY) {
           // Server provided a delay (relevant for Case 2 or if retries exhausted).
-          retryAfterMsForTemporal =
-            delayMs + Math.floor(Math.random() * RETRY_AFTER_JITTER);
+          retryAfterMsForTemporal = delayMs + sampleJitter();
           if (retryCount >= MAX_RATE_LIMIT_RETRY_COUNT) {
             logReason = `Activity retries exhausted. Server suggested delay ${delayMs}ms.`;
           } else {
@@ -501,9 +504,7 @@ export class ConfluenceClient {
           url: `${this.apiUrl}${endpoint}`,
           response,
         },
-        retryAfterMs:
-          NEAR_RATE_LIMIT_DELAY +
-          Math.floor(Math.random() * RETRY_AFTER_JITTER),
+        retryAfterMs: NEAR_RATE_LIMIT_DELAY + sampleJitter(),
       });
     }
 
