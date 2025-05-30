@@ -41,7 +41,7 @@ import type {
 import type { AgentConfigurationType } from "@app/types";
 import {
   assertNever,
-  CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG,
+  CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG,
   DEFAULT_MAX_STEPS_USE_PER_RUN,
 } from "@app/types";
 import type { TagType } from "@app/types/tag";
@@ -317,8 +317,8 @@ export function getDefaultAssistantState() {
     avatarUrl: null,
     generationSettings: {
       modelSettings: {
-        modelId: CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG.modelId,
-        providerId: CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG.providerId,
+        modelId: CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG.modelId,
+        providerId: CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG.providerId,
       },
       temperature: 0.7,
     },

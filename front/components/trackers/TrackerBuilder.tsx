@@ -40,7 +40,7 @@ import type {
   WorkspaceType,
 } from "@app/types";
 import {
-  CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG,
+  CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG,
   TRACKER_FREQUENCIES,
 } from "@app/types";
 
@@ -81,8 +81,8 @@ export const TrackerBuilder = ({
       skipEmptyEmails: true,
       recipients: "",
       recipientsError: null,
-      modelId: CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG.modelId,
-      providerId: CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG.providerId,
+      modelId: CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG.modelId,
+      providerId: CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG.providerId,
       temperature: 0.5,
       maintainedDataSources: {},
       watchedDataSources: {},
