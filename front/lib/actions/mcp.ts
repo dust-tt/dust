@@ -743,7 +743,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
               return {
                 content: {
                   type: "text",
-                  text: "The generated image was too large to be stored",
+                  text: "The generated image was too large to be stored.",
                 },
                 file: null,
               };
@@ -752,7 +752,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
               return {
                 content: {
                   type: "text",
-                  text: "The generated image has a mime type that is not supported",
+                  text: "The generated image has a mime type that is not supported.",
                 },
                 file: null,
               };
