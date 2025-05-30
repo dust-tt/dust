@@ -200,6 +200,8 @@ const THROTTLE_TRIGGER_RATIO = 0.3;
 const NO_RETRY_AFTER_DELAY = -1;
 // Number of times we retry when rate limited and Confluence does provide a retry-after header.
 const MAX_RATE_LIMIT_RETRY_COUNT = 5;
+// We take some margin on the value provided for the retry-after.
+const RETRY_AFTER_MULTIPLIER = 1.5;
 // If Confluence returns a retry-after header with a delay greater than this value, we cap it.
 const MAX_RETRY_AFTER_DELAY = 300_000; // 5 minutes
 // If Confluence indicates that we are approaching the rate limit, we delay by this value.
@@ -420,7 +422,7 @@ export class ConfluenceClient {
 
         if (delayMs !== NO_RETRY_AFTER_DELAY) {
           // Server provided a delay (relevant for Case 2 or if retries exhausted).
-          retryAfterMsForTemporal = delayMs;
+          retryAfterMsForTemporal = delayMs * RETRY_AFTER_MULTIPLIER;
           if (retryCount >= MAX_RATE_LIMIT_RETRY_COUNT) {
             logReason = `Activity retries exhausted. Server suggested delay ${delayMs}ms.`;
           } else {
