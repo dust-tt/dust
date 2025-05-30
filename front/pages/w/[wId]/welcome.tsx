@@ -18,6 +18,7 @@ import config from "@app/lib/api/config";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthPaywallWhitelisted } from "@app/lib/iam/session";
 import type { UserType, WorkspaceType } from "@app/types";
+import type { JobType } from "@app/types/jobt_type";
 import { JOB_TYPE_OPTIONS } from "@app/types/jobt_type";
 
 export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
@@ -64,7 +65,7 @@ export default function Welcome({
   const router = useRouter();
   const [firstName, setFirstName] = useState<string>(user.firstName);
   const [lastName, setLastName] = useState<string>(user.lastName || "");
-  const [jobType, setJobType] = useState<string>("");
+  const [jobType, setJobType] = useState<JobType | undefined>(undefined);
   const [isFormValid, setIsFormValid] = useState<boolean>(false);
 
   const jobTypes = JOB_TYPE_OPTIONS;
@@ -73,6 +74,7 @@ export default function Welcome({
     setIsFormValid(
       firstName !== "" &&
         lastName !== "" &&
+        jobType !== undefined &&
         jobTypes.some((jt) => jt.value === jobType)
     );
   }, [firstName, lastName, jobType, jobTypes]);
@@ -169,7 +171,7 @@ export default function Welcome({
               <DropdownMenuContent className="w-[var(--radix-dropdown-menu-trigger-width)]">
                 <DropdownMenuRadioGroup
                   value={jobType}
-                  onValueChange={setJobType}
+                  onValueChange={(value) => setJobType(value as JobType)}
                 >
                   {jobTypes.map((jobTypeOption) => (
                     <DropdownMenuRadioItem
