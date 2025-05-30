@@ -11,7 +11,7 @@ import {
 } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 import OnboardingLayout from "@app/components/sparkle/OnboardingLayout";
 import config from "@app/lib/api/config";
