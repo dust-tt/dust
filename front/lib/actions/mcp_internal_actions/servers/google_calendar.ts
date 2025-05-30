@@ -11,6 +11,7 @@ import {
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import { GMAIL_SCOPE_TYPES } from "@app/lib/api/oauth";
 import type { Authenticator } from "@app/lib/auth";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "google_calendar",
@@ -72,8 +73,10 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
           message: "Calendars listed successfully",
           result: res.data,
         });
-      } catch (err: any) {
-        return makeMCPToolTextError(err.message || "Failed to list calendars");
+      } catch (err) {
+        return makeMCPToolTextError(
+          normalizeError(err).message || "Failed to list calendars"
+        );
       }
     }
   );
@@ -132,9 +135,9 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
           message: "Events listed successfully",
           result: res.data,
         });
-      } catch (err: any) {
+      } catch (err) {
         return makeMCPToolTextError(
-          err.message || "Failed to list/search events"
+          normalizeError(err).message || "Failed to list/search events"
         );
       }
     }
@@ -167,8 +170,10 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
           message: "Event fetched successfully",
           result: res.data,
         });
-      } catch (err: any) {
-        return makeMCPToolTextError(err.message || "Failed to get event");
+      } catch (err) {
+        return makeMCPToolTextError(
+          normalizeError(err).message || "Failed to get event"
+        );
       }
     }
   );
@@ -214,7 +219,15 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
         );
       }
       try {
-        const event: any = {
+        const event: {
+          summary: string;
+          description?: string;
+          start: { dateTime: string };
+          end: { dateTime: string };
+          attendees?: { email: string }[];
+          location?: string;
+          colorId?: string;
+        } = {
           summary,
           description,
           start,
@@ -237,8 +250,10 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
           message: "Event created successfully",
           result: res.data,
         });
-      } catch (err: any) {
-        return makeMCPToolTextError(err.message || "Failed to create event");
+      } catch (err) {
+        return makeMCPToolTextError(
+          normalizeError(err).message || "Failed to create event"
+        );
       }
     }
   );
@@ -288,7 +303,15 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
         );
       }
       try {
-        const event: any = {};
+        const event: {
+          summary?: string;
+          description?: string;
+          start?: { dateTime: string };
+          end?: { dateTime: string };
+          attendees?: { email: string }[];
+          location?: string;
+          colorId?: string;
+        } = {};
         if (summary) {
           event.summary = summary;
         }
@@ -319,8 +342,10 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
           message: "Event updated successfully",
           result: res.data,
         });
-      } catch (err: any) {
-        return makeMCPToolTextError(err.message || "Failed to update event");
+      } catch (err) {
+        return makeMCPToolTextError(
+          normalizeError(err).message || "Failed to update event"
+        );
       }
     }
   );
@@ -352,8 +377,10 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
           message: "Event deleted successfully",
           result: "",
         });
-      } catch (err: any) {
-        return makeMCPToolTextError(err.message || "Failed to delete event");
+      } catch (err) {
+        return makeMCPToolTextError(
+          normalizeError(err).message || "Failed to delete event"
+        );
       }
     }
   );
