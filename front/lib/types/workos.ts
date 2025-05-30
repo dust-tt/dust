@@ -6,3 +6,18 @@ export enum WorkOSPortalIntent {
   LogStreams = "log_streams",
   CertificateRenewal = "certificate_renewal",
 }
+
+export type WorkOSConnectionSyncStatus = {
+  status: "not_configured" | "configuring" | "configured";
+  connection: {
+    id: string;
+    state:
+      | "draft"
+      | "active"
+      | "inactive"
+      | "validating"
+      | "deleting"
+      | "invalid_credentials";
+    type: string;
+  } | null;
+};

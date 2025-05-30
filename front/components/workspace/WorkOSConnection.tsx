@@ -1,57 +1,20 @@
 import {
   Button,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
+  ContentMessage,
   ExternalLinkIcon,
   Page,
+  Spinner,
 } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
 
-import { useWorkOSAdminPortalUrl } from "@app/lib/swr/workos";
+import {
+  useWorkOSAdminPortalUrl,
+  useWorkOSDSyncStatus,
+  useWorkOSSSOStatus,
+} from "@app/lib/swr/workos";
 import { useSyncWorkOSDirectoriesAndUsers } from "@app/lib/swr/workspaces";
 import { WorkOSPortalIntent } from "@app/lib/types/workos";
 import type { WorkspaceType } from "@app/types";
-
-const ADMIN_PANEL_OPTIONS = {
-  domain: [
-    {
-      value: WorkOSPortalIntent.DomainVerification,
-      label: "Domain Verification",
-      description:
-        "Verify your organization's domain for SSO and email domain matching",
-    },
-  ],
-  config: [
-    {
-      value: WorkOSPortalIntent.SSO,
-      label: "SSO Settings",
-      description: "Configure Single Sign-On (SSO) with your identity provider",
-    },
-    {
-      value: WorkOSPortalIntent.DSync,
-      label: "Directory Sync",
-      description:
-        "Set up and manage directory synchronization with your identity provider",
-    },
-  ],
-  logs: [
-    {
-      value: WorkOSPortalIntent.AuditLogs,
-      label: "Audit Logs",
-      description:
-        "View and export audit logs for SSO and directory sync activities",
-    },
-    {
-      value: WorkOSPortalIntent.LogStreams,
-      label: "Log Streams",
-      description: "Configure and manage log streaming for security monitoring",
-    },
-  ],
-};
 
 interface WorkOSSyncButtonProps {
   owner: WorkspaceType;
@@ -88,6 +51,9 @@ export function WorkOSConnection({ owner }: WorkOSConnectionProps) {
   const [shouldOpenPortal, setShouldOpenPortal] = useState(false);
 
   const { adminPortalUrl } = useWorkOSAdminPortalUrl(owner.sId, selectedIntent);
+  const { ssoStatus, isLoading: isLoadingSSO } = useWorkOSSSOStatus(owner);
+  const { dsyncStatus, isLoading: isLoadingDSync } =
+    useWorkOSDSyncStatus(owner);
 
   useEffect(() => {
     if (adminPortalUrl && shouldOpenPortal) {
@@ -96,8 +62,103 @@ export function WorkOSConnection({ owner }: WorkOSConnectionProps) {
     }
   }, [adminPortalUrl, shouldOpenPortal]);
 
+  const handleOpenPortal = (intent: WorkOSPortalIntent) => {
+    setSelectedIntent(intent);
+    setShouldOpenPortal(true);
+  };
+
+  const renderSSOSection = () => {
+    if (isLoadingSSO) {
+      return null;
+    }
+
+    return (
+      <Page.Vertical>
+        <Page.Vertical>
+          <Page.H variant="h6">Single Sign-On (SSO)</Page.H>
+          <Page.P variant="secondary">
+            {!ssoStatus || ssoStatus.status === "not_configured"
+              ? "Configure SSO to enable secure authentication for your organization."
+              : ssoStatus.status === "configured"
+                ? `Connected to ${ssoStatus.connection?.type}`
+                : `Configuring ${ssoStatus.connection?.type}...`}
+          </Page.P>
+          {(!ssoStatus || ssoStatus.status !== "configured") && (
+            <Button
+              variant="primary"
+              onClick={() => handleOpenPortal(WorkOSPortalIntent.SSO)}
+              label={
+                ssoStatus?.status === "configuring"
+                  ? "Continue SSO Setup"
+                  : "Configure SSO"
+              }
+              icon={ExternalLinkIcon}
+            />
+          )}
+        </Page.Vertical>
+        {ssoStatus?.status === "configuring" && (
+          <ContentMessage
+            title="Configuration in progress"
+            variant="primary"
+            icon={Spinner}
+          >
+            SSO configuration is in progress. Click to continue setup.
+          </ContentMessage>
+        )}
+      </Page.Vertical>
+    );
+  };
+
+  const renderDSyncSection = () => {
+    if (isLoadingDSync) {
+      return null;
+    }
+
+    return (
+      <Page.Vertical>
+        <Page.Vertical>
+          <div>
+            <Page.H variant="h6">Directory Sync</Page.H>
+            <Page.P variant="secondary">
+              {!dsyncStatus || dsyncStatus.status === "not_configured"
+                ? "Sync your organization's users and groups from your identity provider."
+                : dsyncStatus.status === "configured"
+                  ? `Syncing with ${dsyncStatus.connection?.type}`
+                  : `Configuring ${dsyncStatus.connection?.type}...`}
+            </Page.P>
+          </div>
+          {(!dsyncStatus || dsyncStatus.status !== "configured") && (
+            <Button
+              variant="primary"
+              onClick={() => handleOpenPortal(WorkOSPortalIntent.DSync)}
+              label={
+                dsyncStatus?.status === "configuring"
+                  ? "Continue Directory Sync Setup"
+                  : "Configure Directory Sync"
+              }
+              icon={ExternalLinkIcon}
+            />
+          )}
+        </Page.Vertical>
+        {dsyncStatus?.status === "configuring" && (
+          <ContentMessage
+            title="Configuration in progress"
+            variant="primary"
+            icon={Spinner}
+          >
+            Directory Sync configuration is in progress. Click to continue
+            setup.
+          </ContentMessage>
+        )}
+        {dsyncStatus?.status === "configured" && (
+          <WorkOSSyncButton owner={owner} />
+        )}
+      </Page.Vertical>
+    );
+  };
+
   return (
-    <Page.Vertical gap="sm">
+    <Page.Vertical gap="lg">
       <Page.H variant="h5">Enterprise Connection</Page.H>
       <Page.P variant="secondary">
         {owner.workOSOrganizationId
@@ -105,48 +166,10 @@ export function WorkOSConnection({ owner }: WorkOSConnectionProps) {
           : "Your WorkOS organization will be automatically created when your is upgraded to an eligible plan."}
       </Page.P>
       {owner.workOSOrganizationId && (
-        <div className="flex flex-col items-start gap-3">
-          <div className="flex flex-row gap-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger>
-                <Button
-                  label="Select Panel"
-                  size="sm"
-                  isSelect
-                  icon={ExternalLinkIcon}
-                />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                {Object.entries(ADMIN_PANEL_OPTIONS).map(
-                  ([category, options]) => (
-                    <DropdownMenuGroup key={category}>
-                      <DropdownMenuLabel className="capitalize">
-                        {category}
-                      </DropdownMenuLabel>
-                      {options.map((option) => (
-                        <DropdownMenuItem
-                          key={option.value}
-                          onClick={() => {
-                            setSelectedIntent(option.value);
-                            setShouldOpenPortal(true);
-                          }}
-                          label={option.label}
-                          description={option.description}
-                        />
-                      ))}
-                    </DropdownMenuGroup>
-                  )
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-
-          {/* Debug button: will be replaced by an actual admin console */}
-          <Page.P variant="secondary">Synchronize your directories.</Page.P>
-          <div className="flex w-full flex-col items-start gap-3">
-            <WorkOSSyncButton owner={owner} />
-          </div>
-        </div>
+        <Page.Vertical gap="lg">
+          {renderSSOSection()}
+          {renderDSyncSection()}
+        </Page.Vertical>
       )}
     </Page.Vertical>
   );
