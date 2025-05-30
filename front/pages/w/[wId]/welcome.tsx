@@ -19,8 +19,8 @@ import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthPaywallWhitelisted } from "@app/lib/iam/session";
 import { fetcherWithBody } from "@app/lib/swr/swr";
 import type { UserType, WorkspaceType } from "@app/types";
-import type { JobType } from "@app/types/jobt_type";
-import { isJobType, JOB_TYPE_OPTIONS } from "@app/types/jobt_type";
+import type { JobType } from "@app/types/job_type";
+import { isJobType, JOB_TYPE_OPTIONS } from "@app/types/job_type";
 
 export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
   user: UserType;
