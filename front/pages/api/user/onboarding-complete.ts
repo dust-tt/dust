@@ -18,7 +18,10 @@ export type PostOnboardingCompleteResponseBody = {
 };
 
 const PostOnboardingCompleteBodySchema = t.type({
-  jobType: t.string,
+  metadata: t.record(
+    t.string,
+    t.union([t.string, t.number, t.boolean, t.null, t.undefined])
+  ),
 });
 
 async function handler(
@@ -73,19 +76,26 @@ async function handler(
     });
   }
 
-  const { jobType } = bodyValidation.right;
+  const { metadata } = bodyValidation.right;
+
+  if (!metadata || Object.keys(metadata).length === 0) {
+    return res.status(200).json({ success: true }); // TODO: REVIEW: personal choice, change if needed
+  }
 
   try {
-    await ServerSideTracking.trackCreateMembership({
+    await ServerSideTracking.trackUpdateUserMetadata({
       user: user,
       workspace: renderLightWorkspaceType({ workspace }),
       role: workspace.role !== "none" ? workspace.role : "user",
-      startAt: new Date(),
-      jobType: isJobType(jobType) ? jobType : "other",
+      metadata,
     });
 
     logger.info(
-      { userId: user.sId, workspaceId: workspace.sId, jobType },
+      {
+        userId: user.sId,
+        workspaceId: workspace.sId,
+        metadataKeys: Object.keys(metadata),
+      },
       "Successfully tracked onboarding completion"
     );
 
