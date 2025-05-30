@@ -14,7 +14,7 @@ import type {
   MembershipRoleType,
   UserType,
 } from "@app/types";
-import { JobType } from "@app/types/job_type";
+import type { JobType } from "@app/types/job_type";
 
 const CUSTOMERIO_HOST = "https://track-eu.customer.io/api";
 

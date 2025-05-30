@@ -16,9 +16,9 @@ import type {
   UserTypeWithWorkspaces,
   WorkspaceType,
 } from "@app/types";
+import type { JobType } from "@app/types/job_type";
 
 import type { UserResource } from "../resources/user_resource";
-import { JobType } from "@app/types/job_type";
 
 export class ServerSideTracking {
   static trackSignup(args: { user: UserType }) {
