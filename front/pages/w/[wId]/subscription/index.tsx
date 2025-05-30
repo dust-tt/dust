@@ -2,6 +2,7 @@ import {
   Button,
   CardIcon,
   Chip,
+  ContentMessage,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -249,6 +250,14 @@ export default function Subscription({
 
   const displayPricingTable = subscription.stripeSubscriptionId === null;
 
+  const endDate = subscription.endDate
+    ? new Date(subscription.endDate).toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      })
+    : null;
+
   return (
     <AppContentLayout
       subscription={subscription}
@@ -286,6 +295,26 @@ export default function Subscription({
         />
         <Page.Vertical align="stretch" gap="md">
           <Page.H variant="h5">Your plan </Page.H>
+
+          {endDate && (
+            <ContentMessage
+              title={`Your subscription ends on ${endDate}.`}
+              variant="warning"
+            >
+              <>
+                Connections will be deleted and members will be revoked. Details{" "}
+                <Link
+                  href="https://docs.dust.tt/docs/subscriptions#what-happens-when-we-cancel-our-dust-subscription"
+                  target="_blank"
+                  className="underline"
+                >
+                  here
+                </Link>
+                .
+              </>
+            </ContentMessage>
+          )}
+
           <div>
             {isWebhookProcessing ? (
               <Spinner />
