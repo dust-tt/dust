@@ -11,13 +11,16 @@ import {
 } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 import OnboardingLayout from "@app/components/sparkle/OnboardingLayout";
 import config from "@app/lib/api/config";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthPaywallWhitelisted } from "@app/lib/iam/session";
+import { fetcherWithBody } from "@app/lib/swr/swr";
 import type { UserType, WorkspaceType } from "@app/types";
+import type { JobType } from "@app/types/job_type";
+import { isJobType, JOB_TYPE_OPTIONS } from "@app/types/job_type";
 
 export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
   user: UserType;
@@ -63,32 +66,16 @@ export default function Welcome({
   const router = useRouter();
   const [firstName, setFirstName] = useState<string>(user.firstName);
   const [lastName, setLastName] = useState<string>(user.lastName || "");
-  const [jobType, setJobType] = useState<string>("");
+  const [jobType, setJobType] = useState<JobType | undefined>(undefined);
   const [isFormValid, setIsFormValid] = useState<boolean>(false);
 
-  const jobTypes = useMemo(
-    () => [
-      { value: "customer_success", label: "Customer Success" },
-      { value: "customer_support", label: "Customer Support" },
-      { value: "data", label: "Data" },
-      { value: "design", label: "Design" },
-      { value: "engineering", label: "Engineering" },
-      { value: "finance", label: "Finance" },
-      { value: "people", label: "People (HR)" },
-      { value: "legal", label: "Legal" },
-      { value: "marketing", label: "Marketing" },
-      { value: "operations", label: "Operations" },
-      { value: "product", label: "Product" },
-      { value: "sales", label: "Sales" },
-      { value: "other", label: "Other" },
-    ],
-    []
-  );
+  const jobTypes = JOB_TYPE_OPTIONS;
 
   useEffect(() => {
     setIsFormValid(
       firstName !== "" &&
         lastName !== "" &&
+        jobType !== undefined &&
         jobTypes.some((jt) => jt.value === jobType)
     );
   }, [firstName, lastName, jobType, jobTypes]);
@@ -101,14 +88,13 @@ export default function Welcome({
       },
       body: JSON.stringify({ firstName, lastName }),
     });
+
     if (updateUserFullNameRes.ok) {
-      await fetch("/api/user/metadata/job_type", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ value: jobType }),
-      });
+      await fetcherWithBody([
+        "/api/user/onboarding-complete",
+        { jobType },
+        "POST",
+      ]);
     }
     await router.push(
       `/w/${owner.sId}/assistant/new?welcome=true${
@@ -184,8 +170,12 @@ export default function Welcome({
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-[var(--radix-dropdown-menu-trigger-width)]">
                 <DropdownMenuRadioGroup
-                  value={jobType}
-                  onValueChange={setJobType}
+                  value={jobType || ""}
+                  onValueChange={(value) => {
+                    if (isJobType(value)) {
+                      setJobType(value as JobType);
+                    }
+                  }}
                 >
                   {jobTypes.map((jobTypeOption) => (
                     <DropdownMenuRadioItem
