@@ -14,6 +14,7 @@ import type {
   MembershipRoleType,
   UserType,
 } from "@app/types";
+import type { JobType } from "@app/types/jobt_type";
 
 const CUSTOMERIO_HOST = "https://track-eu.customer.io/api";
 
@@ -46,11 +47,13 @@ export class CustomerioServerSideTracking {
     workspace,
     role,
     startAt,
+    jobType,
   }: {
     user: UserType;
     workspace: LightWorkspaceType;
     role: MembershipRoleType;
     startAt: Date;
+    jobType?: JobType;
   }) {
     await CustomerioServerSideTracking._identifyWorkspace({
       workspace,
@@ -62,6 +65,7 @@ export class CustomerioServerSideTracking {
           sId: workspace.sId,
           startAt,
           role,
+          jobType,
         },
       ],
     });
@@ -262,6 +266,7 @@ export class CustomerioServerSideTracking {
       startAt?: Date;
       endAt?: Date | null;
       role: MembershipRoleType;
+      jobType?: string;
     }>;
   }) {
     if (!config.getCustomerIoEnabled()) {
@@ -295,6 +300,9 @@ export class CustomerioServerSideTracking {
           relAttributes.end_at = w.endAt
             ? Math.floor(w.endAt.getTime() / 1000)
             : null;
+        }
+        if (w.jobType !== undefined) {
+          relAttributes.job_type = w.jobType; // Add jobType to relationship attributes
         }
         return {
           identifiers: {
