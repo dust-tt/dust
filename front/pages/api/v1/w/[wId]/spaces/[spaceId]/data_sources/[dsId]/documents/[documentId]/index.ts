@@ -48,7 +48,7 @@ export const config = {
  *       - in: path
  *         name: wId
  *         required: true
- *         description: ID of the workspace
+ *         description: Id of the workspace
  *         schema:
  *           type: string
  *       - in: path
@@ -100,7 +100,7 @@ export const config = {
  *       - in: path
  *         name: wId
  *         required: true
- *         description: ID of the workspace
+ *         description: Id of the workspace
  *         schema:
  *           type: string
  *       - in: path
@@ -196,7 +196,7 @@ export const config = {
  *       - in: path
  *         name: wId
  *         required: true
- *         description: ID of the workspace
+ *         description: Id of the workspace
  *         schema:
  *           type: string
  *       - in: path
