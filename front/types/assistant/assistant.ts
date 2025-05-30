@@ -83,7 +83,7 @@ export function getLargeWhitelistedModel(
   owner: WorkspaceType
 ): ModelConfigurationType | null {
   if (isProviderWhitelisted(owner, "anthropic")) {
-    return CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG;
+    return CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG;
   }
   if (isProviderWhitelisted(owner, "openai")) {
     return GPT_4_1_MODEL_CONFIG;
