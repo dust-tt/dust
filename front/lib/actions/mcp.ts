@@ -756,60 +756,61 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
                 },
                 file: null,
               };
-            }
-            try {
-              const imageUpsertResult = await uploadBase64ImageToFileStorage(
-                auth,
-                {
-                  base64: block.data,
-                  contentType: block.mimeType,
-                  fileName: isResourceWithName(block)
-                    ? block.name
-                    : `generated-image-${Date.now()}.${extensionsForContentType(block.mimeType)[0]}`,
-                  useCase: fileUseCase,
-                  useCaseMetadata: fileUseCaseMetadata,
-                }
-              );
-
-              if (imageUpsertResult.isErr()) {
-                localLogger.error(
-                  { error: imageUpsertResult.error },
-                  "Error upserting image from base64"
+            } else {
+              try {
+                const imageUpsertResult = await uploadBase64ImageToFileStorage(
+                  auth,
+                  {
+                    base64: block.data,
+                    contentType: block.mimeType,
+                    fileName: isResourceWithName(block)
+                      ? block.name
+                      : `generated-image-${Date.now()}.${extensionsForContentType(block.mimeType)[0]}`,
+                    useCase: fileUseCase,
+                    useCaseMetadata: fileUseCaseMetadata,
+                  }
                 );
+
+                if (imageUpsertResult.isErr()) {
+                  localLogger.error(
+                    { error: imageUpsertResult.error },
+                    "Error upserting image from base64"
+                  );
+                  return {
+                    content: {
+                      type: "text",
+                      text: "Failed to upsert the generated image as a file.",
+                    },
+                    file: null,
+                  };
+                }
+
+                return {
+                  content: {
+                    ...block,
+                    data: "", // Remove the data from the block to avoid storing it in the database.
+                  },
+                  file: imageUpsertResult.value,
+                };
+              } catch (error) {
+                logger.error(
+                  {
+                    action: "mcp_tool",
+                    tool: "generate_image",
+                    workspaceId: owner.sId,
+                    error,
+                  },
+                  "Failed to save the generated image."
+                );
+
                 return {
                   content: {
                     type: "text",
-                    text: "Failed to upsert the generated image as a file.",
+                    text: "Failed to save the generated image.",
                   },
                   file: null,
                 };
               }
-
-              return {
-                content: {
-                  ...block,
-                  data: "", // Remove the data from the block to avoid storing it in the database.
-                },
-                file: imageUpsertResult.value,
-              };
-            } catch (error) {
-              logger.error(
-                {
-                  action: "mcp_tool",
-                  tool: "generate_image",
-                  workspaceId: owner.sId,
-                  error,
-                },
-                "Failed to save the generated image."
-              );
-
-              return {
-                content: {
-                  type: "text",
-                  text: "Failed to save the generated image.",
-                },
-                file: null,
-              };
             }
           }
 
