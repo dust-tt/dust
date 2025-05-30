@@ -288,7 +288,7 @@ export class ServerSideTracking {
     } catch (err) {
       logger.error(
         { userId: user.sId, workspaceId: workspace.sId, err },
-        "Failed to track update user metadata role on Customer.io"
+        "Failed to track update user metadata on Customer.io"
       );
     }
   }
