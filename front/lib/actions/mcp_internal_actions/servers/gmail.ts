@@ -106,13 +106,18 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
 - The draft will include proper email headers and formatting`,
     {
       to: z.array(z.string()).describe("The email addresses of the recipients"),
+      cc: z.array(z.string()).optional().describe("The email addresses to CC"),
+      bcc: z
+        .array(z.string())
+        .optional()
+        .describe("The email addresses to BCC"),
       subject: z.string().describe("The subject line of the email"),
       contentType: z
         .enum(["text/plain", "text/html"])
         .describe("The content type of the email (text/plain or text/html)."),
       body: z.string().describe("The body of the email"),
     },
-    async ({ to, subject, contentType, body }) => {
+    async ({ to, cc, bcc, subject, contentType, body }) => {
       const connection = await getConnectionForInternalMCPServer(auth, {
         mcpServerId,
         connectionType: "personal",
@@ -130,12 +135,16 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
       // Create the email message with proper headers and content.
       const message = [
         `To: ${to.join(", ")}`,
+        cc?.length ? `Cc: ${cc.join(", ")}` : "",
+        bcc?.length ? `Bcc: ${bcc.join(", ")}` : "",
         `Subject: ${subject}`,
         "Content-Type: " + contentType,
         "MIME-Version: 1.0",
         "",
         body,
-      ].join("\n");
+      ]
+        .filter(Boolean)
+        .join("\n");
 
       // Encode the message in base64 as required by the Gmail API.
       const encodedMessage = Buffer.from(message)
