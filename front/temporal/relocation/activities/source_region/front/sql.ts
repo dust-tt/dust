@@ -201,11 +201,11 @@ export async function readFrontTableChunk({
       75: 274877906951, // legalReview
     };
 
-    rows.forEach((row: any) => {
-      if (row.templateId && templateIdMapping[row.templateId]) {
+    for (const row of rows as [{ id: ModelId; templateId: number | null }]) {
+      if (row.templateId != null && templateIdMapping[row.templateId]) {
         row.templateId = templateIdMapping[row.templateId];
       }
-    });
+    }
   }
 
   const blob: RelocationBlob = {
