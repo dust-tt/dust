@@ -53,11 +53,13 @@ export function generateParameterizedInsertStatements(
         if (
           JSONB_COLUMNS.some(
             (c) => c.tableName === tableName && c.columns.includes(col)
-          ) &&
-          // Only transform if it's a string - leave objects as-is.
-          typeof row[col] === "string"
+          )
         ) {
-          params.push(JSON.stringify(row[col]));
+          if (typeof row[col] === "string") {
+            params.push(JSON.stringify(row[col]));
+          } else {
+            params.push(row[col]);
+          }
           continue;
         }
 
