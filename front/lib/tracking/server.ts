@@ -16,6 +16,7 @@ import type {
   UserTypeWithWorkspaces,
   WorkspaceType,
 } from "@app/types";
+import type { JobType } from "@app/types/jobt_type";
 
 import type { UserResource } from "../resources/user_resource";
 
@@ -191,11 +192,13 @@ export class ServerSideTracking {
     workspace,
     role,
     startAt,
+    jobType,
   }: {
     user: UserType;
     workspace: LightWorkspaceType;
     role: MembershipRoleType;
     startAt: Date;
+    jobType?: JobType;
   }) {
     try {
       await CustomerioServerSideTracking.trackCreateMembership({
@@ -203,6 +206,7 @@ export class ServerSideTracking {
         workspace,
         role,
         startAt,
+        jobType,
       });
     } catch (err) {
       logger.error(
