@@ -962,10 +962,9 @@ const buildErrorEvent = (
  * Action rendering.
  */
 
-// Internal interface for the retrieval and rendering of a MCPAction actions. This
-// should not be used outside of api/assistant. We allow a ModelId interface here because we don't
-// have `sId` on actions (the `sId` is on the `Message` object linked to the `UserMessage` parent of
-// this action).
+// Internal interface for the retrieval and rendering of an MCPAction action. Should not be used
+// outside api/assistant. We allow a ModelId interface here because we don't have `sId` on actions
+// (the `sId` is on the `Message` object linked to the `UserMessage` parent of this action).
 export async function mcpActionTypesFromAgentMessageIds(
   auth: Authenticator,
   { agentMessageIds }: { agentMessageIds: ModelId[] }
