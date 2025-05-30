@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import { getWorkOS } from "@app/lib/api/workos/client";
+import { getWorkOSOrganizationDSyncDirectories } from "@app/lib/api/workos/organization";
 import type { Authenticator } from "@app/lib/auth";
 import type { WorkOSConnectionSyncStatus } from "@app/lib/types/workos";
 import { apiError } from "@app/logger/withlogging";
@@ -23,6 +23,16 @@ async function handler(
     });
   }
 
+  if (!auth.isAdmin()) {
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "workspace_auth_error",
+        message: "You are not authorized to perform this action.",
+      },
+    });
+  }
+
   const workspace = auth.getNonNullableWorkspace();
 
   if (!workspace.workOSOrganizationId) {
@@ -35,33 +45,27 @@ async function handler(
     });
   }
 
-  const workOS = getWorkOS();
-  let directories;
+  const r = await getWorkOSOrganizationDSyncDirectories({
+    workspace,
+  });
 
-  try {
-    const { data } = await workOS.directorySync.listDirectories({
-      organizationId: workspace.workOSOrganizationId,
-    });
-    directories = data;
-  } catch (error) {
+  if (r.isErr()) {
     return apiError(req, res, {
       status_code: 500,
       api_error: {
         type: "workos_server_error",
-        message: `Failed to list directories: ${normalizeError(error).message}`,
+        message: `Failed to list directories: ${normalizeError(r.error).message}`,
       },
     });
   }
-
-  console.log("WorkOS Directory Sync directories:", directories);
+  const directories = r.value;
 
   if (directories.length > 1) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "workos_multiple_directories_not_supported",
-        message:
-          "You cannot have multiple directories configured for WorkOS Directory Sync.",
+        message: "Multiple directories are not supported.",
       },
     });
   }
@@ -81,7 +85,7 @@ async function handler(
           state: directory.state,
           type: directory.type,
         }
-      : undefined,
+      : null,
   });
 }
 

@@ -5,6 +5,7 @@ import type {
   WorkOSConnectionSyncStatus,
   WorkOSPortalIntent,
 } from "@app/lib/types/workos";
+import type { LightWorkspaceType } from "@app/types";
 
 export function useWorkOSAdminPortalUrl(
   workspaceId: string,
@@ -22,9 +23,9 @@ export function useWorkOSAdminPortalUrl(
   };
 }
 
-export function useWorkOSSSOStatus(workspaceId: string) {
+export function useWorkOSSSOStatus(workspace: LightWorkspaceType) {
   const { data, error, isLoading } = useSWR<WorkOSConnectionSyncStatus>(
-    `/api/w/${workspaceId}/workos/sso`,
+    `/api/w/${workspace.sId}/workos/sso`,
     fetcher
   );
 
@@ -35,9 +36,9 @@ export function useWorkOSSSOStatus(workspaceId: string) {
   };
 }
 
-export function useWorkOSDSyncStatus(workspaceId: string) {
+export function useWorkOSDSyncStatus(workspace: LightWorkspaceType) {
   const { data, error, isLoading } = useSWR<WorkOSConnectionSyncStatus>(
-    `/api/w/${workspaceId}/workos/dsync`,
+    `/api/w/${workspace.sId}/workos/dsync`,
     fetcher
   );
 

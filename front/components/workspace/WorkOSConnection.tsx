@@ -51,10 +51,9 @@ export function WorkOSConnection({ owner }: WorkOSConnectionProps) {
   const [shouldOpenPortal, setShouldOpenPortal] = useState(false);
 
   const { adminPortalUrl } = useWorkOSAdminPortalUrl(owner.sId, selectedIntent);
-  const { ssoStatus, isLoading: isLoadingSSO } = useWorkOSSSOStatus(owner.sId);
-  const { dsyncStatus, isLoading: isLoadingDSync } = useWorkOSDSyncStatus(
-    owner.sId
-  );
+  const { ssoStatus, isLoading: isLoadingSSO } = useWorkOSSSOStatus(owner);
+  const { dsyncStatus, isLoading: isLoadingDSync } =
+    useWorkOSDSyncStatus(owner);
 
   useEffect(() => {
     if (adminPortalUrl && shouldOpenPortal) {

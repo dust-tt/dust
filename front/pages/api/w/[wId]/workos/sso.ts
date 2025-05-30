@@ -1,13 +1,14 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import { getWorkOS } from "@app/lib/api/workos/client";
+import { getWorkOSOrganizationSSOConnections } from "@app/lib/api/workos/organization";
 import type { Authenticator } from "@app/lib/auth";
 import type { WorkOSConnectionSyncStatus } from "@app/lib/types/workos";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
+import { normalizeError } from "@app/types";
 
-export default withSessionAuthenticationForWorkspace(async function handler(
+async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<WorkOSConnectionSyncStatus>>,
   auth: Authenticator
@@ -18,6 +19,16 @@ export default withSessionAuthenticationForWorkspace(async function handler(
       api_error: {
         type: "method_not_supported_error",
         message: "The method passed is not supported.",
+      },
+    });
+  }
+
+  if (!auth.isAdmin()) {
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "workspace_auth_error",
+        message: "You are not authorized to perform this action.",
       },
     });
   }
@@ -34,23 +45,20 @@ export default withSessionAuthenticationForWorkspace(async function handler(
     });
   }
 
-  const workOS = getWorkOS();
-  let ssoConnections;
+  const r = await getWorkOSOrganizationSSOConnections({
+    workspace,
+  });
 
-  try {
-    const { data } = await workOS.sso.listConnections({
-      organizationId: workspace.workOSOrganizationId,
-    });
-    ssoConnections = data;
-  } catch (error) {
+  if (r.isErr()) {
     return apiError(req, res, {
       status_code: 500,
       api_error: {
         type: "workos_server_error",
-        message: `Failed to list SSO connections: ${error instanceof Error ? error.message : "Unknown error"}`,
+        message: `Failed to list SSO connections: ${normalizeError(r.error).message}`,
       },
     });
   }
+  const ssoConnections = r.value;
 
   if (ssoConnections.length > 1) {
     return apiError(req, res, {
@@ -77,6 +85,8 @@ export default withSessionAuthenticationForWorkspace(async function handler(
           state: connection.state,
           type: connection.type,
         }
-      : undefined,
+      : null,
   });
-});
+}
+
+export default withSessionAuthenticationForWorkspace(handler);

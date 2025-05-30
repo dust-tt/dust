@@ -9,7 +9,7 @@ export enum WorkOSPortalIntent {
 
 export type WorkOSConnectionSyncStatus = {
   status: "not_configured" | "configuring" | "configured";
-  connection?: {
+  connection: {
     id: string;
     state:
       | "draft"
@@ -19,5 +19,5 @@ export type WorkOSConnectionSyncStatus = {
       | "deleting"
       | "invalid_credentials";
     type: string;
-  };
+  } | null;
 };

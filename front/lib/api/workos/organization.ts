@@ -1,4 +1,5 @@
-import { GeneratePortalLinkIntent } from "@workos-inc/node";
+import type { Connection, Directory } from "@workos-inc/node";
+import { AutoPaginatable, GeneratePortalLinkIntent } from "@workos-inc/node";
 
 import { getWorkOS } from "@app/lib/api/workos/client";
 import { Workspace } from "@app/lib/models/workspace";
@@ -77,4 +78,49 @@ export function generateWorkOSAdminPortalUrl({
     intent,
     returnUrl,
   });
+}
+
+export async function getWorkOSOrganizationSSOConnections({
+  workspace,
+}: {
+  workspace: WorkspaceType;
+}): Promise<Result<Connection[], Error>> {
+  if (!workspace.workOSOrganizationId) {
+    return new Err(
+      new Error("WorkOS organization not found for this workspace.")
+    );
+  }
+
+  try {
+    const { data: directories } = await getWorkOS().sso.listConnections({
+      organizationId: workspace.workOSOrganizationId,
+    });
+
+    return new Ok(directories);
+  } catch (error) {
+    return new Err(normalizeError(error));
+  }
+}
+
+export async function getWorkOSOrganizationDSyncDirectories({
+  workspace,
+}: {
+  workspace: WorkspaceType;
+}): Promise<Result<Directory[], Error>> {
+  if (!workspace.workOSOrganizationId) {
+    return new Err(
+      new Error("WorkOS organization not found for this workspace.")
+    );
+  }
+
+  try {
+    const { data: directories } =
+      await getWorkOS().directorySync.listDirectories({
+        organizationId: workspace.workOSOrganizationId,
+      });
+
+    return new Ok(directories);
+  } catch (error) {
+    return new Err(normalizeError(error));
+  }
 }
