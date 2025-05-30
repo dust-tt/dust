@@ -81,11 +81,13 @@ export default function Welcome({
   }, [firstName, lastName, jobType, jobTypes]);
 
   const { submit, isSubmitting } = useSubmitFunction(async () => {
-    const updateUserFullNameRes = await fetcherWithBody([
-      "/api/user",
-      { firstName, lastName },
-      "PATCH",
-    ]);
+    const updateUserFullNameRes = await fetch("/api/user", {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ firstName, lastName }),
+    });
 
     if (updateUserFullNameRes.ok) {
       await fetcherWithBody([
@@ -96,7 +98,7 @@ export default function Welcome({
 
       await fetcherWithBody([
         "/api/user/onboarding-complete",
-        { jobType },
+        { metadata: { jobType } },
         "POST",
       ]);
     }
