@@ -107,7 +107,7 @@ async function handler(
           status_code: 500,
           api_error: {
             type: "internal_server_error",
-            message: "Failed to upsert the file.",
+            message: rUpsert.error.message,
           },
         });
       }

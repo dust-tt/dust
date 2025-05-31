@@ -79,7 +79,7 @@ const upsertDocumentToDatasource: ProcessingFunction = async (
     return new Err({
       name: "dust_error",
       code: "internal_server_error",
-      message: "There was an error upserting the document.",
+      message: upsertDocumentRes.error.message,
       data_source_error: upsertDocumentRes.error,
     });
   }
@@ -208,7 +208,7 @@ const upsertTableToDatasource: ProcessingFunction = async (
     return new Err({
       name: "dust_error",
       code: "internal_server_error",
-      message: `There was an error upserting the table. Error: ${upsertTableRes.error.message}`,
+      message: upsertTableRes.error.message,
       data_source_error: upsertTableRes.error,
     });
   }
@@ -509,7 +509,7 @@ export async function processAndUpsertToDataSource(
     return new Err({
       name: "dust_error",
       code: "internal_server_error",
-      message: `Failed to process the file : ${processingRes.error.message}`,
+      message: `Failed to process the file: ${processingRes.error.message}`,
       processingError: processingRes.error,
     });
   }
