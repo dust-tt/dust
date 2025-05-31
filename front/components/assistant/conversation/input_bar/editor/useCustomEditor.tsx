@@ -3,6 +3,7 @@ import Placeholder from "@tiptap/extension-placeholder";
 import type { Editor, JSONContent } from "@tiptap/react";
 import { useEditor } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
+import type { SuggestionKeyDownProps } from "@tiptap/suggestion";
 import { useEffect, useMemo } from "react";
 
 import { DataSourceLinkExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/DataSourceLinkExtension";
@@ -13,7 +14,7 @@ import { ParagraphExtension } from "@app/components/assistant/conversation/input
 import { URLDetectionExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/URLDetectionExtension";
 import { createMarkdownSerializer } from "@app/components/assistant/conversation/input_bar/editor/markdownSerializer";
 import type { EditorSuggestions } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
-import { makeGetAssistantSuggestions } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
+import type { SuggestionProps } from "@app/components/assistant/conversation/input_bar/editor/useMentionDropdown";
 import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isSubmitMessageKey } from "@app/lib/keymaps";
 import { isMobile } from "@app/lib/utils";
@@ -198,6 +199,14 @@ export interface CustomEditorProps {
   resetEditorContainerSize: () => void;
   disableAutoFocus: boolean;
   onUrlDetected?: (candidate: UrlCandidate | NodeCandidate | null) => void;
+  suggestionHandler: {
+    render: () => {
+      onKeyDown: (props: SuggestionKeyDownProps) => boolean;
+      onStart: (props: SuggestionProps) => void;
+      onExit: () => void;
+      onUpdate: (props: SuggestionProps) => void;
+    };
+  };
 }
 
 const useCustomEditor = ({
@@ -206,6 +215,7 @@ const useCustomEditor = ({
   suggestions,
   disableAutoFocus,
   onUrlDetected,
+  suggestionHandler,
 }: CustomEditorProps) => {
   const extensions = [
     StarterKit.configure({
@@ -220,7 +230,7 @@ const useCustomEditor = ({
         class:
           "min-w-0 px-0 py-0 border-none outline-none focus:outline-none focus:border-none ring-0 focus:ring-0 text-highlight-500 font-semibold",
       },
-      suggestion: makeGetAssistantSuggestions(),
+      suggestion: suggestionHandler,
     }),
     Placeholder.configure({
       placeholder: "Ask a question or get some @help",

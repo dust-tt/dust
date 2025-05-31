@@ -5,6 +5,7 @@ import {
   FullscreenIcon,
   useSendNotification,
 } from "@dust-tt/sparkle";
+import type { Editor } from "@tiptap/react";
 import { EditorContent } from "@tiptap/react";
 import React, {
   useCallback,
@@ -16,10 +17,12 @@ import React, {
 } from "react";
 
 import { AssistantPicker } from "@app/components/assistant/AssistantPicker";
+import { MentionDropdown } from "@app/components/assistant/conversation/input_bar/editor/MentionDropdown";
 import useAssistantSuggestions from "@app/components/assistant/conversation/input_bar/editor/useAssistantSuggestions";
 import type { CustomEditorProps } from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
 import useCustomEditor from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
 import useHandleMentions from "@app/components/assistant/conversation/input_bar/editor/useHandleMentions";
+import { useMentionDropdown } from "@app/components/assistant/conversation/input_bar/editor/useMentionDropdown";
 import useUrlHandler from "@app/components/assistant/conversation/input_bar/editor/useUrlHandler";
 import { InputBarAttachmentsPicker } from "@app/components/assistant/conversation/input_bar/InputBarAttachmentsPicker";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
@@ -84,6 +87,9 @@ const InputBarContainer = ({
   const [selectedNode, setSelectedNode] =
     useState<DataSourceViewContentNode | null>(null);
 
+  // Create a ref to hold the editor instance
+  const editorRef = useRef<Editor | null>(null);
+
   const handleUrlDetected = useCallback(
     (candidate: UrlCandidate | NodeCandidate | null) => {
       if (candidate) {
@@ -93,14 +99,22 @@ const InputBarContainer = ({
     []
   );
 
+  // Pass the editor ref to the mention dropdown hook
+  const mentionDropdown = useMentionDropdown(suggestions, editorRef);
+
   const { editor, editorService } = useCustomEditor({
     suggestions,
     onEnterKeyDown,
     resetEditorContainerSize,
     disableAutoFocus,
     onUrlDetected: handleUrlDetected,
+    suggestionHandler: mentionDropdown.getSuggestionHandler(),
   });
 
+  // Update the editor ref when the editor is created
+  useEffect(() => {
+    editorRef.current = editor;
+  }, [editor]);
   useUrlHandler(editor, selectedNode, nodeOrUrlCandidate);
 
   const { spaces, isSpacesLoading } = useSpaces({ workspaceId: owner.sId });
@@ -318,6 +332,8 @@ const InputBarContainer = ({
           }}
         />
       </div>
+
+      <MentionDropdown mentionDropdownState={mentionDropdown} />
     </div>
   );
 };
