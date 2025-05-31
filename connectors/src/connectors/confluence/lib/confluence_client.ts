@@ -604,8 +604,8 @@ export class ConfluenceClient {
       return undefined; // Return undefined for 204 No Content.
     }
 
-    // Clone the response to avoid "Body has already been read" errors
-    // This can happen with undici in concurrent scenarios
+    // Clone the response to avoid "Body has already been read" errors.
+    // This can happen with undici in concurrent scenarios.
     const responseClone = response.clone();
     let responseBody;
     try {
@@ -615,7 +615,7 @@ export class ConfluenceClient {
         error instanceof TypeError &&
         error.message.includes("Body has already been read")
       ) {
-        // Fallback to the cloned response
+        // Fallback to the cloned response.
         responseBody = await responseClone.json();
       } else {
         throw error;
