@@ -18,6 +18,7 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   domain: string | null;
   reason: string | null;
 }>(async (context) => {
+  //TODO(workos): This is probably not needed anymore, sso_required_ prefix is an error from auth0
   const reason =
     typeof context.query.reason === "string" ? context.query.reason : null;
 

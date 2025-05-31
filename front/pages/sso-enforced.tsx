@@ -20,7 +20,7 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
 
   return {
     props: {
-      initiatedLoginUrl: makeEnterpriseConnectionInitiateLoginUrl(
+      initiatedLoginUrl: await makeEnterpriseConnectionInitiateLoginUrl(
         workspaceId,
         returnTo
       ),

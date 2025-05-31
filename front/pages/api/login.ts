@@ -5,7 +5,7 @@ import { evaluateWorkspaceSeatAvailability } from "@app/lib/api/workspace";
 import { AuthFlowError, SSOEnforcedError } from "@app/lib/iam/errors";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { getUserFromSession } from "@app/lib/iam/session";
-import { createOrUpdateUser } from "@app/lib/iam/users";
+import { createOrUpdateUser, fetchUserFromSession } from "@app/lib/iam/users";
 import {
   createWorkspace,
   findWorkspaceWithVerifiedDomain,
@@ -336,8 +336,9 @@ async function handler(
   const { inviteToken, wId } = req.query;
   const targetWorkspaceId = typeof wId === "string" ? wId : undefined;
   // Auth0 flow augments token with a claim for workspace id linked to the enterprise connection.
-  const enterpriseConnectionWorkspaceId =
-    session.user["https://dust.tt/workspaceId"];
+
+  //TODO(workos): Get the enterprise connection workspaceId. We can get organizationId from authenticateWithCode, and store in session.
+  const { isSSO, workspaceId } = session;
 
   let targetWorkspace: Workspace | null = null;
   // `membershipInvite` is set to a `MembeshipInvitation` if the query includes an `inviteToken`,
@@ -362,16 +363,37 @@ async function handler(
 
   const membershipInvite = membershipInviteRes.value;
 
-  // Login flow: first step is to attempt to find the user.
-  const { created: userCreated, user } = await createOrUpdateUser(session);
+  // Login flow: the first step is to attempt to find the user.
+  const nullableUser = await fetchUserFromSession(session);
+  const { created: userCreated, user } = await createOrUpdateUser({
+    platform: session.type,
+    user: nullableUser,
+    externalUser: session.user,
+  });
+
+  ServerSideTracking.trackSignup({
+    user: {
+      sId: user.sId,
+      id: user.id,
+      createdAt: user.createdAt.getTime(),
+      provider: user.provider,
+      username: user.username,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      image: user.imageUrl,
+      fullName: user.name,
+    },
+  });
 
   // Prioritize enterprise connections.
-  if (enterpriseConnectionWorkspaceId) {
+  if (workspaceId && isSSO) {
     const { flow, workspace } = await handleEnterpriseSignUpFlow(
       user,
-      enterpriseConnectionWorkspaceId
+      workspaceId
     );
     if (flow) {
+      // Only happen if the workspace associated with workOSOrganizationId is not found.
       res.redirect(`/api/auth/logout?returnTo=/login-error?reason=${flow}`);
       return;
     }

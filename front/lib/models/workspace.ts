@@ -22,6 +22,7 @@ export class Workspace extends BaseModel<Workspace> {
   declare description: string | null;
   declare segmentation: WorkspaceSegmentationType;
   declare ssoEnforced?: boolean;
+  declare workOSOrganizationId: string | null;
   declare subscriptions: NonAttribute<Subscription[]>;
   declare whiteListedProviders: ModelProviderIdType[] | null;
   declare defaultEmbeddingProvider: EmbeddingProviderIdType | null;
@@ -59,6 +60,10 @@ Workspace.init(
       type: DataTypes.BOOLEAN,
       defaultValue: false,
     },
+    workOSOrganizationId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
     conversationsRetentionDays: {
       type: DataTypes.INTEGER,
       allowNull: true,
@@ -92,6 +97,9 @@ Workspace.init(
   {
     modelName: "workspace",
     sequelize: frontSequelize,
-    indexes: [{ unique: true, fields: ["sId"] }],
+    indexes: [
+      { unique: true, fields: ["sId"] },
+      { unique: true, fields: ["workOSOrganizationId"] },
+    ],
   }
 );

@@ -1,4 +1,3 @@
-import type { Session } from "@auth0/nextjs-auth0";
 import type { PostIdentitiesRequestProviderEnum } from "auth0";
 import { escape } from "html-escaper";
 
@@ -11,69 +10,68 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
-import { ServerSideTracking } from "@app/lib/tracking/server";
 import { guessFirstAndLastNameFromFullName } from "@app/lib/user";
-import type { Result, UserProviderType } from "@app/types";
+import type { Result } from "@app/types";
 import { Err, Ok, sanitizeString } from "@app/types";
 
-interface LegacyProviderInfo {
-  provider: UserProviderType;
-  providerId: number | string;
-}
+// interface LegacyProviderInfo {
+//   provider: UserProviderType;
+//   providerId: number | string;
+// }
 
-async function fetchUserWithLegacyProvider(
-  { provider, providerId }: LegacyProviderInfo,
-  sub: string
-) {
-  const user = await UserResource.fetchByProvider(
-    provider,
-    providerId.toString()
-  );
+//TODO(workos): What were legacy providers ?
+// async function fetchUserWithLegacyProvider(
+//   { provider, providerId }: LegacyProviderInfo,
+//   sub: string
+// ) {
+//   const user = await UserResource.fetchByProvider(
+//     provider,
+//     providerId.toString()
+//   );
 
-  // If a legacy user is found, attach the Auth0 user ID (sub) to the existing user account.
-  if (user) {
-    await user.updateAuth0Sub({ sub, provider });
-  }
+//   // If a legacy user is found, attach the Auth0 user ID (sub) to the existing user account.
+//   if (user) {
+//     await user.updateAuth0Sub({ sub, provider });
+//   }
 
-  return user;
-}
+//   return user;
+// }
 
-export async function fetchUserWithAuth0Sub(sub: string) {
-  const userWithAuth0 = await UserResource.fetchByAuth0Sub(sub);
+//TODO(workos): Cleanup legacy provider.
+// function mapAuth0ProviderToLegacy(session: Session): LegacyProviderInfo | null {
+//   const { user } = session;
 
-  return userWithAuth0;
-}
+//   const [rawProvider, providerId] = user.sub.split("|");
+//   switch (rawProvider) {
+//     case "google-oauth2":
+//       return { provider: "google", providerId };
 
-function mapAuth0ProviderToLegacy(session: Session): LegacyProviderInfo | null {
-  const { user } = session;
+//     case "github":
+//       return { provider: "github", providerId };
 
-  const [rawProvider, providerId] = user.sub.split("|");
-  switch (rawProvider) {
-    case "google-oauth2":
-      return { provider: "google", providerId };
-
-    case "github":
-      return { provider: "github", providerId };
-
-    default:
-      return { provider: rawProvider, providerId };
-  }
-}
+//     default:
+//       return { provider: rawProvider, providerId };
+//   }
+// }
 
 export async function fetchUserFromSession(session: SessionWithUser) {
-  const { sub } = session.user;
+  const { email } = session.user;
 
-  const userWithAuth0 = await fetchUserWithAuth0Sub(sub);
-  if (userWithAuth0) {
-    return userWithAuth0;
+  //TODO(workos): Is it ok to fetch by email ?
+  const userWithWorkOS = await UserResource.fetchByEmail(email);
+  if (userWithWorkOS) {
+    return userWithWorkOS;
   }
 
-  const legacyProviderInfo = mapAuth0ProviderToLegacy(session);
-  if (!legacyProviderInfo) {
-    return null;
-  }
+  //TODO(workos): No legacy provider info.
+  // const legacyProviderInfo = mapAuth0ProviderToLegacy(session);
+  // if (!legacyProviderInfo) {
+  //   return null;
+  // }
 
-  return fetchUserWithLegacyProvider(legacyProviderInfo, sub);
+  // return fetchUserWithLegacyProvider(legacyProviderInfo, sub);
+
+  return null;
 }
 
 export async function maybeUpdateFromExternalUser(
@@ -94,13 +92,14 @@ export async function maybeUpdateFromExternalUser(
   }
 }
 
-export async function createOrUpdateUser(
-  session: SessionWithUser
-): Promise<{ user: UserResource; created: boolean }> {
-  const { user: externalUser } = session;
-
-  const user = await fetchUserFromSession(session);
-
+export async function createOrUpdateUser({
+  user,
+  externalUser,
+}: {
+  platform: SessionWithUser["type"];
+  user: UserResource | null;
+  externalUser: ExternalUser;
+}): Promise<{ user: UserResource; created: boolean }> {
   if (user) {
     const updateArgs: { [key: string]: string } = {};
 
@@ -125,6 +124,10 @@ export async function createOrUpdateUser(
       }
     }
 
+    if (externalUser.workOSId) {
+      updateArgs.workOSId = externalUser.workOSId;
+    }
+
     if (Object.keys(updateArgs).length > 0) {
       const needsUpdate = Object.entries(updateArgs).some(
         ([key, value]) => user[key as keyof typeof user] !== value
@@ -135,7 +138,8 @@ export async function createOrUpdateUser(
           updateArgs.username || user.name,
           updateArgs.firstName || user.firstName,
           updateArgs.lastName || user.lastName,
-          updateArgs.email || user.email
+          updateArgs.email || user.email,
+          updateArgs.workOSId || user.workOSId
         );
       }
     }
@@ -154,28 +158,14 @@ export async function createOrUpdateUser(
 
     const u = await UserResource.makeNew({
       sId: generateRandomModelSId(),
-      auth0Sub: externalUser.sub,
-      provider: mapAuth0ProviderToLegacy(session)?.provider ?? null,
+      auth0Sub: externalUser.auth0Sub,
+      workOSId: externalUser.workOSId,
+      provider: null, ///session.provider,
       username: externalUser.nickname,
       email: sanitizeString(externalUser.email),
       name: externalUser.name,
       firstName,
       lastName,
-    });
-
-    ServerSideTracking.trackSignup({
-      user: {
-        sId: u.sId,
-        id: u.id,
-        createdAt: u.createdAt.getTime(),
-        provider: u.provider,
-        username: u.username,
-        email: u.email,
-        firstName: u.firstName,
-        lastName: u.lastName,
-        image: u.imageUrl,
-        fullName: u.name,
-      },
     });
 
     return { user: u, created: true };

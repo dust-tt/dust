@@ -35,6 +35,7 @@ export class WorkspaceFactory {
     return {
       ...renderLightWorkspaceType({ workspace }),
       ssoEnforced: workspace.ssoEnforced,
+      workOSOrganizationId: workspace.workOSOrganizationId,
     };
   }
 }

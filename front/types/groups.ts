@@ -13,12 +13,15 @@ import type { ModelId } from "./shared/model_id";
  * agent_editors group: Group specific to represent agent editors, tied to an
  *  agent. Has special permissions: not restricted only to admins. Users can
  *  create, and members of the group can update it.
+ *
+ *  provisioned group: Contains all users from a provisioned group.
  */
 export const GROUP_KINDS = [
   "regular",
   "global",
   "system",
   "agent_editors",
+  "provisioned",
 ] as const;
 export type GroupKind = (typeof GROUP_KINDS)[number];
 

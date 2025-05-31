@@ -37,6 +37,7 @@ describe("GET /api/user", () => {
             whiteListedProviders: workspace.whiteListedProviders,
             defaultEmbeddingProvider: workspace.defaultEmbeddingProvider,
             ssoEnforced: workspace.ssoEnforced,
+            workOSOrganizationId: workspace.workOSOrganizationId,
           },
         ],
       },

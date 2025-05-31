@@ -110,6 +110,10 @@ const afterCallback: AfterCallbackPageRoute = async (
     return;
   }
 
+  res.setHeader("Set-Cookie", [
+    `sessionType=auth0; Path=/; Secure;SameSite=Lax`,
+  ]);
+
   return session;
 };
 
