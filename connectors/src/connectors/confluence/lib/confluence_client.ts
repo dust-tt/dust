@@ -485,6 +485,20 @@ export class ConfluenceClient {
       );
     }
 
+    statsDClient.increment("external.api.calls", 1, [
+      "provider:confluence",
+      "status:success",
+    ]);
+
+    const responseBody = await response.json();
+    const result = codec.decode(responseBody);
+
+    if (isLeft(result)) {
+      throw new ConfluenceClientError("Response validation failed", {
+        type: "validation_error",
+      });
+    }
+
     // When approaching the rate limit (THROTTLE_TRIGGER_RATIO of the budget remains), we slow down
     // the query pace by waiting NEAR_RATE_LIMIT_DELAY ms.
     if (
@@ -507,20 +521,6 @@ export class ConfluenceClient {
         "[Confluence] Rate limit nearly hit."
       );
       await setTimeoutAsync(delayMs);
-    }
-
-    statsDClient.increment("external.api.calls", 1, [
-      "provider:confluence",
-      "status:success",
-    ]);
-
-    const responseBody = await response.json();
-    const result = codec.decode(responseBody);
-
-    if (isLeft(result)) {
-      throw new ConfluenceClientError("Response validation failed", {
-        type: "validation_error",
-      });
     }
 
     return result.right;
