@@ -55,10 +55,11 @@ export function generateParameterizedInsertStatements(
             (c) => c.tableName === tableName && c.columns.includes(col)
           )
         ) {
-          if (typeof row[col] === "string") {
+          if (
+            typeof row[col] === "string" ||
+            (Array.isArray(row[col]) && row[col].length > 0)
+          ) {
             params.push(JSON.stringify(row[col]));
-          } else {
-            params.push(row[col]);
           }
           continue;
         }
