@@ -225,8 +225,8 @@ function extractCursorFromLinks(links: { next?: string }): string | null {
   return url.searchParams.get("cursor");
 }
 
-function getRetryAfterDuration(response: Response): number {
-  const retryAfter = response.headers.get("retry-after"); // https://developer.atlassian.com/cloud/confluence/rate-limiting/
+function getRetryAfterDuration(headers: Headers): number {
+  const retryAfter = headers.get("retry-after"); // https://developer.atlassian.com/cloud/confluence/rate-limiting/
   if (retryAfter) {
     const delay = parseInt(retryAfter, 10);
 
@@ -240,10 +240,10 @@ function sampleJitter(): number {
   return Math.floor(Math.random() * RETRY_AFTER_JITTER);
 }
 
-function checkNearRateLimit(response: Response): boolean {
-  const nearLimitHeader = response.headers.get(RATE_LIMIT_HEADERS.nearLimit);
-  const remainingHeader = response.headers.get(RATE_LIMIT_HEADERS.remaining);
-  const limitHeader = response.headers.get(RATE_LIMIT_HEADERS.limit);
+function checkNearRateLimit(headers: Headers): boolean {
+  const nearLimitHeader = headers.get(RATE_LIMIT_HEADERS.nearLimit);
+  const remainingHeader = headers.get(RATE_LIMIT_HEADERS.remaining);
+  const limitHeader = headers.get(RATE_LIMIT_HEADERS.limit);
 
   const remaining = remainingHeader ? parseInt(remainingHeader, 10) : null;
   const limit = limitHeader ? parseInt(limitHeader, 10) : null;
@@ -259,11 +259,11 @@ function checkNearRateLimit(response: Response): boolean {
 }
 
 function logRateLimitHeaders(
-  response: Response,
+  headers: Headers,
   loggerArgs: Record<string, string | number | null>
 ) {
   const rateLimitHeaders: Record<string, string> = {};
-  response.headers.forEach((value, key) => {
+  headers.forEach((value, key) => {
     if (
       key.toLowerCase().startsWith("x-ratelimit") ||
       key.toLowerCase() === "retry-after"
@@ -374,7 +374,7 @@ export class ConfluenceClient {
       }
     })();
 
-    logRateLimitHeaders(response, { endpoint });
+    logRateLimitHeaders(response.headers, { endpoint });
 
     if (!response.ok) {
       // If the token is invalid, the API will return a 403 Forbidden response.
@@ -395,7 +395,7 @@ export class ConfluenceClient {
       // 3. If Confluence does not provide a retry-after header, we throw a transient error and
       //    let Temporal retry in MAX_RETRY_AFTER_DELAY ms.
       if (response.status === 429) {
-        const delayMs = getRetryAfterDuration(response);
+        const delayMs = getRetryAfterDuration(response.headers);
 
         statsDClient.increment("external.api.calls", 1, [
           "provider:confluence",
@@ -490,7 +490,7 @@ export class ConfluenceClient {
     if (
       !bypassThrottle &&
       !this.ignoreNearRateLimit &&
-      checkNearRateLimit(response)
+      checkNearRateLimit(response.headers)
     ) {
       statsDClient.increment("external.api.calls", 1, [
         "provider:confluence",
