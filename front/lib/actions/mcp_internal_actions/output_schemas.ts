@@ -392,6 +392,7 @@ export const PersonalAuthenticationRequiredErrorResourceSchema = z.object({
   mcpServerId: z.string(),
   provider: z.string(),
   useCase: z.string(),
+  scope: z.string().optional(),
 });
 
 export type PersonalAuthenticationRequiredErrorResourceType = z.infer<

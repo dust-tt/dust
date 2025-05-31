@@ -9,6 +9,7 @@ import {
   makeMCPToolTextError,
 } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
+import { GMAIL_SCOPE_TYPES } from "@app/lib/api/oauth";
 import type { Authenticator } from "@app/lib/auth";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 
@@ -19,8 +20,10 @@ const serverInfo: InternalMCPServerDefinitionType = {
   authorization: {
     provider: "gmail" as const,
     use_case: "personal_actions" as const,
+    scope: GMAIL_SCOPE_TYPES.EMAIL,
   },
   icon: "GmailLogo",
+  documentationUrl: "https://docs.dust.tt/docs/gmail-tool-setup",
 };
 
 const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {

@@ -19,12 +19,14 @@ export function MCPServerPersonalAuthenticationRequired({
   mcpServerId,
   provider,
   useCase,
+  scope,
   retryHandler,
 }: {
   owner: LightWorkspaceType;
   mcpServerId: string;
   provider: OAuthProvider;
   useCase: OAuthUseCase;
+  scope?: string;
   retryHandler: () => void;
 }) {
   const { createPersonalConnection } = useCreatePersonalConnection(owner);
@@ -74,7 +76,8 @@ export function MCPServerPersonalAuthenticationRequired({
               const success = await createPersonalConnection(
                 mcpServerId,
                 provider,
-                useCase
+                useCase,
+                scope
               );
               setIsConnecting(false);
               if (!success) {

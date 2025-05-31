@@ -828,6 +828,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "exploded_tables_query"
   | "salesforce_tool"
   | "gmail_tool"
+  | "google_calendar_tool"
   | "agent_builder_v2"
 >();
 
