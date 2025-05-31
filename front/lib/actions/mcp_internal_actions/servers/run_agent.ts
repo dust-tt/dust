@@ -7,7 +7,9 @@ import {
   AGENT_CONFIGURATION_URI_PATTERN,
   ConfigurableToolInputSchemas,
 } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import type { MCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
+import type { AgentLoopRunContextType } from "@app/lib/actions/types";
 import apiConfig from "@app/lib/api/config";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
@@ -33,7 +35,10 @@ function parseAgentConfigurationUri(uri: string): Result<string, Error> {
   return new Ok(match[2]);
 }
 
-function createServer(auth: Authenticator): McpServer {
+function createServer(
+  auth: Authenticator,
+  agentLoopRunContext?: AgentLoopRunContextType
+): McpServer {
   const server = new McpServer(serverInfo);
 
   server.tool(
@@ -49,7 +54,11 @@ function createServer(auth: Authenticator): McpServer {
       childAgent:
         ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.AGENT],
     },
-    async ({ query, childAgent: { uri } }) => {
+    async ({ query, childAgent: { uri } }, { sendNotification }) => {
+      if (!agentLoopRunContext) {
+        throw new Error("Unreachable: missing agentLoopRunContext.");
+      }
+
       const childAgentIdRes = parseAgentConfigurationUri(uri);
       if (childAgentIdRes.isErr()) {
         return makeMCPToolTextError(childAgentIdRes.error.message);
@@ -85,8 +94,8 @@ function createServer(auth: Authenticator): McpServer {
           },
         },
         contentFragment: undefined,
-        // TODO(spolu): pull from the current agent message
-        skipToolsValidation: false,
+        skipToolsValidation:
+          agentLoopRunContext.agentMessage.skipToolsValidation ?? false,
       });
 
       if (convRes.isErr()) {
@@ -124,6 +133,35 @@ function createServer(auth: Authenticator): McpServer {
             return makeMCPToolTextError(errorMessage);
           } else if (event.type === "agent_message_success") {
             break;
+          } else if (event.type === "tool_approve_execution") {
+            // We need to show the validation dialog in the main conversation so we use conversationId and messageId from agentLoopRunContext.
+            // This is not really a progress notifcation but this is the closest among other methods from ServerNotification.
+            const notification: MCPProgressNotificationType = {
+              method: "notifications/progress",
+              params: {
+                progress: 0,
+                total: 1,
+                progressToken: 0,
+                data: {
+                  label: "Waiting for tool approval...",
+                  output: {
+                    type: "resource",
+                    resource: {
+                      type: "tool_approve_execution",
+                      configurationId: event.configurationId,
+                      conversationId: agentLoopRunContext.conversation.sId,
+                      messageId: agentLoopRunContext.agentMessage.sId,
+                      actionId: event.actionId,
+                      metadata: event.metadata,
+                      stake: event.stake,
+                      inputs: event.inputs,
+                    },
+                  },
+                },
+              },
+            };
+
+            await sendNotification(notification);
           }
         }
       } catch (streamError) {

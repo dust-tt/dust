@@ -16,6 +16,7 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
   isMCPProgressNotificationType,
+  isMCPToolApproveExecutionNotificationType,
   isResourceWithName,
   isToolGeneratedFile,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
@@ -150,12 +151,13 @@ export type MCPToolConfigurationType =
   | ServerSideMCPToolConfigurationType
   | ClientSideMCPToolConfigurationType;
 
-type MCPApproveExecutionEvent = {
+export type MCPApproveExecutionEvent = {
   type: "tool_approve_execution";
   created: number;
   configurationId: string;
   messageId: string;
-  action: MCPActionType;
+  conversationId: string;
+  actionId: number;
   inputs: Record<string, unknown>;
   stake?: MCPToolStakeLevelType;
   metadata: MCPValidationMetadataType;
@@ -479,7 +481,8 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
         created: Date.now(),
         configurationId: agentConfiguration.sId,
         messageId: agentMessage.sId,
-        action: mcpAction,
+        conversationId: conversation.sId,
+        actionId: mcpAction.id,
         inputs: rawInputs,
         stake: actionConfiguration.permission,
         metadata: {
@@ -639,14 +642,23 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       } else if (event.type === "notification") {
         const { notification } = event;
         if (isMCPProgressNotificationType(notification)) {
-          yield {
-            type: "tool_notification",
-            created: Date.now(),
-            configurationId: agentConfiguration.sId,
-            messageId: agentMessage.sId,
-            action: mcpAction,
-            notification: notification.params,
-          };
+          // Check if this is a tool_approve_execution from a sub agent.
+          const notificationOutput = notification.params.data.output;
+          if (isMCPToolApproveExecutionNotificationType(notificationOutput)) {
+            yield {
+              created: Date.now(),
+              ...notificationOutput.resource,
+            };
+          } else {
+            yield {
+              type: "tool_notification",
+              created: Date.now(),
+              configurationId: agentConfiguration.sId,
+              messageId: agentMessage.sId,
+              action: mcpAction,
+              notification: notification.params,
+            };
+          }
         }
       }
     }

@@ -3,6 +3,7 @@ import type { Notification } from "@modelcontextprotocol/sdk/types.js";
 import { NotificationSchema } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
+import { MCP_TOOL_STAKE_LEVELS } from "@app/lib/actions/constants";
 import type { SupportedFileContentType } from "@app/types";
 import { FILE_FORMATS } from "@app/types";
 
@@ -490,8 +491,34 @@ const NotificationImageContentSchema = z.object({
 
 type ImageProgressOutput = z.infer<typeof NotificationImageContentSchema>;
 
+const ToolApproveExecutionContentSchema = z.object({
+  type: z.literal("resource"),
+  resource: z.object({
+    type: z.literal("tool_approve_execution"),
+    configurationId: z.string(),
+    conversationId: z.string(),
+    messageId: z.string(),
+    actionId: z.number(),
+    inputs: z.record(z.unknown()),
+    stake: z.enum(MCP_TOOL_STAKE_LEVELS).optional(),
+    metadata: z.object({
+      mcpServerName: z.string(),
+      toolName: z.string(),
+      agentName: z.string(),
+    }),
+  }),
+});
+
+type ToolApproveExecutionOutputType = z.infer<
+  typeof ToolApproveExecutionContentSchema
+>;
+
 export const ProgressNotificationOutputSchema = z
-  .union([NotificationImageContentSchema, TextContentSchema])
+  .union([
+    NotificationImageContentSchema,
+    TextContentSchema,
+    ToolApproveExecutionContentSchema,
+  ])
   .optional();
 
 type ProgressNotificationOutput = z.infer<
@@ -533,4 +560,11 @@ export function isMCPProgressNotificationType(
   notification: Notification
 ): notification is MCPProgressNotificationType {
   return MCPProgressNotificationSchema.safeParse(notification).success;
+}
+
+export function isMCPToolApproveExecutionNotificationType(
+  notificationOutput: ProgressNotificationOutput
+): notificationOutput is ToolApproveExecutionOutputType {
+  return ToolApproveExecutionContentSchema.safeParse(notificationOutput)
+    .success;
 }
