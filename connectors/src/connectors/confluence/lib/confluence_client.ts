@@ -1,6 +1,6 @@
 import { isLeft } from "fp-ts/Either";
 import * as t from "io-ts";
-import type { Response } from "undici";
+import type { Headers } from "undici";
 import { fetch as undiciFetch, ProxyAgent } from "undici";
 
 import { setTimeoutAsync } from "@connectors/lib/async_utils";
