@@ -127,7 +127,8 @@ async function handler(
             status_code: 403,
             api_error: {
               type: "invalid_request_error",
-              message: "User does not have access to the local MCP servers.",
+              message:
+                "User does not have access to the client-side MCP servers.",
             },
           });
         }
