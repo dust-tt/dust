@@ -17,7 +17,7 @@
       "edge_analyzer": {
         "type": "custom",
         "tokenizer": "icu_tokenizer",
-        "filter": ["lowercase", "edge_ngram_filter"]
+        "filter": ["preserve_word_delimiter", "lowercase", "edge_ngram_filter"]
       },
       "tag_edge_analyzer": {
         "type": "custom",
@@ -35,7 +35,9 @@
       "preserve_word_delimiter": {
         "type": "word_delimiter",
         "split_on_numerics": false,
-        "split_on_case_change": false
+        "split_on_case_change": true,
+        "preserve_original": true,
+        "stem_english_possessive": false
       },
       "edge_ngram_filter": {
         "type": "edge_ngram",
