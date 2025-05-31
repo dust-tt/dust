@@ -463,7 +463,7 @@ export class ConfluenceClient {
         throw new ConfluenceClientError("Confluence API rate limit exceeded", {
           type: "http_response_error",
           status: response.status,
-          data: { url: `${this.apiUrl}${endpoint}`, response },
+          data: { url: `${this.apiUrl}${endpoint}` },
           retryAfterMs: retryAfterMsForTemporal,
         });
       }
@@ -480,7 +480,7 @@ export class ConfluenceClient {
         {
           type: "http_response_error",
           status: response.status,
-          data: { url: `${this.apiUrl}${endpoint}`, response, text },
+          data: { url: `${this.apiUrl}${endpoint}`, text },
         }
       );
     }
@@ -604,7 +604,23 @@ export class ConfluenceClient {
       return undefined; // Return undefined for 204 No Content.
     }
 
-    const responseBody = await response.json();
+    // Clone the response to avoid "Body has already been read" errors
+    // This can happen with undici in concurrent scenarios
+    const responseClone = response.clone();
+    let responseBody;
+    try {
+      responseBody = await response.json();
+    } catch (error) {
+      if (
+        error instanceof TypeError &&
+        error.message.includes("Body has already been read")
+      ) {
+        // Fallback to the cloned response
+        responseBody = await responseClone.json();
+      } else {
+        throw error;
+      }
+    }
     const result = codec.decode(responseBody);
 
     if (isLeft(result)) {
