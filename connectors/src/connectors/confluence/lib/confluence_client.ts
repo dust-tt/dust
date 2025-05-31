@@ -1,6 +1,6 @@
 import { isLeft } from "fp-ts/Either";
 import * as t from "io-ts";
-import type { Response } from "undici";
+import type { Headers } from "undici";
 import { fetch as undiciFetch, ProxyAgent } from "undici";
 
 import { setTimeoutAsync } from "@connectors/lib/async_utils";
@@ -604,23 +604,7 @@ export class ConfluenceClient {
       return undefined; // Return undefined for 204 No Content.
     }
 
-    // Clone the response to avoid "Body has already been read" errors.
-    // This can happen with undici in concurrent scenarios.
-    const responseClone = response.clone();
-    let responseBody;
-    try {
-      responseBody = await response.json();
-    } catch (error) {
-      if (
-        error instanceof TypeError &&
-        error.message.includes("Body has already been read")
-      ) {
-        // Fallback to the cloned response.
-        responseBody = await responseClone.json();
-      } else {
-        throw error;
-      }
-    }
+    const responseBody = await response.json();
     const result = codec.decode(responseBody);
 
     if (isLeft(result)) {
