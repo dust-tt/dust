@@ -23,7 +23,9 @@ const serverInfo: InternalMCPServerDefinitionType = {
   name: "content_nodes",
   version: "1.0.0",
   description:
-    "Comprehensive tools to browse, search, and navigate the content nodes hierarchy. Includes Unix-like commands (ls, find) and advanced filtering capabilities.",
+    "Comprehensive content navigation toolkit. Provides Unix-like browsing (ls, find) and smart " +
+    "search tools to help agents efficiently explore and discover documents, folders, and tables " +
+    "within organizational content hierarchies.",
   authorization: null,
   icon: "ActionDocumentTextIcon",
 };
@@ -33,13 +35,19 @@ const createServer = (): McpServer => {
 
   server.tool(
     "search_by_title",
-    `List all nodes whose title match the query title. This is the equivalent of a find -name in Unix.
-    It operates on the content node hierarchy.`,
+    "Search for content nodes by their title or name. Use this when you need to find specific " +
+      "files, documents, folders, or other content by searching for their titles. This is like using " +
+      "'find -name' in Unix - it will find all nodes whose titles contain or start with your search " +
+      "term. A good fit is when the user asks 'find the document called X' or 'show me files with Y " +
+      "in the name'.",
     {
-      query: z.string().describe(
-        `The title to search for. This query parameter supports prefix-based search.
-          For instance, if the title is "Hello World", the query "Hello" will return the node "Hello World".`
-      ),
+      query: z
+        .string()
+        .describe(
+          "The title or name to search for. This supports partial matching - you don't need the " +
+            "exact title. For example, searching for 'budget' will find 'Budget 2024.xlsx', " +
+            "'Q1 Budget Report', etc. Use keywords from the title the user mentioned."
+        ),
       dataSources:
         ConfigurableToolInputSchemas[
           INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
@@ -47,7 +55,9 @@ const createServer = (): McpServer => {
       limit: z
         .number()
         .optional()
-        .describe("Maximum number of nodes to retrieve."),
+        .describe(
+          "Maximum number of results to return. Use 10-20 for initial searches, increase if user needs more results."
+        ),
     },
     async ({ query, dataSources, limit }) => {
       const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
@@ -84,12 +94,15 @@ const createServer = (): McpServer => {
 
   server.tool(
     "list_children",
-    `List direct children of a parent node. This is the equivalent of 'ls' in Unix.
-    Use this to explore the immediate contents of a folder or container node.`,
+    "List the direct contents of a node. Use this when you want to see what's inside a specific " +
+      "node, like 'ls' in Unix. A good fit is when you need to explore the structure step by step.",
     {
       parentId: z
         .string()
-        .describe("The node ID of the parent whose children you want to list."),
+        .describe(
+          "The exact node ID of the folder/node whose contents you want to list. " +
+            "Get this ID from previous search results (it's the 'node_id' field)."
+        ),
       dataSources:
         ConfigurableToolInputSchemas[
           INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
@@ -97,7 +110,9 @@ const createServer = (): McpServer => {
       limit: z
         .number()
         .optional()
-        .describe("Maximum number of children to retrieve."),
+        .describe(
+          "Maximum number of items to show. Use 20-50 for folder listings, increase if user wants to see more."
+        ),
     },
     async ({ parentId, dataSources, limit }) => {
       const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
@@ -133,9 +148,17 @@ const createServer = (): McpServer => {
 
   server.tool(
     "search_by_id",
-    `Find specific nodes by their IDs. Use this when you know the exact node IDs you're looking for.`,
+    "Retrieve specific content nodes when you have their exact IDs. Use this to get detailed " +
+      "information about nodes you've already identified from other searches. This is like looking " +
+      "up specific files by their unique identifiers. Only use this when you have the exact node_id " +
+      "values from previous tool results.",
     {
-      nodeIds: z.array(z.string()).describe("Array of node IDs to search for."),
+      nodeIds: z
+        .array(z.string())
+        .describe(
+          "Array of exact node IDs to retrieve. These are the 'node_id' values from previous " +
+            "search results. Each ID uniquely identifies a specific document, folder, or table."
+        ),
       dataSources:
         ConfigurableToolInputSchemas[
           INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
@@ -172,7 +195,9 @@ const createServer = (): McpServer => {
 
   server.tool(
     "list_root_nodes",
-    `List top-level nodes (nodes with no parent). Use this to explore the root level of the content hierarchy.`,
+    "Show the top-level folders and files in the data sources - the starting point of the content " +
+      "hierarchy. Use this when you want to begin exploring the content structure. This is like " +
+      "listing the root directory - it shows you the highest-level nodes.",
     {
       dataSources:
         ConfigurableToolInputSchemas[
@@ -181,7 +206,7 @@ const createServer = (): McpServer => {
       limit: z
         .number()
         .optional()
-        .describe("Maximum number of root nodes to retrieve."),
+        .describe("Maximum number of top-level items to show.."),
     },
     async ({ dataSources, limit }) => {
       const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
@@ -217,11 +242,17 @@ const createServer = (): McpServer => {
 
   server.tool(
     "search_by_type",
-    `Filter nodes by their type (document, table, folder). Use this to find all nodes of a specific type.`,
+    "'Find all content of a specific type. Use this to retrieve all documents, all " +
+      "spreadsheets/tables, or all folders. Good fits are requests like 'show me all the documents'," +
+      "'find all spreadsheets', or 'list all folders'.",
     {
       nodeTypes: z
         .array(z.enum(["document", "table", "folder"]))
-        .describe("Array of node types to search for."),
+        .describe(
+          "Types of content to find. Use 'document' for text files, PDFs, presentations, etc." +
+            "Use 'table' for spreadsheets, Notion databases, structured data. Use 'folder' for " +
+            "containers/directories. You can specify multiple types to get mixed results."
+        ),
       dataSources:
         ConfigurableToolInputSchemas[
           INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
@@ -229,7 +260,7 @@ const createServer = (): McpServer => {
       limit: z
         .number()
         .optional()
-        .describe("Maximum number of nodes to retrieve."),
+        .describe("Maximum number of items to return."),
     },
     async ({ nodeTypes, dataSources, limit }) => {
       const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
@@ -331,12 +362,16 @@ const createServer = (): McpServer => {
 
   server.tool(
     "search_by_parent_path",
-    `Search nodes that have specific parents in their hierarchy. Use this to find all nodes under a particular path.`,
+    "Find all content that exists anywhere within specific nodes in the hierarchy. Use this to" +
+      "find everything under certain paths, including items in subfolders. This searches the entire" +
+      "subtree, not just direct children.",
     {
       parentIds: z
         .array(z.string())
         .describe(
-          "Array of parent IDs that should be in the node's parents hierarchy."
+          "Array of parent folder/container IDs to search within. Get these IDs from previous" +
+            "search results. The tool will find all content that has ANY of these IDs in its parent" +
+            "hierarchy (meaning it's somewhere under these folders)."
         ),
       dataSources:
         ConfigurableToolInputSchemas[
@@ -345,7 +380,7 @@ const createServer = (): McpServer => {
       limit: z
         .number()
         .optional()
-        .describe("Maximum number of nodes to retrieve."),
+        .describe("Maximum number of items to return."),
     },
     async ({ parentIds, dataSources, limit }) => {
       const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
