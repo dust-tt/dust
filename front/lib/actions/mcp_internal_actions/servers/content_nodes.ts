@@ -2,6 +2,7 @@ import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
+import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { fetchAgentDataSourceConfiguration } from "@app/lib/actions/mcp_internal_actions/servers/utils";
 import {
@@ -10,19 +11,45 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/utils";
 import config from "@app/lib/api/config";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
+import type { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import { CoreAPI, removeNulls } from "@app/types";
+import type { Result } from "@app/types";
+import { CoreAPI, Err, Ok, removeNulls } from "@app/types";
 
 const serverInfo: InternalMCPServerDefinitionType = {
   // TODO(2025-05-30 aubin): find a better name (currently not great in Agent Builder).
   // Maybe browse_internal_data?
   name: "content_nodes",
   version: "1.0.0",
-  description: "Tools to browse and search within the content nodes hierarchy.",
+  description:
+    "Comprehensive tools to browse, search, and navigate the content nodes hierarchy. Includes Unix-like commands (ls, find) and advanced filtering capabilities.",
   authorization: null,
   icon: "ActionDocumentTextIcon",
 };
+
+async function getAgentDataSourceConfigurations(
+  dataSources: DataSourcesToolConfigurationType
+): Promise<Result<AgentDataSourceConfiguration[], Error>> {
+  const agentDataSourceConfigurationsResults = await concurrentExecutor(
+    dataSources,
+    async (dataSourceConfiguration) =>
+      fetchAgentDataSourceConfiguration(dataSourceConfiguration),
+    { concurrency: 10 }
+  );
+
+  if (agentDataSourceConfigurationsResults.some((res) => res.isErr())) {
+    return new Err(new Error("Failed to fetch data source configurations."));
+  }
+
+  return new Ok(
+    removeNulls(
+      agentDataSourceConfigurationsResults.map((res) =>
+        res.isOk() ? res.value : null
+      )
+    )
+  );
+}
 
 const createServer = (): McpServer => {
   const server = new McpServer(serverInfo);
@@ -47,24 +74,13 @@ const createServer = (): McpServer => {
     },
     async ({ query, dataSources, limit }) => {
       const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-      const agentDataSourceConfigurationsResults = await concurrentExecutor(
-        dataSources,
-        async (dataSourceConfiguration) =>
-          fetchAgentDataSourceConfiguration(dataSourceConfiguration),
-        { concurrency: 10 }
-      );
 
-      if (agentDataSourceConfigurationsResults.some((res) => res.isErr())) {
-        return makeMCPToolTextError(
-          "Failed to fetch data source configurations."
-        );
+      const fetchResult = await getAgentDataSourceConfigurations(dataSources);
+
+      if (fetchResult.isErr()) {
+        return makeMCPToolTextError(fetchResult.error.message);
       }
-
-      const agentDataSourceConfigurations = removeNulls(
-        agentDataSourceConfigurationsResults.map((res) =>
-          res.isOk() ? res.value : null
-        )
-      );
+      const agentDataSourceConfigurations = fetchResult.value;
 
       const searchResult = await coreAPI.searchNodes({
         query,
@@ -111,24 +127,12 @@ const createServer = (): McpServer => {
     },
     async ({ parentId, dataSources, limit }) => {
       const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-      const agentDataSourceConfigurationsResults = await concurrentExecutor(
-        dataSources,
-        async (dataSourceConfiguration) =>
-          fetchAgentDataSourceConfiguration(dataSourceConfiguration),
-        { concurrency: 10 }
-      );
+      const fetchResult = await getAgentDataSourceConfigurations(dataSources);
 
-      if (agentDataSourceConfigurationsResults.some((res) => res.isErr())) {
-        return makeMCPToolTextError(
-          "Failed to fetch data source configurations."
-        );
+      if (fetchResult.isErr()) {
+        return makeMCPToolTextError(fetchResult.error.message);
       }
-
-      const agentDataSourceConfigurations = removeNulls(
-        agentDataSourceConfigurationsResults.map((res) =>
-          res.isOk() ? res.value : null
-        )
-      );
+      const agentDataSourceConfigurations = fetchResult.value;
 
       const searchResult = await coreAPI.searchNodes({
         filter: {
@@ -168,24 +172,12 @@ const createServer = (): McpServer => {
     },
     async ({ nodeIds, dataSources }) => {
       const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-      const agentDataSourceConfigurationsResults = await concurrentExecutor(
-        dataSources,
-        async (dataSourceConfiguration) =>
-          fetchAgentDataSourceConfiguration(dataSourceConfiguration),
-        { concurrency: 10 }
-      );
+      const fetchResult = await getAgentDataSourceConfigurations(dataSources);
 
-      if (agentDataSourceConfigurationsResults.some((res) => res.isErr())) {
-        return makeMCPToolTextError(
-          "Failed to fetch data source configurations."
-        );
+      if (fetchResult.isErr()) {
+        return makeMCPToolTextError(fetchResult.error.message);
       }
-
-      const agentDataSourceConfigurations = removeNulls(
-        agentDataSourceConfigurationsResults.map((res) =>
-          res.isOk() ? res.value : null
-        )
-      );
+      const agentDataSourceConfigurations = fetchResult.value;
 
       const searchResult = await coreAPI.searchNodes({
         filter: {
@@ -225,24 +217,12 @@ const createServer = (): McpServer => {
     },
     async ({ dataSources, limit }) => {
       const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-      const agentDataSourceConfigurationsResults = await concurrentExecutor(
-        dataSources,
-        async (dataSourceConfiguration) =>
-          fetchAgentDataSourceConfiguration(dataSourceConfiguration),
-        { concurrency: 10 }
-      );
+      const fetchResult = await getAgentDataSourceConfigurations(dataSources);
 
-      if (agentDataSourceConfigurationsResults.some((res) => res.isErr())) {
-        return makeMCPToolTextError(
-          "Failed to fetch data source configurations."
-        );
+      if (fetchResult.isErr()) {
+        return makeMCPToolTextError(fetchResult.error.message);
       }
-
-      const agentDataSourceConfigurations = removeNulls(
-        agentDataSourceConfigurationsResults.map((res) =>
-          res.isOk() ? res.value : null
-        )
-      );
+      const agentDataSourceConfigurations = fetchResult.value;
 
       const searchResult = await coreAPI.searchNodes({
         filter: {
@@ -288,24 +268,12 @@ const createServer = (): McpServer => {
     },
     async ({ nodeTypes, dataSources, limit }) => {
       const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-      const agentDataSourceConfigurationsResults = await concurrentExecutor(
-        dataSources,
-        async (dataSourceConfiguration) =>
-          fetchAgentDataSourceConfiguration(dataSourceConfiguration),
-        { concurrency: 10 }
-      );
+      const fetchResult = await getAgentDataSourceConfigurations(dataSources);
 
-      if (agentDataSourceConfigurationsResults.some((res) => res.isErr())) {
-        return makeMCPToolTextError(
-          "Failed to fetch data source configurations."
-        );
+      if (fetchResult.isErr()) {
+        return makeMCPToolTextError(fetchResult.error.message);
       }
-
-      const agentDataSourceConfigurations = removeNulls(
-        agentDataSourceConfigurationsResults.map((res) =>
-          res.isOk() ? res.value : null
-        )
-      );
+      const agentDataSourceConfigurations = fetchResult.value;
 
       const searchResult = await coreAPI.searchNodes({
         filter: {
@@ -353,24 +321,12 @@ const createServer = (): McpServer => {
     },
     async ({ mimeTypes, dataSources, limit }) => {
       const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-      const agentDataSourceConfigurationsResults = await concurrentExecutor(
-        dataSources,
-        async (dataSourceConfiguration) =>
-          fetchAgentDataSourceConfiguration(dataSourceConfiguration),
-        { concurrency: 10 }
-      );
+      const fetchResult = await getAgentDataSourceConfigurations(dataSources);
 
-      if (agentDataSourceConfigurationsResults.some((res) => res.isErr())) {
-        return makeMCPToolTextError(
-          "Failed to fetch data source configurations."
-        );
+      if (fetchResult.isErr()) {
+        return makeMCPToolTextError(fetchResult.error.message);
       }
-
-      const agentDataSourceConfigurations = removeNulls(
-        agentDataSourceConfigurationsResults.map((res) =>
-          res.isOk() ? res.value : null
-        )
-      );
+      const agentDataSourceConfigurations = fetchResult.value;
 
       // Use excluded_node_mime_types with a workaround since there's no direct include filter
       // We'll search all nodes and filter client-side for now
@@ -433,24 +389,12 @@ const createServer = (): McpServer => {
     },
     async ({ parentIds, dataSources, limit }) => {
       const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-      const agentDataSourceConfigurationsResults = await concurrentExecutor(
-        dataSources,
-        async (dataSourceConfiguration) =>
-          fetchAgentDataSourceConfiguration(dataSourceConfiguration),
-        { concurrency: 10 }
-      );
+      const fetchResult = await getAgentDataSourceConfigurations(dataSources);
 
-      if (agentDataSourceConfigurationsResults.some((res) => res.isErr())) {
-        return makeMCPToolTextError(
-          "Failed to fetch data source configurations."
-        );
+      if (fetchResult.isErr()) {
+        return makeMCPToolTextError(fetchResult.error.message);
       }
-
-      const agentDataSourceConfigurations = removeNulls(
-        agentDataSourceConfigurationsResults.map((res) =>
-          res.isOk() ? res.value : null
-        )
-      );
+      const agentDataSourceConfigurations = fetchResult.value;
 
       // Search all nodes and filter client-side for nodes that have the specified parents
       const searchResult = await coreAPI.searchNodes({
@@ -488,116 +432,6 @@ const createServer = (): McpServer => {
           nodes: limitedNodes,
           hit_count: limitedNodes.length,
         },
-      });
-    }
-  );
-
-  server.tool(
-    "browse_hierarchy",
-    `Get a hierarchical view starting from a specific node, showing its children and optionally grandchildren.`,
-    {
-      rootNodeId: z
-        .string()
-        .describe("The node ID to start the hierarchy browse from."),
-      depth: z
-        .number()
-        .min(1)
-        .max(3)
-        .default(2)
-        .describe("How many levels deep to browse (1-3)."),
-      dataSources:
-        ConfigurableToolInputSchemas[
-          INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
-        ],
-      limit: z
-        .number()
-        .optional()
-        .describe("Maximum number of nodes per level to retrieve."),
-    },
-    async ({ rootNodeId, depth, dataSources, limit }) => {
-      const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-      const agentDataSourceConfigurationsResults = await concurrentExecutor(
-        dataSources,
-        async (dataSourceConfiguration) =>
-          fetchAgentDataSourceConfiguration(dataSourceConfiguration),
-        { concurrency: 10 }
-      );
-
-      if (agentDataSourceConfigurationsResults.some((res) => res.isErr())) {
-        return makeMCPToolTextError(
-          "Failed to fetch data source configurations."
-        );
-      }
-
-      const agentDataSourceConfigurations = removeNulls(
-        agentDataSourceConfigurationsResults.map((res) =>
-          res.isOk() ? res.value : null
-        )
-      );
-
-      const dataSourceViews = agentDataSourceConfigurations.map(
-        ({ dataSource, dataSourceView }) => ({
-          data_source_id: dataSource.dustAPIDataSourceId,
-          view_filter: dataSourceView.parentsIn ?? [],
-        })
-      );
-
-      // First, get the root node
-      const rootResult = await coreAPI.searchNodes({
-        filter: {
-          data_source_views: dataSourceViews,
-          node_ids: [rootNodeId],
-        },
-      });
-
-      if (rootResult.isErr()) {
-        return makeMCPToolTextError("Failed to find root node");
-      }
-
-      if (rootResult.value.nodes.length === 0) {
-        return makeMCPToolTextError("Root node not found");
-      }
-
-      const hierarchy: any = {
-        root: rootResult.value.nodes[0],
-        children: [],
-      };
-
-      // Get direct children
-      const childrenResult = await coreAPI.searchNodes({
-        filter: {
-          data_source_views: dataSourceViews,
-          parent_id: rootNodeId,
-        },
-        options: { limit },
-      });
-
-      if (childrenResult.isErr()) {
-        return makeMCPToolTextError("Failed to get children");
-      }
-
-      hierarchy.children = childrenResult.value.nodes;
-
-      // If depth > 1, get grandchildren
-      if (depth > 1 && hierarchy.children.length > 0) {
-        for (const child of hierarchy.children) {
-          const grandchildrenResult = await coreAPI.searchNodes({
-            filter: {
-              data_source_views: dataSourceViews,
-              parent_id: child.node_id,
-            },
-            options: { limit },
-          });
-
-          if (grandchildrenResult.isOk()) {
-            (child as any).children = grandchildrenResult.value.nodes;
-          }
-        }
-      }
-
-      return makeMCPToolJSONSuccess({
-        message: "Hierarchy browsed successfully.",
-        result: hierarchy,
       });
     }
   );
