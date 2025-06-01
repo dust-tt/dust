@@ -62,8 +62,17 @@ const createServer = (): McpServer => {
         .describe(
           "Maximum number of results to return. Use 10-20 for initial searches, increase if user needs more results."
         ),
+      sortBy: z
+        .enum(["title", "timestamp"])
+        .optional()
+        .describe(
+          "Sort results by field. Use 'title' to sort alphabetically A-Z, 'timestamp' to sort by " +
+            "most recent first. If not specified, results are returned in default order, which is " +
+            "folders first, then both documents and tables and alphabetically by title. " +
+            "Keep the default order unless there is a specific reason to change it."
+        ),
     },
-    async ({ query, dataSources, limit }) => {
+    async ({ query, dataSources, limit, sortBy }) => {
       const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
       const fetchResult = await getAgentDataSourceConfigurations(dataSources);
@@ -82,6 +91,9 @@ const createServer = (): McpServer => {
         },
         options: {
           limit,
+          sort: sortBy
+            ? [{ field: sortBy, direction: getSortDirection(sortBy) }]
+            : undefined,
         },
       });
 
@@ -117,8 +129,17 @@ const createServer = (): McpServer => {
         .describe(
           "Maximum number of items to show. Use 20-50 for folder listings, increase if user wants to see more."
         ),
+      sortBy: z
+        .enum(["title", "timestamp"])
+        .optional()
+        .describe(
+          "Sort results by field. Use 'title' to sort alphabetically A-Z, 'timestamp' to sort by " +
+            "most recent first. If not specified, results are returned in default order, which is " +
+            "folders first, then both documents and tables and alphabetically by title. " +
+            "Keep the default order unless there is a specific reason to change it."
+        ),
     },
-    async ({ parentId, dataSources, limit }) => {
+    async ({ parentId, dataSources, limit, sortBy }) => {
       const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
       const fetchResult = await getAgentDataSourceConfigurations(dataSources);
 
@@ -136,6 +157,9 @@ const createServer = (): McpServer => {
         },
         options: {
           limit,
+          sort: sortBy
+            ? [{ field: sortBy, direction: getSortDirection(sortBy) }]
+            : undefined,
         },
       });
 
@@ -167,8 +191,17 @@ const createServer = (): McpServer => {
         ConfigurableToolInputSchemas[
           INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
         ],
+      sortBy: z
+        .enum(["title", "timestamp"])
+        .optional()
+        .describe(
+          "Sort results by field. Use 'title' to sort alphabetically A-Z, 'timestamp' to sort by " +
+            "most recent first. If not specified, results are returned in default order, which is " +
+            "folders first, then both documents and tables and alphabetically by title. " +
+            "Keep the default order unless there is a specific reason to change it."
+        ),
     },
-    async ({ nodeIds, dataSources }) => {
+    async ({ nodeIds, dataSources, sortBy }) => {
       const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
       const fetchResult = await getAgentDataSourceConfigurations(dataSources);
 
@@ -183,6 +216,11 @@ const createServer = (): McpServer => {
             agentDataSourceConfigurations
           ),
           node_ids: nodeIds,
+        },
+        options: {
+          sort: sortBy
+            ? [{ field: sortBy, direction: getSortDirection(sortBy) }]
+            : undefined,
         },
       });
 
@@ -210,9 +248,18 @@ const createServer = (): McpServer => {
       limit: z
         .number()
         .optional()
-        .describe("Maximum number of top-level items to show.."),
+        .describe("Maximum number of top-level items to show."),
+      sortBy: z
+        .enum(["title", "timestamp"])
+        .optional()
+        .describe(
+          "Sort results by field. Use 'title' to sort alphabetically A-Z, 'timestamp' to sort by " +
+            "most recent first. If not specified, results are returned in default order, which is " +
+            "folders first, then both documents and tables and alphabetically by title. " +
+            "Keep the default order unless there is a specific reason to change it."
+        ),
     },
-    async ({ dataSources, limit }) => {
+    async ({ dataSources, limit, sortBy }) => {
       const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
       const fetchResult = await getAgentDataSourceConfigurations(dataSources);
 
@@ -230,6 +277,9 @@ const createServer = (): McpServer => {
         },
         options: {
           limit,
+          sort: sortBy
+            ? [{ field: sortBy, direction: getSortDirection(sortBy) }]
+            : undefined,
         },
       });
 
@@ -265,8 +315,17 @@ const createServer = (): McpServer => {
         .number()
         .optional()
         .describe("Maximum number of items to return."),
+      sortBy: z
+        .enum(["title", "timestamp"])
+        .optional()
+        .describe(
+          "Sort results by field. Use 'title' to sort alphabetically A-Z, 'timestamp' to sort by " +
+            "most recent first. If not specified, results are returned in default order, which is " +
+            "folders first, then both documents and tables and alphabetically by title. " +
+            "Keep the default order unless there is a specific reason to change it."
+        ),
     },
-    async ({ nodeTypes, dataSources, limit }) => {
+    async ({ nodeTypes, dataSources, limit, sortBy }) => {
       const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
       const fetchResult = await getAgentDataSourceConfigurations(dataSources);
 
@@ -284,6 +343,9 @@ const createServer = (): McpServer => {
         },
         options: {
           limit,
+          sort: sortBy
+            ? [{ field: sortBy, direction: getSortDirection(sortBy) }]
+            : undefined,
         },
       });
 
@@ -385,8 +447,17 @@ const createServer = (): McpServer => {
         .number()
         .optional()
         .describe("Maximum number of items to return."),
+      sortBy: z
+        .enum(["title", "timestamp"])
+        .optional()
+        .describe(
+          "Sort results by field. Use 'title' to sort alphabetically A-Z, 'timestamp' to sort by " +
+            "most recent first. If not specified, results are returned in default order, which is " +
+            "folders first, then both documents and tables and alphabetically by title. " +
+            "Keep the default order unless there is a specific reason to change it."
+        ),
     },
-    async ({ parentIds, dataSources, limit }) => {
+    async ({ parentIds, dataSources, limit, sortBy }) => {
       const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
       const fetchResult = await getAgentDataSourceConfigurations(dataSources);
 
@@ -405,6 +476,9 @@ const createServer = (): McpServer => {
         },
         options: {
           limit: limit ? limit * 10 : 1000,
+          sort: sortBy
+            ? [{ field: sortBy, direction: getSortDirection(sortBy) }]
+            : undefined,
         },
       });
 
@@ -470,6 +544,15 @@ function makeDataSourceViewFilter(
       view_filter: dataSourceView.parentsIn ?? [],
     })
   );
+}
+
+function getSortDirection(field: "title" | "timestamp"): "asc" | "desc" {
+  switch (field) {
+    case "title":
+      return "asc"; // Alphabetical A-Z.
+    case "timestamp":
+      return "desc"; // Most recent first.
+  }
 }
 
 function formatTimestamp(timestamp: number): string {
