@@ -62,11 +62,8 @@ const createServer = (): McpServer => {
       const searchResult = await coreAPI.searchNodes({
         query,
         filter: {
-          data_source_views: agentDataSourceConfigurations.map(
-            ({ dataSource, dataSourceView }) => ({
-              data_source_id: dataSource.dustAPIDataSourceId,
-              view_filter: dataSourceView.parentsIn ?? [],
-            })
+          data_source_views: makeDataSourceViewFilter(
+            agentDataSourceConfigurations
           ),
         },
         options: {
@@ -113,11 +110,8 @@ const createServer = (): McpServer => {
 
       const searchResult = await coreAPI.searchNodes({
         filter: {
-          data_source_views: agentDataSourceConfigurations.map(
-            ({ dataSource, dataSourceView }) => ({
-              data_source_id: dataSource.dustAPIDataSourceId,
-              view_filter: dataSourceView.parentsIn ?? [],
-            })
+          data_source_views: makeDataSourceViewFilter(
+            agentDataSourceConfigurations
           ),
           parent_id: parentId,
         },
@@ -158,11 +152,8 @@ const createServer = (): McpServer => {
 
       const searchResult = await coreAPI.searchNodes({
         filter: {
-          data_source_views: agentDataSourceConfigurations.map(
-            ({ dataSource, dataSourceView }) => ({
-              data_source_id: dataSource.dustAPIDataSourceId,
-              view_filter: dataSourceView.parentsIn ?? [],
-            })
+          data_source_views: makeDataSourceViewFilter(
+            agentDataSourceConfigurations
           ),
           node_ids: nodeIds,
         },
@@ -203,11 +194,8 @@ const createServer = (): McpServer => {
 
       const searchResult = await coreAPI.searchNodes({
         filter: {
-          data_source_views: agentDataSourceConfigurations.map(
-            ({ dataSource, dataSourceView }) => ({
-              data_source_id: dataSource.dustAPIDataSourceId,
-              view_filter: dataSourceView.parentsIn ?? [],
-            })
+          data_source_views: makeDataSourceViewFilter(
+            agentDataSourceConfigurations
           ),
           parent_id: "root",
         },
@@ -254,11 +242,8 @@ const createServer = (): McpServer => {
 
       const searchResult = await coreAPI.searchNodes({
         filter: {
-          data_source_views: agentDataSourceConfigurations.map(
-            ({ dataSource, dataSourceView }) => ({
-              data_source_id: dataSource.dustAPIDataSourceId,
-              view_filter: dataSourceView.parentsIn ?? [],
-            })
+          data_source_views: makeDataSourceViewFilter(
+            agentDataSourceConfigurations
           ),
           node_types: nodeTypes,
         },
@@ -310,12 +295,9 @@ const createServer = (): McpServer => {
   //     // We'll search all nodes and filter client-side for now
   //     const searchResult = await coreAPI.searchNodes({
   //       filter: {
-  //         data_source_views: agentDataSourceConfigurations.map(
-  //           ({ dataSource, dataSourceView }) => ({
-  //             data_source_id: dataSource.dustAPIDataSourceId,
-  //             view_filter: dataSourceView.parentsIn ?? [],
-  //           })
-  //         ),
+  //         data_source_views: makeDataSourceViewFilter(
+  //           agentDataSourceConfigurations
+  //         )
   //       },
   //       options: {
   //         limit: limit ? limit * 10 : 1000, // Get more results to filter
@@ -378,11 +360,8 @@ const createServer = (): McpServer => {
       // Search all nodes and filter client-side for nodes that have the specified parents
       const searchResult = await coreAPI.searchNodes({
         filter: {
-          data_source_views: agentDataSourceConfigurations.map(
-            ({ dataSource, dataSourceView }) => ({
-              data_source_id: dataSource.dustAPIDataSourceId,
-              view_filter: dataSourceView.parentsIn ?? [],
-            })
+          data_source_views: makeDataSourceViewFilter(
+            agentDataSourceConfigurations
           ),
         },
         options: {
@@ -438,6 +417,17 @@ async function getAgentDataSourceConfigurations(
         res.isOk() ? res.value : null
       )
     )
+  );
+}
+
+function makeDataSourceViewFilter(
+  agentDataSourceConfigurations: AgentDataSourceConfiguration[]
+) {
+  return agentDataSourceConfigurations.map(
+    ({ dataSource, dataSourceView }) => ({
+      data_source_id: dataSource.dustAPIDataSourceId,
+      view_filter: dataSourceView.parentsIn ?? [],
+    })
   );
 }
 
