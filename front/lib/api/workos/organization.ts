@@ -1,4 +1,4 @@
-import type { Connection, Directory } from "@workos-inc/node";
+import type { Connection, Directory, Organization } from "@workos-inc/node";
 import { DomainDataState, GeneratePortalLinkIntent } from "@workos-inc/node";
 import assert from "assert";
 
@@ -9,6 +9,31 @@ import { WorkOSPortalIntent } from "@app/lib/types/workos";
 import logger from "@app/logger/logger";
 import type { Result, WorkspaceType } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
+
+export async function getWorkOSOrganization({
+  workspace,
+  domain,
+}: {
+  workspace: WorkspaceType;
+  domain: WorkspaceHasDomainModel;
+}): Promise<Organization> {
+  try {
+    return await getWorkOS().organizations.getOrganizationByExternalId(
+      workspace.sId
+    );
+  } catch (error) {
+    return await getWorkOS().organizations.createOrganization({
+      name: `${workspace.name} - ${workspace.sId}`,
+      externalId: workspace.sId,
+      domainData: [
+        {
+          domain: domain.domain,
+          state: DomainDataState.Verified,
+        },
+      ],
+    });
+  }
+}
 
 export async function createWorkOSOrganization({
   workspace,
@@ -26,22 +51,13 @@ export async function createWorkOSOrganization({
       workspaceId: workspace.id,
     },
   });
-  assert(
-    domain,
-    "Workspace must have a domain to create a WorkOS organization"
-  );
+
+  if (!domain) {
+    return new Ok(undefined);
+  }
 
   try {
-    const organization = await getWorkOS().organizations.createOrganization({
-      name: `${workspace.name} - ${workspace.id}`,
-      metadata: { workspaceSId: workspace.sId },
-      domainData: [
-        {
-          domain: domain.domain,
-          state: DomainDataState.Verified,
-        },
-      ],
-    });
+    const organization = await getWorkOSOrganization({ workspace, domain });
 
     await Workspace.update(
       {
