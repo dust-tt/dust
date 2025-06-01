@@ -101,7 +101,7 @@ export type ServerSideMCPServerConfigurationType =
     timeFrame: TimeFrame | null;
     jsonSchema: JSONSchema | null;
     additionalConfiguration: Record<string, boolean | number | string>;
-    mcpServerViewId: string; // Contains the sId of the MCP server view.
+    mcpServerViewId: string;
     dustAppConfiguration: DustAppRunConfigurationType | null;
     // Out of convenience, we hold the sId of the internal server if it is an internal server.
     internalMCPServerId: string | null;
