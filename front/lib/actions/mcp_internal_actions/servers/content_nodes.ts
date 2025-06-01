@@ -278,73 +278,74 @@ const createServer = (): McpServer => {
     }
   );
 
-  server.tool(
-    "search_by_mime_type",
-    `Filter nodes by their MIME type. Use this to find nodes with specific content types.`,
-    {
-      mimeTypes: z
-        .array(z.string())
-        .describe(
-          "Array of MIME types to search for (e.g., 'text/plain', 'application/pdf')."
-        ),
-      dataSources:
-        ConfigurableToolInputSchemas[
-          INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
-        ],
-      limit: z
-        .number()
-        .optional()
-        .describe("Maximum number of nodes to retrieve."),
-    },
-    async ({ mimeTypes, dataSources, limit }) => {
-      const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-      const fetchResult = await getAgentDataSourceConfigurations(dataSources);
-
-      if (fetchResult.isErr()) {
-        return makeMCPToolTextError(fetchResult.error.message);
-      }
-      const agentDataSourceConfigurations = fetchResult.value;
-
-      // Use excluded_node_mime_types with a workaround since there's no direct include filter
-      // We'll search all nodes and filter client-side for now
-      const searchResult = await coreAPI.searchNodes({
-        filter: {
-          data_source_views: agentDataSourceConfigurations.map(
-            ({ dataSource, dataSourceView }) => ({
-              data_source_id: dataSource.dustAPIDataSourceId,
-              view_filter: dataSourceView.parentsIn ?? [],
-            })
-          ),
-        },
-        options: {
-          limit: limit ? limit * 10 : 1000, // Get more results to filter
-        },
-      });
-
-      if (searchResult.isErr()) {
-        return makeMCPToolTextError("Failed to search nodes by MIME type");
-      }
-
-      // Filter results by MIME type client-side
-      const filteredNodes = searchResult.value.nodes.filter((node) =>
-        mimeTypes.includes(node.mime_type)
-      );
-
-      // Apply limit after filtering
-      const limitedNodes = limit
-        ? filteredNodes.slice(0, limit)
-        : filteredNodes;
-
-      return makeMCPToolJSONSuccess({
-        message: "Nodes found successfully.",
-        result: {
-          ...searchResult.value,
-          nodes: limitedNodes,
-          hit_count: limitedNodes.length,
-        },
-      });
-    }
-  );
+  // TODO(2025-06-01 aubin): re-enable this if useful and once mime type filtering is implemented.
+  // server.tool(
+  //   "search_by_mime_type",
+  //   `Filter nodes by their MIME type. Use this to find nodes with specific content types.`,
+  //   {
+  //     mimeTypes: z
+  //       .array(z.string())
+  //       .describe(
+  //         "Array of MIME types to search for (e.g., 'text/plain', 'application/pdf')."
+  //       ),
+  //     dataSources:
+  //       ConfigurableToolInputSchemas[
+  //         INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
+  //       ],
+  //     limit: z
+  //       .number()
+  //       .optional()
+  //       .describe("Maximum number of nodes to retrieve."),
+  //   },
+  //   async ({ mimeTypes, dataSources, limit }) => {
+  //     const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+  //     const fetchResult = await getAgentDataSourceConfigurations(dataSources);
+  //
+  //     if (fetchResult.isErr()) {
+  //       return makeMCPToolTextError(fetchResult.error.message);
+  //     }
+  //     const agentDataSourceConfigurations = fetchResult.value;
+  //
+  //     // Use excluded_node_mime_types with a workaround since there's no direct include filter
+  //     // We'll search all nodes and filter client-side for now
+  //     const searchResult = await coreAPI.searchNodes({
+  //       filter: {
+  //         data_source_views: agentDataSourceConfigurations.map(
+  //           ({ dataSource, dataSourceView }) => ({
+  //             data_source_id: dataSource.dustAPIDataSourceId,
+  //             view_filter: dataSourceView.parentsIn ?? [],
+  //           })
+  //         ),
+  //       },
+  //       options: {
+  //         limit: limit ? limit * 10 : 1000, // Get more results to filter
+  //       },
+  //     });
+  //
+  //     if (searchResult.isErr()) {
+  //       return makeMCPToolTextError("Failed to search nodes by MIME type");
+  //     }
+  //
+  //     // Filter results by MIME type client-side
+  //     const filteredNodes = searchResult.value.nodes.filter((node) =>
+  //       mimeTypes.includes(node.mime_type)
+  //     );
+  //
+  //     // Apply limit after filtering
+  //     const limitedNodes = limit
+  //       ? filteredNodes.slice(0, limit)
+  //       : filteredNodes;
+  //
+  //     return makeMCPToolJSONSuccess({
+  //       message: "Nodes found successfully.",
+  //       result: {
+  //         ...searchResult.value,
+  //         nodes: limitedNodes,
+  //         hit_count: limitedNodes.length,
+  //       },
+  //     });
+  //   }
+  // );
 
   server.tool(
     "search_by_parent_path",
@@ -373,6 +374,7 @@ const createServer = (): McpServer => {
       }
       const agentDataSourceConfigurations = fetchResult.value;
 
+      // TODO(2025-06-01 aubin): update semantics to support this.
       // Search all nodes and filter client-side for nodes that have the specified parents
       const searchResult = await coreAPI.searchNodes({
         filter: {
@@ -384,12 +386,12 @@ const createServer = (): McpServer => {
           ),
         },
         options: {
-          limit: limit ? limit * 10 : 1000, // Get more results to filter
+          limit: limit ? limit * 10 : 1000,
         },
       });
 
       if (searchResult.isErr()) {
-        return makeMCPToolTextError("Failed to search nodes by parent path");
+        return makeMCPToolTextError("Failed to search nodes by parent path.");
       }
 
       // Filter results to nodes that have all specified parent IDs in their parents array
