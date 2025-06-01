@@ -14,7 +14,11 @@ import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import type { Result } from "@app/types";
+import type {
+  CoreAPIContentNode,
+  CoreAPISearchNodesResponse,
+  Result,
+} from "@app/types";
 import { CoreAPI, Err, Ok, removeNulls } from "@app/types";
 
 const serverInfo: InternalMCPServerDefinitionType = {
@@ -87,7 +91,7 @@ const createServer = (): McpServer => {
 
       return makeMCPToolJSONSuccess({
         message: "Search successful.",
-        result: searchResult.value,
+        result: renderSearchResults(searchResult.value),
       });
     }
   );
@@ -141,7 +145,7 @@ const createServer = (): McpServer => {
 
       return makeMCPToolJSONSuccess({
         message: "Children listed successfully.",
-        result: searchResult.value,
+        result: renderSearchResults(searchResult.value),
       });
     }
   );
@@ -188,7 +192,7 @@ const createServer = (): McpServer => {
 
       return makeMCPToolJSONSuccess({
         message: "Nodes found successfully.",
-        result: searchResult.value,
+        result: renderSearchResults(searchResult.value),
       });
     }
   );
@@ -235,7 +239,7 @@ const createServer = (): McpServer => {
 
       return makeMCPToolJSONSuccess({
         message: "Root nodes listed successfully.",
-        result: searchResult.value,
+        result: renderSearchResults(searchResult.value),
       });
     }
   );
@@ -289,7 +293,7 @@ const createServer = (): McpServer => {
 
       return makeMCPToolJSONSuccess({
         message: "Nodes found successfully.",
-        result: searchResult.value,
+        result: renderSearchResults(searchResult.value),
       });
     }
   );
@@ -418,13 +422,15 @@ const createServer = (): McpServer => {
         ? filteredNodes.slice(0, limit)
         : filteredNodes;
 
+      const filteredResult = {
+        ...searchResult.value,
+        nodes: limitedNodes,
+        hit_count: limitedNodes.length,
+      };
+
       return makeMCPToolJSONSuccess({
         message: "Nodes found successfully.",
-        result: {
-          ...searchResult.value,
-          nodes: limitedNodes,
-          hit_count: limitedNodes.length,
-        },
+        result: renderSearchResults(filteredResult),
       });
     }
   );
@@ -464,6 +470,55 @@ function makeDataSourceViewFilter(
       view_filter: dataSourceView.parentsIn ?? [],
     })
   );
+}
+
+function formatTimestamp(timestamp: number): string {
+  const date = new Date(timestamp);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  const formattedDate = date.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+
+  if (diffDays === 0) {
+    return `${formattedDate} (today)`;
+  } else if (diffDays === 1) {
+    return `${formattedDate} (yesterday)`;
+  } else if (diffDays < 7) {
+    return `${formattedDate} (${diffDays} days ago)`;
+  } else if (diffDays < 30) {
+    const weeks = Math.floor(diffDays / 7);
+    return `${formattedDate} (${weeks} week${weeks > 1 ? "s" : ""} ago)`;
+  } else {
+    return formattedDate;
+  }
+}
+
+function renderNode(node: CoreAPIContentNode) {
+  return {
+    node_id: node.node_id,
+    node_type: node.node_type,
+    title: node.title,
+    parent_id: node.parent_id,
+    parents: node.parents,
+    parent_title: node.parent_title,
+    children_count: node.children_count,
+    last_updated_at: formatTimestamp(node.timestamp),
+    source_url: node.source_url,
+    hierarchy_depth: node.parents.length,
+  };
+}
+
+function renderSearchResults(response: CoreAPISearchNodesResponse) {
+  return {
+    nodes: response.nodes.map(renderNode),
+    next_page_cursor: response.next_page_cursor,
+    hit_count: response.hit_count,
+  };
 }
 
 export default createServer;
