@@ -39,7 +39,8 @@ const OPTION_PARAMETERS = {
     .number()
     .optional()
     .describe(
-      "Maximum number of results to return. Use 10-20 for initial searches, increase if user needs more results."
+      "Maximum number of results to return. Use 10-20 for initial searches, " +
+        "increase if user needs more results."
     ),
   sortBy: z
     .enum(["title", "timestamp"])
@@ -49,6 +50,14 @@ const OPTION_PARAMETERS = {
         "most recent first. If not specified, results are returned in default order, which is " +
         "folders first, then both documents and tables and alphabetically by title. " +
         "Keep the default order unless there is a specific reason to change it."
+    ),
+  nextPageCursor: z
+    .string()
+    .optional()
+    .describe(
+      "Cursor for fetching the next page of results. Use this parameter only to fetch the next " +
+        "page of a previous search. The value should be exactly the 'next_page_cursor' from the " +
+        "previous search result."
     ),
 };
 
@@ -76,7 +85,7 @@ const createServer = (): McpServer => {
         ],
       ...OPTION_PARAMETERS,
     },
-    async ({ query, dataSources, limit, sortBy }) => {
+    async ({ query, dataSources, limit, sortBy, nextPageCursor }) => {
       const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
       const fetchResult = await getAgentDataSourceConfigurations(dataSources);
@@ -94,6 +103,7 @@ const createServer = (): McpServer => {
           ),
         },
         options: {
+          cursor: nextPageCursor,
           limit,
           sort: sortBy
             ? [{ field: sortBy, direction: getSortDirection(sortBy) }]
@@ -129,7 +139,7 @@ const createServer = (): McpServer => {
         ],
       ...OPTION_PARAMETERS,
     },
-    async ({ parentId, dataSources, limit, sortBy }) => {
+    async ({ parentId, dataSources, limit, sortBy, nextPageCursor }) => {
       const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
       const fetchResult = await getAgentDataSourceConfigurations(dataSources);
 
@@ -146,6 +156,7 @@ const createServer = (): McpServer => {
           parent_id: parentId,
         },
         options: {
+          cursor: nextPageCursor,
           limit,
           sort: sortBy
             ? [{ field: sortBy, direction: getSortDirection(sortBy) }]
@@ -182,8 +193,9 @@ const createServer = (): McpServer => {
           INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
         ],
       sortBy: OPTION_PARAMETERS["sortBy"],
+      nextPageCursor: OPTION_PARAMETERS["nextPageCursor"],
     },
-    async ({ nodeIds, dataSources, sortBy }) => {
+    async ({ nodeIds, dataSources, sortBy, nextPageCursor }) => {
       const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
       const fetchResult = await getAgentDataSourceConfigurations(dataSources);
 
@@ -200,6 +212,7 @@ const createServer = (): McpServer => {
           node_ids: nodeIds,
         },
         options: {
+          cursor: nextPageCursor,
           sort: sortBy
             ? [{ field: sortBy, direction: getSortDirection(sortBy) }]
             : undefined,
@@ -229,7 +242,7 @@ const createServer = (): McpServer => {
         ],
       ...OPTION_PARAMETERS,
     },
-    async ({ dataSources, limit, sortBy }) => {
+    async ({ dataSources, limit, sortBy, nextPageCursor }) => {
       const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
       const fetchResult = await getAgentDataSourceConfigurations(dataSources);
 
@@ -246,6 +259,7 @@ const createServer = (): McpServer => {
           parent_id: "root",
         },
         options: {
+          cursor: nextPageCursor,
           limit,
           sort: sortBy
             ? [{ field: sortBy, direction: getSortDirection(sortBy) }]
@@ -283,7 +297,7 @@ const createServer = (): McpServer => {
         ],
       ...OPTION_PARAMETERS,
     },
-    async ({ nodeTypes, dataSources, limit, sortBy }) => {
+    async ({ nodeTypes, dataSources, limit, sortBy, nextPageCursor }) => {
       const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
       const fetchResult = await getAgentDataSourceConfigurations(dataSources);
 
@@ -300,6 +314,7 @@ const createServer = (): McpServer => {
           node_types: nodeTypes,
         },
         options: {
+          cursor: nextPageCursor,
           limit,
           sort: sortBy
             ? [{ field: sortBy, direction: getSortDirection(sortBy) }]
@@ -403,7 +418,7 @@ const createServer = (): McpServer => {
         ],
       ...OPTION_PARAMETERS,
     },
-    async ({ parentIds, dataSources, limit, sortBy }) => {
+    async ({ parentIds, dataSources, limit, sortBy, nextPageCursor }) => {
       const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
       const fetchResult = await getAgentDataSourceConfigurations(dataSources);
 
@@ -421,6 +436,7 @@ const createServer = (): McpServer => {
           ),
         },
         options: {
+          cursor: nextPageCursor,
           limit: limit ? limit * 10 : 1000,
           sort: sortBy
             ? [{ field: sortBy, direction: getSortDirection(sortBy) }]
