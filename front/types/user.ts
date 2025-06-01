@@ -1,4 +1,3 @@
-import type { DirectoryType } from "@workos-inc/node";
 import * as t from "io-ts";
 
 import type {

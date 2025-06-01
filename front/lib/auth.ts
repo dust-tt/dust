@@ -916,10 +916,9 @@ export async function getSession(
   req: NextApiRequest | GetServerSidePropsContext["req"],
   res: NextApiResponse | GetServerSidePropsContext["res"]
 ): Promise<SessionWithUser | null> {
-  const session =
-    (await getWorkOSSession(req)) || (await getAuth0Session(req, res)) || null;
-  logger.info({ session }, "Getting session");
-  return session;
+  return (
+    (await getWorkOSSession(req)) || (await getAuth0Session(req, res)) || null
+  );
 }
 
 /**

@@ -158,7 +158,6 @@ async function upsertUser({
   };
 
   await createOrUpdateUser({
-    platform: "workos",
     user,
     externalUser,
   });

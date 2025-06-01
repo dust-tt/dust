@@ -16,7 +16,6 @@ export async function createWorkspace(session: SessionWithUser) {
 
   return createWorkspaceInternal({
     email: externalUser.email,
-    //TODO(workos): name of the workspace based on the first name or email ?
     name: externalUser.nickname,
     isVerified: externalUser.email_verified,
     isBusiness: false,

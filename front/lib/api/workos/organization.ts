@@ -33,7 +33,7 @@ export async function createWorkOSOrganization({
 
   try {
     const organization = await getWorkOS().organizations.createOrganization({
-      name: workspace.name,
+      name: `${workspace.name} - ${workspace.id}`,
       metadata: { workspaceSId: workspace.sId },
       domainData: [
         {

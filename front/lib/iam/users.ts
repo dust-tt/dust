@@ -11,65 +11,67 @@ import { UserModel } from "@app/lib/resources/storage/models/user";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { guessFirstAndLastNameFromFullName } from "@app/lib/user";
-import type { Result } from "@app/types";
+import type { Result, UserProviderType } from "@app/types";
 import { Err, Ok, sanitizeString } from "@app/types";
 
-// interface LegacyProviderInfo {
-//   provider: UserProviderType;
-//   providerId: number | string;
-// }
+interface LegacyProviderInfo {
+  provider: UserProviderType;
+  providerId: number | string;
+}
 
-//TODO(workos): What were legacy providers ?
-// async function fetchUserWithLegacyProvider(
-//   { provider, providerId }: LegacyProviderInfo,
-//   sub: string
-// ) {
-//   const user = await UserResource.fetchByProvider(
-//     provider,
-//     providerId.toString()
-//   );
+//TODO(workos): Clean up legacy provider.
+async function fetchUserWithLegacyProvider(
+  { provider, providerId }: LegacyProviderInfo,
+  sub: string
+) {
+  const user = await UserResource.fetchByProvider(
+    provider,
+    providerId.toString()
+  );
 
-//   // If a legacy user is found, attach the Auth0 user ID (sub) to the existing user account.
-//   if (user) {
-//     await user.updateAuth0Sub({ sub, provider });
-//   }
-
-//   return user;
-// }
-
-//TODO(workos): Cleanup legacy provider.
-// function mapAuth0ProviderToLegacy(session: Session): LegacyProviderInfo | null {
-//   const { user } = session;
-
-//   const [rawProvider, providerId] = user.sub.split("|");
-//   switch (rawProvider) {
-//     case "google-oauth2":
-//       return { provider: "google", providerId };
-
-//     case "github":
-//       return { provider: "github", providerId };
-
-//     default:
-//       return { provider: rawProvider, providerId };
-//   }
-// }
-
-export async function fetchUserFromSession(session: SessionWithUser) {
-  const { email } = session.user;
-
-  //TODO(workos): Is it ok to fetch by email ?
-  const userWithWorkOS = await UserResource.fetchByEmail(email);
-  if (userWithWorkOS) {
-    return userWithWorkOS;
+  // If a legacy user is found, attach the Auth0 user ID (sub) to the existing user account.
+  if (user) {
+    await user.updateAuth0Sub({ sub, provider });
   }
 
-  //TODO(workos): No legacy provider info.
-  // const legacyProviderInfo = mapAuth0ProviderToLegacy(session);
-  // if (!legacyProviderInfo) {
-  //   return null;
-  // }
+  return user;
+}
 
-  // return fetchUserWithLegacyProvider(legacyProviderInfo, sub);
+function mapAuth0ProviderToLegacy(auth0Sub: string): LegacyProviderInfo {
+  const [rawProvider, providerId] = auth0Sub.split("|");
+  switch (rawProvider) {
+    case "google-oauth2":
+      return { provider: "google", providerId };
+
+    case "github":
+      return { provider: "github", providerId };
+
+    default:
+      return { provider: rawProvider as UserProviderType, providerId };
+  }
+}
+//END-TODO(workos)
+
+export async function fetchUserFromSession(session: SessionWithUser) {
+  const { workOSId, auth0Sub } = session.user;
+
+  if (session.type === "workos" && workOSId) {
+    const userWithWorkOS = await UserResource.fetchByWorkOSId(workOSId);
+    if (userWithWorkOS) {
+      return userWithWorkOS;
+    }
+  }
+
+  //TODO(workos): Remove auth0 user lookup.
+  if (session.type === "auth0" && auth0Sub) {
+    const userWithAuth0 = await UserResource.fetchByAuth0Sub(auth0Sub);
+    if (userWithAuth0) {
+      return userWithAuth0;
+    }
+
+    const legacyProviderInfo = mapAuth0ProviderToLegacy(auth0Sub);
+    return fetchUserWithLegacyProvider(legacyProviderInfo, auth0Sub);
+  }
 
   return null;
 }
@@ -96,7 +98,6 @@ export async function createOrUpdateUser({
   user,
   externalUser,
 }: {
-  platform: SessionWithUser["type"];
   user: UserResource | null;
   externalUser: ExternalUser;
 }): Promise<{ user: UserResource; created: boolean }> {
