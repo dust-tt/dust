@@ -706,7 +706,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
         errorMessage = `The tool ${actionConfiguration.originalName} returned an error. `;
       }
       errorMessage +=
-        "An error occured while executing the tool. You can inform the user of this issue.";
+        "An error occurred while executing the tool. You can inform the user of this issue.";
 
       yield buildErrorEvent(
         action,
