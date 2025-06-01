@@ -28,29 +28,6 @@ const serverInfo: InternalMCPServerDefinitionType = {
   icon: "ActionDocumentTextIcon",
 };
 
-async function getAgentDataSourceConfigurations(
-  dataSources: DataSourcesToolConfigurationType
-): Promise<Result<AgentDataSourceConfiguration[], Error>> {
-  const agentDataSourceConfigurationsResults = await concurrentExecutor(
-    dataSources,
-    async (dataSourceConfiguration) =>
-      fetchAgentDataSourceConfiguration(dataSourceConfiguration),
-    { concurrency: 10 }
-  );
-
-  if (agentDataSourceConfigurationsResults.some((res) => res.isErr())) {
-    return new Err(new Error("Failed to fetch data source configurations."));
-  }
-
-  return new Ok(
-    removeNulls(
-      agentDataSourceConfigurationsResults.map((res) =>
-        res.isOk() ? res.value : null
-      )
-    )
-  );
-}
-
 const createServer = (): McpServer => {
   const server = new McpServer(serverInfo);
 
@@ -438,5 +415,28 @@ const createServer = (): McpServer => {
 
   return server;
 };
+
+async function getAgentDataSourceConfigurations(
+  dataSources: DataSourcesToolConfigurationType
+): Promise<Result<AgentDataSourceConfiguration[], Error>> {
+  const agentDataSourceConfigurationsResults = await concurrentExecutor(
+    dataSources,
+    async (dataSourceConfiguration) =>
+      fetchAgentDataSourceConfiguration(dataSourceConfiguration),
+    { concurrency: 10 }
+  );
+
+  if (agentDataSourceConfigurationsResults.some((res) => res.isErr())) {
+    return new Err(new Error("Failed to fetch data source configurations."));
+  }
+
+  return new Ok(
+    removeNulls(
+      agentDataSourceConfigurationsResults.map((res) =>
+        res.isOk() ? res.value : null
+      )
+    )
+  );
+}
 
 export default createServer;
