@@ -302,7 +302,6 @@ async function upsertUser({
   };
 
   const { user: createdOrUpdatedUser } = await createOrUpdateUser({
-    platform: "workos",
     user,
     externalUser,
   });

@@ -1,3 +1,4 @@
+import type { Connection, Directory } from "@workos-inc/node";
 import { DomainDataState, GeneratePortalLinkIntent } from "@workos-inc/node";
 import assert from "assert";
 
@@ -32,7 +33,7 @@ export async function createWorkOSOrganization({
 
   try {
     const organization = await getWorkOS().organizations.createOrganization({
-      name: workspace.name,
+      name: `${workspace.name} - ${workspace.id}`,
       metadata: { workspaceSId: workspace.sId },
       domainData: [
         {
@@ -95,4 +96,49 @@ export function generateWorkOSAdminPortalUrl({
     intent,
     returnUrl,
   });
+}
+
+export async function getWorkOSOrganizationSSOConnections({
+  workspace,
+}: {
+  workspace: WorkspaceType;
+}): Promise<Result<Connection[], Error>> {
+  if (!workspace.workOSOrganizationId) {
+    return new Err(
+      new Error("WorkOS organization not found for this workspace.")
+    );
+  }
+
+  try {
+    const { data: directories } = await getWorkOS().sso.listConnections({
+      organizationId: workspace.workOSOrganizationId,
+    });
+
+    return new Ok(directories);
+  } catch (error) {
+    return new Err(normalizeError(error));
+  }
+}
+
+export async function getWorkOSOrganizationDSyncDirectories({
+  workspace,
+}: {
+  workspace: WorkspaceType;
+}): Promise<Result<Directory[], Error>> {
+  if (!workspace.workOSOrganizationId) {
+    return new Err(
+      new Error("WorkOS organization not found for this workspace.")
+    );
+  }
+
+  try {
+    const { data: directories } =
+      await getWorkOS().directorySync.listDirectories({
+        organizationId: workspace.workOSOrganizationId,
+      });
+
+    return new Ok(directories);
+  } catch (error) {
+    return new Err(normalizeError(error));
+  }
 }

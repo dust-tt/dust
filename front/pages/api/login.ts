@@ -71,7 +71,6 @@ async function handler(
   // Login flow: the first step is to attempt to find the user.
   const nullableUser = await fetchUserFromSession(session);
   const { created: userCreated, user } = await createOrUpdateUser({
-    platform: session.type,
     user: nullableUser,
     externalUser: session.user,
   });
