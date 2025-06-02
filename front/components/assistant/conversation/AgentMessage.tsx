@@ -167,7 +167,7 @@ export function AgentMessage({
         showValidationDialog({
           messageId: eventPayload.data.messageId,
           conversationId: eventPayload.data.conversationId,
-          actionId: eventPayload.data.actionId,
+          action: eventPayload.data.action,
           inputs: eventPayload.data.inputs,
           stake: eventPayload.data.stake,
           metadata: eventPayload.data.metadata,

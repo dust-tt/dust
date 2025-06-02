@@ -116,7 +116,7 @@ export function ActionValidationProvider({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          actionId: currentValidation.actionId,
+          actionId: currentValidation.action.id,
           approved,
         }),
       }

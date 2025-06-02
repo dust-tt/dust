@@ -10,6 +10,7 @@ import type { DustAppRunConfigurationType } from "@app/lib/actions/dust_app_run"
 import { tryCallMCPTool } from "@app/lib/actions/mcp_actions";
 import type { MCPServerAvailability } from "@app/lib/actions/mcp_internal_actions/constants";
 import type {
+  MCPActionSchemaType,
   MCPToolResultContentType,
   ProgressNotificationContentType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
@@ -156,7 +157,7 @@ export type MCPApproveExecutionEvent = {
   configurationId: string;
   messageId: string;
   conversationId: string;
-  actionId: number;
+  action: MCPActionSchemaType;
   inputs: Record<string, unknown>;
   stake?: MCPToolStakeLevelType;
   metadata: MCPValidationMetadataType;
@@ -479,7 +480,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
         configurationId: agentConfiguration.sId,
         messageId: agentMessage.sId,
         conversationId: conversation.sId,
-        actionId: mcpAction.id,
+        action: mcpAction,
         inputs: rawInputs,
         stake: actionConfiguration.permission,
         metadata: {
@@ -998,4 +999,12 @@ export async function mcpActionTypesFromAgentMessageIds(
       ),
     });
   });
+}
+
+function renderMCPActionType(action: MCPActionType) {
+  return {
+    id: action.id,
+    type: action.type,
+    params: action.params,
+  };
 }
