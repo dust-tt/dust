@@ -52,7 +52,7 @@ import {
 } from "@app/lib/models/assistant/actions/mcp";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { FileModel } from "@app/lib/resources/storage/models/files";
-import { makeSId } from "@app/lib/resources/string_ids";
+import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
@@ -494,7 +494,10 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
 
       try {
         const actionEventGenerator = getMCPEvents({
-          actionId: mcpAction.id,
+          actionId: makeSId("action", {
+            id: mcpAction.id,
+            workspaceId: owner.id,
+          }),
         });
 
         localLogger.info(
@@ -509,10 +512,13 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
         for await (const event of actionEventGenerator) {
           const { data } = event;
 
-          if (
-            data.type === "always_approved" &&
-            data.actionId === mcpAction.id
-          ) {
+          // Check that the event is indeed for this action.
+          if (getResourceIdFromSId(data.actionId) !== mcpAction.id) {
+            status = "denied";
+            break;
+          }
+
+          if (data.type === "always_approved") {
             const user = auth.getNonNullableUser();
             await user.appendToMetadata(
               `toolsValidations:${actionConfiguration.toolServerId}`,
@@ -520,16 +526,10 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
             );
           }
 
-          if (
-            (data.type === "approved" || data.type === "always_approved") &&
-            data.actionId === mcpAction.id
-          ) {
+          if (data.type === "approved" || data.type === "always_approved") {
             status = "allowed_explicitly";
             break;
-          } else if (
-            data.type === "rejected" &&
-            data.actionId === mcpAction.id
-          ) {
+          } else if (data.type === "rejected") {
             status = "denied";
             break;
           }
