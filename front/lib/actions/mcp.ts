@@ -202,7 +202,7 @@ export type ToolNotificationEvent = {
   created: number;
   configurationId: string;
   messageId: string;
-  action: ToolNotificationEvent;
+  action: MCPActionType;
   notification: ProgressNotificationContentType;
 };
 
