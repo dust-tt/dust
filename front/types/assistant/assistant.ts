@@ -1168,6 +1168,7 @@ export const GROK_3_MODEL_CONFIG: ModelConfigurationType = {
   generationTokensCount: 8_192,
   supportsVision: false,
   supportsResponseFormat: false,
+  featureFlag: "xai_feature",
 };
 
 export const GROK_3_MINI_MODEL_CONFIG: ModelConfigurationType = {
@@ -1184,6 +1185,7 @@ export const GROK_3_MINI_MODEL_CONFIG: ModelConfigurationType = {
   generationTokensCount: 8_192,
   supportsVision: false,
   supportsResponseFormat: false,
+  featureFlag: "xai_feature",
 };
 
 export const GROK_3_FAST_MODEL_CONFIG: ModelConfigurationType = {
@@ -1200,6 +1202,7 @@ export const GROK_3_FAST_MODEL_CONFIG: ModelConfigurationType = {
   generationTokensCount: 8_192,
   supportsVision: false,
   supportsResponseFormat: false,
+  featureFlag: "xai_feature",
 };
 
 export const GROK_3_MINI_FAST_MODEL_CONFIG: ModelConfigurationType = {
@@ -1216,6 +1219,7 @@ export const GROK_3_MINI_FAST_MODEL_CONFIG: ModelConfigurationType = {
   generationTokensCount: 8_192,
   supportsVision: false,
   supportsResponseFormat: false,
+  featureFlag: "xai_feature",
 };
 
 export const SUPPORTED_MODEL_CONFIGS: ModelConfigurationType[] = [
