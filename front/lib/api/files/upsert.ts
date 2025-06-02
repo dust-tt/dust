@@ -225,7 +225,7 @@ const upsertExcelToDatasource: ProcessingFunction = async (
   if (upsertArgs && !isUpsertTableArgs(upsertArgs)) {
     return new Err<DustError>({
       name: "dust_error",
-      code: "invalid_upsert_args",
+      code: "internal_error",
       message:
         "Excel files can only be processed as tables. " +
         "Please use table arguments instead of document arguments.",
@@ -306,7 +306,7 @@ const upsertExcelToDatasource: ProcessingFunction = async (
   if (!worksheetName) {
     return new Err<DustError>({
       name: "dust_error",
-      code: "invalid_name_error",
+      code: "invalid_content_error",
       message:
         "This Excel file doesn't contain any recognizable worksheets. " +
         "Please check that your file has properly named worksheet tabs and try again.",
@@ -554,9 +554,7 @@ function mapInternalErrorToPublicError(error: DustError): Err<
   }
 > {
   switch (error.code) {
-    case "invalid_upsert_args":
     case "invalid_content_error":
-    case "invalid_name_error":
     case "invalid_title_in_tags":
     case "text_or_section_required":
     case "title_is_empty":

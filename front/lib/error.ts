@@ -19,6 +19,7 @@ export type DustErrorCode =
   // Table
   | "invalid_rows"
   | "missing_csv"
+  | "invalid_content_error"
   // Group errors
   | "system_or_global_group"
   | "user_already_member"
@@ -29,11 +30,7 @@ export type DustErrorCode =
   | "remote_server_not_found"
   | "internal_server_not_found"
   // Space errors
-  | "space_already_exists"
-  // Excel errors
-  | "invalid_upsert_args"
-  | "invalid_content_error"
-  | "invalid_name_error";
+  | "space_already_exists";
 
 export class DustError extends Error {
   constructor(
