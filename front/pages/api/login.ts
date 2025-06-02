@@ -1,6 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getMembershipInvitationToken } from "@app/lib/api/invitation";
+import { config as multiRegionsConfig } from "@app/lib/api/regions/config";
+import { updateUserFromAuth0 } from "@app/lib/api/workos/user";
 import {
   handleEnterpriseSignUpFlow,
   handleMembershipInvite,
@@ -74,6 +76,15 @@ async function handler(
     user: nullableUser,
     externalUser: session.user,
   });
+
+  // TODO(workos): Remove after switch to workos. Update user information when user is created with auth0.
+  if (userCreated && session.type === "auth0" && session.user.workOSId) {
+    await updateUserFromAuth0(
+      session,
+      multiRegionsConfig.getCurrentRegion(),
+      session.user.email_verified
+    );
+  }
 
   ServerSideTracking.trackSignup({
     user: {
