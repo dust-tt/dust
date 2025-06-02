@@ -22,10 +22,10 @@ import type {
 import { CoreAPI, Err, Ok, removeNulls } from "@app/types";
 
 const serverInfo: InternalMCPServerDefinitionType = {
-  name: "company_files",
+  name: "data_sources_file_system",
   version: "1.0.0",
   description:
-    "Comprehensive content navigation toolkit for browsing user company data. Provides Unix-like " +
+    "Comprehensive content navigation toolkit for browsing user data sources. Provides Unix-like " +
     "browsing (ls, find) and smart search tools to help agents efficiently explore and discover " +
     "documents, folders, and tables from manually uploaded files or data synced from SaaS products " +
     "(Notion, Slack, Github, etc.) organized in a filesystem-like hierarchy.",
