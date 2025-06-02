@@ -118,10 +118,15 @@ impl LLM for XaiLLM {
         _extras: Option<Value>,
         event_sender: Option<UnboundedSender<Value>>,
     ) -> Result<LLMChatGeneration> {
+        let api_key = match self.api_key.clone() {
+            Some(key) => key,
+            None => Err(anyhow!("XAI_API_KEY is not set."))?,
+        };
+
         openai_compatible_chat_completion(
             self.chat_uri()?,
             self.id.clone(),
-            self.api_key.clone().unwrap(),
+            api_key,
             messages,
             functions,
             function_call,
