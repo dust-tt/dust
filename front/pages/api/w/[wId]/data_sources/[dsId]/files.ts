@@ -131,13 +131,9 @@ function handlePublicErrorResponse(req: any, res: any, error: DustError) {
     case "invalid_url":
     case "missing_csv":
     case "invalid_content_error":
+    case "resource_not_found":
       status_code = 400;
       type = "invalid_request_error";
-      break;
-
-    case "resource_not_found":
-      status_code = 404;
-      type = "file_not_found";
       break;
 
     case "data_source_quota_error":
