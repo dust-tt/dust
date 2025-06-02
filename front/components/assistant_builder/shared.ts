@@ -3,7 +3,7 @@ import type {
   LightContentNode,
   TimeframeUnit,
 } from "@app/types";
-import { assertNever, isGoogleSheetContentNodeInternalId } from "@app/types";
+import { assertNever } from "@app/types";
 
 export const TIME_FRAME_UNIT_TO_LABEL: Record<TimeframeUnit, string> = {
   hour: "hour(s)",
@@ -247,14 +247,6 @@ export function getTableIdForContentNode(
 
   // We specify whether the connector supports TableQuery as a safeguard in case somehow a non-table node was selected.
   switch (dataSource.connectorProvider) {
-    case "google_drive":
-      if (!isGoogleSheetContentNodeInternalId(contentNode.internalId)) {
-        throw new Error(
-          `Google Drive ContentNode internalId ${contentNode.internalId} is not a Google Sheet internal ID`
-        );
-      }
-      return contentNode.internalId;
-
     // For static tables, the tableId is the contentNode internalId.
     case null:
     case "bigquery":
@@ -262,6 +254,7 @@ export function getTableIdForContentNode(
     case "notion":
     case "salesforce":
     case "snowflake":
+    case "google_drive":
       return contentNode.internalId;
 
     case "confluence":

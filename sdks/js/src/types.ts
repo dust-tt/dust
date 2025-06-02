@@ -24,6 +24,7 @@ const ModelProviderIdSchema = FlexibleEnumSchema<
   | "togetherai"
   | "deepseek"
   | "fireworks"
+  | "xai"
 >();
 
 const ModelLLMIdSchema = FlexibleEnumSchema<
@@ -71,6 +72,10 @@ const ModelLLMIdSchema = FlexibleEnumSchema<
   | "deepseek-chat" // deepseek api
   | "deepseek-reasoner" // deepseek api
   | "accounts/fireworks/models/deepseek-r1" // fireworks
+  | "grok-3-latest" // xAI
+  | "grok-3-mini-latest" // xAI
+  | "grok-3-fast-latest" // xAI
+  | "grok-3-mini-fast-latest" // xAI
 >();
 
 const EmbeddingProviderIdSchema = FlexibleEnumSchema<"openai" | "mistral">();

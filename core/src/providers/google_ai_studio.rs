@@ -143,10 +143,15 @@ impl LLM for GoogleAiStudioLLM {
         _extras: Option<Value>,
         event_sender: Option<UnboundedSender<Value>>,
     ) -> Result<LLMChatGeneration> {
+        let api_key = match self.api_key.clone() {
+            Some(key) => key,
+            None => Err(anyhow!("GOOGLE_AI_STUDIO_API_KEY is not set."))?,
+        };
+
         openai_compatible_chat_completion(
             self.model_endpoint(),
             self.id.clone(),
-            self.api_key.clone().unwrap(),
+            api_key,
             messages,
             functions,
             function_call,

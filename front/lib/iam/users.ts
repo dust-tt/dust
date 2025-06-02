@@ -228,22 +228,28 @@ export async function mergeUserIdentities({
 
   const auth0ManagemementClient = getAuth0ManagemementClient();
 
-  const users = await auth0ManagemementClient.usersByEmail.getByEmail({
-    email: primaryUser.email,
-  });
+  const primaryUserAuth0 =
+    await auth0ManagemementClient.usersByEmail.getByEmail({
+      email: primaryUser.email,
+    });
 
-  const primaryUserAuth0 = users.data.find(
+  const secondaryUserAuth0 =
+    await auth0ManagemementClient.usersByEmail.getByEmail({
+      email: secondaryUser.email,
+    });
+
+  const primaryUserAuth0Sub = primaryUserAuth0.data.find(
     (u) => u.user_id === primaryUser.auth0Sub
   );
-  const secondaryUserAuth0 = users.data.find(
+  const secondaryUserAuth0Sub = secondaryUserAuth0.data.find(
     (u) => u.user_id === secondaryUser.auth0Sub
   );
 
-  if (!primaryUserAuth0 || !secondaryUserAuth0) {
+  if (!primaryUserAuth0Sub || !secondaryUserAuth0Sub) {
     return new Err(new Error("Primary or secondary user not found in Auth0."));
   }
 
-  const [identityToMerge] = secondaryUserAuth0.identities;
+  const [identityToMerge] = secondaryUserAuth0Sub.identities;
 
   // Retrieve the connection id for the identity to merge.
   const connectionsResponse =
@@ -259,7 +265,7 @@ export async function mergeUserIdentities({
   }
 
   await auth0ManagemementClient.users.link(
-    { id: primaryUserAuth0.user_id },
+    { id: primaryUserAuth0Sub.user_id },
     {
       provider: identityToMerge.provider as PostIdentitiesRequestProviderEnum,
       connection_id: connection.id,
@@ -269,7 +275,7 @@ export async function mergeUserIdentities({
 
   // Mark the primary user as having been linked.
   await auth0ManagemementClient.users.update(
-    { id: primaryUserAuth0.user_id },
+    { id: primaryUserAuth0Sub.user_id },
     {
       app_metadata: {
         account_linking_state: Date.now(),

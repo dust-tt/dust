@@ -27,7 +27,7 @@ export class ConfluenceCastKnownErrorsInterceptor
             if (err.retryAfterMs) {
               // Override the default retry delay of the activity policy.
               throw ApplicationFailure.create({
-                message: `Rate limit exceeded. Retry after ${err.retryAfterMs}ms`,
+                message: `${err.message}. Retry after ${err.retryAfterMs}ms`,
                 nextRetryDelay: err.retryAfterMs,
               });
             }

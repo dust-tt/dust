@@ -1,6 +1,6 @@
 import { isLeft } from "fp-ts/Either";
 import * as t from "io-ts";
-import type { Response } from "undici";
+import type { Headers } from "undici";
 import { fetch as undiciFetch, ProxyAgent } from "undici";
 
 import { setTimeoutAsync } from "@connectors/lib/async_utils";
@@ -195,11 +195,13 @@ const RATE_LIMIT_HEADERS = {
 } as const;
 
 // Ratio remaining / limit at which we start to slow down the requests.
-const THROTTLE_TRIGGER_RATIO = 0.3;
+const THROTTLE_TRIGGER_RATIO = 0.2;
 // If Confluence does not provide a retry-after header, we use this constant to signal no delay.
 const NO_RETRY_AFTER_DELAY = -1;
 // Number of times we retry when rate limited and Confluence does provide a retry-after header.
 const MAX_RATE_LIMIT_RETRY_COUNT = 5;
+// We take some margin on the value provided for the retry-after.
+const RETRY_AFTER_JITTER = 30_000; // 30 seconds
 // If Confluence returns a retry-after header with a delay greater than this value, we cap it.
 const MAX_RETRY_AFTER_DELAY = 300_000; // 5 minutes
 // If Confluence indicates that we are approaching the rate limit, we delay by this value.
@@ -223,8 +225,8 @@ function extractCursorFromLinks(links: { next?: string }): string | null {
   return url.searchParams.get("cursor");
 }
 
-function getRetryAfterDuration(response: Response): number {
-  const retryAfter = response.headers.get("retry-after"); // https://developer.atlassian.com/cloud/confluence/rate-limiting/
+function getRetryAfterDuration(headers: Headers): number {
+  const retryAfter = headers.get("retry-after"); // https://developer.atlassian.com/cloud/confluence/rate-limiting/
   if (retryAfter) {
     const delay = parseInt(retryAfter, 10);
 
@@ -234,26 +236,35 @@ function getRetryAfterDuration(response: Response): number {
   return NO_RETRY_AFTER_DELAY;
 }
 
-function checkNearRateLimit(response: Response): boolean {
-  const nearLimit = response.headers.get(RATE_LIMIT_HEADERS.nearLimit);
-  const remaining = response.headers.get(RATE_LIMIT_HEADERS.remaining);
-  const limit = response.headers.get(RATE_LIMIT_HEADERS.limit);
+function sampleJitter(): number {
+  return Math.floor(Math.random() * RETRY_AFTER_JITTER);
+}
+
+function checkNearRateLimit(headers: Headers): boolean {
+  const nearLimitHeader = headers.get(RATE_LIMIT_HEADERS.nearLimit);
+  const remainingHeader = headers.get(RATE_LIMIT_HEADERS.remaining);
+  const limitHeader = headers.get(RATE_LIMIT_HEADERS.limit);
+
+  const remaining = remainingHeader ? parseInt(remainingHeader, 10) : null;
+  const limit = limitHeader ? parseInt(limitHeader, 10) : null;
 
   return (
-    nearLimit?.toLowerCase() === "true" ||
+    nearLimitHeader?.toLowerCase() === "true" ||
     (!!remaining &&
       !!limit &&
-      parseInt(remaining, 10) / parseInt(limit, 10) < THROTTLE_TRIGGER_RATIO)
+      // If we have no request remaining, we are already rate limited. This should be unreachable.
+      remaining > 0 &&
+      remaining / limit < THROTTLE_TRIGGER_RATIO)
   );
 }
 
-function logRateLimitHeaders(
-  response: Response,
-  loggerArgs: Record<string, string | number | null>
-) {
+function getRateLimitHeaders(headers: Headers) {
   const rateLimitHeaders: Record<string, string> = {};
-  response.headers.forEach((value, key) => {
-    if (key.toLowerCase().startsWith("x-ratelimit")) {
+  headers.forEach((value, key) => {
+    if (
+      key.toLowerCase().startsWith("x-ratelimit") ||
+      key.toLowerCase() === "retry-after"
+    ) {
       rateLimitHeaders[key] = value;
     }
   });
@@ -262,13 +273,7 @@ function logRateLimitHeaders(
     return;
   }
 
-  logger.info(
-    {
-      rateLimitHeaders,
-      ...loggerArgs,
-    },
-    "[Confluence] Headers relative to the rate limit"
-  );
+  return rateLimitHeaders;
 }
 
 export class ConfluenceClient {
@@ -360,7 +365,13 @@ export class ConfluenceClient {
       }
     })();
 
-    logRateLimitHeaders(response, { endpoint });
+    const rateLimitHeaders = getRateLimitHeaders(response.headers);
+
+    const localLogger = logger.child({
+      endpoint,
+      retryCount,
+      rateLimitHeaders,
+    });
 
     if (!response.ok) {
       // If the token is invalid, the API will return a 403 Forbidden response.
@@ -381,7 +392,9 @@ export class ConfluenceClient {
       // 3. If Confluence does not provide a retry-after header, we throw a transient error and
       //    let Temporal retry in MAX_RETRY_AFTER_DELAY ms.
       if (response.status === 429) {
-        const delayMs = getRetryAfterDuration(response);
+        const delayMs = getRetryAfterDuration(response.headers);
+        const text = await response.text();
+        const { statusText } = response;
 
         statsDClient.increment("external.api.calls", 1, [
           "provider:confluence",
@@ -394,11 +407,11 @@ export class ConfluenceClient {
             delayMs !== NO_RETRY_AFTER_DELAY &&
             delayMs < MAX_RETRY_AFTER_DELAY
           ) {
-            logger.warn(
+            localLogger.warn(
               {
-                endpoint,
                 delayMs,
-                retryCount,
+                text,
+                statusText,
               },
               "[Confluence] Rate limit hit. Performing activity-side retry."
             );
@@ -417,7 +430,7 @@ export class ConfluenceClient {
 
         if (delayMs !== NO_RETRY_AFTER_DELAY) {
           // Server provided a delay (relevant for Case 2 or if retries exhausted).
-          retryAfterMsForTemporal = delayMs;
+          retryAfterMsForTemporal = delayMs + sampleJitter();
           if (retryCount >= MAX_RATE_LIMIT_RETRY_COUNT) {
             logReason = `Activity retries exhausted. Server suggested delay ${delayMs}ms.`;
           } else {
@@ -436,12 +449,12 @@ export class ConfluenceClient {
           }
         }
 
-        logger.warn(
+        localLogger.warn(
           {
-            endpoint,
             delayMs,
-            retryCount,
             retryAfterMsForTemporal,
+            text,
+            statusText,
           },
           `[Confluence] Rate limit hit. Throwing for Temporal. Reason: ${logReason}`
         );
@@ -449,7 +462,7 @@ export class ConfluenceClient {
         throw new ConfluenceClientError("Confluence API rate limit exceeded", {
           type: "http_response_error",
           status: response.status,
-          data: { url: `${this.apiUrl}${endpoint}`, response },
+          data: { url: `${this.apiUrl}${endpoint}` },
           retryAfterMs: retryAfterMsForTemporal,
         });
       }
@@ -466,33 +479,7 @@ export class ConfluenceClient {
         {
           type: "http_response_error",
           status: response.status,
-          data: { url: `${this.apiUrl}${endpoint}`, response, text },
-        }
-      );
-    }
-
-    // When approaching the rate limit (20% of any budget remains), we fake a 429 to slow down
-    // the query pace. We delay by NEAR_RATE_LIMIT_DELAY ms.
-    if (
-      !bypassThrottle &&
-      !this.ignoreNearRateLimit &&
-      checkNearRateLimit(response)
-    ) {
-      statsDClient.increment("external.api.calls", 1, [
-        "provider:confluence",
-        "status:near_rate_limit",
-      ]);
-
-      throw new ConfluenceClientError(
-        `Near rate limit: ${this.apiUrl}${endpoint}`,
-        {
-          type: "http_response_error",
-          status: 429, // We fake a 429 here to make sure the error is caught in the cast_known_errors.
-          data: {
-            url: `${this.apiUrl}${endpoint}`,
-            response,
-          },
-          retryAfterMs: NEAR_RATE_LIMIT_DELAY,
+          data: { url: `${this.apiUrl}${endpoint}`, text },
         }
       );
     }
@@ -509,6 +496,28 @@ export class ConfluenceClient {
       throw new ConfluenceClientError("Response validation failed", {
         type: "validation_error",
       });
+    }
+
+    // When approaching the rate limit (using adaptive throttle ratio based on limit size), we slow down
+    // the query pace by waiting NEAR_RATE_LIMIT_DELAY ms.
+    if (
+      !bypassThrottle &&
+      !this.ignoreNearRateLimit &&
+      checkNearRateLimit(response.headers)
+    ) {
+      statsDClient.increment("external.api.calls", 1, [
+        "provider:confluence",
+        "status:near_rate_limit",
+      ]);
+
+      const delayMs = NEAR_RATE_LIMIT_DELAY + sampleJitter();
+      localLogger.warn(
+        {
+          delayMs,
+        },
+        "[Confluence] Rate limit nearly hit."
+      );
+      await setTimeoutAsync(delayMs);
     }
 
     return result.right;

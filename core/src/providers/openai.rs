@@ -822,6 +822,11 @@ impl LLM for OpenAILLM {
         }
 
         let model_is_o1 = self.id.as_str().starts_with("o1");
+        let api_key = match self.api_key.clone() {
+            Some(key) => key,
+            None => Err(anyhow!("OPENAI_API_KEY is not set."))?,
+        };
+
         let (c, request_id) = if event_sender.is_some() {
             if n > 1 {
                 return Err(anyhow!(
@@ -830,7 +835,7 @@ impl LLM for OpenAILLM {
             }
             streamed_completion(
                 self.uri()?,
-                self.api_key.clone().unwrap(),
+                api_key.clone(),
                 match &extras {
                     Some(ex) => match ex.get("openai_organization_id") {
                         Some(Value::String(o)) => Some(o.to_string().clone()),
@@ -875,7 +880,7 @@ impl LLM for OpenAILLM {
         } else {
             completion(
                 self.uri()?,
-                self.api_key.clone().unwrap(),
+                api_key.clone(),
                 match &extras {
                     Some(e) => match e.get("openai_organization_id") {
                         Some(Value::String(o)) => Some(o.to_string()),
@@ -1023,10 +1028,15 @@ impl LLM for OpenAILLM {
         // o1-mini specifically does not support any type of system messages.
         let remove_system_messages = self.id.as_str().starts_with("o1-mini");
 
+        let api_key = match self.api_key.clone() {
+            Some(key) => key,
+            None => Err(anyhow!("OPENAI_API_KEY is not set."))?,
+        };
+
         openai_compatible_chat_completion(
             self.chat_uri()?,
             self.id.clone(),
-            self.api_key.clone().unwrap(),
+            api_key,
             &messages,
             functions,
             function_call,
@@ -1164,9 +1174,14 @@ impl Embedder for OpenAIEmbedder {
     }
 
     async fn embed(&self, text: Vec<&str>, extras: Option<Value>) -> Result<Vec<EmbedderVector>> {
+        let api_key = match self.api_key.clone() {
+            Some(key) => key,
+            None => Err(anyhow!("OPENAI_API_KEY is not set."))?,
+        };
+
         let e = embed(
             self.uri()?,
-            self.api_key.clone().unwrap(),
+            api_key,
             match &extras {
                 Some(e) => match e.get("openai_organization_id") {
                     Some(Value::String(o)) => Some(o.to_string()),
