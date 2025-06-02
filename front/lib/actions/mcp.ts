@@ -674,6 +674,11 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
             // We bubble up tool approval notifications from within tools to the main conversation.
             // Note: the tool is responsible for handling the logic of setting the correct
             // conversationId and messageId.
+            // TODO(2025-06-03): this should not be the case, here we can reasonably expect
+            //  notificationOutput.resource.conversationId to the children conversation.
+            //  The translation from the children to the parent conversation should happen here.
+            //  We are going to need the conversationId of the children if we want to display
+            //  a link to the children conversation from the tool approval dialog in the main one.
             yield {
               created: Date.now(),
               type: "tool_approve_execution",
