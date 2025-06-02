@@ -552,6 +552,10 @@ function formatTimestamp(timestamp: number): string {
   }
 }
 
+/**
+ * Translation from a content node to the format expected to the agent.
+ * Removes references to the term 'content node' and simplifies the format.
+ */
 function renderNode(node: CoreAPIContentNode) {
   return {
     id: node.node_id,
@@ -566,6 +570,10 @@ function renderNode(node: CoreAPIContentNode) {
   };
 }
 
+/**
+ * Translation from core's response to the format expected to the agent.
+ * Removes references to the term 'content node' and simplifies the format.
+ */
 function renderSearchResults(response: CoreAPISearchNodesResponse) {
   return {
     data: response.nodes.map(renderNode),
