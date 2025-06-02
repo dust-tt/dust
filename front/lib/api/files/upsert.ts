@@ -138,14 +138,7 @@ const upsertSectionDocumentToDatasource: ProcessingFunction = async (
   });
 
   if (upsertDocumentRes.isErr()) {
-    if (isDustError(upsertDocumentRes.error)) {
-      return new Err<DustError>(upsertDocumentRes.error);
-    }
-    return new Err<DustError>({
-      name: "dust_error",
-      code: "internal_error",
-      message: "There was an error upserting the document.",
-    });
+    return new Err<DustError>(upsertDocumentRes.error);
   }
 
   return new Ok(undefined);
@@ -210,14 +203,7 @@ const upsertTableToDatasource: ProcessingFunction = async (
   });
 
   if (upsertTableRes.isErr()) {
-    if (isDustError(upsertTableRes.error)) {
-      return new Err<DustError>(upsertTableRes.error);
-    }
-    return new Err<DustError>({
-      name: "dust_error",
-      code: "internal_error",
-      message: "There was an error upserting the document.",
-    });
+    return new Err<DustError>(upsertTableRes.error);
   }
 
   await updateUseCaseMetadata(file, [tableId]);
