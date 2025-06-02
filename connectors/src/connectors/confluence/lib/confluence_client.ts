@@ -258,10 +258,7 @@ function checkNearRateLimit(headers: Headers): boolean {
   );
 }
 
-function logRateLimitHeaders(
-  headers: Headers,
-  loggerArgs: Record<string, string | number | null>
-) {
+function getRateLimitHeaders(headers: Headers) {
   const rateLimitHeaders: Record<string, string> = {};
   headers.forEach((value, key) => {
     if (
@@ -276,13 +273,7 @@ function logRateLimitHeaders(
     return;
   }
 
-  logger.info(
-    {
-      rateLimitHeaders,
-      ...loggerArgs,
-    },
-    "[Confluence] Headers relative to the rate limit"
-  );
+  return rateLimitHeaders;
 }
 
 export class ConfluenceClient {
@@ -374,7 +365,13 @@ export class ConfluenceClient {
       }
     })();
 
-    logRateLimitHeaders(response.headers, { endpoint });
+    const rateLimitHeaders = getRateLimitHeaders(response.headers);
+
+    const localLogger = logger.child({
+      endpoint,
+      retryCount,
+      rateLimitHeaders,
+    });
 
     if (!response.ok) {
       // If the token is invalid, the API will return a 403 Forbidden response.
@@ -410,11 +407,9 @@ export class ConfluenceClient {
             delayMs !== NO_RETRY_AFTER_DELAY &&
             delayMs < MAX_RETRY_AFTER_DELAY
           ) {
-            logger.warn(
+            localLogger.warn(
               {
-                endpoint,
                 delayMs,
-                retryCount,
                 body,
                 statusText,
               },
@@ -454,11 +449,9 @@ export class ConfluenceClient {
           }
         }
 
-        logger.warn(
+        localLogger.warn(
           {
-            endpoint,
             delayMs,
-            retryCount,
             retryAfterMsForTemporal,
             body,
             statusText,
@@ -518,11 +511,9 @@ export class ConfluenceClient {
       ]);
 
       const delayMs = NEAR_RATE_LIMIT_DELAY + sampleJitter();
-      logger.warn(
+      localLogger.warn(
         {
-          endpoint,
           delayMs,
-          retryCount,
         },
         "[Confluence] Rate limit nearly hit."
       );
