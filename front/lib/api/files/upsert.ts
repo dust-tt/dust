@@ -16,7 +16,7 @@ import { generateSnippet } from "@app/lib/api/files/snippet";
 import { processAndStoreFile } from "@app/lib/api/files/upload";
 import { getFileContent } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
-import type { DustError } from "@app/lib/error";
+import { DustError, isDustError } from "@app/lib/error";
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
@@ -50,9 +50,9 @@ const upsertDocumentToDatasource: ProcessingFunction = async (
   const title = upsertTitle ?? file.fileName;
   const content = await getFileContent(auth, file);
   if (!content) {
-    return new Err({
+    return new Err<DustError>({
       name: "dust_error",
-      code: "internal_server_error",
+      code: "internal_error", // TODO: Is this the correct error code? Why not 404
       message:
         "There was an error upserting the document: failed to get file content.",
     });
@@ -76,11 +76,13 @@ const upsertDocumentToDatasource: ProcessingFunction = async (
   });
 
   if (upsertDocumentRes.isErr()) {
-    return new Err({
+    if (isDustError(upsertDocumentRes.error)) {
+      return new Err<DustError>(upsertDocumentRes.error);
+    }
+    return new Err<DustError>({
       name: "dust_error",
-      code: "internal_server_error",
-      message: upsertDocumentRes.error.message,
-      data_source_error: upsertDocumentRes.error,
+      code: "internal_error",
+      message: "There was an error upserting the document.",
     });
   }
 
@@ -96,9 +98,9 @@ const upsertSectionDocumentToDatasource: ProcessingFunction = async (
   // Get the content of the file.
   const content = await getFileContent(auth, file);
   if (!content) {
-    return new Err({
+    return new Err<DustError>({
       name: "dust_error",
-      code: "internal_server_error",
+      code: "internal_error", // TODO: Is this the correct error code? Why not 404
       message:
         "There was an error upserting the document: failed to get file content.",
     });
@@ -109,9 +111,9 @@ const upsertSectionDocumentToDatasource: ProcessingFunction = async (
   try {
     section = JSON.parse(content);
   } catch (e) {
-    return new Err({
+    return new Err<DustError>({
       name: "dust_error",
-      code: "internal_server_error",
+      code: "internal_error",
       message: "There was an error upserting the document.",
     });
   }
@@ -135,11 +137,13 @@ const upsertSectionDocumentToDatasource: ProcessingFunction = async (
   });
 
   if (upsertDocumentRes.isErr()) {
-    return new Err({
+    if (isDustError(upsertDocumentRes.error)) {
+      return new Err<DustError>(upsertDocumentRes.error);
+    }
+    return new Err<DustError>({
       name: "dust_error",
-      code: "internal_server_error",
+      code: "internal_error",
       message: "There was an error upserting the document.",
-      data_source_error: upsertDocumentRes.error,
     });
   }
 
@@ -205,11 +209,13 @@ const upsertTableToDatasource: ProcessingFunction = async (
   });
 
   if (upsertTableRes.isErr()) {
-    return new Err({
+    if (isDustError(upsertTableRes.error)) {
+      return new Err<DustError>(upsertTableRes.error);
+    }
+    return new Err<DustError>({
       name: "dust_error",
-      code: "internal_server_error",
-      message: upsertTableRes.error.message,
-      data_source_error: upsertTableRes.error,
+      code: "internal_error",
+      message: "There was an error upserting the document.",
     });
   }
 
@@ -230,7 +236,13 @@ const upsertExcelToDatasource: ProcessingFunction = async (
   let worksheetContent: string | undefined;
 
   if (upsertArgs && !isUpsertTableArgs(upsertArgs)) {
-    return new Err(new Error("Invalid upsert args"));
+    return new Err<DustError>({
+      name: "dust_error",
+      code: "invalid_upsert_args",
+      message:
+        "Excel files can only be processed as tables. " +
+        "Please use table arguments instead of document arguments.",
+    });
   }
 
   const tableIds: string[] = [];
@@ -283,9 +295,9 @@ const upsertExcelToDatasource: ProcessingFunction = async (
 
   const content = await getFileContent(auth, file);
   if (!content) {
-    return new Err({
+    return new Err<DustError>({
       name: "dust_error",
-      code: "internal_server_error",
+      code: "internal_error",
       message:
         "There was an error upserting the document: failed to get file content.",
     });
@@ -304,11 +316,21 @@ const upsertExcelToDatasource: ProcessingFunction = async (
     }
   }
 
-  if (!worksheetName || !worksheetContent) {
-    return new Err({
+  if (!worksheetName) {
+    return new Err<DustError>({
       name: "dust_error",
-      code: "invalid_request_error",
-      message: "Invalid Excel file",
+      code: "invalid_name_error",
+      message:
+        "This Excel file doesn't contain any recognizable worksheets. " +
+        "Please check that your file has properly named worksheet tabs and try again.",
+    });
+  } else if (!worksheetContent) {
+    return new Err<DustError>({
+      name: "dust_error",
+      code: "invalid_content_error",
+      message:
+        "The worksheets in this Excel file appear to be empty. " +
+        "Please make sure your worksheets contain data and try again.",
     });
   } else {
     await upsertWorksheet(worksheetName, worksheetContent);
@@ -330,7 +352,7 @@ type ProcessingFunction = (
     dataSource: DataSourceResource;
     upsertArgs?: UpsertDocumentArgs | UpsertTableArgs;
   }
-) => Promise<Result<undefined, Error>>;
+) => Promise<Result<undefined, DustError>>;
 
 const getProcessingFunction = ({
   contentType,
@@ -463,7 +485,12 @@ export async function processAndUpsertToDataSource(
         | "internal_server_error"
         | "invalid_request_error"
         | "file_too_large"
-        | "file_type_not_supported";
+        | "file_type_not_supported"
+        | "unauthorized"
+        | "quota_exceeded"
+        | "resource_not_found"
+        | "processing_failed"
+        | "validation_error";
     }
   >
 > {
@@ -506,15 +533,11 @@ export async function processAndUpsertToDataSource(
   ]);
 
   if (processingRes.isErr()) {
-    return new Err({
-      name: "dust_error",
-      code: "internal_server_error",
-      message: `Failed to process the file: ${processingRes.error.message}`,
-      processingError: processingRes.error,
-    });
+    return mapInternalErrorToPublicError(processingRes.error);
   }
 
   if (snippetRes.isErr()) {
+    // TODO: Do the same for snippets?
     return new Err({
       name: "dust_error",
       code: "internal_server_error",
@@ -527,4 +550,98 @@ export async function processAndUpsertToDataSource(
   await file.setSnippet(snippetRes.value);
 
   return new Ok(file);
+}
+
+function mapInternalErrorToPublicError(error: DustError): Err<
+  Omit<DustError, "code"> & {
+    code:
+      | "internal_server_error"
+      | "invalid_request_error"
+      | "file_too_large"
+      | "file_type_not_supported"
+      | "unauthorized"
+      | "quota_exceeded"
+      | "resource_not_found"
+      | "processing_failed"
+      | "validation_error";
+  }
+> {
+  switch (error.code) {
+    case "invalid_upsert_args":
+    case "invalid_content_error":
+    case "invalid_name_error":
+    case "invalid_title_in_tags":
+    case "text_or_section_required":
+    case "title_is_empty":
+    case "title_too_long":
+    case "invalid_rows":
+    case "missing_csv":
+      return new Err({
+        name: error.name,
+        code: "validation_error",
+        message: error.message,
+      });
+
+    case "invalid_id":
+    case "invalid_parent_id":
+    case "invalid_parents":
+    case "invalid_url":
+      return new Err({
+        name: error.name,
+        code: "invalid_request_error",
+        message: error.message,
+      });
+
+    case "limit_reached":
+    case "data_source_quota_error":
+      return new Err({
+        name: error.name,
+        code: "quota_exceeded",
+        message: error.message,
+      });
+
+    case "resource_not_found":
+    case "user_not_found":
+    case "group_not_found":
+    case "remote_server_not_found":
+    case "internal_server_not_found":
+      return new Err({
+        name: error.name,
+        code: "resource_not_found",
+        message: error.message,
+      });
+
+    case "unauthorized":
+    case "system_or_global_group":
+    case "user_already_member":
+    case "user_not_member":
+      return new Err({
+        name: error.name,
+        code: "unauthorized",
+        message: error.message,
+      });
+
+    case "data_source_error":
+      return new Err({
+        name: error.name,
+        code: "processing_failed",
+        message: error.message,
+      });
+
+    case "space_already_exists":
+      return new Err({
+        name: error.name,
+        code: "file_type_not_supported",
+        message: error.message,
+      });
+
+    case "core_api_error":
+    case "internal_error":
+    default:
+      return new Err({
+        name: error.name,
+        code: "internal_server_error",
+        message: error.message,
+      });
+  }
 }

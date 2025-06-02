@@ -28,7 +28,11 @@ export type DustErrorCode =
   | "remote_server_not_found"
   | "internal_server_not_found"
   // Space errors
-  | "space_already_exists";
+  | "space_already_exists"
+  // Excel errors
+  | "invalid_upsert_args"
+  | "invalid_content_error"
+  | "invalid_name_error";
 
 export class DustError extends Error {
   constructor(
@@ -37,4 +41,8 @@ export class DustError extends Error {
   ) {
     super(message);
   }
+}
+
+export function isDustError(error: unknown): error is DustError {
+  return error instanceof DustError;
 }
