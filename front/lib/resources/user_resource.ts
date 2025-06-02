@@ -149,10 +149,9 @@ export class UserResource extends BaseResource<UserModel> {
       // Best effort strategy as user db entries are not updated often.
       return b.updatedAt.getTime() - a.updatedAt.getTime();
     });
-    const usersWithAuth0Sub = sortedUsers.filter((u) => u.auth0Sub !== null);
 
-    // Most recently updated user with an Auth0 sub if any, otherwise most recently updated user.
-    return usersWithAuth0Sub[0] ?? sortedUsers[0] ?? null;
+    // Most recently updated user if any.
+    return sortedUsers[0] ?? null;
   }
 
   static async fetchByProvider(
