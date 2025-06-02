@@ -31,7 +31,7 @@ import type {
 } from "@app/types";
 import { Err, Ok } from "@app/types";
 
-async function fetchAgentDataSourceConfiguration(
+export async function fetchAgentDataSourceConfiguration(
   dataSourceConfiguration: DataSourcesToolConfigurationType[number]
 ): Promise<Result<AgentDataSourceConfiguration, Error>> {
   const match = dataSourceConfiguration.uri.match(
