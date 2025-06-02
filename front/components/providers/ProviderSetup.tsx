@@ -178,6 +178,28 @@ export const MODEL_PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
       </>
     ),
   },
+  xai: {
+    title: "xAI",
+    fields: [{ name: "api_key", placeholder: "xAI API Key" }],
+    instructions: (
+      <>
+        <p>
+          To use xAI's Grok models you must provide your API key. It can be found{" "}
+          <a
+            className="font-bold text-highlight-600 hover:text-highlight-500"
+            href="https://x.ai/developers"
+            target="_blank"
+          >
+            here
+          </a>
+          .
+        </p>
+        <p className="mt-2">
+          We'll never use your API key for anything other than to run your apps.
+        </p>
+      </>
+    ),
+  },
 };
 
 export const SERVICE_PROVIDER_CONFIGS: Record<string, ProviderConfig> = {

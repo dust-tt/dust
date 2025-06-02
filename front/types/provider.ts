@@ -19,5 +19,6 @@ export type CredentialsType = {
   TOGETHERAI_API_KEY?: string;
   DEEPSEEK_API_KEY?: string;
   FIREWORKS_API_KEY?: string;
+  XAI_API_KEY?: string;
   FIRECRAWL_API_KEY?: string;
 };

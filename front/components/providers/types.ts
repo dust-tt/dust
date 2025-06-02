@@ -29,6 +29,8 @@ import {
   GPT_4_TURBO_MODEL_CONFIG,
   GPT_4O_MINI_MODEL_CONFIG,
   GPT_4O_MODEL_CONFIG,
+  GROK_3_MINI_MODEL_CONFIG,
+  GROK_3_MODEL_CONFIG,
   MISTRAL_CODESTRAL_MODEL_CONFIG,
   MISTRAL_LARGE_MODEL_CONFIG,
   MISTRAL_SMALL_MODEL_CONFIG,
@@ -76,6 +78,9 @@ const MODEL_PROVIDER_LOGOS: ModelProviderLogos = {
   fireworks: {
     light: PlanetIcon,
   },
+  xai: {
+    light: PlanetIcon,
+  },
 };
 
 export const getModelProviderLogo = (
@@ -113,6 +118,8 @@ export const USED_MODEL_CONFIGS: readonly ModelConfig[] = [
   GEMINI_2_FLASH_LITE_PREVIEW_MODEL_CONFIG,
   GEMINI_2_PRO_PREVIEW_MODEL_CONFIG,
   GEMINI_2_5_PRO_PREVIEW_MODEL_CONFIG,
+  GROK_3_MODEL_CONFIG,
+  GROK_3_MINI_MODEL_CONFIG,
 ] as const;
 
 // Sorted by preference order

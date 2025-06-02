@@ -77,6 +77,7 @@ pub mod providers {
     pub mod helpers;
     pub mod openai_compatible_helpers;
     pub mod togetherai;
+    pub mod xai;
 }
 pub mod http {
     pub mod network;
