@@ -71,18 +71,18 @@ export async function workspaceRelocationWorkflow({
   });
 
   // 4) Relocate the apps to the destination region.
-  await executeChild(workspaceRelocateAppsWorkflow, {
-    workflowId: `workspaceRelocateAppsWorkflow-${workspaceId}`,
-    searchAttributes: parentSearchAttributes,
-    args: [
-      {
-        workspaceId,
-        sourceRegion,
-        destRegion,
-      },
-    ],
-    memo,
-  });
+  // await executeChild(workspaceRelocateAppsWorkflow, {
+  //   workflowId: `workspaceRelocateAppsWorkflow-${workspaceId}`,
+  //   searchAttributes: parentSearchAttributes,
+  //   args: [
+  //     {
+  //       workspaceId,
+  //       sourceRegion,
+  //       destRegion,
+  //     },
+  //   ],
+  //   memo,
+  // });
 }
 
 /**
@@ -438,16 +438,16 @@ export async function workspaceRelocateConnectorsTableWorkflow({
  * Core relocation workflows.
  */
 
-const getCoreSourceRegionActivities = (region: RegionType) => {
+export const getCoreSourceRegionActivities = (region: RegionType) => {
   return proxyActivities<typeof coreSourceActivities>({
-    startToCloseTimeout: "10 minutes",
+    startToCloseTimeout: "15 minutes",
     taskQueue: RELOCATION_QUEUES_PER_REGION[region],
   });
 };
 
-const getCoreDestinationRegionActivities = (region: RegionType) => {
+export const getCoreDestinationRegionActivities = (region: RegionType) => {
   return proxyActivities<typeof coreDestinationActivities>({
-    startToCloseTimeout: "10 minutes",
+    startToCloseTimeout: "15 minutes",
     taskQueue: RELOCATION_QUEUES_PER_REGION[region],
   });
 };

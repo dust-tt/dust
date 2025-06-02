@@ -1,8 +1,10 @@
 import { isRegionType, SUPPORTED_REGIONS } from "@app/lib/api/regions/config";
-import { getTemporalClient } from "@app/lib/temporal";
 import { makeScript } from "@app/scripts/helpers";
-import { RELOCATION_QUEUES_PER_REGION } from "@app/temporal/relocation/config";
-import { workspaceRelocateAppsWorkflow } from "@app/temporal/relocation/workflows";
+import {
+  getCoreDestinationRegionActivities,
+  getCoreSourceRegionActivities,
+} from "@app/temporal/relocation/workflows";
+import type { ModelId } from "@app/types";
 
 makeScript(
   {
@@ -33,14 +35,67 @@ makeScript(
       return;
     }
 
-    if (execute) {
-      const client = await getTemporalClient();
-      await client.workflow.start(workspaceRelocateAppsWorkflow, {
-        args: [{ workspaceId, sourceRegion, destRegion }],
-        taskQueue: RELOCATION_QUEUES_PER_REGION[sourceRegion],
-        workflowId: `workspaceRelocateAppsWorkflow-${workspaceId}`,
-        memo: { workspaceId },
-      });
-    }
+    const sourceRegionActivities = getCoreSourceRegionActivities(sourceRegion);
+    const destinationRegionActivities =
+      getCoreDestinationRegionActivities(destRegion);
+
+    let hasMoreRows = true;
+    let currentId: ModelId | undefined = undefined;
+
+    do {
+      const { dustAPIProjectIds, hasMore, lastId } =
+        await sourceRegionActivities.retrieveAppsCoreIdsBatch({
+          lastId: currentId,
+          workspaceId,
+        });
+
+      hasMoreRows = hasMore;
+      currentId = lastId;
+
+      logger.info(
+        { hasMoreRows, currentId },
+        "[Core] sourceRegionActivities.retrieveAppsCoreIdsBatch"
+      );
+
+      for (const dustAPIProjectId of dustAPIProjectIds) {
+        const { dataPath } = await sourceRegionActivities.getApp({
+          dustAPIProjectId,
+          workspaceId,
+          sourceRegion,
+        });
+
+        logger.info(
+          {
+            dustAPIProjectId,
+            workspaceId,
+            sourceRegion,
+            dataPath,
+          },
+          "[Core] sourceRegionActivities getApp"
+        );
+
+        if (execute) {
+          await destinationRegionActivities.processApp({
+            dustAPIProjectId,
+            dataPath,
+            destRegion,
+            sourceRegion,
+            workspaceId,
+          });
+          logger.info("[Core] destinationRegionActivities.processApp");
+        } else {
+          logger.warn(
+            {
+              dustAPIProjectId,
+              dataPath,
+              destRegion,
+              sourceRegion,
+              workspaceId,
+            },
+            "[Core] NOT EXECUTING destinationRegionActivities.processApp"
+          );
+        }
+      }
+    } while (hasMoreRows);
   }
 );
