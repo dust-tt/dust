@@ -4,14 +4,21 @@ import type {
   DirectoryUserWithGroups as WorkOSUserWithGroups,
 } from "@workos-inc/node";
 
+import { handleEnterpriseSignUpFlow } from "@app/lib/api/signup";
 import { getWorkOS } from "@app/lib/api/workos/client";
 import { getUserNicknameFromEmail } from "@app/lib/api/workos/user";
 import type { Authenticator } from "@app/lib/auth";
+import type { ExternalUser } from "@app/lib/iam/provider";
 import { createOrUpdateUser } from "@app/lib/iam/users";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
-import type { WorkspaceType } from "@app/types";
+import type { UserType, WorkspaceType } from "@app/types";
+
+type UserGroupMapping = {
+  user: UserType;
+  workOSGroupIds: string[];
+};
 
 export async function syncWorkOSDirectoriesForWorkspace(
   auth: Authenticator
@@ -39,11 +46,15 @@ export async function syncWorkOSDirectoriesForWorkspace(
       "[WorkOS] Syncing directory."
     );
 
-    await syncAllUsers({ workspace, directory });
+    const userGroupMappings = await syncAllUsers({ workspace, directory });
 
     await syncAllGroups(auth, { workspace, directory });
 
-    // TODO(2025-05-27 aubin): update group memberships.
+    await syncGroupMemberships(auth, {
+      workspace,
+      directory,
+      userGroupMappings,
+    });
 
     logger.info(
       { workspaceId: workspace.sId, directoryId: directory.id },
@@ -58,33 +69,37 @@ async function syncAllUsers({
 }: {
   workspace: WorkspaceType;
   directory: WorkOSDirectory;
-}): Promise<void> {
-  logger.info(
-    {
-      workspaceId: workspace.sId,
-      directoryId: directory.id,
-    },
-    "[WorkOS] Starting user sync."
-  );
+}): Promise<UserGroupMapping[]> {
+  const workOS = getWorkOS();
 
-  const workOs = getWorkOS();
+  const userGroupMappings: UserGroupMapping[] = [];
+  let nextPageCursor: string | undefined = undefined;
 
-  // TODO(2025-05-26 aubin): paginate here.
-  const { data: users } = await workOs.directorySync.listUsers({
-    directory: directory.id,
-  });
+  do {
+    const {
+      data,
+      listMetadata: { after },
+    } = await workOS.directorySync.listUsers({
+      directory: directory.id,
+      after: nextPageCursor,
+    });
 
-  for (const workOSUser of users) {
-    await upsertUser({ workspace, workOSUser, directory });
-  }
+    nextPageCursor = after as string | undefined; // Issue with the typing in the SDK.
 
-  logger.info(
-    {
-      workspaceId: workspace.sId,
-      directoryId: directory.id,
-    },
-    "[WorkOS] User sync completed."
-  );
+    for (const workOSUser of data) {
+      const user = await upsertUser({ workspace, workOSUser, directory });
+
+      // Collect user-group mappings for later processing.
+      if (user) {
+        userGroupMappings.push({
+          user: user.toJSON(),
+          workOSGroupIds: workOSUser.groups.map((group) => group.id),
+        });
+      }
+    }
+  } while (nextPageCursor);
+
+  return userGroupMappings;
 }
 
 async function syncAllGroups(
@@ -96,33 +111,162 @@ async function syncAllGroups(
     workspace: WorkspaceType;
     directory: WorkOSDirectory;
   }
-): Promise<void> {
-  logger.info(
-    {
-      workspaceId: workspace.sId,
-      directoryId: directory.id,
-    },
-    "[WorkOS] Starting group sync"
-  );
-
+): Promise<WorkOSGroup[]> {
   const workOS = getWorkOS();
 
-  // TODO(2025-05-26 aubin): paginate here.
-  const { data: groups } = await workOS.directorySync.listGroups({
-    directory: directory.id,
+  const groups: WorkOSGroup[] = [];
+  let nextPageCursor: string | undefined = undefined;
+
+  do {
+    const {
+      data,
+      listMetadata: { after },
+    } = await workOS.directorySync.listGroups({
+      directory: directory.id,
+      after: nextPageCursor,
+    });
+
+    nextPageCursor = after;
+    groups.push(...data);
+
+    for (const workOSGroup of data) {
+      await upsertGroup(auth, { workspace, workOSGroup, directory });
+    }
+  } while (nextPageCursor);
+
+  return groups;
+}
+
+async function syncGroupMemberships(
+  auth: Authenticator,
+  {
+    workspace,
+    directory,
+    userGroupMappings,
+  }: {
+    workspace: WorkspaceType;
+    directory: WorkOSDirectory;
+    userGroupMappings: UserGroupMapping[];
+  }
+): Promise<void> {
+  const localLogger = logger.child({
+    workspaceId: workspace.sId,
+    directoryId: directory.id,
   });
 
-  for (const workOSGroup of groups) {
-    await upsertGroup(auth, { workspace, workOSGroup, directory });
+  localLogger.info("[WorkOS] Starting group memberships sync.");
+
+  // Build a map of the WorkOS group ID to the list of user IDs.
+  const groupToUsersMap = new Map<string, UserType[]>();
+
+  for (const { user, workOSGroupIds } of userGroupMappings) {
+    for (const workOSGroupId of workOSGroupIds) {
+      if (!groupToUsersMap.has(workOSGroupId)) {
+        groupToUsersMap.set(workOSGroupId, []);
+      }
+      groupToUsersMap.get(workOSGroupId)?.push(user);
+    }
   }
 
-  logger.info(
-    {
-      workspaceId: workspace.sId,
-      directoryId: directory.id,
-    },
-    "[WorkOS] Group sync completed."
+  // For each group, sync its membership
+  for (const [workOSGroupId, users] of groupToUsersMap.entries()) {
+    await syncGroupMembershipForGroup(auth, {
+      workspace,
+      workOSGroupId,
+      users,
+    });
+  }
+
+  // Also handle groups that have no members in WorkOS (should be emptied)
+  await garbageCollectEmptyGroups(auth, { workspace, groupToUsersMap });
+
+  localLogger.info("[WorkOS] Group memberships sync completed.");
+}
+
+async function syncGroupMembershipForGroup(
+  auth: Authenticator,
+  {
+    workspace,
+    workOSGroupId,
+    users,
+  }: {
+    workspace: WorkspaceType;
+    workOSGroupId: string;
+    users: UserType[];
+  }
+): Promise<void> {
+  const localLogger = logger.child({
+    workspaceId: workspace.sId,
+    workOSGroupId,
+  });
+
+  // Find the group by WorkOS group ID.
+  const group = await GroupResource.fetchByWorkOSGroupId(auth, workOSGroupId);
+  if (!group) {
+    localLogger.warn(
+      "[WorkOS] Group not found for WorkOS group ID, skipping membership sync."
+    );
+    return;
+  }
+
+  const setResult = await group.setMembers(auth, users);
+
+  if (setResult.isErr()) {
+    localLogger.error(
+      { groupId: group.sId, error: setResult.error },
+      "[WorkOS] Failed to sync group membership."
+    );
+    throw setResult.error;
+  }
+
+  localLogger.info(
+    { groupId: group.sId, userCount: users.length },
+    "[WorkOS] Successfully synced group membership."
   );
+}
+
+async function garbageCollectEmptyGroups(
+  auth: Authenticator,
+  {
+    workspace,
+    groupToUsersMap,
+  }: {
+    workspace: WorkspaceType;
+    groupToUsersMap: Map<string, UserType[]>;
+  }
+): Promise<void> {
+  const allGroups = await GroupResource.listAllWorkspaceGroups(auth, {
+    groupKinds: ["provisioned"],
+  });
+
+  // Find groups that have WorkOS IDs but are not in our current sync data.
+  for (const group of allGroups) {
+    if (group.workOSGroupId && !groupToUsersMap.has(group.workOSGroupId)) {
+      // This group exists in our DB but has no members in WorkOS, so we empty it.
+      const setResult = await group.setMembers(auth, []);
+
+      if (setResult.isErr()) {
+        logger.error(
+          {
+            workspaceId: workspace.sId,
+            groupId: group.sId,
+            workOSGroupId: group.workOSGroupId,
+            error: setResult.error,
+          },
+          "[WorkOS] Failed to empty group with no WorkOS members."
+        );
+        throw setResult.error;
+      }
+      logger.info(
+        {
+          workspaceId: workspace.sId,
+          groupId: group.sId,
+          workOSGroupId: group.workOSGroupId,
+        },
+        "[WorkOS] Emptied group with no WorkOS members."
+      );
+    }
+  }
 }
 
 async function upsertUser({
@@ -133,7 +277,7 @@ async function upsertUser({
   workspace: WorkspaceType;
   workOSUser: WorkOSUserWithGroups;
   directory: WorkOSDirectory;
-}): Promise<void> {
+}): Promise<UserResource | null> {
   const localLogger = logger.child({
     workspaceId: workspace.sId,
     workOSUserEmail: workOSUser.email,
@@ -144,24 +288,34 @@ async function upsertUser({
   localLogger.info("[WorkOS] Upserting user.");
   if (!workOSUser.email) {
     localLogger.error("[WorkOS] Cannot sync a user without an email.");
-    return;
+    return null;
   }
 
   const user = await UserResource.fetchByEmail(workOSUser.email);
-  const externalUser = {
+  const externalUser: ExternalUser = {
+    auth0Sub: null,
     email: workOSUser.email,
     email_verified: true,
     name: workOSUser.email ?? "",
     nickname: getUserNicknameFromEmail(workOSUser.email) ?? "",
-    auth0Sub: null,
     workOSId: workOSUser.id,
   };
 
-  await createOrUpdateUser({
+  const { user: createdOrUpdatedUser } = await createOrUpdateUser({
     user,
     externalUser,
   });
   localLogger.info("[WorkOS] User successfully upserted.");
+
+  // Create the membership.
+  if (createdOrUpdatedUser && workspace.workOSOrganizationId) {
+    await handleEnterpriseSignUpFlow(
+      createdOrUpdatedUser,
+      workspace.workOSOrganizationId
+    );
+  }
+
+  return createdOrUpdatedUser;
 }
 
 async function upsertGroup(
@@ -179,6 +333,7 @@ async function upsertGroup(
   const localLogger = logger.child({
     workspaceId: workspace.sId,
     workOSGroupId: workOSGroup.id,
+    workOSGroupName: workOSGroup.name,
     directoryId: directory.id,
   });
 
