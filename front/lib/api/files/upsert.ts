@@ -464,27 +464,11 @@ export async function processAndUpsertToDataSource(
     file: FileResource;
     upsertArgs?: UpsertDocumentArgs | UpsertTableArgs;
   }
-): Promise<
-  Result<
-    FileResource,
-    Omit<DustError, "code"> & {
-      code:
-        | "internal_server_error"
-        | "invalid_request_error"
-        | "file_too_large"
-        | "file_type_not_supported"
-        | "unauthorized"
-        | "quota_exceeded"
-        | "resource_not_found"
-        | "processing_failed"
-        | "validation_error";
-    }
-  >
-> {
+): Promise<Result<FileResource, DustError>> {
   if (file.status !== "ready") {
-    return new Err({
+    return new Err<DustError>({
       name: "dust_error",
-      code: "invalid_request_error",
+      code: "file_not_ready",
       message: "File is not ready for post processing.",
     });
   }
@@ -492,7 +476,7 @@ export async function processAndUpsertToDataSource(
   if (!isFileTypeUpsertableForUseCase(file)) {
     return new Err({
       name: "dust_error",
-      code: "invalid_request_error",
+      code: "invalid_file",
       message: "File is not supported for upsert.",
     });
   }
@@ -520,16 +504,15 @@ export async function processAndUpsertToDataSource(
   ]);
 
   if (processingRes.isErr()) {
-    return mapInternalErrorToPublicError(processingRes.error);
+    return new Err<DustError>(processingRes.error);
   }
 
   if (snippetRes.isErr()) {
     // TODO: Do the same for snippets?
-    return new Err({
+    return new Err<DustError>({
       name: "dust_error",
-      code: "internal_server_error",
+      code: "internal_error",
       message: `Failed to generate snippet: ${snippetRes.error.message}`,
-      snippetError: snippetRes.error,
     });
   }
 
@@ -537,96 +520,4 @@ export async function processAndUpsertToDataSource(
   await file.setSnippet(snippetRes.value);
 
   return new Ok(file);
-}
-
-function mapInternalErrorToPublicError(error: DustError): Err<
-  Omit<DustError, "code"> & {
-    code:
-      | "internal_server_error"
-      | "invalid_request_error"
-      | "file_too_large"
-      | "file_type_not_supported"
-      | "unauthorized"
-      | "quota_exceeded"
-      | "resource_not_found"
-      | "processing_failed"
-      | "validation_error";
-  }
-> {
-  switch (error.code) {
-    case "invalid_content_error":
-    case "invalid_title_in_tags":
-    case "text_or_section_required":
-    case "title_is_empty":
-    case "title_too_long":
-    case "invalid_rows":
-    case "missing_csv":
-      return new Err({
-        name: error.name,
-        code: "validation_error",
-        message: error.message,
-      });
-
-    case "invalid_id":
-    case "invalid_parent_id":
-    case "invalid_parents":
-    case "invalid_url":
-      return new Err({
-        name: error.name,
-        code: "invalid_request_error",
-        message: error.message,
-      });
-
-    case "limit_reached":
-    case "data_source_quota_error":
-      return new Err({
-        name: error.name,
-        code: "quota_exceeded",
-        message: error.message,
-      });
-
-    case "resource_not_found":
-    case "user_not_found":
-    case "group_not_found":
-    case "remote_server_not_found":
-    case "internal_server_not_found":
-      return new Err({
-        name: error.name,
-        code: "resource_not_found",
-        message: error.message,
-      });
-
-    case "unauthorized":
-    case "system_or_global_group":
-    case "user_already_member":
-    case "user_not_member":
-      return new Err({
-        name: error.name,
-        code: "unauthorized",
-        message: error.message,
-      });
-
-    case "data_source_error":
-      return new Err({
-        name: error.name,
-        code: "processing_failed",
-        message: error.message,
-      });
-
-    case "space_already_exists":
-      return new Err({
-        name: error.name,
-        code: "file_type_not_supported",
-        message: error.message,
-      });
-
-    case "core_api_error":
-    case "internal_error":
-    default:
-      return new Err({
-        name: error.name,
-        code: "internal_server_error",
-        message: error.message,
-      });
-  }
 }
