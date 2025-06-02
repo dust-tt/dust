@@ -65,8 +65,8 @@ const createServer = (): McpServer => {
   const server = new McpServer(serverInfo);
 
   server.tool(
-    "search_by_title",
-    "Search for content nodes by their title or name. Use this when you need to find specific " +
+    "find_by_title",
+    "Find content nodes based on their title or name. Use this when you need to find specific " +
       "files, documents, folders, or other content by searching for their titles. This is like using " +
       "'find -name' in Unix - it will find all nodes whose titles contain or start with your search " +
       "term. A good fit is when the user asks 'find the document called X' or 'show me files with Y " +
