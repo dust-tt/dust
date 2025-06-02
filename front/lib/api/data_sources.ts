@@ -747,7 +747,7 @@ export async function upsertTable({
       if (!file) {
         return new Err<DustError>({
           name: "dust_error",
-          code: "resource_not_found",
+          code: "file_not_found",
           message:
             "The file associated with the fileId you provided was not found",
         });
@@ -764,7 +764,7 @@ export async function upsertTable({
         if (schemaRes.error.code === "invalid_csv_content") {
           return new Err({
             name: "dust_error",
-            code: "invalid_file",
+            code: "invalid_csv_content",
             message: schemaRes.error.message,
           });
         } else {
@@ -859,7 +859,7 @@ export async function upsertTable({
     if (tableRes.error.type === "invalid_request_error") {
       return new Err({
         name: "dust_error",
-        code: "invalid_file",
+        code: "invalid_csv_and_file",
         message: "Invalid request body: " + tableRes.error.message,
       });
     }
@@ -867,7 +867,7 @@ export async function upsertTable({
     if (tableRes.error.type === "not_found_error") {
       return new Err({
         name: "dust_error",
-        code: "resource_not_found",
+        code: tableRes.error.notFoundError.type,
         message: tableRes.error.notFoundError.message,
       });
     }

@@ -4,6 +4,7 @@ export type DustErrorCode =
   | "invalid_id"
   | "limit_reached"
   | "resource_not_found"
+  | "file_not_found"
   | "unauthorized"
   // Data source
   | "data_source_error"
@@ -20,7 +21,10 @@ export type DustErrorCode =
   // Table
   | "invalid_rows"
   | "missing_csv"
+  | "invalid_csv_content"
+  | "invalid_csv_and_file"
   | "invalid_content_error"
+  | "table_not_found"
   // Group errors
   | "system_or_global_group"
   | "user_already_member"
