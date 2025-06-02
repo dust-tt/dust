@@ -1,9 +1,9 @@
 import { WorkflowNotFoundError } from "@temporalio/common";
 
 import { isRegionType, SUPPORTED_REGIONS } from "@app/lib/api/regions/config";
-import { getTemporalClient } from "@app/lib/temporal";
 import { makeScript } from "@app/scripts/helpers";
 import { RELOCATION_QUEUES_PER_REGION } from "@app/temporal/relocation/config";
+import { getTemporalRelocationClient } from "@app/temporal/relocation/temporal";
 import { workspaceRelocateAppsWorkflow } from "@app/temporal/relocation/workflows";
 
 makeScript(
@@ -41,7 +41,7 @@ makeScript(
       return;
     }
 
-    const client = await getTemporalClient();
+    const client = await getTemporalRelocationClient();
     logger.info("Got temporal client");
 
     let workflowId = `workspaceRelocateAppsWorkflow-${workspaceId}`;
