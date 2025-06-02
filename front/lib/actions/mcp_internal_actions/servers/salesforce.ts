@@ -35,6 +35,8 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
 # execute_read_query
 You can use it to execute SOQL read queries on Salesforce. Queries can be used to retrieve or discover data, never to write data.
 
+**Important:** Always include \`WITH USER_MODE\` in your SOQL queries. This ensures queries respect the user's permissions and sharing rules. If \`WITH USER_MODE\` is omitted, it will be added automatically as a fallback to uphold data security and context.
+
 **Best Practices for Querying:**
 1.  **Discover Object Structure First:** ALWAYS use \`describe_object(objectName='YourObjectName')\` to understand an object's fields and relationships before writing complex queries. Alternatively, for a quick field list directly in a query, use \`FIELDS()\` (e.g., \`SELECT FIELDS(ALL) FROM Account LIMIT 1\`). This helps prevent errors from misspelled or non-existent field/relationship names. The \`FIELDS()\` function requires a \`LIMIT\` clause, with a maximum of 200.
 2.  **Verify Field and Relationship Names:** If you encounter "No such column" or "Didn't understand relationship" errors, use \`describe_object\` for the relevant object(s) to confirm the exact names and their availability. For example, child relationship names used in subqueries (e.g., \`(SELECT Name FROM Contacts)\` or \`(SELECT Name FROM MyCustomChildren__r)\`) can be found in the output of \`describe_object\`.
@@ -102,7 +104,9 @@ This is the most reliable way to discover the correct names for fields and relat
       });
       await conn.identity();
 
-      const result = await conn.query(query);
+      // Add WITH USER_MODE to the query to ensure that the query is executed with the user's context.
+      const userModeQuery = addUserModeToQuery(query);
+      const result = await conn.query(userModeQuery);
 
       return makeMCPToolJSONSuccess({
         message: "Operation completed successfully",
@@ -210,3 +214,31 @@ This is the most reliable way to discover the correct names for fields and relat
 };
 
 export default createServer;
+
+const addUserModeToQuery = (query: string): string => {
+  const trimmedQuery = query.trim();
+
+  // Check if WITH USER_MODE is already present.
+  if (trimmedQuery.toUpperCase().includes("WITH USER_MODE")) {
+    return query;
+  }
+
+  // Find position to insert WITH USER_MODE (before ORDER BY, LIMIT, OFFSET, etc.)
+  const keywords = ["ORDER BY", "LIMIT", "OFFSET", "GROUP BY", "HAVING"];
+  let insertPosition = trimmedQuery.length;
+
+  for (const keyword of keywords) {
+    const regex = new RegExp(`\\s+${keyword}\\s+`, "i");
+    const match = trimmedQuery.match(regex);
+    if (match && match.index !== undefined) {
+      insertPosition = Math.min(insertPosition, match.index);
+    }
+  }
+
+  // Insert WITH USER_MODE at the correct position.
+  return (
+    trimmedQuery.slice(0, insertPosition) +
+    " WITH USER_MODE" +
+    trimmedQuery.slice(insertPosition)
+  );
+};
