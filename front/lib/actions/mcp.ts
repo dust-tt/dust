@@ -63,6 +63,7 @@ import type {
   FileUseCaseMetadata,
   FunctionCallType,
   FunctionMessageTypeModel,
+  LightWorkspaceType,
   ModelConfigurationType,
   ModelId,
   Result,
@@ -344,6 +345,26 @@ export class MCPActionType extends BaseAction {
         : "Successfully executed action, no output.",
     };
   }
+
+  getSId(owner: LightWorkspaceType): string {
+    return MCPActionType.modelIdToSId({
+      id: this.id,
+      workspaceId: owner.id,
+    });
+  }
+
+  private static modelIdToSId({
+    id,
+    workspaceId,
+  }: {
+    id: ModelId;
+    workspaceId: ModelId;
+  }): string {
+    return makeSId("action", {
+      id,
+      workspaceId,
+    });
+  }
 }
 
 /**
@@ -481,20 +502,14 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
         created: Date.now(),
         configurationId: agentConfiguration.sId,
         messageId: agentMessage.sId,
-        actionId: makeSId("action", {
-          workspaceId: owner.id,
-          id: mcpAction.id,
-        }),
+        actionId: mcpAction.getSId(owner),
         inputs: rawInputs,
         stake: actionConfiguration.permission,
       };
 
       try {
         const actionEventGenerator = getMCPEvents({
-          actionId: makeSId("action", {
-            id: mcpAction.id,
-            workspaceId: owner.id,
-          }),
+          actionId: mcpAction.getSId(owner),
         });
 
         localLogger.info(
