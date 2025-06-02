@@ -22,9 +22,7 @@ import type {
 import { CoreAPI, Err, Ok, removeNulls } from "@app/types";
 
 const serverInfo: InternalMCPServerDefinitionType = {
-  // TODO(2025-05-30 aubin): find a better name (currently not great in Agent Builder).
-  // Maybe browse_internal_data, browse_data_sources, browse_hierarchy?
-  name: "content_nodes",
+  name: "company_files",
   version: "1.0.0",
   description:
     "Comprehensive content navigation toolkit for browsing user company data. Provides Unix-like " +
