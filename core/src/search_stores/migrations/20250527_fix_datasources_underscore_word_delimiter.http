@@ -1,4 +1,4 @@
-PUT core.data_sources/_settings
+PUT core.data_sources/_settings?reopen=true
 {
   "analysis": {
     "analyzer": {

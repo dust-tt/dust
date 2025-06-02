@@ -1,4 +1,4 @@
-PUT core.data_sources_nodes/_settings
+PUT core.data_sources_nodes/_settings?reopen=true
 {
   "analysis": {
     "analyzer": {
