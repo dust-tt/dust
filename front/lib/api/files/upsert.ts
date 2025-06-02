@@ -77,14 +77,7 @@ const upsertDocumentToDatasource: ProcessingFunction = async (
   });
 
   if (upsertDocumentRes.isErr()) {
-    if (isDustError(upsertDocumentRes.error)) {
-      return new Err<DustError>(upsertDocumentRes.error);
-    }
-    return new Err<DustError>({
-      name: "dust_error",
-      code: "internal_error",
-      message: "There was an error upserting the document.",
-    });
+    return new Err<DustError>(upsertDocumentRes.error);
   }
 
   return new Ok(undefined);
