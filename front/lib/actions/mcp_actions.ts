@@ -431,18 +431,18 @@ function getPrefixedToolName(
     );
   }
 
-  // We want to keep the original name entirely, but we need to ensure that the
-  // prefixed name does not exceed the maximum length.
+  // Calculate if we have enough room for a meaningful prefix (3 chars) plus separator
+  const minPrefixLength = 3 + separator.length;
+  const availableSpace = MAX_TOOL_NAME_LENGTH - slugifiedOriginalName.length;
 
-  // Calculate the maximum allowed length for the config name portion.
-  const maxConfigNameLength =
-    MAX_TOOL_NAME_LENGTH - slugifiedOriginalName.length - separator.length;
-  // If the full prefixed name would be too long, truncate the config name portion.
-  const truncatedConfigName =
-    slugifiedConfigName.length > maxConfigNameLength
-      ? slugifiedConfigName.slice(0, maxConfigNameLength)
-      : slugifiedConfigName;
+  // If we don't have enough room for a meaningful prefix, just return the original name
+  if (availableSpace < minPrefixLength) {
+    return new Ok(slugifiedOriginalName);
+  }
 
+  // Calculate the maximum allowed length for the config name portion
+  const maxConfigNameLength = availableSpace - separator.length;
+  const truncatedConfigName = slugifiedConfigName.slice(0, maxConfigNameLength);
   const prefixedName = `${truncatedConfigName}${separator}${slugifiedOriginalName}`;
 
   return new Ok(prefixedName);
