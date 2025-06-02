@@ -1,10 +1,10 @@
+import { WorkflowNotFoundError } from "@temporalio/common";
+
 import { isRegionType, SUPPORTED_REGIONS } from "@app/lib/api/regions/config";
+import { getTemporalClient } from "@app/lib/temporal";
 import { makeScript } from "@app/scripts/helpers";
-import {
-  getCoreDestinationRegionActivities,
-  getCoreSourceRegionActivities,
-} from "@app/temporal/relocation/workflows";
-import type { ModelId } from "@app/types";
+import { RELOCATION_QUEUES_PER_REGION } from "@app/temporal/relocation/config";
+import { workspaceRelocateAppsWorkflow } from "@app/temporal/relocation/workflows";
 
 makeScript(
   {
@@ -23,8 +23,14 @@ makeScript(
       choices: SUPPORTED_REGIONS,
       demandOption: true,
     },
+    suffix: {
+      type: "string",
+    },
   },
-  async ({ workspaceId, sourceRegion, destRegion, execute }, logger) => {
+  async (
+    { workspaceId, sourceRegion, destRegion, suffix, execute },
+    logger
+  ) => {
     if (!isRegionType(sourceRegion) || !isRegionType(destRegion)) {
       logger.error("Invalid region.");
       return;
@@ -35,67 +41,52 @@ makeScript(
       return;
     }
 
-    const sourceRegionActivities = getCoreSourceRegionActivities(sourceRegion);
-    const destinationRegionActivities =
-      getCoreDestinationRegionActivities(destRegion);
+    const client = await getTemporalClient();
+    logger.info("Got temporal client");
 
-    let hasMoreRows = true;
-    let currentId: ModelId | undefined = undefined;
+    let workflowId = `workspaceRelocateAppsWorkflow-${workspaceId}`;
 
-    do {
-      const { dustAPIProjectIds, hasMore, lastId } =
-        await sourceRegionActivities.retrieveAppsCoreIdsBatch({
-          lastId: currentId,
-          workspaceId,
-        });
+    if (suffix != null && suffix !== "") {
+      workflowId += `-${suffix}`;
+    }
 
-      hasMoreRows = hasMore;
-      currentId = lastId;
+    const existingWorkflowHandle = client.workflow.getHandle(workflowId);
+    try {
+      const description = await existingWorkflowHandle.describe();
+      logger.warn({ workflowId, description }, "workflow already exists");
+      return;
+    } catch (err) {
+      if (err instanceof WorkflowNotFoundError) {
+        // ok, don't exist
+      } else {
+        logger.error(
+          { workflowId, err },
+          "error checking if workflow already exists"
+        );
+        return;
+      }
+    }
 
+    if (execute) {
       logger.info(
-        { hasMoreRows, currentId },
-        "[Core] sourceRegionActivities.retrieveAppsCoreIdsBatch"
-      );
-
-      for (const dustAPIProjectId of dustAPIProjectIds) {
-        const { dataPath } = await sourceRegionActivities.getApp({
-          dustAPIProjectId,
+        {
           workspaceId,
           sourceRegion,
-        });
+          destRegion,
+          queue: RELOCATION_QUEUES_PER_REGION[sourceRegion],
+          workflowId,
+        },
+        "starting workspaceRelocateAppsWorkflow"
+      );
 
-        logger.info(
-          {
-            dustAPIProjectId,
-            workspaceId,
-            sourceRegion,
-            dataPath,
-          },
-          "[Core] sourceRegionActivities getApp"
-        );
-
-        if (execute) {
-          await destinationRegionActivities.processApp({
-            dustAPIProjectId,
-            dataPath,
-            destRegion,
-            sourceRegion,
-            workspaceId,
-          });
-          logger.info("[Core] destinationRegionActivities.processApp");
-        } else {
-          logger.warn(
-            {
-              dustAPIProjectId,
-              dataPath,
-              destRegion,
-              sourceRegion,
-              workspaceId,
-            },
-            "[Core] NOT EXECUTING destinationRegionActivities.processApp"
-          );
-        }
-      }
-    } while (hasMoreRows);
+      await client.workflow.start(workspaceRelocateAppsWorkflow, {
+        args: [{ workspaceId, sourceRegion, destRegion }],
+        taskQueue: RELOCATION_QUEUES_PER_REGION[sourceRegion],
+        workflowId,
+        memo: { workspaceId },
+      });
+    } else {
+      logger.warn("Not executing");
+    }
   }
 );
