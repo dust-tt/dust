@@ -2,12 +2,12 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getMembershipInvitationToken } from "@app/lib/api/invitation";
 import { config as multiRegionsConfig } from "@app/lib/api/regions/config";
-import { updateUserFromAuth0 } from "@app/lib/api/workos/user";
 import {
   handleEnterpriseSignUpFlow,
   handleMembershipInvite,
   handleRegularSignupFlow,
 } from "@app/lib/api/signup";
+import { updateUserFromAuth0 } from "@app/lib/api/workos/user";
 import { AuthFlowError } from "@app/lib/iam/errors";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { getUserFromSession } from "@app/lib/iam/session";
