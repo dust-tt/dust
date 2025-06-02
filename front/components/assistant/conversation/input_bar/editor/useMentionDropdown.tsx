@@ -47,6 +47,7 @@ export const useMentionDropdown = (
   });
 
   const commandRef = useRef<CommandFunction | null>(null);
+  const clientRectRef = useRef<(() => DOMRect | null) | null>(null);
 
   // Store the current suggestion range for text replacement
   const rangeRef = useRef<Range | null>(null);
@@ -108,6 +109,33 @@ export const useMentionDropdown = (
     }));
   }, []);
 
+  const recalculateTriggerRect = useCallback(() => {
+    if (clientRectRef.current && state.isOpen) {
+      const rect = clientRectRef.current();
+      if (rect) {
+        setState((prev) => ({
+          ...prev,
+          triggerRect: rect,
+        }));
+      }
+    }
+  }, [state.isOpen]);
+
+  // Handle window resize to recalculate cursor position
+  useEffect(() => {
+    if (state.isOpen) {
+      const handleResize = () => {
+        recalculateTriggerRect();
+      };
+
+      window.addEventListener("resize", handleResize);
+
+      return () => {
+        window.removeEventListener("resize", handleResize);
+      };
+    }
+  }, [state.isOpen, recalculateTriggerRect]);
+
   // Single source of truth: filter suggestions whenever data or query changes
   useEffect(() => {
     const filteredSuggestions = filterSuggestions(
@@ -138,6 +166,7 @@ export const useMentionDropdown = (
             }
 
             commandRef.current = props.command;
+            clientRectRef.current = props.clientRect;
             // Store the range for text replacement
             rangeRef.current = props.range;
 
@@ -160,6 +189,7 @@ export const useMentionDropdown = (
 
             // Update the range for text replacement
             rangeRef.current = props.range;
+            clientRectRef.current = props.clientRect;
 
             const rect = props.clientRect();
             if (rect) {
@@ -225,6 +255,7 @@ export const useMentionDropdown = (
           onExit: () => {
             closeDropdown();
             commandRef.current = null;
+            clientRectRef.current = null;
             rangeRef.current = null;
           },
         };

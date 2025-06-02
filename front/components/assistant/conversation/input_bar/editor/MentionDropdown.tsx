@@ -5,8 +5,7 @@ import {
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
 import { Spinner } from "@dust-tt/sparkle";
-import React, { useEffect, useRef, useState } from "react";
-
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import type { EditorSuggestion } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
 import { classNames } from "@app/lib/utils";
 
@@ -39,8 +38,7 @@ export const MentionDropdown = ({
   const [virtualTriggerStyle, setVirtualTriggerStyle] =
     useState<React.CSSProperties>({});
 
-  // Update virtual trigger position based on triggerRect
-  useEffect(() => {
+  const updateTriggerPosition = useCallback(() => {
     if (triggerRect && triggerRef.current) {
       setVirtualTriggerStyle({
         position: "fixed",
@@ -53,6 +51,10 @@ export const MentionDropdown = ({
       });
     }
   }, [triggerRect]);
+
+  useEffect(() => {
+    updateTriggerPosition();
+  }, [triggerRect, updateTriggerPosition]);
 
   return (
     <DropdownMenu open={isOpen} onOpenChange={onOpenChange}>
