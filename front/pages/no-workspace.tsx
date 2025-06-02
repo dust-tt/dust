@@ -133,14 +133,6 @@ export default function NoWorkspace({
                 then use the link provided in the invitation email to access the
                 workspace.
               </span>
-              <span className="copy-md text-muted-foreground dark:text-muted-foreground-night">
-                If you're looking to establish{" "}
-                <span className="font-semibold">
-                  {" "}
-                  a new, separate workspace
-                </span>{" "}
-                continue with the following step:
-              </span>
             </div>
           )}
           {status === "revoked" && (
