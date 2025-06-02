@@ -7,10 +7,8 @@ import type {
 } from "@app/lib/api/data_sources";
 import { processAndUpsertToDataSource } from "@app/lib/api/files/upsert";
 import type { Authenticator } from "@app/lib/auth";
-import type { DustError } from "@app/lib/error";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
-import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { APIErrorType, FileType, WithAPIErrorResponse } from "@app/types";
 
