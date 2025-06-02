@@ -20,6 +20,7 @@ export const MODEL_PROVIDER_IDS = [
   "togetherai",
   "deepseek",
   "fireworks",
+  "xai",
 ] as const;
 export type ModelProviderIdType = (typeof MODEL_PROVIDER_IDS)[number];
 
@@ -93,6 +94,9 @@ export function getLargeWhitelistedModel(
   }
   if (isProviderWhitelisted(owner, "mistral")) {
     return MISTRAL_LARGE_MODEL_CONFIG;
+  }
+  if (isProviderWhitelisted(owner, "xai")) {
+    return GROK_3_MODEL_CONFIG;
   }
   return null;
 }
@@ -169,6 +173,11 @@ export const DEEPSEEK_REASONER_MODEL_ID = "deepseek-reasoner" as const;
 export const FIREWORKS_DEEPSEEK_R1_MODEL_ID =
   "accounts/fireworks/models/deepseek-r1" as const;
 
+export const GROK_3_MODEL_ID = "grok-3-latest" as const;
+export const GROK_3_MINI_MODEL_ID = "grok-3-mini-latest" as const;
+export const GROK_3_FAST_MODEL_ID = "grok-3-fast-latest" as const;
+export const GROK_3_MINI_FAST_MODEL_ID = "grok-3-mini-fast-latest" as const;
+
 export const MODEL_IDS = [
   GPT_3_5_TURBO_MODEL_ID,
   GPT_4_TURBO_MODEL_ID,
@@ -214,6 +223,10 @@ export const MODEL_IDS = [
   DEEPSEEK_CHAT_MODEL_ID,
   DEEPSEEK_REASONER_MODEL_ID,
   FIREWORKS_DEEPSEEK_R1_MODEL_ID,
+  GROK_3_MODEL_ID,
+  GROK_3_MINI_MODEL_ID,
+  GROK_3_FAST_MODEL_ID,
+  GROK_3_MINI_FAST_MODEL_ID,
 ] as const;
 export type ModelIdType = (typeof MODEL_IDS)[number];
 
@@ -1141,6 +1154,70 @@ export const FIREWORKS_DEEPSEEK_R1_MODEL_CONFIG: ModelConfigurationType = {
   },
 };
 
+export const GROK_3_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "xai",
+  modelId: GROK_3_MODEL_ID,
+  displayName: "Grok 3",
+  contextSize: 131_072,
+  recommendedTopK: 32,
+  recommendedExhaustiveTopK: 128,
+  largeModel: true,
+  description: "xAI's Grok 3 flagship model (131k context).",
+  shortDescription: "xAI's flagship model.",
+  isLegacy: false,
+  generationTokensCount: 8_192,
+  supportsVision: false,
+  supportsResponseFormat: false,
+};
+
+export const GROK_3_MINI_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "xai",
+  modelId: GROK_3_MINI_MODEL_ID,
+  displayName: "Grok 3 Mini",
+  contextSize: 131_072,
+  recommendedTopK: 32,
+  recommendedExhaustiveTopK: 128,
+  largeModel: false,
+  description: "xAI's Grok 3 Mini model (131k context, reasoning).",
+  shortDescription: "xAI's reasoning model.",
+  isLegacy: false,
+  generationTokensCount: 8_192,
+  supportsVision: false,
+  supportsResponseFormat: false,
+};
+
+export const GROK_3_FAST_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "xai",
+  modelId: GROK_3_FAST_MODEL_ID,
+  displayName: "Grok 3 Fast",
+  contextSize: 131_072,
+  recommendedTopK: 32,
+  recommendedExhaustiveTopK: 128,
+  largeModel: true,
+  description: "xAI's Grok 3 flagship model (131k context, fast infra).",
+  shortDescription: "xAI's fast flagship model.",
+  isLegacy: false,
+  generationTokensCount: 8_192,
+  supportsVision: false,
+  supportsResponseFormat: false,
+};
+
+export const GROK_3_MINI_FAST_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "xai",
+  modelId: GROK_3_MINI_FAST_MODEL_ID,
+  displayName: "Grok 3 Mini (Fast)",
+  contextSize: 131_072,
+  recommendedTopK: 32,
+  recommendedExhaustiveTopK: 128,
+  largeModel: false,
+  description: "xAI's Grok 3 Mini model (131k context, reasoning, fast infra).",
+  shortDescription: "xAI's reasoning model.",
+  isLegacy: false,
+  generationTokensCount: 8_192,
+  supportsVision: false,
+  supportsResponseFormat: false,
+};
+
 export const SUPPORTED_MODEL_CONFIGS: ModelConfigurationType[] = [
   GPT_3_5_TURBO_MODEL_CONFIG,
   GPT_4_TURBO_MODEL_CONFIG,
@@ -1188,6 +1265,10 @@ export const SUPPORTED_MODEL_CONFIGS: ModelConfigurationType[] = [
   DEEPSEEK_CHAT_MODEL_CONFIG,
   DEEPSEEK_REASONER_MODEL_CONFIG,
   FIREWORKS_DEEPSEEK_R1_MODEL_CONFIG,
+  GROK_3_MODEL_CONFIG,
+  GROK_3_MINI_MODEL_CONFIG,
+  GROK_3_FAST_MODEL_CONFIG,
+  GROK_3_MINI_FAST_MODEL_CONFIG,
 ];
 
 export type ModelConfig = (typeof SUPPORTED_MODEL_CONFIGS)[number];
