@@ -27,9 +27,10 @@ const serverInfo: InternalMCPServerDefinitionType = {
   name: "content_nodes",
   version: "1.0.0",
   description:
-    "Comprehensive content navigation toolkit. Provides Unix-like browsing (ls, find) and smart " +
-    "search tools to help agents efficiently explore and discover documents, folders, and tables " +
-    "within organizational content hierarchies.",
+    "Comprehensive content navigation toolkit for browsing user company data. Provides Unix-like " +
+    "browsing (ls, find) and smart search tools to help agents efficiently explore and discover " +
+    "documents, folders, and tables from manually uploaded files or data synced from SaaS products " +
+    "(Notion, Slack, Github, etc.) organized in a filesystem-like hierarchy.",
   authorization: null,
   icon: "ActionDocumentTextIcon",
 };
@@ -66,11 +67,12 @@ const createServer = (): McpServer => {
 
   server.tool(
     "find_by_title",
-    "Find content nodes based on their title or name. Use this when you need to find specific " +
-      "files, documents, folders, or other content by searching for their titles. This is like using " +
-      "'find -name' in Unix - it will find all nodes whose titles contain or start with your search " +
-      "term. A good fit is when the user asks 'find the document called X' or 'show me files with Y " +
-      "in the name'.",
+    "Find content items based on their title or name. Use this when you need to find specific " +
+      "files, documents, folders, or other content by searching for their titles. This searches " +
+      "through user-uploaded files and data synced from SaaS products (Notion, Slack, Github, " +
+      "etc...). This is like using 'find -name' in Unix - it will find all items whose titles " +
+      "contain or start with your search term. A good fit is when the user asks 'find the " +
+      "document called X' or 'show me files with Y in the name'.",
     {
       query: z
         .string()
@@ -112,7 +114,7 @@ const createServer = (): McpServer => {
       });
 
       if (searchResult.isErr()) {
-        return makeMCPToolTextError("Failed to search nodes");
+        return makeMCPToolTextError("Failed to search content");
       }
 
       return makeMCPToolJSONSuccess({
@@ -124,14 +126,17 @@ const createServer = (): McpServer => {
 
   server.tool(
     "list_children",
-    "List the direct contents of a node. Use this when you want to see what's inside a specific " +
-      "node, like 'ls' in Unix. A good fit is when you need to explore the structure step by step.",
+    "List the direct contents of a folder or container. Use this when you want to see what's " +
+      "inside a specific folder from your uploaded files or synced data sources (Notion, Slack, " +
+      "Github, etc.), like 'ls' in Unix. A good fit is when you need to explore the filesystem " +
+      "structure step by step. This tool can be called repeatedly by passing the 'id' output " +
+      "at a step to the next step's parentId.",
     {
       parentId: z
         .string()
         .describe(
-          "The exact node ID of the folder/node whose contents you want to list. " +
-            "Get this ID from previous search results (it's the 'node_id' field)."
+          "The exact ID of the folder/container whose contents you want to list. " +
+            "Get this ID from previous search results (it's the 'id' field)."
         ),
       dataSources:
         ConfigurableToolInputSchemas[
@@ -165,11 +170,11 @@ const createServer = (): McpServer => {
       });
 
       if (searchResult.isErr()) {
-        return makeMCPToolTextError("Failed to list children");
+        return makeMCPToolTextError("Failed to list folder contents");
       }
 
       return makeMCPToolJSONSuccess({
-        message: "Children listed successfully.",
+        message: "Folder contents listed successfully.",
         result: renderSearchResults(searchResult.value),
       });
     }
@@ -177,15 +182,16 @@ const createServer = (): McpServer => {
 
   server.tool(
     "search_by_id",
-    "Retrieve specific content nodes when you have their exact IDs. Use this to get detailed " +
-      "information about nodes you've already identified from other searches. This is like looking " +
-      "up specific files by their unique identifiers. Only use this when you have the exact node_id " +
-      "values from previous tool results.",
+    "Retrieve specific content items when you have their exact IDs. Use this to get detailed " +
+      "information about files, documents, or folders you've already identified from other searches. " +
+      "This works with content from uploaded files or synced data sources (Notion, Slack, Github, etc.). " +
+      "This is like looking up specific files by their unique identifiers. Only use this when you have " +
+      "the exact id values from previous tool results.",
     {
       nodeIds: z
         .array(z.string())
         .describe(
-          "Array of exact node IDs to retrieve. These are the 'node_id' values from previous " +
+          "Array of exact content item IDs to retrieve. These are the 'id' values from previous " +
             "search results. Each ID uniquely identifies a specific document, folder, or table."
         ),
       dataSources:
@@ -220,11 +226,11 @@ const createServer = (): McpServer => {
       });
 
       if (searchResult.isErr()) {
-        return makeMCPToolTextError("Failed to search nodes by ID");
+        return makeMCPToolTextError("Failed to search content by ID");
       }
 
       return makeMCPToolJSONSuccess({
-        message: "Nodes found successfully.",
+        message: "Content items found successfully.",
         result: renderSearchResults(searchResult.value),
       });
     }
@@ -232,9 +238,10 @@ const createServer = (): McpServer => {
 
   server.tool(
     "list_root_nodes",
-    "Show the top-level folders and files in the data sources - the starting point of the content " +
-      "hierarchy. Use this when you want to begin exploring the content structure. This is like " +
-      "listing the root directory - it shows you the highest-level nodes.",
+    "Show the top-level folders and files in the data sources - the starting point of the " +
+      "filesystem hierarchy. Use this when you want to begin exploring your uploaded files or " +
+      "synced data from SaaS products (Notion, Slack, Github, etc.). This is like listing the " +
+      "root directory - it shows you the highest-level content items.",
     {
       dataSources:
         ConfigurableToolInputSchemas[
@@ -268,11 +275,11 @@ const createServer = (): McpServer => {
       });
 
       if (searchResult.isErr()) {
-        return makeMCPToolTextError("Failed to list root nodes");
+        return makeMCPToolTextError("Failed to list root content");
       }
 
       return makeMCPToolJSONSuccess({
-        message: "Root nodes listed successfully.",
+        message: "Root content listed successfully.",
         result: renderSearchResults(searchResult.value),
       });
     }
@@ -280,9 +287,10 @@ const createServer = (): McpServer => {
 
   server.tool(
     "search_by_type",
-    "'Find all content of a specific type. Use this to retrieve all documents, all " +
-      "spreadsheets/tables, or all folders. Good fits are requests like 'show me all the documents'," +
-      "'find all spreadsheets', or 'list all folders'.",
+    "Find all content of a specific type from your uploaded files or synced data sources (Notion, " +
+      "Slack, Github, etc.). Use this to retrieve all documents, all spreadsheets/tables, or all " +
+      "folders. Good fits are requests like 'show me all the documents', 'find all spreadsheets', " +
+      "or 'list all folders'.",
     {
       nodeTypes: z
         .array(z.enum(["document", "table", "folder"]))
@@ -323,11 +331,11 @@ const createServer = (): McpServer => {
       });
 
       if (searchResult.isErr()) {
-        return makeMCPToolTextError("Failed to search nodes by type");
+        return makeMCPToolTextError("Failed to search content by type");
       }
 
       return makeMCPToolJSONSuccess({
-        message: "Nodes found successfully.",
+        message: "Content items found successfully.",
         result: renderSearchResults(searchResult.value),
       });
     }
@@ -401,16 +409,17 @@ const createServer = (): McpServer => {
 
   server.tool(
     "search_by_parent_path",
-    "Find all content that exists anywhere within specific nodes in the hierarchy. Use this to" +
-      "find everything under certain paths, including items in subfolders. This searches the entire" +
-      "subtree, not just direct children.",
+    "Find all content that exists anywhere within specific folders in the filesystem hierarchy. " +
+      "Use this to find everything under certain paths from your uploaded files or synced data " +
+      "sources (Notion, Slack, Github, etc.), including items in subfolders. This searches the " +
+      "entire subtree, not just direct children.",
     {
       parentIds: z
         .array(z.string())
         .describe(
-          "Array of parent folder/container IDs to search within. Get these IDs from previous" +
-            "search results. The tool will find all content that has ANY of these IDs in its parent" +
-            "hierarchy (meaning it's somewhere under these folders)."
+          "Array of parent IDs to search within. Get these IDs from previous " +
+            "search results. The tool will find all content that has ANY of these IDs in its " +
+            "parent hierarchy (meaning it's somewhere under these folders)."
         ),
       dataSources:
         ConfigurableToolInputSchemas[
@@ -445,7 +454,7 @@ const createServer = (): McpServer => {
       });
 
       if (searchResult.isErr()) {
-        return makeMCPToolTextError("Failed to search nodes by parent path.");
+        return makeMCPToolTextError("Failed to search content by parent path.");
       }
 
       // Filter results to nodes that have all specified parent IDs in their parents array
@@ -465,7 +474,7 @@ const createServer = (): McpServer => {
       };
 
       return makeMCPToolJSONSuccess({
-        message: "Nodes found successfully.",
+        message: "Content found successfully.",
         result: renderSearchResults(filteredResult),
       });
     }
@@ -545,8 +554,8 @@ function formatTimestamp(timestamp: number): string {
 
 function renderNode(node: CoreAPIContentNode) {
   return {
-    node_id: node.node_id,
-    node_type: node.node_type,
+    id: node.node_id,
+    type: node.node_type,
     title: node.title,
     parent_id: node.parent_id,
     parents: node.parents,
@@ -554,15 +563,14 @@ function renderNode(node: CoreAPIContentNode) {
     children_count: node.children_count,
     last_updated_at: formatTimestamp(node.timestamp),
     source_url: node.source_url,
-    hierarchy_depth: node.parents.length,
   };
 }
 
 function renderSearchResults(response: CoreAPISearchNodesResponse) {
   return {
-    nodes: response.nodes.map(renderNode),
+    data: response.nodes.map(renderNode),
     next_page_cursor: response.next_page_cursor,
-    hit_count: response.hit_count,
+    result_count: response.hit_count,
   };
 }
 
