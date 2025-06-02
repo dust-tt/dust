@@ -567,6 +567,7 @@ function renderNode(node: CoreAPIContentNode) {
     children_count: node.children_count,
     last_updated_at: formatTimestamp(node.timestamp),
     source_url: node.source_url,
+    mime_type: node.mime_type,
   };
 }
 
