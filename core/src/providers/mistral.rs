@@ -954,6 +954,11 @@ impl LLM for MistralAILLM {
         _extras: Option<Value>,
         event_sender: Option<UnboundedSender<Value>>,
     ) -> Result<LLMChatGeneration> {
+        let api_key = match self.api_key.clone() {
+            Some(key) => key,
+            None => Err(anyhow!("MISTRAL_API_KEY is not set."))?,
+        };
+
         if stop.len() > 0 {
             return Err(anyhow!("Mistral AI does not support stop sequence."));
         }
@@ -1010,7 +1015,7 @@ impl LLM for MistralAILLM {
             Some(_) => {
                 self.streamed_chat_completion(
                     self.chat_uri()?,
-                    self.api_key.clone().unwrap(),
+                    api_key.clone(),
                     Some(self.id.clone()),
                     &mistral_messages,
                     temperature,
@@ -1028,7 +1033,7 @@ impl LLM for MistralAILLM {
             None => {
                 self.chat_completion(
                     self.chat_uri()?,
-                    self.api_key.clone().unwrap(),
+                    api_key.clone(),
                     Some(self.id.clone()),
                     &mistral_messages,
                     temperature,
@@ -1178,6 +1183,11 @@ impl Embedder for MistralEmbedder {
     }
 
     async fn embed(&self, text: Vec<&str>, _extras: Option<Value>) -> Result<Vec<EmbedderVector>> {
+        let api_key = match self.api_key.clone() {
+            Some(key) => key,
+            None => Err(anyhow!("MISTRAL_API_KEY is not set."))?,
+        };
+
         let body = json!({
             "input": text,
             "encoding_format": "float",
@@ -1187,10 +1197,7 @@ impl Embedder for MistralEmbedder {
         let req = reqwest::Client::new()
             .post(self.uri()?.to_string())
             .header("Content-Type", "application/json")
-            .header(
-                "Authorization",
-                format!("Bearer {}", self.api_key.clone().unwrap()),
-            );
+            .header("Authorization", format!("Bearer {}", api_key));
 
         let req = req.json(&body);
 

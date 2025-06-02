@@ -16,72 +16,58 @@ use serde_json::Value;
 use std::sync::Arc;
 use tokio::sync::mpsc::UnboundedSender;
 
-use super::helpers::strip_tools_from_chat_history;
 use super::openai_compatible_helpers::{
     openai_compatible_chat_completion, TransformSystemMessages,
 };
 
-// ModelIds that support tools
-const MODEL_IDS_WITH_TOOLS_SUPPORT: &[&str] = &[
-    "accounts/fireworks/models/llama-v3p1-405b-instruct",
-    "accounts/fireworks/models/llama-v3p1-70b-instruct",
-    "accounts/fireworks/models/qwen2p5-72b-instruct",
-    "accounts/fireworks/models/firefunction-v2",
-    "accounts/fireworks/models/firefunction-v1",
-];
-
-pub struct FireworksLLM {
+pub struct XaiLLM {
     id: String,
     api_key: Option<String>,
 }
 
-impl FireworksLLM {
+impl XaiLLM {
     pub fn new(id: String) -> Self {
-        FireworksLLM { id, api_key: None }
+        XaiLLM { id, api_key: None }
     }
 
     fn chat_uri(&self) -> Result<Uri> {
-        Ok(format!("https://api.fireworks.ai/inference/v1/chat/completions",).parse::<Uri>()?)
+        Ok("https://api.x.ai/v1/chat/completions".parse::<Uri>()?)
     }
 
     fn tokenizer(&self) -> Arc<RwLock<CoreBPE>> {
-        // TODO(@fontanierh): TBD
         o200k_base_singleton()
     }
 
-    pub fn fireworks_context_size(_model_id: &str) -> usize {
-        // TODO(@fontanierh): TBD
+    pub fn xai_context_size(_model_id: &str) -> usize {
         131072
     }
 }
 
 #[async_trait]
-impl LLM for FireworksLLM {
+impl LLM for XaiLLM {
     fn id(&self) -> String {
         self.id.clone()
     }
 
     async fn initialize(&mut self, credentials: Credentials) -> Result<()> {
-        match credentials.get("FIREWORKS_API_KEY") {
+        match credentials.get("XAI_API_KEY") {
             Some(api_key) => {
                 self.api_key = Some(api_key.clone());
             }
-            None => {
-                match tokio::task::spawn_blocking(|| std::env::var("FIREWORKS_API_KEY")).await? {
-                    Ok(key) => {
-                        self.api_key = Some(key);
-                    }
-                    Err(_) => Err(anyhow!(
-                        "Credentials or environment variable `FIREWORKS_API_KEY` is not set."
-                    ))?,
+            None => match tokio::task::spawn_blocking(|| std::env::var("XAI_API_KEY")).await? {
+                Ok(key) => {
+                    self.api_key = Some(key);
                 }
-            }
+                Err(_) => Err(anyhow!(
+                    "Credentials or environment variable `XAI_API_KEY` is not set."
+                ))?,
+            },
         }
         Ok(())
     }
 
     fn context_size(&self) -> usize {
-        Self::fireworks_context_size(self.id.as_str())
+        Self::xai_context_size(self.id.as_str())
     }
 
     async fn encode(&self, text: &str) -> Result<Vec<usize>> {
@@ -110,10 +96,11 @@ impl LLM for FireworksLLM {
         _extras: Option<Value>,
         _event_sender: Option<UnboundedSender<Value>>,
     ) -> Result<LLMGeneration> {
-        Err(anyhow!("Not implemented."))
+        Err(anyhow!(
+            "xAI Grok models do not support text completions, only chat completions."
+        ))
     }
 
-    // API is openai-compatible.
     async fn chat(
         &self,
         messages: &Vec<ChatMessage>,
@@ -133,34 +120,16 @@ impl LLM for FireworksLLM {
     ) -> Result<LLMChatGeneration> {
         let api_key = match self.api_key.clone() {
             Some(key) => key,
-            None => Err(anyhow!("FIREWORKS_API_KEY is not set."))?,
+            None => Err(anyhow!("XAI_API_KEY is not set."))?,
         };
 
         openai_compatible_chat_completion(
             self.chat_uri()?,
             self.id.clone(),
             api_key,
-            // Pre-process messages if model is one of the supported models.
-            match MODEL_IDS_WITH_TOOLS_SUPPORT.contains(&self.id.as_str()) {
-                false => Some(strip_tools_from_chat_history(messages)),
-                true => None,
-            }
-            .as_ref()
-            .map(|m| m.as_ref())
-            .unwrap_or(messages),
-            // Remove functions if model is one of the supported models.
-            match MODEL_IDS_WITH_TOOLS_SUPPORT.contains(&self.id.as_str()) {
-                false => None,
-                true => Some(functions),
-            }
-            .as_ref()
-            .map(|m| m.as_ref())
-            .unwrap_or(functions),
-            // Remove function call if model is one of the supported models.
-            match MODEL_IDS_WITH_TOOLS_SUPPORT.contains(&self.id.as_str()) {
-                false => None,
-                true => function_call,
-            },
+            messages,
+            functions,
+            function_call,
             temperature,
             top_p,
             n,
@@ -170,63 +139,78 @@ impl LLM for FireworksLLM {
             frequency_penalty,
             logprobs,
             top_logprobs,
-            None,
+            None, // extras
             event_sender,
-            false, // don't disable provider streaming
-            TransformSystemMessages::Keep,
-            "Fireworks".to_string(),
-            true, // squash text contents (fireworks doesn't support structured messages)
+            false,                         // xAI models support streaming
+            TransformSystemMessages::Keep, // xAI models support system messages
+            "xAI".to_string(),
+            false, // xAI models support structured message content
         )
         .await
     }
 }
 
-pub struct FireworksProvider {}
+pub struct XaiProvider {}
 
-impl FireworksProvider {
+impl XaiProvider {
     pub fn new() -> Self {
-        FireworksProvider {}
+        XaiProvider {}
     }
 }
 
 #[async_trait]
-impl Provider for FireworksProvider {
+impl Provider for XaiProvider {
     fn id(&self) -> ProviderID {
-        ProviderID::Fireworks
+        ProviderID::Xai
     }
 
     fn setup(&self) -> Result<()> {
-        utils::info("Setting up Fireworks:");
+        utils::info("Setting up xAI:");
         utils::info("");
         utils::info(
-            "To use Fireworks' models, you must set the environment variable `FIREWORKS_API_KEY`.",
+            "To use xAI's Grok models, you must set the environment variable `XAI_API_KEY`.",
         );
-        utils::info("Your API key can be found at `https://platform.openai.com/account/api-keys`.");
+        utils::info("Your API key can be found at https://x.ai/developers");
         utils::info("");
-        utils::info("Once ready you can check your setup with `dust provider test fireworks`");
+        utils::info("Once ready you can check your setup with `dust provider test xai`");
 
         Ok(())
     }
 
     async fn test(&self) -> Result<()> {
         if !utils::confirm(
-            "You are about to make a request for 1 token to `accounts/fireworks/models/llama-v3p1-8b-instruct` on the Fireworks API.",
+            "You are about to make a request for 1 token to the `grok-3-mini-beta` model on the xAI API.",
         )? {
-            Err(anyhow!("User aborted Fireworks test."))?;
+            Err(anyhow!("User aborted xAI test."))?;
         }
 
-        let mut llm = self.llm(String::from(
-            "accounts/fireworks/models/llama-v3p1-8b-instruct",
-        ));
+        let mut llm = self.llm(String::from("grok-3-mini-beta"));
         llm.initialize(Credentials::new()).await?;
 
+        let messages = vec![
+            ChatMessage::System(super::chat_messages::SystemChatMessage {
+                role: super::llm::ChatMessageRole::System,
+                content: "You are a helpful assistant.".to_string(),
+            }),
+            ChatMessage::User(super::chat_messages::UserChatMessage {
+                role: super::llm::ChatMessageRole::User,
+                content: super::chat_messages::ContentBlock::Text(
+                    "Hello! Reply with a single word.".to_string(),
+                ),
+                name: None,
+            }),
+        ];
+
         let _ = llm
-            .generate(
-                "Hello 😊",
-                Some(1),
+            .chat(
+                &messages,
+                &vec![],
+                None,
                 0.7,
+                None,
                 1,
                 &vec![],
+                Some(1),
                 None,
                 None,
                 None,
@@ -236,16 +220,16 @@ impl Provider for FireworksProvider {
             )
             .await?;
 
-        utils::done("Test successfully completed! Fireworks is ready to use.");
+        utils::done("Test successfully completed! xAI is ready to use.");
 
         Ok(())
     }
 
     fn llm(&self, id: String) -> Box<dyn LLM + Sync + Send> {
-        Box::new(FireworksLLM::new(id))
+        Box::new(XaiLLM::new(id))
     }
 
     fn embedder(&self, _id: String) -> Box<dyn Embedder + Sync + Send> {
-        unimplemented!()
+        unimplemented!("xAI does not support embeddings")
     }
 }

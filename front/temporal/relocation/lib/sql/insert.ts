@@ -8,6 +8,10 @@ const JSONB_COLUMNS = [
     tableName: "agent_dust_app_run_actions",
     columns: ["params", "output"],
   },
+  {
+    tableName: "agent_configurations",
+    columns: ["responseFormat"],
+  },
 ];
 
 export function generateParameterizedInsertStatements(
@@ -50,8 +54,8 @@ export function generateParameterizedInsertStatements(
           JSONB_COLUMNS.some(
             (c) => c.tableName === tableName && c.columns.includes(col)
           ) &&
-          // Only transform if it's a string - leave objects as-is.
-          typeof row[col] === "string"
+          (typeof row[col] === "string" ||
+            (Array.isArray(row[col]) && row[col].length > 0))
         ) {
           params.push(JSON.stringify(row[col]));
           continue;

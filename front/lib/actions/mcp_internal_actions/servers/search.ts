@@ -33,6 +33,7 @@ import {
   dustManagedCredentials,
   parseTimeFrame,
   removeNulls,
+  stripNullBytes,
   timeFrameFromNow,
 } from "@app/types";
 
@@ -252,7 +253,7 @@ function createServer(
           },
           tags: doc.tags,
           ref: refs.shift() as string,
-          chunks: doc.chunks.map((chunk) => chunk.text),
+          chunks: doc.chunks.map((chunk) => stripNullBytes(chunk.text)),
         };
       });
 

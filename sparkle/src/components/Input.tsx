@@ -123,7 +123,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
         {message && (
           <div
             className={cn(
-              "s-ml-3.5 s-flex s-items-center s-gap-1 s-text-xs",
+              "s-flex s-items-center s-gap-1 s-text-xs",
               messageVariant({ status: messageStatus })
             )}
           >

@@ -24,10 +24,11 @@ export interface ReadTableChunkParams {
   sourceRegion: RegionType;
   tableName: string;
   workspaceId: string;
+  fileName?: string;
 }
 
 export const CORE_API_CONCURRENCY_LIMIT = 48;
-export const CORE_API_LIST_NODES_BATCH_SIZE = 128;
+export const CORE_API_LIST_NODES_BATCH_SIZE = 32;
 
 // Core.
 
