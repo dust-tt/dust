@@ -181,7 +181,7 @@ const createServer = (): McpServer => {
   );
 
   server.tool(
-    "search_by_id",
+    "find_by_id",
     "Retrieve specific content items when you have their exact IDs. Use this to get detailed " +
       "information about files, documents, or folders you've already identified from other searches. " +
       "This works with content from uploaded files or synced data sources (Notion, Slack, Github, etc.). " +
