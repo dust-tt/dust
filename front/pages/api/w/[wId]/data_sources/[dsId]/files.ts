@@ -117,13 +117,9 @@ async function handler(
           case "invalid_content_error":
           case "resource_not_found":
           case "table_not_found":
+          case "file_not_found":
             status_code = 400;
             type = "invalid_request_error";
-            break;
-
-          case "file_not_found":
-            status_code = 404;
-            type = "data_source_not_found";
             break;
 
           case "data_source_quota_error":
