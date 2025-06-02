@@ -5,10 +5,9 @@ import {
   publishEvent,
 } from "@app/lib/api/assistant/pubsub";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
-import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 
-function getActionChannel(actionId: number): string {
+function getActionChannel(actionId: string): string {
   return `action-${actionId}`;
 }
 
@@ -25,12 +24,7 @@ export async function validateAction({
   actionId: string;
   approved: MCPValidationOutputType;
 }): Promise<{ success: boolean }> {
-  const actionModelId = getResourceIdFromSId(actionId);
-  if (!actionModelId) {
-    throw new Error("Unexpected: invalid action id");
-  }
-
-  const actionChannel = getActionChannel(actionModelId);
+  const actionChannel = getActionChannel(actionId);
 
   logger.info(
     {
@@ -50,18 +44,17 @@ export async function validateAction({
     event: JSON.stringify({
       type: approved,
       created: Date.now(),
-      actionId: actionId,
-      messageId: messageId,
+      actionId,
+      messageId,
     }),
   });
 
   await getRedisHybridManager().removeEvent((event) => {
     const payload = JSON.parse(event.message["payload"]);
     return isMCPApproveExecutionEvent(payload)
-      ? payload.action.id === actionId
+      ? payload.actionId === actionId
       : false;
   }, getMessageChannelId(messageId));
-  3;
 
   logger.info(
     {
