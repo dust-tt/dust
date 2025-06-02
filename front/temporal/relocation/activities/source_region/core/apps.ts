@@ -122,7 +122,18 @@ export async function getApp({
       });
 
       if (apiDataset.isErr()) {
-        throw new Error("Failed to get dataset");
+        logger.error(
+          {
+            projectId: dustAPIProjectId,
+            datasetName: datasetId,
+            datasetHash: dataSetVersion.hash,
+            error: apiDataset.error,
+          },
+          "Failed to get datasets"
+        );
+        throw new Error(
+          `Failed to get dataset ${datasetId}: ${apiDataset.error.message}`
+        );
       }
 
       datasets.push(apiDataset.value.dataset);
