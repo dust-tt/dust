@@ -139,7 +139,7 @@ export function useAgentConfigurations({
     isAgentConfigurationsError: error,
     mutate,
     mutateRegardlessOfQueryParams,
-    isValidating,
+    isAgentConfigurationsValidating: isValidating,
   };
 }
 
@@ -193,7 +193,7 @@ export function useUnifiedAgentConfigurations({
   const {
     agentConfigurations: agentConfigurationsWithAuthors,
     isAgentConfigurationsLoading: isAgentConfigurationsWithAuthorsLoading,
-    isValidating,
+    isAgentConfigurationsValidating,
     mutate,
     mutateRegardlessOfQueryParams,
   } = useAgentConfigurations({
@@ -205,7 +205,9 @@ export function useUnifiedAgentConfigurations({
 
   return {
     agentConfigurations: agentConfigurationsWithAuthors,
-    isLoading: isAgentConfigurationsWithAuthorsLoading || isValidating,
+    isLoading:
+      isAgentConfigurationsWithAuthorsLoading ||
+      isAgentConfigurationsValidating,
     mutate,
     mutateRegardlessOfQueryParams,
   };
