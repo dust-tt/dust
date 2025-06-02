@@ -339,7 +339,6 @@ async function handler(
   const targetWorkspaceId = typeof wId === "string" ? wId : undefined;
   // Auth0 flow augments token with a claim for workspace id linked to the enterprise connection.
 
-  //TODO(workos): Get the enterprise connection workspaceId. We can get organizationId from authenticateWithCode, and store in session.
   const { isSSO, workspaceId } = session;
 
   let targetWorkspace: Workspace | null = null;
