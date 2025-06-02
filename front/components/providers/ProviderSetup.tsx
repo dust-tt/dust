@@ -184,7 +184,8 @@ export const MODEL_PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
     instructions: (
       <>
         <p>
-          To use xAI's Grok models you must provide your API key. It can be found{" "}
+          To use xAI's Grok models you must provide your API key. It can be
+          found{" "}
           <a
             className="font-bold text-highlight-600 hover:text-highlight-500"
             href="https://x.ai/developers"
