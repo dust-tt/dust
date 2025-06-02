@@ -11,7 +11,8 @@ import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type { FileType, WithAPIErrorResponse } from "@app/types";
+import type { APIErrorType, FileType, WithAPIErrorResponse } from "@app/types";
+import { DustError } from "@app/lib/error";
 
 export interface UpsertFileToDataSourceRequestBody {
   fileId: string;
@@ -119,119 +120,63 @@ async function handler(
   }
 }
 
-function handlePublicErrorResponse(
-  req: any,
-  res: any,
-  error: {
-    name: string;
-    code:
-      | "internal_server_error"
-      | "invalid_request_error"
-      | "file_too_large"
-      | "file_type_not_supported"
-      | "unauthorized"
-      | "quota_exceeded"
-      | "resource_not_found"
-      | "processing_failed"
-      | "validation_error";
-    message: string;
-  }
-) {
+function handlePublicErrorResponse(req: any, res: any, error: DustError) {
+  let status_code: number;
+  let type: APIErrorType;
+  let message: string;
+  let panic: boolean;
+
   switch (error.code) {
-    case "validation_error":
-    case "invalid_request_error":
-      logger.error(
-        { panic: false, error },
-        "Invalid request parameters or validation failure."
-      );
-      return apiError(req, res, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: error.message,
-        },
-      });
+    case "file_not_ready":
+    case "invalid_file":
+    case "title_too_long":
+    case "invalid_url":
+    case "missing_csv":
+    case "invalid_content_error":
+      status_code = 400;
+      type = "invalid_request_error";
+      message = "Invalid request parameters or validation failure.";
+      panic = false;
+      break;
 
     case "unauthorized":
-      logger.error(
-        { panic: false, error },
-        "Unauthorized access attempt during file processing."
-      );
-      return apiError(req, res, {
-        status_code: 401,
-        api_error: {
-          type: "not_authenticated",
-          message: error.message,
-        },
-      });
+      status_code = 401;
+      type = "not_authenticated";
+      message = "Unauthorized access attempt during file processing.";
+      panic = false;
+      break;
 
     case "resource_not_found":
-      logger.error(
-        { panic: false, error },
-        "Required resource not found during file processing."
-      );
-      return apiError(req, res, {
-        status_code: 404,
-        api_error: {
-          type: "file_not_found",
-          message: error.message,
-        },
-      });
+      status_code = 404;
+      type = "file_not_found";
+      message = "Required resource not found during file processing.";
+      panic = false;
+      break;
 
-    case "file_type_not_supported":
-      logger.error(
-        { panic: false, error },
-        "Unsupported file type for processing."
-      );
-      return apiError(req, res, {
-        status_code: 415,
-        api_error: {
-          type: "file_type_not_supported",
-          message: error.message,
-        },
-      });
+    case "data_source_quota_error":
+      status_code = 413;
+      type = "file_too_large";
+      message = "File size or quota limits exceeded.";
+      panic = false;
+      break;
 
-    case "file_too_large":
-    case "quota_exceeded":
-      logger.error(
-        { panic: false, error },
-        "File size or quota limits exceeded."
-      );
-      return apiError(req, res, {
-        status_code: 413,
-        api_error: {
-          type: "file_too_large",
-          message: error.message,
-        },
-      });
-
-    case "processing_failed":
-      logger.error(
-        { panic: true, error },
-        "File processing failed unexpectedly."
-      );
-      return apiError(req, res, {
-        status_code: 422,
-        api_error: {
-          type: "data_source_error",
-          message: error.message,
-        },
-      });
-
-    case "internal_server_error":
     default:
-      logger.error(
-        { panic: true, error },
-        "Internal server error during file processing."
-      );
-      return apiError(req, res, {
-        status_code: 500,
-        api_error: {
-          type: "internal_server_error",
-          message: "An unexpected error occurred while processing your file.",
-        },
-      });
+      status_code = 500;
+      type = "internal_server_error";
+      message = "Internal server error during file processing.";
+      panic = true;
+      break;
   }
+
+  logger.error({ panic, error }, message);
+
+  return apiError(req, res, {
+    status_code,
+    api_error: {
+      type,
+      message,
+    },
+  });
 }
 
 export default withSessionAuthenticationForWorkspace(handler);
