@@ -5,6 +5,7 @@ import {
   publishEvent,
 } from "@app/lib/api/assistant/pubsub";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
+import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 
 function getActionChannel(actionId: number): string {
@@ -21,10 +22,15 @@ export async function validateAction({
   workspaceId: string;
   conversationId: string;
   messageId: string;
-  actionId: number;
+  actionId: string;
   approved: MCPValidationOutputType;
 }): Promise<{ success: boolean }> {
-  const actionChannel = getActionChannel(actionId);
+  const actionModelId = getResourceIdFromSId(actionId);
+  if (!actionModelId) {
+    throw new Error("Unexpected: invalid action id");
+  }
+
+  const actionChannel = getActionChannel(actionModelId);
 
   logger.info(
     {
@@ -55,6 +61,7 @@ export async function validateAction({
       ? payload.action.id === actionId
       : false;
   }, getMessageChannelId(messageId));
+  3;
 
   logger.info(
     {

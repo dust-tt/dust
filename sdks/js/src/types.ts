@@ -1385,7 +1385,7 @@ const MCPApproveExecutionEventSchema = z.object({
   created: z.number(),
   configurationId: z.string(),
   messageId: z.string(),
-  action: MCPActionTypeSchema,
+  actionId: z.string(),
   inputs: z.record(z.any()),
   stake: z.optional(z.enum(["low", "high", "never_ask"])),
   metadata: MCPValidationMetadataSchema,
@@ -2906,7 +2906,7 @@ export type ValidateActionResponseType = z.infer<
 >;
 
 export const ValidateActionRequestBodySchema = z.object({
-  actionId: z.number(),
+  actionId: z.string(),
   approved: z.enum(["approved", "rejected", "always_approved"]),
 });
 

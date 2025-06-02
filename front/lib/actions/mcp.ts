@@ -157,7 +157,7 @@ type MCPApproveExecutionEvent = {
   created: number;
   configurationId: string;
   messageId: string;
-  action: MCPActionType;
+  actionId: string;
   inputs: Record<string, unknown>;
   stake?: MCPToolStakeLevelType;
   metadata: MCPValidationMetadataType;
@@ -481,14 +481,12 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
         created: Date.now(),
         configurationId: agentConfiguration.sId,
         messageId: agentMessage.sId,
-        action: mcpAction,
+        actionId: makeSId("action", {
+          workspaceId: owner.id,
+          id: mcpAction.id,
+        }),
         inputs: rawInputs,
         stake: actionConfiguration.permission,
-        metadata: {
-          toolName: actionConfiguration.originalName,
-          mcpServerName: actionConfiguration.mcpServerName,
-          agentName: agentConfiguration.name,
-        },
       };
 
       try {
