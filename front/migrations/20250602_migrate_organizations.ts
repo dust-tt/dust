@@ -22,10 +22,8 @@ makeScript({}, async ({ execute }, logger) => {
         return;
       }
 
-      const { shouldCreate, domain } = await shouldCreateWorkOSOrganization(
-        workspace,
-        subscription.plan
-      );
+      const { shouldCreate, domain } =
+        await shouldCreateWorkOSOrganization(workspace);
       if (shouldCreate) {
         logger.info(
           { workspaceId: workspace.sId },

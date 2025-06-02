@@ -49,7 +49,6 @@ export const PlanTypeSchema = t.type({
       maxVaults: t.number,
     }),
     canUseProduct: t.boolean,
-    isWorkOSAllowed: t.boolean,
   }),
   trialPeriodDays: t.number,
 });
@@ -123,7 +122,6 @@ async function handler(
         isManagedIntercomAllowed: body.limits.connections.isIntercomAllowed,
         isManagedWebCrawlerAllowed: body.limits.connections.isWebCrawlerAllowed,
         isManagedSalesforceAllowed: body.limits.connections.isSalesforceAllowed,
-        isWorkOSAllowed: body.limits.isWorkOSAllowed,
         maxDataSourcesCount: body.limits.dataSources.count,
         maxDataSourcesDocumentsCount: body.limits.dataSources.documents.count,
         maxDataSourcesDocumentsSizeMb: body.limits.dataSources.documents.sizeMb,

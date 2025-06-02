@@ -6,7 +6,7 @@ import { Workspace } from "@app/lib/models/workspace";
 import { WorkspaceHasDomainModel } from "@app/lib/models/workspace_has_domain";
 import { WorkOSPortalIntent } from "@app/lib/types/workos";
 import logger from "@app/logger/logger";
-import type { PlanType, Result, WorkspaceType } from "@app/types";
+import type { Result, WorkspaceType } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
 
 export async function getWorkOSOrganization({
@@ -37,17 +37,12 @@ export async function getWorkOSOrganization({
 }
 
 export async function shouldCreateWorkOSOrganization(
-  workspace: WorkspaceType,
-  plan: PlanType
+  workspace: WorkspaceType
 ): Promise<
   | { shouldCreate: false; domain: undefined }
   | { shouldCreate: true; domain: WorkspaceHasDomainModel }
 > {
   if (workspace.workOSOrganizationId) {
-    return { shouldCreate: false, domain: undefined };
-  }
-
-  if (!plan.limits.isWorkOSAllowed) {
     return { shouldCreate: false, domain: undefined };
   }
 
