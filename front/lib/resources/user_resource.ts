@@ -151,7 +151,7 @@ export class UserResource extends BaseResource<UserModel> {
     });
 
     // Most recently updated user if any.
-    return usersWithAuth0Sub[0] ?? sortedUsers[0] ?? null;
+    return sortedUsers[0] ?? null;
   }
 
   static async fetchByProvider(
