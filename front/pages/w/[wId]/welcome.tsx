@@ -17,10 +17,10 @@ import OnboardingLayout from "@app/components/sparkle/OnboardingLayout";
 import config from "@app/lib/api/config";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthPaywallWhitelisted } from "@app/lib/iam/session";
-import { fetcherWithBody } from "@app/lib/swr/swr";
 import type { UserType, WorkspaceType } from "@app/types";
 import type { JobType } from "@app/types/job_type";
 import { isJobType, JOB_TYPE_OPTIONS } from "@app/types/job_type";
+import { usePatchUser } from "@app/lib/swr/user";
 
 export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
   user: UserType;
@@ -71,6 +71,8 @@ export default function Welcome({
 
   const jobTypes = JOB_TYPE_OPTIONS;
 
+  const { patchUser } = usePatchUser();
+
   useEffect(() => {
     setIsFormValid(
       firstName !== "" &&
@@ -80,13 +82,7 @@ export default function Welcome({
   }, [firstName, lastName, jobType, jobTypes]);
 
   const { submit, isSubmitting } = useSubmitFunction(async () => {
-    await fetch("/api/user", {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ firstName, lastName, jobType }),
-    });
+    await patchUser(firstName, lastName, jobType);
 
     await router.push(
       `/w/${owner.sId}/assistant/new?welcome=true${
