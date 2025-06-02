@@ -396,6 +396,8 @@ export class ConfluenceClient {
       //    let Temporal retry in MAX_RETRY_AFTER_DELAY ms.
       if (response.status === 429) {
         const delayMs = getRetryAfterDuration(response.headers);
+        const body = await response.json();
+        const { statusText } = response;
 
         statsDClient.increment("external.api.calls", 1, [
           "provider:confluence",
@@ -413,6 +415,8 @@ export class ConfluenceClient {
                 endpoint,
                 delayMs,
                 retryCount,
+                body,
+                statusText,
               },
               "[Confluence] Rate limit hit. Performing activity-side retry."
             );
@@ -456,6 +460,8 @@ export class ConfluenceClient {
             delayMs,
             retryCount,
             retryAfterMsForTemporal,
+            body,
+            statusText,
           },
           `[Confluence] Rate limit hit. Throwing for Temporal. Reason: ${logReason}`
         );
