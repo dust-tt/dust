@@ -432,7 +432,7 @@ const ToolApproveExecutionContentSchema = z.object({
     configurationId: z.string(),
     conversationId: z.string(),
     messageId: z.string(),
-    actionId: z.number(),
+    actionId: z.string(),
     inputs: z.record(z.unknown()),
     stake: z.enum(MCP_TOOL_STAKE_LEVELS).optional(),
     metadata: z.object({

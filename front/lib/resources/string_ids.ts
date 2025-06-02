@@ -34,6 +34,9 @@ const RESOURCES_PREFIX = {
   remote_mcp_server: "rms",
   tag: "tag",
 
+  // Action for validation.
+  action: "act",
+
   // Resources relative to the configuration of an MCP server.
   data_source_configuration: "dsc",
   table_configuration: "tbc",

@@ -1345,7 +1345,7 @@ const NotificationResourceSchema = z.object({
   configurationId: z.string(),
   conversationId: z.string(),
   messageId: z.string(),
-  actionId: z.number(),
+  actionId: z.string(),
   inputs: z.record(z.any()),
   stake: MCPStakeLevelSchema,
   metadata: MCPValidationMetadataSchema,
@@ -1395,7 +1395,7 @@ const MCPApproveExecutionEventSchema = z.object({
   created: z.number(),
   configurationId: z.string(),
   messageId: z.string(),
-  actionId: z.number(),
+  actionId: z.string(),
   inputs: z.record(z.any()),
   stake: MCPStakeLevelSchema,
   metadata: MCPValidationMetadataSchema,
@@ -2915,7 +2915,7 @@ export type ValidateActionResponseType = z.infer<
 >;
 
 export const ValidateActionRequestBodySchema = z.object({
-  actionId: z.number(),
+  actionId: z.string(),
   approved: z.enum(["approved", "rejected", "always_approved"]),
 });
 

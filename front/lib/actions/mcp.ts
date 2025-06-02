@@ -156,7 +156,7 @@ export type MCPApproveExecutionEvent = {
   configurationId: string;
   messageId: string;
   conversationId: string;
-  actionId: number;
+  actionId: string;
   inputs: Record<string, unknown>;
   stake?: MCPToolStakeLevelType;
   metadata: MCPValidationMetadataType;
@@ -479,7 +479,10 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
         configurationId: agentConfiguration.sId,
         messageId: agentMessage.sId,
         conversationId: conversation.sId,
-        actionId: mcpAction.id,
+        actionId: makeSId("action", {
+          id: mcpAction.id,
+          workspaceId: owner.id,
+        }),
         inputs: rawInputs,
         stake: actionConfiguration.permission,
         metadata: {
