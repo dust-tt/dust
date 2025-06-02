@@ -9,9 +9,9 @@ import { processAndUpsertToDataSource } from "@app/lib/api/files/upsert";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
+import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { FileType, WithAPIErrorResponse } from "@app/types";
-import logger from "@app/logger/logger";
 
 export interface UpsertFileToDataSourceRequestBody {
   fileId: string;
