@@ -267,11 +267,16 @@ impl LLM for AzureOpenAILLM {
             }
         }
 
+        let api_key = match self.api_key.clone() {
+            Some(key) => key,
+            None => Err(anyhow!("AZURE_OPENAI_API_KEY is not set."))?,
+        };
+
         let (c, request_id) = match event_sender {
             Some(_) => {
                 streamed_completion(
                     self.uri()?,
-                    self.api_key.clone().unwrap(),
+                    api_key.clone(),
                     None,
                     None,
                     prompt,
@@ -310,7 +315,7 @@ impl LLM for AzureOpenAILLM {
             None => {
                 completion(
                     self.uri()?,
-                    self.api_key.clone().unwrap(),
+                    api_key,
                     None,
                     None,
                     prompt,
@@ -444,10 +449,14 @@ impl LLM for AzureOpenAILLM {
         extras: Option<Value>,
         event_sender: Option<UnboundedSender<Value>>,
     ) -> Result<LLMChatGeneration> {
+        let api_key = match self.api_key.clone() {
+            Some(key) => key,
+            None => Err(anyhow!("AZURE_OPENAI_API_KEY is not set."))?,
+        };
         openai_compatible_chat_completion(
             self.chat_uri()?,
             self.model_id.clone().unwrap(),
-            self.api_key.clone().unwrap(),
+            api_key,
             messages,
             functions,
             function_call,
@@ -595,9 +604,13 @@ impl Embedder for AzureOpenAIEmbedder {
     }
 
     async fn embed(&self, text: Vec<&str>, extras: Option<Value>) -> Result<Vec<EmbedderVector>> {
+        let api_key = match self.api_key.clone() {
+            Some(key) => key,
+            None => Err(anyhow!("AZURE_OPENAI_API_KEY is not set."))?,
+        };
         let e = embed(
             self.uri()?,
-            self.api_key.clone().unwrap(),
+            api_key,
             None,
             Some(self.model_id.clone()),
             text,
