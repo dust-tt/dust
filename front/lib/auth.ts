@@ -1,4 +1,3 @@
-import { getSession as getAuth0Session } from "@auth0/nextjs-auth0";
 import tracer from "dd-trace";
 import memoizer from "lru-memoizer";
 import type {
@@ -8,10 +7,11 @@ import type {
 } from "next";
 
 import type { Auth0JwtPayload } from "@app/lib/api/auth0";
+import { getAuth0Session } from "@app/lib/api/auth0";
 import config from "@app/lib/api/config";
+import { getWorkOSSession } from "@app/lib/api/workos/user";
 import { SSOEnforcedError } from "@app/lib/iam/errors";
 import type { SessionWithUser } from "@app/lib/iam/provider";
-import { isValidSession } from "@app/lib/iam/provider";
 import { FeatureFlag } from "@app/lib/models/feature_flag";
 import { Workspace } from "@app/lib/models/workspace";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
@@ -162,7 +162,11 @@ export class Authenticator {
             sId: wId,
           },
         }),
-        session ? UserResource.fetchByAuth0Sub(session.user.sub) : null,
+        session?.type === "auth0" && session.user.auth0Sub
+          ? UserResource.fetchByAuth0Sub(session.user.auth0Sub)
+          : session?.type === "workos" && session.user.workOSUserId
+            ? UserResource.fetchByWorkOSUserId(session.user.workOSUserId)
+            : null,
       ]);
 
       let role = "none" as RoleType;
@@ -214,7 +218,11 @@ export class Authenticator {
             where: { sId: wId },
           })
         : null,
-      session ? UserResource.fetchByAuth0Sub(session.user.sub) : null,
+      session?.type === "auth0" && session.user.auth0Sub
+        ? UserResource.fetchByAuth0Sub(session.user.auth0Sub)
+        : session?.type === "workos" && session.user.workOSUserId
+          ? UserResource.fetchByWorkOSUserId(session.user.workOSUserId)
+          : null,
     ]);
 
     let groups: GroupResource[] = [];
@@ -698,6 +706,7 @@ export class Authenticator {
           role: this._role,
           segmentation: this._workspace.segmentation || null,
           ssoEnforced: this._workspace.ssoEnforced,
+          workOSOrganizationId: this._workspace.workOSOrganizationId,
           whiteListedProviders: this._workspace.whiteListedProviders,
           defaultEmbeddingProvider: this._workspace.defaultEmbeddingProvider,
           metadata: this._workspace.metadata,
@@ -907,12 +916,9 @@ export async function getSession(
   req: NextApiRequest | GetServerSidePropsContext["req"],
   res: NextApiResponse | GetServerSidePropsContext["res"]
 ): Promise<SessionWithUser | null> {
-  const session = await getAuth0Session(req, res);
-  if (!session || !isValidSession(session)) {
-    return null;
-  }
-
-  return session;
+  return (
+    (await getWorkOSSession(req)) || (await getAuth0Session(req, res)) || null
+  );
 }
 
 /**

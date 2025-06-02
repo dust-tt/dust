@@ -7,22 +7,25 @@ export interface WorkspaceDomain {
 
 export interface WorkspaceEnterpriseConnection {
   name: string;
-  strategy: SupportedEnterpriseConnectionStrategies;
+  strategy: Auth0SupportedEnterpriseConnectionStrategies;
 }
 
-export type SupportedEnterpriseConnectionStrategies = "okta" | "samlp" | "waad";
-export const supportedEnterpriseConnectionStrategies: SupportedEnterpriseConnectionStrategies[] =
+export type Auth0SupportedEnterpriseConnectionStrategies =
+  | "okta"
+  | "samlp"
+  | "waad";
+export const auth0SupportedEnterpriseConnectionStrategies: Auth0SupportedEnterpriseConnectionStrategies[] =
   ["okta", "samlp", "waad"];
 
 export const isSupportedEnterpriseConnectionStrategy = (
   strategy: string
-): strategy is SupportedEnterpriseConnectionStrategies =>
-  supportedEnterpriseConnectionStrategies.includes(
-    strategy as SupportedEnterpriseConnectionStrategies
+): strategy is Auth0SupportedEnterpriseConnectionStrategies =>
+  auth0SupportedEnterpriseConnectionStrategies.includes(
+    strategy as Auth0SupportedEnterpriseConnectionStrategies
   );
 
 export function connectionStrategyToHumanReadable(
-  strategy: SupportedEnterpriseConnectionStrategies
+  strategy: Auth0SupportedEnterpriseConnectionStrategies
 ) {
   switch (strategy) {
     case "okta":

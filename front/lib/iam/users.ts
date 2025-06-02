@@ -1,4 +1,3 @@
-import type { Session } from "@auth0/nextjs-auth0";
 import type { PostIdentitiesRequestProviderEnum } from "auth0";
 import { escape } from "html-escaper";
 
@@ -11,7 +10,6 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
-import { ServerSideTracking } from "@app/lib/tracking/server";
 import { guessFirstAndLastNameFromFullName } from "@app/lib/user";
 import type { Result, UserProviderType } from "@app/types";
 import { Err, Ok, sanitizeString } from "@app/types";
@@ -21,6 +19,7 @@ interface LegacyProviderInfo {
   providerId: number | string;
 }
 
+//TODO(workos): Clean up legacy provider.
 async function fetchUserWithLegacyProvider(
   { provider, providerId }: LegacyProviderInfo,
   sub: string
@@ -38,16 +37,8 @@ async function fetchUserWithLegacyProvider(
   return user;
 }
 
-export async function fetchUserWithAuth0Sub(sub: string) {
-  const userWithAuth0 = await UserResource.fetchByAuth0Sub(sub);
-
-  return userWithAuth0;
-}
-
-function mapAuth0ProviderToLegacy(session: Session): LegacyProviderInfo | null {
-  const { user } = session;
-
-  const [rawProvider, providerId] = user.sub.split("|");
+function mapAuth0ProviderToLegacy(auth0Sub: string): LegacyProviderInfo {
+  const [rawProvider, providerId] = auth0Sub.split("|");
   switch (rawProvider) {
     case "google-oauth2":
       return { provider: "google", providerId };
@@ -56,24 +47,33 @@ function mapAuth0ProviderToLegacy(session: Session): LegacyProviderInfo | null {
       return { provider: "github", providerId };
 
     default:
-      return { provider: rawProvider, providerId };
+      return { provider: rawProvider as UserProviderType, providerId };
   }
 }
+//END-TODO(workos)
 
 export async function fetchUserFromSession(session: SessionWithUser) {
-  const { sub } = session.user;
+  const { workOSUserId, auth0Sub } = session.user;
 
-  const userWithAuth0 = await fetchUserWithAuth0Sub(sub);
-  if (userWithAuth0) {
-    return userWithAuth0;
+  if (session.type === "workos" && workOSUserId) {
+    const userWithWorkOS = await UserResource.fetchByWorkOSUserId(workOSUserId);
+    if (userWithWorkOS) {
+      return userWithWorkOS;
+    }
   }
 
-  const legacyProviderInfo = mapAuth0ProviderToLegacy(session);
-  if (!legacyProviderInfo) {
-    return null;
+  //TODO(workos): Remove auth0 user lookup.
+  if (session.type === "auth0" && auth0Sub) {
+    const userWithAuth0 = await UserResource.fetchByAuth0Sub(auth0Sub);
+    if (userWithAuth0) {
+      return userWithAuth0;
+    }
+
+    const legacyProviderInfo = mapAuth0ProviderToLegacy(auth0Sub);
+    return fetchUserWithLegacyProvider(legacyProviderInfo, auth0Sub);
   }
 
-  return fetchUserWithLegacyProvider(legacyProviderInfo, sub);
+  return null;
 }
 
 export async function maybeUpdateFromExternalUser(
@@ -94,13 +94,13 @@ export async function maybeUpdateFromExternalUser(
   }
 }
 
-export async function createOrUpdateUser(
-  session: SessionWithUser
-): Promise<{ user: UserResource; created: boolean }> {
-  const { user: externalUser } = session;
-
-  const user = await fetchUserFromSession(session);
-
+export async function createOrUpdateUser({
+  user,
+  externalUser,
+}: {
+  user: UserResource | null;
+  externalUser: ExternalUser;
+}): Promise<{ user: UserResource; created: boolean }> {
   if (user) {
     const updateArgs: { [key: string]: string } = {};
 
@@ -125,6 +125,10 @@ export async function createOrUpdateUser(
       }
     }
 
+    if (externalUser.workOSUserId) {
+      updateArgs.workOSUserId = externalUser.workOSUserId;
+    }
+
     if (Object.keys(updateArgs).length > 0) {
       const needsUpdate = Object.entries(updateArgs).some(
         ([key, value]) => user[key as keyof typeof user] !== value
@@ -135,7 +139,8 @@ export async function createOrUpdateUser(
           updateArgs.username || user.name,
           updateArgs.firstName || user.firstName,
           updateArgs.lastName || user.lastName,
-          updateArgs.email || user.email
+          updateArgs.email || user.email,
+          updateArgs.workOSUserId || user.workOSUserId
         );
       }
     }
@@ -154,28 +159,14 @@ export async function createOrUpdateUser(
 
     const u = await UserResource.makeNew({
       sId: generateRandomModelSId(),
-      auth0Sub: externalUser.sub,
-      provider: mapAuth0ProviderToLegacy(session)?.provider ?? null,
+      auth0Sub: externalUser.auth0Sub,
+      workOSUserId: externalUser.workOSUserId,
+      provider: null, ///session.provider,
       username: externalUser.nickname,
       email: sanitizeString(externalUser.email),
       name: externalUser.name,
       firstName,
       lastName,
-    });
-
-    ServerSideTracking.trackSignup({
-      user: {
-        sId: u.sId,
-        id: u.id,
-        createdAt: u.createdAt.getTime(),
-        provider: u.provider,
-        username: u.username,
-        email: u.email,
-        firstName: u.firstName,
-        lastName: u.lastName,
-        image: u.imageUrl,
-        fullName: u.name,
-      },
     });
 
     return { user: u, created: true };

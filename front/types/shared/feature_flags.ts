@@ -27,6 +27,7 @@ export const WHITELISTABLE_FEATURES = [
   "usage_data_api",
   "custom_webcrawler",
   "exploded_tables_query",
+  "workos",
   "salesforce_tool",
   "gmail_tool",
   "agent_builder_v2",

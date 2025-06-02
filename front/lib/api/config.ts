@@ -193,6 +193,18 @@ const config = {
       "MULTI_ACTIONS_AGENT_ANTHROPIC_BETA_FLAGS"
     )?.split(",");
   },
+
+  // WorkOS
+  getWorkOSApiKey: (): string => {
+    return EnvironmentConfig.getEnvVariable("WORKOS_API_KEY");
+  },
+  getWorkOSClientId: (): string => {
+    return EnvironmentConfig.getEnvVariable("WORKOS_CLIENT_ID");
+  },
+  getWorkOSCookiePassword: (): string => {
+    return EnvironmentConfig.getEnvVariable("WORKOS_COOKIE_PASSWORD");
+  },
+
   // Profiler.
   getProfilerSecret: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable("DEBUG_PROFILER_SECRET");
