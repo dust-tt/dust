@@ -35,7 +35,6 @@ export type EditingPlanType = {
   isSlackAllowed: boolean;
   isSlackBotAllowed: boolean;
   isWebCrawlerAllowed: boolean;
-  isWorkOSAllowed: boolean;
   maxImagesPerWeek: string | number;
   maxMessages: string | number;
   maxMessagesTimeframe: string;
@@ -58,7 +57,6 @@ export const fromPlanType = (plan: PlanType): EditingPlanType => {
     isIntercomAllowed: plan.limits.connections.isIntercomAllowed,
     isWebCrawlerAllowed: plan.limits.connections.isWebCrawlerAllowed,
     isSalesforceAllowed: plan.limits.connections.isSalesforceAllowed,
-    isWorkOSAllowed: plan.limits.isWorkOSAllowed,
     maxMessages: plan.limits.assistant.maxMessages,
     maxMessagesTimeframe: plan.limits.assistant.maxMessagesTimeframe,
     dataSourcesCount: plan.limits.dataSources.count,
@@ -120,7 +118,6 @@ export const toPlanType = (editingPlan: EditingPlanType): PlanType => {
         maxVaults: parseMaybeNumber(editingPlan.maxVaults),
       },
       canUseProduct: true,
-      isWorkOSAllowed: editingPlan.isWorkOSAllowed,
     },
     trialPeriodDays: parseMaybeNumber(editingPlan.trialPeriodDays),
   };
@@ -141,7 +138,6 @@ const getEmptyPlan = (): EditingPlanType => ({
   isSlackAllowed: false,
   isSlackBotAllowed: false,
   isWebCrawlerAllowed: false,
-  isWorkOSAllowed: false,
   maxImagesPerWeek: "",
   maxMessages: "",
   maxMessagesTimeframe: "day",
@@ -240,11 +236,6 @@ export const PLAN_FIELDS = {
     width: "tiny",
     title: "Salesforce",
     IconComponent: () => <SalesforceLogo className="h-4 w-4" />,
-  },
-  isWorkOSAllowed: {
-    type: "boolean",
-    width: "tiny",
-    title: "WorkOS",
   },
   maxMessages: {
     type: "number",

@@ -50,7 +50,6 @@ export type LimitsType = {
       maxImagesPerWeek: number;
     };
   };
-  isWorkOSAllowed: boolean;
   canUseProduct: boolean;
 };
 
@@ -104,7 +103,6 @@ export const CreatePlanFormSchema = t.type({
   isConfluenceAllowed: t.boolean,
   isWebCrawlerAllowed: t.boolean,
   isSalesforceAllowed: t.boolean,
-  isWorkOSAllowed: t.boolean,
   maxMessages: t.union([t.number, NumberFromString]),
   maxMessagesTimeframe: t.keyof({
     day: null,

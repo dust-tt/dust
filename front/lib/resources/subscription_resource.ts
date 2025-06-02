@@ -4,10 +4,6 @@ import { Op } from "sequelize";
 import type Stripe from "stripe";
 
 import { sendProactiveTrialCancelledEmail } from "@app/lib/api/email";
-import {
-  createOrGetWorkOSOrganization,
-  shouldCreateWorkOSOrganization,
-} from "@app/lib/api/workos/organization";
 import { getWorkspaceInfos } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { Subscription } from "@app/lib/models/plan";
@@ -311,23 +307,6 @@ export class SubscriptionResource extends BaseResource<Subscription> {
       if (activeSeats > newPlan.maxUsersInWorkspace) {
         throw new Error(
           `Cannot subscribe to plan ${planCode}: new plan has less users allowed than currently in workspace.`
-        );
-      }
-    }
-    const { shouldCreate, domain } = await shouldCreateWorkOSOrganization(
-      workspace,
-      renderPlanFromModel({ plan: newPlan.get() })
-    );
-    if (shouldCreate) {
-      const r = await createOrGetWorkOSOrganization({ workspace, domain });
-      if (r.isErr()) {
-        throw new Error(
-          `Cannot subscribe to plan ${planCode}: error while creating WorkOS organization: ${r.error.message}`
-        );
-      } else {
-        logger.info(
-          { workspaceId: workspace.sId },
-          "WorkOS organization created successfully."
         );
       }
     }
