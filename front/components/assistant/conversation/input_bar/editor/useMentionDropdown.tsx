@@ -207,6 +207,17 @@ export const useMentionDropdown = (
               case "Escape":
                 closeDropdown();
                 return true;
+              case " ":
+                const firstSuggestion = currentState.suggestions[0];
+                if (
+                  firstSuggestion &&
+                  currentState.query === firstSuggestion.label
+                ) {
+                  event.preventDefault();
+                  selectSuggestion(firstSuggestion);
+                  return true;
+                }
+                return false;
               default:
                 return false;
             }
