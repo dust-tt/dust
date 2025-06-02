@@ -16,7 +16,7 @@ import { generateSnippet } from "@app/lib/api/files/snippet";
 import { processAndStoreFile } from "@app/lib/api/files/upload";
 import { getFileContent } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
-import type { DustError} from "@app/lib/error";
+import type { DustError } from "@app/lib/error";
 import { isDustError } from "@app/lib/error";
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
