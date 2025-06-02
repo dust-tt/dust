@@ -562,7 +562,7 @@ function renderNode(node: CoreAPIContentNode) {
     type: node.node_type,
     title: node.title,
     parent_id: node.parent_id,
-    parents: node.parents,
+    path: node.parents,
     parent_title: node.parent_title,
     children_count: node.children_count,
     last_updated_at: formatTimestamp(node.timestamp),
