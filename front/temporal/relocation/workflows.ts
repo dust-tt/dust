@@ -440,14 +440,14 @@ export async function workspaceRelocateConnectorsTableWorkflow({
 
 export const getCoreSourceRegionActivities = (region: RegionType) => {
   return proxyActivities<typeof coreSourceActivities>({
-    startToCloseTimeout: "10 minutes",
+    startToCloseTimeout: "15 minutes",
     taskQueue: RELOCATION_QUEUES_PER_REGION[region],
   });
 };
 
 export const getCoreDestinationRegionActivities = (region: RegionType) => {
   return proxyActivities<typeof coreDestinationActivities>({
-    startToCloseTimeout: "10 minutes",
+    startToCloseTimeout: "15 minutes",
     taskQueue: RELOCATION_QUEUES_PER_REGION[region],
   });
 };
