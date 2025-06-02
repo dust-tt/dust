@@ -171,10 +171,7 @@ async function handler(
 
         return res.status(201).json({
           success: true,
-          server: {
-            ...metadata,
-            sId: newRemoteMCPServer.sId,
-          },
+          server: newRemoteMCPServer.toJSON(),
         });
       } else {
         const { name } = body;
