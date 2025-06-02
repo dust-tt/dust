@@ -5,6 +5,7 @@ use anyhow::Result;
 use serde::Serialize;
 use serde_json::Value;
 use std::slice::Iter;
+use tracing::info;
 
 #[derive(Debug, Serialize)]
 pub struct Dataset {
@@ -49,6 +50,13 @@ impl Dataset {
             .collect::<Result<()>>()?;
 
         let recomputed_hash = format!("{}", hasher.finalize().to_hex());
+
+        info!(
+            hash = hash,
+            recomputed_hash = recomputed_hash,
+            "asserting recomputed_hash == hash"
+        );
+
         assert!(recomputed_hash == hash);
         assert!(keys.is_some());
 
