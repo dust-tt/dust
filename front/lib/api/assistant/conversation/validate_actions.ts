@@ -53,7 +53,7 @@ export async function validateAction({
   await getRedisHybridManager().removeEvent((event) => {
     const payload = JSON.parse(event.message["payload"]);
     return isMCPApproveExecutionEvent(payload)
-      ? payload.action.id === actionId
+      ? payload.actionId === actionId
       : false;
   }, getMessageChannelId(messageId));
 

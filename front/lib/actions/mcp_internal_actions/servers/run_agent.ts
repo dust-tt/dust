@@ -151,7 +151,7 @@ function createServer(
                       configurationId: event.configurationId,
                       conversationId: agentLoopRunContext.conversation.sId,
                       messageId: agentLoopRunContext.agentMessage.sId,
-                      action: event.action,
+                      actionId: event.actionId,
                       metadata: event.metadata,
                       stake: event.stake,
                       inputs: event.inputs,

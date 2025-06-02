@@ -425,59 +425,6 @@ const NotificationImageContentSchema = z.object({
 
 type ImageProgressOutput = z.infer<typeof NotificationImageContentSchema>;
 
-// The following code is copy pasted from sdk to type MCPActionSchemaType.
-// We cannot import and use MCPActionTypeSchema from sdk since it will cause an "excessively deep and possibly infinite" error.
-type StringLiteral<T> = T extends string
-  ? string extends T
-    ? never
-    : T
-  : never;
-
-// Custom schema to get a string literal type and yet allow any string when parsing
-const FlexibleEnumSchema = <T extends string>() =>
-  z.custom<StringLiteral<T>>((val) => {
-    return typeof val === "string";
-  });
-
-const ModelIdSchema = z.number();
-
-const BaseActionTypeSchema = FlexibleEnumSchema<
-  | "dust_app_run_action"
-  | "tables_query_action"
-  | "retrieval_action"
-  | "process_action"
-  | "websearch_action"
-  | "browse_action"
-  | "reasoning_action"
-  | "visualization_action"
->();
-
-const BaseActionSchema = z.object({
-  id: ModelIdSchema,
-  type: BaseActionTypeSchema,
-});
-
-export const MCPActionTypeSchema = BaseActionSchema.extend({
-  agentMessageId: ModelIdSchema,
-  executionState: z.enum([
-    "pending",
-    "timeout",
-    "allowed_explicitly",
-    "allowed_implicitly",
-    "denied",
-  ]),
-  mcpServerConfigurationId: z.string(),
-  params: z.unknown(),
-  output: z.array(z.unknown()).nullable(),
-  functionCallId: z.string().nullable(),
-  functionCallName: z.string().nullable(),
-  step: z.number(),
-  isError: z.boolean(),
-  type: z.literal("tool_action"),
-});
-
-export type MCPActionSchemaType = z.infer<typeof MCPActionTypeSchema>;
-
 const ToolApproveExecutionContentSchema = z.object({
   type: z.literal("resource"),
   resource: z.object({
@@ -485,7 +432,7 @@ const ToolApproveExecutionContentSchema = z.object({
     configurationId: z.string(),
     conversationId: z.string(),
     messageId: z.string(),
-    action: MCPActionTypeSchema,
+    actionId: z.number(),
     inputs: z.record(z.unknown()),
     stake: z.enum(MCP_TOOL_STAKE_LEVELS).optional(),
     metadata: z.object({
