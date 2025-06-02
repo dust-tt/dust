@@ -53,7 +53,7 @@ const upsertDocumentToDatasource: ProcessingFunction = async (
   if (!content) {
     return new Err<DustError>({
       name: "dust_error",
-      code: "internal_error", // TODO: Is this the correct error code? Why not 404
+      code: "internal_error",
       message:
         "There was an error upserting the document: failed to get file content.",
     });
@@ -101,7 +101,7 @@ const upsertSectionDocumentToDatasource: ProcessingFunction = async (
   if (!content) {
     return new Err<DustError>({
       name: "dust_error",
-      code: "internal_error", // TODO: Is this the correct error code? Why not 404
+      code: "internal_error",
       message:
         "There was an error upserting the document: failed to get file content.",
     });
