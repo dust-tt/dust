@@ -13,7 +13,10 @@ import React from "react";
 import { DocumentOrTableDeleteDialog } from "@app/components/data_source/DocumentOrTableDeleteDialog";
 import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
 import type { ContentActionsRef } from "@app/components/spaces/ContentActions";
-import { getMenuItems } from "@app/components/spaces/ContentActions";
+import {
+  ContentActions,
+  getMenuItems,
+} from "@app/components/spaces/ContentActions";
 import { makeColumnsForSearchResults } from "@app/components/spaces/search/columns";
 import { SearchLocation } from "@app/components/spaces/search/SearchingInSpace";
 import type { SpaceSearchContextType } from "@app/components/spaces/search/SpaceSearchContext";
@@ -461,6 +464,8 @@ function SearchResultsTable({
 
   const sendNotification = useSendNotification();
 
+  // `contentActionsRef` is always null in a search context as results are pulled across data
+  // sources views. We still create the ref to comply to the API of getMenuItems.
   const contentActionsRef = React.useRef<ContentActionsRef>(null);
 
   const addToSpace = React.useCallback(
