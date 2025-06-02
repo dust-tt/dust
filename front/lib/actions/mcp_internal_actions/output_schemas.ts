@@ -447,6 +447,13 @@ type ToolApproveExecutionOutputType = z.infer<
   typeof ToolApproveExecutionContentSchema
 >;
 
+export function isMCPToolApproveExecutionNotificationType(
+  notificationOutput: ProgressNotificationOutput
+): notificationOutput is ToolApproveExecutionOutputType {
+  return ToolApproveExecutionContentSchema.safeParse(notificationOutput)
+    .success;
+}
+
 export const ProgressNotificationOutputSchema = z
   .union([
     NotificationImageContentSchema,
@@ -494,11 +501,4 @@ export function isMCPProgressNotificationType(
   notification: Notification
 ): notification is MCPProgressNotificationType {
   return MCPProgressNotificationSchema.safeParse(notification).success;
-}
-
-export function isMCPToolApproveExecutionNotificationType(
-  notificationOutput: ProgressNotificationOutput
-): notificationOutput is ToolApproveExecutionOutputType {
-  return ToolApproveExecutionContentSchema.safeParse(notificationOutput)
-    .success;
 }
