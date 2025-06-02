@@ -74,3 +74,20 @@ export async function setRegionForUser(user: WorkOSUser, region: RegionType) {
     },
   });
 }
+
+export async function updateUserFromAuth0(
+  session: SessionWithUser,
+  region: RegionType,
+  emailVerified: boolean
+) {
+  if (session.user.workOSId) {
+    // Update user metadata
+    await getWorkOS().userManagement.updateUser({
+      userId: session.user.workOSId,
+      emailVerified,
+      metadata: {
+        region,
+      },
+    });
+  }
+}
