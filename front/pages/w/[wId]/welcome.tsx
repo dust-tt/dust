@@ -75,27 +75,19 @@ export default function Welcome({
     setIsFormValid(
       firstName !== "" &&
         lastName !== "" &&
-        jobType !== undefined &&
-        jobTypes.some((jt) => jt.value === jobType)
+        (jobTypes.some((jt) => jt.value === jobType) || jobType === undefined)
     );
   }, [firstName, lastName, jobType, jobTypes]);
 
   const { submit, isSubmitting } = useSubmitFunction(async () => {
-    const updateUserFullNameRes = await fetch("/api/user", {
+    await fetch("/api/user", {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ firstName, lastName }),
+      body: JSON.stringify({ firstName, lastName, jobType }),
     });
 
-    if (updateUserFullNameRes.ok) {
-      await fetcherWithBody([
-        "/api/user/onboarding-complete",
-        { jobType },
-        "POST",
-      ]);
-    }
     await router.push(
       `/w/${owner.sId}/assistant/new?welcome=true${
         conversationId ? `&cId=${conversationId}` : ""
