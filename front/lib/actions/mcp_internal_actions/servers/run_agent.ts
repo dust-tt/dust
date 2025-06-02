@@ -135,7 +135,7 @@ function createServer(
             break;
           } else if (event.type === "tool_approve_execution") {
             // We need to show the validation dialog in the main conversation so we use conversationId and messageId from agentLoopRunContext.
-            // This is not really a progress notifcation but this is the closest among other methods from ServerNotification.
+            // This is not really a progress notification but this is the closest among other methods from ServerNotification.
             const notification: MCPProgressNotificationType = {
               method: "notifications/progress",
               params: {
