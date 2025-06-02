@@ -112,10 +112,18 @@ async function handler(
           case "title_too_long":
           case "invalid_url":
           case "missing_csv":
+          case "invalid_csv_content":
+          case "invalid_csv_and_file":
           case "invalid_content_error":
           case "resource_not_found":
+          case "table_not_found":
             status_code = 400;
             type = "invalid_request_error";
+            break;
+
+          case "file_not_found":
+            status_code = 404;
+            type = "data_source_not_found";
             break;
 
           case "data_source_quota_error":
