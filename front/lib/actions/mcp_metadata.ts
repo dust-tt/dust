@@ -219,6 +219,15 @@ export const connectToMCPServer = async (
 
             await connectToRemoteMCPServer(mcpClient, url, req);
           } catch (e: unknown) {
+            logger.error(
+              {
+                connectionType,
+                serverType,
+                workspaceId: auth.getNonNullableWorkspace().sId,
+                error: e,
+              },
+              "Error establishing connection to remote MCP server"
+            );
             return new Err(
               new Error("Error establishing connection to remote MCP server.")
             );
@@ -244,6 +253,14 @@ export const connectToMCPServer = async (
       try {
         await connectToRemoteMCPServer(mcpClient, url, req);
       } catch (e: unknown) {
+        logger.error(
+          {
+            connectionType,
+            workspaceId: auth.getNonNullableWorkspace().sId,
+            error: e,
+          },
+          "Error establishing connection to remote MCP server"
+        );
         return new Err(
           new Error("Error establishing connection to remote MCP server.")
         );
@@ -260,6 +277,14 @@ export const connectToMCPServer = async (
       try {
         await mcpClient.connect(transport);
       } catch (e: unknown) {
+        logger.error(
+          {
+            connectionType,
+            workspaceId: auth.getNonNullableWorkspace().sId,
+            error: e,
+          },
+          "Error establishing connection to remote MCP server"
+        );
         return new Err(
           new Error("Error establishing connection to client side MCP server.")
         );
