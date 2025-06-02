@@ -71,18 +71,18 @@ export async function workspaceRelocationWorkflow({
   });
 
   // 4) Relocate the apps to the destination region.
-  await executeChild(workspaceRelocateAppsWorkflow, {
-    workflowId: `workspaceRelocateAppsWorkflow-${workspaceId}`,
-    searchAttributes: parentSearchAttributes,
-    args: [
-      {
-        workspaceId,
-        sourceRegion,
-        destRegion,
-      },
-    ],
-    memo,
-  });
+  // await executeChild(workspaceRelocateAppsWorkflow, {
+  //   workflowId: `workspaceRelocateAppsWorkflow-${workspaceId}`,
+  //   searchAttributes: parentSearchAttributes,
+  //   args: [
+  //     {
+  //       workspaceId,
+  //       sourceRegion,
+  //       destRegion,
+  //     },
+  //   ],
+  //   memo,
+  // });
 }
 
 /**
