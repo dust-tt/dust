@@ -1,3 +1,4 @@
+import { useSendNotification } from "@dust-tt/sparkle";
 import type { Fetcher } from "swr";
 
 import {
@@ -5,13 +6,9 @@ import {
   getErrorFromResponse,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
-import type {
-  GetUserResponseBody,
-  PostUserMetadataResponseBody,
-} from "@app/pages/api/user";
+import type { GetUserResponseBody } from "@app/pages/api/user";
 import type { GetUserMetadataResponseBody } from "@app/pages/api/user/metadata/[key]";
-import { JobType } from "@app/types/job_type";
-import { useSendNotification } from "@dust-tt/sparkle";
+import type { JobType } from "@app/types/job_type";
 
 export function useUser() {
   const userFetcher: Fetcher<GetUserResponseBody> = fetcher;

@@ -17,10 +17,10 @@ import OnboardingLayout from "@app/components/sparkle/OnboardingLayout";
 import config from "@app/lib/api/config";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthPaywallWhitelisted } from "@app/lib/iam/session";
+import { usePatchUser } from "@app/lib/swr/user";
 import type { UserType, WorkspaceType } from "@app/types";
 import type { JobType } from "@app/types/job_type";
 import { isJobType, JOB_TYPE_OPTIONS } from "@app/types/job_type";
-import { usePatchUser } from "@app/lib/swr/user";
 
 export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
   user: UserType;

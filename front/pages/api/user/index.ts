@@ -8,12 +8,12 @@ import type { SessionWithUser } from "@app/lib/iam/provider";
 import { getUserFromSession } from "@app/lib/iam/session";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { UserTypeWithWorkspaces, WithAPIErrorResponse } from "@app/types";
 import { sendUserOperationMessage } from "@app/types";
 import { isJobType } from "@app/types/job_type";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 
 export type PostUserMetadataResponseBody = {
   success: boolean;
