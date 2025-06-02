@@ -298,7 +298,7 @@ async function upsertUser({
     email_verified: true,
     name: workOSUser.email ?? "",
     nickname: getUserNicknameFromEmail(workOSUser.email) ?? "",
-    workOSId: workOSUser.id,
+    workOSUserId: workOSUser.id,
   };
 
   const { user: createdOrUpdatedUser } = await createOrUpdateUser({

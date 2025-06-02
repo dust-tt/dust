@@ -53,10 +53,10 @@ function mapAuth0ProviderToLegacy(auth0Sub: string): LegacyProviderInfo {
 //END-TODO(workos)
 
 export async function fetchUserFromSession(session: SessionWithUser) {
-  const { workOSId, auth0Sub } = session.user;
+  const { workOSUserId, auth0Sub } = session.user;
 
-  if (session.type === "workos" && workOSId) {
-    const userWithWorkOS = await UserResource.fetchByWorkOSId(workOSId);
+  if (session.type === "workos" && workOSUserId) {
+    const userWithWorkOS = await UserResource.fetchByWorkOSUserId(workOSUserId);
     if (userWithWorkOS) {
       return userWithWorkOS;
     }
@@ -125,8 +125,8 @@ export async function createOrUpdateUser({
       }
     }
 
-    if (externalUser.workOSId) {
-      updateArgs.workOSId = externalUser.workOSId;
+    if (externalUser.workOSUserId) {
+      updateArgs.workOSUserId = externalUser.workOSUserId;
     }
 
     if (Object.keys(updateArgs).length > 0) {
@@ -140,7 +140,7 @@ export async function createOrUpdateUser({
           updateArgs.firstName || user.firstName,
           updateArgs.lastName || user.lastName,
           updateArgs.email || user.email,
-          updateArgs.workOSId || user.workOSId
+          updateArgs.workOSUserId || user.workOSUserId
         );
       }
     }
@@ -160,7 +160,7 @@ export async function createOrUpdateUser({
     const u = await UserResource.makeNew({
       sId: generateRandomModelSId(),
       auth0Sub: externalUser.auth0Sub,
-      workOSId: externalUser.workOSId,
+      workOSUserId: externalUser.workOSUserId,
       provider: null, ///session.provider,
       username: externalUser.nickname,
       email: sanitizeString(externalUser.email),

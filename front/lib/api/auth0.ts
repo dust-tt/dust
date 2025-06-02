@@ -91,7 +91,7 @@ function getAuth0ExternalUser(
       name: user.name,
       nickname: user.nickname,
       auth0Sub: user.sub,
-      workOSId: user["https://dust.tt/workos_user_id"] ?? null,
+      workOSUserId: user["https://dust.tt/workos_user_id"] ?? null,
     };
   }
 }

@@ -130,13 +130,13 @@ export class UserResource extends BaseResource<UserModel> {
     return user ? new UserResource(UserModel, user.get()) : null;
   }
 
-  static async fetchByWorkOSId(
-    workOSId: string,
+  static async fetchByWorkOSUserId(
+    workOSUserId: string,
     transaction?: Transaction
   ): Promise<UserResource | null> {
     const user = await UserModel.findOne({
       where: {
-        workOSId,
+        workOSUserId,
       },
       transaction,
     });
@@ -201,9 +201,9 @@ export class UserResource extends BaseResource<UserModel> {
     });
   }
 
-  async updateWorkOSId({ workOSId }: { workOSId: string }) {
+  async updateWorkOSUserId({ workOSUserId }: { workOSUserId: string }) {
     return this.update({
-      workOSId,
+      workOSUserId,
     });
   }
 
@@ -223,7 +223,7 @@ export class UserResource extends BaseResource<UserModel> {
     firstName: string,
     lastName: string | null,
     email: string,
-    workOSId: string | null
+    workOSUserId: string | null
   ) {
     firstName = escape(firstName);
     if (lastName) {
@@ -235,7 +235,7 @@ export class UserResource extends BaseResource<UserModel> {
       firstName,
       lastName,
       email: lowerCaseEmail,
-      workOSId,
+      workOSUserId,
     });
   }
 

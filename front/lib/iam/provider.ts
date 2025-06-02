@@ -4,7 +4,7 @@ export interface ExternalUser {
   name: string;
   nickname: string;
   auth0Sub: string | null;
-  workOSId: string | null;
+  workOSUserId: string | null;
   // Google-specific fields.
   family_name?: string;
   given_name?: string;

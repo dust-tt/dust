@@ -164,8 +164,8 @@ export class Authenticator {
         }),
         session?.type === "auth0" && session.user.auth0Sub
           ? UserResource.fetchByAuth0Sub(session.user.auth0Sub)
-          : session?.type === "workos" && session.user.workOSId
-            ? UserResource.fetchByWorkOSId(session.user.workOSId)
+          : session?.type === "workos" && session.user.workOSUserId
+            ? UserResource.fetchByWorkOSUserId(session.user.workOSUserId)
             : null,
       ]);
 
@@ -220,8 +220,8 @@ export class Authenticator {
         : null,
       session?.type === "auth0" && session.user.auth0Sub
         ? UserResource.fetchByAuth0Sub(session.user.auth0Sub)
-        : session?.type === "workos" && session.user.workOSId
-          ? UserResource.fetchByWorkOSId(session.user.workOSId)
+        : session?.type === "workos" && session.user.workOSUserId
+          ? UserResource.fetchByWorkOSUserId(session.user.workOSUserId)
           : null,
     ]);
 

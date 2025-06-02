@@ -77,7 +77,7 @@ async function handler(
   });
 
   // TODO(workos): Remove after switch to workos. Update user information when user is created with auth0.
-  if (userCreated && session.type === "auth0" && session.user.workOSId) {
+  if (userCreated && session.type === "auth0" && session.user.workOSUserId) {
     await updateUserFromAuth0(
       session,
       multiRegionsConfig.getCurrentRegion(),

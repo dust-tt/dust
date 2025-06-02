@@ -8,7 +8,7 @@ CREATE UNIQUE INDEX "workspaces_work_o_s_organization_id" ON "workspaces" ("work
 ALTER TABLE "public"."groups" ADD COLUMN IF NOT EXISTS "workOSGroupId" VARCHAR(255);
 CREATE UNIQUE INDEX "groups_workspace_id_work_o_s_group_id" ON "groups" ("workspaceId", "workOSGroupId");
 
-ALTER TABLE "public"."users" ADD COLUMN "workOSId" VARCHAR(255);
+ALTER TABLE "public"."users" ADD COLUMN "workOSUserId" VARCHAR(255);
 
 -- Migration created on May 28, 2025
-CREATE UNIQUE INDEX CONCURRENTLY "users_work_o_s_id" ON "users" ("workOSId");
+CREATE UNIQUE INDEX CONCURRENTLY "users_work_o_s_id" ON "users" ("workOSUserId");

@@ -52,7 +52,7 @@ export async function getWorkOSSession(
         name: r.user.email ?? "",
         nickname: getUserNicknameFromEmail(r.user.email) ?? "",
         auth0Sub: null,
-        workOSId: r.user.id,
+        workOSUserId: r.user.id,
       },
       // TODO(workos): Should we resolve the workspaceId and remove organizationId from here?
       organizationId,
@@ -80,10 +80,10 @@ export async function updateUserFromAuth0(
   region: RegionType,
   emailVerified: boolean
 ) {
-  if (session.user.workOSId) {
+  if (session.user.workOSUserId) {
     // Update user metadata
     await getWorkOS().userManagement.updateUser({
-      userId: session.user.workOSId,
+      userId: session.user.workOSUserId,
       emailVerified,
       metadata: {
         region,
