@@ -641,14 +641,37 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       } else if (event.type === "notification") {
         const { notification } = event;
         if (isMCPProgressNotificationType(notification)) {
-          // Check if this is a tool_approve_execution from a sub agent.
-          const notificationOutput = notification.params.data.output;
+          const { output: notificationOutput } = notification.params.data;
+          // Tool approval notifications have a specific handling:
+          // they are not yielded as regular notifications but as tool_approve_execution events
+          // instead, which exposes them to the end-user.
           if (isMCPToolApproveExecutionNotificationType(notificationOutput)) {
+            const {
+              configurationId,
+              conversationId,
+              messageId,
+              actionId,
+              inputs,
+              stake,
+              metadata,
+            } = notificationOutput.resource;
+
+            // We bubble up tool approval notifications from within tools to the main conversation.
+            // Note: the tool is responsible for handling the logic of setting the correct
+            // conversationId and messageId.
             yield {
               created: Date.now(),
-              ...notificationOutput.resource,
+              type: "tool_approve_execution",
+              configurationId,
+              conversationId,
+              messageId,
+              actionId,
+              inputs,
+              stake,
+              metadata,
             };
           } else {
+            // Regular notifications, we yield them as is with the type "tool_notification".
             yield {
               type: "tool_notification",
               created: Date.now(),
