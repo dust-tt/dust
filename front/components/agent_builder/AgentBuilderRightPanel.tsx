@@ -8,6 +8,7 @@ import {
   TabsTrigger,
   TestTubeIcon,
 } from "@dust-tt/sparkle";
+import { cn } from "@dust-tt/sparkle";
 import React, { useContext, useState } from "react";
 
 import { AgentBuilderContext } from "./AgentBuilderContext";
@@ -26,11 +27,17 @@ export function AgentBuilderRightPanel({
   return (
     <div className="flex h-full flex-col">
       <div className="flex h-16 items-end">
-        <div className="flex h-full items-center">
+        <div
+          className={cn(
+            "flex h-full items-center justify-center",
+            !isPreviewPanelOpen && "w-full"
+          )}
+        >
           <Button
             icon={
               isPreviewPanelOpen ? SidebarRightCloseIcon : SidebarRightOpenIcon
             }
+            size="sm"
             variant="ghost-secondary"
             tooltip={isPreviewPanelOpen ? "Hide preview" : "Open preview"}
             onClick={() => setIsPreviewPanelOpen(!isPreviewPanelOpen)}
@@ -55,7 +62,7 @@ export function AgentBuilderRightPanel({
           </Tabs>
         )}
       </div>
-      {isPreviewPanelOpen && (
+      {isPreviewPanelOpen ? (
         <div className="flex flex-1 flex-col">
           <div className="flex-1 overflow-y-auto p-4">
             {selectedTab === "testing" && (
@@ -66,6 +73,29 @@ export function AgentBuilderRightPanel({
             )}
             {children}
           </div>
+        </div>
+      ) : (
+        <div className="flex flex-1 flex-col items-center justify-center gap-4">
+          <Button
+            icon={TestTubeIcon}
+            variant="ghost"
+            size="sm"
+            tooltip="Testing"
+            onClick={() => {
+              setSelectedTab("testing");
+              setIsPreviewPanelOpen(true);
+            }}
+          />
+          <Button
+            icon={BarChartIcon}
+            variant="ghost"
+            size="sm"
+            tooltip="Performance"
+            onClick={() => {
+              setSelectedTab("performance");
+              setIsPreviewPanelOpen(true);
+            }}
+          />
         </div>
       )}
     </div>

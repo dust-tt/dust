@@ -14,7 +14,7 @@ import type { WorkspaceType } from "@app/types";
 
 import { AgentBuilderContext } from "./AgentBuilderContext";
 
-const MIN_RIGHT_PANEL_SIZE = 4;
+const MIN_RIGHT_PANEL_SIZE = 2;
 const DEFAULT_RIGHT_PANEL_SIZE = 30;
 
 interface AgentBuilderLayoutProps {
@@ -35,9 +35,9 @@ export function AgentBuilderLayout({
   useEffect(() => {
     if (previewPanelRef.current) {
       if (isPreviewPanelOpen) {
-        previewPanelRef.current.resize(DEFAULT_RIGHT_PANEL_SIZE);
+        previewPanelRef.current.expand();
       } else {
-        previewPanelRef.current.resize(MIN_RIGHT_PANEL_SIZE);
+        previewPanelRef.current.collapse();
       }
     }
   }, [isPreviewPanelOpen]);
@@ -80,6 +80,7 @@ export function AgentBuilderLayout({
                 id="preview-panel"
                 defaultSize={DEFAULT_RIGHT_PANEL_SIZE}
                 minSize={MIN_RIGHT_PANEL_SIZE}
+                collapsedSize={MIN_RIGHT_PANEL_SIZE}
                 collapsible={true}
                 className={
                   !isResizing
@@ -87,7 +88,7 @@ export function AgentBuilderLayout({
                     : "overflow-hidden"
                 }
               >
-                <div className="h-full w-full overflow-y-auto px-6">
+                <div className="h-full w-full overflow-y-auto">
                   {rightPanel}
                 </div>
               </ResizablePanel>
