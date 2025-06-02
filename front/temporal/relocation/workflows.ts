@@ -91,14 +91,14 @@ export async function workspaceRelocationWorkflow({
 
 const getFrontSourceRegionActivities = (region: RegionType) => {
   return proxyActivities<typeof frontSourceActivities>({
-    startToCloseTimeout: "10 minutes",
+    startToCloseTimeout: "15 minutes",
     taskQueue: RELOCATION_QUEUES_PER_REGION[region],
   });
 };
 
 const getFrontDestinationRegionActivities = (region: RegionType) => {
   return proxyActivities<typeof frontDestinationActivities>({
-    startToCloseTimeout: "10 minutes",
+    startToCloseTimeout: "15 minutes",
     taskQueue: RELOCATION_QUEUES_PER_REGION[region],
   });
 };
