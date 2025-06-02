@@ -24,9 +24,11 @@ import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { FetchAssistantTemplateResponse } from "@app/pages/api/templates/[tId]";
 import type {
   AgentConfigurationScope,
+  AgentConfigurationType,
   AgentReasoningEffort,
   AppType,
   DataSourceViewSelectionConfigurations,
+  LightAgentConfigurationType,
   ModelIdType,
   ModelProviderIdType,
   PlanType,
@@ -38,7 +40,6 @@ import type {
   WhitelistableFeature,
   WorkspaceType,
 } from "@app/types";
-import type { AgentConfigurationType } from "@app/types";
 import {
   assertNever,
   CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG,
@@ -517,6 +518,18 @@ export type BuilderFlow = (typeof BUILDER_FLOWS)[number];
 
 export type AssistantBuilderProps = {
   agentConfiguration: AgentConfigurationType | null;
+  baseUrl: string;
+  defaultIsEdited?: boolean;
+  defaultTemplate: FetchAssistantTemplateResponse | null;
+  flow: BuilderFlow;
+  initialBuilderState: AssistantBuilderInitialState | null;
+  owner: WorkspaceType;
+  plan: PlanType;
+  subscription: SubscriptionType;
+};
+
+export type AssistantBuilderLightProps = {
+  agentConfiguration: LightAgentConfigurationType | null;
   baseUrl: string;
   defaultIsEdited?: boolean;
   defaultTemplate: FetchAssistantTemplateResponse | null;
