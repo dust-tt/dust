@@ -1,12 +1,5 @@
-import {
-  BarHeader,
-  Button,
-  DustLogoSquare,
-  Icon,
-  Page,
-} from "@dust-tt/sparkle";
+import { BarHeader, DustLogoSquare, Icon, Page } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
-import { useRouter } from "next/router";
 
 import { fetchRevokedWorkspace } from "@app/lib/api/user";
 import {
@@ -111,36 +104,9 @@ export default function NoWorkspace({
   workspaceName,
   workspaceVerifiedDomain,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  const router = useRouter();
-
-  const onCreateWorkspace = async () => {
-    const res = await fetch("/api/create-new-workspace", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
-    if (!res.ok) {
-      console.error("Failed to create new workspace");
-      return;
-    }
-    const { sId } = await res.json();
-    await router.push(`/w/${sId}/welcome`);
-  };
-
   return (
     <Page variant="normal">
-      <BarHeader
-        title="Joining Dust"
-        rightActions={
-          <Button
-            size="sm"
-            label="Create a new workspace"
-            variant="warning"
-            onClick={onCreateWorkspace}
-          />
-        }
-      />
+      <BarHeader title="Joining Dust" />
       <div className="mx-auto mt-40 flex max-w-2xl flex-col gap-8">
         <div className="flex flex-col gap-2">
           <div className="items-left justify-left flex flex-row">
@@ -167,14 +133,6 @@ export default function NoWorkspace({
                 then use the link provided in the invitation email to access the
                 workspace.
               </span>
-              <span className="copy-md text-muted-foreground dark:text-muted-foreground-night">
-                If you're looking to establish{" "}
-                <span className="font-semibold">
-                  {" "}
-                  a new, separate workspace
-                </span>{" "}
-                continue with the following step:
-              </span>
             </div>
           )}
           {status === "revoked" && (
@@ -199,14 +157,6 @@ export default function NoWorkspace({
               </span>
             </div>
           )}
-        </div>
-        <div className="flex flex-row justify-end">
-          <Button
-            size="sm"
-            label="Create a new workspace"
-            variant="warning"
-            onClick={onCreateWorkspace}
-          />
         </div>
       </div>
     </Page>
