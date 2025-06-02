@@ -88,9 +88,6 @@ export default function LandingLayout({
               onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                 if (e.shiftKey) {
                   window.location.href = `/api/auth/login?prompt=login&returnTo=${postLoginReturnToUrl}`;
-                } else if (e.metaKey) {
-                  // Command + click (Mac) or Control + click (Windows/Linux) leads to WorkOS logout.
-                  window.location.href = `/api/workos/login?returnTo=${postLoginReturnToUrl}`;
                 } else {
                   window.location.href = `/api/auth/login?returnTo=${postLoginReturnToUrl}`;
                 }
