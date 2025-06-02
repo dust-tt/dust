@@ -54,6 +54,7 @@ impl Dataset {
         info!(
             hash = hash,
             recomputed_hash = recomputed_hash,
+            keys = ?keys,
             "asserting recomputed_hash == hash"
         );
 
