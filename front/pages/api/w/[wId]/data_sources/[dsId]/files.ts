@@ -135,11 +135,6 @@ function handlePublicErrorResponse(req: any, res: any, error: DustError) {
       type = "invalid_request_error";
       break;
 
-    case "unauthorized":
-      status_code = 401;
-      type = "not_authenticated";
-      break;
-
     case "resource_not_found":
       status_code = 404;
       type = "file_not_found";
