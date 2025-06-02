@@ -420,20 +420,30 @@ function getPrefixedToolName(
 ): Result<string, Error> {
   const slugifiedConfigName = slugify(config.name);
   const slugifiedOriginalName = slugify(originalName);
+  const separator = TOOL_NAME_SEPARATOR;
 
-  const prefixedName = `${slugifiedConfigName}${TOOL_NAME_SEPARATOR}${slugifiedOriginalName}`;
-
-  // If the prefixed name is too long, we return the unprefixed original name directly.
-  if (prefixedName.length >= MAX_TOOL_NAME_LENGTH) {
-    if (slugifiedOriginalName.length >= MAX_TOOL_NAME_LENGTH) {
-      return new Err(
-        new Error(
-          `Tool name too long: ${originalName} (max length is ${MAX_TOOL_NAME_LENGTH})`
-        )
-      );
-    }
-    return new Ok(slugifiedOriginalName);
+  // If the original name is already too long, we can't use it.
+  if (slugifiedOriginalName.length > MAX_TOOL_NAME_LENGTH) {
+    return new Err(
+      new Error(
+        `Tool name "${originalName}" is too long. Maximum length is ${MAX_TOOL_NAME_LENGTH} characters.`
+      )
+    );
   }
+
+  // We want to keep the original name entirely, but we need to ensure that the
+  // prefixed name does not exceed the maximum length.
+
+  // Calculate the maximum allowed length for the config name portion.
+  const maxConfigNameLength =
+    MAX_TOOL_NAME_LENGTH - slugifiedOriginalName.length - separator.length;
+  // If the full prefixed name would be too long, truncate the config name portion.
+  const truncatedConfigName =
+    slugifiedConfigName.length > maxConfigNameLength
+      ? slugifiedConfigName.slice(0, maxConfigNameLength)
+      : slugifiedConfigName;
+
+  const prefixedName = `${truncatedConfigName}${separator}${slugifiedOriginalName}`;
 
   return new Ok(prefixedName);
 }
