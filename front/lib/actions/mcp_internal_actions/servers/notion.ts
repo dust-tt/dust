@@ -1,22 +1,22 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { Client } from "@notionhq/client";
+import type {
+  BlockObjectRequest,
+  CreateCommentParameters,
+  QueryDatabaseParameters,
+} from "@notionhq/client/build/src/api-endpoints";
 import { z } from "zod";
 
 import { getAccessTokenForInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/authentication";
-import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
-import type { Authenticator } from "@app/lib/auth";
-import { normalizeError } from "@app/types";
-import {
-  BlockObjectRequest,
-  QueryDatabaseParameters,
-  CreateCommentParameters,
-} from "@notionhq/client/build/src/api-endpoints";
+import type { MCPToolResult } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
   makeMCPToolJSONSuccess,
   makeMCPToolTextError,
 } from "@app/lib/actions/mcp_internal_actions/utils";
-import { MCPToolResult } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
+import type { Authenticator } from "@app/lib/auth";
+import { normalizeError } from "@app/types";
 
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "notion",
