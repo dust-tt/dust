@@ -40,6 +40,12 @@ jobs:
       - name: Typecheck and Lint 4
         working-directory: front
         run: npm run lint
+      - name: Typecheck and Lint 4-1
+        working-directory: front
+        run: npm run lint:test-filenames
+      - name: Typecheck and Lint 4-2
+        working-directory: front
+        run: npm run next:lint
       - name: Typecheck and Lint 5
         working-directory: front
         run: npm run format:check
