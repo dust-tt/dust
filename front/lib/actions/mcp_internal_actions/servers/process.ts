@@ -140,6 +140,24 @@ function createServer(
     "Process available documents according to timeframe to extract structured data.",
     // `Extract an array of data points from available documents, according to a ${isJsonSchemaConfigured ? "user-configured" : ""} JSON schema.`,
     {
+      dataSources:
+        ConfigurableToolInputSchemas[
+          INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
+        ],
+      objective: z
+        .string()
+        .describe(
+          "The objective behind the use of the tool based on the conversation state." +
+            " This is used to guide the tool to extract the right data based on the user request."
+        ),
+
+      jsonSchema: isJsonSchemaConfigured
+        ? ConfigurableToolInputSchemas[
+            INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA
+          ]
+        : JsonSchemaSchema.describe(
+            EXTRACT_TOOL_JSON_SCHEMA_ARGUMENT_DESCRIPTION
+          ),
       timeFrame: isTimeFrameConfigured
         ? ConfigurableToolInputSchemas[
             INTERNAL_MIME_TYPES.TOOL_INPUT.NULLABLE_TIME_FRAME
@@ -153,20 +171,16 @@ function createServer(
               "The time frame to use for documents retrieval (e.g. last 7 days, last 2 months). Leave null to search all documents regardless of time."
             )
             .nullable(),
-      dataSources:
-        ConfigurableToolInputSchemas[
-          INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
-        ],
-      jsonSchema: isJsonSchemaConfigured
-        ? ConfigurableToolInputSchemas[
-            INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA
-          ]
-        : JsonSchemaSchema.describe(
-            EXTRACT_TOOL_JSON_SCHEMA_ARGUMENT_DESCRIPTION
-          ),
       ...tagsInputSchema,
     },
-    async ({ timeFrame, dataSources, jsonSchema, tagsIn, tagsNot }) => {
+    async ({
+      objective,
+      dataSources,
+      jsonSchema,
+      timeFrame,
+      tagsIn,
+      tagsNot,
+    }) => {
       // Unwrap and prepare variables.
       assert(
         agentLoopContext?.runContext,
@@ -213,7 +227,7 @@ function createServer(
             context_size: getSupportedModelConfig(model).contextSize,
             prompt,
             schema: jsonSchema,
-            objective: "n/a",
+            objective,
           },
         ],
         {
