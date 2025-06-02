@@ -85,6 +85,8 @@ export async function getApp({
     throw new Error("Failed to get core specification hashes");
   }
 
+  localLogger.info({ coreSpec }, "coreAPI.getSpecificationHashes");
+
   const specsToFetch = coreSpec.value.hashes;
 
   const coreSpecifications: Record<string, string> = {};
@@ -106,6 +108,8 @@ export async function getApp({
   const dataSetsToFetch = await coreAPI.getDatasets({
     projectId: dustAPIProjectId,
   });
+
+  localLogger.info({ dataSetsToFetch }, "coreAPI.getDatasets");
 
   if (dataSetsToFetch.isErr()) {
     throw new Error("Failed to get datasets");
