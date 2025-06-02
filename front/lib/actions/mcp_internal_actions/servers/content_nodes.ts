@@ -237,7 +237,7 @@ const createServer = (): McpServer => {
   );
 
   server.tool(
-    "list_root_nodes",
+    "list_root_items",
     "Show the top-level folders and files in the data sources - the starting point of the " +
       "filesystem hierarchy. Use this when you want to begin exploring your uploaded files or " +
       "synced data from SaaS products (Notion, Slack, Github, etc.). This is like listing the " +
