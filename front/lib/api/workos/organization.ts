@@ -1,6 +1,5 @@
 import type { Connection, Directory, Organization } from "@workos-inc/node";
 import { DomainDataState, GeneratePortalLinkIntent } from "@workos-inc/node";
-import assert from "assert";
 
 import { getWorkOS } from "@app/lib/api/workos/client";
 import { Workspace } from "@app/lib/models/workspace";
