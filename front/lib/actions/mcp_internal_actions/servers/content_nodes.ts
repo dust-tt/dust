@@ -67,7 +67,7 @@ const createServer = (): McpServer => {
 
   server.tool(
     "find_by_title",
-    "Find content items based on their title or name. Use this when you need to find specific " +
+    "Find content items based on their title. Use this when you need to find specific " +
       "files, documents, folders, or other content by searching for their titles. This searches " +
       "through user-uploaded files and data synced from SaaS products (Notion, Slack, Github, " +
       "etc...). This is like using 'find -name' in Unix - it will find all items whose titles " +
@@ -286,7 +286,7 @@ const createServer = (): McpServer => {
   );
 
   server.tool(
-    "search_by_type",
+    "find_by_type",
     "Find all content of a specific type from your uploaded files or synced data sources (Notion, " +
       "Slack, Github, etc.). Use this to retrieve all documents, all spreadsheets/tables, or all " +
       "folders. Good fits are requests like 'show me all the documents', 'find all spreadsheets', " +
@@ -406,79 +406,6 @@ const createServer = (): McpServer => {
   //     });
   //   }
   // );
-
-  server.tool(
-    "search_by_parent_path",
-    "Find all content that exists anywhere within specific folders in the filesystem hierarchy. " +
-      "Use this to find everything under certain paths from your uploaded files or synced data " +
-      "sources (Notion, Slack, Github, etc.), including items in subfolders. This searches the " +
-      "entire subtree, not just direct children.",
-    {
-      parentIds: z
-        .array(z.string())
-        .describe(
-          "Array of parent IDs to search within. Get these IDs from previous " +
-            "search results. The tool will find all content that has ANY of these IDs in its " +
-            "parent hierarchy (meaning it's somewhere under these folders)."
-        ),
-      dataSources:
-        ConfigurableToolInputSchemas[
-          INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
-        ],
-      ...OPTION_PARAMETERS,
-    },
-    async ({ parentIds, dataSources, limit, sortBy, nextPageCursor }) => {
-      const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-      const fetchResult = await getAgentDataSourceConfigurations(dataSources);
-
-      if (fetchResult.isErr()) {
-        return makeMCPToolTextError(fetchResult.error.message);
-      }
-      const agentDataSourceConfigurations = fetchResult.value;
-
-      // TODO(2025-06-01 aubin): update semantics to support this.
-      // Search all nodes and filter client-side for nodes that have the specified parents
-      const searchResult = await coreAPI.searchNodes({
-        filter: {
-          data_source_views: makeDataSourceViewFilter(
-            agentDataSourceConfigurations
-          ),
-        },
-        options: {
-          cursor: nextPageCursor,
-          limit: limit ? limit * 10 : 1000,
-          sort: sortBy
-            ? [{ field: sortBy, direction: getSortDirection(sortBy) }]
-            : undefined,
-        },
-      });
-
-      if (searchResult.isErr()) {
-        return makeMCPToolTextError("Failed to search content by parent path.");
-      }
-
-      // Filter results to nodes that have all specified parent IDs in their parents array
-      const filteredNodes = searchResult.value.nodes.filter((node) =>
-        parentIds.every((parentId) => node.parents.includes(parentId))
-      );
-
-      // Apply limit after filtering
-      const limitedNodes = limit
-        ? filteredNodes.slice(0, limit)
-        : filteredNodes;
-
-      const filteredResult = {
-        ...searchResult.value,
-        nodes: limitedNodes,
-        hit_count: limitedNodes.length,
-      };
-
-      return makeMCPToolJSONSuccess({
-        message: "Content found successfully.",
-        result: renderSearchResults(filteredResult),
-      });
-    }
-  );
 
   return server;
 };
