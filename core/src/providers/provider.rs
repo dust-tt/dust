@@ -17,8 +17,8 @@ use std::time::Duration;
 
 use super::deepseek::DeepseekProvider;
 use super::fireworks::FireworksProvider;
-use super::xai::XaiProvider;
 use super::togetherai::TogetherAIProvider;
+use super::xai::XaiProvider;
 
 #[derive(Debug, Clone, Copy, Serialize, PartialEq, ValueEnum, Deserialize)]
 #[serde(rename_all = "lowercase")]

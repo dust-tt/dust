@@ -74,10 +74,10 @@ pub mod providers {
     pub mod deepseek;
     pub mod fireworks;
     pub mod google_ai_studio;
-    pub mod xai;
     pub mod helpers;
     pub mod openai_compatible_helpers;
     pub mod togetherai;
+    pub mod xai;
 }
 pub mod http {
     pub mod network;
