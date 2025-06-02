@@ -16,6 +16,7 @@ export type DustErrorCode =
   | "title_is_empty"
   | "title_too_long"
   | "invalid_file"
+  | "file_not_ready"
   // Table
   | "invalid_rows"
   | "missing_csv"
