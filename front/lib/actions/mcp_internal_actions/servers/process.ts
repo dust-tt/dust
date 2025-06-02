@@ -174,8 +174,8 @@ function createServer(
       ...tagsInputSchema,
     },
     async ({
-      objective,
       dataSources,
+      objective,
       jsonSchema,
       timeFrame,
       tagsIn,
