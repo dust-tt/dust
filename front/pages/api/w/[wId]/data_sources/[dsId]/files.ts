@@ -105,8 +105,41 @@ async function handler(
         { file, upsertArgs: upsertArgs }
       );
       if (rUpsert.isErr()) {
-        handlePublicErrorResponse(req, res, rUpsert.error);
+        let status_code: number;
+        let type: APIErrorType;
+
+        switch (rUpsert.error.code) {
+          case "file_not_ready":
+          case "invalid_file":
+          case "title_too_long":
+          case "invalid_url":
+          case "missing_csv":
+          case "invalid_content_error":
+          case "resource_not_found":
+            status_code = 400;
+            type = "invalid_request_error";
+            break;
+
+          case "data_source_quota_error":
+            status_code = 413;
+            type = "data_source_quota_error";
+            break;
+
+          default:
+            status_code = 500;
+            type = "internal_server_error";
+            break;
+        }
+
+        return apiError(req, res, {
+          status_code,
+          api_error: {
+            type: type,
+            message: rUpsert.error.message,
+          },
+        });
       }
+
       return res.status(200).json({ file: file.toPublicJSON(auth) });
     }
     default:
@@ -118,42 +151,6 @@ async function handler(
         },
       });
   }
-}
-
-function handlePublicErrorResponse(req: any, res: any, error: DustError) {
-  let status_code: number;
-  let type: APIErrorType;
-
-  switch (error.code) {
-    case "file_not_ready":
-    case "invalid_file":
-    case "title_too_long":
-    case "invalid_url":
-    case "missing_csv":
-    case "invalid_content_error":
-    case "resource_not_found":
-      status_code = 400;
-      type = "invalid_request_error";
-      break;
-
-    case "data_source_quota_error":
-      status_code = 413;
-      type = "data_source_quota_error";
-      break;
-
-    default:
-      status_code = 500;
-      type = "internal_server_error";
-      break;
-  }
-
-  return apiError(req, res, {
-    status_code,
-    api_error: {
-      type: type,
-      message: error.message,
-    },
-  });
 }
 
 export default withSessionAuthenticationForWorkspace(handler);
