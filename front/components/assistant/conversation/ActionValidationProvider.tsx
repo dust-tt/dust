@@ -18,6 +18,7 @@ import { createContext, useEffect, useState } from "react";
 import { useNavigationLock } from "@app/components/assistant_builder/useNavigationLock";
 import type { MCPValidationOutputType } from "@app/lib/actions/constants";
 import type { MCPApproveExecutionEvent } from "@app/lib/actions/mcp";
+import type { LightWorkspaceType } from "@app/types";
 import { asDisplayName } from "@app/types";
 
 type MCPActionValidationRequest = Omit<
@@ -75,12 +76,12 @@ function useValidationQueue() {
 }
 
 interface ActionValidationProviderProps {
-  workspaceId: string;
+  owner: LightWorkspaceType;
   children: React.ReactNode;
 }
 
 export function ActionValidationProvider({
-  workspaceId,
+  owner,
   children,
 }: ActionValidationProviderProps) {
   const { validationQueue, currentValidation, addToQueue, takeNextFromQueue } =
@@ -108,7 +109,7 @@ export function ActionValidationProvider({
     setIsProcessing(true);
 
     const response = await fetch(
-      `/api/w/${workspaceId}/assistant/conversations/${currentValidation.conversationId}/messages/${currentValidation.messageId}/validate-action`,
+      `/api/w/${owner.sId}/assistant/conversations/${currentValidation.conversationId}/messages/${currentValidation.messageId}/validate-action`,
       {
         method: "POST",
         headers: {
