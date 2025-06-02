@@ -123,7 +123,6 @@ async function handler(
 function handlePublicErrorResponse(req: any, res: any, error: DustError) {
   let status_code: number;
   let type: APIErrorType;
-  let message: string;
   let panic: boolean;
 
   switch (error.code) {
@@ -135,46 +134,41 @@ function handlePublicErrorResponse(req: any, res: any, error: DustError) {
     case "invalid_content_error":
       status_code = 400;
       type = "invalid_request_error";
-      message = "Invalid request parameters or validation failure.";
       panic = false;
       break;
 
     case "unauthorized":
       status_code = 401;
       type = "not_authenticated";
-      message = "Unauthorized access attempt during file processing.";
       panic = false;
       break;
 
     case "resource_not_found":
       status_code = 404;
       type = "file_not_found";
-      message = "Required resource not found during file processing.";
       panic = false;
       break;
 
     case "data_source_quota_error":
       status_code = 413;
       type = "file_too_large";
-      message = "File size or quota limits exceeded.";
       panic = false;
       break;
 
     default:
       status_code = 500;
       type = "internal_server_error";
-      message = "Internal server error during file processing.";
       panic = true;
       break;
   }
 
-  logger.error({ panic, error }, message);
+  logger.error({ panic, error }, error.message);
 
   return apiError(req, res, {
     status_code,
     api_error: {
-      type,
-      message,
+      type: type,
+      message: error.message,
     },
   });
 }
