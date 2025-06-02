@@ -147,7 +147,7 @@ function handlePublicErrorResponse(req: any, res: any, error: DustError) {
 
     case "data_source_quota_error":
       status_code = 413;
-      type = "file_too_large";
+      type = "data_source_quota_error";
       break;
 
     default:
