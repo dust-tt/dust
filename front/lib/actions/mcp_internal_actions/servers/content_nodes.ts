@@ -125,62 +125,6 @@ const createServer = (): McpServer => {
   );
 
   server.tool(
-    "list_children",
-    "List the direct contents of a folder or container. Use this when you want to see what's " +
-      "inside a specific folder from your uploaded files or synced data sources (Notion, Slack, " +
-      "Github, etc.), like 'ls' in Unix. A good fit is when you need to explore the filesystem " +
-      "structure step by step. This tool can be called repeatedly by passing the 'id' output " +
-      "at a step to the next step's parentId.",
-    {
-      parentId: z
-        .string()
-        .describe(
-          "The exact ID of the folder/container whose contents you want to list. " +
-            "Get this ID from previous search results (it's the 'id' field)."
-        ),
-      dataSources:
-        ConfigurableToolInputSchemas[
-          INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
-        ],
-      ...OPTION_PARAMETERS,
-    },
-    async ({ parentId, dataSources, limit, sortBy, nextPageCursor }) => {
-      const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-      const fetchResult = await getAgentDataSourceConfigurations(dataSources);
-
-      if (fetchResult.isErr()) {
-        return makeMCPToolTextError(fetchResult.error.message);
-      }
-      const agentDataSourceConfigurations = fetchResult.value;
-
-      const searchResult = await coreAPI.searchNodes({
-        filter: {
-          data_source_views: makeDataSourceViewFilter(
-            agentDataSourceConfigurations
-          ),
-          parent_id: parentId,
-        },
-        options: {
-          cursor: nextPageCursor,
-          limit,
-          sort: sortBy
-            ? [{ field: sortBy, direction: getSortDirection(sortBy) }]
-            : undefined,
-        },
-      });
-
-      if (searchResult.isErr()) {
-        return makeMCPToolTextError("Failed to list folder contents");
-      }
-
-      return makeMCPToolJSONSuccess({
-        message: "Folder contents listed successfully.",
-        result: renderSearchResults(searchResult.value),
-      });
-    }
-  );
-
-  server.tool(
     "find_by_id",
     "Retrieve specific content items when you have their exact IDs. Use this to get detailed " +
       "information about files, documents, or folders you've already identified from other searches. " +
@@ -231,6 +175,62 @@ const createServer = (): McpServer => {
 
       return makeMCPToolJSONSuccess({
         message: "Content items found successfully.",
+        result: renderSearchResults(searchResult.value),
+      });
+    }
+  );
+
+  server.tool(
+    "list_files",
+    "List the direct contents of a folder or container. Use this when you want to see what's " +
+      "inside a specific folder from your uploaded files or synced data sources (Notion, Slack, " +
+      "Github, etc.), like 'ls' in Unix. A good fit is when you need to explore the filesystem " +
+      "structure step by step. This tool can be called repeatedly by passing the 'id' output " +
+      "at a step to the next step's parentId.",
+    {
+      parentId: z
+        .string()
+        .describe(
+          "The exact ID of the folder/container whose contents you want to list. " +
+            "Get this ID from previous search results (it's the 'id' field)."
+        ),
+      dataSources:
+        ConfigurableToolInputSchemas[
+          INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
+        ],
+      ...OPTION_PARAMETERS,
+    },
+    async ({ parentId, dataSources, limit, sortBy, nextPageCursor }) => {
+      const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+      const fetchResult = await getAgentDataSourceConfigurations(dataSources);
+
+      if (fetchResult.isErr()) {
+        return makeMCPToolTextError(fetchResult.error.message);
+      }
+      const agentDataSourceConfigurations = fetchResult.value;
+
+      const searchResult = await coreAPI.searchNodes({
+        filter: {
+          data_source_views: makeDataSourceViewFilter(
+            agentDataSourceConfigurations
+          ),
+          parent_id: parentId,
+        },
+        options: {
+          cursor: nextPageCursor,
+          limit,
+          sort: sortBy
+            ? [{ field: sortBy, direction: getSortDirection(sortBy) }]
+            : undefined,
+        },
+      });
+
+      if (searchResult.isErr()) {
+        return makeMCPToolTextError("Failed to list folder contents");
+      }
+
+      return makeMCPToolJSONSuccess({
+        message: "Folder contents listed successfully.",
         result: renderSearchResults(searchResult.value),
       });
     }
