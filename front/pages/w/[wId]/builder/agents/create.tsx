@@ -173,7 +173,7 @@ export default function CreateAgent({
                   size="lg"
                   className="text-primary-400 dark:text-primary-500"
                 />
-                <Page.Header title="Start new"/>
+                <Page.Header title="Start new" />
               </div>
               <Button
                 icon={DocumentIcon}
@@ -182,7 +182,7 @@ export default function CreateAgent({
                 data-gtm-location="assistantCreationPage"
                 size="md"
                 variant="highlight"
-                href={`/w/${owner.sId}/builder/agent/new`}
+                href={`/w/${owner.sId}/builder/agents/new`}
               />
             </div>
 
@@ -194,7 +194,7 @@ export default function CreateAgent({
                 size="lg"
                 className="text-primary-400 dark:text-primary-500"
               />
-              <Page.Header title="Start from a template"/>
+              <Page.Header title="Start from a template" />
             </div>
 
             <div className="flex flex-col gap-6">
