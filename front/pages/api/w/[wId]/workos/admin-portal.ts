@@ -6,6 +6,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { generateWorkOSAdminPortalUrl } from "@app/lib/api/workos/organization";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { WorkOSPortalIntent } from "@app/lib/types/workos";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
@@ -45,6 +46,17 @@ async function handler(
       api_error: {
         type: "invalid_request_error",
         message: "No WorkOS organization is set up for this workspace.",
+      },
+    });
+  }
+
+  const flags = await getFeatureFlags(owner);
+  if (!flags.includes("workos")) {
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "workspace_auth_error",
+        message: "Your workspace is not authorized to perfom this action.",
       },
     });
   }
