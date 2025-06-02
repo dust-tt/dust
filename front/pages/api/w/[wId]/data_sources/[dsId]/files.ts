@@ -10,7 +10,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { FileType, WithAPIErrorResponse } from "@app/types";
+import type { APIErrorType, FileType, WithAPIErrorResponse } from "@app/types";
 
 export interface UpsertFileToDataSourceRequestBody {
   fileId: string;
@@ -103,14 +103,45 @@ async function handler(
         { file, upsertArgs: upsertArgs }
       );
       if (rUpsert.isErr()) {
+        let status_code: number;
+        let type: APIErrorType;
+
+        switch (rUpsert.error.code) {
+          case "file_not_ready":
+          case "invalid_file":
+          case "title_too_long":
+          case "invalid_url":
+          case "missing_csv":
+          case "invalid_csv_content":
+          case "invalid_csv_and_file":
+          case "invalid_content_error":
+          case "resource_not_found":
+          case "table_not_found":
+          case "file_not_found":
+            status_code = 400;
+            type = "invalid_request_error";
+            break;
+
+          case "data_source_quota_error":
+            status_code = 413;
+            type = "data_source_quota_error";
+            break;
+
+          default:
+            status_code = 500;
+            type = "internal_server_error";
+            break;
+        }
+
         return apiError(req, res, {
-          status_code: 500,
+          status_code,
           api_error: {
-            type: "internal_server_error",
-            message: "Failed to upsert the file.",
+            type: type,
+            message: rUpsert.error.message,
           },
         });
       }
+
       return res.status(200).json({ file: file.toPublicJSON(auth) });
     }
     default:
