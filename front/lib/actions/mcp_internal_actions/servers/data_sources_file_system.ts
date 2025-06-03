@@ -11,6 +11,7 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/servers/utils";
 import {
   makeMCPToolJSONSuccess,
+  makeMCPToolRecoverableErrorSuccess,
   makeMCPToolTextError,
 } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -90,7 +91,7 @@ const createServer = (
 
   server.tool(
     "cat",
-    "Read the contents of a document, referred to by its nodeId (named after the 'cat' unix tool). The nodeId can be obtained using the 'find_by_title' or 'find_by_id' tools.",
+    "Read the contents of a document, referred to by its nodeId (named after the 'cat' unix tool). The nodeId can be obtained using the 'find_by_title', 'find' or 'search' tools.",
     {
       dataSources:
         ConfigurableToolInputSchemas[
@@ -120,7 +121,7 @@ const createServer = (
       });
 
       if (searchResult.isErr() || searchResult.value.nodes.length === 0) {
-        return makeMCPToolTextError(
+        return makeMCPToolRecoverableErrorSuccess(
           `Could not find node: ${nodeId} (error: ${
             searchResult.isErr() ? searchResult.error : "No nodes found"
           })`
@@ -130,7 +131,7 @@ const createServer = (
       const node = searchResult.value.nodes[0];
 
       if (node.node_type !== "document") {
-        return makeMCPToolTextError(
+        return makeMCPToolRecoverableErrorSuccess(
           `Node is of type ${node.node_type}, not a document.`
         );
       }
