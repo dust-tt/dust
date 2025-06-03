@@ -277,3 +277,22 @@ export type AgentContentEvent = {
   content: string;
   processedContent: string;
 };
+
+export type AgentToolCallsEvent = {
+  type: "agent_tool_calls";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  dustRunId: string;
+  toolCalls: Array<{
+    functionCallId: string | null;
+    name: string | null;
+    arguments: Record<string, string | boolean | number> | null;
+  }>;
+};
+
+export type AgentToolCall = {
+  functionCallId: string | null;
+  name: string | null;
+  arguments: Record<string, string | boolean | number> | null;
+};

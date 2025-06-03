@@ -1,15 +1,11 @@
 import type { CreationOptional, ForeignKey } from "sequelize";
 import { DataTypes } from "sequelize";
 
-import type {
-  ActionConfigurationType,
-  AgentActionSpecification,
-} from "@app/lib/actions/types/agent";
 import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 
-export class AgentMessageStepPlanning extends WorkspaceAwareModel<AgentMessageStepPlanning> {
+export class AgentMessageToolCall extends WorkspaceAwareModel<AgentMessageToolCall> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -18,14 +14,12 @@ export class AgentMessageStepPlanning extends WorkspaceAwareModel<AgentMessageSt
   declare step: number;
   declare stepActionIndex: number;
 
-  // We map what we have in AgentActionsEvent.
-  declare actionConfiguration: ActionConfigurationType;
-  declare actionInputs: Record<string, string | boolean | number>;
-  declare actionSpecification: AgentActionSpecification | null;
+  declare name: string | null;
   declare functionCallId: string | null;
+  declare arguments: Record<string, string | boolean | number> | null;
 }
 
-AgentMessageStepPlanning.init(
+AgentMessageToolCall.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -45,37 +39,33 @@ AgentMessageStepPlanning.init(
       type: DataTypes.INTEGER,
       allowNull: false,
     },
-    actionConfiguration: {
-      type: DataTypes.JSONB,
-      allowNull: false,
-    },
-    actionInputs: {
-      type: DataTypes.JSONB,
-      allowNull: false,
-    },
-    actionSpecification: {
-      type: DataTypes.JSONB,
+    name: {
+      type: DataTypes.STRING,
       allowNull: true,
     },
     functionCallId: {
       type: DataTypes.STRING,
       allowNull: true,
     },
+    arguments: {
+      type: DataTypes.JSONB,
+      allowNull: true,
+    },
   },
   {
     sequelize: frontSequelize,
-    modelName: "agent_message_step_plannings",
+    modelName: "agent_message_tool_calls",
     indexes: [
       {
         fields: ["agentMessageId", "step", "stepActionIndex"],
-        name: "agent_message_step_plannings_agent_message_id_step_action_index",
+        name: "agent_message_tool_calls_agent_message_id_step_action_index",
         unique: true,
       },
     ],
   }
 );
 
-AgentMessageStepPlanning.belongsTo(AgentMessage, {
+AgentMessageToolCall.belongsTo(AgentMessage, {
   as: "agentMessage",
   foreignKey: {
     name: "agentMessageId",
@@ -85,8 +75,8 @@ AgentMessageStepPlanning.belongsTo(AgentMessage, {
   onUpdate: "RESTRICT",
 });
 
-AgentMessage.hasMany(AgentMessageStepPlanning, {
-  as: "agentMessageStepPlannings",
+AgentMessage.hasMany(AgentMessageToolCall, {
+  as: "agentMessageToolCalls",
   foreignKey: {
     name: "agentMessageId",
     allowNull: false,
