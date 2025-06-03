@@ -91,6 +91,7 @@ const createServer = (): McpServer => {
             "the 'nodeId' field). Use this parameter to restrict the search to the children and " +
             "descendant of a specific node."
         ),
+      // TODO(2025-06-03 aubin): add search by mime type, requires adding the option to the endpoint in core.
       dataSources:
         ConfigurableToolInputSchemas[
           INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
