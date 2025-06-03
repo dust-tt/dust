@@ -39,7 +39,7 @@ export function AgentBuilderProvider({
 
   useEffect(() => {
     const mediaQuery = window.matchMedia("(min-width: 1024px)");
-    
+
     // Set initial state based on screen size after hydration
     setIsPreviewPanelOpen(mediaQuery.matches);
 
