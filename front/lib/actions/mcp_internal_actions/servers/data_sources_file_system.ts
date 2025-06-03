@@ -155,42 +155,39 @@ const createServer = (): McpServer => {
       }
       const agentDataSourceConfigurations = fetchResult.value;
 
+      const dataSourceViewFilter = makeDataSourceViewFilter(
+        agentDataSourceConfigurations
+      );
+      const options = {
+        cursor: nextPageCursor,
+        limit,
+        sort: sortBy
+          ? [{ field: sortBy, direction: getSortDirection(sortBy) }]
+          : undefined,
+      };
+
       let searchResult: Result<CoreAPISearchNodesResponse, CoreAPIError>;
 
       if (!nodeId) {
         // If we don't have a nodeId, we want to show the root nodes for the data source views, which are the parentsIn.
+        // So we search these nodes by node_id.
+        // TODO(2025-06-03 aubin): handle the root case where parentsIn is null.
         searchResult = await coreAPI.searchNodes({
           filter: {
-            data_source_views: makeDataSourceViewFilter(
-              agentDataSourceConfigurations
-            ),
+            data_source_views: dataSourceViewFilter,
             node_ids: agentDataSourceConfigurations.flatMap(
               ({ dataSourceView }) => dataSourceView.parentsIn ?? []
             ),
           },
-          options: {
-            cursor: nextPageCursor,
-            limit,
-            sort: sortBy
-              ? [{ field: sortBy, direction: getSortDirection(sortBy) }]
-              : undefined,
-          },
+          options,
         });
       } else {
         searchResult = await coreAPI.searchNodes({
           filter: {
-            data_source_views: makeDataSourceViewFilter(
-              agentDataSourceConfigurations
-            ),
+            data_source_views: dataSourceViewFilter,
             parent_id: nodeId,
           },
-          options: {
-            cursor: nextPageCursor,
-            limit,
-            sort: sortBy
-              ? [{ field: sortBy, direction: getSortDirection(sortBy) }]
-              : undefined,
-          },
+          options,
         });
       }
 
