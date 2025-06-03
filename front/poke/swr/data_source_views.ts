@@ -8,7 +8,10 @@ import {
   fetcherWithBody,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
-import type { PokeListDataSourceViews } from "@app/pages/api/poke/workspaces/[wId]/data_source_views";
+import type {
+  DataSourceViewWithUsage,
+  PokeListDataSourceViews,
+} from "@app/pages/api/poke/workspaces/[wId]/data_source_views";
 import type { PokeGetDataSourceViewContentNodes } from "@app/pages/api/poke/workspaces/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/content-nodes";
 import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
 import type {
@@ -29,7 +32,7 @@ export function usePokeDataSourceViews({
   );
 
   return {
-    data: data?.data_source_views ?? emptyArray(),
+    data: data?.data_source_views ?? emptyArray<DataSourceViewWithUsage>(),
     isLoading: !error && !data && !disabled,
     isError: error,
     mutate,

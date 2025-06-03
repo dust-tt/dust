@@ -85,6 +85,8 @@ export async function getApp({
     throw new Error("Failed to get core specification hashes");
   }
 
+  localLogger.info({ coreSpec }, "coreAPI.getSpecificationHashes");
+
   const specsToFetch = coreSpec.value.hashes;
 
   const coreSpecifications: Record<string, string> = {};
@@ -107,6 +109,8 @@ export async function getApp({
     projectId: dustAPIProjectId,
   });
 
+  localLogger.info({ dataSetsToFetch }, "coreAPI.getDatasets");
+
   if (dataSetsToFetch.isErr()) {
     throw new Error("Failed to get datasets");
   }
@@ -122,10 +126,22 @@ export async function getApp({
       });
 
       if (apiDataset.isErr()) {
-        throw new Error("Failed to get dataset");
+        logger.error(
+          {
+            projectId: dustAPIProjectId,
+            datasetName: datasetId,
+            datasetHash: dataSetVersion.hash,
+            error: apiDataset.error,
+          },
+          "Failed to get datasets"
+        );
+        // temporary comment that error
+        // throw new Error(
+        //   `Failed to get dataset ${datasetId}: ${apiDataset.error.message}`
+        // );
+      } else {
+        datasets.push(apiDataset.value.dataset);
       }
-
-      datasets.push(apiDataset.value.dataset);
     }
   }
 

@@ -13,7 +13,6 @@ import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-import { assertNever } from "@app/types";
 
 /**
  * @ignoreswagger
@@ -168,7 +167,13 @@ async function handler(
               },
             });
           default:
-            assertNever(upsertRes.error.code);
+            return apiError(req, res, {
+              status_code: 500,
+              api_error: {
+                type: "internal_server_error",
+                message: upsertRes.error.message,
+              },
+            });
         }
       }
 

@@ -246,6 +246,10 @@ const TOOL_MIME_TYPES = {
       "WEBSEARCH_RESULT",
     ],
   }),
+  TOOL_ERROR: generateToolMimeTypes({
+    category: "TOOL_ERROR",
+    resourceTypes: ["PERSONAL_AUTHENTICATION_REQUIRED"],
+  }),
 };
 
 export const INTERNAL_MIME_TYPES = {

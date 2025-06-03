@@ -9,19 +9,23 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   // We'll prefix all tools with the server name to avoid conflicts.
   // It's okay to change the name of the server as we don't refer to it directly.
   "agent_router",
-  "run_agent",
+  "data_sources_file_system",
   "extract_data",
   "file_generation",
   "github",
+  "gmail",
   "hubspot",
   "image_generation",
   "include_data",
+  "missing_action_catcher",
   "notion",
   "primitive_types_debugger",
   "query_tables",
   "query_tables_v2",
   "reasoning",
+  "run_agent",
   "run_dust_app",
+  "salesforce",
   "search",
   "think",
   "web_search_&_browse",
@@ -92,13 +96,31 @@ export const INTERNAL_MCP_SERVERS: Record<
     availability: "manual",
     flag: "dev_mcp_actions",
     tools_stakes: {
+      // Get operations.
       get_object_properties: "never_ask",
-      get_objects_by_properties: "low",
-      get_object_by_email: "low",
-      get_object_by_id: "low",
-      count_objects_by_properties: "low",
-      create_object: "high",
-      update_object: "high",
+      get_object_by_email: "never_ask",
+      get_latest_objects: "never_ask",
+      get_contact: "never_ask",
+      get_company: "never_ask",
+      get_deal: "never_ask",
+      get_meeting: "never_ask",
+      get_file_public_url: "never_ask",
+      get_associated_meetings: "never_ask",
+
+      // Create operations.
+      create_contact: "high",
+      create_company: "high",
+      create_deal: "high",
+      create_lead: "high",
+      create_task: "high",
+      create_ticket: "high",
+      create_note: "high",
+      create_communication: "high",
+      create_meeting: "high",
+
+      // Other operations.
+      count_objects_by_properties: "never_ask",
+      search_crm_objects: "never_ask",
     },
   },
   agent_router: {
@@ -121,21 +143,57 @@ export const INTERNAL_MCP_SERVERS: Record<
     availability: "manual",
     flag: "dev_mcp_actions",
     tools_stakes: {
-      retrieve_database_content: "never_ask",
-      query_database: "never_ask",
+      search: "never_ask",
       retrieve_page: "never_ask",
       retrieve_database_schema: "never_ask",
-      search: "never_ask",
+      retrieve_database_content: "never_ask",
+      query_database: "never_ask",
+      retrieve_block: "never_ask",
+      retrieve_block_children: "never_ask",
+      fetch_comments: "never_ask",
+      list_users: "never_ask",
+      get_about_user: "never_ask",
+
       create_page: "low",
-      create_page_from_database: "low",
+      insert_row_into_database: "low",
       create_database: "low",
       update_page: "low",
+      append_block_children: "low",
+      add_page_content: "low",
+      create_comment: "low",
+      delete_block: "low",
+      update_row_database: "low",
+      update_schema_database: "low",
     },
   },
   extract_data: {
     id: 12,
     availability: "auto",
     flag: "dev_mcp_actions",
+  },
+  missing_action_catcher: {
+    id: 13,
+    availability: "auto_hidden_builder",
+    flag: null,
+  },
+  salesforce: {
+    id: 14,
+    availability: "manual",
+    flag: "salesforce_tool",
+    tools_stakes: {
+      execute_read_query: "low",
+      list_objects: "low",
+      describe_object: "low",
+    },
+  },
+  gmail: {
+    id: 15,
+    availability: "manual",
+    flag: "gmail_tool",
+    tools_stakes: {
+      get_drafts: "never_ask",
+      create_draft: "low",
+    },
   },
 
   // Dev
@@ -156,7 +214,7 @@ export const INTERNAL_MCP_SERVERS: Record<
   },
   run_agent: {
     id: 1008,
-    availability: "manual",
+    availability: "auto",
     flag: "dev_mcp_actions",
   },
   query_tables_v2: {
@@ -164,6 +222,11 @@ export const INTERNAL_MCP_SERVERS: Record<
     availability: "auto",
     // We'll eventually switch everyone to this new tables query toolset.
     flag: "exploded_tables_query",
+  },
+  data_sources_file_system: {
+    id: 1010,
+    availability: "auto",
+    flag: "dev_mcp_actions",
   },
 };
 

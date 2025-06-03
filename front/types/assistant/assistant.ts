@@ -20,6 +20,7 @@ export const MODEL_PROVIDER_IDS = [
   "togetherai",
   "deepseek",
   "fireworks",
+  "xai",
 ] as const;
 export type ModelProviderIdType = (typeof MODEL_PROVIDER_IDS)[number];
 
@@ -93,6 +94,9 @@ export function getLargeWhitelistedModel(
   }
   if (isProviderWhitelisted(owner, "mistral")) {
     return MISTRAL_LARGE_MODEL_CONFIG;
+  }
+  if (isProviderWhitelisted(owner, "xai")) {
+    return GROK_3_MODEL_CONFIG;
   }
   return null;
 }
@@ -169,6 +173,11 @@ export const DEEPSEEK_REASONER_MODEL_ID = "deepseek-reasoner" as const;
 export const FIREWORKS_DEEPSEEK_R1_MODEL_ID =
   "accounts/fireworks/models/deepseek-r1" as const;
 
+export const GROK_3_MODEL_ID = "grok-3-latest" as const;
+export const GROK_3_MINI_MODEL_ID = "grok-3-mini-latest" as const;
+export const GROK_3_FAST_MODEL_ID = "grok-3-fast-latest" as const;
+export const GROK_3_MINI_FAST_MODEL_ID = "grok-3-mini-fast-latest" as const;
+
 export const MODEL_IDS = [
   GPT_3_5_TURBO_MODEL_ID,
   GPT_4_TURBO_MODEL_ID,
@@ -214,6 +223,10 @@ export const MODEL_IDS = [
   DEEPSEEK_CHAT_MODEL_ID,
   DEEPSEEK_REASONER_MODEL_ID,
   FIREWORKS_DEEPSEEK_R1_MODEL_ID,
+  GROK_3_MODEL_ID,
+  GROK_3_MINI_MODEL_ID,
+  GROK_3_FAST_MODEL_ID,
+  GROK_3_MINI_FAST_MODEL_ID,
 ] as const;
 export type ModelIdType = (typeof MODEL_IDS)[number];
 
@@ -673,7 +686,7 @@ export const CLAUDE_4_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   shortDescription: "Anthropic's most powerful model.",
   isLegacy: false,
   delimitersConfiguration: ANTHROPIC_DELIMITERS_CONFIGURATION,
-  generationTokensCount: 64_000,
+  generationTokensCount: 32_000,
   supportsVision: true,
   toolUseMetaPrompt: ANTHROPIC_TOOL_USE_META_PROMPT,
   tokenCountAdjustment: 1.15,
@@ -1141,6 +1154,74 @@ export const FIREWORKS_DEEPSEEK_R1_MODEL_CONFIG: ModelConfigurationType = {
   },
 };
 
+export const GROK_3_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "xai",
+  modelId: GROK_3_MODEL_ID,
+  displayName: "Grok 3",
+  contextSize: 131_072,
+  recommendedTopK: 32,
+  recommendedExhaustiveTopK: 128,
+  largeModel: true,
+  description: "xAI's Grok 3 flagship model (131k context).",
+  shortDescription: "xAI's flagship model.",
+  isLegacy: false,
+  generationTokensCount: 8_192,
+  supportsVision: false,
+  supportsResponseFormat: false,
+  featureFlag: "xai_feature",
+};
+
+export const GROK_3_MINI_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "xai",
+  modelId: GROK_3_MINI_MODEL_ID,
+  displayName: "Grok 3 Mini",
+  contextSize: 131_072,
+  recommendedTopK: 32,
+  recommendedExhaustiveTopK: 128,
+  largeModel: false,
+  description: "xAI's Grok 3 Mini model (131k context, reasoning).",
+  shortDescription: "xAI's reasoning model.",
+  isLegacy: false,
+  generationTokensCount: 8_192,
+  supportsVision: false,
+  supportsResponseFormat: false,
+  featureFlag: "xai_feature",
+};
+
+export const GROK_3_FAST_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "xai",
+  modelId: GROK_3_FAST_MODEL_ID,
+  displayName: "Grok 3 Fast",
+  contextSize: 131_072,
+  recommendedTopK: 32,
+  recommendedExhaustiveTopK: 128,
+  largeModel: true,
+  description: "xAI's Grok 3 flagship model (131k context, fast infra).",
+  shortDescription: "xAI's fast flagship model.",
+  isLegacy: false,
+  generationTokensCount: 8_192,
+  supportsVision: false,
+  supportsResponseFormat: false,
+  featureFlag: "xai_feature",
+};
+
+export const GROK_3_MINI_FAST_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "xai",
+  modelId: GROK_3_MINI_FAST_MODEL_ID,
+  displayName: "Grok 3 Mini (Fast)",
+  contextSize: 131_072,
+  recommendedTopK: 32,
+  recommendedExhaustiveTopK: 128,
+  largeModel: false,
+  description: "xAI's Grok 3 Mini model (131k context, reasoning, fast infra).",
+  shortDescription: "xAI's reasoning model.",
+  isLegacy: false,
+  generationTokensCount: 8_192,
+  supportsVision: false,
+  supportsResponseFormat: false,
+  featureFlag: "xai_feature",
+};
+
 export const SUPPORTED_MODEL_CONFIGS: ModelConfigurationType[] = [
   GPT_3_5_TURBO_MODEL_CONFIG,
   GPT_4_TURBO_MODEL_CONFIG,
@@ -1188,6 +1269,10 @@ export const SUPPORTED_MODEL_CONFIGS: ModelConfigurationType[] = [
   DEEPSEEK_CHAT_MODEL_CONFIG,
   DEEPSEEK_REASONER_MODEL_CONFIG,
   FIREWORKS_DEEPSEEK_R1_MODEL_CONFIG,
+  GROK_3_MODEL_CONFIG,
+  GROK_3_MINI_MODEL_CONFIG,
+  GROK_3_FAST_MODEL_CONFIG,
+  GROK_3_MINI_FAST_MODEL_CONFIG,
 ];
 
 export type ModelConfig = (typeof SUPPORTED_MODEL_CONFIGS)[number];
@@ -1234,6 +1319,7 @@ export enum GLOBAL_AGENTS_SID {
   O1_HIGH_REASONING = "o1_high",
   O3_MINI = "o3-mini",
   O3 = "o3",
+  CLAUDE_4_SONNET = "claude-4-sonnet",
   CLAUDE_3_OPUS = "claude-3-opus",
   CLAUDE_3_SONNET = "claude-3-sonnet",
   CLAUDE_3_HAIKU = "claude-3-haiku",
@@ -1250,6 +1336,10 @@ export enum GLOBAL_AGENTS_SID {
   DEEPSEEK_R1 = "deepseek-r1",
 }
 
+export function isGlobalAgentId(sId: string): boolean {
+  return (Object.values(GLOBAL_AGENTS_SID) as string[]).includes(sId);
+}
+
 export function getGlobalAgentAuthorName(agentId: string): string {
   switch (agentId) {
     case GLOBAL_AGENTS_SID.GPT4:
@@ -1260,6 +1350,7 @@ export function getGlobalAgentAuthorName(agentId: string): string {
     case GLOBAL_AGENTS_SID.O3:
       return "OpenAI";
     case GLOBAL_AGENTS_SID.CLAUDE_INSTANT:
+    case GLOBAL_AGENTS_SID.CLAUDE_4_SONNET:
     case GLOBAL_AGENTS_SID.CLAUDE_3_OPUS:
     case GLOBAL_AGENTS_SID.CLAUDE_3_SONNET:
     case GLOBAL_AGENTS_SID.CLAUDE_3_7_SONNET:
@@ -1281,6 +1372,7 @@ export function getGlobalAgentAuthorName(agentId: string): string {
 
 const CUSTOM_ORDER: string[] = [
   GLOBAL_AGENTS_SID.DUST,
+  GLOBAL_AGENTS_SID.CLAUDE_4_SONNET,
   GLOBAL_AGENTS_SID.GPT4,
   GLOBAL_AGENTS_SID.O3_MINI,
   GLOBAL_AGENTS_SID.SLACK,

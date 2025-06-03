@@ -30,6 +30,7 @@ import { FeedbackSelector } from "@app/components/assistant/conversation/Feedbac
 import { FeedbackSelectorPopoverContent } from "@app/components/assistant/conversation/FeedbackSelectorPopoverContent";
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { LabsSalesforceAuthenticationError } from "@app/components/assistant/conversation/LabsSalesforceErrorHandler";
+import { MCPServerPersonalAuthenticationRequired } from "@app/components/assistant/conversation/MCPServerPersonalAuthenticationRequired";
 import {
   CitationsContext,
   CiteBlock,
@@ -62,6 +63,8 @@ import type {
 import {
   assertNever,
   GLOBAL_AGENTS_SID,
+  isOAuthProvider,
+  isOAuthUseCase,
   isSupportedImageContentType,
 } from "@app/types";
 
@@ -73,6 +76,10 @@ interface AgentMessageProps {
   owner: WorkspaceType;
   user: UserType;
 }
+
+type AgentMessageStateWithControlEvent =
+  | AgentMessageStateEvent
+  | { type: "end-of-stream" };
 
 function makeInitialMessageStreamState(
   message: LightAgentMessageType
@@ -159,7 +166,7 @@ export function AgentMessage({
     (eventStr: string) => {
       const eventPayload: {
         eventId: string;
-        data: AgentMessageStateEvent;
+        data: AgentMessageStateWithControlEvent;
       } = JSON.parse(eventStr);
 
       // Handle validation dialog separately.
@@ -173,6 +180,13 @@ export function AgentMessage({
           metadata: eventPayload.data.metadata,
         });
 
+        return;
+      }
+
+      // This event is emmited in front/lib/api/assistant/pubsub.ts. It's purpose is to signal the
+      // end of the stream to the client. The message reducer does not, and should not, handle this
+      // event, so we just return.
+      if (eventPayload.data.type === "end-of-stream") {
         return;
       }
 
@@ -479,6 +493,25 @@ export function AgentMessage({
     lastTokenClassification: null | "tokens" | "chain_of_thought";
   }) {
     if (agentMessage.status === "failed") {
+      if (
+        agentMessage.error &&
+        agentMessage.error.code ===
+          "mcp_server_personal_authentication_required" &&
+        typeof agentMessage.error.metadata?.mcp_server_id === "string" &&
+        agentMessage.error.metadata?.mcp_server_id.length > 0 &&
+        isOAuthProvider(agentMessage.error.metadata?.provider) &&
+        isOAuthUseCase(agentMessage.error.metadata?.use_case)
+      ) {
+        return (
+          <MCPServerPersonalAuthenticationRequired
+            owner={owner}
+            mcpServerId={agentMessage.error.metadata.mcp_server_id}
+            provider={agentMessage.error.metadata.provider}
+            useCase={agentMessage.error.metadata.use_case}
+            retryHandler={async () => retryHandler(agentMessage)}
+          />
+        );
+      }
       if (agentMessage.error?.code == "require_salesforce_authentication") {
         return (
           <LabsSalesforceAuthenticationError

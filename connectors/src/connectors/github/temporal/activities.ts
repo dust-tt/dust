@@ -1,6 +1,5 @@
 import type { Result } from "@dust-tt/client";
 import { assertNever, Err, Ok } from "@dust-tt/client";
-import { Context } from "@temporalio/activity";
 import { hash as blake3 } from "blake3";
 import { promises as fs } from "fs";
 import PQueue from "p-queue";
@@ -8,7 +7,9 @@ import { Op } from "sequelize";
 
 import {
   isGraphQLNotFound,
+  isGraphQLRepositoryNotFound,
   RepositoryAccessBlockedError,
+  RepositoryNotFoundError,
 } from "@connectors/connectors/github/lib/errors";
 import type {
   GithubIssue as GithubIssueType,
@@ -63,6 +64,7 @@ import {
   GithubIssue,
 } from "@connectors/lib/models/github";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
+import { heartbeat } from "@connectors/lib/temporal";
 import { getTemporalClient } from "@connectors/lib/temporal";
 import type { Logger } from "@connectors/logger/logger";
 import { getActivityLogger } from "@connectors/logger/logger";
@@ -70,6 +72,7 @@ import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types";
 import type { DataSourceConfig } from "@connectors/types";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
+import { normalizeError } from "@connectors/types/api";
 
 // Only allow documents up to 5mb to be processed.
 const MAX_DOCUMENT_TXT_LEN = 5000000;
@@ -565,7 +568,7 @@ export async function githubGetRepoDiscussionsResultPageActivity(
   repoLogin: string,
   cursor: string | null,
   loggerArgs: Record<string, string | number>
-): Promise<{ cursor: string | null; discussionNumbers: number[] }> {
+): Promise<{ cursor: string | null; discussionNumbers: number[] } | null> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error(`Connector not found (connectorId: ${connectorId})`);
@@ -577,17 +580,34 @@ export async function githubGetRepoDiscussionsResultPageActivity(
     ...loggerArgs,
   });
   logger.info("Fetching GitHub discussions result page.");
-  const { cursor: nextCursor, discussions } = await getRepoDiscussionsPage(
-    connector,
-    repoName,
-    repoLogin,
-    cursor
-  );
 
-  return {
-    cursor: nextCursor,
-    discussionNumbers: discussions.map((discussion) => discussion.number),
-  };
+  try {
+    const { cursor: nextCursor, discussions } = await getRepoDiscussionsPage(
+      connector,
+      repoName,
+      repoLogin,
+      cursor
+    );
+
+    return {
+      cursor: nextCursor,
+      discussionNumbers: discussions.map((discussion) => discussion.number),
+    };
+  } catch (err) {
+    if (isGraphQLRepositoryNotFound(err)) {
+      logger.info(
+        {
+          connectorId,
+          repoName,
+          repoOwner: repoLogin,
+          error: normalizeError(err).message,
+        },
+        "Skipping repository - repository not found"
+      );
+      return null;
+    }
+    throw err;
+  }
 }
 
 export async function githubSaveStartSyncActivity(
@@ -883,7 +903,7 @@ async function garbageCollectCodeSync(
     const fq = new PQueue({ concurrency: 8 });
     filesToDelete.forEach((f) =>
       fq.add(async () => {
-        Context.current().heartbeat();
+        await heartbeat();
         await deleteDataSourceDocument(
           dataSourceConfig,
           f.documentId,
@@ -978,7 +998,7 @@ export async function githubCodeSyncActivity({
     throw new Error(`Connector state not found for connector ${connector.id}`);
   }
 
-  Context.current().heartbeat();
+  await heartbeat();
   if (!connectorState.codeSyncEnabled) {
     // Garbage collect any existing code files.
     logger.info("Code sync disabled for connector");
@@ -1055,7 +1075,7 @@ export async function githubCodeSyncActivity({
     "Attempting download of Github repository for sync"
   );
 
-  Context.current().heartbeat();
+  await heartbeat();
   let nbEntries = 0;
   const repoRes = await processRepository({
     connector,
@@ -1064,22 +1084,23 @@ export async function githubCodeSyncActivity({
     repoId,
     onEntry: () => {
       if (nbEntries % 100 === 0) {
-        Context.current().heartbeat();
+        void heartbeat();
       }
       ++nbEntries;
     },
     logger: logger,
   });
-  Context.current().heartbeat();
+  await heartbeat();
 
   if (repoRes.isErr()) {
     if (
       repoRes.error instanceof ExternalOAuthTokenError ||
-      repoRes.error instanceof RepositoryAccessBlockedError
+      repoRes.error instanceof RepositoryAccessBlockedError ||
+      repoRes.error instanceof RepositoryNotFoundError
     ) {
       logger.info(
         { err: repoRes.error },
-        "Missing Github repository tarball: Garbage collecting repo."
+        "Missing Github repository: Garbage collecting repo."
       );
 
       await garbageCollectCodeSync(
@@ -1090,7 +1111,7 @@ export async function githubCodeSyncActivity({
         logger.child({ task: "garbageCollectRepoNotFound" })
       );
 
-      Context.current().heartbeat();
+      await heartbeat();
 
       // deleting the code root folder from data_source_folders (core)
       await deleteDataSourceFolder({
@@ -1140,7 +1161,7 @@ export async function githubCodeSyncActivity({
     const fq = new PQueue({ concurrency: 4 });
     const fqPromises = files.map((f) =>
       fq.add(async () => {
-        Context.current().heartbeat();
+        await heartbeat();
         // Read file (files are 1MB at most).
         let content;
         try {
@@ -1268,7 +1289,7 @@ export async function githubCodeSyncActivity({
     const dq = new PQueue({ concurrency: 8 });
     const dqPromises = directories.map((d) =>
       dq.add(async () => {
-        Context.current().heartbeat();
+        await heartbeat();
         const parentInternalId = d.parentInternalId || rootInternalId;
 
         const parents: [...string[], string, string] = [
@@ -1337,7 +1358,7 @@ export async function githubCodeSyncActivity({
     );
     await Promise.all(dqPromises);
 
-    Context.current().heartbeat();
+    await heartbeat();
 
     // Final part of the sync, we delete all files and directories that were not seen during the
     // sync.
@@ -1354,9 +1375,9 @@ export async function githubCodeSyncActivity({
       githubCodeRepository.codeUpdatedAt = repoUpdatedAt;
       await githubCodeRepository.save();
     }
-    Context.current().heartbeat();
+    await heartbeat();
   } finally {
-    Context.current().heartbeat();
+    await heartbeat();
     await cleanUpProcessRepository(tempDir);
     logger.info(
       {

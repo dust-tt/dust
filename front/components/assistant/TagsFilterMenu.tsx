@@ -1,13 +1,13 @@
 import {
   Button,
-  Chip,
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuSearchbar,
   DropdownMenuTrigger,
   TagIcon,
 } from "@dust-tt/sparkle";
+import { DropdownMenuTagItem } from "@dust-tt/sparkle";
+import { DropdownMenuTagList } from "@dust-tt/sparkle";
 import { useState } from "react";
 
 import { compareForFuzzySort, subFilter, tagsSorter } from "@app/lib/utils";
@@ -62,12 +62,13 @@ export const TagsFilterMenu = ({
           <Button
             variant="outline"
             icon={TagIcon}
-            label={"Tags"}
+            label="Tags"
             counterValue={selectedTags.length.toString()}
             isCounter={selectedTags.length > 0}
           />
         </DropdownMenuTrigger>
         <DropdownMenuContent
+          className="w-96"
           dropdownHeaders={
             <DropdownMenuSearchbar
               name="tagSearch"
@@ -94,18 +95,21 @@ export const TagsFilterMenu = ({
               No tags found
             </div>
           )}
-          {filteredTags
-            .filter((tag) => !selectedTags.includes(tag))
-            .map((tag) => (
-              <DropdownMenuItem
-                key={tag.sId}
-                onClick={() => {
-                  setSelectedTags([...selectedTags, tag]);
-                }}
-              >
-                <Chip label={tag.name} size="xs" color="golden" />
-              </DropdownMenuItem>
-            ))}
+          <DropdownMenuTagList>
+            {filteredTags
+              .filter((tag) => !selectedTags.includes(tag))
+              .map((tag) => (
+                <DropdownMenuTagItem
+                  key={tag.sId}
+                  label={tag.name}
+                  color="golden"
+                  className="m-0.5"
+                  onClick={() => {
+                    setSelectedTags([...selectedTags, tag]);
+                  }}
+                />
+              ))}
+          </DropdownMenuTagList>
         </DropdownMenuContent>
       </DropdownMenu>
     </>

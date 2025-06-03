@@ -11,13 +11,16 @@ import {
   ActionLockIcon,
   ActionMagnifyingGlassIcon,
   ActionRobotIcon,
+  ActionScanIcon,
   ActionTableIcon,
   ActionTimeIcon,
   Avatar,
   CommandLineIcon,
   GithubLogo,
+  GmailLogo,
   HubspotLogo,
   NotionLogo,
+  SalesforceLogo,
 } from "@dust-tt/sparkle";
 import type React from "react";
 import type { ComponentProps } from "react";
@@ -40,12 +43,15 @@ export const InternalActionIcons = {
   ActionLockIcon,
   ActionMagnifyingGlassIcon,
   ActionRobotIcon,
+  ActionScanIcon,
   ActionTableIcon,
   ActionTimeIcon,
   GithubLogo,
   HubspotLogo,
   CommandLineIcon,
   NotionLogo,
+  SalesforceLogo,
+  GmailLogo,
 };
 
 export const INTERNAL_ALLOWED_ICONS = Object.keys(InternalActionIcons);

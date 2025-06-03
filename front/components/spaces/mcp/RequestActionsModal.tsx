@@ -19,13 +19,13 @@ import {
 import _ from "lodash";
 import { useState } from "react";
 
+import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { sendRequestActionsAccessEmail } from "@app/lib/email";
 import { useMCPServerViewsNotActivated } from "@app/lib/swr/mcp_server_views";
 import logger from "@app/logger/logger";
 import type { LightWorkspaceType, SpaceType } from "@app/types";
-import { asDisplayName } from "@app/types";
 
 interface RequestActionsModal {
   owner: LightWorkspaceType;
@@ -93,7 +93,10 @@ export function RequestActionsModal({ owner, space }: RequestActionsModal) {
       <SheetContent size="lg">
         <SheetHeader>
           <SheetTitle>
-            Requesting Access to {asDisplayName(selectedMcpServer?.server.name)}
+            Requesting Access to{" "}
+            {selectedMcpServer
+              ? getMcpServerDisplayName(selectedMcpServer.server)
+              : ""}
           </SheetTitle>
         </SheetHeader>
         <SheetContainer>
@@ -121,7 +124,9 @@ export function RequestActionsModal({ owner, space }: RequestActionsModal) {
                         {selectedMcpServer ? (
                           <Button
                             variant="outline"
-                            label={asDisplayName(selectedMcpServer.server.name)}
+                            label={getMcpServerDisplayName(
+                              selectedMcpServer.server
+                            )}
                             icon={() =>
                               getAvatar(selectedMcpServer.server, "xs")
                             }
@@ -139,7 +144,7 @@ export function RequestActionsModal({ owner, space }: RequestActionsModal) {
                         {serverViews.map((v) => (
                           <DropdownMenuItem
                             key={v.sId}
-                            label={asDisplayName(v.server.name)}
+                            label={getMcpServerDisplayName(v.server)}
                             icon={() => getAvatar(v.server, "xs")}
                             onClick={() => setSelectedMcpServer(v)}
                           />
@@ -157,8 +162,10 @@ export function RequestActionsModal({ owner, space }: RequestActionsModal) {
                       selectedMcpServer.editedByUser?.fullName ?? ""
                     )}{" "}
                     is the administrator for the{" "}
-                    {asDisplayName(selectedMcpServer.server.name)} tool within
-                    Dust. Send an email to{" "}
+                    {selectedMcpServer
+                      ? getMcpServerDisplayName(selectedMcpServer.server)
+                      : ""}{" "}
+                    tool within Dust. Send an email to Dust. Send an email to{" "}
                     {_.capitalize(
                       selectedMcpServer.editedByUser?.fullName ?? ""
                     )}

@@ -20,9 +20,10 @@ import {
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
+  DropdownMenuTagItem,
+  DropdownMenuTagList,
   DropdownMenuTrigger,
 } from "@sparkle/components/Dropdown";
-import { DropdownMenuTagItem } from "@sparkle/components/Dropdown";
 import {
   AnthropicLogo,
   DriveLogo,
@@ -774,19 +775,17 @@ export const TagsDropdownExample = () => {
           <DropdownMenuContent className="s-w-80">
             <DropdownMenuLabel label="Available Tags" />
             <DropdownMenuSeparator />
-
-            <div className="s-w-full">
+            <DropdownMenuTagList>
               {tags.map((tag) => (
                 <DropdownMenuTagItem
                   key={tag}
                   label={tag}
                   color="highlight"
-                  className="s-m-0.5"
                   onRemove={() => handleRemoveTag(tag)}
                   onClick={() => console.log(tag)}
                 />
               ))}
-            </div>
+            </DropdownMenuTagList>
 
             <DropdownMenuSeparator />
             <div className="s-p-2">

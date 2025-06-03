@@ -652,21 +652,7 @@ export async function upsertTable({
     | {
         table: CoreAPITable;
       },
-    Omit<DustError, "code"> & {
-      code:
-        | "data_source_error"
-        | "file_not_found"
-        | "internal_error"
-        | "invalid_csv_and_file"
-        | "invalid_csv_content"
-        | "invalid_parent_id"
-        | "invalid_parents"
-        | "invalid_url"
-        | "missing_csv"
-        | "table_not_found"
-        | "title_is_empty"
-        | "title_too_long";
-    }
+    DustError
   >
 > {
   const owner = auth.getNonNullableWorkspace();
@@ -759,7 +745,7 @@ export async function upsertTable({
     if (fileId) {
       const file = await FileResource.fetchById(auth, fileId);
       if (!file) {
-        return new Err({
+        return new Err<DustError>({
           name: "dust_error",
           code: "file_not_found",
           message:

@@ -1,8 +1,14 @@
+import { useSendNotification } from "@dust-tt/sparkle";
 import type { Fetcher } from "swr";
 
-import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import {
+  fetcher,
+  getErrorFromResponse,
+  useSWRWithDefaults,
+} from "@app/lib/swr/swr";
 import type { GetUserResponseBody } from "@app/pages/api/user";
 import type { GetUserMetadataResponseBody } from "@app/pages/api/user/metadata/[key]";
+import type { JobType } from "@app/types/job_type";
 
 export function useUser() {
   const userFetcher: Fetcher<GetUserResponseBody> = fetcher;
@@ -32,13 +38,62 @@ export function useUserMetadata(key: string) {
   };
 }
 
-export function useDeleteMetadata(key: string) {
+export function useDeleteMetadata(prefix: string) {
   const deleteMetadata = async (spec?: string) => {
-    const fullKey = spec ? `${key}:${spec}` : key;
+    const fullKey = spec ? `${prefix}:${spec}` : prefix;
     await fetch(`/api/user/metadata/${encodeURIComponent(fullKey)}`, {
       method: "DELETE",
     });
   };
 
   return { deleteMetadata };
+}
+
+export function usePatchUser() {
+  const { mutateUser } = useUser();
+  const sendNotification = useSendNotification();
+
+  const patchUser = async (
+    firstName: string,
+    lastName: string,
+    notifySuccess: boolean,
+    jobType?: JobType
+  ) => {
+    const res = await fetch("/api/user", {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        firstName,
+        lastName,
+        jobType,
+      }),
+    });
+
+    if (res.ok) {
+      if (notifySuccess) {
+        sendNotification({
+          type: "success",
+          title: "Updated User",
+          description: `Successfully updated your profile.`,
+        });
+      }
+
+      await mutateUser();
+
+      return res.json();
+    } else {
+      const errorData = await getErrorFromResponse(res);
+      sendNotification({
+        type: "error",
+        title: "Error Updating User",
+        description: `Error: ${errorData.message}`,
+      });
+
+      return null;
+    }
+  };
+
+  return { patchUser };
 }

@@ -34,11 +34,16 @@ const WorkspaceProvidersUpdateBodySchema = t.type({
   defaultEmbeddingProvider: t.union([EmbeddingProviderCodec, t.null]),
 });
 
+const WorkspaceWorkOSUpdateBodySchema = t.type({
+  workOSOrganizationId: t.union([t.string, t.null]),
+});
+
 const PostWorkspaceRequestBodySchema = t.union([
   WorkspaceAllowedDomainUpdateBodySchema,
   WorkspaceNameUpdateBodySchema,
   WorkspaceSsoEnforceUpdateBodySchema,
   WorkspaceProvidersUpdateBodySchema,
+  WorkspaceWorkOSUpdateBodySchema,
 ]);
 
 async function handler(
@@ -108,6 +113,11 @@ async function handler(
         });
         owner.whiteListedProviders = body.whiteListedProviders;
         owner.defaultEmbeddingProvider = w.defaultEmbeddingProvider;
+      } else if ("workOSOrganizationId" in body) {
+        await w.update({
+          workOSOrganizationId: body.workOSOrganizationId,
+        });
+        owner.workOSOrganizationId = body.workOSOrganizationId;
       } else {
         const { domain, domainAutoJoinEnabled } = body;
         const [affectedCount] = await WorkspaceHasDomainModel.update(

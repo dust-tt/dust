@@ -33,6 +33,7 @@ const RESOURCES_PREFIX = {
   mcp_server_view: "msv",
   remote_mcp_server: "rms",
   tag: "tag",
+  transcripts_configuration: "tsc",
 
   // Action for validation.
   action: "act",
@@ -42,7 +43,7 @@ const RESOURCES_PREFIX = {
   table_configuration: "tbc",
   agent_configuration: "cac",
 
-  // Virtual resources (no database modelsassociated).
+  // Virtual resources (no database models associated).
   internal_mcp_server: "ims",
 };
 

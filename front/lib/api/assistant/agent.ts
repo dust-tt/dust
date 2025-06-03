@@ -1,4 +1,9 @@
-import { tryListMCPTools } from "@app/lib/actions/mcp_actions";
+import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
+import {
+  TOOL_NAME_SEPARATOR,
+  tryListMCPTools,
+} from "@app/lib/actions/mcp_actions";
+import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { getRunnerForActionConfiguration } from "@app/lib/actions/runners";
 import { runActionStreamed } from "@app/lib/actions/server";
 import type {
@@ -42,6 +47,8 @@ import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_con
 import type { KillSwitchType } from "@app/lib/poke/types";
 import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import type {
   AgentActionsEvent,
@@ -61,7 +68,7 @@ import type {
   UserMessageType,
   WorkspaceType,
 } from "@app/types";
-import { assertNever, SUPPORTED_MODEL_CONFIGS } from "@app/types";
+import { assertNever, removeNulls, SUPPORTED_MODEL_CONFIGS } from "@app/types";
 
 const CANCELLATION_CHECK_INTERVAL = 500;
 const MAX_ACTIONS_PER_STEP = 16;
@@ -137,6 +144,8 @@ async function* runMultiActionsAgentLoop(
   let citationsRefsOffset = 0;
 
   let processedContent = "";
+  const runIds = [];
+
   for (let i = 0; i < maxStepsPerRun + 1; i++) {
     const localLogger = logger.child({
       workspaceId: conversation.owner.sId,
@@ -166,8 +175,6 @@ async function* runMultiActionsAgentLoop(
       isLegacyAgent,
     });
 
-    const runIds = [];
-
     for await (const event of loopIterationStream) {
       switch (event.type) {
         case "agent_error":
@@ -182,6 +189,7 @@ async function* runMultiActionsAgentLoop(
           return;
         case "agent_actions":
           runIds.push(event.runId);
+
           localLogger.info(
             {
               elapsed: Date.now() - now,
@@ -357,6 +365,7 @@ async function* runMultiActionsAgent(
         message:
           `The model you selected (${agentConfiguration.model.modelId}) ` +
           `does not support multi-actions.`,
+        metadata: null,
       },
     };
     return;
@@ -466,6 +475,7 @@ async function* runMultiActionsAgent(
       error: {
         code: "conversation_render_error",
         message: `Error rendering conversation for model: ${modelConversationRes.error.message}`,
+        metadata: null,
       },
     } satisfies AgentErrorEvent;
 
@@ -499,6 +509,7 @@ async function* runMultiActionsAgent(
         error: {
           code: "build_spec_error",
           message: `Failed to build the specification for action ${a.sId},`,
+          metadata: null,
         },
       } satisfies AgentErrorEvent;
 
@@ -529,6 +540,7 @@ async function* runMultiActionsAgent(
           message:
             `Duplicate action name in agent configuration: ${spec.name}. ` +
             "Your agents actions must have unique names.",
+          metadata: null,
         },
       } satisfies AgentErrorEvent;
 
@@ -597,6 +609,7 @@ async function* runMultiActionsAgent(
       error: {
         code: "multi_actions_error",
         message: `Error running multi-actions agent action: [${res.error.type}] ${res.error.message}`,
+        metadata: null,
       },
     } satisfies AgentErrorEvent;
 
@@ -665,6 +678,7 @@ async function* runMultiActionsAgent(
         error: {
           code: "multi_actions_error",
           message: `Error running agent: ${event.content.message}`,
+          metadata: null,
         },
       } satisfies AgentErrorEvent;
       return;
@@ -707,6 +721,7 @@ async function* runMultiActionsAgent(
           error: {
             code: "multi_actions_error",
             message: `Error running agent: ${e.error}`,
+            metadata: null,
           },
         } satisfies AgentErrorEvent;
         return;
@@ -780,6 +795,7 @@ async function* runMultiActionsAgent(
         code: "tool_use_limit_reached",
         message:
           "The agent attempted to use too many tools. This model error can be safely retried.",
+        metadata: null,
       },
     } satisfies AgentErrorEvent;
     return;
@@ -788,38 +804,134 @@ async function* runMultiActionsAgent(
   const actions: AgentActionsEvent["actions"] = [];
 
   for (const a of output.actions) {
-    const action = availableActions.find((ac) => ac.name === a.name);
+    // Sometimes models will return a name with a triple underscore instead of a double underscore, we dynamically handle it.
+    const actionNamesFromLLM: string[] = removeNulls([
+      a.name,
+      a.name?.replace("___", TOOL_NAME_SEPARATOR) ?? null,
+    ]);
+
+    let action = availableActions.find((ac) =>
+      actionNamesFromLLM.includes(ac.name)
+    );
+    let args = a.arguments;
+    let spec =
+      specifications.find((s) => actionNamesFromLLM.includes(s.name)) ?? null;
 
     if (!action) {
-      logger.error(
-        {
-          workspaceId: conversation.owner.sId,
-          conversationId: conversation.sId,
+      if (!a.name) {
+        logger.error(
+          {
+            workspaceId: conversation.owner.sId,
+            conversationId: conversation.sId,
+            configurationId: agentConfiguration.sId,
+            messageId: agentMessage.sId,
+            actionName: a.name,
+            availableActions: availableActions.map((a) => a.name),
+          },
+          "Model attempted to run an action that is not part of the agent configuration (no name)."
+        );
+        yield {
+          type: "agent_error",
+          created: Date.now(),
           configurationId: agentConfiguration.sId,
           messageId: agentMessage.sId,
-          actionName: a.name,
-          availableActions: availableActions.map((a) => a.name),
-        },
-        "Model attempted to run an action that is not part of the agent configuration."
-      );
-      yield {
-        type: "agent_error",
-        created: Date.now(),
-        configurationId: agentConfiguration.sId,
-        messageId: agentMessage.sId,
-        error: {
-          code: "action_not_found",
-          message: `The agent attempted to run an invalid action (${a.name}). This model error can be safely retried.`,
-        },
-      } satisfies AgentErrorEvent;
-      return;
+          error: {
+            code: "action_not_found",
+            message:
+              `The agent attempted to run an invalid action (no name). ` +
+              `This model error can be safely retried.`,
+            metadata: null,
+          },
+        } satisfies AgentErrorEvent;
+
+        return;
+      } else {
+        const mcpServerView =
+          await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
+            auth,
+            "missing_action_catcher"
+          );
+
+        // Could happen if the internal server has not already been added
+        if (!mcpServerView) {
+          logger.error(
+            {
+              workspaceId: conversation.owner.sId,
+              conversationId: conversation.sId,
+              configurationId: agentConfiguration.sId,
+              messageId: agentMessage.sId,
+              actionName: a.name,
+              availableActions: availableActions.map((a) => a.name),
+            },
+            "Model attempted to run an action that is not part of the agent configuration (no server)."
+          );
+
+          yield {
+            type: "agent_error",
+            created: Date.now(),
+            configurationId: agentConfiguration.sId,
+            messageId: agentMessage.sId,
+            error: {
+              code: "action_not_found",
+              message:
+                `The agent attempted to run an invalid action (${a.name}). ` +
+                `This model error can be safely retried (no server).`,
+              metadata: null,
+            },
+          } satisfies AgentErrorEvent;
+          return;
+        }
+
+        logger.warn(
+          {
+            workspaceId: conversation.owner.sId,
+            conversationId: conversation.sId,
+            configurationId: agentConfiguration.sId,
+            messageId: agentMessage.sId,
+            actionName: a.name,
+            availableActions: availableActions.map((a) => a.name),
+          },
+          "Model attempted to run an action that is not part of the agent configuration but we'll try to catch it."
+        );
+
+        const catchAllAction: MCPToolConfigurationType = {
+          id: -1,
+          sId: generateRandomModelSId(),
+          type: "mcp_configuration" as const,
+          name: a.name,
+          originalName: a.name,
+          description: null,
+          dataSources: null,
+          tables: null,
+          childAgentId: null,
+          reasoningModel: null,
+          timeFrame: null,
+          jsonSchema: null,
+          additionalConfiguration: {},
+          mcpServerViewId: mcpServerView.sId,
+          dustAppConfiguration: null,
+          internalMCPServerId: mcpServerView.internalMCPServerId,
+          inputSchema: {},
+          availability: "auto_hidden_builder",
+          permission: "never_ask",
+          toolServerId: mcpServerView.sId,
+          mcpServerName: "missing_action_catcher" as InternalMCPServerNameType,
+        };
+
+        action = catchAllAction;
+        args = {};
+        spec = {
+          description:
+            "The agent attempted to run an invalid action, this will catch it.",
+          inputSchema: {},
+          name: a.name,
+        };
+      }
     }
 
-    const spec = specifications.find((s) => s.name === a.name) ?? null;
-
     actions.push({
-      action,
-      inputs: a.arguments ?? {},
+      action: action!,
+      inputs: args ?? {},
       specification: spec,
       functionCallId: a.functionCallId ?? null,
     });
@@ -910,6 +1022,7 @@ async function* runAction(
         error: {
           code: "retrieval_action_disabled",
           message: "Retrieval action is temporarily disabled",
+          metadata: null,
         },
       };
       return;
@@ -948,6 +1061,7 @@ async function* runAction(
             error: {
               code: event.error.code,
               message: event.error.message,
+              metadata: null,
             },
           };
           return;
@@ -987,6 +1101,7 @@ async function* runAction(
         error: {
           code: "parameters_generation_error",
           message: "No specification found for Dust app run action.",
+          metadata: null,
         },
       };
       return;
@@ -1023,6 +1138,7 @@ async function* runAction(
             error: {
               code: event.error.code,
               message: event.error.message,
+              metadata: null,
             },
           };
           return;
@@ -1074,6 +1190,7 @@ async function* runAction(
             error: {
               code: event.error.code,
               message: event.error.message,
+              metadata: null,
             },
           };
           return;
@@ -1121,6 +1238,7 @@ async function* runAction(
             error: {
               code: event.error.code,
               message: event.error.message,
+              metadata: null,
             },
           };
           return;
@@ -1176,6 +1294,7 @@ async function* runAction(
             error: {
               code: event.error.code,
               message: event.error.message,
+              metadata: null,
             },
           };
           return;
@@ -1223,6 +1342,7 @@ async function* runAction(
             error: {
               code: event.error.code,
               message: event.error.message,
+              metadata: null,
             },
           };
           return;
@@ -1270,6 +1390,7 @@ async function* runAction(
             error: {
               code: event.error.code,
               message: event.error.message,
+              metadata: null,
             },
           };
           return;
@@ -1311,7 +1432,11 @@ async function* runAction(
             created: event.created,
             configurationId: configuration.sId,
             messageId: agentMessage.sId,
-            error: event.error,
+            error: {
+              code: event.error.code,
+              message: event.error.message,
+              metadata: null,
+            },
           };
           return;
         case "reasoning_started":
@@ -1356,6 +1481,7 @@ async function* runAction(
             error: {
               code: event.error.code,
               message: event.error.message,
+              metadata: null,
             },
           };
           return;
@@ -1408,6 +1534,7 @@ async function* runAction(
             error: {
               code: event.error.code,
               message: event.error.message,
+              metadata: event.error.metadata,
             },
           };
           return;

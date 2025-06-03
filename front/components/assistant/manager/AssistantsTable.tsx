@@ -89,6 +89,7 @@ const getTableColumns = ({
               className: "w-8",
               tooltip: "Select",
             },
+            sortable: false,
           },
         ]
       : []),
@@ -163,7 +164,7 @@ const getTableColumns = ({
     },
     {
       header: "Usage",
-      accessorKey: "usage.messageCount",
+      accessorFn: (row: RowData) => row.usage?.messageCount ?? 0,
       cell: (info: CellContext<RowData, AgentUsageType | undefined>) => (
         <DataTable.BasicCellContent
           className="font-semibold"
@@ -182,12 +183,13 @@ const getTableColumns = ({
     },
     {
       header: "Feedback",
-      accessorFn: (row: RowData) => row.feedbacks,
+      accessorFn: (row: RowData) =>
+        (row.feedbacks?.down ?? 0) + (row.feedbacks?.up ?? 0),
       cell: (info: CellContext<RowData, { up: number; down: number }>) => {
         if (info.row.original.scope === "global") {
           return "-";
         }
-        const f = info.getValue();
+        const f = info.row.original.feedbacks;
         if (f) {
           const feedbacksCount = `${f.up + f.down} feedback${pluralize(f.up + f.down)} over the last 30 days`;
           return (

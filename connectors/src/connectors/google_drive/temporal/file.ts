@@ -96,14 +96,50 @@ async function handleGoogleDriveExport(
       return null;
     }
   } catch (e) {
-    if (e instanceof GaxiosError && e.response?.status === 404) {
-      localLogger.info(
-        {
-          error: e,
-        },
-        "Can't export Gdrive document. 404 error returned, even though we know the file exists. Skipping."
-      );
-      return null;
+    if (e instanceof GaxiosError) {
+      if (e.response?.status === 404) {
+        localLogger.info(
+          {
+            error: e,
+          },
+          "Can't export Gdrive document. 404 error returned, even though we know the file exists. Skipping."
+        );
+        return null;
+      }
+
+      if (e.response?.status === 403) {
+        const skippableReasons = ["exportRestricted"];
+
+        const parsedBody =
+          typeof e.response.data === "string"
+            ? JSON.parse(e.response.data)
+            : e.response.data;
+
+        const errors: { reason: string }[] | undefined =
+          parsedBody.error?.errors;
+        const firstSkippableReason = errors?.find((error) =>
+          skippableReasons.includes(error.reason)
+        )?.reason;
+        if (firstSkippableReason) {
+          localLogger.info(
+            { error: parsedBody.error },
+            `Can't export Gdrive document. Skippable reason: ${firstSkippableReason}. Skipping.`
+          );
+          return null;
+        }
+      }
+
+      // Check if the error message indicates the file is too large to export
+      if (
+        e.message &&
+        e.message.includes("This file is too large to be exported")
+      ) {
+        localLogger.info(
+          { error: e.message },
+          "File is too large to be exported. Skipping."
+        );
+        return null;
+      }
     }
 
     localLogger.error({ error: e }, "Error exporting Google document");
@@ -147,8 +183,10 @@ async function handleFileExport(
       if (e.response?.status === 403) {
         const skippableReasons = ["cannotDownloadAbusiveFile"];
         try {
-          const body = Buffer.from(e.response.data).toString("utf-8").trim();
-          const parsedBody = JSON.parse(body);
+          const parsedBody =
+            typeof e.response.data === "string"
+              ? JSON.parse(e.response.data)
+              : e.response.data;
           const errors: { reason: string }[] | undefined =
             parsedBody.error?.errors;
           const firstSkippableReason = errors?.find((error) =>

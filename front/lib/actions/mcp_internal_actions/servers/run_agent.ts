@@ -9,11 +9,16 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { MCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
-import type { AgentLoopRunContextType } from "@app/lib/actions/types";
+import type { AgentLoopContextType } from "@app/lib/actions/types";
+import {
+  isServerSideMCPServerConfiguration,
+  isServerSideMCPToolConfiguration,
+} from "@app/lib/actions/types/guards";
 import apiConfig from "@app/lib/api/config";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
+import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { Err, getHeaderFromGroupIds, normalizeError, Ok } from "@app/types";
@@ -21,7 +26,7 @@ import { Err, getHeaderFromGroupIds, normalizeError, Ok } from "@app/types";
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "run_agent",
   version: "1.0.0",
-  description: "Run an agent (agent as tool).",
+  description: "Run a child agent (agent as tool).",
   icon: "ActionRobotIcon",
   authorization: null,
 };
@@ -35,27 +40,128 @@ function parseAgentConfigurationUri(uri: string): Result<string, Error> {
   return new Ok(match[2]);
 }
 
-function createServer(
+/**
+ * This method fetchs the name and description of a child agent. It returns it even even if the
+ * agent is private as it is referenced from a parent agent which requires a name and description
+ * for the associated run_agent tool rendering.
+ *
+ * Actual permissions to run the agent for the auth are checked at run time when creating the
+ * conversation. Through execution of the parent agent the child agent name and description could be
+ * leaked to the user which appears as acceptable given the proactive decision of a builder having
+ * access to it to refer it from the parent agent more broadly shared.
+ *
+ * If the agent has been archived, this method will return null leading to the tool being displayed
+ * to the model as not configured.
+ */
+async function leakyGetAgentNameAndDescriptionForChildAgent(
   auth: Authenticator,
-  agentLoopRunContext?: AgentLoopRunContextType
-): McpServer {
+  agentId: string
+): Promise<{
+  name: string;
+  description: string;
+} | null> {
+  const owner = auth.getNonNullableWorkspace();
+  const agentConfiguration = await AgentConfiguration.findOne({
+    where: {
+      sId: agentId,
+      workspaceId: owner.id,
+      status: "active",
+    },
+    attributes: ["name", "description"],
+  });
+
+  if (!agentConfiguration) {
+    return null;
+  }
+
+  return {
+    name: agentConfiguration.name,
+    description: agentConfiguration.description,
+  };
+}
+
+export default async function createServer(
+  auth: Authenticator,
+  agentLoopContext?: AgentLoopContextType
+): Promise<McpServer> {
   const server = new McpServer(serverInfo);
+  const owner = auth.getNonNullableWorkspace();
+
+  let childAgentId: string | null = null;
+
+  if (
+    agentLoopContext &&
+    agentLoopContext.listToolsContext &&
+    isServerSideMCPServerConfiguration(
+      agentLoopContext.listToolsContext.agentActionConfiguration
+    ) &&
+    agentLoopContext.listToolsContext.agentActionConfiguration.childAgentId
+  ) {
+    childAgentId =
+      agentLoopContext.listToolsContext.agentActionConfiguration.childAgentId;
+  }
+
+  if (
+    agentLoopContext &&
+    agentLoopContext.runContext &&
+    isServerSideMCPToolConfiguration(
+      agentLoopContext.runContext.actionConfiguration
+    ) &&
+    agentLoopContext.runContext.actionConfiguration.childAgentId
+  ) {
+    childAgentId = agentLoopContext.runContext.actionConfiguration.childAgentId;
+  }
+
+  let agentBlob: { name: string; description: string } | null = null;
+
+  if (childAgentId) {
+    agentBlob = await leakyGetAgentNameAndDescriptionForChildAgent(
+      auth,
+      childAgentId
+    );
+  }
+
+  // If we have no child ID (unexpected) or the child agent was archived, return a dummy server
+  // whose tool name and description informs the agent of the situation.
+  if (!agentBlob) {
+    server.tool(
+      "run_agent_tool_not_available",
+      "No child agent configured for this tool, as the child agent was probably archived. " +
+        "Do not attempt to run the tool and warn the user instead.",
+      {
+        childAgent:
+          ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.AGENT],
+      },
+      async () => {
+        return {
+          isError: true,
+          content: [
+            {
+              type: "text",
+              text: "No child agent configured",
+            },
+          ],
+        };
+      }
+    );
+    return server;
+  }
 
   server.tool(
-    "run_agent",
-    // TODO(mcp): we probably want to make this description configurable to guide the model on when to use this sub-agent.
-    "Run an agent.",
+    `run_${agentBlob.name}`,
+    `Run agent ${agentBlob.name} (${agentBlob.description})`,
     {
       query: z
         .string()
         .describe(
-          `The query sent to the agent. This is the question or instruction that will be processed by the agent, which will respond with its own capabilities and knowledge.`
+          `The query sent to the agent. This is the question or instruction that will be ` +
+            `processed by the agent, which will respond with its own capabilities and knowledge.`
         ),
       childAgent:
         ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.AGENT],
     },
     async ({ query, childAgent: { uri } }, { sendNotification }) => {
-      if (!agentLoopRunContext) {
+      if (!agentLoopContext?.runContext) {
         throw new Error("Unreachable: missing agentLoopRunContext.");
       }
 
@@ -65,7 +171,6 @@ function createServer(
       }
       const childAgentId = childAgentIdRes.value;
 
-      const owner = auth.getNonNullableWorkspace();
       const prodCredentials = await prodAPICredentialsForOwner(owner);
       const requestedGroupIds = auth.groups().map((g) => g.sId);
       const api = new DustAPI(
@@ -95,7 +200,7 @@ function createServer(
         },
         contentFragment: undefined,
         skipToolsValidation:
-          agentLoopRunContext.agentMessage.skipToolsValidation ?? false,
+          agentLoopContext.runContext.agentMessage.skipToolsValidation ?? false,
       });
 
       if (convRes.isErr()) {
@@ -177,5 +282,3 @@ function createServer(
 
   return server;
 }
-
-export default createServer;

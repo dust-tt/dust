@@ -9,9 +9,7 @@ import type { ParsedUrlQuery } from "querystring";
 import { getUserWithWorkspaces } from "@app/lib/api/user";
 import { getWorkspaceInfos } from "@app/lib/api/workspace";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { isEnterpriseConnection } from "@app/lib/iam/enterprise";
 import type { SessionWithUser } from "@app/lib/iam/provider";
-import { isValidSession } from "@app/lib/iam/provider";
 import {
   fetchUserFromSession,
   maybeUpdateFromExternalUser,
@@ -29,7 +27,7 @@ import { isString } from "@app/types";
 export async function getUserFromSession(
   session: SessionWithUser | null
 ): Promise<UserTypeWithWorkspaces | null> {
-  if (!session || !isValidSession(session)) {
+  if (!session) {
     return null;
   }
 
@@ -74,8 +72,11 @@ export function statisfiesEnforceEntrepriseConnection(
     return true;
   }
 
+  // TODO(workos): Should we add the organizationId and/or workspaceId checks?
   if (owner.ssoEnforced) {
-    return isEnterpriseConnection(session.user);
+    return session.isSSO;
+    //&& session.organizationId === owner.workOSOrganizationId
+    //&& session.workspaceId === owner.sId
   }
 
   return true;
@@ -157,7 +158,7 @@ export function makeGetServerSidePropsRequirementsWrapper<
       if (requireUserPrivilege !== "none") {
         // If this is a logged page start first by checking if the user is logged in, if not
         // redirect to login to avoid jumping through /subscribe (below).
-        if (!session || !isValidSession(session)) {
+        if (!session) {
           return {
             redirect: {
               permanent: false,
@@ -195,7 +196,7 @@ export function makeGetServerSidePropsRequirementsWrapper<
 
       if (requireUserPrivilege !== "none") {
         // This was checked above already.
-        assert(session && isValidSession(session));
+        assert(session);
 
         const isDustSuperUser = auth?.isDustSuperUser() ?? false;
         if (requireUserPrivilege === "superuser" && !isDustSuperUser) {
@@ -272,8 +273,7 @@ export const withDefaultUserAuthRequirementsNoWorkspaceCheck =
   makeGetServerSidePropsRequirementsWrapper({
     requireUserPrivilege: "user",
     requireCanUseProduct: true,
-    // This is a special case where we don't want to check
-    // if the user is in the current workspace.
+    // This is a special case where we don't want to check if the user is in the current workspace.
     allowUserOutsideCurrentWorkspace: true,
   });
 

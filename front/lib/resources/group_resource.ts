@@ -1,3 +1,4 @@
+import type { DirectoryGroup as WorkOSGroup } from "@workos-inc/node";
 import { assert } from "console";
 import type {
   Attributes,
@@ -287,6 +288,35 @@ export class GroupResource extends BaseResource<GroupModel> {
     };
   }
 
+  static async makeNewProvisionedGroup(
+    auth: Authenticator,
+    {
+      workspace,
+      workOSGroup,
+    }: {
+      workspace: LightWorkspaceType;
+      workOSGroup: WorkOSGroup;
+    }
+  ): Promise<{ success: boolean }> {
+    const groupsWithSameName = await this.baseFetch(auth, {
+      where: {
+        name: workOSGroup.name, // Relying on the index (workspaceId, name).
+      },
+    });
+    if (groupsWithSameName.length > 0) {
+      return { success: false };
+    }
+
+    await this.makeNew({
+      kind: "provisioned",
+      name: workOSGroup.name,
+      workOSGroupId: workOSGroup.id,
+      workspaceId: workspace.id,
+    });
+
+    return { success: true };
+  }
+
   // sId
 
   get sId(): string {
@@ -312,10 +342,15 @@ export class GroupResource extends BaseResource<GroupModel> {
   // Internal fetcher for Authenticator only
 
   // Use with care as this gives access to all groups in the workspace.
-  static async internalFetchAllWorkspaceGroups(
-    workspaceId: ModelId,
-    groupKinds: GroupKind[] = ["global", "regular", "system"]
-  ): Promise<GroupResource[]> {
+  static async internalFetchAllWorkspaceGroups({
+    workspaceId,
+    groupKinds = ["global", "regular", "system"],
+    transaction,
+  }: {
+    workspaceId: ModelId;
+    groupKinds?: GroupKind[];
+    transaction?: Transaction;
+  }): Promise<GroupResource[]> {
     const groups = await this.model.findAll({
       where: {
         workspaceId,
@@ -323,6 +358,7 @@ export class GroupResource extends BaseResource<GroupModel> {
           [Op.in]: groupKinds,
         },
       },
+      transaction,
     });
 
     return groups.map((group) => new this(GroupModel, group.get()));
@@ -378,13 +414,15 @@ export class GroupResource extends BaseResource<GroupModel> {
   }
 
   static async internalFetchWorkspaceGlobalGroup(
-    workspaceId: ModelId
+    workspaceId: ModelId,
+    transaction?: Transaction
   ): Promise<GroupResource | null> {
     const group = await this.model.findOne({
       where: {
         workspaceId,
         kind: "global",
       },
+      transaction,
     });
 
     if (!group) {
@@ -482,6 +520,19 @@ export class GroupResource extends BaseResource<GroupModel> {
     }
 
     return new Ok(groups);
+  }
+
+  static async fetchByWorkOSGroupId(
+    auth: Authenticator,
+    workOSGroupId: string
+  ): Promise<GroupResource | null> {
+    const [group] = await this.baseFetch(auth, {
+      where: {
+        workOSGroupId,
+      },
+    });
+
+    return group ?? null;
   }
 
   static async fetchByAgentConfiguration({
@@ -607,16 +658,19 @@ export class GroupResource extends BaseResource<GroupModel> {
     user,
     workspace,
     groupKinds = ["global", "regular", "agent_editors"],
+    transaction,
   }: {
     user: UserResource;
     workspace: LightWorkspaceType;
     groupKinds?: Omit<GroupKind, "system">[];
+    transaction?: Transaction;
   }): Promise<GroupResource[]> {
     // First we need to check if the user is a member of the workspace.
     const workspaceMembership =
       await MembershipResource.getActiveMembershipOfUserInWorkspace({
         user,
         workspace,
+        transaction,
       });
     if (!workspaceMembership) {
       return [];
@@ -631,6 +685,7 @@ export class GroupResource extends BaseResource<GroupModel> {
           workspaceId: workspace.id,
           kind: "global",
         },
+        transaction,
       });
 
       if (!globalGroup) {
@@ -659,6 +714,7 @@ export class GroupResource extends BaseResource<GroupModel> {
           [Op.in]: groupKinds.filter((k) => k !== "global") as GroupKind[],
         },
       },
+      transaction,
     });
 
     const groups = [...(globalGroup ? [globalGroup] : []), ...userGroups];
@@ -776,12 +832,12 @@ export class GroupResource extends BaseResource<GroupModel> {
       );
     }
 
-    // Users can only be added to regular or agent_editors groups.
-    if (this.kind !== "regular" && this.kind !== "agent_editors") {
+    // Users can only be added to regular, agent_editors or provisioned groups.
+    if (!["regular", "agent_editors", "provisioned"].includes(this.kind)) {
       return new Err(
         new DustError(
           "system_or_global_group",
-          "Users can only be added to regular or agent_editors groups."
+          "Users can only be added to regular, agent_editors or provisioned groups."
         )
       );
     }
@@ -1100,6 +1156,11 @@ export class GroupResource extends BaseResource<GroupModel> {
   isRegular(): boolean {
     return this.kind === "regular";
   }
+
+  isProvisioned(): boolean {
+    return this.kind === "provisioned";
+  }
+
   /**
    * Associates a group with an agent configuration.
    */

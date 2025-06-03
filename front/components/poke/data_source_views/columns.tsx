@@ -3,6 +3,7 @@ import { ArrowsUpDownIcon } from "@heroicons/react/20/solid";
 import type { ColumnDef } from "@tanstack/react-table";
 
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
+import type { DataSourceWithAgentsUsageType } from "@app/types";
 
 interface DataSourceView {
   dataSourceLink: string;
@@ -12,6 +13,7 @@ interface DataSourceView {
   editedBy: string | undefined;
   name: string;
   sId: string;
+  usage: DataSourceWithAgentsUsageType | null;
 }
 
 export function makeColumnsForDataSourceViews(): ColumnDef<DataSourceView>[] {
@@ -62,6 +64,48 @@ export function makeColumnsForDataSourceViews(): ColumnDef<DataSourceView>[] {
         );
       },
     },
+    {
+      accessorKey: "usage",
+      header: ({ column }) => {
+        return (
+          <div className="flex space-x-2">
+            <p>Usage</p>
+            <IconButton
+              variant="outline"
+              icon={ArrowsUpDownIcon}
+              onClick={() =>
+                column.toggleSorting(column.getIsSorted() === "asc")
+              }
+            />
+          </div>
+        );
+      },
+      cell: ({ row }) => {
+        const usage = row.original.usage;
+        if (!usage) {
+          return (
+            <span className="text-gray-400 dark:text-gray-400-night">-</span>
+          );
+        }
+        return (
+          <div>
+            <span className="font-medium">{usage.count}</span>
+            {usage.count > 0 && (
+              <span className="ml-1 text-xs text-gray-500 dark:text-gray-500-night">
+                ({usage.agentNames.slice(0, 2).join(", ")}
+                {usage.agentNames.length > 2 && ", ..."})
+              </span>
+            )}
+          </div>
+        );
+      },
+      sortingFn: (rowA, rowB) => {
+        const usageA = rowA.original.usage?.count ?? 0;
+        const usageB = rowB.original.usage?.count ?? 0;
+        return usageA - usageB;
+      },
+    },
+
     {
       accessorKey: "editedBy",
       header: "Last edited by",

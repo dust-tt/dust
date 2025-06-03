@@ -18,17 +18,19 @@ import type { ConnectorResource } from "@connectors/resources/connector_resource
 import type { ReadonlyAttributesType } from "@connectors/resources/storage/types";
 import { normalizeError } from "@connectors/types";
 
-function minutesToMs(minutes: number) {
-  return minutes * 60 * 1000;
-}
-
 function daysToMs(days: number) {
   return days * 24 * 60 * 60 * 1000;
 }
 
+function hoursToMs(hours: number) {
+  return hours * 60 * 60 * 1000;
+}
+
 const GC_FREQUENCY_MS = daysToMs(1); // Every day.
-// Upper bound on the time it takes for Gong to make transcripts available.
-const TRANSCRIPT_PROCESSING_TIME_UPPER_BOUND_MS = minutesToMs(30);
+// Transcripts are searched based on start time of the call.
+// The delay needs to be greater than meeting duration + Gong processing time.
+// We use 3 hours as a semi-arbitrary upper bound for the delay.
+const TRANSCRIPT_DELAY_TIME_UPPER_BOUND_MS = hoursToMs(3);
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -138,12 +140,12 @@ export class GongConfigurationResource extends BaseResource<GongConfigurationMod
         return Date.now() - daysToMs(this.retentionPeriodDays);
       }
       return Math.max(
-        this.lastSyncTimestamp - TRANSCRIPT_PROCESSING_TIME_UPPER_BOUND_MS,
+        this.lastSyncTimestamp - TRANSCRIPT_DELAY_TIME_UPPER_BOUND_MS,
         Date.now() - daysToMs(this.retentionPeriodDays)
       );
     }
     if (this.lastSyncTimestamp) {
-      return this.lastSyncTimestamp - TRANSCRIPT_PROCESSING_TIME_UPPER_BOUND_MS;
+      return this.lastSyncTimestamp - TRANSCRIPT_DELAY_TIME_UPPER_BOUND_MS;
     }
     return this.lastSyncTimestamp;
   }

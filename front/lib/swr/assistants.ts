@@ -124,7 +124,7 @@ export function useAgentConfigurations({
   const { cache } = useSWRConfig();
   const inCache = typeof cache.get(key) !== "undefined";
 
-  const { data, error, mutate, mutateRegardlessOfQueryParams } =
+  const { data, error, mutate, mutateRegardlessOfQueryParams, isValidating } =
     useSWRWithDefaults(agentsGetView ? key : null, agentConfigurationsFetcher, {
       disabled,
       revalidateOnMount: !inCache || revalidate,
@@ -139,6 +139,7 @@ export function useAgentConfigurations({
     isAgentConfigurationsError: error,
     mutate,
     mutateRegardlessOfQueryParams,
+    isAgentConfigurationsValidating: isValidating,
   };
 }
 
@@ -192,6 +193,7 @@ export function useUnifiedAgentConfigurations({
   const {
     agentConfigurations: agentConfigurationsWithAuthors,
     isAgentConfigurationsLoading: isAgentConfigurationsWithAuthorsLoading,
+    isAgentConfigurationsValidating,
     mutate,
     mutateRegardlessOfQueryParams,
   } = useAgentConfigurations({
@@ -203,7 +205,9 @@ export function useUnifiedAgentConfigurations({
 
   return {
     agentConfigurations: agentConfigurationsWithAuthors,
-    isLoading: isAgentConfigurationsWithAuthorsLoading,
+    isLoading:
+      isAgentConfigurationsWithAuthorsLoading ||
+      isAgentConfigurationsValidating,
     mutate,
     mutateRegardlessOfQueryParams,
   };
@@ -720,4 +724,30 @@ export function useRestoreAgentConfiguration({
   };
 
   return doRestore;
+}
+
+export function useBatchUpdateAgents({ owner }: { owner: LightWorkspaceType }) {
+  const batchUpdateAgentTags = useCallback(
+    async (
+      agentIds: string[],
+      body: { addTagIds?: string[]; removeTagIds?: string[] }
+    ) => {
+      await fetch(
+        `/api/w/${owner.sId}/assistant/agent_configurations/batch_update_tags`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            agentIds,
+            ...body,
+          }),
+        }
+      );
+    },
+    [owner]
+  );
+
+  return batchUpdateAgentTags;
 }

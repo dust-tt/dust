@@ -104,27 +104,54 @@ export class UserResource extends BaseResource<UserModel> {
     return users.map((user) => new UserResource(UserModel, user.get()));
   }
 
-  static async fetchById(userId: string): Promise<UserResource | null> {
+  static async fetchById(
+    userId: string,
+    transaction?: Transaction
+  ): Promise<UserResource | null> {
     const user = await UserModel.findOne({
       where: {
         sId: userId,
       },
+      transaction,
     });
     return user ? new UserResource(UserModel, user.get()) : null;
   }
 
-  static async fetchByAuth0Sub(sub: string): Promise<UserResource | null> {
+  static async fetchByAuth0Sub(
+    sub: string,
+    transaction?: Transaction
+  ): Promise<UserResource | null> {
     const user = await UserModel.findOne({
       where: {
         auth0Sub: sub,
       },
+      transaction,
+    });
+    return user ? new UserResource(UserModel, user.get()) : null;
+  }
+
+  static async fetchByWorkOSUserId(
+    workOSUserId: string,
+    transaction?: Transaction
+  ): Promise<UserResource | null> {
+    const user = await UserModel.findOne({
+      where: {
+        workOSUserId,
+      },
+      transaction,
     });
     return user ? new UserResource(UserModel, user.get()) : null;
   }
 
   static async fetchByEmail(email: string): Promise<UserResource | null> {
     const users = await this.listByEmail(email.toLowerCase());
-    return users.length > 0 ? users[0] : null;
+    const sortedUsers = users.sort((a, b) => {
+      // Best effort strategy as user db entries are not updated often.
+      return b.updatedAt.getTime() - a.updatedAt.getTime();
+    });
+
+    // Most recently updated user if any.
+    return sortedUsers[0] ?? null;
   }
 
   static async fetchByProvider(
@@ -174,6 +201,12 @@ export class UserResource extends BaseResource<UserModel> {
     });
   }
 
+  async updateWorkOSUserId({ workOSUserId }: { workOSUserId: string }) {
+    return this.update({
+      workOSUserId,
+    });
+  }
+
   async updateName(firstName: string, lastName: string | null) {
     firstName = escape(firstName);
     if (lastName) {
@@ -189,7 +222,8 @@ export class UserResource extends BaseResource<UserModel> {
     username: string,
     firstName: string,
     lastName: string | null,
-    email: string
+    email: string,
+    workOSUserId: string | null
   ) {
     firstName = escape(firstName);
     if (lastName) {
@@ -201,6 +235,7 @@ export class UserResource extends BaseResource<UserModel> {
       firstName,
       lastName,
       email: lowerCaseEmail,
+      workOSUserId,
     });
   }
 

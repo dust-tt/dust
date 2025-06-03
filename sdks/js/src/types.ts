@@ -24,6 +24,7 @@ const ModelProviderIdSchema = FlexibleEnumSchema<
   | "togetherai"
   | "deepseek"
   | "fireworks"
+  | "xai"
 >();
 
 const ModelLLMIdSchema = FlexibleEnumSchema<
@@ -71,6 +72,10 @@ const ModelLLMIdSchema = FlexibleEnumSchema<
   | "deepseek-chat" // deepseek api
   | "deepseek-reasoner" // deepseek api
   | "accounts/fireworks/models/deepseek-r1" // fireworks
+  | "grok-3-latest" // xAI
+  | "grok-3-mini-latest" // xAI
+  | "grok-3-fast-latest" // xAI
+  | "grok-3-mini-fast-latest" // xAI
 >();
 
 const EmbeddingProviderIdSchema = FlexibleEnumSchema<"openai" | "mistral">();
@@ -818,6 +823,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "openai_o1_high_reasoning_custom_assistants_feature"
   | "openai_o1_high_reasoning_feature"
   | "openai_o1_mini_feature"
+  | "xai_feature"
   | "pro_plan_salesforce_connector"
   | "salesforce_feature"
   | "search_knowledge_builder"
@@ -826,7 +832,10 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "usage_data_api"
   | "custom_webcrawler"
   | "exploded_tables_query"
-  | "pro_plan_salesforce_connector"
+  | "workos"
+  | "salesforce_tool"
+  | "gmail_tool"
+  | "agent_builder_v2"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;

@@ -21,6 +21,7 @@ import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 
 import { DEFAULT_MCP_ACTION_DESCRIPTION } from "@app/lib/actions/constants";
+import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
 import type { RemoteMCPServerType } from "@app/lib/api/mcp";
 import {
   useMCPServers,
@@ -28,7 +29,7 @@ import {
   useUpdateRemoteMCPServer,
 } from "@app/lib/swr/mcp_servers";
 import type { LightWorkspaceType } from "@app/types";
-import { asDisplayName, normalizeError } from "@app/types";
+import { normalizeError } from "@app/types";
 
 interface RemoteMCPFormProps {
   owner: LightWorkspaceType;
@@ -53,7 +54,7 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
   const form = useForm<MCPFormType>({
     resolver: zodResolver(MCPFormSchema),
     defaultValues: {
-      name: asDisplayName(mcpServer.name),
+      name: getMcpServerDisplayName(mcpServer),
       description: mcpServer.description,
       icon: mcpServer.icon,
       sharedSecret: mcpServer.sharedSecret || "",

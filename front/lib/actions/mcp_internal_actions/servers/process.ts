@@ -3,6 +3,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import assert from "assert";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import _ from "lodash";
+import { z } from "zod";
 
 import {
   generateJSONFileAndSnippet,
@@ -14,7 +15,10 @@ import {
   ConfigurableToolInputSchemas,
   JsonSchemaSchema,
 } from "@app/lib/actions/mcp_internal_actions/input_schemas";
-import { getDataSourceConfiguration } from "@app/lib/actions/mcp_internal_actions/servers/utils";
+import {
+  getDataSourceConfiguration,
+  shouldAutoGenerateTags,
+} from "@app/lib/actions/mcp_internal_actions/servers/utils";
 import type { ProcessActionOutputsType } from "@app/lib/actions/process";
 import { getExtractFileTitle } from "@app/lib/actions/process/utils";
 import { applyDataSourceFilters } from "@app/lib/actions/retrieval";
@@ -48,7 +52,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
   name: "extract_data",
   version: "1.0.0",
   description: "Structured extraction (mcp)",
-  icon: "ActionTimeIcon",
+  icon: "ActionScanIcon",
   authorization: null,
 };
 
@@ -94,19 +98,61 @@ function createServer(
       ) &&
       agentLoopContext.runContext.actionConfiguration.jsonSchema !== null);
 
+  const isTimeFrameConfigured =
+    (agentLoopContext?.listToolsContext &&
+      isServerSideMCPServerConfiguration(
+        agentLoopContext.listToolsContext.agentActionConfiguration
+      ) &&
+      agentLoopContext.listToolsContext.agentActionConfiguration.timeFrame !==
+        null) ||
+    (agentLoopContext?.runContext &&
+      isServerSideMCPToolConfiguration(
+        agentLoopContext.runContext.actionConfiguration
+      ) &&
+      agentLoopContext.runContext.actionConfiguration.timeFrame !== null);
+
+  const isTagsModeConfigured = agentLoopContext
+    ? shouldAutoGenerateTags(agentLoopContext)
+    : false;
+
+  // Create tag schemas if needed for tag auto-mode
+  const tagsInputSchema = isTagsModeConfigured
+    ? {
+        tagsIn: z
+          .array(z.string())
+          .describe(
+            "A list of labels (also called tags) to restrict the search based on the user request and past conversation context." +
+              "If multiple labels are provided, the search will return documents that have at least one of the labels." +
+              "You can't check that all labels are present, only that at least one is present." +
+              "If no labels are provided, the search will return all documents regardless of their labels."
+          ),
+        tagsNot: z
+          .array(z.string())
+          .describe(
+            "A list of labels (also called tags) to exclude from the search based on the user request and past conversation context." +
+              "Any document having one of these labels will be excluded from the search."
+          ),
+      }
+    : {};
+
   server.tool(
-    "process_documents",
-    "Process available documents according to timeframe to extract structured data.",
-    // `Extract an array of data points from available documents, according to a ${isJsonSchemaConfigured ? "user-configured" : ""} JSON schema.`,
+    "extract_information_from_documents",
+    "Extract structured information from documents in reverse chronological order, according to the needs described by the objective and specified by a" +
+      (isJsonSchemaConfigured ? " user-configured" : "") +
+      " JSON schema. This tool retrieves content" +
+      " from data sources already pre-configured by the user, ensuring the latest information is included.",
     {
-      timeFrame:
-        ConfigurableToolInputSchemas[
-          INTERNAL_MIME_TYPES.TOOL_INPUT.NULLABLE_TIME_FRAME
-        ],
       dataSources:
         ConfigurableToolInputSchemas[
           INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
         ],
+      objective: z
+        .string()
+        .describe(
+          "The objective behind the use of the tool based on the conversation state." +
+            " This is used to guide the tool to extract the right data based on the user request."
+        ),
+
       jsonSchema: isJsonSchemaConfigured
         ? ConfigurableToolInputSchemas[
             INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA
@@ -114,8 +160,29 @@ function createServer(
         : JsonSchemaSchema.describe(
             EXTRACT_TOOL_JSON_SCHEMA_ARGUMENT_DESCRIPTION
           ),
+      timeFrame: isTimeFrameConfigured
+        ? ConfigurableToolInputSchemas[
+            INTERNAL_MIME_TYPES.TOOL_INPUT.NULLABLE_TIME_FRAME
+          ]
+        : z
+            .object({
+              duration: z.number(),
+              unit: z.enum(["hour", "day", "week", "month", "year"]),
+            })
+            .describe(
+              "The time frame to use for documents retrieval (e.g. last 7 days, last 2 months). Leave null to search all documents regardless of time."
+            )
+            .nullable(),
+      ...tagsInputSchema,
     },
-    async ({ timeFrame, dataSources, jsonSchema }) => {
+    async ({
+      dataSources,
+      objective,
+      jsonSchema,
+      timeFrame,
+      tagsIn,
+      tagsNot,
+    }) => {
       // Unwrap and prepare variables.
       assert(
         agentLoopContext?.runContext,
@@ -131,6 +198,12 @@ function createServer(
         delete (jsonSchema as any).mimeType;
       }
 
+      // Similarly, if timeFrame was pre-configured by the user, it has an additional mimeType property.
+      // We remove it here before passing the timeFrame to the dust app.
+      if (timeFrame && "mimeType" in timeFrame) {
+        delete (timeFrame as any).mimeType;
+      }
+
       // prepare dust app inputs
       const prompt = await getPromptForProcessDustApp({
         auth,
@@ -142,6 +215,8 @@ function createServer(
         model,
         dataSources,
         timeFrame,
+        tagsIn,
+        tagsNot,
       });
 
       // Call the dust app
@@ -154,7 +229,7 @@ function createServer(
             context_size: getSupportedModelConfig(model).contextSize,
             prompt,
             schema: jsonSchema,
-            objective: "n/a",
+            objective,
           },
         ],
         {
@@ -206,6 +281,7 @@ function createServer(
         outputs,
         jsonSchema,
         timeFrame,
+        objective,
       });
       // Upload the file to the conversation data source.
       // This step is critical for file persistence across sessions.
@@ -228,11 +304,15 @@ async function getConfigForProcessDustApp({
   model,
   dataSources,
   timeFrame,
+  tagsIn,
+  tagsNot,
 }: {
   auth: Authenticator;
   model: AgentModelConfigurationType;
   dataSources: DataSourcesToolConfigurationType[number][];
   timeFrame: TimeFrame | null;
+  tagsIn?: string[];
+  tagsNot?: string[];
 }) {
   const { dataSourceConfigurations, dataSourceViewsMap } =
     await getDataSourcesDetails(auth, dataSources);
@@ -258,8 +338,8 @@ async function getConfigForProcessDustApp({
     config,
     dataSourceConfigurations,
     dataSourceViewsMap,
-    null, // TODO(pr,mcp-extract): add globalTagsIn
-    null // TODO(pr,mcp-extract): add globalTagsNot
+    tagsIn || null,
+    tagsNot || null
   );
 
   if (timeFrame) {
@@ -392,12 +472,14 @@ async function generateProcessToolOutput({
   outputs,
   jsonSchema,
   timeFrame,
+  objective,
 }: {
   auth: Authenticator;
   conversation: ConversationType;
   outputs: ProcessActionOutputsType | null;
   jsonSchema: JSONSchema;
   timeFrame: TimeFrame | null;
+  objective: string;
 }) {
   const fileTitle = getExtractFileTitle({
     schema: jsonSchema,
@@ -420,29 +502,35 @@ async function generateProcessToolOutput({
         : `${timeFrame.unit}`)
     : "all time";
 
+  const extractResult =
+    "PROCESSED OUTPUTS:\n" +
+    (outputs?.data && outputs.data.length > 0
+      ? outputs.data.map((d) => JSON.stringify(d)).join("\n")
+      : "(none)");
+
   return {
     jsonFile,
     processToolOutput: {
       isError: false,
       content: [
         {
-          type: "text" as const,
-          text:
-            "Extracted from " +
-            outputs?.total_documents +
-            " documents over " +
-            timeFrameAsString +
-            ".",
+          type: "resource" as const,
+          resource: {
+            mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.EXTRACT_QUERY,
+            text: `Extracted from ${outputs?.total_documents} documents over ${timeFrameAsString}.\nObjective: ${objective}`,
+            uri: "",
+          },
         },
         {
           type: "resource" as const,
           resource: {
-            text:
-              "This file contains data extracted from available documents according to the provided schema. Here is  a preview of its contents: \n" +
-              generatedFile.snippet,
+            mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.EXTRACT_RESULT,
+            text: extractResult,
             uri: jsonFile.getPublicUrl(auth),
-            mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
-            ...generatedFile,
+            fileId: generatedFile.fileId,
+            title: generatedFile.title,
+            contentType: generatedFile.contentType,
+            snippet: generatedFile.snippet,
           },
         },
       ],

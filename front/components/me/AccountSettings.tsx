@@ -1,14 +1,13 @@
 import { Button, Input, Label, Page, Spinner } from "@dust-tt/sparkle";
-import { useSendNotification } from "@dust-tt/sparkle";
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
+import { usePatchUser } from "@app/lib/swr/user";
 import type { UserTypeWithWorkspaces } from "@app/types";
 interface AccountSettingsProps {
   user: UserTypeWithWorkspaces | null;
   isUserLoading: boolean;
-  mutateUser: () => void;
 }
 
 const AccountSettingsSchema = z.object({
@@ -18,12 +17,7 @@ const AccountSettingsSchema = z.object({
 
 type AccountSettingsType = z.infer<typeof AccountSettingsSchema>;
 
-export function AccountSettings({
-  user,
-  isUserLoading,
-  mutateUser,
-}: AccountSettingsProps) {
-  const sendNotification = useSendNotification();
+export function AccountSettings({ user, isUserLoading }: AccountSettingsProps) {
   const { register, handleSubmit, reset, formState } =
     useForm<AccountSettingsType>({
       defaultValues: {
@@ -31,6 +25,8 @@ export function AccountSettings({
         lastName: user?.lastName || "",
       },
     });
+
+  const { patchUser } = usePatchUser();
 
   useEffect(() => {
     if (user) {
@@ -42,34 +38,7 @@ export function AccountSettings({
   }, [user, reset]);
 
   const updateUserProfile = async (data: AccountSettingsType) => {
-    try {
-      const response = await fetch("/api/user", {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(data),
-      });
-
-      if (response.ok) {
-        sendNotification({
-          title: "Success!",
-          description: "Your profile has been updated.",
-          type: "success",
-        });
-        mutateUser();
-      } else {
-        const error = await response.json();
-        throw new Error(error.message || "Failed to update profile");
-      }
-    } catch (error) {
-      sendNotification({
-        title: "Error",
-        description:
-          error instanceof Error ? error.message : "Failed to update profile",
-        type: "error",
-      });
-    }
+    await patchUser(data.firstName, data.lastName, true);
   };
 
   if (isUserLoading) {

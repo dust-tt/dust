@@ -124,7 +124,15 @@ async function handler(
           });
         }
 
-        const r = await fetchRemoteServerMetaDataByURL(auth, url);
+        const r = await fetchRemoteServerMetaDataByURL(
+          auth,
+          url,
+          sharedSecret
+            ? {
+                Authorization: `Bearer ${sharedSecret}`,
+              }
+            : undefined
+        );
         if (r.isErr()) {
           return apiError(req, res, {
             status_code: 400,
@@ -163,10 +171,7 @@ async function handler(
 
         return res.status(201).json({
           success: true,
-          server: {
-            ...metadata,
-            sId: newRemoteMCPServer.sId,
-          },
+          server: newRemoteMCPServer.toJSON(),
         });
       } else {
         const { name } = body;

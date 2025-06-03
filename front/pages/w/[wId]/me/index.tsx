@@ -37,7 +37,7 @@ export default function ProfilePage({
   owner,
   subscription,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  const { user, isUserLoading, mutateUser } = useUser();
+  const { user, isUserLoading } = useUser();
 
   return (
     <ConversationsNavigationProvider>
@@ -51,11 +51,7 @@ export default function ProfilePage({
           <Page.Header title="Profile Settings" icon={UserIcon} />
           <Page.Layout direction="vertical">
             <Page.SectionHeader title="Account Settings" />
-            <AccountSettings
-              user={user}
-              isUserLoading={isUserLoading}
-              mutateUser={mutateUser}
-            />
+            <AccountSettings user={user} isUserLoading={isUserLoading} />
 
             <Separator />
 
@@ -64,7 +60,7 @@ export default function ProfilePage({
 
             <Separator />
 
-            <Page.SectionHeader title="Tools Confirmation Preferences" />
+            <Page.SectionHeader title="Tools Connections & Confirmation Preferences" />
             <UserToolsTable owner={owner} />
           </Page.Layout>
         </Page>

@@ -37,7 +37,16 @@ async function handler(
         .status(200)
         .json({ connection: connectionResource.value.toJSON() });
     case "DELETE":
-      await connectionResource.value.delete(auth);
+      const result = await connectionResource.value.delete(auth);
+      if (result.isErr()) {
+        return apiError(req, res, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: "Failed to delete connection",
+          },
+        });
+      }
 
       return res.status(200).json({
         success: true,

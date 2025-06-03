@@ -1,5 +1,3 @@
-import { heartbeat } from "@temporalio/activity";
-
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import {
   deleteDataSourceFolder,
@@ -18,6 +16,7 @@ import type {
   RemoteDBTree,
 } from "@connectors/lib/remote_databases/utils";
 import { buildInternalId } from "@connectors/lib/remote_databases/utils";
+import { heartbeat } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { INTERNAL_MIME_TYPES } from "@connectors/types";
@@ -541,7 +540,7 @@ export async function sync({
 
         i++;
         if (i % 25 === 0) {
-          heartbeat();
+          await heartbeat();
         }
       }
     }

@@ -36,6 +36,7 @@ const API_ERROR_TYPES = [
   "dataset_not_found",
   "workspace_not_found",
   "workspace_auth_error",
+  "workspace_can_use_product_required_error",
   "workspace_user_not_found",
   "method_not_supported_error",
   "personal_workspace_not_found",
@@ -117,6 +118,11 @@ const API_ERROR_TYPES = [
   // MCP:
   "mcp_auth_error",
   "invalid_mcp_server_id",
+  // Workos:
+  "workos_organization_not_found",
+  "workos_server_error",
+  "workos_multiple_sso_connections_not_supported",
+  "workos_multiple_directories_not_supported",
 ] as const;
 
 export type APIErrorType = (typeof API_ERROR_TYPES)[number];

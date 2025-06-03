@@ -43,6 +43,8 @@ export const ConfluenceCommandSchema = t.type({
     t.literal("update-parents"),
     t.literal("ignore-near-rate-limit"),
     t.literal("unignore-near-rate-limit"),
+    t.literal("check-space-access"),
+    t.literal("resolve-space-from-url"),
   ]),
   args: t.type({
     connectorId: t.union([t.number, t.undefined]),
@@ -50,6 +52,7 @@ export const ConfluenceCommandSchema = t.type({
     spaceId: t.union([t.number, t.undefined]),
     file: t.union([t.string, t.undefined]),
     keyInFile: t.union([t.string, t.undefined]),
+    url: t.union([t.string, t.undefined]),
   }),
 });
 export type ConfluenceCommandType = t.TypeOf<typeof ConfluenceCommandSchema>;
@@ -67,6 +70,31 @@ export const ConfluenceUpsertPageResponseSchema = t.type({
 });
 export type ConfluenceUpsertPageResponseType = t.TypeOf<
   typeof ConfluenceUpsertPageResponseSchema
+>;
+
+export const ConfluenceCheckSpaceAccessResponseSchema = t.type({
+  hasAccess: t.boolean,
+  space: t.UnknownRecord,
+});
+export type ConfluenceCheckSpaceAccessResponseType = t.TypeOf<
+  typeof ConfluenceCheckSpaceAccessResponseSchema
+>;
+
+export const ConfluenceResolveSpaceFromUrlResponseSchema = t.intersection([
+  t.type({
+    found: t.boolean,
+  }),
+  t.partial({
+    spaceId: t.string,
+    spaceKey: t.string,
+    spaceName: t.string,
+    hasAccess: t.boolean,
+    lastSyncedAt: t.string,
+    pageCount: t.number,
+  }),
+]);
+export type ConfluenceResolveSpaceFromUrlResponseType = t.TypeOf<
+  typeof ConfluenceResolveSpaceFromUrlResponseSchema
 >;
 /**
  * </Confluence>
@@ -130,6 +158,7 @@ export const GongCommandSchema = t.type({
   command: t.literal("force-resync"),
   args: t.type({
     connectorId: t.union([t.number, t.undefined]),
+    fromTs: t.union([t.number, t.undefined]),
   }),
 });
 export type GongCommandType = t.TypeOf<typeof GongCommandSchema>;
@@ -207,6 +236,7 @@ export const IntercomCommandSchema = t.type({
     t.literal("fetch-articles"),
     t.literal("check-missing-conversations"),
     t.literal("check-teams"),
+    t.literal("set-conversations-sliding-window"),
   ]),
   args: t.type({
     force: t.union([t.literal("true"), t.undefined]),
@@ -214,6 +244,7 @@ export const IntercomCommandSchema = t.type({
     conversationId: t.union([t.number, t.undefined]),
     day: t.union([t.string, t.undefined]),
     helpCenterId: t.union([t.number, t.undefined]),
+    conversationsSlidingWindow: t.union([t.number, t.undefined]),
   }),
 });
 export type IntercomCommandType = t.TypeOf<typeof IntercomCommandSchema>;
@@ -582,6 +613,7 @@ export const AdminCommandSchema = t.union([
   ConfluenceCommandSchema,
   ConnectorsCommandSchema,
   GithubCommandSchema,
+  GongCommandSchema,
   GoogleDriveCommandSchema,
   IntercomCommandSchema,
   MicrosoftCommandSchema,
@@ -606,6 +638,8 @@ export const AdminResponseSchema = t.union([
   BatchAllResponseSchema,
   CheckFileGenericResponseSchema,
   ConfluenceMeResponseSchema,
+  ConfluenceCheckSpaceAccessResponseSchema,
+  ConfluenceResolveSpaceFromUrlResponseSchema,
   ConfluenceUpsertPageResponseSchema,
   GongForceResyncResponseSchema,
   IntercomCheckConversationResponseSchema,

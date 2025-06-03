@@ -4,6 +4,7 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { sendEmailWithTemplate } from "@app/lib/api/email";
 import type { Authenticator } from "@app/lib/auth";
@@ -114,7 +115,7 @@ async function handler(
 
   const body =
     `${emailRequester} has sent you a request regarding access to ` +
-    `tools ${mcpServerView.toJSON().server.name}: ` +
+    `tools ${getMcpServerViewDisplayName(mcpServerView.toJSON())}: ` +
     escape(emailMessage);
 
   const result = await sendEmailWithTemplate({

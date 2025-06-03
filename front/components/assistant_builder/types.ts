@@ -24,9 +24,11 @@ import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { FetchAssistantTemplateResponse } from "@app/pages/api/templates/[tId]";
 import type {
   AgentConfigurationScope,
+  AgentConfigurationType,
   AgentReasoningEffort,
   AppType,
   DataSourceViewSelectionConfigurations,
+  LightAgentConfigurationType,
   ModelIdType,
   ModelProviderIdType,
   PlanType,
@@ -514,8 +516,8 @@ export const BUILDER_FLOWS = [
 ] as const;
 export type BuilderFlow = (typeof BUILDER_FLOWS)[number];
 
-export type AssistantBuilderProps = {
-  agentConfigurationId: string | null;
+type AssistantBuilderPropsBase<T> = {
+  agentConfiguration: T | null;
   baseUrl: string;
   defaultIsEdited?: boolean;
   defaultTemplate: FetchAssistantTemplateResponse | null;
@@ -525,6 +527,11 @@ export type AssistantBuilderProps = {
   plan: PlanType;
   subscription: SubscriptionType;
 };
+
+export type AssistantBuilderProps =
+  AssistantBuilderPropsBase<AgentConfigurationType>;
+export type AssistantBuilderLightProps =
+  AssistantBuilderPropsBase<LightAgentConfigurationType>;
 
 export const BUILDER_SCREENS = ["instructions", "actions", "settings"] as const;
 

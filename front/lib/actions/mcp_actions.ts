@@ -21,6 +21,7 @@ import type {
   ServerSideMCPToolConfigurationType,
 } from "@app/lib/actions/mcp";
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
+import { MCPServerPersonalAuthenticationRequiredError } from "@app/lib/actions/mcp_internal_actions/authentication";
 import {
   getInternalMCPServerAvailability,
   getInternalMCPServerNameAndWorkspaceId,
@@ -30,6 +31,7 @@ import type {
   MCPProgressNotificationType,
   MCPToolResult,
   MCPToolResultContentType,
+  PersonalAuthenticationRequiredErrorResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { isMCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { findMatchingSubSchemas } from "@app/lib/actions/mcp_internal_actions/utils";
@@ -66,7 +68,7 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { fromEvent } from "@app/lib/utils/events";
 import logger from "@app/logger/logger";
-import type { ModelId, Result } from "@app/types";
+import type { ModelId, OAuthProvider, OAuthUseCase, Result } from "@app/types";
 import { assertNever, Err, normalizeError, Ok, slugify } from "@app/types";
 
 const MAX_OUTPUT_ITEMS = 128;
@@ -76,11 +78,25 @@ const DEFAULT_MCP_REQUEST_TIMEOUT_MS = 2 * 60 * 1000; // 2 minutes.
 const MCP_NOTIFICATION_EVENT_NAME = "mcp-notification";
 const MCP_TOOL_DONE_EVENT_NAME = "TOOL_DONE" as const;
 
-const EMPTY_INPUT_SCHEMA: JSONSchema7 = { type: "object", properties: {} };
+const EMPTY_INPUT_SCHEMA: JSONSchema7 = {
+  properties: {},
+  required: [],
+  type: "object",
+};
+
+function isEmptyInputSchema(schema: JSONSchema7): boolean {
+  // By default, empty tools yields an empty input schema.
+  const isContentConsideredEmpty =
+    schema.properties === undefined &&
+    schema.required === undefined &&
+    schema.type === "object";
+
+  return isContentConsideredEmpty;
+}
 
 const MAX_TOOL_NAME_LENGTH = 64;
 
-const TOOL_NAME_SEPARATOR = "__";
+export const TOOL_NAME_SEPARATOR = "__";
 
 // Define the new type here for now, or move to a dedicated types file later.
 export interface ServerToolsAndInstructions {
@@ -98,7 +114,10 @@ function makeServerSideMCPToolConfigurations(
     type: "mcp_configuration",
     name: tool.name,
     description: tool.description ?? null,
-    inputSchema: tool.inputSchema || EMPTY_INPUT_SCHEMA,
+    inputSchema:
+      !tool.inputSchema || isEmptyInputSchema(tool.inputSchema)
+        ? EMPTY_INPUT_SCHEMA
+        : tool.inputSchema,
     id: config.id,
     mcpServerViewId: config.mcpServerViewId,
     internalMCPServerId: config.internalMCPServerId,
@@ -129,7 +148,10 @@ function makeClientSideMCPToolConfigurations(
     clientSideMcpServerId: config.clientSideMcpServerId,
     description: tool.description ?? null,
     id: config.id,
-    inputSchema: tool.inputSchema || EMPTY_INPUT_SCHEMA,
+    inputSchema:
+      !tool.inputSchema || isEmptyInputSchema(tool.inputSchema)
+        ? EMPTY_INPUT_SCHEMA
+        : tool.inputSchema,
     mcpServerName: config.name,
     name: tool.name,
     originalName: tool.name,
@@ -147,7 +169,10 @@ type MCPCallToolEvent =
     }
   | {
       type: "result";
-      result: Result<MCPToolResult["content"], Error | McpError>;
+      result: Result<
+        MCPToolResult["content"],
+        Error | McpError | MCPServerPersonalAuthenticationRequiredError
+      >;
     };
 
 /**
@@ -277,6 +302,11 @@ export async function* tryCallMCPTool(
 
     // Tool is done now, wait for the actual result.
     const toolCallResult = await toolPromise;
+
+    // Type inference is not working here because of them using passthrough in the zod schema.
+    const content: MCPToolResultContentType[] = (toolCallResult.content ??
+      []) as MCPToolResultContentType[];
+
     // Do not raise an error here as it will break the conversation.
     // Let the model decide what to do.
     if (toolCallResult.isError) {
@@ -289,10 +319,35 @@ export async function* tryCallMCPTool(
         },
         `Error calling MCP tool in tryCallMCPTool().`
       );
+
+      // Special handling for personal authentication required errors which return a resource with a
+      // specific mime type.
+      const personalAuthenticationRequiredError = content.find(
+        (c) =>
+          c.type === "resource" &&
+          c.resource.mimeType ===
+            INTERNAL_MIME_TYPES.TOOL_ERROR.PERSONAL_AUTHENTICATION_REQUIRED
+      ) as
+        | { resource: PersonalAuthenticationRequiredErrorResourceType }
+        | undefined;
+
+      if (personalAuthenticationRequiredError) {
+        // If we discovered such an error we return a typed error to the caller.
+        yield {
+          type: "result",
+          result: new Err(
+            new MCPServerPersonalAuthenticationRequiredError(
+              personalAuthenticationRequiredError.resource.mcpServerId,
+              personalAuthenticationRequiredError.resource
+                .provider as OAuthProvider,
+              personalAuthenticationRequiredError.resource
+                .useCase as OAuthUseCase
+            )
+          ),
+        };
+        return;
+      }
     }
-    // Type inference is not working here because of them using passthrough in the zod schema.
-    const content: MCPToolResultContentType[] = (toolCallResult.content ??
-      []) as MCPToolResultContentType[];
 
     if (content.length >= MAX_OUTPUT_ITEMS) {
       yield {
@@ -359,26 +414,36 @@ async function getMCPClientConnectionParams(
   });
 }
 
-function getPrefixedToolName(
+export function getPrefixedToolName(
   config: MCPServerConfigurationType,
   originalName: string
 ): Result<string, Error> {
   const slugifiedConfigName = slugify(config.name);
   const slugifiedOriginalName = slugify(originalName);
+  const separator = TOOL_NAME_SEPARATOR;
 
-  const prefixedName = `${slugifiedConfigName}${TOOL_NAME_SEPARATOR}${slugifiedOriginalName}`;
+  // If the original name is already too long, we can't use it.
+  if (slugifiedOriginalName.length > MAX_TOOL_NAME_LENGTH) {
+    return new Err(
+      new Error(
+        `Tool name "${originalName}" is too long. Maximum length is ${MAX_TOOL_NAME_LENGTH} characters.`
+      )
+    );
+  }
 
-  // If the prefixed name is too long, we return the unprefixed original name directly.
-  if (prefixedName.length >= MAX_TOOL_NAME_LENGTH) {
-    if (slugifiedOriginalName.length >= MAX_TOOL_NAME_LENGTH) {
-      return new Err(
-        new Error(
-          `Tool name too long: ${originalName} (max length is ${MAX_TOOL_NAME_LENGTH})`
-        )
-      );
-    }
+  // Calculate if we have enough room for a meaningful prefix (3 chars) plus separator
+  const minPrefixLength = 3 + separator.length;
+  const availableSpace = MAX_TOOL_NAME_LENGTH - slugifiedOriginalName.length;
+
+  // If we don't have enough room for a meaningful prefix, just return the original name
+  if (availableSpace < minPrefixLength) {
     return new Ok(slugifiedOriginalName);
   }
+
+  // Calculate the maximum allowed length for the config name portion
+  const maxConfigNameLength = availableSpace - separator.length;
+  const truncatedConfigName = slugifiedConfigName.slice(0, maxConfigNameLength);
+  const prefixedName = `${truncatedConfigName}${separator}${slugifiedOriginalName}`;
 
   return new Ok(prefixedName);
 }

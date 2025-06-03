@@ -77,6 +77,7 @@ export {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTagItem,
+  DropdownMenuTagList,
   DropdownMenuTrigger,
 } from "./Dropdown";
 export { default as DropzoneOverlay } from "./DropzoneOverlay";
@@ -96,6 +97,14 @@ export { LinkWrapper } from "./LinkWrapper";
 export { LoadingBlock } from "./LoadingBlock";
 export * from "./markdown";
 export { markdownStyles } from "./markdown/styles";
+export {
+  MultiPageSheet,
+  MultiPageSheetClose,
+  MultiPageSheetContent,
+  type MultiPageSheetPage,
+  type MultiPageSheetProps,
+  MultiPageSheetTrigger,
+} from "./MultiPageSheet";
 export * from "./NavigationList";
 export type { NotificationType } from "./Notification";
 export { Notification, useSendNotification } from "./Notification";

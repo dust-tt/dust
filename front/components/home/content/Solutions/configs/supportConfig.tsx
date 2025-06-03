@@ -119,9 +119,9 @@ export const UseCases: UseCaseProps = {
     "Create custom AI agents without writing a single line of code.",
   items: [
     {
-      title: "Ticket deflection",
+      title: "Ticket routing",
       content:
-        "Integrate AI agents in your product interface to deflect Tier 1 tickets and reduce support workload.",
+        "Automatically classify and route support tickets based on query history and team domain expertise.",
       images: ["/static/landing/support/ticketDeflection.png"],
     },
     {

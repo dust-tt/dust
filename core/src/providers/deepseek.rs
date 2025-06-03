@@ -126,10 +126,15 @@ impl LLM for DeepseekLLM {
         _extras: Option<Value>,
         event_sender: Option<UnboundedSender<Value>>,
     ) -> Result<LLMChatGeneration> {
+        let api_key = match self.api_key.clone() {
+            Some(key) => key,
+            None => Err(anyhow!("DEEPSEEK_API_KEY is not set."))?,
+        };
+
         openai_compatible_chat_completion(
             self.chat_uri()?,
             self.id.clone(),
-            self.api_key.clone().unwrap(),
+            api_key,
             // Pre-process messages if model is deepseek-reasoner.
             match MODEL_IDS_WITH_TOOLS_SUPPORT.contains(&self.id.as_str()) {
                 false => Some(strip_tools_from_chat_history(messages)),

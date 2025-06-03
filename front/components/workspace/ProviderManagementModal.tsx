@@ -37,6 +37,7 @@ const prettyfiedProviderNames: { [key in ModelProviderIdType]: string } = {
   togetherai: "TogetherAI",
   deepseek: "Deepseek",
   fireworks: "Fireworks",
+  xai: "xAI",
 };
 
 const modelProviders: Record<ModelProviderIdType, string[]> = uniqBy(

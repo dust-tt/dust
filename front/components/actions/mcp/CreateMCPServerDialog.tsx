@@ -9,8 +9,10 @@ import {
   Label,
   useSendNotification,
 } from "@dust-tt/sparkle";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
+import { MCPServerOAuthConnexion } from "@app/components/actions/mcp/MCPServerOAuthConnexion";
+import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata";
 import type { MCPServerType } from "@app/lib/api/mcp";
 import {
@@ -18,7 +20,7 @@ import {
   useCreateMCPServerConnection,
   useCreateRemoteMCPServer,
 } from "@app/lib/swr/mcp_servers";
-import type { WorkspaceType } from "@app/types";
+import type { OAuthCredentials, WorkspaceType } from "@app/types";
 import {
   OAUTH_PROVIDER_NAMES,
   setupOAuthConnection,
@@ -34,7 +36,7 @@ type RemoteMCPServerDetailsProps = {
   setIsOpen: (isOpen: boolean) => void;
 };
 
-export function CreateMCPServerModal({
+export function CreateMCPServerDialog({
   owner,
   internalMCPServer,
   setMCPServer,
@@ -44,15 +46,24 @@ export function CreateMCPServerModal({
 }: RemoteMCPServerDetailsProps) {
   const sendNotification = useSendNotification();
   const [url, setUrl] = useState("");
+  const [sharedSecret, setSharedSecret] = useState<string | undefined>(
+    undefined
+  );
+  const [authCredentials, setAuthCredentials] =
+    useState<OAuthCredentials | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isFormValid, setIsFormValid] = useState(true);
   const [authorization, setAuthorization] = useState<AuthorizationInfo | null>(
     null
   );
 
   const { createWithUrlSync } = useCreateRemoteMCPServer(owner);
-  const { createMCPServerConnection } = useCreateMCPServerConnection({ owner });
-
+  const { createMCPServerConnection } = useCreateMCPServerConnection({
+    owner,
+    connectionType: "workspace",
+  });
   const { createInternalMCPServer } = useCreateInternalMCPServer(owner);
+
   useEffect(() => {
     if (internalMCPServer) {
       setAuthorization(internalMCPServer.authorization);
@@ -61,7 +72,15 @@ export function CreateMCPServerModal({
     }
   }, [internalMCPServer]);
 
-  const handleSave = async (e: Event) => {
+  const resetState = useCallback(() => {
+    setIsLoading(false);
+    setError(null);
+    setUrl("");
+    setSharedSecret(undefined);
+    setAuthCredentials(null);
+  }, [setIsLoading]);
+
+  const handleSave = async (e: React.MouseEvent<HTMLButtonElement>) => {
     if (internalMCPServer) {
       setIsLoading(true);
 
@@ -72,7 +91,7 @@ export function CreateMCPServerModal({
           owner,
           provider: authorization.provider,
           useCase: authorization.use_case,
-          extraConfig: {},
+          extraConfig: authCredentials ?? {},
         });
         if (cRes.isErr()) {
           sendNotification({
@@ -122,7 +141,7 @@ export function CreateMCPServerModal({
 
       try {
         setIsLoading(true);
-        const result = await createWithUrlSync(url, true);
+        const result = await createWithUrlSync(url, true, sharedSecret);
 
         if (result.success) {
           sendNotification({
@@ -142,66 +161,88 @@ export function CreateMCPServerModal({
             error instanceof Error ? error.message : "An error occurred",
         });
       } finally {
-        setIsLoading(false);
-        setError(null);
-        setUrl("");
+        resetState();
       }
     }
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        setIsOpen(open);
+        resetState();
+      }}
+    >
       <DialogContent size="lg">
         <DialogHeader>
           <DialogTitle>
-            {internalMCPServer ? "Add Tools" : "Add MCP Server"}
+            {internalMCPServer
+              ? `Add ${getMcpServerDisplayName(internalMCPServer)}`
+              : "Add MCP Server"}
           </DialogTitle>
         </DialogHeader>
         <DialogContainer>
           {!internalMCPServer && (
-            <div className="space-y-2">
-              <Label htmlFor="url">URL</Label>
-              <div className="flex space-x-2">
-                <div className="flex-grow">
-                  <Input
-                    id="url"
-                    placeholder="https://example.com/api/mcp"
-                    value={url}
-                    onChange={(e) => setUrl(e.target.value)}
-                    isError={!!error}
-                    message={error}
-                    autoFocus
-                  />
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="url">URL</Label>
+                <div className="flex space-x-2">
+                  <div className="flex-grow">
+                    <Input
+                      id="url"
+                      placeholder="https://example.com/api/mcp"
+                      value={url}
+                      onChange={(e) => setUrl(e.target.value)}
+                      isError={!!error}
+                      message={error}
+                      autoFocus
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
+              <div className="space-y-2">
+                <Label htmlFor="sharedSecret">
+                  Bearer Token (if the server requires authentication)
+                </Label>
+                <div className="flex space-x-2">
+                  <div className="flex-grow">
+                    <Input
+                      id="sharedSecret"
+                      placeholder="Paste the Bearer Token here (optional)"
+                      value={sharedSecret}
+                      onChange={(e) => setSharedSecret(e.target.value)}
+                    />
+                  </div>
+                </div>
+              </div>
+            </>
           )}
-          {authorization && (
-            <div className="flex flex-col items-center gap-2">
-              <Label className="self-start">
-                These tools require authentication with{" "}
-                {OAUTH_PROVIDER_NAMES[authorization.provider]}.
-              </Label>
-              <span className="w-full font-semibold text-red-500">
-                Authentication credentials will be shared by all users of this
-                workspace when they use these tools.
-              </span>
-            </div>
-          )}
+          <MCPServerOAuthConnexion
+            authorization={authorization}
+            authCredentials={authCredentials}
+            setAuthCredentials={setAuthCredentials}
+            setIsFormValid={setIsFormValid}
+          />
         </DialogContainer>
         <DialogFooter
           leftButtonProps={{
             label: "Cancel",
             variant: "ghost",
-            onClick: () => {
-              setUrl("");
-              setError(null);
-            },
+            onClick: resetState,
           }}
           rightButtonProps={{
             label: authorization ? "Save and connect" : "Save",
             variant: "primary",
-            onClick: handleSave,
+            onClick: (e: React.MouseEvent<HTMLButtonElement>) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (isFormValid) {
+                void handleSave(e);
+                setIsOpen(false);
+              }
+            },
+            disabled: !isFormValid,
           }}
         />
       </DialogContent>

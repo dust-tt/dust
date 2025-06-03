@@ -1,14 +1,14 @@
 import type { Logger } from "pino";
 
+import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
+import { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { Workspace } from "@app/lib/models/workspace";
+import { TagResource } from "@app/lib/resources/tags_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import type { LightWorkspaceType } from "@app/types";
-import { TagResource } from "@app/lib/resources/tags_resource";
-import { Authenticator } from "@app/lib/auth";
-import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 
 const migrateWorkspace = async (
   workspace: LightWorkspaceType,

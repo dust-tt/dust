@@ -1,6 +1,7 @@
 import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
+import { useMemo } from "react";
 
 import {
   Counter,
@@ -129,12 +130,12 @@ const labelVariants = cva("", {
 type SpinnerVariant = NonNullable<SpinnerProps["variant"]>;
 
 const spinnerVariantsMap: Record<ButtonVariantType, SpinnerVariant> = {
-  primary: "gray50",
-  highlight: "gray50",
-  warning: "gray50",
-  outline: "gray500",
-  ghost: "gray500",
-  "ghost-secondary": "gray400",
+  primary: "revert",
+  highlight: "light",
+  warning: "light",
+  outline: "mono",
+  ghost: "mono",
+  "ghost-secondary": "mono",
 };
 
 const chevronVariantMap = {
@@ -293,6 +294,18 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       </>
     );
 
+    const pointerEventProps = useMemo(() => {
+      if (isLoading || props.disabled) {
+        return {
+          onPointerDown: (e: React.PointerEvent<HTMLButtonElement>) => {
+            e.preventDefault();
+            e.stopPropagation();
+          },
+        };
+      }
+      return {};
+    }, [isLoading, props.disabled]);
+
     const innerButton = (
       <MetaButton
         ref={ref}
@@ -308,6 +321,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
           } as React.CSSProperties
         }
         {...props}
+        {...pointerEventProps}
       >
         {content}
       </MetaButton>

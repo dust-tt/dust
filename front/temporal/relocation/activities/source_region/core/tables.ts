@@ -78,6 +78,11 @@ export async function getDataSourceTables({
 
   const { nodes, next_page_cursor: nextPageCursor } = searchResults.value;
 
+  localLogger.info(
+    { length: nodes.length, nextPageCursor },
+    "[Core] Fetching table blobs"
+  );
+
   // 2) Get the table blobs.
   const res = await concurrentExecutor(
     nodes,
@@ -128,6 +133,14 @@ export async function getDataSourceTables({
       tables: tableBlobs,
     },
   };
+
+  localLogger.info(
+    {
+      tableBlobsLength: tableBlobs.length,
+      dataLength: JSON.stringify(blobs).length,
+    },
+    "[Core] Blobs fetched, now writing to target storage"
+  );
 
   // 3) Save the tables blobs to file storage.
   const dataPath = await writeToRelocationStorage(blobs, {

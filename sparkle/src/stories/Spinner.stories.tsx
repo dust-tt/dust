@@ -14,100 +14,88 @@ type Story = StoryObj<typeof meta>;
 export const SpinnerExample = () => {
   return (
     <div className="s-flex s-flex-col s-gap-4">
-      Size = XS
+      <div className="s-heading-base s-text-foreground dark:s-text-white">
+        Size = XS
+      </div>
       <div className="s-flex s-gap-4">
         <div className="s-p-20">
           <Spinner variant="color" size="xs" />
         </div>
-        <div className="s-bg-primary-900 s-p-20">
-          <Spinner variant="light" size="xs" />
-        </div>
-        <div className="s-bg-blue-500 s-p-20">
-          <Spinner variant="light" size="xs" />
-        </div>
         <div className="s-p-20">
-          <Spinner variant="dark" size="xs" />
+          <Spinner variant="mono" size="xs" />
         </div>
         <div className="s-p-20">
           <Spinner variant="rose300" size="xs" />
         </div>
       </div>
-      Size = SM
+      <div className="s-heading-base s-text-foreground dark:s-text-white">
+        Size = SM
+      </div>
       <div className="s-flex s-gap-4">
         <div className="s-p-20">
           <Spinner variant="color" size="sm" />
         </div>
-        <div className="s-bg-primary-900 s-p-20">
-          <Spinner variant="light" size="sm" />
-        </div>
-        <div className="s-bg-blue-500 s-p-20">
-          <Spinner variant="light" size="sm" />
-        </div>
         <div className="s-p-20">
-          <Spinner variant="dark" size="sm" />
+          <Spinner variant="mono" size="sm" />
         </div>
         <div className="s-p-20">
           <Spinner variant="rose300" size="sm" />
         </div>
       </div>
-      Size = MD
+      <div className="s-heading-base s-text-foreground dark:s-text-white">
+        Size = MD
+      </div>
       <div className="s-flex s-gap-4">
         <div className="s-p-20">
           <Spinner variant="color" size="md" />
         </div>
-        <div className="s-bg-primary-900 s-p-20">
-          <Spinner variant="light" size="md" />
-        </div>
-        <div className="s-bg-blue-500 s-p-20">
-          <Spinner variant="light" size="md" />
+        <div className="s-p-20">
+          <Spinner variant="mono" size="md" />
         </div>
         <div className="s-p-20">
-          <Spinner variant="dark" size="md" />
+          <Spinner variant="rose300" size="md" />
         </div>
       </div>
-      Size = LG
+      <div className="s-heading-base s-text-foreground dark:s-text-white">
+        Size = LG
+      </div>
       <div className="s-flex s-gap-4">
         <div className="s-p-20">
           <Spinner variant="color" size="lg" />
         </div>
-        <div className="s-bg-primary-900 s-p-20">
-          <Spinner variant="light" size="lg" />
-        </div>
-        <div className="s-bg-blue-500 s-p-20">
-          <Spinner variant="light" size="lg" />
+        <div className="s-p-20">
+          <Spinner variant="mono" size="lg" />
         </div>
         <div className="s-p-20">
-          <Spinner variant="dark" size="lg" />
+          <Spinner variant="rose300" size="lg" />
         </div>
       </div>
-      Size = XL
+      <div className="s-heading-base s-text-foreground dark:s-text-white">
+        Size = XL
+      </div>
       <div className="s-flex s-gap-4">
         <div className="s-p-20">
           <Spinner variant="color" size="xl" />
         </div>
-        <div className="s-bg-primary-900 s-p-20">
-          <Spinner variant="light" size="xl" />
-        </div>
-        <div className="s-bg-blue-500 s-p-20">
-          <Spinner variant="light" size="xl" />
+        <div className="s-p-20">
+          <Spinner variant="mono" size="xl" />
         </div>
         <div className="s-p-20">
-          <Spinner variant="dark" size="xl" />
+          <Spinner variant="rose300" size="xl" />
         </div>
       </div>
-      Size = XXL
+      <div className="s-heading-base s-text-foreground dark:s-text-white">
+        Size = XXL
+      </div>
       <div className="s-flex s-gap-4">
         <div className="s-p-20">
           <Spinner variant="color" size="xxl" />
         </div>
-        <div className="s-bg-primary-900 s-p-20">
-          <Spinner variant="light" size="xxl" />
-        </div>
-        <div className="s-bg-blue-500 s-p-20">
-          <Spinner variant="light" size="xxl" />
+        <div className="s-p-20">
+          <Spinner variant="mono" size="xxl" />
         </div>
         <div className="s-p-20">
-          <Spinner variant="dark" size="xxl" />
+          <Spinner variant="rose300" size="xxl" />
         </div>
       </div>
     </div>

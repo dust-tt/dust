@@ -16,6 +16,7 @@ import type {
   UserTypeWithWorkspaces,
   WorkspaceType,
 } from "@app/types";
+import type { JobType } from "@app/types/job_type";
 
 import type { UserResource } from "../resources/user_resource";
 
@@ -263,6 +264,32 @@ export class ServerSideTracking {
       logger.error(
         { userId: user.sId, workspaceId: workspace.sId, err },
         "Failed to track update membership role on Customer.io"
+      );
+    }
+  }
+
+  static async trackUpdateUser({
+    user,
+    workspace,
+    role,
+    jobType,
+  }: {
+    user: UserType;
+    workspace: LightWorkspaceType;
+    role: MembershipRoleType;
+    jobType?: JobType;
+  }) {
+    try {
+      await CustomerioServerSideTracking.trackUpdateUser({
+        user,
+        workspace,
+        role,
+        jobType,
+      });
+    } catch (err) {
+      logger.error(
+        { userId: user.sId, workspaceId: workspace.sId, err },
+        "Failed to track update user onboardingInfo on Customer.io"
       );
     }
   }
