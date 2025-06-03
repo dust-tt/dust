@@ -78,7 +78,7 @@ const OPTION_PARAMETERS = {
     .optional()
     .describe(
       "Cursor for fetching the next page of results. Use this parameter only to fetch the next " +
-        "page of a previous search. The value should be exactly the 'next_page_cursor' from the " +
+        "page of a previous search. The value should be exactly the 'nextPageCursor' from the " +
         "previous search result."
     ),
 };
