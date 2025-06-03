@@ -11,6 +11,9 @@ CREATE TEMP TABLE workos_mapping (
 -- Verify data loaded correctly
 SELECT COUNT(*) FROM workos_mapping;
 
+-- Check how many are not null before the update
+SELECT COUNT(*) FROM users WHERE "workOSUserId" IS NOT NULL;
+
 -- Run the backfill update
 UPDATE users
 SET "workOSUserId" = wm.workos_user_id
