@@ -154,7 +154,7 @@ export async function constructPromptMultiActions(
     "\nParentheses cannot be used to enclose mathematical formulas: BAD: \\( \\Delta \\), GOOD: $$ \\Delta $$.\n";
 
   // INSTRUCTIONS section
-  let instructions = "# INSTRUCTIONS\n";
+  let instructions = "# INSTRUCTIONS\n\n";
 
   if (agentConfiguration.instructions) {
     instructions += `${agentConfiguration.instructions}\n`;

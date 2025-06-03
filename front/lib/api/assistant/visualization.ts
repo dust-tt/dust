@@ -162,5 +162,4 @@ const SineCosineChart = () => {
 };
 
 export default SineCosineChart;
-:::
-`;
+:::`;
