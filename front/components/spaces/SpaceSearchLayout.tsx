@@ -461,6 +461,8 @@ function SearchResultsTable({
 
   const sendNotification = useSendNotification();
 
+  // `contentActionsRef` is always null in a search context as results are pulled across data
+  // sources views. We still create the ref to comply to the API of getMenuItems.
   const contentActionsRef = React.useRef<ContentActionsRef>(null);
 
   const addToSpace = React.useCallback(

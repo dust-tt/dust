@@ -182,7 +182,11 @@ export const getMenuItems = (
     });
   }
 
-  if (canWriteInSpace && isFolder(dataSourceView.dataSource)) {
+  if (
+    canWriteInSpace &&
+    isFolder(dataSourceView.dataSource) &&
+    contentActionsRef.current !== null
+  ) {
     actions.push({
       kind: "item",
       label: "Edit",
