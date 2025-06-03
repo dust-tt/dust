@@ -133,6 +133,7 @@ async function handler(
       const {
         title,
         visibility,
+        depth,
         message,
         contentFragment,
         contentFragments,
@@ -249,6 +250,7 @@ async function handler(
       let conversation = await createConversation(auth, {
         title: title ?? null,
         visibility,
+        depth,
       });
 
       let newContentFragment: ContentFragmentType | null = null;
