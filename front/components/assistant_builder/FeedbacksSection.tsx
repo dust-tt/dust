@@ -108,59 +108,77 @@ export const FeedbacksSection = ({
     );
   }
 
+  // Group feedbacks by agent configuration version
+  const feedbacksByVersion = agentConfigurationFeedbacks?.reduce((acc, feedback) => {
+    const version = feedback.agentConfigurationVersion;
+    if (!acc[version]) {
+      acc[version] = [];
+    }
+    acc[version].push(feedback);
+    return acc;
+  }, {} as Record<number, typeof agentConfigurationFeedbacks>) || {};
+
+  // Get versions in order (preserving the original feedback order)
+  const versionsInOrder = Array.from(new Set(
+    agentConfigurationFeedbacks?.map(f => f.agentConfigurationVersion) || []
+  ));
+
+  const latestVersion = agentConfigurationHistory[0].version;
+
   return (
     <>
       {gridMode ? (
         <div className="flex flex-col gap-4">
-          <AgentConfigurationVersionHeader
-            agentConfiguration={agentConfigurationHistory[0]}
-            agentConfigurationVersion={agentConfigurationHistory[0].version}
-            isLatestVersion
-          />
-          <div className="@container">
-            <div className="grid grid-cols-1 gap-4 @[48rem]:grid-cols-2">
-              {agentConfigurationFeedbacks?.map((feedback) => (
-                <MemoizedFeedbackCard
-                  key={feedback.id}
-                  className="h-full"
-                  owner={owner}
-                  feedback={feedback as AgentMessageFeedbackWithMetadataType}
+          {versionsInOrder.map((version) => {
+            const versionFeedbacks = feedbacksByVersion[version];
+            const agentConfig = agentConfigurationHistory?.find(c => c.version === version);
+            const isLatestVersion = version === latestVersion;
+
+            return (
+              <div key={version} className="flex flex-col gap-4">
+                <AgentConfigurationVersionHeader
+                  agentConfiguration={agentConfig}
+                  agentConfigurationVersion={version}
+                  isLatestVersion={isLatestVersion}
                 />
-              ))}
-            </div>
-          </div>
+                <div className="@container">
+                  <div className="grid grid-cols-1 gap-4 @[48rem]:grid-cols-2">
+                    {versionFeedbacks?.map((feedback) => (
+                      <MemoizedFeedbackCard
+                        key={feedback.id}
+                        className="h-full"
+                        owner={owner}
+                        feedback={feedback as AgentMessageFeedbackWithMetadataType}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
       ) : (
         <div className="flex flex-col gap-2">
-          <AgentConfigurationVersionHeader
-            agentConfiguration={agentConfigurationHistory[0]}
-            agentConfigurationVersion={agentConfigurationHistory[0].version}
-            isLatestVersion
-          />
-          {agentConfigurationFeedbacks?.map((feedback, index) => {
-            const isFirstFeedback = index === 0;
-            const previousFeedbackHasDifferentVersion =
-              !isFirstFeedback &&
-              feedback.agentConfigurationVersion !==
-                agentConfigurationFeedbacks[index - 1]
-                  .agentConfigurationVersion;
+          {versionsInOrder.map((version) => {
+            const versionFeedbacks = feedbacksByVersion[version];
+            const agentConfig = agentConfigurationHistory?.find(c => c.version === version);
+            const isLatestVersion = version === latestVersion;
+
             return (
-              <div key={feedback.id} className="animate-fadeIn">
-                {previousFeedbackHasDifferentVersion && (
-                  <AgentConfigurationVersionHeader
-                    agentConfiguration={agentConfigurationHistory?.find(
-                      (c) => c.version === feedback.agentConfigurationVersion
-                    )}
-                    agentConfigurationVersion={
-                      feedback.agentConfigurationVersion
-                    }
-                    isLatestVersion={false}
-                  />
-                )}
-                <MemoizedFeedbackCard
-                  owner={owner}
-                  feedback={feedback as AgentMessageFeedbackWithMetadataType}
+              <div key={version} className="flex flex-col gap-2">
+                <AgentConfigurationVersionHeader
+                  agentConfiguration={agentConfig}
+                  agentConfigurationVersion={version}
+                  isLatestVersion={isLatestVersion}
                 />
+                {versionFeedbacks?.map((feedback) => (
+                  <div key={feedback.id} className="animate-fadeIn">
+                    <MemoizedFeedbackCard
+                      owner={owner}
+                      feedback={feedback as AgentMessageFeedbackWithMetadataType}
+                    />
+                  </div>
+                ))}
               </div>
             );
           })}
