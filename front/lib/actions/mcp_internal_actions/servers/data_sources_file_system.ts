@@ -67,7 +67,7 @@ const createServer = (): McpServer => {
 
   server.tool(
     "find",
-    "Find content based on their title. Use this when you need to find specific " +
+    "Find content based on their title, type or other metadata. Use this when you need to find specific " +
       "files, documents, folders, or other content by searching for their titles. This searches " +
       "through user-uploaded files and data synced from SaaS products (Notion, Slack, Github, " +
       "etc...). This is like using 'find -name' in Unix - it will find all items whose titles " +
@@ -76,10 +76,20 @@ const createServer = (): McpServer => {
     {
       query: z
         .string()
+        .optional()
         .describe(
-          "The title or name to search for. This supports partial matching - you don't need the " +
+          "The title to search for. This supports partial matching - you don't need the " +
             "exact title. For example, searching for 'budget' will find 'Budget 2024.xlsx', " +
             "'Q1 Budget Report', etc. Use keywords from the title the user mentioned."
+        ),
+      rootNodeId: z
+        .string()
+        .optional()
+        .describe(
+          "The node ID of the root node to start the search from. If not provided, the search will " +
+            "start from the root of the data source. Get this ID from previous search results (it's " +
+            "the 'nodeId' field). Use this parameter to restrict the search to the children and " +
+            "descendant of a specific node."
         ),
       dataSources:
         ConfigurableToolInputSchemas[
@@ -196,7 +206,7 @@ const createServer = (): McpServer => {
       }
 
       return makeMCPToolJSONSuccess({
-        message: "Folder contents listed successfully.",
+        message: "Content listed successfully.",
         result: renderSearchResults(searchResult.value),
       });
     }
