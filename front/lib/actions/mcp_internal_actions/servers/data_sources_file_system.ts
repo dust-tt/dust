@@ -27,8 +27,9 @@ const serverInfo: InternalMCPServerDefinitionType = {
   description:
     "Comprehensive content navigation toolkit for browsing user data sources. Provides Unix-like " +
     "browsing (ls, find) and smart search tools to help agents efficiently explore and discover " +
-    "documents, folders, and tables from manually uploaded files or data synced from SaaS products " +
-    "(Notion, Slack, Github, etc.) organized in a filesystem-like hierarchy.",
+    "content from manually uploaded files or data synced from SaaS products (Notion, Slack, Github" +
+    ", etc.) organized in a filesystem-like hierarchy. Each item in this tree-like hierarchy is " +
+    "called a node, nodes are referenced by a nodeId.",
   authorization: null,
   icon: "ActionDocumentTextIcon",
 };
@@ -124,18 +125,18 @@ const createServer = (): McpServer => {
 
   server.tool(
     "list",
-    "List the direct contents of a folder or container. Use this when you want to see what's " +
+    "List the direct contents of a node. Use this when you want to see what's " +
       "inside a specific folder from your uploaded files or synced data sources (Notion, Slack, " +
       "Github, etc.), like 'ls' in Unix. A good fit is when you need to explore the filesystem " +
-      "structure step by step. This tool can be called repeatedly by passing the 'id' output " +
-      "at a step to the next step's parentId.",
+      "structure step by step. This tool can be called repeatedly by passing the 'nodeId' output " +
+      "from a step to the next step's nodeId.",
     {
-      parentId: z
+      nodeId: z
         .string()
         .nullable()
         .describe(
-          "The exact ID of the folder/container whose contents you want to list. " +
-            "Get this ID from previous search results (it's the 'id' field)."
+          "The exact ID of the node whose contents you want to list. " +
+            "Get this ID from previous search results (it's the 'nodeId' field)."
         ),
       dataSources:
         ConfigurableToolInputSchemas[
@@ -143,7 +144,7 @@ const createServer = (): McpServer => {
         ],
       ...OPTION_PARAMETERS,
     },
-    async ({ parentId, dataSources, limit, sortBy, nextPageCursor }) => {
+    async ({ nodeId, dataSources, limit, sortBy, nextPageCursor }) => {
       const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
       const fetchResult = await getAgentDataSourceConfigurations(dataSources);
 
@@ -158,7 +159,7 @@ const createServer = (): McpServer => {
             agentDataSourceConfigurations
           ),
           // "root" is a special parent id that represents the root of the data source view.
-          parent_id: parentId ?? "root",
+          parent_id: nodeId ?? "root",
         },
         options: {
           cursor: nextPageCursor,
@@ -314,7 +315,7 @@ function formatTimestamp(timestamp: number): string {
  */
 function renderNode(node: CoreAPIContentNode) {
   return {
-    id: node.node_id,
+    nodeId: node.node_id,
     type: node.node_type,
     title: node.title,
     parent_id: node.parent_id,
