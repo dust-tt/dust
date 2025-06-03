@@ -1401,6 +1401,7 @@ const MCPApproveExecutionEventSchema = z.object({
   type: z.literal("tool_approve_execution"),
   created: z.number(),
   configurationId: z.string(),
+  conversationId: z.string(),
   messageId: z.string(),
   actionId: z.string(),
   inputs: z.record(z.any()),

@@ -243,6 +243,7 @@ export default async function createServer(
             // parent tool execution.
             // In the MCP server runner, we translate them into a tool_approve_execution event
             // that can be ultimately shown to the end user.
+            // This part only passes along the event data without modifying them.
             const notification: MCPProgressNotificationType = {
               method: "notifications/progress",
               params: {
@@ -255,10 +256,9 @@ export default async function createServer(
                     type: "resource",
                     resource: {
                       type: "tool_approve_execution",
-                      // TODO(2025-06-03): remove fields that are not necessary from the notification here.
                       configurationId: event.configurationId,
-                      conversationId: agentLoopRunContext.conversation.sId,
-                      messageId: agentLoopRunContext.agentMessage.sId,
+                      conversationId: event.conversationId,
+                      messageId: event.messageId,
                       actionId: event.actionId,
                       metadata: event.metadata,
                       stake: event.stake,
