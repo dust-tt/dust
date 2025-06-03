@@ -29,7 +29,8 @@ export type ActionGeneratedFileType = {
 
 type ConversationBaseActionType =
   | "conversation_list_files_action"
-  | "conversation_include_file_action";
+  | "conversation_include_file_action"
+  | "conversation_get_current_time_action";
 
 export type BaseActionType =
   | "browse_action"

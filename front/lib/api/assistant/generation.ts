@@ -55,7 +55,7 @@ export async function constructPromptMultiActions(
   // CONTEXT section
   let context = "CONTEXT:\n";
   context += `assistant: @${agentConfiguration.name}\n`;
-  context += `local_time: ${d.format("YYYY-MM-DD HH:mm (ddd)")}\n`;
+  context += `local_date: ${d.format("YYYY-MM-DD (ddd)")}\n`;
   context += `model_id: ${model.modelId}\n`;
   if (conversationId) {
     context += `conversation_id: ${conversationId}\n`;

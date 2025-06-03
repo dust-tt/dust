@@ -1,4 +1,5 @@
 import type { BrowseActionType } from "@app/lib/actions/browse";
+import type { ConversationGetCurrentTimeActionType } from "@app/lib/actions/conversation/get_current_time";
 import type { ConversationIncludeFileActionType } from "@app/lib/actions/conversation/include_file";
 import type { ConversationListFilesActionType } from "@app/lib/actions/conversation/list_files";
 import type { DustAppRunActionType } from "@app/lib/actions/dust_app_run";
@@ -139,7 +140,8 @@ export type ConfigurableAgentActionType =
 
 export type ConversationAgentActionType =
   | ConversationListFilesActionType
-  | ConversationIncludeFileActionType;
+  | ConversationIncludeFileActionType
+  | ConversationGetCurrentTimeActionType;
 
 export type AgentActionType =
   | ConfigurableAgentActionType
@@ -154,6 +156,7 @@ export type AgentMessageStatus =
 
 export const ACTION_RUNNING_LABELS: Record<AgentActionType["type"], string> = {
   browse_action: "Browsing page",
+  conversation_get_current_time_action: "Getting current time",
   conversation_include_file_action: "Reading file",
   conversation_list_files_action: "Listing files",
   dust_app_run_action: "Running App",

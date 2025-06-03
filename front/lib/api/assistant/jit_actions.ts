@@ -9,6 +9,7 @@ import {
   DEFAULT_CONVERSATION_SEARCH_ACTION_NAME,
   DEFAULT_SEARCH_LABELS_ACTION_NAME,
 } from "@app/lib/actions/constants";
+import { makeConversationGetCurrentTimeAction } from "@app/lib/actions/conversation/get_current_time";
 import { makeConversationIncludeFileConfiguration } from "@app/lib/actions/conversation/include_file";
 import type {
   ConversationAttachmentType,
@@ -47,6 +48,7 @@ import type {
   AgentActionType,
   AgentMessageType,
   ConversationType,
+  UserMessageType,
 } from "@app/types";
 import { assertNever, CoreAPI } from "@app/types";
 
@@ -324,10 +326,12 @@ export async function getEmulatedAndJITActions(
     agentMessage,
     agentActions,
     conversation,
+    userMessage,
   }: {
     agentMessage: AgentMessageType;
     agentActions: AgentActionConfigurationType[];
     conversation: ConversationType;
+    userMessage: UserMessageType;
   }
 ): Promise<{
   emulatedActions: AgentActionType[];
@@ -335,6 +339,13 @@ export async function getEmulatedAndJITActions(
 }> {
   const emulatedActions: AgentActionType[] = [];
   let jitActions: ActionConfigurationType[] = [];
+
+  // Add get current time action
+  const getCurrentTimeAction = makeConversationGetCurrentTimeAction({
+    agentMessage,
+    timezone: userMessage.context.timezone,
+  });
+  emulatedActions.push(getCurrentTimeAction);
 
   const files = listFiles(conversation);
   const a = makeConversationListFilesAction({

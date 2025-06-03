@@ -382,6 +382,7 @@ async function* runMultiActionsAgent(
     agentActions,
     agentMessage,
     conversation,
+    userMessage,
   });
 
   // Get client-side MCP server configurations from user message context.

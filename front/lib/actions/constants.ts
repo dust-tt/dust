@@ -23,6 +23,9 @@ export const DEFAULT_TABLES_QUERY_ACTION_NAME = "query_tables";
 export const DEFAULT_CONVERSATION_LIST_FILES_ACTION_NAME =
   "list_conversation_files";
 
+export const DEFAULT_CONVERSATION_GET_CURRENT_TIME_ACTION_NAME =
+  "get_current_time";
+
 export const DEFAULT_SEARCH_LABELS_ACTION_NAME = "search_labels";
 
 export const DEFAULT_CONVERSATION_INCLUDE_FILE_ACTION_NAME =

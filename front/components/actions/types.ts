@@ -59,6 +59,10 @@ const actionsSpecification: ActionSpecifications = {
     detailsComponent: () => null,
     runningLabel: ACTION_RUNNING_LABELS.conversation_list_files_action,
   },
+  conversation_get_current_time_action: {
+    detailsComponent: () => null,
+    runningLabel: ACTION_RUNNING_LABELS.conversation_get_current_time_action,
+  },
   conversation_include_file_action: {
     detailsComponent: ConversationIncludeFileActionDetails,
     runningLabel: ACTION_RUNNING_LABELS.conversation_include_file_action,
