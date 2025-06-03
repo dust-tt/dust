@@ -35,15 +35,13 @@ export function AgentBuilderProvider({
 > & {
   children: React.ReactNode;
 }) {
-  const [isPreviewPanelOpen, setIsPreviewPanelOpen] = useState(() => {
-    if (typeof window === "undefined") {
-      return false;
-    }
-    return window.innerWidth >= 1024;
-  });
+  const [isPreviewPanelOpen, setIsPreviewPanelOpen] = useState(false);
 
   useEffect(() => {
     const mediaQuery = window.matchMedia("(min-width: 1024px)");
+    
+    // Set initial state based on screen size after hydration
+    setIsPreviewPanelOpen(mediaQuery.matches);
 
     const handleMediaChange = (event: MediaQueryListEvent) => {
       setIsPreviewPanelOpen(event.matches);
