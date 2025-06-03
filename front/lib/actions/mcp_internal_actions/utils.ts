@@ -24,6 +24,14 @@ import {
 } from "@app/lib/utils/json_schemas";
 import type { WorkspaceType } from "@app/types";
 
+/**
+ * Error tool result. This will make the action fail in the agent loop, and is
+ * equivalent to throwing an error.
+ *
+ * DO NOT USE if the intent is to show an issue to the agent, but to let the
+ * agentic loop continue (in such a case the tool result should have `isError`
+ * set to false). Use `makeMCPToolRecoverableErrorSuccess` instead.
+ */
 export function makeMCPToolTextError(text: string): MCPToolResult {
   return {
     isError: true,
@@ -33,6 +41,21 @@ export function makeMCPToolTextError(text: string): MCPToolResult {
         text,
       },
     ],
+  };
+}
+
+/**
+ * Success tool result. This will make the action continue in the agent loop.
+ *
+ * Use this if the intent is to show an issue to the agent, but to let the
+ * agentic loop continue.
+ */
+export function makeMCPToolRecoverableErrorSuccess(
+  errorText: string
+): MCPToolResult {
+  return {
+    isError: false,
+    content: [{ type: "text", text: errorText }],
   };
 }
 

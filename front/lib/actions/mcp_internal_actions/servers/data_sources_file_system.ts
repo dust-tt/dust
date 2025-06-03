@@ -11,6 +11,7 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/servers/utils";
 import {
   makeMCPToolJSONSuccess,
+  makeMCPToolRecoverableErrorSuccess,
   makeMCPToolTextError,
 } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -87,6 +88,90 @@ const createServer = (
   agentLoopContext?: AgentLoopContextType
 ): McpServer => {
   const server = new McpServer(serverInfo);
+
+  server.tool(
+    "cat",
+    "Read the contents of a document, referred to by its nodeId (named after the 'cat' unix tool). The nodeId can be obtained using the 'find_by_title', 'find' or 'search' tools.",
+    {
+      dataSources:
+        ConfigurableToolInputSchemas[
+          INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
+        ],
+      nodeId: z.string().describe("The ID of the node to read."),
+    },
+    async ({ dataSources, nodeId }) => {
+      const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+
+      // Gather data source configurations.
+      const fetchResult = await getAgentDataSourceConfigurations(dataSources);
+
+      if (fetchResult.isErr()) {
+        return makeMCPToolTextError(fetchResult.error.message);
+      }
+      const agentDataSourceConfigurations = fetchResult.value;
+
+      // Search the node using our search api.
+      const searchResult = await coreAPI.searchNodes({
+        filter: {
+          node_ids: [nodeId],
+          data_source_views: makeDataSourceViewFilter(
+            agentDataSourceConfigurations
+          ),
+        },
+      });
+
+      if (searchResult.isErr() || searchResult.value.nodes.length === 0) {
+        return makeMCPToolRecoverableErrorSuccess(
+          `Could not find node: ${nodeId} (error: ${
+            searchResult.isErr() ? searchResult.error : "No nodes found"
+          })`
+        );
+      }
+
+      const node = searchResult.value.nodes[0];
+
+      if (node.node_type !== "document") {
+        return makeMCPToolRecoverableErrorSuccess(
+          `Node is of type ${node.node_type}, not a document.`
+        );
+      }
+
+      // Get dustAPIProjectId from the data source configuration.
+      const dustAPIProjectId = agentDataSourceConfigurations.find(
+        (config) =>
+          config.dataSource.dustAPIDataSourceId === node.data_source_id
+      )?.dataSource.dustAPIProjectId;
+
+      if (!dustAPIProjectId) {
+        return makeMCPToolTextError(
+          `Could not find dustAPIProjectId for node: ${nodeId}`
+        );
+      }
+
+      // Read the node.
+      const readResult = await coreAPI.getDataSourceDocument({
+        dataSourceId: node.data_source_id,
+        documentId: node.node_id,
+        projectId: dustAPIProjectId,
+      });
+
+      if (readResult.isErr()) {
+        return makeMCPToolTextError(
+          `Could not read node: ${nodeId} (error: ${readResult.error})`
+        );
+      }
+
+      return {
+        isError: false,
+        content: [
+          {
+            type: "text",
+            text: readResult.value.document.text ?? "",
+          },
+        ],
+      };
+    }
+  );
 
   server.tool(
     "find",
