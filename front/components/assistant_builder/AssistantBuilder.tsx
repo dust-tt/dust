@@ -40,6 +40,7 @@ import type {
 import {
   BUILDER_SCREENS,
   BUILDER_SCREENS_INFOS,
+  getDataVisualizationActionConfiguration,
   getDefaultAssistantState,
 } from "@app/components/assistant_builder/types";
 import { useNavigationLock } from "@app/components/assistant_builder/useNavigationLock";
@@ -128,18 +129,21 @@ export default function AssistantBuilder({
           "There was an error retrieving the actions for this agent.",
         type: "error",
       });
+      return;
     }
-  }, [error, sendNotification]);
-
-  useEffect(() => {
     setBuilderState((prevState) => ({
       ...prevState,
-      actions: actions.map((action) => ({
-        id: uniqueId(),
-        ...action,
-      })),
+      actions: [
+        ...actions.map((action) => ({
+          id: uniqueId(),
+          ...action,
+        })),
+        ...(prevState.visualizationEnabled
+          ? [getDataVisualizationActionConfiguration()]
+          : []),
+      ],
     }));
-  }, [actions]);
+  }, [actions, error, sendNotification]);
 
   const [builderState, setBuilderState] = useState<AssistantBuilderState>(
     initialBuilderState

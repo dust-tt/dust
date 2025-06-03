@@ -75,16 +75,7 @@ async function handler(
       throw new Error("Invalid agent scope");
     }
 
-    const builderStateActions: GetActionsResponseBody = {
-      actions: [
-        ...actions,
-        ...(agentConfiguration.visualizationEnabled
-          ? [getDataVisualizationActionConfiguration()]
-          : []),
-      ],
-    };
-
-    res.status(200).json(builderStateActions);
+    res.status(200).json({ actions });
   } catch (error) {
     return apiError(req, res, {
       status_code: 500,
