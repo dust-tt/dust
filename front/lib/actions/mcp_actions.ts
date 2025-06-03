@@ -414,7 +414,7 @@ async function getMCPClientConnectionParams(
   });
 }
 
-function getPrefixedToolName(
+export function getPrefixedToolName(
   config: MCPServerConfigurationType,
   originalName: string
 ): Result<string, Error> {
