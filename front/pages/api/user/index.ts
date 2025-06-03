@@ -141,7 +141,7 @@ async function handler(
         }
       }
 
-      await ServerSideTracking.trackCompleteUserOnboarding({
+      await ServerSideTracking.trackUpdateUser({
         user: user,
         workspace: renderLightWorkspaceType({ workspace }),
         role: workspace.role !== "none" ? workspace.role : "user",
