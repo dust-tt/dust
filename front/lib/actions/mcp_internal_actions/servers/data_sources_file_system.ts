@@ -91,12 +91,9 @@ const createServer = (
 
   server.tool(
     "find",
-    "Find content based on their title, type or other metadata. Use this when you need to find specific " +
-      "files, documents, folders, or other content by searching for their titles. This searches " +
-      "through user-uploaded files and data synced from SaaS products (Notion, Slack, Github, " +
-      "etc...). This is like using 'find -name' in Unix - it will find all items whose titles " +
-      "contain or start with your search term. A good fit is when the user asks 'find the " +
-      "document called X' or 'show me files with Y in the name'.",
+    "Find content based on their title starting from a specific node. Use this when you need to " +
+      "find specific nodes by searching for their titles. The query title can be omitted to list all " +
+      "nodes starting from a specific node. This is like using 'find' in Unix.",
     {
       query: z
         .string()
@@ -161,11 +158,10 @@ const createServer = (
 
   server.tool(
     "list",
-    "List the direct contents of a node. Use this when you want to see what's " +
-      "inside a specific folder from your uploaded files or synced data sources (Notion, Slack, " +
-      "Github, etc.), like 'ls' in Unix. A good fit is when you need to explore the filesystem " +
-      "structure step by step. This tool can be called repeatedly by passing the 'nodeId' output " +
-      "from a step to the next step's nodeId.",
+    "List the direct contents of a node. Use this when you want to see what's inside a specific " +
+      "folder from the filesystem, like 'ls' in Unix. A good fit is when you need to explore the " +
+      "filesystem structure step by step. This tool can be called repeatedly by passing the 'nodeId' " +
+      "output from a step to the next step's nodeId.",
     {
       nodeId: z
         .string()
