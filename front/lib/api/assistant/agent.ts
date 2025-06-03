@@ -42,6 +42,7 @@ import { renderConversationForModel } from "@app/lib/api/assistant/preprocessing
 import config from "@app/lib/api/config";
 import { getRedisClient } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
+import { AgentMessageStepPlanning } from "@app/lib/models/assistant/actions/agent_message_step_planning";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
 import type { KillSwitchType } from "@app/lib/poke/types";
@@ -202,20 +203,42 @@ async function* runMultiActionsAgentLoop(
           // against the model outputting something unreasonable.
           event.actions = event.actions.slice(0, MAX_ACTIONS_PER_STEP);
 
-          const eventStreamGenerators = event.actions.map(
-            ({ action, inputs, functionCallId, specification }, index) => {
+          // We store the actions in the database using bulkCreate for efficiency.
+          const plannedActions = await AgentMessageStepPlanning.bulkCreate(
+            event.actions.map((action, stepActionIndex) => ({
+              workspaceId: auth.getNonNullableWorkspace().id,
+              agentMessageId: agentMessage.agentMessageId,
+              step: i,
+              stepActionIndex,
+              actionConfiguration: action.action,
+              actionInputs: action.inputs,
+              actionSpecification: action.specification,
+              functionCallId: action.functionCallId,
+            }))
+          );
+
+          const eventStreamGenerators = plannedActions.map(
+            (
+              {
+                actionConfiguration,
+                actionInputs,
+                functionCallId,
+                actionSpecification,
+              },
+              index
+            ) => {
               return runAction(auth, {
                 configuration,
-                actionConfiguration: action,
+                actionConfiguration,
                 conversation,
                 userMessage,
                 agentMessage,
-                inputs,
-                specification,
+                inputs: actionInputs,
+                specification: actionSpecification,
                 functionCallId,
                 step: i,
                 stepActionIndex: index,
-                stepActions: event.actions.map((a) => a.action),
+                stepActions: plannedActions.map((a) => a.actionConfiguration),
                 citationsRefsOffset,
                 killSwitches,
               });
@@ -243,10 +266,10 @@ async function* runMultiActionsAgentLoop(
           }
 
           // After we are done running actions, we update the inter-step refsOffset.
-          for (let j = 0; j < event.actions.length; j++) {
+          for (let j = 0; j < plannedActions.length; j++) {
             citationsRefsOffset += getCitationsCount({
               agentConfiguration: configuration,
-              stepActions: event.actions.map((a) => a.action),
+              stepActions: plannedActions.map((a) => a.actionConfiguration),
               stepActionIndex: j,
             });
           }
