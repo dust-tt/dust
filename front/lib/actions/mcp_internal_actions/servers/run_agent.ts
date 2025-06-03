@@ -17,15 +17,15 @@ import apiConfig from "@app/lib/api/config";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
+import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { Err, getHeaderFromGroupIds, normalizeError, Ok } from "@app/types";
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "run_agent",
   version: "1.0.0",
-  description: "Run an agent (agent as tool).",
+  description: "Run a child agent (agent as tool).",
   icon: "ActionRobotIcon",
   authorization: null,
 };
@@ -39,15 +39,53 @@ function parseAgentConfigurationUri(uri: string): Result<string, Error> {
   return new Ok(match[2]);
 }
 
-function createServer(
+/**
+ * This method fetchs the name and description of a child agent. It returns it even even if the
+ * agent is private as it is referenced from a parent agent which requires a name and description
+ * for the associated run_agent tool rendering.
+ *
+ * Actual permissions to run the agent for the auth are checked at run time when creating the
+ * conversation. Through execution of the parent agent the child agent name and description could be
+ * leaked to the user which appears as acceptable given the proactive decision of a builder having
+ * access to it to refer it from the parent agent more broadly shared.
+ *
+ * If the agent has been archived, this method will return null leading to the tool being displayed
+ * to the model as not configured.
+ */
+async function leakyGetAgentNameAndDescriptionForChildAgent(
+  auth: Authenticator,
+  agentId: string
+): Promise<{
+  name: string;
+  description: string;
+} | null> {
+  const owner = auth.getNonNullableWorkspace();
+  const agentConfiguration = await AgentConfiguration.findOne({
+    where: {
+      sId: agentId,
+      workspaceId: owner.id,
+      status: "active",
+    },
+    attributes: ["name", "description"],
+  });
+
+  if (!agentConfiguration) {
+    return null;
+  }
+
+  return {
+    name: agentConfiguration.name,
+    description: agentConfiguration.description,
+  };
+}
+
+export default async function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
-): McpServer {
+): Promise<McpServer> {
   const server = new McpServer(serverInfo);
   const owner = auth.getNonNullableWorkspace();
 
-  const toolName = "run_agent";
-  const toolDescription = "Run an agent.";
   let childAgentId: string | null = null;
 
   if (
@@ -61,6 +99,7 @@ function createServer(
     childAgentId =
       agentLoopContext.listToolsContext.agentActionConfiguration.childAgentId;
   }
+
   if (
     agentLoopContext &&
     agentLoopContext.runContext &&
@@ -72,15 +111,51 @@ function createServer(
     childAgentId = agentLoopContext.runContext.actionConfiguration.childAgentId;
   }
 
+  let agentBlob: { name: string; description: string } | null = null;
+
   if (childAgentId) {
-    // kconst childAgent = await getAgentConfiguration(auth, childAgentId, "light");
+    agentBlob = await leakyGetAgentNameAndDescriptionForChildAgent(
+      auth,
+      childAgentId
+    );
   }
 
+  let toolName = "run_agent_tool_not_available";
+  let toolDescription =
+    "No child agent configured for this tool, as the child agent was probably archived. " +
+    "Do not attempt to run the tool and warn the user instead.";
+
+  // If we have no child agent ID, return a dummy server, this logic is required by the MCP library
+  // but should never happe.
+  if (!agentBlob) {
+    server.tool(
+      toolName,
+      toolDescription,
+      {
+        childAgent:
+          ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.AGENT],
+      },
+      async () => {
+        return {
+          isError: true,
+          content: [
+            {
+              type: "text",
+              text: "No child agent configured",
+            },
+          ],
+        };
+      }
+    );
+    return server;
+  }
+
+  toolName = `run_${agentBlob.name}`;
+  toolDescription = `Run agent ${agentBlob.name} - ${agentBlob.description}`;
+
   server.tool(
-    "run_agent",
-    // TODO(mcp): we probably want to make this description configurable to guide the model on when
-    // to use this sub-agent.
-    "Run an agent.",
+    toolName,
+    toolDescription,
     {
       query: z
         .string()
@@ -180,5 +255,3 @@ function createServer(
 
   return server;
 }
-
-export default createServer;

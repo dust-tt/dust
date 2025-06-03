@@ -28,6 +28,7 @@ import type {
   ConnectorProvider,
   DataSourceViewType,
   GlobalAgentStatus,
+  isGlobalAgentId,
 } from "@app/types";
 import {
   CLAUDE_2_DEFAULT_MODEL_CONFIG,
@@ -1650,10 +1651,6 @@ function getGlobalAgent(
 /**
  * Exported functions
  */
-
-export function isGlobalAgentId(sId: string): boolean {
-  return (Object.values(GLOBAL_AGENTS_SID) as string[]).includes(sId);
-}
 
 // This is the list of global agents that we want to support in past conversations but we don't want
 // to be accessible to users moving forward.
