@@ -21,12 +21,8 @@ makeScript(
       choices: SUPPORTED_REGIONS,
       demandOption: true,
     },
-    appId: {
-      type: "string",
-      required: true,
-    },
   },
-  async ({ workspaceId, sourceRegion, destRegion, appId, execute }, logger) => {
+  async ({ workspaceId, sourceRegion, destRegion, execute }, logger) => {
     if (!isRegionType(sourceRegion) || !isRegionType(destRegion)) {
       logger.error("Invalid region.");
       return;
@@ -44,28 +40,36 @@ makeScript(
       return;
     }
 
-    const app = await AppModel.findOne({
+    const apps = await AppModel.findAll({
       where: {
         workspaceId: workspace.id,
-        sId: appId,
       },
+      order: [["id", "ASC"]],
     });
 
-    if (!app) {
-      logger.error({ workspaceId: workspace.id, appId }, "App not found");
-      return;
-    }
+    logger.info(`Found ${apps.length} apps`);
 
-    logger.info({ app }, "found app");
+    for (const app of apps) {
+      if (execute) {
+        try {
+          const { dataPath } = await getApp({
+            dustAPIProjectId: app.dustAPIProjectId,
+            workspaceId,
+            sourceRegion,
+          });
 
-    if (execute) {
-      const { dataPath } = await getApp({
-        dustAPIProjectId: app.dustAPIProjectId,
-        workspaceId,
-        sourceRegion,
-      });
-
-      logger.info({ dataPath }, "uploaded apps");
+          logger.info({ dataPath }, "uploaded apps");
+        } catch (err) {
+          if (
+            err instanceof Error &&
+            err.message === `DUST_RELOCATION_BUCKET is required but not set`
+          ) {
+            console.log(`${app.sId} OK`);
+          } else {
+            console.error(`${app.sId} BAD: ${err}`);
+          }
+        }
+      }
     }
   }
 );
