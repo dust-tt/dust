@@ -199,6 +199,18 @@ export function isMCPInternalInclude(
   );
 }
 
+export function isMCPInternalDataSourceFileSystem(
+  arg: ActionConfigurationType
+): arg is ServerSideMCPToolConfigurationType {
+  return (
+    isServerSideMCPToolConfiguration(arg) &&
+    isInternalMCPServerOfName(
+      arg.internalMCPServerId,
+      "data_sources_file_system"
+    )
+  );
+}
+
 export function isMCPInternalWebsearch(
   arg: ActionConfigurationType
 ): arg is ServerSideMCPToolConfigurationType {

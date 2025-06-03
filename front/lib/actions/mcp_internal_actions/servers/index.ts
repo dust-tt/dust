@@ -79,7 +79,7 @@ export async function getInternalMCPServer(
     case "gmail":
       return gmailServer(auth, mcpServerId);
     case "data_sources_file_system":
-      return dataSourcesFileSystemServer();
+      return dataSourcesFileSystemServer(auth, agentLoopContext);
     default:
       assertNever(internalMCPServerName);
   }
