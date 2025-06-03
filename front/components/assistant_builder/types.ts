@@ -516,8 +516,8 @@ export const BUILDER_FLOWS = [
 ] as const;
 export type BuilderFlow = (typeof BUILDER_FLOWS)[number];
 
-export type AssistantBuilderProps = {
-  agentConfiguration: AgentConfigurationType | null;
+type AssistantBuilderPropsBase<T> = {
+  agentConfiguration: T | null;
   baseUrl: string;
   defaultIsEdited?: boolean;
   defaultTemplate: FetchAssistantTemplateResponse | null;
@@ -528,17 +528,10 @@ export type AssistantBuilderProps = {
   subscription: SubscriptionType;
 };
 
-export type AssistantBuilderLightProps = {
-  agentConfiguration: LightAgentConfigurationType | null;
-  baseUrl: string;
-  defaultIsEdited?: boolean;
-  defaultTemplate: FetchAssistantTemplateResponse | null;
-  flow: BuilderFlow;
-  initialBuilderState: AssistantBuilderInitialState | null;
-  owner: WorkspaceType;
-  plan: PlanType;
-  subscription: SubscriptionType;
-};
+export type AssistantBuilderProps =
+  AssistantBuilderPropsBase<AgentConfigurationType>;
+export type AssistantBuilderLightProps =
+  AssistantBuilderPropsBase<LightAgentConfigurationType>;
 
 export const BUILDER_SCREENS = ["instructions", "actions", "settings"] as const;
 
