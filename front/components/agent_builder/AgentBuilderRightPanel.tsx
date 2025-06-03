@@ -8,7 +8,6 @@ import {
   TabsTrigger,
   TestTubeIcon,
 } from "@dust-tt/sparkle";
-import { cn } from "@dust-tt/sparkle";
 import { ScrollArea } from "@dust-tt/sparkle";
 import React, { useContext, useState } from "react";
 
@@ -30,42 +29,47 @@ function PanelHeader({
   onTabChange,
 }: PanelHeaderProps) {
   return (
-    <div className="flex h-16 items-end gap-1">
-      <div
-        className={cn(
-          "flex h-full items-end justify-center px-1",
-          !isPreviewPanelOpen && "w-full"
-        )}
-      >
-        <Button
-          icon={
-            isPreviewPanelOpen ? SidebarRightCloseIcon : SidebarRightOpenIcon
-          }
-          size="sm"
-          variant="ghost-secondary"
-          tooltip={isPreviewPanelOpen ? "Hide preview" : "Open preview"}
-          onClick={onTogglePanel}
-        />
-      </div>
-      {isPreviewPanelOpen && (
-        <ScrollArea aria-orientation="horizontal">
-          <Tabs value={selectedTab} className="w-full">
-            <TabsList>
-              <TabsTrigger
-                value="testing"
-                label="Testing"
-                icon={TestTubeIcon}
-                onClick={() => onTabChange("testing")}
-              />
-              <TabsTrigger
-                value="performance"
-                label="Performance"
-                icon={BarChartIcon}
-                onClick={() => onTabChange("performance")}
-              />
-            </TabsList>
-          </Tabs>
-        </ScrollArea>
+    <div className="flex h-16 items-end">
+      {isPreviewPanelOpen ? (
+        <div className="flex w-full items-center">
+          <div className="px-1">
+            <Button
+              icon={SidebarRightCloseIcon}
+              size="sm"
+              variant="ghost-secondary"
+              tooltip="Hide preview"
+              onClick={onTogglePanel}
+            />
+          </div>
+          <ScrollArea aria-orientation="horizontal" className="flex-1">
+            <Tabs value={selectedTab} className="w-full">
+              <TabsList>
+                <TabsTrigger
+                  value="testing"
+                  label="Testing"
+                  icon={TestTubeIcon}
+                  onClick={() => onTabChange("testing")}
+                />
+                <TabsTrigger
+                  value="performance"
+                  label="Performance"
+                  icon={BarChartIcon}
+                  onClick={() => onTabChange("performance")}
+                />
+              </TabsList>
+            </Tabs>
+          </ScrollArea>
+        </div>
+      ) : (
+        <div className="flex h-full w-full items-end justify-center px-1">
+          <Button
+            icon={SidebarRightOpenIcon}
+            size="sm"
+            variant="ghost-secondary"
+            tooltip="Open preview"
+            onClick={onTogglePanel}
+          />
+        </div>
       )}
     </div>
   );
