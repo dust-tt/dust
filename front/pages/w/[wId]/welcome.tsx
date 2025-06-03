@@ -17,7 +17,7 @@ import OnboardingLayout from "@app/components/sparkle/OnboardingLayout";
 import config from "@app/lib/api/config";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthPaywallWhitelisted } from "@app/lib/iam/session";
-import { fetcherWithBody } from "@app/lib/swr/swr";
+import { usePatchUser } from "@app/lib/swr/user";
 import type { UserType, WorkspaceType } from "@app/types";
 import type { JobType } from "@app/types/job_type";
 import { isJobType, JOB_TYPE_OPTIONS } from "@app/types/job_type";
@@ -71,31 +71,19 @@ export default function Welcome({
 
   const jobTypes = JOB_TYPE_OPTIONS;
 
+  const { patchUser } = usePatchUser();
+
   useEffect(() => {
     setIsFormValid(
       firstName !== "" &&
         lastName !== "" &&
-        jobType !== undefined &&
-        jobTypes.some((jt) => jt.value === jobType)
+        (jobTypes.some((jt) => jt.value === jobType) || jobType === undefined)
     );
   }, [firstName, lastName, jobType, jobTypes]);
 
   const { submit, isSubmitting } = useSubmitFunction(async () => {
-    const updateUserFullNameRes = await fetch("/api/user", {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ firstName, lastName }),
-    });
+    await patchUser(firstName, lastName, false, jobType);
 
-    if (updateUserFullNameRes.ok) {
-      await fetcherWithBody([
-        "/api/user/onboarding-complete",
-        { jobType },
-        "POST",
-      ]);
-    }
     await router.push(
       `/w/${owner.sId}/assistant/new?welcome=true${
         conversationId ? `&cId=${conversationId}` : ""

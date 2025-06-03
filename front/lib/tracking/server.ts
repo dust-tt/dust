@@ -268,7 +268,7 @@ export class ServerSideTracking {
     }
   }
 
-  static async trackCompleteUserOnboarding({
+  static async trackUpdateUser({
     user,
     workspace,
     role,
@@ -280,7 +280,7 @@ export class ServerSideTracking {
     jobType?: JobType;
   }) {
     try {
-      await CustomerioServerSideTracking.trackCompleteUserOnboarding({
+      await CustomerioServerSideTracking.trackUpdateUser({
         user,
         workspace,
         role,
