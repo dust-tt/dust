@@ -116,12 +116,7 @@ export default function AssistantBuilder({
   const [descriptionError, setDescriptionError] = useState<string | null>(null);
   const [hasAnyActionsError, setHasAnyActionsError] = useState<boolean>(false);
 
-  const {
-    actions,
-    isActionsLoading,
-    error,
-    mutateAssistantConfigurationActions,
-  } = useAssistantConfigurationActions(
+  const { actions, isActionsLoading, error } = useAssistantConfigurationActions(
     owner.sId,
     agentConfiguration?.sId ?? null
   );
@@ -383,10 +378,6 @@ export default function AssistantBuilder({
         if (slackDataSource) {
           await mutateSlackChannels();
         }
-
-        // we need to clear cache on update but no need to wait otherwise
-        // it can cause UI flickering on action cards (order can be different when fetching from server)
-        void mutateAssistantConfigurationActions();
 
         if (isBuilder(owner)) {
           // Redirect to the agent list once saved.
