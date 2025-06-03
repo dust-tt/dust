@@ -165,9 +165,8 @@ export default async function createServer(
         agentLoopContext?.runContext,
         "agentLoopContext is required where the tool is called."
       );
-      const {
-        agentConfiguration: mainAgent /*, conversation: mainConversation*/,
-      } = agentLoopContext.runContext;
+      const { agentConfiguration: mainAgent, conversation: mainConversation } =
+        agentLoopContext.runContext;
 
       const childAgentIdRes = parseAgentConfigurationUri(uri);
       if (childAgentIdRes.isErr()) {
@@ -190,6 +189,7 @@ export default async function createServer(
       const convRes = await api.createConversation({
         title: `run_agent ${mainAgent.name} > ${childAgentBlob.name}`,
         visibility: "unlisted",
+        depth: mainConversation.depth + 1,
         message: {
           content: query,
           mentions: [{ configurationId: childAgentId }],

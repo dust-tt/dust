@@ -38,6 +38,8 @@ import {
   isEmptyString,
 } from "@app/types";
 
+const MAX_CONVERSATION_DEPTH = 4;
+
 /**
  * @swagger
  * /api/v1/w/{wId}/assistant/conversations:
@@ -210,6 +212,16 @@ async function handler(
             });
           }
         }
+      }
+
+      if (depth && depth >= MAX_CONVERSATION_DEPTH) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `Recursive run_agent calls exceeded depth of ${MAX_CONVERSATION_DEPTH}`,
+          },
+        });
       }
 
       const resolvedFragments = contentFragments ?? [];
