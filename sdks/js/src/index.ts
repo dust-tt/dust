@@ -618,6 +618,7 @@ export class DustAPI {
   async createConversation({
     title,
     visibility,
+    depth,
     message,
     contentFragment,
     contentFragments,
@@ -630,6 +631,7 @@ export class DustAPI {
       body: {
         title,
         visibility,
+        depth,
         message,
         contentFragment,
         contentFragments,

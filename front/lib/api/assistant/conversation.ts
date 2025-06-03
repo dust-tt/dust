@@ -122,17 +122,20 @@ export async function createConversation(
   {
     title,
     visibility,
+    depth = 0,
   }: {
     title: string | null;
     visibility: ConversationVisibility;
+    depth?: number;
   }
 ): Promise<ConversationType> {
   const owner = auth.getNonNullableWorkspace();
 
   const conversation = await ConversationResource.makeNew(auth, {
     sId: generateRandomModelSId(),
-    title: title,
-    visibility: visibility,
+    title,
+    visibility,
+    depth,
     requestedGroupIds: [],
   });
 
@@ -143,6 +146,7 @@ export async function createConversation(
     sId: conversation.sId,
     title: conversation.title,
     visibility: conversation.visibility,
+    depth: conversation.depth,
     content: [],
     requestedGroupIds:
       conversation.getConversationRequestedGroupIdsFromModel(auth),
@@ -300,6 +304,7 @@ export async function getConversation(
     owner,
     title: conversation.title,
     visibility: conversation.visibility,
+    depth: conversation.depth,
     content,
     requestedGroupIds:
       conversation.getConversationRequestedGroupIdsFromModel(auth),
