@@ -123,62 +123,6 @@ const createServer = (): McpServer => {
   );
 
   server.tool(
-    "find_by_id",
-    "Retrieve specific content items when you have their exact IDs. Use this to get detailed " +
-      "information about files, documents, or folders you've already identified from other searches. " +
-      "This works with content from uploaded files or synced data sources (Notion, Slack, Github, etc.). " +
-      "This is like looking up specific files by their unique identifiers. Only use this when you have " +
-      "the exact id values from previous tool results.",
-    {
-      nodeIds: z
-        .array(z.string())
-        .describe(
-          "Array of exact content item IDs to retrieve. These are the 'id' values from previous " +
-            "search results. Each ID uniquely identifies a specific document, folder, or table."
-        ),
-      dataSources:
-        ConfigurableToolInputSchemas[
-          INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
-        ],
-      sortBy: OPTION_PARAMETERS["sortBy"],
-      nextPageCursor: OPTION_PARAMETERS["nextPageCursor"],
-    },
-    async ({ nodeIds, dataSources, sortBy, nextPageCursor }) => {
-      const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-      const fetchResult = await getAgentDataSourceConfigurations(dataSources);
-
-      if (fetchResult.isErr()) {
-        return makeMCPToolTextError(fetchResult.error.message);
-      }
-      const agentDataSourceConfigurations = fetchResult.value;
-
-      const searchResult = await coreAPI.searchNodes({
-        filter: {
-          data_source_views: makeDataSourceViewFilter(
-            agentDataSourceConfigurations
-          ),
-          node_ids: nodeIds,
-        },
-        options: {
-          cursor: nextPageCursor,
-          sort: sortBy
-            ? [{ field: sortBy, direction: getSortDirection(sortBy) }]
-            : undefined,
-        },
-      });
-
-      if (searchResult.isErr()) {
-        return makeMCPToolTextError("Failed to search content by ID");
-      }
-
-      return makeMCPToolJSONSuccess({
-        message: "Content items found successfully.",
-        result: renderSearchResults(searchResult.value),
-      });
-    }
-  );
-
-  server.tool(
     "list_files",
     "List the direct contents of a folder or container. Use this when you want to see what's " +
       "inside a specific folder from your uploaded files or synced data sources (Notion, Slack, " +
