@@ -21,6 +21,7 @@ import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
+import { getHeaderFromUserEmail } from "@app/types";
 import { Err, getHeaderFromGroupIds, normalizeError, Ok } from "@app/types";
 
 const serverInfo: InternalMCPServerDefinitionType = {
@@ -173,16 +174,20 @@ export default async function createServer(
 
       const prodCredentials = await prodAPICredentialsForOwner(owner);
       const requestedGroupIds = auth.groups().map((g) => g.sId);
+      const user = auth.getNonNullableUser();
+
       const api = new DustAPI(
         apiConfig.getDustAPIConfig(),
         {
           ...prodCredentials,
-          extraHeaders: getHeaderFromGroupIds(requestedGroupIds),
+          extraHeaders: {
+            ...getHeaderFromGroupIds(requestedGroupIds),
+            ...getHeaderFromUserEmail(user.email),
+          },
         },
         logger
       );
 
-      const user = auth.getNonNullableUser();
       const convRes = await api.createConversation({
         title: `run_agent - ${new Date().toISOString()}`,
         visibility: "unlisted",

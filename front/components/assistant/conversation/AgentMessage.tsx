@@ -183,7 +183,7 @@ export function AgentMessage({
         return;
       }
 
-      // This event is emmited in front/lib/api/assistant/pubsub.ts. It's purpose is to signal the
+      // This event is emitted in front/lib/api/assistant/pubsub.ts. Its purpose is to signal the
       // end of the stream to the client. The message reducer does not, and should not, handle this
       // event, so we just return.
       if (eventPayload.data.type === "end-of-stream") {
