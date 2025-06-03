@@ -6,6 +6,7 @@ import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import type { Implementation, Tool } from "@modelcontextprotocol/sdk/types.js";
 import { Ajv } from "ajv";
+import addFormats from "ajv-formats";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { getGlobalDispatcher } from "undici";
 
@@ -351,7 +352,8 @@ export function extractMetadataFromServerVersion(
 export function extractMetadataFromTools(tools: Tool[]): MCPToolType[] {
   return tools.map((tool) => {
     let inputSchema: JSONSchema | undefined;
-    const ajv = new Ajv();
+    const ajv = new Ajv({ strict: false });
+    addFormats(ajv); // This adds support for standard formats including date-time
 
     if (ajv.validateSchema(tool.inputSchema)) {
       inputSchema = tool.inputSchema as JSONSchema; // unfortunately, ajv does not assert the type when returning.
