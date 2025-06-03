@@ -195,7 +195,7 @@ export async function syncFiles(
     `[SyncFiles] Start sync.`
   );
 
-  const mimeTypesToSync = await getMimeTypesToSync({
+  const mimeTypesToSync = getMimeTypesToSync({
     pdfEnabled: config?.pdfEnabled || false,
     csvEnabled: config?.csvEnabled || false,
   });
@@ -397,7 +397,7 @@ export async function incrementalSync(
         connectorId: connectorId,
       },
     });
-    const mimeTypesToSync = await getMimeTypesToSync({
+    const mimeTypesToSync = getMimeTypesToSync({
       pdfEnabled: config?.pdfEnabled || false,
       csvEnabled: config?.csvEnabled || false,
     });
