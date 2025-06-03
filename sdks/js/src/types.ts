@@ -1340,7 +1340,7 @@ const NotificationTextContentSchema = z.object({
   text: z.string(),
 });
 
-const NotificationResourceSchema = z.object({
+const ToolApproveExecutionSchema = z.object({
   type: z.string(),
   configurationId: z.string(),
   conversationId: z.string(),
@@ -1351,15 +1351,13 @@ const NotificationResourceSchema = z.object({
   metadata: MCPValidationMetadataSchema,
 });
 
-const NotificationResourceContentSchema = z.object({
-  type: z.literal("resource"),
-  resource: NotificationResourceSchema,
-});
-
 const NotificationContentSchema = z.union([
   NotificationImageContentSchema,
   NotificationTextContentSchema,
-  NotificationResourceContentSchema,
+  z.object({
+    type: z.literal("resource"),
+    resource: ToolApproveExecutionSchema,
+  }),
 ]);
 
 const ToolNotificationProgressSchema = z.object({

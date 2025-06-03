@@ -15,8 +15,8 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
   isMCPProgressNotificationType,
-  isMCPToolApproveExecutionNotificationType,
   isResourceWithName,
+  isToolApproveExecutionNotificationType,
   isToolGeneratedFile,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
@@ -660,7 +660,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
           // Tool approval notifications have a specific handling:
           // they are not yielded as regular notifications but as tool_approve_execution events
           // instead, which exposes them to the end-user.
-          if (isMCPToolApproveExecutionNotificationType(notificationOutput)) {
+          if (isToolApproveExecutionNotificationType(notificationOutput)) {
             const {
               configurationId,
               conversationId,

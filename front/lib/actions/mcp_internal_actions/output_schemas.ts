@@ -425,40 +425,45 @@ const NotificationImageContentSchema = z.object({
 
 type ImageProgressOutput = z.infer<typeof NotificationImageContentSchema>;
 
-const ToolApproveExecutionContentSchema = z.object({
-  type: z.literal("resource"),
-  resource: z.object({
-    type: z.literal("tool_approve_execution"),
-    configurationId: z.string(),
-    conversationId: z.string(),
-    messageId: z.string(),
-    actionId: z.string(),
-    inputs: z.record(z.unknown()),
-    stake: z.enum(MCP_TOOL_STAKE_LEVELS).optional(),
-    metadata: z.object({
-      mcpServerName: z.string(),
-      toolName: z.string(),
-      agentName: z.string(),
-    }),
+const ToolApproveExecutionSchema = z.object({
+  type: z.literal("tool_approve_execution"),
+  configurationId: z.string(),
+  conversationId: z.string(),
+  messageId: z.string(),
+  actionId: z.string(),
+  inputs: z.record(z.unknown()),
+  stake: z.enum(MCP_TOOL_STAKE_LEVELS).optional(),
+  metadata: z.object({
+    mcpServerName: z.string(),
+    toolName: z.string(),
+    agentName: z.string(),
   }),
 });
 
 type ToolApproveExecutionOutputType = z.infer<
-  typeof ToolApproveExecutionContentSchema
+  typeof ToolApproveExecutionSchema
 >;
 
-export function isMCPToolApproveExecutionNotificationType(
+export function isToolApproveExecutionNotificationType(
   notificationOutput: ProgressNotificationOutput
-): notificationOutput is ToolApproveExecutionOutputType {
-  return ToolApproveExecutionContentSchema.safeParse(notificationOutput)
-    .success;
+): notificationOutput is {
+  type: "resource";
+  resource: ToolApproveExecutionOutputType;
+} {
+  return (
+    notificationOutput?.type === "resource" &&
+    ToolApproveExecutionSchema.safeParse(notificationOutput.resource).success
+  );
 }
 
 export const ProgressNotificationOutputSchema = z
   .union([
     NotificationImageContentSchema,
     TextContentSchema,
-    ToolApproveExecutionContentSchema,
+    z.object({
+      type: z.literal("resource"),
+      resource: ToolApproveExecutionSchema,
+    }),
   ])
   .optional();
 
