@@ -128,16 +128,18 @@ export default function AssistantBuilder({
           "There was an error retrieving the actions for this agent.",
         type: "error",
       });
-    } else if (actions) {
-      setBuilderState((prevState) => ({
-        ...prevState,
-        actions: actions.map((action) => ({
-          id: uniqueId(),
-          ...action,
-        })),
-      }));
     }
-  }, [actions, error, sendNotification]);
+  }, [error, sendNotification]);
+
+  useEffect(() => {
+    setBuilderState((prevState) => ({
+      ...prevState,
+      actions: actions.map((action) => ({
+        id: uniqueId(),
+        ...action,
+      })),
+    }));
+  }, [actions]);
 
   const [builderState, setBuilderState] = useState<AssistantBuilderState>(
     initialBuilderState
