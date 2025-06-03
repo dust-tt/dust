@@ -5,7 +5,6 @@ import { z } from "zod";
 
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
-import type { SearchResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
   fetchAgentDataSourceConfiguration,
   getCoreSearchArgs,
@@ -374,8 +373,9 @@ const createServer = (
         .describe(
           "Array of exact content node IDs to search within. These are the 'id' values from " +
             "previous search results, which can be folders or files. All children of the designated " +
-            "nodes will be searched."
-        ),
+            "nodes will be searched. If not provided, all available files and folders will be searched."
+        )
+        .optional(),
       dataSources:
         ConfigurableToolInputSchemas[
           INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
@@ -430,6 +430,11 @@ const createServer = (
       const coreSearchArgs = removeNulls(
         coreSearchArgsResults.map((res) => (res.isOk() ? res.value : null))
       ).map((coreSearchArgs) => {
+        if (!nodeIds) {
+          // If the agent doesn't provide nodeIds, we keep the default filter.
+          return coreSearchArgs;
+        }
+
         return {
           ...coreSearchArgs,
           filter: {
@@ -502,32 +507,31 @@ const createServer = (
 
       const refs = getRefs().slice(refsOffset, refsOffset + topK);
 
-      const results: SearchResultResourceType[] =
-        searchResults.value.documents.map((doc) => {
-          const dataSourceView = coreSearchArgs.find(
-            (args) =>
-              args.dataSourceView.dataSource.dustAPIDataSourceId ===
-              doc.data_source_id
-          )?.dataSourceView;
+      const results = searchResults.value.documents.map((doc) => {
+        const dataSourceView = coreSearchArgs.find(
+          (args) =>
+            args.dataSourceView.dataSource.dustAPIDataSourceId ===
+            doc.data_source_id
+        )?.dataSourceView;
 
-          assert(dataSourceView, "DataSource view not found");
+        assert(dataSourceView, "DataSource view not found");
 
-          return {
-            mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_RESULT,
-            uri: doc.source_url ?? "",
-            text: getDisplayNameForDocument(doc),
+        return {
+          // TODO: use proper mime type, but curently useful to debug.
+          // mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_RESULT,
+          uri: doc.source_url ?? "",
+          text: `"${getDisplayNameForDocument(doc)}" (${doc.chunks.length} chunks)`,
 
-            id: doc.document_id,
-            source: {
-              provider:
-                dataSourceView.dataSource.connectorProvider ?? undefined,
-              name: getDataSourceNameFromView(dataSourceView),
-            },
-            tags: doc.tags,
-            ref: refs.shift() as string,
-            chunks: doc.chunks.map((chunk) => stripNullBytes(chunk.text)),
-          };
-        });
+          id: doc.document_id,
+          source: {
+            provider: dataSourceView.dataSource.connectorProvider ?? undefined,
+            name: getDataSourceNameFromView(dataSourceView),
+          },
+          tags: doc.tags,
+          ref: refs.shift() as string,
+          chunks: doc.chunks.map((chunk) => stripNullBytes(chunk.text)),
+        };
+      });
 
       return {
         isError: false,
@@ -536,16 +540,6 @@ const createServer = (
             type: "resource" as const,
             resource: result,
           })),
-          {
-            type: "resource" as const,
-            resource: {
-              // TODO: use proper mime type, but curently useful to debug.
-              text: `"${query}" (timeFrame=${relativeTimeFrame}, topK=${topK}, nodeIds=${nodeIds.join(
-                ", "
-              )})`,
-              uri: "",
-            },
-          },
         ],
       };
     }
