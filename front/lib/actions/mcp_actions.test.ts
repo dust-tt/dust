@@ -1,10 +1,10 @@
 import { assert, describe, expect, it } from "vitest";
 
+import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
 import {
   getPrefixedToolName,
   TOOL_NAME_SEPARATOR,
 } from "@app/lib/actions/mcp_actions";
-import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
 
 describe("getPrefixedToolName", () => {
   const mockConfig: ServerSideMCPServerConfigurationType = {
