@@ -61,25 +61,24 @@ const OPTION_PARAMETERS = {
     .number()
     .optional()
     .describe(
-      "Maximum number of results to return. Use 10-20 for initial searches, " +
-        "increase if user needs more results."
+      "Maximum number of results to return. Initial searches should use 10-20."
     ),
   sortBy: z
     .enum(["title", "timestamp"])
     .optional()
     .describe(
-      "Sort results by field. Use 'title' to sort alphabetically A-Z, 'timestamp' to sort by " +
+      "Field to sort the results by. 'title' sorts alphabetically A-Z, 'timestamp' sorts by " +
         "most recent first. If not specified, results are returned in default order, which is " +
         "folders first, then both documents and tables and alphabetically by title. " +
-        "Keep the default order unless there is a specific reason to change it."
+        "The default order should be kept unless there is a specific reason to change it."
     ),
   nextPageCursor: z
     .string()
     .optional()
     .describe(
-      "Cursor for fetching the next page of results. Use this parameter only to fetch the next " +
-        "page of a previous search. The value should be exactly the 'nextPageCursor' from the " +
-        "previous search result."
+      "Cursor for fetching the next page of results. This parameter should only be used to fetch " +
+        "the next page of a previous search. The value should be exactly the 'nextPageCursor' from " +
+        "the previous search result."
     ),
 };
 
@@ -91,17 +90,17 @@ const createServer = (
 
   server.tool(
     "find",
-    "Find content based on their title starting from a specific node. Use this when you need to " +
-      "find specific nodes by searching for their titles. The query title can be omitted to list all " +
-      "nodes starting from a specific node. This is like using 'find' in Unix.",
+    "Find content based on their title starting from a specific node. Can be used to to find specific " +
+      "nodes by searching for their titles. The query title can be omitted to list all nodes " +
+      "starting from a specific node. This is like using 'find' in Unix.",
     {
       query: z
         .string()
         .optional()
         .describe(
-          "The title to search for. This supports partial matching - you don't need the " +
+          "The title to search for. This supports partial matching and does not require the " +
             "exact title. For example, searching for 'budget' will find 'Budget 2024.xlsx', " +
-            "'Q1 Budget Report', etc. Use keywords from the title the user mentioned."
+            "'Q1 Budget Report', etc."
         ),
       rootNodeId: z
         .string()
@@ -109,7 +108,7 @@ const createServer = (
         .describe(
           "The node ID of the node to start the search from. If not provided, the search will " +
             "start from the root of the filesystem. Get this ID from previous search results (it's " +
-            "the 'nodeId' field). Use this parameter to restrict the search to the children and " +
+            "the 'nodeId' field). This parameter restricts the search to the children and " +
             "descendant of a specific node."
         ),
       // TODO(2025-06-03 aubin): add search by mime type (not supported in the backend currently).
@@ -158,17 +157,17 @@ const createServer = (
 
   server.tool(
     "list",
-    "List the direct contents of a node. Use this when you want to see what's inside a specific " +
-      "folder from the filesystem, like 'ls' in Unix. A good fit is when you need to explore the " +
-      "filesystem structure step by step. This tool can be called repeatedly by passing the 'nodeId' " +
-      "output from a step to the next step's nodeId.",
+    "List the direct contents of a node. Can be used to see what's inside a specific folder from " +
+      "the filesystem, like 'ls' in Unix. A good fit is to explore the filesystem structure step " +
+      "by step. This tool can be called repeatedly by passing the 'nodeId' output from a step to " +
+      "the next step's nodeId.",
     {
       nodeId: z
         .string()
         .nullable()
         .describe(
-          "The exact ID of the node whose contents you want to list. " +
-            "Get this ID from previous search results (it's the 'nodeId' field). " +
+          "The exact ID of the node to list the contents of. " +
+            "This ID can be found from previous search results (it's the 'nodeId' field). " +
             "If not provided, the content at the root of the filesystem will be shown."
         ),
       dataSources:
