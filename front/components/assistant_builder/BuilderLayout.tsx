@@ -56,7 +56,7 @@ export function BuilderLayout({ leftPanel, rightPanel }: BuilderLayoutProps) {
               : "overflow-hidden"
           }
         >
-          {rightPanel}
+          <div className="h-full w-full overflow-y-auto px-6">{rightPanel}</div>
         </ResizablePanel>
       </ResizablePanelGroup>
     </div>
