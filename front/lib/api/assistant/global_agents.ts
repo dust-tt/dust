@@ -28,7 +28,6 @@ import type {
   ConnectorProvider,
   DataSourceViewType,
   GlobalAgentStatus,
-  isGlobalAgentId,
 } from "@app/types";
 import {
   CLAUDE_2_DEFAULT_MODEL_CONFIG,
@@ -46,6 +45,7 @@ import {
   GLOBAL_AGENTS_SID,
   GPT_3_5_TURBO_MODEL_CONFIG,
   GPT_4_1_MODEL_CONFIG,
+  isGlobalAgentId,
   isProviderWhitelisted,
   MISTRAL_LARGE_MODEL_CONFIG,
   MISTRAL_MEDIUM_MODEL_CONFIG,
