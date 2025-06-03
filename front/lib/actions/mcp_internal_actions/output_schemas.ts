@@ -431,8 +431,6 @@ type ImageProgressOutput = z.infer<typeof NotificationImageContentSchema>;
 const ToolApproveExecutionSchema = z.object({
   type: z.literal("tool_approve_execution"),
   configurationId: z.string(),
-  conversationId: z.string(),
-  messageId: z.string(),
   actionId: z.string(),
   inputs: z.record(z.unknown()),
   stake: z.enum(MCP_TOOL_STAKE_LEVELS).optional(),

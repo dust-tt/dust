@@ -150,10 +150,7 @@ function createServer(
                     type: "resource",
                     resource: {
                       type: "tool_approve_execution",
-                      // TODO(2025-06-03): remove fields that are not necessary from the notification here.
                       configurationId: event.configurationId,
-                      conversationId: agentLoopRunContext.conversation.sId,
-                      messageId: agentLoopRunContext.agentMessage.sId,
                       actionId: event.actionId,
                       metadata: event.metadata,
                       stake: event.stake,
