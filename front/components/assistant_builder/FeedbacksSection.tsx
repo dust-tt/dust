@@ -109,19 +109,35 @@ export const FeedbacksSection = ({
   }
 
   // Group feedbacks by agent configuration version
-  const feedbacksByVersion = agentConfigurationFeedbacks?.reduce((acc, feedback) => {
-    const version = feedback.agentConfigurationVersion;
-    if (!acc[version]) {
-      acc[version] = [];
-    }
-    acc[version].push(feedback);
-    return acc;
-  }, {} as Record<number, typeof agentConfigurationFeedbacks>) || {};
+  const feedbacksByVersion =
+    agentConfigurationFeedbacks?.reduce(
+      (acc, feedback) => {
+        const version = feedback.agentConfigurationVersion;
+        if (!acc[version]) {
+          acc[version] = [];
+        }
+        acc[version].push(feedback);
+        return acc;
+      },
+      {} as Record<number, typeof agentConfigurationFeedbacks>
+    ) || {};
 
   // Get versions in order (preserving the original feedback order)
-  const versionsInOrder = Array.from(new Set(
-    agentConfigurationFeedbacks?.map(f => f.agentConfigurationVersion) || []
-  ));
+  const versionsInOrder = Array.from(
+    new Set(
+      agentConfigurationFeedbacks?.map((f) => f.agentConfigurationVersion) || []
+    )
+  );
+
+  // Create a lookup map for agent configurations by version (O(1) lookup)
+  const agentConfigByVersion =
+    agentConfigurationHistory?.reduce(
+      (acc, config) => {
+        acc[config.version] = config;
+        return acc;
+      },
+      {} as Record<number, LightAgentConfigurationType>
+    ) || {};
 
   const latestVersion = agentConfigurationHistory[0].version;
 
@@ -131,7 +147,7 @@ export const FeedbacksSection = ({
         <div className="flex flex-col gap-4">
           {versionsInOrder.map((version) => {
             const versionFeedbacks = feedbacksByVersion[version];
-            const agentConfig = agentConfigurationHistory?.find(c => c.version === version);
+            const agentConfig = agentConfigByVersion[version];
             const isLatestVersion = version === latestVersion;
 
             return (
@@ -148,7 +164,9 @@ export const FeedbacksSection = ({
                         key={feedback.id}
                         className="h-full"
                         owner={owner}
-                        feedback={feedback as AgentMessageFeedbackWithMetadataType}
+                        feedback={
+                          feedback as AgentMessageFeedbackWithMetadataType
+                        }
                       />
                     ))}
                   </div>
@@ -161,7 +179,7 @@ export const FeedbacksSection = ({
         <div className="flex flex-col gap-2">
           {versionsInOrder.map((version) => {
             const versionFeedbacks = feedbacksByVersion[version];
-            const agentConfig = agentConfigurationHistory?.find(c => c.version === version);
+            const agentConfig = agentConfigByVersion[version];
             const isLatestVersion = version === latestVersion;
 
             return (
@@ -175,7 +193,9 @@ export const FeedbacksSection = ({
                   <div key={feedback.id} className="animate-fadeIn">
                     <MemoizedFeedbackCard
                       owner={owner}
-                      feedback={feedback as AgentMessageFeedbackWithMetadataType}
+                      feedback={
+                        feedback as AgentMessageFeedbackWithMetadataType
+                      }
                     />
                   </div>
                 ))}
