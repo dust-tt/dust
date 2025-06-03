@@ -165,8 +165,9 @@ export default async function createServer(
         agentLoopContext?.runContext,
         "agentLoopContext is required where the tool is called."
       );
-      const { agentConfiguration: mainAgent, conversation: mainConversation } =
-        agentLoopContext.runContext;
+      const {
+        agentConfiguration: mainAgent /*, conversation: mainConversation*/,
+      } = agentLoopContext.runContext;
 
       const childAgentIdRes = parseAgentConfigurationUri(uri);
       if (childAgentIdRes.isErr()) {
