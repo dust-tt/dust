@@ -76,7 +76,7 @@ export function usePatchUser() {
         sendNotification({
           type: "success",
           title: "Updated User",
-          description: `Successfully updated user ${firstName} ${lastName}.`,
+          description: `Successfully updated your profile.`,
         });
       }
 
@@ -87,7 +87,7 @@ export function usePatchUser() {
       const errorData = await getErrorFromResponse(res);
       sendNotification({
         type: "error",
-        title: "Error updating user",
+        title: "Error Updating User",
         description: `Error: ${errorData.message}`,
       });
 
