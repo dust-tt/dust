@@ -86,12 +86,12 @@ const createServer = (): McpServer => {
         .string()
         .optional()
         .describe(
-          "The node ID of the root node to start the search from. If not provided, the search will " +
-            "start from the root of the data source. Get this ID from previous search results (it's " +
+          "The node ID of the node to start the search from. If not provided, the search will " +
+            "start from the root of the filesystem. Get this ID from previous search results (it's " +
             "the 'nodeId' field). Use this parameter to restrict the search to the children and " +
             "descendant of a specific node."
         ),
-      // TODO(2025-06-03 aubin): add search by mime type, requires adding the option to the endpoint in core.
+      // TODO(2025-06-03 aubin): add search by mime type (not supported in the backend currently).
       dataSources:
         ConfigurableToolInputSchemas[
           INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
