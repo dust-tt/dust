@@ -9,13 +9,14 @@ export function useAssistantConfigurationActions(
 ) {
   const disabled = agentConfigurationId === null;
   const actionsFetcher: Fetcher<GetActionsResponseBody> = fetcher;
-  const { data, error } = useSWRWithDefaults(
+  const { data, error, mutate } = useSWRWithDefaults(
     `/api/w/${ownerId}/builder/assistants/${agentConfigurationId}/actions`,
     actionsFetcher,
     {
       disabled,
       revalidateOnFocus: false,
       revalidateOnReconnect: false,
+      revalidateIfStale: false,
     }
   );
 
@@ -23,5 +24,6 @@ export function useAssistantConfigurationActions(
     actions: data?.actions ?? emptyArray(),
     isActionsLoading: !error && !data && !disabled,
     error,
+    mutateAssistantConfigurationActions: mutate,
   };
 }
