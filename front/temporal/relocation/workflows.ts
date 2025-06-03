@@ -20,6 +20,7 @@ import type {
 } from "@app/temporal/relocation/activities/types";
 import { RELOCATION_QUEUES_PER_REGION } from "@app/temporal/relocation/config";
 import type { ModelId } from "@app/types";
+import logger from "@app/logger/logger";
 
 const CHUNK_SIZE = 5000;
 const TEMPORAL_WORKFLOW_MAX_HISTORY_LENGTH = 10_000;
@@ -794,6 +795,14 @@ export async function workspaceRelocateAppsWorkflow({
     currentId = lastId;
 
     for (const dustAPIProjectId of dustAPIProjectIds) {
+      if (["11877", "11704", "18538"].includes(dustAPIProjectId)) {
+        logger.info(
+          { dustAPIProjectId, workspaceId },
+          "skipping apps relocation"
+        );
+        continue;
+      }
+
       const { dataPath } = await sourceRegionActivities.getApp({
         dustAPIProjectId,
         workspaceId,
