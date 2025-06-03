@@ -7,15 +7,17 @@ import { agentLoopWorkflow } from "./workflows";
 
 export async function launchAgentLoopWorkflow({
   agentMessageId,
+  conversationId,
 }: {
-  agentMessageId: string;
+  agentMessageId: number;
+  conversationId: string;
 }): Promise<Result<undefined, Error>> {
   const client = await getTemporalClient();
 
-  const workflowId = `agent-loop-workflow-${agentMessageId}`;
+  const workflowId = `agent-loop-workflow-${conversationId}__${agentMessageId}`;
 
   await client.workflow.start(agentLoopWorkflow, {
-    args: [{ agentMessageId }],
+    args: [{ agentMessageId, conversationId }],
     taskQueue: QUEUE_NAME,
     workflowId,
   });

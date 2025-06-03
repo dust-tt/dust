@@ -8,21 +8,27 @@ const { planActivity, runToolActivity } = proxyActivities<typeof activities>({
 
 export async function agentLoopWorkflow({
   agentMessageId,
+  conversationId,
 }: {
-  agentMessageId: string;
+  agentMessageId: number;
+  conversationId: string;
 }) {
   let step = 0;
 
   for (;;) {
-    const toolCallsCount = await planActivity({ agentMessageId, step });
+    const { maxStepsExhausted, toolCallsCount } = await planActivity({
+      agentMessageId,
+      conversationId,
+      step,
+    });
 
-    if (!toolCallsCount) {
+    if (maxStepsExhausted || toolCallsCount === 0) {
       return;
     }
 
     await Promise.all(
       Array.from({ length: toolCallsCount }).map((_, index) =>
-        runToolActivity({ agentMessageId, step, index })
+        runToolActivity({ agentMessageId, conversationId, step, index })
       )
     );
 
