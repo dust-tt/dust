@@ -19,6 +19,7 @@ import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import { isInternalMCPServerOfName } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { ActionConfigurationType } from "@app/lib/actions/types/agent";
 import {
+  isMCPInternalDataSourceFileSystem,
   isMCPInternalInclude,
   isMCPInternalSearch,
   isMCPInternalWebsearch,
@@ -125,9 +126,13 @@ export function getRetrievalTopK({
   const retrievalActions = stepActions.filter(isRetrievalConfiguration);
   const searchActions = stepActions.filter(isMCPInternalSearch);
   const includeActions = stepActions.filter(isMCPInternalInclude);
+  const dsFsActions = stepActions.filter(isMCPInternalDataSourceFileSystem);
 
   const actionsCount =
-    retrievalActions.length + searchActions.length + includeActions.length;
+    retrievalActions.length +
+    searchActions.length +
+    includeActions.length +
+    dsFsActions.length;
 
   if (actionsCount === 0) {
     return 0;
@@ -153,6 +158,11 @@ export function getRetrievalTopK({
     .concat(
       includeActions.map(() => {
         return model.recommendedExhaustiveTopK;
+      })
+    )
+    .concat(
+      dsFsActions.map(() => {
+        return model.recommendedTopK;
       })
     );
 
