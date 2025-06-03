@@ -183,7 +183,7 @@ export async function constructPromptMultiActions(
     );
   }
 
-  let prompt = `${context}\n${generalDirectives}\n${specificDirectives}\n${instructions}`;
+  const prompt = `${context}\n${generalDirectives}\n${specificDirectives}\n${instructions}`;
 
   return prompt;
 }
