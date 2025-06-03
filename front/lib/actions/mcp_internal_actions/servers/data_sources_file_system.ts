@@ -16,6 +16,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type {
   CoreAPIContentNode,
+  CoreAPIError,
   CoreAPISearchNodesResponse,
   Result,
 } from "@app/types";
@@ -154,22 +155,44 @@ const createServer = (): McpServer => {
       }
       const agentDataSourceConfigurations = fetchResult.value;
 
-      const searchResult = await coreAPI.searchNodes({
-        filter: {
-          data_source_views: makeDataSourceViewFilter(
-            agentDataSourceConfigurations
-          ),
-          // "root" is a special parent id that represents the root of the data source view.
-          parent_id: nodeId ?? "root",
-        },
-        options: {
-          cursor: nextPageCursor,
-          limit,
-          sort: sortBy
-            ? [{ field: sortBy, direction: getSortDirection(sortBy) }]
-            : undefined,
-        },
-      });
+      let searchResult: Result<CoreAPISearchNodesResponse, CoreAPIError>;
+
+      if (!nodeId) {
+        // If we don't have a nodeId, we want to show the root nodes for the data source views, which are the parentsIn.
+        searchResult = await coreAPI.searchNodes({
+          filter: {
+            data_source_views: makeDataSourceViewFilter(
+              agentDataSourceConfigurations
+            ),
+            node_ids: agentDataSourceConfigurations.flatMap(
+              ({ dataSourceView }) => dataSourceView.parentsIn ?? []
+            ),
+          },
+          options: {
+            cursor: nextPageCursor,
+            limit,
+            sort: sortBy
+              ? [{ field: sortBy, direction: getSortDirection(sortBy) }]
+              : undefined,
+          },
+        });
+      } else {
+        searchResult = await coreAPI.searchNodes({
+          filter: {
+            data_source_views: makeDataSourceViewFilter(
+              agentDataSourceConfigurations
+            ),
+            parent_id: nodeId,
+          },
+          options: {
+            cursor: nextPageCursor,
+            limit,
+            sort: sortBy
+              ? [{ field: sortBy, direction: getSortDirection(sortBy) }]
+              : undefined,
+          },
+        });
+      }
 
       if (searchResult.isErr()) {
         return makeMCPToolTextError("Failed to list folder contents");
