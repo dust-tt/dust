@@ -7,18 +7,19 @@ export function useAssistantConfigurationActions(
   ownerId: string,
   agentConfigurationId: string | null
 ) {
+  const disabled = agentConfigurationId === null;
   const actionsFetcher: Fetcher<GetActionsResponseBody> = fetcher;
   const { data, error } = useSWRWithDefaults(
     `/api/w/${ownerId}/builder/assistants/${agentConfigurationId}/actions`,
     actionsFetcher,
     {
-      disabled: agentConfigurationId === null,
+      disabled,
     }
   );
 
   return {
     actions: data?.actions ?? emptyArray(),
-    isActionsLoading: !error && !data,
+    isActionsLoading: !error && !data && !disabled,
     error,
   };
 }
