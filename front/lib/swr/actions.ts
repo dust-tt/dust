@@ -14,6 +14,8 @@ export function useAssistantConfigurationActions(
     actionsFetcher,
     {
       disabled,
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
     }
   );
 
