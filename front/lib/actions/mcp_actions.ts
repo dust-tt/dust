@@ -96,6 +96,8 @@ function isEmptyInputSchema(schema: JSONSchema7): boolean {
 
 const MAX_TOOL_NAME_LENGTH = 64;
 
+const MAX_CONTENT_SIZE = 64 * 1024;
+
 export const TOOL_NAME_SEPARATOR = "__";
 
 // Define the new type here for now, or move to a dedicated types file later.
@@ -184,6 +186,7 @@ export async function* tryCallMCPTool(
   auth: Authenticator,
   inputs: Record<string, unknown> | undefined,
   agentLoopRunContext: AgentLoopRunContextType,
+  toolConfig: MCPToolConfigurationType,
   {
     progressToken,
   }: {
@@ -360,7 +363,44 @@ export async function* tryCallMCPTool(
       };
     }
 
-    // TODO(mcp) refuse if the content is too large
+    const calculateContentSize = (item: MCPToolResultContentType): number => {
+      switch (item.type) {
+        case "text":
+          return new TextEncoder().encode(item.text).length;
+        case "image":
+          return Math.ceil((item.data.length * 3) / 4);
+        case "resource":
+          if ("blob" in item.resource && item.resource.blob) {
+            return Math.ceil((item.resource.blob.length * 3) / 4);
+          }
+          return 0;
+        default:
+          return 0;
+      }
+    };
+
+    const isValidContentSize = (
+      content: MCPToolResultContentType[]
+    ): boolean => {
+      content.forEach((item) => {
+        const size = calculateContentSize(item);
+        if (size > MAX_CONTENT_SIZE) {
+          return false;
+        }
+      });
+      return true;
+    };
+
+    const { serverType } = getServerTypeAndIdFromSId(toolConfig.toolServerId);
+
+    if (serverType === "remote") {
+      if (isValidContentSize(content)) {
+        yield {
+          type: "result",
+          result: new Err(new Error(`MCP Server content size is too large.`)),
+        };
+      }
+    }
 
     yield {
       type: "result",
