@@ -1352,6 +1352,8 @@ const NotificationTextContentSchema = z.object({
 const ToolApproveExecutionSchema = z.object({
   type: z.string(),
   configurationId: z.string(),
+  conversationId: z.string(),
+  messageId: z.string(),
   actionId: z.string(),
   inputs: z.record(z.any()),
   stake: MCPStakeLevelSchema,
