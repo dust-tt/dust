@@ -1,6 +1,7 @@
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { DustAPI } from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import assert from "assert";
 import { z } from "zod";
 
 import {
@@ -111,10 +112,10 @@ export default async function createServer(
     childAgentId = agentLoopContext.runContext.actionConfiguration.childAgentId;
   }
 
-  let agentBlob: { name: string; description: string } | null = null;
+  let childAgentBlob: { name: string; description: string } | null = null;
 
   if (childAgentId) {
-    agentBlob = await leakyGetAgentNameAndDescriptionForChildAgent(
+    childAgentBlob = await leakyGetAgentNameAndDescriptionForChildAgent(
       auth,
       childAgentId
     );
@@ -122,7 +123,7 @@ export default async function createServer(
 
   // If we have no child ID (unexpected) or the child agent was archived, return a dummy server
   // whose tool name and description informs the agent of the situation.
-  if (!agentBlob) {
+  if (!childAgentBlob) {
     server.tool(
       "run_agent_tool_not_available",
       "No child agent configured for this tool, as the child agent was probably archived. " +
@@ -147,8 +148,8 @@ export default async function createServer(
   }
 
   server.tool(
-    `run_${agentBlob.name}`,
-    `Run agent ${agentBlob.name} (${agentBlob.description})`,
+    `run_${childAgentBlob.name}`,
+    `Run agent ${childAgentBlob.name} (${childAgentBlob.description})`,
     {
       query: z
         .string()
@@ -160,6 +161,13 @@ export default async function createServer(
         ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.AGENT],
     },
     async ({ query, childAgent: { uri } }) => {
+      assert(
+        agentLoopContext?.runContext,
+        "agentLoopContext is required where the tool is called."
+      );
+      const { agentConfiguration: mainAgent, conversation: mainConversation } =
+        agentLoopContext.runContext;
+
       const childAgentIdRes = parseAgentConfigurationUri(uri);
       if (childAgentIdRes.isErr()) {
         return makeMCPToolTextError(childAgentIdRes.error.message);
@@ -179,7 +187,7 @@ export default async function createServer(
 
       const user = auth.getNonNullableUser();
       const convRes = await api.createConversation({
-        title: `run_agent - ${new Date().toISOString()}`,
+        title: `run_agent ${mainAgent.name} > ${childAgentBlob.name}`,
         visibility: "unlisted",
         message: {
           content: query,
