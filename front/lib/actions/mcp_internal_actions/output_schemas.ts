@@ -425,6 +425,9 @@ const NotificationImageContentSchema = z.object({
 
 type ImageProgressOutput = z.infer<typeof NotificationImageContentSchema>;
 
+// Schema for the resource of a notification where the tool is asking for tool approval.
+// This schema contains all the information that the MCP server runner
+// needs to emit an event for tool approval.
 const ToolApproveExecutionSchema = z.object({
   type: z.literal("tool_approve_execution"),
   configurationId: z.string(),
