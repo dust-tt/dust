@@ -107,9 +107,9 @@ const createServer = (
         .optional()
         .describe(
           "The node ID of the node to start the search from. If not provided, the search will " +
-            "start from the root of the filesystem. Get this ID from previous search results (it's " +
-            "the 'nodeId' field). This parameter restricts the search to the children and " +
-            "descendant of a specific node."
+            "start from the root of the filesystem. This ID can be found from previous search " +
+            "results in the 'nodeId' field. This parameter restricts the search to the children " +
+            "and descendant of a specific node."
         ),
       // TODO(2025-06-03 aubin): add search by mime type (not supported in the backend currently).
       dataSources:
@@ -157,7 +157,7 @@ const createServer = (
 
   server.tool(
     "list",
-    "List the direct contents of a node. Can be used to see what's inside a specific folder from " +
+    "List the direct contents of a node. Can be used to see what is inside a specific folder from " +
       "the filesystem, like 'ls' in Unix. A good fit is to explore the filesystem structure step " +
       "by step. This tool can be called repeatedly by passing the 'nodeId' output from a step to " +
       "the next step's nodeId.",
@@ -167,7 +167,7 @@ const createServer = (
         .nullable()
         .describe(
           "The exact ID of the node to list the contents of. " +
-            "This ID can be found from previous search results (it's the 'nodeId' field). " +
+            "This ID can be found from previous search results in the 'nodeId' field. " +
             "If not provided, the content at the root of the filesystem will be shown."
         ),
       dataSources:
