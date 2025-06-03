@@ -64,6 +64,22 @@ export function ChildAgentConfigurationSection({
     (agent) => agent.sId === selectedAgentId
   );
 
+  if (selectedAgentId && !selectedAgent) {
+    return (
+      <ContentMessage
+        title="The agent selected is not available to you"
+        icon={InformationCircleIcon}
+        variant="warning"
+        size="sm"
+      >
+        The agent ({selectedAgentId}) selected is not available to you, either
+        because it was archived or because you have lot access to it (based on a
+        restricted space you're not a part of). As an editor you can still
+        remove the Run Agent tool to add a new one pointing to another agent.
+      </ContentMessage>
+    );
+  }
+
   return (
     <ConfigurationSectionContainer title="Selected Agent">
       {isAgentConfigurationsLoading ? (
