@@ -70,15 +70,15 @@ export async function constructPromptMultiActions(
     }
   }
 
-  // GENERAL DIRECTIVES section
-  let toolsSection = "# TOOLS\n";
-
   if (errorContext) {
-    toolsSection +=
-      "\nNote: There was an error while building instructions:\n" +
+    context +=
+      "\n\n # INSTRUCTIONS ERROR\n\nNote: There was an error while building instructions:\n" +
       errorContext +
       "\n";
   }
+
+  // TOOLS section
+  let toolsSection = "# TOOLS\n";
 
   let toolUseDirectives = "\n## TOOL USE DIRECTIVES\n";
   if (hasAvailableActions) {
@@ -130,7 +130,7 @@ export async function constructPromptMultiActions(
 
   toolsSection += toolServersPrompt;
 
-  // SPECIFIC GUIDELINES section
+  // GUIDELINES section
   let guidelinesSection = "# GUIDELINES\n";
   const canRetrieveDocuments = agentConfiguration.actions.some(
     (action) =>
