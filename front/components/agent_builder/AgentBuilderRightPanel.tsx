@@ -9,94 +9,141 @@ import {
   TestTubeIcon,
 } from "@dust-tt/sparkle";
 import { cn } from "@dust-tt/sparkle";
+import { ScrollArea } from "@dust-tt/sparkle";
 import React, { useContext, useState } from "react";
 
 import { AgentBuilderContext } from "./AgentBuilderContext";
 
-interface AgentBuilderRightPanelProps {
-  children?: React.ReactNode;
+type AgentBuilderRightPanelTabType = "testing" | "performance";
+
+interface PanelHeaderProps {
+  isPreviewPanelOpen: boolean;
+  selectedTab: AgentBuilderRightPanelTabType;
+  onTogglePanel: () => void;
+  onTabChange: (tab: AgentBuilderRightPanelTabType) => void;
 }
 
-export function AgentBuilderRightPanel({
-  children,
-}: AgentBuilderRightPanelProps) {
-  const { isPreviewPanelOpen, setIsPreviewPanelOpen } =
-    useContext(AgentBuilderContext);
-  const [selectedTab, setSelectedTab] = useState("testing");
-
+function PanelHeader({
+  isPreviewPanelOpen,
+  selectedTab,
+  onTogglePanel,
+  onTabChange,
+}: PanelHeaderProps) {
   return (
-    <div className="flex h-full flex-col">
-      <div className="flex h-16 items-end">
-        <div
-          className={cn(
-            "flex h-full items-center justify-center",
-            !isPreviewPanelOpen && "w-full"
-          )}
-        >
-          <Button
-            icon={
-              isPreviewPanelOpen ? SidebarRightCloseIcon : SidebarRightOpenIcon
-            }
-            size="sm"
-            variant="ghost-secondary"
-            tooltip={isPreviewPanelOpen ? "Hide preview" : "Open preview"}
-            onClick={() => setIsPreviewPanelOpen(!isPreviewPanelOpen)}
-          />
-        </div>
-        {isPreviewPanelOpen && (
+    <div className="flex h-16 items-end gap-1">
+      <div
+        className={cn(
+          "flex h-full items-end justify-center px-1",
+          !isPreviewPanelOpen && "w-full"
+        )}
+      >
+        <Button
+          icon={
+            isPreviewPanelOpen ? SidebarRightCloseIcon : SidebarRightOpenIcon
+          }
+          size="sm"
+          variant="ghost-secondary"
+          tooltip={isPreviewPanelOpen ? "Hide preview" : "Open preview"}
+          onClick={onTogglePanel}
+        />
+      </div>
+      {isPreviewPanelOpen && (
+        <ScrollArea aria-orientation="horizontal">
           <Tabs value={selectedTab} className="w-full">
             <TabsList>
               <TabsTrigger
                 value="testing"
                 label="Testing"
                 icon={TestTubeIcon}
-                onClick={() => setSelectedTab("testing")}
+                onClick={() => onTabChange("testing")}
               />
               <TabsTrigger
                 value="performance"
                 label="Performance"
                 icon={BarChartIcon}
-                onClick={() => setSelectedTab("performance")}
+                onClick={() => onTabChange("performance")}
               />
             </TabsList>
           </Tabs>
+        </ScrollArea>
+      )}
+    </div>
+  );
+}
+
+interface CollapsedTabsProps {
+  onTabSelect: (tab: AgentBuilderRightPanelTabType) => void;
+}
+
+function CollapsedTabs({ onTabSelect }: CollapsedTabsProps) {
+  return (
+    <div className="flex flex-1 flex-col items-center justify-center gap-4">
+      <Button
+        icon={TestTubeIcon}
+        variant="ghost"
+        size="sm"
+        tooltip="Testing"
+        onClick={() => onTabSelect("testing")}
+      />
+      <Button
+        icon={BarChartIcon}
+        variant="ghost"
+        size="sm"
+        tooltip="Performance"
+        onClick={() => onTabSelect("performance")}
+      />
+    </div>
+  );
+}
+
+interface ExpandedContentProps {
+  selectedTab: AgentBuilderRightPanelTabType;
+}
+
+function ExpandedContent({ selectedTab }: ExpandedContentProps) {
+  return (
+    <div className="flex flex-1 flex-col">
+      <div className="flex-1 p-4">
+        {selectedTab === "testing" && <div className="space-y-4">Testing</div>}
+        {selectedTab === "performance" && (
+          <div className="space-y-4">Performance</div>
         )}
       </div>
+    </div>
+  );
+}
+
+export function AgentBuilderRightPanel() {
+  const { isPreviewPanelOpen, setIsPreviewPanelOpen } =
+    useContext(AgentBuilderContext);
+  const [selectedTab, setSelectedTab] =
+    useState<AgentBuilderRightPanelTabType>("testing");
+
+  const handleTogglePanel = () => {
+    setIsPreviewPanelOpen(!isPreviewPanelOpen);
+  };
+
+  const handleTabChange = (tab: AgentBuilderRightPanelTabType) => {
+    setSelectedTab(tab);
+  };
+
+  const handleTabSelect = (tab: AgentBuilderRightPanelTabType) => {
+    setSelectedTab(tab);
+    setIsPreviewPanelOpen(true);
+  };
+
+  return (
+    <div className="flex h-full flex-col">
+      <PanelHeader
+        isPreviewPanelOpen={isPreviewPanelOpen}
+        selectedTab={selectedTab}
+        onTogglePanel={handleTogglePanel}
+        onTabChange={handleTabChange}
+      />
       {isPreviewPanelOpen ? (
-        <div className="flex flex-1 flex-col">
-          <div className="flex-1 overflow-y-auto p-4">
-            {selectedTab === "testing" && (
-              <div className="space-y-4">Testing</div>
-            )}
-            {selectedTab === "performance" && (
-              <div className="space-y-4">Performance</div>
-            )}
-            {children}
-          </div>
-        </div>
+        <ExpandedContent selectedTab={selectedTab} />
       ) : (
-        <div className="flex flex-1 flex-col items-center justify-center gap-4">
-          <Button
-            icon={TestTubeIcon}
-            variant="ghost"
-            size="sm"
-            tooltip="Testing"
-            onClick={() => {
-              setSelectedTab("testing");
-              setIsPreviewPanelOpen(true);
-            }}
-          />
-          <Button
-            icon={BarChartIcon}
-            variant="ghost"
-            size="sm"
-            tooltip="Performance"
-            onClick={() => {
-              setSelectedTab("performance");
-              setIsPreviewPanelOpen(true);
-            }}
-          />
-        </div>
+        <CollapsedTabs onTabSelect={handleTabSelect} />
       )}
     </div>
   );

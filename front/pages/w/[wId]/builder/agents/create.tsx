@@ -1,4 +1,12 @@
-import { Button, DocumentIcon, Icon, MagicIcon, Page, PencilSquareIcon, SearchInput } from "@dust-tt/sparkle";
+import {
+  Button,
+  DocumentIcon,
+  Icon,
+  MagicIcon,
+  Page,
+  PencilSquareIcon,
+  SearchInput,
+} from "@dust-tt/sparkle";
 import _ from "lodash";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
@@ -8,12 +16,19 @@ import { AssistantTemplateModal } from "@app/components/assistant_builder/Assist
 import { TemplateGrid } from "@app/components/assistant_builder/TemplateGrid";
 import type { BuilderFlow } from "@app/components/assistant_builder/types";
 import { BUILDER_FLOWS } from "@app/components/assistant_builder/types";
-import AppContentLayout, { appLayoutBack } from "@app/components/sparkle/AppContentLayout";
+import AppContentLayout, {
+  appLayoutBack,
+} from "@app/components/sparkle/AppContentLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useAssistantTemplates } from "@app/lib/swr/assistants";
-import type { SubscriptionType, TemplateTagCodeType, TemplateTagsType, WorkspaceType } from "@app/types";
+import type {
+  SubscriptionType,
+  TemplateTagCodeType,
+  TemplateTagsType,
+  WorkspaceType,
+} from "@app/types";
 import { isTemplateTagCodeArray, TEMPLATES_TAGS_CONFIG } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{

@@ -14,7 +14,8 @@ import type { WorkspaceType } from "@app/types";
 
 import { AgentBuilderContext } from "./AgentBuilderContext";
 
-const MIN_RIGHT_PANEL_SIZE = 2;
+const COLLAPSED_RIGHT_PANEL_SIZE = 3;
+const MIN_EXPANDED_RIGHT_PANEL_SIZE = 20;
 const DEFAULT_RIGHT_PANEL_SIZE = 30;
 
 interface AgentBuilderLayoutProps {
@@ -28,7 +29,8 @@ export function AgentBuilderLayout({
   rightPanel,
   owner,
 }: AgentBuilderLayoutProps) {
-  const { isPreviewPanelOpen } = useContext(AgentBuilderContext);
+  const { isPreviewPanelOpen, setIsPreviewPanelOpen } =
+    useContext(AgentBuilderContext);
   const previewPanelRef = useRef<ImperativePanelHandle>(null);
   const [isResizing, setIsResizing] = useState(false);
 
@@ -41,6 +43,14 @@ export function AgentBuilderLayout({
       }
     }
   }, [isPreviewPanelOpen]);
+
+  const handlePanelCollapse = () => {
+    setIsPreviewPanelOpen(false);
+  };
+
+  const handlePanelExpand = () => {
+    setIsPreviewPanelOpen(true);
+  };
 
   return (
     <div className="flex h-full flex-row">
@@ -72,6 +82,7 @@ export function AgentBuilderLayout({
               </ResizablePanel>
 
               <ResizableHandle
+                disabled={!isPreviewPanelOpen}
                 onDragging={(isDragging) => setIsResizing(isDragging)}
               />
 
@@ -79,9 +90,15 @@ export function AgentBuilderLayout({
                 ref={previewPanelRef}
                 id="preview-panel"
                 defaultSize={DEFAULT_RIGHT_PANEL_SIZE}
-                minSize={MIN_RIGHT_PANEL_SIZE}
-                collapsedSize={MIN_RIGHT_PANEL_SIZE}
+                minSize={
+                  isPreviewPanelOpen
+                    ? MIN_EXPANDED_RIGHT_PANEL_SIZE
+                    : COLLAPSED_RIGHT_PANEL_SIZE
+                }
+                collapsedSize={COLLAPSED_RIGHT_PANEL_SIZE}
                 collapsible={true}
+                onCollapse={handlePanelCollapse}
+                onExpand={handlePanelExpand}
                 className={
                   !isResizing
                     ? "overflow-hidden transition-all duration-300 ease-in-out"
