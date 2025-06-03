@@ -16,7 +16,7 @@ import { useState } from "react";
 
 import { FeedbacksSection } from "@app/components/assistant_builder/FeedbacksSection";
 import { useAgentAnalytics } from "@app/lib/swr/assistants";
-import type { AgentConfigurationType } from "@app/types";
+import type { LightAgentConfigurationType } from "@app/types";
 import type { WorkspaceType } from "@app/types";
 import { removeNulls } from "@app/types";
 
@@ -27,7 +27,7 @@ const PERIODS = [
 ];
 
 interface AssistantDetailsPerformanceProps {
-  agentConfiguration: AgentConfigurationType;
+  agentConfiguration: LightAgentConfigurationType;
   owner: WorkspaceType;
   gridMode: boolean;
 }

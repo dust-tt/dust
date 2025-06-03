@@ -24,6 +24,7 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle,
+  Spinner,
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
@@ -206,6 +207,7 @@ interface ActionScreenProps {
   setEdited: (edited: boolean) => void;
   setAction: (action: AssistantBuilderSetActionType) => void;
   pendingAction: AssistantBuilderPendingAction;
+  isFetchingActions: boolean;
 }
 
 export default function ActionsScreen({
@@ -215,6 +217,7 @@ export default function ActionsScreen({
   setEdited,
   setAction,
   pendingAction,
+  isFetchingActions = false,
 }: ActionScreenProps) {
   const { hasFeature } = useFeatureFlags({
     workspaceId: owner.sId,
@@ -434,32 +437,38 @@ export default function ActionsScreen({
           </div>
         )}
         <div className="flex h-full min-h-40 flex-col gap-4">
-          {!isLegacyConfig && builderState.actions.length === 0 ? (
-            <div className="flex h-36 w-full items-center justify-center rounded-xl bg-muted-background dark:bg-muted-background-night">
-              <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                Add knowledge and tools to enhance your agent's capabilities.
-              </p>
+          {isFetchingActions && (
+            <div className="flex h-36 w-full items-center justify-center rounded-xl">
+              <Spinner />
             </div>
-          ) : (
-            <CardGrid>
-              {builderState.actions.map((action) => (
-                <ActionCard
-                  action={action}
-                  key={action.name}
-                  editAction={() => {
-                    setAction({
-                      type: "edit",
-                      action,
-                    });
-                  }}
-                  removeAction={() => {
-                    removeAction(action);
-                  }}
-                  isLegacyConfig={isLegacyConfig}
-                />
-              ))}
-            </CardGrid>
           )}
+          {!isFetchingActions &&
+            (!isLegacyConfig && builderState.actions.length === 0 ? (
+              <div className="flex h-36 w-full items-center justify-center rounded-xl bg-muted-background dark:bg-muted-background-night">
+                <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                  Add knowledge and tools to enhance your agent's capabilities.
+                </p>
+              </div>
+            ) : (
+              <CardGrid>
+                {builderState.actions.map((action) => (
+                  <ActionCard
+                    action={action}
+                    key={action.name}
+                    editAction={() => {
+                      setAction({
+                        type: "edit",
+                        action,
+                      });
+                    }}
+                    removeAction={() => {
+                      removeAction(action);
+                    }}
+                    isLegacyConfig={isLegacyConfig}
+                  />
+                ))}
+              </CardGrid>
+            ))}
         </div>
       </div>
     </>

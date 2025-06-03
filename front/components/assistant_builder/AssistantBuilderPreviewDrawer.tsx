@@ -45,7 +45,7 @@ import type {
   ModelConfigurationType,
   WorkspaceType,
 } from "@app/types";
-import type { AgentConfigurationType } from "@app/types";
+import type { LightAgentConfigurationType } from "@app/types";
 import { isAssistantBuilderRightPanelTab } from "@app/types";
 
 interface AssistantBuilderRightPanelProps {
@@ -56,7 +56,7 @@ interface AssistantBuilderRightPanelProps {
   resetToTemplateActions: () => Promise<void>;
   owner: WorkspaceType;
   builderState: AssistantBuilderState;
-  agentConfiguration: AgentConfigurationType | null;
+  agentConfiguration: LightAgentConfigurationType | null;
   setAction: (action: AssistantBuilderSetActionType) => void;
   reasoningModels: ModelConfigurationType[];
 }
