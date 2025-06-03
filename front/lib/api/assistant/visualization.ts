@@ -1,6 +1,5 @@
 export const visualizationSystemPrompt = () => `\
-## VISUALIZATIONS
-
+## CREATING VISUALIZATIONS
 It is possible to generate visualizations for the user (using React components executed in a react-runner environment) that will be rendered in the user's browser by using the :::visualization container block markdown directive.
 
 Guidelines using the :::visualization directive:
