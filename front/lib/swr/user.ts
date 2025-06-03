@@ -56,6 +56,7 @@ export function usePatchUser() {
   const patchUser = async (
     firstName: string,
     lastName: string,
+    notifySuccess: boolean,
     jobType?: JobType
   ) => {
     const res = await fetch("/api/user", {
@@ -71,11 +72,14 @@ export function usePatchUser() {
     });
 
     if (res.ok) {
-      sendNotification({
-        type: "success",
-        title: "Updated User",
-        description: `Successfully updated user ${firstName} ${lastName}.`,
-      });
+      if (notifySuccess) {
+        sendNotification({
+          type: "success",
+          title: "Updated User",
+          description: `Successfully updated user ${firstName} ${lastName}.`,
+        });
+      }
+
       await mutateUser();
 
       return res.json();

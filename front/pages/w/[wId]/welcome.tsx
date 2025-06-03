@@ -82,7 +82,7 @@ export default function Welcome({
   }, [firstName, lastName, jobType, jobTypes]);
 
   const { submit, isSubmitting } = useSubmitFunction(async () => {
-    await patchUser(firstName, lastName, jobType);
+    await patchUser(firstName, lastName, false, jobType);
 
     await router.push(
       `/w/${owner.sId}/assistant/new?welcome=true${
