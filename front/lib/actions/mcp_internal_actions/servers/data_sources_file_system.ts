@@ -123,7 +123,7 @@ const createServer = (): McpServer => {
   );
 
   server.tool(
-    "list_files",
+    "list",
     "List the direct contents of a folder or container. Use this when you want to see what's " +
       "inside a specific folder from your uploaded files or synced data sources (Notion, Slack, " +
       "Github, etc.), like 'ls' in Unix. A good fit is when you need to explore the filesystem " +
@@ -132,6 +132,7 @@ const createServer = (): McpServer => {
     {
       parentId: z
         .string()
+        .nullable()
         .describe(
           "The exact ID of the folder/container whose contents you want to list. " +
             "Get this ID from previous search results (it's the 'id' field)."
@@ -156,7 +157,8 @@ const createServer = (): McpServer => {
           data_source_views: makeDataSourceViewFilter(
             agentDataSourceConfigurations
           ),
-          parent_id: parentId,
+          // "root" is a special parent id that represents the root of the data source view.
+          parent_id: parentId ?? "root",
         },
         options: {
           cursor: nextPageCursor,
@@ -173,55 +175,6 @@ const createServer = (): McpServer => {
 
       return makeMCPToolJSONSuccess({
         message: "Folder contents listed successfully.",
-        result: renderSearchResults(searchResult.value),
-      });
-    }
-  );
-
-  server.tool(
-    "list_root_items",
-    "Show the top-level folders and files in the data sources - the starting point of the " +
-      "filesystem hierarchy. Use this when you want to begin exploring your uploaded files or " +
-      "synced data from SaaS products (Notion, Slack, Github, etc.). This is like listing the " +
-      "root directory - it shows you the highest-level content items.",
-    {
-      dataSources:
-        ConfigurableToolInputSchemas[
-          INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
-        ],
-      ...OPTION_PARAMETERS,
-    },
-    async ({ dataSources, limit, sortBy, nextPageCursor }) => {
-      const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-      const fetchResult = await getAgentDataSourceConfigurations(dataSources);
-
-      if (fetchResult.isErr()) {
-        return makeMCPToolTextError(fetchResult.error.message);
-      }
-      const agentDataSourceConfigurations = fetchResult.value;
-
-      const searchResult = await coreAPI.searchNodes({
-        filter: {
-          data_source_views: makeDataSourceViewFilter(
-            agentDataSourceConfigurations
-          ),
-          parent_id: "root",
-        },
-        options: {
-          cursor: nextPageCursor,
-          limit,
-          sort: sortBy
-            ? [{ field: sortBy, direction: getSortDirection(sortBy) }]
-            : undefined,
-        },
-      });
-
-      if (searchResult.isErr()) {
-        return makeMCPToolTextError("Failed to list root content");
-      }
-
-      return makeMCPToolJSONSuccess({
-        message: "Root content listed successfully.",
         result: renderSearchResults(searchResult.value),
       });
     }
