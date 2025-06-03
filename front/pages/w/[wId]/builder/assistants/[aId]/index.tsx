@@ -3,20 +3,10 @@ import type { InferGetServerSidePropsType } from "next";
 
 import AssistantBuilder from "@app/components/assistant_builder/AssistantBuilder";
 import { AssistantBuilderProvider } from "@app/components/assistant_builder/AssistantBuilderContext";
-import {
-  buildInitialActions,
-  getAccessibleSourcesAndApps,
-} from "@app/components/assistant_builder/server_side_props_helpers";
-import type {
-  AssistantBuilderInitialState,
-  BuilderFlow,
-} from "@app/components/assistant_builder/types";
-import {
-  BUILDER_FLOWS,
-  getDataVisualizationActionConfiguration,
-} from "@app/components/assistant_builder/types";
+import { getAccessibleSourcesAndApps } from "@app/components/assistant_builder/server_side_props_helpers";
+import type { BuilderFlow } from "@app/components/assistant_builder/types";
+import { BUILDER_FLOWS } from "@app/components/assistant_builder/types";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
-import { throwIfInvalidAgentConfiguration } from "@app/lib/actions/types/guards";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import config from "@app/lib/api/config";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
@@ -24,9 +14,9 @@ import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type {
-  AgentConfigurationType,
   AppType,
   DataSourceViewType,
+  LightAgentConfigurationType,
   PlanType,
   SpaceType,
   SubscriptionType,
@@ -35,8 +25,7 @@ import type {
 } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
-  actions: AssistantBuilderInitialState["actions"];
-  agentConfiguration: AgentConfigurationType;
+  agentConfiguration: LightAgentConfigurationType;
   agentEditors: UserType[];
   baseUrl: string;
   dataSourceViews: DataSourceViewType[];
@@ -69,7 +58,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       configuration,
     ] = await Promise.all([
       getAccessibleSourcesAndApps(auth),
-      getAgentConfiguration(auth, context.params?.aId as string, "full"),
+      getAgentConfiguration(auth, context.params?.aId as string, "light"),
       MCPServerViewResource.ensureAllAutoToolsAreCreated(auth),
     ]);
 
@@ -93,13 +82,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 
     const mcpServerViewsJSON = mcpServerViews.map((v) => v.toJSON());
 
-    const actions = await buildInitialActions({
-      dataSourceViews,
-      dustApps,
-      configuration,
-      mcpServerViews: mcpServerViewsJSON,
-    });
-
     const editorGroupRes = await GroupResource.findEditorGroupForAgent(
       auth,
       configuration
@@ -114,7 +96,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 
     return {
       props: {
-        actions,
         agentConfiguration: configuration,
         agentEditors,
         baseUrl: config.getClientFacingUrl(),
@@ -132,7 +113,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 });
 
 export default function EditAssistant({
-  actions,
   agentConfiguration,
   agentEditors,
   baseUrl,
@@ -145,8 +125,6 @@ export default function EditAssistant({
   plan,
   subscription,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  throwIfInvalidAgentConfiguration(agentConfiguration);
-
   if (agentConfiguration.scope === "global") {
     throw new Error("Cannot edit global agent");
   }
@@ -182,13 +160,7 @@ export default function EditAssistant({
             temperature: agentConfiguration.model.temperature,
             responseFormat: agentConfiguration.model.responseFormat,
           },
-          actions: [
-            ...actions,
-            // DATA_VISUALIZATION is not an action, but we need to show it in the UI like an action.
-            ...(agentConfiguration.visualizationEnabled
-              ? [getDataVisualizationActionConfiguration()]
-              : []),
-          ],
+          actions: [], // Actions will be populated later from the client
           visualizationEnabled: agentConfiguration.visualizationEnabled,
           maxStepsPerRun: agentConfiguration.maxStepsPerRun,
           templateId: agentConfiguration.templateId,

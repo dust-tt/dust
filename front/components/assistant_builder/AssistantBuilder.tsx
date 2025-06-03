@@ -31,8 +31,8 @@ import SettingsScreen, {
 } from "@app/components/assistant_builder/SettingsScreen";
 import { submitAssistantBuilderForm } from "@app/components/assistant_builder/submitAssistantBuilderForm";
 import type {
+  AssistantBuilderLightProps,
   AssistantBuilderPendingAction,
-  AssistantBuilderProps,
   AssistantBuilderSetActionType,
   AssistantBuilderState,
   BuilderScreen,
@@ -40,6 +40,7 @@ import type {
 import {
   BUILDER_SCREENS,
   BUILDER_SCREENS_INFOS,
+  getDataVisualizationActionConfiguration,
   getDefaultAssistantState,
 } from "@app/components/assistant_builder/types";
 import { useNavigationLock } from "@app/components/assistant_builder/useNavigationLock";
@@ -53,6 +54,7 @@ import {
   AppLayoutSimpleSaveCancelTitle,
 } from "@app/components/sparkle/AppLayoutTitle";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
+import { useAssistantConfigurationActions } from "@app/lib/swr/actions";
 import { useKillSwitches } from "@app/lib/swr/kill";
 import { useModels } from "@app/lib/swr/models";
 import { useUser } from "@app/lib/swr/user";
@@ -79,7 +81,7 @@ export default function AssistantBuilder({
   defaultIsEdited,
   baseUrl,
   defaultTemplate,
-}: AssistantBuilderProps) {
+}: AssistantBuilderLightProps) {
   const router = useRouter();
   const sendNotification = useSendNotification();
   const { user, isUserLoading, isUserError } = useUser();
@@ -114,6 +116,36 @@ export default function AssistantBuilder({
   const [descriptionError, setDescriptionError] = useState<string | null>(null);
   const [hasAnyActionsError, setHasAnyActionsError] = useState<boolean>(false);
 
+  const { actions, isActionsLoading, error } = useAssistantConfigurationActions(
+    owner.sId,
+    agentConfiguration?.sId ?? null
+  );
+
+  useEffect(() => {
+    if (error) {
+      sendNotification({
+        title: "Could not retrieve actions",
+        description:
+          "There was an error retrieving the actions for this agent.",
+        type: "error",
+      });
+      return;
+    }
+
+    setBuilderState((prevState) => ({
+      ...prevState,
+      actions: [
+        ...actions.map((action) => ({
+          id: uniqueId(),
+          ...action,
+        })),
+        ...(prevState.visualizationEnabled
+          ? [getDataVisualizationActionConfiguration()]
+          : []),
+      ],
+    }));
+  }, [actions, error, sendNotification]);
+
   const [builderState, setBuilderState] = useState<AssistantBuilderState>(
     initialBuilderState
       ? {
@@ -125,10 +157,7 @@ export default function AssistantBuilder({
           generationSettings: initialBuilderState.generationSettings ?? {
             ...getDefaultAssistantState().generationSettings,
           },
-          actions: initialBuilderState.actions.map((action) => ({
-            id: uniqueId(),
-            ...action,
-          })),
+          actions: [], // Actions will be populated later from the client
           maxStepsPerRun:
             initialBuilderState.maxStepsPerRun ??
             getDefaultAssistantState().maxStepsPerRun,
@@ -349,6 +378,7 @@ export default function AssistantBuilder({
         if (slackDataSource) {
           await mutateSlackChannels();
         }
+
         if (isBuilder(owner)) {
           // Redirect to the agent list once saved.
           if (flow === "personal_assistants") {
@@ -478,6 +508,7 @@ export default function AssistantBuilder({
                             setEdited={setEdited}
                             setAction={setAction}
                             pendingAction={pendingAction}
+                            isFetchingActions={isActionsLoading}
                           />
                         );
 

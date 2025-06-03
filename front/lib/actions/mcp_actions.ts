@@ -414,26 +414,36 @@ async function getMCPClientConnectionParams(
   });
 }
 
-function getPrefixedToolName(
+export function getPrefixedToolName(
   config: MCPServerConfigurationType,
   originalName: string
 ): Result<string, Error> {
   const slugifiedConfigName = slugify(config.name);
   const slugifiedOriginalName = slugify(originalName);
+  const separator = TOOL_NAME_SEPARATOR;
 
-  const prefixedName = `${slugifiedConfigName}${TOOL_NAME_SEPARATOR}${slugifiedOriginalName}`;
+  // If the original name is already too long, we can't use it.
+  if (slugifiedOriginalName.length > MAX_TOOL_NAME_LENGTH) {
+    return new Err(
+      new Error(
+        `Tool name "${originalName}" is too long. Maximum length is ${MAX_TOOL_NAME_LENGTH} characters.`
+      )
+    );
+  }
 
-  // If the prefixed name is too long, we return the unprefixed original name directly.
-  if (prefixedName.length >= MAX_TOOL_NAME_LENGTH) {
-    if (slugifiedOriginalName.length >= MAX_TOOL_NAME_LENGTH) {
-      return new Err(
-        new Error(
-          `Tool name too long: ${originalName} (max length is ${MAX_TOOL_NAME_LENGTH})`
-        )
-      );
-    }
+  // Calculate if we have enough room for a meaningful prefix (3 chars) plus separator
+  const minPrefixLength = 3 + separator.length;
+  const availableSpace = MAX_TOOL_NAME_LENGTH - slugifiedOriginalName.length;
+
+  // If we don't have enough room for a meaningful prefix, just return the original name
+  if (availableSpace < minPrefixLength) {
     return new Ok(slugifiedOriginalName);
   }
+
+  // Calculate the maximum allowed length for the config name portion
+  const maxConfigNameLength = availableSpace - separator.length;
+  const truncatedConfigName = slugifiedConfigName.slice(0, maxConfigNameLength);
+  const prefixedName = `${truncatedConfigName}${separator}${slugifiedOriginalName}`;
 
   return new Ok(prefixedName);
 }

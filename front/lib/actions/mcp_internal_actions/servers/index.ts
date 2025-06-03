@@ -65,7 +65,7 @@ export async function getInternalMCPServer(
     case "include_data":
       return includeDataServer(auth, agentLoopContext);
     case "run_agent":
-      return runAgentServer(auth);
+      return runAgentServer(auth, agentLoopContext);
     case "reasoning":
       return reasoningServer(auth, agentLoopContext);
     case "run_dust_app":
@@ -79,7 +79,7 @@ export async function getInternalMCPServer(
     case "gmail":
       return gmailServer(auth, mcpServerId);
     case "data_sources_file_system":
-      return dataSourcesFileSystemServer();
+      return dataSourcesFileSystemServer(auth, agentLoopContext);
     default:
       assertNever(internalMCPServerName);
   }

@@ -131,7 +131,7 @@ export class CustomerioServerSideTracking {
     });
   }
 
-  static async trackCompleteUserOnboarding({
+  static async trackUpdateUser({
     user,
     workspace,
     role,

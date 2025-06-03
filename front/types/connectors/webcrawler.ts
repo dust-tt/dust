@@ -1,7 +1,7 @@
 import * as t from "io-ts";
 
 export const WEBCRAWLER_MAX_DEPTH = 5;
-export const WEBCRAWLER_MAX_PAGES = 512;
+export const WEBCRAWLER_MAX_PAGES = 1024;
 
 export const CrawlingModes = ["child", "website"] as const;
 export type CrawlingMode = (typeof CrawlingModes)[number];
