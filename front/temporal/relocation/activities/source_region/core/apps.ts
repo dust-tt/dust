@@ -119,18 +119,6 @@ export async function getApp({
   for (const datasetId of Object.keys(dataSetsToFetch.value.datasets)) {
     const dataSetVersions = dataSetsToFetch.value.datasets[datasetId];
     for (const dataSetVersion of dataSetVersions) {
-      // temporary hardcoded for a relocation
-      if (dustAPIProjectId === "11704" && datasetId === "random") {
-        datasets.push({
-          dataset_id: datasetId,
-          data: [{ answer: 268, question: "What is 67*4?" }],
-          hash: dataSetVersion.hash,
-          created: dataSetVersion.created,
-          keys: ["answer", "query"],
-        });
-        continue;
-      }
-
       const apiDataset = await coreAPI.getDataset({
         projectId: dustAPIProjectId,
         datasetName: datasetId,
@@ -147,12 +135,13 @@ export async function getApp({
           },
           "Failed to get datasets"
         );
-        throw new Error(
-          `Failed to get dataset ${datasetId}: ${apiDataset.error.message}`
-        );
+        // temporary comment that error
+        // throw new Error(
+        //   `Failed to get dataset ${datasetId}: ${apiDataset.error.message}`
+        // );
+      } else {
+        datasets.push(apiDataset.value.dataset);
       }
-
-      datasets.push(apiDataset.value.dataset);
     }
   }
 
