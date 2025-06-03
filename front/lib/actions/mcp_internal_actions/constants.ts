@@ -63,6 +63,8 @@ export const INTERNAL_MCP_SERVERS: Record<
       add_issue_to_project: "low",
       get_pull_request: "never_ask",
       list_organization_projects: "never_ask",
+      list_issues: "never_ask",
+      get_issue: "never_ask",
     },
   },
   image_generation: {
