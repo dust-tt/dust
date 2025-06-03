@@ -89,6 +89,90 @@ const createServer = (
   const server = new McpServer(serverInfo);
 
   server.tool(
+    "cat",
+    "Read the contents of a document, referred to by its nodeId (named after the 'cat' unix tool). The nodeId can be obtained using the 'find_by_title' or 'find_by_id' tools.",
+    {
+      dataSources:
+        ConfigurableToolInputSchemas[
+          INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
+        ],
+      nodeId: z.string().describe("The ID of the node to read."),
+    },
+    async ({ dataSources, nodeId }) => {
+      const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+
+      // Gather data source configurations.
+      const fetchResult = await getAgentDataSourceConfigurations(dataSources);
+
+      if (fetchResult.isErr()) {
+        return makeMCPToolTextError(fetchResult.error.message);
+      }
+      const agentDataSourceConfigurations = fetchResult.value;
+
+      // Search the node using our search api.
+      const searchResult = await coreAPI.searchNodes({
+        filter: {
+          node_ids: [nodeId],
+          data_source_views: makeDataSourceViewFilter(
+            agentDataSourceConfigurations
+          ),
+        },
+      });
+
+      if (searchResult.isErr() || searchResult.value.nodes.length === 0) {
+        return makeMCPToolTextError(
+          `Could not find node: ${nodeId} (error: ${
+            searchResult.isErr() ? searchResult.error : "No nodes found"
+          })`
+        );
+      }
+
+      const node = searchResult.value.nodes[0];
+
+      if (node.node_type !== "document") {
+        return makeMCPToolTextError(
+          `Node is of type ${node.node_type}, not a document.`
+        );
+      }
+
+      // Get dustAPIProjectId from the data source configuration.
+      const dustAPIProjectId = agentDataSourceConfigurations.find(
+        (config) =>
+          config.dataSource.dustAPIDataSourceId === node.data_source_id
+      )?.dataSource.dustAPIProjectId;
+
+      if (!dustAPIProjectId) {
+        return makeMCPToolTextError(
+          `Could not find dustAPIProjectId for node: ${nodeId}`
+        );
+      }
+
+      // Read the node.
+      const readResult = await coreAPI.getDataSourceDocument({
+        dataSourceId: node.data_source_id,
+        documentId: node.node_id,
+        projectId: dustAPIProjectId,
+      });
+
+      if (readResult.isErr()) {
+        return makeMCPToolTextError(
+          `Could not read node: ${nodeId} (error: ${readResult.error})`
+        );
+      }
+
+      return {
+        isError: false,
+        content: [
+          {
+            type: "text",
+            text: readResult.value.document.text ?? "",
+          },
+        ],
+      };
+    }
+  );
+
+  server.tool(
     "find",
     "Find content based on their title starting from a specific node. Can be used to to find specific " +
       "nodes by searching for their titles. The query title can be omitted to list all nodes " +
