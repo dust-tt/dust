@@ -5,7 +5,6 @@ import {
   getAgentConfigurations,
 } from "@app/lib/api/assistant/configuration";
 import { destroyConversation } from "@app/lib/api/assistant/conversation/destroy";
-import { isGlobalAgentId } from "@app/lib/api/assistant/global_agents";
 import config from "@app/lib/api/config";
 import {
   getDataSources,
@@ -28,13 +27,13 @@ import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
+import { TagResource } from "@app/lib/resources/tags_resource";
 import { TrackerConfigurationResource } from "@app/lib/resources/tracker_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { CustomerioServerSideTracking } from "@app/lib/tracking/customerio/server";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
-import { ConnectorsAPI, removeNulls } from "@app/types";
-import { TagResource } from "@app/lib/resources/tags_resource";
+import { ConnectorsAPI, removeNulls, isGlobalAgentId } from "@app/types";
 
 export async function sendDataDeletionEmail({
   remainingDays,

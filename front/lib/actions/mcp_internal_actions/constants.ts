@@ -214,7 +214,7 @@ export const INTERNAL_MCP_SERVERS: Record<
   },
   run_agent: {
     id: 1008,
-    availability: "manual",
+    availability: "auto",
     flag: "dev_mcp_actions",
   },
   query_tables_v2: {
