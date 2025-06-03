@@ -120,17 +120,13 @@ export default async function createServer(
     );
   }
 
-  let toolName = "run_agent_tool_not_available";
-  let toolDescription =
-    "No child agent configured for this tool, as the child agent was probably archived. " +
-    "Do not attempt to run the tool and warn the user instead.";
-
-  // If we have no child agent ID, return a dummy server, this logic is required by the MCP library
-  // but should never happe.
+  // If we have no child ID (unexpected) or the child agent was archived, return a dummy server
+  // whose tool name and description informs the agent of the situation.
   if (!agentBlob) {
     server.tool(
-      toolName,
-      toolDescription,
+      "run_agent_tool_not_available",
+      "No child agent configured for this tool, as the child agent was probably archived. " +
+        "Do not attempt to run the tool and warn the user instead.",
       {
         childAgent:
           ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.AGENT],
@@ -150,12 +146,9 @@ export default async function createServer(
     return server;
   }
 
-  toolName = `run_${agentBlob.name}`;
-  toolDescription = `Run agent ${agentBlob.name} - ${agentBlob.description}`;
-
   server.tool(
-    toolName,
-    toolDescription,
+    `run_${agentBlob.name}`,
+    `Run agent ${agentBlob.name} (${agentBlob.description})`,
     {
       query: z
         .string()
