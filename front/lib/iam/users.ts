@@ -11,6 +11,7 @@ import { UserModel } from "@app/lib/resources/storage/models/user";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { guessFirstAndLastNameFromFullName } from "@app/lib/user";
+import logger from "@app/logger/logger";
 import type { Result, UserProviderType } from "@app/types";
 import { Err, Ok, sanitizeString } from "@app/types";
 
@@ -126,7 +127,23 @@ export async function createOrUpdateUser({
     }
 
     if (externalUser.workOSUserId) {
-      updateArgs.workOSUserId = externalUser.workOSUserId;
+      const existingWorkOSUser = externalUser.workOSUserId
+        ? await UserResource.fetchByWorkOSUserId(externalUser.workOSUserId)
+        : null;
+
+      // If worksOSUserId is already taken, we don't want to take it - only one user can have the same workOSUserId.
+      if (!existingWorkOSUser) {
+        updateArgs.workOSUserId = externalUser.workOSUserId;
+      } else {
+        logger.warn(
+          {
+            userId: user.id,
+            workOSUserId: externalUser.workOSUserId,
+            existingUserId: existingWorkOSUser.id,
+          },
+          `User tried to update their workOSUserId, but it was already taken.`
+        );
+      }
     }
 
     if (Object.keys(updateArgs).length > 0) {
@@ -157,10 +174,15 @@ export async function createOrUpdateUser({
       lastName = escape(lastName);
     }
 
+    // If worksOSUserId is already taken, we don't want to take it - only one user can have the same workOSUserId.
+    const existingWorkOSUser = externalUser.workOSUserId
+      ? await UserResource.fetchByWorkOSUserId(externalUser.workOSUserId)
+      : null;
+
     const u = await UserResource.makeNew({
       sId: generateRandomModelSId(),
       auth0Sub: externalUser.auth0Sub,
-      workOSUserId: externalUser.workOSUserId,
+      workOSUserId: existingWorkOSUser ? null : externalUser.workOSUserId,
       provider: null, ///session.provider,
       username: externalUser.nickname,
       email: sanitizeString(externalUser.email),
@@ -168,6 +190,17 @@ export async function createOrUpdateUser({
       firstName,
       lastName,
     });
+
+    if (existingWorkOSUser) {
+      logger.warn(
+        {
+          userId: u.id,
+          workOSUserId: externalUser.workOSUserId,
+          existingUserId: existingWorkOSUser.id,
+        },
+        `User tried to create a new user with a workOSUserId, but it was already taken.`
+      );
+    }
 
     return { user: u, created: true };
   }
