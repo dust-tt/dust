@@ -292,16 +292,13 @@ function formatTimestamp(timestamp: number): string {
 function renderNode(node: CoreAPIContentNode) {
   return {
     nodeId: node.node_id,
-    type: node.node_type,
     title: node.title,
-    parent_id: node.parent_id,
     path: node.parents.join("/"),
-    parent_title: node.parent_title,
-    children_count: node.children_count,
-    last_updated_at: formatTimestamp(node.timestamp),
-    source_url: node.source_url,
+    parentTitle: node.parent_title,
+    lastUpdatedAt: formatTimestamp(node.timestamp),
+    sourceUrl: node.source_url,
     // TODO(2025-06-02 aubin): see if we want a translation on these.
-    mime_type: node.mime_type,
+    mimeType: node.mime_type,
   };
 }
 
@@ -312,8 +309,8 @@ function renderNode(node: CoreAPIContentNode) {
 function renderSearchResults(response: CoreAPISearchNodesResponse) {
   return {
     data: response.nodes.map(renderNode),
-    next_page_cursor: response.next_page_cursor,
-    result_count: response.hit_count,
+    nextPageCursor: response.next_page_cursor,
+    resultCount: response.hit_count,
   };
 }
 
