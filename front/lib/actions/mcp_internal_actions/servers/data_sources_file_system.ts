@@ -212,62 +212,6 @@ const createServer = (): McpServer => {
     }
   );
 
-  server.tool(
-    "find_by_type",
-    "Find all content of a specific type from your uploaded files or synced data sources (Notion, " +
-      "Slack, Github, etc.). Use this to retrieve all documents, all spreadsheets/tables, or all " +
-      "folders. Good fits are requests like 'show me all the documents', 'find all spreadsheets', " +
-      "or 'list all folders'.",
-    {
-      nodeTypes: z
-        .array(z.enum(["document", "table", "folder"]))
-        .describe(
-          "Types of content to find. Use 'document' for text files, PDFs, presentations, etc." +
-            "Use 'table' for spreadsheets, Notion databases, structured data. Use 'folder' for " +
-            "containers/directories. You can specify multiple types to get mixed results."
-        ),
-      dataSources:
-        ConfigurableToolInputSchemas[
-          INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
-        ],
-      ...OPTION_PARAMETERS,
-    },
-    async ({ nodeTypes, dataSources, limit, sortBy, nextPageCursor }) => {
-      const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-      const fetchResult = await getAgentDataSourceConfigurations(dataSources);
-
-      if (fetchResult.isErr()) {
-        return makeMCPToolTextError(fetchResult.error.message);
-      }
-      const agentDataSourceConfigurations = fetchResult.value;
-
-      const searchResult = await coreAPI.searchNodes({
-        filter: {
-          data_source_views: makeDataSourceViewFilter(
-            agentDataSourceConfigurations
-          ),
-          node_types: nodeTypes,
-        },
-        options: {
-          cursor: nextPageCursor,
-          limit,
-          sort: sortBy
-            ? [{ field: sortBy, direction: getSortDirection(sortBy) }]
-            : undefined,
-        },
-      });
-
-      if (searchResult.isErr()) {
-        return makeMCPToolTextError("Failed to search content by type");
-      }
-
-      return makeMCPToolJSONSuccess({
-        message: "Content items found successfully.",
-        result: renderSearchResults(searchResult.value),
-      });
-    }
-  );
-
   return server;
 };
 
