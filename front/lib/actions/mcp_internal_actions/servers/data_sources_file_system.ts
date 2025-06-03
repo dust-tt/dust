@@ -136,7 +136,8 @@ const createServer = (): McpServer => {
         .nullable()
         .describe(
           "The exact ID of the node whose contents you want to list. " +
-            "Get this ID from previous search results (it's the 'nodeId' field)."
+            "Get this ID from previous search results (it's the 'nodeId' field). " +
+            "If not provided, the content at the root of the filesystem will be shown."
         ),
       dataSources:
         ConfigurableToolInputSchemas[
