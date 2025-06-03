@@ -52,7 +52,7 @@ makeScript(
     });
 
     if (!app) {
-      logger.error({ workspaceId, appId }, "App not found");
+      logger.error({ workspaceId: workspace.id, appId }, "App not found");
       return;
     }
 
