@@ -64,8 +64,14 @@ export const makeMCPToolTextSuccess = ({
   result,
 }: {
   message: string;
-  result: string;
+  result?: string;
 }): CallToolResult => {
+  if (!result) {
+    return {
+      isError: false,
+      content: [{ type: "text", text: message }],
+    };
+  }
   return {
     isError: false,
     content: [
