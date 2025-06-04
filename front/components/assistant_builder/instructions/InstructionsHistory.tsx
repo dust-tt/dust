@@ -25,6 +25,7 @@ interface InstructionHistoryProps {
   onSelect: (config: LightAgentConfigurationType) => void;
   owner: LightWorkspaceType;
   agentConfigurationId: string | null;
+  currentInstructions: string;
 }
 
 export function InstructionHistory({
@@ -33,6 +34,7 @@ export function InstructionHistory({
   selectedConfig,
   owner,
   agentConfigurationId,
+  currentInstructions,
 }: InstructionHistoryProps) {
   const { editors } = useEditors({
     owner,
@@ -159,7 +161,7 @@ export function InstructionHistory({
             }
           }}
         >
-          {historyWithPrev.map(({ config, prevInstructions }) => (
+          {historyWithPrev.map(({ config }) => (
             <DropdownMenuRadioItem
               key={config.version}
               value={config.version.toString()}
@@ -172,8 +174,8 @@ export function InstructionHistory({
                   </span>
                 </div>
                 <GaugeDiff
-                  original={prevInstructions}
-                  updated={config.instructions ?? ""}
+                  original={config.instructions ?? ""}
+                  updated={currentInstructions}
                 />
               </div>
             </DropdownMenuRadioItem>

@@ -295,6 +295,7 @@ export function InstructionScreen({
                   }}
                   owner={owner}
                   agentConfigurationId={agentConfigurationId}
+                  currentInstructions={builderState.instructions || ""}
                 />
               )}
           </div>
