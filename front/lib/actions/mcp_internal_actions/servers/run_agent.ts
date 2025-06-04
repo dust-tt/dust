@@ -43,7 +43,7 @@ function parseAgentConfigurationUri(uri: string): Result<string, Error> {
 }
 
 /**
- * This method fetchs the name and description of a child agent. It returns it even even if the
+ * This method fetches the name and description of a child agent. It returns it even if the
  * agent is private as it is referenced from a parent agent which requires a name and description
  * for the associated run_agent tool rendering.
  *
@@ -156,8 +156,8 @@ export default async function createServer(
       query: z
         .string()
         .describe(
-          `The query sent to the agent. This is the question or instruction that will be ` +
-            `processed by the agent, which will respond with its own capabilities and knowledge.`
+          "The query sent to the agent. This is the question or instruction that will be " +
+            "processed by the agent, which will respond with its own capabilities and knowledge."
         ),
       childAgent:
         ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.AGENT],
