@@ -169,7 +169,7 @@ export function InstructionHistory({
               }
             }}
           >
-            {historyWithPrev.map(({ config, prevInstructions }) => (
+            {historyWithPrev.map(({ config }) => (
               <DropdownMenuRadioItem
                 key={config.version}
                 value={config.version.toString()}
