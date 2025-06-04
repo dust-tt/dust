@@ -256,7 +256,7 @@ export function ActionValidationProvider({
             </div>
             {currentValidation?.stake === "low" && (
               <div className="mt-5">
-                <Label className="copy-sm flex cursor-pointer flex-row items-center gap-2 py-1 font-normal">
+                <Label className="copy-sm flex w-fit cursor-pointer flex-row items-center gap-2 py-2 pr-2 font-normal">
                   <Checkbox
                     checked={neverAskAgain}
                     onCheckedChange={(check) => {
