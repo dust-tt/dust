@@ -5,7 +5,7 @@ import { createConnectionAndGetSetupUrl } from "@app/lib/api/oauth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { isOAuthProvider, isOAuthUseCase, safeParseJSON } from "@app/types";
 
-export const ExtraConfigTypeSchema = t.record(t.string, t.string);
+export const ExtraConfigTypeSchema = t.record(t.string, t.unknown);
 export type ExtraConfigType = t.TypeOf<typeof ExtraConfigTypeSchema>;
 
 export const getServerSideProps = withDefaultUserAuthRequirements<object>(
@@ -29,7 +29,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<object>(
       };
     }
 
-    let parsedExtraConfig: Record<string, string> = {};
+    let parsedExtraConfig: ExtraConfigType = {};
     const parseRes = safeParseJSON(extraConfig as string);
     if (parseRes.isErr()) {
       return {

@@ -23,6 +23,7 @@ pub enum CredentialProvider {
     Hubspot,
     Linear,
     Gmail,
+    Mcp,
 }
 
 impl From<ConnectionProvider> for CredentialProvider {
@@ -31,6 +32,7 @@ impl From<ConnectionProvider> for CredentialProvider {
             ConnectionProvider::Microsoft => CredentialProvider::Microsoft,
             ConnectionProvider::Salesforce => CredentialProvider::Salesforce,
             ConnectionProvider::Gmail => CredentialProvider::Gmail,
+            ConnectionProvider::Mcp => CredentialProvider::Mcp,
             _ => panic!("Unsupported provider: {:?}", provider),
         }
     }
@@ -186,6 +188,9 @@ impl Credential {
                 vec!["client_id", "client_secret"]
             }
             CredentialProvider::Gmail => {
+                vec!["client_id", "client_secret"]
+            }
+            CredentialProvider::Mcp => {
                 vec!["client_id", "client_secret"]
             }
         };

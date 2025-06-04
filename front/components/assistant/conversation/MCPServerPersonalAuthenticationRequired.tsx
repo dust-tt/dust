@@ -2,7 +2,10 @@ import { Button, Chip, CloudArrowLeftRightIcon } from "@dust-tt/sparkle";
 import { useState } from "react";
 
 import { useSubmitFunction } from "@app/lib/client/utils";
-import { useCreatePersonalConnection } from "@app/lib/swr/mcp_servers";
+import {
+  useCreatePersonalConnection,
+  useMCPServer,
+} from "@app/lib/swr/mcp_servers";
 import type {
   LightWorkspaceType,
   OAuthProvider,
@@ -24,6 +27,10 @@ export function MCPServerPersonalAuthenticationRequired({
   scope?: string;
   retryHandler: () => void;
 }) {
+  const { server: mcpServer } = useMCPServer({
+    owner,
+    serverId: mcpServerId,
+  });
   const { createPersonalConnection } = useCreatePersonalConnection(owner);
 
   const { submit: retry } = useSubmitFunction(async () => retryHandler());
@@ -50,29 +57,31 @@ export function MCPServerPersonalAuthenticationRequired({
             }
             size="xs"
           />
-          <Button
-            label={`Connect`}
-            variant="outline"
-            size="xs"
-            icon={CloudArrowLeftRightIcon}
-            disabled={isConnecting}
-            onClick={async () => {
-              setIsConnecting(true);
-              const success = await createPersonalConnection(
-                mcpServerId,
-                provider,
-                useCase,
-                scope
-              );
-              setIsConnecting(false);
-              if (!success) {
-                setIsConnected(false);
-              } else {
-                setIsConnected(true);
-                await retry();
-              }
-            }}
-          />
+          {mcpServer && (
+            <Button
+              label={`Connect`}
+              variant="outline"
+              size="xs"
+              icon={CloudArrowLeftRightIcon}
+              disabled={isConnecting}
+              onClick={async () => {
+                setIsConnecting(true);
+                const success = await createPersonalConnection(
+                  mcpServer,
+                  provider,
+                  useCase,
+                  scope
+                );
+                setIsConnecting(false);
+                if (!success) {
+                  setIsConnected(false);
+                } else {
+                  setIsConnected(true);
+                  await retry();
+                }
+              }}
+            />
+          )}
         </div>
       )}
     </div>

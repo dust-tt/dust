@@ -4,10 +4,10 @@ use crate::oauth::{
         confluence::ConfluenceConnectionProvider, github::GithubConnectionProvider,
         gmail::GmailConnectionProvider, gong::GongConnectionProvider,
         google_drive::GoogleDriveConnectionProvider, hubspot::HubspotConnectionProvider,
-        intercom::IntercomConnectionProvider, microsoft::MicrosoftConnectionProvider,
-        mock::MockConnectionProvider, notion::NotionConnectionProvider,
-        salesforce::SalesforceConnectionProvider, slack::SlackConnectionProvider,
-        zendesk::ZendeskConnectionProvider,
+        intercom::IntercomConnectionProvider, mcp::MCPConnectionProvider,
+        microsoft::MicrosoftConnectionProvider, mock::MockConnectionProvider,
+        notion::NotionConnectionProvider, salesforce::SalesforceConnectionProvider,
+        slack::SlackConnectionProvider, zendesk::ZendeskConnectionProvider,
     },
     store::OAuthStore,
 };
@@ -99,6 +99,7 @@ pub enum ConnectionProvider {
     Zendesk,
     Salesforce,
     Hubspot,
+    Mcp,
 }
 
 impl FromStr for ConnectionProvider {
@@ -233,6 +234,7 @@ pub fn provider(t: ConnectionProvider) -> Box<dyn Provider + Sync + Send> {
         ConnectionProvider::Zendesk => Box::new(ZendeskConnectionProvider::new()),
         ConnectionProvider::Salesforce => Box::new(SalesforceConnectionProvider::new()),
         ConnectionProvider::Hubspot => Box::new(HubspotConnectionProvider::new()),
+        ConnectionProvider::Mcp => Box::new(MCPConnectionProvider::new()),
     }
 }
 
@@ -250,6 +252,8 @@ pub enum ProviderError {
     InternalError(anyhow::Error),
     #[error("Token revoked.")]
     TokenRevokedError,
+    #[error("Invalid metadata: {0}.")]
+    InvalidMetadataError(String),
 }
 
 impl From<anyhow::Error> for ProviderError {
@@ -275,6 +279,10 @@ impl ProviderError {
                 code: ConnectionErrorCode::InternalError,
                 message: "Failed to finalize connection.".to_string(),
             },
+            ProviderError::InvalidMetadataError(_) => ConnectionError {
+                code: ConnectionErrorCode::InternalError,
+                message: self.to_string(),
+            },
         }
     }
 
@@ -293,6 +301,10 @@ impl ProviderError {
             ProviderError::InternalError(_) => ConnectionError {
                 code: ConnectionErrorCode::InternalError,
                 message: "Failed to refresh access token.".to_string(),
+            },
+            ProviderError::InvalidMetadataError(_) => ConnectionError {
+                code: ConnectionErrorCode::InternalError,
+                message: self.to_string(),
             },
         }
     }

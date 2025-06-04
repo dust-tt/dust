@@ -1,3 +1,5 @@
+import type { MCPOAuthExtraConfig } from "@app/lib/api/oauth/providers/mcp";
+
 import type {
   OAuthConnectionType,
   OAuthCredentials,
@@ -20,7 +22,7 @@ export async function setupOAuthConnection({
   owner: LightWorkspaceType;
   provider: OAuthProvider;
   useCase: OAuthUseCase;
-  extraConfig: OAuthCredentials;
+  extraConfig: OAuthCredentials | MCPOAuthExtraConfig;
 }): Promise<Result<OAuthConnectionType, Error>> {
   return new Promise((resolve) => {
     let url = `${dustClientFacingUrl}/w/${owner.sId}/oauth/${provider}/setup?useCase=${useCase}`;

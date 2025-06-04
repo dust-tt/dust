@@ -74,10 +74,6 @@ export function useMcpServer() {
           setServerId(result.serverId);
           setIsConnected(true);
           setError(null);
-          console.log(
-            "MCP server connected successfully with ID:",
-            result.serverId
-          );
         }
       } catch (err) {
         console.error("Error setting up MCP server:", err);

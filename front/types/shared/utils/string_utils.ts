@@ -129,8 +129,7 @@ export function asDisplayName(name?: string | null) {
     return "";
   }
 
-  return name
-    .toLowerCase()
+  return slugify(name)
     .replace(/_/g, " ")
     .replace(
       SPECIAL_CASES_PATTERN,

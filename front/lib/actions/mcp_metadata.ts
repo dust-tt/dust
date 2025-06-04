@@ -20,9 +20,10 @@ import {
   isInternalAllowedIcon,
 } from "@app/lib/actions/mcp_icons";
 import { connectToInternalMCPServer } from "@app/lib/actions/mcp_internal_actions";
+import { MCPOAuthRequiredError } from "@app/lib/actions/mcp_oauth_error";
+import { MCPOAuthProvider } from "@app/lib/actions/mcp_oauth_provider";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { ClientSideRedisMCPTransport } from "@app/lib/api/actions/mcp_client_side";
-import apiConfig from "@app/lib/api/config";
 import type {
   InternalMCPServerDefinitionType,
   MCPServerDefinitionType,
@@ -30,8 +31,6 @@ import type {
   MCPToolType,
 } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
-import type { MCPServerConnectionConnectionType } from "@app/lib/resources/mcp_server_connection_resource";
-import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { validateJsonSchema } from "@app/lib/utils/json_schemas";
 import logger from "@app/logger/logger";
@@ -39,7 +38,6 @@ import type { OAuthProvider, OAuthUseCase, Result } from "@app/types";
 import {
   assertNever,
   Err,
-  getOAuthConnectionAccessToken,
   isOAuthProvider,
   isOAuthUseCase,
   Ok,
@@ -76,30 +74,6 @@ export function isInternalMCPServerDefinition(
     typeof server.icon === "string" &&
     isInternalAllowedIcon(server.icon)
   );
-}
-
-async function getAccessTokenForRemoteMCPServer(
-  auth: Authenticator,
-  remoteMCPServer: RemoteMCPServerResource,
-  connectionType: MCPServerConnectionConnectionType
-) {
-  const metadata = remoteMCPServer.toJSON();
-
-  if (metadata.authorization) {
-    const connection = await MCPServerConnectionResource.findByMCPServer({
-      auth,
-      mcpServerId: metadata.sId,
-      connectionType,
-    });
-    if (connection.isOk()) {
-      const token = await getOAuthConnectionAccessToken({
-        config: apiConfig.getOAuthAPIConfig(),
-        logger,
-        connectionId: connection.value.connectionId,
-      });
-      return token.isOk() ? token.value.access_token : null;
-    }
-  }
 }
 
 interface ConnectViaMCPServerId {
@@ -188,34 +162,18 @@ export const connectToMCPServer = async (
             );
           }
 
-          const accessToken = await getAccessTokenForRemoteMCPServer(
-            auth,
-            remoteMCPServer,
-            "workspace"
-          );
-
           const url = new URL(remoteMCPServer.url);
 
           try {
             const req = {
               requestInit: {
+                headers: undefined,
                 dispatcher: getGlobalDispatcher().compose(
                   // @ts-expect-error: looks like undici typing is not up to date
                   createSSRFInterceptor()
                 ),
-                headers: {
-                  ...(remoteMCPServer.sharedSecret
-                    ? {
-                        Authorization: `Bearer ${remoteMCPServer.sharedSecret}`,
-                      }
-                    : {}),
-                  ...(accessToken
-                    ? { Authorization: `Bearer ${accessToken}` }
-                    : {}),
-                  // NOTE: For now, we are not using the access token. Once it's used,
-                  // it will take over the shared secret Bearer. This is intended.
-                },
               },
+              authProvider: new MCPOAuthProvider(auth, remoteMCPServer),
             };
 
             await connectToRemoteMCPServer(mcpClient, url, req);
@@ -227,7 +185,7 @@ export const connectToMCPServer = async (
                 workspaceId: auth.getNonNullableWorkspace().sId,
                 error: e,
               },
-              "Error establishing connection to remote MCP server"
+              "Error establishing connection to remote MCP server via ID"
             );
             return new Err(
               new Error("Error establishing connection to remote MCP server.")
@@ -250,20 +208,32 @@ export const connectToMCPServer = async (
           ),
           headers: { ...(params.headers ?? {}) },
         },
+        authProvider: new MCPOAuthProvider(auth, undefined),
       };
       try {
         await connectToRemoteMCPServer(mcpClient, url, req);
       } catch (e: unknown) {
+        if (e instanceof MCPOAuthRequiredError) {
+          logger.info(
+            {
+              error: e,
+            },
+            "Authorization required to connect to remote MCP server"
+          );
+
+          return new Err(e);
+        }
+
         logger.error(
           {
             connectionType,
             workspaceId: auth.getNonNullableWorkspace().sId,
             error: e,
           },
-          "Error establishing connection to remote MCP server"
+          "Error establishing connection to remote MCP server via URL"
         );
         return new Err(
-          new Error("Error establishing connection to remote MCP server.")
+          new Error("Check URL and if a bearer token is required.")
         );
       }
       break;
@@ -314,7 +284,11 @@ async function connectToRemoteMCPServer(
     // Check if error message contains "HTTP 4xx" as suggested by the official doc.
     // Doc is here https://github.com/modelcontextprotocol/typescript-sdk?tab=readme-ov-file#client-side-compatibility.
     if (error instanceof Error && /HTTP 4\d\d/.test(error.message)) {
-      console.log(
+      logger.info(
+        {
+          url: url.toString(),
+          error: error.message,
+        },
         "Error establishing connection to remote MCP server via streamableHttpTransport, falling back to sseTransport."
       );
       const sseTransport = new SSEClientTransport(url, req);
