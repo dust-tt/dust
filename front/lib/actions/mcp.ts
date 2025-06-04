@@ -360,7 +360,7 @@ export class MCPActionType extends BaseAction {
     id: ModelId;
     workspaceId: ModelId;
   }): string {
-    return makeSId("action", {
+    return makeSId("mcp_action", {
       id,
       workspaceId,
     });
