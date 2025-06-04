@@ -203,12 +203,10 @@ const THROTTLE_TRIGGER_RATIO = 0.2;
 const NO_RETRY_AFTER_DELAY = -1;
 // Number of times we retry when rate limited and Confluence does provide a retry-after header.
 const MAX_RATE_LIMIT_RETRY_COUNT = 5;
-// We take some margin on the value provided for the retry-after.
-const RETRY_AFTER_JITTER = 30_000; // 30 seconds
 // If Confluence returns a retry-after header with a delay greater than this value, we cap it.
 const MAX_RETRY_AFTER_DELAY = 300_000; // 5 minutes
 // If Confluence indicates that we are approaching the rate limit, we delay by this value.
-const NEAR_RATE_LIMIT_DELAY = 30_000; // 30 seconds
+const NEAR_RATE_LIMIT_DELAY = 60_000; // 1 minute
 
 // Space types that we support indexing in Dust.
 export const CONFLUENCE_SUPPORTED_SPACE_TYPES = [
@@ -237,10 +235,6 @@ function getRetryAfterDuration(headers: Headers): number {
   }
 
   return NO_RETRY_AFTER_DELAY;
-}
-
-function sampleJitter(): number {
-  return Math.floor(Math.random() * RETRY_AFTER_JITTER);
 }
 
 function checkNearRateLimit(headers: Headers): boolean {
@@ -433,7 +427,7 @@ export class ConfluenceClient {
 
         if (delayMs !== NO_RETRY_AFTER_DELAY) {
           // Server provided a delay (relevant for Case 2 or if retries exhausted).
-          retryAfterMsForTemporal = delayMs + sampleJitter();
+          retryAfterMsForTemporal = delayMs;
           if (retryCount >= MAX_RATE_LIMIT_RETRY_COUNT) {
             logReason = `Activity retries exhausted. Server suggested delay ${delayMs}ms.`;
           } else {
@@ -513,7 +507,7 @@ export class ConfluenceClient {
         "status:near_rate_limit",
       ]);
 
-      const delayMs = NEAR_RATE_LIMIT_DELAY + sampleJitter();
+      const delayMs = NEAR_RATE_LIMIT_DELAY;
       localLogger.warn(
         {
           delayMs,
