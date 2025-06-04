@@ -73,6 +73,8 @@ makeScript(
       return;
     }
 
+    logger.info({ dataSource }, "found data source");
+
     const client = await getTemporalRelocationClient();
 
     const workflowId = `workspaceRelocateDataSourceCoreWorkflow-${workspaceId}-${
@@ -86,8 +88,8 @@ makeScript(
           {
             dataSourceCoreIds: {
               id: dataSourceId,
-              dustAPIProjectId: dataSource.dustAPIDataSourceId,
-              dustAPIDataSourceId: dataSource.dustAPIProjectId,
+              dustAPIProjectId: dataSource.dustAPIProjectId,
+              dustAPIDataSourceId: dataSource.dustAPIDataSourceId,
             },
             destRegion,
             sourceRegion,
