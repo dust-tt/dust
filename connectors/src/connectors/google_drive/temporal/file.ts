@@ -479,7 +479,7 @@ async function syncOneFileTextDocument(
       if (e instanceof WithRetriesError) {
         logger.warn(
           { error: e },
-          "Coulnd't export the file after multiple retries. Skipping."
+          "Couldn't export the file after multiple retries. Skipping."
         );
         return false;
       }
