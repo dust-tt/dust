@@ -50,6 +50,7 @@ import type {
   AgentLoopRunContextType,
 } from "@app/lib/actions/types";
 import {
+  isClientSideMCPToolConfiguration,
   isMCPServerConfiguration,
   isMCPToolConfiguration,
   isServerSideMCPServerConfiguration,
@@ -365,13 +366,11 @@ export async function* tryCallMCPTool(
     }
 
     const isValidContentSize = (
-      contentData: {
-        type: "text" | "image" | "resource";
-        byteSize: number;
-        maxSize: number;
-      }[]
+      content: MCPToolResultContentType[]
     ): boolean => {
-      return !contentData.some((data) => data.byteSize > data.maxSize);
+      return !content.some(
+        (item) => calculateContentSize(item) > getMaxSize(item)
+      );
     };
 
     const generateContentMetadata = (
@@ -425,24 +424,34 @@ export async function* tryCallMCPTool(
     };
 
     const serverType = (() => {
-      if ("clientSideMcpServerId" in agentLoopRunContext.actionConfiguration) {
+      if (
+        isClientSideMCPToolConfiguration(
+          agentLoopRunContext.actionConfiguration
+        )
+      ) {
         return "client";
       }
-      if (agentLoopRunContext.actionConfiguration.internalMCPServerId) {
+      if (
+        isServerSideMCPToolConfiguration(
+          agentLoopRunContext.actionConfiguration
+        ) &&
+        agentLoopRunContext.actionConfiguration.internalMCPServerId
+      ) {
         return "internal";
       }
       return "remote";
     })();
 
     if (serverType === "remote") {
-      const contentMetadata = generateContentMetadata(content);
-      const isValid = isValidContentSize(contentMetadata);
+      const isValid = isValidContentSize(content);
 
-      logger.info(
-        { contentMetadata, isValid },
-        "information on MCP tool result"
-      );
       if (!isValid) {
+        const contentMetadata = generateContentMetadata(content);
+        logger.info(
+          { contentMetadata, isValid },
+          "information on MCP tool result"
+        );
+
         yield {
           type: "result",
           result: new Err(new Error(`MCP tool result content size too large.`)),
