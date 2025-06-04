@@ -154,11 +154,13 @@ async function migrateWorkspaceRetrievalActions(
               : retrievalConfig.name,
           singleToolDescriptionOverride: retrievalConfig.description,
           appId: null,
+          jsonSchema: null,
         });
 
         // Move the datasources to the new MCP server configuration.
         const datasources = await AgentDataSourceConfiguration.findAll({
           where: {
+            workspaceId: auth.getNonNullableWorkspace().id,
             retrievalConfigurationId: retrievalConfig.id,
           },
         });
