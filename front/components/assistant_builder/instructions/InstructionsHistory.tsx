@@ -13,7 +13,6 @@ import { Spinner } from "@dust-tt/sparkle";
 import { useCallback, useMemo } from "react";
 import React from "react";
 
-import { GaugeDiff } from "@app/components/assistant_builder/instructions/GaugeDiff";
 import { useEditors } from "@app/lib/swr/editors";
 import type {
   LightAgentConfigurationType,
@@ -183,10 +182,6 @@ export function InstructionHistory({
                     </span>
                   </div>
                 </div>
-                <GaugeDiff
-                  original={prevInstructions}
-                  updated={config.instructions ?? ""}
-                />
               </DropdownMenuRadioItem>
             ))}
           </DropdownMenuRadioGroup>
