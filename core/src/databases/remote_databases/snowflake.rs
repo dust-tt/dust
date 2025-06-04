@@ -324,8 +324,8 @@ impl SnowflakeRemoteDatabase {
                 remote_database = "snowflake",
                 used_forbidden_tables = used_forbidden_tables.join(", "),
                 used_forbidden_tables_count = used_forbidden_tables.len(),
-                allowed_tables = allowed_tables.into_iter().collect::<Vec<_>>().join(", "),
                 allowed_tables_count = allowed_tables.len(),
+                allowed_tables = allowed_tables.into_iter().collect::<Vec<_>>().join(", "),
                 "Query uses tables that are not allowed",
             );
             Err(QueryDatabaseError::ExecutionError(

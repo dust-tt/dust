@@ -1,4 +1,5 @@
 use std::collections::HashSet;
+use tracing::info;
 
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
@@ -350,15 +351,14 @@ impl RemoteDatabase for BigQueryRemoteDatabase {
                 remote_database = "bigquery",
                 used_forbidden_tables = used_forbidden_tables.join(", "),
                 used_forbidden_tables_count = used_forbidden_tables.len(),
-                allowed_tables = allowed_tables.into_iter().collect::<Vec<_>>().join(", "),
                 allowed_tables_count = allowed_tables.len(),
+                allowed_tables = allowed_tables.into_iter().collect::<Vec<_>>().join(", "),
                 "Query uses tables that are not allowed",
             );
             Err(QueryDatabaseError::ExecutionError(
                 format!(
-                    "Query uses tables that are not allowed: {} (allowed: {})",
+                    "Query uses tables that are not allowed: {}",
                     used_forbidden_tables.join(", "),
-                    allowed_tables.into_iter().collect::<Vec<_>>().join(", ")
                 ),
                 Some(query.to_string()),
             ))?
