@@ -195,6 +195,9 @@ const RATE_LIMIT_HEADERS = {
 } as const;
 
 // Ratio remaining / limit at which we start to slow down the requests.
+// Note: we throttle either based on this ratio or when we get the nearLimit header, which is
+// supposed to trigger at 20% (it seems to be a bit more than this since THROTTLE_TRIGGER_RATIO = 0.2
+// is always superseded by the header and THROTTLE_TRIGGER_RATIO = 0.3 never is).
 const THROTTLE_TRIGGER_RATIO = 0.2;
 // If Confluence does not provide a retry-after header, we use this constant to signal no delay.
 const NO_RETRY_AFTER_DELAY = -1;
