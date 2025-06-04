@@ -1134,6 +1134,64 @@ export class CoreAPI {
     return this._resultFromResponse(response);
   }
 
+  async getDataSourceDocumentText({
+    dataSourceId,
+    documentId,
+    projectId,
+    offset,
+    limit,
+    versionHash,
+    viewFilter,
+  }: {
+    dataSourceId: string;
+    documentId: string;
+    projectId: string;
+    offset?: number | null;
+    limit?: number | null;
+    versionHash?: string | null;
+    viewFilter?: CoreAPISearchFilter | null;
+  }): Promise<
+    CoreAPIResponse<{
+      text: string;
+      total_characters: number;
+      offset: number;
+      limit: number | null;
+    }>
+  > {
+    const queryParams = new URLSearchParams();
+
+    if (offset !== null && offset !== undefined) {
+      queryParams.append("offset", String(offset));
+    }
+
+    if (limit !== null && limit !== undefined) {
+      queryParams.append("limit", String(limit));
+    }
+
+    if (versionHash) {
+      queryParams.append("version_hash", versionHash);
+    }
+
+    if (viewFilter) {
+      queryParams.append("view_filter", JSON.stringify(viewFilter));
+    }
+
+    const qs = queryParams.toString();
+
+    const response = await this._fetchWithError(
+      `${this._url}/projects/${encodeURIComponent(
+        projectId
+      )}/data_sources/${encodeURIComponent(
+        dataSourceId
+      )}/documents/${encodeURIComponent(documentId)}/text${qs ? `?${qs}` : ""}`,
+      {
+        method: "GET",
+      }
+    );
+
+    return this._resultFromResponse(response);
+  }
+
   async getDataSourceDocumentVersions({
     projectId,
     dataSourceId,

@@ -2193,6 +2193,79 @@ async fn data_sources_documents_retrieve(
     }
 }
 
+/// Retrieve document text from a data source with offset and limit.
+#[derive(serde::Deserialize)]
+struct DataSourcesDocumentsRetrieveTextQuery {
+    offset: Option<usize>,
+    limit: Option<usize>,
+    version_hash: Option<String>,
+    view_filter: Option<String>, // Parsed as JSON.
+}
+
+async fn data_sources_documents_retrieve_text(
+    Path((project_id, data_source_id, document_id)): Path<(i64, String, String)>,
+    State(state): State<Arc<APIState>>,
+    Query(query): Query<DataSourcesDocumentsRetrieveTextQuery>,
+) -> (StatusCode, Json<APIResponse>) {
+    // Call the existing retrieve function
+    let retrieve_query = DataSourcesDocumentsRetrieveQuery {
+        version_hash: query.version_hash,
+        view_filter: query.view_filter,
+    };
+    
+    let (status, json_response) = data_sources_documents_retrieve(
+        Path((project_id, data_source_id, document_id)),
+        State(state),
+        Query(retrieve_query),
+    ).await;
+    
+    // If the request failed, return the error as-is
+    if status != StatusCode::OK {
+        return (status, json_response);
+    }
+    
+    // Extract the document text from the response
+    if let Some(response) = &json_response.response {
+        if let Some(document) = response.get("document") {
+            if let Some(text) = document.get("text").and_then(|t| t.as_str()) {
+                let offset = query.offset.unwrap_or(0);
+                let limit = query.limit;
+                
+                // Apply character-based offset and limit
+                let text_len = text.len();
+                let start = offset.min(text_len);
+                let end = match limit {
+                    Some(l) => (start + l).min(text_len),
+                    None => text_len,
+                };
+                
+                let text_slice = &text[start..end];
+                
+                return (
+                    StatusCode::OK,
+                    Json(APIResponse {
+                        error: None,
+                        response: Some(json!({
+                            "text": text_slice,
+                            "total_characters": text_len,
+                            "offset": start,
+                            "limit": limit,
+                        })),
+                    }),
+                );
+            }
+        }
+    }
+    
+    // If we couldn't extract the text, return an error
+    error_response(
+        StatusCode::INTERNAL_SERVER_ERROR,
+        "internal_server_error",
+        "Failed to extract text from document",
+        None,
+    )
+}
+
 /// Delete document from a data source.
 
 async fn data_sources_documents_delete(
@@ -4100,6 +4173,10 @@ fn main() {
         .route(
             "/projects/:project_id/data_sources/:data_source_id/documents/:document_id",
             get(data_sources_documents_retrieve),
+        )
+        .route(
+            "/projects/:project_id/data_sources/:data_source_id/documents/:document_id/text",
+            get(data_sources_documents_retrieve_text),
         )
         .route(
             "/projects/:project_id/data_sources/:data_source_id/documents/:document_id",
