@@ -57,18 +57,20 @@ describe("MCP Connections API Handler", () => {
     await SpaceFactory.system(workspace, t);
 
     const remoteServer = await RemoteMCPServerFactory.create(workspace);
+    const now = new Date();
 
     // Create two workspace connections for the same server.
     await MCPServerConnectionFactory.remote(
       authenticator,
       remoteServer,
-      "workspace"
+      "workspace",
+      new Date(now.getTime() - 60000) // 1 min ago.
     );
-    await new Promise((resolve) => setTimeout(resolve, 50));
     const connection2 = await MCPServerConnectionFactory.remote(
       authenticator,
       remoteServer,
-      "workspace"
+      "workspace",
+      now
     );
 
     await handler(req, res);
@@ -120,17 +122,20 @@ describe("MCP Connections API Handler", () => {
     });
     req.query.connectionType = "personal";
 
+    const now = new Date();
+
     // Create two internal connections for the same server.
     await MCPServerConnectionFactory.internal(
       authenticator,
       "internal_server_1",
-      "personal"
+      "personal",
+      new Date(now.getTime() - 60000) // 1 min ago.
     );
-    await new Promise((resolve) => setTimeout(resolve, 50));
     const connection2 = await MCPServerConnectionFactory.internal(
       authenticator,
       "internal_server_1",
-      "personal"
+      "personal",
+      now
     );
 
     await handler(req, res);
