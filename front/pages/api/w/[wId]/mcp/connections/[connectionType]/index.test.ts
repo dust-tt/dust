@@ -19,7 +19,7 @@ describe("MCP Connections API Handler", () => {
         });
       req.query.connectionType = "personal";
 
-      // Create a system space to hold the Remote MCP servers
+      // Create a system space to hold the Remote MCP servers.
       await SpaceFactory.system(workspace, t);
 
       const remoteServer = await RemoteMCPServerFactory.create(workspace);
@@ -41,7 +41,7 @@ describe("MCP Connections API Handler", () => {
       expect(res._getStatusCode()).toBe(200);
       const response = res._getJSONData();
       expect(response.connections).toHaveLength(1);
-      expect(response.connections[0].sId).toBe(connection2.sId); // Should return the latest connection
+      expect(response.connections[0].sId).toBe(connection2.sId); // Should return the latest connection.
     }
   );
 
@@ -58,12 +58,13 @@ describe("MCP Connections API Handler", () => {
 
     const remoteServer = await RemoteMCPServerFactory.create(workspace);
 
-    // Create two workspace connections for the same server
+    // Create two workspace connections for the same server.
     await MCPServerConnectionFactory.remote(
       authenticator,
       remoteServer,
       "workspace"
     );
+    await new Promise((resolve) => setTimeout(resolve, 50));
     const connection2 = await MCPServerConnectionFactory.remote(
       authenticator,
       remoteServer,
@@ -75,7 +76,7 @@ describe("MCP Connections API Handler", () => {
     expect(res._getStatusCode()).toBe(200);
     const response = res._getJSONData();
     expect(response.connections).toHaveLength(1);
-    expect(response.connections[0].sId).toBe(connection2.sId); // Should return the latest connection
+    expect(response.connections[0].sId).toBe(connection2.sId); // Should return the latest connection.
   });
 
   itInTransaction("should handle different server IDs correctly", async (t) => {
@@ -91,7 +92,7 @@ describe("MCP Connections API Handler", () => {
     const remoteServer1 = await RemoteMCPServerFactory.create(workspace);
     const remoteServer2 = await RemoteMCPServerFactory.create(workspace);
 
-    // Create connections for different servers
+    // Create connections for different servers.
     const connection1 = await MCPServerConnectionFactory.remote(
       authenticator,
       remoteServer1,
@@ -119,12 +120,13 @@ describe("MCP Connections API Handler", () => {
     });
     req.query.connectionType = "personal";
 
-    // Create two internal connections for the same server
+    // Create two internal connections for the same server.
     await MCPServerConnectionFactory.internal(
       authenticator,
       "internal_server_1",
       "personal"
     );
+    await new Promise((resolve) => setTimeout(resolve, 50));
     const connection2 = await MCPServerConnectionFactory.internal(
       authenticator,
       "internal_server_1",
@@ -136,7 +138,7 @@ describe("MCP Connections API Handler", () => {
     expect(res._getStatusCode()).toBe(200);
     const response = res._getJSONData();
     expect(response.connections).toHaveLength(1);
-    expect(response.connections[0].sId).toBe(connection2.sId); // Should return the latest connection
+    expect(response.connections[0].sId).toBe(connection2.sId); // Should return the latest connection.
   });
 
   itInTransaction("should return 400 for invalid connection type", async () => {
@@ -159,7 +161,7 @@ describe("MCP Connections API Handler", () => {
   itInTransaction(
     "should not leak personal connections across workspaces",
     async (t) => {
-      // Create first workspace and its connections
+      // Create first workspace and its connections.
       const { workspace: workspace1, authenticator: authenticator1 } =
         await createPrivateApiMockRequest({
           method: "GET",
@@ -172,7 +174,7 @@ describe("MCP Connections API Handler", () => {
         "personal"
       );
 
-      // Create second workspace and its connections
+      // Create second workspace and its connections.
       const {
         req,
         res,
@@ -190,10 +192,10 @@ describe("MCP Connections API Handler", () => {
         "personal"
       );
 
-      // Query connections from workspace2
+      // Query connections from workspace2.
       await handler(req, res);
 
-      // Should only see connections from workspace2
+      // Should only see connections from workspace2.
       expect(res._getStatusCode()).toBe(200);
       const response = res._getJSONData();
       expect(response.connections).toHaveLength(1);
@@ -205,7 +207,7 @@ describe("MCP Connections API Handler", () => {
   itInTransaction(
     "should not leak workspace connections across workspaces",
     async (t) => {
-      // Create first workspace and its connections
+      // Create first workspace and its connections.
       const { workspace: workspace1, authenticator: authenticator1 } =
         await createPrivateApiMockRequest({
           method: "GET",
@@ -219,7 +221,7 @@ describe("MCP Connections API Handler", () => {
         "workspace"
       );
 
-      // Create second workspace and its connections
+      // Create second workspace and its connections.
       const {
         req,
         res,
@@ -238,10 +240,10 @@ describe("MCP Connections API Handler", () => {
         "workspace"
       );
 
-      // Query connections from workspace2
+      // Query connections from workspace2.
       await handler(req, res);
 
-      // Should only see connections from workspace2
+      // Should only see connections from workspace2.
       expect(res._getStatusCode()).toBe(200);
       const response = res._getJSONData();
       expect(response.connections).toHaveLength(1);
