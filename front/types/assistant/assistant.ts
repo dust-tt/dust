@@ -267,9 +267,6 @@ export type ModelConfigurationType = {
     incompleteDelimiterPatterns: RegExp[];
   };
 
-  // This meta-prompt is injected into the agent's system instructions every time.
-  metaPrompt?: string;
-
   // This meta-prompt is injected into the agent's system instructions if the agent is in a tool-use context.
   toolUseMetaPrompt?: string;
 

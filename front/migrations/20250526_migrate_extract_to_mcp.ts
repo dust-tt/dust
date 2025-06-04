@@ -1,6 +1,7 @@
 import fs from "fs";
 import { Op } from "sequelize";
 
+import { DEFAULT_PROCESS_ACTION_NAME } from "@app/lib/actions/constants";
 import { Authenticator } from "@app/lib/auth";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
@@ -14,7 +15,6 @@ import { getInsertSQL } from "@app/lib/utils/sql_utils";
 import type Logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import type { ModelId } from "@app/types";
-import { DEFAULT_PROCESS_ACTION_NAME } from "@app/lib/actions/constants";
 
 async function findWorkspacesWithProcessConfigurations(): Promise<ModelId[]> {
   const processConfigurations = await AgentProcessConfiguration.findAll({
@@ -144,6 +144,7 @@ async function migrateWorkspaceExtractActions(
         // Move the datasources to the new MCP server configuration.
         const datasources = await AgentDataSourceConfiguration.findAll({
           where: {
+            workspaceId: auth.getNonNullableWorkspace().id,
             processConfigurationId: processConfig.id,
           },
         });

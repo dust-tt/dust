@@ -64,8 +64,14 @@ export const makeMCPToolTextSuccess = ({
   result,
 }: {
   message: string;
-  result: string;
+  result?: string;
 }): CallToolResult => {
+  if (!result) {
+    return {
+      isError: false,
+      content: [{ type: "text", text: message }],
+    };
+  }
   return {
     isError: false,
     content: [
@@ -368,7 +374,7 @@ export function augmentInputsWithConfiguration({
 
   const inputs = { ...rawInputs };
 
-  const ajv = new Ajv({ allErrors: true });
+  const ajv = new Ajv({ allErrors: true, strict: false });
 
   // Note: When using AJV validation, string patterns must use regex syntax (e.g. /^fil_/) instead
   // of startsWith() to avoid "Invalid escape" errors. This is important because our Zod schemas are
