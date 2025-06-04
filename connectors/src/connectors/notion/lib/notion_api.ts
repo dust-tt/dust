@@ -665,9 +665,17 @@ export async function retrievePage({
   } catch (e) {
     if (
       APIResponseError.isAPIResponseError(e) &&
-      e.code === "object_not_found"
+      (e.code === "object_not_found" || e.code === "validation_error")
     ) {
-      localLogger.info("Page not found.");
+      localLogger.info(
+        {
+          notion_error: {
+            code: e.code,
+            message: e.message,
+          },
+        },
+        "Page not found."
+      );
       return null;
     }
     throw e;
