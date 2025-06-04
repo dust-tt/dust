@@ -76,19 +76,23 @@ export function InstructionHistory({
   );
 
   const historyWithPrev = useMemo(() => {
-    const sorted = [...history].sort((a, b) => {
-      const timeA = a.versionCreatedAt
-        ? new Date(a.versionCreatedAt).getTime()
-        : a.version;
-      const timeB = b.versionCreatedAt
-        ? new Date(b.versionCreatedAt).getTime()
-        : b.version;
+    const currentVersion = Math.max(...history.map((h) => h.version));
 
-      if (timeA !== timeB) {
-        return timeB - timeA;
-      }
-      return b.version - a.version;
-    });
+    const sorted = [...history]
+      .filter((config) => config.version !== currentVersion)
+      .sort((a, b) => {
+        const timeA = a.versionCreatedAt
+          ? new Date(a.versionCreatedAt).getTime()
+          : a.version;
+        const timeB = b.versionCreatedAt
+          ? new Date(b.versionCreatedAt).getTime()
+          : b.version;
+
+        if (timeA !== timeB) {
+          return timeB - timeA;
+        }
+        return b.version - a.version;
+      });
 
     const result: Array<{
       config: LightAgentConfigurationType;
