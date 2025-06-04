@@ -1,5 +1,3 @@
-import { P } from "pino";
-
 import { createPlugin } from "@app/lib/api/poke/types";
 import { checkUserRegionAffinity } from "@app/lib/api/regions/lookup";
 import { Workspace } from "@app/lib/models/workspace";
