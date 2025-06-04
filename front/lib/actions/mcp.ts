@@ -668,8 +668,15 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
           // they are not yielded as regular notifications but are bubbled up as
           // `tool_approve_execution` events instead, which exposes them to the end-user.
           if (isToolApproveExecutionNotificationType(notificationOutput)) {
-            const { configurationId, actionId, inputs, stake, metadata } =
-              notificationOutput.resource;
+            const {
+              configurationId,
+              conversationId: subConversationId,
+              messageId: subMessageId,
+              actionId,
+              inputs,
+              stake,
+              metadata,
+            } = notificationOutput.resource;
 
             yield {
               created: Date.now(),
@@ -683,7 +690,13 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
               actionId,
               inputs,
               stake,
-              metadata,
+              metadata: {
+                ...metadata,
+                toolExecutionContext: {
+                  conversationId: subConversationId,
+                  messageId: subMessageId,
+                },
+              },
             };
           } else {
             // Regular notifications, we yield them as is with the type "tool_notification".

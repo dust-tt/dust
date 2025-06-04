@@ -83,4 +83,10 @@ export type MCPValidationMetadataType = {
   toolName: string;
   mcpServerName: string;
   agentName: string;
+  // Tools may be executed in a context that differs from the one in which the validation happens.
+  // This field keeps track of the original execution context.
+  toolExecutionContext?: {
+    conversationId: string;
+    messageId: string;
+  };
 };
