@@ -1,9 +1,4 @@
-import {
-  ArrowPathIcon,
-  Button,
-  Chip,
-  CloudArrowLeftRightIcon,
-} from "@dust-tt/sparkle";
+import { Button, Chip, CloudArrowLeftRightIcon } from "@dust-tt/sparkle";
 import { useState } from "react";
 
 import { useSubmitFunction } from "@app/lib/client/utils";
@@ -29,9 +24,7 @@ export function MCPServerPersonalAuthenticationRequired({
 }) {
   const { createPersonalConnection } = useCreatePersonalConnection(owner);
 
-  const { submit: retry, isSubmitting: isRetrying } = useSubmitFunction(
-    async () => retryHandler()
-  );
+  const { submit: retry } = useSubmitFunction(async () => retryHandler());
 
   const [isConnected, setIsConnected] = useState<boolean>(false);
   const [isConnecting, setIsConnecting] = useState<boolean>(false);
@@ -42,16 +35,8 @@ export function MCPServerPersonalAuthenticationRequired({
         <div className="flex flex-col gap-1 sm:flex-row">
           <Chip
             color="success"
-            label={"You are now connected. The agent message can be retried"}
+            label={"You are now connected. Automatically retrying..."}
             size="xs"
-          />
-          <Button
-            label={`Retry`}
-            variant="outline"
-            size="xs"
-            icon={ArrowPathIcon}
-            disabled={isRetrying}
-            onClick={retry}
           />
         </div>
       ) : (
@@ -81,6 +66,7 @@ export function MCPServerPersonalAuthenticationRequired({
                 setIsConnected(false);
               } else {
                 setIsConnected(true);
+                await retry();
               }
             }}
           />
