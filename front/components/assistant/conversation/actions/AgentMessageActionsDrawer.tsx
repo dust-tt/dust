@@ -8,6 +8,7 @@ import {
 } from "@dust-tt/sparkle";
 
 import { getActionSpecification } from "@app/components/actions/types";
+import type { ActionProgressState } from "@app/lib/assistant/state/messageReducer";
 import { useConversationMessage } from "@app/lib/swr/conversations";
 import type {
   AgentActionType,
@@ -18,6 +19,7 @@ import type {
 interface AgentMessageActionsDrawerProps {
   conversationId: string;
   message: LightAgentMessageType;
+  actionProgress: ActionProgressState;
   isOpened: boolean;
   isActing: boolean;
   onClose: () => void;
@@ -26,6 +28,7 @@ interface AgentMessageActionsDrawerProps {
 export function AgentMessageActionsDrawer({
   conversationId,
   message,
+  actionProgress,
   isOpened,
   isActing,
   onClose,
@@ -83,12 +86,14 @@ export function AgentMessageActionsDrawer({
                     const actionSpecification = getActionSpecification(
                       action.type
                     );
+                    const progress = actionProgress.get(action.id);
                     const ActionDetailsComponent =
                       actionSpecification.detailsComponent;
                     return (
                       <div key={`action-${action.id}`}>
                         <ActionDetailsComponent
                           action={action}
+                          lastNotification={progress?.progress ?? null}
                           defaultOpen={idx === 0 && step === "1"}
                           owner={owner}
                         />

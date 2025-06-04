@@ -497,16 +497,16 @@ const NotificationImageContentSchema = z.object({
 
 type ImageProgressOutput = z.infer<typeof NotificationImageContentSchema>;
 
-const NotificationTextContentSchema = z.object({
-  type: z.literal("text"),
-  text: z.string(),
-});
-
 export function isImageProgressOutput(
   output: ProgressNotificationOutput
 ): output is ImageProgressOutput {
   return output !== undefined && output.type === "image";
 }
+
+const NotificationTextContentSchema = z.object({
+  type: z.literal("text"),
+  text: z.string(),
+});
 
 const NotificationRunAgentContentSchema = z.object({
   type: z.literal("run_agent"),

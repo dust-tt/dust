@@ -59,6 +59,7 @@ export function GenericActionDetails({
   owner,
   action,
   defaultOpen,
+  lastNotification,
 }: ActionDetailsComponentBaseProps<MCPActionType>) {
   return (
     <ActionDetailsWrapper
@@ -66,6 +67,7 @@ export function GenericActionDetails({
       defaultOpen={defaultOpen}
       visual={ACTION_SPECIFICATIONS["MCP"].cardIcon}
     >
+      Notification: {JSON.stringify(lastNotification, undefined, 2)}
       <div className="flex flex-col gap-4 py-4 pl-6">
         <CollapsibleComponent
           rootProps={{ defaultOpen: !action.generatedFiles.length }}

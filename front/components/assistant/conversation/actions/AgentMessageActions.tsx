@@ -7,6 +7,7 @@ import type {
   BaseActionType,
   BaseAgentActionType,
 } from "@app/lib/actions/types";
+import type { ActionProgressState } from "@app/lib/assistant/state/messageReducer";
 import type { AgentStateClassification } from "@app/lib/assistant/state/messageReducer";
 import type { LightAgentMessageType, LightWorkspaceType } from "@app/types";
 import { assertNever } from "@app/types";
@@ -15,6 +16,7 @@ interface AgentMessageActionsProps {
   agentMessage: LightAgentMessageType;
   conversationId: string;
   lastAgentStateClassification: AgentStateClassification;
+  actionProgress: ActionProgressState;
   owner: LightWorkspaceType;
 }
 
@@ -22,6 +24,7 @@ export function AgentMessageActions({
   agentMessage,
   conversationId,
   lastAgentStateClassification,
+  actionProgress,
   owner,
 }: AgentMessageActionsProps) {
   const [chipLabel, setChipLabel] = useState<string | undefined>("Thinking");
@@ -58,6 +61,7 @@ export function AgentMessageActions({
         isOpened={isActionDrawerOpened}
         onClose={() => setIsActionDrawerOpened(false)}
         isActing={lastAgentStateClassification === "acting"}
+        actionProgress={actionProgress}
         owner={owner}
       />
       <ActionDetails
