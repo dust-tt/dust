@@ -2225,44 +2225,46 @@ async fn data_sources_documents_retrieve_text(
     }
     
     // Extract the document text from the response
-    if let Some(response) = &json_response.response {
-        if let Some(document) = response.get("document") {
-            if let Some(text) = document.get("text").and_then(|t| t.as_str()) {
-                let offset = query.offset.unwrap_or(0);
-                let limit = query.limit;
-                
-                // Apply character-based offset and limit
-                let text_len = text.len();
-                let start = offset.min(text_len);
-                let end = match limit {
-                    Some(l) => (start + l).min(text_len),
-                    None => text_len,
-                };
-                
-                let text_slice = &text[start..end];
-                
-                return (
-                    StatusCode::OK,
-                    Json(APIResponse {
-                        error: None,
-                        response: Some(json!({
-                            "text": text_slice,
-                            "total_characters": text_len,
-                            "offset": start,
-                            "limit": limit,
-                        })),
-                    }),
-                );
-            }
-        }
-    }
+    let text = json_response.response
+        .as_ref()
+        .and_then(|r| r.get("document"))
+        .and_then(|d| d.get("text"))
+        .and_then(|t| t.as_str());
     
-    // If we couldn't extract the text, return an error
-    error_response(
-        StatusCode::INTERNAL_SERVER_ERROR,
-        "internal_server_error",
-        "Failed to extract text from document",
-        None,
+    let text = match text {
+        Some(t) => t,
+        None => return error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to extract text from document response",
+            None,
+        ),
+    };
+    
+    // Now we have the text, apply character-based offset and limit
+    let offset = query.offset.unwrap_or(0);
+    let limit = query.limit;
+    
+    let text_len = text.len();
+    let start = offset.min(text_len);
+    let end = match limit {
+        Some(l) => (start + l).min(text_len),
+        None => text_len,
+    };
+    
+    let text_slice = &text[start..end];
+    
+    (
+        StatusCode::OK,
+        Json(APIResponse {
+            error: None,
+            response: Some(json!({
+                "text": text_slice,
+                "total_characters": text_len,
+                "offset": start,
+                "limit": limit,
+            })),
+        }),
     )
 }
 
