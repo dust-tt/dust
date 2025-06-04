@@ -735,6 +735,13 @@ export async function deleteWorkspaceActivity({
     },
   });
 
+  const systemGroup = await GroupResource.internalFetchWorkspaceSystemGroup(
+    workspace.id
+  );
+  if (systemGroup) {
+    await systemGroup.delete(auth);
+  }
+
   hardDeleteLogger.info({ workspaceId }, "Deleting Workspace");
 
   await Workspace.destroy({
