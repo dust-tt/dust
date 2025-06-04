@@ -374,7 +374,7 @@ export function augmentInputsWithConfiguration({
 
   const inputs = { ...rawInputs };
 
-  const ajv = new Ajv({ allErrors: true });
+  const ajv = new Ajv({ allErrors: true, strict: false });
 
   // Note: When using AJV validation, string patterns must use regex syntax (e.g. /^fil_/) instead
   // of startsWith() to avoid "Invalid escape" errors. This is important because our Zod schemas are
