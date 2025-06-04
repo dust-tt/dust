@@ -148,6 +148,21 @@ export class OAuthAPI {
     return this._resultFromResponse(response);
   }
 
+  async getConnectionMetadata({
+    connectionId,
+  }: {
+    connectionId: string;
+  }): Promise<
+    OAuthAPIResponse<{
+      connection: OAuthConnectionType;
+    }>
+  > {
+    const response = await this._fetchWithError(
+      `${this._url}/connections/${connectionId}/metadata`
+    );
+    return this._resultFromResponse(response);
+  }
+
   async postCredentials({
     provider,
     userId,

@@ -443,6 +443,7 @@ const PROVIDER_STRATEGIES: Record<
       userId,
       useCase
     ) => {
+      // SALESFORCE CONNECTION TO BE DEPRECATED.
       if (useCase === "salesforce_personal") {
         // For personal connection, we reuse the existing connection credential id
         // from the existing data source, if it exists.
@@ -514,7 +515,7 @@ const PROVIDER_STRATEGIES: Record<
           }
 
           const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);
-          const connectionRes = await oauthApi.getAccessToken({
+          const connectionRes = await oauthApi.getConnectionMetadata({
             connectionId: mcpServerConnectionRes.value.connectionId,
           });
           if (connectionRes.isErr()) {
@@ -735,7 +736,6 @@ export async function createConnectionAndGetSetupUrl(
       userId,
       useCase
     );
-
     if (result) {
       relatedCredential = result.credential;
       extraConfig = result.cleanedConfig;

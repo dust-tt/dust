@@ -78,13 +78,15 @@ export class MCPServerConnectionResource extends BaseResource<MCPServerConnectio
 
   private static async baseFetch(
     auth: Authenticator,
-    { where }: ResourceFindOptions<MCPServerConnection> = {}
+    { where, limit, order }: ResourceFindOptions<MCPServerConnection> = {}
   ) {
     const connections = await this.model.findAll({
       where: {
         ...where,
         workspaceId: auth.getNonNullableWorkspace().id,
       } as WhereOptions<MCPServerConnection>,
+      limit,
+      order,
       include: [
         {
           model: UserModel,
