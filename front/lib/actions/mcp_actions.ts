@@ -187,7 +187,7 @@ export async function* tryCallMCPTool(
   auth: Authenticator,
   inputs: Record<string, unknown> | undefined,
   agentLoopRunContext: AgentLoopRunContextType,
-  toolConfig: MCPToolConfigurationType,
+  toolConfiguration: MCPToolConfigurationType,
   {
     progressToken,
   }: {
@@ -392,7 +392,9 @@ export async function* tryCallMCPTool(
       );
     };
 
-    const { serverType } = getServerTypeAndIdFromSId(toolConfig.toolServerId);
+    const { serverType } = getServerTypeAndIdFromSId(
+      toolConfiguration.toolServerId
+    );
 
     if (serverType === "remote") {
       if (!isValidContentSize(content)) {
