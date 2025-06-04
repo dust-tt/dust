@@ -17,9 +17,6 @@ export const labsFeatures = [
 ] as const;
 export type LabsFeatureType = (typeof labsFeatures)[number];
 
-export const labsConnections = ["hubspot", "linear"] as const;
-export type LabsConnectionType = (typeof labsConnections)[number];
-
 // Types
 
 export type LabsTranscriptsConfigurationType = {
@@ -33,18 +30,6 @@ export type LabsTranscriptsConfigurationType = {
   credentialId: string | null;
   dataSourceViewId: ModelId | null;
   useConnectorConnection: boolean;
-};
-
-export type LabsConnectionAuthType = "apiKey" | "oauth" | "email_password";
-
-export type LabsConnectionItemType = {
-  id: LabsConnectionType;
-  featureFlag: WhitelistableFeature;
-  visibleWithoutAccess: boolean;
-  logo: React.ComponentType;
-  label: string;
-  description: string;
-  authType: LabsConnectionAuthType;
 };
 
 export type LabsFeatureItemType = {
