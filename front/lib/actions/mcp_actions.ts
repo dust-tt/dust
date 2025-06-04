@@ -368,10 +368,10 @@ export async function* tryCallMCPTool(
       contentData: {
         type: "text" | "image" | "resource";
         byteSize: number;
-        max_size: number;
+        maxSize: number;
       }[]
     ): boolean => {
-      return !contentData.some((data) => data.byteSize > data.max_size);
+      return !contentData.some((data) => data.byteSize > data.maxSize);
     };
 
     const generateContentMetadata = (
@@ -379,13 +379,20 @@ export async function* tryCallMCPTool(
     ): {
       type: "text" | "image" | "resource";
       byteSize: number;
-      max_size: number;
+      maxSize: number;
     }[] => {
-      return content.map((item) => ({
-        type: item.type,
-        byteSize: calculateContentSize(item),
-        max_size: getMaxSize(item),
-      }));
+      const result = [];
+      for (const item of content) {
+        const byteSize = calculateContentSize(item);
+        const maxSize = getMaxSize(item);
+        const metadata = { type: item.type, byteSize, maxSize };
+        result.push(metadata);
+
+        if (byteSize > maxSize) {
+          break;
+        }
+      }
+      return result;
     };
 
     const getMaxSize = (item: MCPToolResultContentType) => {
