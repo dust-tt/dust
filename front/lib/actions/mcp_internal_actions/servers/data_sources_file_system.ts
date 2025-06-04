@@ -110,8 +110,14 @@ const createServer = (
         .describe(
           "The maximum number of characters to read. If not provided, reads all characters."
         ),
+      grep: z
+        .string()
+        .optional()
+        .describe(
+          "A regular expression to filter lines. Applied after offset/limit slicing. Only lines matching this pattern will be returned."
+        ),
     },
-    async ({ dataSources, nodeId, offset, limit }) => {
+    async ({ dataSources, nodeId, offset, limit, grep }) => {
       const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
       // Gather data source configurations.
@@ -167,6 +173,7 @@ const createServer = (
         projectId: dustAPIProjectId,
         offset: offset,
         limit: limit,
+        grep: grep,
       });
 
       if (readResult.isErr()) {

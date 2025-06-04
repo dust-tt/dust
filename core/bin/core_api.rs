@@ -13,6 +13,7 @@ use axum::{
 use futures::future::try_join_all;
 use hyper::http::StatusCode;
 use parking_lot::Mutex;
+use regex::Regex;
 use serde_json::{json, Value};
 use std::collections::{HashMap, HashSet};
 use std::convert::Infallible;
@@ -2198,6 +2199,7 @@ async fn data_sources_documents_retrieve(
 struct DataSourcesDocumentsRetrieveTextQuery {
     offset: Option<usize>,
     limit: Option<usize>,
+    grep: Option<String>,
     version_hash: Option<String>,
     view_filter: Option<String>, // Parsed as JSON.
 }
@@ -2245,7 +2247,7 @@ async fn data_sources_documents_retrieve_text(
         }
     };
 
-    // Now we have the text, apply character-based offset and limit
+    // First apply character-based offset and limit
     let offset = query.offset.unwrap_or(0);
     let limit = query.limit;
 
@@ -2258,12 +2260,34 @@ async fn data_sources_documents_retrieve_text(
 
     let text_slice = &text[start..end];
 
+    // Then apply grep filter if provided
+    let filtered_text = match &query.grep {
+        Some(pattern) => match Regex::new(pattern) {
+            Ok(re) => {
+                let lines: Vec<&str> = text_slice
+                    .lines()
+                    .filter(|line| re.is_match(line))
+                    .collect();
+                lines.join("\n")
+            }
+            Err(_) => {
+                return error_response(
+                    StatusCode::BAD_REQUEST,
+                    "invalid_regex",
+                    &format!("Invalid regular expression: {}", pattern),
+                    None,
+                )
+            }
+        },
+        None => text_slice.to_string(),
+    };
+
     (
         StatusCode::OK,
         Json(APIResponse {
             error: None,
             response: Some(json!({
-                "text": text_slice,
+                "text": filtered_text,
                 "total_characters": text_len,
                 "offset": start,
                 "limit": limit,
