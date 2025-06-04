@@ -665,21 +665,19 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
         if (isMCPProgressNotificationType(notification)) {
           const { output: notificationOutput } = notification.params.data;
           // Tool approval notifications have a specific handling:
-          // they are not yielded as regular notifications but as tool_approve_execution events
-          // instead, which exposes them to the end-user.
+          // they are not yielded as regular notifications but are bubbled up as
+          // `tool_approve_execution` events instead, which exposes them to the end-user.
           if (isToolApproveExecutionNotificationType(notificationOutput)) {
             const { configurationId, actionId, inputs, stake, metadata } =
               notificationOutput.resource;
 
-            // We bubble up tool approval notifications from within tools to the main conversation.
-            // We only pass around the data emitted by the sub-agent, the IDs here are relative to the sub-agent.
             yield {
               created: Date.now(),
               type: "tool_approve_execution",
               configurationId,
               // The conversation and message ID are used to communicate with the front-end.
               // They determine the destination page that will receive the tool approval
-              // pop-up, so we need to pass the main conversation and message
+              // pop-up, so we need to pass the main conversation and message IDs.
               conversationId: conversation.sId,
               messageId: agentMessage.sId,
               actionId,
