@@ -16,6 +16,7 @@ import { useState } from "react";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useUpdateAgentTags } from "@app/lib/swr/tags";
 import type { WorkspaceType } from "@app/types";
+import { isGlobalAgentId } from "@app/types";
 import { isBuilder } from "@app/types";
 import type { TagType } from "@app/types/tag";
 
@@ -39,6 +40,10 @@ export const TableTagSelector = ({
   const updateAgentTags = useUpdateAgentTags({
     owner,
   });
+  if (isGlobalAgentId(agentConfigurationId)) {
+    return null;
+  }
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
