@@ -71,7 +71,6 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
 
         return makeMCPToolTextSuccess({
           message: `Issue created: #${issue.number}`,
-          result: `Issue #${issue.number} has been created successfully.`,
         });
       } catch (e) {
         return makeMCPToolTextError(
@@ -424,8 +423,7 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
         );
 
         return makeMCPToolTextSuccess({
-          message: `Review created: ID ${review.id}`,
-          result: `Review with ID ${review.id} has been created successfully.`,
+          message: `Review created with ID ${review.id}`,
         });
       } catch (e) {
         return makeMCPToolTextError(
@@ -533,7 +531,6 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
         if (!content) {
           return makeMCPToolTextSuccess({
             message: "No open projects found",
-            result: "No open projects found.",
           });
         }
 
@@ -664,11 +661,55 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
 
         return makeMCPToolTextSuccess({
           message: `Issue #${issueNumber} added to project`,
-          result: `Issue #${issueNumber} has been successfully added to the project.`,
         });
       } catch (e) {
         return makeMCPToolTextError(
           `Error adding GitHub issue to project: ${normalizeError(e).message}`
+        );
+      }
+    }
+  );
+
+  server.tool(
+    "comment_on_issue",
+    "Add a comment to an existing GitHub issue.",
+    {
+      owner: z
+        .string()
+        .describe(
+          "The owner of the repository (account or organization name)."
+        ),
+      repo: z.string().describe("The name of the repository."),
+      issueNumber: z.number().describe("The issue number."),
+      body: z
+        .string()
+        .describe("The contents of the comment (GitHub markdown)."),
+    },
+    async ({ owner, repo, issueNumber, body }) => {
+      const accessToken = await getAccessTokenForInternalMCPServer(auth, {
+        mcpServerId,
+        connectionType: "workspace",
+      });
+
+      const octokit = new Octokit({ auth: accessToken });
+
+      try {
+        const { data: comment } = await octokit.request(
+          "POST /repos/{owner}/{repo}/issues/{issue_number}/comments",
+          {
+            owner,
+            repo,
+            issue_number: issueNumber,
+            body,
+          }
+        );
+
+        return makeMCPToolTextSuccess({
+          message: `Comment added to issue #${issueNumber} with ID ${comment.id}`,
+        });
+      } catch (e) {
+        return makeMCPToolTextError(
+          `Error commenting on GitHub issue: ${normalizeError(e).message}`
         );
       }
     }
