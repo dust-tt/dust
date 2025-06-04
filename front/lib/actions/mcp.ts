@@ -153,11 +153,12 @@ export type MCPToolConfigurationType =
   | ServerSideMCPToolConfigurationType
   | ClientSideMCPToolConfigurationType;
 
-type MCPApproveExecutionEvent = {
+export type MCPApproveExecutionEvent = {
   type: "tool_approve_execution";
   created: number;
   configurationId: string;
   messageId: string;
+  conversationId: string;
   actionId: string;
   inputs: Record<string, unknown>;
   stake?: MCPToolStakeLevelType;
@@ -502,6 +503,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
         created: Date.now(),
         configurationId: agentConfiguration.sId,
         messageId: agentMessage.sId,
+        conversationId: conversation.sId,
         actionId: mcpAction.getSId(owner),
         inputs: rawInputs,
         stake: actionConfiguration.permission,
