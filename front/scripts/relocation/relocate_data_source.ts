@@ -5,7 +5,6 @@ import {
   isRegionType,
   SUPPORTED_REGIONS,
 } from "@app/lib/api/regions/config";
-import { Authenticator } from "@app/lib/auth";
 import { Workspace } from "@app/lib/models/workspace";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { makeScript } from "@app/scripts/helpers";
