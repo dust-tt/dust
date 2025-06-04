@@ -13,14 +13,18 @@ import { Spinner } from "@dust-tt/sparkle";
 import { useCallback, useMemo } from "react";
 import React from "react";
 
-import type { LightAgentConfigurationType, UserType } from "@app/types";
+import { useEditors } from "@app/lib/swr/editors";
+import type {
+  LightAgentConfigurationType,
+  LightWorkspaceType,
+} from "@app/types";
 
 interface InstructionHistoryProps {
   history: LightAgentConfigurationType[];
   selectedConfig: LightAgentConfigurationType | null;
   onSelect: (config: LightAgentConfigurationType) => void;
-  editors: UserType[];
-  isEditorsLoading: boolean;
+  owner: LightWorkspaceType;
+  agentConfigurationId: string | null;
   currentInstructions: string;
 }
 
@@ -28,9 +32,15 @@ export function InstructionHistory({
   history,
   onSelect,
   selectedConfig,
-  editors,
-  isEditorsLoading,
+  owner,
+  agentConfigurationId,
 }: InstructionHistoryProps) {
+  const { editors, isEditorsLoading } = useEditors({
+    owner,
+    agentConfigurationId,
+    disabled: !agentConfigurationId,
+  });
+
   const authorMap = useMemo(() => {
     const map: Record<string, string> = {};
     editors.forEach((editor) => {
