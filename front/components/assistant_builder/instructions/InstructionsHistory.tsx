@@ -9,6 +9,7 @@ import {
   DropdownMenuTrigger,
   HistoryIcon,
 } from "@dust-tt/sparkle";
+import { Spinner } from "@dust-tt/sparkle";
 import { useCallback, useMemo } from "react";
 import React from "react";
 
@@ -36,7 +37,7 @@ export function InstructionHistory({
   agentConfigurationId,
   currentInstructions,
 }: InstructionHistoryProps) {
-  const { editors } = useEditors({
+  const { editors, isEditorsLoading } = useEditors({
     owner,
     agentConfigurationId,
     disabled: !agentConfigurationId,
@@ -146,41 +147,52 @@ export function InstructionHistory({
         />
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent className="w-80">
-        <DropdownMenuLabel label="Choose version to compare" />
-        <DropdownMenuSeparator />
-
-        <DropdownMenuRadioGroup
-          value={selectedConfig?.version.toString() ?? ""}
-          onValueChange={(selectedValue) => {
-            const config = history.find(
-              (c) => c.version.toString() === selectedValue
-            );
-            if (config) {
-              onSelect(config);
-            }
-          }}
-        >
-          {historyWithPrev.map(({ config }) => (
-            <DropdownMenuRadioItem
-              key={config.version}
-              value={config.version.toString()}
-            >
-              <div className="flex w-full items-center justify-between">
-                <div className="flex flex-col">
-                  <span>{formatVersionLabel(config)}</span>
-                  <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
-                    by {getAuthorName(config)}
-                  </span>
+      <DropdownMenuContent
+        className="h-96 w-80"
+        dropdownHeaders={
+          <>
+            <DropdownMenuLabel label="Choose version to compare" />
+            <DropdownMenuSeparator />
+          </>
+        }
+      >
+        {isEditorsLoading ? (
+          <div className="flex h-full w-full items-center justify-center">
+            <Spinner />
+          </div>
+        ) : (
+          <DropdownMenuRadioGroup
+            value={selectedConfig?.version.toString() ?? ""}
+            onValueChange={(selectedValue) => {
+              const config = history.find(
+                (c) => c.version.toString() === selectedValue
+              );
+              if (config) {
+                onSelect(config);
+              }
+            }}
+          >
+            {historyWithPrev.map(({ config }) => (
+              <DropdownMenuRadioItem
+                key={config.version}
+                value={config.version.toString()}
+              >
+                <div className="flex w-full items-center justify-between">
+                  <div className="flex flex-col">
+                    <span>{formatVersionLabel(config)}</span>
+                    <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+                      by {getAuthorName(config)}
+                    </span>
+                  </div>
+                  <GaugeDiff
+                    original={config.instructions ?? ""}
+                    updated={currentInstructions}
+                  />
                 </div>
-                <GaugeDiff
-                  original={config.instructions ?? ""}
-                  updated={currentInstructions}
-                />
-              </div>
-            </DropdownMenuRadioItem>
-          ))}
-        </DropdownMenuRadioGroup>
+              </DropdownMenuRadioItem>
+            ))}
+          </DropdownMenuRadioGroup>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );
