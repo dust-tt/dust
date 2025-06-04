@@ -20,5 +20,5 @@ RUN set -x \
 EXPOSE 1080
 
 ENTRYPOINT ["dumb-init"]
-    
+
 CMD ["sockd"]
