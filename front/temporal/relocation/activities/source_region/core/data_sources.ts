@@ -40,6 +40,8 @@ export async function retrieveDataSourceCoreIdsBatch({
   if (lastId) {
     whereClause.id = {
       [Op.gt]: lastId,
+      // temporary bypass of manually relocated data source
+      [Op.notIn]: [119780, 210656],
     };
   }
 
