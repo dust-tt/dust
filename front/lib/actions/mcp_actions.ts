@@ -382,13 +382,9 @@ export async function* tryCallMCPTool(
     const isValidContentSize = (
       content: MCPToolResultContentType[]
     ): boolean => {
-      content.forEach((item) => {
-        const size = calculateContentSize(item);
-        if (size > MAX_CONTENT_SIZE) {
-          return false;
-        }
-      });
-      return true;
+      return !content.some(
+        (item) => calculateContentSize(item) > MAX_CONTENT_SIZE
+      );
     };
 
     const { serverType } = getServerTypeAndIdFromSId(toolConfig.toolServerId);
