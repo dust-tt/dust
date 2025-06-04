@@ -35,6 +35,7 @@ import type {
 } from "@app/types";
 import {
   CoreAPI,
+  DATA_SOURCE_NODE_ID,
   dustManagedCredentials,
   Err,
   Ok,
@@ -291,9 +292,6 @@ const createServer = (
       }
       const agentDataSourceConfigurations = fetchResult.value;
 
-      const dataSourceViewFilter = makeDataSourceViewFilter(
-        agentDataSourceConfigurations
-      );
       const options = {
         cursor: nextPageCursor,
         limit,
@@ -305,19 +303,58 @@ const createServer = (
       let searchResult: Result<CoreAPISearchNodesResponse, CoreAPIError>;
 
       if (!nodeId) {
-        // If we don't have a nodeId, we want to show the root nodes for the data source views, which are the parentsIn.
-        // So we search these nodes by node_id.
-        // TODO(2025-06-03 aubin): handle the root case where parentsIn is null.
+        // When nodeId is null, search for data sources only
+        const dataSourceViewFilter = agentDataSourceConfigurations.map(
+          ({ dataSource, dataSourceView }) => ({
+            data_source_id: dataSource.dustAPIDataSourceId,
+            view_filter: dataSourceView.parentsIn ?? [],
+            search_scope: "data_source_name" as const,
+          })
+        );
+
         searchResult = await coreAPI.searchNodes({
           filter: {
             data_source_views: dataSourceViewFilter,
-            node_ids: agentDataSourceConfigurations.flatMap(
-              ({ dataSourceView }) => dataSourceView.parentsIn ?? []
-            ),
+          },
+          options,
+        });
+      } else if (isDataSourceNodeId(nodeId)) {
+        // If it's a data source node ID, extract the data source ID and list its root contents
+        const dataSourceId = extractDataSourceIdFromNodeId(nodeId);
+        if (!dataSourceId) {
+          return makeMCPToolTextError("Invalid data source node ID format");
+        }
+
+        // Find the configuration for this specific data source
+        const dataSourceConfig = agentDataSourceConfigurations.find(
+          ({ dataSource }) => dataSource.dustAPIDataSourceId === dataSourceId
+        );
+
+        if (!dataSourceConfig) {
+          return makeMCPToolTextError(
+            `Data source not found for ID: ${dataSourceId}`
+          );
+        }
+
+        // Search for nodes in this specific data source with parent_id = undefined (root nodes)
+        searchResult = await coreAPI.searchNodes({
+          filter: {
+            data_source_views: [
+              {
+                data_source_id: dataSourceId,
+                view_filter: dataSourceConfig.dataSourceView.parentsIn ?? [],
+              },
+            ],
+            // Omit parent_id to search for root nodes
           },
           options,
         });
       } else {
+        // Regular node listing
+        const dataSourceViewFilter = makeDataSourceViewFilter(
+          agentDataSourceConfigurations
+        );
+
         searchResult = await coreAPI.searchNodes({
           filter: {
             data_source_views: dataSourceViewFilter,
@@ -566,6 +603,25 @@ function getSortDirection(field: "title" | "timestamp"): "asc" | "desc" {
   }
 }
 
+/**
+ * Check if a node ID represents a data source node.
+ * Data source node IDs have the format: "datasource_node_id-{data_source_id}"
+ */
+function isDataSourceNodeId(nodeId: string): boolean {
+  return nodeId.startsWith(`${DATA_SOURCE_NODE_ID}-`);
+}
+
+/**
+ * Extract the data source ID from a data source node ID.
+ * Returns null if the node ID is not a data source node ID.
+ */
+function extractDataSourceIdFromNodeId(nodeId: string): string | null {
+  if (!isDataSourceNodeId(nodeId)) {
+    return null;
+  }
+  return nodeId.substring(`${DATA_SOURCE_NODE_ID}-`.length);
+}
+
 function formatTimestamp(timestamp: number): string {
   const date = new Date(timestamp);
   const now = new Date();
@@ -597,8 +653,14 @@ function formatTimestamp(timestamp: number): string {
  * Removes references to the term 'content node' and simplifies the format.
  */
 function renderNode(node: CoreAPIContentNode) {
+  // Transform data source node IDs to include the data source ID
+  const nodeId =
+    node.node_id === DATA_SOURCE_NODE_ID
+      ? `${DATA_SOURCE_NODE_ID}-${node.data_source_id}`
+      : node.node_id;
+
   return {
-    nodeId: node.node_id,
+    nodeId,
     title: node.title,
     path: node.parents.join("/"),
     parentTitle: node.parent_title,
