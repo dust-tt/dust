@@ -36,7 +36,7 @@ makeScript(
     percentage: { type: "number", require: true },
     skippedWorkspaceFile: { type: "string" },
     forcedWorkspaceFile: { type: "string" },
-    crawler: { type: "string" },
+    crawler: { type: "string", default: null },
   },
   async ({
     execute,
