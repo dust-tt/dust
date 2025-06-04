@@ -58,7 +58,7 @@ makeScript(
 
     if (crawler !== null && crawler !== "firecrawl") {
       logger.error(
-        `"${crawler}" is not a valid crawler option, empty or "firecrawl" only`
+        `"${crawler}" is not a valid crawler option, only null or "firecrawl" are allowed`
       );
       return;
     }
@@ -83,9 +83,12 @@ makeScript(
       forcedWorkspaces = res.value;
     }
 
+    // If the new crawler is null, it means the previous was firecrawl
+    const currentCrawler = crawler === null ? "firecrawl" : null;
+
     const webcrawlerConfigs = await WebCrawlerConfigurationModel.findAll({
       where: {
-        customCrawler: "firecrawl",
+        customCrawler: currentCrawler,
       },
       include: [
         {
@@ -96,7 +99,9 @@ makeScript(
             type: "webcrawler",
             workspaceId: {
               [Op.notIn]: skippedWorkspaces,
-              [Op.in]: forcedWorkspaces,
+              ...(forcedWorkspaces.length > 0
+                ? { [Op.in]: forcedWorkspaces }
+                : {}),
             },
           },
         },
@@ -119,10 +124,10 @@ makeScript(
       logger.info("Will execute");
       await concurrentExecutor(
         webcrawlerConfigsToMigrate,
-        async (crawler) =>
+        async (c) =>
           WebCrawlerConfigurationModel.update(
-            { customCrawler: null },
-            { where: { id: crawler.id } }
+            { customCrawler: crawler },
+            { where: { id: c.id } }
           ),
         { concurrency: 10 }
       );
