@@ -13,19 +13,41 @@ import { useCallback, useMemo } from "react";
 import React from "react";
 
 import { GaugeDiff } from "@app/components/assistant_builder/instructions/GaugeDiff";
-import type { LightAgentConfigurationType } from "@app/types";
+import { useEditors } from "@app/lib/swr/editors";
+import type {
+  LightAgentConfigurationType,
+  LightWorkspaceType,
+} from "@app/types";
 
 interface InstructionHistoryProps {
   history: LightAgentConfigurationType[];
   selectedConfig: LightAgentConfigurationType | null;
   onSelect: (config: LightAgentConfigurationType) => void;
+  owner: LightWorkspaceType;
+  agentConfigurationId: string | null;
 }
 
 export function InstructionHistory({
   history,
   onSelect,
   selectedConfig,
+  owner,
+  agentConfigurationId,
 }: InstructionHistoryProps) {
+  const { editors } = useEditors({
+    owner,
+    agentConfigurationId,
+    disabled: !agentConfigurationId,
+  });
+
+  const authorMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    editors.forEach((editor) => {
+      map[editor.id] = editor.fullName || editor.firstName;
+    });
+    return map;
+  }, [editors]);
+
   const formatVersionLabel = useCallback(
     (config: LightAgentConfigurationType) => {
       const dateFormatter = new Intl.DateTimeFormat("en-US", {
@@ -41,6 +63,16 @@ export function InstructionHistory({
         : `v${config.version}`;
     },
     []
+  );
+
+  const getAuthorName = useCallback(
+    (config: LightAgentConfigurationType) => {
+      if (!config.versionAuthorId) {
+        return "System";
+      }
+      return authorMap[config.versionAuthorId] || "Unknown";
+    },
+    [authorMap]
   );
 
   const historyWithPrev = useMemo(() => {
@@ -129,7 +161,12 @@ export function InstructionHistory({
               value={config.version.toString()}
             >
               <div className="flex w-full items-center justify-between">
-                <span>{formatVersionLabel(config)}</span>
+                <div className="flex flex-col">
+                  <span>{formatVersionLabel(config)}</span>
+                  <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+                    by {getAuthorName(config)}
+                  </span>
+                </div>
                 <GaugeDiff
                   original={prevInstructions}
                   updated={config.instructions ?? ""}
