@@ -96,7 +96,8 @@ function isEmptyInputSchema(schema: JSONSchema7): boolean {
 
 const MAX_TOOL_NAME_LENGTH = 64;
 
-const MAX_CONTENT_SIZE = 64 * 1024;
+const MAX_TEXT_CONTENT_SIZE = 64 * 1024;
+const MAX_NON_TEXT_CONTENT_SIZE = 2 * 1024 * 1024;
 
 export const TOOL_NAME_SEPARATOR = "__";
 
@@ -383,7 +384,11 @@ export async function* tryCallMCPTool(
       content: MCPToolResultContentType[]
     ): boolean => {
       return !content.some(
-        (item) => calculateContentSize(item) > MAX_CONTENT_SIZE
+        (item) =>
+          calculateContentSize(item) >
+          (item.type === "text"
+            ? MAX_TEXT_CONTENT_SIZE
+            : MAX_NON_TEXT_CONTENT_SIZE)
       );
     };
 
