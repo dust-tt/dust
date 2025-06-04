@@ -208,7 +208,7 @@ const RETRY_AFTER_JITTER = 30_000; // 30 seconds
 // If Confluence returns a retry-after header with a delay greater than this value, we cap it.
 const MAX_RETRY_AFTER_DELAY = 300_000; // 5 minutes
 // If Confluence indicates that we are approaching the rate limit, we delay by this value.
-const NEAR_RATE_LIMIT_DELAY = 120_000; // 2 minutes
+const NEAR_RATE_LIMIT_DELAY = 60_000; // 1 minute
 
 // Space types that we support indexing in Dust.
 export const CONFLUENCE_SUPPORTED_SPACE_TYPES = [
