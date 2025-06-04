@@ -2,6 +2,7 @@ import {
   ActionPieChartIcon,
   Avatar,
   Button,
+  Checkbox,
   CodeBlock,
   CollapsibleComponent,
   Dialog,
@@ -11,6 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
   Icon,
+  Label,
   Spinner,
 } from "@dust-tt/sparkle";
 import { createContext, useCallback, useEffect, useState } from "react";
@@ -252,20 +254,21 @@ export function ActionValidationProvider({
                 </div>
               )}
             </div>
-          </DialogContainer>
-          <DialogFooter
-            permanentValidation={
-              currentValidation?.stake === "low"
-                ? {
-                    label: "Always allow this tool",
-                    checked: neverAskAgain,
-                    onChange: (check) => {
+            {currentValidation?.stake === "low" && (
+              <div className="mt-5">
+                <Label className="copy-sm flex cursor-pointer flex-row items-center gap-2 font-normal">
+                  <Checkbox
+                    checked={neverAskAgain}
+                    onCheckedChange={(check) => {
                       setNeverAskAgain(!!check);
-                    },
-                  }
-                : undefined
-            }
-          >
+                    }}
+                  />
+                  <span>Always allow this tool</span>
+                </Label>
+              </div>
+            )}
+          </DialogContainer>
+          <DialogFooter>
             <Button
               label="Decline"
               variant="outline"
