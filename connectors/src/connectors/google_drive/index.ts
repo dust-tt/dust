@@ -15,7 +15,7 @@ import { getPermissionViewType } from "@connectors/connectors/google_drive/lib/p
 import {
   folderHasChildren,
   getDrives,
-} from "@connectors/connectors/google_drive/temporal/activities";
+} from "@connectors/connectors/google_drive/temporal/activities/common/utils";
 import {
   launchGoogleDriveFullSyncWorkflow,
   launchGoogleDriveIncrementalSyncWorkflow,
@@ -58,15 +58,15 @@ import type {
   ConnectorPermission,
   ContentNode,
   ContentNodesViewType,
+  DataSourceConfig,
+  GoogleDriveObjectType,
 } from "@connectors/types";
-import type { GoogleDriveObjectType } from "@connectors/types";
-import type { DataSourceConfig } from "@connectors/types";
 import {
+  FILE_ATTRIBUTES_TO_FETCH,
   getGoogleSheetContentNodeInternalId,
   INTERNAL_MIME_TYPES,
   normalizeError,
 } from "@connectors/types";
-import { FILE_ATTRIBUTES_TO_FETCH } from "@connectors/types";
 
 export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
   static async create({
