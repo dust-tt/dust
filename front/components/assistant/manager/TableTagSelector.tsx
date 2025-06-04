@@ -10,7 +10,6 @@ import {
   DropdownMenuTagList,
   DropdownMenuTrigger,
   Spinner,
-  TagIcon,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
