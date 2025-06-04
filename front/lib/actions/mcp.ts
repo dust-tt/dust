@@ -677,8 +677,8 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
               created: Date.now(),
               type: "tool_approve_execution",
               configurationId,
-              // The conversation and message ID are used to talk to the front-end.
-              // They determine the destination page that will receive the validation
+              // The conversation and message ID are used to communicate with the front-end.
+              // They determine the destination page that will receive the tool approval
               // pop-up, so we need to pass the main conversation and message
               conversationId: conversation.sId,
               messageId: agentMessage.sId,
