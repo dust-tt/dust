@@ -6,7 +6,7 @@ import { Err, Ok, slugify } from "@app/types";
 // TTL for MCP server registrations (5 minutes).
 const MCP_SERVER_REGISTRATION_TTL = 5 * 60;
 
-const MAX_SERVER_INSTANCES = 50;
+const MAX_SERVER_INSTANCES = 256;
 
 export class MCPServerInstanceLimitError extends Error {
   constructor(serverName: string) {
