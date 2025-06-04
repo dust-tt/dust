@@ -178,7 +178,7 @@ export default async function createServer(
 
       const prodCredentials = await prodAPICredentialsForOwner(owner);
       const requestedGroupIds = auth.groups().map((g) => g.sId);
-      const user = auth.getNonNullableUser();
+      const user = auth.user();
 
       const api = new DustAPI(
         apiConfig.getDustAPIConfig(),
@@ -186,7 +186,7 @@ export default async function createServer(
           ...prodCredentials,
           extraHeaders: {
             ...getHeaderFromGroupIds(requestedGroupIds),
-            ...getHeaderFromUserEmail(user.email),
+            ...getHeaderFromUserEmail(user?.email),
           },
         },
         logger
@@ -201,10 +201,10 @@ export default async function createServer(
           mentions: [{ configurationId: childAgentId }],
           context: {
             timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-            username: user.username ?? "unknown",
-            fullName: user.fullName(),
-            email: user.email,
-            profilePictureUrl: user.imageUrl,
+            username: user?.username ?? "unknown",
+            fullName: user?.fullName(),
+            email: user?.email,
+            profilePictureUrl: user?.imageUrl,
             origin: "mcp",
           },
         },
