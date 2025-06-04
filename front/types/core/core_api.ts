@@ -22,7 +22,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
 
-import type { CoreAPIContentNode } from "./content_node";
+import type { CoreAPIContentNode } from "@app/types/core/content_node";
 import type {
   CoreAPIDataSource,
   CoreAPIDataSourceConfig,
@@ -34,7 +34,7 @@ import type {
   CoreAPILightDocument,
   CoreAPITableBlob,
   EmbedderType,
-} from "./data_source";
+} from "@app/types/core/data_source";
 
 export const MAX_CHUNK_SIZE = 512;
 
