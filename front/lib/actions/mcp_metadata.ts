@@ -5,7 +5,6 @@ import type { StreamableHTTPClientTransportOptions } from "@modelcontextprotocol
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import type { Implementation, Tool } from "@modelcontextprotocol/sdk/types.js";
-import { Ajv } from "ajv";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { getGlobalDispatcher } from "undici";
 
@@ -34,6 +33,7 @@ import type { Authenticator } from "@app/lib/auth";
 import type { MCPServerConnectionConnectionType } from "@app/lib/resources/mcp_server_connection_resource";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
+import { validateJsonSchema } from "@app/lib/utils/json_schemas";
 import logger from "@app/logger/logger";
 import type { OAuthProvider, OAuthUseCase, Result } from "@app/types";
 import {
@@ -45,7 +45,6 @@ import {
   Ok,
 } from "@app/types";
 import { createSSRFInterceptor } from "@app/types/shared/utils/ssrf";
-import { validateJsonSchema } from "@app/lib/utils/json_schemas";
 
 export type AuthorizationInfo = {
   provider: OAuthProvider;
