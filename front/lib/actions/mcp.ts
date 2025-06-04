@@ -505,6 +505,11 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
         actionId: mcpAction.getSId(owner),
         inputs: rawInputs,
         stake: actionConfiguration.permission,
+        metadata: {
+          toolName: actionConfiguration.originalName,
+          mcpServerName: actionConfiguration.mcpServerName,
+          agentName: agentConfiguration.name,
+        },
       };
 
       try {
