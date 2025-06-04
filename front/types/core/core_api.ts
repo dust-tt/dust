@@ -5,6 +5,19 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { dustManagedCredentials } from "@app/types/api/credentials";
 import type { EmbeddingProviderIdType } from "@app/types/assistant/assistant";
 import type { ProviderVisibility } from "@app/types/connectors/connectors_api";
+import type { CoreAPIContentNode } from "@app/types/core/content_node";
+import type {
+  CoreAPIDataSource,
+  CoreAPIDataSourceConfig,
+  CoreAPIDataSourceDocumentSection,
+  CoreAPIDocument,
+  CoreAPIDocumentBlob,
+  CoreAPIDocumentVersion,
+  CoreAPIFolder,
+  CoreAPILightDocument,
+  CoreAPITableBlob,
+  EmbedderType,
+} from "@app/types/core/data_source";
 import type { DataSourceViewType } from "@app/types/data_source_view";
 import type { DustAppSecretType } from "@app/types/dust_app_secret";
 import type { GroupType } from "@app/types/groups";
@@ -21,20 +34,6 @@ import type { LoggerInterface } from "@app/types/shared/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
-
-import type { CoreAPIContentNode } from "@app/types/core/content_node";
-import type {
-  CoreAPIDataSource,
-  CoreAPIDataSourceConfig,
-  CoreAPIDataSourceDocumentSection,
-  CoreAPIDocument,
-  CoreAPIDocumentBlob,
-  CoreAPIDocumentVersion,
-  CoreAPIFolder,
-  CoreAPILightDocument,
-  CoreAPITableBlob,
-  EmbedderType,
-} from "@app/types/core/data_source";
 
 export const MAX_CHUNK_SIZE = 512;
 
