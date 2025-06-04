@@ -2246,41 +2246,42 @@ async fn data_sources_documents_retrieve_text(
             )
         }
     };
-    
+
     // First apply character-based offset and limit
     let offset = query.offset.unwrap_or(0);
     let limit = query.limit;
-    
+
     let text_len = text.len();
     let start = offset.min(text_len);
     let end = match limit {
         Some(l) => (start + l).min(text_len),
         None => text_len,
     };
-    
+
     let text_slice = &text[start..end];
-    
+
     // Then apply grep filter if provided
     let filtered_text = match &query.grep {
-        Some(pattern) => {
-            match Regex::new(pattern) {
-                Ok(re) => {
-                    let lines: Vec<&str> = text_slice.lines()
-                        .filter(|line| re.is_match(line))
-                        .collect();
-                    lines.join("\n")
-                },
-                Err(_) => return error_response(
+        Some(pattern) => match Regex::new(pattern) {
+            Ok(re) => {
+                let lines: Vec<&str> = text_slice
+                    .lines()
+                    .filter(|line| re.is_match(line))
+                    .collect();
+                lines.join("\n")
+            }
+            Err(_) => {
+                return error_response(
                     StatusCode::BAD_REQUEST,
                     "invalid_regex",
                     &format!("Invalid regular expression: {}", pattern),
                     None,
-                ),
+                )
             }
         },
         None => text_slice.to_string(),
     };
-    
+
     (
         StatusCode::OK,
         Json(APIResponse {
