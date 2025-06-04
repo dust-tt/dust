@@ -45,6 +45,7 @@ import {
   Ok,
 } from "@app/types";
 import { createSSRFInterceptor } from "@app/types/shared/utils/ssrf";
+import { validateJsonSchema } from "@app/lib/utils/json_schemas";
 
 export type AuthorizationInfo = {
   provider: OAuthProvider;
@@ -351,12 +352,14 @@ export function extractMetadataFromServerVersion(
 export function extractMetadataFromTools(tools: Tool[]): MCPToolType[] {
   return tools.map((tool) => {
     let inputSchema: JSONSchema | undefined;
-    const ajv = new Ajv();
 
-    if (ajv.validateSchema(tool.inputSchema)) {
-      inputSchema = tool.inputSchema as JSONSchema; // unfortunately, ajv does not assert the type when returning.
+    const { isValid, error } = validateJsonSchema(tool.inputSchema);
+    if (isValid) {
+      inputSchema = tool.inputSchema as JSONSchema;
     } else {
-      logger.error(`[MCP] Invalid input schema for tool: ${tool.name}.`);
+      logger.error(
+        `[MCP] Invalid input schema for tool: ${tool.name} (${error}).`
+      );
     }
     return {
       name: tool.name,
