@@ -96,7 +96,7 @@ export const INTERNAL_MCP_SERVERS: Record<
   hubspot: {
     id: 7,
     availability: "manual",
-    flag: "dev_mcp_actions",
+    flag: null,
     tools_stakes: {
       // Get operations.
       get_object_properties: "never_ask",
@@ -133,7 +133,7 @@ export const INTERNAL_MCP_SERVERS: Record<
   include_data: {
     id: 9,
     availability: "auto",
-    flag: "dev_mcp_actions", // Putting this behind the dev flag for now to allow shipping without it.
+    flag: null,
   },
   run_dust_app: {
     id: 10,
@@ -207,7 +207,7 @@ export const INTERNAL_MCP_SERVERS: Record<
   search: {
     id: 1006,
     availability: "auto",
-    flag: "dev_mcp_actions",
+    flag: null,
   },
   reasoning: {
     id: 1007,
