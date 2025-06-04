@@ -2,27 +2,10 @@ import { createParser } from "eventsource-parser";
 import * as t from "io-ts";
 
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-
-import { dustManagedCredentials } from "../api/credentials";
-import type { EmbeddingProviderIdType } from "../assistant/assistant";
-import type { ProviderVisibility } from "../connectors/connectors_api";
-import type { DataSourceViewType } from "../data_source_view";
-import type { DustAppSecretType } from "../dust_app_secret";
-import type { GroupType } from "../groups";
-import type { Project } from "../project";
-import type { CredentialsType } from "../provider";
-import type {
-  BlockType,
-  RunConfig,
-  RunRunType,
-  RunStatus,
-  TraceType,
-} from "../run";
-import type { LoggerInterface } from "../shared/logger";
-import type { Result } from "../shared/result";
-import { Err, Ok } from "../shared/result";
-import type { LightWorkspaceType } from "../user";
-import type { CoreAPIContentNode } from "./content_node";
+import { dustManagedCredentials } from "@app/types/api/credentials";
+import type { EmbeddingProviderIdType } from "@app/types/assistant/assistant";
+import type { ProviderVisibility } from "@app/types/connectors/connectors_api";
+import type { CoreAPIContentNode } from "@app/types/core/content_node";
 import type {
   CoreAPIDataSource,
   CoreAPIDataSourceConfig,
@@ -34,7 +17,23 @@ import type {
   CoreAPILightDocument,
   CoreAPITableBlob,
   EmbedderType,
-} from "./data_source";
+} from "@app/types/core/data_source";
+import type { DataSourceViewType } from "@app/types/data_source_view";
+import type { DustAppSecretType } from "@app/types/dust_app_secret";
+import type { GroupType } from "@app/types/groups";
+import type { Project } from "@app/types/project";
+import type { CredentialsType } from "@app/types/provider";
+import type {
+  BlockType,
+  RunConfig,
+  RunRunType,
+  RunStatus,
+  TraceType,
+} from "@app/types/run";
+import type { LoggerInterface } from "@app/types/shared/logger";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import type { LightWorkspaceType } from "@app/types/user";
 
 export const MAX_CHUNK_SIZE = 512;
 
@@ -1126,6 +1125,64 @@ export class CoreAPI {
       )}/data_sources/${encodeURIComponent(
         dataSourceId
       )}/documents/${encodeURIComponent(documentId)}${qs ? `?${qs}` : ""}`,
+      {
+        method: "GET",
+      }
+    );
+
+    return this._resultFromResponse(response);
+  }
+
+  async getDataSourceDocumentText({
+    dataSourceId,
+    documentId,
+    projectId,
+    offset,
+    limit,
+    versionHash,
+    viewFilter,
+  }: {
+    dataSourceId: string;
+    documentId: string;
+    projectId: string;
+    offset?: number | null;
+    limit?: number | null;
+    versionHash?: string | null;
+    viewFilter?: CoreAPISearchFilter | null;
+  }): Promise<
+    CoreAPIResponse<{
+      text: string;
+      total_characters: number;
+      offset: number;
+      limit: number | null;
+    }>
+  > {
+    const queryParams = new URLSearchParams();
+
+    if (offset !== null && offset !== undefined) {
+      queryParams.append("offset", String(offset));
+    }
+
+    if (limit !== null && limit !== undefined) {
+      queryParams.append("limit", String(limit));
+    }
+
+    if (versionHash) {
+      queryParams.append("version_hash", versionHash);
+    }
+
+    if (viewFilter) {
+      queryParams.append("view_filter", JSON.stringify(viewFilter));
+    }
+
+    const qs = queryParams.toString();
+
+    const response = await this._fetchWithError(
+      `${this._url}/projects/${encodeURIComponent(
+        projectId
+      )}/data_sources/${encodeURIComponent(
+        dataSourceId
+      )}/documents/${encodeURIComponent(documentId)}/text${qs ? `?${qs}` : ""}`,
       {
         method: "GET",
       }
