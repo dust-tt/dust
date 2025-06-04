@@ -393,7 +393,7 @@ export async function* tryCallMCPTool(
       if (!isValidContentSize(content)) {
         yield {
           type: "result",
-          result: new Err(new Error(`MCP Server content size is too large.`)),
+          result: new Err(new Error(`MCP tool result content size too large.`)),
         };
       }
     }
