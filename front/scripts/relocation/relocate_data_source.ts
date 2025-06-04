@@ -50,14 +50,6 @@ makeScript(
       return;
     }
 
-    const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
-    const owner = auth.getNonNullableWorkspace();
-
-    if (owner.metadata?.maintenance !== "relocation") {
-      logger.error("Workspace is not relocating.");
-      return;
-    }
-
     assert(
       config.getCurrentRegion() === sourceRegion,
       "Must run from source region"
