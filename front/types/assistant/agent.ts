@@ -284,11 +284,7 @@ export type AgentToolCallsEvent = {
   configurationId: string;
   messageId: string;
   dustRunId: string;
-  toolCalls: Array<{
-    functionCallId: string | null;
-    name: string | null;
-    arguments: Record<string, string | boolean | number> | null;
-  }>;
+  toolCalls: AgentToolCall[];
 };
 
 export type AgentToolCall = {
