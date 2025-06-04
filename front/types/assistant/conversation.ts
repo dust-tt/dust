@@ -255,6 +255,7 @@ export type ConversationWithoutContentType = {
   sId: string;
   title: string | null;
   visibility: ConversationVisibility;
+  depth: number;
   requestedGroupIds: string[][];
 };
 

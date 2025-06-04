@@ -3,6 +3,7 @@ import { hideBin } from "yargs/helpers";
 
 import logger from "@app/logger/logger";
 import { runPokeWorker } from "@app/poke/temporal/worker";
+import { runAgentLoopWorker } from "@app/temporal/agent_loop/worker";
 import { runDataRetentionWorker } from "@app/temporal/data_retention/worker";
 import { runHardDeleteWorker } from "@app/temporal/hard_delete/worker";
 import { runLabsConnectionsWorker } from "@app/temporal/labs/connections/worker";
@@ -40,7 +41,8 @@ type WorkerName =
   | "tracker_notification"
   | "update_workspace_usage"
   | "upsert_queue"
-  | "upsert_table_queue";
+  | "upsert_table_queue"
+  | "agent_loop";
 
 const workerFunctions: Record<WorkerName, () => Promise<void>> = {
   data_retention: runDataRetentionWorker,
@@ -59,6 +61,7 @@ const workerFunctions: Record<WorkerName, () => Promise<void>> = {
   update_workspace_usage: runUpdateWorkspaceUsageWorker,
   upsert_queue: runUpsertQueueWorker,
   upsert_table_queue: runUpsertTableQueueWorker,
+  agent_loop: runAgentLoopWorker,
 };
 
 const ALL_WORKERS = Object.keys(workerFunctions);
