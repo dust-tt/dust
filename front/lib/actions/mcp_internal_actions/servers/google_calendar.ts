@@ -47,7 +47,7 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
   }
 
   server.tool(
-    "list-calendars",
+    "list_calendars",
     "List all calendars accessible by the user. Supports pagination via pageToken.",
     {
       pageToken: z.string().optional().describe("Page token for pagination."),
@@ -82,7 +82,7 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
   );
 
   server.tool(
-    "list-events",
+    "list_events",
     "List or search events from a Google Calendar. If 'q' is provided, performs a free-text search.",
     {
       calendarId: z
@@ -144,7 +144,7 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
   );
 
   server.tool(
-    "get-event",
+    "get_event",
     "Get a single event from a Google Calendar by event ID.",
     {
       calendarId: z
@@ -179,7 +179,7 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
   );
 
   server.tool(
-    "create-event",
+    "create_event",
     "Create a new event in a Google Calendar.",
     {
       calendarId: z
@@ -259,7 +259,7 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
   );
 
   server.tool(
-    "update-event",
+    "update_event",
     "Update an existing event in a Google Calendar.",
     {
       calendarId: z
@@ -351,7 +351,7 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
   );
 
   server.tool(
-    "delete-event",
+    "delete_event",
     "Delete an event from a Google Calendar.",
     {
       calendarId: z

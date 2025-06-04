@@ -202,12 +202,12 @@ export const INTERNAL_MCP_SERVERS: Record<
     availability: "manual",
     flag: "google_calendar_tool",
     tools_stakes: {
-      "list-calendars": "never_ask",
-      "list-events": "never_ask",
-      "get-event": "never_ask",
-      "create-event": "low",
-      "update-event": "low",
-      "delete-event": "low",
+      list_calendars: "never_ask",
+      list_events: "never_ask",
+      get_event: "never_ask",
+      create_event: "low",
+      update_event: "low",
+      delete_event: "low",
     },
   },
 
