@@ -390,7 +390,7 @@ export async function* tryCallMCPTool(
     const { serverType } = getServerTypeAndIdFromSId(toolConfig.toolServerId);
 
     if (serverType === "remote") {
-      if (isValidContentSize(content)) {
+      if (!isValidContentSize(content)) {
         yield {
           type: "result",
           result: new Err(new Error(`MCP Server content size is too large.`)),
