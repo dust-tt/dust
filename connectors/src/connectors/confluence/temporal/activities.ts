@@ -586,11 +586,10 @@ export async function confluenceUpsertPageWithFullParentsActivity({
     return false;
   }
 
-  const { cloudId, ignoreNearRateLimit } = confluenceConfig;
   const client = await getConfluenceClient(
     {
-      cloudId,
-      ignoreNearRateLimit,
+      cloudId: confluenceConfig.cloudId,
+      ignoreNearRateLimit: confluenceConfig.ignoreNearRateLimit,
     },
     connector
   );
