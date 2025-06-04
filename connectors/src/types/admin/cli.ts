@@ -45,6 +45,7 @@ export const ConfluenceCommandSchema = t.type({
     t.literal("unignore-near-rate-limit"),
     t.literal("check-space-access"),
     t.literal("resolve-space-from-url"),
+    t.literal("sync-space"),
   ]),
   args: t.type({
     connectorId: t.union([t.number, t.undefined]),
@@ -53,6 +54,7 @@ export const ConfluenceCommandSchema = t.type({
     file: t.union([t.string, t.undefined]),
     keyInFile: t.union([t.string, t.undefined]),
     url: t.union([t.string, t.undefined]),
+    forceUpsert: t.union([t.literal("true"), t.undefined]),
   }),
 });
 export type ConfluenceCommandType = t.TypeOf<typeof ConfluenceCommandSchema>;
