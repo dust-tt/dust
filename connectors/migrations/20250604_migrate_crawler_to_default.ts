@@ -56,7 +56,7 @@ makeScript(
       return;
     }
 
-    if (crawler !== null || crawler !== "firecrawl") {
+    if (crawler !== null && crawler !== "firecrawl") {
       logger.error(
         `"${crawler}" is not a valid crawler option, empty or "firecrawl" only`
       );
@@ -74,7 +74,7 @@ makeScript(
     }
 
     let forcedWorkspaces: string[] = [];
-    if (forcedWorkspaces) {
+    if (forcedWorkspaceFile) {
       const res = await readJSON(forcedWorkspaceFile);
       if (res.isErr()) {
         logger.error(res.error);
