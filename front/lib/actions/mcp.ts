@@ -350,20 +350,20 @@ export class MCPActionType extends BaseAction {
   getSId(owner: LightWorkspaceType): string {
     return MCPActionType.modelIdToSId({
       id: this.id,
-      workspaceId: owner.id,
+      owner,
     });
   }
 
   private static modelIdToSId({
     id,
-    workspaceId,
+    owner,
   }: {
     id: ModelId;
-    workspaceId: ModelId;
+    owner: LightWorkspaceType;
   }): string {
     return makeSId("mcp_action", {
       id,
-      workspaceId,
+      workspaceId: owner.id,
     });
   }
 }
@@ -503,7 +503,6 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
         created: Date.now(),
         configurationId: agentConfiguration.sId,
         messageId: agentMessage.sId,
-        conversationId: conversation.sId,
         actionId: mcpAction.getSId(owner),
         inputs: rawInputs,
         stake: actionConfiguration.permission,
