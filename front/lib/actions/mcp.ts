@@ -632,7 +632,6 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       auth,
       inputs,
       agentLoopRunContext,
-      actionConfiguration,
       {
         progressToken: action.id,
       }

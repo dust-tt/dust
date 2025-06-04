@@ -96,8 +96,9 @@ function isEmptyInputSchema(schema: JSONSchema7): boolean {
 
 const MAX_TOOL_NAME_LENGTH = 64;
 
-const MAX_TEXT_CONTENT_SIZE = 64 * 1024;
-const MAX_NON_TEXT_CONTENT_SIZE = 2 * 1024 * 1024;
+const MAX_TEXT_CONTENT_SIZE = 2 * 1024 * 1024;
+const MAX_IMAGE_CONTENT_SIZE = 2 * 1024 * 1024;
+const MAX_RESOURCE_CONTENT_SIZE = 10 * 1024 * 1024;
 
 export const TOOL_NAME_SEPARATOR = "__";
 
@@ -187,7 +188,6 @@ export async function* tryCallMCPTool(
   auth: Authenticator,
   inputs: Record<string, unknown> | undefined,
   agentLoopRunContext: AgentLoopRunContextType,
-  toolConfiguration: MCPToolConfigurationType,
   {
     progressToken,
   }: {
@@ -364,10 +364,47 @@ export async function* tryCallMCPTool(
       };
     }
 
+    const isValidContentSize = (
+      contentData: {
+        type: "text" | "image" | "resource";
+        byteSize: number;
+        max_size: number;
+      }[]
+    ): boolean => {
+      return !contentData.some((data) => data.byteSize > data.max_size);
+    };
+
+    const generateContentMetadata = (
+      content: MCPToolResultContentType[]
+    ): {
+      type: "text" | "image" | "resource";
+      byteSize: number;
+      max_size: number;
+    }[] => {
+      return content.map((item) => ({
+        type: item.type,
+        byteSize: calculateContentSize(item),
+        max_size: getMaxSize(item),
+      }));
+    };
+
+    const getMaxSize = (item: MCPToolResultContentType) => {
+      switch (item.type) {
+        case "text":
+          return MAX_TEXT_CONTENT_SIZE;
+        case "image":
+          return MAX_IMAGE_CONTENT_SIZE;
+        case "resource":
+          return MAX_RESOURCE_CONTENT_SIZE;
+        default:
+          return 1 * 1024 * 1024; // 1MB default
+      }
+    };
+
     const calculateContentSize = (item: MCPToolResultContentType): number => {
       switch (item.type) {
         case "text":
-          return new TextEncoder().encode(item.text).length;
+          return item.text.length * 2;
         case "image":
           return Math.ceil((item.data.length * 3) / 4);
         case "resource":
@@ -380,24 +417,25 @@ export async function* tryCallMCPTool(
       }
     };
 
-    const isValidContentSize = (
-      content: MCPToolResultContentType[]
-    ): boolean => {
-      return !content.some(
-        (item) =>
-          calculateContentSize(item) >
-          (item.type === "text"
-            ? MAX_TEXT_CONTENT_SIZE
-            : MAX_NON_TEXT_CONTENT_SIZE)
-      );
-    };
-
-    const { serverType } = getServerTypeAndIdFromSId(
-      toolConfiguration.toolServerId
-    );
+    const serverType = (() => {
+      if ("clientSideMcpServerId" in agentLoopRunContext.actionConfiguration) {
+        return "client";
+      }
+      if (agentLoopRunContext.actionConfiguration.internalMCPServerId) {
+        return "internal";
+      }
+      return "remote";
+    })();
 
     if (serverType === "remote") {
-      if (!isValidContentSize(content)) {
+      const contentMetadata = generateContentMetadata(content);
+      const isValid = isValidContentSize(contentMetadata);
+
+      logger.info(
+        { contentMetadata, isValid },
+        "information on MCP tool result"
+      );
+      if (!isValid) {
         yield {
           type: "result",
           result: new Err(new Error(`MCP tool result content size too large.`)),
