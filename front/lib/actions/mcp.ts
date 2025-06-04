@@ -500,6 +500,21 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       | "denied" = s;
 
     if (status === "pending") {
+      // Users who are not authenticated have no way of approving actions.
+      if (!auth.user()) {
+        yield {
+          type: "tool_error",
+          created: Date.now(),
+          configurationId: agentConfiguration.sId,
+          messageId: agentMessage.sId,
+          error: {
+            code: "tool_error",
+            message: "User is not authenticated, cannot request approval.",
+            metadata: null,
+          },
+        };
+        return;
+      }
       yield {
         type: "tool_approve_execution",
         created: Date.now(),
