@@ -513,6 +513,11 @@ type ToolApproveExecutionOutputType = z.infer<
   typeof ToolApproveExecutionSchema
 >;
 
+const ToolApproveExecutionContentSchema = z.object({
+  type: z.literal("resource"),
+  resource: ToolApproveExecutionSchema,
+});
+
 export function isToolApproveExecutionNotificationType(
   notificationOutput: ProgressNotificationOutput
 ): notificationOutput is {
@@ -529,10 +534,7 @@ export const ProgressNotificationOutputSchema = z
   .union([
     NotificationImageContentSchema,
     TextContentSchema,
-    z.object({
-      type: z.literal("resource"),
-      resource: ToolApproveExecutionSchema,
-    }),
+    ToolApproveExecutionContentSchema,
   ])
   .optional();
 
