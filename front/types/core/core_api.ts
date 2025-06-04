@@ -1139,6 +1139,7 @@ export class CoreAPI {
     projectId,
     offset,
     limit,
+    grep,
     versionHash,
     viewFilter,
   }: {
@@ -1147,6 +1148,7 @@ export class CoreAPI {
     projectId: string;
     offset?: number | null;
     limit?: number | null;
+    grep?: string | null;
     versionHash?: string | null;
     viewFilter?: CoreAPISearchFilter | null;
   }): Promise<
@@ -1165,6 +1167,10 @@ export class CoreAPI {
 
     if (limit !== null && limit !== undefined) {
       queryParams.append("limit", String(limit));
+    }
+
+    if (grep) {
+      queryParams.append("grep", grep);
     }
 
     if (versionHash) {
