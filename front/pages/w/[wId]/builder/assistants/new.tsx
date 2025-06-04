@@ -201,7 +201,9 @@ export default function CreateAssistant({
                 maxStepsPerRun: agentConfiguration.maxStepsPerRun ?? null,
                 visualizationEnabled: agentConfiguration.visualizationEnabled,
                 templateId: templateId,
-                tags: agentConfiguration.tags,
+                tags: agentConfiguration.tags.filter(
+                  (tag) => tag.kind !== "protected"
+                ),
                 // either new, or template, or duplicate, so initially no editors
                 editors: [],
               }
