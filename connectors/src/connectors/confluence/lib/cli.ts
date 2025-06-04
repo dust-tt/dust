@@ -9,6 +9,7 @@ import {
 } from "@connectors/connectors/confluence/temporal/activities";
 import { QUEUE_NAME } from "@connectors/connectors/confluence/temporal/config";
 import {
+  confluenceSpaceSyncWorkflow,
   confluenceUpsertPagesWithFullParentsWorkflow,
   confluenceUpsertPageWithFullParentsWorkflow,
 } from "@connectors/connectors/confluence/temporal/workflows";
@@ -345,6 +346,53 @@ export const confluence = async ({
         hasAccess,
         lastSyncedAt: dbSpace?.updatedAt?.toISOString(),
         pageCount,
+      };
+    }
+
+    case "sync-space": {
+      if (!args.connectorId) {
+        throw new Error("Missing --connectorId argument");
+      }
+      if (!args.spaceId) {
+        throw new Error("Missing --spaceId argument");
+      }
+      const { connectorId } = args;
+      const spaceId = args.spaceId.toString();
+      const forceUpsert = args.forceUpsert === "true";
+
+      const client = await getTemporalClient();
+      const workflow = await client.workflow.start(
+        confluenceSpaceSyncWorkflow,
+        {
+          args: [
+            {
+              connectorId,
+              isBatchSync: true,
+              spaceId,
+              forceUpsert,
+            },
+          ],
+          taskQueue: QUEUE_NAME,
+          workflowId: `confluence-sync-space-${connectorId}-${spaceId}`,
+          searchAttributes: { connectorId: [connectorId] },
+          memo: { connectorId },
+        }
+      );
+
+      const { workflowId } = workflow;
+      const temporalNamespace = process.env.TEMPORAL_NAMESPACE;
+      if (!temporalNamespace) {
+        logger.info(`[Admin] Started temporal workflow with id: ${workflowId}`);
+      } else {
+        logger.info(
+          `[Admin] Started temporal workflow with id: ${workflowId} - https://cloud.temporal.io/namespaces/${temporalNamespace}/workflows/${workflowId}`
+        );
+      }
+      return {
+        workflowId,
+        workflowUrl: temporalNamespace
+          ? `https://cloud.temporal.io/namespaces/${temporalNamespace}/workflows/${workflowId}`
+          : undefined,
       };
     }
 
