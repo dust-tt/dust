@@ -6,7 +6,10 @@ import {
   getConnectionForInternalMCPServer,
   makeMCPToolPersonalAuthenticationRequiredError,
 } from "@app/lib/actions/mcp_internal_actions/authentication";
-import { makeMCPToolJSONSuccess } from "@app/lib/actions/mcp_internal_actions/utils";
+import {
+  makeMCPToolJSONSuccess,
+  makeMCPToolTextSuccess,
+} from "@app/lib/actions/mcp_internal_actions/utils";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 
@@ -154,13 +157,10 @@ This is the most reliable way to discover the correct names for fields and relat
           }
           return object.custom === (filter === "custom");
         })
-        .map((object) => ({
-          name: object.name,
-          label: object.label,
-          custom: object.custom,
-        }));
+        .map((object) => `${object.name} (display_name="${object.label}")`)
+        .join("\n");
 
-      return makeMCPToolJSONSuccess({
+      return makeMCPToolTextSuccess({
         message: "Operation completed successfully",
         result: objects,
       });
