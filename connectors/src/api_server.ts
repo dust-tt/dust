@@ -56,6 +56,7 @@ export function startServer(port: number) {
 
   app.use(
     bodyParser.json({
+      limit: "8mb",
       verify: (req, _res, buf) => {
         // @ts-expect-error -- rawBody is not defined on Request
         // but we need it to validate webhooks signatures
@@ -94,7 +95,7 @@ export function startServer(port: number) {
   });
 
   app.use(authMiddleware);
-  app.use(express.urlencoded({ extended: true })); // support encoded bodies
+  app.use(express.urlencoded({ extended: true, limit: "8mb" })); // support encoded bodies
 
   app.post("/connectors/create/:connector_provider", createConnectorAPIHandler);
   app.post("/connectors/update/:connector_id/", postConnectorUpdateAPIHandler);
