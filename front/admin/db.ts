@@ -89,7 +89,6 @@ import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces"
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { KeyModel } from "@app/lib/resources/storage/models/keys";
 import { KillSwitchModel } from "@app/lib/resources/storage/models/kill_switches";
-import { LabsConnectionsConfigurationModel } from "@app/lib/resources/storage/models/labs_connections";
 // Labs - Can be removed at all times if a solution is dropped
 import {
   LabsTranscriptsConfigurationModel,
@@ -206,7 +205,6 @@ async function main() {
 
   await LabsTranscriptsConfigurationModel.sync({ alter: true });
   await LabsTranscriptsHistoryModel.sync({ alter: true });
-  await LabsConnectionsConfigurationModel.sync({ alter: true });
   await LabsPersonalSalesforceConnection.sync({ alter: true });
 
   await PluginRunModel.sync({ alter: true });

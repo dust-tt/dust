@@ -272,23 +272,12 @@ export const PROVIDERS_WITH_WORKSPACE_CONFIGURATIONS = [
 export type ProvidersWithWorkspaceConfigurations =
   (typeof PROVIDERS_WITH_WORKSPACE_CONFIGURATIONS)[number];
 
-export const LABS_CONNECTION_PROVIDERS = ["hubspot", "linear"] as const;
-
-export type LabsConnectionProvider = (typeof LABS_CONNECTION_PROVIDERS)[number];
-
-export function isLabsConnectionProvider(
-  obj: unknown
-): obj is LabsConnectionProvider {
-  return LABS_CONNECTION_PROVIDERS.includes(obj as LabsConnectionProvider);
-}
-
 export const CREDENTIALS_PROVIDERS = [
   "snowflake",
   "bigquery",
   "salesforce",
   // LABS
   "modjo",
-  ...LABS_CONNECTION_PROVIDERS,
 ] as const;
 export type CredentialsProvider = (typeof CREDENTIALS_PROVIDERS)[number];
 
