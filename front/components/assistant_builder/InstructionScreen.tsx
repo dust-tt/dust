@@ -293,6 +293,9 @@ export function InstructionScreen({
                     setCompareVersion(config);
                     setIsInstructionDiffMode(true);
                   }}
+                  owner={owner}
+                  agentConfigurationId={agentConfigurationId}
+                  currentInstructions={builderState.instructions || ""}
                 />
               )}
           </div>
