@@ -1,4 +1,3 @@
-import { keyBy } from "lodash";
 import type { WhereOptions } from "sequelize";
 import type {
   Attributes,
@@ -78,13 +77,15 @@ export class MCPServerConnectionResource extends BaseResource<MCPServerConnectio
 
   private static async baseFetch(
     auth: Authenticator,
-    { where }: ResourceFindOptions<MCPServerConnection> = {}
+    { where, limit, order }: ResourceFindOptions<MCPServerConnection> = {}
   ) {
     const connections = await this.model.findAll({
       where: {
         ...where,
         workspaceId: auth.getNonNullableWorkspace().id,
       } as WhereOptions<MCPServerConnection>,
+      limit,
+      order,
       include: [
         {
           model: UserModel,
@@ -208,12 +209,15 @@ export class MCPServerConnectionResource extends BaseResource<MCPServerConnectio
 
     // Only return the latest connection for a given MCP server.
     // Ideally we would filter in the query directly.
-    const connectionsByServerId = keyBy(
-      connections,
-      (c) => c.internalMCPServerId ?? `${c.remoteMCPServerId}`
-    );
-
-    return Object.values(connectionsByServerId);
+    const latestConnectionsMap = new Map<string, MCPServerConnectionResource>();
+    for (const connection of connections) {
+      const serverKey =
+        connection.internalMCPServerId ?? `${connection.remoteMCPServerId}`;
+      if (!latestConnectionsMap.has(serverKey)) {
+        latestConnectionsMap.set(serverKey, connection);
+      }
+    }
+    return Array.from(latestConnectionsMap.values());
   }
 
   // Deletion.
