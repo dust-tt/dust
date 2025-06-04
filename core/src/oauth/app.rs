@@ -202,6 +202,11 @@ pub struct ConnectionAccessTokenResponse {
 }
 
 #[derive(Serialize, Deserialize)]
+pub struct ConnectionMetadataResponse {
+    pub connection: ConnectionInfo,
+}
+
+#[derive(Serialize, Deserialize)]
 pub struct ConnectionInfo {
     connection_id: String,
     created: u64,
@@ -267,6 +272,40 @@ async fn connections_access_token(
                 }),
             ),
         },
+    }
+}
+async fn connections_metadata(
+    State(state): State<Arc<OAuthState>>,
+    Path(connection_id): Path<String>,
+) -> (StatusCode, Json<APIResponse>) {
+    match state.store.retrieve_connection(&connection_id).await {
+        Err(e) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to retrieve connection",
+            Some(e),
+        ),
+        Ok(None) => error_response(
+            StatusCode::NOT_FOUND,
+            "connection_not_found",
+            "Requested connection was not found",
+            None,
+        ),
+        Ok(Some(c)) => (
+            StatusCode::OK,
+            Json(APIResponse {
+                error: None,
+                response: Some(json!(ConnectionMetadataResponse {
+                    connection: ConnectionInfo {
+                        connection_id: c.connection_id(),
+                        created: c.created(),
+                        provider: c.provider(),
+                        status: c.status(),
+                        metadata: c.metadata().clone(),
+                    },
+                })),
+            }),
+        ),
     }
 }
 
@@ -400,6 +439,10 @@ pub async fn create_app() -> Result<Router> {
         .route(
             "/connections/:connection_id/access_token",
             get(connections_access_token),
+        )
+        .route(
+            "/connections/:connection_id/metadata",
+            get(connections_metadata),
         )
         .route("/credentials", post(credentials_create))
         .route("/credentials/:credential_id", get(credentials_retrieve))
