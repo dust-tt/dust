@@ -13,19 +13,14 @@ import { Spinner } from "@dust-tt/sparkle";
 import { useCallback, useMemo } from "react";
 import React from "react";
 
-import { GaugeDiff } from "@app/components/assistant_builder/instructions/GaugeDiff";
-import { useEditors } from "@app/lib/swr/editors";
-import type {
-  LightAgentConfigurationType,
-  LightWorkspaceType,
-} from "@app/types";
+import type { LightAgentConfigurationType, UserType } from "@app/types";
 
 interface InstructionHistoryProps {
   history: LightAgentConfigurationType[];
   selectedConfig: LightAgentConfigurationType | null;
   onSelect: (config: LightAgentConfigurationType) => void;
-  owner: LightWorkspaceType;
-  agentConfigurationId: string | null;
+  editors: UserType[];
+  isEditorsLoading: boolean;
   currentInstructions: string;
 }
 
@@ -33,16 +28,9 @@ export function InstructionHistory({
   history,
   onSelect,
   selectedConfig,
-  owner,
-  agentConfigurationId,
-  currentInstructions,
+  editors,
+  isEditorsLoading,
 }: InstructionHistoryProps) {
-  const { editors, isEditorsLoading } = useEditors({
-    owner,
-    agentConfigurationId,
-    disabled: !agentConfigurationId,
-  });
-
   const authorMap = useMemo(() => {
     const map: Record<string, string> = {};
     editors.forEach((editor) => {
@@ -148,7 +136,7 @@ export function InstructionHistory({
       </DropdownMenuTrigger>
 
       <DropdownMenuContent
-        className="h-96 w-80"
+        className="h-96 w-72"
         dropdownHeaders={
           <>
             <DropdownMenuLabel label="Choose version to compare" />
@@ -184,10 +172,6 @@ export function InstructionHistory({
                       by {getAuthorName(config)}
                     </span>
                   </div>
-                  <GaugeDiff
-                    original={config.instructions ?? ""}
-                    updated={currentInstructions}
-                  />
                 </div>
               </DropdownMenuRadioItem>
             ))}
