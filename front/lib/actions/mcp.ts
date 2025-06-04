@@ -503,6 +503,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
         created: Date.now(),
         configurationId: agentConfiguration.sId,
         messageId: agentMessage.sId,
+        conversationId: conversation.sId,
         actionId: mcpAction.getSId(owner),
         inputs: rawInputs,
         stake: actionConfiguration.permission,
