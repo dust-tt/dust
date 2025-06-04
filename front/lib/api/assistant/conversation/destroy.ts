@@ -6,6 +6,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { AgentBrowseAction } from "@app/lib/models/assistant/actions/browse";
 import { AgentConversationIncludeFileAction } from "@app/lib/models/assistant/actions/conversation/include_file";
 import { AgentDustAppRunAction } from "@app/lib/models/assistant/actions/dust_app_run";
+import { AgentMCPAction } from "@app/lib/models/assistant/actions/mcp";
 import { AgentProcessAction } from "@app/lib/models/assistant/actions/process";
 import { AgentReasoningAction } from "@app/lib/models/assistant/actions/reasoning";
 import { AgentRetrievalAction } from "@app/lib/models/assistant/actions/retrieval";
@@ -76,6 +77,9 @@ async function destroyActionsRelatedResources(
     where: { agentMessageId: agentMessageIds },
   });
   await AgentReasoningAction.destroy({
+    where: { agentMessageId: agentMessageIds },
+  });
+  await AgentMCPAction.destroy({
     where: { agentMessageId: agentMessageIds },
   });
 }
