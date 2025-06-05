@@ -51,31 +51,6 @@ export async function deleteFile(googleDriveFile: GoogleDriveFiles) {
   await internalDeleteFile(connector, googleDriveFile);
 }
 
-export async function folderHasChildren(
-  connectorId: ModelId,
-  folderId: string
-): Promise<boolean> {
-  const connector = await ConnectorResource.fetchById(connectorId);
-  if (!connector) {
-    throw new Error(`Connector ${connectorId} not found`);
-  }
-
-  const drive = await getDriveClient(connector.connectionId);
-  const res = await drive.files.list({
-    corpora: "allDrives",
-    pageSize: 1,
-    includeItemsFromAllDrives: true,
-    supportsAllDrives: true,
-    fields: "nextPageToken, files(id)",
-    q: `'${folderId}' in parents and mimeType='application/vnd.google-apps.folder'`,
-  });
-  if (!res.data.files) {
-    return false;
-  }
-
-  return res.data.files?.length > 0;
-}
-
 export async function getDrives(
   connectorId: ModelId
 ): Promise<LightGoogleDrive[]> {
