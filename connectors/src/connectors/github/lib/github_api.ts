@@ -689,6 +689,8 @@ const EXTENSION_WHITELIST = [
   ".cpp",
   ".hpp",
   ".php",
+  ".scala",
+  ".kt", // Kotlin
   ".neon", // PHP configuration
   ".phtml", // PHP template
   ".twig", // PHP template
@@ -752,7 +754,6 @@ const EXTENSION_WHITELIST = [
   // Shell & Scripts
   ".sh",
   ".sql",
-  ".kt", // Kotlin
   ".kts", // Kotlin script
 
   // Version Control
