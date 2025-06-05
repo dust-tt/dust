@@ -25,30 +25,24 @@ import {
 import type { WorkspaceType } from "@app/types";
 
 /**
- * Error tool result. This will make the action fail in the agent loop, and is
- * equivalent to throwing an error.
+ * Error tool result. This won't fail in the agent loop but will be logged.
+ * The text will be shown to the model.
  *
- * DO NOT USE if the intent is to show an issue to the agent, but to let the
- * agentic loop continue (in such a case the tool result should have `isError`
- * set to false). Use `makeMCPToolRecoverableErrorSuccess` instead.
+ * Do not use if the intent is to show an issue to the agent as part of a normal tool execution,
+ * only use if the error should be logged and tracked.
  */
 export function makeMCPToolTextError(text: string): MCPToolResult {
   return {
     isError: true,
-    content: [
-      {
-        type: "text",
-        text,
-      },
-    ],
+    content: [{ type: "text", text }],
   };
 }
 
 /**
- * Success tool result. This will make the action continue in the agent loop.
+ * Success tool result.
  *
- * Use this if the intent is to show an issue to the agent, but to let the
- * agentic loop continue.
+ * Use this if the intent is to show an issue to the agent that does not need logging
+ * and is part of a normal tool execution.
  */
 export function makeMCPToolRecoverableErrorSuccess(
   errorText: string
