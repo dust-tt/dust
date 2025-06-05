@@ -511,9 +511,8 @@ const NotificationTextContentSchema = z.object({
 const NotificationRunAgentContentSchema = z.object({
   type: z.literal("run_agent"),
   childAgentId: z.string(),
-  childAgentName: z.string(),
-  childAgentDescription: z.string(),
   conversationId: z.string(),
+  query: z.string(),
 });
 
 export const ProgressNotificationOutputSchema = z

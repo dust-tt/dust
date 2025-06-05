@@ -86,14 +86,15 @@ export function AgentMessageActionsDrawer({
                     const actionSpecification = getActionSpecification(
                       action.type
                     );
-                    const progress = actionProgress.get(action.id);
+                    const lastNotification =
+                      actionProgress.get(action.id)?.progress ?? null;
                     const ActionDetailsComponent =
                       actionSpecification.detailsComponent;
                     return (
                       <div key={`action-${action.id}`}>
                         <ActionDetailsComponent
                           action={action}
-                          lastNotification={progress?.progress ?? null}
+                          lastNotification={lastNotification}
                           defaultOpen={idx === 0 && step === "1"}
                           owner={owner}
                         />

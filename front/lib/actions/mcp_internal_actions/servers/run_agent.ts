@@ -242,9 +242,8 @@ export default async function createServer(
               label: `Running agent ${childAgentBlob.name}`,
               output: {
                 type: "run_agent",
+                query,
                 childAgentId: childAgentId,
-                childAgentName: childAgentBlob.name,
-                childAgentDescription: childAgentBlob.description,
                 conversationId: conversation.sId,
               },
             },
