@@ -75,6 +75,16 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
+  if (
+    featureFlags.includes("restrict_agent_creation_to_higher_users") &&
+    !auth.isBuilder() &&
+    !auth.isAdmin()
+  ) {
+    return {
+      notFound: true,
+    };
+  }
+
   const { spaces, dataSourceViews, dustApps, mcpServerViews } =
     await getAccessibleSourcesAndApps(auth);
 
