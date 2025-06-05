@@ -1,14 +1,14 @@
+import type { AgentCreativityLevel } from "@app/components/agent_builder/types";
+import {
+  AGENT_CREATIVITY_LEVEL_DISPLAY_NAMES,
+  AGENT_CREATIVITY_LEVEL_TEMPERATURES,
+} from "@app/components/agent_builder/types";
 import type { ModelConfigurationType, ModelIdType } from "@app/types";
 import {
   CLAUDE_3_5_SONNET_20241022_MODEL_ID,
   GPT_4O_MODEL_ID,
   MISTRAL_LARGE_MODEL_ID,
 } from "@app/types";
-import {
-  AGENT_CREATIVITY_LEVEL_TEMPERATURES,
-  AGENT_CREATIVITY_LEVEL_DISPLAY_NAMES,
-} from "@app/components/agent_builder/types";
-import type { AgentCreativityLevel } from "@app/components/agent_builder/types";
 
 export const BEST_PERFORMING_MODELS_ID: ModelIdType[] = [
   GPT_4O_MODEL_ID,
