@@ -5,6 +5,7 @@ import { MCPBrowseActionDetails } from "@app/components/actions/mcp/details/MCPB
 import { MCPExtractActionDetails } from "@app/components/actions/mcp/details/MCPExtractActionDetails";
 import { MCPIncludeActionDetails } from "@app/components/actions/mcp/details/MCPIncludeActionDetails";
 import { MCPReasoningActionDetails } from "@app/components/actions/mcp/details/MCPReasoningActionDetails";
+import { MCPRunAgentActionDetails } from "@app/components/actions/mcp/details/MCPRunAgentActionDetails";
 import { MCPSearchActionDetails } from "@app/components/actions/mcp/details/MCPSearchActionDetails";
 import { MCPTablesQueryActionDetails } from "@app/components/actions/mcp/details/MCPTablesQueryActionDetails";
 import { MCPWebsearchActionDetails } from "@app/components/actions/mcp/details/MCPWebsearchActionDetails";
@@ -23,8 +24,6 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { ACTION_SPECIFICATIONS } from "@app/lib/actions/utils";
 import { isSupportedImageContentType } from "@app/types";
-
-import { MCPRunAgentActionDetails } from "./MCPRunAgentActionDetails";
 
 export function MCPActionDetails(
   props: ActionDetailsComponentBaseProps<MCPActionType>

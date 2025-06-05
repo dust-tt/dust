@@ -39,10 +39,8 @@ export function MCPRunAgentActionDetails({
     if (queryResource) {
       return queryResource.resource.text;
     }
-    if (lastNotification) {
-      if (isRunAgentProgressOutput(lastNotification.data.output)) {
-        return lastNotification.data.output.query;
-      }
+    if (isRunAgentProgressOutput(lastNotification?.data.output)) {
+      return lastNotification.data.output.query;
     }
     return null;
   }, [queryResource, lastNotification]);
@@ -60,6 +58,16 @@ export function MCPRunAgentActionDetails({
     }
     return true;
   }, [resultResource]);
+
+  const conversationUrl = useMemo(() => {
+    if (resultResource) {
+      return resultResource.resource.uri;
+    }
+    if (isRunAgentProgressOutput(lastNotification?.data.output)) {
+      return `/w/${owner.sId}/assistant/${lastNotification.data.output.conversationId}`;
+    }
+    return null;
+  }, [resultResource, lastNotification, owner.sId]);
 
   const { agentConfiguration: childAgent } = useAgentConfiguration({
     workspaceId: owner.sId,
@@ -85,20 +93,15 @@ export function MCPRunAgentActionDetails({
                   size="xs"
                 />
                 <div>
-                  <Button
-                    label="View conversation"
-                    variant="outline"
-                    onClick={() =>
-                      window.open(
-                        resultResource
-                          ? resultResource.resource.uri
-                          : `/w/${owner.sId}/asssistant/${childAgent.id}`,
-                        "_blank"
-                      )
-                    }
-                    size="xs"
-                    className="!p-1"
-                  />
+                  {conversationUrl && (
+                    <Button
+                      label="View conversation"
+                      variant="outline"
+                      onClick={() => window.open(conversationUrl, "_blank")}
+                      size="xs"
+                      className="!p-1"
+                    />
+                  )}
                 </div>
               </div>
               <div className="text-sm font-normal text-foreground dark:text-foreground-night">
