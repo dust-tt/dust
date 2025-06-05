@@ -338,7 +338,8 @@ const createServer = (
         searchResult = await coreAPI.searchNodes({
           filter: {
             data_source_views: makeDataSourceViewFilter([dataSourceConfig]),
-            parent_id: ROOT_PARENT_ID,
+            node_ids: dataSourceConfig.parentsIn ?? undefined,
+            parent_id: dataSourceConfig.parentsIn ? undefined : ROOT_PARENT_ID,
           },
           options,
         });
