@@ -23,18 +23,21 @@ export const AgentBuilderContext = createContext<AgentBuilderContextType>({
   setIsPreviewPanelOpen: () => {},
 });
 
+interface AgentBuilderContextProps
+  extends Omit<
+    AgentBuilderContextType,
+    "isPreviewPanelOpen" | "setIsPreviewPanelOpen"
+  > {
+  children: React.ReactNode;
+}
+
 export function AgentBuilderProvider({
   dustApps,
   dataSourceViews,
   spaces,
   mcpServerViews,
   children,
-}: Omit<
-  AgentBuilderContextType,
-  "isPreviewPanelOpen" | "setIsPreviewPanelOpen"
-> & {
-  children: React.ReactNode;
-}) {
+}: AgentBuilderContextProps) {
   const [isPreviewPanelOpen, setIsPreviewPanelOpen] = useState(false);
 
   useEffect(() => {
