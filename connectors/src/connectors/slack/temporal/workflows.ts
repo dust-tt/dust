@@ -24,7 +24,7 @@ const {
   attemptChannelJoinActivity,
   deleteChannelsFromConnectorDb,
 } = proxyActivities<typeof activities>({
-  startToCloseTimeout: "10 minutes",
+  startToCloseTimeout: "20 minutes",
 });
 
 const { deleteChannel, syncThread } = proxyActivities<typeof activities>({
