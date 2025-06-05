@@ -99,6 +99,7 @@ fn default_search_scope() -> SearchScopeType {
 pub struct NodesSearchFilter {
     data_source_views: Vec<DatasourceViewFilter>,
     excluded_node_mime_types: Option<Vec<String>>,
+    mime_types: Option<Vec<String>>,
     node_ids: Option<Vec<String>>,
     node_types: Option<Vec<NodeType>>,
     parent_id: Option<String>,
@@ -842,6 +843,11 @@ impl ElasticsearchSearchStore {
                 .collect();
             counter.add(1);
             bool_query = bool_query.filter(Query::terms("node_type", terms));
+        }
+
+        if let Some(mime_types) = &filter.mime_types {
+            counter.add(1);
+            bool_query = bool_query.filter(Query::terms("mime_type", mime_types));
         }
 
         if let Some(parent_id) = &filter.parent_id {
