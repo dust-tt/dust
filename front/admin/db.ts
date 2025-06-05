@@ -1,4 +1,3 @@
-import { AgentMessageToolCall } from "@app/lib/models/assistant/actions/agent_message_tool_call";
 import {
   AgentBrowseAction,
   AgentBrowseConfiguration,
@@ -190,7 +189,6 @@ async function main() {
   await AgentConversationIncludeFileAction.sync({ alter: true });
   await AgentDustAppRunAction.sync({ alter: true });
   await AgentMessageContent.sync({ alter: true });
-  await AgentMessageToolCall.sync({ alter: true });
   await AgentProcessAction.sync({ alter: true });
   await AgentReasoningAction.sync({ alter: true });
   await AgentRetrievalAction.sync({ alter: true });

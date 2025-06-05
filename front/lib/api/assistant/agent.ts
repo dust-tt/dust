@@ -41,7 +41,6 @@ import { renderConversationForModel } from "@app/lib/api/assistant/preprocessing
 import config from "@app/lib/api/config";
 import { getRedisClient } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentMessageToolCall } from "@app/lib/models/assistant/actions/agent_message_tool_call";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
 import type { KillSwitchType } from "@app/lib/poke/types";
@@ -823,18 +822,7 @@ async function* runMultiActionsAgent(
     return;
   }
 
-  // Store the tool call in the database.
-  await AgentMessageToolCall.bulkCreate(
-    output.actions.map((a, index) => ({
-      workspaceId: auth.getNonNullableWorkspace().id,
-      agentMessageId: agentMessage.agentMessageId,
-      step,
-      stepActionIndex: index,
-      arguments: a.arguments,
-      name: a.name,
-      functionCallId: a.functionCallId,
-    }))
-  );
+  // todo(ASYNC_LOOP): Store the tool call in the database.
 
   yield* contentParser.flushTokens();
 
