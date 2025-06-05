@@ -13,6 +13,7 @@ import {
 import {
   deleteWorkspace,
   isWorkspaceRelocationDone,
+  removeAllWorkspaceDomains,
   setWorkspaceRelocated,
   setWorkspaceRelocating,
   updateWorkspaceMetadata,
@@ -151,6 +152,8 @@ makeScript(
             );
             return;
           }
+
+          await removeAllWorkspaceDomains(owner);
 
           // 3) Update all users' region metadata.
           const updateUsersRegionToDestRes =
