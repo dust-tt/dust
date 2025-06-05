@@ -15,12 +15,16 @@ import {
   isExtractResultResourceType,
   isIncludeResultResourceType,
   isReasoningSuccessOutput,
+  isRunAgentProgressOutput,
+  isRunAgentResultResourceType,
   isSearchResultResourceType,
   isSqlQueryOutput,
   isWebsearchResultResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { ACTION_SPECIFICATIONS } from "@app/lib/actions/utils";
 import { isSupportedImageContentType } from "@app/types";
+
+import { MCPRunAgentActionDetails } from "./MCPRunAgentActionDetails";
 
 export function MCPActionDetails(
   props: ActionDetailsComponentBaseProps<MCPActionType>
@@ -31,6 +35,9 @@ export function MCPActionDetails(
   const isBrowse = props.action.output?.some(isBrowseResultResourceType);
   const isTablesQuery = props.action.output?.some(isSqlQueryOutput);
   const isExtract = props.action.output?.some(isExtractResultResourceType);
+  const isRunAgent =
+    props.action.output?.some(isRunAgentResultResourceType) ||
+    isRunAgentProgressOutput(props.lastNotification?.data.output);
 
   // TODO(mcp): rationalize the display of results for MCP to remove the need for specific checks.
   // Hack to find out whether the output comes from the reasoning tool, links back to the TODO above.
@@ -50,6 +57,8 @@ export function MCPActionDetails(
     return <MCPReasoningActionDetails {...props} />;
   } else if (isExtract) {
     return <MCPExtractActionDetails {...props} />;
+  } else if (isRunAgent) {
+    return <MCPRunAgentActionDetails {...props} />;
   } else {
     return <GenericActionDetails {...props} />;
   }
@@ -59,7 +68,6 @@ export function GenericActionDetails({
   owner,
   action,
   defaultOpen,
-  lastNotification,
 }: ActionDetailsComponentBaseProps<MCPActionType>) {
   return (
     <ActionDetailsWrapper
@@ -67,7 +75,6 @@ export function GenericActionDetails({
       defaultOpen={defaultOpen}
       visual={ACTION_SPECIFICATIONS["MCP"].cardIcon}
     >
-      Notification: {JSON.stringify(lastNotification, undefined, 2)}
       <div className="flex flex-col gap-4 py-4 pl-6">
         <CollapsibleComponent
           rootProps={{ defaultOpen: !action.generatedFiles.length }}

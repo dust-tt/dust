@@ -515,6 +515,18 @@ const NotificationRunAgentContentSchema = z.object({
   query: z.string(),
 });
 
+type RunAgentProgressOutput = z.infer<typeof NotificationRunAgentContentSchema>;
+
+export function isRunAgentProgressOutput(
+  output: ProgressNotificationOutput
+): output is RunAgentProgressOutput {
+  return (
+    output !== undefined &&
+    output.type === "run_agent" &&
+    "childAgentId" in output
+  );
+}
+
 export const ProgressNotificationOutputSchema = z
   .union([
     NotificationImageContentSchema,
