@@ -337,8 +337,8 @@ export async function getExecutionStatusFromConfig(
     case "never_ask":
       return { status: "allowed_implicitly" };
     case "low": {
-      const user = auth.getNonNullableUser();
-      const neverAskSetting = await user.getMetadata(
+      const user = auth.user();
+      const neverAskSetting = await user?.getMetadata(
         `toolsValidations:${actionConfiguration.toolServerId}`
       );
 

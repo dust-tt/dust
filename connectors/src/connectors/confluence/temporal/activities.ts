@@ -444,7 +444,8 @@ export async function confluenceCheckAndUpsertSinglePageActivity({
 
   const client = await getConfluenceClient(
     {
-      cloudId: confluenceConfig?.cloudId,
+      cloudId: confluenceConfig.cloudId,
+      ignoreNearRateLimit: confluenceConfig.ignoreNearRateLimit,
     },
     connector
   );
@@ -586,7 +587,10 @@ export async function confluenceUpsertPageWithFullParentsActivity({
   }
 
   const client = await getConfluenceClient(
-    { cloudId: confluenceConfig?.cloudId },
+    {
+      cloudId: confluenceConfig.cloudId,
+      ignoreNearRateLimit: confluenceConfig.ignoreNearRateLimit,
+    },
     connector
   );
 

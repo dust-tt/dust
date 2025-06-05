@@ -143,7 +143,7 @@ export const INTERNAL_MCP_SERVERS: Record<
   notion: {
     id: 11,
     availability: "manual",
-    flag: "dev_mcp_actions",
+    flag: null,
     tools_stakes: {
       search: "never_ask",
       retrieve_page: "never_ask",
@@ -160,7 +160,6 @@ export const INTERNAL_MCP_SERVERS: Record<
       insert_row_into_database: "low",
       create_database: "low",
       update_page: "low",
-      append_block_children: "low",
       add_page_content: "low",
       create_comment: "low",
       delete_block: "low",

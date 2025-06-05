@@ -6,6 +6,10 @@ import type { Authenticator } from "@app/lib/auth";
 import { AgentBrowseAction } from "@app/lib/models/assistant/actions/browse";
 import { AgentConversationIncludeFileAction } from "@app/lib/models/assistant/actions/conversation/include_file";
 import { AgentDustAppRunAction } from "@app/lib/models/assistant/actions/dust_app_run";
+import {
+  AgentMCPAction,
+  AgentMCPActionOutputItem,
+} from "@app/lib/models/assistant/actions/mcp";
 import { AgentProcessAction } from "@app/lib/models/assistant/actions/process";
 import { AgentReasoningAction } from "@app/lib/models/assistant/actions/reasoning";
 import { AgentRetrievalAction } from "@app/lib/models/assistant/actions/retrieval";
@@ -76,6 +80,25 @@ async function destroyActionsRelatedResources(
     where: { agentMessageId: agentMessageIds },
   });
   await AgentReasoningAction.destroy({
+    where: { agentMessageId: agentMessageIds },
+  });
+
+  // First, retrieve the MCP actions.
+  const mcpActions = await AgentMCPAction.findAll({
+    attributes: ["id"],
+    where: {
+      agentMessageId: { [Op.in]: agentMessageIds },
+      workspaceId: auth.getNonNullableWorkspace().id,
+    },
+  });
+
+  // Destroy MCP action output items.
+  await AgentMCPActionOutputItem.destroy({
+    where: { agentMCPActionId: mcpActions.map((a) => a.id) },
+  });
+
+  // Destroy the actions.
+  await AgentMCPAction.destroy({
     where: { agentMessageId: agentMessageIds },
   });
 }

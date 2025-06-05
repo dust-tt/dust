@@ -98,8 +98,26 @@ const createServer = (
           INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
         ],
       nodeId: z.string().describe("The ID of the node to read."),
+      offset: z
+        .number()
+        .optional()
+        .describe(
+          "The character position to start reading from (0-based). If not provided, starts from the beginning."
+        ),
+      limit: z
+        .number()
+        .optional()
+        .describe(
+          "The maximum number of characters to read. If not provided, reads all characters."
+        ),
+      grep: z
+        .string()
+        .optional()
+        .describe(
+          "A regular expression to filter lines. Applied after offset/limit slicing. Only lines matching this pattern will be returned."
+        ),
     },
-    async ({ dataSources, nodeId }) => {
+    async ({ dataSources, nodeId, offset, limit, grep }) => {
       const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
       // Gather data source configurations.
@@ -149,10 +167,13 @@ const createServer = (
       }
 
       // Read the node.
-      const readResult = await coreAPI.getDataSourceDocument({
+      const readResult = await coreAPI.getDataSourceDocumentText({
         dataSourceId: node.data_source_id,
         documentId: node.node_id,
         projectId: dustAPIProjectId,
+        offset: offset,
+        limit: limit,
+        grep: grep,
       });
 
       if (readResult.isErr()) {
@@ -166,7 +187,7 @@ const createServer = (
         content: [
           {
             type: "text",
-            text: readResult.value.document.text ?? "",
+            text: readResult.value.text,
           },
         ],
       };
