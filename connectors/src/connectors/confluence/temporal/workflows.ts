@@ -109,7 +109,7 @@ export async function confluenceSyncWorkflow({
     // Create a copy of the map to iterate over, to avoid issues with concurrent modification.
     const spaceIdsToProcess = new Map(spaceIdsMap);
     for (const [spaceId, opts] of spaceIdsToProcess) {
-      // Report progress before processing each space
+      // Report progress before processing each space.
       await reportInitialSyncProgress(
         connectorId,
         `${processedSpaces + 1}/${totalSpaces} spaces`
