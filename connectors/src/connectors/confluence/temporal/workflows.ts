@@ -102,7 +102,6 @@ export async function confluenceSyncWorkflow({
 
   // Async operations allow Temporal's event loop to process signals.
   // If a signal arrives during an async operation, it will update the set before the next iteration.
-  const totalSpaces = spaceIdsMap.size;
   let processedSpaces = 0;
 
   while (spaceIdsMap.size > 0) {
@@ -112,7 +111,10 @@ export async function confluenceSyncWorkflow({
       // Report progress before processing each space.
       await reportInitialSyncProgress(
         connectorId,
-        `${processedSpaces + 1}/${totalSpaces} spaces`
+        // At this point, the map was cleared from the processed spaces so we have to do
+        // processedSpaces + spaceIdsMap.size to get the actual total, updated when we
+        // get a signal.
+        `${processedSpaces + 1}/${spaceIdsMap.size + processedSpaces} spaces`
       );
 
       // Async operation yielding control to the Temporal runtime.
