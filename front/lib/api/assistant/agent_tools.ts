@@ -40,7 +40,7 @@ export async function* processToolCallsInLoop({
   const actions: AgentActionsEvent["actions"] = [];
 
   for (const a of toolCalls) {
-    //Sometimes models will return a name with a triple underscore instead of a double underscore, we dynamically handle it.
+    // Sometimes models will return a name with a triple underscore instead of a double underscore, we dynamically handle it.
     const actionNamesFromLLM: string[] = removeNulls([
       a.name,
       a.name?.replace("___", TOOL_NAME_SEPARATOR) ?? null,
