@@ -1,7 +1,10 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import config from "@app/lib/api/config";
-import { validateWorkOSWebhookEvent } from "@app/lib/api/workos/webhook_helpers";
+import {
+  isWorkOSIpAddress,
+  validateWorkOSWebhookEvent,
+} from "@app/lib/api/workos/webhook_helpers";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { launchWorkOSEventsWorkflow } from "@app/temporal/workos_events_queue/client";
 import type { WithAPIErrorResponse } from "@app/types";
@@ -20,6 +23,7 @@ async function handler(
     });
   }
 
+  // Validate the webhook secret.
   const { webhookSecret } = req.query;
   if (typeof webhookSecret !== "string") {
     return apiError(req, res, {
@@ -37,6 +41,29 @@ async function handler(
       api_error: {
         type: "not_authenticated",
         message: "The webhookSecret query parameter is invalid.",
+      },
+    });
+  }
+
+  // Validate the client IP address.
+  const clientIp = req.headers["x-forwarded-for"] || req.socket.remoteAddress;
+  if (typeof clientIp !== "string") {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Could not determine client IP address",
+      },
+    });
+  }
+
+  const isWorkOSIp = isWorkOSIpAddress(clientIp);
+  if (!isWorkOSIp) {
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Request not from WorkOS IP range",
       },
     });
   }
