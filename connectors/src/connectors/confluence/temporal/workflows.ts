@@ -112,7 +112,7 @@ export async function confluenceSyncWorkflow({
       // Report progress before processing each space
       await reportInitialSyncProgress(
         connectorId,
-        `Processing ${processedSpaces + 1} out of ${totalSpaces} spaces`
+        `${processedSpaces + 1}/${totalSpaces} spaces`
       );
 
       // Async operation yielding control to the Temporal runtime.
