@@ -10,7 +10,7 @@ use elasticsearch::{
 };
 use elasticsearch_dsl::{
     Aggregation, BoolQuery, FieldSort, Operator, Query, Script, ScriptSort, ScriptSortType, Search,
-    Sort, SortOrder,
+    Sort, SortMissing, SortOrder,
 };
 use serde::Serialize;
 use serde_json::json;
@@ -692,8 +692,15 @@ impl ElasticsearchSearchStore {
             indices_to_query.push(DATA_SOURCE_INDEX_NAME);
         }
 
-        // Build nodes query only if we have clauses left.
-        if !counter.is_full() {
+        // Build nodes query only if we have clauses left and the scope is NodesTitles or Both.
+        if !counter.is_full()
+            && filter.data_source_views.iter().any(|f| {
+                matches!(
+                    f.search_scope,
+                    SearchScopeType::NodesTitles | SearchScopeType::Both
+                )
+            })
+        {
             let nodes_query = Query::bool()
                 .filter(Query::term("_index", DATA_SOURCE_NODE_INDEX_NAME))
                 .filter(self.build_nodes_content_query(&query, &filter, options, &mut counter)?);
@@ -1044,28 +1051,41 @@ impl ElasticsearchSearchStore {
 
                 sort.into_iter()
                     .map(|s| {
-                        Sort::FieldSort(FieldSort::new(s.field).order(match s.direction {
-                            SortDirection::Asc => SortOrder::Asc,
-                            SortDirection::Desc => SortOrder::Desc,
-                        }))
+                        Sort::FieldSort(
+                            FieldSort::new(s.field)
+                                .order(match s.direction {
+                                    SortDirection::Asc => SortOrder::Asc,
+                                    SortDirection::Desc => SortOrder::Desc,
+                                })
+                                .missing(SortMissing::Last)
+                                .unmapped_type("keyword"),
+                        )
                     })
                     .collect()
             }
             // Default to sorting folders first, then both documents and tables
-            // and alphabetically by title
+            // and alphabetically by title (or data source name )
             None => vec![
                 Sort::ScriptSort(
                     ScriptSort::ascending(Script::source(
-                        "doc['node_type'].value == 'Folder' ? 0 : 1",
+                        "doc.containsKey('node_type') && doc['node_type'].size() > 0 && doc['node_type'].value == 'Folder' ? 0 : 1",
                     ))
                     .r#type(ScriptSortType::Number),
                 ),
-                Sort::FieldSort(FieldSort::new("title.keyword").order(SortOrder::Asc)),
+                Sort::FieldSort(
+                    FieldSort::new("title.keyword")
+                        .order(SortOrder::Asc)
+                        .missing(SortMissing::Last)
+                        .unmapped_type("keyword")
+                ),
             ],
         };
 
         base_sort.push(Sort::FieldSort(
-            FieldSort::new("node_id").order(SortOrder::Asc),
+            FieldSort::new("node_id")
+                .order(SortOrder::Asc)
+                .missing(SortMissing::Last)
+                .unmapped_type("keyword"),
         ));
 
         Ok(base_sort)
