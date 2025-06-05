@@ -96,7 +96,6 @@ import { useTools } from "@app/components/assistant_builder/useTools";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import { getInternalMCPServerNameAndWorkspaceId } from "@app/lib/actions/mcp_internal_actions/constants";
-import type { ReasoningModelConfiguration } from "@app/lib/actions/reasoning";
 import {
   ACTION_SPECIFICATIONS,
   DATA_VISUALIZATION_SPECIFICATION,
@@ -105,6 +104,7 @@ import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useMCPServerConnections } from "@app/lib/swr/mcp_servers";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
+  ModelConfigurationType,
   SpaceType,
   WhitelistableFeature,
   WorkspaceType,
@@ -202,7 +202,7 @@ type SpaceIdToActions = Record<string, AssistantBuilderActionState[]>;
 interface ActionScreenProps {
   owner: WorkspaceType;
   builderState: AssistantBuilderState;
-  reasoningModels: ReasoningModelConfiguration[];
+  reasoningModels: ModelConfigurationType[];
   setBuilderState: (
     stateFn: (state: AssistantBuilderState) => AssistantBuilderState
   ) => void;

@@ -27,8 +27,8 @@ import {
 } from "@app/components/assistant_builder/types";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
-import type { ReasoningModelConfiguration } from "@app/lib/actions/reasoning";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import type { ModelConfigurationType } from "@app/types";
 import { DEFAULT_REASONING_MODEL_ID } from "@app/types";
 
 type MCPServerViewTypeWithLabel = MCPServerViewType & { label: string };
@@ -42,7 +42,7 @@ interface AddToolsDropdownProps {
   nonDefaultMCPActions: ActionSpecificationWithType[];
   defaultMCPServerViews: MCPServerViewTypeWithLabel[];
   nonDefaultMCPServerViews: MCPServerViewTypeWithLabel[];
-  reasoningModels: ReasoningModelConfiguration[];
+  reasoningModels: ModelConfigurationType[];
 }
 
 export function AddToolsDropdown({
