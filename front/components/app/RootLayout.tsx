@@ -1,5 +1,5 @@
 import { UserProvider } from "@auth0/nextjs-auth0/client";
-import { SparkleContext } from "@dust-tt/sparkle";
+import { SparkleContext, Spinner } from "@dust-tt/sparkle";
 import { Notification } from "@dust-tt/sparkle";
 import dynamic from "next/dynamic";
 import Link from "next/link";
@@ -11,7 +11,7 @@ import { SidebarProvider } from "@app/components/sparkle/SidebarContext";
 
 const RootSWRConfig = dynamic(
   () => import("./RootSWRConfig").then((mod) => mod.RootSWRConfig),
-  { ssr: false }
+  { ssr: false, loading: () => <Spinner /> }
 );
 
 function NextLinkWrapper({
