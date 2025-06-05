@@ -50,11 +50,6 @@ export const Basic: Story = {
             label: "Save Changes",
             variant: "highlight",
           }}
-          permanentValidation={{
-            label: "Don't ask again",
-            checked: false,
-            onChange: () => {},
-          }}
         />
       </DialogContent>
     </Dialog>
@@ -97,11 +92,6 @@ export const ToolValidation: Story = {
             label: "Save Changes",
             variant: "highlight",
           }}
-          permanentValidation={{
-            label: "Always allow",
-            checked: false,
-            onChange: () => {},
-          }}
         />
       </DialogContent>
     </Dialog>
@@ -133,11 +123,6 @@ export const WithForm: Story = {
             label: "Save",
             variant: "highlight",
           }}
-          permanentValidation={{
-            label: "Don't ask again",
-            checked: false,
-            onChange: () => {},
-          }}
         />
       </DialogContent>
     </Dialog>
@@ -166,11 +151,6 @@ export const AlertDialog: Story = {
           rightButtonProps={{
             label: "Delete Account",
             variant: "warning",
-          }}
-          permanentValidation={{
-            label: "Don't ask again",
-            checked: false,
-            onChange: () => {},
           }}
         />
       </DialogContent>
