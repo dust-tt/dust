@@ -18,6 +18,7 @@ import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { actionRefsOffset, getRetrievalTopK } from "@app/lib/actions/utils";
 import { getRefs } from "@app/lib/api/assistant/citations";
 import config from "@app/lib/api/config";
+import { ROOT_PARENT_ID } from "@app/lib/api/data_source_view";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import {
@@ -44,7 +45,6 @@ import {
   stripNullBytes,
   timeFrameFromNow,
 } from "@app/types";
-import { ROOT_PARENT_ID } from "@app/lib/api/data_source_view";
 
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "data_sources_file_system",
