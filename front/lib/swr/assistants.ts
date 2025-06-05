@@ -124,7 +124,6 @@ export function useAgentConfigurations({
   const { cache } = useSWRConfig();
   const inCache = typeof cache.get(key) !== "undefined";
 
-  console.log("appConfig in cache", inCache);
   const { data, error, mutate, mutateRegardlessOfQueryParams, isValidating } =
     useSWRWithDefaults(agentsGetView ? key : null, agentConfigurationsFetcher, {
       disabled,
