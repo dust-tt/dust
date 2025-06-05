@@ -148,18 +148,11 @@ export function ReasoningModelConfigurationSection({
                   Best performing reasoning models
                 </DropdownMenuLabel>
                 {performingModels.map((model) => (
-                  <DropdownMenuItem
+                  <ReasoningModelDropdownMenuItem
                     key={`${model.modelId}-${model.reasoningEffort ?? ""}`}
-                    label={model.displayName}
-                    icon={getModelProviderLogo(model.providerId, isDark)}
-                    onClick={() =>
-                      onModelSelect({
-                        modelId: model.modelId,
-                        providerId: model.providerId,
-                        reasoningEffort: model.reasoningEffort ?? null,
-                        temperature: null,
-                      })
-                    }
+                    model={model}
+                    onClick={onModelSelect}
+                    isDark={isDark}
                   />
                 ))}
                 <DropdownMenuLabel>Other models</DropdownMenuLabel>
@@ -178,22 +171,11 @@ export function ReasoningModelConfigurationSection({
                       <DropdownMenuPortal>
                         <DropdownMenuSubContent>
                           {models.map((model) => (
-                            <DropdownMenuItem
+                            <ReasoningModelDropdownMenuItem
                               key={`${model.modelId}-${model.reasoningEffort ?? ""}`}
-                              label={model.displayName}
-                              icon={getModelProviderLogo(
-                                model.providerId,
-                                isDark
-                              )}
-                              onClick={() =>
-                                onModelSelect({
-                                  modelId: model.modelId,
-                                  providerId: model.providerId,
-                                  reasoningEffort:
-                                    model.reasoningEffort ?? null,
-                                  temperature: null,
-                                })
-                              }
+                              model={model}
+                              onClick={onModelSelect}
+                              isDark={isDark}
                             />
                           ))}
                         </DropdownMenuSubContent>
@@ -207,5 +189,30 @@ export function ReasoningModelConfigurationSection({
         </DropdownMenu>
       )}
     </ConfigurationSectionContainer>
+  );
+}
+
+function ReasoningModelDropdownMenuItem({
+  model,
+  onClick,
+  isDark,
+}: {
+  model: ModelConfigurationType;
+  onClick: (model: ReasoningModelConfiguration) => void;
+  isDark: boolean;
+}) {
+  return (
+    <DropdownMenuItem
+      label={model.displayName}
+      icon={getModelProviderLogo(model.providerId, isDark)}
+      onClick={() =>
+        onClick({
+          modelId: model.modelId,
+          providerId: model.providerId,
+          reasoningEffort: model.reasoningEffort ?? null,
+          temperature: null,
+        })
+      }
+    />
   );
 }
