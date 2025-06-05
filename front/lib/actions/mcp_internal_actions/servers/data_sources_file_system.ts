@@ -44,6 +44,7 @@ import {
   stripNullBytes,
   timeFrameFromNow,
 } from "@app/types";
+import { ROOT_PARENT_ID } from "@app/lib/api/data_source_view";
 
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "data_sources_file_system",
@@ -325,7 +326,6 @@ const createServer = (
           return makeMCPToolTextError("Invalid data source node ID format");
         }
 
-        // Find the configuration for this specific data source
         const dataSourceConfig = agentDataSourceConfigurations.find(
           ({ dataSource }) => dataSource.dustAPIDataSourceId === dataSourceId
         );
@@ -336,7 +336,6 @@ const createServer = (
           );
         }
 
-        // Search for nodes in this specific data source with parent_id = undefined (root nodes)
         searchResult = await coreAPI.searchNodes({
           filter: {
             data_source_views: [
@@ -345,7 +344,7 @@ const createServer = (
                 view_filter: dataSourceConfig.dataSourceView.parentsIn ?? [],
               },
             ],
-            // Omit parent_id to search for root nodes
+            parent_id: ROOT_PARENT_ID,
           },
           options,
         });
