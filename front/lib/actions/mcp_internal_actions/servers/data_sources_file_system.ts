@@ -579,12 +579,10 @@ async function getAgentDataSourceConfigurations(
 function makeDataSourceViewFilter(
   agentDataSourceConfigurations: AgentDataSourceConfiguration[]
 ) {
-  return agentDataSourceConfigurations.map(
-    ({ dataSource, dataSourceView }) => ({
-      data_source_id: dataSource.dustAPIDataSourceId,
-      view_filter: dataSourceView.parentsIn ?? [],
-    })
-  );
+  return agentDataSourceConfigurations.map(({ dataSource, parentsIn }) => ({
+    data_source_id: dataSource.dustAPIDataSourceId,
+    view_filter: parentsIn ?? [],
+  }));
 }
 
 function getSortDirection(field: "title" | "timestamp"): "asc" | "desc" {
