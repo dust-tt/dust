@@ -29,7 +29,7 @@ import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { ReasoningModelConfiguration } from "@app/lib/actions/reasoning";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import { O4_MINI_MODEL_ID } from "@app/types";
+import { DEFAULT_REASONING_MODEL_ID } from "@app/types";
 
 type MCPServerViewTypeWithLabel = MCPServerViewType & { label: string };
 
@@ -44,8 +44,6 @@ interface AddToolsDropdownProps {
   nonDefaultMCPServerViews: MCPServerViewTypeWithLabel[];
   reasoningModels: ReasoningModelConfiguration[];
 }
-
-const DEFAULT_REASONING_MODEL_ID = O4_MINI_MODEL_ID;
 
 export function AddToolsDropdown({
   setEdited,

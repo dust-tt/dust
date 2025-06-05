@@ -1461,6 +1461,8 @@ export function compareAgentsForSort(
   return a.name.localeCompare(b.name, "en", { sensitivity: "base" });
 }
 
+export const DEFAULT_REASONING_MODEL_ID = O4_MINI_MODEL_ID;
+
 export const BEST_PERFORMING_REASONING_MODELS_ID = [
   O4_MINI_MODEL_ID,
   O3_MODEL_ID,
