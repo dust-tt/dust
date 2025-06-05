@@ -9,7 +9,6 @@ import {
   makeMCPToolTextError,
 } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
-import { GMAIL_SCOPE_TYPES } from "@app/lib/api/oauth";
 import type { Authenticator } from "@app/lib/auth";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
@@ -20,7 +19,8 @@ const serverInfo: InternalMCPServerDefinitionType = {
   authorization: {
     provider: "gmail",
     use_case: "personal_actions",
-    scope: GMAIL_SCOPE_TYPES.CALENDAR,
+    scope:
+      "https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/calendar.events" as const,
   },
   icon: "GcalLogo",
   documentationUrl: "https://docs.dust.tt/docs/google-calendar",
