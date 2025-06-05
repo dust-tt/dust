@@ -1,6 +1,5 @@
 import { describe, expect } from "vitest";
 
-import { INTERNAL_MCP_SERVERS } from "@app/lib/actions/mcp_internal_actions/constants";
 import { Authenticator } from "@app/lib/auth";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
@@ -11,7 +10,6 @@ import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory"
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { itInTransaction } from "@app/tests/utils/utils";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
-import type { WhitelistableFeature } from "@app/types";
 
 import handler from "./available";
 
@@ -32,11 +30,7 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/mcp/available", () => {
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
     // Create some servers
-    await FeatureFlagFactory.basic(
-      INTERNAL_MCP_SERVERS["primitive_types_debugger"]
-        .flag as WhitelistableFeature,
-      workspace
-    );
+    await FeatureFlagFactory.basic("dev_mcp_actions", workspace);
 
     // Internal server in the right workspace
     const internalServer = await InternalMCPServerInMemoryResource.makeNew(

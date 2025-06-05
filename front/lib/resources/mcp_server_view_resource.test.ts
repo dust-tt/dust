@@ -13,7 +13,6 @@ import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { itInTransaction } from "@app/tests/utils/utils";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
-import type { WhitelistableFeature } from "@app/types";
 
 describe("MCPServerViewResource", () => {
   describe("listByWorkspace", () => {
@@ -32,15 +31,8 @@ describe("MCPServerViewResource", () => {
 
         // Create internals servers for each workspace
 
-        await FeatureFlagFactory.basic(
-          INTERNAL_MCP_SERVERS["think"].flag as WhitelistableFeature,
-          workspace1
-        );
-
-        await FeatureFlagFactory.basic(
-          INTERNAL_MCP_SERVERS["think"].flag as WhitelistableFeature,
-          workspace2
-        );
+        await FeatureFlagFactory.basic("dev_mcp_actions", workspace1);
+        await FeatureFlagFactory.basic("dev_mcp_actions", workspace2);
 
         expect(INTERNAL_MCP_SERVERS["think"].availability).toBe("auto");
 

@@ -113,7 +113,7 @@ export function getMcpServerDisplayName(
   let displayName = asDisplayName(server.name);
 
   if (res.isOk()) {
-    if (INTERNAL_MCP_SERVERS[res.value.name].flag != null) {
+    if (INTERNAL_MCP_SERVERS[res.value.name].isPreview) {
       displayName += " (Preview)";
     }
     // Will append Dust App name.
