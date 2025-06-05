@@ -73,7 +73,7 @@ export function useAgentBuilderInstructions() {
 
       context.setGenerationSettings(processedSettings);
     },
-    [context.setGenerationSettings]
+    [context]
   );
 
   return {
