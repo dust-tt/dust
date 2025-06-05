@@ -1088,6 +1088,10 @@ impl ElasticsearchSearchStore {
                 .unmapped_type("keyword"),
         ));
 
+        base_sort.push(Sort::FieldSort(
+            FieldSort::new("data_source_internal_id").order(SortOrder::Asc),
+        ));
+
         Ok(base_sort)
     }
 
