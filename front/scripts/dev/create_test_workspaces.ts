@@ -55,9 +55,7 @@ async function createTestWorkspaces(
   for (let i = 0; i < count; i++) {
     const name = `${user.firstName} ${generateRandomModelSId()}`;
     const workspace = await createWorkspaceInternal({
-      email: user.email,
       name: name,
-      isVerified: true,
       isBusiness: false,
       planCode: FREE_UPGRADED_PLAN_CODE,
       endDate: null,
