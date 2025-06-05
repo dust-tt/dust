@@ -495,19 +495,10 @@ const authenticate = async (
       "offline_access read:user_profile read:conversation create:conversation update:conversation read:agent read:file create:file delete:file";
     options.prompt = isForceLogin ? "login" : "";
   } else if (AUTH === "workos") {
-    // WorkOS AuthKit specific parameters
     options.scope = "openid profile email";
-    options.state = generateRandomString(32); // For CSRF protection
-
-    // Store state for validation
-    await chrome.storage.local.set({ workos_state: options.state });
-
-    // Add organization_id if connection is specified
     if (connection) {
       options.organization_id = connection;
     }
-
-    // WorkOS doesn't use audience parameter, but uses provider
     options.provider = "authkit";
   }
 
@@ -531,7 +522,6 @@ const authenticate = async (
       const url = new URL(redirectUrl);
       const queryParams = new URLSearchParams(url.search);
       const authorizationCode = queryParams.get("code");
-      const state = queryParams.get("state");
       const error = queryParams.get("error");
 
       if (error) {
@@ -540,20 +530,7 @@ const authenticate = async (
         return;
       }
 
-      // Validate state parameter for WorkOS
-      if (AUTH === "workos" && state) {
-        const storedState = await chrome.storage.local.get("workos_state");
-        if (state !== storedState.workos_state) {
-          log(`Invalid state parameter`);
-          sendResponse({ success: false });
-          return;
-        }
-        // Clean up stored state
-        await chrome.storage.local.remove("workos_state");
-      }
-
       if (authorizationCode) {
-        // Once we have the code we call /token endpoint to exchange it for tokens.
         const data = await exchangeCodeForTokens(
           authorizationCode,
           codeVerifier
@@ -591,7 +568,6 @@ const refreshToken = async (
       });
 
       if (!response.ok) {
-        console.log(response);
         const data = await response.json();
         throw new Error(
           `Token refresh failed: ${data.error} - ${data.error_description}`

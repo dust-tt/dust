@@ -122,7 +122,6 @@ export abstract class AuthService {
     accessToken: string;
     dustDomain: string;
   }): Promise<Result<{ user: StoredUser }, AuthError>> {
-    console.log(accessToken);
     const response = await fetch(`${dustDomain}/api/v1/me`, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
