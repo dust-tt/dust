@@ -47,7 +47,7 @@ async function handler(
   }
 
   // Validate the client IP address.
-  const { remoteAddress: clientIp } = req.socket;
+  const clientIp = req.headers["x-forwarded-for"] || req.socket.remoteAddress;
   if (typeof clientIp !== "string") {
     return apiError(req, res, {
       status_code: 400,
