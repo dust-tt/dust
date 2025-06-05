@@ -1,6 +1,11 @@
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import { getResourceNameAndIdFromSId } from "@app/lib/resources/string_ids";
-import type { ModelId, Result, WhitelistableFeature } from "@app/types";
+import type {
+  ModelId,
+  PlanType,
+  Result,
+  WhitelistableFeature,
+} from "@app/types";
 import { Err, Ok } from "@app/types";
 
 export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
@@ -47,6 +52,10 @@ export const INTERNAL_MCP_SERVERS: Record<
     id: number;
     availability: MCPServerAvailability;
     flag: WhitelistableFeature | null;
+    restriction?: (
+      plan: PlanType,
+      featureFlags: WhitelistableFeature[]
+    ) => boolean;
     tools_stakes?: Record<string, MCPToolStakeLevelType>;
   }
 > = {
@@ -181,7 +190,15 @@ export const INTERNAL_MCP_SERVERS: Record<
   salesforce: {
     id: 14,
     availability: "manual",
-    flag: "salesforce_tool",
+    flag: null,
+    restriction: (plan, featureFlags) => {
+      if (featureFlags.includes("salesforce_tool")) {
+        return true;
+      }
+      // Below to be replaced by: return plan.limits.connections.isSalesforceAllowed; when we are ready to release the feature.
+      void plan;
+      return false;
+    },
     tools_stakes: {
       execute_read_query: "low",
       list_objects: "low",

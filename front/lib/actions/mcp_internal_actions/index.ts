@@ -16,14 +16,22 @@ export const isEnabledForWorkspace = async (
   auth: Authenticator,
   name: InternalMCPServerNameType
 ): Promise<boolean> => {
+  const mcpServer = INTERNAL_MCP_SERVERS[name];
   const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
 
-  const flag = INTERNAL_MCP_SERVERS[name].flag;
-  if (!flag) {
-    return true;
+  // If the server has a required feature flag, check if it is enabled.
+  if (mcpServer.flag) {
+    return featureFlags.includes(mcpServer.flag);
   }
 
-  return featureFlags.includes(flag);
+  // If the server has a restriction, check if the restrictions are met.
+  if (mcpServer.restriction) {
+    const plan = auth.getNonNullablePlan();
+    return mcpServer.restriction(plan, featureFlags);
+  }
+
+  // If the server has no restriction, it is available by default.
+  return true;
 };
 
 export const connectToInternalMCPServer = async (
