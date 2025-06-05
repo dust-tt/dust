@@ -35,6 +35,9 @@ const RESOURCES_PREFIX = {
   tag: "tag",
   transcripts_configuration: "tsc",
 
+  // Action (used for tool approval currently).
+  mcp_action: "act",
+
   // Resources relative to the configuration of an MCP server.
   data_source_configuration: "dsc",
   table_configuration: "tbc",

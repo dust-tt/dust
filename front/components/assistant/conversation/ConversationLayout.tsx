@@ -57,7 +57,7 @@ export default function ConversationLayout({
     <ConversationsNavigationProvider
       initialConversationId={pageProps.conversationId}
     >
-      <ActionValidationProvider>
+      <ActionValidationProvider owner={owner}>
         <ConversationLayoutContent
           baseUrl={baseUrl}
           owner={owner}

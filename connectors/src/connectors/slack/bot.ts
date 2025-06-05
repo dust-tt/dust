@@ -206,7 +206,7 @@ export async function botReplaceMention(
 }
 
 type ToolValidationParams = {
-  actionId: number;
+  actionId: string;
   approved: "approved" | "rejected";
   conversationId: string;
   messageId: string;
