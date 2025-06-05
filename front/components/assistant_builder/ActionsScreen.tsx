@@ -96,6 +96,7 @@ import { useTools } from "@app/components/assistant_builder/useTools";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import { getInternalMCPServerNameAndWorkspaceId } from "@app/lib/actions/mcp_internal_actions/constants";
+import type { ReasoningModelConfiguration } from "@app/lib/actions/reasoning";
 import {
   ACTION_SPECIFICATIONS,
   DATA_VISUALIZATION_SPECIFICATION,
@@ -201,6 +202,7 @@ type SpaceIdToActions = Record<string, AssistantBuilderActionState[]>;
 interface ActionScreenProps {
   owner: WorkspaceType;
   builderState: AssistantBuilderState;
+  reasoningModels: ReasoningModelConfiguration[];
   setBuilderState: (
     stateFn: (state: AssistantBuilderState) => AssistantBuilderState
   ) => void;
@@ -213,6 +215,7 @@ interface ActionScreenProps {
 export default function ActionsScreen({
   owner,
   builderState,
+  reasoningModels,
   setBuilderState,
   setEdited,
   setAction,
@@ -411,6 +414,7 @@ export default function ActionsScreen({
                 nonDefaultMCPActions={selectableNonMCPActions}
                 defaultMCPServerViews={selectableDefaultMCPServerViews}
                 nonDefaultMCPServerViews={selectableNonDefaultMCPServerViews}
+                reasoningModels={reasoningModels}
               />
 
               <div className="flex-grow" />
