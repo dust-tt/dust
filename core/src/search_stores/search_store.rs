@@ -12,7 +12,7 @@ use elasticsearch_dsl::{
     Aggregation, BoolQuery, FieldSort, Operator, Query, Script, ScriptSort, ScriptSortType, Search,
     Sort, SortOrder,
 };
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tracing::{error, info};
 use url::Url;
@@ -64,6 +64,14 @@ pub enum SearchScopeType {
     Both,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct MimeTypeFilter {
+    #[serde(rename = "in")]
+    pub is_in: Option<Vec<String>>,
+    #[serde(rename = "not")]
+    pub is_not: Option<Vec<String>>,
+}
+
 #[derive(serde::Deserialize, Debug)]
 pub struct SortSpec {
     pub field: String,
@@ -98,8 +106,9 @@ fn default_search_scope() -> SearchScopeType {
 #[derive(serde::Deserialize, Debug)]
 pub struct NodesSearchFilter {
     data_source_views: Vec<DatasourceViewFilter>,
+    // TODO(2025-06-05 aubin): replace the excluded_node_mime_types with mime_types.not.
     excluded_node_mime_types: Option<Vec<String>>,
-    mime_types: Option<Vec<String>>,
+    mime_types: Option<MimeTypeFilter>,
     node_ids: Option<Vec<String>>,
     node_types: Option<Vec<NodeType>>,
     parent_id: Option<String>,
@@ -845,9 +854,26 @@ impl ElasticsearchSearchStore {
             bool_query = bool_query.filter(Query::terms("node_type", terms));
         }
 
-        if let Some(mime_types) = &filter.mime_types {
-            counter.add(1);
-            bool_query = bool_query.filter(Query::terms("mime_type", mime_types));
+        match &filter.mime_types {
+            Some(mime_type_filter) => {
+                match &mime_type_filter.is_in {
+                    Some(included_mime_types) => {
+                        counter.add(1);
+                        bool_query =
+                            bool_query.filter(Query::terms("mime_type", included_mime_types))
+                    }
+                    None => (),
+                }
+                match &mime_type_filter.is_not {
+                    Some(excluded_mime_types) => {
+                        counter.add(1);
+                        bool_query =
+                            bool_query.must_not(Query::terms("mime_type", excluded_mime_types))
+                    }
+                    None => (),
+                }
+            }
+            None => (),
         }
 
         if let Some(parent_id) = &filter.parent_id {
