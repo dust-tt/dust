@@ -5,6 +5,7 @@ import {
   OrganizationDomainState,
 } from "@workos-inc/node";
 
+import { config } from "@app/lib/api/regions/config";
 import { getWorkOS } from "@app/lib/api/workos/client";
 import { Workspace } from "@app/lib/models/workspace";
 import { WorkspaceHasDomainModel } from "@app/lib/models/workspace_has_domain";
@@ -83,6 +84,9 @@ export async function createOrGetWorkOSOrganization(
       organization = await getWorkOS().organizations.createOrganization({
         name: `${workspace.name} - ${workspace.sId}`,
         externalId: workspace.sId,
+        metadata: {
+          region: config.getCurrentRegion(),
+        },
         domainData: [
           {
             domain,
