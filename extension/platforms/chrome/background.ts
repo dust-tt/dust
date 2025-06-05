@@ -23,6 +23,7 @@ import { generatePKCE } from "@app/shared/lib/utils";
 import type { OAuthAuthorizeResponse } from "@app/shared/services/auth";
 
 const log = console.error;
+const DEFAULT_TOKEN_EXPIRY_IN_SECONDS = 3600; // 1 hour.
 
 // Initialize the platform service.
 const platform = new ChromeCorePlatformService();
@@ -603,7 +604,7 @@ const refreshToken = async (
         sendResponse({
           accessToken: data.access_token,
           refreshToken: data.refresh_token || refreshToken,
-          expiresIn: data.expires_in ?? 3600,
+          expiresIn: data.expires_in ?? DEFAULT_TOKEN_EXPIRY_IN_SECONDS,
         });
       });
     } catch (error) {
@@ -643,15 +644,7 @@ const exchangeCodeForTokens = async (
     });
 
     if (!response.ok) {
-      const responseText = await response.text();
-
-      let data;
-      try {
-        data = JSON.parse(responseText);
-      } catch {
-        data = { error: "parse_error", error_description: responseText };
-      }
-
+      const data = await response.json();
       throw new Error(
         `Token exchange failed: ${data.error} - ${data.error_description}`
       );
@@ -661,7 +654,7 @@ const exchangeCodeForTokens = async (
     return {
       accessToken: data.access_token,
       refreshToken: data.refresh_token,
-      expiresIn: data.expires_in ?? 3600,
+      expiresIn: data.expires_in ?? DEFAULT_TOKEN_EXPIRY_IN_SECONDS,
       ...(data.id_token && { idToken: data.id_token }),
     };
   } catch (error) {
@@ -684,8 +677,7 @@ const logout = async (
 
   if (state.authPlatform === "auth0") {
     queryParams.client_id = AUTH0_CLIENT_ID;
-  }
-  if (state.authPlatform === "workos") {
+  } else if (state.authPlatform === "workos") {
     // We need to get the session to log out the user from WorkOS.
     const tokens = await platform.auth.getStoredTokens();
     if (tokens?.accessToken) {

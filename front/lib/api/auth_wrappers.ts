@@ -272,9 +272,17 @@ export function withPublicAPIAuthentication<T, U extends boolean>(
       if (authMethod === "access_token") {
         try {
           // Decode the JWT token to check the issuer
-          const decodedPayload = JSON.parse(
-            Buffer.from(token.split(".")[1], "base64").toString()
-          );
+          const decodedPayload = getPayloadFromToken(token);
+          if (!decodedPayload || !decodedPayload.iss) {
+            return apiError(req, res, {
+              status_code: 401,
+              api_error: {
+                type: "not_authenticated",
+                message:
+                  "The request does not have valid authentication credentials.",
+              },
+            });
+          }
 
           // For WorkOS, the issuer is "https://auth-api.dust.tt"
           // For Auth0, the issuer is "https://dust-dev.eu.auth0.com/"
@@ -501,9 +509,17 @@ export function withTokenAuthentication<T>(
 
       try {
         // Decode the JWT token to check the issuer
-        const decodedPayload = JSON.parse(
-          Buffer.from(bearerToken.split(".")[1], "base64").toString()
-        );
+        const decodedPayload = getPayloadFromToken(bearerToken);
+        if (!decodedPayload || !decodedPayload.iss) {
+          return apiError(req, res, {
+            status_code: 401,
+            api_error: {
+              type: "not_authenticated",
+              message:
+                "The request does not have valid authentication credentials.",
+            },
+          });
+        }
 
         const platform = extractPlatformFromTokenIssuer(decodedPayload.iss);
         if (!platform) {
@@ -611,6 +627,16 @@ function extractPlatformFromTokenIssuer(
     return "workos";
   }
   return null;
+}
+
+function getPayloadFromToken(token: string): Record<string, any> | null {
+  try {
+    const payload = Buffer.from(token.split(".")[1], "base64").toString();
+    return JSON.parse(payload);
+  } catch (error) {
+    logger.error({ error }, "Failed to decode token payload");
+    return null;
+  }
 }
 
 /**

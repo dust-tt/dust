@@ -31,4 +31,6 @@ async function handler(
   }
 }
 
-export default withTokenAuthentication(handler);
+export default withTokenAuthentication(handler, {
+  requiredScopes: { GET: "read:user_profile" },
+});
