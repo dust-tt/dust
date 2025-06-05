@@ -204,6 +204,12 @@ const config = {
   getWorkOSCookiePassword: (): string => {
     return EnvironmentConfig.getEnvVariable("WORKOS_COOKIE_PASSWORD");
   },
+  getWorkOSWebhookSecret: (): string => {
+    return EnvironmentConfig.getEnvVariable("WORKOS_WEBHOOK_SECRET");
+  },
+  getWorkOSWebhookSigningSecret: (): string => {
+    return EnvironmentConfig.getEnvVariable("WORKOS_WEBHOOK_SIGNING_SECRET");
+  },
 
   // Profiler.
   getProfilerSecret: (): string | undefined => {

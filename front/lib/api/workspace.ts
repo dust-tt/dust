@@ -684,3 +684,17 @@ export async function getWorkspaceAdministrationVersionLock(
     "[WORKSPACE_TRACE] Advisory lock acquired"
   );
 }
+
+export async function findWorkspaceByWorkOSOrganizationId(
+  workOSOrganizationId: string
+): Promise<LightWorkspaceType | null> {
+  const workspace = await Workspace.findOne({
+    where: { workOSOrganizationId },
+  });
+
+  if (!workspace) {
+    return null;
+  }
+
+  return renderLightWorkspaceType({ workspace });
+}
