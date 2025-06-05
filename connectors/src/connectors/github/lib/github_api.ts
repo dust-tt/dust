@@ -966,12 +966,12 @@ export async function processRepository({
         }
         const ext = extname(path).toLowerCase();
 
-        const isWithelisted =
+        const isWhitelisted =
           (EXTENSION_WHITELIST.includes(ext) ||
             FILENAME_WHITELIST.includes(path)) &&
           !SUFFIX_BLACKLIST.some((suffix) => path.endsWith(suffix));
 
-        if (!isWithelisted) {
+        if (!isWhitelisted) {
           return false;
         }
 
