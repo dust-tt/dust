@@ -12,10 +12,7 @@ import {
 import { getGoogleDriveObject } from "@connectors/connectors/google_drive/lib/google_drive_api";
 import { getFileParentsMemoized } from "@connectors/connectors/google_drive/lib/hierarchy";
 import { getPermissionViewType } from "@connectors/connectors/google_drive/lib/permissions";
-import {
-  folderHasChildren,
-  getDrives,
-} from "@connectors/connectors/google_drive/temporal/activities/common/utils";
+import { getDrives } from "@connectors/connectors/google_drive/temporal/activities/common/utils";
 import {
   launchGoogleDriveFullSyncWorkflow,
   launchGoogleDriveIncrementalSyncWorkflow,
@@ -28,6 +25,7 @@ import {
 import type { Sheet } from "@connectors/connectors/google_drive/temporal/spreadsheets";
 import {
   driveObjectToDustType,
+  folderHasChildren,
   getAuthObject,
   getDriveClient,
   getDriveFileId,
