@@ -854,26 +854,15 @@ impl ElasticsearchSearchStore {
             bool_query = bool_query.filter(Query::terms("node_type", terms));
         }
 
-        match &filter.mime_types {
-            Some(mime_type_filter) => {
-                match &mime_type_filter.is_in {
-                    Some(included_mime_types) => {
-                        counter.add(1);
-                        bool_query =
-                            bool_query.filter(Query::terms("mime_type", included_mime_types))
-                    }
-                    None => (),
-                }
-                match &mime_type_filter.is_not {
-                    Some(excluded_mime_types) => {
-                        counter.add(1);
-                        bool_query =
-                            bool_query.must_not(Query::terms("mime_type", excluded_mime_types))
-                    }
-                    None => (),
-                }
+        if let Some(mime_type_filter) = &filter.mime_types {
+            if let Some(included_mime_types) = &mime_type_filter.is_in {
+                counter.add(1);
+                bool_query = bool_query.filter(Query::terms("mime_type", included_mime_types))
             }
-            None => (),
+            if let Some(excluded_mime_types) = &mime_type_filter.is_not {
+                counter.add(1);
+                bool_query = bool_query.must_not(Query::terms("mime_type", excluded_mime_types))
+            }
         }
 
         if let Some(parent_id) = &filter.parent_id {
