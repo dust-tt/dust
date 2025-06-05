@@ -100,10 +100,10 @@ export async function confluenceSyncWorkflow({
     memo,
   } = workflowInfo();
 
-  // Async operations allow Temporal's event loop to process signals.
-  // If a signal arrives during an async operation, it will update the set before the next iteration.
   let processedSpaces = 0;
 
+  // Async operations allow Temporal's event loop to process signals.
+  // If a signal arrives during an async operation, it will update the set before the next iteration.
   while (spaceIdsMap.size > 0) {
     // Create a copy of the map to iterate over, to avoid issues with concurrent modification.
     const spaceIdsToProcess = new Map(spaceIdsMap);
