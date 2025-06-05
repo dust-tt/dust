@@ -350,20 +350,20 @@ export class MCPActionType extends BaseAction {
   getSId(owner: LightWorkspaceType): string {
     return MCPActionType.modelIdToSId({
       id: this.id,
-      owner,
+      workspaceId: owner.id,
     });
   }
 
   private static modelIdToSId({
     id,
-    owner,
+    workspaceId,
   }: {
     id: ModelId;
-    owner: LightWorkspaceType;
+    workspaceId: ModelId;
   }): string {
     return makeSId("mcp_action", {
       id,
-      workspaceId: owner.id,
+      workspaceId,
     });
   }
 }
