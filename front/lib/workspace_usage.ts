@@ -2,6 +2,7 @@ import { stringify } from "csv-stringify/sync";
 import { format } from "date-fns/format";
 import { Op, QueryTypes, Sequelize } from "sequelize";
 
+import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import {
@@ -87,6 +88,7 @@ interface FeedbackQueryResult {
   agentConfigurationVersion: number;
   thumb: "up" | "down";
   content: string | null;
+  conversationUrl: string | null;
 }
 
 export async function unsafeGetUsageData(
@@ -536,9 +538,23 @@ export async function getFeedbacksUsageData(
       agentConfigurationVersion: jsonFeedback.agentConfigurationVersion,
       thumb: jsonFeedback.thumbDirection,
       content: jsonFeedback.content?.replace(/\r?\n/g, "\\n") || null,
+      conversationUrl:
+        jsonFeedback.conversationId && jsonFeedback.isConversationShared
+          ? reconstructConversationUrl(workspace, jsonFeedback.conversationId)
+          : null,
     } as FeedbackQueryResult;
   });
   return generateCsvFromQueryResult(feedbacksWithMinimalFields);
+}
+
+function reconstructConversationUrl(
+  workspace: WorkspaceType,
+  conversationId: string
+) {
+  if (workspace.sId && conversationId) {
+    return `${config.getClientFacingUrl()}/w/${workspace.sId}/assistant/${conversationId}`;
+  }
+  return null;
 }
 
 function generateCsvFromQueryResult(
