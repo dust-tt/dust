@@ -201,7 +201,6 @@ async function* runMultiActionsAgentLoop(
       agentActions: actions,
       isLastGenerationIteration,
       isLegacyAgent,
-      step: i,
       specifications,
     });
 
@@ -387,7 +386,6 @@ async function* runMultiActionsAgent(
     agentActions,
     isLastGenerationIteration,
     isLegacyAgent,
-    step,
     specifications,
   }: {
     agentConfiguration: AgentConfigurationType;
@@ -397,7 +395,6 @@ async function* runMultiActionsAgent(
     agentActions: AgentActionConfigurationType[];
     isLastGenerationIteration: boolean;
     isLegacyAgent: boolean;
-    step: number;
     specifications: AgentActionSpecification[];
   }
 ): AsyncGenerator<
