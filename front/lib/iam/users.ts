@@ -1,6 +1,5 @@
 import type { PostIdentitiesRequestProviderEnum } from "auth0";
 import { escape } from "html-escaper";
-import { Op } from "sequelize";
 
 import { getAuth0ManagemementClient } from "@app/lib/api/auth0";
 import { revokeAndTrackMembership } from "@app/lib/api/membership";
@@ -12,7 +11,6 @@ import {
 } from "@app/lib/models/assistant/agent";
 import {
   ConversationParticipantModel,
-  Message,
   UserMessage,
 } from "@app/lib/models/assistant/conversation";
 import { DustAppSecret } from "@app/lib/models/dust_app_secret";
