@@ -4,7 +4,7 @@ import {
   Input,
   Label,
 } from "@dust-tt/sparkle";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata";
 import type { OAuthCredentialInputs, OAuthCredentials } from "@app/types";
@@ -19,6 +19,7 @@ type MCPServerOauthConnexionProps = {
   authCredentials: OAuthCredentials | null;
   setAuthCredentials: (authCredentials: OAuthCredentials) => void;
   setIsFormValid: (isFormValid: boolean) => void;
+  documentationUrl?: string;
 };
 
 export function MCPServerOAuthConnexion({
@@ -26,6 +27,7 @@ export function MCPServerOAuthConnexion({
   authCredentials,
   setAuthCredentials,
   setIsFormValid,
+  documentationUrl,
 }: MCPServerOauthConnexionProps) {
   const [inputs, setInputs] = useState<OAuthCredentialInputs | null>(null);
 
@@ -72,11 +74,6 @@ export function MCPServerOAuthConnexion({
     }
   }, [authCredentials, inputs, setIsFormValid]);
 
-  // This is hacky, we should have a better way to get the doc url for each provider.
-  const docUrl = useMemo(() => {
-    return `https://docs.dust.tt/docs/${authorization?.provider}`;
-  }, [authorization]);
-
   return (
     authorization && (
       <div className="flex flex-col items-center gap-2">
@@ -84,11 +81,21 @@ export function MCPServerOAuthConnexion({
           <>
             <span className="text-500 w-full font-semibold">
               These tools require admin authentication with{" "}
-              {OAUTH_PROVIDER_NAMES[authorization.provider]}. Please follow{" "}
-              <a href={docUrl} className="text-highlight-600" target="_blank">
-                this guide
-              </a>{" "}
-              to learn how to set it up.
+              {OAUTH_PROVIDER_NAMES[authorization.provider]}
+              {documentationUrl && (
+                <>
+                  . Please follow{" "}
+                  <a
+                    href={documentationUrl}
+                    className="text-highlight-600"
+                    target="_blank"
+                  >
+                    this guide
+                  </a>{" "}
+                  to learn how to set it up
+                </>
+              )}
+              .
             </span>
             {Object.entries(inputs).map(([key, inputData]) => {
               if (inputData.value) {

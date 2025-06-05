@@ -74,17 +74,20 @@ export class MCPServerPersonalAuthenticationRequiredError extends Error {
   mcpServerId: string;
   provider: OAuthProvider;
   useCase: OAuthUseCase;
+  scope?: string;
 
   constructor(
     mcpServerId: string,
     provider: OAuthProvider,
-    useCase: OAuthUseCase
+    useCase: OAuthUseCase,
+    scope?: string
   ) {
     super(`MCP server ${mcpServerId} requires personal authentication`);
     this.name = MCPServerRequiresPersonalAuthenticationErrorName;
     this.mcpServerId = mcpServerId;
     this.provider = provider;
     this.useCase = useCase;
+    this.scope = scope;
   }
 
   static is(
@@ -114,11 +117,13 @@ export function makeMCPToolPersonalAuthenticationRequiredError(
           text: new MCPServerPersonalAuthenticationRequiredError(
             mcpServerId,
             authorization.provider,
-            authorization.use_case
+            authorization.use_case,
+            authorization.scope
           ).message,
           mcpServerId,
           provider: authorization.provider,
           useCase: authorization.use_case,
+          scope: authorization.scope,
         },
       },
     ],

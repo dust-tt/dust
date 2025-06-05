@@ -346,7 +346,8 @@ export async function* tryCallMCPTool(
               personalAuthenticationRequiredError.resource
                 .provider as OAuthProvider,
               personalAuthenticationRequiredError.resource
-                .useCase as OAuthUseCase
+                .useCase as OAuthUseCase,
+              personalAuthenticationRequiredError.resource.scope
             )
           ),
         };
