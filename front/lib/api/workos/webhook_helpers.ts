@@ -3,7 +3,7 @@ import type { Event } from "@workos-inc/node";
 import config from "@app/lib/api/config";
 import { getWorkOS } from "@app/lib/api/workos/client";
 import type { Result } from "@app/types";
-import { Ok } from "@app/types";
+import { Err, normalizeError, Ok } from "@app/types";
 
 // WorkOS sends webhooks from a fixed set of IP addresses.
 const workosIpAddresses = [
@@ -28,11 +28,15 @@ export async function validateWorkOSWebhookEvent(
 ): Promise<Result<Event, Error>> {
   const workOS = getWorkOS();
 
-  const verifiedEvent = await workOS.webhooks.constructEvent({
-    payload,
-    sigHeader: signatureHeader,
-    secret: config.getWorkOSWebhookSigningSecret(),
-  });
+  try {
+    const verifiedEvent = await workOS.webhooks.constructEvent({
+      payload,
+      sigHeader: signatureHeader,
+      secret: config.getWorkOSWebhookSigningSecret(),
+    });
 
-  return new Ok(verifiedEvent);
+    return new Ok(verifiedEvent);
+  } catch (error) {
+    return new Err(normalizeError(error));
+  }
 }

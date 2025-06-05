@@ -5,6 +5,7 @@ import {
   isWorkOSIpAddress,
   validateWorkOSWebhookEvent,
 } from "@app/lib/api/workos/webhook_helpers";
+import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { launchWorkOSEventsWorkflow } from "@app/temporal/workos_events_queue/client";
 import type { WithAPIErrorResponse } from "@app/types";
@@ -83,8 +84,14 @@ async function handler(
   const result = await validateWorkOSWebhookEvent(payload, {
     signatureHeader: sigHeader,
   });
-
   if (result.isErr()) {
+    logger.error(
+      {
+        error: result.error,
+      },
+      "Invalid WorkOS webhook event"
+    );
+
     return apiError(req, res, {
       status_code: 400,
       api_error: {
