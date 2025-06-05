@@ -1,6 +1,6 @@
 import type {
-  OAuthAuthorizeResponse,
   AuthService,
+  OAuthAuthorizeResponse,
 } from "@app/shared/services/auth";
 import type { CaptureOptions } from "@app/shared/services/capture";
 

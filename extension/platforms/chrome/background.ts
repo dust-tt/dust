@@ -11,10 +11,10 @@ import type { PendingUpdate } from "@app/platforms/chrome/services/core_platform
 import { ChromeCorePlatformService } from "@app/platforms/chrome/services/core_platform";
 import {
   AUTH,
-  AUTH0_CLIENT_DOMAIN,
   AUTH0_CLIENT_ID,
   DUST_API_AUDIENCE,
   getAuthorizeURL,
+  getLogoutURL,
   getOAuthClientID,
   getTokenURL,
 } from "@app/shared/lib/config";
@@ -245,7 +245,7 @@ chrome.runtime.onMessage.addListener(
         void refreshToken(message.refreshToken, sendResponse);
         return true;
       case "LOGOUT":
-        logout(sendResponse);
+        void logout(sendResponse);
         return true; // Keep the message channel open.
 
       case "SIGN_CONNECT":
@@ -649,26 +649,31 @@ const exchangeCodeForTokens = async (
   }
 };
 
-// Helper function to generate random string for state parameter
-const generateRandomString = (length: number): string => {
-  const charset =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~";
-  let result = "";
-  const randomValues = new Uint8Array(length);
-  crypto.getRandomValues(randomValues);
-
-  for (let i = 0; i < length; i++) {
-    result += charset[randomValues[i] % charset.length];
-  }
-  return result;
-};
-
 /**
- * Logout the user from Auth0.
+ * Logout the user.
  */
-const logout = (sendResponse: (response: AuthBackgroundResponse) => void) => {
+const logout = async (
+  sendResponse: (response: AuthBackgroundResponse) => void
+) => {
   const redirectUri = chrome.identity.getRedirectURL();
-  const logoutUrl = `https://${AUTH0_CLIENT_DOMAIN}/v2/logout?client_id=${AUTH0_CLIENT_ID}&returnTo=${encodeURIComponent(redirectUri)}`;
+  const queryParams: Record<string, string> = {
+    returnTo: redirectUri,
+  };
+
+  if (AUTH === "auth0") {
+    queryParams.client_id = AUTH0_CLIENT_ID;
+  }
+  if (AUTH === "workos") {
+    // We need to get the session to log out the user from WorkOS.
+    const tokens = await platform.auth.getStoredTokens();
+    if (tokens?.accessToken) {
+      const decodedPayload = JSON.parse(
+        Buffer.from(tokens.accessToken.split(".")[1], "base64").toString()
+      );
+      queryParams.session_id = decodedPayload.sid || "";
+    }
+  }
+  const logoutUrl = getLogoutURL(new URLSearchParams(queryParams).toString());
 
   chrome.identity.launchWebAuthFlow(
     { url: logoutUrl, interactive: true },

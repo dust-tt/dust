@@ -23,6 +23,10 @@ export const getTokenURL = () =>
   AUTH === "auth0"
     ? `https://${AUTH0_CLIENT_DOMAIN}/oauth/token`
     : `https://${WORKOS_DOMAIN}/user_management/authenticate`;
+export const getLogoutURL = (queryString: string) =>
+  AUTH === "auth0"
+    ? `https://${AUTH0_CLIENT_DOMAIN}/v2/logout?${queryString}`
+    : `https://${WORKOS_DOMAIN}/user_management/sessions/logout?${queryString}`;
 
 export const DUST_US_URL = process.env.DUST_US_URL ?? "";
 export const DUST_EU_URL = process.env.DUST_EU_URL ?? "";
