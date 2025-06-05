@@ -305,13 +305,12 @@ const createServer = (
 
       if (!nodeId) {
         // When nodeId is null, search for data sources only
-        const dataSourceViewFilter = agentDataSourceConfigurations.map(
-          ({ dataSource, dataSourceView }) => ({
-            data_source_id: dataSource.dustAPIDataSourceId,
-            view_filter: dataSourceView.parentsIn ?? [],
-            search_scope: "data_source_name" as const,
-          })
-        );
+        const dataSourceViewFilter = makeDataSourceViewFilter(
+          agentDataSourceConfigurations
+        ).map((view) => ({
+          ...view,
+          search_scope: "data_source_name" as const,
+        }));
 
         searchResult = await coreAPI.searchNodes({
           filter: {
@@ -338,12 +337,7 @@ const createServer = (
 
         searchResult = await coreAPI.searchNodes({
           filter: {
-            data_source_views: [
-              {
-                data_source_id: dataSourceId,
-                view_filter: dataSourceConfig.dataSourceView.parentsIn ?? [],
-              },
-            ],
+            data_source_views: makeDataSourceViewFilter([dataSourceConfig]),
             parent_id: ROOT_PARENT_ID,
           },
           options,
