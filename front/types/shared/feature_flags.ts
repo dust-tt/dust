@@ -33,6 +33,10 @@ export const WHITELISTABLE_FEATURES = [
   "gmail_tool",
   "agent_builder_v2",
   "restrict_agent_creation_to_higher_users",
+  "document_tracker",
+  "agent_discovery",
+  "search_knowledge_builder",
+  "snowflake_connector_feature",
 ] as const;
 export type WhitelistableFeature = (typeof WHITELISTABLE_FEATURES)[number];
 export function isWhitelistableFeature(

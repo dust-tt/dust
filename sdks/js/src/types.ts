@@ -836,6 +836,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "salesforce_tool"
   | "gmail_tool"
   | "agent_builder_v2"
+  | "restrict_agent_creation_to_higher_users"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
