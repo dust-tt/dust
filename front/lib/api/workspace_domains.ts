@@ -3,7 +3,7 @@ import { WorkspaceHasDomainModel } from "@app/lib/models/workspace_has_domain";
 import type { LightWorkspaceType, Result } from "@app/types";
 import { Err, Ok } from "@app/types";
 
-export async function updateWorkspaceDomain(
+export async function upsertWorkspaceDomain(
   workspace: LightWorkspaceType,
   { domain }: { domain: string }
 ): Promise<Result<WorkspaceHasDomainModel, Error>> {

@@ -19,7 +19,7 @@ async function handler(
       status_code: 405,
       api_error: {
         type: "method_not_supported_error",
-        message: "The method passed is not supported, GET is expected.",
+        message: "The method passed is not supported, POST is expected.",
       },
     });
   }
@@ -47,7 +47,7 @@ async function handler(
   }
 
   // Validate the client IP address.
-  const clientIp = req.headers["x-forwarded-for"] || req.socket.remoteAddress;
+  const { remoteAddress: clientIp } = req.socket;
   if (typeof clientIp !== "string") {
     return apiError(req, res, {
       status_code: 400,
@@ -60,6 +60,13 @@ async function handler(
 
   const isWorkOSIp = isWorkOSIpAddress(clientIp);
   if (!isWorkOSIp) {
+    logger.error(
+      {
+        clientIp,
+      },
+      "Request not from WorkOS IP range"
+    );
+
     return apiError(req, res, {
       status_code: 403,
       api_error: {

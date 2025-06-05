@@ -4,7 +4,7 @@ import assert from "assert";
 import { findWorkspaceByWorkOSOrganizationId } from "@app/lib/api/workspace";
 import {
   deleteWorkspaceDomain,
-  updateWorkspaceDomain,
+  upsertWorkspaceDomain,
 } from "@app/lib/api/workspace_domains";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
@@ -28,7 +28,7 @@ async function handleOrganizationDomainEvent(
 
   let domainResult: Result<any, Error>;
   if (expectedState === "verified") {
-    domainResult = await updateWorkspaceDomain(workspace, { domain });
+    domainResult = await upsertWorkspaceDomain(workspace, { domain });
   } else {
     domainResult = await deleteWorkspaceDomain(workspace, { domain });
   }
