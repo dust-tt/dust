@@ -10,13 +10,17 @@ import type {
 import type { PendingUpdate } from "@app/platforms/chrome/services/core_platform";
 import { ChromeCorePlatformService } from "@app/platforms/chrome/services/core_platform";
 import {
+  AUTH,
   AUTH0_CLIENT_DOMAIN,
   AUTH0_CLIENT_ID,
   DUST_API_AUDIENCE,
+  getAuthorizeURL,
+  getOAuthClientID,
+  getTokenURL,
 } from "@app/shared/lib/config";
 import { extractPage } from "@app/shared/lib/extraction";
 import { generatePKCE } from "@app/shared/lib/utils";
-import type { Auth0AuthorizeResponse } from "@app/shared/services/auth";
+import type { OAuthAuthorizeResponse } from "@app/shared/services/auth";
 
 const log = console.error;
 
@@ -26,7 +30,7 @@ const platform = new ChromeCorePlatformService();
 const state: {
   refreshingToken: boolean;
   refreshRequests: ((
-    auth: Auth0AuthorizeResponse | AuthBackgroundResponse
+    auth: OAuthAuthorizeResponse | AuthBackgroundResponse
   ) => void)[];
   lastHandler: (() => void) | undefined;
 } = {
@@ -221,7 +225,7 @@ chrome.runtime.onMessage.addListener(
     sender,
     sendResponse: (
       response:
-        | Auth0AuthorizeResponse
+        | OAuthAuthorizeResponse
         | AuthBackgroundResponse
         | CaptureResponse
         | GetActiveTabBackgroundResponse
@@ -467,30 +471,48 @@ chrome.runtime.onMessageExternal.addListener((request) => {
 });
 
 /**
- * Authenticate the user using Auth0.
+ * Authenticate the user using Auth0 or WorkOS.
  */
 const authenticate = async (
   { isForceLogin, connection }: AuthBackgroundMessage,
-  sendResponse: (auth: Auth0AuthorizeResponse | AuthBackgroundResponse) => void
+  sendResponse: (auth: OAuthAuthorizeResponse | AuthBackgroundResponse) => void
 ) => {
   // First we call /authorize endpoint to get the authorization code (PKCE flow).
   const redirectUrl = chrome.identity.getRedirectURL();
   const { codeVerifier, codeChallenge } = await generatePKCE();
-  const options = {
-    client_id: AUTH0_CLIENT_ID,
+  
+  const options: Record<string, string> = {
+    client_id: getOAuthClientID(),
     response_type: "code",
-    scope:
-      "offline_access read:user_profile read:conversation create:conversation update:conversation read:agent read:file create:file delete:file",
     redirect_uri: redirectUrl,
-    audience: DUST_API_AUDIENCE,
     code_challenge_method: "S256",
     code_challenge: codeChallenge,
-    prompt: isForceLogin ? "login" : "",
-    connection: connection ?? "",
   };
 
+  if (AUTH === "auth0") {
+    options.audience = DUST_API_AUDIENCE;
+    options.scope =
+      "offline_access read:user_profile read:conversation create:conversation update:conversation read:agent read:file create:file delete:file";
+    options.prompt = isForceLogin ? "login" : "";
+  } else if (AUTH === "workos") {
+    // WorkOS AuthKit specific parameters
+    options.scope = "openid profile email";
+    options.state = generateRandomString(32); // For CSRF protection
+    
+    // Store state for validation
+    await chrome.storage.local.set({ 'workos_state': options.state });
+    
+    // Add organization_id if connection is specified
+    if (connection) {
+      options.organization_id = connection;
+    }
+    
+    // WorkOS doesn't use audience parameter, but uses provider
+    options.provider = "authkit";
+  }
+
   const queryString = new URLSearchParams(options).toString();
-  const authUrl = `https://${AUTH0_CLIENT_DOMAIN}/authorize?${queryString}`;
+  const authUrl = getAuthorizeURL(queryString);
 
   chrome.identity.launchWebAuthFlow(
     { url: authUrl, interactive: true },
@@ -509,6 +531,26 @@ const authenticate = async (
       const url = new URL(redirectUrl);
       const queryParams = new URLSearchParams(url.search);
       const authorizationCode = queryParams.get("code");
+      const state = queryParams.get("state");
+      const error = queryParams.get("error");
+
+      if (error) {
+        log(`Authentication error: ${error}`);
+        sendResponse({ success: false });
+        return;
+      }
+
+      // Validate state parameter for WorkOS
+      if (AUTH === "workos" && state) {
+        const storedState = await chrome.storage.local.get('workos_state');
+        if (state !== storedState.workos_state) {
+          log(`Invalid state parameter`);
+          sendResponse({ success: false });
+          return;
+        }
+        // Clean up stored state
+        await chrome.storage.local.remove('workos_state');
+      }
 
       if (authorizationCode) {
         // Once we have the code we call /token endpoint to exchange it for tokens.
@@ -530,24 +572,26 @@ const authenticate = async (
  */
 const refreshToken = async (
   refreshToken: string,
-  sendResponse: (auth: Auth0AuthorizeResponse | AuthBackgroundResponse) => void
+  sendResponse: (auth: OAuthAuthorizeResponse | AuthBackgroundResponse) => void
 ) => {
   state.refreshRequests.push(sendResponse);
   if (!state.refreshingToken) {
     state.refreshingToken = true;
     try {
-      const tokenUrl = `https://${AUTH0_CLIENT_DOMAIN}/oauth/token`;
-      const response = await fetch(tokenUrl, {
+      const tokenParams: Record<string, string> = {
+        grant_type: "refresh_token",
+        client_id: getOAuthClientID(),
+        refresh_token: refreshToken,
+      };
+
+      const response = await fetch(getTokenURL(), {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams({
-          grant_type: "refresh_token",
-          client_id: AUTH0_CLIENT_ID,
-          refresh_token: refreshToken,
-        }),
+        body: new URLSearchParams(tokenParams),
       });
 
       if (!response.ok) {
+        console.log(response);
         const data = await response.json();
         throw new Error(
           `Token refresh failed: ${data.error} - ${data.error_description}`
@@ -561,7 +605,7 @@ const refreshToken = async (
         sendResponse({
           accessToken: data.access_token,
           refreshToken: data.refresh_token || refreshToken,
-          expiresIn: data.expires_in,
+          expiresIn: data.expires_in ?? 3600,
         });
       });
     } catch (error) {
@@ -583,40 +627,63 @@ const refreshToken = async (
 const exchangeCodeForTokens = async (
   code: string,
   codeVerifier: string
-): Promise<Auth0AuthorizeResponse | AuthBackgroundResponse> => {
+): Promise<OAuthAuthorizeResponse | AuthBackgroundResponse> => {
   try {
-    const tokenUrl = `https://${AUTH0_CLIENT_DOMAIN}/oauth/token`;
-    const response = await fetch(tokenUrl, {
+    const tokenParams: Record<string, string> = {
+      grant_type: "authorization_code",
+      client_id: getOAuthClientID(),
+      code_verifier: codeVerifier,
+      code,
+      redirect_uri: chrome.identity.getRedirectURL(),
+    };
+
+    const tokenURL = getTokenURL();
+    const response = await fetch(tokenURL, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        grant_type: "authorization_code",
-        client_id: AUTH0_CLIENT_ID,
-        code_verifier: codeVerifier,
-        code,
-        redirect_uri: chrome.identity.getRedirectURL(),
-      }),
+      body: new URLSearchParams(tokenParams),
     });
 
     if (!response.ok) {
-      const data = await response.json();
+      const responseText = await response.text();
+      
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch {
+        data = { error: 'parse_error', error_description: responseText };
+      }
+      
       throw new Error(
         `Token exchange failed: ${data.error} - ${data.error_description}`
       );
     }
 
     const data = await response.json();
-
     return {
       accessToken: data.access_token,
       refreshToken: data.refresh_token,
-      expiresIn: data.expires_in,
+      expiresIn: data.expires_in ?? 3600,
+      ...(data.id_token && { idToken: data.id_token })
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error.";
     log(`Token exchange failed: ${message}`, error);
     return { success: false };
   }
+};
+
+// Helper function to generate random string for state parameter
+const generateRandomString = (length: number): string => {
+  const charset = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~';
+  let result = '';
+  const randomValues = new Uint8Array(length);
+  crypto.getRandomValues(randomValues);
+  
+  for (let i = 0; i < length; i++) {
+    result += charset[randomValues[i] % charset.length];
+  }
+  return result;
 };
 
 /**
