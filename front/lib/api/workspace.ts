@@ -83,15 +83,11 @@ export async function getWorkspaceVerifiedDomain(
 export async function removeAllWorkspaceDomains(
   workspace: LightWorkspaceType
 ): Promise<void> {
-  const workspaceDomains = await WorkspaceHasDomainModel.findAll({
+  await WorkspaceHasDomainModel.destroy({
     where: {
       workspaceId: workspace.id,
     },
   });
-
-  for (const domain of workspaceDomains) {
-    await domain.destroy();
-  }
 }
 
 export async function getWorkspaceCreationDate(
