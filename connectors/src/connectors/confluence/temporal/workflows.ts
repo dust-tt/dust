@@ -18,6 +18,7 @@ import {
   makeConfluenceSpaceSyncWorkflowIdFromParentId,
   makeConfluenceSyncTopLevelChildPagesWorkflowIdFromParentId,
 } from "@connectors/connectors/confluence/temporal/workflow_ids";
+import type * as syncStatusActivities from "@connectors/lib/sync_status";
 import type { ModelId } from "@connectors/types";
 
 const {
@@ -50,6 +51,12 @@ const {
     backoffCoefficient: 2,
     maximumInterval: "3600 seconds",
   },
+});
+
+const { reportInitialSyncProgress } = proxyActivities<
+  typeof syncStatusActivities
+>({
+  startToCloseTimeout: "10 minutes",
 });
 
 // Set a conservative threshold to start a new workflow and
@@ -93,12 +100,23 @@ export async function confluenceSyncWorkflow({
     memo,
   } = workflowInfo();
 
+  let processedSpaces = 0;
+
   // Async operations allow Temporal's event loop to process signals.
   // If a signal arrives during an async operation, it will update the set before the next iteration.
   while (spaceIdsMap.size > 0) {
     // Create a copy of the map to iterate over, to avoid issues with concurrent modification.
     const spaceIdsToProcess = new Map(spaceIdsMap);
     for (const [spaceId, opts] of spaceIdsToProcess) {
+      // Report progress before processing each space.
+      await reportInitialSyncProgress(
+        connectorId,
+        // At this point, the map was cleared from the processed spaces so we have to do
+        // processedSpaces + spaceIdsMap.size to get the actual total, updated when we
+        // get a signal.
+        `${processedSpaces + 1}/${spaceIdsMap.size + processedSpaces} spaces`
+      );
+
       // Async operation yielding control to the Temporal runtime.
       await executeChild(confluenceSpaceSyncWorkflow, {
         workflowId: makeConfluenceSpaceSyncWorkflowIdFromParentId(
@@ -119,6 +137,7 @@ export async function confluenceSyncWorkflow({
 
       // Remove the processed space from the original set after the async operation.
       spaceIdsMap.delete(spaceId);
+      processedSpaces++;
     }
   }
 
