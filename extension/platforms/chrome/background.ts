@@ -10,8 +10,8 @@ import type {
 import type { PendingUpdate } from "@app/platforms/chrome/services/core_platform";
 import { ChromeCorePlatformService } from "@app/platforms/chrome/services/core_platform";
 import {
-  AUTH,
   AUTH0_CLIENT_ID,
+  DEFAULT_DUST_API_DOMAIN,
   DUST_API_AUDIENCE,
   getAuthorizeURL,
   getLogoutURL,
@@ -33,10 +33,29 @@ const state: {
     auth: OAuthAuthorizeResponse | AuthBackgroundResponse
   ) => void)[];
   lastHandler: (() => void) | undefined;
+  authPlatform: "auth0" | "workos";
 } = {
   refreshingToken: false,
   refreshRequests: [],
   lastHandler: undefined,
+  authPlatform: "auth0",
+};
+
+/**
+ * Fetch the auth platform from the API
+ */
+const updateAuthPlatform = async () => {
+  try {
+    const response = await fetch(`${DEFAULT_DUST_API_DOMAIN}/api/v1/auth`);
+    if (!response.ok) {
+      throw new Error("Failed to fetch auth platform");
+    }
+    const data = await response.json();
+    state.authPlatform = data.auth;
+  } catch (error) {
+    log("Error fetching auth platform:", error);
+    state.authPlatform = "auth0"; // Default to auth0 if there's an error
+  }
 };
 
 /**
@@ -122,7 +141,7 @@ chrome.tabs.onActivated.addListener(async (activeInfo) => {
   }
 });
 
-chrome.runtime.onConnect.addListener((port) => {
+chrome.runtime.onConnect.addListener(async (port) => {
   if (port.name === "sidepanel-connection") {
     console.log("Sidepanel is there");
     void platform.storage.set("extensionReady", true);
@@ -133,6 +152,9 @@ chrome.runtime.onConnect.addListener((port) => {
       state.lastHandler = undefined;
     });
   }
+
+  // Fetch and store the auth platform
+  void updateAuthPlatform();
 });
 
 const getActionHandler = (menuItemId: string | number) => {
@@ -482,19 +504,19 @@ const authenticate = async (
   const { codeVerifier, codeChallenge } = await generatePKCE();
 
   const options: Record<string, string> = {
-    client_id: getOAuthClientID(),
+    client_id: getOAuthClientID(state.authPlatform),
     response_type: "code",
     redirect_uri: redirectUrl,
     code_challenge_method: "S256",
     code_challenge: codeChallenge,
   };
 
-  if (AUTH === "auth0") {
+  if (state.authPlatform === "auth0") {
     options.audience = DUST_API_AUDIENCE;
     options.scope =
       "offline_access read:user_profile read:conversation create:conversation update:conversation read:agent read:file create:file delete:file";
     options.prompt = isForceLogin ? "login" : "";
-  } else if (AUTH === "workos") {
+  } else if (state.authPlatform === "workos") {
     options.scope = "openid profile email";
     if (connection) {
       options.organization_id = connection;
@@ -503,7 +525,7 @@ const authenticate = async (
   }
 
   const queryString = new URLSearchParams(options).toString();
-  const authUrl = getAuthorizeURL(queryString);
+  const authUrl = getAuthorizeURL({ auth: state.authPlatform, queryString });
 
   chrome.identity.launchWebAuthFlow(
     { url: authUrl, interactive: true },
@@ -557,11 +579,11 @@ const refreshToken = async (
     try {
       const tokenParams: Record<string, string> = {
         grant_type: "refresh_token",
-        client_id: getOAuthClientID(),
+        client_id: getOAuthClientID(state.authPlatform),
         refresh_token: refreshToken,
       };
 
-      const response = await fetch(getTokenURL(), {
+      const response = await fetch(getTokenURL(state.authPlatform), {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: new URLSearchParams(tokenParams),
@@ -607,13 +629,13 @@ const exchangeCodeForTokens = async (
   try {
     const tokenParams: Record<string, string> = {
       grant_type: "authorization_code",
-      client_id: getOAuthClientID(),
+      client_id: getOAuthClientID(state.authPlatform),
       code_verifier: codeVerifier,
       code,
       redirect_uri: chrome.identity.getRedirectURL(),
     };
 
-    const tokenURL = getTokenURL();
+    const tokenURL = getTokenURL(state.authPlatform);
     const response = await fetch(tokenURL, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -660,10 +682,10 @@ const logout = async (
     returnTo: redirectUri,
   };
 
-  if (AUTH === "auth0") {
+  if (state.authPlatform === "auth0") {
     queryParams.client_id = AUTH0_CLIENT_ID;
   }
-  if (AUTH === "workos") {
+  if (state.authPlatform === "workos") {
     // We need to get the session to log out the user from WorkOS.
     const tokens = await platform.auth.getStoredTokens();
     if (tokens?.accessToken) {
@@ -673,7 +695,10 @@ const logout = async (
       queryParams.session_id = decodedPayload.sid || "";
     }
   }
-  const logoutUrl = getLogoutURL(new URLSearchParams(queryParams).toString());
+  const logoutUrl = getLogoutURL({
+    auth: state.authPlatform,
+    queryString: new URLSearchParams(queryParams).toString(),
+  });
 
   chrome.identity.launchWebAuthFlow(
     { url: logoutUrl, interactive: true },
