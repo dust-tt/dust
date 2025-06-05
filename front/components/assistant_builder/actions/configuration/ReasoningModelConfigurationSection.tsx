@@ -19,6 +19,10 @@ import { partition } from "lodash";
 import { useMemo } from "react";
 
 import { ConfigurationSectionContainer } from "@app/components/assistant_builder/actions/configuration/ConfigurationSectionContainer";
+import {
+  BEST_PERFORMING_REASONING_MODELS_ID,
+  getProviderDisplayName,
+} from "@app/components/assistant_builder/actions/utils";
 import { getModelProviderLogo } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import type { ReasoningModelConfiguration } from "@app/lib/actions/reasoning";
@@ -28,11 +32,7 @@ import type {
   ModelConfigurationType,
   ModelProviderIdType,
 } from "@app/types";
-import {
-  BEST_PERFORMING_REASONING_MODELS_ID,
-  mapProviderIdToDisplayName,
-  O4_MINI_MODEL_ID,
-} from "@app/types";
+import { O4_MINI_MODEL_ID } from "@app/types";
 
 interface ReasoningModelConfigurationSectionProps {
   owner: LightWorkspaceType;
@@ -164,9 +164,7 @@ export function ReasoningModelConfigurationSection({
                   <DropdownMenuGroup key={providerId}>
                     <DropdownMenuSub>
                       <DropdownMenuSubTrigger
-                        label={
-                          mapProviderIdToDisplayName[providerId] ?? providerId
-                        }
+                        label={getProviderDisplayName(providerId)}
                       />
                       <DropdownMenuPortal>
                         <DropdownMenuSubContent>
