@@ -73,6 +73,32 @@ export async function startMcpServer(
         version: process.env.npm_package_version || "0.1.0",
       });
 
+      // Simple tool with parameters
+      server.tool(
+        "calculate-bmi",
+        {
+          weightKg: z.number(),
+          heightM: z.number(),
+        },
+        async ({ weightKg, heightM }) => ({
+          content: [
+            {
+              type: "text",
+              text: String(weightKg / (heightM * heightM)),
+            },
+          ],
+        })
+      );
+
+      // Async tool with external API call
+      server.tool("fetch-weather", { city: z.string() }, async ({ city }) => {
+        const response = await fetch(`https://api.weather.com/${city}`);
+        const data = await response.text();
+        return {
+          content: [{ type: "text", text: data }],
+        };
+      });
+
       for (const agent of selectedAgents) {
         const toolName = `run_agent_${slugify(agent.name)}`;
         let toolDescription = `This tool allows to call a Dust AI agent name ${agent.name}.`;

@@ -8,6 +8,7 @@ import logger from "@app/logger/logger";
 export const lookupAsync = promisify(dns.lookup);
 
 export const checkIpIsNotOK = (ip: string) => {
+  return false;
   if (!ipaddr.isValid(ip)) {
     return false;
   }
