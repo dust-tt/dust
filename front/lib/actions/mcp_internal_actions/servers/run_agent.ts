@@ -14,7 +14,7 @@ import {
   isServerSideMCPServerConfiguration,
   isServerSideMCPToolConfiguration,
 } from "@app/lib/actions/types/guards";
-import apiConfig from "@app/lib/api/config";
+import config from "@app/lib/api/config";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
@@ -177,7 +177,7 @@ export default async function createServer(
       const prodCredentials = await prodAPICredentialsForOwner(owner);
       const requestedGroupIds = auth.groups().map((g) => g.sId);
       const api = new DustAPI(
-        apiConfig.getDustAPIConfig(),
+        config.getDustAPIConfig(),
         {
           ...prodCredentials,
           extraHeaders: getHeaderFromGroupIds(requestedGroupIds),
@@ -250,8 +250,31 @@ export default async function createServer(
         }`;
         return makeMCPToolTextError(errorMessage);
       }
+      finalContent.trim();
 
-      return { content: [{ type: "text", text: finalContent.trim() }] };
+      return {
+        isError: false,
+        content: [
+          {
+            type: "resource",
+            resource: {
+              mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.RUN_AGENT_QUERY,
+              text: query,
+              childAgentId: childAgentId,
+              uri: "",
+            },
+          },
+          {
+            type: "resource",
+            resource: {
+              mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.RUN_AGENT_RESULT,
+              conversationId: conversation.sId,
+              text: finalContent.trim(),
+              uri: `${config.getClientFacingUrl()}/w/${auth.getNonNullableWorkspace().sId}/assistant/${conversation.sId}`,
+            },
+          },
+        ],
+      };
     }
   );
 

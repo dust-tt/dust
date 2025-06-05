@@ -381,6 +381,54 @@ export const isBrowseResultResourceType = (
   );
 };
 
+// RunAgent results.
+
+export const RunAgentQueryResourceSchema = z.object({
+  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.RUN_AGENT_QUERY),
+  text: z.string(),
+  childAgentId: z.string(),
+  uri: z.literal(""),
+});
+
+export type RunAgentQueryResourceType = z.infer<
+  typeof RunAgentQueryResourceSchema
+>;
+
+export const isRunAgentQueryResourceType = (
+  outputBlock: MCPToolResultContentType
+): outputBlock is {
+  type: "resource";
+  resource: RunAgentQueryResourceType;
+} => {
+  return (
+    outputBlock.type === "resource" &&
+    RunAgentQueryResourceSchema.safeParse(outputBlock.resource).success
+  );
+};
+
+export const RunAgentResultResourceSchema = z.object({
+  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.RUN_AGENT_RESULT),
+  conversationId: z.string(),
+  text: z.string(),
+  uri: z.string(),
+});
+
+export type RunAgentResultResourceType = z.infer<
+  typeof RunAgentResultResourceSchema
+>;
+
+export const isRunAgentResultResourceType = (
+  outputBlock: MCPToolResultContentType
+): outputBlock is {
+  type: "resource";
+  resource: RunAgentResultResourceType;
+} => {
+  return (
+    outputBlock.type === "resource" &&
+    RunAgentResultResourceSchema.safeParse(outputBlock.resource).success
+  );
+};
+
 // Personal authentication required error.
 
 export const PersonalAuthenticationRequiredErrorResourceSchema = z.object({
@@ -460,6 +508,8 @@ const EmbeddedResourceSchema = z.object({
     TextResourceContentsSchema,
     ThinkingOutputSchema,
     ToolGeneratedFileSchema,
+    RunAgentQueryResourceSchema,
+    RunAgentResultResourceSchema,
     PersonalAuthenticationRequiredErrorResourceSchema,
   ]),
 });
