@@ -355,18 +355,17 @@ export async function mergeUserIdentities({
   };
 
   // Delete all conversation participants for the secondary user that are already in conversations with the primary user.
+  const conversations = await ConversationParticipantModel.findAll({
+    where: {
+      userId: primaryUser.id,
+      workspaceId: workspaceId,
+    },
+    attributes: ["conversationId"],
+  });
   await ConversationParticipantModel.destroy({
     where: {
       userId: secondaryUser.id,
-      conversationId: (
-        await ConversationParticipantModel.findAll({
-          where: {
-            userId: primaryUser.id,
-            workspaceId: workspaceId,
-          },
-          attributes: ["conversationId"],
-        })
-      ).map((p) => p.conversationId),
+      conversationId: conversations.map((p) => p.conversationId),
       workspaceId: workspaceId,
     },
   });
@@ -381,18 +380,17 @@ export async function mergeUserIdentities({
   await DustAppSecret.update(userIdValues, userIdOptions);
 
   // Delete all group memberships for the secondary user that are already member.
+  const groups = await GroupMembershipModel.findAll({
+    where: {
+      userId: primaryUser.id,
+      workspaceId: workspaceId,
+    },
+    attributes: ["groupId"],
+  });
   await GroupMembershipModel.destroy({
     where: {
       userId: secondaryUser.id,
-      groupId: (
-        await GroupMembershipModel.findAll({
-          where: {
-            userId: primaryUser.id,
-            workspaceId: workspaceId,
-          },
-          attributes: ["groupId"],
-        })
-      ).map((p) => p.groupId),
+      groupId: groups.map((p) => p.groupId),
       workspaceId: workspaceId,
     },
   });
@@ -400,18 +398,17 @@ export async function mergeUserIdentities({
   await GroupMembershipModel.update(userIdValues, userIdOptions);
 
   // Delete all agent-user relations for the secondary user that already have a relation.
+  const agentConfigurations = await AgentUserRelation.findAll({
+    where: {
+      userId: primaryUser.id,
+      workspaceId: workspaceId,
+    },
+    attributes: ["agentConfiguration"],
+  });
   await AgentUserRelation.destroy({
     where: {
       userId: secondaryUser.id,
-      agentConfiguration: (
-        await AgentUserRelation.findAll({
-          where: {
-            userId: primaryUser.id,
-            workspaceId: workspaceId,
-          },
-          attributes: ["agentConfiguration"],
-        })
-      ).map((p) => p.agentConfiguration),
+      agentConfiguration: agentConfigurations.map((p) => p.agentConfiguration),
       workspaceId: workspaceId,
     },
   });
