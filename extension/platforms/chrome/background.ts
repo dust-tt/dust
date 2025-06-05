@@ -480,7 +480,7 @@ const authenticate = async (
   // First we call /authorize endpoint to get the authorization code (PKCE flow).
   const redirectUrl = chrome.identity.getRedirectURL();
   const { codeVerifier, codeChallenge } = await generatePKCE();
-  
+
   const options: Record<string, string> = {
     client_id: getOAuthClientID(),
     response_type: "code",
@@ -498,15 +498,15 @@ const authenticate = async (
     // WorkOS AuthKit specific parameters
     options.scope = "openid profile email";
     options.state = generateRandomString(32); // For CSRF protection
-    
+
     // Store state for validation
-    await chrome.storage.local.set({ 'workos_state': options.state });
-    
+    await chrome.storage.local.set({ workos_state: options.state });
+
     // Add organization_id if connection is specified
     if (connection) {
       options.organization_id = connection;
     }
-    
+
     // WorkOS doesn't use audience parameter, but uses provider
     options.provider = "authkit";
   }
@@ -542,14 +542,14 @@ const authenticate = async (
 
       // Validate state parameter for WorkOS
       if (AUTH === "workos" && state) {
-        const storedState = await chrome.storage.local.get('workos_state');
+        const storedState = await chrome.storage.local.get("workos_state");
         if (state !== storedState.workos_state) {
           log(`Invalid state parameter`);
           sendResponse({ success: false });
           return;
         }
         // Clean up stored state
-        await chrome.storage.local.remove('workos_state');
+        await chrome.storage.local.remove("workos_state");
       }
 
       if (authorizationCode) {
@@ -646,14 +646,14 @@ const exchangeCodeForTokens = async (
 
     if (!response.ok) {
       const responseText = await response.text();
-      
+
       let data;
       try {
         data = JSON.parse(responseText);
       } catch {
-        data = { error: 'parse_error', error_description: responseText };
+        data = { error: "parse_error", error_description: responseText };
       }
-      
+
       throw new Error(
         `Token exchange failed: ${data.error} - ${data.error_description}`
       );
@@ -664,7 +664,7 @@ const exchangeCodeForTokens = async (
       accessToken: data.access_token,
       refreshToken: data.refresh_token,
       expiresIn: data.expires_in ?? 3600,
-      ...(data.id_token && { idToken: data.id_token })
+      ...(data.id_token && { idToken: data.id_token }),
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error.";
@@ -675,11 +675,12 @@ const exchangeCodeForTokens = async (
 
 // Helper function to generate random string for state parameter
 const generateRandomString = (length: number): string => {
-  const charset = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~';
-  let result = '';
+  const charset =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~";
+  let result = "";
   const randomValues = new Uint8Array(length);
   crypto.getRandomValues(randomValues);
-  
+
   for (let i = 0; i < length; i++) {
     result += charset[randomValues[i] % charset.length];
   }

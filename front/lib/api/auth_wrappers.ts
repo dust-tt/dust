@@ -8,13 +8,6 @@ import {
   verifyAuth0Token,
 } from "@app/lib/api/auth0";
 import { getUserWithWorkspaces } from "@app/lib/api/user";
-import { UserResource } from "@app/lib/resources/user_resource";
-import { maybeUpdateFromExternalUser } from "@app/lib/iam/users";
-import { Workspace } from "@app/lib/models/workspace";
-import { MembershipResource } from "@app/lib/resources/membership_resource";
-import { GroupResource } from "@app/lib/resources/group_resource";
-import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import {
   Authenticator,
   getAPIKey,
@@ -22,11 +15,24 @@ import {
   getBearerToken,
 } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
+import { Workspace } from "@app/lib/models/workspace";
+import { GroupResource } from "@app/lib/resources/group_resource";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
+import { UserResource } from "@app/lib/resources/user_resource";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import type { NextApiRequestWithContext } from "@app/logger/withlogging";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import type { UserTypeWithWorkspaces, WithAPIErrorResponse, RoleType } from "@app/types";
+import type {
+  RoleType,
+  UserTypeWithWorkspaces,
+  WithAPIErrorResponse,
+} from "@app/types";
 import { getGroupIdsFromHeaders, getUserEmailFromHeaders } from "@app/types";
+import type { APIErrorWithStatusCode } from "@app/types/error";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 /**
  * This function is a wrapper for API routes that require session authentication.
@@ -272,213 +278,88 @@ export function withPublicAPIAuthentication<T, U extends boolean>(
 
           // For WorkOS, the issuer is "https://auth-api.dust.tt"
           // For Auth0, the issuer is "https://dust-dev.eu.auth0.com/"
-          const platform = decodedPayload.iss === "https://dust-dev.eu.auth0.com/"
-            ? "auth0"
-            : decodedPayload.iss === "https://auth-api.dust.tt"
-            ? "workos"
-            : null;
+          const platform = extractPlatformFromTokenIssuer(decodedPayload.iss);
 
+          let authRes = null;
           if (platform === "workos") {
-            // Extract WorkOS user ID from the sub claim
             const workOSUserId = decodedPayload.sub;
             if (!workOSUserId) {
               return apiError(req, res, {
                 status_code: 401,
                 api_error: {
                   type: "not_authenticated",
-                  message: "The request does not have valid authentication credentials.",
+                  message:
+                    "The request does not have valid authentication credentials.",
                 },
               });
             }
 
-            // Fetch the user resource
-            const userResource = await UserResource.fetchByWorkOSUserId(workOSUserId);
-            if (!userResource) {
-              return apiError(req, res, {
-                status_code: 401,
-                api_error: {
-                  type: "user_not_found",
-                  message: "The user is not registered.",
-                },
-              });
-            }
-
-            // Create an authenticator for the user and workspace
-            const workspace = await Workspace.findOne({
-              where: {
-                sId: wId,
-              },
-            });
-            if (!workspace) {
-              return apiError(req, res, {
-                status_code: 404,
-                api_error: {
-                  type: "workspace_not_found",
-                  message: "The workspace was not found.",
-                },
-              });
-            }
-
-            let role = "none" as RoleType;
-            let groups: GroupResource[] = [];
-            let subscription: SubscriptionResource | null = null;
-
-            [role, groups, subscription] = await Promise.all([
-              MembershipResource.getActiveRoleForUserInWorkspace({
-                user: userResource,
-                workspace: renderLightWorkspaceType({ workspace }),
-              }),
-              GroupResource.listUserGroupsInWorkspace({
-                user: userResource,
-                workspace: renderLightWorkspaceType({ workspace }),
-              }),
-              SubscriptionResource.fetchActiveByWorkspace(
-                renderLightWorkspaceType({ workspace })
-              ),
-            ]);
-
-            const auth = new Authenticator({
-              workspace,
-              groups,
-              user: userResource,
-              role,
-              subscription,
-            });
-
-            if (auth.user() === null) {
-              return apiError(req, res, {
-                status_code: 401,
-                api_error: {
-                  type: "user_not_found",
-                  message: "The user does not have an active session or is not authenticated.",
-                },
-              });
-            }
-            if (!auth.isUser()) {
-              return apiError(req, res, {
-                status_code: 401,
-                api_error: {
-                  type: "workspace_auth_error",
-                  message: "Only users of the workspace can access this route.",
-                },
-              });
-            }
-
-            req.addResourceToLog?.(auth.getNonNullableUser());
-
-            const maintenance = auth.workspace()?.metadata?.maintenance;
-            if (maintenance) {
-              return apiError(req, res, {
-                status_code: 503,
-                api_error: {
-                  type: "not_authenticated",
-                  message: `Service is currently unavailable. [${maintenance}]`,
-                },
-              });
-            }
-
-            return handler(
-              req,
-              res,
-              auth,
-              null as U extends true ? Authenticator : null
-            );
+            authRes = await handleWorkOSAuth(req, res, workOSUserId, wId);
           } else if (platform === "auth0") {
-            const decoded = await verifyAuth0Token(
-              token,
-              getRequiredScope(req, opts.requiredScopes)
-            );
-            if (decoded.isErr()) {
-              const error = decoded.error;
-              if ((error as TokenExpiredError).expiredAt) {
-                return apiError(req, res, {
-                  status_code: 401,
-                  api_error: {
-                    type: "expired_oauth_token_error",
-                    message: "The access token expired.",
-                  },
-                });
-              }
-
-              logger.error(decoded.error, "Failed to verify Auth0 token");
-              return apiError(req, res, {
-                status_code: 401,
-                api_error: {
-                  type: "invalid_oauth_token_error",
-                  message: "The request does not have valid authentication credentials.",
-                },
-              });
-            }
-
-            const authRes = await Authenticator.fromAuth0Token({
-              token: decoded.value,
-              wId,
-            });
-            if (authRes.isErr()) {
-              return apiError(req, res, {
-                status_code: 403,
-                api_error: {
-                  type: authRes.error.code,
-                  message: "The user does not have an active session or is not authenticated.",
-                },
-              });
-            }
-            const auth = authRes.value;
-
-            if (auth.user() === null) {
-              return apiError(req, res, {
-                status_code: 401,
-                api_error: {
-                  type: "user_not_found",
-                  message: "The user does not have an active session or is not authenticated.",
-                },
-              });
-            }
-            if (!auth.isUser()) {
-              return apiError(req, res, {
-                status_code: 401,
-                api_error: {
-                  type: "workspace_auth_error",
-                  message: "Only users of the workspace can access this route.",
-                },
-              });
-            }
-
-            req.addResourceToLog?.(auth.getNonNullableUser());
-
-            const maintenance = auth.workspace()?.metadata?.maintenance;
-            if (maintenance) {
-              return apiError(req, res, {
-                status_code: 503,
-                api_error: {
-                  type: "not_authenticated",
-                  message: `Service is currently unavailable. [${maintenance}]`,
-                },
-              });
-            }
-
-            return handler(
-              req,
-              res,
-              auth,
-              null as U extends true ? Authenticator : null
-            );
+            authRes = await handleAuth0Auth(req, res, token, wId, opts);
           } else {
             return apiError(req, res, {
               status_code: 401,
               api_error: {
                 type: "not_authenticated",
-                message: "The request does not have valid authentication credentials.",
+                message:
+                  "The request does not have valid authentication credentials.",
               },
             });
           }
+
+          if (authRes.isErr()) {
+            return apiError(req, res, authRes.error);
+          }
+          const auth = authRes.value;
+
+          if (auth.user() === null) {
+            return apiError(req, res, {
+              status_code: 401,
+              api_error: {
+                type: "user_not_found",
+                message:
+                  "The user does not have an active session or is not authenticated.",
+              },
+            });
+          }
+          if (!auth.isUser()) {
+            return apiError(req, res, {
+              status_code: 401,
+              api_error: {
+                type: "workspace_auth_error",
+                message: "Only users of the workspace can access this route.",
+              },
+            });
+          }
+
+          req.addResourceToLog?.(auth.getNonNullableUser());
+
+          const maintenance = auth.workspace()?.metadata?.maintenance;
+          if (maintenance) {
+            return apiError(req, res, {
+              status_code: 503,
+              api_error: {
+                type: "not_authenticated",
+                message: `Service is currently unavailable. [${maintenance}]`,
+              },
+            });
+          }
+
+          return await handler(
+            req,
+            res,
+            auth,
+            null as U extends true ? Authenticator : null
+          );
         } catch (error) {
           logger.error({ error }, "Failed to verify token");
           return apiError(req, res, {
             status_code: 401,
             api_error: {
               type: "invalid_oauth_token_error",
-              message: "The request does not have valid authentication credentials.",
+              message:
+                "The request does not have valid authentication credentials.",
             },
           });
         }
@@ -599,7 +480,8 @@ export function withTokenAuthentication<T>(
           status_code: 401,
           api_error: {
             type: "not_authenticated",
-            message: "The request does not have valid authentication credentials.",
+            message:
+              "The request does not have valid authentication credentials.",
           },
         });
       }
@@ -611,7 +493,8 @@ export function withTokenAuthentication<T>(
           status_code: 401,
           api_error: {
             type: "not_authenticated",
-            message: "The request does not have valid authentication credentials.",
+            message:
+              "The request does not have valid authentication credentials.",
           },
         });
       }
@@ -622,23 +505,19 @@ export function withTokenAuthentication<T>(
           Buffer.from(bearerToken.split(".")[1], "base64").toString()
         );
 
-        // For WorkOS, the issuer is "https://auth-api.dust.tt"
-        // For Auth0, the issuer is "https://dust-dev.eu.auth0.com/"
-        const platform = decodedPayload.iss === "https://dust-dev.eu.auth0.com/"
-          ? "auth0"
-          : decodedPayload.iss === "https://auth-api.dust.tt"
-          ? "workos"
-          : null;
+        const platform = extractPlatformFromTokenIssuer(decodedPayload.iss);
         if (!platform) {
           return apiError(req, res, {
             status_code: 401,
             api_error: {
               type: "not_authenticated",
-              message: "The request does not have valid authentication credentials.",
+              message:
+                "The request does not have valid authentication credentials.",
             },
           });
         }
 
+        let user: UserResource | null = null;
         if (platform === "workos") {
           // Extract WorkOS user ID from the sub claim
           const workOSUserId = decodedPayload.sub;
@@ -647,43 +526,13 @@ export function withTokenAuthentication<T>(
               status_code: 401,
               api_error: {
                 type: "not_authenticated",
-                message: "The request does not have valid authentication credentials.",
+                message:
+                  "The request does not have valid authentication credentials.",
               },
             });
           }
 
-          // Fetch the user resource
-          const userResource = await UserResource.fetchByWorkOSUserId(workOSUserId);
-          if (!userResource) {
-            return apiError(req, res, {
-              status_code: 401,
-              api_error: {
-                type: "user_not_found",
-                message: "The user is not registered.",
-              },
-            });
-          }
-
-          // Update user information if needed
-          const externalUser = {
-            email: userResource.email,
-            email_verified: true,
-            name: userResource.name || userResource.email,
-            nickname: userResource.email.split("@")[0],
-            auth0Sub: null,
-            workOSUserId,
-          };
-          await maybeUpdateFromExternalUser(userResource, externalUser);
-
-          req.addResourceToLog?.(userResource);
-
-          const isFromExtension = req.headers["x-request-origin"] === "extension";
-          const userWithWorkspaces = await getUserWithWorkspaces(
-            userResource,
-            isFromExtension
-          );
-
-          return handler(req, res, userWithWorkspaces);
+          user = await UserResource.fetchByWorkOSUserId(workOSUserId);
         } else {
           // Handle Auth0 token
           const decoded = await verifyAuth0Token(
@@ -707,39 +556,179 @@ export function withTokenAuthentication<T>(
               status_code: 401,
               api_error: {
                 type: "invalid_oauth_token_error",
-                message: "The request does not have valid authentication credentials.",
+                message:
+                  "The request does not have valid authentication credentials.",
               },
             });
           }
 
-          const user = await getUserFromAuth0Token(decoded.value);
-          if (!user) {
-            return apiError(req, res, {
-              status_code: 401,
-              api_error: {
-                type: "user_not_found",
-                message: "The user is not registered.",
-              },
-            });
-          }
-
-          req.addResourceToLog?.(user);
-
-          const isFromExtension = req.headers["x-request-origin"] === "extension";
-          const userWithWorkspaces = await getUserWithWorkspaces(user, isFromExtension);
-
-          return handler(req, res, userWithWorkspaces);
+          user = await getUserFromAuth0Token(decoded.value);
         }
+        if (!user) {
+          return apiError(req, res, {
+            status_code: 401,
+            api_error: {
+              type: "user_not_found",
+              message: "The user is not registered.",
+            },
+          });
+        }
+
+        req.addResourceToLog?.(user);
+
+        const isFromExtension = req.headers["x-request-origin"] === "extension";
+        const userWithWorkspaces = await getUserWithWorkspaces(
+          user,
+          isFromExtension
+        );
+
+        return await handler(req, res, userWithWorkspaces);
       } catch (error) {
         logger.error({ error }, "Failed to verify token");
         return apiError(req, res, {
           status_code: 401,
           api_error: {
             type: "invalid_oauth_token_error",
-            message: "The request does not have valid authentication credentials.",
+            message:
+              "The request does not have valid authentication credentials.",
           },
         });
       }
     }
   );
+}
+
+/**
+ * For WorkOS, the issuer is "https://auth-api.dust.tt"
+ * For Auth0, the issuer is "https://dust-dev.eu.auth0.com/"
+ */
+function extractPlatformFromTokenIssuer(
+  issuer: string
+): "auth0" | "workos" | null {
+  if (issuer === "https://dust-dev.eu.auth0.com/") {
+    return "auth0";
+  } else if (issuer === "https://auth-api.dust.tt") {
+    return "workos";
+  }
+  return null;
+}
+
+/**
+ * Helper function to handle WorkOS authentication
+ */
+async function handleWorkOSAuth<T>(
+  req: NextApiRequestWithContext,
+  res: NextApiResponse<WithAPIErrorResponse<T>>,
+  workOSUserId: string,
+  wId: string
+): Promise<Result<Authenticator, APIErrorWithStatusCode>> {
+  const userResource = await UserResource.fetchByWorkOSUserId(workOSUserId);
+  if (!userResource) {
+    return new Err({
+      status_code: 401,
+      api_error: {
+        type: "user_not_found",
+        message: "The user is not registered.",
+      },
+    });
+  }
+
+  const workspace = await Workspace.findOne({
+    where: {
+      sId: wId,
+    },
+  });
+  if (!workspace) {
+    return new Err({
+      status_code: 404,
+      api_error: {
+        type: "workspace_not_found",
+        message: "The workspace was not found.",
+      },
+    });
+  }
+
+  let role = "none" as RoleType;
+  let groups: GroupResource[] = [];
+  let subscription: SubscriptionResource | null = null;
+
+  [role, groups, subscription] = await Promise.all([
+    MembershipResource.getActiveRoleForUserInWorkspace({
+      user: userResource,
+      workspace: renderLightWorkspaceType({ workspace }),
+    }),
+    GroupResource.listUserGroupsInWorkspace({
+      user: userResource,
+      workspace: renderLightWorkspaceType({ workspace }),
+    }),
+    SubscriptionResource.fetchActiveByWorkspace(
+      renderLightWorkspaceType({ workspace })
+    ),
+  ]);
+
+  return new Ok(
+    new Authenticator({
+      workspace,
+      groups,
+      user: userResource,
+      role,
+      subscription,
+    })
+  );
+}
+
+/**
+ * Helper function to handle Auth0 authentication
+ */
+async function handleAuth0Auth<T>(
+  req: NextApiRequestWithContext,
+  res: NextApiResponse<WithAPIErrorResponse<T>>,
+  token: string,
+  wId: string,
+  opts: {
+    requiredScopes?: Partial<Record<MethodType, ScopeType>>;
+  }
+): Promise<Result<Authenticator, APIErrorWithStatusCode>> {
+  const decoded = await verifyAuth0Token(
+    token,
+    getRequiredScope(req, opts.requiredScopes)
+  );
+  if (decoded.isErr()) {
+    const error = decoded.error;
+    if ((error as TokenExpiredError).expiredAt) {
+      return new Err({
+        status_code: 401,
+        api_error: {
+          type: "expired_oauth_token_error",
+          message: "The access token expired.",
+        },
+      });
+    }
+
+    logger.error(decoded.error, "Failed to verify Auth0 token");
+    return new Err({
+      status_code: 401,
+      api_error: {
+        type: "invalid_oauth_token_error",
+        message: "The request does not have valid authentication credentials.",
+      },
+    });
+  }
+
+  const authRes = await Authenticator.fromAuth0Token({
+    token: decoded.value,
+    wId,
+  });
+  if (authRes.isErr()) {
+    return new Err({
+      status_code: 403,
+      api_error: {
+        type: authRes.error.code,
+        message:
+          "The user does not have an active session or is not authenticated.",
+      },
+    });
+  }
+
+  return new Ok(authRes.value);
 }
