@@ -25,7 +25,7 @@ import { useRouter } from "next/router";
 import { useMemo } from "react";
 
 import { usePersistedNavigationSelection } from "@app/hooks/usePersistedNavigationSelection";
-import { useAuthenticator } from "@app/lib/context/authenticator_context";
+import { useAuthenticator } from "@app/lib/context/authenticator";
 import { forceUserRole, showDebugTools } from "@app/lib/development";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {

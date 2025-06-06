@@ -5,7 +5,7 @@ import { TrackerBuilder } from "@app/components/trackers/TrackerBuilder";
 import config from "@app/lib/api/config";
 import { getContentNodesForDataSourceView } from "@app/lib/api/data_source_view";
 import { getFeatureFlags } from "@app/lib/auth";
-import { AuthenticatorProvider } from "@app/lib/context/authenticator_context";
+import { AuthenticatorProvider } from "@app/lib/context/authenticator";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
