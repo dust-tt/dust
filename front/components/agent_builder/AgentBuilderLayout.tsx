@@ -10,7 +10,6 @@ import React from "react";
 import type { ImperativePanelHandle } from "react-resizable-panels";
 
 import { AgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
-import type { WorkspaceType } from "@app/types";
 
 const COLLAPSED_RIGHT_PANEL_SIZE = 3;
 const MIN_EXPANDED_RIGHT_PANEL_SIZE = 20;
@@ -19,15 +18,13 @@ const DEFAULT_RIGHT_PANEL_SIZE = 30;
 interface AgentBuilderLayoutProps {
   leftPanel: React.ReactNode;
   rightPanel: React.ReactNode;
-  owner: WorkspaceType;
 }
 
 export function AgentBuilderLayout({
   leftPanel,
   rightPanel,
-  owner,
 }: AgentBuilderLayoutProps) {
-  const { isPreviewPanelOpen, setIsPreviewPanelOpen } =
+  const { owner, isPreviewPanelOpen, setIsPreviewPanelOpen } =
     useContext(AgentBuilderContext);
   const previewPanelRef = useRef<ImperativePanelHandle>(null);
   const [isResizing, setIsResizing] = useState(false);
