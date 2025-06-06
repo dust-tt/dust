@@ -26,7 +26,7 @@ async function handleOrganizationDomainEvent(
 
   const workspace = await findWorkspaceByWorkOSOrganizationId(organizationId);
   if (!workspace) {
-    logger.info(
+    logger.warn(
       { organizationId },
       "[WorkOS Event] Workspace not found for organization"
     );
