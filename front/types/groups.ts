@@ -90,7 +90,7 @@ export function getRoleFromHeaders(
   let role = headers[DustRoleHeader.toLowerCase()];
   if (typeof role === "string") {
     role = role.trim();
-    if (role.trim().length > 0 && isRoleType(role)) {
+    if (role.length > 0 && isRoleType(role)) {
       return role;
     }
   }
