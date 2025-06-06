@@ -8,27 +8,33 @@ import { subNavigationApp } from "@app/components/navigation/config";
 import AppContentLayout from "@app/components/sparkle/AppContentLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
+import { AuthenticatorProvider } from "@app/lib/context/authenticator_context";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { dustAppsListUrl } from "@app/lib/spaces";
 import { useRuns } from "@app/lib/swr/apps";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
-import type { WorkspaceType } from "@app/types";
+import type { PlanType, UserType, WorkspaceType } from "@app/types";
 import type { AppType } from "@app/types";
 import type { SubscriptionType } from "@app/types";
 import type { RunRunType, RunStatus } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
+  user: UserType;
   owner: WorkspaceType;
   subscription: SubscriptionType;
+  plan: PlanType | null;
+  isAdmin: boolean;
   readOnly: boolean;
   app: AppType;
   wIdTarget: string | null;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const subscription = auth.subscription();
+  const user = auth.user();
+  const plan = auth.plan();
 
-  if (!owner || !subscription) {
+  if (!owner || !subscription || !user) {
     return {
       notFound: true,
     };
@@ -49,8 +55,11 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 
   return {
     props: {
+      user: user.toJSON(),
       owner,
       subscription,
+      plan,
+      isAdmin: auth.isAdmin(),
       readOnly,
       app: app.toJSON(),
       wIdTarget,
@@ -286,6 +295,13 @@ export default function RunsView({
   );
 }
 
-RunsView.getLayout = (page: React.ReactElement) => {
-  return <AppRootLayout>{page}</AppRootLayout>;
+RunsView.getLayout = (
+  page: React.ReactElement,
+  pageProps: InferGetServerSidePropsType<typeof getServerSideProps>
+) => {
+  return (
+    <AppRootLayout>
+      <AuthenticatorProvider value={pageProps}>{page}</AuthenticatorProvider>
+    </AppRootLayout>
+  );
 };

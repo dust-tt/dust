@@ -25,6 +25,7 @@ import { useRouter } from "next/router";
 import { useMemo } from "react";
 
 import { usePersistedNavigationSelection } from "@app/hooks/usePersistedNavigationSelection";
+import { useAuthenticator } from "@app/lib/context/authenticator_context";
 import { forceUserRole, showDebugTools } from "@app/lib/development";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
@@ -36,13 +37,13 @@ import { isOnlyAdmin, isOnlyBuilder, isOnlyUser } from "@app/types";
 
 export function UserMenu({
   user,
-  owner,
   subscription,
 }: {
   user: UserTypeWithWorkspaces;
   owner: WorkspaceType;
   subscription: SubscriptionType | null;
 }) {
+  const { owner } = useAuthenticator();
   const router = useRouter();
   const { featureFlags } = useFeatureFlags({
     workspaceId: owner.sId,

@@ -16,10 +16,13 @@ import { FeatureAccessButton } from "@app/components/labs/FeatureAccessButton";
 import AppContentLayout from "@app/components/sparkle/AppContentLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { getFeatureFlags } from "@app/lib/auth";
+import { AuthenticatorProvider } from "@app/lib/context/authenticator_context";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import type {
   LabsFeatureItemType,
+  PlanType,
   SubscriptionType,
+  UserType,
   WhitelistableFeature,
   WorkspaceType,
 } from "@app/types";
@@ -66,14 +69,17 @@ const LABS_FEATURES: LabsFeatureItemType[] = [
 ];
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
+  user: UserType;
   owner: WorkspaceType;
   subscription: SubscriptionType;
+  plan: PlanType | null;
   featureFlags: WhitelistableFeature[];
   isAdmin: boolean;
 }>(async (_context, auth) => {
   const owner = auth.workspace();
   const subscription = auth.subscription();
   const user = auth.user();
+  const plan = auth.plan();
 
   if (!owner || !subscription || !user) {
     return {
@@ -85,8 +91,10 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 
   return {
     props: {
+      user: user.toJSON(),
       owner,
       subscription,
+      plan,
       featureFlags,
       isAdmin: auth.isAdmin(),
     },
@@ -156,6 +164,13 @@ export default function LabsTranscriptsIndex({
   );
 }
 
-LabsTranscriptsIndex.getLayout = (page: React.ReactElement) => {
-  return <AppRootLayout>{page}</AppRootLayout>;
+LabsTranscriptsIndex.getLayout = (
+  page: React.ReactElement,
+  pageProps: InferGetServerSidePropsType<typeof getServerSideProps>
+) => {
+  return (
+    <AppRootLayout>
+      <AuthenticatorProvider value={pageProps}>{page}</AuthenticatorProvider>
+    </AppRootLayout>
+  );
 };
