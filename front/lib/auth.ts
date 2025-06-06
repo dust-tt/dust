@@ -495,25 +495,13 @@ export class Authenticator {
     let keySubscription: SubscriptionResource | null = null;
 
     if (workspace) {
-      [keyGroups, requestedGroups, keySubscription, workspaceSubscription] =
-        await Promise.all([
-          // Key related attributes.
-          GroupResource.listWorkspaceGroupsFromKey(key),
-          requestedGroupIds
-            ? GroupResource.listGroupsWithSystemKey(key, requestedGroupIds)
-            : [],
-          getSubscriptionForWorkspace(keyWorkspace),
-          // Workspace related attributes.
-          getSubscriptionForWorkspace(workspace),
-        ]);
-    }
-
-    if (workspace) {
       if (requestedGroupIds && key.isSystem) {
         [requestedGroups, keySubscription, workspaceSubscription] =
           await Promise.all([
+            // Key related attributes.
             GroupResource.listGroupsWithSystemKey(key, requestedGroupIds),
             getSubscriptionForWorkspace(keyWorkspace),
+            // Workspace related attributes.
             getSubscriptionForWorkspace(workspace),
           ]);
       } else {
@@ -521,6 +509,7 @@ export class Authenticator {
           [
             GroupResource.listWorkspaceGroupsFromKey(key),
             getSubscriptionForWorkspace(keyWorkspace),
+            // Workspace related attributes.
             getSubscriptionForWorkspace(workspace),
           ]
         );
