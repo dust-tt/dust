@@ -25,7 +25,7 @@ import type {
 } from "@dust-tt/client";
 import { SplitButton, useSendNotification } from "@dust-tt/sparkle";
 import { EditorContent } from "@tiptap/react";
-import { Editor } from "@tiptap/react";
+import type { Editor } from "@tiptap/react";
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { useRef } from "react";
 
