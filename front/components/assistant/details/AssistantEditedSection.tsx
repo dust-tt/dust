@@ -17,9 +17,8 @@ export function AssistantEditedSection({
 
   return (
     <>
-      {(agentConfiguration.scope === "hidden" ||
-        agentConfiguration.scope === "visible") && (
-        <div className="flex gap-2 text-xs text-muted-foreground sm:grid-cols-2">
+      {agentConfiguration.scope !== "global" && (
+        <div className="flex gap-2 text-xs text-muted-foreground dark:text-muted-foreground-night sm:grid-cols-2">
           <b>Last edited: </b>
           <div>{editedSentence}</div>
         </div>
