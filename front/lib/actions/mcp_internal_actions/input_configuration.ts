@@ -26,7 +26,7 @@ import { assertNever } from "@app/types";
 /**
  * Defines how we fill the actual inputs of the tool for each mime type.
  */
-export function generateConfiguredInput({
+function generateConfiguredInput({
   actionConfiguration,
   owner,
   mimeType,
@@ -183,7 +183,7 @@ export function generateConfiguredInput({
  * Returns all paths in a server's tools' inputSchemas that match the schema for the specified mimeType.
  * @returns A record of paths where the schema matches the specified mimeType
  */
-export function findPathsToConfiguration({
+function findPathsToConfiguration({
   mcpServer,
   mimeType,
 }: {
