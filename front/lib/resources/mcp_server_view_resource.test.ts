@@ -13,7 +13,7 @@ import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { itInTransaction } from "@app/tests/utils/utils";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
-import type { WhitelistableFeature } from "@app/types";
+import type { PlanType, WhitelistableFeature } from "@app/types";
 
 describe("MCPServerViewResource", () => {
   describe("listByWorkspace", () => {
@@ -32,15 +32,26 @@ describe("MCPServerViewResource", () => {
 
         // Create internals servers for each workspace
 
-        await FeatureFlagFactory.basic(
-          INTERNAL_MCP_SERVERS["think"].flag as WhitelistableFeature,
-          workspace1
-        );
+        await FeatureFlagFactory.basic("dev_mcp_actions", workspace1);
+        await FeatureFlagFactory.basic("dev_mcp_actions", workspace2);
 
-        await FeatureFlagFactory.basic(
-          INTERNAL_MCP_SERVERS["think"].flag as WhitelistableFeature,
-          workspace2
-        );
+        // Mock the INTERNAL_MCP_SERVERS to override the "think" server config
+        // so that the test passes even if we edit the server config.
+        const originalThinkConfig = INTERNAL_MCP_SERVERS["think"];
+        Object.defineProperty(INTERNAL_MCP_SERVERS, "think", {
+          value: {
+            ...originalThinkConfig,
+            availability: "auto",
+            isRestricted: (
+              plan: PlanType,
+              featureFlags: WhitelistableFeature[]
+            ) => {
+              return featureFlags.includes("dev_mcp_actions");
+            },
+          },
+          writable: true,
+          configurable: true,
+        });
 
         expect(INTERNAL_MCP_SERVERS["think"].availability).toBe("auto");
 
