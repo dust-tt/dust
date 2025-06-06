@@ -27,11 +27,13 @@ import AppContentLayout from "@app/components/sparkle/AppContentLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { getPriceAsString } from "@app/lib/client/subscription";
 import { useSubmitFunction } from "@app/lib/client/utils";
+import { AuthenticatorProvider } from "@app/lib/context/authenticator_context";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { getStripeSubscription } from "@app/lib/plans/stripe";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
 import type { PatchSubscriptionRequestBody } from "@app/pages/api/w/[wId]/subscriptions";
+import type { PlanType, UserType } from "@app/types";
 import type {
   SubscriptionPerSeatPricing,
   SubscriptionType,
@@ -39,15 +41,19 @@ import type {
 } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
+  user: UserType;
   owner: WorkspaceType;
   subscription: SubscriptionType;
   trialDaysRemaining: number | null;
   workspaceSeats: number;
   perSeatPricing: SubscriptionPerSeatPricing | null;
+  plan: PlanType | null;
+  isAdmin: boolean;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const subscriptionResource = auth.subscriptionResource();
   const user = auth.user();
+  const plan = auth.plan();
   if (!owner || !auth.isAdmin() || !user || !subscriptionResource) {
     return {
       notFound: true,
@@ -79,11 +85,14 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   const perSeatPricing = await subscriptionResource.getPerSeatPricing();
   return {
     props: {
+      user: user.toJSON(),
       owner,
       subscription,
       trialDaysRemaining,
       workspaceSeats,
       perSeatPricing,
+      plan,
+      isAdmin: auth.isAdmin(),
     },
   };
 });
@@ -561,6 +570,13 @@ function CancelFreeTrialDialog({
   );
 }
 
-Subscription.getLayout = (page: React.ReactElement) => {
-  return <AppRootLayout>{page}</AppRootLayout>;
+Subscription.getLayout = (
+  page: React.ReactElement,
+  pageProps: InferGetServerSidePropsType<typeof getServerSideProps>
+) => {
+  return (
+    <AppRootLayout>
+      <AuthenticatorProvider value={pageProps}>{page}</AuthenticatorProvider>
+    </AppRootLayout>
+  );
 };

@@ -20,6 +20,7 @@ import AppContentLayout from "@app/components/sparkle/AppContentLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { extractConfig } from "@app/lib/config";
+import { AuthenticatorProvider } from "@app/lib/context/authenticator_context";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -37,21 +38,26 @@ import type {
   BlockRunConfig,
   BlockType,
   CoreAPIError,
+  PlanType,
   SpecificationBlockType,
   SpecificationType,
   SubscriptionType,
+  UserType,
   WorkspaceType,
 } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
+  user: UserType;
   owner: WorkspaceType;
   subscription: SubscriptionType;
+  plan: PlanType | null;
   readOnly: boolean;
   isAdmin: boolean;
   app: AppType;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const subscription = auth.subscription();
+  const plan = auth.plan();
 
   const { spaceId } = context.query;
   if (typeof spaceId !== "string") {
@@ -62,9 +68,16 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 
   const space = await SpaceResource.fetchById(auth, spaceId);
 
+  const user = auth.user();
   const isAdmin = auth.isAdmin();
 
-  if (!owner || !subscription || !space || !space.canReadOrAdministrate(auth)) {
+  if (
+    !owner ||
+    !subscription ||
+    !space ||
+    !space.canReadOrAdministrate(auth) ||
+    !user
+  ) {
     return {
       notFound: true,
     };
@@ -82,10 +95,12 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 
   return {
     props: {
+      user: user.toJSON(),
       owner,
       subscription,
       isAdmin,
       readOnly,
+      plan,
       app: app.toJSON(),
     },
   };
@@ -514,6 +529,13 @@ export default function AppView({
   );
 }
 
-AppView.getLayout = (page: React.ReactElement) => {
-  return <AppRootLayout>{page}</AppRootLayout>;
+AppView.getLayout = (
+  page: React.ReactElement,
+  pageProps: InferGetServerSidePropsType<typeof getServerSideProps>
+) => {
+  return (
+    <AppRootLayout>
+      <AuthenticatorProvider value={pageProps}>{page}</AuthenticatorProvider>
+    </AppRootLayout>
+  );
 };

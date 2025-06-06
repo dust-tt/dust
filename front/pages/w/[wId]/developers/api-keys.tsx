@@ -37,6 +37,7 @@ import { subNavigationAdmin } from "@app/components/navigation/config";
 import AppContentLayout from "@app/components/sparkle/AppContentLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { useSubmitFunction } from "@app/lib/client/utils";
+import { AuthenticatorProvider } from "@app/lib/context/authenticator_context";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { useKeys } from "@app/lib/swr/apps";
@@ -45,6 +46,7 @@ import type {
   GroupType,
   KeyType,
   ModelId,
+  PlanType,
   SubscriptionType,
   UserType,
   WorkspaceType,
@@ -56,10 +58,13 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   subscription: SubscriptionType;
   groups: GroupType[];
   user: UserType;
+  plan: PlanType | null;
+  isAdmin: boolean;
 }>(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
   const subscription = auth.getNonNullableSubscription();
   const user = auth.getNonNullableUser().toJSON();
+  const plan = auth.plan();
   if (!auth.isAdmin()) {
     return {
       notFound: true,
@@ -75,6 +80,8 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       groups: groups.map((group) => group.toJSON()),
       subscription,
       user,
+      plan,
+      isAdmin: auth.isAdmin(),
     },
   };
 });
@@ -476,6 +483,13 @@ export default function APIKeysPage({
   );
 }
 
-APIKeysPage.getLayout = (page: React.ReactElement) => {
-  return <AppRootLayout>{page}</AppRootLayout>;
+APIKeysPage.getLayout = (
+  page: React.ReactElement,
+  pageProps: InferGetServerSidePropsType<typeof getServerSideProps>
+) => {
+  return (
+    <AppRootLayout>
+      <AuthenticatorProvider value={pageProps}>{page}</AuthenticatorProvider>
+    </AppRootLayout>
+  );
 };

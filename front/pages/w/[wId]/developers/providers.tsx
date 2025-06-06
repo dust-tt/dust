@@ -17,6 +17,7 @@ import {
 } from "@app/components/providers/ProviderSetup";
 import AppContentLayout from "@app/components/sparkle/AppContentLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
+import { AuthenticatorProvider } from "@app/lib/context/authenticator_context";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import {
   APP_MODEL_PROVIDER_IDS,
@@ -24,24 +25,37 @@ import {
   serviceProviders,
 } from "@app/lib/providers";
 import { useProviders } from "@app/lib/swr/apps";
-import type { SubscriptionType, UserType, WorkspaceType } from "@app/types";
+import type {
+  PlanType,
+  SubscriptionType,
+  UserType,
+  WorkspaceType,
+} from "@app/types";
 import { redactString } from "@app/types";
+
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
   user: UserType;
+  plan: PlanType | null;
+  isAdmin: boolean;
 }>(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
   const subscription = auth.getNonNullableSubscription();
   const user = auth.getNonNullableUser().toJSON();
+  const plan = auth.plan();
+
   if (!auth.isAdmin()) {
     return { notFound: true };
   }
+
   return {
     props: {
       owner,
       subscription,
       user,
+      plan,
+      isAdmin: auth.isAdmin(),
     },
   };
 });
@@ -244,6 +258,13 @@ export default function ProvidersPage({
   );
 }
 
-ProvidersPage.getLayout = (page: React.ReactElement) => {
-  return <AppRootLayout>{page}</AppRootLayout>;
+ProvidersPage.getLayout = (
+  page: React.ReactElement,
+  pageProps: InferGetServerSidePropsType<typeof getServerSideProps>
+) => {
+  return (
+    <AppRootLayout>
+      <AuthenticatorProvider value={pageProps}>{page}</AuthenticatorProvider>
+    </AppRootLayout>
+  );
 };

@@ -18,20 +18,25 @@ import AppContentLayout from "@app/components/sparkle/AppContentLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { cleanSpecificationFromCore, getRun } from "@app/lib/api/run";
+import { AuthenticatorProvider } from "@app/lib/context/authenticator_context";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { dustAppsListUrl } from "@app/lib/spaces";
 import type {
   AppType,
+  PlanType,
   RunType,
   SpecificationType,
   SubscriptionType,
+  UserType,
   WorkspaceType,
 } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
+  user: UserType;
   owner: WorkspaceType;
   subscription: SubscriptionType;
+  plan: PlanType | null;
   isBuilder: boolean;
   isAdmin: boolean;
   app: AppType;
@@ -40,8 +45,10 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const subscription = auth.subscription();
+  const user = auth.user();
+  const plan = auth.plan();
 
-  if (!owner || !subscription) {
+  if (!owner || !subscription || !user) {
     return {
       notFound: true,
     };
@@ -67,8 +74,10 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 
   return {
     props: {
+      user: user.toJSON(),
       owner,
       subscription,
+      plan,
       isBuilder,
       isAdmin,
       app: app.toJSON(),
@@ -253,6 +262,13 @@ export default function AppRun({
   );
 }
 
-AppRun.getLayout = (page: React.ReactElement) => {
-  return <AppRootLayout>{page}</AppRootLayout>;
+AppRun.getLayout = (
+  page: React.ReactElement,
+  pageProps: InferGetServerSidePropsType<typeof getServerSideProps>
+) => {
+  return (
+    <AppRootLayout>
+      <AuthenticatorProvider value={pageProps}>{page}</AuthenticatorProvider>
+    </AppRootLayout>
+  );
 };

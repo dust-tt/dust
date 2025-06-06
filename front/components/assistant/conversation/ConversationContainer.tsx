@@ -18,6 +18,7 @@ import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideP
 import { DropzoneContainer } from "@app/components/misc/DropzoneContainer";
 import { updateMessagePagesWithOptimisticData } from "@app/lib/client/conversation/event_handlers";
 import { getRandomGreetingForName } from "@app/lib/client/greetings";
+import { useAuthenticator } from "@app/lib/context/authenticator_context";
 import type { DustError } from "@app/lib/error";
 import {
   useConversationMessages,
@@ -29,25 +30,17 @@ import type {
   LightAgentConfigurationType,
   MentionType,
   Result,
-  SubscriptionType,
-  UserType,
-  WorkspaceType,
 } from "@app/types";
 import { Err, Ok, removeNulls } from "@app/types";
 
 interface ConversationContainerProps {
-  owner: WorkspaceType;
-  subscription: SubscriptionType;
-  user: UserType;
   agentIdToMention: string | null;
 }
 
 export function ConversationContainer({
-  owner,
-  subscription,
-  user,
   agentIdToMention,
 }: ConversationContainerProps) {
+  const { owner, user, subscription } = useAuthenticator();
   const { activeConversationId } = useConversationsNavigation();
 
   const [planLimitReached, setPlanLimitReached] = useState(false);

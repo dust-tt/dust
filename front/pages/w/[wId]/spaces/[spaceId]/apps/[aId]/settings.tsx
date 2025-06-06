@@ -16,24 +16,31 @@ import { subNavigationApp } from "@app/components/navigation/config";
 import AppContentLayout from "@app/components/sparkle/AppContentLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
+import { AuthenticatorProvider } from "@app/lib/context/authenticator_context";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { dustAppsListUrl } from "@app/lib/spaces";
 import { MODELS_STRING_MAX_LENGTH } from "@app/lib/utils";
-import type { AppType } from "@app/types";
+import type { AppType, PlanType, UserType } from "@app/types";
 import type { SubscriptionType } from "@app/types";
 import type { APIError } from "@app/types";
 import type { WorkspaceType } from "@app/types";
 import { APP_NAME_REGEXP } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
+  user: UserType;
   owner: WorkspaceType;
   subscription: SubscriptionType;
+  plan: PlanType | null;
+  isAdmin: boolean;
   app: AppType;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const subscription = auth.subscription();
-  if (!owner || !subscription) {
+  const user = auth.user();
+  const plan = auth.plan();
+
+  if (!owner || !subscription || !user) {
     return {
       notFound: true,
     };
@@ -65,8 +72,11 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 
   return {
     props: {
+      user: user.toJSON(),
       owner,
       subscription,
+      plan,
+      isAdmin: auth.isAdmin(),
       app: app.toJSON(),
     },
   };
@@ -251,6 +261,13 @@ export default function SettingsView({
   );
 }
 
-SettingsView.getLayout = (page: React.ReactElement) => {
-  return <AppRootLayout>{page}</AppRootLayout>;
+SettingsView.getLayout = (
+  page: React.ReactElement,
+  pageProps: InferGetServerSidePropsType<typeof getServerSideProps>
+) => {
+  return (
+    <AppRootLayout>
+      <AuthenticatorProvider value={pageProps}>{page}</AuthenticatorProvider>
+    </AppRootLayout>
+  );
 };
