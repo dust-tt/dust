@@ -26,6 +26,7 @@ import {
   Err,
   getHeaderFromGroupIds,
   getHeaderFromRole,
+  getHeaderFromUserEmail,
   normalizeError,
   Ok,
 } from "@app/types";
@@ -181,6 +182,7 @@ export default async function createServer(
       }
       const childAgentId = childAgentIdRes.value;
 
+      const user = auth.user();
       const requestedGroupIds = auth.groups().map((g) => g.sId);
 
       const prodCredentials = await prodAPICredentialsForOwner(owner);
@@ -188,15 +190,17 @@ export default async function createServer(
         config.getDustAPIConfig(),
         {
           ...prodCredentials,
+          // We use a system API key here meaning that we can impersonate the user or the groups we
+          // have access to.
           extraHeaders: {
             ...getHeaderFromGroupIds(requestedGroupIds),
             ...getHeaderFromRole(auth.role()),
+            ...getHeaderFromUserEmail(user?.email),
           },
         },
         logger
       );
 
-      const user = auth.getNonNullableUser();
       const convRes = await api.createConversation({
         title: `run_agent ${mainAgent.name} > ${childAgentBlob.name}`,
         visibility: "unlisted",
@@ -206,16 +210,16 @@ export default async function createServer(
           mentions: [{ configurationId: childAgentId }],
           context: {
             timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-            username: user.username ?? "unknown",
-            fullName: user.fullName(),
-            email: user.email,
-            profilePictureUrl: user.imageUrl,
+            username: user?.username ?? "unknown",
+            fullName: user?.fullName(),
+            email: user?.email,
+            profilePictureUrl: user?.imageUrl,
             origin: "mcp",
           },
         },
         contentFragment: undefined,
-        // TODO(spolu): pull from the current agent message
-        skipToolsValidation: false,
+        skipToolsValidation:
+          agentLoopContext.runContext.agentMessage.skipToolsValidation ?? false,
       });
 
       if (convRes.isErr()) {
