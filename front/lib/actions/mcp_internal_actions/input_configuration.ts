@@ -362,7 +362,7 @@ export function getMCPServerRequirements(
   requiredNumbers: string[];
   requiredBooleans: string[];
   requiredEnums: Record<string, string[]>;
-  requiredDustAppConfiguration: boolean;
+  requiresDustAppConfiguration: boolean;
   noRequirement: boolean;
 } {
   if (!mcpServerView) {
@@ -377,7 +377,7 @@ export function getMCPServerRequirements(
       requiredNumbers: [],
       requiredBooleans: [],
       requiredEnums: {},
-      requiredDustAppConfiguration: false,
+      requiresDustAppConfiguration: false,
       noRequirement: false,
     };
   }
@@ -482,7 +482,7 @@ export function getMCPServerRequirements(
     requiredNumbers,
     requiredBooleans,
     requiredEnums,
-    requiredDustAppConfiguration,
+    requiresDustAppConfiguration: requiredDustAppConfiguration,
     noRequirement:
       !requiresDataSourceConfiguration &&
       !requiresTableConfiguration &&

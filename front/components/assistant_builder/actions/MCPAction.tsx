@@ -260,7 +260,7 @@ export function MCPAction({
           owner={owner}
         />
       )}
-      {requirements.requiredDustAppConfiguration && (
+      {requirements.requiresDustAppConfiguration && (
         <DustAppConfigurationSection
           owner={owner}
           allowedSpaces={allowedSpaces}
@@ -386,7 +386,7 @@ export function hasErrorActionMCP(
       return "Please select a reasoning model.";
     }
     if (
-      requirements.requiredDustAppConfiguration &&
+      requirements.requiresDustAppConfiguration &&
       !action.configuration.dustAppConfiguration
     ) {
       return "Please select a Dust App.";
