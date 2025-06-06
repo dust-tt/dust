@@ -1325,6 +1325,14 @@ const SearchLabelsParamsEventSchema = z.object({
   action: SearchLabelsActionTypeSchema,
 });
 
+const MCPStakeLevelSchema = z.enum(["low", "high", "never_ask"]).optional();
+
+const MCPValidationMetadataSchema = z.object({
+  mcpServerName: z.string(),
+  toolName: z.string(),
+  agentName: z.string(),
+});
+
 const MCPParamsEventSchema = z.object({
   type: z.literal("tool_params"),
   created: z.number(),
@@ -1343,9 +1351,24 @@ const NotificationTextContentSchema = z.object({
   text: z.string(),
 });
 
+const ToolApproveExecutionSchema = z.object({
+  type: z.string(),
+  configurationId: z.string(),
+  conversationId: z.string(),
+  messageId: z.string(),
+  actionId: z.string(),
+  inputs: z.record(z.any()),
+  stake: MCPStakeLevelSchema,
+  metadata: MCPValidationMetadataSchema,
+});
+
 const NotificationContentSchema = z.union([
   NotificationImageContentSchema,
   NotificationTextContentSchema,
+  z.object({
+    type: z.literal("resource"),
+    resource: ToolApproveExecutionSchema,
+  }),
 ]);
 
 const ToolNotificationProgressSchema = z.object({
@@ -1372,12 +1395,6 @@ const ToolNotificationEventSchema = z.object({
 
 export type ToolNotificationEvent = z.infer<typeof ToolNotificationEventSchema>;
 
-const MCPValidationMetadataSchema = z.object({
-  mcpServerName: z.string(),
-  toolName: z.string(),
-  agentName: z.string(),
-});
-
 export type MCPValidationMetadataPublicType = z.infer<
   typeof MCPValidationMetadataSchema
 >;
@@ -1386,11 +1403,11 @@ const MCPApproveExecutionEventSchema = z.object({
   type: z.literal("tool_approve_execution"),
   created: z.number(),
   configurationId: z.string(),
-  messageId: z.string(),
   conversationId: z.string(),
+  messageId: z.string(),
   actionId: z.string(),
   inputs: z.record(z.any()),
-  stake: z.optional(z.enum(["low", "high", "never_ask"])),
+  stake: MCPStakeLevelSchema,
   metadata: MCPValidationMetadataSchema,
 });
 

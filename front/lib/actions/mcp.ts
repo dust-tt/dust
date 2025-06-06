@@ -19,6 +19,7 @@ import type { ProgressNotificationContentType } from "@app/lib/actions/mcp_inter
 import {
   isMCPProgressNotificationType,
   isResourceWithName,
+  isToolApproveExecutionNotificationType,
   isToolGeneratedFile,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { getMCPEvents } from "@app/lib/actions/pubsub";
@@ -202,6 +203,7 @@ export type ToolNotificationEvent = {
   type: "tool_notification";
   created: number;
   configurationId: string;
+  conversationId: string;
   messageId: string;
   action: MCPActionType;
   notification: ProgressNotificationContentType;
@@ -659,14 +661,45 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       } else if (event.type === "notification") {
         const { notification } = event;
         if (isMCPProgressNotificationType(notification)) {
-          yield {
-            type: "tool_notification",
-            created: Date.now(),
-            configurationId: agentConfiguration.sId,
-            messageId: agentMessage.sId,
-            action: mcpAction,
-            notification: notification.params,
-          };
+          const { output: notificationOutput } = notification.params.data;
+          // Tool approval notifications have a specific handling:
+          // they are not yielded as regular notifications but are bubbled up as
+          // `tool_approve_execution` events instead, which exposes them to the end-user.
+          if (isToolApproveExecutionNotificationType(notificationOutput)) {
+            const {
+              conversationId,
+              configurationId,
+              actionId,
+              inputs,
+              stake,
+              metadata,
+            } = notificationOutput.resource;
+
+            yield {
+              created: Date.now(),
+              type: "tool_approve_execution",
+              configurationId,
+              // The event delivery is determined by the messageId, so we need to use the main messageId to
+              // show the validation dialog to the user.
+              conversationId,
+              messageId: agentMessage.sId,
+              actionId,
+              inputs,
+              stake,
+              metadata,
+            };
+          } else {
+            // Regular notifications, we yield them as is with the type "tool_notification".
+            yield {
+              type: "tool_notification",
+              created: Date.now(),
+              configurationId: agentConfiguration.sId,
+              conversationId: conversation.sId,
+              messageId: agentMessage.sId,
+              action: mcpAction,
+              notification: notification.params,
+            };
+          }
         }
       }
     }
