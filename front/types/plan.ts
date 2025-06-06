@@ -50,6 +50,9 @@ export type LimitsType = {
       maxImagesPerWeek: number;
     };
   };
+  webCrawler: {
+    maxPages: number;
+  };
   canUseProduct: boolean;
 };
 

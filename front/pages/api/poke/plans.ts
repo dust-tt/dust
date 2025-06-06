@@ -49,6 +49,9 @@ export const PlanTypeSchema = t.type({
       maxVaults: t.number,
     }),
     canUseProduct: t.boolean,
+    webCrawler: t.type({
+      maxPages: t.number,
+    }),
   }),
   trialPeriodDays: t.number,
 });
@@ -127,6 +130,7 @@ async function handler(
         maxDataSourcesDocumentsSizeMb: body.limits.dataSources.documents.sizeMb,
         maxUsersInWorkspace: body.limits.users.maxUsers,
         maxVaultsInWorkspace: body.limits.vaults.maxVaults,
+        maxWebcrawlerPages: body.limits.webCrawler.maxPages,
         trialPeriodDays: body.trialPeriodDays,
         canUseProduct: body.limits.canUseProduct,
       });

@@ -40,6 +40,7 @@ export type EditingPlanType = {
   maxMessagesTimeframe: string;
   maxUsers: string | number;
   maxVaults: string | number;
+  maxWebcrawlerPages: string | number;
   name: string;
   trialPeriodDays: string | number;
 };
@@ -64,6 +65,7 @@ export const fromPlanType = (plan: PlanType): EditingPlanType => {
     dataSourcesDocumentsSizeMb: plan.limits.dataSources.documents.sizeMb,
     maxUsers: plan.limits.users.maxUsers,
     maxVaults: plan.limits.vaults.maxVaults,
+    maxWebcrawlerPages: plan.limits.webCrawler.maxPages,
     trialPeriodDays: plan.trialPeriodDays,
     maxImagesPerWeek: plan.limits.capabilities.images.maxImagesPerWeek,
   };
@@ -117,6 +119,9 @@ export const toPlanType = (editingPlan: EditingPlanType): PlanType => {
       vaults: {
         maxVaults: parseMaybeNumber(editingPlan.maxVaults),
       },
+      webCrawler: {
+        maxPages: parseMaybeNumber(editingPlan.maxWebcrawlerPages),
+      },
       canUseProduct: true,
     },
     trialPeriodDays: parseMaybeNumber(editingPlan.trialPeriodDays),
@@ -143,6 +148,7 @@ const getEmptyPlan = (): EditingPlanType => ({
   maxMessagesTimeframe: "day",
   maxUsers: "",
   maxVaults: "",
+  maxWebcrawlerPages: "",
   name: "",
   trialPeriodDays: 0,
 });
