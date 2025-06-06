@@ -1100,14 +1100,12 @@ export const getFeatureFlags = memoizer.sync({
 });
 
 export async function isRestrictedFromAgentCreation(
-  owner: LightWorkspaceType,
-  auth: Authenticator
+  owner: LightWorkspaceType
 ): Promise<boolean> {
   const featureFlags = await getFeatureFlags(owner);
 
   return (
     featureFlags.includes("disallow_agent_creation_to_users") &&
-    !auth.isBuilder() &&
-    !auth.isAdmin()
+    !isBuilder(owner)
   );
 }
