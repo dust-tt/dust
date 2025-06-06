@@ -80,7 +80,7 @@ export const makeMCPToolJSONSuccess = ({
   result,
 }: {
   message: string;
-  result: any;
+  result: object | string;
 }): CallToolResult => {
   return {
     isError: false,
