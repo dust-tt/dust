@@ -296,8 +296,8 @@ const createServer = (
     "List the direct contents of a node. Can be used to see what is inside a specific folder from " +
       "the filesystem, like 'ls' in Unix. A good fit is to explore the filesystem structure step " +
       "by step. This tool can be called repeatedly by passing the 'nodeId' output from a step to " +
-      "the next step's nodeId. If a node has children (hasChildren: true), it means that this tool " +
-      "can be used again on it.",
+      "the next step's nodeId. If a node output by this tool or the find tool has children " +
+      "(hasChildren: true), it means that this tool can be used again on it.",
     {
       nodeId: z
         .string()
