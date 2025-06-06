@@ -23,6 +23,30 @@ interface ModelSelectionSubmenuProps {
   models: ModelConfigurationType[];
 }
 
+interface ModelRadioItemProps {
+  modelConfig: ModelConfigurationType;
+  currentModelKey: string;
+  isDark: boolean;
+  onModelSelection: (modelConfig: ModelConfigurationType) => void;
+}
+
+function ModelRadioItem({
+  modelConfig,
+  currentModelKey,
+  isDark,
+  onModelSelection,
+}: ModelRadioItemProps) {
+  return (
+    <DropdownMenuRadioItem
+      value={currentModelKey}
+      icon={getModelProviderLogo(modelConfig.providerId, isDark)}
+      description={modelConfig.shortDescription}
+      label={modelConfig.displayName}
+      onClick={() => onModelSelection(modelConfig)}
+    />
+  );
+}
+
 export function ModelSelectionSubmenu({
   generationSettings,
   setGenerationSettings,
@@ -52,13 +76,12 @@ export function ModelSelectionSubmenu({
         <DropdownMenuLabel label="Best performing models" />
         <DropdownMenuRadioGroup value={currentModelKey}>
           {bestPerformingModelConfigs.map((modelConfig) => (
-            <DropdownMenuRadioItem
+            <ModelRadioItem
               key={getModelKey(modelConfig)}
-              value={getModelKey(modelConfig)}
-              icon={getModelProviderLogo(modelConfig.providerId, isDark)}
-              description={modelConfig.shortDescription}
-              label={modelConfig.displayName}
-              onClick={() => handleModelSelection(modelConfig)}
+              modelConfig={modelConfig}
+              currentModelKey={currentModelKey}
+              isDark={isDark}
+              onModelSelection={handleModelSelection}
             />
           ))}
         </DropdownMenuRadioGroup>
@@ -66,13 +89,12 @@ export function ModelSelectionSubmenu({
         <DropdownMenuLabel label="Other models" />
         <DropdownMenuRadioGroup value={currentModelKey}>
           {otherModelConfigs.map((modelConfig) => (
-            <DropdownMenuRadioItem
+            <ModelRadioItem
               key={getModelKey(modelConfig)}
-              value={getModelKey(modelConfig)}
-              icon={getModelProviderLogo(modelConfig.providerId, isDark)}
-              description={modelConfig.shortDescription}
-              label={modelConfig.displayName}
-              onClick={() => handleModelSelection(modelConfig)}
+              modelConfig={modelConfig}
+              currentModelKey={currentModelKey}
+              isDark={isDark}
+              onModelSelection={handleModelSelection}
             />
           ))}
         </DropdownMenuRadioGroup>
