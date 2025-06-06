@@ -154,6 +154,21 @@ export async function upsertTableFromCsv({
 
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
+  if (file) {
+    const schemaRes = await coreAPI.tableValidateCSVContent({
+      projectId: dataSource.dustAPIProjectId,
+      dataSourceId: dataSource.dustAPIDataSourceId,
+      bucket: file.getBucketForVersion("processed").name,
+      bucketCSVPath: file.getCloudStoragePath(auth, "processed"),
+    });
+    if (schemaRes.isErr() || schemaRes.value.schema.length === 0) {
+      return new Err({
+        type: "invalid_request_error",
+        message: "Invalid CSV content, skipping",
+      });
+    }
+  }
+
   const tableRes = await coreAPI.upsertTable({
     projectId: dataSource.dustAPIProjectId,
     dataSourceId: dataSource.dustAPIDataSourceId,

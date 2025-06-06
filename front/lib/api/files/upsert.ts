@@ -263,13 +263,15 @@ const upsertExcelToDatasource: ProcessingFunction = async (
       },
     });
 
-    tableIds.push(tableId);
-
-    await upsertTableToDatasource(auth, {
+    const res = await upsertTableToDatasource(auth, {
       file: worksheetFile,
       dataSource,
       upsertArgs: upsertTableArgs,
     });
+
+    if (res.isOk()) {
+      tableIds.push(tableId);
+    }
   };
 
   const content = await getFileContent(auth, file);
