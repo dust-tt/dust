@@ -139,12 +139,12 @@ const spinnerVariantsMap: Record<ButtonVariantType, SpinnerVariant> = {
 };
 
 const chevronVariantMap = {
-  primary: "s-text-white/70",
-  outline: "s-text-foreground/70 dark:s-text-foreground-night/70",
-  ghost: "s-text-foreground/70 dark:s-text-foreground-night/70",
-  "ghost-secondary": "s-text-foreground/70 dark:s-text-foreground-night/70",
-  highlight: "s-text-white/70",
-  warning: "s-text-white/70",
+  primary: "s-text-muted-foreground-night dark:s-text-muted-foreground",
+  outline: "s-text-faint",
+  ghost: "s-text-faint",
+  "ghost-secondary": "s-text-faint",
+  highlight: "s-text-white/60",
+  warning: "s-text-white/60",
 } as const;
 
 export interface MetaButtonProps
