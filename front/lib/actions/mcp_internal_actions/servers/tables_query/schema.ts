@@ -1,6 +1,6 @@
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
-import type { MCPToolResultContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
   DUST_SQLITE_INSTRUCTIONS,
   getGenericDialectInstructions,
@@ -9,7 +9,7 @@ import {
 
 export function getSchemaContent(
   schemas: { dbml: string }[]
-): MCPToolResultContentType[] {
+): CallToolResult["content"] {
   return [
     {
       type: "resource",
@@ -24,7 +24,7 @@ export function getSchemaContent(
 
 export function getQueryWritingInstructionsContent(
   dialect: string
-): MCPToolResultContentType[] {
+): CallToolResult["content"] {
   const instructions = (() => {
     if (dialect === "dust_sqlite") {
       return DUST_SQLITE_INSTRUCTIONS;
@@ -52,7 +52,7 @@ export function getDatabaseExampleRowsContent(
     dbml: string;
     head?: Array<Record<string, any>>;
   }[]
-): MCPToolResultContentType[] {
+): CallToolResult["content"] {
   const heads = schemas
     .map((item) => {
       const h = item.head;

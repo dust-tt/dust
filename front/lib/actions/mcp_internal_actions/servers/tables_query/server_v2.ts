@@ -1,5 +1,6 @@
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
 import {
@@ -8,7 +9,6 @@ import {
   uploadFileToConversationDataSource,
 } from "@app/lib/actions/action_file_helpers";
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
-import type { MCPToolResultContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
   getDatabaseExampleRowsContent,
   getQueryWritingInstructionsContent,
@@ -188,7 +188,7 @@ function createServer(
         );
       }
 
-      const content: MCPToolResultContentType[] = [];
+      const content: CallToolResult["content"] = [];
 
       const results: CSVRecord[] = queryResult.value.results
         .map((r) => r.value)

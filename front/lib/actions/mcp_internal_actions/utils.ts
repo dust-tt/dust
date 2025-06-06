@@ -1,4 +1,4 @@
-import type { MCPToolResult } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
 /**
  * Error tool result. This won't fail in the agent loop but will be logged.
@@ -7,7 +7,7 @@ import type { MCPToolResult } from "@app/lib/actions/mcp_internal_actions/output
  * Do not use if the intent is to show an issue to the agent as part of a normal tool execution,
  * only use if the error should be logged and tracked.
  */
-export function makeMCPToolTextError(text: string): MCPToolResult {
+export function makeMCPToolTextError(text: string): CallToolResult {
   return {
     isError: true,
     content: [{ type: "text", text }],
@@ -22,7 +22,7 @@ export function makeMCPToolTextError(text: string): MCPToolResult {
  */
 export function makeMCPToolRecoverableErrorSuccess(
   errorText: string
-): MCPToolResult {
+): CallToolResult {
   return {
     isError: false,
     content: [{ type: "text", text: errorText }],
@@ -35,7 +35,7 @@ export const makeMCPToolTextSuccess = ({
 }: {
   message: string;
   result?: string;
-}): MCPToolResult => {
+}): CallToolResult => {
   if (!result) {
     return {
       isError: false,
@@ -57,7 +57,7 @@ export const makeMCPToolJSONSuccess = ({
 }: {
   message: string;
   result: object | string;
-}): MCPToolResult => {
+}): CallToolResult => {
   return {
     isError: false,
     content: [
