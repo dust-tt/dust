@@ -1,28 +1,6 @@
-import type { InternalToolInputMimeType } from "@dust-tt/client";
-import { assertNever, INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import { Ajv } from "ajv";
-import assert from "assert";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
-import { ZodError } from "zod";
 
-import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
-import type { ConfigurableToolInputType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
-import {
-  ConfigurableToolInputJSONSchemas,
-  JsonSchemaSchema,
-} from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { MCPToolResult } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import { isServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
-import type { MCPServerType, MCPServerViewType } from "@app/lib/api/mcp";
-import {
-  areSchemasEqual,
-  findSchemaAtPath,
-  followInternalRef,
-  isJSONSchemaObject,
-  setValueAtPath,
-} from "@app/lib/utils/json_schemas";
-import type { WorkspaceType } from "@app/types";
 
 /**
  * Error tool result. This won't fail in the agent loop but will be logged.
