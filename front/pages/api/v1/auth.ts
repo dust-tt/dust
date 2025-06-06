@@ -23,7 +23,7 @@ async function handler(
   });
   switch (req.method) {
     case "GET":
-      return res.status(200).json({ auth: "auth0" });
+      return res.status(200).json({ auth: "auth0g" });
 
     default:
       return apiError(req, res, {
