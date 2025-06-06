@@ -226,7 +226,14 @@ const createServer = (
         ],
       ...OPTION_PARAMETERS,
     },
-    async ({ query, dataSources, limit, sortBy, nextPageCursor }) => {
+    async ({
+      query,
+      dataSources,
+      limit,
+      sortBy,
+      nextPageCursor,
+      rootNodeId,
+    }) => {
       const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
       const fetchResult = await getAgentDataSourceConfigurations(dataSources);
@@ -236,12 +243,34 @@ const createServer = (
       }
       const agentDataSourceConfigurations = fetchResult.value;
 
+      const dataSourceNodeId = rootNodeId
+        ? extractDataSourceIdFromNodeId(rootNodeId)
+        : undefined;
+
+      // If rootNodeId is provided and is a data source node ID,search only in
+      // the data source. If rootNodeId is provided and is a regular node ID,
+      // reset all view_filters to this node, so only descendents of this node
+      // are searched. It is not straightforward to guess which data source it
+      // belongs to, this is why irrelevant data sources are not directly
+      // filtered out.
+      const viewFilter = makeDataSourceViewFilter(agentDataSourceConfigurations)
+        .filter((view) => {
+          if (dataSourceNodeId) {
+            return view.data_source_id === dataSourceNodeId;
+          }
+          return true;
+        })
+        .map((view) => ({
+          ...view,
+          ...(rootNodeId && !dataSourceNodeId
+            ? { view_filter: [rootNodeId] }
+            : {}),
+        }));
+
       const searchResult = await coreAPI.searchNodes({
         query,
         filter: {
-          data_source_views: makeDataSourceViewFilter(
-            agentDataSourceConfigurations
-          ),
+          data_source_views: viewFilter,
         },
         options: {
           cursor: nextPageCursor,
@@ -433,22 +462,51 @@ const createServer = (
         { concurrency: 10 }
       );
 
-      const coreSearchArgs = removeNulls(
-        coreSearchArgsResults.map((res) => (res.isOk() ? res.value : null))
-      ).map((coreSearchArgs) => {
-        if (!nodeIds) {
-          // If the agent doesn't provide nodeIds, we keep the default filter.
-          return coreSearchArgs;
-        }
+      // Set to avoid O(n^2) complexity below.
+      const dataSourceNodeIds = new Set<string>(
+        removeNulls(
+          nodeIds?.map((nodeId) => extractDataSourceIdFromNodeId(nodeId)) ?? []
+        )
+      );
 
-        return {
-          ...coreSearchArgs,
-          filter: {
-            ...coreSearchArgs.filter,
-            parents: { in: nodeIds, not: [] },
-          },
-        };
-      });
+      const regularNodeIds =
+        nodeIds?.filter(
+          (nodeId) =>
+            !dataSourceNodeIds.has(extractDataSourceIdFromNodeId(nodeId) ?? "")
+        ) ?? [];
+
+      const coreSearchArgs = removeNulls(
+        coreSearchArgsResults
+          .map((res) => (res.isOk() ? res.value : null))
+          .map((coreSearchArgs) => {
+            if (coreSearchArgs === null) {
+              return null;
+            }
+
+            if (
+              !nodeIds ||
+              dataSourceNodeIds.has(coreSearchArgs.dataSourceId)
+            ) {
+              // If the agent doesn't provide nodeIds, or if it provides the node id
+              // of this data source, we keep the default filter.
+              return coreSearchArgs;
+            }
+
+            // If there are only data source nodeIds, that are not this one, then
+            // this data source can be excluded from the search.
+            if (regularNodeIds.length === 0) {
+              return null;
+            }
+
+            return {
+              ...coreSearchArgs,
+              filter: {
+                ...coreSearchArgs.filter,
+                parents: { in: regularNodeIds, not: [] },
+              },
+            };
+          })
+      );
 
       if (coreSearchArgs.length === 0) {
         return {
