@@ -13,6 +13,7 @@ import type { MCPActionType } from "@app/lib/actions/mcp";
 import {
   isIncludeQueryResourceType,
   isIncludeResultResourceType,
+  isWarningResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 
 export function MCPIncludeActionDetails({
@@ -21,6 +22,10 @@ export function MCPIncludeActionDetails({
 }: ActionDetailsComponentBaseProps<MCPActionType>) {
   const queryResource = (action.output
     ?.filter(isIncludeQueryResourceType)
+    .map((o) => o.resource) ?? [])[0];
+
+  const warningResource = (action.output
+    ?.filter(isWarningResourceType)
     .map((o) => o.resource) ?? [])[0];
 
   const includeResults =
@@ -45,11 +50,11 @@ export function MCPIncludeActionDetails({
               <p>{JSON.stringify(action.params, undefined, 2)}</p>
             )}
           </div>
-          {queryResource?.warning && (
+          {warningResource && (
             <Tooltip
-              label={queryResource.warning.description}
+              label={warningResource.text}
               trigger={
-                <Chip color="warning" label={queryResource.warning.title} />
+                <Chip color="warning" label={warningResource.warningTitle} />
               }
             />
           )}
