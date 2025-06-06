@@ -31,9 +31,8 @@ makeScript({}, async ({ execute }, logger) => {
         );
 
         if (execute) {
-          const org = await createOrGetWorkOSOrganization({
-            workspace,
-            domain,
+          const org = await createOrGetWorkOSOrganization(workspace, {
+            domain: domain.domain,
           });
 
           if (org.isOk()) {
