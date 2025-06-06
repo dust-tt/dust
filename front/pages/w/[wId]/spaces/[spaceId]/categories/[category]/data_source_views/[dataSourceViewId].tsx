@@ -7,6 +7,7 @@ import type { SpaceLayoutPageProps } from "@app/components/spaces/SpaceLayout";
 import { SpaceLayout } from "@app/components/spaces/SpaceLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import config from "@app/lib/api/config";
+import { AuthenticatorProvider } from "@app/lib/context/authenticator_context";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -17,6 +18,7 @@ import type {
   DataSourceViewCategory,
   DataSourceViewType,
   SpaceType,
+  UserType,
 } from "@app/types";
 import { ConnectorsAPI } from "@app/types";
 
@@ -28,13 +30,15 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     parentId?: string;
     systemSpace: SpaceType;
     connector: ConnectorType | null;
+    user: UserType;
   }
 >(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
   const subscription = auth.subscription();
   const plan = auth.plan();
+  const user = auth.user();
 
-  if (!subscription || !plan) {
+  if (!subscription || !plan || !user) {
     return {
       notFound: true,
     };
@@ -103,6 +107,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
       canWriteInSpace,
       canReadInSpace,
       owner,
+      user: user.toJSON(),
       // undefined is not allowed in the JSON response
       ...(parentId && { parentId }),
       plan,
@@ -156,9 +161,19 @@ Space.getLayout = (
 ) => {
   return (
     <AppRootLayout>
-      <SpaceLayout pageProps={pageProps} useBackendSearch>
-        {page}
-      </SpaceLayout>
+      <AuthenticatorProvider
+        value={{
+          user: pageProps.user,
+          owner: pageProps.owner,
+          subscription: pageProps.subscription,
+          isAdmin: pageProps.isAdmin,
+          plan: pageProps.plan,
+        }}
+      >
+        <SpaceLayout pageProps={pageProps} useBackendSearch>
+          {page}
+        </SpaceLayout>
+      </AuthenticatorProvider>
     </AppRootLayout>
   );
 };
