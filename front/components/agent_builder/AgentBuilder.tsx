@@ -4,17 +4,11 @@ import { AgentBuilderLayout } from "@app/components/agent_builder/AgentBuilderLa
 import { AgentBuilderLeftPanel } from "@app/components/agent_builder/AgentBuilderLeftPanel";
 import { AgentBuilderRightPanel } from "@app/components/agent_builder/AgentBuilderRightPanel";
 import { AgentBuilderInstructionsProvider } from "@app/components/agent_builder/instructions/AgentBuilderInstructionsContext";
-import type { WorkspaceType } from "@app/types";
 
-interface AgentBuilderProps {
-  owner: WorkspaceType;
-}
-
-export default function AgentBuilder({ owner }: AgentBuilderProps) {
+export default function AgentBuilder() {
   return (
-    <AgentBuilderInstructionsProvider owner={owner}>
+    <AgentBuilderInstructionsProvider>
       <AgentBuilderLayout
-        owner={owner}
         leftPanel={
           <AgentBuilderLeftPanel
             title="Create new agent"

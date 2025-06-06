@@ -170,8 +170,9 @@ export default function CreateAgent({
       dustApps={dustApps}
       dataSourceViews={dataSourceViews}
       mcpServerViews={mcpServerViews}
+      owner={owner}
     >
-      <AgentBuilder owner={owner} />
+      <AgentBuilder />
     </AgentBuilderProvider>
   );
 }

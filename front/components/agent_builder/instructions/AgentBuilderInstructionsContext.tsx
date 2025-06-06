@@ -1,9 +1,10 @@
 import React, { createContext, useContext, useMemo, useState } from "react";
 import { useCallback } from "react";
 
+import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { GenerationSettingsType } from "@app/components/agent_builder/types";
 import { useModels } from "@app/lib/swr/models";
-import type { ModelConfigurationType, WorkspaceType } from "@app/types";
+import type { ModelConfigurationType } from "@app/types";
 import { GPT_4O_MODEL_ID, isSupportingResponseFormat } from "@app/types";
 
 interface AgentBuilderInstructionsContextType {
@@ -18,13 +19,12 @@ const AgentBuilderInstructionsContext = createContext<
 
 interface AgentBuilderInstructionsProviderProps {
   children: React.ReactNode;
-  owner: WorkspaceType;
 }
 
 export function AgentBuilderInstructionsProvider({
   children,
-  owner,
 }: AgentBuilderInstructionsProviderProps) {
+  const { owner } = useAgentBuilderContext();
   const { models } = useModels({ owner });
 
   const [generationSettings, setGenerationSettings] =

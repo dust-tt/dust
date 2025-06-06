@@ -1,15 +1,21 @@
-import { createContext, useState } from "react";
+import { createContext, useContext, useState } from "react";
 import { useEffect } from "react";
 
 import { mcpServerViewSortingFn } from "@app/lib/actions/mcp_helper";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import type { AppType, DataSourceViewType, SpaceType } from "@app/types";
+import type {
+  AppType,
+  DataSourceViewType,
+  SpaceType,
+  WorkspaceType,
+} from "@app/types";
 
 type AgentBuilderContextType = {
   dustApps: AppType[];
   dataSourceViews: DataSourceViewType[];
   spaces: SpaceType[];
   mcpServerViews: MCPServerViewType[];
+  owner: WorkspaceType;
   isPreviewPanelOpen: boolean;
   setIsPreviewPanelOpen: React.Dispatch<React.SetStateAction<boolean>>;
 };
@@ -19,6 +25,7 @@ export const AgentBuilderContext = createContext<AgentBuilderContextType>({
   dataSourceViews: [],
   spaces: [],
   mcpServerViews: [],
+  owner: {} as WorkspaceType,
   isPreviewPanelOpen: true,
   setIsPreviewPanelOpen: () => {},
 });
@@ -36,6 +43,7 @@ export function AgentBuilderProvider({
   dataSourceViews,
   spaces,
   mcpServerViews,
+  owner,
   children,
 }: AgentBuilderContextProps) {
   const [isPreviewPanelOpen, setIsPreviewPanelOpen] = useState(false);
@@ -61,6 +69,7 @@ export function AgentBuilderProvider({
         dataSourceViews,
         spaces,
         mcpServerViews: mcpServerViews.sort(mcpServerViewSortingFn),
+        owner,
         isPreviewPanelOpen,
         setIsPreviewPanelOpen,
       }}
@@ -68,4 +77,14 @@ export function AgentBuilderProvider({
       {children}
     </AgentBuilderContext.Provider>
   );
+}
+
+export function useAgentBuilderContext() {
+  const context = useContext(AgentBuilderContext);
+  if (!context) {
+    throw new Error(
+      "useAgentBuilderContext must be used within an AgentBuilderProvider"
+    );
+  }
+  return context;
 }
