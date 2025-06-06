@@ -247,25 +247,32 @@ const createServer = (
         ? extractDataSourceIdFromNodeId(rootNodeId)
         : undefined;
 
-      // If rootNodeId is provided and is a data source node ID,search only in
+      // If rootNodeId is provided and is a data source node ID, search only in
       // the data source. If rootNodeId is provided and is a regular node ID,
       // reset all view_filters to this node, so only descendents of this node
       // are searched. It is not straightforward to guess which data source it
       // belongs to, this is why irrelevant data sources are not directly
       // filtered out.
-      const viewFilter = makeDataSourceViewFilter(agentDataSourceConfigurations)
-        .filter((view) => {
-          if (dataSourceNodeId) {
-            return view.data_source_id === dataSourceNodeId;
-          }
-          return true;
-        })
-        .map((view) => ({
+      const viewFilter = (() => {
+        const viewFilter = makeDataSourceViewFilter(
+          agentDataSourceConfigurations
+        );
+
+        if (!rootNodeId) {
+          return viewFilter;
+        }
+
+        if (dataSourceNodeId) {
+          return viewFilter.filter(
+            (view) => view.data_source_id === dataSourceNodeId
+          );
+        }
+
+        return viewFilter.map((view) => ({
           ...view,
-          ...(rootNodeId && !dataSourceNodeId
-            ? { view_filter: [rootNodeId] }
-            : {}),
+          view_filter: [rootNodeId],
         }));
+      })();
 
       const searchResult = await coreAPI.searchNodes({
         query,
@@ -463,7 +470,7 @@ const createServer = (
       );
 
       // Set to avoid O(n^2) complexity below.
-      const dataSourceNodeIds = new Set<string>(
+      const dataSourceIds = new Set<string>(
         removeNulls(
           nodeIds?.map((nodeId) => extractDataSourceIdFromNodeId(nodeId)) ?? []
         )
@@ -472,7 +479,7 @@ const createServer = (
       const regularNodeIds =
         nodeIds?.filter(
           (nodeId) =>
-            !dataSourceNodeIds.has(extractDataSourceIdFromNodeId(nodeId) ?? "")
+            !dataSourceIds.has(extractDataSourceIdFromNodeId(nodeId) ?? "")
         ) ?? [];
 
       const coreSearchArgs = removeNulls(
@@ -483,10 +490,7 @@ const createServer = (
               return null;
             }
 
-            if (
-              !nodeIds ||
-              dataSourceNodeIds.has(coreSearchArgs.dataSourceId)
-            ) {
+            if (!nodeIds || dataSourceIds.has(coreSearchArgs.dataSourceId)) {
               // If the agent doesn't provide nodeIds, or if it provides the node id
               // of this data source, we keep the default filter.
               return coreSearchArgs;
