@@ -22,7 +22,7 @@ import {
 import {
   augmentInputsWithConfiguration,
   hideInternalConfiguration,
-} from "@app/lib/actions/mcp_internal_actions/utils";
+} from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import { getMCPEvents } from "@app/lib/actions/pubsub";
 import type { ReasoningModelConfiguration } from "@app/lib/actions/reasoning";
 import type { TableDataSourceConfiguration } from "@app/lib/actions/tables_query";

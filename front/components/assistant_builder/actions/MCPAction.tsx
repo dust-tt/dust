@@ -21,7 +21,7 @@ import type {
 } from "@app/components/assistant_builder/types";
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import type { MCPServerAvailability } from "@app/lib/actions/mcp_internal_actions/constants";
-import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/utils";
+import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import { isDustAppRunConfiguration } from "@app/lib/actions/types/guards";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { LightWorkspaceType, SpaceType, TimeFrame } from "@app/types";

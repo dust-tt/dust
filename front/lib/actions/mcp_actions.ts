@@ -34,7 +34,7 @@ import type {
   PersonalAuthenticationRequiredErrorResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { isMCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import { findMatchingSubSchemas } from "@app/lib/actions/mcp_internal_actions/utils";
+import { findMatchingSubSchemas } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type {
   MCPConnectionParams,
   ServerSideMCPConnectionParams,
