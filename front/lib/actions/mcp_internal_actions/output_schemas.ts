@@ -248,7 +248,7 @@ export const WarningResourceSchema = z.object({
   mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.WARNING),
   warningTitle: z.string(),
   text: z.string(),
-  warningData: z.record(z.unknown()).optional(),
+  warningData: z.record(z.string(), z.unknown()).optional(),
   uri: z.literal(""),
 });
 

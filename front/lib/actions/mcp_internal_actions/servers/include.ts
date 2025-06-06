@@ -98,7 +98,10 @@ function createServer(
       | TextContent[]
       | {
           type: "resource";
-          resource: IncludeResultResourceType | IncludeQueryResourceType;
+          resource:
+            | IncludeResultResourceType
+            | IncludeQueryResourceType
+            | WarningResourceType;
         }[];
   }> => {
     const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
