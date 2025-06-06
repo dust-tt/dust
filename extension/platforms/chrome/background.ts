@@ -679,12 +679,16 @@ const logout = async (
     queryParams.client_id = AUTH0_CLIENT_ID;
   } else if (state.authPlatform === "workos") {
     // We need to get the session to log out the user from WorkOS.
-    const tokens = await platform.auth.getStoredTokens();
-    if (tokens?.accessToken) {
+    const accessToken = await platform.auth.getAccessToken();
+    if (accessToken) {
       const decodedPayload = JSON.parse(
-        Buffer.from(tokens.accessToken.split(".")[1], "base64").toString()
+        Buffer.from(accessToken.split(".")[1], "base64").toString()
       );
       queryParams.session_id = decodedPayload.sid || "";
+    } else {
+      log("No access token found for WorkOS logout.");
+      sendResponse({ success: false });
+      return;
     }
   }
   const logoutUrl = getLogoutURL({
