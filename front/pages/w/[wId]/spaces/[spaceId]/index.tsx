@@ -9,12 +9,15 @@ import { SpaceCategoriesList } from "@app/components/spaces/SpaceCategoriesList"
 import type { SpaceLayoutPageProps } from "@app/components/spaces/SpaceLayout";
 import { SpaceLayout } from "@app/components/spaces/SpaceLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
+import { AuthenticatorProvider } from "@app/lib/context/authenticator_context";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
+import type { UserType } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<
   SpaceLayoutPageProps & {
+    user: UserType;
     userId: string;
     canWriteInSpace: boolean;
     isBuilder: boolean;
@@ -62,6 +65,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
       plan,
       space: space.toJSON(),
       subscription,
+      user: auth.getNonNullableUser().toJSON(),
       userId: auth.getNonNullableUser().sId,
     },
   };
@@ -127,12 +131,17 @@ export default function Space({
   );
 }
 
-Space.getLayout = (page: ReactElement, pageProps: any) => {
+Space.getLayout = (
+  page: ReactElement,
+  pageProps: InferGetServerSidePropsType<typeof getServerSideProps>
+) => {
   return (
     <AppRootLayout>
-      <SpaceLayout pageProps={pageProps} useBackendSearch>
-        {page}
-      </SpaceLayout>
+      <AuthenticatorProvider value={pageProps}>
+        <SpaceLayout pageProps={pageProps} useBackendSearch>
+          {page}
+        </SpaceLayout>
+      </AuthenticatorProvider>
     </AppRootLayout>
   );
 };

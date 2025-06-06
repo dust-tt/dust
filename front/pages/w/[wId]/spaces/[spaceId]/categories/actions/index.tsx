@@ -6,13 +6,15 @@ import type { SpaceLayoutPageProps } from "@app/components/spaces/SpaceLayout";
 import { SpaceLayout } from "@app/components/spaces/SpaceLayout";
 import { SystemSpaceActionsList } from "@app/components/spaces/SystemSpaceActionsList";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
+import { AuthenticatorProvider } from "@app/lib/context/authenticator_context";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import type { DataSourceViewCategory, SpaceType } from "@app/types";
+import type { DataSourceViewCategory, SpaceType, UserType } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<
   SpaceLayoutPageProps & {
+    user: UserType;
     category: DataSourceViewCategory;
     isAdmin: boolean;
     space: SpaceType;
@@ -49,6 +51,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
       canReadInSpace: space.canRead(auth),
       canWriteInSpace,
       category: "actions",
+      user: auth.getNonNullableUser().toJSON(),
       isAdmin,
       isBuilder,
       owner,
@@ -72,10 +75,15 @@ export default function Space({
   return <SpaceActionsList isAdmin={isAdmin} owner={owner} space={space} />;
 }
 
-Space.getLayout = (page: ReactElement, pageProps: any) => {
+Space.getLayout = (
+  page: ReactElement,
+  pageProps: InferGetServerSidePropsType<typeof getServerSideProps>
+) => {
   return (
     <AppRootLayout>
-      <SpaceLayout pageProps={pageProps}>{page}</SpaceLayout>
+      <AuthenticatorProvider value={pageProps}>
+        <SpaceLayout pageProps={pageProps}>{page}</SpaceLayout>
+      </AuthenticatorProvider>
     </AppRootLayout>
   );
 };
