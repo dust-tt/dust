@@ -96,7 +96,7 @@ vi.mock("@app/lib/file_storage", () => ({
 }));
 
 describe("POST /api/v1/w/[wId]/spaces/[spaceId]/data_sources/[dsId]/tables/csv", () => {
-  itInTransaction("succesfully upserts a CSV received as file", async (t) => {
+  itInTransaction("successfully upserts a CSV received as file", async (t) => {
     const { req, res, workspace, globalGroup } =
       await createPublicApiMockRequest({
         systemKey: true,
