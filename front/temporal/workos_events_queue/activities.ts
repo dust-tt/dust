@@ -26,8 +26,14 @@ async function handleOrganizationDomainEvent(
 
   const workspace = await findWorkspaceByWorkOSOrganizationId(organizationId);
   if (!workspace) {
-    logger.info({ organizationId }, "Workspace not found for organization");
-    throw new Error(`Workspace not found for organization ${organizationId}`);
+    logger.info(
+      { organizationId },
+      "[WorkOS Event] Workspace not found for organization"
+    );
+    // Skip processing if workspace not found - it likely belongs to another region.
+    // This is expected in a multi-region setup. DataDog monitors these warnings
+    // and will alert if they occur across all regions.
+    return;
   }
 
   let domainResult: Result<any, Error>;
