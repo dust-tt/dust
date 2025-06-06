@@ -17,7 +17,13 @@ import { useMemo, useRef } from "react";
 import { useState } from "react";
 
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
-import type { ConnectorProvider, UserType, WorkspaceType } from "@app/types";
+import {
+  isBuilder,
+  type ConnectorProvider,
+  type UserType,
+  type WorkspaceType,
+} from "@app/types";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 
 // We want exactly 12 connections in the tour guide to have a clean grid layout.
 const CONNECTIONS_IN_TOUR_GUIDE: ConnectorProvider[] = [
@@ -157,6 +163,14 @@ export function WelcomeTourGuide({
   const centeredRef = useRef<HTMLDivElement>(null);
   const [currentStep, setCurrentStep] = useState(0);
 
+  const { featureFlags } = useFeatureFlags({
+    workspaceId: owner.sId,
+  });
+
+  const isRestrictedFromAgentCreation =
+    featureFlags.includes("disallow_agent_creation_to_users") &&
+    !isBuilder(owner);
+
   const connections = useMemo(() => {
     return Object.values(CONNECTOR_CONFIGURATIONS)
       .filter((connector) =>
@@ -192,7 +206,8 @@ export function WelcomeTourGuide({
             workspace.
           </div>
           <div className="copy-base px-3 text-muted-foreground dark:text-muted-foreground-night">
-            Discover the basics of Dust in 3 steps.
+            Discover the basics of Dust in{" "}
+            {!isRestrictedFromAgentCreation ? "3" : "2"} steps.
           </div>
         </>
       ),
@@ -305,37 +320,41 @@ export function WelcomeTourGuide({
         </>
       ),
     },
-    {
-      anchorRef: createAgentButtonRef,
-      body: (
-        <>
-          <div className="flex aspect-video flex-col items-center justify-center gap-0 rounded-t-2xl bg-brand-support-golden p-6 text-center">
-            <div className="grid grid-cols-4 gap-2">
-              {EXAMPLE_AGENTS.map((agent) => (
-                <Tooltip
-                  key={agent.name}
-                  label={agent.name}
-                  trigger={
-                    <Avatar
-                      size="lg"
-                      emoji={agent.emoji}
-                      backgroundColor={agent.backgroundColor}
-                    />
-                  }
-                />
-              ))}
-            </div>
-          </div>
-          <div className="heading-lg px-3 pt-4">
-            Create new custom agents{" "}
-            <span className="text-brand-orange-golden">
-              designed for your needs
-            </span>
-            .
-          </div>
-        </>
-      ),
-    },
+    ...(!isRestrictedFromAgentCreation
+      ? [
+          {
+            anchorRef: createAgentButtonRef,
+            body: (
+              <>
+                <div className="flex aspect-video flex-col items-center justify-center gap-0 rounded-t-2xl bg-brand-support-golden p-6 text-center">
+                  <div className="grid grid-cols-4 gap-2">
+                    {EXAMPLE_AGENTS.map((agent) => (
+                      <Tooltip
+                        key={agent.name}
+                        label={agent.name}
+                        trigger={
+                          <Avatar
+                            size="lg"
+                            emoji={agent.emoji}
+                            backgroundColor={agent.backgroundColor}
+                          />
+                        }
+                      />
+                    ))}
+                  </div>
+                </div>
+                <div className="heading-lg px-3 pt-4">
+                  Create new custom agents{" "}
+                  <span className="text-brand-orange-golden">
+                    designed for your needs
+                  </span>
+                  .
+                </div>
+              </>
+            ),
+          },
+        ]
+      : []),
   ];
 
   const open = currentStep < steps.length;
