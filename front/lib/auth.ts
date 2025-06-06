@@ -442,12 +442,15 @@ export class Authenticator {
    * @param wId the target workspaceId
    * @param requestedGroupIds optional groups to assign the auth in place of the key groups (only
    *                                   possible with a system key).
+   * @param requestedRole optional role to assign the auth in place of the key role (only possible
+   *                               with a system key).
    * @returns Promise<{ workspaceAuth: Authenticator, keyAuth: Authenticator }>
    */
   static async fromKey(
     key: KeyResource,
     wId: string,
-    requestedGroupIds?: string[]
+    requestedGroupIds?: string[],
+    requestedRole?: RoleType
   ): Promise<{
     workspaceAuth: Authenticator;
     keyAuth: Authenticator;
@@ -476,10 +479,11 @@ export class Authenticator {
     let role = "none" as RoleType;
     const isKeyWorkspace = keyWorkspace.id === workspace?.id;
     if (isKeyWorkspace) {
-      // System keys have admin role on their workspace.
       if (key.isSystem) {
-        role = "admin";
+        // System keys have admin role on their workspace unless requested otherwise.
+        role = requestedRole ?? "admin";
       } else {
+        // Regular keys have builder role on their workspace.
         role = "builder";
       }
     }

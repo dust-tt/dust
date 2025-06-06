@@ -11,7 +11,7 @@ import type { Action } from "@app/lib/registry";
 import { cloneBaseConfig } from "@app/lib/registry";
 import logger from "@app/logger/logger";
 import type { APIError, Result } from "@app/types";
-import { Err, getHeaderFromGroupIds, Ok } from "@app/types";
+import { Err, getHeaderFromGroupIds, getHeaderFromRole, Ok } from "@app/types";
 
 const ActionResponseBaseSchema = t.type({
   run_id: t.string,
@@ -87,7 +87,10 @@ export async function callAction<V extends t.Mixed>(
     apiConfig.getDustAPIConfig(),
     {
       ...prodCredentials,
-      extraHeaders: getHeaderFromGroupIds(requestedGroupIds),
+      extraHeaders: {
+        ...getHeaderFromGroupIds(requestedGroupIds),
+        ...getHeaderFromRole(auth.role()),
+      },
     },
     logger
   );

@@ -24,6 +24,10 @@ export const RoleSchema = t.keyof(keyObject(ROLES));
 
 export type RoleType = t.TypeOf<typeof RoleSchema>;
 
+export function isRoleType(role: string): role is RoleType {
+  return ROLES.includes(role as RoleType);
+}
+
 export const ActiveRoleSchema = t.keyof(keyObject(ACTIVE_ROLES));
 
 export type ActiveRoleType = t.TypeOf<typeof ActiveRoleSchema>;
