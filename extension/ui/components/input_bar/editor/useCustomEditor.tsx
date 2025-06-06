@@ -7,7 +7,6 @@ import { URLDetectionExtension } from "@app/ui/components/input_bar/editor/exten
 import { URLStorageExtension } from "@app/ui/components/input_bar/editor/extensions/URLStorageExtension";
 import { createMarkdownSerializer } from "@app/ui/components/input_bar/editor/markdownSerializer";
 import type { EditorSuggestions } from "@app/ui/components/input_bar/editor/suggestion";
-import { makeGetAssistantSuggestions } from "@app/ui/components/input_bar/editor/suggestion";
 import { MentionPluginKey } from "@tiptap/extension-mention";
 import Paragraph from "@tiptap/extension-paragraph";
 import Placeholder from "@tiptap/extension-placeholder";
@@ -15,6 +14,8 @@ import type { Editor, JSONContent } from "@tiptap/react";
 import { useEditor } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
 import { useEffect, useMemo } from "react";
+import { SuggestionKeyDownProps } from "@tiptap/suggestion";
+import { SuggestionProps } from "@app/ui/components/input_bar/editor/useMentionDropdown";
 
 const ParagraphExtension = Paragraph.extend({
   addKeyboardShortcuts() {
@@ -200,7 +201,15 @@ export interface CustomEditorProps {
   ) => void;
   suggestions: EditorSuggestions;
   disableAutoFocus: boolean;
-  onUrlDetected?: (candidate: UrlCandidate | NodeCandidate | null) => void;
+  onUrlDetected: (candidate: UrlCandidate | NodeCandidate | null) => void;
+  suggestionHandler: {
+    render: () => {
+      onKeyDown: (props: SuggestionKeyDownProps) => boolean;
+      onStart: (props: SuggestionProps) => void;
+      onExit: () => void;
+      onUpdate: (props: SuggestionProps) => void;
+    };
+  };
 }
 
 const useCustomEditor = ({
@@ -208,6 +217,7 @@ const useCustomEditor = ({
   suggestions,
   disableAutoFocus,
   onUrlDetected,
+  suggestionHandler
 }: CustomEditorProps) => {
   const extensions = [
     StarterKit.configure({
@@ -222,7 +232,7 @@ const useCustomEditor = ({
         class:
           "min-w-0 px-0 py-0 border-none outline-none focus:outline-none focus:border-none ring-0 focus:ring-0 text-highlight-500 font-semibold",
       },
-      suggestion: makeGetAssistantSuggestions(),
+      suggestion: suggestionHandler,
     }),
     Placeholder.configure({
       placeholder: "Ask a question or get some @help",
@@ -232,14 +242,10 @@ const useCustomEditor = ({
     MarkdownStyleExtension,
     ParagraphExtension,
     URLStorageExtension,
+    URLDetectionExtension.configure({
+      onUrlDetected,
+    })
   ];
-  if (onUrlDetected) {
-    extensions.push(
-      URLDetectionExtension.configure({
-        onUrlDetected,
-      })
-    );
-  }
 
   const editor = useEditor({
     autofocus: disableAutoFocus ? false : "end",

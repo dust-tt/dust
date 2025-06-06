@@ -20,7 +20,7 @@ function makeEditorSuggestions(
 export const usePublicAssistantSuggestions = (
   inListAgentConfigurations: LightAgentConfigurationType[]
 ) => {
-  const { agentConfigurations } = usePublicAgentConfigurations();
+  const { agentConfigurations, isAgentConfigurationsLoading } = usePublicAgentConfigurations();
 
   // `useMemo` will ensure that suggestions is only recalculated
   // when `inListAgentConfigurations` or `agentConfigurations` changes.
@@ -31,5 +31,5 @@ export const usePublicAssistantSuggestions = (
     return { suggestions, fallbackSuggestions };
   }, [agentConfigurations, inListAgentConfigurations]);
 
-  return allSuggestions;
+  return {...allSuggestions, isLoading: isAgentConfigurationsLoading};
 };
