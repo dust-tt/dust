@@ -861,8 +861,8 @@ function NotionUrlCheckOrFind({
   );
 
   return (
-    <div className="mb-2 flex flex-col gap-2 rounded-md border px-2 py-2 text-sm text-gray-600">
-      <div className="flex items-center gap-2">
+    <div className="mb-2 flex flex-col gap-2 rounded-md border px-2 py-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
+      <div className="flex items-center gap-2 px-2 pt-2">
         <div>Notion URL</div>
         <div className="grow">
           <Input
@@ -902,18 +902,11 @@ function NotionUrlCheckOrFind({
           }}
         />
       </div>
-      <div className="text-gray-800">
+      <div className="text-muted-foreground dark:text-muted-foreground-night">
         {urlDetails && (
-          <div className="flex flex-col gap-2 rounded-md border pt-2 text-lg">
-            <span
-              className={classNames(
-                "font-bold",
-                urlDetails.page || urlDetails.db
-                  ? "text-success-800"
-                  : "text-warning-800"
-              )}
-            >
-              {(() => {
+          <div className="text-md flex flex-col gap-2 rounded-md p-4">
+            <Chip
+              label={(() => {
                 if (urlDetails.page) {
                   return "Page found";
                 }
@@ -922,10 +915,10 @@ function NotionUrlCheckOrFind({
                 }
                 return "Not found";
               })()}
-            </span>
+              color={urlDetails.page || urlDetails.db ? "success" : "warning"}
+            />
             {(urlDetails.page || urlDetails.db) && (
               <div>
-                <span className="font-bold">Details:</span>{" "}
                 <span>
                   {urlDetails.page ? (
                     <>
@@ -935,10 +928,10 @@ function NotionUrlCheckOrFind({
                         rootName={false}
                       />
                       {command === "find-url" && (
-                        <div>
+                        <div className="pt-4">
                           {urlDetails.page.parentType === "page" && (
                             <>
-                              <span className="font-bold text-success-800">
+                              <span className="font-bold text-success">
                                 Parent URL:
                               </span>
                               <span className="pl-2">
@@ -950,7 +943,7 @@ function NotionUrlCheckOrFind({
                           )}
                           {urlDetails.page.parentType === "database" && (
                             <>
-                              <span className="font-bold text-success-800">
+                              <span className="font-bold text-success">
                                 Parent URL:
                               </span>
                               <span className="pl-2">
