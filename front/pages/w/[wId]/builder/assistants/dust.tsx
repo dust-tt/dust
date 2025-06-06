@@ -16,6 +16,7 @@ import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitl
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
+import { AuthenticatorProvider } from "@app/lib/context/authenticator";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -26,20 +27,27 @@ import type {
   DataSourceType,
   DataSourceViewType,
   LightAgentConfigurationType,
+  PlanType,
   SpaceType,
   SubscriptionType,
+  UserType,
   WorkspaceType,
 } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
+  user: UserType;
   subscription: SubscriptionType;
+  plan: PlanType | null;
+  isAdmin: boolean;
   globalSpace: SpaceType;
 }>(async (context, auth) => {
   const owner = auth.workspace();
+  const user = auth.user();
   const subscription = auth.subscription();
+  const plan = auth.plan();
 
-  if (!owner || !auth.isBuilder() || !subscription) {
+  if (!owner || !auth.isBuilder() || !subscription || !user) {
     return {
       notFound: true,
     };
@@ -49,8 +57,11 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 
   return {
     props: {
+      user: user.toJSON(),
       owner,
       subscription,
+      plan,
+      isAdmin: auth.isAdmin(),
       globalSpace: globalSpace.toJSON(),
     },
   };
@@ -304,6 +315,13 @@ export default function EditDustAssistant({
   );
 }
 
-EditDustAssistant.getLayout = (page: React.ReactElement) => {
-  return <AppRootLayout>{page}</AppRootLayout>;
+EditDustAssistant.getLayout = (
+  page: React.ReactElement,
+  pageProps: InferGetServerSidePropsType<typeof getServerSideProps>
+) => {
+  return (
+    <AppRootLayout>
+      <AuthenticatorProvider value={pageProps}>{page}</AuthenticatorProvider>
+    </AppRootLayout>
+  );
 };
