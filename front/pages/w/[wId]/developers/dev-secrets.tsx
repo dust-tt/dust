@@ -24,21 +24,28 @@ import { subNavigationAdmin } from "@app/components/navigation/config";
 import AppContentLayout from "@app/components/sparkle/AppContentLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { useSubmitFunction } from "@app/lib/client/utils";
+import { AuthenticatorProvider } from "@app/lib/context/authenticator_context";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useDustAppSecrets } from "@app/lib/swr/apps";
 import type {
   DustAppSecretType,
+  PlanType,
   SubscriptionType,
+  UserType,
   WorkspaceType,
 } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
+  user: UserType;
   owner: WorkspaceType;
   subscription: SubscriptionType;
+  plan: PlanType | null;
   isAdmin: boolean;
 }>(async (_, auth) => {
   const owner = auth.getNonNullableWorkspace();
+  const user = auth.getNonNullableUser().toJSON();
   const subscription = auth.getNonNullableSubscription();
+  const plan = auth.plan();
 
   if (!auth.isBuilder()) {
     return {
@@ -48,8 +55,10 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 
   return {
     props: {
+      user,
       owner,
       subscription,
+      plan,
       isAdmin: auth.isAdmin(),
     },
   };
@@ -326,6 +335,13 @@ export default function SecretsPage({
   );
 }
 
-SecretsPage.getLayout = (page: React.ReactElement) => {
-  return <AppRootLayout>{page}</AppRootLayout>;
+SecretsPage.getLayout = (
+  page: React.ReactElement,
+  pageProps: InferGetServerSidePropsType<typeof getServerSideProps>
+) => {
+  return (
+    <AppRootLayout>
+      <AuthenticatorProvider value={pageProps}>{page}</AuthenticatorProvider>
+    </AppRootLayout>
+  );
 };

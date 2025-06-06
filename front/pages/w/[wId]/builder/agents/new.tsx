@@ -14,6 +14,7 @@ import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { generateMockAgentConfigurationFromTemplate } from "@app/lib/api/assistant/templates";
 import config from "@app/lib/api/config";
 import { getFeatureFlags, isRestrictedFromAgentCreation } from "@app/lib/auth";
+import { AuthenticatorProvider } from "@app/lib/context/authenticator_context";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useAssistantTemplate } from "@app/lib/swr/assistants";
 import type {
@@ -21,6 +22,7 @@ import type {
   PlanType,
   SubscriptionType,
   TemplateAgentConfigurationType,
+  UserType,
   WorkspaceType,
 } from "@app/types";
 
@@ -35,6 +37,7 @@ function getDuplicateAndTemplateIdFromQuery(query: ParsedUrlQuery) {
 }
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
+  user: UserType;
   owner: WorkspaceType;
   subscription: SubscriptionType;
   plan: PlanType;
@@ -45,11 +48,13 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   flow: BuilderFlow;
   baseUrl: string;
   templateId: string | null;
+  isAdmin: boolean;
 }>(async (context, auth) => {
+  const user = auth.user();
   const owner = auth.workspace();
   const plan = auth.plan();
   const subscription = auth.subscription();
-  if (!owner || !plan || !auth.isUser() || !subscription) {
+  if (!owner || !plan || !auth.isUser() || !subscription || !user) {
     return {
       notFound: true,
     };
@@ -112,9 +117,11 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       agentConfiguration: configuration,
       baseUrl: config.getClientFacingUrl(),
       flow,
+      user: user.toJSON(),
       owner,
       plan,
       subscription,
+      isAdmin: auth.isAdmin(),
       templateId,
     },
   };
@@ -148,6 +155,13 @@ export default function CreateAgent({
   );
 }
 
-CreateAgent.getLayout = (page: React.ReactElement) => {
-  return <AppRootLayout>{page}</AppRootLayout>;
+CreateAgent.getLayout = (
+  page: React.ReactElement,
+  pageProps: InferGetServerSidePropsType<typeof getServerSideProps>
+) => {
+  return (
+    <AppRootLayout>
+      <AuthenticatorProvider value={pageProps}>{page}</AuthenticatorProvider>
+    </AppRootLayout>
+  );
 };

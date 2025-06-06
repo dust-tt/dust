@@ -23,26 +23,33 @@ import AppContentLayout, {
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { isRestrictedFromAgentCreation } from "@app/lib/auth";
+import { AuthenticatorProvider } from "@app/lib/context/authenticator_context";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useAssistantTemplates } from "@app/lib/swr/assistants";
 import type {
+  PlanType,
   SubscriptionType,
   TemplateTagCodeType,
   TemplateTagsType,
+  UserType,
   WorkspaceType,
 } from "@app/types";
 import { isTemplateTagCodeArray, TEMPLATES_TAGS_CONFIG } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   flow: BuilderFlow;
+  user: UserType;
   owner: WorkspaceType;
   subscription: SubscriptionType;
+  plan: PlanType | null;
+  isAdmin: boolean;
   templateTagsMapping: TemplateTagsType;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const plan = auth.plan();
   const subscription = auth.subscription();
-  if (!owner || !plan || !auth.isUser() || !subscription) {
+  const user = auth.user();
+  if (!owner || !plan || !auth.isUser() || !subscription || !user) {
     return {
       notFound: true,
     };
@@ -62,8 +69,11 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 
   return {
     props: {
+      user: user.toJSON(),
       owner,
       subscription,
+      plan,
+      isAdmin: auth.isAdmin(),
       flow,
       templateTagsMapping: TEMPLATES_TAGS_CONFIG,
     },
@@ -276,6 +286,13 @@ export default function CreateAssistant({
   );
 }
 
-CreateAssistant.getLayout = (page: React.ReactElement) => {
-  return <AppRootLayout>{page}</AppRootLayout>;
+CreateAssistant.getLayout = (
+  page: React.ReactElement,
+  pageProps: InferGetServerSidePropsType<typeof getServerSideProps>
+) => {
+  return (
+    <AppRootLayout>
+      <AuthenticatorProvider value={pageProps}>{page}</AuthenticatorProvider>
+    </AppRootLayout>
+  );
 };

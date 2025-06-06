@@ -26,6 +26,7 @@ import WorkspaceAccessPanel from "@app/components/workspace/WorkspaceAccessPanel
 import { WorkspaceSection } from "@app/components/workspace/WorkspaceSection";
 import { checkWorkspaceSeatAvailabilityUsingAuth } from "@app/lib/api/workspace";
 import { getWorkspaceVerifiedDomains } from "@app/lib/api/workspace_domains";
+import { AuthenticatorProvider } from "@app/lib/context/authenticator_context";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { useSearchMembers } from "@app/lib/swr/memberships";
@@ -40,6 +41,7 @@ import type {
   WorkspaceDomain,
   WorkspaceType,
 } from "@app/types";
+import { isAdmin } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   user: UserType;
@@ -49,6 +51,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   plan: PlanType;
   workspaceHasAvailableSeats: boolean;
   workspaceVerifiedDomains: WorkspaceDomain[];
+  isAdmin: boolean;
 }>(async (context, auth) => {
   const plan = auth.plan();
   const owner = auth.workspace();
@@ -78,6 +81,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       plan,
       workspaceHasAvailableSeats,
       workspaceVerifiedDomains,
+      isAdmin: isAdmin(owner),
     },
   };
 });
@@ -287,6 +291,46 @@ function WorkspaceMembersList({
   );
 }
 
-WorkspaceAdmin.getLayout = (page: React.ReactElement) => {
-  return <AppRootLayout>{page}</AppRootLayout>;
+function WorkspaceGroupsList({
+  owner,
+  searchTerm,
+}: {
+  owner: WorkspaceType;
+  searchTerm: string;
+}) {
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: DEFAULT_PAGE_SIZE,
+  });
+
+  const { groups, isGroupsLoading } = useGroups({
+    owner,
+    kinds: ["provisioned"],
+  });
+
+  useEffect(() => {
+    setPagination({ pageIndex: 0, pageSize: DEFAULT_PAGE_SIZE });
+  }, [setPagination]);
+
+  return (
+    <GroupsList
+      searchTerm={searchTerm}
+      isLoading={isGroupsLoading}
+      groups={groups}
+      showColumns={["name", "memberCount"]}
+      pagination={pagination}
+      setPagination={setPagination}
+    />
+  );
+}
+
+WorkspaceAdmin.getLayout = (
+  page: React.ReactElement,
+  pageProps: InferGetServerSidePropsType<typeof getServerSideProps>
+) => {
+  return (
+    <AppRootLayout>
+      <AuthenticatorProvider value={pageProps}>{page}</AuthenticatorProvider>
+    </AppRootLayout>
+  );
 };

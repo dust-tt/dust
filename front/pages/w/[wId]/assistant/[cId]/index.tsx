@@ -63,9 +63,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
 
 export default function AssistantConversation({
   conversationId: initialConversationId,
-  owner,
-  subscription,
-  user,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [conversationKey, setConversationKey] = useState<string | null>(null);
   const [agentIdToMention, setAgentIdToMention] = useState<string | null>(null);
@@ -107,9 +104,6 @@ export default function AssistantConversation({
     <ConversationContainer
       // Key ensures the component re-renders when conversation changes except for shallow browse.
       key={conversationKey}
-      owner={owner}
-      subscription={subscription}
-      user={user}
       agentIdToMention={agentIdToMention}
     />
   );

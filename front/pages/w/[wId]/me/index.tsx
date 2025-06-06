@@ -8,18 +8,29 @@ import { Preferences } from "@app/components/me/Preferences";
 import { UserToolsTable } from "@app/components/me/UserToolsTable";
 import AppContentLayout from "@app/components/sparkle/AppContentLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
+import { AuthenticatorProvider } from "@app/lib/context/authenticator_context";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useUser } from "@app/lib/swr/user";
-import type { SubscriptionType, WorkspaceType } from "@app/types";
+import type {
+  PlanType,
+  SubscriptionType,
+  UserType,
+  WorkspaceType,
+} from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
+  user: UserType;
   owner: WorkspaceType;
   subscription: SubscriptionType;
+  plan: PlanType | null;
+  isAdmin: boolean;
 }>(async (_context, auth) => {
   const owner = auth.workspace();
+  const user = auth.user();
   const subscription = auth.subscription();
+  const plan = auth.plan();
 
-  if (!owner || !subscription) {
+  if (!owner || !subscription || !user) {
     return {
       notFound: true,
     };
@@ -27,8 +38,11 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 
   return {
     props: {
+      user: user.toJSON(),
       owner,
       subscription,
+      plan,
+      isAdmin: auth.isAdmin(),
     },
   };
 });
@@ -69,6 +83,13 @@ export default function ProfilePage({
   );
 }
 
-ProfilePage.getLayout = (page: React.ReactElement) => {
-  return <AppRootLayout>{page}</AppRootLayout>;
+ProfilePage.getLayout = (
+  page: React.ReactElement,
+  pageProps: InferGetServerSidePropsType<typeof getServerSideProps>
+) => {
+  return (
+    <AppRootLayout>
+      <AuthenticatorProvider value={pageProps}>{page}</AuthenticatorProvider>
+    </AppRootLayout>
+  );
 };

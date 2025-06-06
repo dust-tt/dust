@@ -29,6 +29,7 @@ import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
 import AppContentLayout from "@app/components/sparkle/AppContentLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { isRestrictedFromAgentCreation } from "@app/lib/auth";
+import { AuthenticatorProvider } from "@app/lib/context/authenticator_context";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
@@ -40,6 +41,7 @@ import {
 } from "@app/lib/utils";
 import type {
   LightAgentConfigurationType,
+  PlanType,
   SubscriptionType,
   UserType,
   WorkspaceType,
@@ -88,9 +90,12 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
   user: UserType;
+  plan: PlanType | null;
+  isAdmin: boolean;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const subscription = auth.subscription();
+  const plan = auth.plan();
 
   if (!owner || !subscription) {
     return {
@@ -112,6 +117,8 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       owner,
       subscription,
       user: user.toJSON(),
+      plan,
+      isAdmin: auth.isAdmin(),
     },
   };
 });
@@ -447,6 +454,13 @@ export default function WorkspaceAssistants({
   );
 }
 
-WorkspaceAssistants.getLayout = (page: React.ReactElement) => {
-  return <AppRootLayout>{page}</AppRootLayout>;
+WorkspaceAssistants.getLayout = (
+  page: React.ReactElement,
+  pageProps: InferGetServerSidePropsType<typeof getServerSideProps>
+) => {
+  return (
+    <AppRootLayout>
+      <AuthenticatorProvider value={pageProps}>{page}</AuthenticatorProvider>
+    </AppRootLayout>
+  );
 };

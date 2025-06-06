@@ -22,6 +22,7 @@ import AppContentLayout from "@app/components/sparkle/AppContentLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import config from "@app/lib/api/config";
 import { getFeatureFlags } from "@app/lib/auth";
+import { AuthenticatorProvider } from "@app/lib/context/authenticator_context";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { useTrackers } from "@app/lib/swr/trackers";
@@ -30,6 +31,7 @@ import type {
   SpaceType,
   SubscriptionType,
   TrackerConfigurationType,
+  UserType,
   WorkspaceType,
 } from "@app/types";
 
@@ -40,6 +42,7 @@ type RowData = TrackerConfigurationType & {
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   baseUrl: string;
   isAdmin: boolean;
+  user: UserType;
   owner: WorkspaceType;
   plan: PlanType;
   subscription: SubscriptionType;
@@ -49,8 +52,16 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   const plan = auth.plan();
   const subscription = auth.subscription();
   const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
+  const user = auth.user();
 
-  if (!owner || !plan || !subscription || !auth.isUser() || !globalSpace) {
+  if (
+    !owner ||
+    !plan ||
+    !subscription ||
+    !auth.isUser() ||
+    !globalSpace ||
+    !user
+  ) {
     return {
       notFound: true,
     };
@@ -67,6 +78,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     props: {
       baseUrl: config.getClientFacingUrl(),
       isAdmin: auth.isAdmin(),
+      user: user.toJSON(),
       owner,
       plan,
       subscription,
@@ -258,6 +270,13 @@ export default function TrackerConfigurations({
   );
 }
 
-TrackerConfigurations.getLayout = (page: React.ReactElement) => {
-  return <AppRootLayout>{page}</AppRootLayout>;
+TrackerConfigurations.getLayout = (
+  page: React.ReactElement,
+  pageProps: InferGetServerSidePropsType<typeof getServerSideProps>
+) => {
+  return (
+    <AppRootLayout>
+      <AuthenticatorProvider value={pageProps}>{page}</AuthenticatorProvider>
+    </AppRootLayout>
+  );
 };

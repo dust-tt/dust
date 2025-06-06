@@ -199,7 +199,10 @@ export default function Space({
   );
 }
 
-Space.getLayout = (page: ReactElement, pageProps: any) => {
+Space.getLayout = (
+  page: ReactElement,
+  pageProps: InferGetServerSidePropsType<typeof getServerSideProps>
+) => {
   return (
     <AppRootLayout>
       <AuthenticatorProvider value={pageProps}>
