@@ -47,6 +47,7 @@ export const FREE_NO_PLAN_DATA: PlanAttributes = {
   maxDataSourcesCount: 0,
   maxDataSourcesDocumentsCount: 0,
   maxDataSourcesDocumentsSizeMb: 0,
+  maxWebcrawlerPages: 256,
   trialPeriodDays: 0,
   canUseProduct: false,
 };
@@ -76,6 +77,7 @@ const FREE_PLANS_DATA: PlanAttributes[] = [
     maxDataSourcesCount: 5,
     maxDataSourcesDocumentsCount: 10,
     maxDataSourcesDocumentsSizeMb: 2,
+    maxWebcrawlerPages: 512,
     trialPeriodDays: 0,
     canUseProduct: false,
   },
@@ -99,6 +101,7 @@ const FREE_PLANS_DATA: PlanAttributes[] = [
     maxDataSourcesCount: -1,
     maxDataSourcesDocumentsCount: -1,
     maxDataSourcesDocumentsSizeMb: 2,
+    maxWebcrawlerPages: -1,
     trialPeriodDays: 0,
     canUseProduct: true,
   },

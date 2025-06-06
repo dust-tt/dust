@@ -45,6 +45,9 @@ export function renderPlanFromModel({
       vaults: {
         maxVaults: plan.maxVaultsInWorkspace,
       },
+      webCrawler: {
+        maxPages: plan.maxWebcrawlerPages,
+      },
       canUseProduct: plan.canUseProduct,
     },
     trialPeriodDays: plan.trialPeriodDays,

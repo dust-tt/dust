@@ -50,6 +50,7 @@ if (isDevelopment() || isTest()) {
     maxDataSourcesCount: -1,
     maxDataSourcesDocumentsCount: -1,
     maxDataSourcesDocumentsSizeMb: 2,
+    maxWebcrawlerPages: 512,
     trialPeriodDays: 14,
     canUseProduct: true,
   });
@@ -73,6 +74,7 @@ if (isDevelopment() || isTest()) {
     maxDataSourcesCount: -1,
     maxDataSourcesDocumentsCount: -1,
     maxDataSourcesDocumentsSizeMb: 2,
+    maxWebcrawlerPages: 512,
     trialPeriodDays: 14,
     canUseProduct: true,
   });

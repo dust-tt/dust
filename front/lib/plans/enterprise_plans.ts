@@ -38,6 +38,7 @@ export const ENT_PLAN_FAKE_DATA: PlanAttributes = {
   maxDataSourcesCount: -1,
   maxDataSourcesDocumentsCount: -1,
   maxDataSourcesDocumentsSizeMb: 2,
+  maxWebcrawlerPages: -1,
   trialPeriodDays: 0,
   canUseProduct: true,
 };

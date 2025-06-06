@@ -42,6 +42,7 @@ export class Plan extends BaseModel<Plan> {
   declare maxDataSourcesCount: number;
   declare maxDataSourcesDocumentsCount: number;
   declare maxDataSourcesDocumentsSizeMb: number;
+  declare maxWebcrawlerPages: number;
 }
 Plan.init(
   {
@@ -145,6 +146,11 @@ Plan.init(
       type: DataTypes.INTEGER,
       allowNull: false,
       defaultValue: 2,
+    },
+    maxWebcrawlerPages: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: -1, // If -1, the hardcoded value of 1024 will be used
     },
   },
   {
