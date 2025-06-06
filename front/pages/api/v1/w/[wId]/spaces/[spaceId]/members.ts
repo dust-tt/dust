@@ -1,17 +1,14 @@
+import { isLeft } from "fp-ts/lib/Either";
+import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { DustError } from "@app/lib/error";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
-import {
-  PatchSpaceMembersRequestBodySchema,
-  type SpaceType,
-  type WithAPIErrorResponse,
-} from "@app/types";
-import { isLeft } from "fp-ts/lib/Either";
-import * as reporter from "io-ts-reporters";
-import { DustError } from "@app/lib/error";
+import type { SpaceType, WithAPIErrorResponse } from "@app/types";
+import { PatchSpaceMembersRequestBodySchema } from "@app/types";
 
 interface PatchSpaceMembersResponseBody {
   space: SpaceType;
