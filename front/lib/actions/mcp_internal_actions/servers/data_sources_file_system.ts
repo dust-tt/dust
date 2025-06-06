@@ -220,7 +220,13 @@ const createServer = (
             "and descendant of a specific node. If a node output by this tool or the list tool" +
             "has children (hasChildren: true), it means that it can be passed as a rootNodeId."
         ),
-      // TODO(2025-06-03 aubin): add search by mime type (not supported in the backend currently).
+      mimeTypes: z
+        .string()
+        .optional()
+        .describe(
+          "The mime type to search for. If provided, only nodes with this mime type will be " +
+            "returned. If not provided, all mime types will be returned."
+        ),
       dataSources:
         ConfigurableToolInputSchemas[
           INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
@@ -234,6 +240,7 @@ const createServer = (
       sortBy,
       nextPageCursor,
       rootNodeId,
+      mimeTypes,
     }) => {
       const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
@@ -271,6 +278,7 @@ const createServer = (
         query,
         filter: {
           data_source_views: viewFilter,
+          mime_types: mimeTypes ? { in: [mimeTypes], not: null } : undefined,
         },
         options: {
           cursor: nextPageCursor,
