@@ -8,6 +8,7 @@ import {
   verifyAuth0Token,
 } from "@app/lib/api/auth0";
 import { getUserWithWorkspaces } from "@app/lib/api/user";
+import { getUserFromWorkOSToken, verifyWorkOSToken } from "@app/lib/api/workos";
 import {
   Authenticator,
   getAPIKey,
@@ -536,19 +537,31 @@ export function withTokenAuthentication<T>(
         let user: UserResource | null = null;
         if (platform === "workos") {
           // Extract WorkOS user ID from the sub claim
-          const workOSUserId = decodedPayload.sub;
-          if (!workOSUserId) {
+          const decoded = await verifyWorkOSToken(bearerToken);
+          if (decoded.isErr()) {
+            const error = decoded.error;
+            if ((error as TokenExpiredError).expiredAt) {
+              return apiError(req, res, {
+                status_code: 401,
+                api_error: {
+                  type: "expired_oauth_token_error",
+                  message: "The access token expired.",
+                },
+              });
+            }
+
+            logger.error(decoded.error, "Failed to verify WorkOS token");
             return apiError(req, res, {
               status_code: 401,
               api_error: {
-                type: "not_authenticated",
+                type: "invalid_oauth_token_error",
                 message:
                   "The request does not have valid authentication credentials.",
               },
             });
           }
 
-          user = await UserResource.fetchByWorkOSUserId(workOSUserId);
+          user = await getUserFromWorkOSToken(decoded.value);
         } else {
           // Handle Auth0 token
           const decoded = await verifyAuth0Token(

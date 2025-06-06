@@ -45,7 +45,7 @@ const state: {
 /**
  * Fetch the auth platform from the API
  */
-const updateAuthPlatform = async () => {
+const fetchAuthPlatform = async () => {
   try {
     const response = await fetch(`${DEFAULT_DUST_API_DOMAIN}/api/v1/auth`);
     if (!response.ok) {
@@ -155,7 +155,7 @@ chrome.runtime.onConnect.addListener(async (port) => {
   }
 
   // Fetch and store the auth platform
-  void updateAuthPlatform();
+  void fetchAuthPlatform();
 });
 
 const getActionHandler = (menuItemId: string | number) => {
