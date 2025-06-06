@@ -88,6 +88,6 @@ jobs:
 
       - name: Publish
         working-directory: sparkle
-        run: npm publish
+        run: npm ci && npm run build && npm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
