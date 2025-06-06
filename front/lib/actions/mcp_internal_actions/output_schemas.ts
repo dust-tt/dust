@@ -228,17 +228,25 @@ export const IncludeQueryResourceSchema = z.object({
     INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_INCLUDE_QUERY
   ),
   text: z.string(),
-  warning: z
-    .object({
-      title: z.string(),
-      description: z.string(),
-    })
-    .optional(),
+  uri: z.literal(""),
+});
+
+export const IncludeWarningResourceSchema = z.object({
+  mimeType: z.literal(
+    INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_INCLUDE_WARNING
+  ),
+  warningMessage: z.string(),
+  text: z.string(),
+  includeTimeLimit: z.string(),
   uri: z.literal(""),
 });
 
 export type IncludeQueryResourceType = z.infer<
   typeof IncludeQueryResourceSchema
+>;
+
+export type IncludeWarningResourceType = z.infer<
+  typeof IncludeWarningResourceSchema
 >;
 
 export const isIncludeQueryResourceType = (
@@ -247,6 +255,18 @@ export const isIncludeQueryResourceType = (
   return (
     outputBlock.type === "resource" &&
     IncludeQueryResourceSchema.safeParse(outputBlock.resource).success
+  );
+};
+
+export const isIncludeWarningResourceType = (
+  outputBlock: CallToolResult["content"][number]
+): outputBlock is {
+  type: "resource";
+  resource: IncludeWarningResourceType;
+} => {
+  return (
+    outputBlock.type === "resource" &&
+    IncludeWarningResourceSchema.safeParse(outputBlock.resource).success
   );
 };
 

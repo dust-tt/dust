@@ -10,6 +10,7 @@ import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_acti
 import type {
   IncludeQueryResourceType,
   IncludeResultResourceType,
+  IncludeWarningResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
   getCoreSearchArgs,
@@ -226,6 +227,12 @@ function createServer(
         };
       });
 
+    const warningResource = makeWarningResource(
+      searchResults.value.documents,
+      topK,
+      timeFrame ?? null
+    );
+
     return {
       isError: false,
       content: [
@@ -235,12 +242,16 @@ function createServer(
         })),
         {
           type: "resource" as const,
-          resource: makeQueryResource(
-            searchResults.value.documents,
-            topK,
-            timeFrame ?? null
-          ),
+          resource: makeQueryResource(timeFrame ?? null),
         },
+        ...(warningResource
+          ? [
+              {
+                type: "resource" as const,
+                resource: warningResource,
+              },
+            ]
+          : []),
       ],
     };
   };
@@ -341,16 +352,33 @@ function createServer(
 }
 
 function makeQueryResource(
-  documents: CoreAPIDocument[],
-  topK: number,
   timeFrame: TimeFrame | null
 ): IncludeQueryResourceType {
   const timeFrameAsString = timeFrame
     ? "over the last " +
       (timeFrame.duration > 1
-        ? `${timeFrame.duration} ${timeFrame.unit}s`
-        : `${timeFrame.unit}`)
-    : "across all time periods";
+        ? `${timeFrame.duration} ${timeFrame.unit}s.`
+        : `${timeFrame.unit}.`)
+    : "over all time.";
+
+  return {
+    mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_INCLUDE_QUERY,
+    text: `Requested to include documents ${timeFrameAsString}.`,
+    uri: "",
+  };
+}
+
+function makeWarningResource(
+  documents: CoreAPIDocument[],
+  topK: number,
+  timeFrame: TimeFrame | null
+): IncludeWarningResourceType | null {
+  const timeFrameAsString = timeFrame
+    ? "over the last " +
+      (timeFrame.duration > 1
+        ? `${timeFrame.duration} ${timeFrame.unit}s.`
+        : `${timeFrame.unit}.`)
+    : "over all time.";
 
   // Check if the number of chunks reached the limit defined in params.topK.
   const tooManyChunks =
@@ -364,17 +392,15 @@ function makeQueryResource(
     ? `${date.toLocaleString("default", { month: "short" })} ${date.getDate()}`
     : null;
 
-  return {
-    mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_INCLUDE_QUERY,
-    text: `Including ${timeFrameAsString}.`,
-    warning: tooManyChunks
-      ? {
-          title: `Limited retrieval (from now to ${retrievalDateLimitAsString}`,
-          description: `Too much data to retrieve! Retrieved ${topK} excerpts from ${documents?.length} recent docs, up to ${retrievalDateLimitAsString}.`,
-        }
-      : undefined,
-    uri: "",
-  };
+  return tooManyChunks
+    ? {
+        mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_INCLUDE_WARNING,
+        warningMessage: `Only includes documents until ${retrievalDateLimitAsString}.`,
+        includeTimeLimit: retrievalDateLimitAsString ?? "",
+        text: `Warning: could not include all documents ${timeFrameAsString}. Only includes documents until ${retrievalDateLimitAsString}.`,
+        uri: "",
+      }
+    : null;
 }
 
 export default createServer;
