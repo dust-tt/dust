@@ -10,7 +10,7 @@ import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_acti
 import type {
   IncludeQueryResourceType,
   IncludeResultResourceType,
-  IncludeWarningResourceType,
+  WarningResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
   getCoreSearchArgs,
@@ -372,7 +372,7 @@ function makeWarningResource(
   documents: CoreAPIDocument[],
   topK: number,
   timeFrame: TimeFrame | null
-): IncludeWarningResourceType | null {
+): WarningResourceType | null {
   const timeFrameAsString = timeFrame
     ? "over the last " +
       (timeFrame.duration > 1
@@ -394,9 +394,9 @@ function makeWarningResource(
 
   return tooManyChunks
     ? {
-        mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_INCLUDE_WARNING,
-        warningMessage: `Only includes documents since ${retrievalDateLimitAsString}.`,
-        includeTimeLimit: retrievalDateLimitAsString ?? "",
+        mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.WARNING,
+        warningTitle: `Only includes documents since ${retrievalDateLimitAsString}.`,
+        warningData: { includeTimeLimit: retrievalDateLimitAsString ?? "" },
         text: `Warning: could not include all documents ${timeFrameAsString}. Only includes documents since ${retrievalDateLimitAsString}.`,
         uri: "",
       }
