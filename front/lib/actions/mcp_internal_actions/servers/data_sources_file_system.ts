@@ -221,11 +221,12 @@ const createServer = (
             "has children (hasChildren: true), it means that it can be passed as a rootNodeId."
         ),
       mimeTypes: z
-        .string()
+        .array(z.string())
         .optional()
         .describe(
-          "The mime type to search for. If provided, only nodes with this mime type will be " +
-            "returned. If not provided, all mime types will be returned."
+          "The mime types to search for. If provided, only nodes with one of these mime types " +
+            "will be returned. If not provided, no filter will be applied. The mime types passed " +
+            "here must be one of the mime types found in the 'mimeType' field."
         ),
       dataSources:
         ConfigurableToolInputSchemas[
@@ -278,7 +279,7 @@ const createServer = (
         query,
         filter: {
           data_source_views: viewFilter,
-          mime_types: mimeTypes ? { in: [mimeTypes], not: null } : undefined,
+          mime_types: mimeTypes ? { in: mimeTypes, not: null } : undefined,
         },
         options: {
           cursor: nextPageCursor,
@@ -317,11 +318,12 @@ const createServer = (
             "If not provided, the content at the root of the filesystem will be shown."
         ),
       mimeTypes: z
-        .string()
+        .array(z.string())
         .optional()
         .describe(
-          "The mime type to search for. If provided, only nodes with this mime type will be " +
-            "returned. If not provided, all mime types will be returned."
+          "The mime types to search for. If provided, only nodes with one of these mime types " +
+            "will be returned. If not provided, no filter will be applied. The mime types passed " +
+            "here must be one of the mime types found in the 'mimeType' field."
         ),
       dataSources:
         ConfigurableToolInputSchemas[
@@ -367,7 +369,7 @@ const createServer = (
         searchResult = await coreAPI.searchNodes({
           filter: {
             data_source_views: dataSourceViewFilter,
-            mime_types: mimeTypes ? { in: [mimeTypes], not: null } : undefined,
+            mime_types: mimeTypes ? { in: mimeTypes, not: null } : undefined,
           },
           options,
         });
@@ -393,7 +395,7 @@ const createServer = (
             data_source_views: makeDataSourceViewFilter([dataSourceConfig]),
             node_ids: dataSourceConfig.parentsIn ?? undefined,
             parent_id: dataSourceConfig.parentsIn ? undefined : ROOT_PARENT_ID,
-            mime_types: mimeTypes ? { in: [mimeTypes], not: null } : undefined,
+            mime_types: mimeTypes ? { in: mimeTypes, not: null } : undefined,
           },
           options,
         });
@@ -407,7 +409,7 @@ const createServer = (
           filter: {
             data_source_views: dataSourceViewFilter,
             parent_id: nodeId,
-            mime_types: mimeTypes ? { in: [mimeTypes], not: null } : undefined,
+            mime_types: mimeTypes ? { in: mimeTypes, not: null } : undefined,
           },
           options,
         });
