@@ -280,17 +280,21 @@ export const CoreAPINodesSearchFilterSchema = t.intersection([
     data_source_views: t.array(CoreAPIDatasourceViewFilterSchema),
   }),
   t.partial({
-    excluded_node_mime_types: t.union([t.readonlyArray(t.string), t.undefined]),
     node_ids: t.array(t.string),
     node_types: t.array(t.string),
     parent_id: t.string,
     query: t.string,
+    mime_types: t.partial({
+      in: t.union([t.readonlyArray(t.string), t.null]),
+      not: t.union([t.readonlyArray(t.string), t.null]),
+    }),
   }),
 ]);
 
 export type CoreAPINodesSearchFilter = t.TypeOf<
   typeof CoreAPINodesSearchFilterSchema
 >;
+
 export interface CoreAPIDataSourceStatsResponse {
   data_source: {
     data_source_id: string;
