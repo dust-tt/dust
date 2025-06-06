@@ -1,6 +1,5 @@
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
 import {
   generateCSVFileAndSnippet,
@@ -9,6 +8,11 @@ import {
 } from "@app/lib/actions/action_file_helpers";
 import { DEFAULT_TABLES_QUERY_ACTION_NAME } from "@app/lib/actions/constants";
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import type {
+  SqlQueryOutputType,
+  ThinkingOutputType,
+  ToolGeneratedFileType,
+} from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { fetchAgentTableConfigurations } from "@app/lib/actions/mcp_internal_actions/servers/utils";
 import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
 import { runActionStreamed } from "@app/lib/actions/server";
@@ -28,7 +32,13 @@ import logger from "@app/logger/logger";
 import type { ConnectorProvider } from "@app/types";
 import { assertNever } from "@app/types";
 
-// We need a model with at least 54k tokens to run tables_query.
+// Types for the resources that are output by the tools of this server.
+type TablesQueryOutputResources =
+  | ThinkingOutputType
+  | SqlQueryOutputType
+  | ToolGeneratedFileType;
+
+export // We need a model with at least 54k tokens to run tables_query.
 const TABLES_QUERY_MIN_TOKEN = 50_000;
 const RENDERED_CONVERSATION_MIN_TOKEN = 4_000;
 export const TABLES_QUERY_SECTION_FILE_MIN_COLUMN_LENGTH = 500;
@@ -255,7 +265,10 @@ function createServer(
         unknown
       >;
 
-      const content: CallToolResult["content"] = [];
+      const content: {
+        type: "resource";
+        resource: TablesQueryOutputResources;
+      }[] = [];
 
       if (typeof output?.thinking === "string") {
         content.push({
@@ -296,7 +309,7 @@ function createServer(
           output: sanitizedOutput,
         });
 
-        //TODO(mcp): return the CSV file itself as a MCP resource and let the other side handle it
+        // TODO(mcp): return the CSV file itself as a MCP resource and let the other side handle it
         // Generate the CSV file.
         const { csvFile, csvSnippet } = await generateCSVFileAndSnippet(auth, {
           title: queryTitle,
@@ -324,7 +337,7 @@ function createServer(
           },
         });
 
-        //TODO(mcp) probably do the same for the section file
+        // TODO(mcp) probably do the same for the section file
         // Check if we should generate a section JSON file.
         const shouldGenerateSectionFile = results.some((result) =>
           Object.values(result).some(
