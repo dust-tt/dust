@@ -626,6 +626,7 @@ export interface UpsertTableArgs {
   tags?: string[] | null;
   parentId?: string | null;
   parents?: string[] | null;
+  allowEmptySchema?: boolean;
 }
 
 export function isUpsertTableArgs(
@@ -783,7 +784,7 @@ export async function upsertTable({
         });
       }
     }
-    if (schemaRes.value.schema.length === 0) {
+    if (!params.allowEmptySchema && schemaRes.value.schema.length === 0) {
       return new Err({
         name: "dust_error",
         code: "invalid_csv_content",
