@@ -10,7 +10,7 @@ import { getWorkOS } from "@app/lib/api/workos/client";
 import { Workspace } from "@app/lib/models/workspace";
 import { WorkOSPortalIntent } from "@app/lib/types/workos";
 import logger from "@app/logger/logger";
-import type { LightWorkspaceType, Result, WorkspaceType } from "@app/types";
+import type { LightWorkspaceType, Result } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
 
 function isWorkOSNotFoundEntityError(error: unknown): boolean {
@@ -162,7 +162,7 @@ export function generateWorkOSAdminPortalUrl({
 export async function getWorkOSOrganizationSSOConnections({
   workspace,
 }: {
-  workspace: WorkspaceType;
+  workspace: LightWorkspaceType;
 }): Promise<Result<Connection[], Error>> {
   if (!workspace.workOSOrganizationId) {
     return new Err(
@@ -184,7 +184,7 @@ export async function getWorkOSOrganizationSSOConnections({
 export async function getWorkOSOrganizationDSyncDirectories({
   workspace,
 }: {
-  workspace: WorkspaceType;
+  workspace: LightWorkspaceType;
 }): Promise<Result<Directory[], Error>> {
   if (!workspace.workOSOrganizationId) {
     return new Err(
