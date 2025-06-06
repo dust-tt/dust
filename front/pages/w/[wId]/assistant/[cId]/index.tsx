@@ -111,7 +111,7 @@ export default function AssistantConversation({
 
 AssistantConversation.getLayout = (
   page: React.ReactElement,
-  pageProps: any
+  pageProps: InferGetServerSidePropsType<typeof getServerSideProps>
 ) => {
   return (
     <AppRootLayout>
