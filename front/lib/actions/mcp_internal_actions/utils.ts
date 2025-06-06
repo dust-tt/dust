@@ -1,5 +1,3 @@
-import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-
 import type { MCPToolResult } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 
 /**
@@ -37,7 +35,7 @@ export const makeMCPToolTextSuccess = ({
 }: {
   message: string;
   result?: string;
-}): CallToolResult => {
+}): MCPToolResult => {
   if (!result) {
     return {
       isError: false,
@@ -59,7 +57,7 @@ export const makeMCPToolJSONSuccess = ({
 }: {
   message: string;
   result: object | string;
-}): CallToolResult => {
+}): MCPToolResult => {
   return {
     isError: false,
     content: [
