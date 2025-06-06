@@ -26,7 +26,7 @@ import WorkspaceAccessPanel from "@app/components/workspace/WorkspaceAccessPanel
 import { WorkspaceSection } from "@app/components/workspace/WorkspaceSection";
 import { checkWorkspaceSeatAvailabilityUsingAuth } from "@app/lib/api/workspace";
 import { getWorkspaceVerifiedDomains } from "@app/lib/api/workspace_domains";
-import { AuthenticatorProvider } from "@app/lib/context/authenticator_context";
+import { AuthenticatorProvider } from "@app/lib/context/authenticator";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { useSearchMembers } from "@app/lib/swr/memberships";

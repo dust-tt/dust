@@ -18,7 +18,7 @@ import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { isRestrictedFromAgentCreation } from "@app/lib/auth";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
-import { AuthenticatorProvider } from "@app/lib/context/authenticator_context";
+import { AuthenticatorProvider } from "@app/lib/context/authenticator";
 import {
   getDisplayNameForDataSource,
   isRemoteDatabase,

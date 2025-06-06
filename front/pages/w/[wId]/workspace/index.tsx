@@ -26,7 +26,7 @@ import { setupConnection } from "@app/components/spaces/AddConnectionMenu";
 import AppContentLayout from "@app/components/sparkle/AppContentLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { ProviderManagementModal } from "@app/components/workspace/ProviderManagementModal";
-import { AuthenticatorProvider } from "@app/lib/context/authenticator_context";
+import { AuthenticatorProvider } from "@app/lib/context/authenticator";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";

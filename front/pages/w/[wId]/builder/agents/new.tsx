@@ -14,7 +14,7 @@ import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { generateMockAgentConfigurationFromTemplate } from "@app/lib/api/assistant/templates";
 import config from "@app/lib/api/config";
 import { getFeatureFlags, isRestrictedFromAgentCreation } from "@app/lib/auth";
-import { AuthenticatorProvider } from "@app/lib/context/authenticator_context";
+import { AuthenticatorProvider } from "@app/lib/context/authenticator";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useAssistantTemplate } from "@app/lib/swr/assistants";
 import type {

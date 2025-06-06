@@ -6,7 +6,7 @@ import type { SpaceLayoutPageProps } from "@app/components/spaces/SpaceLayout";
 import { SpaceLayout } from "@app/components/spaces/SpaceLayout";
 import { SystemSpaceActionsList } from "@app/components/spaces/SystemSpaceActionsList";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
-import { AuthenticatorProvider } from "@app/lib/context/authenticator_context";
+import { AuthenticatorProvider } from "@app/lib/context/authenticator";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";

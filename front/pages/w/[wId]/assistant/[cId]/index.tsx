@@ -9,7 +9,7 @@ import ConversationLayout from "@app/components/assistant/conversation/Conversat
 import { useConversationsNavigation } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import config from "@app/lib/api/config";
-import { AuthenticatorProvider } from "@app/lib/context/authenticator_context";
+import { AuthenticatorProvider } from "@app/lib/context/authenticator";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import type { PlanType } from "@app/types";
 

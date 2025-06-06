@@ -17,7 +17,7 @@ import {
 } from "@app/components/providers/ProviderSetup";
 import AppContentLayout from "@app/components/sparkle/AppContentLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
-import { AuthenticatorProvider } from "@app/lib/context/authenticator_context";
+import { AuthenticatorProvider } from "@app/lib/context/authenticator";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import {
   APP_MODEL_PROVIDER_IDS,

@@ -37,7 +37,7 @@ import { subNavigationAdmin } from "@app/components/navigation/config";
 import AppContentLayout from "@app/components/sparkle/AppContentLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { useSubmitFunction } from "@app/lib/client/utils";
-import { AuthenticatorProvider } from "@app/lib/context/authenticator_context";
+import { AuthenticatorProvider } from "@app/lib/context/authenticator";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { useKeys } from "@app/lib/swr/apps";

@@ -18,7 +18,7 @@ import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideP
 import { DropzoneContainer } from "@app/components/misc/DropzoneContainer";
 import { updateMessagePagesWithOptimisticData } from "@app/lib/client/conversation/event_handlers";
 import { getRandomGreetingForName } from "@app/lib/client/greetings";
-import { useAuthenticator } from "@app/lib/context/authenticator_context";
+import { useAuthenticator } from "@app/lib/context/authenticator";
 import type { DustError } from "@app/lib/error";
 import {
   useConversationMessages,
