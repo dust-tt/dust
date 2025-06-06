@@ -16,20 +16,11 @@ import {
   getBearerToken,
 } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
-import { Workspace } from "@app/lib/models/workspace";
-import { GroupResource } from "@app/lib/resources/group_resource";
-import { MembershipResource } from "@app/lib/resources/membership_resource";
-import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
-import { UserResource } from "@app/lib/resources/user_resource";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
+import type { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
 import type { NextApiRequestWithContext } from "@app/logger/withlogging";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import type {
-  RoleType,
-  UserTypeWithWorkspaces,
-  WithAPIErrorResponse,
-} from "@app/types";
+import type { UserTypeWithWorkspaces, WithAPIErrorResponse } from "@app/types";
 import { getGroupIdsFromHeaders, getUserEmailFromHeaders } from "@app/types";
 import type { APIErrorWithStatusCode } from "@app/types/error";
 import type { Result } from "@app/types/shared/result";
