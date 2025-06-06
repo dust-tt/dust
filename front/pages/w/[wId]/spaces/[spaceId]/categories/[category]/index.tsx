@@ -12,7 +12,7 @@ import {
   augmentDataSourceWithConnectorDetails,
   getDataSources,
 } from "@app/lib/api/data_sources";
-import { AuthenticatorProvider } from "@app/lib/context/authenticator_context";
+import { AuthenticatorProvider } from "@app/lib/context/authenticator";
 import { isManaged } from "@app/lib/data_sources";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import type { ActionApp } from "@app/lib/registry";

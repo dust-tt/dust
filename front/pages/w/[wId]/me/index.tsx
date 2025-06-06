@@ -8,7 +8,7 @@ import { Preferences } from "@app/components/me/Preferences";
 import { UserToolsTable } from "@app/components/me/UserToolsTable";
 import AppContentLayout from "@app/components/sparkle/AppContentLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
-import { AuthenticatorProvider } from "@app/lib/context/authenticator_context";
+import { AuthenticatorProvider } from "@app/lib/context/authenticator";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useUser } from "@app/lib/swr/user";
 import type {

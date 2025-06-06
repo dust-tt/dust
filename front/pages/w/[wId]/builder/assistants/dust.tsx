@@ -16,7 +16,7 @@ import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitl
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
-import { AuthenticatorProvider } from "@app/lib/context/authenticator_context";
+import { AuthenticatorProvider } from "@app/lib/context/authenticator";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { SpaceResource } from "@app/lib/resources/space_resource";

@@ -9,7 +9,7 @@ import { useConversationsNavigation } from "@app/components/assistant/conversati
 import { CONVERSATION_PARENT_SCROLL_DIV_ID } from "@app/components/assistant/conversation/lib";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import config from "@app/lib/api/config";
-import { AuthenticatorProvider } from "@app/lib/context/authenticator_context";
+import { AuthenticatorProvider } from "@app/lib/context/authenticator";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import type { PlanType } from "@app/types";
 

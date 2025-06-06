@@ -7,7 +7,7 @@ import type { SpaceLayoutPageProps } from "@app/components/spaces/SpaceLayout";
 import { SpaceLayout } from "@app/components/spaces/SpaceLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import config from "@app/lib/api/config";
-import { AuthenticatorProvider } from "@app/lib/context/authenticator_context";
+import { AuthenticatorProvider } from "@app/lib/context/authenticator";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";

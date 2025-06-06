@@ -19,7 +19,7 @@ import { FeatureAccessButton } from "@app/components/labs/FeatureAccessButton";
 import AppContentLayout from "@app/components/sparkle/AppContentLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { getFeatureFlags } from "@app/lib/auth";
-import { AuthenticatorProvider } from "@app/lib/context/authenticator_context";
+import { AuthenticatorProvider } from "@app/lib/context/authenticator";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useDataSourceViews } from "@app/lib/swr/data_source_views";
 import { useLabsConnectionConfigurations } from "@app/lib/swr/labs";
