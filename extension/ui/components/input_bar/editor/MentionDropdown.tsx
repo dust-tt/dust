@@ -1,5 +1,10 @@
 import type { EditorSuggestion } from "@app/ui/components/input_bar/editor/suggestion";
-import { Avatar, DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@dust-tt/sparkle";
+import {
+  Avatar,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from "@dust-tt/sparkle";
 import { Spinner } from "@dust-tt/sparkle";
 import { cn } from "@dust-tt/sparkle";
 import React, { useCallback, useEffect, useRef, useState } from "react";

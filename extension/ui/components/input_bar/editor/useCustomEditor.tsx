@@ -7,20 +7,53 @@ import { URLDetectionExtension } from "@app/ui/components/input_bar/editor/exten
 import { URLStorageExtension } from "@app/ui/components/input_bar/editor/extensions/URLStorageExtension";
 import { createMarkdownSerializer } from "@app/ui/components/input_bar/editor/markdownSerializer";
 import type { EditorSuggestions } from "@app/ui/components/input_bar/editor/suggestion";
+import type { SuggestionProps } from "@app/ui/components/input_bar/editor/useMentionDropdown";
 import { MentionPluginKey } from "@tiptap/extension-mention";
 import Paragraph from "@tiptap/extension-paragraph";
 import Placeholder from "@tiptap/extension-placeholder";
 import type { Editor, JSONContent } from "@tiptap/react";
 import { useEditor } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
+import type { SuggestionKeyDownProps } from "@tiptap/suggestion";
 import { useEffect, useMemo } from "react";
-import { SuggestionKeyDownProps } from "@tiptap/suggestion";
-import { SuggestionProps } from "@app/ui/components/input_bar/editor/useMentionDropdown";
 
-const ParagraphExtension = Paragraph.extend({
+const SUBMIT_MESSAGE_KEYS = ["enter", "cmd+enter"] as const;
+export type SubmitMessageKey = (typeof SUBMIT_MESSAGE_KEYS)[number];
+
+export const isSubmitMessageKey = (key: unknown): key is SubmitMessageKey => {
+  if (typeof key !== "string") {
+    return false;
+  }
+  return SUBMIT_MESSAGE_KEYS.includes(key as SubmitMessageKey);
+};
+
+export const ParagraphExtension = Paragraph.extend({
   addKeyboardShortcuts() {
+    const submitMessageKey = localStorage.getItem("submitMessageKey");
+    const isCmdEnter =
+      isSubmitMessageKey(submitMessageKey) && submitMessageKey === "cmd+enter";
+
     return {
-      "Shift-Enter": () => this.editor.commands.splitBlock(),
+      ...this.parent?.(),
+
+      "Shift-Enter": () => {
+        if (isCmdEnter) {
+          return false;
+        }
+
+        // Chain is what Tiptap does by default for Enter:
+        // - newlineInCode: insert line breaks in code blocks
+        // - splitListItem: if in a list item, create new list item
+        // - liftEmptyBlock: if empty block (like empty quote), exit it
+        // - splitBlock: fallback -> normal line break
+        return this.editor.commands.first(({ commands }) => [
+          () => commands.newlineInCode(),
+          () => commands.splitListItem("listItem"),
+          () => commands.liftEmptyBlock(),
+          () => commands.createParagraphNear(),
+          () => commands.splitBlock(),
+        ]);
+      },
     };
   },
 });
@@ -217,7 +250,7 @@ const useCustomEditor = ({
   suggestions,
   disableAutoFocus,
   onUrlDetected,
-  suggestionHandler
+  suggestionHandler,
 }: CustomEditorProps) => {
   const extensions = [
     StarterKit.configure({
@@ -244,7 +277,7 @@ const useCustomEditor = ({
     URLStorageExtension,
     URLDetectionExtension.configure({
       onUrlDetected,
-    })
+    }),
   ];
 
   const editor = useEditor({

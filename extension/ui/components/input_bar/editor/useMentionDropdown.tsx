@@ -1,9 +1,11 @@
-import type { EditorSuggestion, EditorSuggestions } from "@app/ui/components/input_bar/editor/suggestion";
+import type {
+  EditorSuggestion,
+  EditorSuggestions,
+} from "@app/ui/components/input_bar/editor/suggestion";
 import { filterSuggestions } from "@app/ui/components/input_bar/editor/suggestion";
 import type { Editor } from "@tiptap/react";
 import type { SuggestionKeyDownProps } from "@tiptap/suggestion";
 import { useCallback, useEffect, useRef, useState } from "react";
-
 
 interface CommandFunction {
   (props: { id: string; label: string }): void;
