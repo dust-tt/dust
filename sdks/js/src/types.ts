@@ -837,6 +837,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "gmail_tool"
   | "google_calendar_tool"
   | "agent_builder_v2"
+  | "disallow_agent_creation_to_users"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;

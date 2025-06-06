@@ -33,6 +33,7 @@ import {
   useConversations,
   useDeleteConversation,
 } from "@app/lib/swr/conversations";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { removeDiacritics, subFilter } from "@app/lib/utils";
 import type { ConversationWithoutContentType, WorkspaceType } from "@app/types";
 import { isBuilder } from "@app/types";
@@ -62,6 +63,14 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
     ConversationWithoutContentType[]
   >([]);
   const doDelete = useDeleteConversation(owner);
+
+  const { featureFlags } = useFeatureFlags({
+    workspaceId: owner.sId,
+  });
+
+  const isRestrictedFromAgentCreation =
+    featureFlags.includes("disallow_agent_creation_to_users") &&
+    !isBuilder(owner);
 
   const [showDeleteDialog, setShowDeleteDialog] = useState<
     "all" | "selection" | null
@@ -243,14 +252,18 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                     <Button size="sm" icon={MoreIcon} variant="outline" />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent>
-                    <DropdownMenuLabel>Agent</DropdownMenuLabel>
-                    <DropdownMenuItem
-                      href={`/w/${owner.sId}/builder/assistants/create`}
-                      icon={PlusIcon}
-                      label="Create new agent"
-                      data-gtm-label="assistantCreationButton"
-                      data-gtm-location="sidebarMenu"
-                    />
+                    {!isRestrictedFromAgentCreation && (
+                      <>
+                        <DropdownMenuLabel>Agent</DropdownMenuLabel>
+                        <DropdownMenuItem
+                          href={`/w/${owner.sId}/builder/assistants/create`}
+                          icon={PlusIcon}
+                          label="Create new agent"
+                          data-gtm-label="assistantCreationButton"
+                          data-gtm-location="sidebarMenu"
+                        />
+                      </>
+                    )}
                     {isBuilder(owner) && (
                       <DropdownMenuItem
                         href={`/w/${owner.sId}/builder/assistants`}
