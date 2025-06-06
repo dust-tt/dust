@@ -22,6 +22,22 @@ export function isWorkOSIpAddress(ipAddress: string) {
   return workosIpAddresses.includes(ipAddress);
 }
 
+/**
+ * Extracts the client IP address from request headers.
+ * Handles x-forwarded-for header which can contain comma-separated IPs from proxy chains.
+ * Returns the first IP (original client) or null if no forwarded header exists.
+ */
+export function getClientIpFromHeaders(headers: {
+  [key: string]: string | string[] | undefined;
+}): string | null {
+  const forwardedFor = headers["x-forwarded-for"];
+  if (forwardedFor) {
+    const ip = Array.isArray(forwardedFor) ? forwardedFor[0] : forwardedFor;
+    return ip.split(",")[0].trim();
+  }
+  return null;
+}
+
 export async function validateWorkOSWebhookEvent(
   payload: unknown,
   { signatureHeader }: { signatureHeader: string }
