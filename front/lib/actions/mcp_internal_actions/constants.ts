@@ -189,12 +189,9 @@ export const INTERNAL_MCP_SERVERS: Record<
     id: 14,
     availability: "manual",
     isRestricted: (plan, featureFlags) => {
-      if (featureFlags.includes("salesforce_tool")) {
-        return true;
-      }
-      // Below to be replaced by: return plan.limits.connections.isSalesforceAllowed; when we are ready to release the feature.
-      void plan;
-      return false;
+      // When we are ready to release the feature, the condition will be:
+      // return featureFlags.includes("salesforce_tool") || plan.limits.connections.isSalesforceAllowed;
+      return featureFlags.includes("salesforce_tool");
     },
     tools_stakes: {
       execute_read_query: "low",
@@ -240,9 +237,6 @@ export const INTERNAL_MCP_SERVERS: Record<
   search: {
     id: 1006,
     availability: "auto",
-    isRestricted: (plan, featureFlags) => {
-      return featureFlags.includes("dev_mcp_actions");
-    },
   },
   reasoning: {
     id: 1007,
