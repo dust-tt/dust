@@ -5,7 +5,7 @@ import {
   getWorkOSOrganization,
   removeWorkOSOrganizationDomain,
 } from "@app/lib/api/workos/organization";
-import { createOrGetWorkOSOrganization } from "@app/lib/api/workos/organization";
+import { getOrCreateWorkOSOrganization } from "@app/lib/api/workos/organization";
 import type { Authenticator } from "@app/lib/auth";
 import { Workspace } from "@app/lib/models/workspace";
 import { WorkspaceHasDomainModel } from "@app/lib/models/workspace_has_domain";
@@ -49,7 +49,7 @@ async function handleAddDomain(
     );
   }
 
-  const workOSOrganizationRes = await createOrGetWorkOSOrganization(workspace, {
+  const workOSOrganizationRes = await getOrCreateWorkOSOrganization(workspace, {
     domain,
   });
   if (workOSOrganizationRes.isErr()) {

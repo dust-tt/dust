@@ -1,7 +1,11 @@
 import type { Event, OrganizationDomain } from "@workos-inc/node";
 import assert from "assert";
 
-import { findWorkspaceByWorkOSOrganizationId } from "@app/lib/api/workspace";
+import { getOrCreateWorkOSOrganization } from "@app/lib/api/workos/organization";
+import {
+  findWorkspaceByWorkOSOrganizationId,
+  getWorkspaceInfos,
+} from "@app/lib/api/workspace";
 import {
   deleteWorkspaceDomain,
   upsertWorkspaceDomain,
@@ -78,4 +82,31 @@ async function handleOrganizationDomainVerificationFailed(
   eventData: OrganizationDomain
 ) {
   await handleOrganizationDomainEvent(eventData, "failed");
+}
+
+export async function handleWorkspaceSubscriptionCreated({
+  workspaceId,
+}: {
+  workspaceId: string;
+}) {
+  const workspace = await getWorkspaceInfos(workspaceId);
+  if (!workspace) {
+    logger.info({ workspaceId }, "Workspace not found");
+    throw new Error(`Workspace not found for workspace ${workspaceId}`);
+  }
+
+  // If workspace already has an organization, skip.
+  if (workspace.workOSOrganizationId) {
+    logger.info({ workspaceId }, "Workspace already has a WorkOS organization");
+    return;
+  }
+
+  const organisationRes = await getOrCreateWorkOSOrganization(workspace);
+  if (organisationRes.isErr()) {
+    logger.error(
+      { error: organisationRes.error },
+      "Error creating WorkOS organization"
+    );
+    throw organisationRes.error;
+  }
 }

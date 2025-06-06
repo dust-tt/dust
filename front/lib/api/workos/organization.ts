@@ -8,10 +8,9 @@ import {
 import { config } from "@app/lib/api/regions/config";
 import { getWorkOS } from "@app/lib/api/workos/client";
 import { Workspace } from "@app/lib/models/workspace";
-import { WorkspaceHasDomainModel } from "@app/lib/models/workspace_has_domain";
 import { WorkOSPortalIntent } from "@app/lib/types/workos";
 import logger from "@app/logger/logger";
-import type { LightWorkspaceType, Result, WorkspaceType } from "@app/types";
+import type { LightWorkspaceType, Result } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
 
 function isWorkOSNotFoundEntityError(error: unknown): boolean {
@@ -43,35 +42,9 @@ export async function getWorkOSOrganization(
   }
 }
 
-export async function shouldCreateWorkOSOrganization(
-  workspace: WorkspaceType
-): Promise<
-  | { shouldCreate: false; domain: undefined }
-  | { shouldCreate: true; domain: WorkspaceHasDomainModel }
-> {
-  if (workspace.workOSOrganizationId) {
-    return { shouldCreate: false, domain: undefined };
-  }
-
-  const domain = await WorkspaceHasDomainModel.findOne({
-    where: {
-      workspaceId: workspace.id,
-    },
-  });
-
-  if (!domain) {
-    return { shouldCreate: false, domain: undefined };
-  }
-
-  return {
-    shouldCreate: true,
-    domain,
-  };
-}
-
-export async function createOrGetWorkOSOrganization(
+export async function getOrCreateWorkOSOrganization(
   workspace: LightWorkspaceType,
-  { domain }: { domain: string }
+  { domain }: { domain?: string } = {}
 ): Promise<Result<Organization, Error>> {
   try {
     const organizationRes = await getWorkOSOrganization(workspace);
@@ -87,12 +60,14 @@ export async function createOrGetWorkOSOrganization(
         metadata: {
           region: config.getCurrentRegion(),
         },
-        domainData: [
-          {
-            domain,
-            state: DomainDataState.Verified,
-          },
-        ],
+        domainData: domain
+          ? [
+              {
+                domain,
+                state: DomainDataState.Verified,
+              },
+            ]
+          : undefined,
       });
     }
 
@@ -187,7 +162,7 @@ export function generateWorkOSAdminPortalUrl({
 export async function getWorkOSOrganizationSSOConnections({
   workspace,
 }: {
-  workspace: WorkspaceType;
+  workspace: LightWorkspaceType;
 }): Promise<Result<Connection[], Error>> {
   if (!workspace.workOSOrganizationId) {
     return new Err(
@@ -209,7 +184,7 @@ export async function getWorkOSOrganizationSSOConnections({
 export async function getWorkOSOrganizationDSyncDirectories({
   workspace,
 }: {
-  workspace: WorkspaceType;
+  workspace: LightWorkspaceType;
 }): Promise<Result<Directory[], Error>> {
   if (!workspace.workOSOrganizationId) {
     return new Err(
