@@ -21,7 +21,11 @@ import logger from "@app/logger/logger";
 import type { NextApiRequestWithContext } from "@app/logger/withlogging";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { UserTypeWithWorkspaces, WithAPIErrorResponse } from "@app/types";
-import { getGroupIdsFromHeaders, getUserEmailFromHeaders } from "@app/types";
+import {
+  getGroupIdsFromHeaders,
+  getRoleFromHeaders,
+  getUserEmailFromHeaders,
+} from "@app/types";
 import type { APIErrorWithStatusCode } from "@app/types/error";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -339,7 +343,8 @@ export function withPublicAPIAuthentication<T, U extends boolean>(
       const keyAndWorkspaceAuth = await Authenticator.fromKey(
         keyRes.value,
         wId,
-        getGroupIdsFromHeaders(req.headers)
+        getGroupIdsFromHeaders(req.headers),
+        getRoleFromHeaders(req.headers)
       );
       const { keyAuth } = keyAndWorkspaceAuth;
       let { workspaceAuth } = keyAndWorkspaceAuth;

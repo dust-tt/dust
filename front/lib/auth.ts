@@ -440,12 +440,17 @@ export class Authenticator {
    *
    * @param key Key the API key
    * @param wId the target workspaceId
+   * @param requestedGroupIds optional groups to assign the auth in place of the key groups (only
+   *                                   possible with a system key).
+   * @param requestedRole optional role to assign the auth in place of the key role (only possible
+   *                               with a system key).
    * @returns Promise<{ workspaceAuth: Authenticator, keyAuth: Authenticator }>
    */
   static async fromKey(
     key: KeyResource,
     wId: string,
-    requestedGroupIds?: string[]
+    requestedGroupIds?: string[],
+    requestedRole?: RoleType
   ): Promise<{
     workspaceAuth: Authenticator;
     keyAuth: Authenticator;
@@ -474,10 +479,11 @@ export class Authenticator {
     let role = "none" as RoleType;
     const isKeyWorkspace = keyWorkspace.id === workspace?.id;
     if (isKeyWorkspace) {
-      // System keys have admin role on their workspace.
       if (key.isSystem) {
-        role = "admin";
+        // System keys have admin role on their workspace unless requested otherwise.
+        role = requestedRole ?? "admin";
       } else {
+        // Regular keys have builder role on their workspace.
         role = "builder";
       }
     }
@@ -493,28 +499,27 @@ export class Authenticator {
     let keySubscription: SubscriptionResource | null = null;
 
     if (workspace) {
-      [keyGroups, requestedGroups, keySubscription, workspaceSubscription] =
-        await Promise.all([
-          // Key related attributes.
-          GroupResource.listWorkspaceGroupsFromKey(key),
-          requestedGroupIds
-            ? GroupResource.listGroupsWithSystemKey(key, requestedGroupIds)
-            : [],
-          getSubscriptionForWorkspace(keyWorkspace),
-          // Workspace related attributes.
-          getSubscriptionForWorkspace(workspace),
-        ]);
+      if (requestedGroupIds && key.isSystem) {
+        [requestedGroups, keySubscription, workspaceSubscription] =
+          await Promise.all([
+            // Key related attributes.
+            GroupResource.listGroupsWithSystemKey(key, requestedGroupIds),
+            getSubscriptionForWorkspace(keyWorkspace),
+            // Workspace related attributes.
+            getSubscriptionForWorkspace(workspace),
+          ]);
+      } else {
+        [keyGroups, keySubscription, workspaceSubscription] = await Promise.all(
+          [
+            GroupResource.listWorkspaceGroupsFromKey(key),
+            getSubscriptionForWorkspace(keyWorkspace),
+            // Workspace related attributes.
+            getSubscriptionForWorkspace(workspace),
+          ]
+        );
+      }
     }
-
-    const allGroups = Object.entries(
-      keyGroups.concat(requestedGroups).reduce(
-        (acc, group) => {
-          acc[group.id] = group;
-          return acc;
-        },
-        {} as Record<string, GroupResource>
-      )
-    ).map(([, group]) => group);
+    const allGroups = requestedGroupIds ? requestedGroups : keyGroups;
 
     return {
       workspaceAuth: new Authenticator({

@@ -21,7 +21,13 @@ import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
-import { Err, getHeaderFromGroupIds, normalizeError, Ok } from "@app/types";
+import {
+  Err,
+  getHeaderFromGroupIds,
+  getHeaderFromRole,
+  normalizeError,
+  Ok,
+} from "@app/types";
 
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "run_agent",
@@ -174,13 +180,17 @@ export default async function createServer(
       }
       const childAgentId = childAgentIdRes.value;
 
-      const prodCredentials = await prodAPICredentialsForOwner(owner);
       const requestedGroupIds = auth.groups().map((g) => g.sId);
+
+      const prodCredentials = await prodAPICredentialsForOwner(owner);
       const api = new DustAPI(
         config.getDustAPIConfig(),
         {
           ...prodCredentials,
-          extraHeaders: getHeaderFromGroupIds(requestedGroupIds),
+          extraHeaders: {
+            ...getHeaderFromGroupIds(requestedGroupIds),
+            ...getHeaderFromRole(auth.role()),
+          },
         },
         logger
       );
