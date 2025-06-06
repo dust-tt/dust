@@ -1,5 +1,6 @@
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import assert from "assert";
 import { trim } from "lodash";
 import { z } from "zod";
@@ -9,7 +10,6 @@ import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_acti
 import type {
   IncludeQueryResourceType,
   IncludeResultResourceType,
-  MCPToolResult,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
   getCoreSearchArgs,
@@ -91,7 +91,7 @@ function createServer(
     dataSources: DataSourcesToolConfigurationType;
     tagsIn?: string[];
     tagsNot?: string[];
-  }): Promise<MCPToolResult> => {
+  }): Promise<CallToolResult> => {
     const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
     const credentials = dustManagedCredentials();
 

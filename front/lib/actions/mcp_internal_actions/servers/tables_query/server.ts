@@ -1,5 +1,6 @@
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
 import {
   generateCSVFileAndSnippet,
@@ -8,7 +9,6 @@ import {
 } from "@app/lib/actions/action_file_helpers";
 import { DEFAULT_TABLES_QUERY_ACTION_NAME } from "@app/lib/actions/constants";
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
-import type { MCPToolResultContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { fetchAgentTableConfigurations } from "@app/lib/actions/mcp_internal_actions/servers/utils";
 import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
 import { runActionStreamed } from "@app/lib/actions/server";
@@ -255,7 +255,7 @@ function createServer(
         unknown
       >;
 
-      const content: MCPToolResultContentType[] = [];
+      const content: CallToolResult["content"] = [];
 
       if (typeof output?.thinking === "string") {
         content.push({

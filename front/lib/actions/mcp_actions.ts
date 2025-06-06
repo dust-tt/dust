@@ -1,6 +1,9 @@
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import type { McpError } from "@modelcontextprotocol/sdk/types.js";
+import type {
+  CallToolResult,
+  McpError,
+} from "@modelcontextprotocol/sdk/types.js";
 import { ProgressNotificationSchema } from "@modelcontextprotocol/sdk/types.js";
 import assert from "assert";
 import EventEmitter from "events";
@@ -30,8 +33,6 @@ import {
 import { findMatchingSubSchemas } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type {
   MCPProgressNotificationType,
-  MCPToolResult,
-  MCPToolResultContentType,
   PersonalAuthenticationRequiredErrorResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { isMCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
@@ -175,7 +176,7 @@ type MCPCallToolEvent =
   | {
       type: "result";
       result: Result<
-        MCPToolResult["content"],
+        CallToolResult["content"],
         Error | McpError | MCPServerPersonalAuthenticationRequiredError
       >;
     };
@@ -309,8 +310,8 @@ export async function* tryCallMCPTool(
     const toolCallResult = await toolPromise;
 
     // Type inference is not working here because of them using passthrough in the zod schema.
-    const content: MCPToolResultContentType[] = (toolCallResult.content ??
-      []) as MCPToolResultContentType[];
+    const content: CallToolResult["content"] = (toolCallResult.content ??
+      []) as CallToolResult["content"];
 
     // Do not raise an error here as it will break the conversation.
     // Let the model decide what to do.
@@ -367,7 +368,7 @@ export async function* tryCallMCPTool(
     }
 
     const isValidContentSize = (
-      content: MCPToolResultContentType[]
+      content: CallToolResult["content"]
     ): boolean => {
       return !content.some(
         (item) => calculateContentSize(item) > getMaxSize(item)
@@ -375,9 +376,9 @@ export async function* tryCallMCPTool(
     };
 
     const generateContentMetadata = (
-      content: MCPToolResultContentType[]
+      content: CallToolResult["content"]
     ): {
-      type: "text" | "image" | "resource";
+      type: "text" | "image" | "resource" | "audio";
       byteSize: number;
       maxSize: number;
     }[] => {
@@ -395,7 +396,7 @@ export async function* tryCallMCPTool(
       return result;
     };
 
-    const getMaxSize = (item: MCPToolResultContentType) => {
+    const getMaxSize = (item: CallToolResult["content"][number]) => {
       switch (item.type) {
         case "text":
           return MAX_TEXT_CONTENT_SIZE;
@@ -408,17 +409,25 @@ export async function* tryCallMCPTool(
       }
     };
 
-    const calculateContentSize = (item: MCPToolResultContentType): number => {
+    const calculateContentSize = (
+      item: CallToolResult["content"][number]
+    ): number => {
       switch (item.type) {
         case "text":
           return item.text.length * 2;
         case "image":
           return Math.ceil((item.data.length * 3) / 4);
         case "resource":
-          if ("blob" in item.resource && item.resource.blob) {
+          if (
+            "blob" in item.resource &&
+            item.resource.blob &&
+            typeof item.resource.blob === "string"
+          ) {
             return Math.ceil((item.resource.blob.length * 3) / 4);
           }
           return 0;
+        case "audio":
+          return item.data.length;
         default:
           return 0;
       }
