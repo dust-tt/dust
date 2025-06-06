@@ -16,8 +16,8 @@ import {
 } from "@app/lib/actions/mcp_helper";
 import type { MCPServerType } from "@app/lib/api/mcp";
 import {
-  useCheckOAuthConnection,
   useCreateMCPServerConnection,
+  useDiscoverOAuthMetadata,
 } from "@app/lib/swr/mcp_servers";
 import type { OAuthCredentials, WorkspaceType } from "@app/types";
 import { OAUTH_PROVIDER_NAMES, setupOAuthConnection } from "@app/types";
@@ -47,7 +47,7 @@ export function ConnectMCPServerDialog({
     connectionType: "workspace",
   });
 
-  const { checkOAuthConnection } = useCheckOAuthConnection(owner);
+  const { discoverOAuthMetadata } = useDiscoverOAuthMetadata(owner);
 
   const resetState = useCallback(() => {
     setIsLoading(false);
@@ -66,14 +66,16 @@ export function ConnectMCPServerDialog({
     let extraConfig: OAuthCredentials = authCredentials ?? {};
 
     if (isRemoteMCPServerType(mcpServer) && mcpServer.url) {
-      const checkOAuthConnectionRes = await checkOAuthConnection(mcpServer.url);
+      const discoverOAuthMetadataRes = await discoverOAuthMetadata(
+        mcpServer.url
+      );
       if (
-        checkOAuthConnectionRes.isOk() &&
-        checkOAuthConnectionRes.value.oauthRequired
+        discoverOAuthMetadataRes.isOk() &&
+        discoverOAuthMetadataRes.value.oauthRequired
       ) {
         extraConfig = {
           ...extraConfig,
-          ...checkOAuthConnectionRes.value.connectionMetadata,
+          ...discoverOAuthMetadataRes.value.connectionMetadata,
         };
       }
     }

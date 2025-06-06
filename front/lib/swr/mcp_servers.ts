@@ -25,11 +25,11 @@ import type {
 import type { SyncMCPServerResponseBody } from "@app/pages/api/w/[wId]/mcp/[serverId]/sync";
 import type { GetMCPServerToolsPermissionsResponseBody } from "@app/pages/api/w/[wId]/mcp/[serverId]/tools";
 import type { PatchMCPServerToolsPermissionsResponseBody } from "@app/pages/api/w/[wId]/mcp/[serverId]/tools/[toolName]";
-import type { CheckOAuthResponseBody } from "@app/pages/api/w/[wId]/mcp/check_oauth";
 import type {
   GetConnectionsResponseBody,
   PostConnectionResponseBody,
 } from "@app/pages/api/w/[wId]/mcp/connections/[connectionType]";
+import type { DiscoverOAuthMetadataResponseBody } from "@app/pages/api/w/[wId]/mcp/discover_oauth_metadata";
 import type {
   LightWorkspaceType,
   OAuthProvider,
@@ -200,17 +200,25 @@ export function useCreateInternalMCPServer(owner: LightWorkspaceType) {
 }
 
 /**
- * Hook to check if an OAuth connection is required for a remote MCP server.
+ * Hook to discover the OAuth metadata for a remote MCP server.
+ * It is used to check if the server requires OAuth authentication.
+ * If it does, it returns the OAuth connection metadata with the oauthRequired set to true.
+ * If it does not, it returns the oauthRequired set to false.
+ *
+ * Note: this hook should not be called too frequently, as it is likely rate limited by the mcp server provider.
  */
-export function useCheckOAuthConnection(owner: LightWorkspaceType) {
-  const checkOAuthConnection = async (
+export function useDiscoverOAuthMetadata(owner: LightWorkspaceType) {
+  const discoverOAuthMetadata = async (
     url: string
-  ): Promise<Result<CheckOAuthResponseBody, Error>> => {
-    const response = await fetch(`/api/w/${owner.sId}/mcp/check_oauth`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url }),
-    });
+  ): Promise<Result<DiscoverOAuthMetadataResponseBody, Error>> => {
+    const response = await fetch(
+      `/api/w/${owner.sId}/mcp/discover_oauth_metadata`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+      }
+    );
 
     if (!response.ok) {
       const error = await response.json();
@@ -224,7 +232,7 @@ export function useCheckOAuthConnection(owner: LightWorkspaceType) {
     return new Ok(await response.json());
   };
 
-  return { checkOAuthConnection };
+  return { discoverOAuthMetadata };
 }
 
 /**

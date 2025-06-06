@@ -16,10 +16,10 @@ import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata";
 import type { MCPServerType } from "@app/lib/api/mcp";
 import {
-  useCheckOAuthConnection,
   useCreateInternalMCPServer,
   useCreateMCPServerConnection,
   useCreateRemoteMCPServer,
+  useDiscoverOAuthMetadata,
 } from "@app/lib/swr/mcp_servers";
 import type { OAuthCredentials, WorkspaceType } from "@app/types";
 import {
@@ -58,7 +58,7 @@ export function CreateMCPServerDialog({
     null
   );
 
-  const { checkOAuthConnection } = useCheckOAuthConnection(owner);
+  const { discoverOAuthMetadata } = useDiscoverOAuthMetadata(owner);
   const { createWithURL } = useCreateRemoteMCPServer(owner);
   const { createMCPServerConnection } = useCreateMCPServerConnection({
     owner,
@@ -145,11 +145,11 @@ export function CreateMCPServerDialog({
         setIsLoading(true);
 
         let connectionId: string | undefined;
-        const checkOAuthConnectionRes =
-          await checkOAuthConnection(remoteServerUrl);
+        const discoverOAuthMetadataRes =
+          await discoverOAuthMetadata(remoteServerUrl);
         if (
-          checkOAuthConnectionRes.isOk() &&
-          checkOAuthConnectionRes.value.oauthRequired
+          discoverOAuthMetadataRes.isOk() &&
+          discoverOAuthMetadataRes.value.oauthRequired
         ) {
           sendNotification({
             title: "Authorization required",
@@ -162,7 +162,7 @@ export function CreateMCPServerDialog({
             owner,
             provider: "mcp",
             useCase: "platform_actions",
-            extraConfig: checkOAuthConnectionRes.value.connectionMetadata,
+            extraConfig: discoverOAuthMetadataRes.value.connectionMetadata,
           });
           if (cRes.isOk()) {
             connectionId = cRes.value.connection_id;

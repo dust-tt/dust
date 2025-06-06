@@ -2,7 +2,7 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { fetchRemoteServerMetaDataByURL } from "@app/lib/actions/mcp_metadata";
+import { connectToMCPServer } from "@app/lib/actions/mcp_metadata";
 import { MCPOAuthRequiredError } from "@app/lib/actions/mcp_oauth_error";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { MCPOAuthConnectionMetadataType } from "@app/lib/api/oauth/providers/mcp";
@@ -10,7 +10,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 
-export type CheckOAuthResponseBody =
+export type DiscoverOAuthMetadataResponseBody =
   | {
       oauthRequired: true;
       connectionMetadata: MCPOAuthConnectionMetadataType;
@@ -23,9 +23,17 @@ const PostQueryParamsSchema = t.type({
   url: t.string,
 });
 
+/**
+ * This endpoint is used to discover the OAuth metadata for a remote MCP server.
+ * It is used to check if the server requires OAuth authentication.
+ * If it does, it returns the OAuth connection metadata to the client to allow them to handle the oauth flow.
+ * If it does not, it returns a 200 status code with oauthRequired set to false.
+ *
+ * Note: this endpoint should not be called too frequently, as it is likely rate limited by the mcp server provider.
+ */
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<CheckOAuthResponseBody>>,
+  res: NextApiResponse<WithAPIErrorResponse<DiscoverOAuthMetadataResponseBody>>,
   auth: Authenticator
 ): Promise<void> {
   const { method } = req;
@@ -46,7 +54,12 @@ async function handler(
 
       const { url } = r.right;
 
-      const r2 = await fetchRemoteServerMetaDataByURL(auth, url);
+      const r2 = await connectToMCPServer(auth, {
+        params: {
+          type: "remoteMCPServerUrl",
+          remoteMCPServerUrl: url,
+        },
+      });
       if (r2.isErr()) {
         if (r2.error instanceof MCPOAuthRequiredError) {
           return res.status(200).json({
