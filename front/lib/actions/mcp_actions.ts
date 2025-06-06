@@ -27,6 +27,7 @@ import {
   getInternalMCPServerNameAndWorkspaceId,
   INTERNAL_MCP_SERVERS,
 } from "@app/lib/actions/mcp_internal_actions/constants";
+import { findMatchingSubSchemas } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type {
   MCPProgressNotificationType,
   MCPToolResult,
@@ -34,7 +35,6 @@ import type {
   PersonalAuthenticationRequiredErrorResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { isMCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import { findMatchingSubSchemas } from "@app/lib/actions/mcp_internal_actions/utils";
 import type {
   MCPConnectionParams,
   ServerSideMCPConnectionParams,

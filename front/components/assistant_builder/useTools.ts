@@ -13,7 +13,7 @@ import type {
 import { ASSISTANT_BUILDER_DUST_APP_RUN_ACTION_CONFIGURATION_DEFAULT_NAME } from "@app/components/assistant_builder/types";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getInternalMCPServerNameAndWorkspaceId } from "@app/lib/actions/mcp_internal_actions/constants";
-import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/utils";
+import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import {
   ACTION_SPECIFICATIONS,
   DATA_VISUALIZATION_SPECIFICATION,

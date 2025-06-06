@@ -10,6 +10,10 @@ import type { DustAppRunConfigurationType } from "@app/lib/actions/dust_app_run"
 import { tryCallMCPTool } from "@app/lib/actions/mcp_actions";
 import { MCPServerPersonalAuthenticationRequiredError } from "@app/lib/actions/mcp_internal_actions/authentication";
 import type { MCPServerAvailability } from "@app/lib/actions/mcp_internal_actions/constants";
+import {
+  augmentInputsWithConfiguration,
+  hideInternalConfiguration,
+} from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type {
   MCPToolResultContentType,
   ProgressNotificationContentType,
@@ -19,10 +23,6 @@ import {
   isResourceWithName,
   isToolGeneratedFile,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import {
-  augmentInputsWithConfiguration,
-  hideInternalConfiguration,
-} from "@app/lib/actions/mcp_internal_actions/utils";
 import { getMCPEvents } from "@app/lib/actions/pubsub";
 import type { ReasoningModelConfiguration } from "@app/lib/actions/reasoning";
 import type { TableDataSourceConfiguration } from "@app/lib/actions/tables_query";
