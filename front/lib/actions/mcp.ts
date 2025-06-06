@@ -668,6 +668,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
           if (isToolApproveExecutionNotificationType(notificationOutput)) {
             const {
               conversationId,
+              messageId,
               configurationId,
               actionId,
               inputs,
@@ -679,14 +680,16 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
               created: Date.now(),
               type: "tool_approve_execution",
               configurationId,
-              // The event delivery is determined by the messageId, so we need to use the main messageId to
-              // show the validation dialog to the user.
               conversationId,
-              messageId: agentMessage.sId,
+              messageId,
               actionId,
               inputs,
               stake,
-              metadata,
+              metadata: {
+                ...metadata,
+                // pubsubMessageId is used to route the event to the main conversation channel.
+                pubsubMessageId: agentMessage.sId,
+              },
             };
           } else {
             // Regular notifications, we yield them as is with the type "tool_notification".
