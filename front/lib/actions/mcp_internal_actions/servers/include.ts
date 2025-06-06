@@ -395,9 +395,9 @@ function makeWarningResource(
   return tooManyChunks
     ? {
         mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_INCLUDE_WARNING,
-        warningMessage: `Only includes documents until ${retrievalDateLimitAsString}.`,
+        warningMessage: `Only includes documents since ${retrievalDateLimitAsString}.`,
         includeTimeLimit: retrievalDateLimitAsString ?? "",
-        text: `Warning: could not include all documents ${timeFrameAsString}. Only includes documents until ${retrievalDateLimitAsString}.`,
+        text: `Warning: could not include all documents ${timeFrameAsString}. Only includes documents since ${retrievalDateLimitAsString}.`,
         uri: "",
       }
     : null;
