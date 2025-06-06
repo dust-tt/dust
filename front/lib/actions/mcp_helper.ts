@@ -90,7 +90,7 @@ export const mcpServersSortingFn = (
   return aServerType < bServerType ? -1 : 1;
 };
 
-export function mcpServerIsRemote(
+export function isRemoteMCPServerType(
   server: MCPServerType
 ): server is RemoteMCPServerType {
   const serverType = getServerTypeAndIdFromSId(server.sId).serverType;

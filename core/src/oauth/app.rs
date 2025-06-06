@@ -159,7 +159,8 @@ async fn connections_finalize(
             Err(e) => error_response(
                 match e.code {
                     connection::ConnectionErrorCode::TokenRevokedError => StatusCode::UNAUTHORIZED,
-                    connection::ConnectionErrorCode::ConnectionAlreadyFinalizedError => {
+                    connection::ConnectionErrorCode::ConnectionAlreadyFinalizedError
+                    | connection::ConnectionErrorCode::InvalidMetadataError => {
                         StatusCode::BAD_REQUEST
                     }
                     _ => StatusCode::INTERNAL_SERVER_ERROR,
@@ -244,7 +245,8 @@ async fn connections_access_token(
             Err(e) => error_response(
                 match e.code {
                     connection::ConnectionErrorCode::TokenRevokedError => StatusCode::UNAUTHORIZED,
-                    connection::ConnectionErrorCode::ConnectionNotFinalizedError => {
+                    connection::ConnectionErrorCode::ConnectionNotFinalizedError
+                    | connection::ConnectionErrorCode::InvalidMetadataError => {
                         StatusCode::BAD_REQUEST
                     }
                     _ => StatusCode::INTERNAL_SERVER_ERROR,

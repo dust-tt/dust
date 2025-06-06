@@ -3,8 +3,11 @@ import { useCallback, useMemo } from "react";
 import type { Fetcher } from "swr";
 
 import type { RemoteMCPToolStakeLevelType } from "@app/lib/actions/constants";
-import { mcpServersSortingFn } from "@app/lib/actions/mcp_helper";
-import type { MCPServerTypeWithViews } from "@app/lib/api/mcp";
+import {
+  getMcpServerDisplayName,
+  mcpServersSortingFn,
+} from "@app/lib/actions/mcp_helper";
+import type { MCPServerType, MCPServerTypeWithViews } from "@app/lib/api/mcp";
 import type {
   MCPServerConnectionConnectionType,
   MCPServerConnectionType,
@@ -26,13 +29,15 @@ import type {
   GetConnectionsResponseBody,
   PostConnectionResponseBody,
 } from "@app/pages/api/w/[wId]/mcp/connections/[connectionType]";
+import type { DiscoverOAuthMetadataResponseBody } from "@app/pages/api/w/[wId]/mcp/discover_oauth_metadata";
 import type {
   LightWorkspaceType,
   OAuthProvider,
   OAuthUseCase,
+  Result,
   SpaceType,
 } from "@app/types";
-import { setupOAuthConnection } from "@app/types";
+import { Err, Ok, setupOAuthConnection } from "@app/types";
 import { getProviderAdditionalClientSideAuthCredentials } from "@app/types/oauth/lib";
 
 /**
@@ -195,6 +200,42 @@ export function useCreateInternalMCPServer(owner: LightWorkspaceType) {
 }
 
 /**
+ * Hook to discover the OAuth metadata for a remote MCP server.
+ * It is used to check if the server requires OAuth authentication.
+ * If it does, it returns the OAuth connection metadata with the oauthRequired set to true.
+ * If it does not, it returns the oauthRequired set to false.
+ *
+ * Note: this hook should not be called too frequently, as it is likely rate limited by the mcp server provider.
+ */
+export function useDiscoverOAuthMetadata(owner: LightWorkspaceType) {
+  const discoverOAuthMetadata = async (
+    url: string
+  ): Promise<Result<DiscoverOAuthMetadataResponseBody, Error>> => {
+    const response = await fetch(
+      `/api/w/${owner.sId}/mcp/discover_oauth_metadata`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      return new Err(
+        new Error(
+          error.api_error?.message || "Failed to check OAuth connection"
+        )
+      );
+    }
+
+    return new Ok(await response.json());
+  };
+
+  return { discoverOAuthMetadata };
+}
+
+/**
  * Hook to create a new MCP server from a URL
  */
 export function useCreateRemoteMCPServer(owner: LightWorkspaceType) {
@@ -203,15 +244,30 @@ export function useCreateRemoteMCPServer(owner: LightWorkspaceType) {
     owner,
   });
 
-  const createWithUrlSync = useCallback(
-    async (
-      url: string,
-      includeGlobal: boolean,
-      sharedSecret?: string
-    ): Promise<CreateMCPServerResponseBody> => {
+  const { mutateConnections } = useMCPServerConnections({
+    disabled: true,
+    connectionType: "workspace",
+    owner,
+  });
+
+  const createWithURL = useCallback(
+    async ({
+      url,
+      includeGlobal,
+      sharedSecret,
+      connectionId,
+    }: {
+      url: string;
+      includeGlobal: boolean;
+      sharedSecret?: string;
+      connectionId?: string;
+    }): Promise<Result<CreateMCPServerResponseBody, Error>> => {
       const body: any = { url, serverType: "remote", includeGlobal };
       if (sharedSecret) {
         body.sharedSecret = sharedSecret;
+      }
+      if (connectionId) {
+        body.connectionId = connectionId;
       }
       const response = await fetch(`/api/w/${owner.sId}/mcp`, {
         method: "POST",
@@ -221,16 +277,22 @@ export function useCreateRemoteMCPServer(owner: LightWorkspaceType) {
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error?.message || "Failed to synchronize server");
+        return new Err(
+          new Error(error.error?.message || "Failed to create server")
+        );
       }
 
       await mutateMCPServers();
-      return response.json();
+      if (connectionId) {
+        await mutateConnections();
+      }
+      const r = await response.json();
+      return new Ok(r);
     },
-    [mutateMCPServers, owner.sId]
+    [mutateMCPServers, mutateConnections, owner.sId]
   );
 
-  return { createWithUrlSync };
+  return { createWithURL };
 }
 
 /**
@@ -345,11 +407,11 @@ export function useCreateMCPServerConnection({
   const sendNotification = useSendNotification();
   const createMCPServerConnection = async ({
     connectionId,
-    mcpServerId,
+    mcpServer,
     provider,
   }: {
     connectionId: string;
-    mcpServerId: string;
+    mcpServer: MCPServerType;
     provider: OAuthProvider;
   }): Promise<PostConnectionResponseBody | null> => {
     const response = await fetch(
@@ -361,7 +423,7 @@ export function useCreateMCPServerConnection({
         },
         body: JSON.stringify({
           connectionId,
-          mcpServerId,
+          mcpServerId: mcpServer.sId,
           provider,
         }),
       }
@@ -369,16 +431,16 @@ export function useCreateMCPServerConnection({
     if (response.ok) {
       sendNotification({
         type: "success",
-        title: "Provider connected",
-        description: `Successfully connected to provider ${provider}.`,
+        title: `${getMcpServerDisplayName(mcpServer)} connected`,
+        description: `Successfully connected to ${getMcpServerDisplayName(mcpServer)}.`,
       });
       void mutateConnections();
       return response.json();
     } else {
       sendNotification({
         type: "error",
-        title: "Failed to connect provider",
-        description: "Could not connect to your provider. Please try again.",
+        title: `Failed to connect ${getMcpServerDisplayName(mcpServer)}`,
+        description: `Could not connect to ${getMcpServerDisplayName(mcpServer)}. Please try again.`,
       });
       return null;
     }
@@ -411,8 +473,10 @@ export function useDeleteMCPServerConnection({
   const deleteMCPServerConnection = useCallback(
     async ({
       connection,
+      mcpServer,
     }: {
       connection: MCPServerConnectionType;
+      mcpServer: MCPServerType;
     }): Promise<{ success: boolean }> => {
       const response = await fetch(
         `/api/w/${owner.sId}/mcp/connections/${connection.connectionType}/${connection.sId}`,
@@ -426,9 +490,8 @@ export function useDeleteMCPServerConnection({
       if (response.ok) {
         sendNotification({
           type: "success",
-          title: "Provider disconnected",
-          description:
-            "Your capability provider has been disconnected successfully.",
+          title: `${getMcpServerDisplayName(mcpServer)} disconnected`,
+          description: `Successfully disconnected from ${getMcpServerDisplayName(mcpServer)}.`,
         });
         if (connection.connectionType === "workspace") {
           void mutateWorkspaceConnections();
@@ -438,9 +501,8 @@ export function useDeleteMCPServerConnection({
       } else {
         sendNotification({
           type: "error",
-          title: "Failed to disconnect provider",
-          description:
-            "Could not disconnect to your provider. Please try again.",
+          title: `Failed to disconnect ${getMcpServerDisplayName(mcpServer)}`,
+          description: `Could not disconnect from ${getMcpServerDisplayName(mcpServer)}. Please try again.`,
         });
       }
 
@@ -543,14 +605,14 @@ export function useCreatePersonalConnection(owner: LightWorkspaceType) {
   const sendNotification = useSendNotification();
 
   const createPersonalConnection = async (
-    mcpServerId: string,
+    mcpServer: MCPServerType,
     provider: OAuthProvider,
     useCase: OAuthUseCase,
     scope?: string
   ): Promise<boolean> => {
     try {
       const extraConfig: Record<string, string> = {
-        mcp_server_id: mcpServerId,
+        mcp_server_id: mcpServer.sId,
       };
 
       const additionalCredentials =
@@ -588,7 +650,7 @@ export function useCreatePersonalConnection(owner: LightWorkspaceType) {
 
       const result = await createMCPServerConnection({
         connectionId: cRes.value.connection_id,
-        mcpServerId,
+        mcpServer,
         provider,
       });
 
