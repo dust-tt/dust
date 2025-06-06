@@ -32,7 +32,7 @@ export const WHITELISTABLE_FEATURES = [
   "salesforce_tool",
   "gmail_tool",
   "agent_builder_v2",
-  "restrict_agent_creation_to_higher_users",
+  "disallow_agent_creation_to_users",
   "document_tracker",
   "agent_discovery",
   "search_knowledge_builder",

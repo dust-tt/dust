@@ -1106,7 +1106,7 @@ export async function isRestrictedFromAgentCreation(
   const featureFlags = await getFeatureFlags(owner);
 
   return (
-    featureFlags.includes("restrict_agent_creation_to_higher_users") &&
+    featureFlags.includes("disallow_agent_creation_to_users") &&
     !auth.isBuilder() &&
     !auth.isAdmin()
   );
