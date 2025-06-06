@@ -19,7 +19,7 @@ import { generateMockAgentConfigurationFromTemplate } from "@app/lib/api/assista
 import config from "@app/lib/api/config";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { isRestrictedFromAgentCreation } from "@app/lib/auth";
-import { AuthenticatorProvider } from "@app/lib/context/authenticator_context";
+import { AuthenticatorProvider } from "@app/lib/context/authenticator";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { useAssistantTemplate } from "@app/lib/swr/assistants";
