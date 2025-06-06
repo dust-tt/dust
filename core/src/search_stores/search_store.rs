@@ -106,8 +106,6 @@ fn default_search_scope() -> SearchScopeType {
 #[derive(serde::Deserialize, Debug)]
 pub struct NodesSearchFilter {
     data_source_views: Vec<DatasourceViewFilter>,
-    // TODO(2025-06-05 aubin): replace the excluded_node_mime_types with mime_types.not.
-    excluded_node_mime_types: Option<Vec<String>>,
     mime_types: Option<MimeTypeFilter>,
     node_ids: Option<Vec<String>>,
     node_types: Option<Vec<NodeType>>,
@@ -881,15 +879,6 @@ impl ElasticsearchSearchStore {
             } else {
                 bool_query = bool_query.filter(Query::term("parent_id", parent_id));
             }
-        }
-
-        if let Some(excluded_node_mime_types) = filter
-            .excluded_node_mime_types
-            .as_ref()
-            .filter(|types| !types.is_empty())
-        {
-            counter.add(1);
-            bool_query = bool_query.must_not(Query::terms("mime_type", excluded_node_mime_types));
         }
 
         // Add search term if present.
