@@ -129,6 +129,7 @@ describe("POST /api/v1/w/[wId]/spaces/[spaceId]/data_sources/[dsId]/tables/csv",
       description: "desc",
       fileId: file.sId,
       tableId: "fooTable-1",
+      allowEmptySchema: true,
     };
 
     // First fetch is to create the table
