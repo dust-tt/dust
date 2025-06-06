@@ -440,6 +440,8 @@ export class Authenticator {
    *
    * @param key Key the API key
    * @param wId the target workspaceId
+   * @param requestedGroupIds optional groups to assign the auth in place of the key groups (only
+   *                                   possible with a system key).
    * @returns Promise<{ workspaceAuth: Authenticator, keyAuth: Authenticator }>
    */
   static async fromKey(
@@ -506,15 +508,25 @@ export class Authenticator {
         ]);
     }
 
-    const allGroups = Object.entries(
-      keyGroups.concat(requestedGroups).reduce(
-        (acc, group) => {
-          acc[group.id] = group;
-          return acc;
-        },
-        {} as Record<string, GroupResource>
-      )
-    ).map(([, group]) => group);
+    if (workspace) {
+      if (requestedGroupIds && key.isSystem) {
+        [requestedGroups, keySubscription, workspaceSubscription] =
+          await Promise.all([
+            GroupResource.listGroupsWithSystemKey(key, requestedGroupIds),
+            getSubscriptionForWorkspace(keyWorkspace),
+            getSubscriptionForWorkspace(workspace),
+          ]);
+      } else {
+        [keyGroups, keySubscription, workspaceSubscription] = await Promise.all(
+          [
+            GroupResource.listWorkspaceGroupsFromKey(key),
+            getSubscriptionForWorkspace(keyWorkspace),
+            getSubscriptionForWorkspace(workspace),
+          ]
+        );
+      }
+    }
+    const allGroups = requestedGroupIds ? requestedGroups : keyGroups;
 
     return {
       workspaceAuth: new Authenticator({
