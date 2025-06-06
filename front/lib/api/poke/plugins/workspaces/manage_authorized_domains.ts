@@ -16,7 +16,7 @@ import { Err, Ok } from "@app/types";
 
 async function handleAddDomain(
   auth: Authenticator,
-  { domain, autoJoinEnabled }: { domain: string; autoJoinEnabled: boolean },
+  { domain }: { domain: string },
   existingDomain: WorkspaceHasDomainModel | null
 ): Promise<Result<PluginResponse, Error>> {
   const workspace = auth.getNonNullableWorkspace();
@@ -67,9 +67,9 @@ async function handleAddDomain(
 
   return new Ok({
     display: "text",
-    value: `Domain ${domain} has been added to the workspace${
-      autoJoinEnabled ? " with auto-join enabled" : ""
-    }. Next webhook will add it to the workspace in the database.`,
+    value:
+      `Domain ${domain} has been added to the workspace. Next webhook will add it to ` +
+      "the workspace in the database.",
   });
 }
 
@@ -124,13 +124,6 @@ export const addAuthorizedDomain = createPlugin({
         description: "Select operation to perform",
         values: ["add", "remove"],
       },
-      autoJoinEnabled: {
-        type: "boolean",
-        label: "Auto Join Enabled",
-        description:
-          "Whether to automatically add users with this domain email",
-        default: false,
-      },
     },
   },
   execute: async (auth, _, args) => {
@@ -156,11 +149,7 @@ export const addAuthorizedDomain = createPlugin({
     });
 
     if (operation === "add") {
-      return handleAddDomain(
-        auth,
-        { domain, autoJoinEnabled: args.autoJoinEnabled },
-        existingDomain
-      );
+      return handleAddDomain(auth, { domain }, existingDomain);
     } else {
       return handleRemoveDomain(auth, { domain }, existingDomain);
     }
