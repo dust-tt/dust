@@ -1,4 +1,3 @@
-export * from "./add_authorized_domain";
 export * from "./check_seat_count";
 export * from "./compute_statistics";
 export * from "./conversations_retention";
@@ -9,6 +8,7 @@ export * from "./extend_trial";
 export * from "./extension_blacklist_domains";
 export * from "./get_remaining_public_api_limits";
 export * from "./invite_user";
+export * from "./manage_authorized_domains";
 export * from "./rename_workspace";
 export * from "./reset_message_rate_limit";
 export * from "./revoke_users";

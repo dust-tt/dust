@@ -10,9 +10,9 @@ use elasticsearch::{
 };
 use elasticsearch_dsl::{
     Aggregation, BoolQuery, FieldSort, Operator, Query, Script, ScriptSort, ScriptSortType, Search,
-    Sort, SortOrder,
+    Sort, SortMissing, SortOrder,
 };
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tracing::{error, info};
 use url::Url;
@@ -64,6 +64,14 @@ pub enum SearchScopeType {
     Both,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct MimeTypeFilter {
+    #[serde(rename = "in")]
+    pub is_in: Option<Vec<String>>,
+    #[serde(rename = "not")]
+    pub is_not: Option<Vec<String>>,
+}
+
 #[derive(serde::Deserialize, Debug)]
 pub struct SortSpec {
     pub field: String,
@@ -98,7 +106,9 @@ fn default_search_scope() -> SearchScopeType {
 #[derive(serde::Deserialize, Debug)]
 pub struct NodesSearchFilter {
     data_source_views: Vec<DatasourceViewFilter>,
+    // TODO(2025-06-05 aubin): replace the excluded_node_mime_types with mime_types.not.
     excluded_node_mime_types: Option<Vec<String>>,
+    mime_types: Option<MimeTypeFilter>,
     node_ids: Option<Vec<String>>,
     node_types: Option<Vec<NodeType>>,
     parent_id: Option<String>,
@@ -692,8 +702,15 @@ impl ElasticsearchSearchStore {
             indices_to_query.push(DATA_SOURCE_INDEX_NAME);
         }
 
-        // Build nodes query only if we have clauses left.
-        if !counter.is_full() {
+        // Build nodes query only if we have clauses left and the scope is NodesTitles or Both.
+        if !counter.is_full()
+            && filter.data_source_views.iter().any(|f| {
+                matches!(
+                    f.search_scope,
+                    SearchScopeType::NodesTitles | SearchScopeType::Both
+                )
+            })
+        {
             let nodes_query = Query::bool()
                 .filter(Query::term("_index", DATA_SOURCE_NODE_INDEX_NAME))
                 .filter(self.build_nodes_content_query(&query, &filter, options, &mut counter)?);
@@ -842,6 +859,17 @@ impl ElasticsearchSearchStore {
                 .collect();
             counter.add(1);
             bool_query = bool_query.filter(Query::terms("node_type", terms));
+        }
+
+        if let Some(mime_type_filter) = &filter.mime_types {
+            if let Some(included_mime_types) = &mime_type_filter.is_in {
+                counter.add(1);
+                bool_query = bool_query.filter(Query::terms("mime_type", included_mime_types))
+            }
+            if let Some(excluded_mime_types) = &mime_type_filter.is_not {
+                counter.add(1);
+                bool_query = bool_query.must_not(Query::terms("mime_type", excluded_mime_types))
+            }
         }
 
         if let Some(parent_id) = &filter.parent_id {
@@ -1044,28 +1072,45 @@ impl ElasticsearchSearchStore {
 
                 sort.into_iter()
                     .map(|s| {
-                        Sort::FieldSort(FieldSort::new(s.field).order(match s.direction {
-                            SortDirection::Asc => SortOrder::Asc,
-                            SortDirection::Desc => SortOrder::Desc,
-                        }))
+                        Sort::FieldSort(
+                            FieldSort::new(s.field)
+                                .order(match s.direction {
+                                    SortDirection::Asc => SortOrder::Asc,
+                                    SortDirection::Desc => SortOrder::Desc,
+                                })
+                                .missing(SortMissing::Last)
+                                .unmapped_type("keyword"),
+                        )
                     })
                     .collect()
             }
             // Default to sorting folders first, then both documents and tables
-            // and alphabetically by title
+            // and alphabetically by title (or data source name )
             None => vec![
                 Sort::ScriptSort(
                     ScriptSort::ascending(Script::source(
-                        "doc['node_type'].value == 'Folder' ? 0 : 1",
+                        "doc.containsKey('node_type') && doc['node_type'].size() > 0 && doc['node_type'].value == 'Folder' ? 0 : 1",
                     ))
                     .r#type(ScriptSortType::Number),
                 ),
-                Sort::FieldSort(FieldSort::new("title.keyword").order(SortOrder::Asc)),
+                Sort::FieldSort(
+                    FieldSort::new("title.keyword")
+                        .order(SortOrder::Asc)
+                        .missing(SortMissing::Last)
+                        .unmapped_type("keyword")
+                ),
             ],
         };
 
         base_sort.push(Sort::FieldSort(
-            FieldSort::new("node_id").order(SortOrder::Asc),
+            FieldSort::new("node_id")
+                .order(SortOrder::Asc)
+                .missing(SortMissing::Last)
+                .unmapped_type("keyword"),
+        ));
+
+        base_sort.push(Sort::FieldSort(
+            FieldSort::new("data_source_internal_id").order(SortOrder::Asc),
         ));
 
         Ok(base_sort)

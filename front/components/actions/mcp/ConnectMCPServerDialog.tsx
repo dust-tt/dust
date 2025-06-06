@@ -61,7 +61,12 @@ export function ConnectMCPServerDialog({
       owner,
       provider: mcpServer.authorization.provider,
       useCase: mcpServer.authorization.use_case,
-      extraConfig: authCredentials ?? {},
+      extraConfig: {
+        ...(authCredentials ?? {}),
+        ...(mcpServer.authorization.scope
+          ? { scope: mcpServer.authorization.scope }
+          : {}),
+      },
     });
     if (cRes.isErr()) {
       sendNotification({
@@ -102,6 +107,7 @@ export function ConnectMCPServerDialog({
             authCredentials={authCredentials}
             setAuthCredentials={setAuthCredentials}
             setIsFormValid={setIsFormValid}
+            documentationUrl={mcpServer?.documentationUrl}
           />
         </DialogContainer>
         <DialogFooter

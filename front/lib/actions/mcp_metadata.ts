@@ -49,6 +49,7 @@ import { createSSRFInterceptor } from "@app/types/shared/utils/ssrf";
 export type AuthorizationInfo = {
   provider: OAuthProvider;
   use_case: OAuthUseCase;
+  scope?: string;
 };
 
 export function isAuthorizationInfo(a: unknown): a is AuthorizationInfo {
@@ -336,6 +337,9 @@ export function extractMetadataFromServerVersion(
         ? r.description
         : DEFAULT_MCP_ACTION_DESCRIPTION,
       icon: isInternalMCPServerDefinition(r) ? r.icon : DEFAULT_MCP_SERVER_ICON,
+      documentationUrl: isInternalMCPServerDefinition(r)
+        ? r.documentationUrl
+        : undefined,
     };
   }
 

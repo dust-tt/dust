@@ -207,6 +207,12 @@ const config = {
   getWorkOSIssuerURL: (): string => {
     return EnvironmentConfig.getEnvVariable("WORKOS_ISSUER_URL");
   },
+  getWorkOSWebhookSecret: (): string => {
+    return EnvironmentConfig.getEnvVariable("WORKOS_WEBHOOK_SECRET");
+  },
+  getWorkOSWebhookSigningSecret: (): string => {
+    return EnvironmentConfig.getEnvVariable("WORKOS_WEBHOOK_SIGNING_SECRET");
+  },
 
   // Profiler.
   getProfilerSecret: (): string | undefined => {

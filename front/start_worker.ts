@@ -21,16 +21,18 @@ import {
 import { runUpsertQueueWorker } from "@app/temporal/upsert_queue/worker";
 import { runUpsertTableQueueWorker } from "@app/temporal/upsert_tables/worker";
 import { runUpdateWorkspaceUsageWorker } from "@app/temporal/usage_queue/worker";
+import { runWorkOSEventsWorker } from "@app/temporal/workos_events_queue/worker";
 import { setupGlobalErrorHandler } from "@app/types/shared/utils/global_error_handler";
 
 setupGlobalErrorHandler(logger);
 
 type WorkerName =
+  | "agent_loop"
   | "data_retention"
   | "document_tracker"
   | "hard_delete"
-  | "labs"
   | "labs_connections"
+  | "labs"
   | "mentions_count"
   | "permissions_queue"
   | "poke"
@@ -42,14 +44,15 @@ type WorkerName =
   | "update_workspace_usage"
   | "upsert_queue"
   | "upsert_table_queue"
-  | "agent_loop";
+  | "workos_events_queue";
 
 const workerFunctions: Record<WorkerName, () => Promise<void>> = {
+  agent_loop: runAgentLoopWorker,
   data_retention: runDataRetentionWorker,
   document_tracker: runTrackerWorker,
   hard_delete: runHardDeleteWorker,
-  labs: runLabsTranscriptsWorker,
   labs_connections: runLabsConnectionsWorker,
+  labs: runLabsTranscriptsWorker,
   mentions_count: runMentionsCountWorker,
   permissions_queue: runPermissionsWorker,
   poke: runPokeWorker,
@@ -61,7 +64,7 @@ const workerFunctions: Record<WorkerName, () => Promise<void>> = {
   update_workspace_usage: runUpdateWorkspaceUsageWorker,
   upsert_queue: runUpsertQueueWorker,
   upsert_table_queue: runUpsertTableQueueWorker,
-  agent_loop: runAgentLoopWorker,
+  workos_events_queue: runWorkOSEventsWorker,
 };
 
 const ALL_WORKERS = Object.keys(workerFunctions);

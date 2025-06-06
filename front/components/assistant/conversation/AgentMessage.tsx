@@ -66,6 +66,7 @@ import {
   isOAuthProvider,
   isOAuthUseCase,
   isSupportedImageContentType,
+  isValidScope,
 } from "@app/types";
 
 interface AgentMessageProps {
@@ -172,10 +173,9 @@ export function AgentMessage({
       // Handle validation dialog separately.
       if (eventPayload.data.type === "tool_approve_execution") {
         showValidationDialog({
-          workspaceId: owner.sId,
           messageId: message.sId,
-          conversationId: conversationId,
-          action: eventPayload.data.action,
+          conversationId: eventPayload.data.conversationId,
+          actionId: eventPayload.data.actionId,
           inputs: eventPayload.data.inputs,
           stake: eventPayload.data.stake,
           metadata: eventPayload.data.metadata,
@@ -193,7 +193,7 @@ export function AgentMessage({
 
       dispatch(eventPayload.data);
     },
-    [showValidationDialog, owner.sId, message.sId, conversationId]
+    [showValidationDialog, message.sId]
   );
 
   useEventSource(
@@ -501,7 +501,8 @@ export function AgentMessage({
         typeof agentMessage.error.metadata?.mcp_server_id === "string" &&
         agentMessage.error.metadata?.mcp_server_id.length > 0 &&
         isOAuthProvider(agentMessage.error.metadata?.provider) &&
-        isOAuthUseCase(agentMessage.error.metadata?.use_case)
+        isOAuthUseCase(agentMessage.error.metadata?.use_case) &&
+        isValidScope(agentMessage.error.metadata?.scope)
       ) {
         return (
           <MCPServerPersonalAuthenticationRequired
@@ -509,6 +510,7 @@ export function AgentMessage({
             mcpServerId={agentMessage.error.metadata.mcp_server_id}
             provider={agentMessage.error.metadata.provider}
             useCase={agentMessage.error.metadata.use_case}
+            scope={agentMessage.error.metadata.scope}
             retryHandler={async () => retryHandler(agentMessage)}
           />
         );

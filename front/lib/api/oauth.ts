@@ -555,17 +555,17 @@ const PROVIDER_STRATEGIES: Record<
     },
   },
   gmail: {
-    setupUri: ({ connection, clientId }) => {
-      const scopes = [
-        "https://www.googleapis.com/auth/gmail.readonly",
-        "https://www.googleapis.com/auth/gmail.compose",
-      ];
+    setupUri: ({ connection, clientId, extraConfig }) => {
+      if (!extraConfig || !extraConfig.scope) {
+        throw new Error("Missing authorization scope");
+      }
+
       const qs = querystring.stringify({
         response_type: "code",
         client_id: clientId,
         state: connection.connection_id,
         redirect_uri: finalizeUriForProvider("gmail"),
-        scope: scopes.join(" "),
+        scope: extraConfig.scope,
         access_type: "offline",
         prompt: "consent",
       });

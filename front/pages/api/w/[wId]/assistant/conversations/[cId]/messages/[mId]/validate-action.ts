@@ -11,7 +11,7 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 
 export const ValidateActionSchema = z.object({
-  actionId: z.number(),
+  actionId: z.string(),
   approved: z.enum(["approved", "rejected", "always_approved"]),
 });
 

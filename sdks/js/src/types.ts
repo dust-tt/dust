@@ -835,6 +835,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "workos"
   | "salesforce_tool"
   | "gmail_tool"
+  | "google_calendar_tool"
   | "agent_builder_v2"
 >();
 
@@ -1385,7 +1386,8 @@ const MCPApproveExecutionEventSchema = z.object({
   created: z.number(),
   configurationId: z.string(),
   messageId: z.string(),
-  action: MCPActionTypeSchema,
+  conversationId: z.string(),
+  actionId: z.string(),
   inputs: z.record(z.any()),
   stake: z.optional(z.enum(["low", "high", "never_ask"])),
   metadata: MCPValidationMetadataSchema,
@@ -2906,7 +2908,7 @@ export type ValidateActionResponseType = z.infer<
 >;
 
 export const ValidateActionRequestBodySchema = z.object({
-  actionId: z.number(),
+  actionId: z.string(),
   approved: z.enum(["approved", "rejected", "always_approved"]),
 });
 

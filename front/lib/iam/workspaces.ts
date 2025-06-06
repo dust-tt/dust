@@ -8,16 +8,13 @@ import { GroupResource } from "@app/lib/resources/group_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
-import { isDisposableEmailDomain } from "@app/lib/utils/disposable_email_domains";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 
 export async function createWorkspace(session: SessionWithUser) {
   const { user: externalUser } = session;
 
   return createWorkspaceInternal({
-    email: externalUser.email,
     name: externalUser.nickname,
-    isVerified: externalUser.email_verified,
     isBusiness: false,
     planCode: null,
     endDate: null,
@@ -25,16 +22,12 @@ export async function createWorkspace(session: SessionWithUser) {
 }
 
 export async function createWorkspaceInternal({
-  email,
   name,
-  isVerified,
   isBusiness,
   planCode,
   endDate,
 }: {
-  email: string;
   name: string;
-  isVerified: boolean;
   isBusiness: boolean;
   planCode: string | null;
   endDate: Date | null;
@@ -56,12 +49,6 @@ export async function createWorkspaceInternal({
     }
   }
 
-  const [, emailDomain] = email.split("@");
-
-  // Use domain only when email is verified and non-disposable.
-  const verifiedDomain =
-    isVerified && !isDisposableEmailDomain(emailDomain) ? emailDomain : null;
-
   const workspace = await Workspace.create({
     sId: generateRandomModelSId(),
     name,
@@ -82,19 +69,6 @@ export async function createWorkspaceInternal({
     systemGroup,
     globalGroup,
   });
-
-  if (verifiedDomain) {
-    try {
-      await WorkspaceHasDomainModel.create({
-        domain: verifiedDomain,
-        domainAutoJoinEnabled: false,
-        workspaceId: workspace.id,
-      });
-    } catch (err) {
-      // `WorkspaceHasDomain` table has a unique constraint on the domain column.
-      // Suppress any creation errors to prevent disruption of the login process.
-    }
-  }
 
   if (planCode) {
     await SubscriptionResource.internalSubscribeWorkspaceToFreePlan({
