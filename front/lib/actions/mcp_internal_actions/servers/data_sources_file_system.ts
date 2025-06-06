@@ -45,6 +45,7 @@ import {
   stripNullBytes,
   timeFrameFromNow,
 } from "@app/types";
+import { CONTENT_NODE_MIME_TYPES } from "../../../../../sdks/js/src";
 
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "data_sources_file_system",
@@ -316,13 +317,27 @@ const createServer = (
             "This ID can be found from previous search results in the 'nodeId' field. " +
             "If not provided, the content at the root of the filesystem will be shown."
         ),
+      mimeTypes: z
+        .string()
+        .optional()
+        .describe(
+          "The mime type to search for. If provided, only nodes with this mime type will be " +
+            "returned. If not provided, all mime types will be returned."
+        ),
       dataSources:
         ConfigurableToolInputSchemas[
           INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
         ],
       ...OPTION_PARAMETERS,
     },
-    async ({ nodeId, dataSources, limit, sortBy, nextPageCursor }) => {
+    async ({
+      nodeId,
+      dataSources,
+      limit,
+      mimeTypes,
+      sortBy,
+      nextPageCursor,
+    }) => {
       const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
       const fetchResult = await getAgentDataSourceConfigurations(dataSources);
 
@@ -353,6 +368,7 @@ const createServer = (
         searchResult = await coreAPI.searchNodes({
           filter: {
             data_source_views: dataSourceViewFilter,
+            mime_types: mimeTypes ? { in: [mimeTypes], not: null } : undefined,
           },
           options,
         });
@@ -378,6 +394,7 @@ const createServer = (
             data_source_views: makeDataSourceViewFilter([dataSourceConfig]),
             node_ids: dataSourceConfig.parentsIn ?? undefined,
             parent_id: dataSourceConfig.parentsIn ? undefined : ROOT_PARENT_ID,
+            mime_types: mimeTypes ? { in: [mimeTypes], not: null } : undefined,
           },
           options,
         });
@@ -391,6 +408,7 @@ const createServer = (
           filter: {
             data_source_views: dataSourceViewFilter,
             parent_id: nodeId,
+            mime_types: mimeTypes ? { in: [mimeTypes], not: null } : undefined,
           },
           options,
         });
