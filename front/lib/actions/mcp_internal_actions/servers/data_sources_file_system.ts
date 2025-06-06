@@ -259,9 +259,7 @@ const createServer = (
         viewFilter = viewFilter.filter(
           (view) => view.data_source_id === dataSourceNodeId
         );
-      }
-
-      if (rootNodeId) {
+      } else if (rootNodeId) {
         viewFilter = viewFilter.map((view) => ({
           ...view,
           view_filter: [rootNodeId],
