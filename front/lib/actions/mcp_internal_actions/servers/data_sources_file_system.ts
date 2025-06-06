@@ -217,7 +217,8 @@ const createServer = (
           "The node ID of the node to start the search from. If not provided, the search will " +
             "start from the root of the filesystem. This ID can be found from previous search " +
             "results in the 'nodeId' field. This parameter restricts the search to the children " +
-            "and descendant of a specific node."
+            "and descendant of a specific node. If a node output by this tool or the list tool" +
+            "has children (hasChildren: true), it means that it can be passed as a rootNodeId."
         ),
       // TODO(2025-06-03 aubin): add search by mime type (not supported in the backend currently).
       dataSources:
