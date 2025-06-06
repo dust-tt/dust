@@ -1098,3 +1098,16 @@ export const getFeatureFlags = memoizer.sync({
 
   itemMaxAge: () => 3000,
 });
+
+export async function isRestrictedFromAgentCreation(
+  owner: LightWorkspaceType,
+  auth: Authenticator
+): Promise<boolean> {
+  const featureFlags = await getFeatureFlags(owner);
+
+  return (
+    featureFlags.includes("restrict_agent_creation_to_higher_users") &&
+    !auth.isBuilder() &&
+    !auth.isAdmin()
+  );
+}
