@@ -44,30 +44,31 @@ function generateConfiguredInput({
   );
 
   switch (mimeType) {
-    case INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE:
+    case INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE: {
       return (
         actionConfiguration.dataSources?.map((config) => ({
           uri: `data_source_configuration://dust/w/${owner.sId}/data_source_configurations/${config.sId}`,
           mimeType,
         })) || []
       );
+    }
 
-    case INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE:
+    case INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE: {
       return (
         actionConfiguration.tables?.map((config) => ({
           uri: `table_configuration://dust/w/${owner.sId}/table_configurations/${config.sId}`,
           mimeType,
         })) || []
       );
+    }
 
     case INTERNAL_MIME_TYPES.TOOL_INPUT.AGENT: {
       const { childAgentId } = actionConfiguration;
-      if (!childAgentId) {
-        // Unreachable, when fetching agent configurations using getAgentConfigurations, we always fill the sId.
-        throw new Error(
-          "Unreachable: child agent configuration without an sId."
-        );
-      }
+      // Unreachable, when fetching agent configurations using getAgentConfigurations, we always fill the sId.
+      assert(
+        childAgentId,
+        "Unreachable: child agent configuration without an sId."
+      );
       return {
         uri: `agent://dust/w/${owner.sId}/agents/${childAgentId}`,
         mimeType,
@@ -76,10 +77,11 @@ function generateConfiguredInput({
 
     case INTERNAL_MIME_TYPES.TOOL_INPUT.REASONING_MODEL: {
       const { reasoningModel } = actionConfiguration;
-      if (!reasoningModel) {
-        // Unreachable, when fetching agent configurations using getAgentConfigurations, we always fill the reasoning model.
-        throw new Error("Unreachable: missing reasoning model configuration.");
-      }
+      // Unreachable, when fetching agent configurations using getAgentConfigurations, we always fill the reasoning model.
+      assert(
+        reasoningModel,
+        "Unreachable: missing reasoning model configuration."
+      );
       const { modelId, providerId, temperature, reasoningEffort } =
         reasoningModel;
       return { modelId, providerId, temperature, reasoningEffort, mimeType };
@@ -168,10 +170,7 @@ function generateConfiguredInput({
         throw new Error("Invalid Dust App configuration");
       }
 
-      return {
-        appId,
-        mimeType,
-      };
+      return { appId, mimeType };
     }
 
     default:
@@ -272,7 +271,7 @@ export function hideInternalConfiguration(inputSchema: JSONSchema): JSONSchema {
     }
   }
 
-  // Note: we don't handle anyOf, allOf, oneOf yet as we cannot disambiguate whether to inject the configuration
+  // Note: we don't handle allOf, oneOf yet as we cannot disambiguate whether to inject the configuration
   // since we entirely hide the configuration from the agent.
 
   return resultingSchema;
