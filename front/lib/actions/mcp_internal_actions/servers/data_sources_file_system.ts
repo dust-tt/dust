@@ -253,26 +253,20 @@ const createServer = (
       // are searched. It is not straightforward to guess which data source it
       // belongs to, this is why irrelevant data sources are not directly
       // filtered out.
-      const viewFilter = (() => {
-        const viewFilter = makeDataSourceViewFilter(
-          agentDataSourceConfigurations
+      let viewFilter = makeDataSourceViewFilter(agentDataSourceConfigurations);
+
+      if (dataSourceNodeId) {
+        viewFilter = viewFilter.filter(
+          (view) => view.data_source_id === dataSourceNodeId
         );
+      }
 
-        if (!rootNodeId) {
-          return viewFilter;
-        }
-
-        if (dataSourceNodeId) {
-          return viewFilter.filter(
-            (view) => view.data_source_id === dataSourceNodeId
-          );
-        }
-
-        return viewFilter.map((view) => ({
+      if (rootNodeId) {
+        viewFilter = viewFilter.map((view) => ({
           ...view,
           view_filter: [rootNodeId],
         }));
-      })();
+      }
 
       const searchResult = await coreAPI.searchNodes({
         query,
