@@ -1,4 +1,4 @@
-import type { TokenExpiredError } from "jsonwebtoken";
+import { TokenExpiredError } from "jsonwebtoken";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import type { MethodType, ScopeType } from "@app/lib/api/auth0";
@@ -473,7 +473,7 @@ export function withTokenAuthentication<T>(
           user = await getUserFromWorkOSToken(workOSDecoded.value);
         } else if (
           workOSDecoded.isErr() &&
-          (workOSDecoded.error as TokenExpiredError).expiredAt
+          workOSDecoded.error instanceof TokenExpiredError
         ) {
           return apiError(req, res, {
             status_code: 401,
@@ -492,7 +492,7 @@ export function withTokenAuthentication<T>(
           user = await getUserFromAuth0Token(auth0Decoded.value);
         } else if (
           auth0Decoded.isErr() &&
-          (auth0Decoded.error as TokenExpiredError).expiredAt
+          auth0Decoded.error instanceof TokenExpiredError
         ) {
           return apiError(req, res, {
             status_code: 401,
@@ -569,7 +569,7 @@ async function handleWorkOSAuth<T>(
   const decoded = await verifyWorkOSToken(token);
   if (decoded.isErr()) {
     const error = decoded.error;
-    if ((error as TokenExpiredError).expiredAt) {
+    if (error instanceof TokenExpiredError) {
       return new Err({
         status_code: 401,
         api_error: {
@@ -625,7 +625,7 @@ async function handleAuth0Auth<T>(
   );
   if (decoded.isErr()) {
     const error = decoded.error;
-    if ((error as TokenExpiredError).expiredAt) {
+    if (error instanceof TokenExpiredError) {
       return new Err({
         status_code: 401,
         api_error: {

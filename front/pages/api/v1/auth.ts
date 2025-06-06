@@ -1,7 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import logger from "@app/logger/logger";
-import { apiError } from "@app/logger/withlogging";
+import { apiError, withLogging } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 
 export type AuthResponseType = {
@@ -18,9 +17,6 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<AuthResponseType>>
 ): Promise<void> {
-  logger.info("auth endpoint called", {
-    method: req.method,
-  });
   switch (req.method) {
     case "GET":
       return res.status(200).json({ auth: "auth0" });
@@ -36,4 +32,4 @@ async function handler(
   }
 }
 
-export default handler;
+export default withLogging(handler);

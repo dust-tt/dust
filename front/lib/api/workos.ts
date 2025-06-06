@@ -58,11 +58,6 @@ export async function verifyWorkOSToken(
   const verify = `https://api.workos.com/sso/jwks/${config.getWorkOSClientId()}`;
   const issuer = config.getWorkOSIssuerURL();
 
-  const decoded = jwt.decode(accessToken, { json: true });
-  if (!decoded) {
-    return new Err(Error("Invalid token."));
-  }
-
   return new Promise((resolve) => {
     jwt.verify(
       accessToken,

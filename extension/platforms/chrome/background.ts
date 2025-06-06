@@ -21,7 +21,7 @@ import {
 import { extractPage } from "@app/shared/lib/extraction";
 import { generatePKCE } from "@app/shared/lib/utils";
 import type { OAuthAuthorizeResponse } from "@app/shared/services/auth";
-import jwt from "jsonwebtoken";
+import { jwtDecode } from "jwt-decode";
 
 const log = console.error;
 const DEFAULT_TOKEN_EXPIRY_IN_SECONDS = 3600; // 1 hour.
@@ -682,8 +682,8 @@ const logout = async (
     // We need to get the session to log out the user from WorkOS.
     const accessToken = await platform.auth.getAccessToken();
     if (accessToken) {
-      const decodedPayload = jwt.decode(accessToken);
-      if (decodedPayload && typeof decodedPayload === "object") {
+      const decodedPayload = jwtDecode<Record<string, string>>(accessToken);
+      if (decodedPayload) {
         queryParams.session_id = decodedPayload.sid || "";
       }
     } else {
