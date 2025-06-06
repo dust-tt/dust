@@ -1,7 +1,10 @@
+import { getWorkOS } from "@app/lib/api/workos/client";
 import { getOrCreateWorkOSOrganization } from "@app/lib/api/workos/organization";
 import { Authenticator } from "@app/lib/auth";
+import { Workspace } from "@app/lib/models/workspace";
 import { WorkspaceHasDomainModel } from "@app/lib/models/workspace_has_domain";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
+import logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import type { WorkspaceType } from "@app/types";
@@ -30,7 +33,7 @@ async function shouldCreateWorkOSOrganization(
 
   const activeSubscription =
     await SubscriptionResource.fetchActiveByWorkspace(workspace);
-  if (activeSubscription) {
+  if (activeSubscription && !activeSubscription.isLegacyFreeNoPlan()) {
     return { shouldCreate: true, domain: undefined };
   }
 

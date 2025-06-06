@@ -640,6 +640,10 @@ export class SubscriptionResource extends BaseResource<Subscription> {
     return Object.freeze({ ...this.plan });
   }
 
+  isLegacyFreeNoPlan(): boolean {
+    return this.id === FREE_NO_PLAN_SUBSCRIPTION_ID;
+  }
+
   toJSON(): SubscriptionType {
     return {
       status: this.status ?? "active",
