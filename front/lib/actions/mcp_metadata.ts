@@ -46,7 +46,7 @@ import { createSSRFInterceptor } from "@app/types/shared/utils/ssrf";
 
 export type AuthorizationInfo = {
   provider: OAuthProvider;
-  use_case: OAuthUseCase;
+  use_case: Extract<OAuthUseCase, "platform_actions" | "personal_actions">;
   scope?: string;
 };
 
