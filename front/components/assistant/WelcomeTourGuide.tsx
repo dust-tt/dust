@@ -17,13 +17,9 @@ import { useMemo, useRef } from "react";
 import { useState } from "react";
 
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
-import {
-  isBuilder,
-  type ConnectorProvider,
-  type UserType,
-  type WorkspaceType,
-} from "@app/types";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import type { ConnectorProvider, UserType, WorkspaceType } from "@app/types";
+import { isBuilder } from "@app/types";
 
 // We want exactly 12 connections in the tour guide to have a clean grid layout.
 const CONNECTIONS_IN_TOUR_GUIDE: ConnectorProvider[] = [
