@@ -135,10 +135,9 @@ export async function getApp({
           },
           "Failed to get datasets"
         );
-        // temporary comment that error
-        // throw new Error(
-        //   `Failed to get dataset ${datasetId}: ${apiDataset.error.message}`
-        // );
+        throw new Error(
+          `Failed to get dataset ${datasetId}: ${apiDataset.error.message}`
+        );
       } else {
         datasets.push(apiDataset.value.dataset);
       }

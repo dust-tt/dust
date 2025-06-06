@@ -45,7 +45,7 @@ makeScript(
     const client = await getTemporalRelocationClient();
     logger.info("Got temporal client");
 
-    const workflowId = `workspaceRelocateAppsWorkflow-${workspaceId}`;
+    const workflowId = `workspaceRelocateAppWorkflow-${workspaceId}-${projectId}`;
 
     const existingWorkflowHandle = client.workflow.getHandle(workflowId);
     try {
