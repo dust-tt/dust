@@ -9,10 +9,7 @@ import {
   generateJSONFileAndSnippet,
   uploadFileToConversationDataSource,
 } from "@app/lib/actions/action_file_helpers";
-import {
-  DEFAULT_PROCESS_ACTION_NAME,
-  PROCESS_ACTION_TOP_K,
-} from "@app/lib/actions/constants";
+import { PROCESS_ACTION_TOP_K } from "@app/lib/actions/constants";
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import {
   ConfigurableToolInputSchemas,
@@ -52,7 +49,7 @@ import type {
 import { isUserMessageType, timeFrameFromNow } from "@app/types";
 
 const serverInfo: InternalMCPServerDefinitionType = {
-  name: DEFAULT_PROCESS_ACTION_NAME,
+  name: "extract_data",
   version: "1.0.0",
   description: "Structured extraction",
   icon: "ActionScanIcon",
