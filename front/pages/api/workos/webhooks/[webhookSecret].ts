@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import config from "@app/lib/api/config";
 import {
+  getClientIpFromHeaders,
   isWorkOSIpAddress,
   validateWorkOSWebhookEvent,
 } from "@app/lib/api/workos/webhook_helpers";
@@ -47,7 +48,8 @@ async function handler(
   }
 
   // Validate the client IP address.
-  const clientIp = req.headers["x-forwarded-for"] || req.socket.remoteAddress;
+  const clientIp =
+    getClientIpFromHeaders(req.headers) || req.socket.remoteAddress;
   if (typeof clientIp !== "string") {
     return apiError(req, res, {
       status_code: 400,
