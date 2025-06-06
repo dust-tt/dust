@@ -783,6 +783,13 @@ export async function upsertTable({
         });
       }
     }
+    if (schemaRes.value.schema.length === 0) {
+      return new Err({
+        name: "dust_error",
+        code: "invalid_csv_content",
+        message: "Invalid CSV content, skipping",
+      });
+    }
   }
 
   if (async) {
