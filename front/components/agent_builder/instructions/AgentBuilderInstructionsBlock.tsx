@@ -10,8 +10,7 @@ export function AgentBuilderInstructionsBlock() {
     useAgentBuilderInstructionsContext();
 
   return (
-    <div className="flex flex-col gap-4">
-      <Page.H>Instructions</Page.H>
+    <div className="flex h-full flex-col gap-4">
       <div className="flex flex-col items-center justify-between sm:flex-row">
         <Page.P>
           <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
