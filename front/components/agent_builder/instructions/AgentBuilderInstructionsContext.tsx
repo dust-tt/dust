@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useMemo, useState } from "react";
+import { useCallback } from "react";
 
 import type { GenerationSettingsType } from "@app/components/agent_builder/types";
 import { useModels } from "@app/lib/swr/models";
@@ -35,9 +36,28 @@ export function AgentBuilderInstructionsProvider({
       temperature: 0.7,
     });
 
+  const handleSetGenerationSettings = useCallback(
+    (settings: GenerationSettingsType) => {
+      const processedSettings = {
+        ...settings,
+        responseFormat: isSupportingResponseFormat(
+          settings.modelSettings.modelId
+        )
+          ? settings.responseFormat
+          : undefined,
+      };
+      setGenerationSettings(processedSettings);
+    },
+    []
+  );
+
   const contextValue = useMemo(
-    () => ({ generationSettings, setGenerationSettings, models }),
-    [generationSettings, models]
+    () => ({
+      generationSettings,
+      setGenerationSettings: handleSetGenerationSettings,
+      models,
+    }),
+    [generationSettings, handleSetGenerationSettings, models]
   );
 
   return (
@@ -55,30 +75,4 @@ export function useAgentBuilderInstructionsContext() {
     );
   }
   return context;
-}
-
-export function useAgentBuilderInstructions() {
-  const context = useAgentBuilderInstructionsContext();
-
-  const setGenerationSettings = useMemo(
-    () => (settings: GenerationSettingsType) => {
-      const processedSettings = {
-        ...settings,
-        responseFormat: isSupportingResponseFormat(
-          settings.modelSettings.modelId
-        )
-          ? settings.responseFormat
-          : undefined,
-      };
-
-      context.setGenerationSettings(processedSettings);
-    },
-    [context]
-  );
-
-  return {
-    generationSettings: context.generationSettings,
-    setGenerationSettings,
-    models: context.models,
-  };
 }

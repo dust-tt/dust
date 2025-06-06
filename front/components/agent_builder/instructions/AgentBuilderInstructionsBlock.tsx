@@ -1,11 +1,11 @@
 import React from "react";
 
 import { AdvancedSettings } from "@app/components/agent_builder/instructions/AdvancedSettings";
-import { useAgentBuilderInstructions } from "@app/components/agent_builder/instructions/AgentBuilderInstructionsContext";
+import { useAgentBuilderInstructionsContext } from "@app/components/agent_builder/instructions/AgentBuilderInstructionsContext";
 
 export function AgentBuilderInstructionsBlock() {
   const { generationSettings, setGenerationSettings, models } =
-    useAgentBuilderInstructions();
+    useAgentBuilderInstructionsContext();
 
   return (
     <div className="flex flex-col gap-4">
