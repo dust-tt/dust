@@ -106,19 +106,19 @@ impl HttpRequest {
             }
         }));
 
-        // if let (Some(proxy_host), Some(proxy_port)) = (
-        //     UNTRUSTED_EGRESS_PROXY_HOST.as_ref(),
-        //     UNTRUSTED_EGRESS_PROXY_PORT.as_ref(),
-        // ) {
-        //     let proxy_url = format!("http://{}:{}", proxy_host, proxy_port);
-        //     let proxy = reqwest::Proxy::all(&proxy_url)
-        //         .map_err(|e| anyhow!("Failed to configure proxy: {}", e))?;
-        //     client_builder = client_builder.proxy(proxy);
-        //     info!(
-        //         proxy_url = proxy_url.as_str(),
-        //         "Using proxy for HTTP request"
-        //     );
-        // }
+        if let (Some(proxy_host), Some(proxy_port)) = (
+            UNTRUSTED_EGRESS_PROXY_HOST.as_ref(),
+            UNTRUSTED_EGRESS_PROXY_PORT.as_ref(),
+        ) {
+            let proxy_url = format!("http://{}:{}", proxy_host, proxy_port);
+            let proxy = reqwest::Proxy::all(&proxy_url)
+                .map_err(|e| anyhow!("Failed to configure proxy: {}", e))?;
+            client_builder = client_builder.proxy(proxy);
+            info!(
+                proxy_url = proxy_url.as_str(),
+                "Using proxy for HTTP request"
+            );
+        }
 
         let client = client_builder
             .build()
