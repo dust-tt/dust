@@ -12,6 +12,7 @@ import {
   augmentDataSourceWithConnectorDetails,
   getDataSources,
 } from "@app/lib/api/data_sources";
+import { AuthenticatorProvider } from "@app/lib/context/authenticator_context";
 import { isManaged } from "@app/lib/data_sources";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import type { ActionApp } from "@app/lib/registry";
@@ -194,9 +195,11 @@ export default function Space({
 Space.getLayout = (page: ReactElement, pageProps: any) => {
   return (
     <AppRootLayout>
-      <SpaceLayout pageProps={pageProps} useBackendSearch>
-        {page}
-      </SpaceLayout>
+      <AuthenticatorProvider value={pageProps}>
+        <SpaceLayout pageProps={pageProps} useBackendSearch>
+          {page}
+        </SpaceLayout>
+      </AuthenticatorProvider>
     </AppRootLayout>
   );
 };
