@@ -177,9 +177,6 @@ export const INTERNAL_MCP_SERVERS: Record<
   extract_data: {
     id: 12,
     availability: "auto",
-    isRestricted: (plan, featureFlags) => {
-      return featureFlags.includes("dev_mcp_actions");
-    },
   },
   missing_action_catcher: {
     id: 13,
