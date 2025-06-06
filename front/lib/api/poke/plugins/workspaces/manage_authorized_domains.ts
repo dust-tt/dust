@@ -2,6 +2,7 @@ import type { PluginResponse } from "@app/lib/api/poke/types";
 import { createPlugin } from "@app/lib/api/poke/types";
 import { checkUserRegionAffinity } from "@app/lib/api/regions/lookup";
 import {
+  addWorkOSOrganizationDomain,
   getWorkOSOrganization,
   removeWorkOSOrganizationDomain,
 } from "@app/lib/api/workos/organization";
@@ -49,11 +50,19 @@ async function handleAddDomain(
     );
   }
 
-  const workOSOrganizationRes = await getOrCreateWorkOSOrganization(workspace, {
-    domain,
-  });
+  const workOSOrganizationRes = await getOrCreateWorkOSOrganization(workspace);
   if (workOSOrganizationRes.isErr()) {
     return new Err(workOSOrganizationRes.error);
+  }
+
+  // If organization has just been created, the domain has been added to the organization.
+  if (!workOSOrganizationRes.value.domains.some((d) => d.domain === domain)) {
+    const result = await addWorkOSOrganizationDomain(workspace, {
+      domain,
+    });
+    if (result.isErr()) {
+      return new Err(result.error);
+    }
   }
 
   return new Ok({
