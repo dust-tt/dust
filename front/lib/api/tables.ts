@@ -256,8 +256,6 @@ export async function upsertTableFromCsv({
         );
       }
       return new Err(errorDetails);
-    } else {
-      const table = csvRes.value;
     }
   }
 
