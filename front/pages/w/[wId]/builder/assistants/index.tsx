@@ -32,6 +32,7 @@ import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import {
   compareForFuzzySort,
   getAgentSearchString,
@@ -43,7 +44,7 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types";
-import { isAdmin } from "@app/types";
+import { isAdmin, isBuilder } from "@app/types";
 import type { TagType } from "@app/types/tag";
 
 export const AGENT_MANAGER_TABS = [
@@ -127,6 +128,15 @@ export default function WorkspaceAssistants({
   const [selectedTags, setSelectedTags] = useState<TagType[]>([]);
   const [isBatchEdit, setIsBatchEdit] = useState(false);
   const [selection, setSelection] = useState<string[]>([]);
+
+  const { featureFlags } = useFeatureFlags({
+    workspaceId: owner.sId,
+  });
+
+  const isRestrictedFromAgentCreation =
+    featureFlags.includes("disallow_agent_creation_to_users") &&
+    !isBuilder(owner);
+
   const activeTab = useMemo(() => {
     if (assistantSearch.trim() !== "") {
       return "search";
@@ -324,17 +334,19 @@ export default function WorkspaceAssistants({
                     setSelectedTags={setSelectedTags}
                     owner={owner}
                   />
-                  <Link
-                    href={`/w/${owner.sId}/builder/assistants/create?flow=workspace_assistants`}
-                  >
-                    <Button
-                      variant="primary"
-                      icon={PlusIcon}
-                      label="Create an agent"
-                      data-gtm-label="assistantCreationButton"
-                      data-gtm-location="assistantsWorkspace"
-                    />
-                  </Link>
+                  {!isRestrictedFromAgentCreation && (
+                    <Link
+                      href={`/w/${owner.sId}/builder/assistants/create?flow=workspace_assistants`}
+                    >
+                      <Button
+                        variant="primary"
+                        icon={PlusIcon}
+                        label="Create an agent"
+                        data-gtm-label="assistantCreationButton"
+                        data-gtm-location="assistantsWorkspace"
+                      />
+                    </Link>
+                  )}
                 </div>
               )}
             </div>
@@ -411,7 +423,8 @@ export default function WorkspaceAssistants({
                   mutateAgentConfigurations={mutateAgentConfigurations}
                 />
               ) : (
-                !assistantSearch && (
+                !assistantSearch &&
+                !isRestrictedFromAgentCreation && (
                   <div className="pt-2">
                     <EmptyCallToAction
                       href={`/w/${owner.sId}/builder/assistants/create?flow=workspace_assistants`}
