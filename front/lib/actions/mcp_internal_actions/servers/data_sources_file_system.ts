@@ -18,6 +18,7 @@ import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { actionRefsOffset, getRetrievalTopK } from "@app/lib/actions/utils";
 import { getRefs } from "@app/lib/api/assistant/citations";
 import config from "@app/lib/api/config";
+import { ROOT_PARENT_ID } from "@app/lib/api/data_source_view";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import {
@@ -35,6 +36,7 @@ import type {
 } from "@app/types";
 import {
   CoreAPI,
+  DATA_SOURCE_NODE_ID,
   dustManagedCredentials,
   Err,
   Ok,
@@ -98,8 +100,26 @@ const createServer = (
           INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
         ],
       nodeId: z.string().describe("The ID of the node to read."),
+      offset: z
+        .number()
+        .optional()
+        .describe(
+          "The character position to start reading from (0-based). If not provided, starts from the beginning."
+        ),
+      limit: z
+        .number()
+        .optional()
+        .describe(
+          "The maximum number of characters to read. If not provided, reads all characters."
+        ),
+      grep: z
+        .string()
+        .optional()
+        .describe(
+          "A regular expression to filter lines. Applied after offset/limit slicing. Only lines matching this pattern will be returned."
+        ),
     },
-    async ({ dataSources, nodeId }) => {
+    async ({ dataSources, nodeId, offset, limit, grep }) => {
       const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
       // Gather data source configurations.
@@ -149,10 +169,13 @@ const createServer = (
       }
 
       // Read the node.
-      const readResult = await coreAPI.getDataSourceDocument({
+      const readResult = await coreAPI.getDataSourceDocumentText({
         dataSourceId: node.data_source_id,
         documentId: node.node_id,
         projectId: dustAPIProjectId,
+        offset: offset,
+        limit: limit,
+        grep: grep,
       });
 
       if (readResult.isErr()) {
@@ -166,7 +189,7 @@ const createServer = (
         content: [
           {
             type: "text",
-            text: readResult.value.document.text ?? "",
+            text: readResult.value.text,
           },
         ],
       };
@@ -203,7 +226,14 @@ const createServer = (
         ],
       ...OPTION_PARAMETERS,
     },
-    async ({ query, dataSources, limit, sortBy, nextPageCursor }) => {
+    async ({
+      query,
+      dataSources,
+      limit,
+      sortBy,
+      nextPageCursor,
+      rootNodeId,
+    }) => {
       const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
       const fetchResult = await getAgentDataSourceConfigurations(dataSources);
@@ -213,12 +243,33 @@ const createServer = (
       }
       const agentDataSourceConfigurations = fetchResult.value;
 
+      const dataSourceNodeId = rootNodeId
+        ? extractDataSourceIdFromNodeId(rootNodeId)
+        : undefined;
+
+      // If rootNodeId is provided and is a data source node ID, search only in
+      // the data source. If rootNodeId is provided and is a regular node ID,
+      // reset all view_filters to this node, so only descendents of this node
+      // are searched. It is not straightforward to guess which data source it
+      // belongs to, this is why irrelevant data sources are not directly
+      // filtered out.
+      let viewFilter = makeDataSourceViewFilter(agentDataSourceConfigurations);
+
+      if (dataSourceNodeId) {
+        viewFilter = viewFilter.filter(
+          (view) => view.data_source_id === dataSourceNodeId
+        );
+      } else if (rootNodeId) {
+        viewFilter = viewFilter.map((view) => ({
+          ...view,
+          view_filter: [rootNodeId],
+        }));
+      }
+
       const searchResult = await coreAPI.searchNodes({
         query,
         filter: {
-          data_source_views: makeDataSourceViewFilter(
-            agentDataSourceConfigurations
-          ),
+          data_source_views: viewFilter,
         },
         options: {
           cursor: nextPageCursor,
@@ -270,9 +321,6 @@ const createServer = (
       }
       const agentDataSourceConfigurations = fetchResult.value;
 
-      const dataSourceViewFilter = makeDataSourceViewFilter(
-        agentDataSourceConfigurations
-      );
       const options = {
         cursor: nextPageCursor,
         limit,
@@ -284,19 +332,51 @@ const createServer = (
       let searchResult: Result<CoreAPISearchNodesResponse, CoreAPIError>;
 
       if (!nodeId) {
-        // If we don't have a nodeId, we want to show the root nodes for the data source views, which are the parentsIn.
-        // So we search these nodes by node_id.
-        // TODO(2025-06-03 aubin): handle the root case where parentsIn is null.
+        // When nodeId is null, search for data sources only
+        const dataSourceViewFilter = makeDataSourceViewFilter(
+          agentDataSourceConfigurations
+        ).map((view) => ({
+          ...view,
+          search_scope: "data_source_name" as const,
+        }));
+
         searchResult = await coreAPI.searchNodes({
           filter: {
             data_source_views: dataSourceViewFilter,
-            node_ids: agentDataSourceConfigurations.flatMap(
-              ({ dataSourceView }) => dataSourceView.parentsIn ?? []
-            ),
+          },
+          options,
+        });
+      } else if (isDataSourceNodeId(nodeId)) {
+        // If it's a data source node ID, extract the data source ID and list its root contents
+        const dataSourceId = extractDataSourceIdFromNodeId(nodeId);
+        if (!dataSourceId) {
+          return makeMCPToolTextError("Invalid data source node ID format");
+        }
+
+        const dataSourceConfig = agentDataSourceConfigurations.find(
+          ({ dataSource }) => dataSource.dustAPIDataSourceId === dataSourceId
+        );
+
+        if (!dataSourceConfig) {
+          return makeMCPToolTextError(
+            `Data source not found for ID: ${dataSourceId}`
+          );
+        }
+
+        searchResult = await coreAPI.searchNodes({
+          filter: {
+            data_source_views: makeDataSourceViewFilter([dataSourceConfig]),
+            node_ids: dataSourceConfig.parentsIn ?? undefined,
+            parent_id: dataSourceConfig.parentsIn ? undefined : ROOT_PARENT_ID,
           },
           options,
         });
       } else {
+        // Regular node listing
+        const dataSourceViewFilter = makeDataSourceViewFilter(
+          agentDataSourceConfigurations
+        );
+
         searchResult = await coreAPI.searchNodes({
           filter: {
             data_source_views: dataSourceViewFilter,
@@ -381,22 +461,48 @@ const createServer = (
         { concurrency: 10 }
       );
 
-      const coreSearchArgs = removeNulls(
-        coreSearchArgsResults.map((res) => (res.isOk() ? res.value : null))
-      ).map((coreSearchArgs) => {
-        if (!nodeIds) {
-          // If the agent doesn't provide nodeIds, we keep the default filter.
-          return coreSearchArgs;
-        }
+      // Set to avoid O(n^2) complexity below.
+      const dataSourceIds = new Set<string>(
+        removeNulls(
+          nodeIds?.map((nodeId) => extractDataSourceIdFromNodeId(nodeId)) ?? []
+        )
+      );
 
-        return {
-          ...coreSearchArgs,
-          filter: {
-            ...coreSearchArgs.filter,
-            parents: { in: nodeIds, not: [] },
-          },
-        };
-      });
+      const regularNodeIds =
+        nodeIds?.filter(
+          (nodeId) =>
+            !dataSourceIds.has(extractDataSourceIdFromNodeId(nodeId) ?? "")
+        ) ?? [];
+
+      const coreSearchArgs = removeNulls(
+        coreSearchArgsResults
+          .map((res) => (res.isOk() ? res.value : null))
+          .map((coreSearchArgs) => {
+            if (coreSearchArgs === null) {
+              return null;
+            }
+
+            if (!nodeIds || dataSourceIds.has(coreSearchArgs.dataSourceId)) {
+              // If the agent doesn't provide nodeIds, or if it provides the node id
+              // of this data source, we keep the default filter.
+              return coreSearchArgs;
+            }
+
+            // If there are only data source nodeIds, that are not this one, then
+            // this data source can be excluded from the search.
+            if (regularNodeIds.length === 0) {
+              return null;
+            }
+
+            return {
+              ...coreSearchArgs,
+              filter: {
+                ...coreSearchArgs.filter,
+                parents: { in: regularNodeIds, not: [] },
+              },
+            };
+          })
+      );
 
       if (coreSearchArgs.length === 0) {
         return {
@@ -528,12 +634,10 @@ async function getAgentDataSourceConfigurations(
 function makeDataSourceViewFilter(
   agentDataSourceConfigurations: AgentDataSourceConfiguration[]
 ) {
-  return agentDataSourceConfigurations.map(
-    ({ dataSource, dataSourceView }) => ({
-      data_source_id: dataSource.dustAPIDataSourceId,
-      view_filter: dataSourceView.parentsIn ?? [],
-    })
-  );
+  return agentDataSourceConfigurations.map(({ dataSource, parentsIn }) => ({
+    data_source_id: dataSource.dustAPIDataSourceId,
+    view_filter: parentsIn ?? [],
+  }));
 }
 
 function getSortDirection(field: "title" | "timestamp"): "asc" | "desc" {
@@ -543,6 +647,25 @@ function getSortDirection(field: "title" | "timestamp"): "asc" | "desc" {
     case "timestamp":
       return "desc"; // Most recent first.
   }
+}
+
+/**
+ * Check if a node ID represents a data source node.
+ * Data source node IDs have the format: "datasource_node_id-{data_source_id}"
+ */
+function isDataSourceNodeId(nodeId: string): boolean {
+  return nodeId.startsWith(`${DATA_SOURCE_NODE_ID}-`);
+}
+
+/**
+ * Extract the data source ID from a data source node ID.
+ * Returns null if the node ID is not a data source node ID.
+ */
+function extractDataSourceIdFromNodeId(nodeId: string): string | null {
+  if (!isDataSourceNodeId(nodeId)) {
+    return null;
+  }
+  return nodeId.substring(`${DATA_SOURCE_NODE_ID}-`.length);
 }
 
 function formatTimestamp(timestamp: number): string {
@@ -576,8 +699,14 @@ function formatTimestamp(timestamp: number): string {
  * Removes references to the term 'content node' and simplifies the format.
  */
 function renderNode(node: CoreAPIContentNode) {
+  // Transform data source node IDs to include the data source ID
+  const nodeId =
+    node.node_id === DATA_SOURCE_NODE_ID
+      ? `${DATA_SOURCE_NODE_ID}-${node.data_source_id}`
+      : node.node_id;
+
   return {
-    nodeId: node.node_id,
+    nodeId,
     title: node.title,
     path: node.parents.join("/"),
     parentTitle: node.parent_title,

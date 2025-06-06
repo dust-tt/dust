@@ -29,6 +29,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "search",
   "think",
   "web_search_&_browse",
+  "google_calendar",
 ] as const;
 
 // Whether the server is available by default in the global space.
@@ -143,7 +144,7 @@ export const INTERNAL_MCP_SERVERS: Record<
   notion: {
     id: 11,
     availability: "manual",
-    flag: "dev_mcp_actions",
+    flag: null,
     tools_stakes: {
       search: "never_ask",
       retrieve_page: "never_ask",
@@ -160,7 +161,6 @@ export const INTERNAL_MCP_SERVERS: Record<
       insert_row_into_database: "low",
       create_database: "low",
       update_page: "low",
-      append_block_children: "low",
       add_page_content: "low",
       create_comment: "low",
       delete_block: "low",
@@ -195,6 +195,19 @@ export const INTERNAL_MCP_SERVERS: Record<
     tools_stakes: {
       get_drafts: "never_ask",
       create_draft: "low",
+    },
+  },
+  google_calendar: {
+    id: 16,
+    availability: "manual",
+    flag: "google_calendar_tool",
+    tools_stakes: {
+      list_calendars: "never_ask",
+      list_events: "never_ask",
+      get_event: "never_ask",
+      create_event: "low",
+      update_event: "low",
+      delete_event: "low",
     },
   },
 

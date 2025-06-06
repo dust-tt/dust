@@ -66,6 +66,7 @@ import {
   isOAuthProvider,
   isOAuthUseCase,
   isSupportedImageContentType,
+  isValidScope,
 } from "@app/types";
 
 interface AgentMessageProps {
@@ -500,7 +501,8 @@ export function AgentMessage({
         typeof agentMessage.error.metadata?.mcp_server_id === "string" &&
         agentMessage.error.metadata?.mcp_server_id.length > 0 &&
         isOAuthProvider(agentMessage.error.metadata?.provider) &&
-        isOAuthUseCase(agentMessage.error.metadata?.use_case)
+        isOAuthUseCase(agentMessage.error.metadata?.use_case) &&
+        isValidScope(agentMessage.error.metadata?.scope)
       ) {
         return (
           <MCPServerPersonalAuthenticationRequired
@@ -508,6 +510,7 @@ export function AgentMessage({
             mcpServerId={agentMessage.error.metadata.mcp_server_id}
             provider={agentMessage.error.metadata.provider}
             useCase={agentMessage.error.metadata.use_case}
+            scope={agentMessage.error.metadata.scope}
             retryHandler={async () => retryHandler(agentMessage)}
           />
         );

@@ -227,11 +227,13 @@ export async function retrieveHierarchyForParent(
     },
   });
 
-  const allSpaces = syncedSpaces.map((space) =>
-    createContentNodeFromSpace(space, confluenceConfig.url, "read", {
-      isExpandable: true,
-    })
-  );
+  const allSpaces = syncedSpaces
+    .map((space) =>
+      createContentNodeFromSpace(space, confluenceConfig.url, "read", {
+        isExpandable: true,
+      })
+    )
+    .sort((a, b) => a.title.localeCompare(b.title));
 
   return new Ok(allSpaces);
 }
@@ -254,15 +256,17 @@ export async function retrieveAvailableSpaces(
   }
 
   return new Ok(
-    spacesRes.value.map((space) => {
-      const isSynced = syncedSpaces.some((ss) => ss.spaceId === space.id);
+    spacesRes.value
+      .map((space) => {
+        const isSynced = syncedSpaces.some((ss) => ss.spaceId === space.id);
 
-      return createContentNodeFromSpace(
-        space,
-        confluenceConfig.url,
-        isSynced ? "read" : "none",
-        { isExpandable: false }
-      );
-    })
+        return createContentNodeFromSpace(
+          space,
+          confluenceConfig.url,
+          isSynced ? "read" : "none",
+          { isExpandable: false }
+        );
+      })
+      .sort((a, b) => a.title.localeCompare(b.title))
   );
 }

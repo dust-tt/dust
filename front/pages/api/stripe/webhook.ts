@@ -31,6 +31,7 @@ import {
   launchScheduleWorkspaceScrubWorkflow,
   terminateScheduleWorkspaceScrubWorkflow,
 } from "@app/temporal/scrub_workspace/client";
+import { launchWorkOSWorkspaceSubscriptionCreatedWorkflow } from "@app/temporal/workos_events_queue/client";
 import type { WithAPIErrorResponse } from "@app/types";
 import { assertNever, ConnectorsAPI, removeNulls } from "@app/types";
 
@@ -265,6 +266,11 @@ async function handler(
             await unpauseAllConnectorsAndCancelScrub(
               await Authenticator.internalAdminForWorkspace(workspace.sId)
             );
+
+            await launchWorkOSWorkspaceSubscriptionCreatedWorkflow({
+              workspaceId,
+            });
+
             return res.status(200).json({ success: true });
           } catch (error) {
             logger.error(

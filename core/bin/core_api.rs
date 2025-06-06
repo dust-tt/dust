@@ -13,6 +13,7 @@ use axum::{
 use futures::future::try_join_all;
 use hyper::http::StatusCode;
 use parking_lot::Mutex;
+use regex::Regex;
 use serde_json::{json, Value};
 use std::collections::{HashMap, HashSet};
 use std::convert::Infallible;
@@ -2193,6 +2194,108 @@ async fn data_sources_documents_retrieve(
     }
 }
 
+/// Retrieve document text from a data source with offset and limit.
+#[derive(serde::Deserialize)]
+struct DataSourcesDocumentsRetrieveTextQuery {
+    offset: Option<usize>,
+    limit: Option<usize>,
+    grep: Option<String>,
+    version_hash: Option<String>,
+    view_filter: Option<String>, // Parsed as JSON.
+}
+
+async fn data_sources_documents_retrieve_text(
+    Path((project_id, data_source_id, document_id)): Path<(i64, String, String)>,
+    State(state): State<Arc<APIState>>,
+    Query(query): Query<DataSourcesDocumentsRetrieveTextQuery>,
+) -> (StatusCode, Json<APIResponse>) {
+    // Call the existing retrieve function
+    let retrieve_query = DataSourcesDocumentsRetrieveQuery {
+        version_hash: query.version_hash,
+        view_filter: query.view_filter,
+    };
+
+    let (status, json_response) = data_sources_documents_retrieve(
+        Path((project_id, data_source_id, document_id)),
+        State(state),
+        Query(retrieve_query),
+    )
+    .await;
+
+    // If the request failed, return the error as-is
+    if status != StatusCode::OK {
+        return (status, json_response);
+    }
+
+    // Extract the document text from the response
+    let text = json_response
+        .response
+        .as_ref()
+        .and_then(|r| r.get("document"))
+        .and_then(|d| d.get("text"))
+        .and_then(|t| t.as_str());
+
+    let text = match text {
+        Some(t) => t,
+        None => {
+            return error_response(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "internal_server_error",
+                "Failed to extract text from document response",
+                None,
+            )
+        }
+    };
+
+    // First apply character-based offset and limit
+    let offset = query.offset.unwrap_or(0);
+    let limit = query.limit;
+
+    let text_len = text.len();
+    let start = offset.min(text_len);
+    let end = match limit {
+        Some(l) => (start + l).min(text_len),
+        None => text_len,
+    };
+
+    let text_slice = &text[start..end];
+
+    // Then apply grep filter if provided
+    let filtered_text = match &query.grep {
+        Some(pattern) => match Regex::new(pattern) {
+            Ok(re) => {
+                let lines: Vec<&str> = text_slice
+                    .lines()
+                    .filter(|line| re.is_match(line))
+                    .collect();
+                lines.join("\n")
+            }
+            Err(_) => {
+                return error_response(
+                    StatusCode::BAD_REQUEST,
+                    "invalid_regex",
+                    &format!("Invalid regular expression: {}", pattern),
+                    None,
+                )
+            }
+        },
+        None => text_slice.to_string(),
+    };
+
+    (
+        StatusCode::OK,
+        Json(APIResponse {
+            error: None,
+            response: Some(json!({
+                "text": filtered_text,
+                "total_characters": text_len,
+                "offset": start,
+                "limit": limit,
+            })),
+        }),
+    )
+}
+
 /// Delete document from a data source.
 
 async fn data_sources_documents_delete(
@@ -4100,6 +4203,10 @@ fn main() {
         .route(
             "/projects/:project_id/data_sources/:data_source_id/documents/:document_id",
             get(data_sources_documents_retrieve),
+        )
+        .route(
+            "/projects/:project_id/data_sources/:data_source_id/documents/:document_id/text",
+            get(data_sources_documents_retrieve_text),
         )
         .route(
             "/projects/:project_id/data_sources/:data_source_id/documents/:document_id",

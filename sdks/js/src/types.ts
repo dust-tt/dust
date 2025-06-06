@@ -835,6 +835,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "workos"
   | "salesforce_tool"
   | "gmail_tool"
+  | "google_calendar_tool"
   | "agent_builder_v2"
 >();
 

@@ -84,6 +84,7 @@ const SUPPORTED_OAUTH_CREDENTIALS = [
   "instance_url",
   "code_verifier",
   "code_challenge",
+  "scope",
 ] as const;
 
 export type SupportedOAuthCredentials =
@@ -211,6 +212,10 @@ export type OAuthProvider = (typeof OAUTH_PROVIDERS)[number];
 
 export function isOAuthProvider(obj: unknown): obj is OAuthProvider {
   return OAUTH_PROVIDERS.includes(obj as OAuthProvider);
+}
+
+export function isValidScope(obj: unknown): obj is string | undefined {
+  return !obj || typeof obj === "string";
 }
 
 export type OAuthConnectionType = {

@@ -219,6 +219,20 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
           model: AgentMessageModel,
           attributes: ["id"],
           as: "agentMessage",
+          include: [
+            {
+              model: Message,
+              as: "message",
+              attributes: ["id", "sId"],
+              include: [
+                {
+                  model: ConversationModel,
+                  as: "conversation",
+                  attributes: ["id", "sId"],
+                },
+              ],
+            },
+          ],
         },
         {
           model: UserResource.model,
@@ -238,6 +252,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
           feedback.get(),
           {
             user: feedback.user,
+            conversationId: feedback.agentMessage?.message?.conversation?.sId,
           }
         );
       });

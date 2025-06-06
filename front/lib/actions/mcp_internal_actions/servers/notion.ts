@@ -9,7 +9,6 @@ import type {
 import { z } from "zod";
 
 import { getAccessTokenForInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/authentication";
-import type { MCPToolResult } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
   makeMCPToolJSONSuccess,
   makeMCPToolTextError,
@@ -263,7 +262,7 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
   // Consolidated wrapper for Notion client creation and error handling
   async function withNotionClient<T>(
     fn: (notion: Client) => Promise<T>
-  ): Promise<CallToolResult | MCPToolResult> {
+  ): Promise<CallToolResult> {
     try {
       const notion = await getNotionClient(auth, mcpServerId);
       if (!notion) {
