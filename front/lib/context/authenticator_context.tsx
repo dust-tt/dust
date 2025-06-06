@@ -1,0 +1,47 @@
+import pick from "lodash/pick";
+import type { ReactNode } from "react";
+import { createContext, useContext } from "react";
+
+import type {
+  LightWorkspaceType,
+  PlanType,
+  SubscriptionType,
+  UserType,
+} from "@app/types";
+
+export type AuthenticatorType = {
+  user: UserType;
+  owner: LightWorkspaceType;
+  plan: PlanType | null;
+  isAdmin: boolean;
+  subscription: SubscriptionType | null;
+};
+
+const AuthenticatorContext = createContext<AuthenticatorType | null>(null);
+
+export function AuthenticatorProvider({
+  children,
+  value,
+}: {
+  children: ReactNode;
+  value: AuthenticatorType;
+}) {
+  return (
+    <AuthenticatorContext.Provider
+      // use pick to make sure we only put the needed key in the event of passing an any above
+      value={pick(value, ["user", "owner", "plan", "isAdmin", "subscription"])}
+    >
+      {children}
+    </AuthenticatorContext.Provider>
+  );
+}
+
+export function useAuthenticator() {
+  const context = useContext(AuthenticatorContext);
+  if (!context) {
+    throw new Error(
+      "useAuthenticator must be used within an AuthenticatorProvider"
+    );
+  }
+  return context;
+}

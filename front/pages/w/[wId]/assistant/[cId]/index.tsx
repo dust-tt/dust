@@ -9,18 +9,22 @@ import ConversationLayout from "@app/components/assistant/conversation/Conversat
 import { useConversationsNavigation } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import config from "@app/lib/api/config";
+import { AuthenticatorProvider } from "@app/lib/context/authenticator_context";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
+import type { PlanType } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<
   ConversationLayoutProps & {
     // Here, override conversationId.
     conversationId: string | null;
+    plan: PlanType | null;
   }
 >(async (context, auth) => {
   const owner = auth.workspace();
   const user = auth.user()?.toJSON();
   const subscription = auth.subscription();
   const isAdmin = auth.isAdmin();
+  const plan = auth.plan();
 
   if (!owner || !user || !auth.isUser() || !subscription) {
     const { cId } = context.query;
@@ -49,6 +53,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
       user,
       owner,
       isAdmin,
+      plan,
       subscription,
       baseUrl: config.getClientFacingUrl(),
       conversationId: getValidConversationId(cId),
@@ -116,7 +121,9 @@ AssistantConversation.getLayout = (
 ) => {
   return (
     <AppRootLayout>
-      <ConversationLayout pageProps={pageProps}>{page}</ConversationLayout>
+      <AuthenticatorProvider value={pageProps}>
+        <ConversationLayout pageProps={pageProps}>{page}</ConversationLayout>
+      </AuthenticatorProvider>
     </AppRootLayout>
   );
 };
