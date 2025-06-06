@@ -45,7 +45,6 @@ import {
   stripNullBytes,
   timeFrameFromNow,
 } from "@app/types";
-import { CONTENT_NODE_MIME_TYPES } from "../../../../../sdks/js/src";
 
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "data_sources_file_system",
