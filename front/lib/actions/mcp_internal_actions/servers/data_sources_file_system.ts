@@ -217,9 +217,17 @@ const createServer = (
           "The node ID of the node to start the search from. If not provided, the search will " +
             "start from the root of the filesystem. This ID can be found from previous search " +
             "results in the 'nodeId' field. This parameter restricts the search to the children " +
-            "and descendant of a specific node."
+            "and descendant of a specific node. If a node output by this tool or the list tool" +
+            "has children (hasChildren: true), it means that it can be passed as a rootNodeId."
         ),
-      // TODO(2025-06-03 aubin): add search by mime type (not supported in the backend currently).
+      mimeTypes: z
+        .array(z.string())
+        .optional()
+        .describe(
+          "The mime types to search for. If provided, only nodes with one of these mime types " +
+            "will be returned. If not provided, no filter will be applied. The mime types passed " +
+            "here must be one of the mime types found in the 'mimeType' field."
+        ),
       dataSources:
         ConfigurableToolInputSchemas[
           INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
@@ -233,6 +241,7 @@ const createServer = (
       sortBy,
       nextPageCursor,
       rootNodeId,
+      mimeTypes,
     }) => {
       const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
@@ -270,6 +279,7 @@ const createServer = (
         query,
         filter: {
           data_source_views: viewFilter,
+          mime_types: mimeTypes ? { in: mimeTypes, not: null } : undefined,
         },
         options: {
           cursor: nextPageCursor,
@@ -307,13 +317,28 @@ const createServer = (
             "This ID can be found from previous search results in the 'nodeId' field. " +
             "If not provided, the content at the root of the filesystem will be shown."
         ),
+      mimeTypes: z
+        .array(z.string())
+        .optional()
+        .describe(
+          "The mime types to search for. If provided, only nodes with one of these mime types " +
+            "will be returned. If not provided, no filter will be applied. The mime types passed " +
+            "here must be one of the mime types found in the 'mimeType' field."
+        ),
       dataSources:
         ConfigurableToolInputSchemas[
           INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
         ],
       ...OPTION_PARAMETERS,
     },
-    async ({ nodeId, dataSources, limit, sortBy, nextPageCursor }) => {
+    async ({
+      nodeId,
+      dataSources,
+      limit,
+      mimeTypes,
+      sortBy,
+      nextPageCursor,
+    }) => {
       const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
       const fetchResult = await getAgentDataSourceConfigurations(dataSources);
 
@@ -344,6 +369,7 @@ const createServer = (
         searchResult = await coreAPI.searchNodes({
           filter: {
             data_source_views: dataSourceViewFilter,
+            mime_types: mimeTypes ? { in: mimeTypes, not: null } : undefined,
           },
           options,
         });
@@ -369,6 +395,7 @@ const createServer = (
             data_source_views: makeDataSourceViewFilter([dataSourceConfig]),
             node_ids: dataSourceConfig.parentsIn ?? undefined,
             parent_id: dataSourceConfig.parentsIn ? undefined : ROOT_PARENT_ID,
+            mime_types: mimeTypes ? { in: mimeTypes, not: null } : undefined,
           },
           options,
         });
@@ -382,6 +409,7 @@ const createServer = (
           filter: {
             data_source_views: dataSourceViewFilter,
             parent_id: nodeId,
+            mime_types: mimeTypes ? { in: mimeTypes, not: null } : undefined,
           },
           options,
         });
