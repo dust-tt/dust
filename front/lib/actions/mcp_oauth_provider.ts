@@ -95,6 +95,26 @@ export class MCPOAuthProvider implements OAuthClientProvider {
       );
     }
 
+    const responseType = "code";
+    const codeChallengeMethod = "S256";
+
+    if (!this.metadata.response_types_supported.includes(responseType)) {
+      throw new Error(
+        `Incompatible auth server: does not support response type ${responseType}`
+      );
+    }
+
+    if (
+      !this.metadata.code_challenge_methods_supported ||
+      !this.metadata.code_challenge_methods_supported.includes(
+        codeChallengeMethod
+      )
+    ) {
+      throw new Error(
+        `Incompatible auth server: does not support code challenge method ${codeChallengeMethod}`
+      );
+    }
+
     // Raise an error to let the client know that the server requires an OAuth connection.
     // We pass the metadata to the client to allow them to handle the oauth flow.
     throw new MCPOAuthRequiredError({
@@ -102,10 +122,6 @@ export class MCPOAuthProvider implements OAuthClientProvider {
       client_secret: clientInformation.client_secret,
       token_endpoint: this.metadata.token_endpoint,
       authorization_endpoint: this.metadata.authorization_endpoint,
-      response_types_supported: this.metadata.response_types_supported,
-      grant_types_supported: this.metadata.grant_types_supported,
-      code_challenge_methods_supported:
-        this.metadata.code_challenge_methods_supported,
     });
   }
 

@@ -5,7 +5,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { fetchRemoteServerMetaDataByURL } from "@app/lib/actions/mcp_metadata";
 import { MCPOAuthRequiredError } from "@app/lib/actions/mcp_oauth_error";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import type { MCPOAuthExtraConfig } from "@app/lib/api/oauth/providers/mcp";
+import type { MCPOAuthConnectionMetadataType } from "@app/lib/api/oauth/providers/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
@@ -13,7 +13,7 @@ import type { WithAPIErrorResponse } from "@app/types";
 export type CheckOAuthResponseBody =
   | {
       oauthRequired: true;
-      extraConfig: MCPOAuthExtraConfig;
+      connectionMetadata: MCPOAuthConnectionMetadataType;
     }
   | {
       oauthRequired: false;
@@ -51,8 +51,8 @@ async function handler(
         if (r2.error instanceof MCPOAuthRequiredError) {
           return res.status(200).json({
             oauthRequired: true,
-            // Return the oauth extraConfig to the client to allow them to handle the oauth flow.
-            extraConfig: r2.error.extraConfig,
+            // Return the oauth connectionMetadata to the client to allow them to handle the oauth flow.
+            connectionMetadata: r2.error.connectionMetadata,
           });
         }
       }

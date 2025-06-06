@@ -11,19 +11,29 @@ import { getPKCEConfig } from "@app/lib/utils/pkce";
 import type { ExtraConfigType } from "@app/pages/w/[wId]/oauth/[provider]/setup";
 import type { OAuthConnectionType, OAuthUseCase } from "@app/types/oauth/lib";
 
-export const MCPOAuthExtraConfigSchema = z.object({
+export const MCP_OAUTH_RESPONSE_TYPE = "code";
+export const MCP_OAUTH_CODE_CHALLENGE_METHOD = "S256";
+
+const BaseMCPMetadataSchema = z.object({
   client_id: z.string(),
-  client_secret: z.string(),
   token_endpoint: z.string(),
   authorization_endpoint: z.string(),
-  response_types_supported: z.array(z.string()),
-  grant_types_supported: z.array(z.string()).optional(),
-  code_challenge_methods_supported: z.array(z.string()).optional(),
-  code_verifier: z.string().optional(),
-  code_challenge: z.string().optional(),
 });
 
-export type MCPOAuthExtraConfig = z.infer<typeof MCPOAuthExtraConfigSchema>;
+const MCPOAuthConnectionMetadataSchema = BaseMCPMetadataSchema.extend({
+  client_secret: z.string(),
+});
+
+const MCPMetadataSchema = BaseMCPMetadataSchema.extend({
+  code_challenge: z.string(),
+  code_verifier: z.string(),
+});
+
+export type MCPOAuthConnectionMetadataType = z.infer<
+  typeof MCPOAuthConnectionMetadataSchema
+>;
+
+type MCPMetadataType = z.infer<typeof MCPMetadataSchema>;
 
 export class MCPOAuthProvider implements BaseOAuthStrategyProvider {
   setupUri({
@@ -32,35 +42,29 @@ export class MCPOAuthProvider implements BaseOAuthStrategyProvider {
     connection: OAuthConnectionType;
     useCase: OAuthUseCase;
   }) {
-    const responseType = "code";
-    const codeChallengeMethod = "S256";
+    const code_challenge = connection.metadata.code_challenge;
+    const client_id = connection.metadata.client_id;
+    const authorization_endpoint = connection.metadata.authorization_endpoint;
 
-    const metadata = connection.metadata as MCPOAuthExtraConfig;
-    const authUrl = new URL(metadata.authorization_endpoint);
-
-    if (!metadata.response_types_supported.includes(responseType)) {
-      throw new Error(
-        `Incompatible auth server: does not support response type ${responseType}`
-      );
-    }
-
-    if (
-      !metadata.code_challenge_methods_supported ||
-      !metadata.code_challenge_methods_supported.includes(codeChallengeMethod)
-    ) {
-      throw new Error(
-        `Incompatible auth server: does not support code challenge method ${codeChallengeMethod}`
-      );
-    }
-
-    if (!metadata.code_challenge) {
+    if (!code_challenge) {
       throw new Error("Missing code challenge");
     }
+    if (!client_id) {
+      throw new Error("Missing client id");
+    }
+    if (!authorization_endpoint) {
+      throw new Error("Missing authorization endpoint");
+    }
 
-    authUrl.searchParams.set("response_type", responseType);
-    authUrl.searchParams.set("client_id", metadata.client_id);
-    authUrl.searchParams.set("code_challenge", metadata.code_challenge);
-    authUrl.searchParams.set("code_challenge_method", codeChallengeMethod);
+    const authUrl = new URL(authorization_endpoint);
+
+    authUrl.searchParams.set("response_type", MCP_OAUTH_RESPONSE_TYPE);
+    authUrl.searchParams.set("client_id", client_id);
+    authUrl.searchParams.set("code_challenge", code_challenge);
+    authUrl.searchParams.set(
+      "code_challenge_method",
+      MCP_OAUTH_CODE_CHALLENGE_METHOD
+    );
     authUrl.searchParams.set("redirect_uri", finalizeUriForProvider("mcp"));
     authUrl.searchParams.set("state", connection.connection_id);
 
@@ -77,8 +81,8 @@ export class MCPOAuthProvider implements BaseOAuthStrategyProvider {
 
   isExtraConfigValid(
     extraConfig: ExtraConfigType
-  ): extraConfig is MCPOAuthExtraConfig {
-    return MCPOAuthExtraConfigSchema.safeParse(extraConfig).success;
+  ): extraConfig is MCPOAuthConnectionMetadataType {
+    return MCPOAuthConnectionMetadataSchema.safeParse(extraConfig).success;
   }
 
   async getRelatedCredential(
@@ -87,8 +91,9 @@ export class MCPOAuthProvider implements BaseOAuthStrategyProvider {
     workspaceId: string,
     userId: string
   ) {
+    // Check that we have everything we need to make an oauth flow.
     if (!this.isExtraConfigValid(extraConfig)) {
-      return null;
+      throw new Error("Invalid extraConfig before getting related credential");
     }
 
     const { client_secret, ...restConfig } = extraConfig;
@@ -105,9 +110,15 @@ export class MCPOAuthProvider implements BaseOAuthStrategyProvider {
       },
       cleanedConfig: {
         ...restConfig,
-        code_verifier,
         code_challenge,
+        code_verifier,
       },
     };
+  }
+
+  isExtraConfigValidPostRelatedCredential(
+    extraConfig: ExtraConfigType
+  ): extraConfig is MCPMetadataType {
+    return MCPMetadataSchema.safeParse(extraConfig).success;
   }
 }

@@ -15,7 +15,6 @@ import {
   isRemoteMCPServerType,
 } from "@app/lib/actions/mcp_helper";
 import type { MCPServerType } from "@app/lib/api/mcp";
-import type { MCPOAuthExtraConfig } from "@app/lib/api/oauth/providers/mcp";
 import {
   useCheckOAuthConnection,
   useCreateMCPServerConnection,
@@ -64,8 +63,7 @@ export function ConnectMCPServerDialog({
 
     setIsLoading(true);
 
-    let extraConfig: OAuthCredentials | MCPOAuthExtraConfig =
-      authCredentials ?? {};
+    let extraConfig: OAuthCredentials = authCredentials ?? {};
 
     if (isRemoteMCPServerType(mcpServer) && mcpServer.url) {
       const checkOAuthConnectionRes = await checkOAuthConnection(mcpServer.url);
@@ -75,7 +73,7 @@ export function ConnectMCPServerDialog({
       ) {
         extraConfig = {
           ...extraConfig,
-          ...checkOAuthConnectionRes.value.extraConfig,
+          ...checkOAuthConnectionRes.value.connectionMetadata,
         };
       }
     }

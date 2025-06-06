@@ -34,7 +34,7 @@ export class GmailOAuthProvider implements BaseOAuthStrategyProvider {
       client_id: clientId,
       state: connection.connection_id,
       redirect_uri: finalizeUriForProvider("gmail"),
-      scope: extraConfig.scope as string,
+      scope: extraConfig.scope,
       access_type: "offline",
       prompt: "consent",
     });
@@ -67,7 +67,13 @@ export class GmailOAuthProvider implements BaseOAuthStrategyProvider {
     workspaceId: string,
     userId: string,
     useCase: OAuthUseCase
-  ) {
+  ): Promise<{
+    credential: {
+      content: Record<string, string>;
+      metadata: { workspace_id: string; user_id: string };
+    };
+    cleanedConfig: ExtraConfigType;
+  } | null> {
     if (useCase === "personal_actions") {
       // For personal actions we reuse the existing connection credential id from the existing
       // workspace connection (setup by admin) if we have it, otherwise we fallback to assuming
@@ -78,7 +84,7 @@ export class GmailOAuthProvider implements BaseOAuthStrategyProvider {
         const mcpServerConnectionRes =
           await MCPServerConnectionResource.findByMCPServer({
             auth,
-            mcpServerId: mcp_server_id as string,
+            mcpServerId: mcp_server_id,
             connectionType: "workspace",
           });
 
@@ -104,7 +110,7 @@ export class GmailOAuthProvider implements BaseOAuthStrategyProvider {
             metadata: { workspace_id: workspaceId, user_id: userId },
           },
           cleanedConfig: {
-            client_id: connection.metadata.client_id as string,
+            client_id: connection.metadata.client_id,
             ...restConfig,
           },
         };
@@ -116,7 +122,7 @@ export class GmailOAuthProvider implements BaseOAuthStrategyProvider {
     return {
       credential: {
         content: {
-          client_secret,
+          client_secret: client_secret,
           client_id: extraConfig.client_id,
         },
         metadata: { workspace_id: workspaceId, user_id: userId },

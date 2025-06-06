@@ -54,6 +54,8 @@ pub enum ConnectionErrorCode {
     // Refresh Access Token
     ConnectionNotFinalizedError,
     ProviderAccessTokenRefreshError,
+    // Invalid Metadata
+    InvalidMetadataError,
     // Internal Errors
     InternalError,
 }
@@ -275,13 +277,13 @@ impl ProviderError {
                 code: ConnectionErrorCode::TokenRevokedError,
                 message: self.to_string(),
             },
+            ProviderError::InvalidMetadataError(_) => ConnectionError {
+                code: ConnectionErrorCode::InvalidMetadataError,
+                message: self.to_string(),
+            },
             ProviderError::InternalError(_) => ConnectionError {
                 code: ConnectionErrorCode::InternalError,
                 message: "Failed to finalize connection.".to_string(),
-            },
-            ProviderError::InvalidMetadataError(_) => ConnectionError {
-                code: ConnectionErrorCode::InternalError,
-                message: self.to_string(),
             },
         }
     }
@@ -298,13 +300,13 @@ impl ProviderError {
                 code: ConnectionErrorCode::TokenRevokedError,
                 message: self.to_string(),
             },
+            ProviderError::InvalidMetadataError(_) => ConnectionError {
+                code: ConnectionErrorCode::InvalidMetadataError,
+                message: self.to_string(),
+            },
             ProviderError::InternalError(_) => ConnectionError {
                 code: ConnectionErrorCode::InternalError,
                 message: "Failed to refresh access token.".to_string(),
-            },
-            ProviderError::InvalidMetadataError(_) => ConnectionError {
-                code: ConnectionErrorCode::InternalError,
-                message: self.to_string(),
             },
         }
     }

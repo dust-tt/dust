@@ -19,7 +19,7 @@ export class MicrosoftOAuthProvider implements BaseOAuthStrategyProvider {
     connection: OAuthConnectionType;
     useCase: OAuthUseCase;
     relatedCredential?: {
-      content: Record<string, unknown>;
+      content: Record<string, string>;
       metadata: { workspace_id: string; user_id: string };
     };
   }) {

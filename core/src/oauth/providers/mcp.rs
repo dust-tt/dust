@@ -21,9 +21,6 @@ pub struct MCPConnectionMetadata {
     pub client_id: String,
     pub token_endpoint: String,
     pub authorization_endpoint: String,
-    pub response_types_supported: Vec<String>,
-    pub grant_types_supported: Option<Vec<String>>,
-    pub code_challenge_methods_supported: Option<Vec<String>>,
     pub code_verifier: String,
     pub code_challenge: String,
 }
@@ -85,17 +82,6 @@ impl Provider for MCPConnectionProvider {
             .map_err(|e| ProviderError::InvalidMetadataError(e.to_string()))?;
 
         let grant_type = "authorization_code";
-
-        if metadata.grant_types_supported.is_some()
-            && !metadata
-                .grant_types_supported
-                .unwrap()
-                .contains(&grant_type.to_string())
-        {
-            return Err(ProviderError::ActionNotSupportedError(
-                "Grant type not supported".to_string(),
-            ));
-        }
 
         let form_data = [
             ("grant_type", grant_type),
@@ -163,17 +149,6 @@ impl Provider for MCPConnectionProvider {
             .map_err(|e| ProviderError::InvalidMetadataError(e.to_string()))?;
 
         let grant_type = "refresh_token";
-
-        if metadata.grant_types_supported.is_some()
-            && !metadata
-                .grant_types_supported
-                .unwrap()
-                .contains(&grant_type.to_string())
-        {
-            return Err(ProviderError::ActionNotSupportedError(
-                "Grant type not supported".to_string(),
-            ));
-        }
 
         let form_data = [
             ("grant_type", grant_type),

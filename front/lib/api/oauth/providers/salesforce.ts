@@ -81,7 +81,13 @@ export class SalesforceOAuthProvider implements BaseOAuthStrategyProvider {
     workspaceId: string,
     userId: string,
     useCase: OAuthUseCase
-  ) {
+  ): Promise<{
+    credential: {
+      content: Record<string, string>;
+      metadata: { workspace_id: string; user_id: string };
+    };
+    cleanedConfig: ExtraConfigType;
+  } | null> {
     // SALESFORCE CONNECTION TO BE DEPRECATED.
     if (useCase === "salesforce_personal") {
       // For personal connection, we reuse the existing connection credential id
@@ -128,8 +134,8 @@ export class SalesforceOAuthProvider implements BaseOAuthStrategyProvider {
           metadata: { workspace_id: workspaceId, user_id: userId },
         },
         cleanedConfig: {
-          client_id: connection.metadata.client_id as string,
-          instance_url: connection.metadata.instance_url as string,
+          client_id: connection.metadata.client_id,
+          instance_url: connection.metadata.instance_url,
           ...extraConfig,
         },
       };
@@ -145,7 +151,7 @@ export class SalesforceOAuthProvider implements BaseOAuthStrategyProvider {
         const mcpServerConnectionRes =
           await MCPServerConnectionResource.findByMCPServer({
             auth,
-            mcpServerId: mcp_server_id as string,
+            mcpServerId: mcp_server_id,
             connectionType: "workspace",
           });
 
@@ -171,8 +177,8 @@ export class SalesforceOAuthProvider implements BaseOAuthStrategyProvider {
             metadata: { workspace_id: workspaceId, user_id: userId },
           },
           cleanedConfig: {
-            client_id: connection.metadata.client_id as string,
-            instance_url: connection.metadata.instance_url as string,
+            client_id: connection.metadata.client_id,
+            instance_url: connection.metadata.instance_url,
             ...restConfig,
           },
         };

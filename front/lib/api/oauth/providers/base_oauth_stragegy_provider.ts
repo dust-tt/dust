@@ -19,7 +19,7 @@ export interface BaseOAuthStrategyProvider {
     clientId?: string;
     forceLabelsScope?: boolean;
     relatedCredential?: {
-      content: Record<string, unknown>;
+      content: Record<string, string>;
       metadata: { workspace_id: string; user_id: string };
     };
     extraConfig?: ExtraConfigType;
@@ -34,6 +34,7 @@ export interface BaseOAuthStrategyProvider {
     useCase: OAuthUseCase
   ) => boolean;
 
+  // If the provider has a method for getting the related credential, it must return a cleaned config.
   getRelatedCredential?: (
     auth: Authenticator,
     extraConfig: ExtraConfigType,
@@ -42,9 +43,14 @@ export interface BaseOAuthStrategyProvider {
     useCase: OAuthUseCase
   ) => Promise<{
     credential: {
-      content: Record<string, unknown>;
+      content: Record<string, string>;
       metadata: { workspace_id: string; user_id: string };
     };
     cleanedConfig: ExtraConfigType;
   } | null>;
+
+  isExtraConfigValidPostRelatedCredential?: (
+    extraConfig: ExtraConfigType,
+    useCase: OAuthUseCase
+  ) => boolean;
 }

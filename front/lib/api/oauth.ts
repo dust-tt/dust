@@ -71,18 +71,19 @@ export async function createConnectionAndGetSetupUrl(
   if (!PROVIDER_STRATEGIES[provider].isExtraConfigValid(extraConfig, useCase)) {
     logger.error(
       { provider, useCase, extraConfig },
-      "OAuth: Invalid extraConfig"
+      "OAuth: Invalid extraConfig before getting related credential"
     );
     return new Err({
       code: "connection_creation_failed",
-      message: "Invalid OAuth connection extraConfig for provider",
+      message:
+        "Invalid OAuth connection extraConfig for provider before getting related credential",
     });
   }
 
   // Extract related credential and update config if the provider has a method for it
   let relatedCredential:
     | {
-        content: Record<string, unknown>;
+        content: Record<string, string>;
         metadata: { workspace_id: string; user_id: string };
       }
     | undefined = undefined;
@@ -100,6 +101,25 @@ export async function createConnectionAndGetSetupUrl(
     if (result) {
       relatedCredential = result.credential;
       extraConfig = result.cleanedConfig;
+
+      if (
+        //TODO: add the same verification for other providers with a getRelatedCredential method.
+        PROVIDER_STRATEGIES[provider].isExtraConfigValidPostRelatedCredential &&
+        !PROVIDER_STRATEGIES[provider].isExtraConfigValidPostRelatedCredential!(
+          extraConfig,
+          useCase
+        )
+      ) {
+        logger.error(
+          { provider, useCase, extraConfig },
+          "OAuth: Invalid extraConfig after getting related credential"
+        );
+        return new Err({
+          code: "connection_creation_failed",
+          message:
+            "Invalid OAuth connection extraConfig for provider after getting related credential",
+        });
+      }
     }
   }
 

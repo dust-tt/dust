@@ -225,7 +225,7 @@ export function isValidScope(obj: unknown): obj is string | undefined {
 export type OAuthConnectionType = {
   connection_id: string;
   created: number;
-  metadata: Record<string, unknown>;
+  metadata: Record<string, string>;
   provider: OAuthProvider;
   status: "pending" | "finalized";
 };

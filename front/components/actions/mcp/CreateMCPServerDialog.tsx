@@ -162,7 +162,7 @@ export function CreateMCPServerDialog({
             owner,
             provider: "mcp",
             useCase: "platform_actions",
-            extraConfig: checkOAuthConnectionRes.value.extraConfig,
+            extraConfig: checkOAuthConnectionRes.value.connectionMetadata,
           });
           if (cRes.isOk()) {
             connectionId = cRes.value.connection_id;
