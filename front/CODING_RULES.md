@@ -352,6 +352,14 @@ name of the server. If having only one file is not possible, they should be plac
 that contains a file `server.ts` from where the `createServer` function that creates the server
 will be exported.
 
+### [MCP3] Tool output typing
+
+If a tool in an internal MCP server outputs a custom resource, a `zod` schema that describes the
+output must be defined in `lib/actions/mcp_internal_actions/output_schemas.ts`. This way, when
+processing the tool output, a typeguard that checks the output against the schema
+can be used to identify this output type. In the code of the internal server the type inferred
+from the `zod` schema should be used to type the tool output.
+
 ## TESTING
 
 ### [TEST1] Functionally test endpoints
