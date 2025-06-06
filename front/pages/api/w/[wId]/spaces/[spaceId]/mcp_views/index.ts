@@ -89,8 +89,25 @@ async function handler(
         });
       }
 
+      const systemView =
+        await MCPServerViewResource.getMCPServerViewForSystemSpace(
+          auth,
+          mcpServerId
+        );
+
+      if (!systemView) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message:
+              "Missing system view for MCP server, it should have been created when adding the tool.",
+          },
+        });
+      }
+
       const mcpServerView = await MCPServerViewResource.create(auth, {
-        mcpServerId,
+        systemView,
         space,
       });
 

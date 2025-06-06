@@ -1,7 +1,6 @@
 import type { RequestMethod } from "node-mocks-http";
 import { describe, expect } from "vitest";
 
-import { internalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import { Authenticator } from "@app/lib/auth";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -19,10 +18,11 @@ async function setupTest(
   role: "builder" | "user" | "admin" = "admin",
   method: RequestMethod = "DELETE"
 ) {
-  const { req, res, workspace, user } = await createPrivateApiMockRequest({
-    role,
-    method,
-  });
+  const { req, res, workspace, user, authenticator } =
+    await createPrivateApiMockRequest({
+      role,
+      method,
+    });
 
   const space = await SpaceFactory.system(workspace, t);
 
@@ -30,7 +30,7 @@ async function setupTest(
   req.query.wId = workspace.sId;
   req.query.spaceId = space.sId;
 
-  return { req, res, workspace, space, user };
+  return { req, res, workspace, space, user, authenticator };
 }
 
 describe("DELETE /api/w/[wId]/spaces/[spaceId]/mcp_views/[svId]", () => {
@@ -140,19 +140,27 @@ describe("DELETE /api/w/[wId]/spaces/[spaceId]/mcp_views/[svId]", () => {
 
 describe("Method Support /api/w/[wId]/spaces/[spaceId]/mcp_views/[svId]", () => {
   itInTransaction("only supports DELETE method", async (t) => {
-    const { req, res, workspace, space } = await setupTest(t, "admin", "GET");
+    const { req, res, workspace, authenticator } = await setupTest(
+      t,
+      "admin",
+      "GET"
+    );
 
     await FeatureFlagFactory.basic("dev_mcp_actions", workspace);
 
-    const mcpServerId = internalMCPServerNameToSId({
-      name: "primitive_types_debugger",
-      workspaceId: workspace.id,
-    });
+    const mcpServer = await InternalMCPServerInMemoryResource.makeNew(
+      authenticator,
+      "primitive_types_debugger",
+      t
+    );
+
+    const globalSpace = await SpaceFactory.global(workspace, t);
 
     const serverView = await MCPServerViewFactory.create(
       workspace,
-      mcpServerId,
-      space
+      mcpServer.id,
+      globalSpace,
+      t
     );
     req.query.svId = serverView.sId;
 
