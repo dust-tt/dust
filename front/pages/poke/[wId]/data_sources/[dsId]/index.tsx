@@ -38,7 +38,7 @@ import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { getTemporalConnectorsNamespaceConnection } from "@app/lib/temporal";
-import { classNames, timeAgoFrom } from "@app/lib/utils";
+import { timeAgoFrom } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { usePokeDocuments, usePokeTables } from "@app/poke/swr";
 import type {
@@ -904,7 +904,7 @@ function NotionUrlCheckOrFind({
       </div>
       <div className="text-muted-foreground dark:text-muted-foreground-night">
         {urlDetails && (
-          <div className="text-md flex flex-col gap-2 rounded-md p-4">
+          <div className="text-md flex flex-col gap-2 rounded-md p-4 pt-2">
             <Chip
               label={(() => {
                 if (urlDetails.page) {
