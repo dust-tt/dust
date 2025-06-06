@@ -55,7 +55,6 @@ export const INTERNAL_MCP_SERVERS: Record<
       plan: PlanType,
       featureFlags: WhitelistableFeature[]
     ) => boolean;
-    isPreview?: boolean;
     tools_stakes?: Record<string, MCPToolStakeLevelType>;
   }
 > = {
@@ -209,7 +208,6 @@ export const INTERNAL_MCP_SERVERS: Record<
     isRestricted: (plan, featureFlags) => {
       return featureFlags.includes("gmail_tool");
     },
-    isPreview: true,
     tools_stakes: {
       get_drafts: "never_ask",
       create_draft: "low",
@@ -221,7 +219,6 @@ export const INTERNAL_MCP_SERVERS: Record<
     isRestricted: (plan, featureFlags) => {
       return featureFlags.includes("google_calendar_tool");
     },
-    isPreview: true,
     tools_stakes: {
       list_calendars: "never_ask",
       list_events: "never_ask",
@@ -246,7 +243,6 @@ export const INTERNAL_MCP_SERVERS: Record<
     isRestricted: (plan, featureFlags) => {
       return featureFlags.includes("dev_mcp_actions");
     },
-    isPreview: true,
   },
   reasoning: {
     id: 1007,
@@ -258,7 +254,6 @@ export const INTERNAL_MCP_SERVERS: Record<
     isRestricted: (plan, featureFlags) => {
       return featureFlags.includes("dev_mcp_actions");
     },
-    isPreview: true,
   },
   query_tables_v2: {
     id: 1009,
@@ -267,7 +262,6 @@ export const INTERNAL_MCP_SERVERS: Record<
     isRestricted: (plan, featureFlags) => {
       return featureFlags.includes("exploded_tables_query");
     },
-    isPreview: true,
   },
   data_sources_file_system: {
     id: 1010,
