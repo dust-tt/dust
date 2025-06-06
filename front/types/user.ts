@@ -59,11 +59,11 @@ export type LightWorkspaceType = {
     publicApiLimits?: PublicAPILimitsType;
     [key: string]: string | number | boolean | object | undefined;
   } | null;
+  workOSOrganizationId?: string | null;
 };
 
 export type WorkspaceType = LightWorkspaceType & {
   ssoEnforced?: boolean;
-  workOSOrganizationId?: string | null;
 };
 
 export type ExtensionWorkspaceType = WorkspaceType & {

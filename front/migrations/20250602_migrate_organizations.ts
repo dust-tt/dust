@@ -1,10 +1,35 @@
-import {
-  createOrGetWorkOSOrganization,
-  shouldCreateWorkOSOrganization,
-} from "@app/lib/api/workos/organization";
+import { getOrCreateWorkOSOrganization } from "@app/lib/api/workos/organization";
 import { Authenticator } from "@app/lib/auth";
+import { WorkspaceHasDomainModel } from "@app/lib/models/workspace_has_domain";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
+import type { WorkspaceType } from "@app/types";
+
+async function shouldCreateWorkOSOrganization(
+  workspace: WorkspaceType
+): Promise<
+  | { shouldCreate: false; domain: undefined }
+  | { shouldCreate: true; domain: WorkspaceHasDomainModel }
+> {
+  if (workspace.workOSOrganizationId) {
+    return { shouldCreate: false, domain: undefined };
+  }
+
+  const domain = await WorkspaceHasDomainModel.findOne({
+    where: {
+      workspaceId: workspace.id,
+    },
+  });
+
+  if (!domain) {
+    return { shouldCreate: false, domain: undefined };
+  }
+
+  return {
+    shouldCreate: true,
+    domain,
+  };
+}
 
 makeScript({}, async ({ execute }, logger) => {
   await runOnAllWorkspaces(
@@ -31,7 +56,7 @@ makeScript({}, async ({ execute }, logger) => {
         );
 
         if (execute) {
-          const org = await createOrGetWorkOSOrganization(workspace, {
+          const org = await getOrCreateWorkOSOrganization(workspace, {
             domain: domain.domain,
           });
 

@@ -16,14 +16,15 @@ export function renderLightWorkspaceType({
   role?: RoleType;
 }): LightWorkspaceType {
   return {
-    id: workspace.id,
-    sId: workspace.sId,
-    name: workspace.name,
-    segmentation: workspace.segmentation,
-    whiteListedProviders: workspace.whiteListedProviders,
     defaultEmbeddingProvider: workspace.defaultEmbeddingProvider,
+    id: workspace.id,
     metadata: workspace.metadata,
+    name: workspace.name,
     role,
+    segmentation: workspace.segmentation,
+    sId: workspace.sId,
+    whiteListedProviders: workspace.whiteListedProviders,
+    workOSOrganizationId: workspace.workOSOrganizationId,
   };
 }
 
