@@ -51,19 +51,3 @@ export const logAndReturnError = ({
     error.response?.body?.message ?? error.message ?? message
   );
 };
-
-export const returnJSONStringifiedSuccess = ({
-  message,
-  result,
-}: {
-  message: string;
-  result: any;
-}): CallToolResult => {
-  return {
-    isError: false,
-    content: [
-      { type: "text", text: message },
-      { type: "text", text: JSON.stringify(result, null, 2) },
-    ],
-  };
-};
