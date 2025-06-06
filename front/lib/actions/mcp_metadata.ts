@@ -350,7 +350,7 @@ export async function fetchRemoteServerMetaDataByURL(
   auth: Authenticator,
   url: string,
   headers?: Record<string, string>
-): Promise<Result<Omit<MCPServerType, "sId">, Error>> {
+): ReturnType<typeof fetchRemoteServerMetaData> {
   const r = await connectToMCPServer(auth, {
     params: {
       type: "remoteMCPServerUrl",
@@ -360,18 +360,62 @@ export async function fetchRemoteServerMetaDataByURL(
   });
 
   if (r.isErr()) {
+    return r;
+  }
+  try {
+    return await fetchRemoteServerMetaData(auth, r.value);
+  } catch (e: unknown) {
     logger.error(
       {
         workspaceId: auth.getNonNullableWorkspace().sId,
-        error: r.error,
+        error: e,
       },
-      "Error connecting to remote MCP server"
+      "Error fetching metadata from remote MCP server"
     );
-    return new Err(r.error);
+    return new Err(
+      new Error("Error getting metadata from the remote MCP server.")
+    );
+  } finally {
+    await r.value.close();
   }
+}
 
-  const mcpClient = r.value;
+export async function fetchRemoteServerMetaDataByServerId(
+  auth: Authenticator,
+  serverId: string
+): ReturnType<typeof fetchRemoteServerMetaData> {
+  const r = await connectToMCPServer(auth, {
+    params: {
+      type: "mcpServerId",
+      mcpServerId: serverId,
+    },
+  });
 
+  if (r.isErr()) {
+    return r;
+  }
+  try {
+    return await fetchRemoteServerMetaData(auth, r.value);
+  } catch (e: unknown) {
+    logger.error(
+      {
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        error: e,
+      },
+      "Error fetching metadata from remote MCP server"
+    );
+    return new Err(
+      new Error("Error getting metadata from the remote MCP server.")
+    );
+  } finally {
+    await r.value.close();
+  }
+}
+
+async function fetchRemoteServerMetaData(
+  auth: Authenticator,
+  mcpClient: Client
+): Promise<Result<Omit<MCPServerType, "sId">, Error>> {
   try {
     const serverVersion = mcpClient.getServerVersion();
     const metadata = extractMetadataFromServerVersion(serverVersion);
@@ -395,7 +439,5 @@ export async function fetchRemoteServerMetaDataByURL(
     return new Err(
       new Error("Error getting metadata from the remote MCP server.")
     );
-  } finally {
-    await mcpClient.close();
   }
 }
