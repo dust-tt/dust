@@ -967,7 +967,7 @@ function NotionUrlCheckOrFind({
                         <div>
                           {urlDetails.db?.parentType === "page" && (
                             <>
-                              <span className="font-bold text-success-800">
+                              <span className="font-bold text-success">
                                 Parent URL:
                               </span>
                               <span className="pl-2">
@@ -979,7 +979,7 @@ function NotionUrlCheckOrFind({
                           )}
                           {urlDetails.db?.parentType === "database" && (
                             <>
-                              <span className="font-bold text-success-800">
+                              <span className="font-bold text-success">
                                 Parent URL:
                               </span>
                               <span className="pl-2">
