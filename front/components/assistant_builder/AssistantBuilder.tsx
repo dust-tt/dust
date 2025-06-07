@@ -504,6 +504,7 @@ export default function AssistantBuilder({
                           <ActionsScreen
                             owner={owner}
                             builderState={builderState}
+                            reasoningModels={reasoningModels}
                             setBuilderState={setBuilderState}
                             setEdited={setEdited}
                             setAction={setAction}

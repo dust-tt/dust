@@ -13,6 +13,7 @@ import assert from "assert";
 import { uniqueId } from "lodash";
 import { useState } from "react";
 
+import { DEFAULT_REASONING_MODEL_ID } from "@app/components/assistant_builder/actions/utils";
 import type {
   ActionSpecificationWithType,
   AssistantBuilderActionType,
@@ -28,6 +29,7 @@ import {
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import type { ModelConfigurationType } from "@app/types";
 
 type MCPServerViewTypeWithLabel = MCPServerViewType & { label: string };
 
@@ -40,6 +42,7 @@ interface AddToolsDropdownProps {
   nonDefaultMCPActions: ActionSpecificationWithType[];
   defaultMCPServerViews: MCPServerViewTypeWithLabel[];
   nonDefaultMCPServerViews: MCPServerViewTypeWithLabel[];
+  reasoningModels: ModelConfigurationType[];
 }
 
 export function AddToolsDropdown({
@@ -49,6 +52,7 @@ export function AddToolsDropdown({
   nonDefaultMCPActions,
   defaultMCPServerViews,
   nonDefaultMCPServerViews,
+  reasoningModels,
 }: AddToolsDropdownProps) {
   const [searchText, setSearchText] = useState("");
   const [filteredNonMCPActions, setFilteredNonMCPActions] =
@@ -118,6 +122,41 @@ export function AddToolsDropdown({
     setEdited(true);
     const action = getDefaultMCPServerActionConfiguration(selectedView);
     assert(action);
+
+    const isReasoning =
+      action.type === "MCP" &&
+      selectedView.serverType === "internal" &&
+      selectedView.server.name.toLowerCase().includes("reasoning");
+
+    // Reasoning is configurable but we select the reasoning model by default.
+    if (isReasoning) {
+      // Use o4-mini (high reasoning effort) as default reasoning model, if it's not available use the first one in the list.
+      const defaultReasoningModel =
+        reasoningModels.find(
+          (model) =>
+            model.modelId === DEFAULT_REASONING_MODEL_ID &&
+            model.reasoningEffort === "high"
+        ) ?? reasoningModels[0];
+
+      setAction({
+        type: "insert",
+        action: {
+          id: uniqueId(),
+          ...action,
+          configuration: {
+            ...action.configuration,
+            reasoningModel: {
+              modelId: defaultReasoningModel.modelId,
+              providerId: defaultReasoningModel.providerId,
+              reasoningEffort: defaultReasoningModel.reasoningEffort ?? null,
+              temperature: null,
+            },
+          },
+        },
+      });
+
+      return;
+    }
 
     setAction({
       type: action.noConfigurationRequired ? "insert" : "pending",

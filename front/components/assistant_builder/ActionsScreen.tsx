@@ -104,6 +104,7 @@ import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useMCPServerConnections } from "@app/lib/swr/mcp_servers";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
+  ModelConfigurationType,
   SpaceType,
   WhitelistableFeature,
   WorkspaceType,
@@ -201,6 +202,7 @@ type SpaceIdToActions = Record<string, AssistantBuilderActionState[]>;
 interface ActionScreenProps {
   owner: WorkspaceType;
   builderState: AssistantBuilderState;
+  reasoningModels: ModelConfigurationType[];
   setBuilderState: (
     stateFn: (state: AssistantBuilderState) => AssistantBuilderState
   ) => void;
@@ -213,6 +215,7 @@ interface ActionScreenProps {
 export default function ActionsScreen({
   owner,
   builderState,
+  reasoningModels,
   setBuilderState,
   setEdited,
   setAction,
@@ -411,6 +414,7 @@ export default function ActionsScreen({
                 nonDefaultMCPActions={selectableNonMCPActions}
                 defaultMCPServerViews={selectableDefaultMCPServerViews}
                 nonDefaultMCPServerViews={selectableNonDefaultMCPServerViews}
+                reasoningModels={reasoningModels}
               />
 
               <div className="flex-grow" />
