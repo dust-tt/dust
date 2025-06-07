@@ -230,6 +230,17 @@ describe("POST /api/v1/w/[wId]/spaces/[spaceId]/data_sources/[dsId]/tables/csv",
         allowEmptySchema: true,
       };
 
+      global.fetch = vi.fn().mockImplementation(async (url: string) => {
+        if (url.endsWith("/validate_csv_content")) {
+          return Promise.resolve(
+            new Response(JSON.stringify(CORE_VALIDATE_CSV_FAKE_RESPONSE), {
+              status: 200,
+              headers: { "Content-Type": "application/json" },
+            })
+          );
+        }
+      });
+
       await handler(req, res);
 
       expect(res._getStatusCode()).toBe(400);
