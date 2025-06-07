@@ -361,9 +361,7 @@ export const github = async ({
         },
       });
 
-      logger.info(
-        `[Admin] Found ${skippedRepos.length} skipped repositories:`
-      );
+      logger.info(`[Admin] Found ${skippedRepos.length} skipped repositories:`);
       for (const repo of skippedRepos) {
         logger.info(
           `  - Repository ${repo.repoLogin}/${repo.repoName} (ID: ${repo.repoId}): ${repo.skipReason}`
