@@ -1,4 +1,4 @@
-import { fetchRemoteServerMetaDataByURL } from "@app/lib/actions/mcp_metadata";
+import { fetchRemoteServerMetaDataByServerId } from "@app/lib/actions/mcp_metadata";
 import { Authenticator } from "@app/lib/auth";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { getWorkspaceByModelId } from "@app/lib/workspace";
@@ -33,15 +33,7 @@ export async function syncRemoteMCPServers(ids: number[]): Promise<void> {
       const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
 
       // Fetch the remote server metadata
-      const r = await fetchRemoteServerMetaDataByURL(
-        auth,
-        server.url,
-        server.sharedSecret
-          ? {
-              Authorization: `Bearer ${server.sharedSecret}`,
-            }
-          : undefined
-      );
+      const r = await fetchRemoteServerMetaDataByServerId(auth, server.sId);
 
       if (r.isErr()) {
         logger.error(
