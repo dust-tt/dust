@@ -1,8 +1,15 @@
+import {
+  CallToolResult,
+  CallToolResultSchema,
+} from "@modelcontextprotocol/sdk/types";
 import type { JSONSchema7 } from "json-schema";
 import moment from "moment-timezone";
 import { z } from "zod";
 
-import { INTERNAL_MIME_TYPES_VALUES } from "./internal_mime_types";
+import {
+  INTERNAL_MIME_TYPES,
+  INTERNAL_MIME_TYPES_VALUES,
+} from "./internal_mime_types";
 
 type StringLiteral<T> = T extends string
   ? string extends T
@@ -921,10 +928,66 @@ export type WebsearchActionPublicType = z.infer<
   typeof WebsearchActionTypeSchema
 >;
 
+export const SearchResultResourceSchema = z.object({
+  mimeType: z.literal(
+    INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_RESULT
+  ),
+  uri: z.string(),
+  text: z.string(),
+
+  // Document metadata
+  id: z.string(),
+  tags: z.array(z.string()),
+  ref: z.string(),
+  chunks: z.array(z.string()),
+  source: z.object({
+    name: z.string(),
+    provider: z.string().optional(),
+  }),
+});
+
+export type SearchResultResourceType = z.infer<
+  typeof SearchResultResourceSchema
+>;
+
+export const isSearchResultResourceType = (
+  outputBlock: CallToolResult["content"][number]
+): outputBlock is { type: "resource"; resource: SearchResultResourceType } => {
+  return (
+    outputBlock.type === "resource" &&
+    SearchResultResourceSchema.safeParse(outputBlock.resource).success
+  );
+};
+
+export const WebsearchResultResourceSchema = z.object({
+  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.WEBSEARCH_RESULT),
+  title: z.string(),
+  text: z.string(),
+  uri: z.string(),
+  reference: z.string(),
+});
+
+export type WebsearchResultResourceType = z.infer<
+  typeof WebsearchResultResourceSchema
+>;
+
+export const isWebsearchResultResourceType = (
+  outputBlock: CallToolResult["content"][number]
+): outputBlock is {
+  type: "resource";
+  resource: WebsearchResultResourceType;
+} => {
+  return (
+    outputBlock.type === "resource" &&
+    WebsearchResultResourceSchema.safeParse(outputBlock.resource).success
+  );
+};
+
 const MCPActionTypeSchema = BaseActionSchema.extend({
   agentMessageId: ModelIdSchema,
   functionCallName: z.string().nullable(),
   params: z.unknown(),
+  output: CallToolResultSchema.shape.content.nullable(),
   type: z.literal("tool_action"),
 });
 
@@ -2668,6 +2731,12 @@ export function isWebsearchActionType(
   action: AgentActionPublicType
 ): action is WebsearchActionPublicType {
   return action.type === "websearch_action";
+}
+
+export function isMCPActionType(
+  action: AgentActionPublicType
+): action is MCPActionPublicType {
+  return action.type === "tool_action";
 }
 
 export function isTablesQueryActionType(
