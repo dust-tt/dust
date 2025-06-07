@@ -1,4 +1,5 @@
 import { assertNever } from "@dust-tt/client";
+import { Op } from "sequelize";
 
 import { getOctokit } from "@connectors/connectors/github/lib/github_api";
 import {
@@ -240,6 +241,134 @@ export const github = async ({
         githubCodeRepository.repoName,
         parseInt(githubCodeRepository.repoId)
       );
+
+      return { success: true };
+    }
+
+    case "skip-repo": {
+      if (!args.wId) {
+        throw new Error("Missing --wId argument");
+      }
+      if (!args.dsId) {
+        throw new Error("Missing --dsId argument");
+      }
+      if (!args.repoId) {
+        throw new Error("Missing --repoId argument");
+      }
+      if (!args.skipReason) {
+        throw new Error("Missing --skipReason argument");
+      }
+
+      const connector = await ConnectorResource.findByDataSource({
+        workspaceId: `${args.wId}`,
+        dataSourceId: args.dsId,
+      });
+      if (!connector) {
+        throw new Error(
+          `Could not find connector for workspace ${args.wId}, data source ${args.dsId}`
+        );
+      }
+
+      const githubCodeRepository = await GithubCodeRepository.findOne({
+        where: {
+          connectorId: connector.id,
+          repoId: args.repoId,
+        },
+      });
+      if (!githubCodeRepository) {
+        throw new Error(
+          `Could not find github code repository for connector ${connector.id}, repoId ${args.repoId}`
+        );
+      }
+
+      await githubCodeRepository.update({
+        skipReason: args.skipReason,
+      });
+
+      logger.info(
+        `[Admin] Skipped repository ${args.repoId} with reason: ${args.skipReason}`
+      );
+
+      return { success: true };
+    }
+
+    case "unskip-repo": {
+      if (!args.wId) {
+        throw new Error("Missing --wId argument");
+      }
+      if (!args.dsId) {
+        throw new Error("Missing --dsId argument");
+      }
+      if (!args.repoId) {
+        throw new Error("Missing --repoId argument");
+      }
+
+      const connector = await ConnectorResource.findByDataSource({
+        workspaceId: `${args.wId}`,
+        dataSourceId: args.dsId,
+      });
+      if (!connector) {
+        throw new Error(
+          `Could not find connector for workspace ${args.wId}, data source ${args.dsId}`
+        );
+      }
+
+      const githubCodeRepository = await GithubCodeRepository.findOne({
+        where: {
+          connectorId: connector.id,
+          repoId: args.repoId,
+        },
+      });
+      if (!githubCodeRepository) {
+        throw new Error(
+          `Could not find github code repository for connector ${connector.id}, repoId ${args.repoId}`
+        );
+      }
+
+      await githubCodeRepository.update({
+        skipReason: null,
+      });
+
+      logger.info(`[Admin] Unskipped repository ${args.repoId}`);
+
+      return { success: true };
+    }
+
+    case "list-skipped-repos": {
+      if (!args.wId) {
+        throw new Error("Missing --wId argument");
+      }
+      if (!args.dsId) {
+        throw new Error("Missing --dsId argument");
+      }
+
+      const connector = await ConnectorResource.findByDataSource({
+        workspaceId: `${args.wId}`,
+        dataSourceId: args.dsId,
+      });
+      if (!connector) {
+        throw new Error(
+          `Could not find connector for workspace ${args.wId}, data source ${args.dsId}`
+        );
+      }
+
+      const skippedRepos = await GithubCodeRepository.findAll({
+        where: {
+          connectorId: connector.id,
+          skipReason: {
+            [Op.ne]: null,
+          },
+        },
+      });
+
+      logger.info(
+        `[Admin] Found ${skippedRepos.length} skipped repositories:`
+      );
+      for (const repo of skippedRepos) {
+        logger.info(
+          `  - Repository ${repo.repoLogin}/${repo.repoName} (ID: ${repo.repoId}): ${repo.skipReason}`
+        );
+      }
 
       return { success: true };
     }
