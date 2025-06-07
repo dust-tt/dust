@@ -207,11 +207,28 @@ async function handler(
         }
 
         if (body.includeGlobal) {
+          const systemView =
+            await MCPServerViewResource.getMCPServerViewForSystemSpace(
+              auth,
+              newRemoteMCPServer.sId
+            );
+
+          if (!systemView) {
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message:
+                  "Missing system view for remote MCP server, it should have been created when creating the remote server.",
+              },
+            });
+          }
+
           const globalSpace =
             await SpaceResource.fetchWorkspaceGlobalSpace(auth);
 
           await MCPServerViewResource.create(auth, {
-            mcpServerId: newRemoteMCPServer.sId,
+            systemView,
             space: globalSpace,
           });
         }
@@ -261,8 +278,25 @@ async function handler(
           const globalSpace =
             await SpaceResource.fetchWorkspaceGlobalSpace(auth);
 
+          const systemView =
+            await MCPServerViewResource.getMCPServerViewForSystemSpace(
+              auth,
+              newInternalMCPServer.id
+            );
+
+          if (!systemView) {
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message:
+                  "Missing system view for internal MCP server, it should have been created when creating the internal server.",
+              },
+            });
+          }
+
           await MCPServerViewResource.create(auth, {
-            mcpServerId: newInternalMCPServer.id,
+            systemView,
             space: globalSpace,
           });
         }
