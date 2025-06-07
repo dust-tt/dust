@@ -68,6 +68,15 @@ export class SnowflakeConnectorManager extends BaseConnectorManager<null> {
       logger,
     });
     if (credentialsRes.isErr()) {
+      logger.error(
+        {
+          error: credentialsRes.error,
+          workspaceId: dataSourceConfig.workspaceId,
+          dataSourceId: dataSourceConfig.dataSourceId,
+          provider: "snowflake",
+        },
+        "Error getting snowflake credentials"
+      );
       throw credentialsRes.error;
     }
     const credentials = credentialsRes.value.credentials;
@@ -75,6 +84,15 @@ export class SnowflakeConnectorManager extends BaseConnectorManager<null> {
     // Then we test the connection is successful.
     const connectionRes = await testConnection({ credentials });
     if (connectionRes.isErr()) {
+      logger.error(
+        {
+          error: connectionRes.error,
+          workspaceId: dataSourceConfig.workspaceId,
+          dataSourceId: dataSourceConfig.dataSourceId,
+          provider: "snowflake",
+        },
+        "Error testing snowflake connection"
+      );
       return new Err(
         new ConnectorManagerError(
           handleTestConnectionError(connectionRes.error),
@@ -98,6 +116,14 @@ export class SnowflakeConnectorManager extends BaseConnectorManager<null> {
 
     const launchRes = await launchSnowflakeSyncWorkflow(connector.id);
     if (launchRes.isErr()) {
+      logger.error(
+        {
+          error: launchRes.error,
+          workspaceId: dataSourceConfig.workspaceId,
+          dataSourceId: dataSourceConfig.dataSourceId,
+        },
+        "Error launching snowflake sync workflow"
+      );
       throw launchRes.error;
     }
 
