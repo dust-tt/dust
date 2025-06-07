@@ -989,6 +989,22 @@ export async function githubCodeSyncActivity({
     repoLogin,
     ...loggerArgs,
   });
+
+  // Check whether the repository is skipped before proceeding.
+  const existingRepo = await GithubCodeRepository.findOne({
+    where: {
+      connectorId: connector.id,
+      repoId: repoId.toString(),
+    },
+  });
+  if (existingRepo && existingRepo.skipReason) {
+    logger.info(
+      { skipReason: existingRepo.skipReason },
+      "Repository skipped, not syncing."
+    );
+    return;
+  }
+
   const connectorState = await GithubConnectorState.findOne({
     where: {
       connectorId: connector.id,
