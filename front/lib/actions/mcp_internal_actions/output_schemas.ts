@@ -495,26 +495,49 @@ const NotificationImageContentSchema = z.object({
   mimeType: z.string(),
 });
 
-const NotificationTextContentSchema = z.object({
-  type: z.literal("text"),
-  text: z.string(),
-});
-
 type ImageProgressOutput = z.infer<typeof NotificationImageContentSchema>;
-
-export const ProgressNotificationOutputSchema = z
-  .union([NotificationImageContentSchema, NotificationTextContentSchema])
-  .optional();
-
-type ProgressNotificationOutput = z.infer<
-  typeof ProgressNotificationOutputSchema
->;
 
 export function isImageProgressOutput(
   output: ProgressNotificationOutput
 ): output is ImageProgressOutput {
   return output !== undefined && output.type === "image";
 }
+
+const NotificationTextContentSchema = z.object({
+  type: z.literal("text"),
+  text: z.string(),
+});
+
+const NotificationRunAgentContentSchema = z.object({
+  type: z.literal("run_agent"),
+  childAgentId: z.string(),
+  conversationId: z.string(),
+  query: z.string(),
+});
+
+type RunAgentProgressOutput = z.infer<typeof NotificationRunAgentContentSchema>;
+
+export function isRunAgentProgressOutput(
+  output: ProgressNotificationOutput
+): output is RunAgentProgressOutput {
+  return (
+    output !== undefined &&
+    output.type === "run_agent" &&
+    "childAgentId" in output
+  );
+}
+
+export const ProgressNotificationOutputSchema = z
+  .union([
+    NotificationImageContentSchema,
+    NotificationTextContentSchema,
+    NotificationRunAgentContentSchema,
+  ])
+  .optional();
+
+type ProgressNotificationOutput = z.infer<
+  typeof ProgressNotificationOutputSchema
+>;
 
 export const ProgressNotificationContentSchema = z.object({
   // Required for the MCP protocol.
