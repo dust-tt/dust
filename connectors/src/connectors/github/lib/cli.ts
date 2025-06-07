@@ -21,6 +21,17 @@ import type {
 } from "@connectors/types";
 
 async function getGitHubConnector(args: GithubCommandType["args"]) {
+  if (args.connectorId) {
+    const connector = await ConnectorResource.fetchById(args.connectorId);
+    if (!connector) {
+      throw new Error(`Connector ${args.connectorId} not found.`);
+    }
+    if (connector.type !== "github") {
+      throw new Error(`Connector ${args.connectorId} is not of type github`);
+    }
+    return connector;
+  }
+
   if (!args.wId) {
     throw new Error("Missing --wId argument");
   }
