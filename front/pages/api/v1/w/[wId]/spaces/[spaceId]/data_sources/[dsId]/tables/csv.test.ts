@@ -93,6 +93,11 @@ vi.mock("@app/lib/file_storage", () => ({
       createReadStream: () => Readable.from([mockFileContent.content]),
     }),
   })),
+  getPrivateUploadBucket: vi.fn(() => ({
+    file: () => ({
+      createReadStream: () => Readable.from([mockFileContent.content]),
+    }),
+  })),
 }));
 
 describe("POST /api/v1/w/[wId]/spaces/[spaceId]/data_sources/[dsId]/tables/csv", () => {
