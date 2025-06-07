@@ -25,7 +25,6 @@ const extensions = [
     limit: INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT,
   }),
 ];
-
 const editorVariants = cva(
   [
     "overflow-auto min-h-60 h-full border rounded-xl p-2",
