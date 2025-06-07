@@ -25,20 +25,18 @@ interface ModelSelectionSubmenuProps {
 
 interface ModelRadioItemProps {
   modelConfig: ModelConfigurationType;
-  currentModelKey: string;
   isDark: boolean;
   onModelSelection: (modelConfig: ModelConfigurationType) => void;
 }
 
 function ModelRadioItem({
   modelConfig,
-  currentModelKey,
   isDark,
   onModelSelection,
 }: ModelRadioItemProps) {
   return (
     <DropdownMenuRadioItem
-      value={currentModelKey}
+      value={`${modelConfig.modelId}${modelConfig.reasoningEffort ? `-${modelConfig.reasoningEffort}` : ""}`}
       icon={getModelProviderLogo(modelConfig.providerId, isDark)}
       description={modelConfig.shortDescription}
       label={modelConfig.displayName}
@@ -75,28 +73,30 @@ export function ModelSelectionSubmenu({
       <DropdownMenuSubContent className="w-80">
         <DropdownMenuLabel label="Best performing models" />
         <DropdownMenuRadioGroup value={currentModelKey}>
-          {bestPerformingModelConfigs.map((modelConfig) => (
-            <ModelRadioItem
-              key={getModelKey(modelConfig)}
-              modelConfig={modelConfig}
-              currentModelKey={currentModelKey}
-              isDark={isDark}
-              onModelSelection={handleModelSelection}
-            />
-          ))}
+          {bestPerformingModelConfigs.map((modelConfig) => {
+            return (
+              <ModelRadioItem
+                key={getModelKey(modelConfig)}
+                modelConfig={modelConfig}
+                isDark={isDark}
+                onModelSelection={handleModelSelection}
+              />
+            );
+          })}
         </DropdownMenuRadioGroup>
 
         <DropdownMenuLabel label="Other models" />
         <DropdownMenuRadioGroup value={currentModelKey}>
-          {otherModelConfigs.map((modelConfig) => (
-            <ModelRadioItem
-              key={getModelKey(modelConfig)}
-              modelConfig={modelConfig}
-              currentModelKey={currentModelKey}
-              isDark={isDark}
-              onModelSelection={handleModelSelection}
-            />
-          ))}
+          {otherModelConfigs.map((modelConfig) => {
+            return (
+              <ModelRadioItem
+                key={getModelKey(modelConfig)}
+                modelConfig={modelConfig}
+                isDark={isDark}
+                onModelSelection={handleModelSelection}
+              />
+            );
+          })}
         </DropdownMenuRadioGroup>
       </DropdownMenuSubContent>
     </DropdownMenuSub>
