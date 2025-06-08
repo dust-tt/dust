@@ -674,7 +674,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
               inputs,
               stake,
               metadata,
-            } = notificationOutput.resource;
+            } = notificationOutput;
 
             yield {
               created: Date.now(),
