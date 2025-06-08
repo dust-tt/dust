@@ -32,6 +32,7 @@ export const OAUTH_PROVIDERS = [
   "zendesk",
   "salesforce",
   "hubspot",
+  "mcp", // MCP is a special provider for MCP servers
 ] as const;
 
 export const OAUTH_PROVIDER_NAMES: Record<OAuthProvider, string> = {
@@ -47,6 +48,7 @@ export const OAUTH_PROVIDER_NAMES: Record<OAuthProvider, string> = {
   zendesk: "Zendesk",
   salesforce: "Salesforce",
   hubspot: "Hubspot",
+  mcp: "MCP",
 };
 
 export const getProviderAdditionalClientSideAuthCredentials = async (
@@ -62,6 +64,7 @@ export const getProviderAdditionalClientSideAuthCredentials = async (
         return getPKCEConfig();
       }
       return null;
+    case "mcp":
     case "hubspot":
     case "zendesk":
     case "slack":
@@ -193,6 +196,7 @@ export const getProviderRequiredOAuthCredentialInputs = async (
     case "github":
     case "google_drive":
     case "intercom":
+    case "mcp":
       if (!additionalCredentials) {
         return null;
       }
@@ -221,7 +225,7 @@ export function isValidScope(obj: unknown): obj is string | undefined {
 export type OAuthConnectionType = {
   connection_id: string;
   created: number;
-  metadata: Record<string, unknown>;
+  metadata: Record<string, string>;
   provider: OAuthProvider;
   status: "pending" | "finalized";
 };

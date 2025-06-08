@@ -8,7 +8,7 @@ import type { DustRegistryActionName } from "@app/lib/registry";
 import { getDustProdAction } from "@app/lib/registry";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
-import { Err, getHeaderFromGroupIds, Ok } from "@app/types";
+import { Err, getHeaderFromGroupIds, getHeaderFromRole, Ok } from "@app/types";
 
 // Record an event and a log for the action error.
 const logActionError = (
@@ -85,13 +85,17 @@ export async function runActionStreamed(
   statsDClient.increment("use_actions.count", 1, tags);
   const now = new Date();
 
-  const prodCredentials = await prodAPICredentialsForOwner(owner);
   const requestedGroupIds = auth.groups().map((g) => g.sId);
+
+  const prodCredentials = await prodAPICredentialsForOwner(owner);
   const api = new DustAPI(
     apiConfig.getDustAPIConfig(),
     {
       ...prodCredentials,
-      extraHeaders: getHeaderFromGroupIds(requestedGroupIds),
+      extraHeaders: {
+        ...getHeaderFromGroupIds(requestedGroupIds),
+        ...getHeaderFromRole(auth.role()),
+      },
     },
     logger
   );
@@ -201,13 +205,17 @@ export async function runAction(
   statsDClient.increment("use_actions.count", 1, tags);
   const now = new Date();
 
-  const prodCredentials = await prodAPICredentialsForOwner(owner);
   const requestedGroupIds = auth.groups().map((g) => g.sId);
+
+  const prodCredentials = await prodAPICredentialsForOwner(owner);
   const api = new DustAPI(
     apiConfig.getDustAPIConfig(),
     {
       ...prodCredentials,
-      extraHeaders: getHeaderFromGroupIds(requestedGroupIds),
+      extraHeaders: {
+        ...getHeaderFromGroupIds(requestedGroupIds),
+        ...getHeaderFromRole(auth.role()),
+      },
     },
     logger
   );

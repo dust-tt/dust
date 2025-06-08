@@ -18,6 +18,7 @@ import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { generateMockAgentConfigurationFromTemplate } from "@app/lib/api/assistant/templates";
 import config from "@app/lib/api/config";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import { isRestrictedFromAgentCreation } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useAssistantTemplate } from "@app/lib/swr/assistants";
 import type {
@@ -62,6 +63,12 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   const plan = auth.plan();
   const subscription = auth.subscription();
   if (!owner || !plan || !auth.isUser() || !subscription) {
+    return {
+      notFound: true,
+    };
+  }
+
+  if (await isRestrictedFromAgentCreation(owner)) {
     return {
       notFound: true,
     };

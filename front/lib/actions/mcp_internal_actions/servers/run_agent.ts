@@ -22,8 +22,14 @@ import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
-import { getHeaderFromUserEmail } from "@app/types";
-import { Err, getHeaderFromGroupIds, normalizeError, Ok } from "@app/types";
+import {
+  Err,
+  getHeaderFromGroupIds,
+  getHeaderFromRole,
+  getHeaderFromUserEmail,
+  normalizeError,
+  Ok,
+} from "@app/types";
 
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "run_agent",
@@ -162,7 +168,7 @@ export default async function createServer(
       childAgent:
         ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.AGENT],
     },
-    async ({ query, childAgent: { uri } }, { sendNotification }) => {
+    async ({ query, childAgent: { uri } }, { sendNotification, _meta }) => {
       assert(
         agentLoopContext?.runContext,
         "Unreachable: missing agentLoopRunContext."
@@ -176,16 +182,19 @@ export default async function createServer(
       }
       const childAgentId = childAgentIdRes.value;
 
-      const prodCredentials = await prodAPICredentialsForOwner(owner);
-      const requestedGroupIds = auth.groups().map((g) => g.sId);
       const user = auth.user();
+      const requestedGroupIds = auth.groups().map((g) => g.sId);
 
+      const prodCredentials = await prodAPICredentialsForOwner(owner);
       const api = new DustAPI(
         config.getDustAPIConfig(),
         {
           ...prodCredentials,
+          // We use a system API key here meaning that we can impersonate the user or the groups we
+          // have access to.
           extraHeaders: {
             ...getHeaderFromGroupIds(requestedGroupIds),
+            ...getHeaderFromRole(auth.role()),
             ...getHeaderFromUserEmail(user?.email),
           },
         },
@@ -223,6 +232,28 @@ export default async function createServer(
       if (!createdUserMessage) {
         const errorMessage = "Failed to retrieve the created message.";
         return makeMCPToolTextError(errorMessage);
+      }
+
+      // Send notification indicating that a run_agent started and a new conversation was created.
+      if (_meta?.progressToken && sendNotification) {
+        const notification: MCPProgressNotificationType = {
+          method: "notifications/progress",
+          params: {
+            progress: 1,
+            total: 1,
+            progressToken: _meta.progressToken,
+            data: {
+              label: `Running agent ${childAgentBlob.name}`,
+              output: {
+                type: "run_agent",
+                query,
+                childAgentId: childAgentId,
+                conversationId: conversation.sId,
+              },
+            },
+          },
+        };
+        await sendNotification(notification);
       }
 
       const streamRes = await api.streamAgentAnswerEvents({

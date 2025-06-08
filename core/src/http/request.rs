@@ -3,14 +3,22 @@ use crate::utils;
 use crate::{cached_request::CachedRequest, project::Project};
 use anyhow::{anyhow, Result};
 use hyper::body::Buf;
+use lazy_static::lazy_static;
 use reqwest::redirect::Policy;
 use reqwest::{header, Method};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::{io::prelude::*, str::FromStr};
+use std::{env, io::prelude::*, str::FromStr};
 use tracing::info;
 
 use super::network::NetworkUtils;
+
+lazy_static! {
+    static ref UNTRUSTED_EGRESS_PROXY_HOST: Option<String> =
+        env::var("UNTRUSTED_EGRESS_PROXY_HOST").ok();
+    static ref UNTRUSTED_EGRESS_PROXY_PORT: Option<String> =
+        env::var("UNTRUSTED_EGRESS_PROXY_PORT").ok();
+}
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct HttpRequest {
@@ -80,24 +88,39 @@ impl HttpRequest {
         NetworkUtils::check_url_for_private_ip(&self.url)?;
 
         // First create the client with the custom redirect policy.
-        let client = reqwest::Client::builder()
-            .redirect(Policy::custom(|attempt| {
-                // Log the redirect for debugging.
-                println!(
-                    "Redirect attempt from: {:?} to: {}",
-                    attempt.previous(),
-                    attempt.url()
-                );
+        let mut client_builder = reqwest::Client::builder().redirect(Policy::custom(|attempt| {
+            // Log the redirect for debugging.
+            println!(
+                "Redirect attempt from: {:?} to: {}",
+                attempt.previous(),
+                attempt.url()
+            );
 
-                // Ensure the URL is not pointing to a private IP.
-                match NetworkUtils::check_url_for_private_ip(attempt.url().as_str()) {
-                    Ok(_) => attempt.follow(),
-                    Err(e) => {
-                        println!("Attempt to follow redirect to private IP: {}", e);
-                        attempt.error(e)
-                    }
+            // Ensure the URL is not pointing to a private IP.
+            match NetworkUtils::check_url_for_private_ip(attempt.url().as_str()) {
+                Ok(_) => attempt.follow(),
+                Err(e) => {
+                    println!("Attempt to follow redirect to private IP: {}", e);
+                    attempt.error(e)
                 }
-            }))
+            }
+        }));
+
+        // if let (Some(proxy_host), Some(proxy_port)) = (
+        //     UNTRUSTED_EGRESS_PROXY_HOST.as_ref(),
+        //     UNTRUSTED_EGRESS_PROXY_PORT.as_ref(),
+        // ) {
+        //     let proxy_url = format!("http://{}:{}", proxy_host, proxy_port);
+        //     let proxy = reqwest::Proxy::all(&proxy_url)
+        //         .map_err(|e| anyhow!("Failed to configure proxy: {}", e))?;
+        //     client_builder = client_builder.proxy(proxy);
+        //     info!(
+        //         proxy_url = proxy_url.as_str(),
+        //         "Using proxy for HTTP request"
+        //     );
+        // }
+
+        let client = client_builder
             .build()
             .map_err(|e| anyhow!("Failed to build HTTP client: {}", e))?;
 

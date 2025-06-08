@@ -837,6 +837,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "gmail_tool"
   | "google_calendar_tool"
   | "agent_builder_v2"
+  | "disallow_agent_creation_to_users"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -1362,9 +1363,17 @@ const NotificationToolApproveExecutionContentSchema = z.object({
   metadata: MCPValidationMetadataSchema,
 });
 
+const NotificationRunAgentCotnentSchema = z.object({
+  type: z.literal("run_agent"),
+  childAgentId: z.string(),
+  conversationId: z.string(),
+  query: z.string(),
+});
+
 const NotificationContentSchema = z.union([
   NotificationImageContentSchema,
   NotificationTextContentSchema,
+  NotificationRunAgentCotnentSchema,
   NotificationToolApproveExecutionContentSchema,
 ]);
 
@@ -2442,6 +2451,7 @@ export const UpsertTableFromCsvRequestSchema = z.object({
   sourceUrl: z.string().nullable().optional(),
   tableId: z.string(),
   fileId: z.string(),
+  allowEmptySchema: z.boolean().optional(),
 });
 
 export type UpsertTableFromCsvRequestType = z.infer<

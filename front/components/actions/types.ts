@@ -8,6 +8,7 @@ import { RetrievalActionDetails } from "@app/components/actions/retrieval/Retrie
 import { SearchLabelsActionDetails } from "@app/components/actions/SearchLabelsActionDetails";
 import { TablesQueryActionDetails } from "@app/components/actions/tables_query/TablesQueryActionDetails";
 import { WebsearchActionDetails } from "@app/components/actions/websearch/WebsearchActionDetails";
+import type { ProgressNotificationContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { AgentActionType, LightWorkspaceType } from "@app/types";
 import { ACTION_RUNNING_LABELS } from "@app/types";
 
@@ -16,6 +17,7 @@ export interface ActionDetailsComponentBaseProps<
 > {
   action: T;
   owner: LightWorkspaceType;
+  lastNotification: ProgressNotificationContentType | null;
   defaultOpen: boolean;
 }
 

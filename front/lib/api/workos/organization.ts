@@ -92,6 +92,42 @@ export async function getOrCreateWorkOSOrganization(
   }
 }
 
+export async function addWorkOSOrganizationDomain(
+  workspace: LightWorkspaceType,
+  { domain }: { domain: string }
+): Promise<Result<void, Error>> {
+  const organizationRes = await getWorkOSOrganization(workspace);
+  if (organizationRes.isErr()) {
+    return new Err(organizationRes.error);
+  }
+
+  const organization = organizationRes.value;
+  if (!organization) {
+    return new Err(
+      new Error("WorkOS organization not found for this workspace.")
+    );
+  }
+
+  await getWorkOS().organizations.updateOrganization({
+    organization: organization.id,
+    domainData: [
+      ...organization.domains.map((d) => ({
+        domain: d.domain,
+        state:
+          d.state === OrganizationDomainState.Verified
+            ? DomainDataState.Verified
+            : DomainDataState.Pending,
+      })),
+      {
+        domain,
+        state: DomainDataState.Verified,
+      },
+    ],
+  });
+
+  return new Ok(undefined);
+}
+
 export async function removeWorkOSOrganizationDomain(
   workspace: LightWorkspaceType,
   { domain }: { domain: string }

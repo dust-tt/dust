@@ -10,9 +10,15 @@ import {
 import { useCallback, useState } from "react";
 
 import { MCPServerOAuthConnexion } from "@app/components/actions/mcp/MCPServerOAuthConnexion";
-import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
+import {
+  getMcpServerDisplayName,
+  isRemoteMCPServerType,
+} from "@app/lib/actions/mcp_helper";
 import type { MCPServerType } from "@app/lib/api/mcp";
-import { useCreateMCPServerConnection } from "@app/lib/swr/mcp_servers";
+import {
+  useCreateMCPServerConnection,
+  useDiscoverOAuthMetadata,
+} from "@app/lib/swr/mcp_servers";
 import type { OAuthCredentials, WorkspaceType } from "@app/types";
 import { OAUTH_PROVIDER_NAMES, setupOAuthConnection } from "@app/types";
 
@@ -41,6 +47,8 @@ export function ConnectMCPServerDialog({
     connectionType: "workspace",
   });
 
+  const { discoverOAuthMetadata } = useDiscoverOAuthMetadata(owner);
+
   const resetState = useCallback(() => {
     setIsLoading(false);
     setAuthCredentials(null);
@@ -55,6 +63,23 @@ export function ConnectMCPServerDialog({
 
     setIsLoading(true);
 
+    let extraConfig: OAuthCredentials = authCredentials ?? {};
+
+    if (isRemoteMCPServerType(mcpServer) && mcpServer.url) {
+      const discoverOAuthMetadataRes = await discoverOAuthMetadata(
+        mcpServer.url
+      );
+      if (
+        discoverOAuthMetadataRes.isOk() &&
+        discoverOAuthMetadataRes.value.oauthRequired
+      ) {
+        extraConfig = {
+          ...extraConfig,
+          ...discoverOAuthMetadataRes.value.connectionMetadata,
+        };
+      }
+    }
+
     // First setup connection
     const cRes = await setupOAuthConnection({
       dustClientFacingUrl: `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}`,
@@ -62,7 +87,7 @@ export function ConnectMCPServerDialog({
       provider: mcpServer.authorization.provider,
       useCase: mcpServer.authorization.use_case,
       extraConfig: {
-        ...(authCredentials ?? {}),
+        ...extraConfig,
         ...(mcpServer.authorization.scope
           ? { scope: mcpServer.authorization.scope }
           : {}),
@@ -80,7 +105,7 @@ export function ConnectMCPServerDialog({
     // Then associate connection
     await createMCPServerConnection({
       connectionId: cRes.value.connection_id,
-      mcpServerId: mcpServer.sId,
+      mcpServer: mcpServer,
       provider: mcpServer.authorization.provider,
     });
 

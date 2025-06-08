@@ -157,6 +157,7 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
                       onClick: () =>
                         deleteMCPServerConnection({
                           connection: row.original.connection!,
+                          mcpServer: row.original.serverView.server,
                         }),
                       kind: "item" as const,
                     },

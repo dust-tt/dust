@@ -85,9 +85,9 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
           void mutateMCPServers();
 
           sendNotification({
-            title: "MCP server updated",
+            title: `${getMcpServerDisplayName(mcpServer)} updated`,
             type: "success",
-            description: "The MCP server has been successfully updated.",
+            description: `${getMcpServerDisplayName(mcpServer)} has been successfully updated.`,
           });
 
           form.reset(values);
@@ -96,13 +96,13 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
         }
       } catch (err) {
         sendNotification({
-          title: "Error updating MCP server",
+          title: `Error updating ${getMcpServerDisplayName(mcpServer)}`,
           type: "error",
           description: err instanceof Error ? err.message : "An error occurred",
         });
       }
     },
-    [updateServer, mutateMCPServers, sendNotification, form]
+    [updateServer, mutateMCPServers, sendNotification, form, mcpServer]
   );
 
   const handleSynchronize = useCallback(async () => {
@@ -117,22 +117,21 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
         sendNotification({
           title: "Success",
           type: "success",
-          description: "MCP server synchronized successfully.",
+          description: `${getMcpServerDisplayName(mcpServer)} synchronized successfully.`,
         });
       } else {
         throw new Error("Failed to synchronize MCP server");
       }
     } catch (error) {
-      console.error("Error synchronizing with MCP:", error);
       sendNotification({
-        title: "Error synchronizing MCP server",
+        title: `Error synchronizing ${getMcpServerDisplayName(mcpServer)}`,
         type: "error",
         description: normalizeError(error ?? "An error occured").message,
       });
     } finally {
       setIsSynchronizing(false);
     }
-  }, [syncServer, mutateMCPServers, sendNotification]);
+  }, [syncServer, mutateMCPServers, sendNotification, mcpServer]);
 
   const closePopover = () => {
     setIsPopoverOpen(false);

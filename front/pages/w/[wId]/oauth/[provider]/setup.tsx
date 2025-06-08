@@ -29,7 +29,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<object>(
       };
     }
 
-    let parsedExtraConfig: Record<string, string> = {};
+    let parsedExtraConfig: ExtraConfigType = {};
     const parseRes = safeParseJSON(extraConfig as string);
     if (parseRes.isErr()) {
       return {

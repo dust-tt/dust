@@ -90,7 +90,7 @@ export const mcpServersSortingFn = (
   return aServerType < bServerType ? -1 : 1;
 };
 
-export function mcpServerIsRemote(
+export function isRemoteMCPServerType(
   server: MCPServerType
 ): server is RemoteMCPServerType {
   const serverType = getServerTypeAndIdFromSId(server.sId).serverType;
@@ -113,7 +113,9 @@ export function getMcpServerDisplayName(
   let displayName = asDisplayName(server.name);
 
   if (res.isOk()) {
-    if (INTERNAL_MCP_SERVERS[res.value.name].flag != null) {
+    const serverConfig = INTERNAL_MCP_SERVERS[res.value.name];
+
+    if (serverConfig.isRestricted !== undefined) {
       displayName += " (Preview)";
     }
     // Will append Dust App name.

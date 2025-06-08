@@ -26,9 +26,9 @@ import { useEffect, useState } from "react";
 
 import { AssistantDetailsButtonBar } from "@app/components/assistant/AssistantDetailsButtonBar";
 import { AssistantDetailsPerformance } from "@app/components/assistant/AssistantDetailsPerformance";
+import { AssistantEditedSection } from "@app/components/assistant/details/AssistantEditedSection";
 import { AssistantKnowledgeSection } from "@app/components/assistant/details/AssistantKnowledgeSection";
 import { AssistantToolsSection } from "@app/components/assistant/details/AssistantToolsSection";
-import { AssistantUsageSection } from "@app/components/assistant/details/AssistantUsageSection";
 import { ReadOnlyTextArea } from "@app/components/assistant/ReadOnlyTextArea";
 import { RestoreAssistantDialog } from "@app/components/assistant/RestoreAssistantDialog";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
@@ -104,10 +104,7 @@ function AssistantDetailsInfo({
         {agentConfiguration?.description}
       </div>
       {agentConfiguration && (
-        <AssistantUsageSection
-          agentConfiguration={agentConfiguration}
-          owner={owner}
-        />
+        <AssistantEditedSection agentConfiguration={agentConfiguration} />
       )}
       <Page.Separator />
 

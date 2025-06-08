@@ -229,12 +229,6 @@ export const IncludeQueryResourceSchema = z.object({
     INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_INCLUDE_QUERY
   ),
   text: z.string(),
-  warning: z
-    .object({
-      title: z.string(),
-      description: z.string(),
-    })
-    .optional(),
   uri: z.literal(""),
 });
 
@@ -248,6 +242,28 @@ export const isIncludeQueryResourceType = (
   return (
     outputBlock.type === "resource" &&
     IncludeQueryResourceSchema.safeParse(outputBlock.resource).success
+  );
+};
+
+export const WarningResourceSchema = z.object({
+  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.WARNING),
+  warningTitle: z.string(),
+  text: z.string(),
+  warningData: z.record(z.string(), z.unknown()).optional(),
+  uri: z.literal(""),
+});
+
+export type WarningResourceType = z.infer<typeof WarningResourceSchema>;
+
+export const isWarningResourceType = (
+  outputBlock: CallToolResult["content"][number]
+): outputBlock is {
+  type: "resource";
+  resource: WarningResourceType;
+} => {
+  return (
+    outputBlock.type === "resource" &&
+    WarningResourceSchema.safeParse(outputBlock.resource).success
   );
 };
 
@@ -480,11 +496,6 @@ const NotificationImageContentSchema = z.object({
   mimeType: z.string(),
 });
 
-const NotificationTextContentSchema = z.object({
-  type: z.literal("text"),
-  text: z.string(),
-});
-
 type ImageProgressOutput = z.infer<typeof NotificationImageContentSchema>;
 
 // Schema for the resource of a notification where the tool is asking for tool approval.
@@ -517,23 +528,48 @@ export function isToolApproveExecutionNotificationType(
   ).success;
 }
 
+export function isImageProgressOutput(
+  output: ProgressNotificationOutput
+): output is ImageProgressOutput {
+  return output !== undefined && output.type === "image";
+}
+
+const NotificationTextContentSchema = z.object({
+  type: z.literal("text"),
+  text: z.string(),
+});
+
+const NotificationRunAgentContentSchema = z.object({
+  type: z.literal("run_agent"),
+  childAgentId: z.string(),
+  conversationId: z.string(),
+  query: z.string(),
+});
+
+type RunAgentProgressOutput = z.infer<typeof NotificationRunAgentContentSchema>;
+
+export function isRunAgentProgressOutput(
+  output: ProgressNotificationOutput
+): output is RunAgentProgressOutput {
+  return (
+    output !== undefined &&
+    output.type === "run_agent" &&
+    "childAgentId" in output
+  );
+}
+
 export const ProgressNotificationOutputSchema = z
   .union([
     NotificationImageContentSchema,
     NotificationTextContentSchema,
     NotificationToolApproveExecutionContentSchema,
+    NotificationRunAgentContentSchema,
   ])
   .optional();
 
 type ProgressNotificationOutput = z.infer<
   typeof ProgressNotificationOutputSchema
 >;
-
-export function isImageProgressOutput(
-  output: ProgressNotificationOutput
-): output is ImageProgressOutput {
-  return output !== undefined && output.type === "image";
-}
 
 export const ProgressNotificationContentSchema = z.object({
   // Required for the MCP protocol.

@@ -12,6 +12,7 @@ import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { itInTransaction } from "@app/tests/utils/utils";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { WhitelistableFeature } from "@app/types";
+import type { PlanType } from "@app/types";
 
 import handler from "./available";
 
@@ -31,12 +32,27 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/mcp/available", () => {
     // Get auth
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
+    // Mock the INTERNAL_MCP_SERVERS to override the "think" server config
+    // so that the test passes even if we edit the server config.
+    const originalPrimitiveTypesDebuggerConfig =
+      INTERNAL_MCP_SERVERS["primitive_types_debugger"];
+    Object.defineProperty(INTERNAL_MCP_SERVERS, "primitive_types_debugger", {
+      value: {
+        ...originalPrimitiveTypesDebuggerConfig,
+        availability: "auto",
+        isRestricted: (
+          plan: PlanType,
+          featureFlags: WhitelistableFeature[]
+        ) => {
+          return featureFlags.includes("dev_mcp_actions");
+        },
+      },
+      writable: true,
+      configurable: true,
+    });
+
     // Create some servers
-    await FeatureFlagFactory.basic(
-      INTERNAL_MCP_SERVERS["primitive_types_debugger"]
-        .flag as WhitelistableFeature,
-      workspace
-    );
+    await FeatureFlagFactory.basic("dev_mcp_actions", workspace);
 
     // Internal server in the right workspace
     const internalServer = await InternalMCPServerInMemoryResource.makeNew(

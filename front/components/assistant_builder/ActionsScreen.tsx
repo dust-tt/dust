@@ -987,7 +987,9 @@ function ActionEditor({
   });
 
   const isConnected = connections.some(
-    (c) => c.internalMCPServerId === selectedMCPServerView?.server.sId
+    (c) =>
+      c.internalMCPServerId === selectedMCPServerView?.server.sId ||
+      c.remoteMCPServerId === selectedMCPServerView?.server.sId
   );
 
   // This is to show the data description input.

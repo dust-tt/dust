@@ -84,7 +84,9 @@ export function MCPServerDetails({
   });
 
   const connection = connections.find(
-    (c) => c.internalMCPServerId === effectiveMCPServer?.sId
+    (c) =>
+      c.internalMCPServerId === effectiveMCPServer?.sId ||
+      c.remoteMCPServerId === effectiveMCPServer?.sId
   );
 
   const [isLoading, setIsLoading] = useState(false);
@@ -189,6 +191,7 @@ export function MCPServerDetails({
                     onClick={() => {
                       void deleteMCPServerConnection({
                         connection,
+                        mcpServer: effectiveMCPServer,
                       });
                     }}
                   />

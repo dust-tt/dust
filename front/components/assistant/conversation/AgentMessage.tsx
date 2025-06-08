@@ -565,6 +565,7 @@ export function AgentMessage({
             agentMessage={agentMessage}
             conversationId={conversationId}
             lastAgentStateClassification={messageStreamState.agentState}
+            actionProgress={messageStreamState.actionProgress}
             owner={owner}
           />
 

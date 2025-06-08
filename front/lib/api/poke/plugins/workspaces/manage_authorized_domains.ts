@@ -2,6 +2,7 @@ import type { PluginResponse } from "@app/lib/api/poke/types";
 import { createPlugin } from "@app/lib/api/poke/types";
 import { checkUserRegionAffinity } from "@app/lib/api/regions/lookup";
 import {
+  addWorkOSOrganizationDomain,
   getWorkOSOrganization,
   removeWorkOSOrganizationDomain,
 } from "@app/lib/api/workos/organization";
@@ -15,7 +16,7 @@ import { Err, Ok } from "@app/types";
 
 async function handleAddDomain(
   auth: Authenticator,
-  { domain, autoJoinEnabled }: { domain: string; autoJoinEnabled: boolean },
+  { domain }: { domain: string },
   existingDomain: WorkspaceHasDomainModel | null
 ): Promise<Result<PluginResponse, Error>> {
   const workspace = auth.getNonNullableWorkspace();
@@ -49,18 +50,26 @@ async function handleAddDomain(
     );
   }
 
-  const workOSOrganizationRes = await getOrCreateWorkOSOrganization(workspace, {
-    domain,
-  });
+  const workOSOrganizationRes = await getOrCreateWorkOSOrganization(workspace);
   if (workOSOrganizationRes.isErr()) {
     return new Err(workOSOrganizationRes.error);
   }
 
+  // If organization has just been created, the domain has been added to the organization.
+  if (!workOSOrganizationRes.value.domains.some((d) => d.domain === domain)) {
+    const result = await addWorkOSOrganizationDomain(workspace, {
+      domain,
+    });
+    if (result.isErr()) {
+      return new Err(result.error);
+    }
+  }
+
   return new Ok({
     display: "text",
-    value: `Domain ${domain} has been added to the workspace${
-      autoJoinEnabled ? " with auto-join enabled" : ""
-    }. Next webhook will add it to the workspace in the database.`,
+    value:
+      `Domain ${domain} has been added to the workspace. Next webhook will add it to ` +
+      "the workspace in the database.",
   });
 }
 
@@ -115,13 +124,6 @@ export const addAuthorizedDomain = createPlugin({
         description: "Select operation to perform",
         values: ["add", "remove"],
       },
-      autoJoinEnabled: {
-        type: "boolean",
-        label: "Auto Join Enabled",
-        description:
-          "Whether to automatically add users with this domain email",
-        default: false,
-      },
     },
   },
   execute: async (auth, _, args) => {
@@ -147,11 +149,7 @@ export const addAuthorizedDomain = createPlugin({
     });
 
     if (operation === "add") {
-      return handleAddDomain(
-        auth,
-        { domain, autoJoinEnabled: args.autoJoinEnabled },
-        existingDomain
-      );
+      return handleAddDomain(auth, { domain }, existingDomain);
     } else {
       return handleRemoveDomain(auth, { domain }, existingDomain);
     }

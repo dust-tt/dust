@@ -75,7 +75,12 @@ export function makeSId(
     return cached;
   }
 
-  const sId = `${RESOURCES_PREFIX[resourceName]}_${sqids.encode(idsToEncode)}`;
+  const prefix = RESOURCES_PREFIX[resourceName];
+  if (!prefix) {
+    throw new Error(`Invalid resource name: ${resourceName}`);
+  }
+
+  const sId = `${prefix}_${sqids.encode(idsToEncode)}`;
   sIdCache.set(key, sId);
   return sId;
 }
