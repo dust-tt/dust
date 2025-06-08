@@ -665,7 +665,7 @@ function getConversationChannelId(channelId: string) {
 }
 
 export function getEventMessageChannelId(event: AgentMessageAsyncEvents) {
-  // Tool approve execution can come from a sub agent, and in that case we want to send a event
+  // Tool approve execution can come from a sub agent, and in that case we want to send an event
   // to the main conversation.
   if (event.type === "tool_approve_execution") {
     return getMessageChannelId(

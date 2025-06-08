@@ -1351,7 +1351,7 @@ const NotificationTextContentSchema = z.object({
   text: z.string(),
 });
 
-const NotificationToolApproveExecutionSchema = z.object({
+const NotificationToolApproveExecutionContentSchema = z.object({
   type: z.literal("tool_approval_bubble_up"),
   configurationId: z.string(),
   conversationId: z.string(),
@@ -1365,7 +1365,7 @@ const NotificationToolApproveExecutionSchema = z.object({
 const NotificationContentSchema = z.union([
   NotificationImageContentSchema,
   NotificationTextContentSchema,
-  NotificationToolApproveExecutionSchema,
+  NotificationToolApproveExecutionContentSchema,
 ]);
 
 const ToolNotificationProgressSchema = z.object({

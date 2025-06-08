@@ -664,7 +664,8 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
           const { output: notificationOutput } = notification.params.data;
           // Tool approval notifications have a specific handling:
           // they are not yielded as regular notifications but are bubbled up as
-          // `tool_approve_execution` events instead, which exposes them to the end-user.
+          // `tool_approval_bubble_up` events instead. We attach the messageId from the
+          // main conversation as `pubsubMessageId` to route the event to the main conversation channel.
           if (isToolApproveExecutionNotificationType(notificationOutput)) {
             const {
               conversationId,
@@ -687,7 +688,6 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
               stake,
               metadata: {
                 ...metadata,
-                // pubsubMessageId is used to route the event to the main conversation channel.
                 pubsubMessageId: agentMessage.sId,
               },
             };
