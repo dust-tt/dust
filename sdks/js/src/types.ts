@@ -1330,6 +1330,7 @@ const MCPValidationMetadataSchema = z.object({
   mcpServerName: z.string(),
   toolName: z.string(),
   agentName: z.string(),
+  pubsubMessageId: z.string().optional(),
 });
 
 const MCPParamsEventSchema = z.object({
@@ -1350,8 +1351,8 @@ const NotificationTextContentSchema = z.object({
   text: z.string(),
 });
 
-const ToolApproveExecutionSchema = z.object({
-  type: z.string(),
+const NotificationToolApproveExecutionSchema = z.object({
+  type: z.literal("tool_approval_bubble_up"),
   configurationId: z.string(),
   conversationId: z.string(),
   messageId: z.string(),
@@ -1364,10 +1365,7 @@ const ToolApproveExecutionSchema = z.object({
 const NotificationContentSchema = z.union([
   NotificationImageContentSchema,
   NotificationTextContentSchema,
-  z.object({
-    type: z.literal("resource"),
-    resource: ToolApproveExecutionSchema,
-  }),
+  NotificationToolApproveExecutionSchema,
 ]);
 
 const ToolNotificationProgressSchema = z.object({
