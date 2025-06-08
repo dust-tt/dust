@@ -1,3 +1,4 @@
+import { cn } from "@dust-tt/sparkle";
 import { CharacterCount } from "@tiptap/extension-character-count";
 import Document from "@tiptap/extension-document";
 import { History } from "@tiptap/extension-history";
@@ -6,13 +7,14 @@ import { EditorContent, useEditor } from "@tiptap/react";
 import { cva } from "class-variance-authority";
 import React, { useEffect, useMemo } from "react";
 
+import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { useAgentBuilderInstructionsContext } from "@app/components/agent_builder/instructions/AgentBuilderInstructionsContext";
+import { InstructionTipsPopover } from "@app/components/agent_builder/instructions/InstructionsTipsPopover";
 import { ParagraphExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/ParagraphExtension";
 import {
   plainTextFromTipTapContent,
   tipTapContentFromPlainText,
 } from "@app/lib/client/assistant_builder/instructions";
-import { classNames } from "@app/lib/utils";
 
 export const INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT = 120_000;
 
@@ -46,6 +48,7 @@ const editorVariants = cva(
 );
 
 export function AgentBuilderInstructionsEditor() {
+  const { owner } = useAgentBuilderContext();
   const { instructions, setInstructions } =
     useAgentBuilderInstructionsContext();
 
@@ -106,6 +109,9 @@ export function AgentBuilderInstructionsEditor() {
     <div className="flex h-full flex-col gap-1">
       <div className="relative h-full min-h-60 grow p-px">
         <EditorContent editor={editor} className="absolute inset-0" />
+        <div className="absolute bottom-2 right-2">
+          <InstructionTipsPopover owner={owner} instructions={instructions} />
+        </div>
       </div>
       {editor && (
         <CharacterCountDisplay
@@ -134,7 +140,7 @@ const CharacterCountDisplay = ({
 
   return (
     <span
-      className={classNames(
+      className={cn(
         "text-end text-xs",
         isOverLimit
           ? "text-warning"
