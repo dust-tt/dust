@@ -171,7 +171,7 @@ export default async function createServer(
     async ({ query, childAgent: { uri } }, { sendNotification, _meta }) => {
       assert(
         agentLoopContext?.runContext,
-        "Unreachable: missing agentLoopRunContext."
+        "agentLoopContext is required where the tool is called"
       );
       const { agentConfiguration: mainAgent, conversation: mainConversation } =
         agentLoopContext.runContext;
