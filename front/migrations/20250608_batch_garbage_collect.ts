@@ -1,51 +1,18 @@
-import config from "@app/lib/api/config";
-import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
+import { garbageCollectGoogleDriveDocument } from "@app/lib/api/poke/plugins/data_sources/garbage_collect_google_drive_document";
+import { Authenticator } from "@app/lib/auth";
+import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
-import { CoreAPI } from "@app/types";
-
-async function garbageCollectGoogleDriveDocument(
-  dataSource: { dustAPIProjectId: string; dustAPIDataSourceId: string },
-  documentId: string,
-  childLogger: typeof logger
-): Promise<void> {
-  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), childLogger);
-
-  const getRes = await coreAPI.getDataSourceDocument({
-    projectId: dataSource.dustAPIProjectId,
-    dataSourceId: dataSource.dustAPIDataSourceId,
-    documentId: documentId,
-  });
-
-  if (getRes.isErr()) {
-    throw new Error(
-      `Error while getting document ${documentId}: ${getRes.error.message}`
-    );
-  }
-
-  const delRes = await coreAPI.deleteDataSourceDocument({
-    projectId: dataSource.dustAPIProjectId,
-    dataSourceId: dataSource.dustAPIDataSourceId,
-    documentId: documentId,
-  });
-
-  if (delRes.isErr()) {
-    throw new Error(
-      `Error deleting document ${documentId}: ${delRes.error.message}`
-    );
-  }
-
-  childLogger.info({ documentId }, "Document garbage collected successfully");
-}
 
 makeScript(
   {
-    connectorId: {
+    wId: {
       type: "string",
       demandOption: true,
-      description:
-        "Connector ID to find the associated Google Drive data source",
+    },
+    dsId: {
+      type: "string",
+      demandOption: true,
     },
     documentIds: {
       type: "string",
@@ -59,7 +26,7 @@ makeScript(
       description: "Number of documents to process concurrently",
     },
   },
-  async ({ execute, connectorId, documentIds, concurrency }, logger) => {
+  async ({ execute, wId, dsId, documentIds, concurrency }, logger) => {
     let parsedDocumentIds: string[];
 
     try {
@@ -72,27 +39,25 @@ makeScript(
       throw new Error("documentIds must be a JSON array of strings");
     }
 
+    const auth = await Authenticator.internalAdminForWorkspace(wId);
+
     // Find the data source by connectorId
-    const dataSource = await DataSourceModel.findOne({
-      where: {
-        connectorId: connectorId,
-      },
-    });
+    const dataSource = await DataSourceResource.fetchById(auth, dsId);
 
     if (!dataSource) {
-      throw new Error(`Data source not found for connector ID ${connectorId}`);
+      throw new Error("Data source not found.");
     }
 
     if (dataSource.connectorProvider !== "google_drive") {
       throw new Error(
-        `Connector ${connectorId} is not a Google Drive connector (found: ${dataSource.connectorProvider})`
+        `Not a Google Drive connector (found: ${dataSource.connectorProvider})`
       );
     }
 
     logger.info(
       {
-        connectorId,
-        dataSourceId: dataSource.id,
+        workspaceId: wId,
+        dataSourceId: dataSource.sId,
         dataSourceName: dataSource.name,
         documentCount: parsedDocumentIds.length,
         execute,
@@ -111,15 +76,16 @@ makeScript(
     await concurrentExecutor(
       parsedDocumentIds,
       async (documentId) => {
-        const childLogger = logger.child({ documentId, connectorId });
-        await garbageCollectGoogleDriveDocument(
-          {
-            dustAPIProjectId: dataSource.dustAPIProjectId,
-            dustAPIDataSourceId: dataSource.dustAPIDataSourceId,
-          },
+        const result = await garbageCollectGoogleDriveDocument(dataSource, {
           documentId,
-          childLogger
-        );
+        });
+        if (result.isErr()) {
+          logger.info(
+            { documentId, error: result.error },
+            "Document could not be garbage collected."
+          );
+          throw result.error;
+        }
       },
       { concurrency }
     );
