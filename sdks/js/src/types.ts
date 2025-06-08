@@ -1363,7 +1363,7 @@ const NotificationToolApproveExecutionContentSchema = z.object({
   metadata: MCPValidationMetadataSchema,
 });
 
-const NotificationRunAgentCotnentSchema = z.object({
+const NotificationRunAgentContentSchema = z.object({
   type: z.literal("run_agent"),
   childAgentId: z.string(),
   conversationId: z.string(),
@@ -1373,7 +1373,7 @@ const NotificationRunAgentCotnentSchema = z.object({
 const NotificationContentSchema = z.union([
   NotificationImageContentSchema,
   NotificationTextContentSchema,
-  NotificationRunAgentCotnentSchema,
+  NotificationRunAgentContentSchema,
   NotificationToolApproveExecutionContentSchema,
 ]);
 
