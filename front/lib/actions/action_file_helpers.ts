@@ -72,12 +72,31 @@ export async function generateCSVFileAndSnippet(
   const workspace = auth.getNonNullableWorkspace();
   const user = auth.user();
 
-  const csvOutput = await toCsv(results);
+  const {
+    csvOutput,
+    contentType,
+    fileName,
+  }: {
+    csvOutput: string;
+    contentType: "text/csv" | "text/plain";
+    fileName: string;
+  } =
+    results.length > 0
+      ? {
+          csvOutput: await toCsv(results),
+          contentType: "text/csv",
+          fileName: `${title}.csv`,
+        }
+      : {
+          csvOutput: "The query produced no results.",
+          contentType: "text/plain",
+          fileName: `${title}.txt`,
+        };
   const csvFile = await FileResource.makeNew({
     workspaceId: workspace.id,
     userId: user?.id ?? null,
-    contentType: "text/csv",
-    fileName: title,
+    contentType,
+    fileName,
     fileSize: Buffer.byteLength(csvOutput),
     useCase: "tool_output",
     useCaseMetadata: {

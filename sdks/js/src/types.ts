@@ -1406,9 +1406,17 @@ const NotificationTextContentSchema = z.object({
   text: z.string(),
 });
 
+const NotificationRunAgentCotnentSchema = z.object({
+  type: z.literal("run_agent"),
+  childAgentId: z.string(),
+  conversationId: z.string(),
+  query: z.string(),
+});
+
 const NotificationContentSchema = z.union([
   NotificationImageContentSchema,
   NotificationTextContentSchema,
+  NotificationRunAgentCotnentSchema,
 ]);
 
 const ToolNotificationProgressSchema = z.object({
@@ -2491,6 +2499,7 @@ export const UpsertTableFromCsvRequestSchema = z.object({
   sourceUrl: z.string().nullable().optional(),
   tableId: z.string(),
   fileId: z.string(),
+  allowEmptySchema: z.boolean().optional(),
 });
 
 export type UpsertTableFromCsvRequestType = z.infer<

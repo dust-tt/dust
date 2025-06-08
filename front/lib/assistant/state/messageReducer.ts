@@ -16,18 +16,20 @@ import type { LightAgentMessageType } from "@app/types/assistant/conversation";
 
 export type AgentStateClassification = "thinking" | "acting" | "done";
 
+export type ActionProgressState = Map<
+  BaseAction["id"],
+  {
+    action: AgentActionType;
+    progress?: ProgressNotificationContentType;
+  }
+>;
+
 export interface MessageTemporaryState {
   message: LightAgentMessageType;
   agentState: AgentStateClassification;
   isRetrying: boolean;
   lastUpdated: Date;
-  actionProgress: Map<
-    BaseAction["id"],
-    {
-      action: AgentActionType;
-      progress?: ProgressNotificationContentType;
-    }
-  >;
+  actionProgress: ActionProgressState;
 }
 
 export type AgentMessageStateEvent =

@@ -1,4 +1,6 @@
 import type { ModelId } from "./shared/model_id";
+import type { RoleType } from "./user";
+import { isRoleType } from "./user";
 
 /**
  * system group: Accessible by no-one other than our system API keys. Has access
@@ -77,5 +79,29 @@ export function getHeaderFromGroupIds(groupIds: string[] | undefined) {
 
   return {
     [DustGroupIdsHeader]: groupIds.join(","),
+  };
+}
+
+const DustRoleHeader = "X-Dust-Role";
+
+export function getRoleFromHeaders(
+  headers: Record<string, string | string[] | undefined>
+): RoleType | undefined {
+  let role = headers[DustRoleHeader.toLowerCase()];
+  if (typeof role === "string") {
+    role = role.trim();
+    if (role.length > 0 && isRoleType(role)) {
+      return role;
+    }
+  }
+  return undefined;
+}
+
+export function getHeaderFromRole(role: RoleType | undefined) {
+  if (!role) {
+    return undefined;
+  }
+  return {
+    [DustRoleHeader]: role,
   };
 }

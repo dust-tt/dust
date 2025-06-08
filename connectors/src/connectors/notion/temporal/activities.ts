@@ -1955,6 +1955,7 @@ export async function renderAndUpsertPageFromCache({
             sourceUrl:
               parentDb.notionUrl ??
               `https://www.notion.so/${parentDb.notionDatabaseId.replace(/-/g, "")}`,
+            allowEmptySchema: true,
           })
         );
       } else {
@@ -2683,6 +2684,7 @@ export async function upsertDatabaseStructuredDataFromCache({
       sourceUrl:
         dbModel.notionUrl ??
         `https://www.notion.so/${dbModel.notionDatabaseId.replace(/-/g, "")}`,
+      allowEmptySchema: true,
     })
   );
 

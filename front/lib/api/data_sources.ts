@@ -626,6 +626,7 @@ export interface UpsertTableArgs {
   tags?: string[] | null;
   parentId?: string | null;
   parents?: string[] | null;
+  allowEmptySchema?: boolean;
 }
 
 export function isUpsertTableArgs(
@@ -741,51 +742,58 @@ export async function upsertTable({
 
   const title = params.title.trim() || name.trim() || UNTITLED_TITLE;
 
-  if (async) {
-    if (fileId) {
-      const file = await FileResource.fetchById(auth, fileId);
-      if (!file) {
-        return new Err<DustError>({
+  if (fileId) {
+    const file = await FileResource.fetchById(auth, fileId);
+    if (!file) {
+      return new Err<DustError>({
+        name: "dust_error",
+        code: "file_not_found",
+        message:
+          "The file associated with the fileId you provided was not found",
+      });
+    }
+    const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+
+    const schemaRes = await coreAPI.tableValidateCSVContent({
+      projectId: dataSource.dustAPIProjectId,
+      dataSourceId: dataSource.dustAPIDataSourceId,
+      bucket: file.getBucketForVersion("processed").name,
+      bucketCSVPath: file.getCloudStoragePath(auth, "processed"),
+    });
+    if (schemaRes.isErr()) {
+      if (schemaRes.error.code === "invalid_csv_content") {
+        return new Err({
           name: "dust_error",
-          code: "file_not_found",
-          message:
-            "The file associated with the fileId you provided was not found",
+          code: "invalid_csv_content",
+          message: schemaRes.error.message,
+        });
+      } else {
+        logger.error(
+          {
+            bucket: file.getBucketForVersion("processed").name,
+            bucketCSVPath: file.getCloudStoragePath(auth, "processed"),
+            dataSourceId: dataSource.sId,
+            error: schemaRes.error,
+          },
+          "Error validating CSV content"
+        );
+        return new Err({
+          name: "dust_error",
+          code: "internal_error",
+          message: schemaRes.error.message,
         });
       }
-      const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-
-      const schemaRes = await coreAPI.tableValidateCSVContent({
-        projectId: dataSource.dustAPIProjectId,
-        dataSourceId: dataSource.dustAPIDataSourceId,
-        bucket: file.getBucketForVersion("processed").name,
-        bucketCSVPath: file.getCloudStoragePath(auth, "processed"),
-      });
-      if (schemaRes.isErr()) {
-        if (schemaRes.error.code === "invalid_csv_content") {
-          return new Err({
-            name: "dust_error",
-            code: "invalid_csv_content",
-            message: schemaRes.error.message,
-          });
-        } else {
-          logger.error(
-            {
-              bucket: file.getBucketForVersion("processed").name,
-              bucketCSVPath: file.getCloudStoragePath(auth, "processed"),
-              dataSourceId: dataSource.sId,
-              error: schemaRes.error,
-            },
-            "Error validating CSV content"
-          );
-          return new Err({
-            name: "dust_error",
-            code: "internal_error",
-            message: schemaRes.error.message,
-          });
-        }
-      }
     }
+    if (!params.allowEmptySchema && schemaRes.value.schema.length === 0) {
+      return new Err({
+        name: "dust_error",
+        code: "invalid_csv_content",
+        message: "Invalid CSV content, skipping",
+      });
+    }
+  }
 
+  if (async) {
     const enqueueRes = await enqueueUpsertTable({
       upsertTable: {
         workspaceId: owner.sId,

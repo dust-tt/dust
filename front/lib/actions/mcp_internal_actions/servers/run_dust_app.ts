@@ -33,7 +33,11 @@ import { sanitizeJSONOutput } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import type { DatasetSchema } from "@app/types";
 import type { SpecificationBlockType } from "@app/types";
-import { getHeaderFromGroupIds, SUPPORTED_MODEL_CONFIGS } from "@app/types";
+import {
+  getHeaderFromGroupIds,
+  getHeaderFromRole,
+  SUPPORTED_MODEL_CONFIGS,
+} from "@app/types";
 
 import { ConfigurableToolInputSchemas } from "../input_schemas";
 
@@ -335,15 +339,18 @@ export default async function createServer(
           auth
         );
 
-        const prodCredentials = await prodAPICredentialsForOwner(owner);
         const requestedGroupIds = auth.groups().map((g) => g.sId);
-        const apiConfig = config.getDustAPIConfig();
 
+        const prodCredentials = await prodAPICredentialsForOwner(owner);
+        const apiConfig = config.getDustAPIConfig();
         const api = new DustAPI(
           apiConfig,
           {
             ...prodCredentials,
-            extraHeaders: getHeaderFromGroupIds(requestedGroupIds),
+            extraHeaders: {
+              ...getHeaderFromGroupIds(requestedGroupIds),
+              ...getHeaderFromRole(auth.role()),
+            },
           },
           logger,
           apiConfig.nodeEnv === "development" ? "http://localhost:3000" : null
