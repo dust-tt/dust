@@ -8,12 +8,14 @@ import {
   ContentMessage,
   Icon,
   InformationCircleIcon,
+  MagnifyingGlassIcon,
   Markdown,
   PaginatedCitationsGrid,
   useSendNotification,
 } from "@dust-tt/sparkle";
 import { useCallback } from "react";
 
+import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import type {
   ReasoningSuccessOutputType,
   SqlQueryOutputType,
@@ -21,8 +23,6 @@ import type {
   ToolGeneratedFileType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { LightWorkspaceType } from "@app/types";
-
-// This file contains one component per output type.
 
 interface ThinkingBlockProps {
   resource: ThinkingOutputType;
@@ -159,9 +159,11 @@ export function ToolGeneratedFileDetails({
 }
 
 interface SearchResultProps {
-  defaultOpen?: boolean;
+  actionName: string;
+  defaultOpen: boolean;
+  visual: React.ComponentType<{ className?: string }>;
   query: string;
-  items: {
+  results: {
     description: string;
     title: string;
     icon: React.JSX.Element;
@@ -172,17 +174,35 @@ interface SearchResultProps {
 export function SearchResultDetails({
   defaultOpen,
   query,
-  items,
+  results,
 }: SearchResultProps) {
   return (
-    <CollapsibleComponent
-      rootProps={{ defaultOpen }}
-      triggerChildren={
-        <span className="text-sm font-bold text-foreground dark:text-foreground-night">
-          {query}
-        </span>
-      }
-      contentChildren={<PaginatedCitationsGrid items={items} />}
-    />
+    <ActionDetailsWrapper
+      actionName={"Search data"}
+      defaultOpen={defaultOpen}
+      visual={MagnifyingGlassIcon}
+    >
+      <div className="flex flex-col gap-4 pl-6 pt-4">
+        <div className="flex flex-col gap-1">
+          <span className="text-sm font-bold text-foreground dark:text-foreground-night">
+            Query
+          </span>
+          <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+            {query}
+          </div>
+        </div>
+        <div>
+          <CollapsibleComponent
+            rootProps={{ defaultOpen }}
+            triggerChildren={
+              <span className="text-sm font-bold text-foreground dark:text-foreground-night">
+                Results
+              </span>
+            }
+            contentChildren={<PaginatedCitationsGrid items={results} />}
+          />
+        </div>
+      </div>
+    </ActionDetailsWrapper>
   );
 }

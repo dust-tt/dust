@@ -1,6 +1,5 @@
 import { MagnifyingGlassIcon } from "@dust-tt/sparkle";
 
-import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import { SearchResultDetails } from "@app/components/actions/mcp/details/MCPToolOutputDetails";
 import { getDocumentIcon } from "@app/components/actions/retrieval/utils";
 import type { ActionDetailsComponentBaseProps } from "@app/components/actions/types";
@@ -18,40 +17,27 @@ export function MCPSearchActionDetails({
     action.output?.filter(isSearchQueryResourceType).map((o) => o.resource) ??
     [];
 
+  const query =
+    queryResources.length > 0
+      ? queryResources.map((r) => r.text).join("\n")
+      : JSON.stringify(action.params, undefined, 2);
+
   const searchResults =
     action.output?.filter(isSearchResultResourceType).map((o) => o.resource) ??
     [];
 
   return (
-    <ActionDetailsWrapper
+    <SearchResultDetails
       actionName={"Search data"}
       defaultOpen={defaultOpen}
+      query={query}
       visual={MagnifyingGlassIcon}
-    >
-      <div className="flex flex-col gap-4 pl-6 pt-4">
-        <div className="flex flex-col gap-1">
-          <span className="text-sm font-bold text-foreground dark:text-foreground-night">
-            Query
-          </span>
-          <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
-            {queryResources.length > 0
-              ? queryResources.map((r) => r.text).join("\n")
-              : JSON.stringify(action.params, undefined, 2)}
-          </div>
-        </div>
-        <div>
-          <SearchResultDetails
-            defaultOpen={defaultOpen}
-            query="Results"
-            items={searchResults.map((r) => ({
-              description: "",
-              title: r.text,
-              icon: getDocumentIcon(r.source.provider),
-              href: r.uri,
-            }))}
-          />
-        </div>
-      </div>
-    </ActionDetailsWrapper>
+      results={searchResults.map((r) => ({
+        description: "",
+        title: r.text,
+        icon: getDocumentIcon(r.source.provider),
+        href: r.uri,
+      }))}
+    />
   );
 }
