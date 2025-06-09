@@ -42,7 +42,7 @@ export function MCPWebsearchActionDetails({
         </div>
         <div>
           <CollapsibleComponent
-            rootProps={{ defaultOpen: defaultOpen }}
+            rootProps={{ defaultOpen }}
             triggerChildren={
               <span className="text-sm font-bold text-foreground dark:text-foreground-night">
                 {queryResources.length > 0
@@ -51,16 +51,14 @@ export function MCPWebsearchActionDetails({
               </span>
             }
             contentChildren={
-              <>
-                <PaginatedCitationsGrid
-                  items={websearchResults.map((r) => ({
-                    description: r.text,
-                    title: r.title,
-                    icon: getDocumentIcon("webcrawler"),
-                    href: r.uri,
-                  }))}
-                />
-              </>
+              <PaginatedCitationsGrid
+                items={websearchResults.map((r) => ({
+                  description: r.text,
+                  title: r.title,
+                  icon: getDocumentIcon("webcrawler"),
+                  href: r.uri,
+                }))}
+              />
             }
           />
         </div>
