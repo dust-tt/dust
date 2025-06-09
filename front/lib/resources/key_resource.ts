@@ -218,4 +218,18 @@ export class KeyResource extends BaseResource<KeyModel> {
   get isActive() {
     return this.status === "active";
   }
+
+  static async updateRole(newRole: RoleType, wId: string, apiKeyName: string) {
+    return await this.model.update(
+      {
+        role: newRole,
+      },
+      {
+        where: {
+          name: apiKeyName,
+          workspaceId: wId,
+        },
+      }
+    );
+  }
 }

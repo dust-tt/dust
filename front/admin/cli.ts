@@ -34,7 +34,6 @@ import {
   removeNulls,
   SUPPORTED_MODEL_CONFIGS,
 } from "@app/types";
-import { LabsTranscriptsConfigurationModel } from "@app/lib/resources/storage/models/labs_transcripts";
 import path from "path";
 import { KeyResource } from "@app/lib/resources/key_resource";
 
@@ -600,16 +599,10 @@ async function apikeys(command: string, args: parseArgs.ParsedArgs) {
         throw new Error(`Workspace not found: wId='${args.wId}'`);
       }
 
-      const [numAffected] = await KeyResource.model.update(
-        {
-          role: "admin",
-        },
-        {
-          where: {
-            name: args.name,
-            workspaceId: workspace.id,
-          },
-        }
+      const [numAffected] = await KeyResource.updateRole(
+        args.role,
+        args.wId,
+        args.role
       );
 
       if (numAffected === 0) {
