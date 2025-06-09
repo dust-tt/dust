@@ -501,7 +501,7 @@ type ImageProgressOutput = z.infer<typeof NotificationImageContentSchema>;
 // Schema for the resource of a notification where the tool is asking for tool approval.
 // This schema contains all the information that the MCP server runner
 // needs to emit an event for tool approval.
-const NotificationToolApproveExecutionContentSchema = z.object({
+const NotificationToolApproveBubbleUpContentSchema = z.object({
   type: z.literal("tool_approval_bubble_up"),
   configurationId: z.string(),
   conversationId: z.string(),
@@ -516,14 +516,14 @@ const NotificationToolApproveExecutionContentSchema = z.object({
   }),
 });
 
-type NotificationToolApproveExecutionContentType = z.infer<
-  typeof NotificationToolApproveExecutionContentSchema
+type NotificationToolApproveBubbleUpContentType = z.infer<
+  typeof NotificationToolApproveBubbleUpContentSchema
 >;
 
-export function isToolApproveExecutionNotificationType(
+export function isToolApproveBubbleUpNotificationType(
   notificationOutput: ProgressNotificationOutput
-): notificationOutput is NotificationToolApproveExecutionContentType {
-  return NotificationToolApproveExecutionContentSchema.safeParse(
+): notificationOutput is NotificationToolApproveBubbleUpContentType {
+  return NotificationToolApproveBubbleUpContentSchema.safeParse(
     notificationOutput
   ).success;
 }
@@ -562,7 +562,7 @@ export const ProgressNotificationOutputSchema = z
   .union([
     NotificationImageContentSchema,
     NotificationTextContentSchema,
-    NotificationToolApproveExecutionContentSchema,
+    NotificationToolApproveBubbleUpContentSchema,
     NotificationRunAgentContentSchema,
   ])
   .optional();

@@ -19,7 +19,7 @@ import type { ProgressNotificationContentType } from "@app/lib/actions/mcp_inter
 import {
   isMCPProgressNotificationType,
   isResourceWithName,
-  isToolApproveExecutionNotificationType,
+  isToolApproveBubbleUpNotificationType,
   isToolGeneratedFile,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { getMCPEvents } from "@app/lib/actions/pubsub";
@@ -666,7 +666,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
           // they are not yielded as regular notifications but are bubbled up as
           // `tool_approval_bubble_up` events instead. We attach the messageId from the
           // main conversation as `pubsubMessageId` to route the event to the main conversation channel.
-          if (isToolApproveExecutionNotificationType(notificationOutput)) {
+          if (isToolApproveBubbleUpNotificationType(notificationOutput)) {
             const {
               conversationId,
               messageId,
