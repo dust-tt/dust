@@ -1,5 +1,5 @@
 import { RoleType } from "@app/types/user";
-import type { ModelId } from "./shared/model_id";
+import type { ModelId } from "@app/types/shared/model_id";
 
 export type KeyType = {
   id: ModelId;
