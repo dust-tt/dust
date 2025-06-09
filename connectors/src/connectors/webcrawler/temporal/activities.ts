@@ -1,4 +1,4 @@
-import FirecrawlApp from "@mendable/firecrawl-js";
+import FirecrawlApp, { FirecrawlError } from "@mendable/firecrawl-js";
 import { Context } from "@temporalio/activity";
 import { isCancellation } from "@temporalio/workflow";
 import { BasicCrawler, CheerioCrawler, Configuration, LogLevel } from "crawlee";
@@ -801,6 +801,11 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
       );
       await syncFailed(connector.id, "webcrawling_error");
       return;
+    } else if (error instanceof FirecrawlError) {
+      statsDClient.increment("connectors_webcrawler_scrape_error", [
+        `status_code:${error.statusCode}`,
+        `configId:${webCrawlerConfig.id}`,
+      ]);
     }
 
     throw error;
