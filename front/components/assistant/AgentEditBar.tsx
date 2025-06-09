@@ -16,7 +16,6 @@ import {
 import { useState } from "react";
 
 import {
-  useBatchUpdateAgents,
   useBatchUpdateAgentScope,
   useBatchUpdateAgentTags,
 } from "@app/lib/swr/assistants";
