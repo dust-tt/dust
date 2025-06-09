@@ -1,9 +1,9 @@
 import type { LightAgentConfigurationType } from "@dust-tt/client";
 
+import type { RequestToolPermissionActionValueParsed } from "@connectors/api/webhooks/webhook_slack_interaction";
 import {
   APPROVE_TOOL_EXECUTION,
   REJECT_TOOL_EXECUTION,
-  RequestToolPermissionActionValueParsed,
   STATIC_AGENT_CONFIG,
 } from "@connectors/api/webhooks/webhook_slack_interaction";
 import type { SlackMessageFootnotes } from "@connectors/connectors/slack/chat/citations";
