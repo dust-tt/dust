@@ -59,7 +59,7 @@ KeyModel.init(
     role: {
       type: DataTypes.STRING,
       defaultValue: "builder",
-      allowNull: false,
+      allowNull: true,
     },
   },
   {
