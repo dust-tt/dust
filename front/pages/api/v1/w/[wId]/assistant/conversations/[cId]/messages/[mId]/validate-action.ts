@@ -2,6 +2,7 @@ import type { ValidateActionResponseType } from "@dust-tt/client";
 import { ValidateActionRequestBodySchema } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { MCPActionType } from "@app/lib/actions/mcp";
 import { getConversation } from "@app/lib/api/assistant/conversation";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { validateAction } from "@app/lib/api/assistant/conversation/validate_actions";
@@ -62,12 +63,24 @@ async function handler(
 
   const { actionId, approved } = parseResult.data;
 
+  // Temporary code to be backwards compatible with the old actionId format.
+  // Safe to remove once all extensions are updated.
+  let actionIdString: string;
+  if (typeof actionId === "string") {
+    actionIdString = actionId;
+  } else {
+    actionIdString = MCPActionType.modelIdToSId({
+      id: actionId,
+      workspaceId: auth.getNonNullableWorkspace().id,
+    });
+  }
+
   try {
     const result = await validateAction({
       workspaceId: auth.getNonNullableWorkspace().sId,
       conversationId: cId,
       messageId: mId,
-      actionId,
+      actionId: actionIdString,
       approved,
     });
 
