@@ -22,6 +22,7 @@ import type { GetAgentUsageResponseBody } from "@app/pages/api/w/[wId]/assistant
 import type { GetSlackChannelsLinkedWithAgentResponseBody } from "@app/pages/api/w/[wId]/assistant/builder/slack/channels_linked_with_agent";
 import type { PostAgentUserFavoriteRequestBody } from "@app/pages/api/w/[wId]/members/me/agent_favorite";
 import type {
+  AgentConfigurationScope,
   AgentConfigurationType,
   AgentsGetViewType,
   LightAgentConfigurationType,
@@ -726,7 +727,11 @@ export function useRestoreAgentConfiguration({
   return doRestore;
 }
 
-export function useBatchUpdateAgents({ owner }: { owner: LightWorkspaceType }) {
+export function useBatchUpdateAgentTags({
+  owner,
+}: {
+  owner: LightWorkspaceType;
+}) {
   const batchUpdateAgentTags = useCallback(
     async (
       agentIds: string[],
@@ -750,4 +755,31 @@ export function useBatchUpdateAgents({ owner }: { owner: LightWorkspaceType }) {
   );
 
   return batchUpdateAgentTags;
+}
+
+export function useBatchUpdateAgentScope({
+  owner,
+}: {
+  owner: LightWorkspaceType;
+}) {
+  const batchUpdateAgentScope = useCallback(
+    async (agentIds: string[], body: { scope: "visible" | "hidden" }) => {
+      await fetch(
+        `/api/w/${owner.sId}/assistant/agent_configurations/batch_update_scope`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            agentIds,
+            ...body,
+          }),
+        }
+      );
+    },
+    [owner]
+  );
+
+  return batchUpdateAgentScope;
 }

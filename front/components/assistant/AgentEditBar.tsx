@@ -7,6 +7,7 @@ import {
   DropdownMenuTagItem,
   DropdownMenuTagList,
   DropdownMenuTrigger,
+  EyeSlashIcon,
   Spinner,
   TagIcon,
   TrashIcon,
@@ -14,7 +15,11 @@ import {
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
-import { useBatchUpdateAgents } from "@app/lib/swr/assistants";
+import {
+  useBatchUpdateAgents,
+  useBatchUpdateAgentScope,
+  useBatchUpdateAgentTags,
+} from "@app/lib/swr/assistants";
 import { compareForFuzzySort, subFilter, tagsSorter } from "@app/lib/utils";
 import type { LightAgentConfigurationType, WorkspaceType } from "@app/types";
 import { isBuilder } from "@app/types";
@@ -41,7 +46,11 @@ export const AgentEditBar = ({
   const [tagSearch, setTagSearch] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  const batchUpdateAgents = useBatchUpdateAgents({
+  const batchUpdateAgentTags = useBatchUpdateAgentTags({
+    owner,
+  });
+
+  const batchUpdateAgentScope = useBatchUpdateAgentScope({
     owner,
   });
 
@@ -128,7 +137,7 @@ export const AgentEditBar = ({
                         )
                       ) {
                         // Remove tag from all selected agents
-                        await batchUpdateAgents(agentIds, {
+                        await batchUpdateAgentTags(agentIds, {
                           removeTagIds: [t.sId],
                         });
                       } else {
@@ -137,7 +146,7 @@ export const AgentEditBar = ({
                           (a) =>
                             !a.tags.find((agentTag) => agentTag.sId === t.sId)
                         );
-                        await batchUpdateAgents(
+                        await batchUpdateAgentTags(
                           toAdd.map((a) => a.sId),
                           {
                             addTagIds: [t.sId],
@@ -153,6 +162,24 @@ export const AgentEditBar = ({
             </DropdownMenuTagList>
           </DropdownMenuContent>
         </DropdownMenu>
+
+        <Button
+          size="xs"
+          variant="outline"
+          icon={EyeSlashIcon}
+          label="Unpublish"
+          disabled={selectedAgents.length === 0 || isLoading}
+          onClick={async () => {
+            setIsLoading(true);
+            await batchUpdateAgentScope(
+              selectedAgents.map((a) => a.sId),
+              { scope: "hidden" }
+            );
+            void mutateAgentConfigurations();
+            setIsLoading(false);
+            onClose();
+          }}
+        />
 
         <Button
           size="xs"
