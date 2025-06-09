@@ -479,7 +479,13 @@ export class Authenticator {
     let role = "none" as RoleType;
     const isKeyWorkspace = keyWorkspace.id === workspace?.id;
     if (isKeyWorkspace) {
-      role = key.role;
+      if (key.isSystem) {
+        // System keys have admin role on their workspace unless requested otherwise.
+        role = requestedRole ?? "admin";
+      } else {
+        // Regular keys have builder role on their workspace.
+        role = key.role;
+      }
     }
 
     const getSubscriptionForWorkspace = (workspace: Workspace) =>
