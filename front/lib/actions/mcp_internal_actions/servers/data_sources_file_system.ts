@@ -706,24 +706,17 @@ const createServer = (
 
       const dataSourceRootId = `${DATA_SOURCE_NODE_ID}-${targetNode.data_source_id}`;
 
-      const pathNodeIds = [
-        dataSourceRootId,
-        // Add all the parents (except the target node itself), in reverse order,
-        // as they are ordered from immediate parent to root.
-        ...targetNode.parents
-          .filter((parentId) => parentId !== nodeId)
-          .reverse(),
-        // Add the target node itself.
-        nodeId,
-      ];
+      // Build path node IDs excluding the data source root and target node.
+      const parentNodeIds = targetNode.parents
+        .filter((parentId) => parentId !== nodeId)
+        .reverse();
 
-      // Fetch the nodes in the path.
-      const nodesToFetch = pathNodeIds.filter((id) => id !== dataSourceRootId);
+      // Fetch the parent nodes (we already have the target node)
       const pathNodes: Record<string, CoreAPIContentNode> = {};
-      if (nodesToFetch.length > 0) {
+      if (parentNodeIds.length > 0) {
         const pathSearchResult = await coreAPI.searchNodes({
           filter: {
-            node_ids: nodesToFetch,
+            node_ids: parentNodeIds,
             data_source_views: makeDataSourceViewFilter(
               agentDataSourceConfigurations
             ),
@@ -739,6 +732,9 @@ const createServer = (
         }
       }
 
+      // Add the target node to pathNodes since we already have it
+      pathNodes[nodeId] = targetNode;
+
       const dataSourceConfig = agentDataSourceConfigurations.find(
         ({ dataSource }) =>
           dataSource.dustAPIDataSourceId === targetNode.data_source_id
@@ -749,30 +745,35 @@ const createServer = (
       }
 
       // Build the path array.
-      const pathItems = removeNulls(
-        pathNodeIds.map((pathNodeId) => {
-          if (pathNodeId === dataSourceRootId) {
-            // Handle data source root node
-            return {
-              nodeId: dataSourceRootId,
-              title: dataSourceConfig.dataSource.name,
-              nodeType: "folder" as ContentNodeType,
-              isCurrentNode: false,
-            };
-          } else {
-            const node = pathNodes[pathNodeId];
-            if (!node) {
-              return null;
-            }
-            return {
-              nodeId: pathNodeId,
-              title: node.title,
-              nodeType: node.node_type,
-              isCurrentNode: pathNodeId === nodeId,
-            };
+      const pathItems = removeNulls([
+        // Data source root node
+        {
+          nodeId: dataSourceRootId,
+          title: dataSourceConfig.dataSource.name,
+          nodeType: "folder" as ContentNodeType,
+          isCurrentNode: false,
+        },
+        // Parent nodes
+        ...parentNodeIds.map((parentId) => {
+          const node = pathNodes[parentId];
+          if (!node) {
+            return null;
           }
-        })
-      );
+          return {
+            nodeId: parentId,
+            title: node.title,
+            nodeType: node.node_type,
+            isCurrentNode: false,
+          };
+        }),
+        // Target node (always last)
+        {
+          nodeId: nodeId,
+          title: targetNode.title,
+          nodeType: targetNode.node_type,
+          isCurrentNode: true,
+        },
+      ]);
 
       // Ensure we have at least one node in the path.
       if (pathItems.length === 0) {
