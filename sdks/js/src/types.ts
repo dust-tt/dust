@@ -550,6 +550,7 @@ const BaseActionTypeSchema = FlexibleEnumSchema<
 
 const BaseActionSchema = z.object({
   id: ModelIdSchema,
+  sId: z.string(),
   type: BaseActionTypeSchema,
 });
 
