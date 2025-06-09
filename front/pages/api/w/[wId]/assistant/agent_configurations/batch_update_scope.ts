@@ -3,7 +3,6 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import {
   getAgentConfiguration,
   updateAgentConfigurationScope,
@@ -12,7 +11,6 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import type { Authenticator } from "@app/lib/auth";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
-import { createOrUpgradeAgentConfiguration } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
 import type { WithAPIErrorResponse } from "@app/types";
 
 const BatchUpdateAgentScopeRequestBodySchema = t.type({
