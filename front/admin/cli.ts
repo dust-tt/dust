@@ -602,7 +602,7 @@ async function apikeys(command: string, args: parseArgs.ParsedArgs) {
       const [numAffected] = await KeyResource.updateRole(
         args.role,
         args.wId,
-        args.role
+        args.name
       );
 
       if (numAffected === 0) {
