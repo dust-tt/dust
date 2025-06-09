@@ -79,7 +79,6 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
 const UserMessageView = ({
   message,
   useMarkdown,
-  workspace,
 }: {
   message: UserMessageType;
   useMarkdown: boolean;
