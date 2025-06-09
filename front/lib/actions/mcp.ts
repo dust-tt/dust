@@ -684,6 +684,8 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
             yield {
               created: Date.now(),
               type: "tool_approve_execution",
+              // Added to make it backwards compatible, this is not the action of sub agent but it won't be used.
+              // TODO(MCP 2025-06-09): Remove this once all extensions are updated.
               action: mcpAction,
               configurationId,
               conversationId,
