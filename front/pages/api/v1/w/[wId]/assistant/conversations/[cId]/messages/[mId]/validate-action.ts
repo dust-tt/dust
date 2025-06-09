@@ -64,7 +64,7 @@ async function handler(
   const { actionId, approved } = parseResult.data;
 
   // Temporary code to be backwards compatible with the old actionId format.
-  // Safe to remove once all extensions are updated.
+  // TODO(MCP 2025-06-09): Remove this once all extensions are updated.
   let actionIdString: string;
   if (typeof actionId === "string") {
     actionIdString = actionId;

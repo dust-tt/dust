@@ -154,6 +154,9 @@ export type MCPToolConfigurationType =
 
 export type MCPApproveExecutionEvent = {
   type: "tool_approve_execution";
+  // Temporary code to be backwards compatible with the old actionId format.
+  // TODO(MCP 2025-06-09): Remove this once all extensions are updated.
+  action: MCPActionType;
   created: number;
   configurationId: string;
   messageId: string;
@@ -505,6 +508,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
         messageId: agentMessage.sId,
         conversationId: conversation.sId,
         actionId: mcpAction.getSId(owner),
+        action: mcpAction,
         inputs: rawInputs,
         stake: actionConfiguration.permission,
         metadata: {
@@ -680,6 +684,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
             yield {
               created: Date.now(),
               type: "tool_approve_execution",
+              action: mcpAction,
               configurationId,
               conversationId,
               messageId,
