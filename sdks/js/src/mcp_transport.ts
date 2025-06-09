@@ -29,6 +29,7 @@ export class DustMcpServerTransport implements Transport {
 
   constructor(
     private readonly dustAPI: DustAPI,
+    private readonly onServerIdReceived: (serverId: string) => void,
     private readonly serverName: string = "Dust Extension",
     private readonly verbose: boolean = false
   ) {}
@@ -47,6 +48,8 @@ export class DustMcpServerTransport implements Transport {
 
     const { serverId } = registerRes.value;
     this.serverId = serverId;
+    // Notify the parent that the serverId has been updated.
+    this.onServerIdReceived(serverId);
 
     // Setup heartbeat to keep the server registration alive.
     this.setupHeartbeat(serverId);
