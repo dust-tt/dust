@@ -30,11 +30,13 @@ import { REGISTERED_CHECKS } from "@app/temporal/production_checks/activities";
 import {
   assertNever,
   ConnectorsAPI,
+  isRoleType,
   removeNulls,
   SUPPORTED_MODEL_CONFIGS,
 } from "@app/types";
 import { LabsTranscriptsConfigurationModel } from "@app/lib/resources/storage/models/labs_transcripts";
 import path from "path";
+import { KeyResource } from "@app/lib/resources/key_resource";
 
 // `cli` takes an object type and a command as first two arguments and then a list of arguments.
 const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
@@ -571,6 +573,54 @@ const productionCheck = async (command: string, args: parseArgs.ParsedArgs) => {
   }
 };
 
+async function apikeys(command: string, args: parseArgs.ParsedArgs) {
+  switch (command) {
+    case "bump": {
+      if (!args.wId) {
+        throw new Error("Missing --wId argument");
+      }
+
+      if (!args.name) {
+        throw new Error("Missing --name argument");
+      }
+
+      if (!args.role || !isRoleType(args.role)) {
+        throw new Error(
+          "Missing or Incorrect --role argument. Must be admin | user | builder."
+        );
+      }
+
+      const workspace = await Workspace.findOne({
+        where: {
+          sId: args.wId,
+        },
+      });
+
+      if (!workspace) {
+        throw new Error(`Workspace not found: wId='${args.wId}'`);
+      }
+
+      const [numAffected] = await KeyResource.model.update(
+        {
+          role: "admin",
+        },
+        {
+          where: {
+            name: args.name,
+            workspaceId: workspace.id,
+          },
+        }
+      );
+
+      if (numAffected === 0) {
+        throw new Error(`No keys were changed`);
+      }
+
+      return;
+    }
+  }
+}
+
 export const CLI_OBJECT_TYPES = [
   "workspace",
   "user",
@@ -579,6 +629,7 @@ export const CLI_OBJECT_TYPES = [
   "transcripts",
   "registry",
   "production-check",
+  "api-key",
 ] as const;
 
 export type CliObjectType = (typeof CLI_OBJECT_TYPES)[number];
@@ -624,6 +675,8 @@ const main = async () => {
       return registry(command);
     case "production-check":
       return productionCheck(command, argv);
+    case "api-key":
+      return apikeys(command, argv);
     default:
       assertNever(objectType);
   }
