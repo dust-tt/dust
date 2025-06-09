@@ -14,7 +14,7 @@ import {
 import { BaseResource } from "@connectors/resources/base_resource";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ReadonlyAttributesType } from "@connectors/resources/storage/types"; // Attributes are marked as read-only to reflect the stateless nature of our Resource.
-import { ModelId } from "@connectors/types";
+import type { ModelId } from "@connectors/types";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -155,7 +155,7 @@ export class SalesforceSyncedQueryResource extends BaseResource<SalesforceSynced
 
       rootNodeName: this.rootNodeName,
       soql: this.soql,
-      lastSeenUpdatedAt: this.lastSeenUpdatedAt,
+      lastSeenModifiedDate: this.lastSeenModifiedDate,
       titleTemplate: this.titleTemplate,
       contentTemplate: this.contentTemplate,
       tagsTemplate: this.tagsTemplate,

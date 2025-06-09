@@ -35,7 +35,7 @@ export class SalesforceSyncedQueryModel extends ConnectorBaseModel<SalesforceSyn
   declare updatedAt: CreationOptional<Date>;
   declare rootNodeName: string;
   declare soql: string;
-  declare lastSeenUpdatedAt: Date | null;
+  declare lastSeenModifiedDate: Date | null;
   declare titleTemplate: string;
   declare contentTemplate: string;
   declare tagsTemplate: string | null;
@@ -72,7 +72,7 @@ SalesforceSyncedQueryModel.init(
       type: DataTypes.TEXT,
       allowNull: true,
     },
-    lastSeenUpdatedAt: {
+    lastSeenModifiedDate: {
       type: DataTypes.DATE,
       allowNull: true,
     },

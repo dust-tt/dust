@@ -650,7 +650,7 @@ export const SalesforceSetupSyncedQueryResponseSchema = t.type({
   documents: t.array(
     t.type({
       id: t.string,
-      lastUpdatedAt: t.string,
+      lastModifiedDate: t.string,
       title: t.string,
       content: t.string,
       tags: t.array(t.string),

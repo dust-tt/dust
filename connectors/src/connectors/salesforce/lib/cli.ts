@@ -112,7 +112,7 @@ export const salesforce = async ({
 
         return {
           id: record.Id,
-          lastUpdatedAt: new Date(record.LastModifiedDate).toISOString(),
+          lastModifiedDate: new Date(record.LastModifiedDate).toISOString(),
           title: eval("`" + args.titleTemplate + "`") as string,
           content: eval("`" + args.contentTemplate + "`") as string,
           tags,
