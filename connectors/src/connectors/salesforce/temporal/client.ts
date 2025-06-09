@@ -47,7 +47,8 @@ export async function launchSalesforceSyncWorkflow(
       memo: {
         connectorId,
       },
-      cronSchedule: `${connector.id % 30} */2 * * *`, // Runs every 30 minutes at minute ${connector.id % 30} (0-29).
+      // Runs every 2h at minute ${connector.id % 60}.
+      cronSchedule: `${connector.id % 60} */2 * * *`,
     });
   } catch (err) {
     return new Err(normalizeError(err));
