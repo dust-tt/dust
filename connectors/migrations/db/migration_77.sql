@@ -1,6 +1,4 @@
 -- Migration created on Jun 09, 2025
-SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'salesforce_synced_queries';
-CREATE TABLE IF NOT EXISTS "salesforce_synced_queries" ("createdAt" TIMESTAMP WITH TIME ZONE NOT NULL, "updatedAt" TIMESTAMP WITH TIME ZONE NOT NULL, "rootNodeName" VARCHAR(255) NOT NULL, "soql" TEXT NOT NULL, "titleTemplate" TEXT NOT NULL, "contentTemplate" TEXT NOT NULL, "tagsTemplate" TEXT, "lastSeenUpdatedAt" TIMESTAMP WITH TIME ZONE, "connectorId" BIGINT NOT NULL REFERENCES "connectors" ("id") ON DELETE RESTRICT ON UPDATE CASCADE, "id"  BIGSERIAL , PRIMARY KEY ("id"));
-SELECT i.relname AS name, ix.indisprimary AS primary, ix.indisunique AS unique, ix.indkey AS indkey, array_agg(a.attnum) as column_indexes, array_agg(a.attname) AS column_names, pg_get_indexdef(ix.indexrelid) AS definition FROM pg_class t, pg_class i, pg_index ix, pg_attribute a WHERE t.oid = ix.indrelid AND i.oid = ix.indexrelid AND a.attrelid = t.oid AND t.relkind = 'r' and t.relname = 'salesforce_synced_queries' GROUP BY i.relname, ix.indexrelid, ix.indisprimary, ix.indisunique, ix.indkey ORDER BY i.relname;
+CREATE TABLE IF NOT EXISTS "salesforce_synced_queries" ("createdAt" TIMESTAMP WITH TIME ZONE NOT NULL, "updatedAt" TIMESTAMP WITH TIME ZONE NOT NULL, "rootNodeName" TEXT NOT NULL, "soql" TEXT NOT NULL, "titleTemplate" TEXT NOT NULL, "contentTemplate" TEXT NOT NULL, "tagsTemplate" TEXT, "lastSeenUpdatedAt" TIMESTAMP WITH TIME ZONE, "connectorId" BIGINT NOT NULL REFERENCES "connectors" ("id") ON DELETE RESTRICT ON UPDATE CASCADE, "id"  BIGSERIAL , PRIMARY KEY ("id"));
+
 CREATE INDEX "salesforce_synced_queries_connector_id" ON "salesforce_synced_queries" ("connectorId");
-[17:07:53.549] INFO (4039748): Done;

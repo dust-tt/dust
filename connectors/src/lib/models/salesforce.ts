@@ -53,7 +53,7 @@ SalesforceSyncedQueryModel.init(
       defaultValue: DataTypes.NOW,
     },
     rootNodeName: {
-      type: DataTypes.STRING,
+      type: DataTypes.TEXT,
       allowNull: false,
     },
     soql: {
