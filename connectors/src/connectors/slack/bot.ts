@@ -227,13 +227,7 @@ export async function botValidateToolExecution(
   }: ToolValidationParams,
   params: BotAnswerParams
 ) {
-  const {
-    slackChannel,
-    slackMessageTs,
-    slackTeamId,
-    slackThreadTs,
-    responseUrl,
-  } = params;
+  const { slackChannel, slackMessageTs, slackTeamId, responseUrl } = params;
 
   const connectorRes = await getSlackConnector(params);
   if (connectorRes.isErr()) {
