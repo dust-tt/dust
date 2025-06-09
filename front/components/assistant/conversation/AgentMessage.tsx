@@ -179,6 +179,7 @@ export function AgentMessage({
           inputs: eventPayload.data.inputs,
           stake: eventPayload.data.stake,
           metadata: eventPayload.data.metadata,
+          // TODO(MCP 2025-06-09): Remove this once all extensions are updated.
           action: eventPayload.data.action,
         });
 
