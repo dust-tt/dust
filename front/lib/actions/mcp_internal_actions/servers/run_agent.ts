@@ -49,7 +49,7 @@ function parseAgentConfigurationUri(uri: string): Result<string, Error> {
 }
 
 /**
- * This method fetchs the name and description of a child agent. It returns it even even if the
+ * This method fetches the name and description of a child agent. It returns it even if the
  * agent is private as it is referenced from a parent agent which requires a name and description
  * for the associated run_agent tool rendering.
  *
@@ -162,8 +162,8 @@ export default async function createServer(
       query: z
         .string()
         .describe(
-          `The query sent to the agent. This is the question or instruction that will be ` +
-            `processed by the agent, which will respond with its own capabilities and knowledge.`
+          "The query sent to the agent. This is the question or instruction that will be " +
+            "processed by the agent, which will respond with its own capabilities and knowledge."
         ),
       childAgent:
         ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.AGENT],
@@ -171,7 +171,7 @@ export default async function createServer(
     async ({ query, childAgent: { uri } }, { sendNotification, _meta }) => {
       assert(
         agentLoopContext?.runContext,
-        "agentLoopContext is required where the tool is called."
+        "agentLoopContext is required where the tool is called"
       );
       const { agentConfiguration: mainAgent, conversation: mainConversation } =
         agentLoopContext.runContext;
@@ -279,6 +279,35 @@ export default async function createServer(
             return makeMCPToolTextError(errorMessage);
           } else if (event.type === "agent_message_success") {
             break;
+          } else if (event.type === "tool_approve_execution") {
+            // We catch tool approval events and bubble them up as progress notifications to the
+            // parent tool execution.
+            // In the MCP server runner, we translate them into a tool_approve_execution event
+            // that can be ultimately shown to the end user.
+            // This part only passes along the event data without modifying them.
+            const notification: MCPProgressNotificationType = {
+              method: "notifications/progress",
+              params: {
+                progress: 0,
+                total: 1,
+                progressToken: 0,
+                data: {
+                  label: "Waiting for tool approval...",
+                  output: {
+                    type: "tool_approval_bubble_up",
+                    configurationId: event.configurationId,
+                    conversationId: event.conversationId,
+                    messageId: event.messageId,
+                    actionId: event.actionId,
+                    metadata: event.metadata,
+                    stake: event.stake,
+                    inputs: event.inputs,
+                  },
+                },
+              },
+            };
+
+            await sendNotification(notification);
           }
         }
       } catch (streamError) {

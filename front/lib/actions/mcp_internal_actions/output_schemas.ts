@@ -6,6 +6,7 @@ import type {
 import { NotificationSchema } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
+import { MCP_TOOL_STAKE_LEVELS } from "@app/lib/actions/constants";
 import type { SupportedFileContentType } from "@app/types";
 import { FILE_FORMATS } from "@app/types";
 
@@ -497,6 +498,36 @@ const NotificationImageContentSchema = z.object({
 
 type ImageProgressOutput = z.infer<typeof NotificationImageContentSchema>;
 
+// Schema for the resource of a notification where the tool is asking for tool approval.
+// This schema contains all the information that the MCP server runner
+// needs to emit an event for tool approval.
+const NotificationToolApproveBubbleUpContentSchema = z.object({
+  type: z.literal("tool_approval_bubble_up"),
+  configurationId: z.string(),
+  conversationId: z.string(),
+  messageId: z.string(),
+  actionId: z.string(),
+  inputs: z.record(z.unknown()),
+  stake: z.enum(MCP_TOOL_STAKE_LEVELS).optional(),
+  metadata: z.object({
+    mcpServerName: z.string(),
+    toolName: z.string(),
+    agentName: z.string(),
+  }),
+});
+
+type NotificationToolApproveBubbleUpContentType = z.infer<
+  typeof NotificationToolApproveBubbleUpContentSchema
+>;
+
+export function isToolApproveBubbleUpNotificationType(
+  notificationOutput: ProgressNotificationOutput
+): notificationOutput is NotificationToolApproveBubbleUpContentType {
+  return NotificationToolApproveBubbleUpContentSchema.safeParse(
+    notificationOutput
+  ).success;
+}
+
 export function isImageProgressOutput(
   output: ProgressNotificationOutput
 ): output is ImageProgressOutput {
@@ -531,6 +562,7 @@ export const ProgressNotificationOutputSchema = z
   .union([
     NotificationImageContentSchema,
     NotificationTextContentSchema,
+    NotificationToolApproveBubbleUpContentSchema,
     NotificationRunAgentContentSchema,
   ])
   .optional();

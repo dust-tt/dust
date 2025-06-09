@@ -118,17 +118,20 @@ export async function editUserMessageWithPubSub(
   });
 }
 
-type ConversationAsyncEvents =
-  | UserMessageErrorEvent
-  | UserMessageNewEvent
-  | AgentMessageNewEvent
+type AgentMessageAsyncEvents =
   | AgentErrorEvent
-  | AgentDisabledErrorEvent
   | AgentActionSpecificEvent
   | AgentActionSuccessEvent
   | GenerationTokensEvent
   | AgentGenerationCancelledEvent
-  | AgentMessageSuccessEvent
+  | AgentMessageSuccessEvent;
+
+type ConversationAsyncEvents =
+  | AgentMessageAsyncEvents
+  | UserMessageErrorEvent
+  | UserMessageNewEvent
+  | AgentMessageNewEvent
+  | AgentDisabledErrorEvent
   | ConversationTitleEvent;
 
 function isEndOfStreamEvent(
@@ -228,7 +231,7 @@ async function handleUserMessageEvents(
             case "tool_notification":
             case "tool_params":
             case "websearch_params": {
-              const pubsubChannel = getMessageChannelId(event.messageId);
+              const pubsubChannel = getEventMessageChannelId(event);
 
               await publishEvent({
                 origin: "user_message_events",
@@ -402,7 +405,7 @@ export async function retryAgentMessageWithPubSub(
               case "tool_notification":
               case "tool_params":
               case "websearch_params": {
-                const pubsubChannel = getMessageChannelId(event.messageId);
+                const pubsubChannel = getEventMessageChannelId(event);
                 await publishEvent({
                   origin: "retry_agent_message",
                   channel: pubsubChannel,
@@ -659,6 +662,17 @@ export async function* getMessagesEvents(
 
 function getConversationChannelId(channelId: string) {
   return `conversation-${channelId}`;
+}
+
+export function getEventMessageChannelId(event: AgentMessageAsyncEvents) {
+  // Tool approve execution can come from a sub agent, and in that case we want to send an event
+  // to the main conversation.
+  if (event.type === "tool_approve_execution") {
+    return getMessageChannelId(
+      event.metadata.pubsubMessageId ?? event.messageId
+    );
+  }
+  return getMessageChannelId(event.messageId);
 }
 
 export function getMessageChannelId(messageId: string) {
