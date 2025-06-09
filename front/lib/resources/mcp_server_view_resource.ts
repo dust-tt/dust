@@ -143,7 +143,6 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
         editedByUserId: editedByUser?.id ?? null,
         editedAt: new Date(),
         vaultId: space.id,
-        // TODO(mcp): add the use case to the create function
       },
       { transaction }
     );
@@ -194,7 +193,8 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
         serverType,
         internalMCPServerId: serverType === "internal" ? mcpServerId : null,
         remoteMCPServerId: serverType === "remote" ? id : null,
-        // For consistency and ease of use later, always copy the oAuthUseCase from the system view.
+        // Always copy the oAuthUseCase from the system view to the custom view.
+        // This way, it's always available on the MCP server view without having to fetch the system view.
         oAuthUseCase: systemView.oAuthUseCase,
       },
       space,
