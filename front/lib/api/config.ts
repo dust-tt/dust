@@ -218,6 +218,17 @@ const config = {
   getProfilerSecret: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable("DEBUG_PROFILER_SECRET");
   },
+  // Untrusted egress proxy.
+  getUntrustedEgressProxyHost: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable(
+      "UNTRUSTED_EGRESS_PROXY_HOST"
+    );
+  },
+  getUntrustedEgressProxyPort: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable(
+      "UNTRUSTED_EGRESS_PROXY_PORT"
+    );
+  },
 };
 
 export default config;
