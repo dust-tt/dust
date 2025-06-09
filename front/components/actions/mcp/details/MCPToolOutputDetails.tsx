@@ -18,9 +18,12 @@ import { useCallback, useMemo } from "react";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import {
+  isIncludeQueryResourceType,
   isIncludeResultResourceType,
+  isSearchQueryResourceType,
   isSearchResultResourceType,
   isWarningResourceType,
+  isWebsearchQueryResourceType,
   isWebsearchResultResourceType,
   ReasoningSuccessOutputType,
   SqlQueryOutputType,
@@ -170,7 +173,6 @@ interface SearchResultProps {
   actionName: string;
   defaultOpen: boolean;
   visual: React.ComponentType<{ className?: string }>;
-  query: string | React.JSX.Element;
   actionOutput: CallToolResult["content"] | null;
 }
 
@@ -178,9 +180,26 @@ export function SearchResultDetails({
   actionName,
   defaultOpen,
   visual,
-  query,
   actionOutput,
 }: SearchResultProps) {
+  const query = useMemo(() => {
+    return (
+      actionOutput
+        ?.map((r) => {
+          if (
+            isSearchQueryResourceType(r) ||
+            isWebsearchQueryResourceType(r) ||
+            isIncludeQueryResourceType(r)
+          ) {
+            return r.resource.text.trim();
+          }
+          return null;
+        })
+        .filter(Boolean)
+        .join("\n") ?? "No query provided"
+    );
+  }, [actionOutput]);
+
   const warning = useMemo(
     () =>
       actionOutput?.filter(isWarningResourceType).map((o) => o.resource)?.[0],
