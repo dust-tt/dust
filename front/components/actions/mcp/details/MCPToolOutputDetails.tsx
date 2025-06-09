@@ -1,4 +1,5 @@
 import {
+  Chip,
   Citation,
   CitationIcons,
   CitationTitle,
@@ -11,6 +12,7 @@ import {
   MagnifyingGlassIcon,
   Markdown,
   PaginatedCitationsGrid,
+  Tooltip,
   useSendNotification,
 } from "@dust-tt/sparkle";
 import { useCallback } from "react";
@@ -21,6 +23,7 @@ import type {
   SqlQueryOutputType,
   ThinkingOutputType,
   ToolGeneratedFileType,
+  WarningResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { LightWorkspaceType } from "@app/types";
 
@@ -162,7 +165,8 @@ interface SearchResultProps {
   actionName: string;
   defaultOpen: boolean;
   visual: React.ComponentType<{ className?: string }>;
-  query: string;
+  query: string | React.JSX.Element;
+  warning?: WarningResourceType;
   results: {
     description: string;
     title: string;
@@ -172,15 +176,18 @@ interface SearchResultProps {
 }
 
 export function SearchResultDetails({
+  actionName,
   defaultOpen,
+  visual,
   query,
+  warning,
   results,
 }: SearchResultProps) {
   return (
     <ActionDetailsWrapper
-      actionName={"Search data"}
+      actionName={actionName}
       defaultOpen={defaultOpen}
-      visual={MagnifyingGlassIcon}
+      visual={visual}
     >
       <div className="flex flex-col gap-4 pl-6 pt-4">
         <div className="flex flex-col gap-1">
@@ -190,6 +197,12 @@ export function SearchResultDetails({
           <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
             {query}
           </div>
+          {warning && (
+            <Tooltip
+              label={warning.text}
+              trigger={<Chip color="warning" label={warning.warningTitle} />}
+            />
+          )}
         </div>
         <div>
           <CollapsibleComponent
