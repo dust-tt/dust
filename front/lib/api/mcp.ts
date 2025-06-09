@@ -29,6 +29,7 @@ export type WithStakeLevelType<T> = T & {
 export type ServerSideMCPToolTypeWithStakeLevel =
   WithStakeLevelType<MCPToolWithAvailabilityType> & {
     toolServerId: string;
+    timeoutMs?: number;
   };
 
 export type ClientSideMCPToolTypeWithStakeLevel =

@@ -173,7 +173,7 @@ export function AgentMessage({
       // Handle validation dialog separately.
       if (eventPayload.data.type === "tool_approve_execution") {
         showValidationDialog({
-          messageId: message.sId,
+          messageId: eventPayload.data.messageId,
           conversationId: eventPayload.data.conversationId,
           actionId: eventPayload.data.actionId,
           inputs: eventPayload.data.inputs,
@@ -184,7 +184,7 @@ export function AgentMessage({
         return;
       }
 
-      // This event is emmited in front/lib/api/assistant/pubsub.ts. It's purpose is to signal the
+      // This event is emitted in front/lib/api/assistant/pubsub.ts. Its purpose is to signal the
       // end of the stream to the client. The message reducer does not, and should not, handle this
       // event, so we just return.
       if (eventPayload.data.type === "end-of-stream") {
@@ -193,7 +193,7 @@ export function AgentMessage({
 
       dispatch(eventPayload.data);
     },
-    [showValidationDialog, message.sId]
+    [showValidationDialog]
   );
 
   useEventSource(

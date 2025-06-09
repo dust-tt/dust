@@ -337,6 +337,7 @@ export async function getExecutionStatusFromConfig(
     case "never_ask":
       return { status: "allowed_implicitly" };
     case "low": {
+      // The user may not be populated, notably when using the public API.
       const user = auth.user();
       const neverAskSetting = await user?.getMetadata(
         `toolsValidations:${actionConfiguration.toolServerId}`

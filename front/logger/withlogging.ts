@@ -144,6 +144,8 @@ export function withLogging<T>(
     logger.info(
       {
         commitHash,
+        extensionVersion,
+        cliVersion,
         durationMs: elapsed,
         method: req.method,
         route,

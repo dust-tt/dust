@@ -618,6 +618,7 @@ export function useCreatePersonalConnection(owner: LightWorkspaceType) {
       const additionalCredentials =
         await getProviderAdditionalClientSideAuthCredentials({
           provider,
+          // @ts-expect-error useCase is too broad here but will fixed when we remove salesforce labs integration.
           use_case: useCase,
         });
       if (additionalCredentials) {

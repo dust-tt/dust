@@ -51,7 +51,11 @@ export function useCoEditionMcpServer({
         });
 
         // Create and connect transport.
-        const transport = new CoEditionTransport(owner);
+        const transport = new CoEditionTransport(owner, (serverId) => {
+          if (isMounted) {
+            setServerId(serverId);
+          }
+        });
         await server.connect(transport);
 
         if (isMounted) {

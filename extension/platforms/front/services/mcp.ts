@@ -53,7 +53,11 @@ export class FrontMcpService extends McpService {
    * Connect the MCP server to a transport
    * This is required by the base class but our implementation is workspace-scoped
    */
-  async connectServer(server: McpServer, dustAPI: DustAPI): Promise<void> {
+  async connectServer(
+    server: McpServer,
+    dustAPI: DustAPI,
+    onServerIdReceived: (serverId: string) => void
+  ): Promise<void> {
     if (!server) {
       throw new Error("Cannot connect null server");
     }
@@ -66,13 +70,13 @@ export class FrontMcpService extends McpService {
       }
 
       // Create our custom transport with workspace-scoped registration.
-      const transport = new DustMcpServerTransport(dustAPI, this.serverId);
+      const transport = new DustMcpServerTransport(dustAPI, (serverId) => {
+        this.serverId = serverId;
+        onServerIdReceived(serverId);
+      });
 
       // Connect the server to the transport.
       await server.connect(transport);
-
-      // Once connected, save the server id for potential reconnections.
-      this.serverId = transport.getServerId();
 
       // Store the transport for future reuse.
       this.transport = transport;
@@ -87,13 +91,14 @@ export class FrontMcpService extends McpService {
    * This is a convenience method that provides the main API for client code
    */
   async getOrCreateServer(
-    dustAPI: DustAPI
+    dustAPI: DustAPI,
+    onServerIdReceived: (serverId: string) => void
   ): Promise<{ server: McpServer | null; serverId: string | undefined }> {
     try {
       // Reuse existing server if we have one
       if (this.server) {
         // Connect if not already connected
-        await this.connectServer(this.server, dustAPI);
+        await this.connectServer(this.server, dustAPI, onServerIdReceived);
         return {
           server: this.server,
           serverId: this.serverId,
@@ -110,7 +115,7 @@ export class FrontMcpService extends McpService {
       }
 
       // Connect the server
-      await this.connectServer(server, dustAPI);
+      await this.connectServer(server, dustAPI, onServerIdReceived);
 
       return {
         server: server,

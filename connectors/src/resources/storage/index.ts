@@ -44,7 +44,7 @@ export const sequelizeConnection = new Sequelize(
   {
     pool: {
       // Default is 5.
-      max: isDevelopment() ? 5 : 10,
+      max: isDevelopment() ? 5 : 8,
     },
     logging: isDevelopment() && DB_LOGGING_ENABLED ? sequelizeLogger : false,
     hooks: {

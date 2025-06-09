@@ -111,6 +111,7 @@ import type {
 import {
   asDisplayName,
   assertNever,
+  EXTENDED_MAX_STEPS_USE_PER_RUN_LIMIT,
   MAX_STEPS_USE_PER_RUN_LIMIT,
 } from "@app/types";
 
@@ -423,6 +424,7 @@ export default function ActionsScreen({
                     maxStepsPerRun,
                   }));
                 }}
+                hasFeature={hasFeature}
               />
             </div>
           )}
@@ -1123,12 +1125,18 @@ function ActionEditor({
 interface AdvancedSettingsProps {
   maxStepsPerRun: number | null;
   setMaxStepsPerRun: (maxStepsPerRun: number | null) => void;
+  hasFeature: (feature: WhitelistableFeature | null | undefined) => boolean;
 }
 
 function AdvancedSettings({
   maxStepsPerRun,
   setMaxStepsPerRun,
+  hasFeature,
 }: AdvancedSettingsProps) {
+  const maxLimit = hasFeature("extended_max_steps_per_run")
+    ? EXTENDED_MAX_STEPS_USE_PER_RUN_LIMIT
+    : MAX_STEPS_USE_PER_RUN_LIMIT;
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -1140,9 +1148,7 @@ function AdvancedSettings({
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-60 p-2" align="end">
-        <DropdownMenuLabel
-          label={`Max steps per run (up to ${MAX_STEPS_USE_PER_RUN_LIMIT})`}
-        />
+        <DropdownMenuLabel label={`Max steps per run (up to ${maxLimit})`} />
         <Input
           value={maxStepsPerRun?.toString() ?? ""}
           placeholder=""
@@ -1153,11 +1159,7 @@ function AdvancedSettings({
               return;
             }
             const value = parseInt(e.target.value);
-            if (
-              !isNaN(value) &&
-              value >= 0 &&
-              value <= MAX_STEPS_USE_PER_RUN_LIMIT
-            ) {
+            if (!isNaN(value) && value >= 0 && value <= maxLimit) {
               setMaxStepsPerRun(value);
             }
           }}

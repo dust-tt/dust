@@ -1,6 +1,7 @@
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
+import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata";
 import { RemoteMCPServerModel } from "@app/lib/models/assistant/actions/remote_mcp_server";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
@@ -25,6 +26,8 @@ export class MCPServerViewModel extends SoftDeletableWorkspaceAwareModel<MCPServ
   declare editedByUser: NonAttribute<UserModel>;
   declare space: NonAttribute<SpaceModel>;
   declare remoteMCPServer: NonAttribute<RemoteMCPServerModel>;
+
+  declare oAuthUseCase: AuthorizationInfo["use_case"] | null;
 }
 MCPServerViewModel.init(
   {
@@ -33,6 +36,7 @@ MCPServerViewModel.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
+
     deletedAt: {
       type: DataTypes.DATE,
     },
@@ -63,6 +67,13 @@ MCPServerViewModel.init(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
+    },
+    oAuthUseCase: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      validate: {
+        isIn: [["platform_actions", "personal_actions"]],
+      },
     },
   },
   {
