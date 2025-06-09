@@ -159,6 +159,7 @@ export class SalesforceSyncedQueryResource extends BaseResource<SalesforceSynced
       titleTemplate: this.titleTemplate,
       contentTemplate: this.contentTemplate,
       tagsTemplate: this.tagsTemplate,
+
       connectorId: this.connectorId,
     };
   }

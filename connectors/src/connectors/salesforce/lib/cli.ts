@@ -8,6 +8,7 @@ import {
 } from "@connectors/connectors/salesforce/lib/utils";
 import { default as topLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import { SalesforceSyncedQueryResource } from "@connectors/resources/salesforce_resources";
 import type {
   SalesforceCheckConnectionResponseType,
   SalesforceCommandType,
@@ -71,12 +72,18 @@ export const salesforce = async ({
       const res = await runSOQL({
         soql: args.soql,
         credentials: connCredRes.value.credentials,
+        limit: args.limit,
+        offset: args.offset,
       });
       if (res.isErr()) {
         throw res.error;
       }
 
-      return { records: res.value.records };
+      return {
+        records: res.value.records,
+        totalSize: res.value.totalSize,
+        done: res.value.done,
+      };
     }
     case "setup-synced-query": {
       if (!args.soql) {
@@ -96,9 +103,20 @@ export const salesforce = async ({
       const titleTemplate = args.titleTemplate;
       const tagsTemplate = args.tagsTemplate ?? null;
 
+      if (
+        args.soql.toLowerCase().includes("limit") ||
+        args.soql.toLowerCase().includes("offset")
+      ) {
+        throw new Error(
+          "The SOQL query should not contain LIMIT or OFFSET clauses (automatically added)"
+        );
+      }
+
       const res = await runSOQL({
         soql: args.soql,
         credentials: connCredRes.value.credentials,
+        limit: 8,
+        offset: 0,
       });
       if (res.isErr()) {
         throw res.error;
@@ -128,9 +146,21 @@ export const salesforce = async ({
         };
       });
 
-      // TODO(spolu): --execute: true
+      if (args.execute) {
+        await SalesforceSyncedQueryResource.makeNew({
+          blob: {
+            connectorId: connCredRes.value.connector.id,
+            rootNodeName: args.rootNodeName,
+            soql: args.soql,
+            titleTemplate,
+            contentTemplate,
+            tagsTemplate,
+            lastSeenModifiedDate: null,
+          },
+        });
+      }
 
-      return { documents, created: false };
+      return { documents, created: args.execute ?? false };
     }
   }
 };

@@ -624,10 +624,13 @@ export const SalesforceCommandSchema = t.type({
     wId: t.union([t.string, t.undefined]),
     dsId: t.union([t.string, t.undefined]),
     soql: t.union([t.string, t.undefined]),
+    limit: t.union([t.number, t.undefined]),
+    offset: t.union([t.number, t.undefined]),
     rootNodeName: t.union([t.string, t.undefined]),
     titleTemplate: t.union([t.string, t.undefined]),
     contentTemplate: t.union([t.string, t.undefined]),
     tagsTemplate: t.union([t.string, t.undefined]),
+    execute: t.union([t.boolean, t.undefined]),
   }),
 });
 export type SalesforceCommandType = t.TypeOf<typeof SalesforceCommandSchema>;
@@ -641,6 +644,8 @@ export type SalesforceCheckConnectionResponseType = t.TypeOf<
 
 export const SalesforceRunSoqlResponseSchema = t.type({
   records: t.array(t.UnknownRecord), // Salesforce type, can't be iots'd
+  totalSize: t.number,
+  done: t.boolean,
 });
 export type SalesforceRunSoqlResponseType = t.TypeOf<
   typeof SalesforceRunSoqlResponseSchema
