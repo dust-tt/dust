@@ -701,6 +701,8 @@ export async function syncThreads(
         return;
       }
 
+      await heartbeat();
+
       return syncThread(
         channelId,
         channelName,
