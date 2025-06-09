@@ -1011,7 +1011,7 @@ async function makeContentFragments(
         continue;
       }
 
-      const fileContent = await response.blob();
+      const fileContent = await response.buffer();
 
       const fileName = f.name || f.title || "notitle";
 
