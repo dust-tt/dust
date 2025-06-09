@@ -86,7 +86,9 @@ export function MCPRunAgentActionDetails({
       defaultOpen={defaultOpen}
       visual={
         childAgent?.pictureUrl
-          ? () => <Avatar visual={childAgent.pictureUrl} size="sm" />
+          ? () => (
+              <Avatar visual={childAgent.pictureUrl} size="sm" busy={isBusy} />
+            )
           : RobotIcon
       }
     >
