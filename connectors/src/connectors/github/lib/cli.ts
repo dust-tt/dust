@@ -1,4 +1,5 @@
 import { assertNever } from "@dust-tt/client";
+import { Op } from "sequelize";
 
 import { getOctokit } from "@connectors/connectors/github/lib/github_api";
 import {
@@ -19,34 +20,53 @@ import type {
   GithubCommandType,
 } from "@connectors/types";
 
+async function getGitHubConnector(args: GithubCommandType["args"]) {
+  if (args.connectorId) {
+    const connector = await ConnectorResource.fetchById(args.connectorId);
+    if (!connector) {
+      throw new Error(`Connector ${args.connectorId} not found.`);
+    }
+    if (connector.type !== "github") {
+      throw new Error(`Connector ${args.connectorId} is not of type github`);
+    }
+    return connector;
+  }
+
+  if (!args.wId) {
+    throw new Error("Missing --wId argument");
+  }
+  if (!args.dsId) {
+    throw new Error("Missing --dsId argument");
+  }
+
+  const connector = await ConnectorResource.findByDataSource({
+    workspaceId: `${args.wId}`,
+    dataSourceId: args.dsId,
+  });
+  if (!connector) {
+    throw new Error(
+      `Could not find connector for workspace ${args.wId}, data source ${args.dsId}`
+    );
+  }
+
+  return connector;
+}
+
 export const github = async ({
   command,
   args,
 }: GithubCommandType): Promise<AdminSuccessResponseType> => {
   const logger = topLogger.child({ majorCommand: "github", command, args });
+
+  const connector = await getGitHubConnector(args);
+
   switch (command) {
     case "resync-repo": {
-      if (!args.wId) {
-        throw new Error("Missing --wId argument");
-      }
-      if (!args.dsId) {
-        throw new Error("Missing --dsId argument");
-      }
       if (!args.owner) {
         throw new Error("Missing --owner argument");
       }
       if (!args.repo) {
         throw new Error("Missing --repo argument");
-      }
-
-      const connector = await ConnectorResource.findByDataSource({
-        workspaceId: `${args.wId}`,
-        dataSourceId: args.dsId,
-      });
-      if (!connector) {
-        throw new Error(
-          `Could not find connector for workspace ${args.wId}, data source ${args.dsId}`
-        );
       }
 
       logger.info("[Admin] Resyncing repo " + args.owner + "/" + args.repo);
@@ -71,12 +91,6 @@ export const github = async ({
     }
 
     case "code-sync": {
-      if (!args.wId) {
-        throw new Error("Missing --wId argument");
-      }
-      if (!args.dsId) {
-        throw new Error("Missing --dsId argument");
-      }
       if (!args.enable) {
         throw new Error("Missing --enable (true/false) argument");
       }
@@ -85,16 +99,6 @@ export const github = async ({
       }
 
       const enable = args.enable === "true";
-
-      const connector = await ConnectorResource.findByDataSource({
-        workspaceId: `${args.wId}`,
-        dataSourceId: args.dsId,
-      });
-      if (!connector) {
-        throw new Error(
-          `Could not find connector for workspace ${args.wId}, data source ${args.dsId}`
-        );
-      }
 
       const connectorState = await GithubConnectorState.findOne({
         where: {
@@ -121,12 +125,6 @@ export const github = async ({
     }
 
     case "sync-issue": {
-      if (!args.wId) {
-        throw new Error("Missing --wId argument");
-      }
-      if (!args.dsId) {
-        throw new Error("Missing --dsId argument");
-      }
       if (!args.repoLogin) {
         throw new Error("Missing --repoLogin argument");
       }
@@ -138,16 +136,6 @@ export const github = async ({
       }
       if (!args.issueNumber) {
         throw new Error("Missing --issueNumber argument");
-      }
-
-      const connector = await ConnectorResource.findByDataSource({
-        workspaceId: `${args.wId}`,
-        dataSourceId: args.dsId,
-      });
-      if (!connector) {
-        throw new Error(
-          `Could not find connector for workspace ${args.wId}, data source ${args.dsId}`
-        );
       }
 
       await launchGithubIssueSyncWorkflow(
@@ -162,12 +150,6 @@ export const github = async ({
     }
 
     case "skip-issue": {
-      if (!args.wId) {
-        throw new Error("Missing --wId argument");
-      }
-      if (!args.dsId) {
-        throw new Error("Missing --dsId argument");
-      }
       if (!args.repoId) {
         throw new Error("Missing --repoId argument");
       }
@@ -176,16 +158,6 @@ export const github = async ({
       }
       if (!args.skipReason) {
         throw new Error("Missing --skipReason argument");
-      }
-
-      const connector = await ConnectorResource.findByDataSource({
-        workspaceId: `${args.wId}`,
-        dataSourceId: args.dsId,
-      });
-      if (!connector) {
-        throw new Error(
-          `Could not find connector for workspace ${args.wId}, data source ${args.dsId}`
-        );
       }
 
       await GithubIssue.upsert({
@@ -199,25 +171,10 @@ export const github = async ({
     }
 
     case "force-daily-code-sync": {
-      if (!args.wId) {
-        throw new Error("Missing --wId argument");
-      }
-      if (!args.dsId) {
-        throw new Error("Missing --dsId argument");
-      }
       if (!args.repoId) {
         throw new Error("Missing --repoId argument");
       }
 
-      const connector = await ConnectorResource.findByDataSource({
-        workspaceId: `${args.wId}`,
-        dataSourceId: args.dsId,
-      });
-      if (!connector) {
-        throw new Error(
-          `Could not find connector for workspace ${args.wId}, data source ${args.dsId}`
-        );
-      }
       const githubCodeRepository = await GithubCodeRepository.findOne({
         where: {
           connectorId: connector.id,
@@ -244,24 +201,84 @@ export const github = async ({
       return { success: true };
     }
 
-    case "clear-installation-id": {
-      if (!args.wId) {
-        throw new Error("Missing --wId argument");
+    case "skip-repo": {
+      if (!args.repoId) {
+        throw new Error("Missing --repoId argument");
       }
-      if (!args.dsId) {
-        throw new Error("Missing --dsId argument");
+      if (!args.skipReason) {
+        throw new Error("Missing --skipReason argument");
       }
 
-      const connector = await ConnectorResource.findByDataSource({
-        workspaceId: `${args.wId}`,
-        dataSourceId: args.dsId,
+      const githubCodeRepository = await GithubCodeRepository.findOne({
+        where: {
+          connectorId: connector.id,
+          repoId: args.repoId,
+        },
       });
-      if (!connector) {
+      if (!githubCodeRepository) {
         throw new Error(
-          `Could not find connector for workspace ${args.wId}, data source ${args.dsId}`
+          `Could not find github code repository for connector ${connector.id}, repoId ${args.repoId}`
         );
       }
 
+      await githubCodeRepository.update({
+        skipReason: args.skipReason,
+      });
+
+      logger.info(
+        `[Admin] Skipped repository ${args.repoId} with reason: ${args.skipReason}`
+      );
+
+      return { success: true };
+    }
+
+    case "unskip-repo": {
+      if (!args.repoId) {
+        throw new Error("Missing --repoId argument");
+      }
+
+      const githubCodeRepository = await GithubCodeRepository.findOne({
+        where: {
+          connectorId: connector.id,
+          repoId: args.repoId,
+        },
+      });
+      if (!githubCodeRepository) {
+        throw new Error(
+          `Could not find github code repository for connector ${connector.id}, repoId ${args.repoId}`
+        );
+      }
+
+      await githubCodeRepository.update({
+        skipReason: null,
+      });
+
+      logger.info(`[Admin] Unskipped repository ${args.repoId}`);
+
+      return { success: true };
+    }
+
+    case "list-skipped-repos": {
+      const skippedRepos = await GithubCodeRepository.findAll({
+        where: {
+          connectorId: connector.id,
+          skipReason: {
+            [Op.ne]: null,
+          },
+        },
+      });
+
+      logger.info(`[Admin] Found ${skippedRepos.length} skipped repositories:`);
+      for (const repo of skippedRepos) {
+        logger.info(
+          `  - Repository ${repo.repoLogin}/${repo.repoName} (ID: ${repo.repoId}): ${repo.skipReason}`
+        );
+      }
+
+      return { success: true };
+    }
+
+    case "clear-installation-id": {
       const connectorState = await GithubConnectorState.findOne({
         where: {
           connectorId: connector.id,
