@@ -25,6 +25,7 @@ import {
   getDefaultActionConfiguration,
   getDefaultMCPServerActionConfiguration,
 } from "@app/components/assistant_builder/types";
+import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 
@@ -241,7 +242,7 @@ function MCPDropdownMenuItem({
     <DropdownMenuItem
       truncateText
       icon={getAvatar(view.server)}
-      label={view.label}
+      label={getMcpServerViewDisplayName(view)}
       description={view.server.description}
       onClick={() => onClick(view)}
     />

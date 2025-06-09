@@ -12,7 +12,11 @@ import { AddActionMenu } from "@app/components/actions/mcp/AddActionMenu";
 import { CreateMCPServerDialog } from "@app/components/actions/mcp/CreateMCPServerDialog";
 import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
-import { mcpServersSortingFn } from "@app/lib/actions/mcp_helper";
+import {
+  getMcpServerDisplayName,
+  getMcpServerViewDisplayName,
+  mcpServersSortingFn,
+} from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerType, MCPServerViewType } from "@app/lib/api/mcp";
 import { filterMCPServer } from "@app/lib/mcp";
@@ -24,7 +28,6 @@ import {
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type { EditedByUser, LightWorkspaceType, SpaceType } from "@app/types";
-import { asDisplayName } from "@app/types";
 
 type RowData = {
   mcpServer: MCPServerType;
@@ -47,7 +50,9 @@ const NameCell = ({ row }: { row: RowData }) => {
         {getAvatar(mcpServer)}
         <div className="flex flex-grow flex-col gap-0 overflow-hidden truncate">
           <div className="truncate text-sm font-semibold text-foreground dark:text-foreground-night">
-            {asDisplayName(mcpServer.name)}
+            {mcpServerView
+              ? getMcpServerViewDisplayName(mcpServerView)
+              : getMcpServerDisplayName(mcpServer)}
           </div>
           <div className="truncate text-sm text-muted-foreground dark:text-muted-foreground-night">
             {mcpServer.description}
@@ -68,14 +73,14 @@ type AdminActionsListProps = {
   owner: LightWorkspaceType;
   filter: string;
   systemSpace: SpaceType;
-  setMcpServer: (mcpServer: MCPServerType) => void;
+  setMcpServerToShow: (mcpServer: MCPServerType) => void;
 };
 
 export const AdminActionsList = ({
   owner,
   filter,
   systemSpace,
-  setMcpServer,
+  setMcpServerToShow,
 }: AdminActionsListProps) => {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [internalMCPServerToCreate, setInternalMCPServerToCreate] = useState<
@@ -96,6 +101,7 @@ export const AdminActionsList = ({
 
   const { connections } = useMCPServerConnections({
     owner,
+    connectionType: "workspace",
   });
 
   const { createInternalMCPServer } = useCreateInternalMCPServer(owner);
@@ -227,11 +233,13 @@ export const AdminActionsList = ({
         mcpServerView,
         spaces: spaces.filter((s) => spaceIds?.includes(s.sId)),
         isConnected: !!connections.find(
-          (c) => c.internalMCPServerId === mcpServer.sId
+          (c) =>
+            c.internalMCPServerId === mcpServer.sId ||
+            c.remoteMCPServerId === mcpServer.sId
         ),
         onClick: () => {
           if (mcpServerView && mcpServer) {
-            setMcpServer(mcpServer);
+            setMcpServerToShow(mcpServer);
           }
         },
       };
@@ -247,7 +255,7 @@ export const AdminActionsList = ({
         setIsOpen={setIsCreateOpen}
         setIsLoading={setIsLoading}
         owner={owner}
-        setMCPServer={setMcpServer}
+        setMCPServerToShow={setMcpServerToShow}
       />
       {rows.length > 0 &&
         portalToHeader(

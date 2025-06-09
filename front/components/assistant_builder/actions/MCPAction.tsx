@@ -21,7 +21,8 @@ import type {
 } from "@app/components/assistant_builder/types";
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import type { MCPServerAvailability } from "@app/lib/actions/mcp_internal_actions/constants";
-import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/utils";
+import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
+import { isDustAppRunConfiguration } from "@app/lib/actions/types/guards";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { LightWorkspaceType, SpaceType, TimeFrame } from "@app/types";
 import { asDisplayName, assertNever } from "@app/types";
@@ -124,14 +125,31 @@ export function MCPAction({
       ) => AssistantBuilderMCPServerConfiguration
     ) => {
       setEdited(true);
+
+      let actionName: string = action.name;
+      if (
+        action.type === "MCP" &&
+        isDustAppRunConfiguration(action.configuration.dustAppConfiguration)
+      ) {
+        const { dustAppConfiguration } = action.configuration;
+        actionName = dustAppConfiguration?.name;
+      }
+
       updateAction({
-        actionName: action.name,
+        actionName,
         actionDescription: action.description,
         getNewActionConfig: (old) =>
           getNewConfig(old as AssistantBuilderMCPServerConfiguration),
       });
     },
-    [action.description, action.name, setEdited, updateAction]
+    [
+      action.configuration,
+      action.description,
+      action.name,
+      action.type,
+      setEdited,
+      updateAction,
+    ]
   );
 
   if (action.type !== "MCP") {
@@ -242,7 +260,7 @@ export function MCPAction({
           owner={owner}
         />
       )}
-      {requirements.requiredDustAppConfiguration && (
+      {requirements.requiresDustAppConfiguration && (
         <DustAppConfigurationSection
           owner={owner}
           allowedSpaces={allowedSpaces}
@@ -368,7 +386,7 @@ export function hasErrorActionMCP(
       return "Please select a reasoning model.";
     }
     if (
-      requirements.requiredDustAppConfiguration &&
+      requirements.requiresDustAppConfiguration &&
       !action.configuration.dustAppConfiguration
     ) {
       return "Please select a Dust App.";

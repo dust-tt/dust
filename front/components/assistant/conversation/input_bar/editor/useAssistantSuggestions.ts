@@ -23,7 +23,7 @@ const useAssistantSuggestions = (
   owner: WorkspaceType
 ) => {
   // We use this specific hook because this component is involved in the new conversation page.
-  const { agentConfigurations } = useUnifiedAgentConfigurations({
+  const { agentConfigurations, isLoading } = useUnifiedAgentConfigurations({
     workspaceId: owner.sId,
   });
 
@@ -36,7 +36,7 @@ const useAssistantSuggestions = (
     return { suggestions, fallbackSuggestions };
   }, [agentConfigurations, inListAgentConfigurations]);
 
-  return allSuggestions;
+  return { ...allSuggestions, isLoading };
 };
 
 export default useAssistantSuggestions;

@@ -114,15 +114,12 @@ const AssistantDetailsPage = ({
               >
                 <ContextItem.Description>
                   <div className="flex flex-col gap-2">
-                    <div className="ml-4 pt-2 text-sm text-muted-foreground">
-                      <div className="font-bold">Created At:</div>
-                      <div>{`${a.versionCreatedAt}`}</div>
+                    <div className="ml-4 pt-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
+                      <div>Created at: {`${a.versionCreatedAt}`}</div>
+                      <div>Scope: {a.scope}</div>
+                      <div>Description: {a.description}</div>
                     </div>
-                    <div className="ml-4 pt-2 text-sm text-muted-foreground">
-                      <div className="font-bold">Scope:</div>
-                      <div>{a.scope}</div>
-                    </div>
-                    <div className="ml-4 pt-2 text-sm text-muted-foreground">
+                    <div className="ml-4 text-sm text-muted-foreground dark:text-muted-foreground-night">
                       <div className="font-bold">Author:</div>
                       <div>ID: {a.versionAuthorId}</div>
                       {author && (
@@ -133,23 +130,9 @@ const AssistantDetailsPage = ({
                         </div>
                       )}
                     </div>
-                    <div className="ml-4 pt-2 text-sm text-muted-foreground">
-                      <div className="font-bold">Description:</div>
-                      <div>{a.description}</div>
-                    </div>
-                    <div className="ml-4 text-sm text-muted-foreground">
-                      <div className="font-bold">Instructions:</div>
-                      <TextArea
-                        placeholder=""
-                        value={a.instructions ?? ""}
-                        onChange={() => {
-                          // noop
-                        }}
-                      />
-                    </div>
-                    <div className="ml-4 text-sm text-muted-foreground">
-                      <div className="font-bold">
-                        Model:{" "}
+                    <div className="ml-4 text-sm text-muted-foreground dark:text-muted-foreground-night">
+                      <div className="font-bold">Model:</div>
+                      <div>
                         {SUPPORTED_MODEL_CONFIGS.find(
                           (m) => m.modelId === a.model.modelId
                         )?.displayName ?? `Unknown Model (${a.model.modelId})`}
@@ -161,14 +144,20 @@ const AssistantDetailsPage = ({
                         defaultInspectDepth={0}
                       />
                     </div>
-                    <div className="ml-4 text-sm text-muted-foreground">
+
+                    <div className="ml-4 text-sm text-muted-foreground dark:text-muted-foreground-night">
+                      <div className="font-bold">Actions:</div>
+                      <div>maxStepPerRun: {a.maxStepsPerRun}</div>
                       {a.actions.map((action, index) => (
                         <div key={index}>
-                          <div className="font-bold">
-                            Action {index + 1}: {action.type} (
+                          <div>
+                            {action.type}
                             {action.type === "retrieval_configuration" &&
-                              (action.query === "auto" ? "search" : "include")}
-                            )
+                              (action.query === "auto"
+                                ? " (search)"
+                                : " (include)")}
+                            {action.type === "mcp_server_configuration" &&
+                              " (" + action.name + ")"}
                           </div>
                           <JsonViewer
                             theme={isDark ? "dark" : "light"}
@@ -178,6 +167,16 @@ const AssistantDetailsPage = ({
                           />
                         </div>
                       ))}
+                    </div>
+                    <div className="ml-4 text-sm text-muted-foreground dark:text-muted-foreground-night">
+                      <div className="font-bold">Instructions:</div>
+                      <TextArea
+                        placeholder=""
+                        value={a.instructions ?? ""}
+                        onChange={() => {
+                          // noop
+                        }}
+                      />
                     </div>
                   </div>
                 </ContextItem.Description>

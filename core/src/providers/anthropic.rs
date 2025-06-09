@@ -291,8 +291,10 @@ async fn fetch_and_encode_images(
 }
 
 fn get_max_tokens(model_id: &str) -> u64 {
-    if model_id.starts_with("claude-3-7-sonnet") {
+    if model_id.starts_with("claude-3-7-sonnet") || model_id.starts_with("claude-4-sonnet") {
         64000
+    } else if model_id.starts_with("claude-4-opus") {
+        32000
     } else if model_id.starts_with("claude-3-5-sonnet") {
         8192
     } else {
@@ -900,9 +902,13 @@ impl AnthropicLLM {
             }
         }
 
+        let api_key = match self.api_key.clone() {
+            Some(key) => key,
+            None => Err(anyhow!("ANTHROPIC_API_KEY is not set."))?,
+        };
         let mut headers = reqwest::header::HeaderMap::new();
         headers.insert("Content-Type", "application/json".parse()?);
-        headers.insert("X-API-Key", self.api_key.clone().unwrap().parse()?);
+        headers.insert("X-API-Key", api_key.parse()?);
         headers.insert("anthropic-version", "2023-06-01".parse()?);
 
         for flag in beta_flags {
@@ -1027,6 +1033,11 @@ impl AnthropicLLM {
             body.as_object_mut().unwrap().remove("top_p");
         }
 
+        let api_key = match self.api_key.clone() {
+            Some(key) => key,
+            None => Err(anyhow!("ANTHROPIC_API_KEY is not set."))?,
+        };
+
         let url = self.messages_uri()?.to_string();
 
         let mut builder = match es::ClientBuilder::for_url(url.as_str()) {
@@ -1044,7 +1055,7 @@ impl AnthropicLLM {
             Ok(builder) => builder,
             Err(e) => return Err(anyhow!("Error setting header: {:?}", e)),
         };
-        builder = match builder.header("X-API-Key", self.api_key.clone().unwrap().as_str()) {
+        builder = match builder.header("X-API-Key", api_key.as_str()) {
             Ok(builder) => builder,
             Err(e) => return Err(anyhow!("Error setting header: {:?}", e)),
         };
@@ -1436,7 +1447,10 @@ impl AnthropicLLM {
         stop: &Vec<String>,
         event_sender: UnboundedSender<Value>,
     ) -> Result<(CompletionResponse, Option<String>)> {
-        assert!(self.api_key.is_some());
+        let api_key = match self.api_key.clone() {
+            Some(key) => key,
+            None => Err(anyhow!("ANTHROPIC_API_KEY is not set."))?,
+        };
 
         let url = self.completions_uri()?.to_string();
 
@@ -1455,7 +1469,7 @@ impl AnthropicLLM {
             Ok(builder) => builder,
             Err(e) => return Err(anyhow!("Error setting header: {:?}", e)),
         };
-        builder = match builder.header("X-API-Key", self.api_key.clone().unwrap().as_str()) {
+        builder = match builder.header("X-API-Key", api_key.as_str()) {
             Ok(builder) => builder,
             Err(e) => return Err(anyhow!("Error setting header: {:?}", e)),
         };
@@ -1626,10 +1640,14 @@ impl AnthropicLLM {
     ) -> Result<(CompletionResponse, Option<String>)> {
         assert!(self.api_key.is_some());
 
+        let api_key = match self.api_key.clone() {
+            Some(key) => key,
+            None => Err(anyhow!("ANTHROPIC_API_KEY is not set."))?,
+        };
         let res = reqwest::Client::new()
             .post(self.completions_uri()?.to_string())
             .header("Content-Type", "application/json")
-            .header("X-API-Key", self.api_key.clone().unwrap())
+            .header("X-API-Key", api_key)
             .header("anthropic-version", "2023-06-01")
             .json(&json!({
                 "model": self.id.clone(),

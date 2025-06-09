@@ -21,8 +21,9 @@ import { DeleteAssistantDialog } from "@app/components/assistant/DeleteAssistant
 import { useURLSheet } from "@app/hooks/useURLSheet";
 import { useUpdateUserFavorite } from "@app/lib/swr/assistants";
 import { useUser } from "@app/lib/swr/user";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { LightAgentConfigurationType, WorkspaceType } from "@app/types";
-import { isAdmin } from "@app/types";
+import { isAdmin, isBuilder } from "@app/types";
 
 interface AssistantDetailsButtonBarProps {
   agentConfiguration: LightAgentConfigurationType;
@@ -43,6 +44,14 @@ export function AssistantDetailsButtonBar({
   const [showDeletionModal, setShowDeletionModal] = useState(false);
   const { onOpenChange: onOpenChangeAssistantModal } =
     useURLSheet("assistantDetails");
+
+  const { featureFlags } = useFeatureFlags({
+    workspaceId: owner.sId,
+  });
+
+  const isRestrictedFromAgentCreation =
+    featureFlags.includes("disallow_agent_creation_to_users") &&
+    !isBuilder(owner);
 
   const router = useRouter();
 
@@ -159,21 +168,22 @@ export function AssistantDetailsButtonBar({
         />
       </Link>
 
-      {agentConfiguration.scope !== "global" && (
-        <Link
-          onClick={(e) => !canEditAssistant && e.preventDefault()}
-          href={`/w/${owner.sId}/builder/assistants/${
-            agentConfiguration.sId
-          }?flow=workspace_assistants`}
-        >
-          <Button
-            size="sm"
-            disabled={!canEditAssistant}
-            variant="outline"
-            icon={PencilSquareIcon}
-          />
-        </Link>
-      )}
+      {agentConfiguration.scope !== "global" &&
+        !isRestrictedFromAgentCreation && (
+          <Link
+            onClick={(e) => !canEditAssistant && e.preventDefault()}
+            href={`/w/${owner.sId}/builder/assistants/${
+              agentConfiguration.sId
+            }?flow=workspace_assistants`}
+          >
+            <Button
+              size="sm"
+              disabled={!canEditAssistant}
+              variant="outline"
+              icon={PencilSquareIcon}
+            />
+          </Link>
+        )}
 
       {agentConfiguration.scope !== "global" && (
         <AssistantDetailsDropdownMenu />

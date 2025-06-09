@@ -33,13 +33,17 @@ const RESOURCES_PREFIX = {
   mcp_server_view: "msv",
   remote_mcp_server: "rms",
   tag: "tag",
+  transcripts_configuration: "tsc",
+
+  // Action (used for tool approval currently).
+  mcp_action: "act",
 
   // Resources relative to the configuration of an MCP server.
   data_source_configuration: "dsc",
   table_configuration: "tbc",
   agent_configuration: "cac",
 
-  // Virtual resources (no database modelsassociated).
+  // Virtual resources (no database models associated).
   internal_mcp_server: "ims",
 };
 
@@ -71,7 +75,12 @@ export function makeSId(
     return cached;
   }
 
-  const sId = `${RESOURCES_PREFIX[resourceName]}_${sqids.encode(idsToEncode)}`;
+  const prefix = RESOURCES_PREFIX[resourceName];
+  if (!prefix) {
+    throw new Error(`Invalid resource name: ${resourceName}`);
+  }
+
+  const sId = `${prefix}_${sqids.encode(idsToEncode)}`;
   sIdCache.set(key, sId);
   return sId;
 }

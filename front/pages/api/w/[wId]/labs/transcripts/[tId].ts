@@ -63,7 +63,7 @@ async function handler(
   }
 
   const transcriptsConfiguration =
-    await LabsTranscriptsConfigurationResource.fetchByModelId(
+    await LabsTranscriptsConfigurationResource.fetchById(
       transcriptsConfigurationId
     );
   // TODO(2024-04-19 flav) Consider adding auth to `fetchById` to move this permission check within the method.
@@ -121,7 +121,7 @@ async function handler(
       if (isActive !== undefined) {
         logger.info(
           {
-            configurationId: transcriptsConfiguration.id,
+            configurationId: transcriptsConfiguration.sId,
             isActive,
           },
           "Setting transcript configuration active status."
@@ -166,8 +166,8 @@ async function handler(
       }
 
       const updatedTranscriptsConfiguration =
-        await LabsTranscriptsConfigurationResource.fetchByModelId(
-          transcriptsConfiguration.id
+        await LabsTranscriptsConfigurationResource.fetchById(
+          transcriptsConfiguration.sId
         );
 
       if (!updatedTranscriptsConfiguration) {
@@ -187,7 +187,7 @@ async function handler(
       if (shouldStartWorkflow) {
         logger.info(
           {
-            configurationId: updatedTranscriptsConfiguration.id,
+            configurationId: updatedTranscriptsConfiguration.sId,
           },
           "Starting transcript retrieval workflow."
         );

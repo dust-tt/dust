@@ -13,6 +13,7 @@ const {
   DUST_MANAGED_TOGETHERAI_API_KEY = "",
   DUST_MANAGED_DEEPSEEK_API_KEY = "",
   DUST_MANAGED_FIREWORKS_API_KEY = "",
+  DUST_MANAGED_XAI_API_KEY = "",
   DUST_MANAGED_FIRECRAWL_API_KEY = "",
 } = process.env;
 
@@ -71,6 +72,9 @@ export const credentialsFromProviders = (
       case "fireworks":
         credentials["FIREWORKS_API_KEY"] = config.api_key;
         break;
+      case "xai":
+        credentials["XAI_API_KEY"] = config.api_key;
+        break;
       case "firecrawl":
         credentials["FIRECRAWL_API_KEY"] = config.api_key;
         break;
@@ -93,6 +97,7 @@ export const dustManagedCredentials = (): CredentialsType => {
     TOGETHERAI_API_KEY: DUST_MANAGED_TOGETHERAI_API_KEY,
     DEEPSEEK_API_KEY: DUST_MANAGED_DEEPSEEK_API_KEY,
     FIREWORKS_API_KEY: DUST_MANAGED_FIREWORKS_API_KEY,
+    XAI_API_KEY: DUST_MANAGED_XAI_API_KEY,
     FIRECRAWL_API_KEY: DUST_MANAGED_FIRECRAWL_API_KEY,
   };
 };

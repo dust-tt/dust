@@ -1,15 +1,20 @@
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 
-import type { MCPToolResultContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import type {
+  DatabaseSchemaResourceType,
+  ExampleRowsResourceType,
+  QueryWritingInstructionsResourceType,
+} from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
   DUST_SQLITE_INSTRUCTIONS,
   getGenericDialectInstructions,
   SALESFORCE_INSTRUCTIONS,
 } from "@app/lib/actions/mcp_internal_actions/servers/tables_query/dialect_instructions";
 
-export function getSchemaContent(
-  schemas: { dbml: string }[]
-): MCPToolResultContentType[] {
+export function getSchemaContent(schemas: { dbml: string }[]): {
+  type: "resource";
+  resource: DatabaseSchemaResourceType;
+}[] {
   return [
     {
       type: "resource",
@@ -24,7 +29,7 @@ export function getSchemaContent(
 
 export function getQueryWritingInstructionsContent(
   dialect: string
-): MCPToolResultContentType[] {
+): { type: "resource"; resource: QueryWritingInstructionsResourceType }[] {
   const instructions = (() => {
     if (dialect === "dust_sqlite") {
       return DUST_SQLITE_INSTRUCTIONS;
@@ -52,7 +57,10 @@ export function getDatabaseExampleRowsContent(
     dbml: string;
     head?: Array<Record<string, any>>;
   }[]
-): MCPToolResultContentType[] {
+): {
+  type: "resource";
+  resource: ExampleRowsResourceType;
+}[] {
   const heads = schemas
     .map((item) => {
       const h = item.head;

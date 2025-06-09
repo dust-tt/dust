@@ -77,6 +77,7 @@ pub mod providers {
     pub mod helpers;
     pub mod openai_compatible_helpers;
     pub mod togetherai;
+    pub mod xai;
 }
 pub mod http {
     pub mod network;
@@ -130,10 +131,12 @@ pub mod oauth {
     pub mod providers {
         pub mod confluence;
         pub mod github;
+        pub mod gmail;
         pub mod gong;
         pub mod google_drive;
         pub mod hubspot;
         pub mod intercom;
+        pub mod mcp;
         pub mod microsoft;
         pub mod mock;
         pub mod notion;

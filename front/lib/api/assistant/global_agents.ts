@@ -45,6 +45,7 @@ import {
   GLOBAL_AGENTS_SID,
   GPT_3_5_TURBO_MODEL_CONFIG,
   GPT_4_1_MODEL_CONFIG,
+  isGlobalAgentId,
   isProviderWhitelisted,
   MISTRAL_LARGE_MODEL_CONFIG,
   MISTRAL_MEDIUM_MODEL_CONFIG,
@@ -1650,10 +1651,6 @@ function getGlobalAgent(
 /**
  * Exported functions
  */
-
-export function isGlobalAgentId(sId: string): boolean {
-  return (Object.values(GLOBAL_AGENTS_SID) as string[]).includes(sId);
-}
 
 // This is the list of global agents that we want to support in past conversations but we don't want
 // to be accessible to users moving forward.

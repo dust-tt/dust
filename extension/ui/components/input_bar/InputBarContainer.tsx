@@ -5,9 +5,11 @@ import { getSpaceAccessPriority } from "@app/shared/lib/spaces";
 import { classNames } from "@app/shared/lib/utils";
 import { AssistantPicker } from "@app/ui/components/assistants/AssistantPicker";
 import { AttachFragment } from "@app/ui/components/conversation/AttachFragment";
+import { MentionDropdown } from "@app/ui/components/input_bar/editor/MentionDropdown";
 import type { CustomEditorProps } from "@app/ui/components/input_bar/editor/useCustomEditor";
 import useCustomEditor from "@app/ui/components/input_bar/editor/useCustomEditor";
 import useHandleMentions from "@app/ui/components/input_bar/editor/useHandleMentions";
+import { useMentionDropdown } from "@app/ui/components/input_bar/editor/useMentionDropdown";
 import { usePublicAssistantSuggestions } from "@app/ui/components/input_bar/editor/usePublicAssistantSuggestions";
 import useUrlHandler from "@app/ui/components/input_bar/editor/useUrlHandler";
 import { InputBarAttachmentsPicker } from "@app/ui/components/input_bar/InputBarAttachmentPicker";
@@ -22,8 +24,10 @@ import type {
   LightAgentConfigurationType,
 } from "@dust-tt/client";
 import { SplitButton, useSendNotification } from "@dust-tt/sparkle";
+import type { Editor } from "@tiptap/react";
 import { EditorContent } from "@tiptap/react";
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { useRef } from "react";
 
 export interface InputBarContainerProps {
   allAssistants: LightAgentConfigurationType[];
@@ -64,6 +68,9 @@ export const InputBarContainer = ({
   const [selectedNode, setSelectedNode] =
     useState<DataSourceViewContentNodeType | null>(null);
 
+  // Create a ref to hold the editor instance
+  const editorRef = useRef<Editor | null>(null);
+
   const handleUrlDetected = useCallback(
     (candidate: UrlCandidate | NodeCandidate | null) => {
       if (candidate) {
@@ -73,11 +80,14 @@ export const InputBarContainer = ({
     []
   );
 
+  const mentionDropdown = useMentionDropdown(suggestions, editorRef);
+
   const { editor, editorService } = useCustomEditor({
     suggestions,
     onEnterKeyDown,
     disableAutoFocus,
     onUrlDetected: handleUrlDetected,
+    suggestionHandler: mentionDropdown.getSuggestionHandler(),
   });
 
   const sendNotification = useSendNotification();
@@ -262,6 +272,8 @@ export const InputBarContainer = ({
           }
         />
       </div>
+
+      <MentionDropdown mentionDropdownState={mentionDropdown} />
     </div>
   );
 };

@@ -10,12 +10,12 @@ import {
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
+import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerType } from "@app/lib/api/mcp";
 import { filterMCPServer } from "@app/lib/mcp";
 import { useAvailableMCPServers } from "@app/lib/swr/mcp_servers";
 import type { WorkspaceType } from "@app/types";
-import { asDisplayName } from "@app/types";
 
 type AddActionMenuProps = {
   owner: WorkspaceType;
@@ -76,7 +76,7 @@ export const AddActionMenu = ({
           .map((mcpServer) => (
             <DropdownMenuItem
               key={mcpServer.sId}
-              label={asDisplayName(mcpServer.name)}
+              label={getMcpServerDisplayName(mcpServer)}
               icon={() => getAvatar(mcpServer, "xs")}
               description={mcpServer.description}
               onClick={async () => {

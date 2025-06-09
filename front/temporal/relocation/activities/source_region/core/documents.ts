@@ -24,11 +24,13 @@ export async function getDataSourceDocuments({
   pageCursor,
   sourceRegion,
   workspaceId,
+  fileName,
 }: {
   dataSourceCoreIds: DataSourceCoreIds;
   pageCursor: string | null;
   sourceRegion: RegionType;
   workspaceId: string;
+  fileName?: string;
 }) {
   const localLogger = logger.child({
     dataSourceCoreIds,
@@ -131,6 +133,7 @@ export async function getDataSourceDocuments({
     workspaceId,
     type: "core",
     operation: "data_source_documents_blobs",
+    fileName,
   });
 
   localLogger.info(

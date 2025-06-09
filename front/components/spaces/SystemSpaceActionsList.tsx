@@ -18,8 +18,9 @@ export const SystemSpaceActionsList = ({
   isAdmin,
   space,
 }: SpaceActionsListProps) => {
-  const [mcpServer, setMcpServer] = useState<MCPServerType | null>(null);
-  const [isDetailsPanelOpened, setIsDetailsPanelOpened] = useState(false);
+  const [mcpServerToShow, setMcpServerToShow] = useState<MCPServerType | null>(
+    null
+  );
 
   const { q: searchParam } = useQueryParams(["q"]);
   const searchTerm = searchParam.value || "";
@@ -30,23 +31,22 @@ export const SystemSpaceActionsList = ({
 
   return (
     <>
-      {mcpServer && (
+      {mcpServerToShow && (
         <MCPServerDetails
           owner={owner}
-          mcpServer={mcpServer}
+          mcpServer={mcpServerToShow}
           onClose={() => {
-            setIsDetailsPanelOpened(false);
+            setMcpServerToShow(null);
           }}
-          isOpen={isDetailsPanelOpened}
+          isOpen={!!mcpServerToShow}
         />
       )}
       <AdminActionsList
         owner={owner}
         filter={searchTerm}
         systemSpace={space}
-        setMcpServer={(mcpServer) => {
-          setMcpServer(mcpServer);
-          setIsDetailsPanelOpened(true);
+        setMcpServerToShow={(mcpServer) => {
+          setMcpServerToShow(mcpServer);
         }}
       />
     </>

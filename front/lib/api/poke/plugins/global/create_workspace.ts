@@ -24,11 +24,6 @@ export const createWorkspacePlugin = createPlugin({
         label: "Email",
         description: "The email of the admin user",
       },
-      enableAutoJoin: {
-        type: "boolean",
-        label: "Enable Auto Join",
-        description: "Enable auto join for the domain",
-      },
       isBusiness: {
         type: "boolean",
         label: "Is Business",
@@ -51,8 +46,6 @@ export const createWorkspacePlugin = createPlugin({
     },
   },
   execute: async (auth, _, args) => {
-    const { enableAutoJoin = false } = args;
-
     const email = args.email.trim();
     if (isEmailValid(email) === false) {
       return new Err(new Error("Email address is invalid."));
@@ -64,9 +57,7 @@ export const createWorkspacePlugin = createPlugin({
     }
 
     const workspace = await createWorkspaceInternal({
-      email,
       name,
-      isVerified: enableAutoJoin,
       isBusiness: args.isBusiness,
       planCode: args.planCode,
       endDate: args.endDate ? new Date(args.endDate) : null,

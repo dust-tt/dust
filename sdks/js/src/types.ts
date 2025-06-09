@@ -24,6 +24,7 @@ const ModelProviderIdSchema = FlexibleEnumSchema<
   | "togetherai"
   | "deepseek"
   | "fireworks"
+  | "xai"
 >();
 
 const ModelLLMIdSchema = FlexibleEnumSchema<
@@ -71,6 +72,10 @@ const ModelLLMIdSchema = FlexibleEnumSchema<
   | "deepseek-chat" // deepseek api
   | "deepseek-reasoner" // deepseek api
   | "accounts/fireworks/models/deepseek-r1" // fireworks
+  | "grok-3-latest" // xAI
+  | "grok-3-mini-latest" // xAI
+  | "grok-3-fast-latest" // xAI
+  | "grok-3-mini-fast-latest" // xAI
 >();
 
 const EmbeddingProviderIdSchema = FlexibleEnumSchema<"openai" | "mistral">();
@@ -818,6 +823,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "openai_o1_high_reasoning_custom_assistants_feature"
   | "openai_o1_high_reasoning_feature"
   | "openai_o1_mini_feature"
+  | "xai_feature"
   | "pro_plan_salesforce_connector"
   | "salesforce_feature"
   | "search_knowledge_builder"
@@ -826,9 +832,12 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "usage_data_api"
   | "custom_webcrawler"
   | "exploded_tables_query"
-  | "pro_plan_salesforce_connector"
+  | "workos"
   | "salesforce_tool"
   | "gmail_tool"
+  | "google_calendar_tool"
+  | "agent_builder_v2"
+  | "disallow_agent_creation_to_users"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -1316,6 +1325,15 @@ const SearchLabelsParamsEventSchema = z.object({
   action: SearchLabelsActionTypeSchema,
 });
 
+const MCPStakeLevelSchema = z.enum(["low", "high", "never_ask"]).optional();
+
+const MCPValidationMetadataSchema = z.object({
+  mcpServerName: z.string(),
+  toolName: z.string(),
+  agentName: z.string(),
+  pubsubMessageId: z.string().optional(),
+});
+
 const MCPParamsEventSchema = z.object({
   type: z.literal("tool_params"),
   created: z.number(),
@@ -1334,9 +1352,29 @@ const NotificationTextContentSchema = z.object({
   text: z.string(),
 });
 
+const NotificationToolApproveBubbleUpContentSchema = z.object({
+  type: z.literal("tool_approval_bubble_up"),
+  configurationId: z.string(),
+  conversationId: z.string(),
+  messageId: z.string(),
+  actionId: z.string(),
+  inputs: z.record(z.any()),
+  stake: MCPStakeLevelSchema,
+  metadata: MCPValidationMetadataSchema,
+});
+
+const NotificationRunAgentContentSchema = z.object({
+  type: z.literal("run_agent"),
+  childAgentId: z.string(),
+  conversationId: z.string(),
+  query: z.string(),
+});
+
 const NotificationContentSchema = z.union([
   NotificationImageContentSchema,
   NotificationTextContentSchema,
+  NotificationRunAgentContentSchema,
+  NotificationToolApproveBubbleUpContentSchema,
 ]);
 
 const ToolNotificationProgressSchema = z.object({
@@ -1363,12 +1401,6 @@ const ToolNotificationEventSchema = z.object({
 
 export type ToolNotificationEvent = z.infer<typeof ToolNotificationEventSchema>;
 
-const MCPValidationMetadataSchema = z.object({
-  mcpServerName: z.string(),
-  toolName: z.string(),
-  agentName: z.string(),
-});
-
 export type MCPValidationMetadataPublicType = z.infer<
   typeof MCPValidationMetadataSchema
 >;
@@ -1377,10 +1409,11 @@ const MCPApproveExecutionEventSchema = z.object({
   type: z.literal("tool_approve_execution"),
   created: z.number(),
   configurationId: z.string(),
+  conversationId: z.string(),
   messageId: z.string(),
-  action: MCPActionTypeSchema,
+  actionId: z.string(),
   inputs: z.record(z.any()),
-  stake: z.optional(z.enum(["low", "high", "never_ask"])),
+  stake: MCPStakeLevelSchema,
   metadata: MCPValidationMetadataSchema,
 });
 
@@ -2063,6 +2096,7 @@ export const PublicPostConversationsRequestBodySchema = z.intersection(
       .enum(["unlisted", "workspace", "deleted", "test"])
       .optional()
       .default("unlisted"),
+    depth: z.number().optional(),
     message: z.union([
       z.intersection(
         z.object({
@@ -2417,6 +2451,7 @@ export const UpsertTableFromCsvRequestSchema = z.object({
   sourceUrl: z.string().nullable().optional(),
   tableId: z.string(),
   fileId: z.string(),
+  allowEmptySchema: z.boolean().optional(),
 });
 
 export type UpsertTableFromCsvRequestType = z.infer<
@@ -2898,7 +2933,7 @@ export type ValidateActionResponseType = z.infer<
 >;
 
 export const ValidateActionRequestBodySchema = z.object({
-  actionId: z.number(),
+  actionId: z.string(),
   approved: z.enum(["approved", "rejected", "always_approved"]),
 });
 

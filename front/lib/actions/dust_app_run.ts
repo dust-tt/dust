@@ -45,6 +45,7 @@ import type {
 import {
   Err,
   getHeaderFromGroupIds,
+  getHeaderFromRole,
   Ok,
   SUPPORTED_MODEL_CONFIGS,
 } from "@app/types";
@@ -424,7 +425,10 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
       apiConfig,
       {
         ...prodCredentials,
-        extraHeaders: getHeaderFromGroupIds(requestedGroupIds),
+        extraHeaders: {
+          ...getHeaderFromGroupIds(requestedGroupIds),
+          ...getHeaderFromRole(auth.role()),
+        },
       },
       logger,
       apiConfig.nodeEnv === "development" ? "http://localhost:3000" : null

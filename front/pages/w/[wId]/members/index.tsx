@@ -27,6 +27,7 @@ import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { ChangeMemberModal } from "@app/components/workspace/ChangeMemberModal";
 import type { EnterpriseConnectionStrategyDetails } from "@app/components/workspace/connection";
 import { EnterpriseConnectionDetails } from "@app/components/workspace/connection";
+import { WorkOSConnection } from "@app/components/workspace/WorkOSConnection";
 import config from "@app/lib/api/config";
 import {
   makeAudienceUri,
@@ -40,6 +41,7 @@ import {
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { useSearchMembers } from "@app/lib/swr/memberships";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
   PlanType,
   SubscriptionPerSeatPricing,
@@ -78,7 +80,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   const enterpriseConnectionStrategyDetails: EnterpriseConnectionStrategyDetails =
     {
       callbackUrl: config.getAuth0TenantUrl(),
-      initiateLoginUrl: makeEnterpriseConnectionInitiateLoginUrl(
+      initiateLoginUrl: await makeEnterpriseConnectionInitiateLoginUrl(
         owner.sId,
         null
       ),
@@ -121,6 +123,10 @@ export default function WorkspaceAdmin({
     useState(false);
   const [inviteBlockedPopupReason, setInviteBlockedPopupReason] =
     useState<WorkspaceLimit | null>(null);
+
+  const { hasFeature } = useFeatureFlags({
+    workspaceId: owner.sId,
+  });
 
   const { domain = "", domainAutoJoinEnabled = false } =
     workspaceVerifiedDomain ?? {};
@@ -248,6 +254,7 @@ export default function WorkspaceAdmin({
           strategyDetails={enterpriseConnectionStrategyDetails}
           workspaceVerifiedDomain={workspaceVerifiedDomain}
         />
+        {hasFeature("workos") && <WorkOSConnection owner={owner} />}
         <div className="flex flex-row gap-2">
           <SearchInput
             placeholder="Search members (email)"

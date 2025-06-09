@@ -2,6 +2,7 @@ import {
   ActionPieChartIcon,
   Avatar,
   Button,
+  Checkbox,
   CodeBlock,
   CollapsibleComponent,
   Dialog,
@@ -11,40 +12,24 @@ import {
   DialogHeader,
   DialogTitle,
   Icon,
+  Label,
   Spinner,
 } from "@dust-tt/sparkle";
-import { createContext, useCallback, useEffect, useState } from "react";
+import { createContext, useEffect, useState } from "react";
 
 import { useNavigationLock } from "@app/components/assistant_builder/useNavigationLock";
-import type {
-  MCPToolStakeLevelType,
-  MCPValidationMetadataType,
-  MCPValidationOutputType,
-} from "@app/lib/actions/constants";
-import type { MCPActionType } from "@app/lib/actions/mcp";
+import type { MCPValidationOutputType } from "@app/lib/actions/constants";
+import type { MCPApproveExecutionEvent } from "@app/lib/actions/mcp";
+import type { LightWorkspaceType } from "@app/types";
 import { asDisplayName } from "@app/types";
 
-type ActionValidationContextType = {
-  showValidationDialog: (validationRequest: {
-    workspaceId: string;
-    messageId: string;
-    conversationId: string;
-    action: MCPActionType;
-    inputs: Record<string, unknown>;
-    stake?: MCPToolStakeLevelType;
-    metadata: MCPValidationMetadataType;
-  }) => void;
-};
+type MCPActionValidationRequest = Omit<
+  MCPApproveExecutionEvent,
+  "type" | "created" | "configurationId"
+>;
 
-// Pending validation requests, keyed by message ID
-export type PendingValidationRequestType = {
-  workspaceId: string;
-  messageId: string;
-  conversationId: string;
-  action: MCPActionType;
-  inputs: Record<string, unknown>;
-  stake?: MCPToolStakeLevelType;
-  metadata: MCPValidationMetadataType;
+type ActionValidationContextType = {
+  showValidationDialog: (validationRequest: MCPActionValidationRequest) => void;
 };
 
 export const ActionValidationContext =
@@ -52,15 +37,15 @@ export const ActionValidationContext =
 
 function useValidationQueue() {
   const [validationQueue, setValidationQueue] = useState<
-    PendingValidationRequestType[]
+    MCPActionValidationRequest[]
   >([]);
   const [currentValidation, setCurrentValidation] =
-    useState<PendingValidationRequestType | null>(null);
+    useState<MCPActionValidationRequest | null>(null);
 
   // Queue stores the pending validation requests
   // The current validation request is the one being processed
   // The queue does not stores the current validation request
-  const addToQueue = (validationRequest: PendingValidationRequestType) => {
+  const addToQueue = (validationRequest: MCPActionValidationRequest) => {
     setCurrentValidation((current) => {
       if (current === null) {
         return validationRequest;
@@ -92,11 +77,15 @@ function useValidationQueue() {
   };
 }
 
-export function ActionValidationProvider({
-  children,
-}: {
+interface ActionValidationProviderProps {
+  owner: LightWorkspaceType;
   children: React.ReactNode;
-}) {
+}
+
+export function ActionValidationProvider({
+  owner,
+  children,
+}: ActionValidationProviderProps) {
   const { validationQueue, currentValidation, addToQueue, takeNextFromQueue } =
     useValidationQueue();
 
@@ -108,55 +97,49 @@ export function ActionValidationProvider({
 
   useNavigationLock(isDialogOpen);
 
-  const sendCurrentValidation = useCallback(
-    async (status: MCPValidationOutputType) => {
-      if (!currentValidation) {
-        return;
+  const sendCurrentValidation = async (status: MCPValidationOutputType) => {
+    if (!currentValidation) {
+      return;
+    }
+
+    let approved = status;
+    if (status === "approved" && neverAskAgain) {
+      approved = "always_approved";
+    }
+
+    setErrorMessage(null);
+    setIsProcessing(true);
+
+    const response = await fetch(
+      `/api/w/${owner.sId}/assistant/conversations/${currentValidation.conversationId}/messages/${currentValidation.messageId}/validate-action`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          actionId: currentValidation.actionId,
+          approved,
+        }),
       }
+    );
 
-      let approved = status;
-      if (status === "approved" && neverAskAgain) {
-        approved = "always_approved";
-      }
+    if (!response.ok) {
+      setErrorMessage("Failed to assess action approval. Please try again.");
+      return;
+    }
 
-      setErrorMessage(null);
-      setIsProcessing(true);
+    setNeverAskAgain(false);
+  };
 
-      const response = await fetch(
-        `/api/w/${currentValidation.workspaceId}/assistant/conversations/${currentValidation.conversationId}/messages/${currentValidation.messageId}/validate-action`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            actionId: currentValidation.action.id,
-            approved,
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        setErrorMessage("Failed to assess action approval. Please try again.");
-        return;
-      }
-
-      setNeverAskAgain(false);
-    },
-    [currentValidation, neverAskAgain]
-  );
-
-  const handleSubmit = useCallback(
-    (approved: MCPValidationOutputType) => {
-      void sendCurrentValidation(approved);
-      setIsProcessing(false);
-      const foundItem = takeNextFromQueue();
-      if (!foundItem) {
-        setIsDialogOpen(false);
-      }
-    },
-    [sendCurrentValidation, takeNextFromQueue]
-  );
+  const handleSubmit = (approved: MCPValidationOutputType) => {
+    void sendCurrentValidation(approved);
+    setIsProcessing(false);
+    const foundItem = takeNextFromQueue();
+    if (!foundItem) {
+      setIsDialogOpen(false);
+    }
+  };
 
   useEffect(() => {
     if (currentValidation) {
@@ -164,15 +147,9 @@ export function ActionValidationProvider({
     }
   }, [currentValidation]);
 
-  const showValidationDialog = (validationRequest: {
-    workspaceId: string;
-    messageId: string;
-    conversationId: string;
-    action: MCPActionType;
-    inputs: Record<string, unknown>;
-    stake?: MCPToolStakeLevelType;
-    metadata: MCPValidationMetadataType;
-  }) => {
+  const showValidationDialog = (
+    validationRequest: MCPActionValidationRequest
+  ) => {
     addToQueue(validationRequest);
     setErrorMessage(null);
   };
@@ -252,20 +229,21 @@ export function ActionValidationProvider({
                 </div>
               )}
             </div>
-          </DialogContainer>
-          <DialogFooter
-            permanentValidation={
-              currentValidation?.stake === "low"
-                ? {
-                    label: "Always allow this tool",
-                    checked: neverAskAgain,
-                    onChange: (check) => {
+            {currentValidation?.stake === "low" && (
+              <div className="mt-5">
+                <Label className="copy-sm flex w-fit cursor-pointer flex-row items-center gap-2 py-2 pr-2 font-normal">
+                  <Checkbox
+                    checked={neverAskAgain}
+                    onCheckedChange={(check) => {
                       setNeverAskAgain(!!check);
-                    },
-                  }
-                : undefined
-            }
-          >
+                    }}
+                  />
+                  <span>Always allow this tool</span>
+                </Label>
+              </div>
+            )}
+          </DialogContainer>
+          <DialogFooter>
             <Button
               label="Decline"
               variant="outline"

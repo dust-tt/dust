@@ -1,7 +1,10 @@
 import type { Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
 
-import type { ConfluenceSpaceType } from "@connectors/connectors/confluence/lib/confluence_client";
+import type {
+  ConfluenceSearchPageType,
+  ConfluenceSpaceType,
+} from "@connectors/connectors/confluence/lib/confluence_client";
 import {
   CONFLUENCE_SUPPORTED_SPACE_TYPES,
   ConfluenceClient,
@@ -12,6 +15,8 @@ import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types";
 import { getOAuthConnectionAccessToken } from "@connectors/types";
+
+const PAGE_FETCH_LIMIT = 100;
 
 export async function getConfluenceCloudInformation(accessToken: string) {
   const client = new ConfluenceClient(accessToken);
@@ -126,43 +131,51 @@ export interface ConfluencePageRef {
   version: number;
 }
 
-const PAGE_FETCH_LIMIT = 100;
+function getConfluencePageRef(page: ConfluenceSearchPageType) {
+  const hasReadRestrictions =
+    page.restrictions.read.restrictions.group.results.length > 0 ||
+    page.restrictions.read.restrictions.user.results.length > 0;
+
+  return {
+    hasChildren: page.childTypes.page.value,
+    hasReadRestrictions,
+    id: page.id,
+    // Ancestors is an array of the page's ancestors, starting with the root page.
+    parentId: page.ancestors[page.ancestors.length - 1]?.id ?? null,
+    version: page.version.number,
+  };
+}
 
 export async function getActiveChildPageRefs(
   client: ConfluenceClient,
   {
     pageCursor,
     parentPageId,
-    spaceId,
     spaceKey,
   }: {
     pageCursor: string | null;
     parentPageId: string;
-    spaceId: string;
     spaceKey: string;
   }
 ) {
   // Fetch the child pages of the parent page.
   const { pages: childPages, nextPageCursor } = await client.getChildPages({
-    parentPageId,
-    pageCursor,
     limit: PAGE_FETCH_LIMIT,
+    pageCursor,
+    parentPageId,
+    spaceKey,
   });
 
   const activeChildPageIds = childPages
-    .filter((p) => p.status === "current" && p.spaceId === spaceId)
+    .filter((p) => p.status === "current")
     .map((p) => p.id);
 
   if (activeChildPageIds.length === 0) {
     return { childPageRefs: [], nextPageCursor };
   }
 
-  // Fetch child page metadata (version, parent, permissions, etc.).
-  const childPageRefs = await bulkFetchConfluencePageRefs(client, {
-    limit: PAGE_FETCH_LIMIT,
-    pageIds: activeChildPageIds,
-    spaceKey,
-  });
+  const childPageRefs: ConfluencePageRef[] =
+    childPages.map(getConfluencePageRef);
 
   return { childPageRefs, nextPageCursor };
 }
@@ -186,20 +199,8 @@ export async function bulkFetchConfluencePageRefs(
     limit,
   });
 
-  const pageRefs: ConfluencePageRef[] = pagesWithDetails.results.map((p) => {
-    const hasReadRestrictions =
-      p.restrictions.read.restrictions.group.results.length > 0 ||
-      p.restrictions.read.restrictions.user.results.length > 0;
-
-    return {
-      hasChildren: p.childTypes.page.value,
-      hasReadRestrictions,
-      id: p.id,
-      // Ancestors is an array of the page's ancestors, starting with the root page.
-      parentId: p.ancestors[p.ancestors.length - 1]?.id ?? null,
-      version: p.version.number,
-    };
-  });
+  const pageRefs: ConfluencePageRef[] =
+    pagesWithDetails.results.map(getConfluencePageRef);
 
   return pageRefs;
 }

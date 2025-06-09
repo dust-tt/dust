@@ -1,10 +1,10 @@
+import { createAndLogMembership } from "@app/lib/api/signup";
 import { createWorkspaceInternal } from "@app/lib/iam/workspaces";
 import { Plan } from "@app/lib/models/plan";
 import { FREE_UPGRADED_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type { Logger } from "@app/logger/logger";
-import { createAndLogMembership } from "@app/pages/api/login";
 import { makeScript } from "@app/scripts/helpers";
 
 async function createTestWorkspaces(
@@ -55,9 +55,7 @@ async function createTestWorkspaces(
   for (let i = 0; i < count; i++) {
     const name = `${user.firstName} ${generateRandomModelSId()}`;
     const workspace = await createWorkspaceInternal({
-      email: user.email,
       name: name,
-      isVerified: true,
       isBusiness: false,
       planCode: FREE_UPGRADED_PLAN_CODE,
       endDate: null,

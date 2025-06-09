@@ -21,6 +21,7 @@ import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 
 import { DEFAULT_MCP_ACTION_DESCRIPTION } from "@app/lib/actions/constants";
+import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
 import type { RemoteMCPServerType } from "@app/lib/api/mcp";
 import {
   useMCPServers,
@@ -28,7 +29,7 @@ import {
   useUpdateRemoteMCPServer,
 } from "@app/lib/swr/mcp_servers";
 import type { LightWorkspaceType } from "@app/types";
-import { asDisplayName, normalizeError } from "@app/types";
+import { normalizeError } from "@app/types";
 
 interface RemoteMCPFormProps {
   owner: LightWorkspaceType;
@@ -53,7 +54,7 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
   const form = useForm<MCPFormType>({
     resolver: zodResolver(MCPFormSchema),
     defaultValues: {
-      name: asDisplayName(mcpServer.name),
+      name: getMcpServerDisplayName(mcpServer),
       description: mcpServer.description,
       icon: mcpServer.icon,
       sharedSecret: mcpServer.sharedSecret || "",
@@ -84,9 +85,9 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
           void mutateMCPServers();
 
           sendNotification({
-            title: "MCP server updated",
+            title: `${getMcpServerDisplayName(mcpServer)} updated`,
             type: "success",
-            description: "The MCP server has been successfully updated.",
+            description: `${getMcpServerDisplayName(mcpServer)} has been successfully updated.`,
           });
 
           form.reset(values);
@@ -95,13 +96,13 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
         }
       } catch (err) {
         sendNotification({
-          title: "Error updating MCP server",
+          title: `Error updating ${getMcpServerDisplayName(mcpServer)}`,
           type: "error",
           description: err instanceof Error ? err.message : "An error occurred",
         });
       }
     },
-    [updateServer, mutateMCPServers, sendNotification, form]
+    [updateServer, mutateMCPServers, sendNotification, form, mcpServer]
   );
 
   const handleSynchronize = useCallback(async () => {
@@ -116,22 +117,21 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
         sendNotification({
           title: "Success",
           type: "success",
-          description: "MCP server synchronized successfully.",
+          description: `${getMcpServerDisplayName(mcpServer)} synchronized successfully.`,
         });
       } else {
         throw new Error("Failed to synchronize MCP server");
       }
     } catch (error) {
-      console.error("Error synchronizing with MCP:", error);
       sendNotification({
-        title: "Error synchronizing MCP server",
+        title: `Error synchronizing ${getMcpServerDisplayName(mcpServer)}`,
         type: "error",
         description: normalizeError(error ?? "An error occured").message,
       });
     } finally {
       setIsSynchronizing(false);
     }
-  }, [syncServer, mutateMCPServers, sendNotification]);
+  }, [syncServer, mutateMCPServers, sendNotification, mcpServer]);
 
   const closePopover = () => {
     setIsPopoverOpen(false);

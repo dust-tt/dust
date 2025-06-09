@@ -30,7 +30,7 @@ export type StoredUser = UserTypeWithExtensionWorkspaces & {
   connection?: string;
 };
 
-export type Auth0AuthorizeResponse = {
+export type OAuthAuthorizeResponse = {
   accessToken: string;
   refreshToken: string;
   expiresIn: number;
@@ -61,7 +61,7 @@ export abstract class AuthService {
   }
 
   // Shared methods with implementation
-  async saveTokens(rawTokens: Auth0AuthorizeResponse) {
+  async saveTokens(rawTokens: OAuthAuthorizeResponse) {
     const tokens: StoredTokens = {
       accessToken: rawTokens.accessToken,
       refreshToken: rawTokens.refreshToken,

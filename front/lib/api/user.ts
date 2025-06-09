@@ -111,6 +111,7 @@ export async function getUserWithWorkspaces<T extends boolean>(
           role: memberships.find((m) => m.workspaceId === w.id)?.role ?? "none",
         }),
         ssoEnforced: w.ssoEnforced,
+        workOSOrganizationId: w.workOSOrganizationId,
         ...(populateExtensionConfig && {
           blacklistedDomains:
             configs.find((c) => c.workspaceId === w.id)?.blacklistedDomains ??

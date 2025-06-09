@@ -810,3 +810,28 @@ export async function workspaceRelocateAppsWorkflow({
     }
   } while (hasMoreRows);
 }
+
+export async function workspaceRelocateAppWorkflow({
+  workspaceId,
+  sourceRegion,
+  destRegion,
+  dustAPIProjectId,
+}: RelocationWorkflowBase & { dustAPIProjectId: string }) {
+  const sourceRegionActivities = getCoreSourceRegionActivities(sourceRegion);
+  const destinationRegionActivities =
+    getCoreDestinationRegionActivities(destRegion);
+
+  const { dataPath } = await sourceRegionActivities.getApp({
+    dustAPIProjectId,
+    workspaceId,
+    sourceRegion,
+  });
+
+  await destinationRegionActivities.processApp({
+    dustAPIProjectId,
+    dataPath,
+    destRegion,
+    sourceRegion,
+    workspaceId,
+  });
+}

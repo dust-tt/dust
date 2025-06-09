@@ -1,74 +1,136 @@
-import { Input, Label } from "@dust-tt/sparkle";
+import {
+  ContentMessage,
+  InformationCircleIcon,
+  Input,
+  Label,
+} from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
 
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata";
+import type { OAuthCredentialInputs, OAuthCredentials } from "@app/types";
 import {
-  getProviderRequiredAuthCredentials,
+  getProviderRequiredOAuthCredentialInputs,
+  isSupportedOAuthCredential,
   OAUTH_PROVIDER_NAMES,
 } from "@app/types";
 
 type MCPServerOauthConnexionProps = {
   authorization: AuthorizationInfo | null;
-  authCredentials: Record<string, string> | null;
-  setAuthCredentials: (authCredentials: Record<string, string>) => void;
+  authCredentials: OAuthCredentials | null;
+  setAuthCredentials: (authCredentials: OAuthCredentials) => void;
+  setIsFormValid: (isFormValid: boolean) => void;
+  documentationUrl?: string;
 };
 
 export function MCPServerOAuthConnexion({
   authorization,
   authCredentials,
   setAuthCredentials,
+  setIsFormValid,
+  documentationUrl,
 }: MCPServerOauthConnexionProps) {
-  const [requiredCredentials, setRequiredCredentials] = useState<Record<
-    string,
-    { label: string; value: string | number | undefined }
-  > | null>(null);
+  const [inputs, setInputs] = useState<OAuthCredentialInputs | null>(null);
 
+  // We fetch the credential inputs for this provider and use case.
   useEffect(() => {
-    const fetchCredentials = async () => {
-      const credentials =
-        await getProviderRequiredAuthCredentials(authorization);
-      setRequiredCredentials(credentials);
+    const fetchCredentialInputs = async () => {
+      const credentialInputs =
+        await getProviderRequiredOAuthCredentialInputs(authorization);
+      setInputs(credentialInputs);
       // Set the auth credentials to the values in the credentials object
       // that already have a value as we will not ask the user for these values.
-      if (credentials) {
+      if (credentialInputs) {
         setAuthCredentials(
-          Object.entries(credentials).reduce(
+          Object.entries(credentialInputs).reduce(
             (acc, [key, { value }]) => ({ ...acc, [key]: value }),
             {}
           )
         );
       }
     };
-    void fetchCredentials();
+    void fetchCredentialInputs();
   }, [authorization, setAuthCredentials]);
+
+  // We check if the form is valid.
+  useEffect(() => {
+    if (inputs && authCredentials) {
+      let isFormValid = true;
+      for (const [key, value] of Object.entries(authCredentials)) {
+        if (!isSupportedOAuthCredential(key)) {
+          // Can't happen but to make typescript happy.
+          continue;
+        }
+        if (!value) {
+          isFormValid = false;
+          break;
+        }
+        const input = inputs[key];
+        if (input && input.validator && !input.validator(value)) {
+          isFormValid = false;
+          break;
+        }
+      }
+      setIsFormValid(isFormValid);
+    }
+  }, [authCredentials, inputs, setIsFormValid]);
 
   return (
     authorization && (
       <div className="flex flex-col items-center gap-2">
-        {requiredCredentials ? (
+        {inputs ? (
           <>
-            <Label className="self-start">
-              These tools require authentication with{" "}
-              {OAUTH_PROVIDER_NAMES[authorization.provider]}, we need the
-              following information to set them up:
-            </Label>
-            {Object.entries(requiredCredentials).map(([key, value]) =>
-              requiredCredentials[key].value ? null : (
+            <span className="text-500 w-full font-semibold">
+              These tools require admin authentication with{" "}
+              {OAUTH_PROVIDER_NAMES[authorization.provider]}
+              {documentationUrl && (
+                <>
+                  . Please follow{" "}
+                  <a
+                    href={documentationUrl}
+                    className="text-highlight-600"
+                    target="_blank"
+                  >
+                    this guide
+                  </a>{" "}
+                  to learn how to set it up
+                </>
+              )}
+              .
+            </span>
+            {Object.entries(inputs).map(([key, inputData]) => {
+              if (inputData.value) {
+                // If the credential is already set, we don't need to ask the user for it.
+                return null;
+              }
+              if (!isSupportedOAuthCredential(key)) {
+                // Can't happen but to make typescript happy.
+                return null;
+              }
+              const value = authCredentials?.[key] ?? "";
+              return (
                 <div key={key} className="w-full">
-                  <Label htmlFor={key}>{value.label}</Label>
+                  <Label htmlFor={key}>{inputData.label}</Label>
                   <Input
                     id={key}
-                    value={authCredentials?.[key] ?? ""}
+                    value={value}
                     onChange={(e) =>
                       setAuthCredentials({
                         ...authCredentials,
                         [key]: e.target.value,
                       })
                     }
+                    message={inputData.helpMessage}
+                    messageStatus={
+                      value.length > 0 &&
+                      inputData.validator &&
+                      !inputData.validator(value)
+                        ? "error"
+                        : undefined
+                    }
                   />
                 </div>
-              )
-            )}
+              );
+            })}
           </>
         ) : (
           <Label className="self-start">
@@ -77,19 +139,31 @@ export function MCPServerOAuthConnexion({
           </Label>
         )}
 
-        {authorization.use_case === "platform_actions" && (
-          <span className="w-full font-semibold text-red-500">
-            Authentication credentials will be shared by all users of this
-            workspace when they use these tools.
-          </span>
-        )}
-        {authorization.use_case === "personal_actions" && (
-          <span className="text-500 w-full font-semibold">
-            Once setup for the workspace, each user will link their own{" "}
-            {OAUTH_PROVIDER_NAMES[authorization.provider]} credentials when
-            interacting with these tools for the first time.
-          </span>
-        )}
+        <div className="w-full pt-4">
+          {authorization.use_case === "platform_actions" && (
+            <ContentMessage
+              size="md"
+              variant="warning"
+              title="These tools are using workspace level credentials."
+              icon={InformationCircleIcon}
+            >
+              Authentication credentials will be shared by all users of this
+              workspace when they use these tools.
+            </ContentMessage>
+          )}
+          {authorization.use_case === "personal_actions" && (
+            <ContentMessage
+              size="md"
+              variant="highlight"
+              title="These tools are using personal level credentials."
+              icon={InformationCircleIcon}
+            >
+              Once setup for the workspace, each user will have to connect their
+              own {OAUTH_PROVIDER_NAMES[authorization.provider]} credentials to
+              interact with these tools.
+            </ContentMessage>
+          )}
+        </div>
       </div>
     )
   );

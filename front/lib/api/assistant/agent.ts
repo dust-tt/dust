@@ -144,6 +144,8 @@ async function* runMultiActionsAgentLoop(
   let citationsRefsOffset = 0;
 
   let processedContent = "";
+  const runIds = [];
+
   for (let i = 0; i < maxStepsPerRun + 1; i++) {
     const localLogger = logger.child({
       workspaceId: conversation.owner.sId,
@@ -173,8 +175,6 @@ async function* runMultiActionsAgentLoop(
       isLegacyAgent,
     });
 
-    const runIds = [];
-
     for await (const event of loopIterationStream) {
       switch (event.type) {
         case "agent_error":
@@ -189,6 +189,7 @@ async function* runMultiActionsAgentLoop(
           return;
         case "agent_actions":
           runIds.push(event.runId);
+
           localLogger.info(
             {
               elapsed: Date.now() - now,

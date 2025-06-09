@@ -1,14 +1,24 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
+import { getDataSourceViewUsage } from "@app/lib/api/agent_data_sources";
+import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
-import type { DataSourceViewType, WithAPIErrorResponse } from "@app/types";
+import type {
+  DataSourceViewType,
+  DataSourceWithAgentsUsageType,
+  WithAPIErrorResponse,
+} from "@app/types";
+
+export type DataSourceViewWithUsage = DataSourceViewType & {
+  usage: DataSourceWithAgentsUsageType | null;
+};
 
 export type PokeListDataSourceViews = {
-  data_source_views: DataSourceViewType[];
+  data_source_views: DataSourceViewWithUsage[];
 };
 
 async function handler(
@@ -48,8 +58,23 @@ async function handler(
         { includeEditedBy: true }
       );
 
+      const dataSourceViewsWithUsage = await concurrentExecutor(
+        dataSourceViews,
+        async (dsv) => {
+          const usageResult = await getDataSourceViewUsage({
+            auth,
+            dataSourceView: dsv,
+          });
+          return {
+            ...dsv.toJSON(),
+            usage: usageResult.isOk() ? usageResult.value : null,
+          };
+        },
+        { concurrency: 4 }
+      );
+
       return res.status(200).json({
-        data_source_views: dataSourceViews.map((dsv) => dsv.toJSON()),
+        data_source_views: dataSourceViewsWithUsage,
       });
 
     default:
@@ -63,4 +88,4 @@ async function handler(
   }
 }
 
-export default withSessionAuthentication(handler);
+export default withSessionAuthenticationForPoke(handler);

@@ -30,7 +30,8 @@ export class DustMcpServerTransport implements Transport {
   constructor(
     private readonly dustAPI: DustAPI,
     private readonly onServerIdReceived: (serverId: string) => void,
-    private readonly serverName: string = "Dust Extension"
+    private readonly serverName: string = "Dust Extension",
+    private readonly verbose: boolean = false
   ) {}
 
   /**
@@ -97,7 +98,7 @@ export class DustMcpServerTransport implements Transport {
       // Connect to the workspace-scoped requests endpoint.
       await this.connectToRequestsStream();
 
-      logger.log("MCP transport started successfully");
+      this.log("MCP transport started successfully");
     } catch (error) {
       logger.error("Failed to start MCP transport:", error);
       this.onerror?.(error instanceof Error ? error : new Error(String(error)));
@@ -181,7 +182,7 @@ export class DustMcpServerTransport implements Transport {
       // Attempt to reconnect after a delay.
       setTimeout(() => {
         if (this.eventSource) {
-          logger.log("Attempting to reconnect to SSE...");
+          this.log("Attempting to reconnect to SSE...");
           void this.connectToRequestsStream().catch((reconnectError) => {
             logger.error("Failed to reconnect:", reconnectError);
           });
@@ -190,11 +191,11 @@ export class DustMcpServerTransport implements Transport {
     };
 
     this.eventSource.onopen = () => {
-      logger.log("MCP SSE connection established");
+      this.log("MCP SSE connection established");
     };
 
     this.eventSource.addEventListener("close", () => {
-      logger.log("MCP SSE connection closed");
+      this.log("MCP SSE connection closed");
       this.onclose?.();
     });
   }
@@ -236,13 +237,19 @@ export class DustMcpServerTransport implements Transport {
 
     // Close SSE connection.
     if (this.eventSource) {
-      logger.log("Closing MCP SSE connection");
+      this.log("Closing MCP SSE connection");
       this.eventSource.close();
       this.eventSource = null;
     }
 
     // Trigger onclose callback.
     this.onclose?.();
+  }
+
+  log(message: string): void {
+    if (this.verbose) {
+      logger.log(message);
+    }
   }
 
   /**

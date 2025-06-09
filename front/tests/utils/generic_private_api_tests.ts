@@ -17,7 +17,7 @@ vi.mock(import("../../lib/auth"), async (importOriginal) => {
   };
 });
 
-import { getSession } from "../../lib/auth";
+import { Authenticator, getSession } from "../../lib/auth";
 
 /**
  * Creates a mock request with authentication for testing private API endpoints.
@@ -57,14 +57,20 @@ export const createPrivateApiMockRequest = async ({
   // Mock the getSession function to return the user without going through the auth0 session
   vi.mocked(getSession).mockReturnValue(
     Promise.resolve({
+      type: "auth0",
+      sessionId: "test-session-id",
       user: {
-        sid: user.sId,
-        sub: user.auth0Sub!,
+        auth0Sub: user.auth0Sub!,
+        workOSUserId: null,
         email: user.email!,
         email_verified: true,
         name: user.username!,
         nickname: user.username!,
       },
+      authenticationMethod: "GoogleOAuth",
+      isSSO: false,
+      workspaceId: workspace.sId,
+      organizationId: workspace.workOSOrganizationId || undefined,
     })
   );
 
@@ -82,5 +88,9 @@ export const createPrivateApiMockRequest = async ({
     membership,
     globalGroup,
     systemGroup,
+    authenticator: await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    ),
   };
 };

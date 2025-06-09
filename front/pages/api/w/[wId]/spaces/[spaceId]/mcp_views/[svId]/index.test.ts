@@ -2,7 +2,6 @@ import type { RequestMethod } from "node-mocks-http";
 import { describe, expect } from "vitest";
 
 import { internalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
-import { INTERNAL_MCP_SERVERS } from "@app/lib/actions/mcp_internal_actions/constants";
 import { Authenticator } from "@app/lib/auth";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -12,7 +11,6 @@ import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_ap
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { itInTransaction } from "@app/tests/utils/utils";
-import type { WhitelistableFeature } from "@app/types";
 
 import handler from "./index";
 
@@ -43,11 +41,7 @@ describe("DELETE /api/w/[wId]/spaces/[spaceId]/mcp_views/[svId]", () => {
 
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
-    await FeatureFlagFactory.basic(
-      INTERNAL_MCP_SERVERS["primitive_types_debugger"]
-        .flag as WhitelistableFeature,
-      workspace
-    );
+    await FeatureFlagFactory.basic("dev_mcp_actions", workspace);
 
     const internalServer = await InternalMCPServerInMemoryResource.makeNew(
       auth,
@@ -93,11 +87,7 @@ describe("DELETE /api/w/[wId]/spaces/[spaceId]/mcp_views/[svId]", () => {
         transaction: t,
       });
 
-      await FeatureFlagFactory.basic(
-        INTERNAL_MCP_SERVERS["primitive_types_debugger"]
-          .flag as WhitelistableFeature,
-        workspace
-      );
+      await FeatureFlagFactory.basic("dev_mcp_actions", workspace);
 
       const internalServer = await InternalMCPServerInMemoryResource.makeNew(
         auth,
@@ -152,11 +142,7 @@ describe("Method Support /api/w/[wId]/spaces/[spaceId]/mcp_views/[svId]", () => 
   itInTransaction("only supports DELETE method", async (t) => {
     const { req, res, workspace, space } = await setupTest(t, "admin", "GET");
 
-    await FeatureFlagFactory.basic(
-      INTERNAL_MCP_SERVERS["primitive_types_debugger"]
-        .flag as WhitelistableFeature,
-      workspace
-    );
+    await FeatureFlagFactory.basic("dev_mcp_actions", workspace);
 
     const mcpServerId = internalMCPServerNameToSId({
       name: "primitive_types_debugger",

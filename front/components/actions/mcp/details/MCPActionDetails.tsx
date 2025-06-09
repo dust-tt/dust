@@ -2,8 +2,10 @@ import { cn, CodeBlock, CollapsibleComponent } from "@dust-tt/sparkle";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import { MCPBrowseActionDetails } from "@app/components/actions/mcp/details/MCPBrowseActionDetails";
+import { MCPExtractActionDetails } from "@app/components/actions/mcp/details/MCPExtractActionDetails";
 import { MCPIncludeActionDetails } from "@app/components/actions/mcp/details/MCPIncludeActionDetails";
 import { MCPReasoningActionDetails } from "@app/components/actions/mcp/details/MCPReasoningActionDetails";
+import { MCPRunAgentActionDetails } from "@app/components/actions/mcp/details/MCPRunAgentActionDetails";
 import { MCPSearchActionDetails } from "@app/components/actions/mcp/details/MCPSearchActionDetails";
 import { MCPTablesQueryActionDetails } from "@app/components/actions/mcp/details/MCPTablesQueryActionDetails";
 import { MCPWebsearchActionDetails } from "@app/components/actions/mcp/details/MCPWebsearchActionDetails";
@@ -11,8 +13,11 @@ import type { ActionDetailsComponentBaseProps } from "@app/components/actions/ty
 import type { MCPActionType } from "@app/lib/actions/mcp";
 import {
   isBrowseResultResourceType,
+  isExtractResultResourceType,
   isIncludeResultResourceType,
   isReasoningSuccessOutput,
+  isRunAgentProgressOutput,
+  isRunAgentResultResourceType,
   isSearchResultResourceType,
   isSqlQueryOutput,
   isWebsearchResultResourceType,
@@ -28,6 +33,10 @@ export function MCPActionDetails(
   const isWebsearch = props.action.output?.some(isWebsearchResultResourceType);
   const isBrowse = props.action.output?.some(isBrowseResultResourceType);
   const isTablesQuery = props.action.output?.some(isSqlQueryOutput);
+  const isExtract = props.action.output?.some(isExtractResultResourceType);
+  const isRunAgent =
+    props.action.output?.some(isRunAgentResultResourceType) ||
+    isRunAgentProgressOutput(props.lastNotification?.data.output);
 
   // TODO(mcp): rationalize the display of results for MCP to remove the need for specific checks.
   // Hack to find out whether the output comes from the reasoning tool, links back to the TODO above.
@@ -45,6 +54,10 @@ export function MCPActionDetails(
     return <MCPTablesQueryActionDetails {...props} />;
   } else if (isReasoning) {
     return <MCPReasoningActionDetails {...props} />;
+  } else if (isExtract) {
+    return <MCPExtractActionDetails {...props} />;
+  } else if (isRunAgent) {
+    return <MCPRunAgentActionDetails {...props} />;
   } else {
     return <GenericActionDetails {...props} />;
   }

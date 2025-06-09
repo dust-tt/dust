@@ -1,6 +1,11 @@
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import { getResourceNameAndIdFromSId } from "@app/lib/resources/string_ids";
-import type { ModelId, Result, WhitelistableFeature } from "@app/types";
+import type {
+  ModelId,
+  PlanType,
+  Result,
+  WhitelistableFeature,
+} from "@app/types";
 import { Err, Ok } from "@app/types";
 
 export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
@@ -9,10 +14,11 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   // We'll prefix all tools with the server name to avoid conflicts.
   // It's okay to change the name of the server as we don't refer to it directly.
   "agent_router",
-  "run_agent",
+  "data_sources_file_system",
   "extract_data",
   "file_generation",
   "github",
+  "gmail",
   "hubspot",
   "image_generation",
   "include_data",
@@ -22,12 +28,13 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "query_tables",
   "query_tables_v2",
   "reasoning",
+  "run_agent",
   "run_dust_app",
+  "salesforce",
   "search",
   "think",
   "web_search_&_browse",
-  "salesforce",
-  "gmail",
+  "google_calendar",
 ] as const;
 
 // Whether the server is available by default in the global space.
@@ -44,7 +51,10 @@ export const INTERNAL_MCP_SERVERS: Record<
   {
     id: number;
     availability: MCPServerAvailability;
-    flag: WhitelistableFeature | null;
+    isRestricted?: (
+      plan: PlanType,
+      featureFlags: WhitelistableFeature[]
+    ) => boolean;
     tools_stakes?: Record<string, MCPToolStakeLevelType>;
   }
 > = {
@@ -57,131 +67,202 @@ export const INTERNAL_MCP_SERVERS: Record<
   github: {
     id: 1,
     availability: "manual",
-    flag: null,
     tools_stakes: {
       create_issue: "low",
       add_issue_to_project: "low",
       get_pull_request: "never_ask",
       list_organization_projects: "never_ask",
+      list_issues: "never_ask",
+      get_issue: "never_ask",
     },
   },
   image_generation: {
     id: 2,
     availability: "auto",
-    flag: null,
   },
   file_generation: {
     id: 3,
     availability: "auto",
-    flag: null,
   },
   query_tables: {
     id: 4,
     availability: "auto",
-    flag: null,
   },
   "web_search_&_browse": {
     id: 5,
     availability: "auto",
-    flag: null,
   },
   think: {
     id: 6,
     availability: "auto",
-    flag: "dev_mcp_actions",
+    isRestricted: (plan, featureFlags) => {
+      return featureFlags.includes("dev_mcp_actions");
+    },
   },
   hubspot: {
     id: 7,
     availability: "manual",
-    flag: "dev_mcp_actions",
     tools_stakes: {
+      // Get operations.
       get_object_properties: "never_ask",
-      get_objects_by_properties: "low",
-      get_object_by_email: "low",
-      get_object_by_id: "low",
-      count_objects_by_properties: "low",
-      create_object: "high",
-      update_object: "high",
+      get_object_by_email: "never_ask",
+      get_latest_objects: "never_ask",
+      get_contact: "never_ask",
+      get_company: "never_ask",
+      get_deal: "never_ask",
+      get_meeting: "never_ask",
+      get_file_public_url: "never_ask",
+      get_associated_meetings: "never_ask",
+
+      // Create operations.
+      create_contact: "high",
+      create_company: "high",
+      create_deal: "high",
+      create_lead: "high",
+      create_task: "high",
+      create_ticket: "high",
+      create_note: "high",
+      create_communication: "high",
+      create_meeting: "high",
+
+      // Other operations.
+      count_objects_by_properties: "never_ask",
+      search_crm_objects: "never_ask",
     },
   },
   agent_router: {
     id: 8,
     availability: "auto_hidden_builder",
-    flag: "dev_mcp_actions",
+    isRestricted: (plan, featureFlags) => {
+      return featureFlags.includes("dev_mcp_actions");
+    },
   },
   include_data: {
     id: 9,
     availability: "auto",
-    flag: "dev_mcp_actions", // Putting this behind the dev flag for now to allow shipping without it.
   },
   run_dust_app: {
     id: 10,
     availability: "auto",
-    flag: "dev_mcp_actions",
+    isRestricted: (plan, featureFlags) => {
+      return featureFlags.includes("dev_mcp_actions");
+    },
   },
   notion: {
     id: 11,
     availability: "manual",
-    flag: "dev_mcp_actions",
     tools_stakes: {
-      retrieve_database_content: "never_ask",
-      query_database: "never_ask",
+      search: "never_ask",
       retrieve_page: "never_ask",
       retrieve_database_schema: "never_ask",
-      search: "never_ask",
+      retrieve_database_content: "never_ask",
+      query_database: "never_ask",
+      retrieve_block: "never_ask",
+      retrieve_block_children: "never_ask",
+      fetch_comments: "never_ask",
+      list_users: "never_ask",
+      get_about_user: "never_ask",
+
       create_page: "low",
-      create_page_from_database: "low",
+      insert_row_into_database: "low",
       create_database: "low",
       update_page: "low",
+      add_page_content: "low",
+      create_comment: "low",
+      delete_block: "low",
+      update_row_database: "low",
+      update_schema_database: "low",
     },
   },
   extract_data: {
     id: 12,
     availability: "auto",
-    flag: "dev_mcp_actions",
+    isRestricted: (plan, featureFlags) => {
+      return featureFlags.includes("dev_mcp_actions");
+    },
   },
   missing_action_catcher: {
     id: 13,
     availability: "auto_hidden_builder",
-    flag: null,
   },
   salesforce: {
     id: 14,
     availability: "manual",
-    flag: "salesforce_tool",
+    isRestricted: (plan, featureFlags) => {
+      // When we are ready to release the feature, the condition will be:
+      // return featureFlags.includes("salesforce_tool") || plan.limits.connections.isSalesforceAllowed;
+      return featureFlags.includes("salesforce_tool");
+    },
+    tools_stakes: {
+      execute_read_query: "low",
+      list_objects: "low",
+      describe_object: "low",
+    },
   },
   gmail: {
     id: 15,
     availability: "manual",
-    flag: "gmail_tool",
+    isRestricted: (plan, featureFlags) => {
+      return featureFlags.includes("gmail_tool");
+    },
+    tools_stakes: {
+      get_drafts: "never_ask",
+      create_draft: "low",
+    },
+  },
+  google_calendar: {
+    id: 16,
+    availability: "manual",
+    isRestricted: (plan, featureFlags) => {
+      return featureFlags.includes("google_calendar_tool");
+    },
+    tools_stakes: {
+      list_calendars: "never_ask",
+      list_events: "never_ask",
+      get_event: "never_ask",
+      create_event: "low",
+      update_event: "low",
+      delete_event: "low",
+    },
   },
 
   // Dev
   primitive_types_debugger: {
     id: 1004,
     availability: "manual",
-    flag: "dev_mcp_actions",
+    isRestricted: (plan, featureFlags) => {
+      return featureFlags.includes("dev_mcp_actions");
+    },
   },
   search: {
     id: 1006,
     availability: "auto",
-    flag: "dev_mcp_actions",
   },
   reasoning: {
     id: 1007,
     availability: "auto",
-    flag: null,
   },
   run_agent: {
     id: 1008,
-    availability: "manual",
-    flag: "dev_mcp_actions",
+    availability: "auto",
+    isRestricted: (plan, featureFlags) => {
+      return featureFlags.includes("dev_mcp_actions");
+    },
   },
   query_tables_v2: {
     id: 1009,
     availability: "auto",
     // We'll eventually switch everyone to this new tables query toolset.
-    flag: "exploded_tables_query",
+    isRestricted: (plan, featureFlags) => {
+      return featureFlags.includes("exploded_tables_query");
+    },
+  },
+  data_sources_file_system: {
+    id: 1010,
+    availability: "auto",
+    isRestricted: (plan, featureFlags) => {
+      return featureFlags.includes("dev_mcp_actions");
+    },
   },
 };
 

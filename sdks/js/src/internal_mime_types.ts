@@ -244,6 +244,9 @@ const TOOL_MIME_TYPES = {
       "EXAMPLE_ROWS",
       "WEBSEARCH_QUERY",
       "WEBSEARCH_RESULT",
+      "RUN_AGENT_RESULT",
+      "RUN_AGENT_QUERY",
+      "WARNING",
     ],
   }),
   TOOL_ERROR: generateToolMimeTypes({

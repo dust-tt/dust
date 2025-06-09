@@ -284,6 +284,13 @@ const PEOPLE: Record<
     github: "https://github.com/btoueg",
     linkedIn: "https://www.linkedin.com/in/toueg",
   },
+  joshua: {
+    name: "Joshua Gisiger",
+    title: "Software Engineer Intern",
+    image: "https://avatars.githubusercontent.com/u/192242584?v=4",
+    github: "https://github.com/jgr142",
+    linkedIn: "https://www.linkedin.com/in/joshuagisiger",
+  },
 };
 
 const Person = ({ handle }: { handle: string }) => {

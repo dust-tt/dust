@@ -1,4 +1,4 @@
-import type { TokenExpiredError } from "jsonwebtoken";
+import { TokenExpiredError } from "jsonwebtoken";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import type { MethodType, ScopeType } from "@app/lib/api/auth0";
@@ -8,6 +8,7 @@ import {
   verifyAuth0Token,
 } from "@app/lib/api/auth0";
 import { getUserWithWorkspaces } from "@app/lib/api/user";
+import { getUserFromWorkOSToken, verifyWorkOSToken } from "@app/lib/api/workos";
 import {
   Authenticator,
   getAPIKey,
@@ -15,11 +16,19 @@ import {
   getBearerToken,
 } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
+import type { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
 import type { NextApiRequestWithContext } from "@app/logger/withlogging";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { UserTypeWithWorkspaces, WithAPIErrorResponse } from "@app/types";
-import { getGroupIdsFromHeaders, getUserEmailFromHeaders } from "@app/types";
+import {
+  getGroupIdsFromHeaders,
+  getRoleFromHeaders,
+  getUserEmailFromHeaders,
+} from "@app/types";
+import type { APIErrorWithStatusCode } from "@app/types/error";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 /**
  * This function is a wrapper for API routes that require session authentication.
@@ -59,6 +68,34 @@ export function withSessionAuthentication<T>(
   );
 }
 
+export function withSessionAuthenticationForPoke<T>(
+  handler: (
+    req: NextApiRequestWithContext,
+    res: NextApiResponse<WithAPIErrorResponse<T>>,
+    session: SessionWithUser
+  ) => Promise<void> | void,
+  { isStreaming = false }: { isStreaming?: boolean } = {}
+) {
+  return withSessionAuthentication(
+    async (req, res, session) => {
+      const auth = await Authenticator.fromSuperUserSession(session, null);
+
+      if (!auth.isDustSuperUser()) {
+        return apiError(req, res, {
+          status_code: 401,
+          api_error: {
+            type: "not_authenticated",
+            message: "The user does not have permission",
+          },
+        });
+      }
+
+      return handler(req, res, session);
+    },
+    { isStreaming }
+  );
+}
+
 /**
  * This function is a wrapper for API routes that require session authentication for a workspace.
  * It must be used on all routes that require workspace authentication (prefix: /w/[wId]/).
@@ -81,6 +118,7 @@ export function withSessionAuthenticationForWorkspace<T>(
   opts: {
     isStreaming?: boolean;
     allowUserOutsideCurrentWorkspace?: boolean;
+    doesNotRequireCanUseProduct?: boolean;
   } = {}
 ) {
   return withSessionAuthentication(
@@ -110,6 +148,19 @@ export function withSessionAuthenticationForWorkspace<T>(
           status_code: 404,
           api_error: {
             type: "workspace_not_found",
+            message: "The workspace was not found.",
+          },
+        });
+      }
+
+      if (
+        !opts.doesNotRequireCanUseProduct &&
+        !auth?.subscription()?.plan.limits.canUseProduct
+      ) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "workspace_can_use_product_required_error",
             message: "The workspace was not found.",
           },
         });
@@ -215,23 +266,63 @@ export function withPublicAPIAuthentication<T, U extends boolean>(
       // Authentification with Auth0 token.
       // Straightforward since the token is attached to the user.
       if (authMethod === "access_token") {
-        const decoded = await verifyAuth0Token(
-          token,
-          getRequiredScope(req, opts.requiredScopes)
-        );
-        if (decoded.isErr()) {
-          const error = decoded.error;
-          if ((error as TokenExpiredError).expiredAt) {
+        try {
+          let authRes: Result<Authenticator, APIErrorWithStatusCode>;
+
+          // Try WorkOS token first
+          authRes = await handleWorkOSAuth(req, res, token, wId);
+          if (authRes.isErr()) {
+            // If WorkOS fails, try Auth0
+            authRes = await handleAuth0Auth(req, res, token, wId, opts);
+          }
+          if (authRes.isErr()) {
+            // If WorkOS errors and Auth0 also fails, return an ApiError.
+            return apiError(req, res, authRes.error);
+          }
+
+          const auth = authRes.value;
+
+          if (auth.user() === null) {
             return apiError(req, res, {
               status_code: 401,
               api_error: {
-                type: "expired_oauth_token_error",
-                message: "The access token expired.",
+                type: "user_not_found",
+                message:
+                  "The user does not have an active session or is not authenticated.",
+              },
+            });
+          }
+          if (!auth.isUser()) {
+            return apiError(req, res, {
+              status_code: 401,
+              api_error: {
+                type: "workspace_auth_error",
+                message: "Only users of the workspace can access this route.",
               },
             });
           }
 
-          logger.error(decoded.error, "Failed to verify Auth0 token");
+          req.addResourceToLog?.(auth.getNonNullableUser());
+
+          const maintenance = auth.workspace()?.metadata?.maintenance;
+          if (maintenance) {
+            return apiError(req, res, {
+              status_code: 503,
+              api_error: {
+                type: "not_authenticated",
+                message: `Service is currently unavailable. [${maintenance}]`,
+              },
+            });
+          }
+
+          return await handler(
+            req,
+            res,
+            auth,
+            null as U extends true ? Authenticator : null
+          );
+        } catch (error) {
+          logger.error({ error }, "Failed to verify token");
           return apiError(req, res, {
             status_code: 401,
             api_error: {
@@ -241,62 +332,6 @@ export function withPublicAPIAuthentication<T, U extends boolean>(
             },
           });
         }
-
-        const authRes = await Authenticator.fromAuth0Token({
-          token: decoded.value,
-          wId,
-        });
-        if (authRes.isErr()) {
-          return apiError(req, res, {
-            status_code: 403,
-            api_error: {
-              type: authRes.error.code,
-              message:
-                "The user does not have an active session or is not authenticated.",
-            },
-          });
-        }
-        const auth = authRes.value;
-
-        if (auth.user() === null) {
-          return apiError(req, res, {
-            status_code: 401,
-            api_error: {
-              type: "user_not_found",
-              message:
-                "The user does not have an active session or is not authenticated.",
-            },
-          });
-        }
-        if (!auth.isUser()) {
-          return apiError(req, res, {
-            status_code: 401,
-            api_error: {
-              type: "workspace_auth_error",
-              message: "Only users of the workspace can access this route.",
-            },
-          });
-        }
-
-        req.addResourceToLog?.(auth.getNonNullableUser());
-
-        const maintenance = auth.workspace()?.metadata?.maintenance;
-        if (maintenance) {
-          return apiError(req, res, {
-            status_code: 503,
-            api_error: {
-              type: "not_authenticated", // TODO Change this to "service_unavailable" - not_authenticated better for now as itis correctly handled by the extension
-              message: `Service is currently unavailable. [${maintenance}]`,
-            },
-          });
-        }
-
-        return handler(
-          req,
-          res,
-          auth,
-          null as U extends true ? Authenticator : null
-        );
       }
 
       // Authentification with an API key.
@@ -308,7 +343,8 @@ export function withPublicAPIAuthentication<T, U extends boolean>(
       const keyAndWorkspaceAuth = await Authenticator.fromKey(
         keyRes.value,
         wId,
-        getGroupIdsFromHeaders(req.headers)
+        getGroupIdsFromHeaders(req.headers),
+        getRoleFromHeaders(req.headers)
       );
       const { keyAuth } = keyAndWorkspaceAuth;
       let { workspaceAuth } = keyAndWorkspaceAuth;
@@ -390,9 +426,10 @@ export function withPublicAPIAuthentication<T, U extends boolean>(
 }
 
 /**
- * This function is a wrapper for Public API routes that require authentication without a workspace with a token from Auth0.
+ * This function is a wrapper for Public API routes that require authentication without a workspace.
+ * It automatically detects whether to use Auth0 or WorkOS authentication based on the token's issuer.
  */
-export function withAuth0TokenAuthentication<T>(
+export function withTokenAuthentication<T>(
   handler: (
     req: NextApiRequest,
     res: NextApiResponse<WithAPIErrorResponse<T>>,
@@ -432,13 +469,17 @@ export function withAuth0TokenAuthentication<T>(
         });
       }
 
-      const decoded = await verifyAuth0Token(
-        bearerToken,
-        getRequiredScope(req, opts.requiredScopes)
-      );
-      if (decoded.isErr()) {
-        const error = decoded.error;
-        if ((error as TokenExpiredError).expiredAt) {
+      try {
+        let user: UserResource | null = null;
+
+        // Try WorkOS token first
+        const workOSDecoded = await verifyWorkOSToken(bearerToken);
+        if (workOSDecoded.isOk()) {
+          user = await getUserFromWorkOSToken(workOSDecoded.value);
+        } else if (
+          workOSDecoded.isErr() &&
+          workOSDecoded.error instanceof TokenExpiredError
+        ) {
           return apiError(req, res, {
             status_code: 401,
             api_error: {
@@ -448,7 +489,66 @@ export function withAuth0TokenAuthentication<T>(
           });
         }
 
-        logger.error(decoded.error, "Failed to verify Auth0 token");
+        const auth0Decoded = await verifyAuth0Token(
+          bearerToken,
+          getRequiredScope(req, opts.requiredScopes)
+        );
+        if (auth0Decoded.isOk()) {
+          user = await getUserFromAuth0Token(auth0Decoded.value);
+        } else if (
+          auth0Decoded.isErr() &&
+          auth0Decoded.error instanceof TokenExpiredError
+        ) {
+          return apiError(req, res, {
+            status_code: 401,
+            api_error: {
+              type: "expired_oauth_token_error",
+              message: "The access token expired.",
+            },
+          });
+        }
+
+        if (auth0Decoded.isErr() && workOSDecoded.isErr()) {
+          // We were not able to decode the token for Workos, nor Auth0,
+          // so we log the error and return an API error.
+          logger.error(
+            {
+              workOSError: workOSDecoded.error,
+              auth0Error: auth0Decoded.error,
+            },
+            "Failed to verify token with WorkOS and Auth0"
+          );
+          return apiError(req, res, {
+            status_code: 401,
+            api_error: {
+              type: "invalid_oauth_token_error",
+              message:
+                "The request does not have valid authentication credentials.",
+            },
+          });
+        }
+
+        if (!user) {
+          return apiError(req, res, {
+            status_code: 401,
+            api_error: {
+              type: "user_not_found",
+              message: "The user is not registered.",
+            },
+          });
+        }
+
+        req.addResourceToLog?.(user);
+
+        const isFromExtension = req.headers["x-request-origin"] === "extension";
+        const userWithWorkspaces = await getUserWithWorkspaces(
+          user,
+          isFromExtension
+        );
+
+        return await handler(req, res, userWithWorkspaces);
+      } catch (error) {
+        logger.error({ error }, "Failed to verify token");
         return apiError(req, res, {
           status_code: 401,
           api_error: {
@@ -458,27 +558,112 @@ export function withAuth0TokenAuthentication<T>(
           },
         });
       }
-
-      const user = await getUserFromAuth0Token(decoded.value);
-      if (!user) {
-        return apiError(req, res, {
-          status_code: 401,
-          api_error: {
-            type: "user_not_found",
-            message: "The user is not registered.",
-          },
-        });
-      }
-
-      req.addResourceToLog?.(user);
-
-      const isFromExtension = req.headers["x-request-origin"] === "extension";
-      const userWithWorkspaces = await getUserWithWorkspaces(
-        user,
-        isFromExtension
-      );
-
-      return handler(req, res, userWithWorkspaces);
     }
   );
+}
+
+/**
+ * Helper function to handle WorkOS authentication
+ */
+async function handleWorkOSAuth<T>(
+  req: NextApiRequestWithContext,
+  res: NextApiResponse<WithAPIErrorResponse<T>>,
+  token: string,
+  wId: string
+): Promise<Result<Authenticator, APIErrorWithStatusCode>> {
+  const decoded = await verifyWorkOSToken(token);
+  if (decoded.isErr()) {
+    const error = decoded.error;
+    if (error instanceof TokenExpiredError) {
+      return new Err({
+        status_code: 401,
+        api_error: {
+          type: "expired_oauth_token_error",
+          message: "The access token expired.",
+        },
+      });
+    }
+
+    logger.error(decoded.error, "Failed to verify WorkOS token");
+    return new Err({
+      status_code: 401,
+      api_error: {
+        type: "invalid_oauth_token_error",
+        message: "The request does not have valid authentication credentials.",
+      },
+    });
+  }
+
+  const authRes = await Authenticator.fromWorkOSToken({
+    token: decoded.value,
+    wId,
+  });
+  if (authRes.isErr()) {
+    return new Err({
+      status_code: 403,
+      api_error: {
+        type: authRes.error.code,
+        message:
+          "The user does not have an active session or is not authenticated.",
+      },
+    });
+  }
+
+  return new Ok(authRes.value);
+}
+
+/**
+ * Helper function to handle Auth0 authentication
+ */
+async function handleAuth0Auth<T>(
+  req: NextApiRequestWithContext,
+  res: NextApiResponse<WithAPIErrorResponse<T>>,
+  token: string,
+  wId: string,
+  opts: {
+    requiredScopes?: Partial<Record<MethodType, ScopeType>>;
+  }
+): Promise<Result<Authenticator, APIErrorWithStatusCode>> {
+  const decoded = await verifyAuth0Token(
+    token,
+    getRequiredScope(req, opts.requiredScopes)
+  );
+  if (decoded.isErr()) {
+    const error = decoded.error;
+    if (error instanceof TokenExpiredError) {
+      return new Err({
+        status_code: 401,
+        api_error: {
+          type: "expired_oauth_token_error",
+          message: "The access token expired.",
+        },
+      });
+    }
+
+    logger.error(decoded.error, "Failed to verify Auth0 token");
+    return new Err({
+      status_code: 401,
+      api_error: {
+        type: "invalid_oauth_token_error",
+        message: "The request does not have valid authentication credentials.",
+      },
+    });
+  }
+
+  const authRes = await Authenticator.fromAuth0Token({
+    token: decoded.value,
+    wId,
+  });
+  if (authRes.isErr()) {
+    return new Err({
+      status_code: 403,
+      api_error: {
+        type: authRes.error.code,
+        message:
+          "The user does not have an active session or is not authenticated.",
+      },
+    });
+  }
+
+  return new Ok(authRes.value);
 }

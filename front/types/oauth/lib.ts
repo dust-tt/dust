@@ -1,9 +1,9 @@
 import * as t from "io-ts";
 
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata";
+import type { PCKEConfig } from "@app/lib/utils/pkce";
 import { getPKCEConfig } from "@app/lib/utils/pkce";
-
-import { assertNever } from "../shared/utils/assert_never";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export const OAUTH_USE_CASES = [
   "connection",
@@ -23,6 +23,7 @@ export const OAUTH_PROVIDERS = [
   "confluence",
   "github",
   "google_drive",
+  "gmail",
   "intercom",
   "notion",
   "slack",
@@ -31,12 +32,14 @@ export const OAUTH_PROVIDERS = [
   "zendesk",
   "salesforce",
   "hubspot",
+  "mcp", // MCP is a special provider for MCP servers
 ] as const;
 
 export const OAUTH_PROVIDER_NAMES: Record<OAuthProvider, string> = {
   confluence: "Confluence",
   github: "GitHub",
   google_drive: "Google Drive",
+  gmail: "Gmail",
   intercom: "Intercom",
   notion: "Notion",
   slack: "Slack",
@@ -45,53 +48,165 @@ export const OAUTH_PROVIDER_NAMES: Record<OAuthProvider, string> = {
   zendesk: "Zendesk",
   salesforce: "Salesforce",
   hubspot: "Hubspot",
+  mcp: "MCP",
 };
 
-export const getProviderRequiredAuthCredentials = async (
+export const getProviderAdditionalClientSideAuthCredentials = async (
   authentication: AuthorizationInfo | null
-): Promise<Record<
-  string,
-  { label: string; value: string | number | undefined }
-> | null> => {
+): Promise<PCKEConfig | null> => {
   if (!authentication) {
     return null;
   }
+  switch (authentication.provider) {
+    case "salesforce":
+    case "gmail":
+      if (authentication.use_case === "personal_actions") {
+        return getPKCEConfig();
+      }
+      return null;
+    case "mcp":
+    case "hubspot":
+    case "zendesk":
+    case "slack":
+    case "gong":
+    case "microsoft":
+    case "notion":
+    case "confluence":
+    case "github":
+    case "google_drive":
+    case "intercom":
+      return null;
+    default:
+      assertNever(authentication.provider);
+  }
+};
+
+const SUPPORTED_OAUTH_CREDENTIALS = [
+  "client_id",
+  "client_secret",
+  "instance_url",
+  "code_verifier",
+  "code_challenge",
+  "scope",
+] as const;
+
+export type SupportedOAuthCredentials =
+  (typeof SUPPORTED_OAUTH_CREDENTIALS)[number];
+
+export const isSupportedOAuthCredential = (
+  obj: unknown
+): obj is SupportedOAuthCredentials => {
+  return SUPPORTED_OAUTH_CREDENTIALS.includes(obj as SupportedOAuthCredentials);
+};
+
+export type OAuthCredentialInput = {
+  label: string;
+  value: string | undefined;
+  helpMessage?: string;
+  validator?: (value: string) => boolean;
+};
+
+export type OAuthCredentialInputs = Partial<
+  Record<SupportedOAuthCredentials, OAuthCredentialInput>
+>;
+
+export type OAuthCredentials = Partial<
+  Record<SupportedOAuthCredentials, string>
+>;
+
+export const getProviderRequiredOAuthCredentialInputs = async (
+  authentication: AuthorizationInfo | null
+): Promise<OAuthCredentialInputs | null> => {
+  if (!authentication) {
+    return null;
+  }
+  const additionalCredentials =
+    await getProviderAdditionalClientSideAuthCredentials(authentication);
 
   switch (authentication.provider) {
     case "salesforce":
       if (authentication.use_case === "personal_actions") {
-        const { code_verifier, code_challenge } = await getPKCEConfig();
-
-        return {
-          client_id: { label: "oAuth client Id", value: undefined },
-          client_secret: { label: "oAuth client secret", value: undefined },
-          instance_url: { label: "Instance URL", value: undefined },
-          code_verifier: { label: "Code verifier", value: code_verifier },
-          code_challenge: { label: "Code challenge", value: code_challenge },
+        const result: OAuthCredentialInputs = {
+          client_id: {
+            label: "OAuth Client ID",
+            value: undefined,
+            helpMessage: "The client ID from your Salesforce connected app.",
+            validator: isValidClientIdOrSecret,
+          },
+          client_secret: {
+            label: "OAuth Client Secret",
+            value: undefined,
+            helpMessage:
+              "The client secret from your Salesforce connected app.",
+            validator: isValidClientIdOrSecret,
+          },
+          instance_url: {
+            label: "Instance URL",
+            value: undefined,
+            helpMessage:
+              "Must be a valid Salesforce domain in https and ending with « .salesforce.com ».",
+            validator: isValidSalesforceDomain,
+          },
         };
-      } else {
+        if (!additionalCredentials) {
+          return result;
+        }
+        Object.entries(additionalCredentials).forEach(([key, value]) => {
+          if (isSupportedOAuthCredential(key)) {
+            result[key] = { label: key, value };
+          }
+        });
+        return result;
+      }
+      return null;
+    case "gmail":
+      if (authentication.use_case === "personal_actions") {
+        const result: OAuthCredentialInputs = {
+          client_id: {
+            label: "OAuth Client ID",
+            value: undefined,
+            helpMessage: "The client ID from your Gmail connected app.",
+            validator: isValidClientIdOrSecret,
+          },
+          client_secret: {
+            label: "OAuth Client Secret",
+            value: undefined,
+            helpMessage: "The client secret from your Gmail connected app.",
+            validator: isValidClientIdOrSecret,
+          },
+        };
+        if (!additionalCredentials) {
+          return result;
+        }
+        Object.entries(additionalCredentials).forEach(([key, value]) => {
+          if (isSupportedOAuthCredential(key)) {
+            result[key] = { label: key, value };
+          }
+        });
+        return result;
+      }
+      return null;
+    case "hubspot":
+    case "zendesk":
+    case "slack":
+    case "gong":
+    case "microsoft":
+    case "notion":
+    case "confluence":
+    case "github":
+    case "google_drive":
+    case "intercom":
+    case "mcp":
+      if (!additionalCredentials) {
         return null;
       }
-    case "hubspot":
-      return null;
-    case "zendesk":
-      return null;
-    case "slack":
-      return null;
-    case "gong":
-      return null;
-    case "microsoft":
-      return null;
-    case "notion":
-      return null;
-    case "confluence":
-      return null;
-    case "github":
-      return null;
-    case "google_drive":
-      return null;
-    case "intercom":
-      return null;
+      const result: OAuthCredentialInputs = {};
+      Object.entries(additionalCredentials).forEach(([key, value]) => {
+        if (isSupportedOAuthCredential(key)) {
+          result[key] = { label: key, value };
+        }
+      });
+      return Object.keys(result).length > 0 ? result : null;
     default:
       assertNever(authentication.provider);
   }
@@ -103,10 +218,14 @@ export function isOAuthProvider(obj: unknown): obj is OAuthProvider {
   return OAUTH_PROVIDERS.includes(obj as OAuthProvider);
 }
 
+export function isValidScope(obj: unknown): obj is string | undefined {
+  return !obj || typeof obj === "string";
+}
+
 export type OAuthConnectionType = {
   connection_id: string;
   created: number;
-  metadata: Record<string, unknown>;
+  metadata: Record<string, string>;
   provider: OAuthProvider;
   status: "pending" | "finalized";
 };
@@ -139,11 +258,7 @@ export function isValidSalesforceDomain(s: unknown): s is string {
   );
 }
 
-export function isValidSalesforceClientId(s: unknown): s is string {
-  return typeof s === "string" && s.trim().length > 0;
-}
-
-export function isValidSalesforceClientSecret(s: unknown): s is string {
+export function isValidClientIdOrSecret(s: unknown): s is string {
   return typeof s === "string" && s.trim().length > 0;
 }
 

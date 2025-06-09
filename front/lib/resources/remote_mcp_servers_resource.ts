@@ -15,6 +15,7 @@ import { remoteMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import type { RemoteAllowedIconType } from "@app/lib/actions/mcp_icons";
 import type { MCPServerType, MCPToolType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
+import { MCPServerConnection } from "@app/lib/models/assistant/actions/mcp_server_connection";
 import { MCPServerViewModel } from "@app/lib/models/assistant/actions/mcp_server_view";
 import { destroyMCPServerViewDependencies } from "@app/lib/models/assistant/actions/mcp_server_view_helper";
 import { RemoteMCPServerModel } from "@app/lib/models/assistant/actions/remote_mcp_server";
@@ -67,6 +68,7 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
         description: blob.cachedDescription || DEFAULT_MCP_ACTION_DESCRIPTION,
         sharedSecret: blob.sharedSecret,
         lastSyncAt: new Date(),
+        authorization: blob.authorization,
       },
       { transaction }
     );
@@ -192,6 +194,13 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
     auth: Authenticator
   ): Promise<Result<undefined | number, Error>> {
     const mcpServerViews = await MCPServerViewModel.findAll({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        remoteMCPServerId: this.id,
+      },
+    });
+
+    await MCPServerConnection.destroy({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         remoteMCPServerId: this.id,

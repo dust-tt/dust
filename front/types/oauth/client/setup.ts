@@ -1,5 +1,6 @@
 import type {
   OAuthConnectionType,
+  OAuthCredentials,
   OAuthProvider,
   OAuthUseCase,
 } from "../../oauth/lib";
@@ -19,7 +20,7 @@ export async function setupOAuthConnection({
   owner: LightWorkspaceType;
   provider: OAuthProvider;
   useCase: OAuthUseCase;
-  extraConfig: Record<string, string>;
+  extraConfig: OAuthCredentials;
 }): Promise<Result<OAuthConnectionType, Error>> {
   return new Promise((resolve) => {
     let url = `${dustClientFacingUrl}/w/${owner.sId}/oauth/${provider}/setup?useCase=${useCase}`;

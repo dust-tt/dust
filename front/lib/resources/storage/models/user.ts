@@ -11,6 +11,7 @@ export class UserModel extends BaseModel<UserModel> {
 
   declare sId: string;
   declare auth0Sub: string | null;
+  declare workOSUserId: string | null;
   declare provider: UserProviderType;
   declare providerId: string | null;
 
@@ -52,6 +53,10 @@ UserModel.init(
       // TODO(2024-03-01 flav) Set to false once new login flow is released.
       allowNull: true,
     },
+    workOSUserId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
     username: {
       type: DataTypes.STRING,
       allowNull: false,
@@ -89,6 +94,7 @@ UserModel.init(
       { fields: ["username"] },
       { fields: ["provider", "providerId"] },
       { fields: ["auth0Sub"], unique: true, concurrently: true },
+      { fields: ["workOSUserId"], unique: true, concurrently: true },
       { unique: true, fields: ["sId"] },
       { fields: ["email"] },
     ],

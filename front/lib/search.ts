@@ -2,6 +2,7 @@ import type { DataSourceResource } from "@app/lib/resources/data_source_resource
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type {
   ContentNodesViewType,
+  CoreAPINodesSearchFilter,
   CoreAPISearchScope,
   LightWorkspaceType,
 } from "@app/types";
@@ -63,7 +64,7 @@ export function getSearchFilterFromDataSourceViews(
     nodeIds?: string[];
     parentId?: string;
   }
-) {
+): CoreAPINodesSearchFilter {
   const groupedPerDataSource = dataSourceViews.reduce(
     (acc, dsv) => {
       const dataSourceId = dsv.dataSource.dustAPIDataSourceId;
@@ -112,7 +113,7 @@ export function getSearchFilterFromDataSourceViews(
         isSingleDataSource: entries.length === 1,
       }),
     })),
-    excluded_node_mime_types: excludedNodeMimeTypes,
+    mime_types: { not: excludedNodeMimeTypes },
     node_types: getCoreViewTypeFilter(viewType),
     node_ids: nodeIds,
     ...(parentId && { parent_id: parentId }),

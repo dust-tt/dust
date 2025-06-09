@@ -7,7 +7,7 @@ import type {
   AssistantBuilderState,
 } from "@app/components/assistant_builder/types";
 import { getDefaultActionConfiguration } from "@app/components/assistant_builder/types";
-import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/utils";
+import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { assertNever } from "@app/types";
 

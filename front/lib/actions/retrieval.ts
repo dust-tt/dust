@@ -149,16 +149,23 @@ export class RetrievalActionType extends BaseAction {
   }
 
   renderForFunctionCall(): FunctionCallType {
-    const timeFrame = this.params.relativeTimeFrame;
-    const params = {
-      query: this.params.query,
-      relativeTimeFrame: timeFrame
-        ? `${timeFrame.duration}${timeFrame.unit}`
-        : "all",
-      topK: this.params.topK,
-      tagsIn: this.params.tagsIn,
-      tagsNot: this.params.tagsNot,
-    };
+    const params: Record<string, any> = {};
+    if (this.params.query) {
+      params.query = this.params.query;
+    }
+    if (this.params.relativeTimeFrame) {
+      const timeFrame = this.params.relativeTimeFrame;
+      params.relativeTimeFrame = `${timeFrame.duration}${timeFrame.unit}`;
+    }
+    if (this.params.topK) {
+      params.topK = this.params.topK;
+    }
+    if (this.params.tagsIn) {
+      params.tagsIn = this.params.tagsIn;
+    }
+    if (this.params.tagsNot) {
+      params.tagsNot = this.params.tagsNot;
+    }
 
     return {
       id: this.functionCallId ?? `call_${this.id.toString()}`,
@@ -304,7 +311,8 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
         );
       } else {
         let description =
-          "Retrieve the most recent content from the data sources specified by the user";
+          "Retrieve from the data sources the content specified by the user (most recent first). " +
+          "This tool does not take any argument.";
         if (
           actionConfiguration.relativeTimeFrame === "auto" ||
           actionConfiguration.relativeTimeFrame === "none"

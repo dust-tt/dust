@@ -1,5 +1,6 @@
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import assert from "assert";
 import { trim } from "lodash";
 import { z } from "zod";
@@ -7,7 +8,6 @@ import { z } from "zod";
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type {
-  MCPToolResult,
   SearchQueryResourceType,
   SearchResultResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
@@ -33,6 +33,7 @@ import {
   dustManagedCredentials,
   parseTimeFrame,
   removeNulls,
+  stripNullBytes,
   timeFrameFromNow,
 } from "@app/types";
 
@@ -107,7 +108,7 @@ function createServer(
     dataSources: DataSourcesToolConfigurationType;
     tagsIn?: string[];
     tagsNot?: string[];
-  }): Promise<MCPToolResult> => {
+  }): Promise<CallToolResult> => {
     const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
     const credentials = dustManagedCredentials();
     const timeFrame = parseTimeFrame(relativeTimeFrame);
@@ -154,6 +155,18 @@ function createServer(
     const coreSearchArgs = removeNulls(
       coreSearchArgsResults.map((res) => (res.isOk() ? res.value : null))
     );
+
+    if (coreSearchArgs.length === 0) {
+      return {
+        isError: true,
+        content: [
+          {
+            type: "text",
+            text: "Search action must have at least one data source configured.",
+          },
+        ],
+      };
+    }
 
     // Now we can search each data source.
     const searchResults = await coreAPI.searchDataSources(
@@ -240,7 +253,7 @@ function createServer(
           },
           tags: doc.tags,
           ref: refs.shift() as string,
-          chunks: doc.chunks.map((chunk) => chunk.text),
+          chunks: doc.chunks.map((chunk) => stripNullBytes(chunk.text)),
         };
       });
 
@@ -318,6 +331,18 @@ function createServer(
         const coreSearchArgs = removeNulls(
           coreSearchArgsResults.map((res) => (res.isOk() ? res.value : null))
         );
+
+        if (coreSearchArgs.length === 0) {
+          return {
+            isError: true,
+            content: [
+              {
+                type: "text",
+                text: "Search action must have at least one data source configured.",
+              },
+            ],
+          };
+        }
 
         const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
         const result = await coreAPI.searchTags({

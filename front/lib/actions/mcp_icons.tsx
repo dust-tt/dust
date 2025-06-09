@@ -11,10 +11,12 @@ import {
   ActionLockIcon,
   ActionMagnifyingGlassIcon,
   ActionRobotIcon,
+  ActionScanIcon,
   ActionTableIcon,
   ActionTimeIcon,
   Avatar,
   CommandLineIcon,
+  GcalLogo,
   GithubLogo,
   GmailLogo,
   HubspotLogo,
@@ -42,6 +44,7 @@ export const InternalActionIcons = {
   ActionLockIcon,
   ActionMagnifyingGlassIcon,
   ActionRobotIcon,
+  ActionScanIcon,
   ActionTableIcon,
   ActionTimeIcon,
   GithubLogo,
@@ -50,6 +53,7 @@ export const InternalActionIcons = {
   NotionLogo,
   SalesforceLogo,
   GmailLogo,
+  GcalLogo,
 };
 
 export const INTERNAL_ALLOWED_ICONS = Object.keys(InternalActionIcons);

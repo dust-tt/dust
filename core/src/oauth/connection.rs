@@ -2,8 +2,9 @@ use crate::oauth::{
     encryption::{seal_str, unseal_str},
     providers::{
         confluence::ConfluenceConnectionProvider, github::GithubConnectionProvider,
-        gong::GongConnectionProvider, google_drive::GoogleDriveConnectionProvider,
-        hubspot::HubspotConnectionProvider, intercom::IntercomConnectionProvider,
+        gmail::GmailConnectionProvider, gong::GongConnectionProvider,
+        google_drive::GoogleDriveConnectionProvider, hubspot::HubspotConnectionProvider,
+        intercom::IntercomConnectionProvider, mcp::MCPConnectionProvider,
         microsoft::MicrosoftConnectionProvider, mock::MockConnectionProvider,
         notion::NotionConnectionProvider, salesforce::SalesforceConnectionProvider,
         slack::SlackConnectionProvider, zendesk::ZendeskConnectionProvider,
@@ -53,6 +54,8 @@ pub enum ConnectionErrorCode {
     // Refresh Access Token
     ConnectionNotFinalizedError,
     ProviderAccessTokenRefreshError,
+    // Invalid Metadata
+    InvalidMetadataError,
     // Internal Errors
     InternalError,
 }
@@ -89,6 +92,7 @@ pub enum ConnectionProvider {
     Github,
     Gong,
     GoogleDrive,
+    Gmail,
     Intercom,
     Microsoft,
     Notion,
@@ -97,6 +101,7 @@ pub enum ConnectionProvider {
     Zendesk,
     Salesforce,
     Hubspot,
+    Mcp,
 }
 
 impl FromStr for ConnectionProvider {
@@ -222,6 +227,7 @@ pub fn provider(t: ConnectionProvider) -> Box<dyn Provider + Sync + Send> {
         ConnectionProvider::Github => Box::new(GithubConnectionProvider::new()),
         ConnectionProvider::Gong => Box::new(GongConnectionProvider::new()),
         ConnectionProvider::GoogleDrive => Box::new(GoogleDriveConnectionProvider::new()),
+        ConnectionProvider::Gmail => Box::new(GmailConnectionProvider::new()),
         ConnectionProvider::Intercom => Box::new(IntercomConnectionProvider::new()),
         ConnectionProvider::Microsoft => Box::new(MicrosoftConnectionProvider::new()),
         ConnectionProvider::Notion => Box::new(NotionConnectionProvider::new()),
@@ -230,6 +236,7 @@ pub fn provider(t: ConnectionProvider) -> Box<dyn Provider + Sync + Send> {
         ConnectionProvider::Zendesk => Box::new(ZendeskConnectionProvider::new()),
         ConnectionProvider::Salesforce => Box::new(SalesforceConnectionProvider::new()),
         ConnectionProvider::Hubspot => Box::new(HubspotConnectionProvider::new()),
+        ConnectionProvider::Mcp => Box::new(MCPConnectionProvider::new()),
     }
 }
 
@@ -247,6 +254,8 @@ pub enum ProviderError {
     InternalError(anyhow::Error),
     #[error("Token revoked.")]
     TokenRevokedError,
+    #[error("Invalid metadata: {0}.")]
+    InvalidMetadataError(String),
 }
 
 impl From<anyhow::Error> for ProviderError {
@@ -268,6 +277,10 @@ impl ProviderError {
                 code: ConnectionErrorCode::TokenRevokedError,
                 message: self.to_string(),
             },
+            ProviderError::InvalidMetadataError(_) => ConnectionError {
+                code: ConnectionErrorCode::InvalidMetadataError,
+                message: self.to_string(),
+            },
             ProviderError::InternalError(_) => ConnectionError {
                 code: ConnectionErrorCode::InternalError,
                 message: "Failed to finalize connection.".to_string(),
@@ -285,6 +298,10 @@ impl ProviderError {
             },
             ProviderError::TokenRevokedError => ConnectionError {
                 code: ConnectionErrorCode::TokenRevokedError,
+                message: self.to_string(),
+            },
+            ProviderError::InvalidMetadataError(_) => ConnectionError {
+                code: ConnectionErrorCode::InvalidMetadataError,
                 message: self.to_string(),
             },
             ProviderError::InternalError(_) => ConnectionError {

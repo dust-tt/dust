@@ -1,5 +1,6 @@
 import { DustAPI, INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { TextContent } from "@modelcontextprotocol/sdk/types.js";
 import type { ZodRawShape } from "zod";
 import { z } from "zod";
 
@@ -14,7 +15,7 @@ import type {
   ServerSideMCPServerConfigurationType,
   ServerSideMCPToolConfigurationType,
 } from "@app/lib/actions/mcp";
-import type { MCPToolResultContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import type { ToolGeneratedFileType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { AgentLoopRunContextType } from "@app/lib/actions/types";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -32,7 +33,11 @@ import { sanitizeJSONOutput } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import type { DatasetSchema } from "@app/types";
 import type { SpecificationBlockType } from "@app/types";
-import { getHeaderFromGroupIds, SUPPORTED_MODEL_CONFIGS } from "@app/types";
+import {
+  getHeaderFromGroupIds,
+  getHeaderFromRole,
+  SUPPORTED_MODEL_CONFIGS,
+} from "@app/types";
 
 import { ConfigurableToolInputSchemas } from "../input_schemas";
 
@@ -126,8 +131,8 @@ async function processDustFileOutput(
   sanitizedOutput: DustFileOutput,
   conversation: any,
   appName: string
-): Promise<MCPToolResultContentType[]> {
-  const content: MCPToolResultContentType[] = [];
+): Promise<{ type: "resource"; resource: ToolGeneratedFileType }[]> {
+  const content: { type: "resource"; resource: ToolGeneratedFileType }[] = [];
 
   const containsValidStructuredOutput = (
     output: DustFileOutput
@@ -322,7 +327,10 @@ export default async function createServer(
       app.description,
       convertDatasetSchemaToZodRawShape(schema),
       async (params) => {
-        const content: MCPToolResultContentType[] = [];
+        const content: (
+          | TextContent
+          | { type: "resource"; resource: ToolGeneratedFileType }
+        )[] = [];
 
         params = await prepareParamsWithHistory(
           params,
@@ -331,15 +339,18 @@ export default async function createServer(
           auth
         );
 
-        const prodCredentials = await prodAPICredentialsForOwner(owner);
         const requestedGroupIds = auth.groups().map((g) => g.sId);
-        const apiConfig = config.getDustAPIConfig();
 
+        const prodCredentials = await prodAPICredentialsForOwner(owner);
+        const apiConfig = config.getDustAPIConfig();
         const api = new DustAPI(
           apiConfig,
           {
             ...prodCredentials,
-            extraHeaders: getHeaderFromGroupIds(requestedGroupIds),
+            extraHeaders: {
+              ...getHeaderFromGroupIds(requestedGroupIds),
+              ...getHeaderFromRole(auth.role()),
+            },
           },
           logger,
           apiConfig.nodeEnv === "development" ? "http://localhost:3000" : null

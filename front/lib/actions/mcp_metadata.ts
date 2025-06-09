@@ -5,7 +5,6 @@ import type { StreamableHTTPClientTransportOptions } from "@modelcontextprotocol
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import type { Implementation, Tool } from "@modelcontextprotocol/sdk/types.js";
-import { Ajv } from "ajv";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { getGlobalDispatcher } from "undici";
 
@@ -21,9 +20,10 @@ import {
   isInternalAllowedIcon,
 } from "@app/lib/actions/mcp_icons";
 import { connectToInternalMCPServer } from "@app/lib/actions/mcp_internal_actions";
+import { MCPOAuthRequiredError } from "@app/lib/actions/mcp_oauth_error";
+import { MCPOAuthProvider } from "@app/lib/actions/mcp_oauth_provider";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { ClientSideRedisMCPTransport } from "@app/lib/api/actions/mcp_client_side";
-import apiConfig from "@app/lib/api/config";
 import type {
   InternalMCPServerDefinitionType,
   MCPServerDefinitionType,
@@ -31,15 +31,13 @@ import type {
   MCPToolType,
 } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
-import type { MCPServerConnectionConnectionType } from "@app/lib/resources/mcp_server_connection_resource";
-import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
+import { validateJsonSchema } from "@app/lib/utils/json_schemas";
 import logger from "@app/logger/logger";
 import type { OAuthProvider, OAuthUseCase, Result } from "@app/types";
 import {
   assertNever,
   Err,
-  getOAuthConnectionAccessToken,
   isOAuthProvider,
   isOAuthUseCase,
   Ok,
@@ -49,6 +47,7 @@ import { createSSRFInterceptor } from "@app/types/shared/utils/ssrf";
 export type AuthorizationInfo = {
   provider: OAuthProvider;
   use_case: OAuthUseCase;
+  scope?: string;
 };
 
 export function isAuthorizationInfo(a: unknown): a is AuthorizationInfo {
@@ -67,37 +66,14 @@ export function isInternalMCPServerDefinition(
 ): server is InternalMCPServerDefinitionType {
   return (
     "authorization" in server &&
-    isAuthorizationInfo(server.authorization) &&
+    (isAuthorizationInfo(server.authorization) ||
+      server.authorization === null) &&
     "description" in server &&
     typeof server.description === "string" &&
     "icon" in server &&
     typeof server.icon === "string" &&
     isInternalAllowedIcon(server.icon)
   );
-}
-
-async function getAccessTokenForRemoteMCPServer(
-  auth: Authenticator,
-  remoteMCPServer: RemoteMCPServerResource,
-  connectionType: MCPServerConnectionConnectionType
-) {
-  const metadata = remoteMCPServer.toJSON();
-
-  if (metadata.authorization) {
-    const connection = await MCPServerConnectionResource.findByMCPServer({
-      auth,
-      mcpServerId: metadata.sId,
-      connectionType,
-    });
-    if (connection.isOk()) {
-      const token = await getOAuthConnectionAccessToken({
-        config: apiConfig.getOAuthAPIConfig(),
-        logger,
-        connectionId: connection.value.connectionId,
-      });
-      return token.isOk() ? token.value.access_token : null;
-    }
-  }
 }
 
 interface ConnectViaMCPServerId {
@@ -186,38 +162,31 @@ export const connectToMCPServer = async (
             );
           }
 
-          const accessToken = await getAccessTokenForRemoteMCPServer(
-            auth,
-            remoteMCPServer,
-            "workspace"
-          );
-
           const url = new URL(remoteMCPServer.url);
 
           try {
             const req = {
               requestInit: {
+                headers: undefined,
                 dispatcher: getGlobalDispatcher().compose(
                   // @ts-expect-error: looks like undici typing is not up to date
                   createSSRFInterceptor()
                 ),
-                headers: {
-                  ...(remoteMCPServer.sharedSecret
-                    ? {
-                        Authorization: `Bearer ${remoteMCPServer.sharedSecret}`,
-                      }
-                    : {}),
-                  ...(accessToken
-                    ? { Authorization: `Bearer ${accessToken}` }
-                    : {}),
-                  // NOTE: For now, we are not using the access token. Once it's used,
-                  // it will take over the shared secret Bearer. This is intended.
-                },
               },
+              authProvider: new MCPOAuthProvider(auth, remoteMCPServer),
             };
 
             await connectToRemoteMCPServer(mcpClient, url, req);
           } catch (e: unknown) {
+            logger.error(
+              {
+                connectionType,
+                serverType,
+                workspaceId: auth.getNonNullableWorkspace().sId,
+                error: e,
+              },
+              "Error establishing connection to remote MCP server via ID"
+            );
             return new Err(
               new Error("Error establishing connection to remote MCP server.")
             );
@@ -239,12 +208,32 @@ export const connectToMCPServer = async (
           ),
           headers: { ...(params.headers ?? {}) },
         },
+        authProvider: new MCPOAuthProvider(auth, undefined),
       };
       try {
         await connectToRemoteMCPServer(mcpClient, url, req);
       } catch (e: unknown) {
+        if (e instanceof MCPOAuthRequiredError) {
+          logger.info(
+            {
+              error: e,
+            },
+            "Authorization required to connect to remote MCP server"
+          );
+
+          return new Err(e);
+        }
+
+        logger.error(
+          {
+            connectionType,
+            workspaceId: auth.getNonNullableWorkspace().sId,
+            error: e,
+          },
+          "Error establishing connection to remote MCP server via URL"
+        );
         return new Err(
-          new Error("Error establishing connection to remote MCP server.")
+          new Error("Check URL and if a bearer token is required.")
         );
       }
       break;
@@ -259,6 +248,14 @@ export const connectToMCPServer = async (
       try {
         await mcpClient.connect(transport);
       } catch (e: unknown) {
+        logger.error(
+          {
+            connectionType,
+            workspaceId: auth.getNonNullableWorkspace().sId,
+            error: e,
+          },
+          "Error establishing connection to remote MCP server"
+        );
         return new Err(
           new Error("Error establishing connection to client side MCP server.")
         );
@@ -287,7 +284,11 @@ async function connectToRemoteMCPServer(
     // Check if error message contains "HTTP 4xx" as suggested by the official doc.
     // Doc is here https://github.com/modelcontextprotocol/typescript-sdk?tab=readme-ov-file#client-side-compatibility.
     if (error instanceof Error && /HTTP 4\d\d/.test(error.message)) {
-      console.log(
+      logger.info(
+        {
+          url: url.toString(),
+          error: error.message,
+        },
         "Error establishing connection to remote MCP server via streamableHttpTransport, falling back to sseTransport."
       );
       const sseTransport = new SSEClientTransport(url, req);
@@ -310,6 +311,9 @@ export function extractMetadataFromServerVersion(
         ? r.description
         : DEFAULT_MCP_ACTION_DESCRIPTION,
       icon: isInternalMCPServerDefinition(r) ? r.icon : DEFAULT_MCP_SERVER_ICON,
+      documentationUrl: isInternalMCPServerDefinition(r)
+        ? r.documentationUrl
+        : undefined,
     };
   }
 
@@ -325,12 +329,14 @@ export function extractMetadataFromServerVersion(
 export function extractMetadataFromTools(tools: Tool[]): MCPToolType[] {
   return tools.map((tool) => {
     let inputSchema: JSONSchema | undefined;
-    const ajv = new Ajv();
 
-    if (ajv.validateSchema(tool.inputSchema)) {
-      inputSchema = tool.inputSchema as JSONSchema; // unfortunately, ajv does not assert the type when returning.
+    const { isValid, error } = validateJsonSchema(tool.inputSchema);
+    if (isValid) {
+      inputSchema = tool.inputSchema as JSONSchema;
     } else {
-      logger.error(`[MCP] Invalid input schema for tool: ${tool.name}.`);
+      logger.error(
+        `[MCP] Invalid input schema for tool: ${tool.name} (${error}).`
+      );
     }
     return {
       name: tool.name,
@@ -344,7 +350,7 @@ export async function fetchRemoteServerMetaDataByURL(
   auth: Authenticator,
   url: string,
   headers?: Record<string, string>
-): Promise<Result<Omit<MCPServerType, "sId">, Error>> {
+): ReturnType<typeof fetchRemoteServerMetaData> {
   const r = await connectToMCPServer(auth, {
     params: {
       type: "remoteMCPServerUrl",
@@ -354,11 +360,38 @@ export async function fetchRemoteServerMetaDataByURL(
   });
 
   if (r.isErr()) {
-    return new Err(r.error);
+    return r;
   }
 
-  const mcpClient = r.value;
+  const result = await fetchRemoteServerMetaData(auth, r.value);
+  await r.value.close();
+  return result;
+}
 
+export async function fetchRemoteServerMetaDataByServerId(
+  auth: Authenticator,
+  serverId: string
+): ReturnType<typeof fetchRemoteServerMetaData> {
+  const r = await connectToMCPServer(auth, {
+    params: {
+      type: "mcpServerId",
+      mcpServerId: serverId,
+    },
+  });
+
+  if (r.isErr()) {
+    return r;
+  }
+
+  const result = await fetchRemoteServerMetaData(auth, r.value);
+  await r.value.close();
+  return result;
+}
+
+async function fetchRemoteServerMetaData(
+  auth: Authenticator,
+  mcpClient: Client
+): Promise<Result<Omit<MCPServerType, "sId">, Error>> {
   try {
     const serverVersion = mcpClient.getServerVersion();
     const metadata = extractMetadataFromServerVersion(serverVersion);
@@ -372,10 +405,15 @@ export async function fetchRemoteServerMetaDataByURL(
       availability: "manual",
     });
   } catch (e: unknown) {
+    logger.error(
+      {
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        error: e,
+      },
+      "Error fetching metadata from remote MCP server"
+    );
     return new Err(
       new Error("Error getting metadata from the remote MCP server.")
     );
-  } finally {
-    await mcpClient.close();
   }
 }

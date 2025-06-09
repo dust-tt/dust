@@ -22,6 +22,7 @@ export class ConversationModel extends WorkspaceAwareModel<ConversationModel> {
   declare sId: string;
   declare title: string | null;
   declare visibility: CreationOptional<ConversationVisibility>;
+  declare depth: CreationOptional<number>;
 
   declare requestedGroupIds: number[][];
 }
@@ -50,6 +51,11 @@ ConversationModel.init(
       type: DataTypes.STRING,
       allowNull: false,
       defaultValue: "unlisted",
+    },
+    depth: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
     },
     requestedGroupIds: {
       type: DataTypes.ARRAY(DataTypes.ARRAY(DataTypes.BIGINT)),

@@ -1,6 +1,7 @@
 import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
+import { useMemo } from "react";
 
 import {
   Counter,
@@ -138,12 +139,12 @@ const spinnerVariantsMap: Record<ButtonVariantType, SpinnerVariant> = {
 };
 
 const chevronVariantMap = {
-  primary: "s-text-white/70",
-  outline: "s-text-foreground/70 dark:s-text-foreground-night/70",
-  ghost: "s-text-foreground/70 dark:s-text-foreground-night/70",
-  "ghost-secondary": "s-text-foreground/70 dark:s-text-foreground-night/70",
-  highlight: "s-text-white/70",
-  warning: "s-text-white/70",
+  primary: "s-text-muted-foreground-night dark:s-text-muted-foreground",
+  outline: "s-text-faint",
+  ghost: "s-text-faint",
+  "ghost-secondary": "s-text-faint",
+  highlight: "s-text-white/60",
+  warning: "s-text-white/60",
 } as const;
 
 export interface MetaButtonProps
@@ -293,6 +294,18 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       </>
     );
 
+    const pointerEventProps = useMemo(() => {
+      if (isLoading || props.disabled) {
+        return {
+          onPointerDown: (e: React.PointerEvent<HTMLButtonElement>) => {
+            e.preventDefault();
+            e.stopPropagation();
+          },
+        };
+      }
+      return {};
+    }, [isLoading, props.disabled]);
+
     const innerButton = (
       <MetaButton
         ref={ref}
@@ -308,6 +321,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
           } as React.CSSProperties
         }
         {...props}
+        {...pointerEventProps}
       >
         {content}
       </MetaButton>

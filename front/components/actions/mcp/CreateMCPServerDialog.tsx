@@ -12,16 +12,17 @@ import {
 import { useCallback, useEffect, useState } from "react";
 
 import { MCPServerOAuthConnexion } from "@app/components/actions/mcp/MCPServerOAuthConnexion";
+import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata";
 import type { MCPServerType } from "@app/lib/api/mcp";
 import {
   useCreateInternalMCPServer,
   useCreateMCPServerConnection,
   useCreateRemoteMCPServer,
+  useDiscoverOAuthMetadata,
 } from "@app/lib/swr/mcp_servers";
-import type { WorkspaceType } from "@app/types";
+import type { OAuthCredentials, WorkspaceType } from "@app/types";
 import {
-  asDisplayName,
   OAUTH_PROVIDER_NAMES,
   setupOAuthConnection,
   validateUrl,
@@ -30,7 +31,7 @@ import {
 type RemoteMCPServerDetailsProps = {
   owner: WorkspaceType;
   internalMCPServer?: MCPServerType;
-  setMCPServer: (server: MCPServerType) => void;
+  setMCPServerToShow: (server: MCPServerType) => void;
   setIsLoading: (isCreating: boolean) => void;
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
@@ -39,46 +40,48 @@ type RemoteMCPServerDetailsProps = {
 export function CreateMCPServerDialog({
   owner,
   internalMCPServer,
-  setMCPServer,
+  setMCPServerToShow,
   setIsLoading,
   isOpen = false,
   setIsOpen,
 }: RemoteMCPServerDetailsProps) {
   const sendNotification = useSendNotification();
-  const [url, setUrl] = useState("");
+  const [remoteServerUrl, setRemoteServerUrl] = useState("");
   const [sharedSecret, setSharedSecret] = useState<string | undefined>(
     undefined
   );
-  const [authCredentials, setAuthCredentials] = useState<Record<
-    string,
-    string
-  > | null>(null);
+  const [authCredentials, setAuthCredentials] =
+    useState<OAuthCredentials | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isFormValid, setIsFormValid] = useState(true);
   const [authorization, setAuthorization] = useState<AuthorizationInfo | null>(
     null
   );
 
-  const { createWithUrlSync } = useCreateRemoteMCPServer(owner);
-  const { createMCPServerConnection } = useCreateMCPServerConnection({ owner });
+  const { discoverOAuthMetadata } = useDiscoverOAuthMetadata(owner);
+  const { createWithURL } = useCreateRemoteMCPServer(owner);
+  const { createMCPServerConnection } = useCreateMCPServerConnection({
+    owner,
+    connectionType: "workspace",
+  });
   const { createInternalMCPServer } = useCreateInternalMCPServer(owner);
 
   useEffect(() => {
     if (internalMCPServer) {
       setAuthorization(internalMCPServer.authorization);
-    } else {
-      setAuthorization(null);
     }
   }, [internalMCPServer]);
 
   const resetState = useCallback(() => {
     setIsLoading(false);
     setError(null);
-    setUrl("");
+    setRemoteServerUrl("");
     setSharedSecret(undefined);
     setAuthCredentials(null);
+    setAuthorization(null);
   }, [setIsLoading]);
 
-  const handleSave = async (e: Event) => {
+  const handleSave = async (e: React.MouseEvent<HTMLButtonElement>) => {
     if (internalMCPServer) {
       setIsLoading(true);
 
@@ -89,7 +92,10 @@ export function CreateMCPServerDialog({
           owner,
           provider: authorization.provider,
           useCase: authorization.use_case,
-          extraConfig: authCredentials ?? {},
+          extraConfig: {
+            ...(authCredentials ?? {}),
+            ...(authorization.scope ? { scope: authorization.scope } : {}),
+          },
         });
         if (cRes.isErr()) {
           sendNotification({
@@ -110,7 +116,7 @@ export function CreateMCPServerDialog({
         if (createServerRes.success) {
           await createMCPServerConnection({
             connectionId: cRes.value.connection_id,
-            mcpServerId: createServerRes.server.sId,
+            mcpServer: createServerRes.server,
             provider: authorization.provider,
           });
         } else {
@@ -125,9 +131,7 @@ export function CreateMCPServerDialog({
       setIsLoading(false);
       return;
     } else {
-      // TODO: Handle Authorization for remote servers
-
-      const urlValidation = validateUrl(url);
+      const urlValidation = validateUrl(remoteServerUrl);
 
       if (!urlValidation.valid) {
         e.preventDefault();
@@ -139,21 +143,56 @@ export function CreateMCPServerDialog({
 
       try {
         setIsLoading(true);
-        const result = await createWithUrlSync(url, true, sharedSecret);
 
-        if (result.success) {
+        let connectionId: string | undefined;
+        const discoverOAuthMetadataRes =
+          await discoverOAuthMetadata(remoteServerUrl);
+        if (
+          discoverOAuthMetadataRes.isOk() &&
+          discoverOAuthMetadataRes.value.oauthRequired
+        ) {
+          sendNotification({
+            title: "Authorization required",
+            type: "info",
+            description:
+              "You must authorize the MCP server to access your data.",
+          });
+          const cRes = await setupOAuthConnection({
+            dustClientFacingUrl: `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}`,
+            owner,
+            provider: "mcp",
+            useCase: "platform_actions",
+            extraConfig: discoverOAuthMetadataRes.value.connectionMetadata,
+          });
+          if (cRes.isOk()) {
+            connectionId = cRes.value.connection_id;
+          }
+        }
+
+        const createRes = await createWithURL({
+          url: remoteServerUrl,
+          includeGlobal: true,
+          sharedSecret,
+          connectionId,
+        });
+
+        if (createRes.isOk()) {
           sendNotification({
             title: "Success",
             type: "success",
-            description: "MCP server synchronized successfully.",
+            description: `${getMcpServerDisplayName(createRes.value.server)} added successfully.`,
           });
-          setMCPServer(result.server);
+          setMCPServerToShow(createRes.value.server);
         } else {
-          throw new Error("Failed to synchronize MCP server");
+          sendNotification({
+            title: "Error creating MCP server",
+            type: "error",
+            description: createRes.error.message,
+          });
         }
       } catch (error) {
         sendNotification({
-          title: "Error synchronizing MCP server",
+          title: "Error creating MCP server",
           type: "error",
           description:
             error instanceof Error ? error.message : "An error occurred",
@@ -176,7 +215,7 @@ export function CreateMCPServerDialog({
         <DialogHeader>
           <DialogTitle>
             {internalMCPServer
-              ? `Add ${asDisplayName(internalMCPServer.name)}`
+              ? `Add ${getMcpServerDisplayName(internalMCPServer)}`
               : "Add MCP Server"}
           </DialogTitle>
         </DialogHeader>
@@ -190,8 +229,8 @@ export function CreateMCPServerDialog({
                     <Input
                       id="url"
                       placeholder="https://example.com/api/mcp"
-                      value={url}
-                      onChange={(e) => setUrl(e.target.value)}
+                      value={remoteServerUrl}
+                      onChange={(e) => setRemoteServerUrl(e.target.value)}
                       isError={!!error}
                       message={error}
                       autoFocus
@@ -220,6 +259,8 @@ export function CreateMCPServerDialog({
             authorization={authorization}
             authCredentials={authCredentials}
             setAuthCredentials={setAuthCredentials}
+            setIsFormValid={setIsFormValid}
+            documentationUrl={internalMCPServer?.documentationUrl}
           />
         </DialogContainer>
         <DialogFooter
@@ -231,7 +272,15 @@ export function CreateMCPServerDialog({
           rightButtonProps={{
             label: authorization ? "Save and connect" : "Save",
             variant: "primary",
-            onClick: handleSave,
+            onClick: (e: React.MouseEvent<HTMLButtonElement>) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (isFormValid) {
+                void handleSave(e);
+                setIsOpen(false);
+              }
+            },
+            disabled: !isFormValid,
           }}
         />
       </DialogContent>

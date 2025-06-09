@@ -21,14 +21,23 @@ export const WHITELISTABLE_FEATURES = [
   "openai_o1_high_reasoning_custom_assistants_feature",
   "openai_o1_high_reasoning_feature",
   "openai_o1_mini_feature",
+  "xai_feature",
   "salesforce_feature",
   "pro_plan_salesforce_connector",
   "show_debug_tools",
   "usage_data_api",
   "custom_webcrawler",
   "exploded_tables_query",
+  "workos",
   "salesforce_tool",
   "gmail_tool",
+  "google_calendar_tool",
+  "agent_builder_v2",
+  "disallow_agent_creation_to_users",
+  "document_tracker",
+  "agent_discovery",
+  "search_knowledge_builder",
+  "snowflake_connector_feature",
 ] as const;
 export type WhitelistableFeature = (typeof WHITELISTABLE_FEATURES)[number];
 export function isWhitelistableFeature(

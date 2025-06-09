@@ -11,6 +11,7 @@ export class UserFactory {
     return {
       sId: generateRandomModelSId(),
       auth0Sub: faker.string.uuid(),
+      workOSUserId: faker.string.uuid(),
       provider: "google" as const,
       providerId: faker.string.uuid(),
 

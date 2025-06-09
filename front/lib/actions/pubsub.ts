@@ -10,24 +10,24 @@ export const MCP_EVENT_TIMEOUT = 3 * 60 * 1000; // 3 minutes.
 export async function* getMCPEvents({
   actionId,
 }: {
-  actionId: number;
+  actionId: string;
 }): AsyncGenerator<
   {
     eventId: string;
     data: {
       type: MCPValidationOutputType;
       created: number;
-      actionId: number;
+      actionId: string;
       messageId?: string;
     };
   },
   void
 > {
-  const pubsubChannel = getMCPChannelid(actionId);
+  const pubSubChannel = getMCPChannelId(actionId);
 
   const reader = createCallbackReader<EventPayload | "close">();
   const { history, unsubscribe } = await getRedisHybridManager().subscribe(
-    pubsubChannel,
+    pubSubChannel,
     reader.callback,
     null,
     "action_events"
@@ -69,6 +69,6 @@ export async function* getMCPEvents({
   }
 }
 
-function getMCPChannelid(actionId: number) {
+function getMCPChannelId(actionId: string) {
   return `action-${actionId}`;
 }

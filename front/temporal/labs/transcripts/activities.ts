@@ -42,14 +42,14 @@ import { Err } from "@app/types";
 import { CoreAPI } from "@app/types";
 
 export async function retrieveNewTranscriptsActivity(
-  transcriptsConfigurationId: ModelId
+  transcriptsConfigurationId: string
 ): Promise<string[]> {
   const localLogger = mainLogger.child({
-    transcriptsConfigurationId,
+    transcriptsConfigurationId: transcriptsConfigurationId,
   });
 
   const transcriptsConfiguration =
-    await LabsTranscriptsConfigurationResource.fetchByModelId(
+    await LabsTranscriptsConfigurationResource.fetchById(
       transcriptsConfigurationId
     );
 
@@ -74,7 +74,18 @@ export async function retrieveNewTranscriptsActivity(
     );
   }
 
-  const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+  const user = await UserResource.fetchByModelId(
+    transcriptsConfiguration.userId
+  );
+  if (!user) {
+    await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
+    localLogger.error({}, "[retrieveNewTranscripts] User not found. Stopping.");
+    return [];
+  }
+  const auth = await Authenticator.fromUserIdAndWorkspaceId(
+    user.sId,
+    workspace.sId
+  );
 
   if (!auth.workspace()) {
     await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
@@ -129,7 +140,7 @@ export async function retrieveNewTranscriptsActivity(
 }
 
 export async function processTranscriptActivity(
-  transcriptsConfigurationId: ModelId,
+  transcriptsConfigurationId: string,
   fileId: string
 ) {
   function convertCitationsToLinks(
@@ -187,7 +198,7 @@ export async function processTranscriptActivity(
   }
 
   const transcriptsConfiguration =
-    await LabsTranscriptsConfigurationResource.fetchByModelId(
+    await LabsTranscriptsConfigurationResource.fetchById(
       transcriptsConfigurationId
     );
 
@@ -342,10 +353,9 @@ export async function processTranscriptActivity(
 
   try {
     await transcriptsConfiguration.recordHistory({
-      configurationId: transcriptsConfiguration.id,
       fileId,
       fileName: transcriptTitle.substring(0, 255),
-      workspaceId: owner.id,
+      workspace: owner,
     });
   } catch (error) {
     if (error instanceof UniqueConstraintError) {

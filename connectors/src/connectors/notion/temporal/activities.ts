@@ -1955,6 +1955,7 @@ export async function renderAndUpsertPageFromCache({
             sourceUrl:
               parentDb.notionUrl ??
               `https://www.notion.so/${parentDb.notionDatabaseId.replace(/-/g, "")}`,
+            allowEmptySchema: true,
           })
         );
       } else {
@@ -2683,6 +2684,7 @@ export async function upsertDatabaseStructuredDataFromCache({
       sourceUrl:
         dbModel.notionUrl ??
         `https://www.notion.so/${dbModel.notionDatabaseId.replace(/-/g, "")}`,
+      allowEmptySchema: true,
     })
   );
 
@@ -2709,11 +2711,6 @@ export async function upsertDatabaseStructuredDataFromCache({
     // We also include a text document (not table) with a CSV reprensentation of the database.
     localLogger.info("Upserting Notion Database as Document.");
     const prefix = `${databaseName}\n${csvHeader}\n`;
-    // Temporary
-    // TODO(@fontanierh): remove
-    if (databaseId === "deb136cd-4290-4bf9-b483-78792e95e875") {
-      localLogger.info({ prefix }, "Problematic prefix");
-    }
     const prefixSection = await renderPrefixSection({
       dataSourceConfig,
       prefix,

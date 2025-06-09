@@ -1,3 +1,4 @@
+import { ApplicationFailure } from "@temporalio/common";
 import type {
   ActivityExecuteInput,
   ActivityInboundCallsInterceptor,
@@ -23,6 +24,14 @@ export class ConfluenceCastKnownErrorsInterceptor
       ) {
         switch (err.status) {
           case 429:
+            if (err.retryAfterMs) {
+              // Override the default retry delay of the activity policy.
+              throw ApplicationFailure.create({
+                message: `${err.message}. Retry after ${err.retryAfterMs}ms`,
+                nextRetryDelay: err.retryAfterMs,
+              });
+            }
+
             throw new ProviderWorkflowError(
               "confluence",
               "429 - Rate Limit Exceeded",

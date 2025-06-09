@@ -1,10 +1,19 @@
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+
 import apiConfig from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import type { MCPServerConnectionConnectionType } from "@app/lib/resources/mcp_server_connection_resource";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import logger from "@app/logger/logger";
-import type { OAuthConnectionType } from "@app/types";
+import type {
+  OAuthConnectionType,
+  OAuthProvider,
+  OAuthUseCase,
+} from "@app/types";
 import { getOAuthConnectionAccessToken } from "@app/types";
+
+import type { AuthorizationInfo } from "../mcp_metadata";
 
 // Dedicated function to get an access token for a given provider for internal MCP servers.
 // Not using the one from mcp_metadata.ts to avoid circular dependency.
@@ -63,11 +72,22 @@ const MCPServerRequiresPersonalAuthenticationErrorName =
 
 export class MCPServerPersonalAuthenticationRequiredError extends Error {
   mcpServerId: string;
+  provider: OAuthProvider;
+  useCase: OAuthUseCase;
+  scope?: string;
 
-  constructor(mcpServerId: string) {
+  constructor(
+    mcpServerId: string,
+    provider: OAuthProvider,
+    useCase: OAuthUseCase,
+    scope?: string
+  ) {
     super(`MCP server ${mcpServerId} requires personal authentication`);
     this.name = MCPServerRequiresPersonalAuthenticationErrorName;
     this.mcpServerId = mcpServerId;
+    this.provider = provider;
+    this.useCase = useCase;
+    this.scope = scope;
   }
 
   static is(
@@ -79,4 +99,33 @@ export class MCPServerPersonalAuthenticationRequiredError extends Error {
       "mcpServerId" in error
     );
   }
+}
+
+export function makeMCPToolPersonalAuthenticationRequiredError(
+  mcpServerId: string,
+  authorization: AuthorizationInfo
+): CallToolResult {
+  return {
+    isError: true,
+    content: [
+      {
+        type: "resource",
+        resource: {
+          mimeType:
+            INTERNAL_MIME_TYPES.TOOL_ERROR.PERSONAL_AUTHENTICATION_REQUIRED,
+          uri: "",
+          text: new MCPServerPersonalAuthenticationRequiredError(
+            mcpServerId,
+            authorization.provider,
+            authorization.use_case,
+            authorization.scope
+          ).message,
+          mcpServerId,
+          provider: authorization.provider,
+          useCase: authorization.use_case,
+          scope: authorization.scope,
+        },
+      },
+    ],
+  };
 }
