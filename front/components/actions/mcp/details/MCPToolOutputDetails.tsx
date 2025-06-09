@@ -9,23 +9,27 @@ import {
   ContentMessage,
   Icon,
   InformationCircleIcon,
-  MagnifyingGlassIcon,
   Markdown,
   PaginatedCitationsGrid,
   Tooltip,
   useSendNotification,
 } from "@dust-tt/sparkle";
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
-import type {
+import {
+  isIncludeResultResourceType,
+  isSearchResultResourceType,
+  isWebsearchResultResourceType,
   ReasoningSuccessOutputType,
   SqlQueryOutputType,
   ThinkingOutputType,
   ToolGeneratedFileType,
   WarningResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import type { LightWorkspaceType } from "@app/types";
+import { removeNulls, type LightWorkspaceType } from "@app/types";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import { getDocumentIcon } from "@app/components/actions/retrieval/utils";
 
 interface ThinkingBlockProps {
   resource: ThinkingOutputType;
@@ -167,12 +171,7 @@ interface SearchResultProps {
   visual: React.ComponentType<{ className?: string }>;
   query: string | React.JSX.Element;
   warning?: WarningResourceType;
-  results: {
-    description: string;
-    title: string;
-    icon: React.JSX.Element;
-    href: string;
-  }[];
+  results: CallToolResult["content"] | null;
 }
 
 export function SearchResultDetails({
@@ -183,6 +182,33 @@ export function SearchResultDetails({
   warning,
   results,
 }: SearchResultProps) {
+  const citations = useMemo(() => {
+    if (!results) {
+      return [];
+    }
+    return removeNulls(
+      results.map((r) => {
+        if (isWebsearchResultResourceType(r)) {
+          return {
+            description: r.resource.text,
+            title: r.resource.title,
+            icon: getDocumentIcon("webcrawler"),
+            href: r.resource.uri,
+          };
+        }
+        if (isSearchResultResourceType(r) || isIncludeResultResourceType(r)) {
+          return {
+            description: "",
+            title: r.resource.text,
+            icon: getDocumentIcon(r.resource.source.provider),
+            href: r.resource.uri,
+          };
+        }
+        return null;
+      })
+    );
+  }, [results]);
+
   return (
     <ActionDetailsWrapper
       actionName={actionName}
@@ -212,7 +238,7 @@ export function SearchResultDetails({
                 Results
               </span>
             }
-            contentChildren={<PaginatedCitationsGrid items={results} />}
+            contentChildren={<PaginatedCitationsGrid items={citations} />}
           />
         </div>
       </div>
