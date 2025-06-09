@@ -1,9 +1,9 @@
-import { CallToolResultSchema } from "@modelcontextprotocol/sdk/types.js";
 import type { JSONSchema7 } from "json-schema";
 import moment from "moment-timezone";
 import { z } from "zod";
 
 import { INTERNAL_MIME_TYPES_VALUES } from "./internal_mime_types";
+import { CallToolResultSchema } from "./raw_mcp_types";
 
 type StringLiteral<T> = T extends string
   ? string extends T
