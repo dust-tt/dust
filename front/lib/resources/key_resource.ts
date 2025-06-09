@@ -21,7 +21,7 @@ export interface KeyAuthType {
   id: ModelId;
   name: string | null;
   isSystem: boolean;
-  role?: RoleType;
+  role: RoleType;
 }
 
 export const SECRET_KEY_PREFIX = "sk-";

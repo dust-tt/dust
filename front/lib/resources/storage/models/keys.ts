@@ -15,7 +15,7 @@ export class KeyModel extends WorkspaceAwareModel<KeyModel> {
   declare secret: string;
   declare status: "active" | "disabled";
   declare isSystem: boolean;
-  declare role?: RoleType;
+  declare role: RoleType;
 
   declare userId: ForeignKey<UserModel["id"]>;
   declare groupId: ForeignKey<GroupModel["id"]>;

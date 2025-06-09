@@ -10,5 +10,5 @@ export type KeyType = {
   status: string;
   name: string | null;
   groupId?: ModelId;
-  role?: RoleType;
+  role: RoleType;
 };

@@ -111,6 +111,7 @@ async function handler(
           userId: user.id,
           workspaceId: owner.id,
           isSystem: false,
+          role: "builder",
         },
         group.value
       );
