@@ -29,6 +29,7 @@ import type { AgentDataSourceConfiguration } from "@app/lib/models/assistant/act
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type {
+  ContentNodeType,
   CoreAPIContentNode,
   CoreAPIError,
   CoreAPISearchNodesResponse,
@@ -631,6 +632,171 @@ const createServer = (
           })),
         ],
       };
+    }
+  );
+
+  server.tool(
+    "locate_in_tree",
+    "Show the complete path from a node to the data source root, displaying the hierarchy of parent nodes. " +
+      "This is useful for understanding where a specific node is located within the data source structure. " +
+      "The path is returned as a list of nodes, with the first node being the data source root and the last node being the target node.",
+    {
+      nodeId: z.string().describe("The ID of the node to locate in the tree."),
+      dataSources:
+        ConfigurableToolInputSchemas[
+          INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
+        ],
+    },
+    async ({ nodeId, dataSources }) => {
+      const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+      const fetchResult = await getAgentDataSourceConfigurations(dataSources);
+
+      if (fetchResult.isErr()) {
+        return makeMCPToolTextError(fetchResult.error.message);
+      }
+      const agentDataSourceConfigurations = fetchResult.value;
+
+      if (isDataSourceNodeId(nodeId)) {
+        const dataSourceId = extractDataSourceIdFromNodeId(nodeId);
+        if (!dataSourceId) {
+          return makeMCPToolTextError("Invalid data source node ID format");
+        }
+
+        const dataSourceConfig = agentDataSourceConfigurations.find(
+          ({ dataSource }) => dataSource.dustAPIDataSourceId === dataSourceId
+        );
+
+        if (!dataSourceConfig) {
+          return makeMCPToolTextError(
+            `Data source not found for ID: ${dataSourceId}`
+          );
+        }
+
+        return makeMCPToolJSONSuccess({
+          message: "Node is the data source root.",
+          result: {
+            path: [
+              {
+                nodeId: nodeId,
+                title: dataSourceConfig.dataSource.name,
+                isCurrentNode: true,
+              },
+            ],
+          },
+        });
+      }
+
+      // Search for the target node.
+      const searchResult = await coreAPI.searchNodes({
+        filter: {
+          node_ids: [nodeId],
+          data_source_views: makeDataSourceViewFilter(
+            agentDataSourceConfigurations
+          ),
+        },
+      });
+
+      if (searchResult.isErr() || searchResult.value.nodes.length === 0) {
+        return makeMCPToolRecoverableErrorSuccess(
+          `Could not find node: ${nodeId}`
+        );
+      }
+
+      const targetNode = searchResult.value.nodes[0];
+
+      const dataSourceRootId = `${DATA_SOURCE_NODE_ID}-${targetNode.data_source_id}`;
+
+      const pathNodeIds = [
+        dataSourceRootId,
+        // Add all the parents (except the target node itself), in reverse order,
+        // as they are ordered from immediate parent to root.
+        ...targetNode.parents
+          .filter((parentId) => parentId !== nodeId)
+          .reverse(),
+        // Add the target node itself.
+        nodeId,
+      ];
+
+      // Fetch the nodes in the path.
+      const nodesToFetch = pathNodeIds.filter((id) => id !== dataSourceRootId);
+      const pathNodes: Record<string, CoreAPIContentNode> = {};
+      if (nodesToFetch.length > 0) {
+        const pathSearchResult = await coreAPI.searchNodes({
+          filter: {
+            node_ids: nodesToFetch,
+            data_source_views: makeDataSourceViewFilter(
+              agentDataSourceConfigurations
+            ),
+          },
+        });
+
+        if (pathSearchResult.isErr()) {
+          return makeMCPToolTextError("Failed to fetch nodes in the path");
+        }
+
+        for (const node of pathSearchResult.value.nodes) {
+          pathNodes[node.node_id] = node;
+        }
+      }
+
+      const dataSourceConfig = agentDataSourceConfigurations.find(
+        ({ dataSource }) =>
+          dataSource.dustAPIDataSourceId === targetNode.data_source_id
+      );
+
+      if (!dataSourceConfig) {
+        return makeMCPToolTextError("Could not find data source configuration");
+      }
+
+      // Build the path array.
+      const pathItems = removeNulls(
+        pathNodeIds.map((pathNodeId) => {
+          if (pathNodeId === dataSourceRootId) {
+            // Handle data source root node
+            return {
+              nodeId: dataSourceRootId,
+              title: dataSourceConfig.dataSource.name,
+              nodeType: "folder" as ContentNodeType,
+              isCurrentNode: false,
+            };
+          } else {
+            const node = pathNodes[pathNodeId];
+            if (!node) {
+              return null;
+            }
+            return {
+              nodeId: pathNodeId,
+              title: node.title,
+              nodeType: node.node_type,
+              isCurrentNode: pathNodeId === nodeId,
+            };
+          }
+        })
+      );
+
+      // Ensure we have at least one node in the path.
+      if (pathItems.length === 0) {
+        return makeMCPToolTextError(
+          "Unable to build a path to the node. The node may be orphaned or inaccessible."
+        );
+      }
+
+      // Ensure the target node is in the path
+      const hasCurrentNode = pathItems.some((item) => item.isCurrentNode);
+      if (!hasCurrentNode) {
+        return makeMCPToolTextError(
+          "The requested node is not accessible within the allowed data sources."
+        );
+      }
+
+      const path = pathItems;
+
+      return makeMCPToolJSONSuccess({
+        message: "Path located successfully.",
+        result: {
+          path: path,
+        },
+      });
     }
   );
 
