@@ -598,7 +598,7 @@ async function apikeys(command: string, args: parseArgs.ParsedArgs) {
 
       const [numAffected] = await KeyResource.updateRole(
         args.role,
-        args.wId,
+        workspace.id,
         args.name
       );
 

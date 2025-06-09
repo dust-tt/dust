@@ -219,7 +219,7 @@ export class KeyResource extends BaseResource<KeyModel> {
     return this.status === "active";
   }
 
-  static updateRole(newRole: RoleType, wId: string, apiKeyName: string) {
+  static updateRole(newRole: RoleType, wId: number, apiKeyName: string) {
     return this.model.update(
       {
         role: newRole,
