@@ -28,7 +28,7 @@ export function MCPSearchActionDetails({
 
   return (
     <SearchResultDetails
-      actionName={"Search data"}
+      actionName="Search data"
       defaultOpen={defaultOpen}
       query={query}
       visual={MagnifyingGlassIcon}
