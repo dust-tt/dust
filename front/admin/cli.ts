@@ -574,7 +574,7 @@ const productionCheck = async (command: string, args: parseArgs.ParsedArgs) => {
 
 async function apikeys(command: string, args: parseArgs.ParsedArgs) {
   switch (command) {
-    case "bump": {
+    case "set-role": {
       if (!args.wId) {
         throw new Error("Missing --wId argument");
       }
