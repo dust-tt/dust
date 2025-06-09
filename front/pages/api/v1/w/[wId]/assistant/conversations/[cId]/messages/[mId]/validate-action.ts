@@ -13,9 +13,68 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 
 /**
- * @ignoreswagger
- * Not documented yet. MCP specific endpoint.
- * TODO(mcp): Add swagger documentation once mcp is public
+ * @swagger
+ * /api/v1/w/{wId}/assistant/conversations/{cId}/messages/{mId}/validate-action:
+ *   post:
+ *     summary: Validate an action in a conversation message
+ *     description: Approves or rejects an action taken in a specific message in a conversation
+ *     tags:
+ *       - Conversations
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Workspace ID
+ *       - in: path
+ *         name: cId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Conversation ID
+ *       - in: path
+ *         name: mId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Message ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - actionId
+ *               - approved
+ *             properties:
+ *               actionId:
+ *                 type: string
+ *                 description: ID of the action to validate
+ *               approved:
+ *                 type: boolean
+ *                 description: Whether the action is approved or rejected
+ *     responses:
+ *       200:
+ *         description: Action validation successful
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *       400:
+ *         description: Invalid request body
+ *       404:
+ *         description: Conversation, message, or workspace not found
+ *       405:
+ *         description: Method not allowed
+ *       500:
+ *         description: Internal server error
+ *     security:
+ *       - BearerAuth: []
  */
 
 async function handler(
@@ -64,7 +123,7 @@ async function handler(
   const { actionId, approved } = parseResult.data;
 
   // Temporary code to be backwards compatible with the old actionId format.
-  // Safe to remove once all extensions are updated.
+  // TODO(MCP 2025-06-09): Remove this once all extensions are updated.
   let actionIdString: string;
   if (typeof actionId === "string") {
     actionIdString = actionId;

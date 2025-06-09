@@ -13,7 +13,7 @@ import { KeyModel } from "@app/lib/resources/storage/models/keys";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
-import type { KeyType, ModelId } from "@app/types";
+import type { KeyType, ModelId, RoleType } from "@app/types";
 import type { LightWorkspaceType, Result } from "@app/types";
 import { formatUserFullName, redactString } from "@app/types";
 
@@ -21,6 +21,7 @@ export interface KeyAuthType {
   id: ModelId;
   name: string | null;
   isSystem: boolean;
+  role: RoleType;
 }
 
 export const SECRET_KEY_PREFIX = "sk-";
@@ -200,6 +201,7 @@ export class KeyResource extends BaseResource<KeyModel> {
       secret,
       status: this.status,
       groupId: this.groupId,
+      role: this.role,
     };
   }
 
@@ -209,6 +211,7 @@ export class KeyResource extends BaseResource<KeyModel> {
       id: this.id,
       name: this.name,
       isSystem: this.isSystem,
+      role: this.role,
     };
   }
 
