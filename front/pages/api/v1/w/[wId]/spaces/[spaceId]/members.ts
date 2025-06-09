@@ -8,7 +8,7 @@ import { DustError } from "@app/lib/error";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { SpaceType, WithAPIErrorResponse } from "@app/types";
-import { PatchSpaceMembersRequestBodySchema } from "@app/types";
+import { isString, PatchSpaceMembersRequestBodySchema } from "@app/types";
 
 interface PatchSpaceMembersResponseBody {
   space: SpaceType;
@@ -95,7 +95,7 @@ async function handler(
 ): Promise<void> {
   const { spaceId } = req.query;
 
-  if (typeof spaceId !== "string" || !spaceId) {
+  if (!spaceId || !isString(spaceId)) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
