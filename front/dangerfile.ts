@@ -1,6 +1,5 @@
 import { danger, fail, warn } from "danger";
 import fs from "fs";
-import path from "path";
 
 const sdkAckLabel = "sdk-ack";
 const migrationAckLabel = "migration-ack";
@@ -129,8 +128,9 @@ function checkAppsRegistry() {
 
 async function checkSparkleVersionConsistency() {
   const frontPackageJsonDiff =
-    await danger.git.JSONDiffForFile("front/package.json");
-  const extensionPackageJsonDiff = await danger.git.JSONDiffForFile(
+    await danger.git.diffForFile("front/package.json");
+
+  const extensionPackageJsonDiff = await danger.git.diffForFile(
     "extension/package.json"
   );
 
@@ -138,11 +138,10 @@ async function checkSparkleVersionConsistency() {
     return;
   }
 
-  const frontPackageJson = JSON.parse(
-    fs.readFileSync(path.join(__dirname, "package.json"), "utf8")
-  );
+  const frontPackageJson = JSON.parse(fs.readFileSync("package.json", "utf8"));
+
   const extensionPackageJson = JSON.parse(
-    fs.readFileSync(path.join(__dirname, "../extension/package.json"), "utf8")
+    fs.readFileSync("../extension/package.json", "utf8")
   );
 
   const frontVersion = frontPackageJson.dependencies?.["@dust-tt/sparkle"];
