@@ -1,14 +1,19 @@
-import { cn, CodeBlock, CollapsibleComponent } from "@dust-tt/sparkle";
+import {
+  ClockIcon,
+  cn,
+  CodeBlock,
+  CollapsibleComponent,
+  GlobeAltIcon,
+  MagnifyingGlassIcon,
+} from "@dust-tt/sparkle";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import { MCPBrowseActionDetails } from "@app/components/actions/mcp/details/MCPBrowseActionDetails";
 import { MCPExtractActionDetails } from "@app/components/actions/mcp/details/MCPExtractActionDetails";
-import { MCPIncludeActionDetails } from "@app/components/actions/mcp/details/MCPIncludeActionDetails";
 import { MCPReasoningActionDetails } from "@app/components/actions/mcp/details/MCPReasoningActionDetails";
 import { MCPRunAgentActionDetails } from "@app/components/actions/mcp/details/MCPRunAgentActionDetails";
-import { MCPSearchActionDetails } from "@app/components/actions/mcp/details/MCPSearchActionDetails";
 import { MCPTablesQueryActionDetails } from "@app/components/actions/mcp/details/MCPTablesQueryActionDetails";
-import { MCPWebsearchActionDetails } from "@app/components/actions/mcp/details/MCPWebsearchActionDetails";
+import { SearchResultDetails } from "@app/components/actions/mcp/details/MCPToolOutputDetails";
 import type { ActionDetailsComponentBaseProps } from "@app/components/actions/types";
 import type { MCPActionType } from "@app/lib/actions/mcp";
 import {
@@ -43,11 +48,32 @@ export function MCPActionDetails(
   const isReasoning = props.action.output?.some(isReasoningSuccessOutput);
 
   if (isSearch) {
-    return <MCPSearchActionDetails {...props} />;
+    return (
+      <SearchResultDetails
+        actionName="Search data"
+        actionOutput={props.action.output}
+        defaultOpen={props.defaultOpen}
+        visual={MagnifyingGlassIcon}
+      />
+    );
   } else if (isInclude) {
-    return <MCPIncludeActionDetails {...props} />;
+    return (
+      <SearchResultDetails
+        actionName="Include data"
+        actionOutput={props.action.output}
+        defaultOpen={props.defaultOpen}
+        visual={ClockIcon}
+      />
+    );
   } else if (isWebsearch) {
-    return <MCPWebsearchActionDetails {...props} />;
+    return (
+      <SearchResultDetails
+        actionName="Web search"
+        actionOutput={props.action.output}
+        defaultOpen={props.defaultOpen}
+        visual={GlobeAltIcon}
+      />
+    );
   } else if (isBrowse) {
     return <MCPBrowseActionDetails {...props} />;
   } else if (isTablesQuery) {
