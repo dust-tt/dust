@@ -1,3 +1,11 @@
+import {
+  runSOQL,
+  testSalesforceConnection,
+} from "@connectors/connectors/salesforce/lib/salesforce_api";
+import {
+  getConnectorAndCredentials,
+  syncQueryTemplateInterpolate,
+} from "@connectors/connectors/salesforce/lib/utils";
 import { default as topLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type {
@@ -6,9 +14,6 @@ import type {
   SalesforceRunSoqlResponseType,
   SalesforceSetupSyncedQueryResponseType,
 } from "@connectors/types";
-
-import { runSOQL, testSalesforceConnection } from "./salesforce_api";
-import { getConnectorAndCredentials } from "./utils";
 
 export const salesforce = async ({
   command,
@@ -87,6 +92,10 @@ export const salesforce = async ({
         throw new Error("Missing --rootNodeName argument");
       }
 
+      const contentTemplate = args.contentTemplate;
+      const titleTemplate = args.titleTemplate;
+      const tagsTemplate = args.tagsTemplate ?? null;
+
       const res = await runSOQL({
         soql: args.soql,
         credentials: connCredRes.value.credentials,
@@ -102,8 +111,8 @@ export const salesforce = async ({
           );
         }
         let tags: string[] = [];
-        if (args.tagsTemplate) {
-          const raw = eval("`" + args.tagsTemplate + "`") as string;
+        if (tagsTemplate) {
+          const raw = syncQueryTemplateInterpolate(tagsTemplate, record);
           tags = raw
             .split(",")
             .map((tag) => tag.trim())
@@ -113,8 +122,8 @@ export const salesforce = async ({
         return {
           id: record.Id,
           lastModifiedDate: new Date(record.LastModifiedDate).toISOString(),
-          title: eval("`" + args.titleTemplate + "`") as string,
-          content: eval("`" + args.contentTemplate + "`") as string,
+          title: syncQueryTemplateInterpolate(titleTemplate, record),
+          content: syncQueryTemplateInterpolate(contentTemplate, record),
           tags,
         };
       });
