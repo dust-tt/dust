@@ -125,6 +125,7 @@ export type ServerSideMCPToolType = Omit<
   availability: MCPServerAvailability;
   permission: MCPToolStakeLevelType;
   toolServerId: string;
+  timeoutMs?: number;
 };
 
 export type ClientSideMCPToolType = Omit<
@@ -135,6 +136,7 @@ export type ClientSideMCPToolType = Omit<
   permission: MCPToolStakeLevelType;
   toolServerId: string;
   type: "mcp_configuration";
+  timeoutMs?: number;
 };
 
 type WithToolNameMetadata<T> = T & {

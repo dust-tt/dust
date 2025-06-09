@@ -56,6 +56,7 @@ export const INTERNAL_MCP_SERVERS: Record<
       featureFlags: WhitelistableFeature[]
     ) => boolean;
     tools_stakes?: Record<string, MCPToolStakeLevelType>;
+    timeoutMs?: number;
   }
 > = {
   // Notes:
@@ -248,6 +249,7 @@ export const INTERNAL_MCP_SERVERS: Record<
     isRestricted: (plan, featureFlags) => {
       return featureFlags.includes("dev_mcp_actions");
     },
+    timeoutMs: 5 * 60 * 1000, // 5 minutes
   },
   query_tables_v2: {
     id: 1009,
