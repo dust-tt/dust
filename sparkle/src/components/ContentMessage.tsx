@@ -14,6 +14,7 @@ const CONTENT_MESSAGE_VARIANTS = [
   "blue",
   "rose",
   "golden",
+  "outline",
 ] as const;
 
 type ContentMessageVariantType = (typeof CONTENT_MESSAGE_VARIANTS)[number];
@@ -41,6 +42,7 @@ const contentMessageVariants = cva(
         rose: "s-bg-rose-100 dark:s-bg-rose-100-night s-border-transparent",
         golden:
           "s-bg-golden-100 dark:s-bg-golden-100-night s-border-transparent",
+        outline: "s-bg-transparent s-border-border dark:s-border-border-night",
       },
       size: {
         lg: "",
@@ -67,6 +69,7 @@ const iconVariants = cva("s-shrink-0", {
       blue: "s-text-blue-900 dark:s-text-blue-900-night",
       rose: "s-text-rose-900 dark:s-text-rose-900-night",
       golden: "s-text-golden-900 dark:s-text-golden-900-night",
+      outline: "s-text-muted-foreground dark:s-text-muted-foreground-night",
     },
   },
 });
@@ -83,6 +86,7 @@ const titleVariants = cva("s-text-sm s-font-semibold", {
       blue: "s-text-blue-900 dark:s-text-blue-900-night",
       rose: "s-text-rose-900 dark:s-text-rose-900-night",
       golden: "s-text-golden-900 dark:s-text-golden-900-night",
+      outline: "s-text-foreground dark:s-text-foreground-night",
     },
   },
 });
@@ -99,6 +103,7 @@ const textVariants = cva("s-text-sm", {
       blue: "s-text-blue-900 dark:s-text-blue-900-night",
       rose: "s-text-rose-900 dark:s-text-rose-900-night",
       golden: "s-text-golden-900 dark:s-text-golden-900-night",
+      outline: "s-text-muted-foreground dark:s-text-muted-foreground-night",
     },
   },
 });
