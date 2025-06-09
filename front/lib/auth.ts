@@ -483,7 +483,7 @@ export class Authenticator {
         // System keys have admin role on their workspace unless requested otherwise.
         role = requestedRole ?? "admin";
       } else {
-        // Regular keys have builder role on their workspace.
+        // Regular keys use the role they provide
         role = key.role;
       }
     }
