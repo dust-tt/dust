@@ -9,6 +9,7 @@ import {
 import type {
   WorkOSConnectionSyncStatus,
   WorkOSPortalIntent,
+  WorkOSSSOConnectionStatus,
 } from "@app/lib/types/workos";
 import type { GetWorkspaceDomainsResponseBody } from "@app/pages/api/w/[wId]/domains";
 import type { LightWorkspaceType } from "@app/types";
@@ -95,12 +96,11 @@ export function useWorkOSSSOStatus({
 }) {
   const { data, error, isLoading, mutate } = useSWRWithDefaults<
     string,
-    WorkOSConnectionSyncStatus
+    WorkOSSSOConnectionStatus
   >(`/api/w/${owner.sId}/sso`, fetcher, { disabled });
 
   return {
     ssoStatus: data,
-    setupSSOLink: data?.setupSSOLink,
     isLoading,
     error,
     mutate,

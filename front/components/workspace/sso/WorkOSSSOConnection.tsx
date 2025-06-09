@@ -19,7 +19,7 @@ import {
   useDisableWorkOSSSOConnection,
   useWorkOSSSOStatus,
 } from "@app/lib/swr/workos";
-import type { WorkOSConnectionSyncStatus } from "@app/lib/types/workos";
+import type { WorkOSSSOConnectionStatus } from "@app/lib/types/workos";
 import type { PlanType, WorkspaceType } from "@app/types";
 
 interface WorkOSSSOConnectionProps {
@@ -40,11 +40,7 @@ export default function WorkOSSSOConnection({
     setShowDisableWorkOSSSOConnectionModal,
   ] = React.useState(false);
 
-  const {
-    ssoStatus,
-    isLoading: isLoadingSSO,
-    setupSSOLink,
-  } = useWorkOSSSOStatus({ owner });
+  const { ssoStatus, isLoading: isLoadingSSO } = useWorkOSSSOStatus({ owner });
 
   const isSSOConfigured = ssoStatus?.status === "configured";
 
@@ -91,12 +87,14 @@ export default function WorkOSSSOConnection({
                     ? "Add a domain to enable SSO"
                     : undefined
                 }
-                disabled={isSSOConfigured || !domains.length}
+                disabled={
+                  isSSOConfigured || !domains.length || !ssoStatus?.setupSSOLink
+                }
                 onClick={() => {
                   if (!isUpgraded(plan)) {
                     setShowUpgradePlanDialog(true);
                   } else {
-                    window.open(setupSSOLink, "_blank");
+                    window.open(ssoStatus?.setupSSOLink, "_blank");
                   }
                 }}
               />
@@ -125,7 +123,7 @@ interface DisableWorkOSSSOConnectionModalProps {
   isOpen: boolean;
   onClose: (updated: boolean) => void;
   owner: WorkspaceType;
-  ssoStatus: WorkOSConnectionSyncStatus | undefined;
+  ssoStatus: WorkOSSSOConnectionStatus | undefined;
 }
 
 function DisableWorkOSSSOConnectionModal({

@@ -20,5 +20,8 @@ export type WorkOSConnectionSyncStatus = {
       | "invalid_credentials";
     type: string;
   } | null;
+};
+
+export type WorkOSSSOConnectionStatus = WorkOSConnectionSyncStatus & {
   setupSSOLink: string;
 };
