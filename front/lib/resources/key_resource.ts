@@ -201,6 +201,7 @@ export class KeyResource extends BaseResource<KeyModel> {
       secret,
       status: this.status,
       groupId: this.groupId,
+      role: this.role,
     };
   }
 
@@ -210,6 +211,7 @@ export class KeyResource extends BaseResource<KeyModel> {
       id: this.id,
       name: this.name,
       isSystem: this.isSystem,
+      role: this.role,
     };
   }
 

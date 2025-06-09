@@ -1,3 +1,4 @@
+import { RoleType } from "@app/types/user";
 import type { ModelId } from "./shared/model_id";
 
 export type KeyType = {
@@ -9,4 +10,5 @@ export type KeyType = {
   status: string;
   name: string | null;
   groupId?: ModelId;
+  role?: RoleType;
 };
