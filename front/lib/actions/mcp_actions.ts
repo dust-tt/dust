@@ -140,6 +140,7 @@ function makeServerSideMCPToolConfigurations(
     originalName: tool.name,
     mcpServerName: config.name,
     dustAppConfiguration: config.dustAppConfiguration,
+    ...(tool.timeoutMs && { timeoutMs: tool.timeoutMs }),
   }));
 }
 
@@ -277,7 +278,9 @@ export async function* tryCallMCPTool(
       },
       undefined,
       {
-        timeout: DEFAULT_MCP_REQUEST_TIMEOUT_MS,
+        timeout:
+          agentLoopRunContext.actionConfiguration.timeoutMs ??
+          DEFAULT_MCP_REQUEST_TIMEOUT_MS,
       }
     );
 
@@ -775,6 +778,7 @@ async function listToolsForServerSideMCPServer(
   );
 
   let toolsStakes: Record<string, MCPToolStakeLevelType> = {};
+  let serverTimeoutMs: number | undefined;
 
   switch (serverType) {
     case "internal": {
@@ -786,6 +790,7 @@ async function listToolsForServerSideMCPServer(
       }
       const serverName = r.value.name;
       toolsStakes = INTERNAL_MCP_SERVERS[serverName]?.tools_stakes || {};
+      serverTimeoutMs = INTERNAL_MCP_SERVERS[serverName]?.timeoutMs;
       break;
     }
 
@@ -805,7 +810,7 @@ async function listToolsForServerSideMCPServer(
       assertNever(serverType);
   }
 
-  const toolsWithStakes = allToolsRaw.map((tool) => ({
+  const toolsWithStakesAndTimeout = allToolsRaw.map((tool) => ({
     ...tool,
     stakeLevel:
       toolsStakes[tool.name] ||
@@ -814,11 +819,12 @@ async function listToolsForServerSideMCPServer(
         : FALLBACK_INTERNAL_AUTO_SERVERS_TOOL_STAKE_LEVEL),
     availability,
     toolServerId: connectionParams.mcpServerId,
+    ...(serverTimeoutMs && { timeoutMs: serverTimeoutMs }),
   }));
 
   const serverSideToolConfigs = makeServerSideMCPToolConfigurations(
     config,
-    toolsWithStakes
+    toolsWithStakesAndTimeout
   );
   return new Ok(serverSideToolConfigs);
 }
