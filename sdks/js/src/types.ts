@@ -3,6 +3,7 @@ import moment from "moment-timezone";
 import { z } from "zod";
 
 import { INTERNAL_MIME_TYPES_VALUES } from "./internal_mime_types";
+import { CallToolResultSchema } from "./raw_mcp_types";
 
 type StringLiteral<T> = T extends string
   ? string extends T
@@ -926,6 +927,7 @@ const MCPActionTypeSchema = BaseActionSchema.extend({
   agentMessageId: ModelIdSchema,
   functionCallName: z.string().nullable(),
   params: z.unknown(),
+  output: CallToolResultSchema.shape.content.nullable(),
   type: z.literal("tool_action"),
 });
 
@@ -2693,6 +2695,12 @@ export function isWebsearchActionType(
   action: AgentActionPublicType
 ): action is WebsearchActionPublicType {
   return action.type === "websearch_action";
+}
+
+export function isMCPActionType(
+  action: AgentActionPublicType
+): action is MCPActionPublicType {
+  return action.type === "tool_action";
 }
 
 export function isTablesQueryActionType(
