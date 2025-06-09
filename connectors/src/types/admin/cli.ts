@@ -644,6 +644,8 @@ export type SalesforceCheckConnectionResponseType = t.TypeOf<
 
 export const SalesforceRunSoqlResponseSchema = t.type({
   records: t.array(t.UnknownRecord), // Salesforce type, can't be iots'd
+  totalSize: t.number,
+  done: t.boolean,
 });
 export type SalesforceRunSoqlResponseType = t.TypeOf<
   typeof SalesforceRunSoqlResponseSchema

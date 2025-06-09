@@ -79,7 +79,11 @@ export const salesforce = async ({
         throw res.error;
       }
 
-      return { records: res.value.records };
+      return {
+        records: res.value.records,
+        totalSize: res.value.totalSize,
+        done: res.value.done,
+      };
     }
     case "setup-synced-query": {
       if (!args.soql) {
