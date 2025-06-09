@@ -16,10 +16,10 @@ interface PatchSpaceMembersResponseBody {
 
 /**
  * @swagger
- * /api/v1/w/{wId}/spaces:
- *   get:
- *     summary: List available spaces.
- *     description: Retrieves a list of accessible spaces for the authenticated workspace.
+ * /api/v1/w/{wId}/spaces/{spaceId}/members:
+ *   patch:
+ *     summary: Change the members in a space.
+ *     description: Changes the list of members that have a specified space available to them.
  *     tags:
  *       - Spaces
  *     security:
@@ -31,18 +31,22 @@ interface PatchSpaceMembersResponseBody {
  *         description: Unique string identifier for the workspace
  *         schema:
  *           type: string
+ *       - in: path
+ *         name: spaceId
+ *         required: true
+ *         description: Unique string identifier for the space
+ *         schema:
+ *           type: string
  *     responses:
  *       200:
- *         description: Spaces of the workspace
+ *         description: Space updated successfully
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
- *                 spaces:
- *                   type: array
- *                   items:
- *                     $ref: '#/components/schemas/Space'
+ *                 space:
+ *                   $ref: '#/components/schemas/Space'
  *       400:
  *         description: Bad Request. Missing or invalid parameters.
  *       401:
