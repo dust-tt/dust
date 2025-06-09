@@ -99,6 +99,10 @@ const InputBarContainer = ({
     []
   );
 
+  const handleUrlReplaced = () => {
+    setNodeOrUrlCandidate(null);
+  };
+
   // Pass the editor ref to the mention dropdown hook
   const mentionDropdown = useMentionDropdown(suggestions, editorRef);
 
@@ -115,7 +119,8 @@ const InputBarContainer = ({
   useEffect(() => {
     editorRef.current = editor;
   }, [editor]);
-  useUrlHandler(editor, selectedNode, nodeOrUrlCandidate);
+
+  useUrlHandler(editor, selectedNode, nodeOrUrlCandidate, handleUrlReplaced);
 
   const { spaces, isSpacesLoading } = useSpaces({ workspaceId: owner.sId });
   const spacesMap = useMemo(
@@ -181,12 +186,8 @@ const InputBarContainer = ({
         const node = sortedNodes[0];
         onNodeSelect(node);
         setSelectedNode(node);
+        return;
       }
-
-      // Reset node candidate after processing.
-      // FIXME: This causes reset to early and it requires pasting the url twice.
-      setNodeOrUrlCandidate(null);
-      return;
     }
 
     sendNotification({
