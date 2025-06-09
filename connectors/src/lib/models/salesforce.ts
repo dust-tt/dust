@@ -29,3 +29,42 @@ SalesforceConfigurationModel.init(
     relationship: "hasOne",
   }
 );
+
+export class SalesforceSyncedQueryModel extends ConnectorBaseModel<SalesforceSyncedQueryModel> {
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+  declare rootNodeName: string;
+  declare query: string;
+  declare lastSeenUpdatedAt: Date | null;
+}
+SalesforceSyncedQueryModel.init(
+  {
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    rootNodeName: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    query: {
+      type: DataTypes.TEXT,
+      allowNull: false,
+    },
+    lastSeenUpdatedAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+  },
+  {
+    sequelize: sequelizeConnection,
+    modelName: "salesforce_synced_queries",
+    indexes: [{ fields: ["connectorId"], unique: false }],
+  }
+);
