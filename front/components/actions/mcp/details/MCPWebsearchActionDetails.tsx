@@ -1,10 +1,7 @@
-import {
-  CollapsibleComponent,
-  GlobeAltIcon,
-  PaginatedCitationsGrid,
-} from "@dust-tt/sparkle";
+import { GlobeAltIcon } from "@dust-tt/sparkle";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
+import { SearchResultDetails } from "@app/components/actions/mcp/details/MCPToolOutputDetails";
 import { getDocumentIcon } from "@app/components/actions/retrieval/utils";
 import type { ActionDetailsComponentBaseProps } from "@app/components/actions/types";
 import type { MCPActionType } from "@app/lib/actions/mcp";
@@ -27,6 +24,11 @@ export function MCPWebsearchActionDetails({
       ?.filter(isWebsearchResultResourceType)
       .map((o) => o.resource) ?? [];
 
+  const query =
+    queryResources.length > 0
+      ? queryResources.map((r) => r.text).join("\n")
+      : (action.params.query as string) ?? "No query provided";
+
   return (
     <ActionDetailsWrapper
       actionName="Web search"
@@ -41,25 +43,15 @@ export function MCPWebsearchActionDetails({
           <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night"></div>
         </div>
         <div>
-          <CollapsibleComponent
-            rootProps={{ defaultOpen }}
-            triggerChildren={
-              <span className="text-sm font-bold text-foreground dark:text-foreground-night">
-                {queryResources.length > 0
-                  ? queryResources.map((r) => r.text).join("\n")
-                  : (action.params.query as string) ?? "No query provided"}
-              </span>
-            }
-            contentChildren={
-              <PaginatedCitationsGrid
-                items={websearchResults.map((r) => ({
-                  description: r.text,
-                  title: r.title,
-                  icon: getDocumentIcon("webcrawler"),
-                  href: r.uri,
-                }))}
-              />
-            }
+          <SearchResultDetails
+            defaultOpen={defaultOpen}
+            query={query}
+            items={websearchResults.map((r) => ({
+              description: r.text,
+              title: r.title,
+              icon: getDocumentIcon("webcrawler"),
+              href: r.uri,
+            }))}
           />
         </div>
       </div>

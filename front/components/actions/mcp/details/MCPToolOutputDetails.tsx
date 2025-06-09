@@ -9,6 +9,7 @@ import {
   Icon,
   InformationCircleIcon,
   Markdown,
+  PaginatedCitationsGrid,
   useSendNotification,
 } from "@dust-tt/sparkle";
 import { useCallback } from "react";
@@ -154,5 +155,34 @@ export function ToolGeneratedFileDetails({
         }
       />
     </>
+  );
+}
+
+interface SearchResultProps {
+  defaultOpen?: boolean;
+  query: string;
+  items: {
+    description: string;
+    title: string;
+    icon: React.JSX.Element;
+    href: string;
+  }[];
+}
+
+export function SearchResultDetails({
+  defaultOpen,
+  query,
+  items,
+}: SearchResultProps) {
+  return (
+    <CollapsibleComponent
+      rootProps={{ defaultOpen }}
+      triggerChildren={
+        <span className="text-sm font-bold text-foreground dark:text-foreground-night">
+          {query}
+        </span>
+      }
+      contentChildren={<PaginatedCitationsGrid items={items} />}
+    />
   );
 }

@@ -1,10 +1,7 @@
-import {
-  CollapsibleComponent,
-  MagnifyingGlassIcon,
-  PaginatedCitationsGrid,
-} from "@dust-tt/sparkle";
+import { MagnifyingGlassIcon } from "@dust-tt/sparkle";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
+import { SearchResultDetails } from "@app/components/actions/mcp/details/MCPToolOutputDetails";
 import { getDocumentIcon } from "@app/components/actions/retrieval/utils";
 import type { ActionDetailsComponentBaseProps } from "@app/components/actions/types";
 import type { MCPActionType } from "@app/lib/actions/mcp";
@@ -43,23 +40,15 @@ export function MCPSearchActionDetails({
           </div>
         </div>
         <div>
-          <CollapsibleComponent
-            rootProps={{ defaultOpen }}
-            triggerChildren={
-              <span className="text-sm font-bold text-foreground dark:text-foreground-night">
-                Results
-              </span>
-            }
-            contentChildren={
-              <PaginatedCitationsGrid
-                items={searchResults.map((r) => ({
-                  description: "",
-                  title: r.text,
-                  icon: getDocumentIcon(r.source.provider),
-                  href: r.uri,
-                }))}
-              />
-            }
+          <SearchResultDetails
+            defaultOpen={defaultOpen}
+            query="Results"
+            items={searchResults.map((r) => ({
+              description: "",
+              title: r.text,
+              icon: getDocumentIcon(r.source.provider),
+              href: r.uri,
+            }))}
           />
         </div>
       </div>
