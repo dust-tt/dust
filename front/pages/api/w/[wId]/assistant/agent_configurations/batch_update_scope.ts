@@ -57,7 +57,7 @@ async function handler(
   await concurrentExecutor(
     agentIds,
     async (agentId) => {
-      const agent = await getAgentConfiguration(auth, agentId, "full");
+      const agent = await getAgentConfiguration(auth, agentId, "light");
       if (!agent) {
         return; // Skip if agent not found
       }
