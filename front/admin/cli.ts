@@ -36,6 +36,7 @@ import {
 } from "@app/types";
 import path from "path";
 import { KeyResource } from "@app/lib/resources/key_resource";
+import { getWorkspaceInfos } from "@app/lib/api/workspace";
 
 // `cli` takes an object type and a command as first two arguments and then a list of arguments.
 const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
@@ -589,11 +590,7 @@ async function apikeys(command: string, args: parseArgs.ParsedArgs) {
         );
       }
 
-      const workspace = await Workspace.findOne({
-        where: {
-          sId: args.wId,
-        },
-      });
+      const workspace = await getWorkspaceInfos(args.wId);
 
       if (!workspace) {
         throw new Error(`Workspace not found: wId='${args.wId}'`);

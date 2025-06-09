@@ -219,8 +219,8 @@ export class KeyResource extends BaseResource<KeyModel> {
     return this.status === "active";
   }
 
-  static async updateRole(newRole: RoleType, wId: string, apiKeyName: string) {
-    return await this.model.update(
+  static updateRole(newRole: RoleType, wId: string, apiKeyName: string) {
+    return this.model.update(
       {
         role: newRole,
       },
