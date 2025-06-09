@@ -1810,3 +1810,26 @@ export async function updateAgentPermissions(
     return new Err(normalizeError(error));
   }
 }
+
+export async function updateAgentConfigurationScope(
+  auth: Authenticator,
+  agentConfigurationId: string,
+  scope: Exclude<AgentConfigurationScope, "global">
+) {
+  const agent = await AgentConfiguration.findOne({
+    where: {
+      workspaceId: auth.getNonNullableWorkspace().id,
+      sId: agentConfigurationId,
+      status: "active",
+    },
+  });
+
+  if (!agent) {
+    return new Err(new Error(`Could not find agent ${agentConfigurationId}`));
+  }
+
+  agent.scope = scope;
+  await agent.save();
+
+  return new Ok(undefined);
+}
