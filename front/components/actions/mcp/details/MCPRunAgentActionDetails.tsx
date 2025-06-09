@@ -1,4 +1,11 @@
-import { Avatar, Button, RobotIcon } from "@dust-tt/sparkle";
+import {
+  Avatar,
+  Button,
+  ContentMessage,
+  Markdown,
+  RobotIcon,
+} from "@dust-tt/sparkle";
+import { ExternalLinkIcon } from "@dust-tt/sparkle";
 import { useMemo } from "react";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
@@ -73,51 +80,55 @@ export function MCPRunAgentActionDetails({
     workspaceId: owner.sId,
     agentConfigurationId: childAgentId,
   });
-
   return (
     <ActionDetailsWrapper
-      actionName="Run agent"
+      actionName={childAgent?.name ? `Run @${childAgent.name}` : "Run Agent"}
       defaultOpen={defaultOpen}
-      visual={RobotIcon}
+      visual={
+        childAgent?.pictureUrl
+          ? () => <Avatar visual={childAgent.pictureUrl} size="sm" />
+          : RobotIcon
+      }
     >
       <div className="flex flex-col gap-4 pl-6 pt-4">
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-4">
           {query && childAgent && (
-            <>
-              <div className="flex items-center gap-2">
-                <Avatar
-                  name={childAgent.name}
-                  visual={childAgent.pictureUrl}
-                  busy={isBusy}
-                  disabled={false}
-                  size="xs"
+            <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+              <ContentMessage title="Query" variant="outline" size="lg">
+                <Markdown
+                  content={query}
+                  isStreaming={false}
+                  forcedTextSize="text-sm"
+                  textColor="text-muted-foreground"
+                  isLastMessage={false}
                 />
-                <div>
-                  {conversationUrl && (
-                    <Button
-                      label="View conversation"
-                      variant="outline"
-                      onClick={() => window.open(conversationUrl, "_blank")}
-                      size="xs"
-                      className="!p-1"
-                    />
-                  )}
-                </div>
-              </div>
-              <div className="text-sm font-normal text-foreground dark:text-foreground-night">
-                <span className="font-bold">Query: </span>{" "}
-                <span className="text-muted-foreground dark:text-muted-foreground-night">
-                  {query}
-                </span>
-              </div>
-            </>
+              </ContentMessage>
+            </div>
           )}
           {response && childAgent && (
-            <>
-              <div className="text-sm font-normal text-foreground dark:text-foreground-night">
-                <span className="font-bold">Response: </span> {response}
-              </div>
-            </>
+            <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+              <ContentMessage title="Response" variant="primary" size="lg">
+                <Markdown
+                  content={response}
+                  isStreaming={false}
+                  forcedTextSize="text-sm"
+                  textColor="text-muted-foreground"
+                  isLastMessage={false}
+                />
+              </ContentMessage>
+            </div>
+          )}
+        </div>
+        <div>
+          {conversationUrl && (
+            <Button
+              icon={ExternalLinkIcon}
+              label="View full conversation"
+              variant="outline"
+              onClick={() => window.open(conversationUrl, "_blank")}
+              size="xs"
+              className="!p-1"
+            />
           )}
         </div>
       </div>
