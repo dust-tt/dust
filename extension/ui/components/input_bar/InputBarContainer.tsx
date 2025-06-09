@@ -80,6 +80,10 @@ export const InputBarContainer = ({
     []
   );
 
+  const handleUrlReplaced = () => {
+    setNodeOrUrlCandidate(null);
+  };
+
   const mentionDropdown = useMentionDropdown(suggestions, editorRef);
 
   const { editor, editorService } = useCustomEditor({
@@ -92,7 +96,7 @@ export const InputBarContainer = ({
 
   const sendNotification = useSendNotification();
 
-  useUrlHandler(editor, selectedNode);
+  useUrlHandler(editor, selectedNode, nodeOrUrlCandidate, handleUrlReplaced);
 
   const { spaces, isSpacesLoading } = useSpaces();
   const spacesMap = useMemo(
@@ -137,8 +141,14 @@ export const InputBarContainer = ({
         }));
       });
 
-      if (nodesWithViews.length > 0) {
-        const sortedNodes = nodesWithViews.sort(
+      const nodes = nodesWithViews.filter(
+        (node) =>
+          isNodeCandidate(nodeOrUrlCandidate) ||
+          node.sourceUrl === nodeOrUrlCandidate?.url
+      );
+
+      if (nodes.length > 0) {
+        const sortedNodes = nodes.sort(
           (a, b) =>
             b.spacePriority - a.spacePriority ||
             a.spaceName.localeCompare(b.spaceName)
@@ -146,19 +156,16 @@ export const InputBarContainer = ({
         const node = sortedNodes[0];
         onNodeSelect(node);
         setSelectedNode(node);
+        return;
       }
-
-      // Reset node candidate after processing.
-      // FIXME: This causes reset to early and it requires pasting the url twice.
-      setNodeOrUrlCandidate(null);
-    } else {
-      sendNotification({
-        title: "No match for URL",
-        description: `Pasted URL does not match any content in knowledge. ${nodeOrUrlCandidate?.provider === "microsoft" ? "(Microsoft URLs are not supported)" : ""}`,
-        type: "info",
-      });
-      setNodeOrUrlCandidate(null);
     }
+
+    sendNotification({
+      title: "No match for URL",
+      description: `Pasted URL does not match any content in knowledge. ${nodeOrUrlCandidate?.provider === "microsoft" ? "(Microsoft URLs are not supported)" : ""}`,
+      type: "info",
+    });
+    setNodeOrUrlCandidate(null);
   }, [
     searchResultNodes,
     onNodeSelect,
