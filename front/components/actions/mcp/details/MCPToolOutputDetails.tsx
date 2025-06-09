@@ -14,9 +14,17 @@ import {
   Tooltip,
   useSendNotification,
 } from "@dust-tt/sparkle";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { useCallback, useMemo } from "react";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
+import { getDocumentIcon } from "@app/components/actions/retrieval/utils";
+import type {
+  ReasoningSuccessOutputType,
+  SqlQueryOutputType,
+  ThinkingOutputType,
+  ToolGeneratedFileType,
+} from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
   isIncludeQueryResourceType,
   isIncludeResultResourceType,
@@ -25,15 +33,9 @@ import {
   isWarningResourceType,
   isWebsearchQueryResourceType,
   isWebsearchResultResourceType,
-  ReasoningSuccessOutputType,
-  SqlQueryOutputType,
-  ThinkingOutputType,
-  ToolGeneratedFileType,
-  WarningResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import { removeNulls, type LightWorkspaceType } from "@app/types";
-import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import { getDocumentIcon } from "@app/components/actions/retrieval/utils";
+import type { LightWorkspaceType } from "@app/types";
+import { removeNulls } from "@app/types";
 
 interface ThinkingBlockProps {
   resource: ThinkingOutputType;
