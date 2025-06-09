@@ -1,6 +1,11 @@
 import type { LightAgentConfigurationType } from "@dust-tt/client";
 
-import { STATIC_AGENT_CONFIG } from "@connectors/api/webhooks/webhook_slack_interaction";
+import {
+  APPROVE_TOOL_EXECUTION,
+  REJECT_TOOL_EXECUTION,
+  RequestToolPermissionActionValueParsed,
+  STATIC_AGENT_CONFIG,
+} from "@connectors/api/webhooks/webhook_slack_interaction";
 import type { SlackMessageFootnotes } from "@connectors/connectors/slack/chat/citations";
 import { makeDustAppUrl } from "@connectors/connectors/slack/chat/utils";
 import { truncate } from "@connectors/types";
@@ -257,7 +262,12 @@ export function makeToolValidationBlock({
             emoji: true,
           },
           style: "primary",
-          action_id: "approve_tool_execution",
+          value: JSON.stringify({
+            status: "approved",
+            agentName,
+            toolName,
+          } as RequestToolPermissionActionValueParsed),
+          action_id: APPROVE_TOOL_EXECUTION,
         },
         {
           type: "button",
@@ -267,7 +277,12 @@ export function makeToolValidationBlock({
             emoji: true,
           },
           style: "danger",
-          action_id: "reject_tool_execution",
+          value: JSON.stringify({
+            status: "rejected",
+            agentName,
+            toolName,
+          } as RequestToolPermissionActionValueParsed),
+          action_id: REJECT_TOOL_EXECUTION,
         },
       ],
     },

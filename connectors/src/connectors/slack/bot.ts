@@ -17,6 +17,7 @@ import {
 } from "@dust-tt/client";
 import type { WebClient } from "@slack/web-api";
 import type { MessageElement } from "@slack/web-api/dist/response/ConversationsHistoryResponse";
+import fetch from "node-fetch";
 import removeMarkdown from "remove-markdown";
 import jaroWinkler from "talisman/metrics/jaro-winkler";
 
@@ -68,6 +69,7 @@ import {
 const MAX_FILE_SIZE_TO_UPLOAD = 10 * 1024 * 1024; // 10 MB
 
 type BotAnswerParams = {
+  responseUrl?: string;
   slackTeamId: string;
   slackChannel: string;
   slackUserId: string | null;
@@ -211,6 +213,7 @@ type ToolValidationParams = {
   conversationId: string;
   messageId: string;
   slackBotMessageId: number;
+  text: string;
 };
 
 export async function botValidateToolExecution(
@@ -220,10 +223,17 @@ export async function botValidateToolExecution(
     conversationId,
     messageId,
     slackBotMessageId,
+    text,
   }: ToolValidationParams,
   params: BotAnswerParams
 ) {
-  const { slackChannel, slackMessageTs, slackTeamId } = params;
+  const {
+    slackChannel,
+    slackMessageTs,
+    slackTeamId,
+    slackThreadTs,
+    responseUrl,
+  } = params;
 
   const connectorRes = await getSlackConnector(params);
   if (connectorRes.isErr()) {
@@ -258,13 +268,40 @@ export async function botValidateToolExecution(
       approved,
     });
 
-    const slackClient = await getSlackClient(connector.id);
-    await slackClient.chat.postEphemeral({
-      channel: slackChannel,
-      user: slackChatBotMessage.slackUserId,
-      text: `The tool execution has been ${approved}.`,
-      thread_ts: slackMessageTs,
-    });
+    if (responseUrl) {
+      // Use response_url to update the message - this is required for interactive messages
+      // as it maintains the original message's context and permissions
+      const response = await fetch(responseUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          thread_ts: slackThreadTs, // Removing thread_ts sends a duplicate message in the channel
+          blocks: [
+            {
+              type: "section",
+              text: {
+                type: "mrkdwn",
+                text,
+              },
+            },
+          ],
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(
+          `Failed to send response to Slack: ${response.statusText}`
+        );
+      }
+    } else {
+      const slackClient = await getSlackClient(connector.id);
+      await slackClient.chat.postEphemeral({
+        channel: slackChannel,
+        user: slackChatBotMessage.slackUserId,
+        text: `The tool execution has been ${approved}.`,
+        thread_ts: slackMessageTs,
+      });
+    }
 
     return res;
   } catch (e) {
