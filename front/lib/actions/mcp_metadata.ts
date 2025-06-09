@@ -362,22 +362,10 @@ export async function fetchRemoteServerMetaDataByURL(
   if (r.isErr()) {
     return r;
   }
-  try {
-    return await fetchRemoteServerMetaData(auth, r.value);
-  } catch (e: unknown) {
-    logger.error(
-      {
-        workspaceId: auth.getNonNullableWorkspace().sId,
-        error: e,
-      },
-      "Error fetching metadata from remote MCP server"
-    );
-    return new Err(
-      new Error("Error getting metadata from the remote MCP server.")
-    );
-  } finally {
-    await r.value.close();
-  }
+
+  const result = await fetchRemoteServerMetaData(auth, r.value);
+  await r.value.close();
+  return result;
 }
 
 export async function fetchRemoteServerMetaDataByServerId(
@@ -394,22 +382,10 @@ export async function fetchRemoteServerMetaDataByServerId(
   if (r.isErr()) {
     return r;
   }
-  try {
-    return await fetchRemoteServerMetaData(auth, r.value);
-  } catch (e: unknown) {
-    logger.error(
-      {
-        workspaceId: auth.getNonNullableWorkspace().sId,
-        error: e,
-      },
-      "Error fetching metadata from remote MCP server"
-    );
-    return new Err(
-      new Error("Error getting metadata from the remote MCP server.")
-    );
-  } finally {
-    await r.value.close();
-  }
+
+  const result = await fetchRemoteServerMetaData(auth, r.value);
+  await r.value.close();
+  return result;
 }
 
 async function fetchRemoteServerMetaData(
