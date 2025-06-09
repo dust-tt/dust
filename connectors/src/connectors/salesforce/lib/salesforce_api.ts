@@ -23,7 +23,6 @@ import { buildInternalId } from "@connectors/lib/remote_databases/utils";
 const SF_API_VERSION = "57.0";
 
 /**
-/**
  * Get a Salesforce connection for the given connection ID.
  */
 export const getSalesforceConnection = async (
@@ -75,14 +74,14 @@ export async function testSalesforceConnection(
  */
 export const fetchDatabases = (): RemoteDBDatabase[] => {
   // Salesforce do not have a concept of databases per say, the most similar concept is a project.
-  // Since credentials are always scoped to a project, we directly return a single database with the project name.
+  // Since credentials are always scoped to a project, we directly return a single database with the
+  // project name.
   return [{ name: INTERNAL_ID_DATABASE }];
 };
 
 /**
- * Fetch the schemas available in the Salesforce account.
- * In Salesforce, we have two types of objects: standard and custom.
- * We fetch them separately and return them as two different schemas.
+ * Fetch the schemas available in the Salesforce account. In Salesforce, we have two types of
+ * objects: standard and custom. We fetch them separately and return them as two different schemas.
  */
 export const fetchSchemas = (): RemoteDBSchema[] => {
   return [
@@ -98,8 +97,8 @@ export const fetchSchemas = (): RemoteDBSchema[] => {
 };
 
 /**
- * Fetch the tables available in the Salesforce account.
- * In Salesforce, objects are the equivalent of tables.
+ * Fetch the tables available in the Salesforce account. In Salesforce, objects are the equivalent
+ * of tables.
  */
 export async function fetchTables({
   credentials,
@@ -150,8 +149,8 @@ export const fetchTree = async ({
 }: {
   credentials: SalesforceAPICredentials;
 }): Promise<Result<RemoteDBTree, Error>> => {
-  const databases = await fetchDatabases();
-  const schemas = await fetchSchemas();
+  const databases = fetchDatabases();
+  const schemas = fetchSchemas();
   const tree = {
     databases: await Promise.all(
       databases.map(async (db) => {
