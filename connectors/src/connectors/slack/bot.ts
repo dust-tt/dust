@@ -227,13 +227,7 @@ export async function botValidateToolExecution(
   }: ToolValidationParams,
   params: BotAnswerParams
 ) {
-  const {
-    slackChannel,
-    slackMessageTs,
-    slackTeamId,
-    slackThreadTs,
-    responseUrl,
-  } = params;
+  const { slackChannel, slackMessageTs, slackTeamId, responseUrl } = params;
 
   const connectorRes = await getSlackConnector(params);
   if (connectorRes.isErr()) {
@@ -269,39 +263,33 @@ export async function botValidateToolExecution(
     });
 
     if (responseUrl) {
-      // Use response_url to update the message - this is required for interactive messages
-      // as it maintains the original message's context and permissions
+      // Use response_url to delete the message
+      // Deleting is preferred over updating the message (see https://github.com/dust-tt/dust/pull/13268)
       const response = await fetch(responseUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          thread_ts: slackThreadTs, // Removing thread_ts sends a duplicate message in the channel
-          blocks: [
-            {
-              type: "section",
-              text: {
-                type: "mrkdwn",
-                text,
-              },
-            },
-          ],
+          delete_original: true,
         }),
       });
 
       if (!response.ok) {
-        throw new Error(
-          `Failed to send response to Slack: ${response.statusText}`
+        logger.error(
+          {
+            responseUrl,
+            connectorId: connector.id,
+          },
+          "Failed to delete original message using response_url"
         );
       }
-    } else {
-      const slackClient = await getSlackClient(connector.id);
-      await slackClient.chat.postEphemeral({
-        channel: slackChannel,
-        user: slackChatBotMessage.slackUserId,
-        text: `The tool execution has been ${approved}.`,
-        thread_ts: slackMessageTs,
-      });
     }
+    const slackClient = await getSlackClient(connector.id);
+    await slackClient.chat.postEphemeral({
+      channel: slackChannel,
+      user: slackChatBotMessage.slackUserId,
+      text,
+      thread_ts: slackMessageTs,
+    });
 
     return res;
   } catch (e) {
