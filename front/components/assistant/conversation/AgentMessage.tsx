@@ -179,6 +179,7 @@ export function AgentMessage({
           inputs: eventPayload.data.inputs,
           stake: eventPayload.data.stake,
           metadata: eventPayload.data.metadata,
+          action: eventPayload.data.action,
         });
 
         return;
