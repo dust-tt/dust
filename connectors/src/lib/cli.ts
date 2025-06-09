@@ -11,6 +11,7 @@ import { google_drive } from "@connectors/connectors/google_drive/lib/cli";
 import { intercom } from "@connectors/connectors/intercom/lib/cli";
 import { microsoft } from "@connectors/connectors/microsoft/lib/cli";
 import { notion } from "@connectors/connectors/notion/lib/cli";
+import { salesforce } from "@connectors/connectors/salesforce/lib/cli";
 import { slack } from "@connectors/connectors/slack/lib/cli";
 import { snowflake } from "@connectors/connectors/snowflake/lib/cli";
 import {
@@ -67,6 +68,8 @@ export async function runCommand(adminCommand: AdminCommandType) {
       return webcrawler(adminCommand);
     case "zendesk":
       return zendesk(adminCommand);
+    case "salesforce":
+      return salesforce(adminCommand);
     default:
       assertNever(adminCommand);
   }

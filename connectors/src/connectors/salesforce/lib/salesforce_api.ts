@@ -1,6 +1,6 @@
 import type { Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
-import type { Connection } from "jsforce";
+import type { Connection, QueryResult, Record } from "jsforce";
 import jsforce from "jsforce";
 
 import {
@@ -19,10 +19,10 @@ import type {
   RemoteDBTree,
 } from "@connectors/lib/remote_databases/utils";
 import { buildInternalId } from "@connectors/lib/remote_databases/utils";
+import { normalizeError } from "@connectors/types";
 
 const SF_API_VERSION = "57.0";
 
-/**
 /**
  * Get a Salesforce connection for the given connection ID.
  */
@@ -75,14 +75,14 @@ export async function testSalesforceConnection(
  */
 export const fetchDatabases = (): RemoteDBDatabase[] => {
   // Salesforce do not have a concept of databases per say, the most similar concept is a project.
-  // Since credentials are always scoped to a project, we directly return a single database with the project name.
+  // Since credentials are always scoped to a project, we directly return a single database with the
+  // project name.
   return [{ name: INTERNAL_ID_DATABASE }];
 };
 
 /**
- * Fetch the schemas available in the Salesforce account.
- * In Salesforce, we have two types of objects: standard and custom.
- * We fetch them separately and return them as two different schemas.
+ * Fetch the schemas available in the Salesforce account. In Salesforce, we have two types of
+ * objects: standard and custom. We fetch them separately and return them as two different schemas.
  */
 export const fetchSchemas = (): RemoteDBSchema[] => {
   return [
@@ -98,8 +98,8 @@ export const fetchSchemas = (): RemoteDBSchema[] => {
 };
 
 /**
- * Fetch the tables available in the Salesforce account.
- * In Salesforce, objects are the equivalent of tables.
+ * Fetch the tables available in the Salesforce account. In Salesforce, objects are the equivalent
+ * of tables.
  */
 export async function fetchTables({
   credentials,
@@ -150,8 +150,8 @@ export const fetchTree = async ({
 }: {
   credentials: SalesforceAPICredentials;
 }): Promise<Result<RemoteDBTree, Error>> => {
-  const databases = await fetchDatabases();
-  const schemas = await fetchSchemas();
+  const databases = fetchDatabases();
+  const schemas = fetchSchemas();
   const tree = {
     databases: await Promise.all(
       databases.map(async (db) => {
@@ -186,3 +186,23 @@ export const fetchTree = async ({
 
   return new Ok(tree);
 };
+
+export async function runSOQL({
+  credentials,
+  soql,
+}: {
+  credentials: SalesforceAPICredentials;
+  soql: string;
+}): Promise<Result<QueryResult<Record>, Error>> {
+  try {
+    const connRes = await getSalesforceConnection(credentials);
+    if (connRes.isErr()) {
+      return new Err(new Error("Can't connect to Salesforce."));
+    }
+
+    const result = await connRes.value.query(soql);
+    return new Ok(result);
+  } catch (err) {
+    return new Err(normalizeError(err));
+  }
+}

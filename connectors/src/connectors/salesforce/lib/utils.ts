@@ -1,5 +1,6 @@
 import type { Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
+import type { Record } from "jsforce";
 
 import { ConnectorManagerError } from "@connectors/connectors/interface";
 import type { SalesforceAPICredentials } from "@connectors/connectors/salesforce/lib/oauth";
@@ -36,3 +37,13 @@ export const getConnectorAndCredentials = async (
     credentials,
   });
 };
+
+export function syncQueryTemplateInterpolate(
+  template: string,
+  record: Record
+): string {
+  return template.replace(/\$\{([^}]+)\}/g, (_, key) => {
+    const value = record[key.split(".")[1]];
+    return value?.toString() || "";
+  });
+}
