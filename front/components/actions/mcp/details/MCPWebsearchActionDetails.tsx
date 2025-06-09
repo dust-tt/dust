@@ -22,10 +22,10 @@ export function MCPWebsearchActionDetails({
   return (
     <SearchResultDetails
       actionName="Web search"
+      actionOutput={action.output}
       defaultOpen={defaultOpen}
       query={query}
       visual={GlobeAltIcon}
-      actionOutput={action.output}
     />
   );
 }

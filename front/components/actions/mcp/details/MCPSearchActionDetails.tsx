@@ -21,10 +21,10 @@ export function MCPSearchActionDetails({
   return (
     <SearchResultDetails
       actionName="Search data"
+      actionOutput={action.output}
       defaultOpen={defaultOpen}
       query={query}
       visual={MagnifyingGlassIcon}
-      actionOutput={action.output}
     />
   );
 }

@@ -22,10 +22,10 @@ export function MCPIncludeActionDetails({
   return (
     <SearchResultDetails
       actionName="Include data"
-      visual={ClockIcon}
+      actionOutput={action.output}
       defaultOpen={defaultOpen}
       query={query}
-      actionOutput={action.output}
+      visual={ClockIcon}
     />
   );
 }
