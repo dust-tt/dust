@@ -180,7 +180,7 @@ async function handler(
         status_code: 405,
         api_error: {
           type: "method_not_supported_error",
-          message: "The method passed is not supported, GET is expected.",
+          message: "The method passed is not supported, PATCH is expected.",
         },
       });
   }
