@@ -71,6 +71,8 @@ export const salesforce = async ({
       const res = await runSOQL({
         soql: args.soql,
         credentials: connCredRes.value.credentials,
+        limit: args.limit,
+        offset: args.offset,
       });
       if (res.isErr()) {
         throw res.error;

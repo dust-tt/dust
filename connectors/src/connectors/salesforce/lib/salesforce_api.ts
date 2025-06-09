@@ -190,14 +190,27 @@ export const fetchTree = async ({
 export async function runSOQL({
   credentials,
   soql,
+  limit,
+  offset,
 }: {
   credentials: SalesforceAPICredentials;
   soql: string;
+  limit?: number;
+  offset?: number;
 }): Promise<Result<QueryResult<Record>, Error>> {
   try {
     const connRes = await getSalesforceConnection(credentials);
     if (connRes.isErr()) {
       return new Err(new Error("Can't connect to Salesforce."));
+    }
+
+    if (limit !== undefined) {
+      // This will error if a limit is already present.
+      soql += ` LIMIT ${limit}`;
+    }
+    if (offset !== undefined) {
+      // This will error if an offset is already present.
+      soql += ` OFFSET ${offset}`;
     }
 
     const result = await connRes.value.query(soql);
