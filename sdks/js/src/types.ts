@@ -832,6 +832,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "usage_data_api"
   | "custom_webcrawler"
   | "exploded_tables_query"
+  | "extended_max_steps_per_run"
   | "workos"
   | "salesforce_tool"
   | "gmail_tool"

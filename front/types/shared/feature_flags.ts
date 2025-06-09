@@ -38,6 +38,7 @@ export const WHITELISTABLE_FEATURES = [
   "agent_discovery",
   "search_knowledge_builder",
   "snowflake_connector_feature",
+  "extended_max_steps_per_run",
 ] as const;
 export type WhitelistableFeature = (typeof WHITELISTABLE_FEATURES)[number];
 export function isWhitelistableFeature(
