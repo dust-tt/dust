@@ -24,7 +24,7 @@ export function MCPSearchActionDetails({
       defaultOpen={defaultOpen}
       query={query}
       visual={MagnifyingGlassIcon}
-      results={action.output}
+      actionOutput={action.output}
     />
   );
 }

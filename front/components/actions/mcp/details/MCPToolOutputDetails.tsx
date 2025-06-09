@@ -20,6 +20,7 @@ import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapp
 import {
   isIncludeResultResourceType,
   isSearchResultResourceType,
+  isWarningResourceType,
   isWebsearchResultResourceType,
   ReasoningSuccessOutputType,
   SqlQueryOutputType,
@@ -170,8 +171,7 @@ interface SearchResultProps {
   defaultOpen: boolean;
   visual: React.ComponentType<{ className?: string }>;
   query: string | React.JSX.Element;
-  warning?: WarningResourceType;
-  results: CallToolResult["content"] | null;
+  actionOutput: CallToolResult["content"] | null;
 }
 
 export function SearchResultDetails({
@@ -179,15 +179,20 @@ export function SearchResultDetails({
   defaultOpen,
   visual,
   query,
-  warning,
-  results,
+  actionOutput,
 }: SearchResultProps) {
+  const warning = useMemo(
+    () =>
+      actionOutput?.filter(isWarningResourceType).map((o) => o.resource)?.[0],
+    [actionOutput]
+  );
+
   const citations = useMemo(() => {
-    if (!results) {
+    if (!actionOutput) {
       return [];
     }
     return removeNulls(
-      results.map((r) => {
+      actionOutput.map((r) => {
         if (isWebsearchResultResourceType(r)) {
           return {
             description: r.resource.text,
@@ -207,7 +212,7 @@ export function SearchResultDetails({
         return null;
       })
     );
-  }, [results]);
+  }, [actionOutput]);
 
   return (
     <ActionDetailsWrapper

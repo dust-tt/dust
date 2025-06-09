@@ -25,7 +25,7 @@ export function MCPWebsearchActionDetails({
       defaultOpen={defaultOpen}
       query={query}
       visual={GlobeAltIcon}
-      results={action.output}
+      actionOutput={action.output}
     />
   );
 }
