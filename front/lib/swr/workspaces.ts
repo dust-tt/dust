@@ -8,12 +8,10 @@ import {
   getErrorFromResponse,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
-import type { GetWorkspaceDomainsResponseBody } from "@app/pages/api/w/[wId]/domains";
 import type { GetWorkspaceFeatureFlagsResponseType } from "@app/pages/api/w/[wId]/feature-flags";
 import type { GetSubscriptionsResponseBody } from "@app/pages/api/w/[wId]/subscriptions";
 import type { GetWorkspaceAnalyticsResponse } from "@app/pages/api/w/[wId]/workspace-analytics";
 import type {
-  LightWorkspaceType,
   WhitelistableFeature,
   WorkspaceEnterpriseConnection,
   WorkspaceType,
