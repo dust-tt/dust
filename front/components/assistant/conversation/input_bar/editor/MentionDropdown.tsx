@@ -44,9 +44,9 @@ export const MentionDropdown = ({
       setVirtualTriggerStyle({
         position: "fixed",
         left: triggerRect.left,
-        top: triggerRect.bottom,
+        top: triggerRect.top,
         width: 1,
-        height: 1,
+        height: triggerRect.height || 1,
         pointerEvents: "none",
         zIndex: -1,
       });
