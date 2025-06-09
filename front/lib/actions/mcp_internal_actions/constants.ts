@@ -224,6 +224,7 @@ export const INTERNAL_MCP_SERVERS: Record<
       create_event: "low",
       update_event: "low",
       delete_event: "low",
+      check_availability: "never_ask",
     },
   },
 

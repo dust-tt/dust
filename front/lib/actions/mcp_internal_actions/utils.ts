@@ -55,14 +55,14 @@ export const makeMCPToolJSONSuccess = ({
   message,
   result,
 }: {
-  message: string;
+  message?: string;
   result: object | string;
 }): CallToolResult => {
   return {
     isError: false,
     content: [
-      { type: "text", text: message },
-      { type: "text", text: JSON.stringify(result, null, 2) },
+      ...(message ? [{ type: "text" as const, text: message }] : []),
+      { type: "text" as const, text: JSON.stringify(result, null, 2) },
     ],
   };
 };

@@ -385,6 +385,62 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
     }
   );
 
+  server.tool(
+    "check_availability",
+    "Check the calendar availability of a specific person for a given time slot.",
+    {
+      email: z
+        .string()
+        .describe("The email address of the person to check availability for"),
+      startTime: z
+        .string()
+        .describe("The start time in ISO format (e.g., 2024-03-20T10:00:00Z)"),
+      endTime: z
+        .string()
+        .describe("The end time in ISO format (e.g., 2024-03-20T11:00:00Z)"),
+      timeZone: z
+        .string()
+        .optional()
+        .describe(
+          "Time zone used in the response. Optional. The default is UTC."
+        ),
+    },
+    async ({ email, startTime, endTime, timeZone }) => {
+      const calendar = await getCalendarClient();
+      if (!calendar) {
+        return makeMCPToolPersonalAuthenticationRequiredError(
+          mcpServerId,
+          serverInfo.authorization!
+        );
+      }
+      try {
+        const res = await calendar.freebusy.query({
+          requestBody: {
+            timeMin: startTime,
+            timeMax: endTime,
+            timeZone,
+            items: [{ id: email }],
+          },
+        });
+        const busySlots = res.data.calendars?.[email]?.busy || [];
+        const available = busySlots.length === 0;
+        return makeMCPToolJSONSuccess({
+          result: {
+            available,
+            busySlots: busySlots.map((slot) => ({
+              start: slot.start || "",
+              end: slot.end || "",
+            })),
+          },
+        });
+      } catch (err) {
+        return makeMCPToolTextError(
+          normalizeError(err).message || "Failed to check calendar availability"
+        );
+      }
+    }
+  );
+
   return server;
 };
 
