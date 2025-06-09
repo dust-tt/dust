@@ -2933,7 +2933,7 @@ export type ValidateActionResponseType = z.infer<
 >;
 
 export const ValidateActionRequestBodySchema = z.object({
-  actionId: z.string(),
+  actionId: z.union([z.string(), z.number()]),
   approved: z.enum(["approved", "rejected", "always_approved"]),
 });
 

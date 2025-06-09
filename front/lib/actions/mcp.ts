@@ -354,7 +354,7 @@ export class MCPActionType extends BaseAction {
     });
   }
 
-  private static modelIdToSId({
+  static modelIdToSId({
     id,
     workspaceId,
   }: {
