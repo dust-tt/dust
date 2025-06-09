@@ -82,6 +82,7 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
         vaultId: systemSpace.id,
         editedAt: new Date(),
         editedByUserId: auth.user()?.id,
+        oAuthUseCase: blob.authorization?.use_case ?? null,
       },
       {
         transaction,
