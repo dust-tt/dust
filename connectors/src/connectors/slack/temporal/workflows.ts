@@ -26,16 +26,11 @@ const {
   startToCloseTimeout: "10 minutes",
 });
 
-const { deleteChannel, syncThread, syncChannel } = proxyActivities<
-  typeof activities
->({
-  heartbeatTimeout: "10 minutes",
-  startToCloseTimeout: "60 minutes",
-});
-
-const { syncNonThreaded } = proxyActivities<typeof activities>({
-  startToCloseTimeout: "50 minutes",
-});
+const { deleteChannel, syncThread, syncChannel, syncNonThreaded } =
+  proxyActivities<typeof activities>({
+    heartbeatTimeout: "10 minutes",
+    startToCloseTimeout: "60 minutes",
+  });
 
 /**
  * This workflow is in charge of synchronizing all the content of the Slack channels selected by the user.
