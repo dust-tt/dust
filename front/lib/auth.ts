@@ -483,8 +483,8 @@ export class Authenticator {
         // System keys have admin role on their workspace unless requested otherwise.
         role = requestedRole ?? "admin";
       } else {
-        // Regular keys have builder role on their workspace.
-        role = "builder";
+        // Regular keys use the role they provide
+        role = key.role;
       }
     }
 
@@ -1078,6 +1078,7 @@ export async function getOrCreateSystemApiKey(
         workspaceId: workspace.id,
         isSystem: true,
         status: "active",
+        role: "admin",
       },
       group
     );
