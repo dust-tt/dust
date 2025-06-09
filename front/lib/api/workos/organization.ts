@@ -4,6 +4,7 @@ import {
   GeneratePortalLinkIntent,
   OrganizationDomainState,
 } from "@workos-inc/node";
+import assert from "assert";
 
 import { config } from "@app/lib/api/regions/config";
 import { getWorkOS } from "@app/lib/api/workos/client";
@@ -195,27 +196,45 @@ export function generateWorkOSAdminPortalUrl({
   });
 }
 
+/**
+ * SSO Connections.
+ */
+
 export async function getWorkOSOrganizationSSOConnections({
   workspace,
 }: {
   workspace: LightWorkspaceType;
 }): Promise<Result<Connection[], Error>> {
-  if (!workspace.workOSOrganizationId) {
-    return new Err(
-      new Error("WorkOS organization not found for this workspace.")
-    );
-  }
+  assert(workspace.workOSOrganizationId, "WorkOS organization should exist");
 
   try {
-    const { data: directories } = await getWorkOS().sso.listConnections({
+    const { data: connections } = await getWorkOS().sso.listConnections({
       organizationId: workspace.workOSOrganizationId,
     });
 
-    return new Ok(directories);
+    return new Ok(connections);
   } catch (error) {
     return new Err(normalizeError(error));
   }
 }
+
+export async function deleteWorkOSOrganizationSSOConnection(
+  connection: Connection
+): Promise<Result<void, Error>> {
+  assert(connection.id, "Connection should exist");
+
+  try {
+    await getWorkOS().sso.deleteConnection(connection.id);
+
+    return new Ok(undefined);
+  } catch (error) {
+    return new Err(normalizeError(error));
+  }
+}
+
+/**
+ * Directory Sync.
+ */
 
 export async function getWorkOSOrganizationDSyncDirectories({
   workspace,

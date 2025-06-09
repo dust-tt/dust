@@ -48,15 +48,17 @@ export function ConfirmPopupArea({ children }: { children: React.ReactNode }) {
   );
 }
 
+interface ConfirmDialogProps {
+  closeDialogFn: () => void;
+  confirmData: ConfirmDataType | null;
+  resolveConfirm: (result: boolean) => void;
+}
+
 export function ConfirmDialog({
   confirmData,
   resolveConfirm,
   closeDialogFn,
-}: {
-  confirmData: ConfirmDataType | null;
-  resolveConfirm: (result: boolean) => void;
-  closeDialogFn: () => void;
-}) {
+}: ConfirmDialogProps) {
   return (
     <Dialog
       open={confirmData != null}

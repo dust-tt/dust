@@ -184,7 +184,7 @@ export const subNavigationAdmin = ({
       menus: [
         {
           id: "members",
-          label: "Members",
+          label: "Domain & Members",
           icon: UserIcon,
           href: `/w/${owner.sId}/members`,
           current: current === "members",
