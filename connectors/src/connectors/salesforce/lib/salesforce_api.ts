@@ -1,6 +1,6 @@
 import type { Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
-import type { Connection } from "jsforce";
+import type { Connection, QueryResult, Record } from "jsforce";
 import jsforce from "jsforce";
 
 import {
@@ -19,6 +19,7 @@ import type {
   RemoteDBTree,
 } from "@connectors/lib/remote_databases/utils";
 import { buildInternalId } from "@connectors/lib/remote_databases/utils";
+import { normalizeError } from "@connectors/types";
 
 const SF_API_VERSION = "57.0";
 
@@ -185,3 +186,23 @@ export const fetchTree = async ({
 
   return new Ok(tree);
 };
+
+export async function runSOQL({
+  credentials,
+  soql,
+}: {
+  credentials: SalesforceAPICredentials;
+  soql: string;
+}): Promise<Result<QueryResult<Record>, Error>> {
+  try {
+    const connRes = await getSalesforceConnection(credentials);
+    if (connRes.isErr()) {
+      return new Err(new Error("Can't connect to Salesforce."));
+    }
+
+    const result = await connRes.value.query(soql);
+    return new Ok(result);
+  } catch (err) {
+    return new Err(normalizeError(err));
+  }
+}

@@ -34,8 +34,11 @@ export class SalesforceSyncedQueryModel extends ConnectorBaseModel<SalesforceSyn
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare rootNodeName: string;
-  declare query: string;
+  declare soql: string;
   declare lastSeenUpdatedAt: Date | null;
+  declare titleTemplate: string;
+  declare contentTemplate: string;
+  declare tagsTemplate: string | null;
 }
 SalesforceSyncedQueryModel.init(
   {
@@ -53,9 +56,21 @@ SalesforceSyncedQueryModel.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
-    query: {
+    soql: {
       type: DataTypes.TEXT,
       allowNull: false,
+    },
+    titleTemplate: {
+      type: DataTypes.TEXT,
+      allowNull: false,
+    },
+    contentTemplate: {
+      type: DataTypes.TEXT,
+      allowNull: false,
+    },
+    tagsTemplate: {
+      type: DataTypes.TEXT,
+      allowNull: true,
     },
     lastSeenUpdatedAt: {
       type: DataTypes.DATE,
