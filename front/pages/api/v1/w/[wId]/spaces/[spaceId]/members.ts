@@ -37,6 +37,34 @@ interface PatchSpaceMembersResponseBody {
  *         description: Unique string identifier for the space
  *         schema:
  *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             oneOf:
+ *               - type: object
+ *                 properties:
+ *                   memberIds:
+ *                     type: array
+ *                     items:
+ *                       type: string
+ *                     description: Array of user IDs to grant access to the space
+ *                   isRestricted:
+ *                     type: boolean
+ *                     enum: [true]
+ *                     description: Must be true for restricted spaces
+ *                 required: [memberIds, isRestricted]
+ *               - type: object
+ *                 properties:
+ *                   memberIds:
+ *                     type: null
+ *                     description: Must be null for unrestricted spaces
+ *                   isRestricted:
+ *                     type: boolean
+ *                     enum: [false]
+ *                     description: Must be false for unrestricted spaces
+ *                 required: [memberIds, isRestricted]
  *     responses:
  *       200:
  *         description: Space updated successfully
@@ -51,8 +79,10 @@ interface PatchSpaceMembersResponseBody {
  *         description: Bad Request. Missing or invalid parameters.
  *       401:
  *         description: Unauthorized. Invalid or missing authentication token.
+ *       403:
+ *         description: Forbidden. Only admins can administrate space members.
  *       404:
- *         description: Workspace not found.
+ *         description: Space not found.
  *       405:
  *         description: Method not supported.
  *       500:
