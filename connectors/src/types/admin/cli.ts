@@ -630,6 +630,7 @@ export const SalesforceCommandSchema = t.type({
     titleTemplate: t.union([t.string, t.undefined]),
     contentTemplate: t.union([t.string, t.undefined]),
     tagsTemplate: t.union([t.string, t.undefined]),
+    execute: t.union([t.boolean, t.undefined]),
   }),
 });
 export type SalesforceCommandType = t.TypeOf<typeof SalesforceCommandSchema>;
