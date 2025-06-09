@@ -1,4 +1,4 @@
-import { CallToolResultSchema } from "@modelcontextprotocol/sdk/types";
+import { CallToolResultSchema } from "@modelcontextprotocol/sdk/types.js";
 import type { JSONSchema7 } from "json-schema";
 import moment from "moment-timezone";
 import { z } from "zod";
