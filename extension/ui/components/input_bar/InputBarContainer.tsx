@@ -94,6 +94,10 @@ export const InputBarContainer = ({
     suggestionHandler: mentionDropdown.getSuggestionHandler(),
   });
 
+  useEffect(() => {
+    editorRef.current = editor;
+  }, [editor]);
+
   const sendNotification = useSendNotification();
 
   useUrlHandler(editor, selectedNode, nodeOrUrlCandidate, handleUrlReplaced);
