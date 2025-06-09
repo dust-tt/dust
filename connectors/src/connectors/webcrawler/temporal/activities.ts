@@ -803,7 +803,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
       return;
     } else if (error instanceof FirecrawlError) {
       statsDClient.increment("connectors_webcrawler_scrape_error", [
-        `statusCode:${error.statusCode}`,
+        `status_code:${error.statusCode}`,
         `configId:${webCrawlerConfig.id}`,
       ]);
     }
