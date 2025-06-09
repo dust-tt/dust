@@ -6,7 +6,7 @@ import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import type { Implementation, Tool } from "@modelcontextprotocol/sdk/types.js";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
-import { getGlobalDispatcher } from "undici";
+import { ProxyAgent } from "undici";
 
 import {
   DEFAULT_MCP_ACTION_DESCRIPTION,
@@ -24,6 +24,7 @@ import { MCPOAuthRequiredError } from "@app/lib/actions/mcp_oauth_error";
 import { MCPOAuthProvider } from "@app/lib/actions/mcp_oauth_provider";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { ClientSideRedisMCPTransport } from "@app/lib/api/actions/mcp_client_side";
+import config from "@app/lib/api/config";
 import type {
   InternalMCPServerDefinitionType,
   MCPServerDefinitionType,
@@ -42,7 +43,6 @@ import {
   isOAuthUseCase,
   Ok,
 } from "@app/types";
-import { createSSRFInterceptor } from "@app/types/shared/utils/ssrf";
 
 export type AuthorizationInfo = {
   provider: OAuthProvider;
@@ -116,6 +116,18 @@ export type MCPConnectionParams =
   | ServerSideMCPConnectionParams
   | ClientSideMCPConnectionParams;
 
+function createMCPDispatcher(): ProxyAgent | undefined {
+  const proxyHost = config.getUntrustedEgressProxyHost();
+  const proxyPort = config.getUntrustedEgressProxyPort();
+
+  if (proxyHost && proxyPort) {
+    const proxyUrl = `http://${proxyHost}:${proxyPort}`;
+    return new ProxyAgent(proxyUrl);
+  }
+
+  return undefined;
+}
+
 export const connectToMCPServer = async (
   auth: Authenticator,
   {
@@ -168,10 +180,7 @@ export const connectToMCPServer = async (
             const req = {
               requestInit: {
                 headers: undefined,
-                dispatcher: getGlobalDispatcher().compose(
-                  // @ts-expect-error: looks like undici typing is not up to date
-                  createSSRFInterceptor()
-                ),
+                dispatcher: createMCPDispatcher(),
               },
               authProvider: new MCPOAuthProvider(auth, remoteMCPServer),
             };
@@ -202,10 +211,7 @@ export const connectToMCPServer = async (
       const url = new URL(params.remoteMCPServerUrl);
       const req = {
         requestInit: {
-          dispatcher: getGlobalDispatcher().compose(
-            // @ts-expect-error: looks like undici typing is not up to date
-            createSSRFInterceptor()
-          ),
+          dispatcher: createMCPDispatcher(),
           headers: { ...(params.headers ?? {}) },
         },
         authProvider: new MCPOAuthProvider(auth, undefined),
