@@ -135,7 +135,7 @@ const InputBarContainer = ({
       ? {
           // NodeIdSearchParams
           nodeIds: nodeOrUrlCandidate?.node ? [nodeOrUrlCandidate.node] : [],
-          includeDataSources: true,
+          includeDataSources: false,
           owner,
           viewType: "all",
           disabled: isSpacesLoading || !nodeOrUrlCandidate,
@@ -145,7 +145,7 @@ const InputBarContainer = ({
           // TextSearchParams
           search: nodeOrUrlCandidate?.url || "",
           searchSourceUrls: true,
-          includeDataSources: true,
+          includeDataSources: false,
           owner,
           viewType: "all",
           disabled: isSpacesLoading || !nodeOrUrlCandidate,

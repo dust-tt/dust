@@ -113,7 +113,7 @@ export const InputBarContainer = ({
       ? {
           // NodeIdSearchParams
           nodeIds: nodeOrUrlCandidate?.node ? [nodeOrUrlCandidate.node] : [],
-          includeDataSources: true,
+          includeDataSources: false,
           viewType: "all",
           disabled: isSpacesLoading || !nodeOrUrlCandidate,
           spaceIds: spaces.map((s) => s.sId),
@@ -122,7 +122,7 @@ export const InputBarContainer = ({
           // TextSearchParams
           search: nodeOrUrlCandidate?.url || "",
           searchSourceUrls: true,
-          includeDataSources: true,
+          includeDataSources: false,
           viewType: "all",
           disabled: isSpacesLoading || !nodeOrUrlCandidate,
           spaceIds: spaces.map((s) => s.sId),

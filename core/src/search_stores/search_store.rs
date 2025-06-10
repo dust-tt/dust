@@ -817,6 +817,12 @@ impl ElasticsearchSearchStore {
         filter: &NodesSearchFilter,
         counter: &mut QueryClauseCounter,
     ) -> Result<BoolQuery> {
+        if let Some(_) = &filter.node_ids {
+            return Err(anyhow::anyhow!(
+                "The `node_ids` filter should not be used in conjunction with search in the datasources index, since datasources do not have nodeIds. Use `nodes_title` search scope to avoid searching this index, or remove the `node_ids` filter."
+            ));
+        }
+
         let mut bool_query = Query::bool()
             // Data sources don't support parents.
             .filter(self.build_shared_permission_filter(filter, DATA_SOURCE_INDEX_NAME, counter));
