@@ -1,5 +1,4 @@
 import type { DeleteSpaceMemberResponseBody } from "@dust-tt/client";
-import { DeleteSpaceMemberRequestBodySchema } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
@@ -65,25 +64,7 @@ async function handler(
         });
       }
 
-      const bodyValidation = DeleteSpaceMemberRequestBodySchema.safeParse(
-        req.body
-      );
-
-      if (!bodyValidation.success) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: `Invalid request body: ${bodyValidation.error.message}`,
-          },
-        });
-      }
-
-      const updateRes = await space.manageMember(
-        auth,
-        bodyValidation.data["memberId"],
-        "remove"
-      );
+      const updateRes = await space.manageMember(auth, memberId, "remove");
       if (updateRes.isErr()) {
         if (
           updateRes.error instanceof DustError &&
