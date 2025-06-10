@@ -45,6 +45,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
   description: "Search through selected Data sources (mcp)",
   icon: "ActionMagnifyingGlassIcon",
   authorization: null,
+  documentationUrl: null,
 };
 
 function createServer(

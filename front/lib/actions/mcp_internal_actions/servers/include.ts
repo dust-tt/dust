@@ -45,6 +45,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
   description: "Include data exhaustively (mcp)",
   icon: "ActionTimeIcon",
   authorization: null,
+  documentationUrl: null,
 };
 
 function createServer(

@@ -300,7 +300,9 @@ export function CreateMCPServerDialog({
               setUseCase={setUseCase}
               setAuthCredentials={setAuthCredentials}
               setIsFormValid={setIsOAuthFormValid}
-              documentationUrl={internalMCPServer?.documentationUrl}
+              documentationUrl={
+                internalMCPServer?.documentationUrl ?? undefined
+              }
             />
           )}
         </DialogContainer>

@@ -513,6 +513,7 @@ async function getMCPClientConnectionParams(
     return new Ok({
       type: "mcpServerId",
       mcpServerId: mcpServerView.mcpServerId,
+      oAuthUseCase: mcpServerView.oAuthUseCase,
     });
   }
 
@@ -599,6 +600,7 @@ export async function tryListMCPTools(
             conversationId: agentLoopListToolsContext.conversation.sId,
             messageId: agentLoopListToolsContext.agentMessage.sId,
             error: toolsAndInstructionsRes.error,
+            mcpServerName: action.name,
           },
           `Error listing tools from MCP server: ${normalizeError(
             toolsAndInstructionsRes.error

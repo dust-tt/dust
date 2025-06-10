@@ -1,6 +1,3 @@
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-
 import apiConfig from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import type { MCPServerConnectionConnectionType } from "@app/lib/resources/mcp_server_connection_resource";
@@ -12,27 +9,6 @@ import type {
   OAuthUseCase,
 } from "@app/types";
 import { getOAuthConnectionAccessToken } from "@app/types";
-
-import type { AuthorizationInfo } from "../mcp_metadata";
-
-// Dedicated function to get an access token for a given provider for internal MCP servers.
-// Not using the one from mcp_metadata.ts to avoid circular dependency.
-export async function getAccessTokenForInternalMCPServer(
-  auth: Authenticator,
-  {
-    mcpServerId,
-    connectionType,
-  }: {
-    mcpServerId: string;
-    connectionType: MCPServerConnectionConnectionType;
-  }
-): Promise<string | null> {
-  const connection = await getConnectionForInternalMCPServer(auth, {
-    mcpServerId,
-    connectionType,
-  });
-  return connection?.access_token ?? null;
-}
 
 // Dedicated function to get the connection details for a given provider for internal MCP servers.
 // Not using the one from mcp_metadata.ts to avoid circular dependency.
@@ -99,33 +75,4 @@ export class MCPServerPersonalAuthenticationRequiredError extends Error {
       "mcpServerId" in error
     );
   }
-}
-
-export function makeMCPToolPersonalAuthenticationRequiredError(
-  mcpServerId: string,
-  authorization: AuthorizationInfo
-): CallToolResult {
-  return {
-    isError: true,
-    content: [
-      {
-        type: "resource",
-        resource: {
-          mimeType:
-            INTERNAL_MIME_TYPES.TOOL_ERROR.PERSONAL_AUTHENTICATION_REQUIRED,
-          uri: "",
-          text: new MCPServerPersonalAuthenticationRequiredError(
-            mcpServerId,
-            authorization.provider,
-            authorization.use_case,
-            authorization.scope
-          ).message,
-          mcpServerId,
-          provider: authorization.provider,
-          useCase: authorization.use_case,
-          scope: authorization.scope,
-        },
-      },
-    ],
-  };
 }
