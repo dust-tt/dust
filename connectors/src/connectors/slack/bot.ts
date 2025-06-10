@@ -17,7 +17,6 @@ import {
 } from "@dust-tt/client";
 import type { WebClient } from "@slack/web-api";
 import type { MessageElement } from "@slack/web-api/dist/response/ConversationsHistoryResponse";
-import fetch from "node-fetch";
 import removeMarkdown from "remove-markdown";
 import jaroWinkler from "talisman/metrics/jaro-winkler";
 
@@ -51,6 +50,7 @@ import {
   SlackChannel,
   SlackChatBotMessage,
 } from "@connectors/lib/models/slack";
+import { createProxyAwareFetch } from "@connectors/lib/proxy";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
@@ -265,7 +265,8 @@ export async function botValidateToolExecution(
     if (responseUrl) {
       // Use response_url to delete the message
       // Deleting is preferred over updating the message (see https://github.com/dust-tt/dust/pull/13268)
-      const response = await fetch(responseUrl, {
+      const proxyFetch = createProxyAwareFetch();
+      const response = await proxyFetch(responseUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -977,8 +978,9 @@ async function makeContentFragments(
     logger.info({ conversationId }, "Found supported files, uploading them.");
 
     // Download the files and upload them to the conversation.
+    const proxyFetch = createProxyAwareFetch();
     for (const f of supportedFiles) {
-      const response = await fetch(f.url_private_download!, {
+      const response = await proxyFetch(f.url_private_download!, {
         headers: {
           Authorization: `Bearer ${slackClient.token}`,
         },
@@ -999,7 +1001,7 @@ async function makeContentFragments(
         continue;
       }
 
-      const fileContent = await response.buffer();
+      const fileContent = Buffer.from(await response.arrayBuffer());
 
       const fileName = f.name || f.title || "notitle";
 
