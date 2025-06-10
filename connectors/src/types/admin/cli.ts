@@ -626,6 +626,11 @@ export const SalesforceCommandSchema = t.type({
     dsId: t.union([t.string, t.undefined]),
     soql: t.union([t.string, t.undefined]),
     limit: t.union([t.number, t.undefined]),
+    lastModifiedDateOrder: t.union([
+      t.literal("ASC"),
+      t.literal("DESC"),
+      t.undefined,
+    ]),
     offset: t.union([t.number, t.undefined]),
     rootNodeName: t.union([t.string, t.undefined]),
     titleTemplate: t.union([t.string, t.undefined]),
