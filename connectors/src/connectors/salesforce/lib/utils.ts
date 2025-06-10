@@ -40,10 +40,16 @@ export const getConnectorAndCredentials = async (
 
 export function syncQueryTemplateInterpolate(
   template: string,
-  record: Record
+  record: Record,
+  hardCheck = true
 ): string {
-  return template.replace(/\$\{([^}]+)\}/g, (_, key) => {
-    const value = record[key.split(".")[1]];
+  return template.replace(/\$\{([^}]+)\}/g, (_, m) => {
+    const key = m.split(".")[1].trim();
+    if (!(key in record) && hardCheck) {
+      throw new Error(`Key ${key} not found in record`);
+    }
+    const value = record[key];
+    console.log(value);
     return value?.toString() || "";
   });
 }

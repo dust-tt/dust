@@ -192,11 +192,13 @@ export async function runSOQL({
   soql,
   limit,
   offset,
+  lastModifiedDateOrder,
 }: {
   credentials: SalesforceAPICredentials;
   soql: string;
   limit?: number;
   offset?: number;
+  lastModifiedDateOrder?: "ASC" | "DESC";
 }): Promise<Result<QueryResult<Record>, Error>> {
   try {
     const connRes = await getSalesforceConnection(credentials);
@@ -204,6 +206,9 @@ export async function runSOQL({
       return new Err(new Error("Can't connect to Salesforce."));
     }
 
+    if (lastModifiedDateOrder) {
+      soql += ` ORDER BY LastModifiedDate ${lastModifiedDateOrder}`;
+    }
     if (limit !== undefined) {
       // This will error if a limit is already present.
       soql += ` LIMIT ${limit}`;

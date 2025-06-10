@@ -619,6 +619,7 @@ export const SalesforceCommandSchema = t.type({
     t.literal("check-connection"),
     t.literal("run-soql"),
     t.literal("setup-synced-query"),
+    t.literal("sync-query"),
   ]),
   args: t.type({
     wId: t.union([t.string, t.undefined]),
@@ -631,6 +632,8 @@ export const SalesforceCommandSchema = t.type({
     contentTemplate: t.union([t.string, t.undefined]),
     tagsTemplate: t.union([t.string, t.undefined]),
     execute: t.union([t.boolean, t.undefined]),
+    queryId: t.union([t.number, t.undefined]),
+    full: t.union([t.boolean, t.undefined]),
   }),
 });
 export type SalesforceCommandType = t.TypeOf<typeof SalesforceCommandSchema>;
@@ -661,10 +664,18 @@ export const SalesforceSetupSyncedQueryResponseSchema = t.type({
       tags: t.array(t.string),
     })
   ),
+  queryId: t.union([t.number, t.null]),
   created: t.boolean,
 });
 export type SalesforceSetupSyncedQueryResponseType = t.TypeOf<
   typeof SalesforceSetupSyncedQueryResponseSchema
+>;
+
+export const SalesforceSyncQueryResponseSchema = t.type({
+  workflowId: t.string,
+});
+export type SalesforceSyncQueryResponseType = t.TypeOf<
+  typeof SalesforceSyncQueryResponseSchema
 >;
 
 /**
@@ -732,6 +743,7 @@ export const AdminResponseSchema = t.union([
   SalesforceCheckConnectionResponseSchema,
   SalesforceRunSoqlResponseSchema,
   SalesforceSetupSyncedQueryResponseSchema,
+  SalesforceSyncQueryResponseSchema,
 ]);
 export type AdminResponseType = t.TypeOf<typeof AdminResponseSchema>;
 /**
