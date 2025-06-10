@@ -817,6 +817,12 @@ impl ElasticsearchSearchStore {
         filter: &NodesSearchFilter,
         counter: &mut QueryClauseCounter,
     ) -> Result<BoolQuery> {
+        if let Some(_) = &filter.node_ids {
+            return Err(anyhow::anyhow!(
+                "Node IDs are not supported on data sources"
+            ));
+        }
+
         let mut bool_query = Query::bool()
             // Data sources don't support parents.
             .filter(self.build_shared_permission_filter(filter, DATA_SOURCE_INDEX_NAME, counter));
