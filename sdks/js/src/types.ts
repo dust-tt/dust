@@ -809,7 +809,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "deepseek_r1_global_agent_feature"
   | "dev_mcp_actions"
   | "disable_run_logs"
-  | "document_tracker"
   | "force_gdrive_labels_scope"
   | "google_ai_studio_experimental_models_feature"
   | "index_private_slack_channel"

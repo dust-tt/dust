@@ -32,7 +32,6 @@ export const WHITELISTABLE_FEATURES = [
   "google_calendar_tool",
   "agent_builder_v2",
   "disallow_agent_creation_to_users",
-  "document_tracker",
   "agent_discovery",
   "search_knowledge_builder",
   "snowflake_connector_feature",
