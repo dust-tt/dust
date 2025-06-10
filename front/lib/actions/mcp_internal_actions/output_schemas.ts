@@ -545,6 +545,62 @@ export const isExtractResultResourceType = (
   );
 };
 
+// Schema for a content node rendered into a model-friendly format.
+const RenderedNodeSchema = z.object({
+  nodeId: z.string(),
+  title: z.string(),
+  path: z.string(),
+  parentTitle: z.string().optional(),
+  lastUpdatedAt: z.string(),
+  sourceUrl: z.string().optional(),
+  mimeType: z.string(),
+  hasChildren: z.boolean(),
+});
+
+export const DataSourceNodeListSchema = z.object({
+  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_NODE_LIST),
+  uri: z.literal(""),
+  text: z.string(),
+
+  data: z.array(RenderedNodeSchema),
+  nextPageCursor: z.string().nullable(),
+  resultCount: z.number(),
+});
+
+export type DataSourceNodeListType = z.infer<typeof DataSourceNodeListSchema>;
+
+export const isDataSourceNodeListType = (
+  outputBlock: CallToolResult["content"][number]
+): outputBlock is { type: "resource"; resource: DataSourceNodeListType } => {
+  return (
+    outputBlock.type === "resource" &&
+    DataSourceNodeListSchema.safeParse(outputBlock.resource).success
+  );
+};
+
+export const DataSourceNodeContentSchema = z.object({
+  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_NODE_CONTENT),
+  uri: z.string(),
+  text: z.string(),
+  metadata: RenderedNodeSchema,
+});
+
+export type DataSourceNodeContentType = z.infer<
+  typeof DataSourceNodeContentSchema
+>;
+
+export const isDataSourceNodeContentType = (
+  outputBlock: CallToolResult["content"][number]
+): outputBlock is {
+  type: "resource";
+  resource: DataSourceNodeContentType;
+} => {
+  return (
+    outputBlock.type === "resource" &&
+    DataSourceNodeContentSchema.safeParse(outputBlock.resource).success
+  );
+};
+
 /**
  * Notification output types.
  */
