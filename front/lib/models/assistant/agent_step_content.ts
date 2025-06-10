@@ -12,7 +12,7 @@ export class AgentStepContentModel extends WorkspaceAwareModel<AgentStepContentM
 
   declare agentMessageId: ForeignKey<AgentMessage["id"]>;
   declare step: number;
-  declare indexInStep: number;
+  declare index: number;
   declare type: AssistantContentItemType["type"];
   declare value: AssistantContentItemType;
 
@@ -43,7 +43,7 @@ AgentStepContentModel.init(
       type: DataTypes.INTEGER,
       allowNull: false,
     },
-    indexInStep: {
+    index: {
       type: DataTypes.INTEGER,
       allowNull: false,
     },
@@ -66,7 +66,7 @@ AgentStepContentModel.init(
     indexes: [
       {
         unique: true,
-        fields: ["agentMessageId", "step", "indexInStep"],
+        fields: ["agentMessageId", "step", "index"],
         name: "agent_step_contents_agent_message_id_step_index_in_step",
       },
       {

@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS "agent_step_contents" (
     "updatedAt" TIMESTAMP WITH TIME ZONE NOT NULL,
     "agentMessageId" BIGINT NOT NULL REFERENCES "agent_messages" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
     "step" INTEGER NOT NULL,
-    "indexInStep" INTEGER NOT NULL,
+    "index" INTEGER NOT NULL,
     "type" VARCHAR(255) NOT NULL CHECK ("type" IN ('text_content', 'reasoning', 'function_call')),
     "value" JSONB NOT NULL,
     "workspaceId" BIGINT NOT NULL REFERENCES "workspaces" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS "agent_step_contents" (
 
 -- Create composite unique index to ensure ordering integrity
 CREATE UNIQUE INDEX "agent_step_contents_agent_message_id_step_index_in_step" 
-    ON "agent_step_contents" ("agentMessageId", "step", "indexInStep");
+    ON "agent_step_contents" ("agentMessageId", "step", "index");
 
 -- Create index for querying by agent message
 CREATE INDEX "agent_step_contents_agent_message_id_idx" 
