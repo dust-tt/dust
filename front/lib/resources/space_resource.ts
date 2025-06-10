@@ -517,9 +517,10 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     });
   }
 
-  async addMember(
+  async manageMember(
     auth: Authenticator,
-    memberId: string
+    memberId: string,
+    operation: "add" | "remove"
   ): Promise<Result<undefined, DustError>> {
     if (!this.canAdministrate(auth)) {
       return new Err(
@@ -547,54 +548,28 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       return new Err(new DustError("user_not_found", "User not found."));
     }
 
-    // Add user to the space's regular group
-    const addMemberRes = await defaultSpaceGroup.addMember(auth, user.toJSON());
-    if (addMemberRes.isErr()) {
-      return addMemberRes;
+    switch (operation) {
+      case "add":
+        // Add user to the space's regular group
+        const addMemberRes = await defaultSpaceGroup.addMember(
+          auth,
+          user.toJSON()
+        );
+        if (addMemberRes.isErr()) {
+          return addMemberRes;
+        }
+        break;
+      case "remove":
+        // Add user to the space's regular group
+        const removeMemberRes = await defaultSpaceGroup.removeMember(
+          auth,
+          user.toJSON()
+        );
+        if (removeMemberRes.isErr()) {
+          return removeMemberRes;
+        }
+        break;
     }
-
-    return new Ok(undefined);
-  }
-
-  async removeMember(
-    auth: Authenticator,
-    memberId: string
-  ): Promise<Result<undefined, DustError>> {
-    if (!this.canAdministrate(auth)) {
-      return new Err(
-        new DustError(
-          "unauthorized",
-          "You do not have permission to add members to this space."
-        )
-      );
-    }
-
-    const regularGroups = this.groups.filter(
-      (group) => group.kind === "regular"
-    );
-
-    assert(
-      regularGroups.length === 1,
-      `Expected exactly one regular group for the space, but found ${regularGroups.length}.`
-    );
-
-    const [defaultSpaceGroup] = regularGroups;
-
-    // Validate user exists and is workspace member
-    const user = await UserResource.fetchById(memberId);
-    if (!user) {
-      return new Err(new DustError("user_not_found", "User not found."));
-    }
-
-    // Add user to the space's regular group
-    const addMemberRes = await defaultSpaceGroup.removeMember(
-      auth,
-      user.toJSON()
-    );
-    if (addMemberRes.isErr()) {
-      return addMemberRes;
-    }
-
     return new Ok(undefined);
   }
 

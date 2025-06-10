@@ -69,9 +69,10 @@ async function handler(
         });
       }
 
-      const updateRes = await space.addMember(
+      const updateRes = await space.manageMember(
         auth,
-        bodyValidation.data["memberId"]
+        bodyValidation.data["memberId"],
+        "add"
       );
       if (updateRes.isErr()) {
         if (

@@ -79,9 +79,10 @@ async function handler(
         });
       }
 
-      const updateRes = await space.removeMember(
+      const updateRes = await space.manageMember(
         auth,
-        bodyValidation.data["memberId"]
+        bodyValidation.data["memberId"],
+        "remove"
       );
       if (updateRes.isErr()) {
         if (
