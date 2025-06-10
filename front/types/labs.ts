@@ -13,6 +13,7 @@ export type LabsTranscriptsProviderType =
 export const labsFeatures = [
   "transcripts",
   "trackers",
+  "mcp_actions",
   "salesforce_personal_connections",
 ] as const;
 export type LabsFeatureType = (typeof labsFeatures)[number];
