@@ -9,6 +9,7 @@ import {
   syncQueryTemplateInterpolate,
 } from "@connectors/connectors/salesforce/lib/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
+import { concurrentExecutor } from "@connectors/lib/async_utils";
 import {
   renderDocumentTitleAndContent,
   upsertDataSourceDocument,
@@ -21,8 +22,6 @@ import logger from "@connectors/logger/logger";
 import { SalesforceSyncedQueryResource } from "@connectors/resources/salesforce_resources";
 import type { ModelId } from "@connectors/types";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
-import PQueue from "p-queue";
-import { concurrentExecutor } from "@connectors/lib/async_utils";
 
 export async function syncSalesforceConnection(connectorId: ModelId) {
   const connAndCredsRes = await getConnectorAndCredentials(connectorId);
