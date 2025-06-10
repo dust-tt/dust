@@ -1,6 +1,11 @@
 import {
   Button,
   DataTable,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
   Input,
   Label,
   Page,
@@ -16,6 +21,7 @@ import {
   useSendNotification,
   XMarkIcon,
 } from "@dust-tt/sparkle";
+import { MoreIcon } from "@dust-tt/sparkle";
 import type {
   CellContext,
   PaginationState,
@@ -57,6 +63,8 @@ function getTableRows(allUsers: UserType[]): RowData[] {
   }));
 }
 
+type MembersManagementType = "manual" | "group";
+
 interface CreateOrEditSpaceModalProps {
   defaultRestricted?: boolean;
   isAdmin: boolean;
@@ -87,6 +95,14 @@ export function CreateOrEditSpaceModal({
   const [isRestricted, setIsRestricted] = useState(false);
   const [searchSelectedMembers, setSearchSelectedMembers] =
     useState<string>("");
+  const [managementType, setManagementType] =
+    useState<MembersManagementType>("manual");
+
+  useEffect(() => {
+    if (membersCount > 0) {
+      setManagementType("manual");
+    }
+  }, [membersCount]);
 
   const deduplicatedMembers = useMemo(
     () => _.uniqBy(selectedMembers, "sId"),
@@ -260,7 +276,7 @@ export function CreateOrEditSpaceModal({
 
             {isRestricted && (
               <>
-                {deduplicatedMembers.length === 0 && (
+                {deduplicatedMembers.length === 0 ? (
                   <div className="flex flex-col items-center gap-2">
                     <SearchMembersPopover
                       owner={owner}
@@ -276,14 +292,41 @@ export function CreateOrEditSpaceModal({
                       onMembersUpdated={setSelectedMembers}
                     />
                   </div>
-                )}
-                {deduplicatedMembers.length > 0 && (
-                  <div>
-                    <SearchMembersPopover
-                      owner={owner}
-                      selectedMembers={deduplicatedMembers}
-                      onMembersUpdated={setSelectedMembers}
-                    />
+                ) : (
+                  <div className="flex flex-row items-center justify-between">
+                    {managementType === "manual" ? (
+                      <SearchMembersPopover
+                        owner={owner}
+                        selectedMembers={deduplicatedMembers}
+                        onMembersUpdated={setSelectedMembers}
+                      />
+                    ) : (
+                      <UserGroupPopover
+                        owner={owner}
+                        selectedMembers={deduplicatedMembers}
+                        onMembersUpdated={setSelectedMembers}
+                      />
+                    )}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm" icon={MoreIcon} />
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent>
+                        <DropdownMenuRadioGroup
+                          value={managementType}
+                          onValueChange={(value) =>
+                            setManagementType(value as MembersManagementType)
+                          }
+                        >
+                          <DropdownMenuRadioItem value="manual">
+                            Manual group management
+                          </DropdownMenuRadioItem>
+                          <DropdownMenuRadioItem value="group">
+                            Group member management
+                          </DropdownMenuRadioItem>
+                        </DropdownMenuRadioGroup>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 )}
                 <SearchInput
@@ -334,7 +377,12 @@ export function CreateOrEditSpaceModal({
           rightButtonProps={{
             label: isSaving ? "Saving..." : space ? "Save" : "Create",
             onClick: onSave,
-            disabled: !spaceName || isSaving,
+            disabled:
+              !(
+                !!spaceName &&
+                (!isRestricted ||
+                  (isRestricted && deduplicatedMembers.length > 0))
+              ) || isSaving,
           }}
         />
       </SheetContent>
@@ -364,6 +412,14 @@ function MembersTable({
 
   const getTableColumns = useCallback(() => {
     const removeMember = (userId: string) => {
+      if (selectedMembers.length === 1) {
+        sendNotifications({
+          title: "Cannot remove last member.",
+          description: "You cannot remove the last group member.",
+          type: "error",
+        });
+        return;
+      }
       onMembersUpdated(selectedMembers.filter((m) => m.sId !== userId));
     };
     return [
