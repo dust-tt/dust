@@ -743,6 +743,7 @@ export const AdminResponseSchema = t.union([
   SalesforceCheckConnectionResponseSchema,
   SalesforceRunSoqlResponseSchema,
   SalesforceSetupSyncedQueryResponseSchema,
+  SalesforceSyncQueryResponseSchema,
 ]);
 export type AdminResponseType = t.TypeOf<typeof AdminResponseSchema>;
 /**
