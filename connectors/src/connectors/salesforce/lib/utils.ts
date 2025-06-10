@@ -49,7 +49,6 @@ export function syncQueryTemplateInterpolate(
       throw new Error(`Key ${key} not found in record`);
     }
     const value = record[key];
-    console.log(value);
     return value?.toString() || "";
   });
 }
