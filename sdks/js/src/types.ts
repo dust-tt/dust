@@ -3019,3 +3019,22 @@ const MCP_VALIDATION_OUTPUTS = [
 ] as const;
 export type MCPValidationOutputPublicType =
   (typeof MCP_VALIDATION_OUTPUTS)[number];
+
+const PostRestrictedSpace = z.object({
+  memberIds: z.array(z.string()),
+  isRestricted: z.literal(true),
+});
+
+const PostUnrestrictedSpace = z.object({
+  memberIds: z.null(),
+  isRestricted: z.literal(false),
+});
+
+export const PatchSpaceMembersRequestBodySchema = z.union([
+  PostRestrictedSpace,
+  PostUnrestrictedSpace,
+]);
+
+export interface PatchSpaceMembersResponseBody {
+  space: SpaceType;
+}

@@ -1,5 +1,5 @@
-import { isLeft } from "fp-ts/lib/Either";
-import * as reporter from "io-ts-reporters";
+import type { PatchSpaceMembersResponseBody } from "@dust-tt/client";
+import { PatchSpaceMembersRequestBodySchema } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
@@ -7,12 +7,8 @@ import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { SpaceType, WithAPIErrorResponse } from "@app/types";
-import { isString, PatchSpaceMembersRequestBodySchema } from "@app/types";
-
-interface PatchSpaceMembersResponseBody {
-  space: SpaceType;
-}
+import type { WithAPIErrorResponse } from "@app/types";
+import { isString } from "@app/types";
 
 /**
  * @ignoreswagger
@@ -59,25 +55,23 @@ async function handler(
         });
       }
 
-      const bodyValidation = PatchSpaceMembersRequestBodySchema.decode(
+      const bodyValidation = PatchSpaceMembersRequestBodySchema.safeParse(
         req.body
       );
 
-      if (isLeft(bodyValidation)) {
-        const pathError = reporter.formatValidationErrors(bodyValidation.left);
-
+      if (!bodyValidation.success) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `Invalid request body: ${pathError}`,
+            message: `Invalid request body: ${bodyValidation.error.message}`,
           },
         });
       }
 
       const updateRes = await space.updatePermissions(
         auth,
-        bodyValidation.right
+        bodyValidation.data
       );
       if (updateRes.isErr()) {
         if (
