@@ -116,7 +116,11 @@ export function MCPRunAgentActionDetails({
           )}
           {chainOfThought && childAgent && (
             <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
-              <ContentMessage title="Agent thoughts" variant="primary" size="lg">
+              <ContentMessage
+                title="Agent thoughts"
+                variant="primary"
+                size="lg"
+              >
                 <Markdown
                   content={chainOfThought}
                   isStreaming={false}
