@@ -16,6 +16,7 @@ import {
   getCoreSearchArgs,
   shouldAutoGenerateTags,
 } from "@app/lib/actions/mcp_internal_actions/servers/utils";
+import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { actionRefsOffset, getRetrievalTopK } from "@app/lib/actions/utils";
 import { getRefs } from "@app/lib/api/assistant/citations";
@@ -273,7 +274,7 @@ function createServer(
       "retrieve_recent_documents",
       "Fetch the most recent documents in reverse chronological order up to a pre-allocated size. This tool retrieves content that is already pre-configured by the user, ensuring the latest information is included.",
       commonInputsSchema,
-      includeFunction
+      withToolLogging(auth, "include", includeFunction)
     );
   } else {
     server.tool(
@@ -283,7 +284,7 @@ function createServer(
         ...commonInputsSchema,
         ...tagsInputSchema,
       },
-      includeFunction
+      withToolLogging(auth, "include", includeFunction)
     );
 
     server.tool(
