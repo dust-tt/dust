@@ -17,10 +17,8 @@ const {
   startToCloseTimeout: "10 minute",
 });
 
-const { processSyncedQueryPage: syncSalesforceQueryPage } = proxyActivities<
-  typeof activities
->({
-  startToCloseTimeout: "120 minute",
+const { processSyncedQueryPage } = proxyActivities<typeof activities>({
+  startToCloseTimeout: "30 minute",
 });
 
 export function makeSalesforceSyncWorkflowId(connectorId: ModelId): string {
@@ -135,7 +133,7 @@ export async function salesforceSyncQueryWorkflow({
   let hasMore = true;
 
   while (hasMore) {
-    ({ lastSeenModifiedDate, hasMore } = await syncSalesforceQueryPage(
+    ({ lastSeenModifiedDate, hasMore } = await processSyncedQueryPage(
       connectorId,
       {
         queryId,

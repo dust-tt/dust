@@ -78,6 +78,7 @@ export const salesforce = async ({
         credentials: connCredRes.value.credentials,
         limit: args.limit,
         offset: args.offset,
+        lastModifiedDateOrder: "DESC",
       });
       if (res.isErr()) {
         throw res.error;
@@ -121,6 +122,7 @@ export const salesforce = async ({
         credentials: connCredRes.value.credentials,
         limit: 8,
         offset: 0,
+        lastModifiedDateOrder: "DESC",
       });
       if (res.isErr()) {
         throw res.error;

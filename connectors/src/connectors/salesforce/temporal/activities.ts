@@ -181,6 +181,7 @@ export async function processSyncedQueryPage(
     soql: syncedQuery.soql,
     limit,
     offset,
+    lastModifiedDateOrder: "DESC",
   });
 
   if (queryRes.isErr()) {
