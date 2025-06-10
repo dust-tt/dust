@@ -134,7 +134,7 @@ export const salesforce = async ({
         }
         let tags: string[] = [];
         if (tagsTemplate) {
-          const raw = syncQueryTemplateInterpolate(tagsTemplate, record);
+          const raw = syncQueryTemplateInterpolate(tagsTemplate, record, true);
           tags = raw
             .split(",")
             .map((tag) => tag.trim())
@@ -144,8 +144,8 @@ export const salesforce = async ({
         return {
           id: record.Id,
           lastModifiedDate: new Date(record.LastModifiedDate).toISOString(),
-          title: syncQueryTemplateInterpolate(titleTemplate, record),
-          content: syncQueryTemplateInterpolate(contentTemplate, record),
+          title: syncQueryTemplateInterpolate(titleTemplate, record, true),
+          content: syncQueryTemplateInterpolate(contentTemplate, record, true),
           tags,
         };
       });
