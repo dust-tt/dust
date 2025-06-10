@@ -590,17 +590,12 @@ async function apikeys(command: string, args: parseArgs.ParsedArgs) {
         );
       }
 
-      const workspace = await getWorkspaceInfos(args.wId);
+      const auth = await Authenticator.internalAdminForWorkspace(args.wId);
 
-      if (!workspace) {
-        throw new Error(`Workspace not found: wId='${args.wId}'`);
-      }
-
-      const [numAffected] = await KeyResource.updateRole(
-        args.role,
-        workspace.id,
-        args.name
-      );
+      const [numAffected] = await KeyResource.updateRole(auth, {
+        newRole: args.role,
+        apiKeyName: args.name,
+      });
 
       if (numAffected === 0) {
         throw new Error(`No keys were changed`);

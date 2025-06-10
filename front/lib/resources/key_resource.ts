@@ -219,7 +219,10 @@ export class KeyResource extends BaseResource<KeyModel> {
     return this.status === "active";
   }
 
-  static updateRole(newRole: RoleType, wId: number, apiKeyName: string) {
+  static updateRole(
+    auth: Authenticator,
+    { newRole, apiKeyName }: { newRole: RoleType; apiKeyName: string }
+  ) {
     return this.model.update(
       {
         role: newRole,
@@ -227,7 +230,7 @@ export class KeyResource extends BaseResource<KeyModel> {
       {
         where: {
           name: apiKeyName,
-          workspaceId: wId,
+          workspaceId: auth.getNonNullableWorkspace().id,
         },
       }
     );
