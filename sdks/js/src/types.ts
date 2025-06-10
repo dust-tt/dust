@@ -2831,6 +2831,7 @@ const TextSearchBodySchema = z.intersection(
   z.object({
     query: z.string(),
     nodeIds: z.undefined().optional(),
+    searchSourceUrls: z.boolean().optional(),
   })
 );
 
