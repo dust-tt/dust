@@ -3,7 +3,13 @@ import { Err, Ok } from "@dust-tt/client";
 import { hash as blake3 } from "blake3";
 import { NonRetryableError } from "crawlee";
 import dns from "dns";
+import type {
+  RequestInfo as UndiciRequestInfo,
+  RequestInit as UndiciRequestInit,
+} from "undici";
+import { fetch as undiciFetch, ProxyAgent } from "undici";
 
+import { apiConfig } from "@connectors/lib/api/config";
 import type {
   WebCrawlerFolder,
   WebCrawlerPage,
@@ -13,6 +19,24 @@ import { WEBCRAWLER_MAX_DEPTH } from "@connectors/types";
 
 const MAX_REDIRECTS = 20;
 const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
+
+// Create a fetch function with proxy support if configured
+function createProxyAwareFetch() {
+  const proxyHost = apiConfig.getUntrustedEgressProxyHost();
+  const proxyPort = apiConfig.getUntrustedEgressProxyPort();
+
+  if (proxyHost && proxyPort) {
+    const proxyUrl = `http://${proxyHost}:${proxyPort}`;
+    const dispatcher = new ProxyAgent(proxyUrl);
+
+    return (input: UndiciRequestInfo, init?: UndiciRequestInit) => {
+      return undiciFetch(input, { ...init, dispatcher });
+    };
+  }
+
+  // If no proxy configured, use standard fetch
+  return fetch;
+}
 
 export type WebCrawlerErrorName =
   | "PRIVATE_IP"
@@ -230,6 +254,7 @@ export async function verifyRedirect(
   let foundEndOfRedirect = false;
   let redirectCount = 0;
   const visitedUrls = new Set<string>();
+  const proxyFetch = createProxyAwareFetch();
 
   do {
     // Fail fast if it get into a loop
@@ -254,7 +279,7 @@ export async function verifyRedirect(
     const timeoutId = setTimeout(() => controller.abort(), 5000);
 
     try {
-      const response = await fetch(url, {
+      const response = await proxyFetch(url, {
         method: "GET",
         redirect: "manual",
         signal: controller.signal,
