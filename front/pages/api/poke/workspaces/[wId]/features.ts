@@ -80,56 +80,6 @@ async function handler(
 
       return res.status(200).json({ features });
 
-    case "POST":
-      if (!flag) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: "The name of the feature flag is required.",
-          },
-        });
-      }
-      if (existingFlag) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "feature_flag_already_exists",
-            message: "The feature flag already exists.",
-          },
-        });
-      }
-
-      await FeatureFlag.create({
-        workspaceId: owner.id,
-        name: flag,
-      });
-
-      return res.status(200).json({ success: true });
-
-    case "DELETE":
-      if (!flag) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: "The name of the feature flag is required.",
-          },
-        });
-      }
-      if (!existingFlag) {
-        return apiError(req, res, {
-          status_code: 404,
-          api_error: {
-            type: "feature_flag_not_found",
-            message: "Could not find the feature flag.",
-          },
-        });
-      }
-
-      await existingFlag.destroy();
-      return res.status(200).json({ success: true });
-
     default:
       return apiError(req, res, {
         status_code: 405,
