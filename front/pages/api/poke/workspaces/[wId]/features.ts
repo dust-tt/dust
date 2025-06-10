@@ -9,7 +9,10 @@ import type { WhitelistableFeature, WithAPIErrorResponse } from "@app/types";
 import { isWhitelistableFeature } from "@app/types";
 
 export type GetPokeFeaturesResponseBody = {
-  features: WhitelistableFeature[];
+  features: {
+    name: WhitelistableFeature;
+    createdAt: string;
+  }[];
 };
 
 export type CreateOrDeleteFeatureFlagResponseBody = {
@@ -64,15 +67,18 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const flags = (
-        await FeatureFlag.findAll({
-          where: {
-            workspaceId: owner.id,
-          },
-        })
-      ).map((f) => f.name);
+      const flags = await FeatureFlag.findAll({
+        where: {
+          workspaceId: owner.id,
+        },
+      });
 
-      return res.status(200).json({ features: flags });
+      const features = flags.map((f) => ({
+        name: f.name,
+        createdAt: f.createdAt.toISOString(),
+      }));
+
+      return res.status(200).json({ features });
 
     case "POST":
       if (!flag) {

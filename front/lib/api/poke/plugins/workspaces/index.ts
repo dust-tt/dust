@@ -9,6 +9,7 @@ export * from "./extension_blacklist_domains";
 export * from "./get_remaining_public_api_limits";
 export * from "./invite_user";
 export * from "./manage_authorized_domains";
+export * from "./toggle_feature_flag";
 export * from "./rename_workspace";
 export * from "./reset_message_rate_limit";
 export * from "./revoke_users";
