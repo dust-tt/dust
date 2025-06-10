@@ -26,6 +26,7 @@ import { GroupResource } from "@app/lib/resources/group_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import mainLogger from "@app/logger/logger";
 import type { LightWorkspaceType, Result } from "@app/types";
+import { normalizeError } from "@app/types";
 
 const workOS = getWorkOS();
 
@@ -258,7 +259,10 @@ async function handleUserAddedToGroup(
     );
   }
 
-  await group.addMember(auth, user.toJSON());
+  const res = await group.addMember(auth, user.toJSON());
+  if (res.isErr()) {
+    logger.error(normalizeError(res.error));
+  }
 }
 
 async function handleUserRemovedFromGroup(
@@ -288,7 +292,10 @@ async function handleUserRemovedFromGroup(
     );
   }
 
-  await group.removeMember(auth, user.toJSON());
+  const res = await group.removeMember(auth, user.toJSON());
+  if (res.isErr()) {
+    logger.error(normalizeError(res.error));
+  }
 }
 
 async function handleCreateOrUpdateWorkOSUser(
