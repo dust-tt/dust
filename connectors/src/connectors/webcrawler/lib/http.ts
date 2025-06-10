@@ -8,8 +8,21 @@ import type {
 } from "crawlee";
 
 import { verifyRedirect } from "@connectors/connectors/webcrawler/lib/utils";
+import { apiConfig } from "@connectors/lib/api/config";
 
 export class DustHttpClient extends GotScrapingHttpClient {
+  private proxyUrl: string | undefined;
+
+  constructor() {
+    super();
+
+    const proxyHost = apiConfig.getUntrustedEgressProxyHost();
+    const proxyPort = apiConfig.getUntrustedEgressProxyPort();
+
+    if (proxyHost && proxyPort) {
+      this.proxyUrl = `http://${proxyHost}:${proxyPort}`;
+    }
+  }
   /**
    * @inheritDoc
    */
@@ -22,11 +35,14 @@ export class DustHttpClient extends GotScrapingHttpClient {
       throw res.error;
     }
 
-    return super.sendRequest({
+    const requestWithProxy = {
       ...request,
       url: res.value,
       followRedirect: false,
-    });
+      ...(this.proxyUrl && { proxyUrl: this.proxyUrl }),
+    };
+
+    return super.sendRequest(requestWithProxy);
   }
 
   /**
@@ -42,13 +58,13 @@ export class DustHttpClient extends GotScrapingHttpClient {
       throw res.error;
     }
 
-    return super.stream(
-      {
-        ...request,
-        url: res.value,
-        followRedirect: false,
-      },
-      handleRedirect
-    );
+    const requestWithProxy = {
+      ...request,
+      url: res.value,
+      followRedirect: false,
+      ...(this.proxyUrl && { proxyUrl: this.proxyUrl }),
+    };
+
+    return super.stream(requestWithProxy, handleRedirect);
   }
 }
