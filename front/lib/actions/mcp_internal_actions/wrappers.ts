@@ -32,7 +32,7 @@ export function withToolLogging<T>(
     ];
 
     statsDClient.increment("use_actions.count", 1, tags);
-    const now = new Date();
+    const startTime = performance.now();
 
     const result = await toolCallback(params);
 
@@ -57,7 +57,7 @@ export function withToolLogging<T>(
       return result;
     }
 
-    const elapsed = new Date().getTime() - now.getTime();
+    const elapsed = performance.now() - startTime;
     statsDClient.distribution(
       "run_action.duration.distribution",
       elapsed,
