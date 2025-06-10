@@ -565,7 +565,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         }
         break;
       case "remove":
-        // Add user to the space's regular group
+        // Remove user from the space's regular group
         const removeMemberRes = await defaultSpaceGroup.removeMember(
           auth,
           user.toJSON()
