@@ -36,7 +36,6 @@ import {
 } from "@app/types";
 import path from "path";
 import { KeyResource } from "@app/lib/resources/key_resource";
-import { getWorkspaceInfos } from "@app/lib/api/workspace";
 
 // `cli` takes an object type and a command as first two arguments and then a list of arguments.
 const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
@@ -592,14 +591,14 @@ async function apikeys(command: string, args: parseArgs.ParsedArgs) {
 
       const auth = await Authenticator.internalAdminForWorkspace(args.wId);
 
-      const [numAffected] = await KeyResource.updateRole(auth, {
-        newRole: args.role,
-        apiKeyName: args.name,
-      });
-
-      if (numAffected === 0) {
-        throw new Error(`No keys were changed`);
+      const key = await KeyResource.fetchByName(auth, args.name);
+      if (!key) {
+        throw new Error(`Key not found`);
       }
+
+      await key.updateRole({
+        newRole: args.role,
+      });
 
       return;
     }

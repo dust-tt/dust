@@ -106,6 +106,21 @@ export class KeyResource extends BaseResource<KeyModel> {
     return key;
   }
 
+  static async fetchByName(auth: Authenticator, { name }: { name: string }) {
+    const key = await this.model.findOne({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        name: name,
+      },
+    });
+
+    if (!key) {
+      return null;
+    }
+
+    return new this(KeyResource.model, key.get());
+  }
+
   static async listNonSystemKeysByWorkspace(workspace: LightWorkspaceType) {
     const keys = await this.model.findAll({
       where: {
@@ -219,20 +234,7 @@ export class KeyResource extends BaseResource<KeyModel> {
     return this.status === "active";
   }
 
-  static updateRole(
-    auth: Authenticator,
-    { newRole, apiKeyName }: { newRole: RoleType; apiKeyName: string }
-  ) {
-    return this.model.update(
-      {
-        role: newRole,
-      },
-      {
-        where: {
-          name: apiKeyName,
-          workspaceId: auth.getNonNullableWorkspace().id,
-        },
-      }
-    );
+  async updateRole({ newRole }: { newRole: RoleType }) {
+    await this.update({ role: newRole });
   }
 }
