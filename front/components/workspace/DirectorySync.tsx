@@ -84,7 +84,7 @@ function DirectorySyncStatus({
   }
 
   switch (dsyncStatus.status) {
-    case "configuring":
+    case "configured":
       return (
         <>
           <div className="flex flex-row items-center gap-2">
@@ -133,7 +133,7 @@ function DirectorySyncStatus({
         </>
       );
 
-    case "configured":
+    case "configuring":
       return (
         <>
           <div className="flex flex-row items-center gap-2">
