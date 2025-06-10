@@ -24,6 +24,7 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/servers/tables_query/server";
 import { fetchAgentTableConfigurations } from "@app/lib/actions/mcp_internal_actions/servers/utils";
 import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
+import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import config from "@app/lib/api/config";
 import type { CSVRecord } from "@app/lib/api/csv";
@@ -32,7 +33,6 @@ import type { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import logger from "@app/logger/logger";
 import { CoreAPI } from "@app/types/core/core_api";
-import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 
 // Types for the resources that are output by the tools of this server.
 type TablesQueryOutputResources =
