@@ -1,4 +1,7 @@
-import type { GetWorkspaceUsersResponseBody } from "@dust-tt/client";
+import type {
+  GetWorkspaceMembersResponseBody,
+  UserType,
+} from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
@@ -13,7 +16,7 @@ import type { WithAPIErrorResponse } from "@app/types";
  */
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<GetWorkspaceUsersResponseBody>>,
+  res: NextApiResponse<WithAPIErrorResponse<GetWorkspaceMembersResponseBody>>,
   auth: Authenticator
 ): Promise<void> {
   if (!auth.isAdmin()) {
@@ -31,7 +34,13 @@ async function handler(
       const { members: users } = await getMembers(auth, { activeOnly: true });
 
       res.status(200).json({
-        users: users.map((user) => user),
+        users: users.map(
+          (user): Pick<UserType, "sId" | "id" | "email"> => ({
+            sId: user.sId,
+            id: user.id,
+            email: user.email,
+          })
+        ),
       });
       return;
 

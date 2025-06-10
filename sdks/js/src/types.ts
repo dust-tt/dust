@@ -3029,6 +3029,6 @@ export interface PostSpaceMembersResponseBody {
   user: UserType;
 }
 
-export interface GetWorkspaceUsersResponseBody {
-  users: UserType[];
+export interface GetWorkspaceMembersResponseBody {
+  users: Pick<UserType, "sId" | "id" | "email">[];
 }
