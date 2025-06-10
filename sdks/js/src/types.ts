@@ -3027,3 +3027,9 @@ export const PostSpaceMembersRequestBodySchema = z.object({
 export interface PatchSpaceMembersResponseBody {
   space: SpaceType;
 }
+
+export const DeleteSpaceMemberRequestBodySchema = z.object({
+  memberId: z.string(),
+});
+
+export interface DeleteSpaceMemberResponseBody {}
