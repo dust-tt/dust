@@ -2,6 +2,7 @@ import { fetchTree } from "@connectors/connectors/salesforce/lib/salesforce_api"
 import { getConnectorAndCredentials } from "@connectors/connectors/salesforce/lib/utils";
 import { sync } from "@connectors/lib/remote_databases/activities";
 import { parseInternalId } from "@connectors/lib/remote_databases/utils";
+import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import { SalesforceSyncedQueryResource } from "@connectors/resources/salesforce_resources";
 import type { ModelId } from "@connectors/types";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
@@ -11,6 +12,8 @@ export async function syncSalesforceConnection(connectorId: ModelId) {
   if (connAndCredsRes.isErr()) {
     throw connAndCredsRes.error;
   }
+
+  await syncStarted(connectorId);
 
   const { credentials, connector } = connAndCredsRes.value;
 
@@ -29,6 +32,8 @@ export async function syncSalesforceConnection(connectorId: ModelId) {
       parseInternalId(internalTableId).tableName ?? internalTableId,
     tags: [],
   });
+
+  await syncSucceeded(connectorId);
 }
 
 // Dicsover all Salesforce synced queries for a given connector.
@@ -54,8 +59,8 @@ export async function discoverSalesforceSyncedQueries(
 }
 
 // Syncs one page of results from a Salesforce query as defined by pagination arguments offset and
-// limit. Stops as soon as a record.lastModifiedDate is smaller than lastSeenModifiedDate (if
-// definde) or there is no record remaining to sync.
+// limit. Stops as soon as a record.lastModifiedDate is smaller than upToLastModifiedDate (if
+// defined) or there is no record remaining to sync. Returns the lastModifiedDate seen so far.
 export async function syncSalesforceQueryPage(
   connectorId: ModelId,
   {
@@ -63,13 +68,16 @@ export async function syncSalesforceQueryPage(
     offset,
     limit,
     lastSeenModifiedDate,
+    upToLastModifiedDate,
   }: {
     queryId: ModelId;
     offset: number;
     limit: number;
     lastSeenModifiedDate: Date | null;
+    upToLastModifiedDate: Date | null;
   }
 ): Promise<{
+  lastSeenModifiedDate: Date | null;
   hasMore: boolean;
   count: number;
 }> {
@@ -79,6 +87,7 @@ export async function syncSalesforceQueryPage(
   }
 
   return {
+    lastSeenModifiedDate,
     hasMore: false,
     count: 0,
   };

@@ -5,16 +5,17 @@ import { WorkflowNotFoundError } from "@temporalio/client";
 
 import { QUEUE_NAME } from "@connectors/connectors/salesforce/temporal/config";
 import { resyncSignal } from "@connectors/connectors/salesforce/temporal/signals";
-import { salesforceSyncWorkflow } from "@connectors/connectors/salesforce/temporal/workflows";
+import {
+  makeSalesforceSyncQueryWorkflowId,
+  makeSalesforceSyncWorkflowId,
+  salesforceSyncQueryWorkflow,
+  salesforceSyncWorkflow,
+} from "@connectors/connectors/salesforce/temporal/workflows";
 import { getTemporalClient } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types";
 import { normalizeError } from "@connectors/types";
-
-function makeSalesforceSyncWorkflowId(connectorId: ModelId): string {
-  return `salesforce-sync-${connectorId}`;
-}
 
 export async function launchSalesforceSyncWorkflow(
   connectorId: ModelId
@@ -91,4 +92,41 @@ export async function stopSalesforceSyncWorkflow(
     );
     return new Err(normalizeError(e));
   }
+}
+
+export async function launchSalesforceSyncQueryWorkflow(
+  connectorId: ModelId,
+  queryId: ModelId,
+  upToLastModifiedDate: Date | null
+): Promise<Result<string, Error>> {
+  const client = await getTemporalClient();
+  const workflowId = makeSalesforceSyncQueryWorkflowId(
+    connectorId,
+    queryId,
+    upToLastModifiedDate
+  );
+
+  try {
+    await client.workflow.start(salesforceSyncQueryWorkflow, {
+      args: [
+        {
+          connectorId,
+          queryId,
+          upToLastModifiedDate,
+        },
+      ],
+      taskQueue: QUEUE_NAME,
+      workflowId,
+      searchAttributes: {
+        connectorId: [connectorId],
+      },
+      memo: {
+        connectorId,
+      },
+    });
+  } catch (err) {
+    return new Err(normalizeError(err));
+  }
+
+  return new Ok(workflowId);
 }
