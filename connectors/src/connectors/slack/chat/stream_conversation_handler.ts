@@ -170,7 +170,7 @@ async function streamAgentAnswerToSlack(
           "Tool validation request"
         );
 
-        const blockId = JSON.stringify({
+        const blockId: SlackBlockIdToolValidation = {
           workspaceId: connector.workspaceId,
           conversationId: conversation.sId,
           messageId: event.messageId,
@@ -179,7 +179,7 @@ async function streamAgentAnswerToSlack(
           messageTs: mainMessage.message?.ts,
           botId: mainMessage.message?.bot_id,
           slackChatBotMessageId: slackChatBotMessage.id,
-        } as SlackBlockIdToolValidation);
+        };
 
         if (slackUserId && !slackUserInfo.is_bot) {
           await slackClient.chat.postEphemeral({
@@ -189,7 +189,7 @@ async function streamAgentAnswerToSlack(
             blocks: makeToolValidationBlock({
               agentName: event.metadata.agentName,
               toolName: event.metadata.toolName,
-              id: blockId,
+              id: JSON.stringify(blockId),
             }),
             thread_ts: slackMessageTs,
           });
@@ -281,18 +281,19 @@ async function streamAgentAnswerToSlack(
           !slackUserInfo.is_bot &&
           agentConfigurations.length > 0
         ) {
+          const blockId: SlackBlockIdStaticAgentConfig = {
+            slackChatBotMessageId: slackChatBotMessage.id,
+            slackThreadTs: mainMessage.message?.thread_ts,
+            messageTs: mainMessage.message?.ts,
+            botId: mainMessage.message?.bot_id,
+          };
           await slackClient.chat.postEphemeral({
             channel: slackChannelId,
             user: slackUserId,
             text: "You can use another agent by using the dropdown in slack.",
             blocks: makeAssistantSelectionBlock(
               agentConfigurations,
-              JSON.stringify({
-                slackChatBotMessageId: slackChatBotMessage.id,
-                slackThreadTs: mainMessage.message?.thread_ts,
-                messageTs: mainMessage.message?.ts,
-                botId: mainMessage.message?.bot_id,
-              } as SlackBlockIdStaticAgentConfig)
+              JSON.stringify(blockId)
             ),
             thread_ts: slackMessageTs,
           });
