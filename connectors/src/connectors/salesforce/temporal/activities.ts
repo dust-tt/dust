@@ -86,9 +86,37 @@ export async function syncSalesforceQueryPage(
     throw connAndCredsRes.error;
   }
 
+  // Do SOQL query
+  // Extract docs
+  // Upsert them to data source
+
   return {
     lastSeenModifiedDate,
     hasMore: false,
     count: 0,
   };
+}
+
+export async function updateSyncedQueryLastSeenModifiedDate(
+  connectorId: ModelId,
+  {
+    queryId,
+    lastSeenModifiedDate,
+  }: {
+    queryId: ModelId;
+    lastSeenModifiedDate: Date | null;
+  }
+) {
+  const syncedQuery = await SalesforceSyncedQueryResource.fetchById(queryId);
+
+  if (!syncedQuery) {
+    throw new Error(`Synced query with id ${queryId} not found.`);
+  }
+  if (syncedQuery.connectorId !== connectorId) {
+    throw new Error(
+      `Synced query with id ${queryId} does not belong to connector ${connectorId}.`
+    );
+  }
+
+  await syncedQuery.updateLastSeenModifiedAt(lastSeenModifiedDate);
 }

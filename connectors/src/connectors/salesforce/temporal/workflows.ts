@@ -9,9 +9,10 @@ import type { ModelId } from "@connectors/types";
 //   startToCloseTimeout: "10 minutes",
 // });
 
-const { syncSalesforceConnection } = proxyActivities<typeof activities>({
-  startToCloseTimeout: "10 minute",
-});
+const { syncSalesforceConnection, updateSyncedQueryLastSeenModifiedDate } =
+  proxyActivities<typeof activities>({
+    startToCloseTimeout: "10 minute",
+  });
 
 const { syncSalesforceQueryPage } = proxyActivities<typeof activities>({
   startToCloseTimeout: "120 minute",
@@ -140,4 +141,10 @@ export async function salesforceSyncQueryWorkflow({
 
     offset += SALESFORCE_SYNC_QUERY_PAGE_LIMIT;
   }
+
+  // Finally update the lastSeenModifiedDate for the syncedQuery
+  await updateSyncedQueryLastSeenModifiedDate(connectorId, {
+    queryId,
+    lastSeenModifiedDate,
+  });
 }
