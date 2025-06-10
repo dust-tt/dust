@@ -130,7 +130,7 @@ function _getDefaultWebActionsForGlobalAgent({
       sId: agentSid + "-websearch-browse-action",
       type: "mcp_server_configuration",
       name: "web_search_&_browse" satisfies InternalMCPServerNameType,
-      description: "Perform a web search and/or browse a page content",
+      description: null,
       mcpServerViewId: webSearchBrowseMCPServerView.sId,
       internalMCPServerId: webSearchBrowseMCPServerView.internalMCPServerId,
       dataSources: null,
