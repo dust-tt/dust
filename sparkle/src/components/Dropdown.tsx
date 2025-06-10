@@ -305,7 +305,9 @@ const DropdownMenuContent = React.forwardRef<
     }, []);
 
     return mountPortal ? (
-      <DropdownMenuPrimitive.Portal container={container}>
+      <DropdownMenuPrimitive.Portal
+        container={mountPortalContainer ?? container}
+      >
         {content}
       </DropdownMenuPrimitive.Portal>
     ) : (
