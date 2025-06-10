@@ -194,9 +194,20 @@ makeScript(
       description: "Workspace SID to migrate",
       required: false,
     },
+    allWorkspaces: {
+      type: "boolean",
+      description: "Migrate all workspaces with dust app run configurations",
+      required: false,
+    },
   },
-  async ({ execute, workspaceId }, parentLogger) => {
+  async ({ execute, workspaceId, allWorkspaces }, parentLogger) => {
     const now = new Date().toISOString().slice(0, 16).replace(/-/g, "");
+
+    if (workspaceId && allWorkspaces) {
+      throw new Error(
+        "Cannot specify both workspaceId and allWorkspaces arguments."
+      );
+    }
 
     let workspaces: Workspace[] = [];
     if (workspaceId) {
@@ -209,7 +220,7 @@ makeScript(
         throw new Error(`Workspace with SID ${workspaceId} not found.`);
       }
       workspaces = [workspace];
-    } else {
+    } else if (allWorkspaces) {
       const workspaceIds = await findWorkspacesWithDustAppRunConfigurations();
       workspaces = await Workspace.findAll({
         where: {
@@ -217,6 +228,10 @@ makeScript(
         },
         order: [["id", "ASC"]],
       });
+    } else {
+      throw new Error(
+        "Must specify either workspaceId or allWorkspaces argument."
+      );
     }
 
     const migrationDir = "migration_dust_app_run";
