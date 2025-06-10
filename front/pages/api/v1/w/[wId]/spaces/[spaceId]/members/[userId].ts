@@ -17,8 +17,17 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<void>>,
   auth: Authenticator
 ): Promise<void> {
-  const { spaceId, userId } = req.query;
+  if (!auth.isAdmin()) {
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "workspace_auth_error",
+        message: "Only users that are `admins` can access this endpoint.",
+      },
+    });
+  }
 
+  const { spaceId, userId } = req.query;
   if (!spaceId || !isString(spaceId)) {
     return apiError(req, res, {
       status_code: 404,
@@ -52,17 +61,6 @@ async function handler(
 
   switch (req.method) {
     case "DELETE": {
-      if (!space.canAdministrate(auth)) {
-        return apiError(req, res, {
-          status_code: 403,
-          api_error: {
-            type: "workspace_auth_error",
-            message:
-              "Only users that are `admins` can administrate space members.",
-          },
-        });
-      }
-
       const updateRes = await space.manageMember(auth, {
         userId: userId,
         operation: "remove",

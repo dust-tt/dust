@@ -19,8 +19,17 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<PostSpaceMembersResponseBody>>,
   auth: Authenticator
 ): Promise<void> {
-  const { spaceId } = req.query;
+  if (!auth.isAdmin()) {
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "workspace_auth_error",
+        message: "Only users that are `admins` can access this endpoint.",
+      },
+    });
+  }
 
+  const { spaceId } = req.query;
   if (!spaceId || !isString(spaceId)) {
     return apiError(req, res, {
       status_code: 404,
@@ -44,17 +53,6 @@ async function handler(
 
   switch (req.method) {
     case "POST": {
-      if (!space.canAdministrate(auth)) {
-        return apiError(req, res, {
-          status_code: 403,
-          api_error: {
-            type: "workspace_auth_error",
-            message:
-              "Only users that are `admins` can administrate space members.",
-          },
-        });
-      }
-
       const bodyValidation = PostSpaceMembersRequestBodySchema.safeParse(
         req.body
       );

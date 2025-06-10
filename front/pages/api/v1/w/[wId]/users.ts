@@ -16,6 +16,16 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<GetWorkspaceUsersResponseBody>>,
   auth: Authenticator
 ): Promise<void> {
+  if (!auth.isAdmin()) {
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "workspace_auth_error",
+        message: "Only users that are `admins` can access this endpoint.",
+      },
+    });
+  }
+
   switch (req.method) {
     case "GET":
       const { members: users } = await getMembers(auth, { activeOnly: true });
