@@ -204,7 +204,9 @@ makeScript(
     const now = new Date().toISOString().slice(0, 16).replace(/-/g, "");
 
     if (workspaceId && allWorkspaces) {
-      throw new Error("Cannot specify both workspaceId and allWorkspaces arguments.");
+      throw new Error(
+        "Cannot specify both workspaceId and allWorkspaces arguments."
+      );
     }
 
     let workspaces: Workspace[] = [];
@@ -227,7 +229,9 @@ makeScript(
         order: [["id", "ASC"]],
       });
     } else {
-      throw new Error("Must specify either workspaceId or allWorkspaces argument.");
+      throw new Error(
+        "Must specify either workspaceId or allWorkspaces argument."
+      );
     }
 
     const migrationDir = "migration_dust_app_run";
