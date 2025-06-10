@@ -55,16 +55,6 @@ async function handler(
     });
   }
 
-  let existingFlag: FeatureFlag | null = null;
-  if (flag) {
-    existingFlag = await FeatureFlag.findOne({
-      where: {
-        workspaceId: owner.id,
-        name: flag,
-      },
-    });
-  }
-
   switch (req.method) {
     case "GET":
       const flags = await FeatureFlag.findAll({
