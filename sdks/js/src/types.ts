@@ -824,6 +824,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "xai_feature"
   | "pro_plan_salesforce_connector"
   | "salesforce_feature"
+  | "salesforce_synced_queries"
   | "search_knowledge_builder"
   | "show_debug_tools"
   | "snowflake_connector_feature"

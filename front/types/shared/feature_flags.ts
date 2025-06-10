@@ -22,6 +22,7 @@ export const WHITELISTABLE_FEATURES = [
   "xai_feature",
   "salesforce_feature",
   "pro_plan_salesforce_connector",
+  "salesforce_synced_queries",
   "show_debug_tools",
   "usage_data_api",
   "custom_webcrawler",
