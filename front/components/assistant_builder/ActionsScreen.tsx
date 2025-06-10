@@ -114,7 +114,6 @@ import {
   EXTENDED_MAX_STEPS_USE_PER_RUN_LIMIT,
   MAX_STEPS_USE_PER_RUN_LIMIT,
 } from "@app/types";
-import type { AssistantBuilderActionConfiguration } from "@app/components/assistant_builder/types";
 
 import { DataDescription } from "./actions/DataDescription";
 
