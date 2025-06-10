@@ -99,7 +99,7 @@ async function handler(
 
       return res
         .status(200)
-        .json({ space: space.toJSON(), member: updateRes.value.toJSON() });
+        .json({ space: space.toJSON(), user: updateRes.value.toJSON() });
     }
     default:
       return apiError(req, res, {

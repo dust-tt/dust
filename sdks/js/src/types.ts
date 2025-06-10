@@ -3026,7 +3026,7 @@ export const PostSpaceMembersRequestBodySchema = z.object({
 
 export interface PostSpaceMembersResponseBody {
   space: SpaceType;
-  member: UserType;
+  user: UserType;
 }
 
 export interface GetWorkspaceUsersResponseBody {
