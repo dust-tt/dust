@@ -113,6 +113,13 @@ export function getMcpServerDisplayName(
   let displayName = asDisplayName(server.name);
 
   if (res.isOk()) {
+    const isCustomName = action?.name && action.name !== server.name;
+
+    // If there is a custom name, add it to the display name (except run_dust_app, which is handled below).
+    if (isCustomName && res.value.name !== "run_dust_app") {
+      displayName += " - " + asDisplayName(action.name);
+    }
+
     const serverConfig = INTERNAL_MCP_SERVERS[res.value.name];
 
     if (serverConfig.isRestricted !== undefined) {
