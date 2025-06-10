@@ -52,7 +52,7 @@ const Citation = React.forwardRef<HTMLDivElement, CitationProps>(
         variant={variant}
         size="sm"
         className={cn(
-          "s-min-w-24 s-relative s-flex s-flex-none s-flex-col s-justify-end s-overflow-hidden s-pt-[8%]",
+          "s-min-w-24 s-relative s-flex s-flex-none s-flex-col s-overflow-hidden s-pt-[8%]",
           className
         )}
         {...props}
