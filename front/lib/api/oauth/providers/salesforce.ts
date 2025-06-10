@@ -10,6 +10,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { isManaged } from "@app/lib/data_sources";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
+import { getPKCEConfig } from "@app/lib/utils/pkce";
 import logger from "@app/logger/logger";
 import type { ExtraConfigType } from "@app/pages/w/[wId]/oauth/[provider]/setup";
 import { ConnectorsAPI, isValidSalesforceDomain, OAuthAPI } from "@app/types";
@@ -169,6 +170,8 @@ export class SalesforceOAuthProvider implements BaseOAuthStrategyProvider {
         const connection = connectionRes.value.connection;
         const connectionId = connection.connection_id;
 
+        const { code_verifier, code_challenge } = await getPKCEConfig();
+
         return {
           credential: {
             content: {
@@ -179,6 +182,8 @@ export class SalesforceOAuthProvider implements BaseOAuthStrategyProvider {
           cleanedConfig: {
             client_id: connection.metadata.client_id,
             instance_url: connection.metadata.instance_url,
+            code_verifier,
+            code_challenge,
             ...restConfig,
           },
         };
