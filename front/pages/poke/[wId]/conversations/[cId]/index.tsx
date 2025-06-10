@@ -82,14 +82,14 @@ const UserMessageView = ({ message, useMarkdown }: UserMessageViewProps) => {
           name={message.user?.fullName ?? message.user?.username}
           type="user"
         >
-          <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-            date: {new Date(message.created).toLocaleString()} •{" "}
-          </div>
           {useMarkdown ? (
             <Markdown content={message.content} />
           ) : (
             <div className="whitespace-pre-wrap">{message.content}</div>
           )}
+          <div className="mt-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
+            date: {new Date(message.created).toLocaleString()}
+          </div>
         </ConversationMessage>
       </div>
     </div>
@@ -170,7 +170,8 @@ const AgentMessageView = ({
               key={`action-${i}`}
               className="mt-1 pl-2 text-sm text-muted-foreground dark:text-muted-foreground-night"
             >
-              action: step={a.step} type={a.type}{" "}
+              action: step={a.step} type={a.type} functionCallName=
+              {a.functionCallName} functionCallId={a.functionCallId}
               {a.runId && (
                 <>
                   log:{" "}
