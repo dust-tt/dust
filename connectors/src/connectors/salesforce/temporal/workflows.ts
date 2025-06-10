@@ -103,7 +103,7 @@ export async function salesforceSyncWorkflow({
 //   await syncSalesforceConnection(connectorId);
 // }
 
-const SALESFORCE_SYNC_QUERY_PAGE_LIMIT = 128;
+const SALESFORCE_SYNC_QUERY_PAGE_LIMIT = 512;
 
 export function makeSalesforceSyncQueryWorkflowId(
   connectorId: ModelId,

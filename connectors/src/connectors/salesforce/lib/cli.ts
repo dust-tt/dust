@@ -78,7 +78,7 @@ export const salesforce = async ({
         credentials: connCredRes.value.credentials,
         limit: args.limit,
         offset: args.offset,
-        lastModifiedDateOrder: "DESC",
+        lastModifiedDateOrder: args.lastModifiedDateOrder,
       });
       if (res.isErr()) {
         throw res.error;
