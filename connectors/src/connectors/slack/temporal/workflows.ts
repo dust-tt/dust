@@ -28,8 +28,8 @@ const {
 
 const { deleteChannel, syncThread, syncChannel, syncNonThreaded } =
   proxyActivities<typeof activities>({
-    heartbeatTimeout: "10 minutes",
-    startToCloseTimeout: "60 minutes",
+    heartbeatTimeout: "15 minutes",
+    startToCloseTimeout: "90 minutes",
   });
 
 /**
