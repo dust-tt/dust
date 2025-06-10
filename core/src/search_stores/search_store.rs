@@ -819,7 +819,7 @@ impl ElasticsearchSearchStore {
     ) -> Result<BoolQuery> {
         if let Some(_) = &filter.node_ids {
             return Err(anyhow::anyhow!(
-                "Node IDs are not supported on data sources"
+                "The `node_ids` filter should not be used in conjunction with search in the datasources index, since datasources do not have nodeIds. Use `nodes_title` search scope to avoid searching this index, or remove the `node_ids` filter."
             ));
         }
 
