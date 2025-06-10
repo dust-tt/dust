@@ -1,5 +1,6 @@
 import {
   Button,
+  Chip,
   ContentMessage,
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -53,8 +54,8 @@ export function MCPServerOAuthConnexion({
   const [inputs, setInputs] = useState<OAuthCredentialInputs | null>(null);
 
   useEffect(() => {
-    // If there is only one use case, set it, otherwise leave it to the user to choose.
-    if (authorization.supported_use_cases.length === 1) {
+    // Pick first choice by default.
+    if (authorization.supported_use_cases.length > 0) {
       setUseCase(authorization.supported_use_cases[0]);
     }
   }, [authorization, setUseCase]);
@@ -120,7 +121,7 @@ export function MCPServerOAuthConnexion({
         <>
           {inputs ? (
             <>
-              <span className="text-500 w-full font-normal">
+              <Chip color="warning">
                 {remoteMCPServerUrl
                   ? `${remoteMCPServerUrl} requires authentication with `
                   : "These tools require authentication with "}
@@ -139,7 +140,7 @@ export function MCPServerOAuthConnexion({
                   </>
                 )}
                 .
-              </span>
+              </Chip>
               {Object.entries(inputs).map(([key, inputData]) => {
                 if (inputData.value) {
                   // If the credential is already set, we don't need to ask the user for it.
@@ -176,48 +177,51 @@ export function MCPServerOAuthConnexion({
               })}
             </>
           ) : (
-            <Label className="self-start font-normal">
+            <Chip color="warning">
               {remoteMCPServerUrl ? <b>{remoteMCPServerUrl}</b> : "These tools"}{" "}
               requires authentication.
-            </Label>
+            </Chip>
           )}
           {authorization.supported_use_cases.length > 1 && containerRef && (
-            <div className="flex flex-col items-center gap-2 pt-4">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    isSelect
-                    variant="outline"
-                    label={
-                      useCase
-                        ? OAUTH_USE_CASE_TO_LABEL[useCase]
-                        : "Select credentials type"
-                    }
-                    size="sm"
-                  />
-                </DropdownMenuTrigger>
+            <div className="w-full">
+              <Label>Credentials Type</Label>
+              <div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      isSelect
+                      variant="outline"
+                      label={
+                        useCase
+                          ? OAUTH_USE_CASE_TO_LABEL[useCase]
+                          : "Select credentials type"
+                      }
+                      size="sm"
+                    />
+                  </DropdownMenuTrigger>
 
-                <DropdownMenuContent mountPortalContainer={containerRef}>
-                  {authorization.supported_use_cases.map(
-                    (selectableUseCase) => (
-                      <DropdownMenuCheckboxItem
-                        key={selectableUseCase}
-                        checked={selectableUseCase === useCase}
-                        onCheckedChange={() => setUseCase(selectableUseCase)}
-                      >
-                        {OAUTH_USE_CASE_TO_LABEL[selectableUseCase]}
-                      </DropdownMenuCheckboxItem>
-                    )
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
+                  <DropdownMenuContent mountPortalContainer={containerRef}>
+                    {authorization.supported_use_cases.map(
+                      (selectableUseCase) => (
+                        <DropdownMenuCheckboxItem
+                          key={selectableUseCase}
+                          checked={selectableUseCase === useCase}
+                          onCheckedChange={() => setUseCase(selectableUseCase)}
+                        >
+                          {OAUTH_USE_CASE_TO_LABEL[selectableUseCase]}
+                        </DropdownMenuCheckboxItem>
+                      )
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             </div>
           )}
-          <div className="w-full pt-4">
+          <div className="w-full">
             {useCase === "platform_actions" && (
               <ContentMessage
-                size="md"
-                variant="warning"
+                size="lg"
+                variant="golden"
                 title="Workspace level credentials."
                 icon={InformationCircleIcon}
               >
@@ -227,7 +231,7 @@ export function MCPServerOAuthConnexion({
             )}
             {useCase === "personal_actions" && (
               <ContentMessage
-                size="md"
+                size="lg"
                 variant="highlight"
                 title="Personal level credentials."
                 icon={InformationCircleIcon}
