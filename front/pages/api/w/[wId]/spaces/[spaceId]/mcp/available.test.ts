@@ -57,7 +57,10 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/mcp/available", () => {
     // Internal server in the right workspace
     const internalServer = await InternalMCPServerInMemoryResource.makeNew(
       auth,
-      "primitive_types_debugger",
+      {
+        name: "primitive_types_debugger",
+        useCase: null,
+      },
       t
     );
 

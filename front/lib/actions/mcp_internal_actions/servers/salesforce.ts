@@ -20,6 +20,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
   authorization: {
     provider: "salesforce" as const,
     use_case: "personal_actions" as const,
+    supported_use_cases: ["personal_actions", "platform_actions"] as const,
   },
   icon: "SalesforceLogo",
 };

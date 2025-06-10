@@ -32,6 +32,7 @@ import type {
 import type { DiscoverOAuthMetadataResponseBody } from "@app/pages/api/w/[wId]/mcp/discover_oauth_metadata";
 import type {
   LightWorkspaceType,
+  MCPOAuthUseCase,
   OAuthProvider,
   OAuthUseCase,
   Result,
@@ -39,6 +40,11 @@ import type {
 } from "@app/types";
 import { Err, Ok, setupOAuthConnection } from "@app/types";
 import { getProviderAdditionalClientSideAuthCredentials } from "@app/types/oauth/lib";
+
+export type MCPConnectionType = {
+  useCase: MCPOAuthUseCase;
+  connectionId: string;
+};
 
 /**
  * Hook to fetch a specific remote MCP server by ID
@@ -173,27 +179,36 @@ export function useCreateInternalMCPServer(owner: LightWorkspaceType) {
     owner,
   });
 
-  const createInternalMCPServer = async (
-    name: string,
-    includeGlobal: boolean
-  ): Promise<CreateMCPServerResponseBody> => {
+  const createInternalMCPServer = async ({
+    name,
+    oauthConnection,
+    includeGlobal,
+  }: {
+    name: string;
+    oauthConnection?: MCPConnectionType;
+    includeGlobal: boolean;
+  }): Promise<Result<CreateMCPServerResponseBody, Error>> => {
     const response = await fetch(`/api/w/${owner.sId}/mcp`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         name,
         serverType: "internal",
+        useCase: oauthConnection?.useCase,
+        connectionId: oauthConnection?.connectionId,
         includeGlobal,
       }),
     });
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.api_error?.message || "Failed to create server");
+      return new Err(
+        new Error(error.error?.message || "Failed to create server")
+      );
     }
 
     await mutateMCPServers();
-    return response.json();
+    return new Ok(await response.json());
   };
 
   return { createInternalMCPServer };
@@ -255,19 +270,21 @@ export function useCreateRemoteMCPServer(owner: LightWorkspaceType) {
       url,
       includeGlobal,
       sharedSecret,
-      connectionId,
+      oauthConnection,
     }: {
       url: string;
       includeGlobal: boolean;
       sharedSecret?: string;
-      connectionId?: string;
+      oauthConnection?: MCPConnectionType;
     }): Promise<Result<CreateMCPServerResponseBody, Error>> => {
       const body: any = { url, serverType: "remote", includeGlobal };
       if (sharedSecret) {
         body.sharedSecret = sharedSecret;
       }
-      if (connectionId) {
-        body.connectionId = connectionId;
+
+      if (oauthConnection) {
+        body.connectionId = oauthConnection.connectionId;
+        body.useCase = oauthConnection.useCase;
       }
       const response = await fetch(`/api/w/${owner.sId}/mcp`, {
         method: "POST",
@@ -283,7 +300,7 @@ export function useCreateRemoteMCPServer(owner: LightWorkspaceType) {
       }
 
       await mutateMCPServers();
-      if (connectionId) {
+      if (oauthConnection?.connectionId) {
         await mutateConnections();
       }
       const r = await response.json();

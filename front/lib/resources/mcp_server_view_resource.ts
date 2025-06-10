@@ -665,6 +665,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
         this.serverType === "remote"
           ? this.getRemoteMCPServerResource().toJSON()
           : this.getInternalMCPServerResource().toJSON(),
+      oAuthUseCase: this.oAuthUseCase,
       editedByUser: this.makeEditedBy(
         this.editedByUser,
         this.remoteMCPServer ? this.remoteMCPServer.updatedAt : this.updatedAt

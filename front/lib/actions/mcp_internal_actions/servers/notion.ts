@@ -24,6 +24,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
   authorization: {
     provider: "notion" as const,
     use_case: "platform_actions" as const,
+    supported_use_cases: ["platform_actions"] as const,
   },
   icon: "NotionLogo",
 };

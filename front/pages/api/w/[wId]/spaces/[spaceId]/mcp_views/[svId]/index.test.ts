@@ -45,7 +45,10 @@ describe("DELETE /api/w/[wId]/spaces/[spaceId]/mcp_views/[svId]", () => {
 
     const internalServer = await InternalMCPServerInMemoryResource.makeNew(
       auth,
-      "primitive_types_debugger",
+      {
+        name: "primitive_types_debugger",
+        useCase: null,
+      },
       t
     );
 
@@ -91,7 +94,10 @@ describe("DELETE /api/w/[wId]/spaces/[spaceId]/mcp_views/[svId]", () => {
 
       const internalServer = await InternalMCPServerInMemoryResource.makeNew(
         auth,
-        "primitive_types_debugger",
+        {
+          name: "primitive_types_debugger",
+          useCase: null,
+        },
         t
       );
 
@@ -150,7 +156,10 @@ describe("Method Support /api/w/[wId]/spaces/[spaceId]/mcp_views/[svId]", () => 
 
     const mcpServer = await InternalMCPServerInMemoryResource.makeNew(
       authenticator,
-      "primitive_types_debugger",
+      {
+        name: "primitive_types_debugger",
+        useCase: null,
+      },
       t
     );
 

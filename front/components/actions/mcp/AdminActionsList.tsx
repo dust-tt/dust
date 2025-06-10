@@ -121,7 +121,10 @@ export const AdminActionsList = ({
       setIsCreateOpen(true);
     } else {
       setIsLoading(true);
-      await createInternalMCPServer(mcpServer.name, true);
+      await createInternalMCPServer({
+        name: mcpServer.name,
+        includeGlobal: true,
+      });
       setIsLoading(false);
     }
   };
