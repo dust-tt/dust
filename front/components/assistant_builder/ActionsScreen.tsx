@@ -114,6 +114,7 @@ import {
   EXTENDED_MAX_STEPS_USE_PER_RUN_LIMIT,
   MAX_STEPS_USE_PER_RUN_LIMIT,
 } from "@app/types";
+import type { AssistantBuilderActionConfiguration } from "@app/components/assistant_builder/types";
 
 import { DataDescription } from "./actions/DataDescription";
 
@@ -1024,12 +1025,13 @@ function ActionEditor({
     <div className="flex flex-col gap-4 px-1">
       <ActionModeSection show={true}>
         <div className="flex w-full flex-row items-center justify-between px-1">
-          {selectedMCPServerView ? (
+          {action.type === "MCP" && selectedMCPServerView ? (
             <MCPActionHeader
               mcpServer={selectedMCPServerView.server}
               isAuthorized={Boolean(selectedMCPServerView.server.authorization)}
               isConnected={isConnected}
               isConnectionsLoading={isConnectionsLoading}
+              action={action}
             />
           ) : (
             <div className="flex items-center gap-3">
