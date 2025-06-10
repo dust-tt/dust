@@ -33,7 +33,7 @@ export async function syncOneFileTextDocument(
 ) {
   let documentContent: CoreAPIDataSourceDocumentSection | null = null;
 
-  const mimeTypesToDownload = await getMimeTypesToDownload({
+  const mimeTypesToDownload = getMimeTypesToDownload({
     pdfEnabled: config?.pdfEnabled || false,
     csvEnabled: config?.csvEnabled || false,
   });
