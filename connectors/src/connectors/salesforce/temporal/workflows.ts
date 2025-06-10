@@ -17,7 +17,7 @@ const {
   startToCloseTimeout: "10 minute",
 });
 
-const { processSyncedQueryPAge: syncSalesforceQueryPage } = proxyActivities<
+const { processSyncedQueryPage: syncSalesforceQueryPage } = proxyActivities<
   typeof activities
 >({
   startToCloseTimeout: "120 minute",
@@ -44,7 +44,7 @@ export async function salesforceSyncWorkflow({
   } while (signaled);
 }
 
-// Future version once manually full syncing works.
+// Future version once query full/incremental syncing works.
 
 // export async function salesforceSyncWorkflow({
 //   connectorId,

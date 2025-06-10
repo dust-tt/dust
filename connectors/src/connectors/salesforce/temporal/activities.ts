@@ -51,7 +51,7 @@ export async function syncSalesforceConnection(connectorId: ModelId) {
   await syncSucceeded(connectorId);
 }
 
-// Dicsover all Salesforce synced queries for a given connector.
+// Discover all Salesforce synced queries for a given connector.
 export async function discoverSalesforceSyncedQueries(
   connectorId: ModelId
 ): Promise<{ id: ModelId; lastSeenModifiedDate: Date | null }[]> {
@@ -136,7 +136,7 @@ export async function upsertSyncedQueryRootNode(
 // Syncs one page of results from a Salesforce query as defined by pagination arguments offset and
 // limit. Stops as soon as a record.lastModifiedDate is smaller than upToLastModifiedDate (if
 // defined) or there is no record remaining to sync. Returns the lastModifiedDate seen so far.
-export async function processSyncedQueryPAge(
+export async function processSyncedQueryPage(
   connectorId: ModelId,
   {
     queryId,
