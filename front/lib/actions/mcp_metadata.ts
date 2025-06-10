@@ -321,7 +321,7 @@ export function extractMetadataFromServerVersion(
       icon: isInternalMCPServerDefinition(r) ? r.icon : DEFAULT_MCP_SERVER_ICON,
       documentationUrl: isInternalMCPServerDefinition(r)
         ? r.documentationUrl
-        : undefined,
+        : null,
     };
   }
 
@@ -331,6 +331,7 @@ export function extractMetadataFromServerVersion(
     description: DEFAULT_MCP_ACTION_DESCRIPTION,
     icon: DEFAULT_MCP_SERVER_ICON,
     authorization: null,
+    documentationUrl: null,
   };
 }
 

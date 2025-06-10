@@ -37,7 +37,7 @@ type MCPServerOauthConnexionProps = {
   setUseCase: (useCase: MCPOAuthUseCase) => void;
   setAuthCredentials: (authCredentials: OAuthCredentials) => void;
   setIsFormValid: (isFormValid: boolean) => void;
-  documentationUrl?: string;
+  documentationUrl: string | null;
 };
 
 export function MCPServerOAuthConnexion({

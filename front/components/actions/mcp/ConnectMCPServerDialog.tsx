@@ -202,7 +202,7 @@ export function ConnectMCPServerDialog({
               authCredentials={authCredentials}
               setAuthCredentials={setAuthCredentials}
               setIsFormValid={setIsFormValid}
-              documentationUrl={mcpServer?.documentationUrl}
+              documentationUrl={mcpServer?.documentationUrl ?? null}
             />
           )}
         </DialogContainer>
