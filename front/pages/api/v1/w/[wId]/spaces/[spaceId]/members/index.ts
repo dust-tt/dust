@@ -1,4 +1,4 @@
-import type { PostSpaceMembersResponseBody, UserType } from "@dust-tt/client";
+import type { PostSpaceMembersResponseBody } from "@dust-tt/client";
 import { PostSpaceMembersRequestBodySchema } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 
