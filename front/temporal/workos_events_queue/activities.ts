@@ -110,7 +110,7 @@ async function fetchWorkOSUserWithEmail(
     email,
   });
 
-  const workOSUser = _.first(workOSUserResponse.data);
+  const [workOSUser] = workOSUserResponse.data;
   if (!workOSUser) {
     throw new Error(
       `User not found with email "${email}" in workOS for workspace "${workspace.sId}"`
