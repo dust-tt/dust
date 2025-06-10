@@ -23,6 +23,7 @@ import { default as tablesQueryServer } from "@app/lib/actions/mcp_internal_acti
 import { default as tablesQueryServerV2 } from "@app/lib/actions/mcp_internal_actions/servers/tables_query/server_v2";
 import { default as thinkServer } from "@app/lib/actions/mcp_internal_actions/servers/think";
 import { default as webtoolsServer } from "@app/lib/actions/mcp_internal_actions/servers/webtools";
+import { default as webtoolsPaginatedServer } from "@app/lib/actions/mcp_internal_actions/servers/webtools_paginated";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
 import { assertNever } from "@app/types";
@@ -83,6 +84,8 @@ export async function getInternalMCPServer(
       return calendarServer(auth, mcpServerId);
     case "data_sources_file_system":
       return dataSourcesFileSystemServer(auth, agentLoopContext);
+    case "web_search_&_browse_paginated":
+      return webtoolsPaginatedServer(auth, agentLoopContext);
     default:
       assertNever(internalMCPServerName);
   }

@@ -34,6 +34,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "search",
   "think",
   "web_search_&_browse",
+  "web_search_&_browse_paginated",
   "google_calendar",
 ] as const;
 
@@ -256,6 +257,13 @@ export const INTERNAL_MCP_SERVERS: Record<
   },
   data_sources_file_system: {
     id: 1010,
+    availability: "auto",
+    isRestricted: (plan, featureFlags) => {
+      return featureFlags.includes("dev_mcp_actions");
+    },
+  },
+  "web_search_&_browse_paginated": {
+    id: 1011,
     availability: "auto",
     isRestricted: (plan, featureFlags) => {
       return featureFlags.includes("dev_mcp_actions");
