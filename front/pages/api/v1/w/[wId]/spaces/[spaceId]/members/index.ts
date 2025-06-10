@@ -1,4 +1,4 @@
-import type { PatchSpaceMembersResponseBody } from "@dust-tt/client";
+import type { PostSpaceMembersResponseBody } from "@dust-tt/client";
 import { PostSpaceMembersRequestBodySchema } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -16,7 +16,7 @@ import { isString } from "@app/types";
  */
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<PatchSpaceMembersResponseBody>>,
+  res: NextApiResponse<WithAPIErrorResponse<PostSpaceMembersResponseBody>>,
   auth: Authenticator
 ): Promise<void> {
   const { spaceId } = req.query;
@@ -105,7 +105,7 @@ async function handler(
         status_code: 405,
         api_error: {
           type: "method_not_supported_error",
-          message: "The method passed is not supported, PATCH is expected.",
+          message: "The method passed is not supported, POST is expected.",
         },
       });
   }
