@@ -48,6 +48,7 @@ import {
   GlobalAgentSettings,
 } from "@app/lib/models/assistant/agent";
 import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
+import { AgentStepContent } from "@app/lib/models/assistant/agent_step_content";
 import {
   AgentMessage,
   AgentMessageFeedback,
@@ -188,6 +189,7 @@ async function main() {
   await AgentConversationIncludeFileAction.sync({ alter: true });
   await AgentDustAppRunAction.sync({ alter: true });
   await AgentMessageContent.sync({ alter: true });
+  await AgentStepContent.sync({ alter: true });
   await AgentProcessAction.sync({ alter: true });
   await AgentReasoningAction.sync({ alter: true });
   await AgentRetrievalAction.sync({ alter: true });

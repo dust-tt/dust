@@ -21,6 +21,7 @@ import type {
   AgentConfigurationStatus,
   LightAgentConfigurationType,
 } from "./agent";
+import type { AssistantContentItemType } from "./agent_message_content";
 
 /**
  * Mentions
@@ -188,6 +189,7 @@ export type BaseAgentMessageType = {
   status: AgentMessageStatus;
   content: string | null;
   chainOfThought: string | null;
+  contents?: AssistantContentItemType[];
   error: {
     code: string;
     message: string;

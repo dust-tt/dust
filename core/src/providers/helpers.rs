@@ -40,6 +40,7 @@ pub fn strip_tools_from_chat_history(messages: &Vec<ChatMessage>) -> Vec<ChatMes
                     role: message.role.clone(),
                     function_call: None,
                     function_calls: None,
+                    contents: None,
                 }));
             }
             ChatMessage::Function(message) => {
