@@ -81,6 +81,7 @@ pub mod providers {
 }
 pub mod http {
     pub mod network;
+    pub mod proxy_client;
     pub mod request;
 }
 pub mod blocks {
