@@ -21,3 +21,7 @@ export type WorkOSConnectionSyncStatus = {
     type: string;
   } | null;
 };
+
+export type WorkOSSSOConnectionStatus = WorkOSConnectionSyncStatus & {
+  setupSSOLink: string;
+};

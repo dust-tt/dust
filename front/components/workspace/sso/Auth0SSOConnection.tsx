@@ -1,5 +1,8 @@
+import type { WorkspaceType } from "@dust-tt/client";
+import { assertNever } from "@dust-tt/client";
 import {
   Button,
+  Checkbox,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -7,9 +10,9 @@ import {
   DialogHeader,
   DialogTitle,
   ExternalLinkIcon,
-  Icon,
   IconButton,
   Input,
+  Label,
   LockIcon,
   Page,
   RadioGroup,
@@ -19,17 +22,15 @@ import {
   SheetContent,
   SheetHeader,
   SheetTitle,
-  SliderToggle,
   useSendNotification,
 } from "@dust-tt/sparkle";
-import { useRouter } from "next/router";
-import { useCallback, useState } from "react";
+import type { Organization } from "@workos-inc/node";
+import React from "react";
 
+import type { EnterpriseConnectionStrategyDetails } from "@app/components/workspace/SSOConnection";
+import { UpgradePlanDialog } from "@app/components/workspace/UpgradePlanDialog";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
-import {
-  useFeatureFlags,
-  useWorkspaceEnterpriseConnection,
-} from "@app/lib/swr/workspaces";
+import { useWorkspaceEnterpriseConnection } from "@app/lib/swr/workspaces";
 import type {
   IdpSpecificConnectionTypeDetails,
   PostCreateEnterpriseConnectionRequestBodySchemaType,
@@ -38,64 +39,85 @@ import type {
 import type {
   Auth0SupportedEnterpriseConnectionStrategies,
   PlanType,
-  WorkspaceDomain,
   WorkspaceEnterpriseConnection,
-  WorkspaceType,
 } from "@app/types";
-import { assertNever, connectionStrategyToHumanReadable } from "@app/types";
+import { connectionStrategyToHumanReadable } from "@app/types";
 
-interface EnterpriseConnectionDetailsProps {
+interface Auth0SSOConnectionProps {
+  domains: Organization["domains"];
   owner: WorkspaceType;
   plan: PlanType;
   strategyDetails: EnterpriseConnectionStrategyDetails;
-  workspaceVerifiedDomain: WorkspaceDomain | null;
 }
 
-export interface EnterpriseConnectionStrategyDetails {
-  callbackUrl: string;
-  initiateLoginUrl: string;
-  // SAML Specific.
-  audienceUri: string;
-  samlAcsUrl: string;
-}
-
-export function EnterpriseConnectionDetails({
+// TODO(workos 2025-06-09): Remove this once fully migrated to WorkOS.
+export default function Auth0SSOConnection({
+  domains,
   owner,
   plan,
   strategyDetails,
-  workspaceVerifiedDomain,
-}: EnterpriseConnectionDetailsProps) {
-  const [showNoInviteLinkPopup, setShowNoInviteLinkPopup] = useState(false);
-  const [showNoVerifiedDomainPopup, setShowNoVerifiedDomainPopup] =
-    useState(false);
+}: Auth0SSOConnectionProps) {
+  const [showUpgradePlanDialog, setShowUpgradePlanDialog] =
+    React.useState(false);
   const [
     isEnterpriseConnectionModalOpened,
     setIsEnterpriseConnectionModalOpened,
-  ] = useState(false);
+  ] = React.useState(false);
   const [
     isDisableEnterpriseConnectionModalOpened,
     setIsDisableEnterpriseConnectionModalOpened,
-  ] = useState(false);
+  ] = React.useState(false);
   const [
     isToggleEnforceEnterpriseConnectionModalOpened,
     setIsToggleEnforceEnterpriseConnectionModalOpened,
-  ] = useState(false);
-
-  const router = useRouter();
-  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
+  ] = React.useState(false);
 
   const { enterpriseConnection, mutateEnterpriseConnection } =
     useWorkspaceEnterpriseConnection({
       workspaceId: owner.sId,
     });
 
-  if (!featureFlags.includes("okta_enterprise_connection")) {
-    return <></>;
-  }
-
   return (
     <Page.Vertical gap="sm">
-      <Page.H variant="h5">Single Sign On</Page.H>
+      <div className="flex w-full flex-row items-center gap-2">
+        <div className="flex-1">
+          <Page.H variant="h5">Single Sign-On (SSO)</Page.H>
+          <Page.P variant="secondary">
+            Manage your enterprise Identity Provider (IdP) settings and user
+            provisioning.
+          </Page.P>
+        </div>
+        <div className="flex justify-end">
+          {enterpriseConnection ? (
+            <Button
+              label="De-activate SSO"
+              size="sm"
+              variant="outline"
+              disabled={!enterpriseConnection}
+              onClick={() => {
+                setIsDisableEnterpriseConnectionModalOpened(true);
+              }}
+            />
+          ) : (
+            <Button
+              label="Activate SSO"
+              size="sm"
+              variant="primary"
+              tooltip={
+                domains.length === 0 ? "Add a domain to enable SSO" : undefined
+              }
+              disabled={!!enterpriseConnection || !domains.length}
+              onClick={() => {
+                if (!isUpgraded(plan)) {
+                  setShowUpgradePlanDialog(true);
+                } else {
+                  setIsEnterpriseConnectionModalOpened(true);
+                }
+              }}
+            />
+          )}
+        </div>
+      </div>
       <CreateEnterpriseConnectionModal
         owner={owner}
         isOpen={isEnterpriseConnectionModalOpened}
@@ -133,32 +155,21 @@ export function EnterpriseConnectionDetails({
         }}
         owner={owner}
       />
-      <Page.P variant="secondary">
-        Easily integrate SAML, Okta or Microsoft Entra ID to enable Single
-        Sign-On (SSO) for your team.
-      </Page.P>
       <div className="flex w-full flex-col items-start gap-3">
         {enterpriseConnection ? (
           <div className="w-full space-y-4">
-            <Button
-              label="De-activate Single Sign On"
-              size="sm"
-              variant="warning"
-              disabled={!enterpriseConnection}
-              onClick={() => {
-                setIsDisableEnterpriseConnectionModalOpened(true);
-              }}
-            />
             <div className="flex flex-col space-y-4">
               <div className="flex flex-row items-center space-x-2">
-                <Icon visual={LockIcon} />
-                <p className="grow">Enforce SSO login</p>
-                <SliderToggle
-                  selected={owner.ssoEnforced}
+                <Checkbox
+                  id="sso-enforced"
+                  checked={owner.ssoEnforced}
                   onClick={async () => {
                     setIsToggleEnforceEnterpriseConnectionModalOpened(true);
                   }}
                 />
+                <Label htmlFor="sso-enforced" className="text-md font-normal">
+                  Enforce SSO login
+                </Label>
               </div>
               <Page.P variant="secondary">
                 When SSO is enforced, users will no longer be able to use social
@@ -166,78 +177,12 @@ export function EnterpriseConnectionDetails({
               </Page.P>
             </div>
           </div>
-        ) : (
-          <Button
-            label="Activate Single Sign On"
-            size="sm"
-            variant="primary"
-            disabled={!!enterpriseConnection}
-            onClick={() => {
-              if (!isUpgraded(plan)) {
-                setShowNoInviteLinkPopup(true);
-              } else if (!workspaceVerifiedDomain) {
-                setShowNoVerifiedDomainPopup(true);
-              } else {
-                setIsEnterpriseConnectionModalOpened(true);
-              }
-            }}
-          />
-        )}
-        <Dialog open={showNoInviteLinkPopup}>
-          <DialogContent>
-            <DialogHeader>Free plan</DialogHeader>
-            You cannot enable auto-join with the free plan. Upgrade your plan to
-            invite other members.
-            <DialogFooter>
-              <Button
-                variant="secondary"
-                onClick={() => setShowNoInviteLinkPopup(false)}
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={() => {
-                  void router.push(`/w/${owner.sId}/subscription`);
-                }}
-              >
-                Check Dust plans
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-        <Dialog
-          open={showNoVerifiedDomainPopup}
-          onOpenChange={(open) => {
-            if (!open) {
-              setShowNoVerifiedDomainPopup(false);
-            }
-          }}
-        >
-          <DialogContent size="md">
-            <DialogHeader hideButton={false}>
-              <DialogTitle>Domain Verification Required</DialogTitle>
-            </DialogHeader>
-            <DialogContainer>
-              Single Sign-On (SSO) is not available because your domain isn't
-              verified yet. Contact us at support@dust.tt for assistance.
-            </DialogContainer>
-            <DialogFooter
-              leftButtonProps={{
-                label: "Cancel",
-                variant: "outline",
-                onClick: () => setShowNoVerifiedDomainPopup(false),
-              }}
-              rightButtonProps={{
-                label: "Get Help",
-                variant: "primary",
-                onClick: () => {
-                  window.location.href =
-                    "mailto:support@dust.tt?subject=Help with Domain Verification for SSO";
-                },
-              }}
-            />
-          </DialogContent>
-        </Dialog>
+        ) : null}
+        <UpgradePlanDialog
+          isOpen={showUpgradePlanDialog}
+          onClose={() => setShowUpgradePlanDialog(false)}
+          workspaceId={owner.sId}
+        />
       </div>
     </Page.Vertical>
   );
@@ -281,7 +226,7 @@ function CreateOktaEnterpriseConnectionModal({
   strategyDetails: EnterpriseConnectionStrategyDetails;
 }) {
   const [enterpriseConnectionDetails, setEnterpriseConnectionDetails] =
-    useState<Partial<IdpSpecificConnectionTypeDetails>>({
+    React.useState<Partial<IdpSpecificConnectionTypeDetails>>({
       strategy: "okta",
     });
 
@@ -421,7 +366,7 @@ function CreateWAADEnterpriseConnectionModal({
   strategyDetails: EnterpriseConnectionStrategyDetails;
 }) {
   const [enterpriseConnectionDetails, setEnterpriseConnectionDetails] =
-    useState<Partial<IdpSpecificConnectionTypeDetails>>({
+    React.useState<Partial<IdpSpecificConnectionTypeDetails>>({
       strategy: "waad",
     });
 
@@ -556,7 +501,7 @@ function CreateSAMLEnterpriseConnectionModal({
   strategyDetails: EnterpriseConnectionStrategyDetails;
 }) {
   const [enterpriseConnectionDetails, setEnterpriseConnectionDetails] =
-    useState<Partial<SAMLConnectionTypeDetails>>({
+    React.useState<Partial<SAMLConnectionTypeDetails>>({
       strategy: "samlp",
     });
 
@@ -677,7 +622,7 @@ function StrategyModalContent({
 }) {
   const sendNotification = useSendNotification();
 
-  const createEnterpriseConnection = useCallback(
+  const createEnterpriseConnection = React.useCallback(
     async (
       enterpriseConnection: PostCreateEnterpriseConnectionRequestBodySchemaType
     ) => {
@@ -750,7 +695,7 @@ function CreateEnterpriseConnectionModal({
   strategyDetails: EnterpriseConnectionStrategyDetails;
 }) {
   const [selectedStrategy, setSelectedStrategy] =
-    useState<Auth0SupportedEnterpriseConnectionStrategies | null>(null);
+    React.useState<Auth0SupportedEnterpriseConnectionStrategies | null>(null);
 
   return (
     <Sheet
@@ -842,7 +787,7 @@ function ToggleEnforceEnterpriseConnectionModal({
     },
   };
 
-  const handleToggleSsoEnforced = useCallback(
+  const handleToggleSsoEnforced = React.useCallback(
     async (ssoEnforced: boolean) => {
       const res = await fetch(`/api/w/${owner.sId}`, {
         method: "POST",
@@ -956,7 +901,7 @@ function DisableEnterpriseConnectionModal({
       <DialogContent size="md">
         <DialogHeader>
           <DialogTitle>
-            Disable ${strategyHumanReadable} Single Sign On
+            Disable {strategyHumanReadable} Single Sign On
           </DialogTitle>
         </DialogHeader>
         <DialogContainer>

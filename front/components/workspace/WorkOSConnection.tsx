@@ -10,7 +10,6 @@ import { useEffect, useState } from "react";
 import {
   useWorkOSAdminPortalUrl,
   useWorkOSDSyncStatus,
-  useWorkOSSSOStatus,
 } from "@app/lib/swr/workos";
 import { useSyncWorkOSDirectoriesAndUsers } from "@app/lib/swr/workspaces";
 import { WorkOSPortalIntent } from "@app/lib/types/workos";
@@ -51,7 +50,6 @@ export function WorkOSConnection({ owner }: WorkOSConnectionProps) {
   const [shouldOpenPortal, setShouldOpenPortal] = useState(false);
 
   const { adminPortalUrl } = useWorkOSAdminPortalUrl(owner.sId, selectedIntent);
-  const { ssoStatus, isLoading: isLoadingSSO } = useWorkOSSSOStatus(owner);
   const { dsyncStatus, isLoading: isLoadingDSync } =
     useWorkOSDSyncStatus(owner);
 
@@ -65,48 +63,6 @@ export function WorkOSConnection({ owner }: WorkOSConnectionProps) {
   const handleOpenPortal = (intent: WorkOSPortalIntent) => {
     setSelectedIntent(intent);
     setShouldOpenPortal(true);
-  };
-
-  const renderSSOSection = () => {
-    if (isLoadingSSO) {
-      return null;
-    }
-
-    return (
-      <Page.Vertical>
-        <Page.Vertical>
-          <Page.H variant="h6">Single Sign-On (SSO)</Page.H>
-          <Page.P variant="secondary">
-            {!ssoStatus || ssoStatus.status === "not_configured"
-              ? "Configure SSO to enable secure authentication for your organization."
-              : ssoStatus.status === "configured"
-                ? `Connected to ${ssoStatus.connection?.type}`
-                : `Configuring ${ssoStatus.connection?.type}...`}
-          </Page.P>
-          {(!ssoStatus || ssoStatus.status !== "configured") && (
-            <Button
-              variant="primary"
-              onClick={() => handleOpenPortal(WorkOSPortalIntent.SSO)}
-              label={
-                ssoStatus?.status === "configuring"
-                  ? "Continue SSO Setup"
-                  : "Configure SSO"
-              }
-              icon={ExternalLinkIcon}
-            />
-          )}
-        </Page.Vertical>
-        {ssoStatus?.status === "configuring" && (
-          <ContentMessage
-            title="Configuration in progress"
-            variant="primary"
-            icon={Spinner}
-          >
-            SSO configuration is in progress. Click to continue setup.
-          </ContentMessage>
-        )}
-      </Page.Vertical>
-    );
   };
 
   const renderDSyncSection = () => {
@@ -162,14 +118,11 @@ export function WorkOSConnection({ owner }: WorkOSConnectionProps) {
       <Page.H variant="h5">Enterprise Connection</Page.H>
       <Page.P variant="secondary">
         {owner.workOSOrganizationId
-          ? "Manage your enterprise Identity Provider (IdP) settings and user provisioning."
-          : "Your WorkOS organization will be automatically created when your is upgraded to an eligible plan."}
+          ? "Manage your enterprise user provisioning."
+          : "Your WorkOS organization will be automatically created when your workspace is upgraded to an eligible plan."}
       </Page.P>
       {owner.workOSOrganizationId && (
-        <Page.Vertical gap="lg">
-          {renderSSOSection()}
-          {renderDSyncSection()}
-        </Page.Vertical>
+        <Page.Vertical gap="lg">{renderDSyncSection()}</Page.Vertical>
       )}
     </Page.Vertical>
   );

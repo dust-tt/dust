@@ -1,19 +1,7 @@
-import {
-  Button,
-  Dialog,
-  DialogContainer,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  Page,
-  SearchInput,
-  useSendNotification,
-} from "@dust-tt/sparkle";
+import { Page, SearchInput, Separator } from "@dust-tt/sparkle";
 import { UsersIcon } from "@heroicons/react/20/solid";
 import type { PaginationState } from "@tanstack/react-table";
 import type { InferGetServerSidePropsType } from "next";
-import { useRouter } from "next/router";
 import { useEffect, useMemo, useState } from "react";
 
 import type { WorkspaceLimit } from "@app/components/app/ReachedLimitPopup";
@@ -25,9 +13,9 @@ import { subNavigationAdmin } from "@app/components/navigation/config";
 import AppContentLayout from "@app/components/sparkle/AppContentLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { ChangeMemberModal } from "@app/components/workspace/ChangeMemberModal";
-import type { EnterpriseConnectionStrategyDetails } from "@app/components/workspace/connection";
-import { EnterpriseConnectionDetails } from "@app/components/workspace/connection";
+import type { EnterpriseConnectionStrategyDetails } from "@app/components/workspace/SSOConnection";
 import { WorkOSConnection } from "@app/components/workspace/WorkOSConnection";
+import WorkspaceAccessPanel from "@app/components/workspace/WorkspaceAccessPanel";
 import config from "@app/lib/api/config";
 import {
   makeAudienceUri,
@@ -73,6 +61,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
+  // TODO(workos 2025-06-09): Remove this once fully migrated to WorkOS.
   const workspaceVerifiedDomain = await getWorkspaceVerifiedDomain(owner);
   const workspaceHasAvailableSeats =
     await checkWorkspaceSeatAvailabilityUsingAuth(auth);
@@ -113,23 +102,15 @@ export default function WorkspaceAdmin({
   perSeatPricing,
   enterpriseConnectionStrategyDetails,
   plan,
-  workspaceVerifiedDomain,
   workspaceHasAvailableSeats,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
-  const [showNoInviteLinkPopup, setShowNoInviteLinkPopup] = useState(false);
-  const [isActivateAutoJoinOpened, setIsActivateAutoJoinOpened] =
-    useState(false);
   const [inviteBlockedPopupReason, setInviteBlockedPopupReason] =
     useState<WorkspaceLimit | null>(null);
 
   const { hasFeature } = useFeatureFlags({
     workspaceId: owner.sId,
   });
-
-  const { domain = "", domainAutoJoinEnabled = false } =
-    workspaceVerifiedDomain ?? {};
 
   const onInviteClick = (event: MouseEvent) => {
     if (!isUpgraded(plan)) {
@@ -168,219 +149,63 @@ export default function WorkspaceAdmin({
     >
       <Page.Vertical gap="xl" align="stretch">
         <Page.Header
-          title="Member Management"
+          title="Domain & Members"
           icon={UsersIcon}
-          description="Invite and remove members, manage their rights."
+          description="Verify your domain, manage team members and their permissions."
         />
-        <DomainAutoJoinModal
-          domainAutoJoinEnabled={domainAutoJoinEnabled}
-          isOpen={isActivateAutoJoinOpened}
-          onClose={() => {
-            setIsActivateAutoJoinOpened(false);
-          }}
-          domain={domain}
-          owner={owner}
-        />
-        {workspaceVerifiedDomain && (
-          <Page.Vertical gap="sm">
-            <Page.H variant="h5">Auto-join Workspace</Page.H>
-            <Page.P variant="secondary">
-              Allow all your team members to access your Dust company Workspace
-              when they authenticate with a{" "}
-              <span className="font-bold">"@{domain}"</span> Google accounts.
-            </Page.P>
-            <div className="flex flex-col items-start gap-3">
-              {domainAutoJoinEnabled ? (
-                <Button
-                  label="De-activate Auto-join"
-                  size="sm"
-                  variant="warning"
-                  disabled={!domainAutoJoinEnabled}
-                  onClick={() => {
-                    if (!isUpgraded(plan)) {
-                      setShowNoInviteLinkPopup(true);
-                    } else {
-                      setIsActivateAutoJoinOpened(true);
-                    }
-                  }}
-                />
-              ) : (
-                <Button
-                  label="Activate Auto-join"
-                  size="sm"
-                  variant="primary"
-                  disabled={domainAutoJoinEnabled}
-                  onClick={() => {
-                    if (!isUpgraded(plan)) {
-                      setShowNoInviteLinkPopup(true);
-                    } else {
-                      setIsActivateAutoJoinOpened(true);
-                    }
-                  }}
-                />
-              )}
-              <Dialog open={showNoInviteLinkPopup}>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Free plan</DialogTitle>
-                  </DialogHeader>
-                  <p className="text-sm text-gray-500">
-                    You cannot enable auto-join with the free plan. Upgrade your
-                    plan to invite other members.
-                  </p>
-                  <DialogFooter>
-                    <Button
-                      variant="secondary"
-                      onClick={() => setShowNoInviteLinkPopup(false)}
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      onClick={() => {
-                        void router.push(`/w/${owner.sId}/subscription`);
-                      }}
-                    >
-                      Check Dust plans
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-            </div>
-          </Page.Vertical>
-        )}
-        <EnterpriseConnectionDetails
+        <WorkspaceAccessPanel
+          enterpriseConnectionStrategyDetails={
+            enterpriseConnectionStrategyDetails
+          }
           owner={owner}
           plan={plan}
-          strategyDetails={enterpriseConnectionStrategyDetails}
-          workspaceVerifiedDomain={workspaceVerifiedDomain}
         />
-        {hasFeature("workos") && <WorkOSConnection owner={owner} />}
-        <div className="flex flex-row gap-2">
-          <SearchInput
-            placeholder="Search members (email)"
-            value={searchTerm}
-            name="search"
-            onChange={(s) => {
-              setSearchTerm(s);
-            }}
-          />
-          <InviteEmailModal
+        <Separator />
+        <div className="flex flex-col gap-2">
+          <Page.H variant="h4">Member list</Page.H>
+          <div className="flex flex-row gap-2">
+            <SearchInput
+              placeholder="Search members (email)"
+              value={searchTerm}
+              name="search"
+              onChange={(s) => {
+                setSearchTerm(s);
+              }}
+            />
+            <InviteEmailModal
+              owner={owner}
+              prefillText=""
+              perSeatPricing={perSeatPricing}
+              onInviteClick={onInviteClick}
+            />
+          </div>
+          <InvitationsList owner={owner} searchText={searchTerm} />
+          <WorkspaceMembersList
+            currentUser={user}
             owner={owner}
-            prefillText=""
-            perSeatPricing={perSeatPricing}
-            onInviteClick={onInviteClick}
+            searchTerm={searchTerm}
           />
         </div>
-        <InvitationsList owner={owner} searchText={searchTerm} />
-        <WorkspaceMembersList
-          currentUser={user}
-          owner={owner}
-          searchTerm={searchTerm}
-        />
+        {hasFeature("workos") && <WorkOSConnection owner={owner} />}
         {popup}
       </Page.Vertical>
     </AppContentLayout>
   );
 }
 
-function DomainAutoJoinModal({
-  domain,
-  domainAutoJoinEnabled,
-  isOpen,
-  onClose,
-  owner,
-}: {
-  domain: string;
-  domainAutoJoinEnabled: boolean;
-  isOpen: boolean;
-  onClose: () => void;
-  owner: WorkspaceType;
-}) {
-  const sendNotification = useSendNotification();
-
-  const title = domainAutoJoinEnabled
-    ? "De-activate Auto-join"
-    : "Activate Auto-join";
-  const validateLabel = domainAutoJoinEnabled ? "De-activate" : "Activate";
-  const validateVariant = domainAutoJoinEnabled ? "warning" : "primary";
-  const description = domainAutoJoinEnabled ? (
-    "New members will need to be invited in order to gain access to your Dust Workspace."
-  ) : (
-    <span>
-      Anyone with Google <span className="font-bold">{"@" + domain}</span>{" "}
-      account will have access to your Dust Workspace.
-    </span>
-  );
-
-  async function handleUpdateWorkspace(): Promise<void> {
-    const res = await fetch(`/api/w/${owner.sId}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        domain,
-        domainAutoJoinEnabled: !domainAutoJoinEnabled,
-      }),
-    });
-
-    if (!res.ok) {
-      sendNotification({
-        type: "error",
-        title: "Update failed",
-        description: `Failed to enable auto-add for whitelisted domain.`,
-      });
-    } else {
-      // We perform a full refresh so that the Workspace name updates and we get a fresh owner
-      // object so that the formValidation logic keeps working.
-      window.location.reload();
-    }
-  }
-
-  return (
-    <Dialog
-      open={isOpen}
-      onOpenChange={(open) => {
-        if (!open) {
-          onClose();
-        }
-      }}
-    >
-      <DialogContent size="md" isAlertDialog>
-        <DialogHeader hideButton>
-          <DialogTitle>{title}</DialogTitle>
-        </DialogHeader>
-        <DialogContainer>{description}</DialogContainer>
-        <DialogFooter
-          leftButtonProps={{
-            label: "Cancel",
-            variant: "outline",
-          }}
-          rightButtonProps={{
-            label: validateLabel,
-            variant: validateVariant,
-            onClick: async () => {
-              await handleUpdateWorkspace();
-              onClose();
-            },
-          }}
-        />
-      </DialogContent>
-    </Dialog>
-  );
-}
-
 const DEFAULT_PAGE_SIZE = 25;
+
+interface WorkspaceMembersListProps {
+  currentUser: UserType | null;
+  owner: WorkspaceType;
+  searchTerm: string;
+}
 
 function WorkspaceMembersList({
   currentUser,
   owner,
   searchTerm,
-}: {
-  currentUser: UserType | null;
-  owner: WorkspaceType;
-  searchTerm: string;
-}) {
+}: WorkspaceMembersListProps) {
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
     pageSize: DEFAULT_PAGE_SIZE,
@@ -401,8 +226,8 @@ function WorkspaceMembersList({
     useState<UserTypeWithWorkspaces | null>(null);
 
   return (
-    <div className="flex flex-col gap-2">
-      <Page.H variant="h5">Members</Page.H>
+    <div className="flex flex-col gap-1 pt-2">
+      <Page.H variant="h6">Members</Page.H>
       <MembersList
         currentUser={currentUser}
         membersData={membersData}
