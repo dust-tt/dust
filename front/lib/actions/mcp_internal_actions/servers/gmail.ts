@@ -19,6 +19,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
   authorization: {
     provider: "gmail" as const,
     use_case: "personal_actions" as const,
+    supported_use_cases: ["personal_actions"] as const,
     scope:
       "https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.compose" as const,
   },

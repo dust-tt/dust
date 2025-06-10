@@ -26,7 +26,9 @@ import { destroyMCPServerViewDependencies } from "@app/lib/models/assistant/acti
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { cacheWithRedis } from "@app/lib/utils/cache";
+import type { MCPOAuthUseCase } from "@app/types";
 import { removeNulls } from "@app/types";
+import { isDevelopment } from "@app/types";
 
 const METADATA_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
@@ -64,7 +66,7 @@ const getCachedMetadata = cacheWithRedis(
     return metadata;
   },
   (_auth: Authenticator, id: string) => `internal-mcp-server-metadata-${id}`,
-  METADATA_CACHE_TTL_MS
+  isDevelopment() ? 1000 : METADATA_CACHE_TTL_MS
 );
 
 export class InternalMCPServerInMemoryResource {
@@ -106,7 +108,13 @@ export class InternalMCPServerInMemoryResource {
 
   static async makeNew(
     auth: Authenticator,
-    name: InternalMCPServerNameType,
+    {
+      name,
+      useCase,
+    }: {
+      name: InternalMCPServerNameType;
+      useCase: MCPOAuthUseCase | null;
+    },
     transaction?: Transaction
   ) {
     const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
@@ -131,8 +139,6 @@ export class InternalMCPServerInMemoryResource {
       );
     }
 
-    const cachedMetadata = await getCachedMetadata(auth, server.id);
-
     await MCPServerViewModel.create(
       {
         workspaceId: auth.getNonNullableWorkspace().id,
@@ -141,7 +147,7 @@ export class InternalMCPServerInMemoryResource {
         vaultId: systemSpace.id,
         editedAt: new Date(),
         editedByUserId: auth.user()?.id,
-        oAuthUseCase: cachedMetadata?.authorization?.use_case ?? null,
+        oAuthUseCase: useCase ?? null,
       },
       { transaction }
     );

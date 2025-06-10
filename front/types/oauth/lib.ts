@@ -1,6 +1,5 @@
 import * as t from "io-ts";
 
-import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata";
 import type { PCKEConfig } from "@app/lib/utils/pkce";
 import { getPKCEConfig } from "@app/lib/utils/pkce";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -14,6 +13,11 @@ export const OAUTH_USE_CASES = [
 ] as const;
 
 export type OAuthUseCase = (typeof OAUTH_USE_CASES)[number];
+
+export type MCPOAuthUseCase = Extract<
+  OAuthUseCase,
+  "platform_actions" | "personal_actions"
+>;
 
 export function isOAuthUseCase(obj: unknown): obj is OAuthUseCase {
   return OAUTH_USE_CASES.includes(obj as OAuthUseCase);
@@ -51,16 +55,17 @@ export const OAUTH_PROVIDER_NAMES: Record<OAuthProvider, string> = {
   mcp: "MCP",
 };
 
-export const getProviderAdditionalClientSideAuthCredentials = async (
-  authentication: AuthorizationInfo | null
-): Promise<PCKEConfig | null> => {
-  if (!authentication) {
-    return null;
-  }
-  switch (authentication.provider) {
+export const getProviderAdditionalClientSideAuthCredentials = async ({
+  provider,
+  useCase,
+}: {
+  provider: OAuthProvider;
+  useCase: OAuthUseCase;
+}): Promise<PCKEConfig | null> => {
+  switch (provider) {
     case "salesforce":
     case "gmail":
-      if (authentication.use_case === "personal_actions") {
+      if (useCase === "personal_actions" || useCase === "platform_actions") {
         return getPKCEConfig();
       }
       return null;
@@ -77,7 +82,7 @@ export const getProviderAdditionalClientSideAuthCredentials = async (
     case "intercom":
       return null;
     default:
-      assertNever(authentication.provider);
+      assertNever(provider);
   }
 };
 
@@ -114,18 +119,19 @@ export type OAuthCredentials = Partial<
   Record<SupportedOAuthCredentials, string>
 >;
 
-export const getProviderRequiredOAuthCredentialInputs = async (
-  authentication: AuthorizationInfo | null
-): Promise<OAuthCredentialInputs | null> => {
-  if (!authentication) {
-    return null;
-  }
+export const getProviderRequiredOAuthCredentialInputs = async ({
+  provider,
+  useCase,
+}: {
+  provider: OAuthProvider;
+  useCase: OAuthUseCase;
+}): Promise<OAuthCredentialInputs | null> => {
   const additionalCredentials =
-    await getProviderAdditionalClientSideAuthCredentials(authentication);
+    await getProviderAdditionalClientSideAuthCredentials({ provider, useCase });
 
-  switch (authentication.provider) {
+  switch (provider) {
     case "salesforce":
-      if (authentication.use_case === "personal_actions") {
+      if (useCase === "personal_actions" || useCase === "platform_actions") {
         const result: OAuthCredentialInputs = {
           client_id: {
             label: "OAuth Client ID",
@@ -160,7 +166,7 @@ export const getProviderRequiredOAuthCredentialInputs = async (
       }
       return null;
     case "gmail":
-      if (authentication.use_case === "personal_actions") {
+      if (useCase === "personal_actions") {
         const result: OAuthCredentialInputs = {
           client_id: {
             label: "OAuth Client ID",
@@ -208,7 +214,7 @@ export const getProviderRequiredOAuthCredentialInputs = async (
       });
       return Object.keys(result).length > 0 ? result : null;
     default:
-      assertNever(authentication.provider);
+      assertNever(provider);
   }
 };
 

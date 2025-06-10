@@ -35,7 +35,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { validateJsonSchema } from "@app/lib/utils/json_schemas";
 import logger from "@app/logger/logger";
-import type { OAuthProvider, OAuthUseCase, Result } from "@app/types";
+import type { MCPOAuthUseCase, OAuthProvider, Result } from "@app/types";
 import {
   assertNever,
   Err,
@@ -46,7 +46,9 @@ import {
 
 export type AuthorizationInfo = {
   provider: OAuthProvider;
-  use_case: Extract<OAuthUseCase, "platform_actions" | "personal_actions">;
+  // TODO(mcp): remove use_case once the code has been updated to use the view.
+  use_case: MCPOAuthUseCase;
+  supported_use_cases: MCPOAuthUseCase[];
   scope?: string;
 };
 

@@ -26,7 +26,7 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import type { Result } from "@app/types";
+import type { MCPOAuthUseCase, Result } from "@app/types";
 import { Ok, redactString, removeNulls } from "@app/types";
 
 const SECRET_REDACTION_COOLDOWN_IN_MINUTES = 10;
@@ -51,7 +51,9 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
     blob: Omit<
       CreationAttributes<RemoteMCPServerModel>,
       "name" | "description" | "spaceId" | "sId" | "lastSyncAt"
-    >,
+    > & {
+      oAuthUseCase: MCPOAuthUseCase | null;
+    },
     transaction?: Transaction
   ) {
     const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
@@ -82,7 +84,7 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
         vaultId: systemSpace.id,
         editedAt: new Date(),
         editedByUserId: auth.user()?.id,
-        oAuthUseCase: blob.authorization?.use_case ?? null,
+        oAuthUseCase: blob.oAuthUseCase,
       },
       {
         transaction,

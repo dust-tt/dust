@@ -41,11 +41,22 @@ const PostQueryParamsSchema = t.union([
     url: t.string,
     includeGlobal: t.union([t.boolean, t.undefined]),
     sharedSecret: t.union([t.string, t.undefined]),
+    useCase: t.union([
+      t.literal("platform_actions"),
+      t.literal("personal_actions"),
+      t.undefined,
+    ]),
     connectionId: t.union([t.string, t.undefined]),
   }),
   t.type({
     serverType: t.literal("internal"),
     name: t.string,
+    useCase: t.union([
+      t.literal("platform_actions"),
+      t.literal("personal_actions"),
+      t.undefined,
+    ]),
+    connectionId: t.union([t.string, t.undefined]),
     includeGlobal: t.union([t.boolean, t.undefined]),
   }),
 ]);
@@ -145,6 +156,7 @@ async function handler(
             bearerToken = token.value.access_token;
             authorization = {
               provider: "mcp",
+              supported_use_cases: ["platform_actions", "personal_actions"],
               use_case: "platform_actions", // TODO (mcp): handle correctly the personal connections.
             };
           } else {
@@ -192,6 +204,7 @@ async function handler(
           version: metadata.version,
           sharedSecret: sharedSecret || null,
           authorization,
+          oAuthUseCase: body.useCase ?? null,
         });
 
         if (body.connectionId) {
@@ -272,7 +285,22 @@ async function handler(
         }
 
         const newInternalMCPServer =
-          await InternalMCPServerInMemoryResource.makeNew(auth, name);
+          await InternalMCPServerInMemoryResource.makeNew(auth, {
+            name,
+            useCase: body.useCase ?? null,
+          });
+
+        if (body.connectionId) {
+          // We create a connection to the internal MCP server to allow the user to use the MCP server in the future.
+          // The connexion is of type "workspace" because it is created by the admin.
+          // If the server can use personal connections, we rely on this "workspace" connection to get the related credentials.
+          await MCPServerConnectionResource.makeNew(auth, {
+            connectionId: body.connectionId,
+            connectionType: "workspace",
+            serverType: "internal",
+            internalMCPServerId: newInternalMCPServer.id,
+          });
+        }
 
         if (body.includeGlobal) {
           const globalSpace =

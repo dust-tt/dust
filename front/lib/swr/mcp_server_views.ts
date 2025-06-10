@@ -70,6 +70,7 @@ const getOptimisticDataForCreate = (
               server,
               editedByUser: null,
               spaceId: space.sId,
+              oAuthUseCase: null,
             },
           ],
         },
