@@ -1,4 +1,4 @@
-import type { PostSpaceMembersResponseBody } from "@dust-tt/client";
+import type { PostSpaceMembersResponseBody, UserType } from "@dust-tt/client";
 import { PostSpaceMembersRequestBodySchema } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -97,9 +97,16 @@ async function handler(
         }
       }
 
-      return res
-        .status(200)
-        .json({ space: space.toJSON(), user: updateRes.value.toJSON() });
+      const userJson = updateRes.value.toJSON();
+
+      return res.status(200).json({
+        space: space.toJSON(),
+        user: {
+          sId: userJson.sId,
+          id: userJson.id,
+          email: userJson.email,
+        },
+      });
     }
     default:
       return apiError(req, res, {
