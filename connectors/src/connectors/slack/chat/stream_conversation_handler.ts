@@ -2,9 +2,10 @@ import type {
   AgentActionPublicType,
   ConversationPublicType,
   DustAPI,
+  LightAgentConfigurationType,
+  Result,
   UserMessageType,
 } from "@dust-tt/client";
-import type { LightAgentConfigurationType, Result } from "@dust-tt/client";
 import { ACTION_RUNNING_LABELS, assertNever, Err, Ok } from "@dust-tt/client";
 import type { ChatPostMessageResponse, WebClient } from "@slack/web-api";
 import slackifyMarkdown from "slackify-markdown";
@@ -22,6 +23,20 @@ import type { SlackUserInfo } from "@connectors/connectors/slack/lib/slack_clien
 import type { SlackChatBotMessage } from "@connectors/lib/models/slack";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
+
+export type SlackBlockIdStaticAgentConfig = {
+  slackChatBotMessageId: number;
+  messageTs?: string;
+  slackThreadTs?: string;
+  botId?: string;
+};
+
+export type SlackBlockIdToolValidation = {
+  actionId: string;
+  conversationId: string;
+  messageId: string;
+  workspaceId: string;
+} & SlackBlockIdStaticAgentConfig;
 
 interface StreamConversationToSlackParams {
   assistantName: string;
@@ -163,8 +178,8 @@ async function streamAgentAnswerToSlack(
           slackThreadTs: mainMessage.message?.thread_ts,
           messageTs: mainMessage.message?.ts,
           botId: mainMessage.message?.bot_id,
-          slackBotMessageId: slackChatBotMessage.id,
-        });
+          slackChatBotMessageId: slackChatBotMessage.id,
+        } as SlackBlockIdToolValidation);
 
         if (slackUserId && !slackUserInfo.is_bot) {
           await slackClient.chat.postEphemeral({
@@ -273,11 +288,11 @@ async function streamAgentAnswerToSlack(
             blocks: makeAssistantSelectionBlock(
               agentConfigurations,
               JSON.stringify({
-                slackChatBotMessage: slackChatBotMessage.id,
+                slackChatBotMessageId: slackChatBotMessage.id,
                 slackThreadTs: mainMessage.message?.thread_ts,
                 messageTs: mainMessage.message?.ts,
                 botId: mainMessage.message?.bot_id,
-              })
+              } as SlackBlockIdStaticAgentConfig)
             ),
             thread_ts: slackMessageTs,
           });

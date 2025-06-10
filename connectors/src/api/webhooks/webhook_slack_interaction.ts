@@ -7,6 +7,10 @@ import {
   botReplaceMention,
   botValidateToolExecution,
 } from "@connectors/connectors/slack/bot";
+import type {
+  SlackBlockIdStaticAgentConfig,
+  SlackBlockIdToolValidation,
+} from "@connectors/connectors/slack/chat/stream_conversation_handler";
 import logger from "@connectors/logger/logger";
 import { withLogging } from "@connectors/logger/withlogging";
 
@@ -105,8 +109,8 @@ const _webhookSlackInteractionsAPIHandler = async (
 
   for (const action of payload.actions) {
     if (action.action_id === STATIC_AGENT_CONFIG) {
-      const { slackChatBotMessage, slackThreadTs, messageTs, botId } =
-        JSON.parse(action.block_id);
+      const { slackChatBotMessageId, slackThreadTs, messageTs, botId } =
+        JSON.parse(action.block_id) as SlackBlockIdStaticAgentConfig;
 
       const params = {
         slackTeamId: payload.team.id,
@@ -114,13 +118,13 @@ const _webhookSlackInteractionsAPIHandler = async (
         slackUserId: payload.user.id,
         slackBotId: botId,
         slackThreadTs: slackThreadTs,
-        slackMessageTs: messageTs,
+        slackMessageTs: messageTs || "",
       };
 
       const selectedOption = action.selected_option?.value;
-      if (selectedOption && slackChatBotMessage) {
+      if (selectedOption && slackChatBotMessageId) {
         const botRes = await botReplaceMention(
-          slackChatBotMessage,
+          slackChatBotMessageId,
           selectedOption,
           params
         );
@@ -148,8 +152,8 @@ const _webhookSlackInteractionsAPIHandler = async (
         slackThreadTs,
         messageTs,
         botId,
-        slackBotMessageId,
-      } = JSON.parse(action.block_id);
+        slackChatBotMessageId,
+      } = JSON.parse(action.block_id) as SlackBlockIdToolValidation;
 
       const params = {
         responseUrl,
@@ -158,7 +162,7 @@ const _webhookSlackInteractionsAPIHandler = async (
         slackUserId: payload.user.id,
         slackBotId: botId,
         slackThreadTs: slackThreadTs,
-        slackMessageTs: messageTs,
+        slackMessageTs: messageTs || "",
       };
 
       const {
@@ -177,7 +181,7 @@ const _webhookSlackInteractionsAPIHandler = async (
           approved,
           conversationId,
           messageId,
-          slackBotMessageId,
+          slackChatBotMessageId,
           text,
         },
         params
