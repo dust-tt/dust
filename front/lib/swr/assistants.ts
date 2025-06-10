@@ -515,14 +515,14 @@ export function useDeleteAgentConfiguration({
       sendNotification({
         type: "success",
         title: `Successfully deleted ${agentConfiguration.name}`,
-        description: `${agentConfiguration.name} was successfully deleted.`,
+        description: `${agentConfiguration.name} was successfully archived.`,
       });
     } else {
       const errorData = await getErrorFromResponse(res);
 
       sendNotification({
         type: "error",
-        title: `Error deleting ${agentConfiguration.name}`,
+        title: `Error archiving ${agentConfiguration.name}`,
         description: `Error: ${errorData.message}`,
       });
     }
