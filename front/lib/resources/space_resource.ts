@@ -521,7 +521,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     auth: Authenticator,
     memberId: string,
     operation: "add" | "remove"
-  ): Promise<Result<undefined, DustError>> {
+  ): Promise<Result<UserResource, DustError>> {
     if (!this.canAdministrate(auth)) {
       return new Err(
         new DustError(
@@ -570,7 +570,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         }
         break;
     }
-    return new Ok(undefined);
+    return new Ok(user);
   }
 
   /**

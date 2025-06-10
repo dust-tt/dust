@@ -69,11 +69,9 @@ async function handler(
         });
       }
 
-      const updateRes = await space.manageMember(
-        auth,
-        bodyValidation.data["memberId"],
-        "add"
-      );
+      const { memberId } = bodyValidation.data;
+
+      const updateRes = await space.manageMember(auth, memberId, "add");
       if (updateRes.isErr()) {
         if (
           updateRes.error instanceof DustError &&
@@ -98,7 +96,9 @@ async function handler(
         }
       }
 
-      return res.status(200).json({ space: space.toJSON() });
+      return res
+        .status(200)
+        .json({ space: space.toJSON(), member: updateRes.value.toJSON() });
     }
     default:
       return apiError(req, res, {
