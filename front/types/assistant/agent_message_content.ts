@@ -8,7 +8,7 @@ export type TextContentType = {
 export type ReasoningContentType = {
   type: "reasoning";
   value: {
-    displayableText?: string;
+    reasoning?: string;
     metadata: string;
   };
 };
