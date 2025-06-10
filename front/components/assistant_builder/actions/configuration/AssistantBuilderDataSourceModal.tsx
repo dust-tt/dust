@@ -23,6 +23,7 @@ import type {
   WorkspaceType,
 } from "@app/types";
 import { assertNever } from "@app/types";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 
 interface AssistantBuilderDataSourceModalProps {
   initialDataSourceConfigurations: DataSourceViewSelectionConfigurations;
@@ -50,6 +51,10 @@ export default function AssistantBuilderDataSourceModal({
     useState<DataSourceViewSelectionConfigurations>(
       initialDataSourceConfigurations
     );
+
+  const { featureFlags } = useFeatureFlags({
+    workspaceId: owner.sId,
+  });
 
   useEffect(() => {
     if (isOpen) {
@@ -82,12 +87,12 @@ export default function AssistantBuilderDataSourceModal({
         );
       case "document":
         return dataSourceViews.filter((dsv) =>
-          supportsDocumentsData(dsv.dataSource)
+          supportsDocumentsData(dsv.dataSource, featureFlags)
         );
       default:
         assertNever(viewType);
     }
-  }, [dataSourceViews, viewType]);
+  }, [dataSourceViews, viewType, featureFlags]);
 
   const selectedTableCount = useMemo(() => {
     if (viewType !== "table") {
