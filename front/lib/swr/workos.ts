@@ -6,11 +6,7 @@ import {
   getErrorFromResponse,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
-import type {
-  WorkOSConnectionSyncStatus,
-  WorkOSPortalIntent,
-  WorkOSSSOConnectionStatus,
-} from "@app/lib/types/workos";
+import type { WorkOSConnectionSyncStatus } from "@app/lib/types/workos";
 import type { GetWorkspaceDomainsResponseBody } from "@app/pages/api/w/[wId]/domains";
 import type { LightWorkspaceType } from "@app/types";
 
@@ -96,7 +92,7 @@ export function useWorkOSSSOStatus({
 }) {
   const { data, error, isLoading, mutate } = useSWRWithDefaults<
     string,
-    WorkOSSSOConnectionStatus
+    WorkOSConnectionSyncStatus
   >(`/api/w/${owner.sId}/sso`, fetcher, { disabled });
 
   return {
@@ -148,31 +144,68 @@ export function useDisableWorkOSSSOConnection({
   };
 }
 
-export function useWorkOSAdminPortalUrl(
-  workspaceId: string,
-  intent: WorkOSPortalIntent
-) {
-  const { data, error, isLoading } = useSWRWithDefaults<
-    string,
-    { url: string }
-  >(`/api/w/${workspaceId}/workos/admin-portal?intent=${intent}`, fetcher);
+/**
+ * Directory sync.
+ */
 
-  return {
-    adminPortalUrl: data?.url,
-    isLoading,
-    error,
-  };
-}
-
-export function useWorkOSDSyncStatus(workspace: LightWorkspaceType) {
-  const { data, error, isLoading } = useSWRWithDefaults<
+export function useWorkOSDSyncStatus({
+  disabled,
+  owner,
+}: {
+  disabled?: boolean;
+  owner: LightWorkspaceType;
+}) {
+  const { data, error, isLoading, mutate } = useSWRWithDefaults<
     string,
     WorkOSConnectionSyncStatus
-  >(`/api/w/${workspace.sId}/workos/dsync`, fetcher);
+  >(`/api/w/${owner.sId}/dsync`, fetcher, { disabled });
 
   return {
     dsyncStatus: data,
-    isLoading,
     error,
+    isLoading,
+    mutate,
+  };
+}
+
+export function useDisableWorkOSDirectorySyncConnection({
+  owner,
+}: {
+  owner: LightWorkspaceType;
+}) {
+  const { mutate } = useWorkOSDSyncStatus({ owner, disabled: true });
+  const sendNotification = useSendNotification();
+
+  const doDisableWorkOSDirectorySyncConnection = async () => {
+    const response = await fetch(`/api/w/${owner.sId}/dsync`, {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await getErrorFromResponse(response);
+      sendNotification({
+        type: "error",
+        title: "Failed to disable WorkOS Directory Sync",
+        description: errorData.message,
+      });
+
+      return null;
+    } else {
+      void mutate();
+
+      sendNotification({
+        type: "success",
+        title: "WorkOS Directory Sync disabled",
+        description:
+          "WorkOS Directory Sync has been disabled for the workspace.",
+      });
+    }
+  };
+
+  return {
+    doDisableWorkOSDirectorySyncConnection,
   };
 }

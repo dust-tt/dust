@@ -19,7 +19,7 @@ import {
   useDisableWorkOSSSOConnection,
   useWorkOSSSOStatus,
 } from "@app/lib/swr/workos";
-import type { WorkOSSSOConnectionStatus } from "@app/lib/types/workos";
+import type { WorkOSConnectionSyncStatus } from "@app/lib/types/workos";
 import type { PlanType, WorkspaceType } from "@app/types";
 
 interface WorkOSSSOConnectionProps {
@@ -45,14 +45,15 @@ export default function WorkOSSSOConnection({
   const isSSOConfigured = ssoStatus?.status === "configured";
 
   return (
-    <Page.Vertical gap="sm">
+    <Page.Vertical gap="lg">
+      <Page.H variant="h4">Authentication and access</Page.H>
       <div className="flex w-full flex-row items-center gap-2">
         <div className="flex-1">
           <div className="flex flex-row items-center gap-2">
             <Page.H variant="h5">Single Sign-On (SSO)</Page.H>
             {isSSOConfigured && (
               <>
-                <Chip label="Enabled" color="green" size="sm" />
+                <Chip label="Enabled" color="success" size="xs" />
                 <span className="text-base font-normal text-muted-foreground dark:text-muted-foreground-night">
                   {ssoStatus.connection?.type}
                 </span>
@@ -88,13 +89,13 @@ export default function WorkOSSSOConnection({
                     : undefined
                 }
                 disabled={
-                  isSSOConfigured || !domains.length || !ssoStatus?.setupSSOLink
+                  isSSOConfigured || !domains.length || !ssoStatus?.setupLink
                 }
                 onClick={() => {
                   if (!isUpgraded(plan)) {
                     setShowUpgradePlanDialog(true);
                   } else {
-                    window.open(ssoStatus?.setupSSOLink, "_blank");
+                    window.open(ssoStatus?.setupLink, "_blank");
                   }
                 }}
               />
@@ -123,7 +124,7 @@ interface DisableWorkOSSSOConnectionModalProps {
   isOpen: boolean;
   onClose: (updated: boolean) => void;
   owner: WorkspaceType;
-  ssoStatus: WorkOSSSOConnectionStatus | undefined;
+  ssoStatus: WorkOSConnectionSyncStatus | undefined;
 }
 
 function DisableWorkOSSSOConnectionModal({

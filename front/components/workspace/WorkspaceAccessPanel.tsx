@@ -13,12 +13,14 @@ import type { Organization } from "@workos-inc/node";
 import React from "react";
 
 import { ConfirmContext } from "@app/components/Confirm";
+import UserProvisioning from "@app/components/workspace/DirectorySync";
 import type { EnterpriseConnectionStrategyDetails } from "@app/components/workspace/SSOConnection";
 import SSOConnection from "@app/components/workspace/SSOConnection";
 import {
   useRemoveWorkspaceDomain,
   useWorkspaceDomains,
 } from "@app/lib/swr/workos";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { LightWorkspaceType, PlanType } from "@app/types";
 
 interface WorkspaceAccessPanelProps {
@@ -36,6 +38,9 @@ export default function WorkspaceAccessPanel({
     owner,
   });
 
+  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
+  const hasWorkOSFeature = hasFeature("workos");
+
   return (
     <div className="flex flex-col gap-6">
       <DomainVerification
@@ -51,6 +56,8 @@ export default function WorkspaceAccessPanel({
         plan={plan}
         strategyDetails={enterpriseConnectionStrategyDetails}
       />
+      {hasWorkOSFeature && <Separator />}
+      {hasWorkOSFeature && <UserProvisioning owner={owner} plan={plan} />}
     </div>
   );
 }
