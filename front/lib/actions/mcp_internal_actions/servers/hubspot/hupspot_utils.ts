@@ -1,8 +1,7 @@
+import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
-import { getAccessTokenForInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/authentication";
 import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
-import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 
 export const ERROR_MESSAGES = {
@@ -11,16 +10,16 @@ export const ERROR_MESSAGES = {
   NO_OBJECTS_FOUND: "No objects found",
 } as const;
 
-export const withAuth = async (
-  auth: Authenticator,
-  mcpServerId: string,
-  action: (accessToken: string) => Promise<CallToolResult>,
-  params?: any
-): Promise<CallToolResult> => {
-  const accessToken = await getAccessTokenForInternalMCPServer(auth, {
-    mcpServerId,
-    connectionType: "workspace",
-  });
+export const withAuth = async ({
+  action,
+  params,
+  authInfo,
+}: {
+  action: (accessToken: string) => Promise<CallToolResult>;
+  params?: any;
+  authInfo?: AuthInfo;
+}): Promise<CallToolResult> => {
+  const accessToken = authInfo?.token;
   if (!accessToken) {
     return makeMCPToolTextError(ERROR_MESSAGES.NO_ACCESS_TOKEN);
   }

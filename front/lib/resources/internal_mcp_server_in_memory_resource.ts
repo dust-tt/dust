@@ -41,6 +41,7 @@ const getCachedMetadata = cacheWithRedis(
       params: {
         type: "mcpServerId",
         mcpServerId: id,
+        oAuthUseCase: null,
       },
     });
 

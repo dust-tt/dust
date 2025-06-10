@@ -58,6 +58,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
     "called a node, nodes are referenced by a nodeId.",
   authorization: null,
   icon: "ActionDocumentTextIcon",
+  documentationUrl: null,
 };
 
 const OPTION_PARAMETERS = {

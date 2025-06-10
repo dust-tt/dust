@@ -47,6 +47,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
     "Tables, Spreadsheets, Notion DBs (quantitative) (mcp, exploded).",
   icon: "ActionTableIcon",
   authorization: null,
+  documentationUrl: null,
 };
 
 function createServer(

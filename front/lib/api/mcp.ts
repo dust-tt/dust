@@ -48,7 +48,7 @@ export type MCPServerType = {
   authorization: AuthorizationInfo | null;
   tools: MCPToolType[];
   availability: MCPServerAvailability;
-  documentationUrl?: string;
+  documentationUrl: string | null;
 };
 
 export type RemoteMCPServerType = MCPServerType & {

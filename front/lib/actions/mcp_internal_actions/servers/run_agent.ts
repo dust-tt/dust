@@ -37,6 +37,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
   description: "Run a child agent (agent as tool).",
   icon: "ActionRobotIcon",
   authorization: null,
+  documentationUrl: null,
 };
 
 function parseAgentConfigurationUri(uri: string): Result<string, Error> {

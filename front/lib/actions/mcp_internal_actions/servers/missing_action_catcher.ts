@@ -10,6 +10,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
   description: "To be used to catch errors and avoid erroring.",
   authorization: null,
   icon: "ActionDocumentTextIcon",
+  documentationUrl: null,
 };
 
 const createServer = (
