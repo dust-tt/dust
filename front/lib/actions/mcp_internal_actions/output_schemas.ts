@@ -404,6 +404,7 @@ export const RunAgentResultResourceSchema = z.object({
   mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.RUN_AGENT_RESULT),
   conversationId: z.string(),
   text: z.string(),
+  chainOfThought: z.string().optional(),
   uri: z.string(),
 });
 
