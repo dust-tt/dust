@@ -9,7 +9,7 @@ import type { WithAPIErrorResponse } from "@app/types";
 
 /**
  * @ignoreswagger
- * System API key only endpoint. Undocumented.
+ * Admin-only endpoint. Undocumented.
  */
 async function handler(
   req: NextApiRequest,
