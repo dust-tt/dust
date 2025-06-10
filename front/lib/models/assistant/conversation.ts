@@ -3,7 +3,7 @@ import { DataTypes } from "sequelize";
 
 import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
 import type { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
-import type { AgentStepContent } from "@app/lib/models/assistant/agent_step_content";
+import type { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { UserModel } from "@app/lib/resources/storage/models/user";
@@ -263,7 +263,7 @@ export class AgentMessage extends WorkspaceAwareModel<AgentMessage> {
   declare agentConfigurationVersion: number;
 
   declare agentMessageContents?: NonAttribute<AgentMessageContent[]>;
-  declare agentStepContents?: NonAttribute<AgentStepContent[]>;
+  declare agentStepContents?: NonAttribute<AgentStepContentModel[]>;
   declare message?: NonAttribute<Message>;
   declare feedbacks?: NonAttribute<AgentMessageFeedback[]>;
 }

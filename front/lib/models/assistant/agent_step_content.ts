@@ -6,7 +6,7 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { AssistantContentItemType } from "@app/types/assistant/agent_message_content";
 
-export class AgentStepContent extends WorkspaceAwareModel<AgentStepContent> {
+export class AgentStepContentModel extends WorkspaceAwareModel<AgentStepContentModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -19,7 +19,7 @@ export class AgentStepContent extends WorkspaceAwareModel<AgentStepContent> {
   declare agentMessage?: NonAttribute<AgentMessage>;
 }
 
-AgentStepContent.init(
+AgentStepContentModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -85,7 +85,7 @@ AgentStepContent.init(
   }
 );
 
-AgentStepContent.belongsTo(AgentMessage, {
+AgentStepContentModel.belongsTo(AgentMessage, {
   as: "agentMessage",
   foreignKey: {
     name: "agentMessageId",
@@ -94,7 +94,7 @@ AgentStepContent.belongsTo(AgentMessage, {
   onDelete: "RESTRICT",
 });
 
-AgentMessage.hasMany(AgentStepContent, {
+AgentMessage.hasMany(AgentStepContentModel, {
   as: "agentStepContents",
   foreignKey: {
     name: "agentMessageId",
