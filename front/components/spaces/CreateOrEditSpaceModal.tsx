@@ -314,12 +314,7 @@ export function CreateOrEditSpaceModal({
           rightButtonProps={{
             label: isSaving ? "Saving..." : space ? "Save" : "Create",
             onClick: onSave,
-            disabled:
-              !(
-                !!spaceName &&
-                (!isRestricted ||
-                  (isRestricted && deduplicatedMembers.length > 0))
-              ) || isSaving,
+            disabled: !spaceName || isSaving,
           }}
         />
       </SheetContent>
@@ -349,14 +344,6 @@ function MembersTable({
 
   const getTableColumns = useCallback(() => {
     const removeMember = (userId: string) => {
-      if (selectedMembers.length === 1) {
-        sendNotifications({
-          title: "Cannot remove last member.",
-          description: "You cannot remove the last group member.",
-          type: "error",
-        });
-        return;
-      }
       onMembersUpdated(selectedMembers.filter((m) => m.sId !== userId));
     };
     return [
