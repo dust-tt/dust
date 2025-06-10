@@ -5,10 +5,14 @@ import { z } from "zod";
 
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
-import type { DataSourceNodeListType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import type {
+  DataSourceNodeListType,
+  SearchQueryResourceType,
+} from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
   fetchAgentDataSourceConfiguration,
   getCoreSearchArgs,
+  renderRelativeTimeFrameForToolOutput,
 } from "@app/lib/actions/mcp_internal_actions/servers/utils";
 import {
   makeMCPToolJSONSuccess,
@@ -35,6 +39,7 @@ import type {
   CoreAPIError,
   CoreAPISearchNodesResponse,
   Result,
+  TimeFrame,
 } from "@app/types";
 import {
   CoreAPI,
@@ -644,6 +649,10 @@ const createServer = (
       return {
         isError: false,
         content: [
+          {
+            type: "resource" as const,
+            resource: makeQueryResource(query, timeFrame),
+          },
           ...results.map((result) => ({
             type: "resource" as const,
             resource: result,
@@ -926,6 +935,22 @@ function renderSearchResults(
     data: response.nodes.map(renderNode),
     nextPageCursor: response.next_page_cursor,
     resultCount: response.hit_count,
+  };
+}
+
+function makeQueryResource(
+  query: string,
+  relativeTimeFrame: TimeFrame | null
+): SearchQueryResourceType {
+  const timeFrameAsString =
+    renderRelativeTimeFrameForToolOutput(relativeTimeFrame);
+
+  return {
+    mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_QUERY,
+    text: query
+      ? `Searching "${query}", ${timeFrameAsString}.`
+      : `Searching ${timeFrameAsString}.`,
+    uri: "",
   };
 }
 
