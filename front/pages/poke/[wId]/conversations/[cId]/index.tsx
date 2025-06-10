@@ -2,16 +2,8 @@ import { Button, ConversationMessage, Markdown, Page } from "@dust-tt/sparkle";
 import { CodeBracketIcon, DocumentTextIcon } from "@heroicons/react/24/outline";
 import type { InferGetServerSidePropsType } from "next";
 import type { ReactElement } from "react";
-import { useMemo, useState } from "react";
-import type { Components } from "react-markdown";
-import type { PluggableList } from "react-markdown/lib/react-markdown";
+import { useState } from "react";
 
-import { getCiteDirective } from "@app/components/markdown/CiteBlock";
-import { CiteBlock } from "@app/components/markdown/CiteBlock";
-import {
-  getMentionPlugin,
-  mentionDirective,
-} from "@app/components/markdown/MentionBlock";
 import PokeLayout from "@app/components/poke/PokeLayout";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import type { Action } from "@app/lib/registry";
@@ -76,14 +68,12 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   };
 });
 
-const UserMessageView = ({
-  message,
-  useMarkdown,
-}: {
+interface UserMessageViewProps {
   message: UserMessageType;
   useMarkdown: boolean;
-  workspace: WorkspaceType;
-}) => {
+}
+
+const UserMessageView = ({ message, useMarkdown }: UserMessageViewProps) => {
   return (
     <div className="flex flex-grow flex-col">
       <div className="max-w-full self-end">
@@ -106,32 +96,19 @@ const UserMessageView = ({
   );
 };
 
+interface AgentMessageViewProps {
+  message: PokeAgentMessageType;
+  multiActionsApp: Action;
+  useMarkdown: boolean;
+  workspaceId: string;
+}
+
 const AgentMessageView = ({
   message,
   multiActionsApp,
   useMarkdown,
   workspaceId,
-  workspace,
-}: {
-  message: PokeAgentMessageType;
-  multiActionsApp: Action;
-  useMarkdown: boolean;
-  workspaceId: string;
-  workspace: WorkspaceType;
-}) => {
-  const additionalMarkdownComponents: Components = useMemo(
-    () => ({
-      sup: CiteBlock,
-      mention: getMentionPlugin(workspace),
-    }),
-    [workspace]
-  );
-
-  const additionalMarkdownPlugins: PluggableList = useMemo(
-    () => [getCiteDirective(), mentionDirective],
-    []
-  );
-
+}: AgentMessageViewProps) => {
   return (
     <div className="w-full">
       <ConversationMessage
@@ -153,11 +130,7 @@ const AgentMessageView = ({
       >
         {message.content &&
           (useMarkdown ? (
-            <Markdown
-              content={message.content}
-              additionalMarkdownComponents={additionalMarkdownComponents}
-              additionalMarkdownPlugins={additionalMarkdownPlugins}
-            />
+            <Markdown content={message.content} />
           ) : (
             <div className="whitespace-pre-wrap">{message.content}</div>
           ))}
@@ -219,7 +192,11 @@ const AgentMessageView = ({
   );
 };
 
-const ContentFragmentView = ({ message }: { message: ContentFragmentType }) => {
+interface ContentFragmentViewProps {
+  message: ContentFragmentType;
+}
+
+const ContentFragmentView = ({ message }: ContentFragmentViewProps) => {
   return (
     <div className="w-full">
       <ConversationMessage type="system">
@@ -253,13 +230,16 @@ const ContentFragmentView = ({ message }: { message: ContentFragmentType }) => {
   );
 };
 
+interface ConversationPageProps
+  extends InferGetServerSidePropsType<typeof getServerSideProps> {}
+
 const ConversationPage = ({
   workspaceId,
   workspace,
   conversationId,
   conversationDataSourceId,
   multiActionsApp,
-}: InferGetServerSidePropsType<typeof getServerSideProps>) => {
+}: ConversationPageProps) => {
   const { conversation } = usePokeConversation({ workspaceId, conversationId });
   const [useMarkdown, setUseMarkdown] = useState(false);
 
@@ -312,7 +292,6 @@ const ConversationPage = ({
                               message={m}
                               useMarkdown={useMarkdown}
                               workspaceId={workspaceId}
-                              workspace={workspace}
                             />
                           );
                         }
@@ -322,7 +301,6 @@ const ConversationPage = ({
                               message={m}
                               key={`message-${i}-${j}`}
                               useMarkdown={useMarkdown}
-                              workspace={workspace}
                             />
                           );
                         }
