@@ -1,5 +1,5 @@
 import { getGoogleDriveObject } from "@connectors/connectors/google_drive/lib/google_drive_api";
-import { objectIsInFolderSelection } from "@connectors/connectors/google_drive/temporal/activities/common/utils";
+import { objectIsInFolderSelection } from "@connectors/connectors/google_drive/temporal/activities";
 import {
   getAuthObject,
   getDriveClient,

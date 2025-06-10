@@ -3,7 +3,7 @@ export const MIME_TYPES_TO_EXPORT: { [key: string]: string } = {
   "application/vnd.google-apps.presentation": "text/plain",
 };
 
-export function getMimeTypesToDownload({
+export async function getMimeTypesToDownload({
   pdfEnabled,
   csvEnabled,
 }: {
@@ -28,14 +28,14 @@ export function getMimeTypesToDownload({
   return mimeTypes;
 }
 
-export function getMimeTypesToSync({
+export async function getMimeTypesToSync({
   pdfEnabled,
   csvEnabled,
 }: {
   pdfEnabled: boolean;
   csvEnabled: boolean;
 }) {
-  const mimeTypes = getMimeTypesToDownload({
+  const mimeTypes = await getMimeTypesToDownload({
     pdfEnabled,
     csvEnabled,
   });

@@ -12,7 +12,10 @@ import {
 import { getGoogleDriveObject } from "@connectors/connectors/google_drive/lib/google_drive_api";
 import { getFileParentsMemoized } from "@connectors/connectors/google_drive/lib/hierarchy";
 import { getPermissionViewType } from "@connectors/connectors/google_drive/lib/permissions";
-import { getDrives } from "@connectors/connectors/google_drive/temporal/activities/common/utils";
+import {
+  folderHasChildren,
+  getDrives,
+} from "@connectors/connectors/google_drive/temporal/activities";
 import {
   launchGoogleDriveFullSyncWorkflow,
   launchGoogleDriveIncrementalSyncWorkflow,
@@ -25,7 +28,6 @@ import {
 import type { Sheet } from "@connectors/connectors/google_drive/temporal/spreadsheets";
 import {
   driveObjectToDustType,
-  folderHasChildren,
   getAuthObject,
   getDriveClient,
   getDriveFileId,
@@ -56,15 +58,15 @@ import type {
   ConnectorPermission,
   ContentNode,
   ContentNodesViewType,
-  DataSourceConfig,
-  GoogleDriveObjectType,
 } from "@connectors/types";
+import type { GoogleDriveObjectType } from "@connectors/types";
+import type { DataSourceConfig } from "@connectors/types";
 import {
-  FILE_ATTRIBUTES_TO_FETCH,
   getGoogleSheetContentNodeInternalId,
   INTERNAL_MIME_TYPES,
   normalizeError,
 } from "@connectors/types";
+import { FILE_ATTRIBUTES_TO_FETCH } from "@connectors/types";
 
 export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
   static async create({
