@@ -40,9 +40,7 @@ export function useAgents() {
         return;
       }
 
-      const agentsRes = await dustClient.getAgentConfigurations({
-        view: "all",
-      });
+      const agentsRes = await dustClient.getAgentConfigurations({});
 
       if (agentsRes.isErr()) {
         setError(`API Error fetching agents: ${agentsRes.error.message}`);
