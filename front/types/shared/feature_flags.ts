@@ -10,8 +10,6 @@ export const WHITELISTABLE_FEATURES = [
   "force_gdrive_labels_scope",
   "google_ai_studio_experimental_models_feature",
   "index_private_slack_channel",
-  "labs_connection_hubspot",
-  "labs_connection_linear",
   "labs_salesforce_personal_connections",
   "labs_trackers",
   "labs_transcripts",
