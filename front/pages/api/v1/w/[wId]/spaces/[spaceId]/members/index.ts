@@ -1,5 +1,5 @@
 import type { PatchSpaceMembersResponseBody } from "@dust-tt/client";
-import { PatchSpaceMembersRequestBodySchema } from "@dust-tt/client";
+import { PostSpaceMembersRequestBodySchema } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
@@ -43,7 +43,7 @@ async function handler(
   }
 
   switch (req.method) {
-    case "PATCH": {
+    case "POST": {
       if (!space.canAdministrate(auth)) {
         return apiError(req, res, {
           status_code: 403,
@@ -55,7 +55,7 @@ async function handler(
         });
       }
 
-      const bodyValidation = PatchSpaceMembersRequestBodySchema.safeParse(
+      const bodyValidation = PostSpaceMembersRequestBodySchema.safeParse(
         req.body
       );
 
@@ -69,9 +69,9 @@ async function handler(
         });
       }
 
-      const updateRes = await space.updatePermissions(
+      const updateRes = await space.addMember(
         auth,
-        bodyValidation.data
+        bodyValidation.data["memberId"]
       );
       if (updateRes.isErr()) {
         if (
