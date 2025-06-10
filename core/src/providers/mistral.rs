@@ -269,6 +269,7 @@ impl TryFrom<&MistralChatMessage> for AssistantChatMessage {
             name: None,
             function_call,
             function_calls,
+            contents: None,
         })
     }
 }
