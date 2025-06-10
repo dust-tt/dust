@@ -103,8 +103,6 @@ const API_ERROR_TYPES = [
   // Spaces:
   "space_already_exists",
   "space_not_found",
-  // Space Members:
-  "member_not_found",
   // Groups:
   "group_not_found",
   // Plugins:

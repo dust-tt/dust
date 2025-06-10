@@ -33,7 +33,7 @@ async function handler(
     return apiError(req, res, {
       status_code: 404,
       api_error: {
-        type: "member_not_found",
+        type: "user_not_found",
         message: "The member of the space was not found.",
       },
     });
