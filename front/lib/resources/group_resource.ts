@@ -540,12 +540,12 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   static async upsertByWorkOSGroupId(
     auth: Authenticator,
-    workspace: LightWorkspaceType,
     directoryGroup: DirectoryGroup
   ) {
+    const owner = auth.getNonNullableWorkspace();
     const group = await this.model.findOne({
       where: {
-        workspaceId: workspace.id,
+        workspaceId: owner.id,
         workOSGroupId: directoryGroup.directoryId,
       },
     });
@@ -561,19 +561,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       workOSGroupId: directoryGroup.directoryId,
       updatedAt: new Date(),
       kind: "provisioned",
-      workspaceId: workspace.id,
-    });
-  }
-
-  static async deleteByWorkOSGroupId(
-    workspace: LightWorkspaceType,
-    directoryGroup: DirectoryGroup
-  ) {
-    await this.model.destroy({
-      where: {
-        workspaceId: workspace.id,
-        workOSGroupId: directoryGroup.directoryId,
-      },
+      workspaceId: owner.id,
     });
   }
 

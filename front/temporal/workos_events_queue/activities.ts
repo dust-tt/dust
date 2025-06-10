@@ -129,7 +129,7 @@ export async function processWorkOSEventActivity({
       await verifyWorkOSWorkspace(
         eventPayload.data.organizationId,
         eventPayload.data,
-        GroupResource.deleteByWorkOSGroupId
+        handleGroupDelete
       );
       break;
 
@@ -217,7 +217,7 @@ async function handleGroupUpsert(
   event: DirectoryGroup
 ) {
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-  await GroupResource.upsertByWorkOSGroupId(auth, workspace, event);
+  await GroupResource.upsertByWorkOSGroupId(auth, event);
 }
 
 async function handleUserAddedToGroup(
@@ -348,4 +348,21 @@ async function handleDeleteWorkOSUser(
     workspace,
     ...membershipRevokeResult.value,
   });
+}
+
+async function handleGroupDelete(
+  workspace: LightWorkspaceType,
+  event: DirectoryGroup
+) {
+  const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+  const group = await GroupResource.fetchByWorkOSGroupId(
+    auth,
+    event.directoryId
+  );
+
+  if (!group) {
+    throw new Error("Group to delete not found");
+  }
+
+  await group.delete(auth);
 }
