@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import type { DataSourceNodeListType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
   fetchAgentDataSourceConfiguration,
   getCoreSearchArgs,
@@ -190,8 +191,14 @@ const createServer = (
         isError: false,
         content: [
           {
-            type: "text",
-            text: readResult.value.text,
+            type: "resource" as const,
+            resource: {
+              mimeType:
+                INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_NODE_CONTENT,
+              uri: node.source_url ?? "",
+              text: readResult.value.text,
+              metadata: renderNode(node),
+            },
           },
         ],
       };
@@ -296,10 +303,15 @@ const createServer = (
         return makeMCPToolTextError("Failed to search content");
       }
 
-      return makeMCPToolJSONSuccess({
-        message: "Search successful.",
-        result: renderSearchResults(searchResult.value),
-      });
+      return {
+        isError: false,
+        content: [
+          {
+            type: "resource" as const,
+            resource: renderSearchResults(searchResult.value),
+          },
+        ],
+      };
     }
   );
 
@@ -421,10 +433,15 @@ const createServer = (
         return makeMCPToolTextError("Failed to list folder contents");
       }
 
-      return makeMCPToolJSONSuccess({
-        message: "Content listed successfully.",
-        result: renderSearchResults(searchResult.value),
-      });
+      return {
+        isError: false,
+        content: [
+          {
+            type: "resource" as const,
+            resource: renderSearchResults(searchResult.value),
+          },
+        ],
+      };
     }
   );
 
@@ -733,9 +750,6 @@ const createServer = (
         }
       }
 
-      // Add the target node to pathNodes since we already have it
-      pathNodes[nodeId] = targetNode;
-
       const dataSourceConfig = agentDataSourceConfigurations.find(
         ({ dataSource }) =>
           dataSource.dustAPIDataSourceId === targetNode.data_source_id
@@ -776,27 +790,10 @@ const createServer = (
         },
       ]);
 
-      // Ensure we have at least one node in the path.
-      if (pathItems.length === 0) {
-        return makeMCPToolTextError(
-          "Unable to build a path to the node. The node may be orphaned or inaccessible."
-        );
-      }
-
-      // Ensure the target node is in the path
-      const hasCurrentNode = pathItems.some((item) => item.isCurrentNode);
-      if (!hasCurrentNode) {
-        return makeMCPToolTextError(
-          "The requested node is not accessible within the allowed data sources."
-        );
-      }
-
-      const path = pathItems;
-
       return makeMCPToolJSONSuccess({
         message: "Path located successfully.",
         result: {
-          path: path,
+          path: pathItems,
         },
       });
     }
@@ -919,8 +916,13 @@ function renderNode(node: CoreAPIContentNode) {
  * Translation from core's response to the format expected to the agent.
  * Removes references to the term 'content node' and simplifies the format.
  */
-function renderSearchResults(response: CoreAPISearchNodesResponse) {
+function renderSearchResults(
+  response: CoreAPISearchNodesResponse
+): DataSourceNodeListType {
   return {
+    mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_NODE_LIST,
+    text: "Content successfully retrieved.",
+    uri: "",
     data: response.nodes.map(renderNode),
     nextPageCursor: response.next_page_cursor,
     resultCount: response.hit_count,
