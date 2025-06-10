@@ -39,10 +39,8 @@ import type { WithAPIErrorResponse } from "@app/types";
  *                 type: string
  *                 description: The search query
  *               includeDataSources:
- *                 type: array
+ *                 type: boolean
  *                 description: List of data source IDs to include in search
- *                 items:
- *                   type: string
  *               viewType:
  *                 type: string
  *                 description: Type of view to filter results
@@ -56,6 +54,9 @@ import type { WithAPIErrorResponse } from "@app/types";
  *                 description: List of specific node IDs to search
  *                 items:
  *                   type: string
+ *               searchSourceUrls:
+ *                 type: boolean
+ *                 description: Whether to search source URLs
  *     responses:
  *       200:
  *         description: Search results retrieved successfully
