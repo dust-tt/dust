@@ -1204,7 +1204,10 @@ function AddKnowledgeDropdown({
             return r.isOk() && r.value.name === "query_tables";
           });
         case "PROCESS":
-          return false;
+          return mcpServerViewsWithKnowledge.some((v) => {
+            const r = getInternalMCPServerNameAndWorkspaceId(v.server.sId);
+            return r.isOk() && r.value.name === "extract_data";
+          });
         default:
           assertNever(key);
       }
