@@ -26,7 +26,6 @@ import { useRouter } from "next/router";
 import * as React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { BatchAddMembersPopover } from "@app/components/spaces/BatchAddMembersPopover";
 import { ConfirmDeleteSpaceDialog } from "@app/components/spaces/ConfirmDeleteSpaceDialog";
 import { SearchMembersPopover } from "@app/components/spaces/SearchMembersPopover";
 import { useMembersCount } from "@app/lib/swr/memberships";
@@ -37,8 +36,6 @@ import {
   useUpdateSpace,
 } from "@app/lib/swr/spaces";
 import type { LightWorkspaceType, SpaceType, UserType } from "@app/types";
-
-const MIN_MEMBERS_FOR_BATCH_OPTION = 50;
 
 type RowData = {
   icon: string;
@@ -268,13 +265,6 @@ export function CreateOrEditSpaceModal({
                     selectedMembers={deduplicatedMembers}
                     onMembersUpdated={setSelectedMembers}
                   />
-                  {membersCount >= MIN_MEMBERS_FOR_BATCH_OPTION && (
-                    <BatchAddMembersPopover
-                      owner={owner}
-                      selectedMembers={deduplicatedMembers}
-                      onMembersUpdated={setSelectedMembers}
-                    />
-                  )}
                 </div>
                 <SearchInput
                   name="search"
