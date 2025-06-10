@@ -45,11 +45,11 @@ const cachedFetchContent = cacheWithRedis(
   async (url: string): Promise<CachedContent> => {
     const results = await browseUrls([url]);
     const result = results[0];
-    
+
     if (!result || !isBrowseScrapeSuccessResponse(result)) {
       throw new Error(result?.error || "Failed to browse URL");
     }
-    
+
     return {
       markdown: result.markdown,
       title: result.title,
@@ -86,24 +86,24 @@ function paginateContent(
   offset: number,
   limit: number
 ): BrowseResultResourceType {
-  const lines = content.markdown.split('\n');
+  const lines = content.markdown.split("\n");
   const totalLines = lines.length;
-  
+
   // Validate offset
   const validOffset = Math.max(0, Math.min(offset, totalLines));
-  
+
   // Extract the requested portion
   const endIndex = validOffset + limit;
   const paginatedLines = lines.slice(validOffset, endIndex);
   const truncated = endIndex < totalLines;
-  
-  let paginatedMarkdown = paginatedLines.join('\n');
-  
+
+  let paginatedMarkdown = paginatedLines.join("\n");
+
   // Add truncation indicator if needed
   if (truncated) {
     paginatedMarkdown += `\n\n---\n**[Content truncated. Total lines: ${totalLines}. Use offset: ${endIndex} to continue reading.]**`;
   }
-  
+
   return {
     mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.BROWSE_RESULT,
     requestedUrl: content.url,
@@ -223,15 +223,11 @@ const createServer = (
         .max(MAX_LIMIT)
         .default(DEFAULT_LIMIT)
         .describe(`Number of lines to return (${MIN_LIMIT}-${MAX_LIMIT})`),
-      offset: z
-        .number()
-        .min(0)
-        .default(0)
-        .describe("Starting line number"),
+      offset: z.number().min(0).default(0).describe("Starting line number"),
     },
     async ({ url, limit, offset }) => {
       const content = await getCachedOrFetchContent(url);
-      
+
       if (!content) {
         return {
           isError: true,
@@ -243,9 +239,9 @@ const createServer = (
           ],
         };
       }
-      
+
       const paginatedResult = paginateContent(content, offset, limit);
-      
+
       return {
         isError: false,
         content: [
