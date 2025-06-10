@@ -192,18 +192,28 @@ export async function runSOQL({
   soql,
   limit,
   offset,
+  lastModifiedDateSmallerThan,
   lastModifiedDateOrder,
 }: {
   credentials: SalesforceAPICredentials;
   soql: string;
   limit?: number;
   offset?: number;
+  lastModifiedDateSmallerThan?: Date;
   lastModifiedDateOrder?: "ASC" | "DESC";
 }): Promise<Result<QueryResult<Record>, Error>> {
   try {
     const connRes = await getSalesforceConnection(credentials);
     if (connRes.isErr()) {
       return new Err(new Error("Can't connect to Salesforce."));
+    }
+
+    if (lastModifiedDateSmallerThan) {
+      if (soql.includes("WHERE")) {
+        soql += ` AND LastModifiedDate < ${lastModifiedDateSmallerThan.toISOString()}`;
+      } else {
+        soql += ` WHERE LastModifiedDate < ${lastModifiedDateSmallerThan.toISOString()}`;
+      }
     }
 
     if (lastModifiedDateOrder) {
