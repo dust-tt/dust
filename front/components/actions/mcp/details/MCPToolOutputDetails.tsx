@@ -1,4 +1,5 @@
 import {
+  Chip,
   Citation,
   CitationIcons,
   CitationTitle,
@@ -9,19 +10,32 @@ import {
   Icon,
   InformationCircleIcon,
   Markdown,
+  PaginatedCitationsGrid,
+  Tooltip,
   useSendNotification,
 } from "@dust-tt/sparkle";
-import { useCallback } from "react";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import { useCallback, useMemo } from "react";
 
+import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
+import { getDocumentIcon } from "@app/components/actions/retrieval/utils";
 import type {
   ReasoningSuccessOutputType,
   SqlQueryOutputType,
   ThinkingOutputType,
   ToolGeneratedFileType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import {
+  isIncludeQueryResourceType,
+  isIncludeResultResourceType,
+  isSearchQueryResourceType,
+  isSearchResultResourceType,
+  isWarningResourceType,
+  isWebsearchQueryResourceType,
+  isWebsearchResultResourceType,
+} from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { LightWorkspaceType } from "@app/types";
-
-// This file contains one component per output type.
+import { removeNulls } from "@app/types";
 
 interface ThinkingBlockProps {
   resource: ThinkingOutputType;
@@ -154,5 +168,106 @@ export function ToolGeneratedFileDetails({
         }
       />
     </>
+  );
+}
+
+interface SearchResultProps {
+  actionName: string;
+  defaultOpen: boolean;
+  visual: React.ComponentType<{ className?: string }>;
+  actionOutput: CallToolResult["content"] | null;
+}
+
+export function SearchResultDetails({
+  actionName,
+  defaultOpen,
+  visual,
+  actionOutput,
+}: SearchResultProps) {
+  const query = useMemo(() => {
+    return (
+      actionOutput
+        ?.map((r) => {
+          if (
+            isSearchQueryResourceType(r) ||
+            isWebsearchQueryResourceType(r) ||
+            isIncludeQueryResourceType(r)
+          ) {
+            return r.resource.text.trim();
+          }
+          return null;
+        })
+        .filter(Boolean)
+        .join("\n") ?? "No query provided"
+    );
+  }, [actionOutput]);
+
+  const warning = useMemo(
+    () =>
+      actionOutput?.filter(isWarningResourceType).map((o) => o.resource)?.[0],
+    [actionOutput]
+  );
+
+  const citations = useMemo(() => {
+    if (!actionOutput) {
+      return [];
+    }
+    return removeNulls(
+      actionOutput.map((r) => {
+        if (isWebsearchResultResourceType(r)) {
+          return {
+            description: r.resource.text,
+            title: r.resource.title,
+            icon: getDocumentIcon("webcrawler"),
+            href: r.resource.uri,
+          };
+        }
+        if (isSearchResultResourceType(r) || isIncludeResultResourceType(r)) {
+          return {
+            description: "",
+            title: r.resource.text,
+            icon: getDocumentIcon(r.resource.source.provider),
+            href: r.resource.uri,
+          };
+        }
+        return null;
+      })
+    );
+  }, [actionOutput]);
+
+  return (
+    <ActionDetailsWrapper
+      actionName={actionName}
+      defaultOpen={defaultOpen}
+      visual={visual}
+    >
+      <div className="flex flex-col gap-4 pl-6 pt-4">
+        <div className="flex flex-col gap-1">
+          <span className="text-sm font-bold text-foreground dark:text-foreground-night">
+            Query
+          </span>
+          <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+            {query}
+          </div>
+          {warning && (
+            <Tooltip
+              label={warning.text}
+              trigger={<Chip color="warning" label={warning.warningTitle} />}
+            />
+          )}
+        </div>
+        <div>
+          <CollapsibleComponent
+            rootProps={{ defaultOpen }}
+            triggerChildren={
+              <span className="text-sm font-bold text-foreground dark:text-foreground-night">
+                Results
+              </span>
+            }
+            contentChildren={<PaginatedCitationsGrid items={citations} />}
+          />
+        </div>
+      </div>
+    </ActionDetailsWrapper>
   );
 }
