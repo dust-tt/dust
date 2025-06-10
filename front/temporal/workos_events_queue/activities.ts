@@ -102,7 +102,7 @@ async function fetchWorkOSUserWithEmail(
   email?: string | null
 ) {
   if (email == null) {
-    throw new Error(`Missing email`);
+    throw new Error("Missing email");
   }
 
   const workOSUserResponse = await workOS.userManagement.listUsers({
