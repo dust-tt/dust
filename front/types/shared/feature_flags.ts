@@ -1,8 +1,6 @@
 export const WHITELISTABLE_FEATURES = [
   "advanced_notion_management",
   "agent_builder_v2",
-  "agent_builder_v2",
-  "agent_discovery",
   "agent_discovery",
   "claude_3_7_reasoning",
   "claude_4_opus_feature",
@@ -12,7 +10,6 @@ export const WHITELISTABLE_FEATURES = [
   "deepseek_r1_global_agent_feature",
   "dev_mcp_actions",
   "disable_run_logs",
-  "disallow_agent_creation_to_users",
   "disallow_agent_creation_to_users",
   "document_tracker",
   "exploded_tables_query",
