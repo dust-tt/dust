@@ -17,6 +17,8 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/servers/common/find_tags_tool";
 import {
   getCoreSearchArgs,
+  renderRelativeTimeFrameForToolOutput,
+  renderTagsForToolOutput,
   shouldAutoGenerateTags,
 } from "@app/lib/actions/mcp_internal_actions/servers/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
@@ -315,24 +317,15 @@ function makeQueryResource(
   tagsIn?: string[],
   tagsNot?: string[]
 ): SearchQueryResourceType {
-  const timeFrameAsString = relativeTimeFrame
-    ? "over the last " +
-      (relativeTimeFrame.duration > 1
-        ? `${relativeTimeFrame.duration} ${relativeTimeFrame.unit}s`
-        : `${relativeTimeFrame.unit}`)
-    : "across all time periods";
-  const tagsInAsString =
-    tagsIn && tagsIn.length > 0 ? `, with labels ${tagsIn?.join(", ")}` : "";
-  const tagsNotAsString =
-    tagsNot && tagsNot.length > 0
-      ? `, excluding labels ${tagsNot?.join(", ")}`
-      : "";
+  const timeFrameAsString =
+    renderRelativeTimeFrameForToolOutput(relativeTimeFrame);
+  const tagsAsString = renderTagsForToolOutput(tagsIn, tagsNot);
 
   return {
     mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_QUERY,
     text: query
-      ? `Searching "${query}", ${timeFrameAsString}${tagsInAsString}${tagsNotAsString}.`
-      : `Searching ${timeFrameAsString}${tagsInAsString}${tagsNotAsString}.`,
+      ? `Searching "${query}", ${timeFrameAsString}${tagsAsString}.`
+      : `Searching ${timeFrameAsString}${tagsAsString}.`,
     uri: "",
   };
 }
