@@ -138,7 +138,7 @@ export const INTERNAL_MIME_TYPES = {
       "DATABASE",
       "SCHEMA",
       "TABLE",
-      "SYNCED_QUERY",
+      "SYNCED_QUERY_FOLDER",
       "SYNCED_QUERY_DOCUMENT",
     ],
   }),

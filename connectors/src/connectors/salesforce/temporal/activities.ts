@@ -127,7 +127,7 @@ export async function upsertSyncedQueryRootNode(
     title: syncedQuery.rootNodeName,
     parentId: null,
     parents: [folderId],
-    mimeType: INTERNAL_MIME_TYPES.SALESFORCE.SYNCED_QUERY,
+    mimeType: INTERNAL_MIME_TYPES.SALESFORCE.SYNCED_QUERY_FOLDER,
   });
 
   return folderId;
