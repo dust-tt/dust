@@ -9,6 +9,7 @@ import {
   syncQueryTemplateInterpolate,
 } from "@connectors/connectors/salesforce/lib/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
+import { concurrentExecutor } from "@connectors/lib/async_utils";
 import {
   renderDocumentTitleAndContent,
   upsertDataSourceDocument,
@@ -190,98 +191,102 @@ export async function processSyncedQueryPage(
 
   let processedCount = 0;
 
-  for (const record of queryRes.value.records) {
-    const recordId = record.Id;
-    if (!recordId) {
-      logger.error(
-        {
-          connectorId,
-          queryId,
-          recordId: record.Id,
-        },
-        "Salesforce record missing Id"
+  await concurrentExecutor(
+    queryRes.value.records,
+    async (record) => {
+      const recordId = record.Id;
+      if (!recordId) {
+        logger.error(
+          {
+            connectorId,
+            queryId,
+            recordId: record.Id,
+          },
+          "Salesforce record missing Id"
+        );
+        throw new Error("All records are expected to have an Id.");
+      }
+
+      const recordModifiedDate = record.LastModifiedDate
+        ? new Date(record.LastModifiedDate as string)
+        : null;
+      if (!recordModifiedDate) {
+        logger.error(
+          {
+            connectorId,
+            queryId,
+            recordId: record.Id,
+          },
+          "Salesforce record missing LastModifiedDate"
+        );
+        throw new Error("All records are expected to have a LastModifiedDate.");
+      }
+
+      // Check if we should stop based on upToLastModifiedDate
+      if (upToLastModifiedDate && recordModifiedDate <= upToLastModifiedDate) {
+        return;
+      }
+
+      // Generate document content using templates
+      const documentTitle = syncQueryTemplateInterpolate(
+        syncedQuery.titleTemplate,
+        record
       );
-      throw new Error("All records are expected to have an Id.");
-    }
-
-    const recordModifiedDate = record.LastModifiedDate
-      ? new Date(record.LastModifiedDate as string)
-      : null;
-    if (!recordModifiedDate) {
-      logger.error(
-        {
-          connectorId,
-          queryId,
-          recordId: record.Id,
-        },
-        "Salesforce record missing LastModifiedDate"
+      const documentContent = syncQueryTemplateInterpolate(
+        syncedQuery.contentTemplate,
+        record
       );
-      throw new Error("All records are expected to have a LastModifiedDate.");
-    }
+      const documentTags = syncedQuery.tagsTemplate
+        ? syncQueryTemplateInterpolate(syncedQuery.tagsTemplate, record)
+            .split(",")
+            .map((tag) => tag.trim())
+            .filter((tag) => tag.length > 0)
+        : [];
 
-    // Check if we should stop based on upToLastModifiedDate
-    if (upToLastModifiedDate && recordModifiedDate <= upToLastModifiedDate) {
-      break;
-    }
+      // Create document content structure
+      const content = await renderDocumentTitleAndContent({
+        dataSourceConfig,
+        title: documentTitle,
+        updatedAt: recordModifiedDate,
+        content: {
+          prefix: null,
+          content: documentContent,
+          sections: [],
+        },
+      });
 
-    // Generate document content using templates
-    const documentTitle = syncQueryTemplateInterpolate(
-      syncedQuery.titleTemplate,
-      record
-    );
-    const documentContent = syncQueryTemplateInterpolate(
-      syncedQuery.contentTemplate,
-      record
-    );
-    const documentTags = syncedQuery.tagsTemplate
-      ? syncQueryTemplateInterpolate(syncedQuery.tagsTemplate, record)
-          .split(",")
-          .map((tag) => tag.trim())
-          .filter((tag) => tag.length > 0)
-      : [];
+      // Create document ID using record ID
+      const documentId = documentIdForSyncedQuery(connectorId, queryId, record);
 
-    // Create document content structure
-    const content = await renderDocumentTitleAndContent({
-      dataSourceConfig,
-      title: documentTitle,
-      updatedAt: recordModifiedDate,
-      content: {
-        prefix: null,
-        content: documentContent,
-        sections: [],
-      },
-    });
+      // Upsert document to data source
+      await upsertDataSourceDocument({
+        dataSourceConfig,
+        documentId,
+        documentContent: content,
+        documentUrl: undefined,
+        timestampMs: recordModifiedDate.getTime(),
+        tags: documentTags,
+        parentId: folderIdForSyncedQuery(connectorId, queryId),
+        parents: [documentId, folderIdForSyncedQuery(connectorId, queryId)],
+        upsertContext: {
+          sync_type: upToLastModifiedDate ? "incremental" : "batch",
+        },
+        title: documentTitle,
+        mimeType: INTERNAL_MIME_TYPES.SALESFORCE.SYNCED_QUERY_DOCUMENT,
+        async: true,
+      });
 
-    // Create document ID using record ID
-    const documentId = documentIdForSyncedQuery(connectorId, queryId, record);
+      if (recordModifiedDate) {
+        lastSeenModifiedDate =
+          lastSeenModifiedDate && lastSeenModifiedDate > recordModifiedDate
+            ? lastSeenModifiedDate
+            : recordModifiedDate;
+      }
 
-    // Upsert document to data source
-    await upsertDataSourceDocument({
-      dataSourceConfig,
-      documentId,
-      documentContent: content,
-      documentUrl: undefined,
-      timestampMs: recordModifiedDate?.getTime(),
-      tags: documentTags,
-      parentId: folderIdForSyncedQuery(connectorId, queryId),
-      parents: [documentId, folderIdForSyncedQuery(connectorId, queryId)],
-      upsertContext: {
-        sync_type: upToLastModifiedDate ? "incremental" : "batch",
-      },
-      title: documentTitle,
-      mimeType: INTERNAL_MIME_TYPES.SALESFORCE.SYNCED_QUERY_DOCUMENT,
-      async: false,
-    });
-
-    if (recordModifiedDate) {
-      lastSeenModifiedDate =
-        lastSeenModifiedDate && lastSeenModifiedDate > recordModifiedDate
-          ? lastSeenModifiedDate
-          : recordModifiedDate;
-    }
-
-    processedCount++;
-  }
+      processedCount++;
+    },
+    { concurrency: 8 }
+  );
 
   return {
     lastSeenModifiedDate,

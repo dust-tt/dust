@@ -21,4 +21,14 @@ export const apiConfig = {
       apiKey: EnvironmentConfig.getEnvVariable("FIRECRAWL_API_KEY"),
     };
   },
+  getUntrustedEgressProxyHost: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable(
+      "UNTRUSTED_EGRESS_PROXY_HOST"
+    );
+  },
+  getUntrustedEgressProxyPort: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable(
+      "UNTRUSTED_EGRESS_PROXY_PORT"
+    );
+  },
 };
