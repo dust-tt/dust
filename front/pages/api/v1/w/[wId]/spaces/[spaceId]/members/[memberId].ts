@@ -1,4 +1,3 @@
-import type { DeleteSpaceMemberResponseBody } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
@@ -15,7 +14,7 @@ import { isString } from "@app/types";
  */
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<DeleteSpaceMemberResponseBody>>,
+  res: NextApiResponse<WithAPIErrorResponse<void>>,
   auth: Authenticator
 ): Promise<void> {
   const { spaceId, memberId } = req.query;
@@ -89,14 +88,14 @@ async function handler(
         }
       }
 
-      return res.status(200).json({ space: space.toJSON() });
+      return void res.status(200).end();
     }
     default:
       return apiError(req, res, {
         status_code: 405,
         api_error: {
           type: "method_not_supported_error",
-          message: "The method passed is not supported, PATCH is expected.",
+          message: "The method passed is not supported, DELETE is expected.",
         },
       });
   }
