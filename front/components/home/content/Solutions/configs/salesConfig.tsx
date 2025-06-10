@@ -170,6 +170,12 @@ export const DemoVideo: DemoVideoProps = {
 
 export const Stories: CustomerStory[] = [
   {
+    title: "Clay powers 4x sales team growth with Dust AI agents",
+    content: "Clay uses Dust AI agents to scale their GTM team 4x while maintaining sales velocity.",
+    href: "https://blog.dust.tt/clay-scaling-gtme-team/",
+    src: "https://blog.dust.tt/content/images/size/w2000/2025/06/clay_dust_agents.jpg",
+  },
+  {
     title: "20%+ productivity gains in Sales: Insights from Alan and Payfit",
     content:
       "Dust agents significantly lowered their acquisition costs, allowing them to hire more salespeople.",
@@ -182,12 +188,5 @@ export const Stories: CustomerStory[] = [
       "43% of Kyriba employees save more than 3 hours weekly leveraging Dust for RFPs.",
     href: "https://blog.dust.tt/kyriba-accelerating-innovation-with-dust/",
     src: "https://blog.dust.tt/content/images/size/w2000/2024/10/kyriba_dust.jpg",
-  },
-  {
-    title: "Lifen uses Dust AI agents to boost team productivity", // Soon to be replaced with Clay for RFP?
-    content:
-      "Lifen uses Dust AI agents to boost team productivity and save hours of work each week.",
-    href: "https://blog.dust.tt/customer-story-lifen/",
-    src: "https://blog.dust.tt/content/images/size/w2000/2024/11/lifen_dust_customer_story.jpg",
   },
 ];

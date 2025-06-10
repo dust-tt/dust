@@ -165,6 +165,12 @@ export const DemoVideo: DemoVideoProps = {
 
 export const Stories: CustomerStory[] = [
   {
+    title: "Clay creates scalable knowledge hub with Dust AI agents",
+    content: "Clay uses Dust AI agents to solve team scaling challenges with instant knowledge access for rapid growth.",
+    href: "https://blog.dust.tt/clay-scaling-gtme-team/",
+    src: "https://blog.dust.tt/content/images/size/w2000/2025/06/clay_dust_agents.jpg",
+  },
+  {
     title: "Kyriba’s adoption of Dust across all functions",
     content:
       "43% of Kyriba employees save more than 3 hours weekly leveraging Dust for RFPs.",
