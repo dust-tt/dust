@@ -134,7 +134,13 @@ export const INTERNAL_MIME_TYPES = {
   }),
   SALESFORCE: generateMimeTypes({
     provider: "salesforce",
-    resourceTypes: ["DATABASE", "SCHEMA", "TABLE"],
+    resourceTypes: [
+      "DATABASE",
+      "SCHEMA",
+      "TABLE",
+      "SYNCED_QUERY",
+      "SYNCED_QUERY_DOCUMENT",
+    ],
   }),
   GONG: generateMimeTypes({
     provider: "gong",

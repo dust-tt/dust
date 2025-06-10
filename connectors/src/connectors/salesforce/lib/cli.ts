@@ -14,7 +14,10 @@ import type {
   SalesforceCommandType,
   SalesforceRunSoqlResponseType,
   SalesforceSetupSyncedQueryResponseType,
+  SalesforceSyncQueryResponseType,
 } from "@connectors/types";
+
+import { launchSalesforceSyncQueryWorkflow } from "../temporal/client";
 
 export const salesforce = async ({
   command,
@@ -23,6 +26,7 @@ export const salesforce = async ({
   | SalesforceCheckConnectionResponseType
   | SalesforceRunSoqlResponseType
   | SalesforceSetupSyncedQueryResponseType
+  | SalesforceSyncQueryResponseType
 > => {
   const logger = topLogger.child({ majorCommand: "salesforce", command, args });
 
@@ -147,7 +151,7 @@ export const salesforce = async ({
       });
 
       if (args.execute) {
-        await SalesforceSyncedQueryResource.makeNew({
+        const query = await SalesforceSyncedQueryResource.makeNew({
           blob: {
             connectorId: connCredRes.value.connector.id,
             rootNodeName: args.rootNodeName,
@@ -158,9 +162,42 @@ export const salesforce = async ({
             lastSeenModifiedDate: null,
           },
         });
+        return { documents, created: true, queryId: query.id };
+      }
+      return { documents, created: args.execute ?? false, queryId: null };
+    }
+
+    case "sync-query": {
+      if (!args.queryId) {
+        throw new Error("Missing --queryId argument");
       }
 
-      return { documents, created: args.execute ?? false };
+      const query = await SalesforceSyncedQueryResource.fetchById(args.queryId);
+      if (!query) {
+        throw new Error(`Query with ID ${args.queryId} not found.`);
+      }
+
+      const { connector } = connCredRes.value;
+
+      if (query.connectorId !== connector.id) {
+        throw new Error(
+          `Query with ID ${args.queryId} does not belong to connector ${connector.id}.`
+        );
+      }
+
+      const workflowRes = await launchSalesforceSyncQueryWorkflow(
+        connector.id,
+        query.id,
+        args.full ? null : query.lastSeenModifiedDate
+      );
+
+      if (workflowRes.isErr()) {
+        throw workflowRes.error;
+      }
+
+      return {
+        workflowId: workflowRes.value,
+      };
     }
   }
 };

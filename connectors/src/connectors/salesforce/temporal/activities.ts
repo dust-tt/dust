@@ -1,8 +1,23 @@
-import { fetchTree } from "@connectors/connectors/salesforce/lib/salesforce_api";
-import { getConnectorAndCredentials } from "@connectors/connectors/salesforce/lib/utils";
+import type { Record } from "jsforce";
+
+import {
+  fetchTree,
+  runSOQL,
+} from "@connectors/connectors/salesforce/lib/salesforce_api";
+import {
+  getConnectorAndCredentials,
+  syncQueryTemplateInterpolate,
+} from "@connectors/connectors/salesforce/lib/utils";
+import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
+import {
+  renderDocumentTitleAndContent,
+  upsertDataSourceDocument,
+  upsertDataSourceFolder,
+} from "@connectors/lib/data_sources";
 import { sync } from "@connectors/lib/remote_databases/activities";
 import { parseInternalId } from "@connectors/lib/remote_databases/utils";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
+import logger from "@connectors/logger/logger";
 import { SalesforceSyncedQueryResource } from "@connectors/resources/salesforce_resources";
 import type { ModelId } from "@connectors/types";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
@@ -58,10 +73,70 @@ export async function discoverSalesforceSyncedQueries(
   });
 }
 
+function folderIdForSyncedQuery(
+  connectorId: ModelId,
+  queryId: ModelId
+): string {
+  return `salesforce-synced-query-folder-${connectorId}-${queryId}`;
+}
+
+function documentIdForSyncedQuery(
+  connectorId: ModelId,
+  queryId: ModelId,
+  record: Record
+): string {
+  if (!record.Id || typeof record.Id !== "string") {
+    throw new Error(`Salesforce Record must have a valid Id field.`);
+  }
+  return `salesforce-synced-query-document-${connectorId}-${queryId}-${record.Id}`;
+}
+
+// Upsert the root node for the synced query and returns its nodeId.
+export async function upsertSyncedQueryRootNode(
+  connectorId: ModelId,
+  {
+    queryId,
+  }: {
+    queryId: ModelId;
+  }
+) {
+  const connAndCredsRes = await getConnectorAndCredentials(connectorId);
+  if (connAndCredsRes.isErr()) {
+    throw connAndCredsRes.error;
+  }
+
+  const { connector } = connAndCredsRes.value;
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+
+  // Fetch the synced query resource
+  const syncedQuery = await SalesforceSyncedQueryResource.fetchById(queryId);
+  if (!syncedQuery) {
+    throw new Error(`Synced query with id ${queryId} not found.`);
+  }
+  if (syncedQuery.connectorId !== connectorId) {
+    throw new Error(
+      `Synced query with id ${queryId} does not belong to connector ${connectorId}.`
+    );
+  }
+
+  const folderId = folderIdForSyncedQuery(connectorId, queryId);
+
+  await upsertDataSourceFolder({
+    dataSourceConfig,
+    folderId,
+    title: syncedQuery.rootNodeName,
+    parentId: null,
+    parents: [folderId],
+    mimeType: INTERNAL_MIME_TYPES.SALESFORCE.SYNCED_QUERY,
+  });
+
+  return folderId;
+}
+
 // Syncs one page of results from a Salesforce query as defined by pagination arguments offset and
 // limit. Stops as soon as a record.lastModifiedDate is smaller than upToLastModifiedDate (if
 // defined) or there is no record remaining to sync. Returns the lastModifiedDate seen so far.
-export async function syncSalesforceQueryPage(
+export async function processSyncedQueryPAge(
   connectorId: ModelId,
   {
     queryId,
@@ -86,14 +161,131 @@ export async function syncSalesforceQueryPage(
     throw connAndCredsRes.error;
   }
 
-  // Do SOQL query
-  // Extract docs
-  // Upsert them to data source
+  const { credentials, connector } = connAndCredsRes.value;
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+
+  // Fetch the synced query resource
+  const syncedQuery = await SalesforceSyncedQueryResource.fetchById(queryId);
+  if (!syncedQuery) {
+    throw new Error(`Synced query with id ${queryId} not found.`);
+  }
+  if (syncedQuery.connectorId !== connectorId) {
+    throw new Error(
+      `Synced query with id ${queryId} does not belong to connector ${connectorId}.`
+    );
+  }
+
+  // Execute SOQL query with pagination
+  const queryRes = await runSOQL({
+    credentials,
+    soql: syncedQuery.soql,
+    limit,
+    offset,
+  });
+
+  if (queryRes.isErr()) {
+    throw queryRes.error;
+  }
+
+  let processedCount = 0;
+
+  for (const record of queryRes.value.records) {
+    const recordId = record.Id;
+    if (!recordId) {
+      logger.error(
+        {
+          connectorId,
+          queryId,
+          recordId: record.Id,
+        },
+        "Salesforce record missing Id"
+      );
+      throw new Error("All records are expected to have an Id.");
+    }
+
+    const recordModifiedDate = record.LastModifiedDate
+      ? new Date(record.LastModifiedDate as string)
+      : null;
+    if (!recordModifiedDate) {
+      logger.error(
+        {
+          connectorId,
+          queryId,
+          recordId: record.Id,
+        },
+        "Salesforce record missing LastModifiedDate"
+      );
+      throw new Error("All records are expected to have a LastModifiedDate.");
+    }
+
+    // Check if we should stop based on upToLastModifiedDate
+    if (upToLastModifiedDate && recordModifiedDate <= upToLastModifiedDate) {
+      break;
+    }
+
+    // Generate document content using templates
+    const documentTitle = syncQueryTemplateInterpolate(
+      syncedQuery.titleTemplate,
+      record
+    );
+    const documentContent = syncQueryTemplateInterpolate(
+      syncedQuery.contentTemplate,
+      record
+    );
+    const documentTags = syncedQuery.tagsTemplate
+      ? syncQueryTemplateInterpolate(syncedQuery.tagsTemplate, record)
+          .split(",")
+          .map((tag) => tag.trim())
+          .filter((tag) => tag.length > 0)
+      : [];
+
+    // Create document content structure
+    const content = await renderDocumentTitleAndContent({
+      dataSourceConfig,
+      title: documentTitle,
+      updatedAt: recordModifiedDate,
+      content: {
+        prefix: null,
+        content: documentContent,
+        sections: [],
+      },
+    });
+
+    // Create document ID using record ID
+    const documentId = documentIdForSyncedQuery(connectorId, queryId, record);
+
+    // Upsert document to data source
+    await upsertDataSourceDocument({
+      dataSourceConfig,
+      documentId,
+      documentContent: content,
+      documentUrl: undefined,
+      timestampMs: recordModifiedDate?.getTime(),
+      tags: documentTags,
+      parentId: folderIdForSyncedQuery(connectorId, queryId),
+      parents: [documentId, folderIdForSyncedQuery(connectorId, queryId)],
+      upsertContext: {
+        sync_type: upToLastModifiedDate ? "incremental" : "batch",
+      },
+      title: documentTitle,
+      mimeType: INTERNAL_MIME_TYPES.SALESFORCE.SYNCED_QUERY_DOCUMENT,
+      async: false,
+    });
+
+    if (recordModifiedDate) {
+      lastSeenModifiedDate =
+        lastSeenModifiedDate && lastSeenModifiedDate > recordModifiedDate
+          ? lastSeenModifiedDate
+          : recordModifiedDate;
+    }
+
+    processedCount++;
+  }
 
   return {
     lastSeenModifiedDate,
-    hasMore: false,
-    count: 0,
+    hasMore: processedCount > 0,
+    count: processedCount,
   };
 }
 

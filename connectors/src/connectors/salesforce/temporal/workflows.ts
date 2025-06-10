@@ -9,12 +9,17 @@ import type { ModelId } from "@connectors/types";
 //   startToCloseTimeout: "10 minutes",
 // });
 
-const { syncSalesforceConnection, updateSyncedQueryLastSeenModifiedDate } =
-  proxyActivities<typeof activities>({
-    startToCloseTimeout: "10 minute",
-  });
+const {
+  syncSalesforceConnection,
+  upsertSyncedQueryRootNode,
+  updateSyncedQueryLastSeenModifiedDate,
+} = proxyActivities<typeof activities>({
+  startToCloseTimeout: "10 minute",
+});
 
-const { syncSalesforceQueryPage } = proxyActivities<typeof activities>({
+const { processSyncedQueryPAge: syncSalesforceQueryPage } = proxyActivities<
+  typeof activities
+>({
   startToCloseTimeout: "120 minute",
 });
 
@@ -123,6 +128,8 @@ export async function salesforceSyncQueryWorkflow({
   queryId: ModelId;
   upToLastModifiedDate: Date | null;
 }) {
+  await upsertSyncedQueryRootNode(connectorId, { queryId });
+
   let offset = 0;
   let lastSeenModifiedDate: Date | null = null;
   let hasMore = true;
@@ -143,8 +150,10 @@ export async function salesforceSyncQueryWorkflow({
   }
 
   // Finally update the lastSeenModifiedDate for the syncedQuery
-  await updateSyncedQueryLastSeenModifiedDate(connectorId, {
-    queryId,
-    lastSeenModifiedDate,
-  });
+  if (lastSeenModifiedDate) {
+    await updateSyncedQueryLastSeenModifiedDate(connectorId, {
+      queryId,
+      lastSeenModifiedDate,
+    });
+  }
 }
