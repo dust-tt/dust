@@ -25,7 +25,7 @@ export function withToolLogging<T>(
     logger.info(loggerArgs, "Tool execution start");
 
     const tags = [
-      `tool:${toolName}`,
+      `action:${toolName}`,
       `workspace:${owner.sId}`,
       `workspace_name:${owner.name}`,
       `workspace_plan_code:${auth.plan()?.code || null}`,
