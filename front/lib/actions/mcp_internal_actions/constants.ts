@@ -145,9 +145,6 @@ export const INTERNAL_MCP_SERVERS: Record<
   run_dust_app: {
     id: 10,
     availability: "auto",
-    isRestricted: (plan, featureFlags) => {
-      return featureFlags.includes("dev_mcp_actions");
-    },
   },
   notion: {
     id: 11,
