@@ -16,6 +16,7 @@ import {
   supportsDocumentsData,
   supportsStructuredData,
 } from "@app/lib/data_sources";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
   ContentNodesViewType,
   DataSourceViewSelectionConfigurations,
@@ -23,7 +24,6 @@ import type {
   WorkspaceType,
 } from "@app/types";
 import { assertNever } from "@app/types";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 
 interface AssistantBuilderDataSourceModalProps {
   initialDataSourceConfigurations: DataSourceViewSelectionConfigurations;
