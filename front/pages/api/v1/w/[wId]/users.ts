@@ -1,4 +1,4 @@
-import type { GetWorkspaceMemberIdsResponseBody } from "@dust-tt/client";
+import type { GetWorkspaceUsersResponseBody } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
@@ -13,15 +13,15 @@ import type { WithAPIErrorResponse } from "@app/types";
  */
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<GetWorkspaceMemberIdsResponseBody>>,
+  res: NextApiResponse<WithAPIErrorResponse<GetWorkspaceUsersResponseBody>>,
   auth: Authenticator
 ): Promise<void> {
   switch (req.method) {
     case "GET":
-      const { members } = await getMembers(auth, { activeOnly: true });
+      const { members: users } = await getMembers(auth, { activeOnly: true });
 
       res.status(200).json({
-        memberIds: members.map((member) => member.sId),
+        users: users.map((user) => user),
       });
       return;
 

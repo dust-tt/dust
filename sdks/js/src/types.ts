@@ -3029,6 +3029,6 @@ export interface PostSpaceMembersResponseBody {
   member: UserType;
 }
 
-export interface GetWorkspaceMemberIdsResponseBody {
-  memberIds: string[];
+export interface GetWorkspaceUsersResponseBody {
+  users: UserType[];
 }
