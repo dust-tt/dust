@@ -16,6 +16,7 @@ import { isBlacklistedEmailDomain } from "@app/lib/utils/blacklisted_email_domai
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
+import { isString } from "@app/types";
 
 async function handler(
   req: NextApiRequest,
@@ -39,7 +40,7 @@ async function handler(
 
   // Validate the webhook secret.
   const { actionSecret } = req.query;
-  if (typeof actionSecret !== "string") {
+  if (!isString(actionSecret)) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -131,7 +132,7 @@ async function handler(
     | AuthenticationActionResponseData;
 
   if (action.object === "user_registration_action_context") {
-    // Determine whether to allow or deny the action
+    // Determine whether to allow or deny the action.
     if (isBlacklistedEmailDomain(action.userData.email.split("@")[1])) {
       responsePayload = {
         type: "user_registration" as const,
@@ -145,6 +146,7 @@ async function handler(
       };
     }
   } else {
+    // Always allow authentication actions.
     responsePayload = {
       type: "authentication" as const,
       verdict: "Allow" as const,
