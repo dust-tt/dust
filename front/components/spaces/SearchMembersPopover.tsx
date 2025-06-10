@@ -85,7 +85,15 @@ export function SearchMembersPopover({
   return (
     <PopoverRoot>
       <PopoverTrigger asChild>
-        <Button label="Add members manually" icon={UserIcon} size="sm" />
+        <Button
+          label={
+            selectedMembers.length === 0
+              ? "Add members manually"
+              : "Add members"
+          }
+          icon={UserIcon}
+          size="sm"
+        />
       </PopoverTrigger>
       <PopoverContent className="mr-2 p-4">
         <SearchInput

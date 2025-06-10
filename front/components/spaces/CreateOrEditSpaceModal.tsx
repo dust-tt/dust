@@ -28,6 +28,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { ConfirmDeleteSpaceDialog } from "@app/components/spaces/ConfirmDeleteSpaceDialog";
 import { SearchMembersPopover } from "@app/components/spaces/SearchMembersPopover";
+import { UserGroupPopover } from "@app/components/spaces/UserGroupPopover";
 import { useMembersCount } from "@app/lib/swr/memberships";
 import {
   useCreateSpace,
@@ -259,13 +260,32 @@ export function CreateOrEditSpaceModal({
 
             {isRestricted && (
               <>
-                <div className="flex flex-row justify-end gap-2">
-                  <SearchMembersPopover
-                    owner={owner}
-                    selectedMembers={deduplicatedMembers}
-                    onMembersUpdated={setSelectedMembers}
-                  />
-                </div>
+                {deduplicatedMembers.length === 0 && (
+                  <div className="flex flex-col items-center gap-2">
+                    <SearchMembersPopover
+                      owner={owner}
+                      selectedMembers={deduplicatedMembers}
+                      onMembersUpdated={setSelectedMembers}
+                    />
+                    <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                      or
+                    </span>
+                    <UserGroupPopover
+                      owner={owner}
+                      selectedMembers={deduplicatedMembers}
+                      onMembersUpdated={setSelectedMembers}
+                    />
+                  </div>
+                )}
+                {deduplicatedMembers.length > 0 && (
+                  <div>
+                    <SearchMembersPopover
+                      owner={owner}
+                      selectedMembers={deduplicatedMembers}
+                      onMembersUpdated={setSelectedMembers}
+                    />
+                  </div>
+                )}
                 <SearchInput
                   name="search"
                   placeholder="Search (email)"
