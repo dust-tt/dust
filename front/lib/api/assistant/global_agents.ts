@@ -5,6 +5,7 @@ import { promisify } from "util";
 import { DEFAULT_RETRIEVAL_ACTION_NAME } from "@app/lib/actions/constants";
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
 import { internalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
+import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { AgentActionConfigurationType } from "@app/lib/actions/types/agent";
 import { getFavoriteStates } from "@app/lib/api/assistant/get_favorite_states";
 import config from "@app/lib/api/config";
@@ -128,7 +129,7 @@ function _getDefaultWebActionsForGlobalAgent({
       id: -1,
       sId: agentSid + "-websearch-browse-action",
       type: "mcp_server_configuration",
-      name: "web_search_and_browse",
+      name: "web_search_&_browse" satisfies InternalMCPServerNameType,
       description: "Perform a web search and/or browse a page content",
       mcpServerViewId: webSearchBrowseMCPServerView.sId,
       internalMCPServerId: webSearchBrowseMCPServerView.internalMCPServerId,
