@@ -267,10 +267,23 @@ export default async function createServer(
       }
 
       let finalContent = "";
+      let chainOfThought = "";
       try {
         for await (const event of streamRes.value.eventStream) {
           if (event.type === "generation_tokens") {
-            finalContent += event.text;
+            // Separate content based on classification
+            if (event.classification === "chain_of_thought") {
+              chainOfThought += event.text;
+            } else if (event.classification === "tokens") {
+              finalContent += event.text;
+            } else if (
+              event.classification === "closing_delimiter" &&
+              event.delimiterClassification === "chain_of_thought" &&
+              chainOfThought.length > 0
+            ) {
+              // For closing chain of thought delimiters, add a newline
+              chainOfThought += "\n";
+            }
           } else if (event.type === "agent_error") {
             const errorMessage = `Agent error: ${event.error.message}`;
             return makeMCPToolTextError(errorMessage);
@@ -316,7 +329,8 @@ export default async function createServer(
         }`;
         return makeMCPToolTextError(errorMessage);
       }
-      finalContent.trim();
+      finalContent = finalContent.trim();
+      chainOfThought = chainOfThought.trim();
 
       return {
         isError: false,
@@ -335,7 +349,9 @@ export default async function createServer(
             resource: {
               mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.RUN_AGENT_RESULT,
               conversationId: conversation.sId,
-              text: finalContent.trim(),
+              text: finalContent,
+              chainOfThought:
+                chainOfThought.length > 0 ? chainOfThought : undefined,
               uri: `${config.getClientFacingUrl()}/w/${auth.getNonNullableWorkspace().sId}/assistant/${conversation.sId}`,
             },
           },

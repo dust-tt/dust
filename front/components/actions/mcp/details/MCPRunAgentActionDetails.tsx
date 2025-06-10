@@ -59,6 +59,18 @@ export function MCPRunAgentActionDetails({
     return null;
   }, [resultResource]);
 
+  const chainOfThought = useMemo(() => {
+    if (resultResource) {
+      return resultResource.resource.chainOfThought || null;
+    }
+    return null;
+  }, [resultResource]);
+
+  const { agentConfiguration: childAgent } = useAgentConfiguration({
+    workspaceId: owner.sId,
+    agentConfigurationId: childAgentId,
+  });
+
   const isBusy = useMemo(() => {
     if (resultResource) {
       return false;
@@ -75,11 +87,6 @@ export function MCPRunAgentActionDetails({
     }
     return null;
   }, [resultResource, lastNotification, owner.sId]);
-
-  const { agentConfiguration: childAgent } = useAgentConfiguration({
-    workspaceId: owner.sId,
-    agentConfigurationId: childAgentId,
-  });
   return (
     <ActionDetailsWrapper
       actionName={childAgent?.name ? `Run @${childAgent.name}` : "Run Agent"}
@@ -96,9 +103,26 @@ export function MCPRunAgentActionDetails({
         <div className="flex flex-col gap-4">
           {query && childAgent && (
             <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
-              <ContentMessage title="Query" variant="outline" size="lg">
+              <ContentMessage title="Query" variant="primary" size="lg">
                 <Markdown
                   content={query}
+                  isStreaming={false}
+                  forcedTextSize="text-sm"
+                  textColor="text-muted-foreground"
+                  isLastMessage={false}
+                />
+              </ContentMessage>
+            </div>
+          )}
+          {chainOfThought && childAgent && (
+            <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+              <ContentMessage
+                title="Agent thoughts"
+                variant="primary"
+                size="lg"
+              >
+                <Markdown
+                  content={chainOfThought}
                   isStreaming={false}
                   forcedTextSize="text-sm"
                   textColor="text-muted-foreground"
