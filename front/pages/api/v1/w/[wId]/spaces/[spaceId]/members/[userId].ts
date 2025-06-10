@@ -17,7 +17,7 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<void>>,
   auth: Authenticator
 ): Promise<void> {
-  const { spaceId, memberId } = req.query;
+  const { spaceId, userId } = req.query;
 
   if (!spaceId || !isString(spaceId)) {
     return apiError(req, res, {
@@ -29,7 +29,7 @@ async function handler(
     });
   }
 
-  if (!memberId || !isString(memberId)) {
+  if (!userId || !isString(userId)) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -63,7 +63,10 @@ async function handler(
         });
       }
 
-      const updateRes = await space.manageMember(auth, memberId, "remove");
+      const updateRes = await space.manageMember(auth, {
+        userId: userId,
+        operation: "remove",
+      });
       if (updateRes.isErr()) {
         if (
           updateRes.error instanceof DustError &&

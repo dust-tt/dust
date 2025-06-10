@@ -519,8 +519,13 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
   async manageMember(
     auth: Authenticator,
-    memberId: string,
-    operation: "add" | "remove"
+    {
+      userId,
+      operation,
+    }: {
+      userId: string;
+      operation: "add" | "remove";
+    }
   ): Promise<Result<UserResource, DustError>> {
     if (!this.canAdministrate(auth)) {
       return new Err(
@@ -543,7 +548,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     const [defaultSpaceGroup] = regularGroups;
 
     // Validate user exists and is workspace member
-    const user = await UserResource.fetchById(memberId);
+    const user = await UserResource.fetchById(userId);
     if (!user) {
       return new Err(new DustError("user_not_found", "User not found."));
     }

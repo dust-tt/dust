@@ -3021,7 +3021,7 @@ export type MCPValidationOutputPublicType =
   (typeof MCP_VALIDATION_OUTPUTS)[number];
 
 export const PostSpaceMembersRequestBodySchema = z.object({
-  memberId: z.string(),
+  userId: z.string(),
 });
 
 export interface PostSpaceMembersResponseBody {

@@ -69,9 +69,12 @@ async function handler(
         });
       }
 
-      const { memberId } = bodyValidation.data;
+      const { userId } = bodyValidation.data;
 
-      const updateRes = await space.manageMember(auth, memberId, "add");
+      const updateRes = await space.manageMember(auth, {
+        userId: userId,
+        operation: "add",
+      });
       if (updateRes.isErr()) {
         if (
           updateRes.error instanceof DustError &&
