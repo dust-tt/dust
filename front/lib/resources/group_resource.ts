@@ -539,6 +539,7 @@ export class GroupResource extends BaseResource<GroupModel> {
   }
 
   static async upsertByWorkOSGroupId(
+    auth: Authenticator,
     workspace: LightWorkspaceType,
     directoryGroup: DirectoryGroup
   ) {
@@ -550,9 +551,9 @@ export class GroupResource extends BaseResource<GroupModel> {
     });
 
     if (group) {
-      group.name = directoryGroup.name;
-      await group.save();
-      return new this(this.model, group.get());
+      const groupResource = new this(this.model, group.get());
+      await groupResource.updateName(auth, directoryGroup.name);
+      return groupResource;
     }
 
     return this.makeNew({

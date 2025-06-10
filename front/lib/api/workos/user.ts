@@ -9,6 +9,7 @@ import config from "@app/lib/api/config";
 import type { RegionType } from "@app/lib/api/regions/config";
 import { getWorkOS } from "@app/lib/api/workos/client";
 import type { SessionWithUser } from "@app/lib/iam/provider";
+import type { LightWorkspaceType } from "@app/types";
 
 export type SessionCookie = {
   sessionData: string;
@@ -90,4 +91,27 @@ export async function updateUserFromAuth0(
       },
     });
   }
+}
+
+export async function fetchWorkOSUserWithEmail(
+  workspace: LightWorkspaceType,
+  email?: string | null
+) {
+  if (email == null) {
+    throw new Error("Missing email");
+  }
+
+  const workOSUserResponse = await getWorkOS().userManagement.listUsers({
+    organizationId: workspace.workOSOrganizationId ?? undefined,
+    email,
+  });
+
+  const [workOSUser] = workOSUserResponse.data;
+  if (!workOSUser) {
+    throw new Error(
+      `User not found with email "${email}" in workOS for workspace "${workspace.sId}"`
+    );
+  }
+
+  return workOSUser;
 }

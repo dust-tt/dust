@@ -1,4 +1,5 @@
 import type {
+  DirectoryGroup,
   DirectoryUser,
   DsyncGroupUserAddedEvent,
   DsyncGroupUserRemovedEvent,
@@ -6,11 +7,12 @@ import type {
   OrganizationDomain,
 } from "@workos-inc/node";
 import assert from "assert";
-import _ from "lodash";
 
-import { getWorkOS } from "@app/lib/api/workos/client";
 import { getOrCreateWorkOSOrganization } from "@app/lib/api/workos/organization";
-import { getUserNicknameFromEmail } from "@app/lib/api/workos/user";
+import {
+  fetchWorkOSUserWithEmail,
+  getUserNicknameFromEmail,
+} from "@app/lib/api/workos/user";
 import {
   findWorkspaceByWorkOSOrganizationId,
   getWorkspaceInfos,
@@ -23,13 +25,13 @@ import { Authenticator } from "@app/lib/auth";
 import type { ExternalUser } from "@app/lib/iam/provider";
 import { createOrUpdateUser } from "@app/lib/iam/users";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { ServerSideTracking } from "@app/lib/tracking/server";
 import mainLogger from "@app/logger/logger";
 import type { LightWorkspaceType, Result } from "@app/types";
-import { normalizeError } from "@app/types";
-import { MembershipResource } from "@app/lib/resources/membership_resource";
 
-const workOS = getWorkOS();
+import { launchUpdateUsageWorkflow } from "../usage_queue/client";
 
 const logger = mainLogger.child(
   {},
@@ -83,7 +85,7 @@ async function handleOrganizationDomainEvent(
 async function verifyWorkOSWorkspace<E extends object, R>(
   organizationId: string | null,
   event: E,
-  cb: (workspace: LightWorkspaceType, eventData: E) => R
+  handler: (workspace: LightWorkspaceType, eventData: E) => R
 ) {
   if (organizationId === null) {
     return;
@@ -94,30 +96,7 @@ async function verifyWorkOSWorkspace<E extends object, R>(
     throw new Error(`Workspace not found for workspace "${organizationId}"`);
   }
 
-  return cb(workspace, event);
-}
-
-async function fetchWorkOSUserWithEmail(
-  workspace: LightWorkspaceType,
-  email?: string | null
-) {
-  if (email == null) {
-    throw new Error("Missing email");
-  }
-
-  const workOSUserResponse = await workOS.userManagement.listUsers({
-    organizationId: workspace.workOSOrganizationId ?? undefined,
-    email,
-  });
-
-  const [workOSUser] = workOSUserResponse.data;
-  if (!workOSUser) {
-    throw new Error(
-      `User not found with email "${email}" in workOS for workspace "${workspace.sId}"`
-    );
-  }
-
-  return workOSUser;
+  return handler(workspace, event);
 }
 
 // WorkOS webhooks do not guarantee event ordering. Events can arrive out of sequence.
@@ -142,7 +121,7 @@ export async function processWorkOSEventActivity({
       await verifyWorkOSWorkspace(
         eventPayload.data.organizationId,
         eventPayload.data,
-        GroupResource.upsertByWorkOSGroupId
+        handleGroupUpsert
       );
       break;
 
@@ -233,6 +212,14 @@ export async function handleWorkspaceSubscriptionCreated({
   }
 }
 
+async function handleGroupUpsert(
+  workspace: LightWorkspaceType,
+  event: DirectoryGroup
+) {
+  const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+  await GroupResource.upsertByWorkOSGroupId(auth, workspace, event);
+}
+
 async function handleUserAddedToGroup(
   workspace: LightWorkspaceType,
   event: DsyncGroupUserAddedEvent["data"]
@@ -262,7 +249,7 @@ async function handleUserAddedToGroup(
 
   const res = await group.addMember(auth, user.toJSON());
   if (res.isErr()) {
-    logger.error(normalizeError(res.error));
+    throw res.error;
   }
 }
 
@@ -295,7 +282,7 @@ async function handleUserRemovedFromGroup(
 
   const res = await group.removeMember(auth, user.toJSON());
   if (res.isErr()) {
-    logger.error(normalizeError(res.error));
+    throw res.error;
   }
 }
 
@@ -320,11 +307,18 @@ async function handleCreateOrUpdateWorkOSUser(
     user,
     externalUser,
   });
-  await MembershipResource.createMembership({
+  const membership = await MembershipResource.createMembership({
     user: createdOrUpdatedUser,
     workspace,
     role: "user",
   });
+  void ServerSideTracking.trackCreateMembership({
+    user: createdOrUpdatedUser.toJSON(),
+    workspace,
+    role: membership.role,
+    startAt: membership.startAt,
+  });
+  await launchUpdateUsageWorkflow({ workspaceId: workspace.sId });
 }
 
 async function handleDeleteWorkOSUser(
@@ -340,5 +334,18 @@ async function handleDeleteWorkOSUser(
     );
   }
 
-  await MembershipResource.revokeMembership({ user, workspace });
+  const membershipRevokeResult = await MembershipResource.revokeMembership({
+    user,
+    workspace,
+  });
+
+  if (membershipRevokeResult.isErr()) {
+    throw membershipRevokeResult.error;
+  }
+
+  void ServerSideTracking.trackRevokeMembership({
+    user: user.toJSON(),
+    workspace,
+    ...membershipRevokeResult.value,
+  });
 }
