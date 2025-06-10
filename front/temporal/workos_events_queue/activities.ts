@@ -27,6 +27,7 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import mainLogger from "@app/logger/logger";
 import type { LightWorkspaceType, Result } from "@app/types";
 import { normalizeError } from "@app/types";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 
 const workOS = getWorkOS();
 
@@ -315,7 +316,15 @@ async function handleCreateOrUpdateWorkOSUser(
     picture: workOSUser.profilePictureUrl ?? undefined,
   };
 
-  await createOrUpdateUser({ user, externalUser });
+  const { user: createdOrUpdatedUser } = await createOrUpdateUser({
+    user,
+    externalUser,
+  });
+  await MembershipResource.createMembership({
+    user: createdOrUpdatedUser,
+    workspace,
+    role: "user",
+  });
 }
 
 async function handleDeleteWorkOSUser(
@@ -324,7 +333,6 @@ async function handleDeleteWorkOSUser(
 ) {
   const workOSUser = await fetchWorkOSUserWithEmail(workspace, event.email);
 
-  const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
   const user = await UserResource.fetchByWorkOSUserId(workOSUser.id);
   if (!user) {
     throw new Error(
@@ -332,5 +340,5 @@ async function handleDeleteWorkOSUser(
     );
   }
 
-  await user.delete(auth);
+  await MembershipResource.revokeMembership({ user, workspace });
 }
