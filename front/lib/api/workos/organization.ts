@@ -221,8 +221,6 @@ export async function getWorkOSOrganizationSSOConnections({
 export async function deleteWorkOSOrganizationSSOConnection(
   connection: Connection
 ): Promise<Result<void, Error>> {
-  assert(connection.id, "Connection should exist");
-
   try {
     await getWorkOS().sso.deleteConnection(connection.id);
 
@@ -254,6 +252,18 @@ export async function getWorkOSOrganizationDSyncDirectories({
       });
 
     return new Ok(directories);
+  } catch (error) {
+    return new Err(normalizeError(error));
+  }
+}
+
+export async function deleteWorkOSOrganizationDSyncConnection(
+  directory: Directory
+): Promise<Result<void, Error>> {
+  try {
+    await getWorkOS().directorySync.deleteDirectory(directory.id);
+
+    return new Ok(undefined);
   } catch (error) {
     return new Err(normalizeError(error));
   }

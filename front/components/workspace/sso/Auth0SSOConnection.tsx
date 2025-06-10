@@ -1,4 +1,3 @@
-import type { WorkspaceType } from "@dust-tt/client";
 import { assertNever } from "@dust-tt/client";
 import {
   Button,
@@ -40,6 +39,7 @@ import type {
   Auth0SupportedEnterpriseConnectionStrategies,
   PlanType,
   WorkspaceEnterpriseConnection,
+  WorkspaceType,
 } from "@app/types";
 import { connectionStrategyToHumanReadable } from "@app/types";
 
@@ -74,11 +74,12 @@ export default function Auth0SSOConnection({
 
   const { enterpriseConnection, mutateEnterpriseConnection } =
     useWorkspaceEnterpriseConnection({
-      workspaceId: owner.sId,
+      owner,
     });
 
   return (
-    <Page.Vertical gap="sm">
+    <Page.Vertical gap="lg">
+      <Page.H variant="h4">Authentication and access</Page.H>
       <div className="flex w-full flex-row items-center gap-2">
         <div className="flex-1">
           <Page.H variant="h5">Single Sign-On (SSO)</Page.H>

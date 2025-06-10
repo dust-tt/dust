@@ -8,7 +8,7 @@ import {
 } from "@app/lib/api/workos/organization";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
-import type { WorkOSSSOConnectionStatus } from "@app/lib/types/workos";
+import type { WorkOSConnectionSyncStatus } from "@app/lib/types/workos";
 import { WorkOSPortalIntent } from "@app/lib/types/workos";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
@@ -16,7 +16,7 @@ import { normalizeError } from "@app/types";
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<WorkOSSSOConnectionStatus>>,
+  res: NextApiResponse<WithAPIErrorResponse<WorkOSConnectionSyncStatus>>,
   auth: Authenticator
 ) {
   if (!auth.isAdmin()) {
@@ -54,7 +54,6 @@ async function handler(
   const r = await getWorkOSOrganizationSSOConnections({
     workspace,
   });
-
   if (r.isErr()) {
     return apiError(req, res, {
       status_code: 500,
@@ -80,7 +79,7 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      let status: WorkOSSSOConnectionStatus["status"] = "not_configured";
+      let status: WorkOSConnectionSyncStatus["status"] = "not_configured";
 
       if (activeConnection) {
         status =
@@ -101,7 +100,7 @@ async function handler(
               type: activeConnection.type,
             }
           : null,
-        setupSSOLink: link,
+        setupLink: link,
         status,
       });
       return;

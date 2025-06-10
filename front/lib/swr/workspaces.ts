@@ -12,21 +12,22 @@ import type { GetWorkspaceFeatureFlagsResponseType } from "@app/pages/api/w/[wId
 import type { GetSubscriptionsResponseBody } from "@app/pages/api/w/[wId]/subscriptions";
 import type { GetWorkspaceAnalyticsResponse } from "@app/pages/api/w/[wId]/workspace-analytics";
 import type {
+  LightWorkspaceType,
   WhitelistableFeature,
   WorkspaceEnterpriseConnection,
   WorkspaceType,
 } from "@app/types";
 
 export function useWorkspaceSubscriptions({
-  workspaceId,
+  owner,
 }: {
-  workspaceId: string;
+  owner: LightWorkspaceType;
 }) {
   const workspaceSubscrptionsFetcher: Fetcher<GetSubscriptionsResponseBody> =
     fetcher;
 
   const { data, error } = useSWRWithDefaults(
-    `/api/w/${workspaceId}/subscriptions`,
+    `/api/w/${owner.sId}/subscriptions`,
     workspaceSubscrptionsFetcher
   );
 
@@ -38,16 +39,16 @@ export function useWorkspaceSubscriptions({
 }
 
 export function useWorkspaceAnalytics({
-  workspaceId,
+  owner,
   disabled,
 }: {
-  workspaceId: string;
+  owner: LightWorkspaceType;
   disabled?: boolean;
 }) {
   const analyticsFetcher: Fetcher<GetWorkspaceAnalyticsResponse> = fetcher;
 
   const { data, error } = useSWRWithDefaults(
-    `/api/w/${workspaceId}/workspace-analytics`,
+    `/api/w/${owner.sId}/workspace-analytics`,
     analyticsFetcher,
     {
       disabled,
@@ -62,10 +63,10 @@ export function useWorkspaceAnalytics({
 }
 
 export function useWorkspaceEnterpriseConnection({
-  workspaceId,
+  owner,
   disabled,
 }: {
-  workspaceId: string;
+  owner: LightWorkspaceType;
   disabled?: boolean;
 }) {
   const workspaceEnterpriseConnectionFetcher: Fetcher<{
@@ -73,7 +74,7 @@ export function useWorkspaceEnterpriseConnection({
   }> = fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(
-    workspaceId ? `/api/w/${workspaceId}/enterprise-connection` : null,
+    `/api/w/${owner.sId}/enterprise-connection`,
     workspaceEnterpriseConnectionFetcher,
     {
       disabled,
@@ -89,17 +90,17 @@ export function useWorkspaceEnterpriseConnection({
 }
 
 export function useWorkspaceActiveSubscription({
-  workspaceId,
+  owner,
   disabled,
 }: {
-  workspaceId: string;
+  owner: LightWorkspaceType;
   disabled?: boolean;
 }) {
   const workspaceSubscriptionsFetcher: Fetcher<GetSubscriptionsResponseBody> =
     fetcher;
 
   const { data, error } = useSWRWithDefaults(
-    `/api/w/${workspaceId}/subscriptions`,
+    `/api/w/${owner.sId}/subscriptions`,
     workspaceSubscriptionsFetcher,
     {
       disabled,
@@ -157,35 +158,4 @@ export function useFeatureFlags({
     isFeatureFlagsError: error,
     hasFeature,
   };
-}
-
-export function useSyncWorkOSDirectoriesAndUsers(owner: WorkspaceType) {
-  const sendNotification = useSendNotification();
-
-  const triggerFullSync = async () => {
-    const res = await fetch(`/api/w/${owner.sId}/workos/sync`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
-
-    if (res.ok) {
-      const result = await res.json();
-      sendNotification({
-        type: "success",
-        title: "Sync Completed",
-      });
-      return result;
-    } else {
-      const errorData = await getErrorFromResponse(res);
-      sendNotification({
-        type: "error",
-        title: "Sync Failed",
-        description: errorData.message,
-      });
-    }
-  };
-
-  return { triggerFullSync };
 }

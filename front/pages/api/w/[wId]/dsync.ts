@@ -1,10 +1,15 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import { getWorkOSOrganizationDSyncDirectories } from "@app/lib/api/workos/organization";
+import {
+  deleteWorkOSOrganizationDSyncConnection,
+  generateWorkOSAdminPortalUrl,
+  getWorkOSOrganizationDSyncDirectories,
+} from "@app/lib/api/workos/organization";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import type { WorkOSConnectionSyncStatus } from "@app/lib/types/workos";
+import { WorkOSPortalIntent } from "@app/lib/types/workos";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import { normalizeError } from "@app/types";
@@ -14,16 +19,6 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<WorkOSConnectionSyncStatus>>,
   auth: Authenticator
 ) {
-  if (req.method !== "GET") {
-    return apiError(req, res, {
-      status_code: 405,
-      api_error: {
-        type: "method_not_supported_error",
-        message: "The method passed is not supported.",
-      },
-    });
-  }
-
   if (!auth.isAdmin()) {
     return apiError(req, res, {
       status_code: 403,
@@ -35,7 +30,6 @@ async function handler(
   }
 
   const workspace = auth.getNonNullableWorkspace();
-
   if (!workspace.workOSOrganizationId) {
     return apiError(req, res, {
       status_code: 404,
@@ -60,7 +54,6 @@ async function handler(
   const r = await getWorkOSOrganizationDSyncDirectories({
     workspace,
   });
-
   if (r.isErr()) {
     return apiError(req, res, {
       status_code: 500,
@@ -82,23 +75,62 @@ async function handler(
     });
   }
 
-  const directory = directories[0];
-  let status: WorkOSConnectionSyncStatus["status"] = "not_configured";
+  const [activeDirectory] = directories;
 
-  if (directory) {
-    status = directory.state === "active" ? "configured" : "configuring";
+  switch (req.method) {
+    case "GET":
+      let status: WorkOSConnectionSyncStatus["status"] = "not_configured";
+
+      if (activeDirectory) {
+        status =
+          activeDirectory.state === "active" ? "configured" : "configuring";
+      }
+
+      const { link } = await generateWorkOSAdminPortalUrl({
+        organization: workspace.workOSOrganizationId,
+        workOSIntent: WorkOSPortalIntent.DSync,
+        returnUrl: `${req.headers.origin}/w/${auth.getNonNullableWorkspace().sId}/members`,
+      });
+
+      res.status(200).json({
+        status,
+        connection: activeDirectory
+          ? {
+              id: activeDirectory.id,
+              state: activeDirectory.state,
+              type: activeDirectory.type,
+            }
+          : null,
+        setupLink: link,
+      });
+
+      return;
+
+    case "DELETE":
+      const r = await deleteWorkOSOrganizationDSyncConnection(activeDirectory);
+
+      if (r.isErr()) {
+        return apiError(req, res, {
+          status_code: 500,
+          api_error: {
+            type: "workos_server_error",
+            message: `Failed to delete SSO connection: ${normalizeError(r.error).message}`,
+          },
+        });
+      }
+
+      res.status(204).end();
+      return;
+
+    default:
+      return apiError(req, res, {
+        status_code: 405,
+        api_error: {
+          type: "method_not_supported_error",
+          message: "The method passed is not supported.",
+        },
+      });
   }
-
-  return res.status(200).json({
-    status,
-    connection: directory
-      ? {
-          id: directory.id,
-          state: directory.state,
-          type: directory.type,
-        }
-      : null,
-  });
 }
 
 export default withSessionAuthenticationForWorkspace(handler);

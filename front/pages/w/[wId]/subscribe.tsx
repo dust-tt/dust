@@ -48,7 +48,7 @@ export default function Subscribe({
   const { user } = useUser();
 
   const { subscriptions } = useWorkspaceSubscriptions({
-    workspaceId: owner.sId,
+    owner,
   });
 
   const [billingPeriod, setBillingPeriod] =

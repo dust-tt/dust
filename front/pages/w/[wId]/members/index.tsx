@@ -14,7 +14,6 @@ import AppContentLayout from "@app/components/sparkle/AppContentLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { ChangeMemberModal } from "@app/components/workspace/ChangeMemberModal";
 import type { EnterpriseConnectionStrategyDetails } from "@app/components/workspace/SSOConnection";
-import { WorkOSConnection } from "@app/components/workspace/WorkOSConnection";
 import WorkspaceAccessPanel from "@app/components/workspace/WorkspaceAccessPanel";
 import config from "@app/lib/api/config";
 import {
@@ -108,10 +107,6 @@ export default function WorkspaceAdmin({
   const [inviteBlockedPopupReason, setInviteBlockedPopupReason] =
     useState<WorkspaceLimit | null>(null);
 
-  const { hasFeature } = useFeatureFlags({
-    workspaceId: owner.sId,
-  });
-
   const onInviteClick = (event: MouseEvent) => {
     if (!isUpgraded(plan)) {
       setInviteBlockedPopupReason("cant_invite_free_plan");
@@ -147,7 +142,7 @@ export default function WorkspaceAdmin({
       owner={owner}
       subNavigation={subNavigationAdmin({ owner, current: "members" })}
     >
-      <Page.Vertical gap="xl" align="stretch">
+      <Page.Vertical gap="lg" align="stretch">
         <Page.Header
           title="Domain & Members"
           icon={UsersIcon}
@@ -186,7 +181,6 @@ export default function WorkspaceAdmin({
             searchTerm={searchTerm}
           />
         </div>
-        {hasFeature("workos") && <WorkOSConnection owner={owner} />}
         {popup}
       </Page.Vertical>
     </AppContentLayout>
