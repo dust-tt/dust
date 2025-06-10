@@ -536,19 +536,9 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       );
     }
 
-    const regularGroups = this.groups.filter(
-      (group) => group.kind === "regular"
-    );
-
-    assert(
-      regularGroups.length === 1,
-      `Expected exactly one regular group for the space, but found ${regularGroups.length}.`
-    );
-
-    const [defaultSpaceGroup] = regularGroups;
-
-    // Validate user exists and is workspace member
+    const defaultSpaceGroup = this.getDefaultSpaceGroup();
     const user = await UserResource.fetchById(userId);
+
     if (!user) {
       return new Err(new DustError("user_not_found", "User not found."));
     }
@@ -576,6 +566,17 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         break;
     }
     return new Ok(user);
+  }
+
+  private getDefaultSpaceGroup(): GroupResource {
+    const regularGroups = this.groups.filter(
+      (group) => group.kind === "regular"
+    );
+    assert(
+      regularGroups.length === 1,
+      `Expected exactly one regular group for the space, but found ${regularGroups.length}.`
+    );
+    return regularGroups[0];
   }
 
   /**
