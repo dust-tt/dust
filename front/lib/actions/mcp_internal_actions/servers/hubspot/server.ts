@@ -46,7 +46,6 @@ const serverInfo: InternalMCPServerDefinitionType = {
     "Supports creating, retrieving, and searching CRM objects (contacts, companies, deals, etc.), managing engagements, and accessing object properties, etc.",
   authorization: {
     provider: "hubspot" as const,
-    use_case: "platform_actions" as const,
     supported_use_cases: ["platform_actions"] as const,
   },
   icon: "HubspotLogo",
@@ -412,9 +411,6 @@ const createServer = (): McpServer => {
           hs_note_body: z.string().describe("The content of the note."),
           hs_timestamp: z
             .string()
-            .datetime({
-              message: "Timestamp must be a valid ISO 8601 date string",
-            })
             .optional()
             .describe(
               "The timestamp of the note (ISO 8601 format). Defaults to current time if not provided."

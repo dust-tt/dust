@@ -117,7 +117,6 @@ export function CreateMCPServerDialog({
           if (discoverOAuthMetadataRes.value.oauthRequired) {
             setAuthorization({
               provider: "mcp",
-              use_case: "platform_actions",
               supported_use_cases: ["platform_actions", "personal_actions"],
             });
 

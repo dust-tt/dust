@@ -93,8 +93,6 @@ export function ConnectMCPServerDialog({
           ) {
             setAuthorization({
               provider: "mcp",
-              // During setup, the use case is always "platform_actions".
-              use_case: "platform_actions",
               supported_use_cases: ["platform_actions", "personal_actions"],
             });
             setAuthCredentials({

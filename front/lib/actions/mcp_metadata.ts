@@ -46,8 +46,6 @@ import { assertNever, Err, isOAuthProvider, Ok } from "@app/types";
 
 export type AuthorizationInfo = {
   provider: OAuthProvider;
-  // TODO(mcp): remove use_case once the code has been updated to use the view.
-  use_case: MCPOAuthUseCase;
   supported_use_cases: MCPOAuthUseCase[];
   scope?: string;
 };
@@ -210,7 +208,6 @@ export const connectToMCPServer = async (
                     new MCPServerPersonalAuthenticationRequiredError(
                       params.mcpServerId,
                       metadata.authorization.provider,
-                      params.oAuthUseCase,
                       metadata.authorization.scope
                     )
                   );
@@ -267,8 +264,7 @@ export const connectToMCPServer = async (
                 return new Err(
                   new MCPServerPersonalAuthenticationRequiredError(
                     params.mcpServerId,
-                    remoteMCPServer.authorization.provider,
-                    params.oAuthUseCase
+                    "mcp"
                   )
                 );
               } else {
