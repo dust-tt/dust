@@ -19,7 +19,8 @@ import { useCallback, useMemo } from "react";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import { getDocumentIcon } from "@app/components/actions/retrieval/utils";
-import type {
+import {
+  isDataSourceNodeContentType,
   ReasoningSuccessOutputType,
   SqlQueryOutputType,
   ThinkingOutputType,
@@ -245,7 +246,20 @@ export function SearchResultDetails({
             href: node.sourceUrl || undefined,
           }));
         }
-        return null;
+        if (isDataSourceNodeContentType(r)) {
+          const { metadata } = r.resource;
+          return [
+            {
+              description: `${metadata.path}${
+                metadata.lastUpdatedAt ? ` • ${metadata.lastUpdatedAt}` : ""
+              }`,
+              title: metadata.title,
+              icon: getDocumentIcon(metadata.connectorProvider),
+              href: metadata.sourceUrl || undefined,
+            },
+          ];
+        }
+        return [null];
       })
     );
   }, [actionOutput]);
