@@ -213,6 +213,12 @@ const config = {
   getWorkOSWebhookSigningSecret: (): string => {
     return EnvironmentConfig.getEnvVariable("WORKOS_WEBHOOK_SIGNING_SECRET");
   },
+  getWorkOSActionSecret: (): string => {
+    return EnvironmentConfig.getEnvVariable("WORKOS_ACTION_SECRET");
+  },
+  getWorkOSActionSigningSecret: (): string => {
+    return EnvironmentConfig.getEnvVariable("WORKOS_ACTION_SIGNING_SECRET");
+  },
 
   // Profiler.
   getProfilerSecret: (): string | undefined => {
