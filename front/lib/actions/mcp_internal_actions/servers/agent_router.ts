@@ -17,6 +17,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
   description: "Tools with access to the published agents of the workspace.",
   icon: "ActionRobotIcon",
   authorization: null,
+  documentationUrl: null,
 };
 
 const createServer = (auth: Authenticator): McpServer => {

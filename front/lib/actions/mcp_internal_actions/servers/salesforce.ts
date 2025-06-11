@@ -3,15 +3,10 @@ import jsforce from "jsforce";
 import { z } from "zod";
 
 import {
-  getConnectionForInternalMCPServer,
-  makeMCPToolPersonalAuthenticationRequiredError,
-} from "@app/lib/actions/mcp_internal_actions/authentication";
-import {
   makeMCPToolJSONSuccess,
   makeMCPToolTextSuccess,
 } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
-import type { Authenticator } from "@app/lib/auth";
 
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "salesforce",
@@ -19,15 +14,15 @@ const serverInfo: InternalMCPServerDefinitionType = {
   description: "Salesforce tools.",
   authorization: {
     provider: "salesforce" as const,
-    use_case: "personal_actions" as const,
     supported_use_cases: ["personal_actions", "platform_actions"] as const,
   },
   icon: "SalesforceLogo",
+  documentationUrl: null,
 };
 
 const SF_API_VERSION = "57.0";
 
-const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
+const createServer = (): McpServer => {
   const server = new McpServer(serverInfo, {
     instructions: `You have access to the following tools: execute_read_query, list_objects, and describe_object.
 
@@ -82,22 +77,9 @@ This is the most reliable way to discover the correct names for fields and relat
     {
       query: z.string().describe("The SOQL read query to execute"),
     },
-    async ({ query }) => {
-      const connection = await getConnectionForInternalMCPServer(auth, {
-        mcpServerId,
-        connectionType: "personal",
-      });
-      const accessToken = connection?.access_token;
-      const instanceUrl = connection?.connection.metadata.instance_url as
-        | string
-        | undefined;
-
-      if (!accessToken || !instanceUrl) {
-        return makeMCPToolPersonalAuthenticationRequiredError(
-          mcpServerId,
-          serverInfo.authorization!
-        );
-      }
+    async ({ query }, { authInfo }) => {
+      const accessToken = authInfo?.token;
+      const instanceUrl = authInfo?.extra?.instance_url as string | undefined;
 
       const conn = new jsforce.Connection({
         instanceUrl,
@@ -125,23 +107,10 @@ This is the most reliable way to discover the correct names for fields and relat
         .default("all")
         .describe("Filter objects by type: all, standard, or custom"),
     },
-    async ({ filter }) => {
-      const connection = await getConnectionForInternalMCPServer(auth, {
-        mcpServerId,
-        connectionType: "personal",
-      });
+    async ({ filter }, { authInfo }) => {
+      const accessToken = authInfo?.token;
+      const instanceUrl = authInfo?.extra?.instance_url as string | undefined;
 
-      const accessToken = connection?.access_token;
-      const instanceUrl = connection?.connection.metadata.instance_url as
-        | string
-        | undefined;
-
-      if (!accessToken || !instanceUrl) {
-        return makeMCPToolPersonalAuthenticationRequiredError(
-          mcpServerId,
-          serverInfo.authorization!
-        );
-      }
       const conn = new jsforce.Connection({
         instanceUrl,
         accessToken,
@@ -174,23 +143,10 @@ This is the most reliable way to discover the correct names for fields and relat
     {
       objectName: z.string().describe("The name of the object to describe"),
     },
-    async ({ objectName }) => {
-      const connection = await getConnectionForInternalMCPServer(auth, {
-        mcpServerId,
-        connectionType: "personal",
-      });
+    async ({ objectName }, { authInfo }) => {
+      const accessToken = authInfo?.token;
+      const instanceUrl = authInfo?.extra?.instance_url as string | undefined;
 
-      const accessToken = connection?.access_token;
-      const instanceUrl = connection?.connection.metadata.instance_url as
-        | string
-        | undefined;
-
-      if (!accessToken || !instanceUrl) {
-        return makeMCPToolPersonalAuthenticationRequiredError(
-          mcpServerId,
-          serverInfo.authorization!
-        );
-      }
       const conn = new jsforce.Connection({
         instanceUrl,
         accessToken,

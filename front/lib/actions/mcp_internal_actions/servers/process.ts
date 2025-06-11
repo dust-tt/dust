@@ -54,6 +54,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
   description: "Structured extraction",
   icon: "ActionScanIcon",
   authorization: null,
+  documentationUrl: null,
 };
 
 const EXTRACT_TOOL_JSON_SCHEMA_ARGUMENT_DESCRIPTION =

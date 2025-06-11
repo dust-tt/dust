@@ -993,7 +993,7 @@ function ActionEditor({
     disabled: !selectedMCPServerView?.server.authorization,
   });
 
-  const isConnected = connections.some(
+  const connection = connections.find(
     (c) =>
       c.internalMCPServerId === selectedMCPServerView?.server.sId ||
       c.remoteMCPServerId === selectedMCPServerView?.server.sId
@@ -1032,8 +1032,8 @@ function ActionEditor({
           {action.type === "MCP" && selectedMCPServerView ? (
             <MCPActionHeader
               mcpServer={selectedMCPServerView.server}
-              isAuthorized={Boolean(selectedMCPServerView.server.authorization)}
-              isConnected={isConnected}
+              oAuthUseCase={selectedMCPServerView.oAuthUseCase}
+              isConnected={Boolean(connection)}
               isConnectionsLoading={isConnectionsLoading}
               action={action}
             />

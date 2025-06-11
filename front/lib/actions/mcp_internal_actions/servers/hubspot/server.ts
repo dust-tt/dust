@@ -38,7 +38,6 @@ import {
   makeMCPToolTextSuccess,
 } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
-import type { Authenticator } from "@app/lib/auth";
 
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "hubspot",
@@ -47,13 +46,13 @@ const serverInfo: InternalMCPServerDefinitionType = {
     "Supports creating, retrieving, and searching CRM objects (contacts, companies, deals, etc.), managing engagements, and accessing object properties, etc.",
   authorization: {
     provider: "hubspot" as const,
-    use_case: "platform_actions" as const,
     supported_use_cases: ["platform_actions"] as const,
   },
   icon: "HubspotLogo",
+  documentationUrl: null,
 };
 
-const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
+const createServer = (): McpServer => {
   const server = new McpServer(serverInfo);
 
   server.tool(
@@ -63,17 +62,20 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
       objectType: z.enum(ALL_OBJECTS),
       creatableOnly: z.boolean().optional(),
     },
-    async ({ objectType, creatableOnly = true }) => {
-      return withAuth(auth, mcpServerId, async (accessToken) => {
-        const result = await getObjectProperties({
-          accessToken,
-          objectType,
-          creatableOnly,
-        });
-        return makeMCPToolJSONSuccess({
-          message: "Operation completed successfully",
-          result,
-        });
+    async ({ objectType, creatableOnly = true }, { authInfo }) => {
+      return withAuth({
+        action: async (accessToken) => {
+          const result = await getObjectProperties({
+            accessToken,
+            objectType,
+            creatableOnly,
+          });
+          return makeMCPToolJSONSuccess({
+            message: "Operation completed successfully",
+            result,
+          });
+        },
+        authInfo,
       });
     }
   );
@@ -95,17 +97,20 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
         .optional()
         .describe("Optional array of associations to create."),
     },
-    async ({ properties, associations }) => {
-      return withAuth(auth, mcpServerId, async (accessToken) => {
-        const result = await createContact({
-          accessToken,
-          properties,
-          associations,
-        });
-        return makeMCPToolJSONSuccess({
-          message: "Contact created successfully.",
-          result,
-        });
+    async ({ properties, associations }, { authInfo }) => {
+      return withAuth({
+        action: async (accessToken) => {
+          const result = await createContact({
+            accessToken,
+            properties,
+            associations,
+          });
+          return makeMCPToolJSONSuccess({
+            message: "Contact created successfully.",
+            result,
+          });
+        },
+        authInfo,
       });
     }
   );
@@ -117,16 +122,19 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
       objectType: z.enum(ALL_OBJECTS),
       email: z.string().describe("The email address of the object."),
     },
-    async ({ objectType, email }) => {
-      return withAuth(auth, mcpServerId, async (accessToken) => {
-        const object = await getObjectByEmail(accessToken, objectType, email);
-        if (!object) {
-          return makeMCPToolTextError(ERROR_MESSAGES.OBJECT_NOT_FOUND);
-        }
-        return makeMCPToolJSONSuccess({
-          message: "Operation completed successfully",
-          result: object,
-        });
+    async ({ objectType, email }, { authInfo }) => {
+      return withAuth({
+        action: async (accessToken) => {
+          const object = await getObjectByEmail(accessToken, objectType, email);
+          if (!object) {
+            return makeMCPToolTextError(ERROR_MESSAGES.OBJECT_NOT_FOUND);
+          }
+          return makeMCPToolJSONSuccess({
+            message: "Operation completed successfully",
+            result: object,
+          });
+        },
+        authInfo,
       });
     }
   );
@@ -159,25 +167,28 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
         )
         .describe("Array of property filters to apply."),
     },
-    async ({ objectType, filters }) => {
-      return withAuth(auth, mcpServerId, async (accessToken) => {
-        const count = await countObjectsByProperties(
-          accessToken,
-          objectType,
-          filters
-        );
-        if (!count) {
-          return makeMCPToolTextError(ERROR_MESSAGES.NO_OBJECTS_FOUND);
-        }
-        if (count === MAX_COUNT_LIMIT) {
-          return makeMCPToolTextError(
-            `Can't retrieve the exact number of objects matching the filters (hit Hubspot API limit of max ${MAX_COUNT_LIMIT} total objects).`
+    async ({ objectType, filters }, { authInfo }) => {
+      return withAuth({
+        action: async (accessToken) => {
+          const count = await countObjectsByProperties(
+            accessToken,
+            objectType,
+            filters
           );
-        }
-        return makeMCPToolTextSuccess({
-          message: "Operation completed successfully",
-          result: count.toString(),
-        });
+          if (!count) {
+            return makeMCPToolTextError(ERROR_MESSAGES.NO_OBJECTS_FOUND);
+          }
+          if (count === MAX_COUNT_LIMIT) {
+            return makeMCPToolTextError(
+              `Can't retrieve the exact number of objects matching the filters (hit Hubspot API limit of max ${MAX_COUNT_LIMIT} total objects).`
+            );
+          }
+          return makeMCPToolTextSuccess({
+            message: "Operation completed successfully",
+            result: count.toString(),
+          });
+        },
+        authInfo,
       });
     }
   );
@@ -189,16 +200,23 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
       objectType: z.enum(SIMPLE_OBJECTS),
       limit: z.number().optional(),
     },
-    async ({ objectType, limit = MAX_LIMIT }) => {
-      return withAuth(auth, mcpServerId, async (accessToken) => {
-        const objects = await getLatestObjects(accessToken, objectType, limit);
-        if (!objects.length) {
-          return makeMCPToolTextError(ERROR_MESSAGES.NO_OBJECTS_FOUND);
-        }
-        return makeMCPToolJSONSuccess({
-          message: "Operation completed successfully",
-          result: objects,
-        });
+    async ({ objectType, limit = MAX_LIMIT }, { authInfo }) => {
+      return withAuth({
+        action: async (accessToken) => {
+          const objects = await getLatestObjects(
+            accessToken,
+            objectType,
+            limit
+          );
+          if (!objects.length) {
+            return makeMCPToolTextError(ERROR_MESSAGES.NO_OBJECTS_FOUND);
+          }
+          return makeMCPToolJSONSuccess({
+            message: "Operation completed successfully",
+            result: objects,
+          });
+        },
+        authInfo,
       });
     }
   );
@@ -220,17 +238,20 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
         .optional()
         .describe("Optional array of associations to create."),
     },
-    async ({ properties, associations }) => {
-      return withAuth(auth, mcpServerId, async (accessToken) => {
-        const result = await createCompany({
-          accessToken,
-          properties,
-          associations,
-        });
-        return makeMCPToolJSONSuccess({
-          message: "Company created successfully.",
-          result,
-        });
+    async ({ properties, associations }, { authInfo }) => {
+      return withAuth({
+        action: async (accessToken) => {
+          const result = await createCompany({
+            accessToken,
+            properties,
+            associations,
+          });
+          return makeMCPToolJSONSuccess({
+            message: "Company created successfully.",
+            result,
+          });
+        },
+        authInfo,
       });
     }
   );
@@ -252,17 +273,20 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
         .optional()
         .describe("Optional array of associations to create."),
     },
-    async ({ properties, associations }) => {
-      return withAuth(auth, mcpServerId, async (accessToken) => {
-        const result = await createDeal({
-          accessToken,
-          properties,
-          associations,
-        });
-        return makeMCPToolJSONSuccess({
-          message: "Deal created successfully.",
-          result,
-        });
+    async ({ properties, associations }, { authInfo }) => {
+      return withAuth({
+        action: async (accessToken) => {
+          const result = await createDeal({
+            accessToken,
+            properties,
+            associations,
+          });
+          return makeMCPToolJSONSuccess({
+            message: "Deal created successfully.",
+            result,
+          });
+        },
+        authInfo,
       });
     }
   );
@@ -286,17 +310,20 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
         .optional()
         .describe("Optional array of associations to create."),
     },
-    async ({ properties, associations }) => {
-      return withAuth(auth, mcpServerId, async (accessToken) => {
-        const result = await createLead({
-          accessToken,
-          properties,
-          associations,
-        });
-        return makeMCPToolJSONSuccess({
-          message: "Lead (as Deal) created successfully.",
-          result,
-        });
+    async ({ properties, associations }, { authInfo }) => {
+      return withAuth({
+        action: async (accessToken) => {
+          const result = await createLead({
+            accessToken,
+            properties,
+            associations,
+          });
+          return makeMCPToolJSONSuccess({
+            message: "Lead (as Deal) created successfully.",
+            result,
+          });
+        },
+        authInfo,
       });
     }
   );
@@ -322,17 +349,20 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
         .optional()
         .describe("Optional array of associations to create."),
     },
-    async (input) => {
-      return withAuth(auth, mcpServerId, async (accessToken) => {
-        const result = await createTask({
-          accessToken,
-          properties: input.properties,
-          associations: input.associations,
-        });
-        return makeMCPToolJSONSuccess({
-          message: "Task created successfully.",
-          result,
-        });
+    async (input, { authInfo }) => {
+      return withAuth({
+        action: async (accessToken) => {
+          const result = await createTask({
+            accessToken,
+            properties: input.properties,
+            associations: input.associations,
+          });
+          return makeMCPToolJSONSuccess({
+            message: "Task created successfully.",
+            result,
+          });
+        },
+        authInfo,
       });
     }
   );
@@ -354,17 +384,20 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
         .optional()
         .describe("Optional array of associations to create."),
     },
-    async (input) => {
-      return withAuth(auth, mcpServerId, async (accessToken) => {
-        const result = await createTicket({
-          accessToken,
-          properties: input.properties,
-          associations: input.associations,
-        });
-        return makeMCPToolJSONSuccess({
-          message: "Ticket created successfully.",
-          result,
-        });
+    async (input, { authInfo }) => {
+      return withAuth({
+        action: async (accessToken) => {
+          const result = await createTicket({
+            accessToken,
+            properties: input.properties,
+            associations: input.associations,
+          });
+          return makeMCPToolJSONSuccess({
+            message: "Ticket created successfully.",
+            result,
+          });
+        },
+        authInfo,
       });
     }
   );
@@ -378,9 +411,6 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
           hs_note_body: z.string().describe("The content of the note."),
           hs_timestamp: z
             .string()
-            .datetime({
-              message: "Timestamp must be a valid ISO 8601 date string",
-            })
             .optional()
             .describe(
               "The timestamp of the note (ISO 8601 format). Defaults to current time if not provided."
@@ -398,17 +428,20 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
         .optional()
         .describe("Direct IDs of objects to associate the note with."),
     },
-    async ({ properties, associations }) => {
-      return withAuth(auth, mcpServerId, async (accessToken) => {
-        const result = await createNote({
-          accessToken,
-          properties,
-          associations,
-        });
-        return makeMCPToolJSONSuccess({
-          message: "Note created successfully.",
-          result,
-        });
+    async ({ properties, associations }, { authInfo }) => {
+      return withAuth({
+        action: async (accessToken) => {
+          const result = await createNote({
+            accessToken,
+            properties,
+            associations,
+          });
+          return makeMCPToolJSONSuccess({
+            message: "Note created successfully.",
+            result,
+          });
+        },
+        authInfo,
       });
     }
   );
@@ -432,17 +465,20 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
         .optional()
         .describe("Direct IDs of objects to associate the communication with."),
     },
-    async ({ properties, associations }) => {
-      return withAuth(auth, mcpServerId, async (accessToken) => {
-        const result = await createCommunication({
-          accessToken,
-          properties,
-          associations,
-        });
-        return makeMCPToolJSONSuccess({
-          message: `Communication (channel: ${properties.hs_communication_channel_type || "unknown"}) created successfully.`,
-          result,
-        });
+    async ({ properties, associations }, { authInfo }) => {
+      return withAuth({
+        action: async (accessToken) => {
+          const result = await createCommunication({
+            accessToken,
+            properties,
+            associations,
+          });
+          return makeMCPToolJSONSuccess({
+            message: `Communication (channel: ${properties.hs_communication_channel_type || "unknown"}) created successfully.`,
+            result,
+          });
+        },
+        authInfo,
       });
     }
   );
@@ -466,17 +502,20 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
         .optional()
         .describe("Direct IDs of objects to associate the meeting with."),
     },
-    async ({ properties, associations }) => {
-      return withAuth(auth, mcpServerId, async (accessToken) => {
-        const result = await createMeeting({
-          accessToken,
-          properties,
-          associations,
-        });
-        return makeMCPToolJSONSuccess({
-          message: "Meeting created successfully.",
-          result,
-        });
+    async ({ properties, associations }, { authInfo }) => {
+      return withAuth({
+        action: async (accessToken) => {
+          const result = await createMeeting({
+            accessToken,
+            properties,
+            associations,
+          });
+          return makeMCPToolJSONSuccess({
+            message: "Meeting created successfully.",
+            result,
+          });
+        },
+        authInfo,
       });
     }
   );
@@ -488,16 +527,19 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
     {
       contactId: z.string().describe("The ID of the contact to retrieve."),
     },
-    async ({ contactId }) => {
-      return withAuth(auth, mcpServerId, async (accessToken) => {
-        const result = await getContact(accessToken, contactId);
-        if (!result) {
-          return makeMCPToolTextError(ERROR_MESSAGES.OBJECT_NOT_FOUND);
-        }
-        return makeMCPToolJSONSuccess({
-          message: "Contact retrieved successfully.",
-          result,
-        });
+    async ({ contactId }, { authInfo }) => {
+      return withAuth({
+        action: async (accessToken) => {
+          const result = await getContact(accessToken, contactId);
+          if (!result) {
+            return makeMCPToolTextError(ERROR_MESSAGES.OBJECT_NOT_FOUND);
+          }
+          return makeMCPToolJSONSuccess({
+            message: "Contact retrieved successfully.",
+            result,
+          });
+        },
+        authInfo,
       });
     }
   );
@@ -509,16 +551,19 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
     {
       companyId: z.string().describe("The ID of the company to retrieve."),
     },
-    async ({ companyId }) => {
-      return withAuth(auth, mcpServerId, async (accessToken) => {
-        const result = await getCompany(accessToken, companyId);
-        if (!result) {
-          return makeMCPToolTextError(ERROR_MESSAGES.OBJECT_NOT_FOUND);
-        }
-        return makeMCPToolJSONSuccess({
-          message: "Company retrieved successfully.",
-          result,
-        });
+    async ({ companyId }, { authInfo }) => {
+      return withAuth({
+        action: async (accessToken) => {
+          const result = await getCompany(accessToken, companyId);
+          if (!result) {
+            return makeMCPToolTextError(ERROR_MESSAGES.OBJECT_NOT_FOUND);
+          }
+          return makeMCPToolJSONSuccess({
+            message: "Company retrieved successfully.",
+            result,
+          });
+        },
+        authInfo,
       });
     }
   );
@@ -530,16 +575,19 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
     {
       dealId: z.string().describe("The ID of the deal to retrieve."),
     },
-    async ({ dealId }) => {
-      return withAuth(auth, mcpServerId, async (accessToken) => {
-        const result = await getDeal(accessToken, dealId);
-        if (!result) {
-          return makeMCPToolTextError(ERROR_MESSAGES.OBJECT_NOT_FOUND);
-        }
-        return makeMCPToolJSONSuccess({
-          message: "Deal retrieved successfully.",
-          result,
-        });
+    async ({ dealId }, { authInfo }) => {
+      return withAuth({
+        action: async (accessToken) => {
+          const result = await getDeal(accessToken, dealId);
+          if (!result) {
+            return makeMCPToolTextError(ERROR_MESSAGES.OBJECT_NOT_FOUND);
+          }
+          return makeMCPToolJSONSuccess({
+            message: "Deal retrieved successfully.",
+            result,
+          });
+        },
+        authInfo,
       });
     }
   );
@@ -553,18 +601,21 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
         .string()
         .describe("The ID of the meeting (engagement) to retrieve."),
     },
-    async ({ meetingId }) => {
-      return withAuth(auth, mcpServerId, async (accessToken) => {
-        const result = await getMeeting(accessToken, meetingId);
-        if (!result) {
-          return makeMCPToolTextError(
-            ERROR_MESSAGES.OBJECT_NOT_FOUND + " Or it was not a meeting."
-          );
-        }
-        return makeMCPToolJSONSuccess({
-          message: "Meeting retrieved successfully.",
-          result,
-        });
+    async ({ meetingId }, { authInfo }) => {
+      return withAuth({
+        action: async (accessToken) => {
+          const result = await getMeeting(accessToken, meetingId);
+          if (!result) {
+            return makeMCPToolTextError(
+              ERROR_MESSAGES.OBJECT_NOT_FOUND + " Or it was not a meeting."
+            );
+          }
+          return makeMCPToolJSONSuccess({
+            message: "Meeting retrieved successfully.",
+            result,
+          });
+        },
+        authInfo,
       });
     }
   );
@@ -576,18 +627,21 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
     {
       fileId: z.string().describe("The ID of the file."),
     },
-    async ({ fileId }) => {
-      return withAuth(auth, mcpServerId, async (accessToken) => {
-        const result = await getFilePublicUrl(accessToken, fileId);
-        if (!result) {
-          return makeMCPToolTextError(
-            "File not found or public URL not available."
-          );
-        }
-        return makeMCPToolJSONSuccess({
-          message: "File public URL retrieved successfully.",
-          result: { url: result }, // Return as an object for consistency
-        });
+    async ({ fileId }, { authInfo }) => {
+      return withAuth({
+        action: async (accessToken) => {
+          const result = await getFilePublicUrl(accessToken, fileId);
+          if (!result) {
+            return makeMCPToolTextError(
+              "File not found or public URL not available."
+            );
+          }
+          return makeMCPToolJSONSuccess({
+            message: "File public URL retrieved successfully.",
+            result: { url: result }, // Return as an object for consistency
+          });
+        },
+        authInfo,
       });
     }
   );
@@ -602,20 +656,25 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
         .describe("The type of the object (contacts, companies, or deals)."),
       fromObjectId: z.string().describe("The ID of the object."),
     },
-    async ({ fromObjectType, fromObjectId }) => {
-      return withAuth(auth, mcpServerId, async (accessToken) => {
-        const result = await getAssociatedMeetings(
-          accessToken,
-          fromObjectType,
-          fromObjectId
-        );
-        if (result === null) {
-          return makeMCPToolTextError("Error retrieving associated meetings.");
-        }
-        return makeMCPToolJSONSuccess({
-          message: "Associated meetings retrieved successfully.",
-          result,
-        });
+    async ({ fromObjectType, fromObjectId }, { authInfo }) => {
+      return withAuth({
+        action: async (accessToken) => {
+          const result = await getAssociatedMeetings(
+            accessToken,
+            fromObjectType,
+            fromObjectId
+          );
+          if (result === null) {
+            return makeMCPToolTextError(
+              "Error retrieving associated meetings."
+            );
+          }
+          return makeMCPToolJSONSuccess({
+            message: "Associated meetings retrieved successfully.",
+            result,
+          });
+        },
+        authInfo,
       });
     }
   );
@@ -655,24 +714,29 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
       limit: z.number().optional().default(MAX_LIMIT),
       after: z.string().optional().describe("Pagination cursor."),
     },
-    async (input) => {
-      return withAuth(auth, mcpServerId, async (accessToken) => {
-        const result = await searchCrmObjects({
-          accessToken,
-          objectType: input.objectType,
-          filters: input.filters,
-          query: input.query,
-          propertiesToReturn: input.propertiesToReturn,
-          limit: input.limit,
-          after: input.after,
-        });
-        if (!result) {
-          return makeMCPToolTextError("Search failed or returned no results.");
-        }
-        return makeMCPToolJSONSuccess({
-          message: "CRM objects searched successfully.",
-          result,
-        });
+    async (input, { authInfo }) => {
+      return withAuth({
+        action: async (accessToken) => {
+          const result = await searchCrmObjects({
+            accessToken,
+            objectType: input.objectType,
+            filters: input.filters,
+            query: input.query,
+            propertiesToReturn: input.propertiesToReturn,
+            limit: input.limit,
+            after: input.after,
+          });
+          if (!result) {
+            return makeMCPToolTextError(
+              "Search failed or returned no results."
+            );
+          }
+          return makeMCPToolJSONSuccess({
+            message: "CRM objects searched successfully.",
+            result,
+          });
+        },
+        authInfo,
       });
     }
   );

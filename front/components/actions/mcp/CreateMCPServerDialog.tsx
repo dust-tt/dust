@@ -117,8 +117,7 @@ export function CreateMCPServerDialog({
           if (discoverOAuthMetadataRes.value.oauthRequired) {
             setAuthorization({
               provider: "mcp",
-              use_case: "platform_actions",
-              supported_use_cases: ["platform_actions"], // TODO(mcp): Add personal_actions option.
+              supported_use_cases: ["platform_actions", "personal_actions"],
             });
 
             setAuthCredentials(
@@ -300,7 +299,9 @@ export function CreateMCPServerDialog({
               setUseCase={setUseCase}
               setAuthCredentials={setAuthCredentials}
               setIsFormValid={setIsOAuthFormValid}
-              documentationUrl={internalMCPServer?.documentationUrl}
+              documentationUrl={
+                internalMCPServer?.documentationUrl ?? undefined
+              }
             />
           )}
         </DialogContainer>

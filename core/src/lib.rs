@@ -76,6 +76,7 @@ pub mod providers {
     pub mod google_ai_studio;
     pub mod helpers;
     pub mod openai_compatible_helpers;
+    pub mod openai_responses_api_helpers;
     pub mod togetherai;
     pub mod xai;
 }

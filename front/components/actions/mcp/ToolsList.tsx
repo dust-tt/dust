@@ -96,7 +96,7 @@ export function ToolsList({
                       {asDisplayName(tool.name)}
                     </h4>
                     {tool.description && (
-                      <p className="text-base text-muted-foreground dark:text-muted-foreground-night">
+                      <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
                         {tool.description}
                       </p>
                     )}

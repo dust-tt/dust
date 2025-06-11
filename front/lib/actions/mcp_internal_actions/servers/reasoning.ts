@@ -21,6 +21,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
     "Agent can decide to trigger a reasoning model for complex tasks.",
   icon: "ActionLightbulbIcon",
   authorization: null,
+  documentationUrl: null,
 };
 
 function createServer(

@@ -223,29 +223,32 @@ export function useCreateInternalMCPServer(owner: LightWorkspaceType) {
  * Note: this hook should not be called too frequently, as it is likely rate limited by the mcp server provider.
  */
 export function useDiscoverOAuthMetadata(owner: LightWorkspaceType) {
-  const discoverOAuthMetadata = async (
-    url: string
-  ): Promise<Result<DiscoverOAuthMetadataResponseBody, Error>> => {
-    const response = await fetch(
-      `/api/w/${owner.sId}/mcp/discover_oauth_metadata`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url }),
-      }
-    );
-
-    if (!response.ok) {
-      const error = await response.json();
-      return new Err(
-        new Error(
-          error.api_error?.message || "Failed to check OAuth connection"
-        )
+  const discoverOAuthMetadata = useCallback(
+    async (
+      url: string
+    ): Promise<Result<DiscoverOAuthMetadataResponseBody, Error>> => {
+      const response = await fetch(
+        `/api/w/${owner.sId}/mcp/discover_oauth_metadata`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url }),
+        }
       );
-    }
 
-    return new Ok(await response.json());
-  };
+      if (!response.ok) {
+        const error = await response.json();
+        return new Err(
+          new Error(
+            error.api_error?.message || "Failed to check OAuth connection"
+          )
+        );
+      }
+
+      return new Ok(await response.json());
+    },
+    [owner.sId]
+  );
 
   return { discoverOAuthMetadata };
 }
@@ -346,9 +349,9 @@ export function useSyncRemoteMCPServer(
 }
 
 /**
- * Hook to update a remote MCP server
+ * Hook to update an MCP server
  */
-export function useUpdateRemoteMCPServer(
+export function useUpdateMCPServer(
   owner: LightWorkspaceType,
   serverId: string
 ) {
@@ -358,12 +361,18 @@ export function useUpdateRemoteMCPServer(
     serverId,
   });
 
-  const updateServer = async (data: {
-    name: string;
-    icon: string;
-    description: string;
-    sharedSecret?: string;
-  }): Promise<PatchMCPServerResponseBody> => {
+  const updateServer = async (
+    data:
+      | {
+          name: string;
+          icon: string;
+          description: string;
+          sharedSecret?: string;
+        }
+      | {
+          oAuthUseCase: MCPOAuthUseCase;
+        }
+  ): Promise<PatchMCPServerResponseBody> => {
     const response = await fetch(`/api/w/${owner.sId}/mcp/${serverId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },

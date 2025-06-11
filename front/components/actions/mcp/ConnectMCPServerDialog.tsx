@@ -20,6 +20,7 @@ import type { MCPServerType } from "@app/lib/api/mcp";
 import {
   useCreateMCPServerConnection,
   useDiscoverOAuthMetadata,
+  useUpdateMCPServer,
 } from "@app/lib/swr/mcp_servers";
 import type {
   MCPOAuthUseCase,
@@ -61,6 +62,7 @@ export function ConnectMCPServerDialog({
     connectionType: "workspace",
   });
   const { discoverOAuthMetadata } = useDiscoverOAuthMetadata(owner);
+  const { updateServer } = useUpdateMCPServer(owner, mcpServer?.sId ?? "");
 
   const serverType = useMemo(
     () =>
@@ -91,9 +93,7 @@ export function ConnectMCPServerDialog({
           ) {
             setAuthorization({
               provider: "mcp",
-              // During setup, the use case is always "platform_actions".
-              use_case: "platform_actions",
-              supported_use_cases: ["platform_actions"], // TODO(mcp): Add personal_actions option.
+              supported_use_cases: ["platform_actions", "personal_actions"],
             });
             setAuthCredentials({
               ...discoverOAuthMetadataRes.value.connectionMetadata,
@@ -162,11 +162,16 @@ export function ConnectMCPServerDialog({
     }
 
     setExternalIsLoading(true);
-    // Then associate connection
+    // Then associate connection.
     await createMCPServerConnection({
       connectionId: cRes.value.connection_id,
       mcpServer: mcpServer,
       provider: authorization.provider,
+    });
+
+    // And update the oAuthUseCase for the MCP server.
+    await updateServer({
+      oAuthUseCase: useCase,
     });
 
     setExternalIsLoading(false);
@@ -202,7 +207,7 @@ export function ConnectMCPServerDialog({
               authCredentials={authCredentials}
               setAuthCredentials={setAuthCredentials}
               setIsFormValid={setIsFormValid}
-              documentationUrl={mcpServer?.documentationUrl}
+              documentationUrl={mcpServer?.documentationUrl ?? undefined}
             />
           )}
         </DialogContainer>

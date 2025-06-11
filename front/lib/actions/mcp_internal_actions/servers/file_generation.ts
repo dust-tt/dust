@@ -19,6 +19,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
   description: "Agent can generate and convert files.",
   authorization: null,
   icon: "ActionDocumentTextIcon",
+  documentationUrl: null,
 };
 
 const OUTPUT_FORMATS = [

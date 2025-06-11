@@ -2,14 +2,11 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { assert } from "console";
 import { z } from "zod";
 
-import { makeMCPToolPersonalAuthenticationRequiredError } from "@app/lib/actions/mcp_internal_actions/authentication";
-import { getConnectionForInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/authentication";
 import {
   makeMCPToolJSONSuccess,
   makeMCPToolTextError,
 } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
-import type { Authenticator } from "@app/lib/auth";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 
 const serverInfo: InternalMCPServerDefinitionType = {
@@ -18,7 +15,6 @@ const serverInfo: InternalMCPServerDefinitionType = {
   description: "Gmail tools for managing email drafts.",
   authorization: {
     provider: "gmail" as const,
-    use_case: "personal_actions" as const,
     supported_use_cases: ["personal_actions"] as const,
     scope:
       "https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.compose" as const,
@@ -27,7 +23,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
   documentationUrl: "https://docs.dust.tt/docs/gmail-tool-setup",
 };
 
-const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
+const createServer = (): McpServer => {
   const server = new McpServer(serverInfo);
 
   server.tool(
@@ -41,20 +37,8 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
           'Only return draft messages matching the specified query. Supports the same query format as the Gmail search box. For example, "from:someuser@example.com rfc822msgid:<somemsgid@example.com> is:unread".'
         ),
     },
-    async ({ q }) => {
-      const connection = await getConnectionForInternalMCPServer(auth, {
-        mcpServerId,
-        connectionType: "personal",
-      });
-
-      const accessToken = connection?.access_token;
-
-      if (!accessToken) {
-        return makeMCPToolPersonalAuthenticationRequiredError(
-          mcpServerId,
-          serverInfo.authorization!
-        );
-      }
+    async ({ q }, { authInfo }) => {
+      const accessToken = authInfo?.token;
 
       const response = await fetch(
         "https://gmail.googleapis.com/gmail/v1/users/me/drafts?q=" +
@@ -121,20 +105,8 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
         .describe("The content type of the email (text/plain or text/html)."),
       body: z.string().describe("The body of the email"),
     },
-    async ({ to, cc, bcc, subject, contentType, body }) => {
-      const connection = await getConnectionForInternalMCPServer(auth, {
-        mcpServerId,
-        connectionType: "personal",
-      });
-
-      const accessToken = connection?.access_token;
-
-      if (!accessToken) {
-        return makeMCPToolPersonalAuthenticationRequiredError(
-          mcpServerId,
-          serverInfo.authorization!
-        );
-      }
+    async ({ to, cc, bcc, subject, contentType, body }, { authInfo }) => {
+      const accessToken = authInfo?.token;
 
       // Create the email message with proper headers and content.
       const message = [
@@ -199,20 +171,8 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
       subject: z.string().describe("The subject of the draft to delete"),
       to: z.array(z.string()).describe("The email addresses of the recipients"),
     },
-    async ({ draftId, subject, to }) => {
-      const connection = await getConnectionForInternalMCPServer(auth, {
-        mcpServerId,
-        connectionType: "personal",
-      });
-
-      const accessToken = connection?.access_token;
-
-      if (!accessToken) {
-        return makeMCPToolPersonalAuthenticationRequiredError(
-          mcpServerId,
-          serverInfo.authorization!
-        );
-      }
+    async ({ draftId, subject, to }, { authInfo }) => {
+      const accessToken = authInfo?.token;
 
       assert(subject, "Subject is required - for user display");
       assert(

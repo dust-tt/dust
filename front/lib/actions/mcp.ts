@@ -9,7 +9,7 @@ import type {
 } from "@app/lib/actions/constants";
 import type { DustAppRunConfigurationType } from "@app/lib/actions/dust_app_run";
 import { tryCallMCPTool } from "@app/lib/actions/mcp_actions";
-import { MCPServerPersonalAuthenticationRequiredError } from "@app/lib/actions/mcp_internal_actions/authentication";
+import { MCPServerPersonalAuthenticationRequiredError } from "@app/lib/actions/mcp_authentication";
 import type { MCPServerAvailability } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
   augmentInputsWithConfiguration,
@@ -751,7 +751,6 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
             metadata: {
               mcp_server_id: toolCallResult.error.mcpServerId,
               provider: toolCallResult.error.provider,
-              use_case: toolCallResult.error.useCase,
               ...(toolCallResult.error.scope && {
                 scope: toolCallResult.error.scope,
               }),

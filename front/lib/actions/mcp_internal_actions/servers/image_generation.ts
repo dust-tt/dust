@@ -23,6 +23,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
   description: "Agent can generate images (GPT Image 1).",
   icon: "ActionImageIcon",
   authorization: null,
+  documentationUrl: null,
 };
 
 const createServer = (auth: Authenticator): McpServer => {

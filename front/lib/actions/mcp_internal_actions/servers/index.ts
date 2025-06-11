@@ -31,18 +31,16 @@ export async function getInternalMCPServer(
   auth: Authenticator,
   {
     internalMCPServerName,
-    mcpServerId,
   }: {
     internalMCPServerName: InternalMCPServerNameType;
-    mcpServerId: string;
   },
   agentLoopContext?: AgentLoopContextType
 ): Promise<McpServer> {
   switch (internalMCPServerName) {
     case "github":
-      return githubServer(auth, mcpServerId);
+      return githubServer();
     case "hubspot":
-      return hubspotServer(auth, mcpServerId);
+      return hubspotServer();
     case "image_generation":
       return imageGenerationDallEServer(auth);
     case "file_generation":
@@ -62,7 +60,7 @@ export async function getInternalMCPServer(
     case "missing_action_catcher":
       return missingActionCatcherServer(auth, agentLoopContext);
     case "notion":
-      return notionServer(auth, mcpServerId);
+      return notionServer();
     case "include_data":
       return includeDataServer(auth, agentLoopContext);
     case "run_agent":
@@ -76,11 +74,11 @@ export async function getInternalMCPServer(
     case "extract_data":
       return extractDataServer(auth, agentLoopContext);
     case "salesforce":
-      return salesforceServer(auth, mcpServerId);
+      return salesforceServer();
     case "gmail":
-      return gmailServer(auth, mcpServerId);
+      return gmailServer();
     case "google_calendar":
-      return calendarServer(auth, mcpServerId);
+      return calendarServer();
     case "data_sources_file_system":
       return dataSourcesFileSystemServer(auth, agentLoopContext);
     default:

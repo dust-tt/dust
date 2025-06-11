@@ -518,6 +518,18 @@ export async function syncNonThreaded(
       );
     }
     if (c?.messages === undefined) {
+      logger.error(
+        {
+          channelId,
+          channelName,
+          connectorId,
+          cursor: nextCursor,
+          error: c.error,
+          latest: latestTsSec,
+          oldest: startTsSec,
+        },
+        "Failed getting messages for channel"
+      );
       throw new Error(
         `Failed getting messages for channel ${channelId}: messages is undefined`
       );

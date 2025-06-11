@@ -2,15 +2,10 @@ import fs from "fs";
 import path from "path";
 import { promisify } from "util";
 
-import {
-  DEFAULT_BROWSE_ACTION_DESCRIPTION,
-  DEFAULT_BROWSE_ACTION_NAME,
-  DEFAULT_RETRIEVAL_ACTION_NAME,
-  DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
-  DEFAULT_WEBSEARCH_ACTION_NAME,
-} from "@app/lib/actions/constants";
+import { DEFAULT_RETRIEVAL_ACTION_NAME } from "@app/lib/actions/constants";
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
 import { internalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
+import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { AgentActionConfigurationType } from "@app/lib/actions/types/agent";
 import { getFavoriteStates } from "@app/lib/api/assistant/get_favorite_states";
 import config from "@app/lib/api/config";
@@ -120,23 +115,32 @@ async function getDataSourcesAndWorkspaceIdForGlobalAgents(
 
 function _getDefaultWebActionsForGlobalAgent({
   agentSid,
+  webSearchBrowseMCPServerView,
 }: {
   agentSid: GLOBAL_AGENTS_SID;
-}): [AgentActionConfigurationType, AgentActionConfigurationType] {
+  webSearchBrowseMCPServerView: MCPServerViewResource | null;
+}): ServerSideMCPServerConfigurationType[] {
+  if (!webSearchBrowseMCPServerView) {
+    return [];
+  }
+
   return [
     {
       id: -1,
-      sId: agentSid + "-search-action",
-      type: "websearch_configuration",
-      name: DEFAULT_WEBSEARCH_ACTION_NAME,
-      description: DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
-    },
-    {
-      id: -1,
-      sId: agentSid + "-browse-action",
-      type: "browse_configuration",
-      name: DEFAULT_BROWSE_ACTION_NAME,
-      description: DEFAULT_BROWSE_ACTION_DESCRIPTION,
+      sId: agentSid + "-websearch-browse-action",
+      type: "mcp_server_configuration",
+      name: "web_search_&_browse" satisfies InternalMCPServerNameType,
+      description: null,
+      mcpServerViewId: webSearchBrowseMCPServerView.sId,
+      internalMCPServerId: webSearchBrowseMCPServerView.internalMCPServerId,
+      dataSources: null,
+      tables: null,
+      childAgentId: null,
+      reasoningModel: null,
+      additionalConfiguration: {},
+      timeFrame: null,
+      dustAppConfiguration: null,
+      jsonSchema: null,
     },
   ];
 }
@@ -198,10 +202,12 @@ function _getHelperGlobalAgent({
   auth,
   helperPromptInstance,
   agentRouterMCPServerView,
+  webSearchBrowseMCPServerView,
 }: {
   auth: Authenticator;
   helperPromptInstance: HelperAssistantPrompt;
   agentRouterMCPServerView: MCPServerViewResource | null;
+  webSearchBrowseMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {
   let prompt = "";
 
@@ -265,6 +271,7 @@ function _getHelperGlobalAgent({
       },
       ..._getDefaultWebActionsForGlobalAgent({
         agentSid: GLOBAL_AGENTS_SID.HELPER,
+        webSearchBrowseMCPServerView,
       }),
       ..._getAgentRouterToolsConfiguration(
         GLOBAL_AGENTS_SID.HELPER,
@@ -287,8 +294,10 @@ function _getHelperGlobalAgent({
 
 function _getGPT35TurboGlobalAgent({
   settings,
+  webSearchBrowseMCPServerView,
 }: {
   settings: GlobalAgentSettings | null;
+  webSearchBrowseMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {
   const status = settings ? settings.status : "active";
   return {
@@ -312,6 +321,7 @@ function _getGPT35TurboGlobalAgent({
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({
         agentSid: GLOBAL_AGENTS_SID.GPT35_TURBO,
+        webSearchBrowseMCPServerView,
       }),
     ],
     maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
@@ -326,9 +336,11 @@ function _getGPT35TurboGlobalAgent({
 function _getGPT4GlobalAgent({
   auth,
   settings,
+  webSearchBrowseMCPServerView,
 }: {
   auth: Authenticator;
   settings: GlobalAgentSettings | null;
+  webSearchBrowseMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {
   let status: AgentConfigurationStatus = "active";
 
@@ -360,6 +372,7 @@ function _getGPT4GlobalAgent({
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({
         agentSid: GLOBAL_AGENTS_SID.GPT4,
+        webSearchBrowseMCPServerView,
       }),
     ],
     maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
@@ -868,9 +881,11 @@ function _getClaude3_7GlobalAgent({
 function _getMistralLargeGlobalAgent({
   auth,
   settings,
+  webSearchBrowseMCPServerView,
 }: {
   auth: Authenticator;
   settings: GlobalAgentSettings | null;
+  webSearchBrowseMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {
   let status = settings?.status ?? "active";
   if (!auth.isUpgraded()) {
@@ -898,6 +913,7 @@ function _getMistralLargeGlobalAgent({
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({
         agentSid: GLOBAL_AGENTS_SID.MISTRAL_LARGE,
+        webSearchBrowseMCPServerView,
       }),
     ],
     maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
@@ -913,9 +929,11 @@ function _getMistralLargeGlobalAgent({
 function _getMistralMediumGlobalAgent({
   auth,
   settings,
+  webSearchBrowseMCPServerView,
 }: {
   auth: Authenticator;
   settings: GlobalAgentSettings | null;
+  webSearchBrowseMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {
   let status = settings?.status ?? "disabled_by_admin";
   if (!auth.isUpgraded()) {
@@ -943,6 +961,7 @@ function _getMistralMediumGlobalAgent({
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({
         agentSid: GLOBAL_AGENTS_SID.MISTRAL_MEDIUM,
+        webSearchBrowseMCPServerView,
       }),
     ],
     maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
@@ -957,8 +976,10 @@ function _getMistralMediumGlobalAgent({
 
 function _getMistralSmallGlobalAgent({
   settings,
+  webSearchBrowseMCPServerView,
 }: {
   settings: GlobalAgentSettings | null;
+  webSearchBrowseMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {
   const status = settings ? settings.status : "disabled_by_admin";
   return {
@@ -982,6 +1003,7 @@ function _getMistralSmallGlobalAgent({
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({
         agentSid: GLOBAL_AGENTS_SID.MISTRAL_SMALL,
+        webSearchBrowseMCPServerView,
       }),
     ],
     maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
@@ -997,9 +1019,11 @@ function _getMistralSmallGlobalAgent({
 function _getGeminiProGlobalAgent({
   auth,
   settings,
+  webSearchBrowseMCPServerView,
 }: {
   auth: Authenticator;
   settings: GlobalAgentSettings | null;
+  webSearchBrowseMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {
   let status = settings?.status ?? "active";
   if (!auth.isUpgraded()) {
@@ -1026,6 +1050,7 @@ function _getGeminiProGlobalAgent({
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({
         agentSid: GLOBAL_AGENTS_SID.GEMINI_PRO,
+        webSearchBrowseMCPServerView,
       }),
     ],
     maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
@@ -1328,10 +1353,12 @@ function _getDustGlobalAgent(
     settings,
     preFetchedDataSources,
     agentRouterMCPServerView,
+    webSearchBrowseMCPServerView,
   }: {
     settings: GlobalAgentSettings | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
     agentRouterMCPServerView: MCPServerViewResource | null;
+    webSearchBrowseMCPServerView: MCPServerViewResource | null;
   }
 ): AgentConfigurationType | null {
   const owner = auth.getNonNullableWorkspace();
@@ -1391,6 +1418,7 @@ function _getDustGlobalAgent(
       actions: [
         ..._getDefaultWebActionsForGlobalAgent({
           agentSid: GLOBAL_AGENTS_SID.DUST,
+          webSearchBrowseMCPServerView,
         }),
       ],
       maxStepsPerRun: 0,
@@ -1474,22 +1502,11 @@ function _getDustGlobalAgent(
     }
   });
 
-  actions.push({
-    id: -1,
-    sId: GLOBAL_AGENTS_SID.DUST + "-websearch-action",
-    type: "websearch_configuration",
-    name: DEFAULT_WEBSEARCH_ACTION_NAME,
-    description: null,
-  });
-  actions.push({
-    id: -1,
-    sId: GLOBAL_AGENTS_SID.DUST + "-browse-action",
-    type: "browse_configuration",
-    name: DEFAULT_BROWSE_ACTION_NAME,
-    description: null,
-  });
-
   actions.push(
+    ..._getDefaultWebActionsForGlobalAgent({
+      agentSid: GLOBAL_AGENTS_SID.DUST,
+      webSearchBrowseMCPServerView,
+    }),
     ..._getAgentRouterToolsConfiguration(
       GLOBAL_AGENTS_SID.DUST,
       agentRouterMCPServerView,
@@ -1513,14 +1530,23 @@ function _getDustGlobalAgent(
   };
 }
 
-function getGlobalAgent(
-  auth: Authenticator,
-  sId: string | number,
-  preFetchedDataSources: PrefetchedDataSourcesType | null,
-  helperPromptInstance: HelperAssistantPrompt,
-  globaAgentSettings: GlobalAgentSettings[],
-  agentRouterMCPServerView: MCPServerViewResource | null
-): AgentConfigurationType | null {
+function getGlobalAgent({
+  auth,
+  sId,
+  preFetchedDataSources,
+  helperPromptInstance,
+  globaAgentSettings,
+  agentRouterMCPServerView,
+  webSearchBrowseMCPServerView,
+}: {
+  auth: Authenticator;
+  sId: string | number;
+  preFetchedDataSources: PrefetchedDataSourcesType | null;
+  helperPromptInstance: HelperAssistantPrompt;
+  globaAgentSettings: GlobalAgentSettings[];
+  agentRouterMCPServerView: MCPServerViewResource | null;
+  webSearchBrowseMCPServerView: MCPServerViewResource | null;
+}): AgentConfigurationType | null {
   const settings =
     globaAgentSettings.find((settings) => settings.agentId === sId) ?? null;
 
@@ -1531,13 +1557,21 @@ function getGlobalAgent(
         auth,
         helperPromptInstance,
         agentRouterMCPServerView,
+        webSearchBrowseMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.GPT35_TURBO:
-      agentConfiguration = _getGPT35TurboGlobalAgent({ settings });
+      agentConfiguration = _getGPT35TurboGlobalAgent({
+        settings,
+        webSearchBrowseMCPServerView,
+      });
       break;
     case GLOBAL_AGENTS_SID.GPT4:
-      agentConfiguration = _getGPT4GlobalAgent({ auth, settings });
+      agentConfiguration = _getGPT4GlobalAgent({
+        auth,
+        settings,
+        webSearchBrowseMCPServerView,
+      });
       break;
     case GLOBAL_AGENTS_SID.O1:
       agentConfiguration = _getO1GlobalAgent({ auth, settings });
@@ -1587,19 +1621,28 @@ function getGlobalAgent(
       agentConfiguration = _getMistralLargeGlobalAgent({
         settings,
         auth,
+        webSearchBrowseMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.MISTRAL_MEDIUM:
       agentConfiguration = _getMistralMediumGlobalAgent({
         settings,
         auth,
+        webSearchBrowseMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.MISTRAL_SMALL:
-      agentConfiguration = _getMistralSmallGlobalAgent({ settings });
+      agentConfiguration = _getMistralSmallGlobalAgent({
+        settings,
+        webSearchBrowseMCPServerView,
+      });
       break;
     case GLOBAL_AGENTS_SID.GEMINI_PRO:
-      agentConfiguration = _getGeminiProGlobalAgent({ auth, settings });
+      agentConfiguration = _getGeminiProGlobalAgent({
+        auth,
+        settings,
+        webSearchBrowseMCPServerView,
+      });
       break;
     case GLOBAL_AGENTS_SID.DEEPSEEK_R1:
       agentConfiguration = _getDeepSeekR1GlobalAgent({ auth, settings });
@@ -1639,6 +1682,7 @@ function getGlobalAgent(
         settings,
         preFetchedDataSources,
         agentRouterMCPServerView,
+        webSearchBrowseMCPServerView,
       });
       break;
     default:
@@ -1696,6 +1740,7 @@ export async function getGlobalAgents(
     globaAgentSettings,
     helperPromptInstance,
     agentRouterMCPServerView,
+    webSearchBrowseMCPServerView,
   ] = await Promise.all([
     variant === "full"
       ? getDataSourcesAndWorkspaceIdForGlobalAgents(auth)
@@ -1708,6 +1753,12 @@ export async function getGlobalAgents(
       ? MCPServerViewResource.getMCPServerViewForAutoInternalTool(
           auth,
           "agent_router"
+        )
+      : null,
+    variant === "full"
+      ? MCPServerViewResource.getMCPServerViewForAutoInternalTool(
+          auth,
+          "web_search_&_browse"
         )
       : null,
   ]);
@@ -1750,14 +1801,15 @@ export async function getGlobalAgents(
   // For now we retrieve them all
   // We will store them in the database later to allow admin enable them or not
   const agentCandidates = agentsIdsToFetch.map((sId) =>
-    getGlobalAgent(
+    getGlobalAgent({
       auth,
       sId,
       preFetchedDataSources,
       helperPromptInstance,
       globaAgentSettings,
-      agentRouterMCPServerView
-    )
+      agentRouterMCPServerView,
+      webSearchBrowseMCPServerView,
+    })
   );
 
   const globalAgents: AgentConfigurationType[] = [];

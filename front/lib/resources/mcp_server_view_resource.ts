@@ -39,7 +39,7 @@ import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import type { ModelId, Result } from "@app/types";
+import type { MCPOAuthUseCase, ModelId, Result } from "@app/types";
 import {
   assertNever,
   Err,
@@ -398,6 +398,20 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       });
       return views[0] ?? null;
     }
+  }
+
+  public async updateOAuthUseCase(
+    auth: Authenticator,
+    oAuthUseCase: MCPOAuthUseCase
+  ): Promise<Result<number, Error>> {
+    if (!this.canAdministrate(auth)) {
+      return new Err(
+        new DustError("unauthorized", "Not allowed to update OAuth use case.")
+      );
+    }
+
+    const [affectedCount] = await this.update({ oAuthUseCase });
+    return new Ok(affectedCount);
   }
 
   // Deletion.
