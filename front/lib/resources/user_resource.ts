@@ -239,7 +239,7 @@ export class UserResource extends BaseResource<UserModel> {
     });
   }
 
-  async updateLastLoginAt() {
+  async recordLoginActivity() {
     return this.update({
       lastLoginAt: new Date(),
     });
