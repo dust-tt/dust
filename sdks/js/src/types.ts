@@ -837,6 +837,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "show_debug_tools"
   | "snowflake_connector_feature"
   | "usage_data_api"
+  | "workos_user_provisioning"
   | "workos"
   | "xai_feature"
 >();
