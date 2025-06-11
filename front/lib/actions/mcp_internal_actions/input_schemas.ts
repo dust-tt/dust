@@ -1,8 +1,11 @@
 import type { InternalToolInputMimeType } from "@dust-tt/client";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
-import { z } from "zod";
+import { z, ZodError } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
+
+import type { Result } from "@app/types";
+import { Err, Ok } from "@app/types";
 
 export const DATA_SOURCE_CONFIGURATION_URI_PATTERN =
   /^data_source_configuration:\/\/dust\/w\/(\w+)\/data_source_configurations\/(\w+)$/;
@@ -17,7 +20,7 @@ export const AGENT_CONFIGURATION_URI_PATTERN =
   /^agent:\/\/dust\/w\/(\w+)\/agents\/([\w-]+)$/;
 
 // The full, recursive schema for a JSON schema is not yet supported by MCP call
-// tool, and anyways its full validation is not needed. Therefore, we describe 2
+// tool, and anyway its full validation is not needed. Therefore, we describe 2
 // levels of depth then use z.any(). As an added bonus, it is arguably better
 // for the tool call to generate a good argument.
 const JsonTypeSchema = z.union([
@@ -53,6 +56,32 @@ export const JsonSchemaSchema = z.object({
   required: z.array(z.string()).optional(),
   properties: z.record(z.string(), JsonPropertySchema).optional(),
 });
+
+/**
+ * Validates a JSONSchema for being used as a configured input in a tool with the mime type
+ * (INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA).
+ * More restrictive than validateJsonSchema, as it explicitly checks that the schema
+ * can be used as an arg of a tool that expects an INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA.
+ */
+export function validateConfiguredJsonSchema(
+  jsonSchema: JSONSchema
+): Result<z.infer<typeof JsonSchemaSchema>, Error> {
+  try {
+    const validated = JsonSchemaSchema.parse(jsonSchema);
+    return new Ok(validated);
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return new Err(
+        new Error(
+          `Invalid jsonSchema configuration for mimeType JSON_SCHEMA: ${error.errors
+            .map((e) => `${e.path.join(".")}: ${e.message}`)
+            .join(", ")}`
+        )
+      );
+    }
+    throw error;
+  }
+}
 
 /**
  * Mapping between the mime types we used to identify a configurable resource and the Zod schema used to validate it.

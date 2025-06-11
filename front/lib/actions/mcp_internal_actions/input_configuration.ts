@@ -6,7 +6,10 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { ZodError } from "zod";
 
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
-import type { ConfigurableToolInputType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import {
+  ConfigurableToolInputType,
+  validateConfiguredJsonSchema,
+} from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import {
   ConfigurableToolInputJSONSchemas,
   JsonSchemaSchema,
@@ -102,22 +105,14 @@ function generateConfiguredInput({
       if (!jsonSchema) {
         return null;
       }
-      try {
-        const validatedSchema = JsonSchemaSchema.parse(jsonSchema);
-        return {
-          ...validatedSchema,
-          mimeType,
-        };
-      } catch (error) {
-        if (error instanceof ZodError) {
-          throw new Error(
-            `Invalid jsonSchema configuration for mimeType JSON_SCHEMA: ${error.errors
-              .map((e) => `${e.path.join(".")}: ${e.message}`)
-              .join(", ")}`
-          );
-        }
-        throw error;
+      const validationResult = validateConfiguredJsonSchema(jsonSchema);
+      if (validationResult.isErr()) {
+        throw validationResult.error;
       }
+      return {
+        ...validationResult.value,
+        mimeType,
+      };
     }
 
     case INTERNAL_MIME_TYPES.TOOL_INPUT.STRING: {
