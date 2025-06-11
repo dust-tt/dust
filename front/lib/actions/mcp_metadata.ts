@@ -13,6 +13,10 @@ import {
   DEFAULT_MCP_ACTION_NAME,
   DEFAULT_MCP_ACTION_VERSION,
 } from "@app/lib/actions/constants";
+import {
+  getConnectionForMCPServer,
+  MCPServerPersonalAuthenticationRequiredError,
+} from "@app/lib/actions/mcp_authentication";
 import { MCPServerNotFoundError } from "@app/lib/actions/mcp_errors";
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import {
@@ -20,8 +24,6 @@ import {
   isInternalAllowedIcon,
 } from "@app/lib/actions/mcp_icons";
 import { connectToInternalMCPServer } from "@app/lib/actions/mcp_internal_actions";
-import { MCPServerPersonalAuthenticationRequiredError } from "@app/lib/actions/mcp_internal_actions/authentication";
-import { getConnectionForInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/authentication";
 import { InMemoryWithAuthTransport } from "@app/lib/actions/mcp_internal_actions/in_memory_with_auth_transport";
 import { MCPOAuthRequiredError } from "@app/lib/actions/mcp_oauth_error";
 import { MCPOAuthProvider } from "@app/lib/actions/mcp_oauth_provider";
@@ -184,7 +186,7 @@ export const connectToMCPServer = async (
                 );
               }
 
-              const c = await getConnectionForInternalMCPServer(auth, {
+              const c = await getConnectionForMCPServer(auth, {
                 mcpServerId: params.mcpServerId,
                 connectionType:
                   params.oAuthUseCase === "personal_actions"
