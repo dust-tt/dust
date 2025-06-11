@@ -1,5 +1,8 @@
 import type {
+  AuthenticateWithSessionCookieFailedResponse,
+  AuthenticateWithSessionCookieSuccessResponse,
   AuthenticationResponse as WorkOSAuthenticationResponse,
+  RefreshSessionResponse,
   User as WorkOSUser,
 } from "@workos-inc/node";
 import { unsealData } from "iron-session";
@@ -9,6 +12,7 @@ import config from "@app/lib/api/config";
 import type { RegionType } from "@app/lib/api/regions/config";
 import { getWorkOS } from "@app/lib/api/workos/client";
 import type { SessionWithUser } from "@app/lib/iam/provider";
+import logger from "@app/logger/logger";
 import type { LightWorkspaceType, Result } from "@app/types";
 import { Err, Ok } from "@app/types";
 
@@ -33,35 +37,46 @@ export async function getWorkOSSession(
       await unsealData<SessionCookie>(workOSSessionCookie, {
         password: config.getWorkOSCookiePassword(),
       });
-
     const session = getWorkOS().userManagement.loadSealedSession({
       sessionData,
       cookiePassword: config.getWorkOSCookiePassword(),
     });
 
-    const r = await session.authenticate();
+    try {
+      let r:
+        | AuthenticateWithSessionCookieSuccessResponse
+        | AuthenticateWithSessionCookieFailedResponse
+        | RefreshSessionResponse = await session.authenticate();
 
-    if (!r.authenticated) {
+      if (!r.authenticated) {
+        // If authentication fails, try to refresh the session
+        r = await session.refresh();
+        if (!r.authenticated) {
+          return undefined;
+        }
+      }
+
+      return {
+        type: "workos" as const,
+        sessionId: r.sessionId,
+        user: {
+          email: r.user.email,
+          email_verified: r.user.emailVerified,
+          name: r.user.email ?? "",
+          nickname: getUserNicknameFromEmail(r.user.email) ?? "",
+          auth0Sub: null,
+          workOSUserId: r.user.id,
+        },
+        // TODO(workos): Should we resolve the workspaceId and remove organizationId from here?
+        organizationId,
+        workspaceId,
+        isSSO: authenticationMethod === "SSO",
+        authenticationMethod,
+      };
+    } catch (error) {
+      logger.error({ error }, "Session authentication error");
       return undefined;
     }
-
-    return {
-      type: "workos" as const,
-      sessionId: r.sessionId,
-      user: {
-        email: r.user.email,
-        email_verified: r.user.emailVerified,
-        name: r.user.email ?? "",
-        nickname: getUserNicknameFromEmail(r.user.email) ?? "",
-        auth0Sub: null,
-        workOSUserId: r.user.id,
-      },
-      // TODO(workos): Should we resolve the workspaceId and remove organizationId from here?
-      organizationId,
-      workspaceId,
-      isSSO: authenticationMethod === "SSO",
-      authenticationMethod,
-    };
   }
 }
 
