@@ -121,7 +121,10 @@ export default async function createServer(
     childAgentId = agentLoopContext.runContext.actionConfiguration.childAgentId;
   }
 
-  let childAgentBlob: { name: string; description: string } | null = null;
+  let childAgentBlob: {
+    name: string;
+    description: string;
+  } | null = null;
 
   if (childAgentId) {
     childAgentBlob = await leakyGetAgentNameAndDescriptionForChildAgent(
@@ -211,10 +214,10 @@ export default async function createServer(
           mentions: [{ configurationId: childAgentId }],
           context: {
             timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-            username: user?.username ?? "unknown",
-            fullName: user?.fullName(),
-            email: user?.email,
-            profilePictureUrl: user?.imageUrl,
+            username: mainAgent.name,
+            fullName: `@${mainAgent.name}`,
+            email: null,
+            profilePictureUrl: mainAgent.pictureUrl,
             origin: "mcp",
           },
         },
