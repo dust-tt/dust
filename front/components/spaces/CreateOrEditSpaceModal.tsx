@@ -190,16 +190,24 @@ export function CreateOrEditSpaceModal({
       let createdSpace;
 
       if (isRestricted) {
-        createdSpace = await doCreate({
-          name: spaceName,
-          isRestricted: true,
-          memberIds: deduplicatedMembers.map((vm) => vm.sId),
-        });
+        if (managementType === "group") {
+          createdSpace = await doCreate({
+            name: spaceName,
+            isRestricted: true,
+            groupIds: selectedGroups.map((group) => group.sId),
+          });
+        } else {
+          createdSpace = await doCreate({
+            name: spaceName,
+            isRestricted: true,
+            memberIds: deduplicatedMembers.map((vm) => vm.sId),
+          });
+        }
       } else {
         createdSpace = await doCreate({
           name: spaceName,
           isRestricted: false,
-          memberIds: null, // must be null when isRestricted is false
+          memberIds: null,
         });
       }
 
