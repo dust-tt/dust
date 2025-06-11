@@ -8,10 +8,13 @@ import {
 import PQueue from "p-queue";
 
 import type * as activities from "@connectors/connectors/slack/temporal/activities";
-import { MAX_SYNC_NON_THREAD_MESSAGES } from "@connectors/connectors/slack/temporal/activities";
 import type { ModelId } from "@connectors/types";
 
-import { getWeekEnd, getWeekStart } from "../lib/utils";
+import {
+  getWeekEnd,
+  getWeekStart,
+  MAX_SYNC_NON_THREAD_MESSAGES,
+} from "../lib/utils";
 import { newWebhookSignal, syncChannelSignal } from "./signals";
 
 const {
@@ -178,7 +181,7 @@ export async function syncOneThreadDebounced(
   // call here, which will allow the signal handler to be executed by the nodejs event loop. /!\
 }
 
-const INITIAL_CHUNK_SIZE_MS = 2 * 60 * 60 * 1000; // 2 hours.
+const INITIAL_CHUNK_SIZE_MS = 24 * 60 * 60 * 1000; // 24 hours.
 
 export async function syncOneMessageDebounced(
   connectorId: ModelId,
