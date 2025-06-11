@@ -8,8 +8,8 @@ import type {
   AgentErrorEvent,
   AgentGenerationCancelledEvent,
   AgentMessageSuccessEvent,
-  GenerationTokensEvent,
   AgentMessageType,
+  GenerationTokensEvent,
 } from "@app/types";
 import { assertNever } from "@app/types";
 
