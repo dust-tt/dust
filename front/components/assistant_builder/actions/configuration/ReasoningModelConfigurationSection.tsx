@@ -19,10 +19,6 @@ import { partition } from "lodash";
 import { useMemo } from "react";
 
 import { ConfigurationSectionContainer } from "@app/components/assistant_builder/actions/configuration/ConfigurationSectionContainer";
-import {
-  BEST_PERFORMING_REASONING_MODELS_ID,
-  getProviderDisplayName,
-} from "@app/components/assistant_builder/actions/utils";
 import { getModelProviderLogo } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import type { ReasoningModelConfiguration } from "@app/lib/actions/reasoning";
@@ -32,13 +28,24 @@ import type {
   ModelConfigurationType,
   ModelProviderIdType,
 } from "@app/types";
-import { O4_MINI_MODEL_ID } from "@app/types";
+import {
+  GEMINI_2_5_PRO_PREVIEW_MODEL_ID,
+  mapProviderIdToDisplayName,
+  O3_MODEL_ID,
+  O4_MINI_MODEL_ID,
+} from "@app/types";
 
 interface ReasoningModelConfigurationSectionProps {
   owner: LightWorkspaceType;
   selectedReasoningModel: ReasoningModelConfiguration | null;
   onModelSelect: (modelConfig: ReasoningModelConfiguration) => void;
 }
+
+const BEST_PERFORMING_REASONING_MODELS_ID = [
+  O4_MINI_MODEL_ID,
+  O3_MODEL_ID,
+  GEMINI_2_5_PRO_PREVIEW_MODEL_ID,
+];
 
 function groupReasoningModelsByPerformance(
   reasoningModels: ModelConfigurationType[]
@@ -55,7 +62,7 @@ function groupReasoningModelsByPerformance(
   return { performingModels, nonPerfomingModels };
 }
 
-// Using Map because we don't want to loose the order (reasoningModels are sorted by our preference).
+// Using Map because we don't want to lose the order (reasoningModels are sorted by our preference).
 function groupModelsByProvider(reasoningModels: ModelConfigurationType[]) {
   const map = new Map<ModelProviderIdType, ModelConfigurationType[]>();
   for (const model of reasoningModels) {
@@ -66,6 +73,12 @@ function groupModelsByProvider(reasoningModels: ModelConfigurationType[]) {
     map.get(key)!.push(model);
   }
   return map;
+}
+
+export function getProviderDisplayName(
+  providerId: ModelProviderIdType
+): string {
+  return mapProviderIdToDisplayName[providerId] ?? providerId;
 }
 
 export function ReasoningModelConfigurationSection({
@@ -164,7 +177,8 @@ export function ReasoningModelConfigurationSection({
                   <DropdownMenuGroup key={providerId}>
                     <DropdownMenuSub>
                       <DropdownMenuSubTrigger
-                        label={getProviderDisplayName(providerId)}
+                        label={`${getProviderDisplayName(providerId)} models`}
+                        icon={getModelProviderLogo(providerId, isDark)}
                       />
                       <DropdownMenuPortal>
                         <DropdownMenuSubContent>

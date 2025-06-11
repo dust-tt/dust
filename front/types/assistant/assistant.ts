@@ -24,6 +24,17 @@ export const MODEL_PROVIDER_IDS = [
 ] as const;
 export type ModelProviderIdType = (typeof MODEL_PROVIDER_IDS)[number];
 
+export const mapProviderIdToDisplayName: Record<ModelProviderIdType, string> = {
+  openai: "OpenAI",
+  anthropic: "Anthropic",
+  mistral: "Mistral",
+  google_ai_studio: "Google",
+  togetherai: "TogetherAI",
+  deepseek: "DeepSeek",
+  fireworks: "Fireworks",
+  xai: "xAI",
+};
+
 export const REASONING_EFFORT_IDS = ["low", "medium", "high"] as const;
 export type ReasoningEffortIdType = (typeof REASONING_EFFORT_IDS)[number];
 

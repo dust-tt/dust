@@ -238,6 +238,7 @@ export default function ActionsScreen({
     selectableNonDefaultMCPServerViews,
   } = useTools({
     actions: builderState.actions,
+    reasoningModels,
   });
 
   const updateAction = useCallback(

@@ -8,12 +8,12 @@ import {
   DropdownMenuLabel,
   DropdownMenuSearchbar,
   DropdownMenuTrigger,
+  useSendNotification,
 } from "@dust-tt/sparkle";
 import assert from "assert";
 import { uniqueId } from "lodash";
 import { useState } from "react";
 
-import { DEFAULT_REASONING_MODEL_ID } from "@app/components/assistant_builder/actions/utils";
 import type {
   ActionSpecificationWithType,
   AssistantBuilderActionType,
@@ -28,8 +28,10 @@ import {
 } from "@app/components/assistant_builder/types";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
+import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { ModelConfigurationType } from "@app/types";
+import { O4_MINI_MODEL_ID } from "@app/types";
 
 type MCPServerViewTypeWithLabel = MCPServerViewType & { label: string };
 
@@ -44,6 +46,8 @@ interface AddToolsDropdownProps {
   nonDefaultMCPServerViews: MCPServerViewTypeWithLabel[];
   reasoningModels: ModelConfigurationType[];
 }
+
+export const DEFAULT_REASONING_MODEL_ID = O4_MINI_MODEL_ID;
 
 export function AddToolsDropdown({
   setEdited,
@@ -61,6 +65,7 @@ export function AddToolsDropdown({
     ...defaultMCPServerViews,
     ...nonDefaultMCPServerViews,
   ]);
+  const sendNotification = useSendNotification();
 
   const noFilteredTools =
     filteredNonMCPActions.length === 0 && filteredMCPServerViews.length === 0;
@@ -124,12 +129,21 @@ export function AddToolsDropdown({
     assert(action);
 
     const isReasoning =
-      action.type === "MCP" &&
-      selectedView.serverType === "internal" &&
-      selectedView.server.name.toLowerCase().includes("reasoning");
+      getMCPServerRequirements(selectedView).requiresReasoningConfiguration;
 
     // Reasoning is configurable but we select the reasoning model by default.
     if (isReasoning) {
+      // You should not be able to select reasoning tools if you don't have any reasoning models,
+      // but in case you do for some reasons, we show an error notification.
+      if (reasoningModels.length === 0) {
+        sendNotification({
+          title: "No reasoning model available",
+          description:
+            "Please add a reasoning model to your workspace to be able to use this tool",
+          type: "error",
+        });
+      }
+
       // Use o4-mini (high reasoning effort) as default reasoning model, if it's not available use the first one in the list.
       const defaultReasoningModel =
         reasoningModels.find(
