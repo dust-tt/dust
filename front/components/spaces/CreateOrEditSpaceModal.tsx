@@ -36,6 +36,7 @@ import { ConfirmContext } from "@app/components/Confirm";
 import { ConfirmDeleteSpaceDialog } from "@app/components/spaces/ConfirmDeleteSpaceDialog";
 import { SearchGroupsDropdown } from "@app/components/spaces/SearchGroupsDropdown";
 import { SearchMembersPopover } from "@app/components/spaces/SearchMembersPopover";
+import { useGroups } from "@app/lib/swr/groups";
 import {
   useCreateSpace,
   useDeleteSpace,
@@ -134,6 +135,11 @@ export function CreateOrEditSpaceModal({
     spaceId: space?.sId ?? null,
   });
 
+  const { groups } = useGroups({
+    owner,
+    kinds: ["provisioned"],
+  });
+
   useEffect(() => {
     if (isOpen) {
       const spaceMembers = spaceInfo?.members ?? null;
@@ -142,13 +148,21 @@ export function CreateOrEditSpaceModal({
         setSelectedMembers(spaceMembers);
       }
 
+      // Initialize selected groups based on space's groupIds
+      if (spaceInfo?.groupIds && spaceInfo.groupIds.length > 0 && groups) {
+        const spaceGroups = groups.filter((group) =>
+          spaceInfo.groupIds.includes(group.sId)
+        );
+        setSelectedGroups(spaceGroups);
+      }
+
       setSpaceName(spaceInfo?.name ?? null);
 
       setIsRestricted(
         spaceInfo ? spaceInfo.isRestricted : defaultRestricted ?? false
       );
     }
-  }, [defaultRestricted, isOpen, spaceInfo]);
+  }, [defaultRestricted, isOpen, spaceInfo, groups]);
 
   const handleClose = useCallback(() => {
     // Call the original onClose function.
