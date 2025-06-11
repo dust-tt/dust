@@ -11,10 +11,11 @@ import AuthService from "../../utils/authService.js";
 import { getDustClient } from "../../utils/dustClient.js";
 import { normalizeError } from "../../utils/errors.js";
 import { useMe } from "../../utils/hooks/use_me.js";
+import { clearTerminal } from "../../utils/terminal.js";
 import AgentSelector from "../components/AgentSelector.js";
 import type { ConversationItem } from "../components/Conversation.js";
 import Conversation from "../components/Conversation.js";
-import { AVAILABLE_COMMANDS } from "./types.js";
+import { createCommands } from "./types.js";
 
 type AgentConfiguration =
   GetAgentConfigurationsResponseType["agentConfigurations"][number];
@@ -54,6 +55,7 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
   const [commandQuery, setCommandQuery] = useState("");
   const [selectedCommandIndex, setSelectedCommandIndex] = useState(0);
   const [commandCursorPosition, setCommandCursorPosition] = useState(0);
+  const [isSelectingNewAgent, setIsSelectingNewAgent] = useState(false);
 
   const updateIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const contentRef = useRef<string>("");
@@ -63,11 +65,27 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
 
   const { me, isLoading: isMeLoading, error: meError } = useMe();
 
+  const triggerAgentSwitch = useCallback(async () => {
+    // Clear all input states before switching.
+    setUserInput("");
+    setCursorPosition(0);
+    setShowCommandSelector(false);
+    setCommandQuery("");
+    setSelectedCommandIndex(0);
+    setCommandCursorPosition(0);
+
+    await clearTerminal();
+    setIsSelectingNewAgent(true);
+  }, []);
+
+  const commands = createCommands({ triggerAgentSwitch });
+
   const canSubmit =
     me &&
     !meError &&
     !isMeLoading &&
     !isProcessingQuestion &&
+    !isSelectingNewAgent &&
     !!userInput.trim();
 
   const handleSubmitQuestion = useCallback(
@@ -385,6 +403,11 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
 
   // Handle keyboard events.
   useInput((input, key) => {
+    // Skip all input handling when selecting a new agent
+    if (!selectedAgent || isSelectingNewAgent) {
+      return;
+    }
+
     const isInCommandMode = showCommandSelector;
     const currentInput = isInCommandMode ? commandQuery : userInput;
     const currentCursorPos = isInCommandMode
@@ -411,7 +434,7 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
       }
 
       if (key.downArrow) {
-        const filteredCommands = AVAILABLE_COMMANDS.filter((cmd) =>
+        const filteredCommands = commands.filter((cmd) =>
           cmd.name.toLowerCase().startsWith(commandQuery.toLowerCase())
         );
         setSelectedCommandIndex((prev) =>
@@ -421,7 +444,7 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
       }
 
       if (key.return) {
-        const filteredCommands = AVAILABLE_COMMANDS.filter((cmd) =>
+        const filteredCommands = commands.filter((cmd) =>
           cmd.name.toLowerCase().startsWith(commandQuery.toLowerCase())
         );
         if (
@@ -429,7 +452,7 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
           selectedCommandIndex < filteredCommands.length
         ) {
           const selectedCommand = filteredCommands[selectedCommandIndex];
-          void selectedCommand.execute();
+          void selectedCommand.execute({ triggerAgentSwitch });
           setShowCommandSelector(false);
           setCommandQuery("");
           setSelectedCommandIndex(0);
@@ -669,23 +692,39 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
     );
   }
 
-  // Render agent selector
-  if (!selectedAgent) {
+  if (!selectedAgent || isSelectingNewAgent) {
+    const isInitialSelection = !selectedAgent;
+
     return (
       <AgentSelector
         selectMultiple={false}
-        requestedSIds={requestedSId ? [requestedSId] : []}
+        requestedSIds={isInitialSelection && requestedSId ? [requestedSId] : []}
         onError={setError}
-        onConfirm={(agents) => {
+        onConfirm={async (agents) => {
           setSelectedAgent(agents[0]);
-          setConversationItems([
-            {
-              key: "welcome_header",
-              type: "welcome_header",
-              agentName: agents[0].name,
-              agentId: agents[0].sId,
-            },
-          ]);
+
+          if (isInitialSelection) {
+            setConversationItems([
+              {
+                key: "welcome_header",
+                type: "welcome_header",
+                agentName: agents[0].name,
+                agentId: agents[0].sId,
+              },
+            ]);
+          } else {
+            setIsSelectingNewAgent(false);
+
+            setUserInput("");
+            setCursorPosition(0);
+            setShowCommandSelector(false);
+            setCommandQuery("");
+            setSelectedCommandIndex(0);
+            setCommandCursorPosition(0);
+
+            // Clear terminal and force re-render.
+            await clearTerminal();
+          }
         }}
       />
     );
@@ -707,6 +746,7 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
       commandQuery={commandQuery}
       selectedCommandIndex={selectedCommandIndex}
       commandCursorPosition={commandCursorPosition}
+      commands={commands}
     />
   );
 };
