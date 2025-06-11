@@ -22,14 +22,7 @@ import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
-import {
-  Err,
-  getHeaderFromGroupIds,
-  getHeaderFromRole,
-  getHeaderFromUserEmail,
-  normalizeError,
-  Ok,
-} from "@app/types";
+import { Err, getHeaderFromUserEmail, normalizeError, Ok } from "@app/types";
 
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "run_agent",
@@ -121,7 +114,10 @@ export default async function createServer(
     childAgentId = agentLoopContext.runContext.actionConfiguration.childAgentId;
   }
 
-  let childAgentBlob: { name: string; description: string } | null = null;
+  let childAgentBlob: {
+    name: string;
+    description: string;
+  } | null = null;
 
   if (childAgentId) {
     childAgentBlob = await leakyGetAgentNameAndDescriptionForChildAgent(
@@ -184,7 +180,6 @@ export default async function createServer(
       const childAgentId = childAgentIdRes.value;
 
       const user = auth.user();
-      const requestedGroupIds = auth.groups().map((g) => g.sId);
 
       const prodCredentials = await prodAPICredentialsForOwner(owner);
       const api = new DustAPI(
@@ -194,8 +189,8 @@ export default async function createServer(
           // We use a system API key here meaning that we can impersonate the user or the groups we
           // have access to.
           extraHeaders: {
-            ...getHeaderFromGroupIds(requestedGroupIds),
-            ...getHeaderFromRole(auth.role()),
+            // We have to use the user override here as the sub-agent may rely on personal actions
+            // that have to be operated in the name of the user initiating the interaction.
             ...getHeaderFromUserEmail(user?.email),
           },
         },
@@ -211,10 +206,10 @@ export default async function createServer(
           mentions: [{ configurationId: childAgentId }],
           context: {
             timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-            username: user?.username ?? "unknown",
-            fullName: user?.fullName(),
-            email: user?.email,
-            profilePictureUrl: user?.imageUrl,
+            username: mainAgent.name,
+            fullName: `@${mainAgent.name}`,
+            email: null,
+            profilePictureUrl: mainAgent.pictureUrl,
             origin: "mcp",
           },
         },
