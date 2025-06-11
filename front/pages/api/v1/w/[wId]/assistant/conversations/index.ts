@@ -254,7 +254,8 @@ async function handler(
 
       let conversation = await createConversation(auth, {
         title: title ?? null,
-        visibility,
+        // Temporary translation layer for deprecated "workspace" visibility.
+        visibility: visibility === "workspace" ? "unlisted" : visibility,
         depth,
       });
 
