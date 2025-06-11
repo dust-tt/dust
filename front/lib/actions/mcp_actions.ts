@@ -23,7 +23,7 @@ import type {
   ServerSideMCPServerConfigurationType,
   ServerSideMCPToolConfigurationType,
 } from "@app/lib/actions/mcp";
-import { MCPServerPersonalAuthenticationRequiredError } from "@app/lib/actions/mcp_authentication";
+import type { MCPServerPersonalAuthenticationRequiredError } from "@app/lib/actions/mcp_authentication";
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import {
   getInternalMCPServerAvailability,
@@ -31,10 +31,7 @@ import {
   INTERNAL_MCP_SERVERS,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import { findMatchingSubSchemas } from "@app/lib/actions/mcp_internal_actions/input_configuration";
-import type {
-  MCPProgressNotificationType,
-  PersonalAuthenticationRequiredErrorResourceType,
-} from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import type { MCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { isMCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type {
   MCPConnectionParams,
@@ -70,7 +67,7 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { fromEvent } from "@app/lib/utils/events";
 import logger from "@app/logger/logger";
-import type { ModelId, OAuthProvider, OAuthUseCase, Result } from "@app/types";
+import type { ModelId, Result } from "@app/types";
 import { assertNever, Err, normalizeError, Ok, slugify } from "@app/types";
 
 const MAX_OUTPUT_ITEMS = 128;
@@ -328,35 +325,6 @@ export async function* tryCallMCPTool(
         },
         `Error calling MCP tool in tryCallMCPTool().`
       );
-
-      // Special handling for personal authentication required errors which return a resource with a
-      // specific mime type.
-      const personalAuthenticationRequiredError = content.find(
-        (c) =>
-          c.type === "resource" &&
-          c.resource.mimeType ===
-            INTERNAL_MIME_TYPES.TOOL_ERROR.PERSONAL_AUTHENTICATION_REQUIRED
-      ) as
-        | { resource: PersonalAuthenticationRequiredErrorResourceType }
-        | undefined;
-
-      if (personalAuthenticationRequiredError) {
-        // If we discovered such an error we return a typed error to the caller.
-        yield {
-          type: "result",
-          result: new Err(
-            new MCPServerPersonalAuthenticationRequiredError(
-              personalAuthenticationRequiredError.resource.mcpServerId,
-              personalAuthenticationRequiredError.resource
-                .provider as OAuthProvider,
-              personalAuthenticationRequiredError.resource
-                .useCase as OAuthUseCase,
-              personalAuthenticationRequiredError.resource.scope
-            )
-          ),
-        };
-        return;
-      }
     }
 
     if (content.length >= MAX_OUTPUT_ITEMS) {
