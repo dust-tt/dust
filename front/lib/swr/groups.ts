@@ -8,10 +8,12 @@ import type { GroupKind, LightWorkspaceType } from "@app/types";
 export function useGroups({
   owner,
   kinds,
+  spaceId,
   disabled,
 }: {
   owner: LightWorkspaceType;
   kinds?: GroupKind[];
+  spaceId?: string;
   disabled?: boolean;
 }) {
   const url = useMemo(() => {
@@ -19,9 +21,12 @@ export function useGroups({
     if (kinds && kinds.length > 0) {
       kinds.forEach((k) => params.append("kind", k));
     }
+    if (spaceId) {
+      params.append("spaceId", spaceId);
+    }
     const queryString = params.toString();
     return `/api/w/${owner.sId}/groups${queryString ? `?${queryString}` : ""}`;
-  }, [owner.sId, kinds]);
+  }, [owner.sId, kinds, spaceId]);
 
   const groupsFetcher: Fetcher<GetGroupsResponseBody> = fetcher;
 

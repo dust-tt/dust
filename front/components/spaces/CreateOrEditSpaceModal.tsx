@@ -138,6 +138,7 @@ export function CreateOrEditSpaceModal({
   const { groups } = useGroups({
     owner,
     kinds: ["provisioned"],
+    spaceId: space?.sId,
   });
 
   useEffect(() => {

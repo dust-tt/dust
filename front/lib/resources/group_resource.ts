@@ -654,6 +654,54 @@ export class GroupResource extends BaseResource<GroupModel> {
     return groups.filter((group) => group.canRead(auth));
   }
 
+  static async listForSpaceById(
+    auth: Authenticator,
+    spaceId: string,
+    options: { groupKinds?: GroupKind[] } = {}
+  ): Promise<GroupResource[]> {
+    const workspace = auth.getNonNullableWorkspace();
+    const spaceModelId = getResourceIdFromSId(spaceId);
+
+    if (!spaceModelId) {
+      return [];
+    }
+
+    // Find groups associated with the space through GroupSpaceModel
+    const groupSpaces = await GroupSpaceModel.findAll({
+      where: {
+        vaultId: spaceModelId,
+        workspaceId: workspace.id,
+      },
+      attributes: ["groupId"],
+    });
+
+    if (groupSpaces.length === 0) {
+      return [];
+    }
+
+    const groupIds = groupSpaces.map((gs) => gs.groupId);
+    const { groupKinds } = options;
+
+    const whereClause: any = {
+      id: {
+        [Op.in]: groupIds,
+      },
+    };
+
+    // Apply groupKinds filter if provided
+    if (groupKinds && groupKinds.length > 0) {
+      whereClause.kind = {
+        [Op.in]: groupKinds,
+      };
+    }
+
+    const groups = await this.baseFetch(auth, {
+      where: whereClause,
+    });
+
+    return groups.filter((group) => group.canRead(auth));
+  }
+
   static async listUserGroupsInWorkspace({
     user,
     workspace,
