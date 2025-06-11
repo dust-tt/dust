@@ -63,7 +63,7 @@ async function handler(
   // Validate the client IP address.
   const clientIp =
     getClientIpFromHeaders(req.headers) || req.socket.remoteAddress;
-  if (typeof clientIp !== "string") {
+  if (!isString(clientIp)) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -93,7 +93,7 @@ async function handler(
 
   const { body: payload } = req;
   const sigHeader = req.headers["workos-signature"];
-  if (typeof sigHeader !== "string") {
+  if (!isString(sigHeader)) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
