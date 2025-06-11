@@ -51,7 +51,7 @@ import type {
   LightWorkspaceType,
   TagsFilter,
 } from "@app/types";
-import { DocumentViewRawContentKey, GLOBAL_AGENTS_SID } from "@app/types";
+import { DocumentViewRawContentKey } from "@app/types";
 
 interface AssistantKnowledgeSectionProps {
   agentConfiguration: AgentConfigurationType;
@@ -75,16 +75,8 @@ export function AssistantKnowledgeSection({
       queryTables: [] as { tables: TableDataSourceConfiguration[] }[],
     };
 
-    const isDustGlobalAgent = agentConfiguration.sId === GLOBAL_AGENTS_SID.DUST;
-
     return agentConfiguration.actions.reduce((acc, action) => {
-      // Since Dust is configured with one search for all, plus individual searches for each managed data source,
-      // we hide these additional searches from the user in the UI to avoid displaying the same data source twice.
-      // We use the `hidden_dust_search_` prefix to identify these additional searches.
-      if (
-        isRetrievalConfiguration(action) &&
-        (!isDustGlobalAgent || !action.name.startsWith("hidden_dust_search_"))
-      ) {
+      if (isRetrievalConfiguration(action)) {
         acc.retrieval.push(action);
       } else if (isTablesQueryConfiguration(action)) {
         acc.queryTables.push(action);
