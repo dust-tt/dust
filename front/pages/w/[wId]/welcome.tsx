@@ -73,6 +73,19 @@ export default function Welcome({
 
   const { patchUser } = usePatchUser();
 
+  // GTM signup event tracking
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.dataLayer = window.dataLayer || [];
+      window.dataLayer.push({
+        event: "signup_completed",
+        user_email: user.email,
+        company_name: owner.name,
+        gclid: sessionStorage.getItem("gclid") || null,
+      });
+    }
+  }, [user.sId, user.email, owner.name]);
+
   useEffect(() => {
     setIsFormValid(
       firstName !== "" &&
