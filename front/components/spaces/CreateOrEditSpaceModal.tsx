@@ -34,9 +34,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { ConfirmContext } from "@app/components/Confirm";
 import { ConfirmDeleteSpaceDialog } from "@app/components/spaces/ConfirmDeleteSpaceDialog";
+import { SearchGroupsDropdown } from "@app/components/spaces/SearchGroupsDropdown";
 import { SearchMembersPopover } from "@app/components/spaces/SearchMembersPopover";
-import { UserGroupPopover } from "@app/components/spaces/UserGroupPopover";
-import { useMembersCount } from "@app/lib/swr/memberships";
 import {
   useCreateSpace,
   useDeleteSpace,
@@ -50,11 +49,11 @@ import type {
   UserType,
 } from "@app/types";
 
-type MembersManagementType = "manual" | "group";
+type MembersManagementType = "manual" | "group" | null;
 
 function isMembersManagementType(
   value: string
-): value is MembersManagementType {
+): value is NonNullable<MembersManagementType> {
   return value === "manual" || value === "group";
 }
 
@@ -78,7 +77,6 @@ export function CreateOrEditSpaceModal({
   space,
 }: CreateOrEditSpaceModalProps) {
   const confirm = React.useContext(ConfirmContext);
-  const membersCount = useMembersCount(owner);
   const [spaceName, setSpaceName] = useState<string | null>(
     space?.name ?? null
   );
@@ -92,15 +90,33 @@ export function CreateOrEditSpaceModal({
   const [searchSelectedMembers, setSearchSelectedMembers] =
     useState<string>("");
   const [managementType, setManagementType] =
-    useState<MembersManagementType>("manual");
+    useState<MembersManagementType>(null);
 
+  // Determine management type based on selections
   useEffect(() => {
-    if (membersCount > 0) {
-      setManagementType("manual");
-    } else if (selectedGroups.length > 0) {
-      setManagementType("group");
+    const hasMembers = selectedMembers.length > 0;
+    const hasGroups = selectedGroups.length > 0;
+
+    // Sanity check: prevent both members and groups being selected
+    if (hasMembers && hasGroups) {
+      console.error("Invalid state: both members and groups are selected");
+      // Clear one of them based on current management type preference
+      if (managementType === "manual") {
+        setSelectedGroups([]);
+      } else {
+        setSelectedMembers([]);
+      }
+      return;
     }
-  }, [membersCount, selectedGroups.length]);
+
+    if (hasMembers) {
+      setManagementType("manual");
+    } else if (hasGroups) {
+      setManagementType("group");
+    } else if (managementType === null) {
+      return;
+    }
+  }, [selectedMembers.length, selectedGroups.length, managementType]);
 
   const deduplicatedMembers = useMemo(
     () => _.uniqBy(selectedMembers, "sId"),
@@ -246,13 +262,34 @@ export function CreateOrEditSpaceModal({
 
         if (confirmed) {
           setSelectedMembers([]);
-          setManagementType(value);
+          setManagementType("group");
+        }
+      }
+      // If switching from group to manual mode with selected groups
+      else if (
+        managementType === "group" &&
+        value === "manual" &&
+        selectedGroups.length > 0
+      ) {
+        const confirmed = await confirm({
+          title: "Switch to Manual Management",
+          message:
+            "Switching to manual member management will remove all selected groups",
+          validateLabel: "Switch to Manual",
+          validateVariant: "warning",
+        });
+
+        if (confirmed) {
+          setSelectedGroups([]);
+          setManagementType("manual");
         }
       } else {
-        setManagementType(value);
+        // For direct switches without selections, clear everything and let user start fresh
+        setSelectedMembers([]);
+        setSelectedGroups([]);
       }
     },
-    [confirm, managementType, selectedMembers.length]
+    [confirm, managementType, selectedMembers.length, selectedGroups.length]
   );
 
   return (
@@ -306,8 +343,7 @@ export function CreateOrEditSpaceModal({
 
             {isRestricted && (
               <>
-                {deduplicatedMembers.length === 0 &&
-                selectedGroups.length === 0 ? (
+                {managementType === null ? (
                   <div className="flex flex-col items-center gap-2">
                     <SearchMembersPopover
                       owner={owner}
@@ -317,10 +353,10 @@ export function CreateOrEditSpaceModal({
                     <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
                       or
                     </span>
-                    <UserGroupPopover
+                    <SearchGroupsDropdown
                       owner={owner}
-                      selectedMembers={deduplicatedMembers}
-                      onMembersUpdated={setSelectedMembers}
+                      selectedGroups={selectedGroups}
+                      onGroupsUpdated={setSelectedGroups}
                     />
                   </div>
                 ) : (
@@ -332,10 +368,10 @@ export function CreateOrEditSpaceModal({
                         onMembersUpdated={setSelectedMembers}
                       />
                     ) : (
-                      <UserGroupPopover
+                      <SearchGroupsDropdown
                         owner={owner}
-                        selectedMembers={deduplicatedMembers}
-                        onMembersUpdated={setSelectedMembers}
+                        selectedGroups={selectedGroups}
+                        onGroupsUpdated={setSelectedGroups}
                       />
                     )}
                     <DropdownMenu>
@@ -344,11 +380,11 @@ export function CreateOrEditSpaceModal({
                       </DropdownMenuTrigger>
                       <DropdownMenuContent>
                         <DropdownMenuRadioGroup
-                          value={managementType}
+                          value={managementType ?? ""}
                           onValueChange={handleManagementTypeChange}
                         >
                           <DropdownMenuRadioItem value="manual">
-                            Manual group management
+                            Manual member management
                           </DropdownMenuRadioItem>
                           <DropdownMenuRadioItem value="group">
                             Group member management
@@ -358,34 +394,37 @@ export function CreateOrEditSpaceModal({
                     </DropdownMenu>
                   </div>
                 )}
-                <SearchInput
-                  name="search"
-                  placeholder={
-                    managementType === "manual"
-                      ? "Search (email)"
-                      : "Search groups"
-                  }
-                  value={searchSelectedMembers}
-                  onChange={(s) => {
-                    setSearchSelectedMembers(s);
-                  }}
-                />
-                <ScrollArea className="h-full">
-                  {managementType === "manual" ? (
-                    <MembersTable
-                      onMembersUpdated={setSelectedMembers}
-                      selectedMembers={deduplicatedMembers}
-                      searchSelectedMembers={searchSelectedMembers}
+                {managementType !== null && (
+                  <>
+                    <SearchInput
+                      name="search"
+                      placeholder={
+                        managementType === "manual"
+                          ? "Search (email)"
+                          : "Search groups"
+                      }
+                      value={searchSelectedMembers}
+                      onChange={(s) => {
+                        setSearchSelectedMembers(s);
+                      }}
                     />
-                  ) : (
-                    <GroupsTable
-                      onGroupsUpdated={setSelectedGroups}
-                      selectedGroups={selectedGroups}
-                      searchSelectedGroups={searchSelectedMembers}
-                      owner={owner}
-                    />
-                  )}
-                </ScrollArea>
+                    <ScrollArea className="h-full">
+                      {managementType === "manual" ? (
+                        <MembersTable
+                          onMembersUpdated={setSelectedMembers}
+                          selectedMembers={deduplicatedMembers}
+                          searchSelectedMembers={searchSelectedMembers}
+                        />
+                      ) : (
+                        <GroupsTable
+                          onGroupsUpdated={setSelectedGroups}
+                          selectedGroups={selectedGroups}
+                          searchSelectedGroups={searchSelectedMembers}
+                        />
+                      )}
+                    </ScrollArea>
+                  </>
+                )}
               </>
             )}
 
@@ -582,14 +621,12 @@ interface GroupsTableProps {
   onGroupsUpdated: (groups: GroupType[]) => void;
   selectedGroups: GroupType[];
   searchSelectedGroups: string;
-  owner: LightWorkspaceType;
 }
 
 function GroupsTable({
   onGroupsUpdated,
   selectedGroups,
   searchSelectedGroups,
-  owner,
 }: GroupsTableProps) {
   const sendNotifications = useSendNotification();
   const [pagination, setPagination] = useState<PaginationState>({
