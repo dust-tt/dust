@@ -257,7 +257,6 @@ const UserMessageOriginSchema = FlexibleEnumSchema<
   | "github-copilot-chat"
   | "gsheet"
   | "make"
-  | "mcp"
   | "n8n"
   | "raycast"
   | "slack"

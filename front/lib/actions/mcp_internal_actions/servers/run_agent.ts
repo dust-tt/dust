@@ -210,7 +210,7 @@ export default async function createServer(
             fullName: `@${mainAgent.name}`,
             email: null,
             profilePictureUrl: mainAgent.pictureUrl,
-            origin: "mcp",
+            origin: "run_agent",
           },
         },
         contentFragment: undefined,
