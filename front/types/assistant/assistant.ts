@@ -27,6 +27,31 @@ export const MODEL_PROVIDER_IDS = [
 ] as const;
 export type ModelProviderIdType = (typeof MODEL_PROVIDER_IDS)[number];
 
+export function getProviderDisplayName(
+  providerId: ModelProviderIdType
+): string {
+  switch (providerId) {
+    case "openai":
+      return "OpenAI";
+    case "anthropic":
+      return "Anthropic";
+    case "mistral":
+      return "Mistral";
+    case "google_ai_studio":
+      return "Google";
+    case "togetherai":
+      return "TogetherAI";
+    case "deepseek":
+      return "DeepSeek";
+    case "fireworks":
+      return "Fireworks";
+    case "xai":
+      return "xAI";
+    default:
+      return providerId;
+  }
+}
+
 export const REASONING_EFFORT_IDS = ["low", "medium", "high"] as const;
 export type ReasoningEffortIdType = (typeof REASONING_EFFORT_IDS)[number];
 

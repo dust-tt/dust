@@ -8,6 +8,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSearchbar,
   DropdownMenuTrigger,
+  useSendNotification,
 } from "@dust-tt/sparkle";
 import assert from "assert";
 import { uniqueId } from "lodash";
@@ -27,7 +28,10 @@ import {
 } from "@app/components/assistant_builder/types";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
+import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import type { ModelConfigurationType } from "@app/types";
+import { O4_MINI_MODEL_ID } from "@app/types";
 
 type MCPServerViewTypeWithLabel = MCPServerViewType & { label: string };
 
@@ -40,7 +44,10 @@ interface AddToolsDropdownProps {
   nonDefaultMCPActions: ActionSpecificationWithType[];
   defaultMCPServerViews: MCPServerViewTypeWithLabel[];
   nonDefaultMCPServerViews: MCPServerViewTypeWithLabel[];
+  reasoningModels: ModelConfigurationType[];
 }
+
+const DEFAULT_REASONING_MODEL_ID = O4_MINI_MODEL_ID;
 
 export function AddToolsDropdown({
   setEdited,
@@ -49,6 +56,7 @@ export function AddToolsDropdown({
   nonDefaultMCPActions,
   defaultMCPServerViews,
   nonDefaultMCPServerViews,
+  reasoningModels,
 }: AddToolsDropdownProps) {
   const [searchText, setSearchText] = useState("");
   const [filteredNonMCPActions, setFilteredNonMCPActions] =
@@ -57,6 +65,7 @@ export function AddToolsDropdown({
     ...defaultMCPServerViews,
     ...nonDefaultMCPServerViews,
   ]);
+  const sendNotification = useSendNotification();
 
   const noFilteredTools =
     filteredNonMCPActions.length === 0 && filteredMCPServerViews.length === 0;
@@ -118,6 +127,50 @@ export function AddToolsDropdown({
     setEdited(true);
     const action = getDefaultMCPServerActionConfiguration(selectedView);
     assert(action);
+
+    const isReasoning =
+      getMCPServerRequirements(selectedView).requiresReasoningConfiguration;
+
+    // Reasoning is configurable but we select the reasoning model by default.
+    if (action.type === "MCP" && isReasoning) {
+      // You should not be able to select reasoning tools if you don't have any reasoning models,
+      // but in case you do for some reasons, we show an error notification.
+      if (reasoningModels.length === 0) {
+        sendNotification({
+          title: "No reasoning model available",
+          description:
+            "Please add a reasoning model to your workspace to be able to use this tool",
+          type: "error",
+        });
+      } else {
+        // Use o4-mini (high reasoning effort) as default reasoning model, if it's not available use the first one in the list.
+        const defaultReasoningModel =
+          reasoningModels.find(
+            (model) =>
+              model.modelId === DEFAULT_REASONING_MODEL_ID &&
+              model.reasoningEffort === "high"
+          ) ?? reasoningModels[0];
+
+        setAction({
+          type: "insert",
+          action: {
+            id: uniqueId(),
+            ...action,
+            configuration: {
+              ...action.configuration,
+              reasoningModel: {
+                modelId: defaultReasoningModel.modelId,
+                providerId: defaultReasoningModel.providerId,
+                reasoningEffort: defaultReasoningModel.reasoningEffort ?? null,
+                temperature: null,
+              },
+            },
+          },
+        });
+      }
+
+      return;
+    }
 
     setAction({
       type: action.noConfigurationRequired ? "insert" : "pending",
