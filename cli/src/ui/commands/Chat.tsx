@@ -157,7 +157,7 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
             title: `CLI Question: ${questionText.substring(0, 30)}${
               questionText.length > 30 ? "..." : ""
             }`,
-            visibility: "workspace",
+            visibility: "unlisted",
             message: {
               content: questionText,
               mentions: [{ configurationId: selectedAgent.sId }],
@@ -565,7 +565,7 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
         ) {
           newPosition++;
         }
-        
+
         // If we hit a newline, stop there.
         if (currentInput[newPosition] === "\n") {
           setCurrentCursorPos(newPosition);
@@ -579,7 +579,7 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
         ) {
           newPosition++;
         }
-        
+
         // Skip spaces after the word, but stop at newline.
         while (
           newPosition < currentInput.length &&
@@ -644,7 +644,10 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
 
       // Find current line and position within that line.
       for (let i = 0; i < lines.length; i++) {
-        if (currentCursorPos >= currentPos && currentCursorPos <= currentPos + lines[i].length) {
+        if (
+          currentCursorPos >= currentPos &&
+          currentCursorPos <= currentPos + lines[i].length
+        ) {
           lineIndex = i;
           posInLine = currentCursorPos - currentPos;
           break;
@@ -656,14 +659,14 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
       if (lineIndex > 0) {
         const prevLineLength = lines[lineIndex - 1].length;
         const newPosInLine = Math.min(posInLine, prevLineLength);
-        
+
         // Calculate new cursor position.
         let newCursorPos = 0;
         for (let i = 0; i < lineIndex - 1; i++) {
           newCursorPos += lines[i].length + 1;
         }
         newCursorPos += newPosInLine;
-        
+
         setCurrentCursorPos(newCursorPos);
       } else {
         // Already on first line, go to beginning.
@@ -680,7 +683,10 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
 
       // Find current line and position within that line.
       for (let i = 0; i < lines.length; i++) {
-        if (currentCursorPos >= currentPos && currentCursorPos <= currentPos + lines[i].length) {
+        if (
+          currentCursorPos >= currentPos &&
+          currentCursorPos <= currentPos + lines[i].length
+        ) {
           lineIndex = i;
           posInLine = currentCursorPos - currentPos;
           break;
@@ -692,14 +698,14 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
       if (lineIndex < lines.length - 1) {
         const nextLineLength = lines[lineIndex + 1].length;
         const newPosInLine = Math.min(posInLine, nextLineLength);
-        
+
         // Calculate new cursor position.
         let newCursorPos = 0;
         for (let i = 0; i <= lineIndex; i++) {
           newCursorPos += lines[i].length + 1;
         }
         newCursorPos += newPosInLine;
-        
+
         setCurrentCursorPos(newCursorPos);
       } else {
         // Already on last line, go to end.
