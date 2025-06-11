@@ -2096,7 +2096,7 @@ export const PublicPostConversationsRequestBodySchema = z.intersection(
   z.object({
     title: z.string().nullable().optional(),
     visibility: z
-      .enum(["unlisted", "deleted", "test"])
+      .enum(["workspace", "unlisted", "deleted", "test"])
       .optional()
       .default("unlisted"),
     depth: z.number().optional(),
