@@ -38,7 +38,7 @@ export function AgentMessageActionsDrawer({
     useConversationMessage({
       conversationId,
       workspaceId: owner.sId,
-      messageId: isOpened ? message.sId : null,
+      messageId: message.sId,
     });
 
   const actions =
