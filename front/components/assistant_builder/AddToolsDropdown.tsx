@@ -28,7 +28,7 @@ import {
 } from "@app/components/assistant_builder/types";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
-import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/utils";
+import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { ModelConfigurationType } from "@app/types";
 import { O4_MINI_MODEL_ID } from "@app/types";
