@@ -546,7 +546,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     const group = await this.model.findOne({
       where: {
         workspaceId: owner.id,
-        workOSGroupId: directoryGroup.directoryId,
+        workOSGroupId: directoryGroup.id,
       },
     });
 
