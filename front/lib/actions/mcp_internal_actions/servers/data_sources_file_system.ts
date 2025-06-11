@@ -320,7 +320,12 @@ const createServer = (
         content: [
           {
             type: "resource" as const,
-            resource: makeQueryResourceForFind(query, rootNodeId, mimeTypes),
+            resource: makeQueryResourceForFind(
+              query,
+              rootNodeId,
+              mimeTypes,
+              nextPageCursor
+            ),
           },
           {
             type: "resource" as const,
@@ -457,7 +462,11 @@ const createServer = (
         content: [
           {
             type: "resource" as const,
-            resource: makeQueryResourceForList(nodeId, mimeTypes),
+            resource: makeQueryResourceForList(
+              nodeId,
+              mimeTypes,
+              nextPageCursor
+            ),
           },
           {
             type: "resource" as const,
@@ -997,29 +1006,33 @@ function makeQueryResource(
 function makeQueryResourceForFind(
   query?: string,
   rootNodeId?: string,
-  mimeTypes?: string[]
+  mimeTypes?: string[],
+  nextPageCursor?: string
 ): SearchQueryResourceType {
   return {
     mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_QUERY,
     text:
       "Searching " +
-      (query ? `"${query}}" ` : "") +
+      (query ? `"${query}" ` : "") +
       (rootNodeId ? `under ${rootNodeId} ` : "") +
-      (mimeTypes ? `of type ${mimeTypes.join(", ")} ` : ""),
+      (mimeTypes ? `of type ${mimeTypes.join(", ")} ` : "") +
+      (nextPageCursor ? ` (next page)` : ""),
     uri: "",
   };
 }
 
 function makeQueryResourceForList(
   nodeId: string | null,
-  mimeTypes?: string[]
+  mimeTypes?: string[],
+  nextPageCursor?: string
 ): SearchQueryResourceType {
   return {
     mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_QUERY,
     text:
       "Listing content " +
       (nodeId ? `under "${nodeId} " ` : "at the root ") +
-      (mimeTypes ? `of type ${mimeTypes.join(", ")} ` : ""),
+      (mimeTypes ? `of type ${mimeTypes.join(", ")} ` : "") +
+      (nextPageCursor ? ` (next page)` : ""),
     uri: "",
   };
 }
