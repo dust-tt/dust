@@ -752,13 +752,10 @@ export class GroupResource extends BaseResource<GroupModel> {
     return groups.map((group) => new this(GroupModel, group.get()));
   }
 
-  async isMember(auth: Authenticator): Promise<boolean> {
-    const owner = auth.getNonNullableWorkspace();
-
+  async isMember(user: UserResource): Promise<boolean> {
     if (this.isGlobal()) {
       return true;
     }
-
     if (this.isSystem()) {
       return false;
     }
@@ -766,10 +763,10 @@ export class GroupResource extends BaseResource<GroupModel> {
     const membership = await GroupMembershipModel.findOne({
       where: {
         groupId: this.id,
-        workspaceId: owner.id,
+        workspaceId: this.workspaceId,
         startAt: { [Op.lte]: new Date() },
         [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
-        userId: auth.getNonNullableUser().id,
+        userId: user.id,
       },
     });
 

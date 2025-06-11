@@ -246,12 +246,7 @@ async function handleUserAddedToGroup(
       `Group not found for workOSId "${event.group.id}" in workspace "${workspace.sId}"`
     );
   }
-
-  const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
-    user.sId,
-    workspace.sId
-  );
-  const isMember = await group.isMember(userAuth);
+  const isMember = await group.isMember(user);
   if (isMember) {
     logger.info(
       `User "${user.sId}" is already member of group "${group.sId}", skipping`
