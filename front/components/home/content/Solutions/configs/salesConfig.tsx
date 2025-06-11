@@ -171,7 +171,8 @@ export const DemoVideo: DemoVideoProps = {
 export const Stories: CustomerStory[] = [
   {
     title: "Clay powers 4x sales team growth with Dust AI agents",
-    content: "Clay uses Dust AI agents to scale their GTM team 4x while maintaining sales velocity.",
+    content:
+      "Clay uses Dust AI agents to scale their GTM team 4x while maintaining sales velocity.",
     href: "https://blog.dust.tt/clay-scaling-gtme-team/",
     src: "https://blog.dust.tt/content/images/size/w2000/2025/06/clay_dust_agents.jpg",
   },
