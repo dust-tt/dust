@@ -5,6 +5,7 @@ import { z, ZodError } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
 import type { Result } from "@app/types";
+import { normalizeError } from "@app/types";
 import { Err, Ok } from "@app/types";
 
 export const DATA_SOURCE_CONFIGURATION_URI_PATTERN =
@@ -81,7 +82,7 @@ export function validateConfiguredJsonSchema(
         )
       );
     }
-    throw error;
+    return new Err(normalizeError(error));
   }
 }
 
