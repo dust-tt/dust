@@ -10,17 +10,17 @@ import { useCallback, useEffect, useReducer } from "react";
 
 import { getActionSpecification } from "@app/components/actions/types";
 import { useEventSource } from "@app/hooks/useEventSource";
-import type {
-  MessageTemporaryState} from "@app/lib/assistant/state/fullMessageReducer";
-import {
-  MessageReducer
-} from "@app/lib/assistant/state/fullMessageReducer";
+import type { MessageTemporaryState } from "@app/lib/assistant/state/fullMessageReducer";
+import { MessageReducer } from "@app/lib/assistant/state/fullMessageReducer";
 import type { ActionProgressState } from "@app/lib/assistant/state/messageReducer";
 import { useConversationMessage } from "@app/lib/swr/conversations";
-import type {AgentActionType, AgentMessageType, LightAgentMessageType, LightWorkspaceType} from "@app/types";
-import {
-  isAgentMessageType
+import type {
+  AgentActionType,
+  AgentMessageType,
+  LightAgentMessageType,
+  LightWorkspaceType,
 } from "@app/types";
+import { isAgentMessageType } from "@app/types";
 
 function makeInitialFullMessageState(
   fullMessage: AgentMessageType | null
@@ -88,7 +88,9 @@ export function AgentMessageActionsDrawer({
 
   const buildEventSourceURL = useCallback(
     (lastEvent: string | null) => {
-      if (!isOpened || !message.sId || !fullAgentMessage) {return null;}
+      if (!isOpened || !message.sId || !fullAgentMessage) {
+        return null;
+      }
 
       const esURL = `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${message.sId}/events`;
       let lastEventId = "";
