@@ -228,10 +228,14 @@ async function handleUserAddedToGroup(
     return;
   }
 
-  const workOSUser = await fetchWorkOSUserWithEmail(
+  const workOSUserRes = await fetchWorkOSUserWithEmail(
     workspace,
     event.user.email
   );
+  if (workOSUserRes.isErr()) {
+    throw workOSUserRes.error;
+  }
+  const workOSUser = workOSUserRes.value;
 
   const user = await UserResource.fetchByWorkOSUserId(workOSUser.id);
   if (!user) {
@@ -261,10 +265,14 @@ async function handleUserRemovedFromGroup(
     return;
   }
 
-  const workOSUser = await fetchWorkOSUserWithEmail(
+  const workOSUserRes = await fetchWorkOSUserWithEmail(
     workspace,
     event.user.email
   );
+  if (workOSUserRes.isErr()) {
+    throw workOSUserRes.error;
+  }
+  const workOSUser = workOSUserRes.value;
 
   const user = await UserResource.fetchByWorkOSUserId(workOSUser.id);
   if (!user) {
@@ -289,7 +297,11 @@ async function handleCreateOrUpdateWorkOSUser(
   workspace: LightWorkspaceType,
   event: DirectoryUser
 ) {
-  const workOSUser = await fetchWorkOSUserWithEmail(workspace, event.email);
+  const workOSUserRes = await fetchWorkOSUserWithEmail(workspace, event.email);
+  if (workOSUserRes.isErr()) {
+    throw workOSUserRes.error;
+  }
+  const workOSUser = workOSUserRes.value;
 
   const user = await UserResource.fetchByWorkOSUserId(workOSUser.id);
   const externalUser: ExternalUser = {
@@ -318,7 +330,11 @@ async function handleDeleteWorkOSUser(
   workspace: LightWorkspaceType,
   event: DirectoryUser
 ) {
-  const workOSUser = await fetchWorkOSUserWithEmail(workspace, event.email);
+  const workOSUserRes = await fetchWorkOSUserWithEmail(workspace, event.email);
+  if (workOSUserRes.isErr()) {
+    throw workOSUserRes.error;
+  }
+  const workOSUser = workOSUserRes.value;
 
   const user = await UserResource.fetchByWorkOSUserId(workOSUser.id);
   if (!user) {

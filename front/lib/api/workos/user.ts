@@ -9,7 +9,8 @@ import config from "@app/lib/api/config";
 import type { RegionType } from "@app/lib/api/regions/config";
 import { getWorkOS } from "@app/lib/api/workos/client";
 import type { SessionWithUser } from "@app/lib/iam/provider";
-import type { LightWorkspaceType } from "@app/types";
+import type { LightWorkspaceType, Result } from "@app/types";
+import { Err, Ok } from "@app/types";
 
 export type SessionCookie = {
   sessionData: string;
@@ -96,9 +97,9 @@ export async function updateUserFromAuth0(
 export async function fetchWorkOSUserWithEmail(
   workspace: LightWorkspaceType,
   email?: string | null
-) {
+): Promise<Result<WorkOSUser, Error>> {
   if (email == null) {
-    throw new Error("Missing email");
+    return new Err(new Error("Missing email"));
   }
 
   const workOSUserResponse = await getWorkOS().userManagement.listUsers({
@@ -108,10 +109,12 @@ export async function fetchWorkOSUserWithEmail(
 
   const [workOSUser] = workOSUserResponse.data;
   if (!workOSUser) {
-    throw new Error(
-      `User not found with email "${email}" in workOS for workspace "${workspace.sId}"`
+    return new Err(
+      new Error(
+        `User not found with email "${email}" in workOS for workspace "${workspace.sId}"`
+      )
     );
   }
 
-  return workOSUser;
+  return new Ok(workOSUser);
 }
