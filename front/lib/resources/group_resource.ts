@@ -832,6 +832,27 @@ export class GroupResource extends BaseResource<GroupModel> {
     );
   }
 
+  async getMemberCount(auth: Authenticator): Promise<number> {
+    const owner = auth.getNonNullableWorkspace();
+
+    // The global group does not have a DB entry for each workspace member.
+    if (this.isGlobal()) {
+      const { memberships } = await MembershipResource.getActiveMemberships({
+        workspace: auth.getNonNullableWorkspace(),
+      });
+      return memberships.length;
+    } else {
+      return GroupMembershipModel.count({
+        where: {
+          groupId: this.id,
+          workspaceId: owner.id,
+          startAt: { [Op.lte]: new Date() },
+          [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
+        },
+      });
+    }
+  }
+
   async addMembers(
     auth: Authenticator,
     users: UserType[],
@@ -1261,6 +1282,19 @@ export class GroupResource extends BaseResource<GroupModel> {
       name: this.name,
       workspaceId: this.workspaceId,
       kind: this.kind,
+      memberCount: 0, // Default value, use toJSONWithMemberCount for actual count
+    };
+  }
+
+  async toJSONWithMemberCount(auth: Authenticator): Promise<GroupType> {
+    const memberCount = await this.getMemberCount(auth);
+    return {
+      id: this.id,
+      sId: this.sId,
+      name: this.name,
+      workspaceId: this.workspaceId,
+      kind: this.kind,
+      memberCount,
     };
   }
 }

@@ -636,7 +636,7 @@ function getGroupTableRows(allGroups: GroupType[]): GroupRowData[] {
   return allGroups.map((group) => ({
     groupId: group.sId,
     name: group.name,
-    memberCount: 0,
+    memberCount: group.memberCount,
   }));
 }
 

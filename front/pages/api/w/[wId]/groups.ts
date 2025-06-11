@@ -65,8 +65,12 @@ async function handler(
         });
       }
 
+      const groupsWithMemberCount = await Promise.all(
+        groups.map((group) => group.toJSONWithMemberCount(auth))
+      );
+
       return res.status(200).json({
-        groups: groups.map((group) => group.toJSON()),
+        groups: groupsWithMemberCount,
       });
     }
 
