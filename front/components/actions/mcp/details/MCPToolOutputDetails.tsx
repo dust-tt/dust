@@ -217,44 +217,50 @@ export function SearchResultDetails({
     return removeNulls(
       actionOutput.flatMap((r) => {
         if (isWebsearchResultResourceType(r)) {
+          const IconComponent = getDocumentIcon("webcrawler");
           return [
             {
               description: r.resource.text,
               title: r.resource.title,
-              icon: getDocumentIcon("webcrawler"),
+              icon: <IconComponent />,
               href: r.resource.uri,
             },
           ];
         }
         if (isSearchResultResourceType(r) || isIncludeResultResourceType(r)) {
+          const IconComponent = getDocumentIcon(r.resource.source.provider);
           return [
             {
               description: "",
               title: r.resource.text,
-              icon: getDocumentIcon(r.resource.source.provider),
+              icon: <IconComponent />,
               href: r.resource.uri,
             },
           ];
         }
         if (isDataSourceNodeListType(r)) {
-          return r.resource.data.map((node) => ({
-            description: `${node.path}${
-              node.lastUpdatedAt ? ` • ${node.lastUpdatedAt}` : ""
-            }`,
-            title: node.title,
-            icon: getDocumentIcon(node.connectorProvider),
-            href: node.sourceUrl || undefined,
-          }));
+          return r.resource.data.map((node) => {
+            const IconComponent = getDocumentIcon(node.connectorProvider);
+            return {
+              description: `${node.path}${
+                node.lastUpdatedAt ? ` • ${node.lastUpdatedAt}` : ""
+              }`,
+              title: node.title,
+              icon: <IconComponent />,
+              href: node.sourceUrl || undefined,
+            };
+          });
         }
         if (isDataSourceNodeContentType(r)) {
           const { metadata } = r.resource;
+          const IconComponent = getDocumentIcon(metadata.connectorProvider);
           return [
             {
               description: `${metadata.path}${
                 metadata.lastUpdatedAt ? ` • ${metadata.lastUpdatedAt}` : ""
               }`,
               title: metadata.title,
-              icon: getDocumentIcon(metadata.connectorProvider),
+              icon: <IconComponent />,
               href: metadata.sourceUrl || undefined,
             },
           ];
