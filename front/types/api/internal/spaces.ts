@@ -4,19 +4,34 @@ const PostRestrictedSpace = t.intersection([
     isRestricted: t.literal(true),
   }),
   t.union([
-    t.type({
-      memberIds: t.array(t.string),
-    }),
-    t.type({
-      groupIds: t.array(t.string),
-    }),
+    t.intersection([
+      t.type({
+        memberIds: t.array(t.string),
+      }),
+      t.partial({
+        managementMode: t.literal("manual"),
+      }),
+    ]),
+    t.intersection([
+      t.type({
+        groupIds: t.array(t.string),
+      }),
+      t.partial({
+        managementMode: t.literal("group"),
+      }),
+    ]),
   ]),
 ]);
 
-const PostUnrestrictedSpace = t.type({
-  memberIds: t.null,
-  isRestricted: t.literal(false),
-});
+const PostUnrestrictedSpace = t.intersection([
+  t.type({
+    memberIds: t.null,
+    isRestricted: t.literal(false),
+  }),
+  t.partial({
+    managementMode: t.literal("manual"),
+  }),
+]);
 
 export const PostSpaceRequestBodySchema = t.intersection([
   t.type({

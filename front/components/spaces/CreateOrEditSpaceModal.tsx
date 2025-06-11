@@ -1,11 +1,6 @@
 import {
   Button,
   DataTable,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuTrigger,
   Input,
   Label,
   Page,
@@ -18,10 +13,12 @@ import {
   SheetHeader,
   SheetTitle,
   SliderToggle,
+  Tabs,
+  TabsList,
+  TabsTrigger,
   useSendNotification,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import { MoreIcon } from "@dust-tt/sparkle";
 import type {
   CellContext,
   PaginationState,
@@ -51,11 +48,11 @@ import type {
   UserType,
 } from "@app/types";
 
-type MembersManagementType = "manual" | "group" | null;
+type MembersManagementType = "manual" | "group";
 
 function isMembersManagementType(
   value: string
-): value is NonNullable<MembersManagementType> {
+): value is MembersManagementType {
   return value === "manual" || value === "group";
 }
 
@@ -90,7 +87,7 @@ export function CreateOrEditSpaceModal({
   const [searchSelectedMembers, setSearchSelectedMembers] =
     useState<string>("");
   const [managementType, setManagementType] =
-    useState<MembersManagementType>(null);
+    useState<MembersManagementType>("manual");
 
   const { hasFeature } = useFeatureFlags({
     workspaceId: owner.sId,
@@ -99,45 +96,10 @@ export function CreateOrEditSpaceModal({
   const isWorkOSFeatureEnabled = hasFeature("workos");
 
   useEffect(() => {
-    if (!isWorkOSFeatureEnabled && managementType === null) {
-      setManagementType("manual");
-    }
-  }, [isWorkOSFeatureEnabled, managementType]);
-
-  // Determine management type based on selections (only relevant when workos is enabled)
-  useEffect(() => {
     if (!isWorkOSFeatureEnabled) {
-      return;
-    }
-
-    const hasMembers = selectedMembers.length > 0;
-    const hasGroups = selectedGroups.length > 0;
-
-    // Sanity check: prevent both members and groups being selected
-    if (hasMembers && hasGroups) {
-      console.error("Invalid state: both members and groups are selected");
-      // Clear one of them based on current management type preference
-      if (managementType === "manual") {
-        setSelectedGroups([]);
-      } else {
-        setSelectedMembers([]);
-      }
-      return;
-    }
-
-    if (hasMembers) {
       setManagementType("manual");
-    } else if (hasGroups) {
-      setManagementType("group");
-    } else if (managementType === null) {
-      return;
     }
-  }, [
-    selectedMembers.length,
-    selectedGroups.length,
-    managementType,
-    isWorkOSFeatureEnabled,
-  ]);
+  }, [isWorkOSFeatureEnabled]);
 
   const deduplicatedMembers = useMemo(
     () => _.uniqBy(selectedMembers, "sId"),
@@ -166,8 +128,17 @@ export function CreateOrEditSpaceModal({
     if (isOpen) {
       const spaceMembers = spaceInfo?.members ?? null;
 
+      // Initialize management type from space data (if editing) or default to manual for new spaces
+      if (spaceInfo?.managementMode !== undefined) {
+        setManagementType(spaceInfo.managementMode);
+      } else {
+        setManagementType("manual");
+      }
+
       if (spaceMembers && spaceInfo?.isRestricted) {
         setSelectedMembers(spaceMembers);
+      } else {
+        setSelectedMembers([]);
       }
 
       // Initialize selected groups based on space's groupIds (only if workos feature is enabled)
@@ -181,6 +152,8 @@ export function CreateOrEditSpaceModal({
           spaceInfo.groupIds.includes(group.sId)
         );
         setSelectedGroups(spaceGroups);
+      } else {
+        setSelectedGroups([]);
       }
 
       setSpaceName(spaceInfo?.name ?? "");
@@ -201,6 +174,7 @@ export function CreateOrEditSpaceModal({
       setIsRestricted(false);
       setSelectedMembers([]);
       setSelectedGroups([]);
+      setManagementType("manual");
       setShowDeleteConfirmDialog(false);
       setIsDeleting(false);
       setIsSaving(false);
@@ -212,15 +186,26 @@ export function CreateOrEditSpaceModal({
 
     if (space) {
       if (isRestricted) {
-        await doUpdate(space, {
-          isRestricted: true,
-          memberIds: deduplicatedMembers.map((vm) => vm.sId),
-          name: spaceName,
-        });
+        if (isWorkOSFeatureEnabled && managementType === "group") {
+          await doUpdate(space, {
+            isRestricted: true,
+            groupIds: selectedGroups.map((group) => group.sId),
+            managementMode: "group",
+            name: spaceName,
+          });
+        } else {
+          await doUpdate(space, {
+            isRestricted: true,
+            memberIds: deduplicatedMembers.map((vm) => vm.sId),
+            managementMode: "manual",
+            name: spaceName,
+          });
+        }
       } else {
         await doUpdate(space, {
           isRestricted: false,
           memberIds: null,
+          managementMode: "manual",
           name: spaceName,
         });
       }
@@ -236,12 +221,14 @@ export function CreateOrEditSpaceModal({
             name: spaceName,
             isRestricted: true,
             groupIds: selectedGroups.map((group) => group.sId),
+            managementMode: "group",
           });
         } else {
           createdSpace = await doCreate({
             name: spaceName,
             isRestricted: true,
             memberIds: deduplicatedMembers.map((vm) => vm.sId),
+            managementMode: "manual",
           });
         }
       } else {
@@ -249,6 +236,7 @@ export function CreateOrEditSpaceModal({
           name: spaceName,
           isRestricted: false,
           memberIds: null,
+          managementMode: "manual",
         });
       }
 
@@ -402,94 +390,64 @@ export function CreateOrEditSpaceModal({
 
             {isRestricted && (
               <>
-                {managementType === null ? (
-                  <div className="flex flex-col items-center gap-2">
+                {isWorkOSFeatureEnabled ? (
+                  <Tabs
+                    value={managementType}
+                    onValueChange={(tabId) => {
+                      if (isMembersManagementType(tabId)) {
+                        void handleManagementTypeChange(tabId);
+                      }
+                    }}
+                  >
+                    <TabsList>
+                      <TabsTrigger value="manual" label="Members management" />
+                      <TabsTrigger value="group" label="Group management" />
+                    </TabsList>
+                  </Tabs>
+                ) : null}
+
+                <div className="flex flex-row items-center justify-between">
+                  {!isWorkOSFeatureEnabled || managementType === "manual" ? (
                     <SearchMembersPopover
                       owner={owner}
                       selectedMembers={deduplicatedMembers}
                       onMembersUpdated={setSelectedMembers}
                     />
-                    {isWorkOSFeatureEnabled && (
-                      <>
-                        <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                          or
-                        </span>
-                        <SearchGroupsDropdown
-                          owner={owner}
-                          selectedGroups={selectedGroups}
-                          onGroupsUpdated={setSelectedGroups}
-                        />
-                      </>
-                    )}
-                  </div>
-                ) : (
-                  <div className="flex flex-row items-center justify-between">
-                    {managementType === "manual" ? (
-                      <SearchMembersPopover
-                        owner={owner}
-                        selectedMembers={deduplicatedMembers}
-                        onMembersUpdated={setSelectedMembers}
-                      />
-                    ) : (
-                      <SearchGroupsDropdown
-                        owner={owner}
-                        selectedGroups={selectedGroups}
-                        onGroupsUpdated={setSelectedGroups}
-                      />
-                    )}
-                    {isWorkOSFeatureEnabled && (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm" icon={MoreIcon} />
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent>
-                          <DropdownMenuRadioGroup
-                            value={managementType ?? ""}
-                            onValueChange={handleManagementTypeChange}
-                          >
-                            <DropdownMenuRadioItem value="manual">
-                              Manual member management
-                            </DropdownMenuRadioItem>
-                            <DropdownMenuRadioItem value="group">
-                              Group member management
-                            </DropdownMenuRadioItem>
-                          </DropdownMenuRadioGroup>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    )}
-                  </div>
-                )}
-                {managementType !== null && (
-                  <>
-                    <SearchInput
-                      name="search"
-                      placeholder={
-                        managementType === "manual"
-                          ? "Search (email)"
-                          : "Search groups"
-                      }
-                      value={searchSelectedMembers}
-                      onChange={(s) => {
-                        setSearchSelectedMembers(s);
-                      }}
+                  ) : (
+                    <SearchGroupsDropdown
+                      owner={owner}
+                      selectedGroups={selectedGroups}
+                      onGroupsUpdated={setSelectedGroups}
                     />
-                    <ScrollArea className="h-full">
-                      {managementType === "manual" ? (
-                        <MembersTable
-                          onMembersUpdated={setSelectedMembers}
-                          selectedMembers={deduplicatedMembers}
-                          searchSelectedMembers={searchSelectedMembers}
-                        />
-                      ) : (
-                        <GroupsTable
-                          onGroupsUpdated={setSelectedGroups}
-                          selectedGroups={selectedGroups}
-                          searchSelectedGroups={searchSelectedMembers}
-                        />
-                      )}
-                    </ScrollArea>
-                  </>
-                )}
+                  )}
+                </div>
+                <SearchInput
+                  name="search"
+                  placeholder={
+                    !isWorkOSFeatureEnabled || managementType === "manual"
+                      ? "Search (email)"
+                      : "Search groups"
+                  }
+                  value={searchSelectedMembers}
+                  onChange={(s) => {
+                    setSearchSelectedMembers(s);
+                  }}
+                />
+                <ScrollArea className="h-full">
+                  {!isWorkOSFeatureEnabled || managementType === "manual" ? (
+                    <MembersTable
+                      onMembersUpdated={setSelectedMembers}
+                      selectedMembers={deduplicatedMembers}
+                      searchSelectedMembers={searchSelectedMembers}
+                    />
+                  ) : (
+                    <GroupsTable
+                      onGroupsUpdated={setSelectedGroups}
+                      selectedGroups={selectedGroups}
+                      searchSelectedGroups={searchSelectedMembers}
+                    />
+                  )}
+                </ScrollArea>
               </>
             )}
 

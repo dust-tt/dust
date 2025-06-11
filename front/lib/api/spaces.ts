@@ -192,8 +192,18 @@ export async function hardDeleteSpace(
 export async function createRegularSpaceAndGroup(
   auth: Authenticator,
   params:
-    | { name: string; memberIds: string[] | null; isRestricted: boolean }
-    | { name: string; groupIds: string[]; isRestricted: boolean },
+    | {
+        name: string;
+        memberIds: string[] | null;
+        isRestricted: boolean;
+        managementMode?: "manual";
+      }
+    | {
+        name: string;
+        groupIds: string[];
+        isRestricted: boolean;
+        managementMode?: "group";
+      },
   { ignoreWorkspaceLimit = false }: { ignoreWorkspaceLimit?: boolean } = {}
 ): Promise<Result<SpaceResource, DustError | Error>> {
   const owner = auth.getNonNullableWorkspace();
@@ -217,7 +227,7 @@ export async function createRegularSpaceAndGroup(
       );
     }
 
-    const { name, isRestricted } = params;
+    const { name, isRestricted, managementMode = "manual" } = params;
 
     const nameAvailable = await SpaceResource.isNameAvailable(auth, name, t);
     if (!nameAvailable) {
@@ -251,6 +261,7 @@ export async function createRegularSpaceAndGroup(
       {
         name,
         kind: "regular",
+        managementMode,
         workspaceId: owner.id,
       },
       groups,

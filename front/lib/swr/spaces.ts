@@ -378,9 +378,24 @@ export function useDeleteFolderOrWebsite({
 }
 
 type DoCreateOrUpdateAllowedParams =
-  | { name: string | null; memberIds: null; isRestricted: false }
-  | { name: string | null; memberIds: string[]; isRestricted: true }
-  | { name: string | null; groupIds: string[]; isRestricted: true };
+  | {
+      name: string | null;
+      memberIds: null;
+      isRestricted: false;
+      managementMode?: "manual";
+    }
+  | {
+      name: string | null;
+      memberIds: string[];
+      isRestricted: true;
+      managementMode?: "manual";
+    }
+  | {
+      name: string | null;
+      groupIds: string[];
+      isRestricted: true;
+      managementMode?: "group";
+    };
 
 export function useCreateSpace({ owner }: { owner: LightWorkspaceType }) {
   const sendNotification = useSendNotification();
@@ -422,6 +437,7 @@ export function useCreateSpace({ owner }: { owner: LightWorkspaceType }) {
         name,
         ...("memberIds" in params && { memberIds: params.memberIds }),
         ...("groupIds" in params && { groupIds: params.groupIds }),
+        ...(params.managementMode && { managementMode: params.managementMode }),
         isRestricted,
       }),
     });
@@ -501,6 +517,9 @@ export function useUpdateSpace({ owner }: { owner: LightWorkspaceType }) {
         body: JSON.stringify({
           ...(memberIds !== undefined && { memberIds }),
           ...(groupIds !== undefined && { groupIds }),
+          ...(params.managementMode && {
+            managementMode: params.managementMode,
+          }),
           isRestricted,
         }),
       })
