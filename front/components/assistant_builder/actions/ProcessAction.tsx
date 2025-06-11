@@ -19,7 +19,7 @@ import type {
   AssistantBuilderProcessConfiguration,
   AssistantBuilderTimeFrame,
 } from "@app/components/assistant_builder/types";
-import { validateJsonSchema } from "@app/lib/utils/json_schemas";
+import { validateConfiguredJsonSchema } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { Result } from "@app/types";
 import type { SpaceType, WorkspaceType } from "@app/types";
 import { Err, Ok } from "@app/types";
@@ -32,8 +32,13 @@ export function hasErrorActionProcess(
   if (action.type !== "PROCESS") {
     return "Invalid action type.";
   }
-  if (!validateJsonSchema(action.configuration._jsonSchemaString).isValid) {
-    return errorMessage;
+  if (action.configuration._jsonSchemaString) {
+    const validationResult = validateConfiguredJsonSchema(
+      action.configuration._jsonSchemaString
+    );
+    if (validationResult.isErr()) {
+      return validationResult.error.message;
+    }
   }
   if (Object.keys(action.configuration.dataSourceConfigurations).length === 0) {
     return errorMessage;
