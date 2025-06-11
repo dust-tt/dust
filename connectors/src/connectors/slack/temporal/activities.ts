@@ -66,7 +66,7 @@ const MAX_CONCURRENCY_LEVEL = 2;
 // Maximum number of messages we process in a single syncNonThreaded call (1 week of unthreaded
 // messages). Some channels have integrations that post a lot of messages. Beyond this number (more
 // that 500 messages per week), the information is very likely useless.
-const MAX_SYNC_NON_THREAD_MESSAGES = 4000;
+export const MAX_SYNC_NON_THREAD_MESSAGES = 4000;
 // Adaptive chunking constants for syncNonThreaded optimization
 const MAX_MESSAGES_PER_CHUNK = 400; // Stop processing if we hit this many messages in a chunk
 
@@ -449,6 +449,8 @@ export async function syncNonThreadedChunk({
   endTsMs,
   isBatchSync = false,
   startTsMs,
+  ignoreMessageLimit = false,
+  maxTotalMessages = MAX_SYNC_NON_THREAD_MESSAGES,
 }: {
   channelId: string;
   channelName: string;
@@ -456,6 +458,8 @@ export async function syncNonThreadedChunk({
   endTsMs: number;
   isBatchSync: boolean;
   startTsMs: number;
+  ignoreMessageLimit?: boolean;
+  maxTotalMessages?: number;
 }): Promise<SyncNonThreadedChunkResult> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
@@ -549,8 +553,8 @@ export async function syncNonThreadedChunk({
     hasMore = c.has_more;
     nextCursor = c.response_metadata?.next_cursor;
 
-    // Stop if we've processed enough messages for this chunk.
-    if (messages.length >= MAX_MESSAGES_PER_CHUNK) {
+    // Stop if we've processed enough messages for this chunk (unless ignoring limit).
+    if (!ignoreMessageLimit && messages.length >= MAX_MESSAGES_PER_CHUNK) {
       logger.info(
         {
           messagesCount: messages.length,
@@ -588,6 +592,24 @@ export async function syncNonThreadedChunk({
       };
     }
   } while (hasMore);
+
+  // Apply total message limit.
+  if (messages.length > maxTotalMessages) {
+    logger.warn(
+      {
+        messagesCount: messages.length,
+        maxTotalMessages,
+        connectorId,
+        channelName,
+        channelId,
+        startTsMs,
+        endTsMs,
+      },
+      "Giving up on syncNonThreadedChunk: too many messages"
+    );
+    // Process only up to the limit.
+    messages.splice(maxTotalMessages);
+  }
 
   if (messages.length > 0) {
     await processAndUpsertNonThreadedMessages({
@@ -731,158 +753,33 @@ export async function syncMultipleNonThreaded(
   channelId: string,
   channelName: string,
   timestampsMs: number[],
-  connectorId: ModelId
+  connectorId: ModelId,
+  maxTotalMessages = MAX_SYNC_NON_THREAD_MESSAGES
 ) {
   const queue = new PQueue({ concurrency: MAX_CONCURRENCY_LEVEL });
 
   const promises = [];
+
   for (const startTsMs of timestampsMs) {
+    const weekEndTsMs = getWeekEnd(new Date(startTsMs)).getTime();
+
     const p = queue.add(() =>
-      syncNonThreaded(
+      syncNonThreadedChunk({
         channelId,
         channelName,
         startTsMs,
-        getWeekEnd(new Date(startTsMs)).getTime(),
+        endTsMs: weekEndTsMs,
         connectorId,
-        true // isBatchSync
-      )
+        isBatchSync: true,
+        // Ignore message limit to process entire week as single chunk.
+        ignoreMessageLimit: true,
+        maxTotalMessages,
+      })
     );
     promises.push(p);
   }
+
   return Promise.all(promises);
-}
-
-// TODO(2025-06-12): Remove this function and use syncNonThreadedChunk instead.
-export async function syncNonThreaded(
-  channelId: string,
-  channelName: string,
-  startTsMs: number,
-  endTsMs: number,
-  connectorId: ModelId,
-  isBatchSync = false
-) {
-  const connector = await ConnectorResource.fetchById(connectorId);
-  if (!connector) {
-    throw new Error(`Connector ${connectorId} not found`);
-  }
-
-  const slackConfiguration =
-    await SlackConfigurationResource.fetchByConnectorId(connectorId);
-  if (!slackConfiguration) {
-    throw new Error(
-      `Could not find slack configuration for connector ${connector}`
-    );
-  }
-
-  const dataSourceConfig = dataSourceConfigFromConnector(connector);
-  const client = await getSlackClient(connectorId);
-  const nextCursor: string | undefined = undefined;
-  const messages: MessageElement[] = [];
-
-  const startTsSec = Math.round(startTsMs / 1000);
-  const endTsSec = Math.round(endTsMs / 1000);
-
-  let hasMore: boolean | undefined = undefined;
-  let latestTsSec = endTsSec;
-  do {
-    let c: ConversationsHistoryResponse | undefined = undefined;
-    try {
-      c = await client.conversations.history({
-        channel: channelId,
-        limit: CONVERSATION_HISTORY_LIMIT,
-        oldest: `${startTsSec}`,
-        latest: `${latestTsSec}`,
-        cursor: nextCursor,
-      });
-    } catch (e) {
-      const maybeSlackPlatformError = e as WebAPIPlatformError;
-      if (
-        maybeSlackPlatformError.code === "slack_webapi_platform_error" &&
-        maybeSlackPlatformError.data?.error === "not_in_channel"
-      ) {
-        // If the bot is no longer in the channel, we don't upsert anything.
-        return;
-      }
-
-      throw e;
-    }
-
-    if (c?.error) {
-      throw new Error(
-        `Failed getting messages for channel ${channelId}: ${c.error}`
-      );
-    }
-    if (c?.messages === undefined) {
-      logger.error(
-        {
-          channelId,
-          channelName,
-          connectorId,
-          cursor: nextCursor,
-          error: c.error,
-          latest: latestTsSec,
-          oldest: startTsSec,
-        },
-        "Failed getting messages for channel"
-      );
-      throw new Error(
-        `Failed getting messages for channel ${channelId}: messages is undefined`
-      );
-    }
-
-    await heartbeat();
-
-    for (const message of c.messages) {
-      if (message.ts) {
-        latestTsSec = parseInt(message.ts);
-      }
-      if (
-        !message.user &&
-        !(
-          message.bot_profile?.name &&
-          (await slackConfiguration.isBotWhitelistedToIndexMessages(
-            message.bot_profile.name
-          ))
-        )
-      ) {
-        // We do not support messages not posted by users for now, unless it's a whitelisted bot
-        continue;
-      }
-      if (!message.thread_ts && message.ts) {
-        messages.push(message);
-      }
-    }
-    hasMore = c.has_more;
-
-    if (messages.length > MAX_SYNC_NON_THREAD_MESSAGES) {
-      logger.warn(
-        {
-          messagesCount: messages.length,
-          connectorId,
-          channelName,
-          channelId,
-          startTsMs,
-          endTsMs,
-          latestTsSec,
-          nextCursor,
-        },
-        "Giving up on syncNonThreaded: too many messages"
-      );
-      break;
-    }
-  } while (hasMore);
-
-  await processAndUpsertNonThreadedMessages({
-    channelId,
-    channelName,
-    client,
-    connectorId,
-    dataSourceConfig,
-    endTsMs,
-    isBatchSync,
-    messages,
-    startTsMs,
-  });
 }
 
 export async function syncThreads(

@@ -8,6 +8,7 @@ import {
 import PQueue from "p-queue";
 
 import type * as activities from "@connectors/connectors/slack/temporal/activities";
+import { MAX_SYNC_NON_THREAD_MESSAGES } from "@connectors/connectors/slack/temporal/activities";
 import type { ModelId } from "@connectors/types";
 
 import { getWeekEnd, getWeekStart } from "../lib/utils";
@@ -212,6 +213,8 @@ export async function syncOneMessageDebounced(
     await syncChannelMetadata(connectorId, channelId, endTsMs);
 
     let currentStartTsMs = startTsMs;
+    let totalMessagesProcessed = 0;
+
     while (currentStartTsMs < endTsMs) {
       const chunkEndTsMs = Math.min(
         currentStartTsMs + INITIAL_CHUNK_SIZE_MS,
@@ -226,6 +229,25 @@ export async function syncOneMessageDebounced(
         isBatchSync: false,
         startTsMs: currentStartTsMs,
       });
+
+      totalMessagesProcessed += result.messagesProcessed;
+
+      // Stop if we've processed too many messages total.
+      if (totalMessagesProcessed >= MAX_SYNC_NON_THREAD_MESSAGES) {
+        console.warn(
+          {
+            channelId,
+            channelName: channel.name,
+            connectorId,
+            totalMessagesProcessed,
+            startTsMs,
+            endTsMs,
+            currentStartTsMs,
+          },
+          `Stopping syncOneMessageDebounced: reached ${MAX_SYNC_NON_THREAD_MESSAGES} message limit`
+        );
+        break;
+      }
 
       // If chunk completed, move to next chunk. Otherwise resume from nextStartTsMs.
       if (result.completed) {
