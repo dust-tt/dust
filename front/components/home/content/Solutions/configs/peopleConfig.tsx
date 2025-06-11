@@ -168,8 +168,9 @@ export const Stories: CustomerStory[] = [
     src: "https://blog.dust.tt/content/images/size/w2000/2025/01/dust_alan.png",
   },
   {
-    title: "Clay accelerates team onboarding with Dust AI agents", 
-    content: "Clay uses Dust AI agents to onboard new GTM engineers faster and reduce bottlenecks, achieving 100% adoption and saving 58 hours monthly across their growing team.",
+    title: "Clay accelerates team onboarding with Dust AI agents",
+    content:
+      "Clay uses Dust AI agents to onboard new GTM engineers faster and reduce bottlenecks, achieving 100% adoption and saving 58 hours monthly across their growing team",
     href: "https://blog.dust.tt/clay-scaling-gtme-team/",
     src: "https://blog.dust.tt/content/images/size/w2000/2025/06/clay_dust_agents.jpg",
   },
