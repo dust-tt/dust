@@ -165,20 +165,8 @@ pub struct OpenAIResponseIncompleteDetails {
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct OpenAIResponsesResponse {
-    pub id: String,
-    pub object: String,
-    #[serde(default)]
-    pub created: u64,
-    #[serde(default)]
-    pub created_at: u64,
-    pub model: String,
-    pub status: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub output: Option<Vec<OpenAIResponseOutputItem>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub output_text: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub text: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub usage: Option<OpenAIResponseUsage>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -305,8 +293,6 @@ fn responses_api_input_from_chat_messages(
 
 fn assistant_chat_message_from_responses_api_output(
     output: Vec<OpenAIResponseOutputItem>,
-    output_text: Option<String>,
-    text: Option<String>,
 ) -> Result<AssistantChatMessage> {
     let mut contents = Vec::new();
     let mut function_calls = Vec::new();
@@ -363,18 +349,6 @@ fn assistant_chat_message_from_responses_api_output(
                 };
                 function_calls.push(fc.clone());
                 contents.push(AssistantContentItem::FunctionCall { value: fc });
-            }
-        }
-    }
-
-    // Use output_text or text as fallback if no message content was found
-    if content.is_none() {
-        content = output_text.or(text);
-        if let Some(text) = content.as_ref() {
-            if !text.is_empty() {
-                contents.push(AssistantContentItem::TextContent {
-                    value: text.clone(),
-                });
             }
         }
     }
@@ -496,14 +470,8 @@ pub async fn openai_responses_api_completion(
             .await?
     };
 
-    // Extract text from the response if available
-    let text = response.output_text.clone().or(response.text);
-
-    let assistant_message = assistant_chat_message_from_responses_api_output(
-        response.output.unwrap_or_default(),
-        response.output_text,
-        text,
-    )?;
+    let assistant_message =
+        assistant_chat_message_from_responses_api_output(response.output.unwrap_or_default())?;
 
     Ok(LLMChatGeneration {
         created: utils::now(),
@@ -865,24 +833,11 @@ async fn streamed_responses_api_completion(
     }
 
     let final_response = OpenAIResponsesResponse {
-        id: state.response_id,
-        object: "response".to_string(),
-        created: utils::now_secs() as u64,
-        created_at: utils::now_secs() as u64,
-        model: state.model,
-        status: if state.completed {
-            "completed"
-        } else {
-            "in_progress"
-        }
-        .to_string(),
         output: if state.output_items.is_empty() {
             None
         } else {
             Some(state.output_items)
         },
-        output_text: None,
-        text: None,
         usage: state.usage,
         incomplete_details: None,
     };
