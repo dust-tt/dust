@@ -24,7 +24,7 @@ import type { UseCaseProps } from "@app/components/home/content/Solutions/UseCas
 export const pageSettings: pageSettingsProps = {
   uptitle: "Recruiting & People",
   title: <>Streamline Operations, Focus on People</>,
-  accentColor: "text-brand-electric-blue",
+  accentColor: "text-brand-red-rose",
   description: (
     <>Expedite HR operations and focus on what matters most - people.</>
   ),
