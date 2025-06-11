@@ -186,31 +186,26 @@ export function SearchResultDetails({
   visual,
   actionOutput,
 }: SearchResultProps) {
-  const query = useMemo(() => {
-    return (
-      actionOutput
-        ?.map((r) => {
-          if (
-            isSearchQueryResourceType(r) ||
-            isWebsearchQueryResourceType(r) ||
-            isIncludeQueryResourceType(r)
-          ) {
-            return r.resource.text.trim();
-          }
-          return null;
-        })
-        .filter(Boolean)
-        .join("\n") ?? "No query provided"
-    );
-  }, [actionOutput]);
+  const query =
+    actionOutput
+      ?.map((r) => {
+        if (
+          isSearchQueryResourceType(r) ||
+          isWebsearchQueryResourceType(r) ||
+          isIncludeQueryResourceType(r)
+        ) {
+          return r.resource.text.trim();
+        }
+        return null;
+      })
+      .filter(Boolean)
+      .join("\n") ?? "No query provided";
 
-  const warning = useMemo(
-    () =>
-      actionOutput?.filter(isWarningResourceType).map((o) => o.resource)?.[0],
-    [actionOutput]
-  );
+  const warning = actionOutput
+    ?.filter(isWarningResourceType)
+    .map((o) => o.resource)?.[0];
 
-  const citations = useMemo(() => {
+  const citations = (() => {
     if (!actionOutput) {
       return [];
     }
@@ -262,7 +257,7 @@ export function SearchResultDetails({
         return [null];
       })
     );
-  }, [actionOutput]);
+  })();
 
   return (
     <ActionDetailsWrapper
