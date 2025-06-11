@@ -173,6 +173,81 @@ export const isExampleRowsResourceType = (
   );
 };
 
+export const GetDatabaseSchemaMarkerResourceSchema = z.object({
+  mimeType: z.literal(
+    INTERNAL_MIME_TYPES.TOOL_OUTPUT.GET_DATABASE_SCHEMA_MARKER
+  ),
+  text: z.string(),
+  uri: z.literal(""),
+});
+
+export type GetDatabaseSchemaMarkerResourceType = z.infer<
+  typeof GetDatabaseSchemaMarkerResourceSchema
+>;
+
+export function isGetDatabaseSchemaMarkerResourceType(
+  outputBlock: CallToolResult["content"][number]
+): outputBlock is {
+  type: "resource";
+  resource: GetDatabaseSchemaMarkerResourceType;
+} {
+  return (
+    outputBlock.type === "resource" &&
+    GetDatabaseSchemaMarkerResourceSchema.safeParse(outputBlock.resource)
+      .success
+  );
+}
+
+export const ExecuteTablesQueryMarkerResourceSchema = z.object({
+  mimeType: z.literal(
+    INTERNAL_MIME_TYPES.TOOL_OUTPUT.EXECUTE_TABLES_QUERY_MARKER
+  ),
+  text: z.string(),
+  uri: z.literal(""),
+});
+
+export type ExecuteTablesQueryMarkerResourceType = z.infer<
+  typeof ExecuteTablesQueryMarkerResourceSchema
+>;
+
+export function isExecuteTablesQueryMarkerResourceType(
+  outputBlock: CallToolResult["content"][number]
+): outputBlock is {
+  type: "resource";
+  resource: ExecuteTablesQueryMarkerResourceType;
+} {
+  return (
+    outputBlock.type === "resource" &&
+    ExecuteTablesQueryMarkerResourceSchema.safeParse(outputBlock.resource)
+      .success
+  );
+}
+
+export const ExecuteTablesQueryErrorResourceSchema = z.object({
+  mimeType: z.literal(
+    INTERNAL_MIME_TYPES.TOOL_OUTPUT.EXECUTE_TABLES_QUERY_ERROR
+  ),
+  text: z.string(),
+  uri: z.literal(""),
+});
+
+export type ExecuteTablesQueryErrorResourceType = z.infer<
+  typeof ExecuteTablesQueryErrorResourceSchema
+>;
+
+export const isExecuteTablesQueryErrorResourceType = (
+  outputBlock: CallToolResult["content"][number]
+): outputBlock is {
+  type: "resource";
+  resource: ExecuteTablesQueryErrorResourceType;
+} => {
+  return (
+    outputBlock.type === "resource" &&
+    ExecuteTablesQueryErrorResourceSchema.safeParse(outputBlock.resource)
+      .success
+  );
+};
+
 // Data source search outputs: query and results.
 
 export const SearchQueryResourceSchema = z.object({

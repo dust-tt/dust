@@ -10,6 +10,7 @@ import {
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import { MCPBrowseActionDetails } from "@app/components/actions/mcp/details/MCPBrowseActionDetails";
 import { MCPExtractActionDetails } from "@app/components/actions/mcp/details/MCPExtractActionDetails";
+import { MCPGetDatabaseSchemaActionDetails } from "@app/components/actions/mcp/details/MCPGetDatabaseSchemaActionDetails";
 import { MCPReasoningActionDetails } from "@app/components/actions/mcp/details/MCPReasoningActionDetails";
 import { MCPRunAgentActionDetails } from "@app/components/actions/mcp/details/MCPRunAgentActionDetails";
 import { MCPTablesQueryActionDetails } from "@app/components/actions/mcp/details/MCPTablesQueryActionDetails";
@@ -18,7 +19,9 @@ import type { ActionDetailsComponentBaseProps } from "@app/components/actions/ty
 import type { MCPActionType } from "@app/lib/actions/mcp";
 import {
   isBrowseResultResourceType,
+  isExecuteTablesQueryMarkerResourceType,
   isExtractResultResourceType,
+  isGetDatabaseSchemaMarkerResourceType,
   isIncludeResultResourceType,
   isReasoningSuccessOutput,
   isRunAgentProgressOutput,
@@ -37,7 +40,13 @@ export function MCPActionDetails(
   const isInclude = props.action.output?.some(isIncludeResultResourceType);
   const isWebsearch = props.action.output?.some(isWebsearchResultResourceType);
   const isBrowse = props.action.output?.some(isBrowseResultResourceType);
-  const isTablesQuery = props.action.output?.some(isSqlQueryOutput);
+  const isTablesQuery =
+    props.action.output?.some(isSqlQueryOutput) ||
+    props.action.output?.some(isExecuteTablesQueryMarkerResourceType);
+  const isGetDatabaseSchema = props.action.output?.some(
+    isGetDatabaseSchemaMarkerResourceType
+  );
+
   const isExtract = props.action.output?.some(isExtractResultResourceType);
   const isRunAgent =
     props.action.output?.some(isRunAgentResultResourceType) ||
@@ -76,6 +85,8 @@ export function MCPActionDetails(
     );
   } else if (isBrowse) {
     return <MCPBrowseActionDetails {...props} />;
+  } else if (isGetDatabaseSchema) {
+    return <MCPGetDatabaseSchemaActionDetails {...props} />;
   } else if (isTablesQuery) {
     return <MCPTablesQueryActionDetails {...props} />;
   } else if (isReasoning) {
