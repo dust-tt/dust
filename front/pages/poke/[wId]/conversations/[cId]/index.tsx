@@ -1,4 +1,13 @@
-import { Button, ConversationMessage, Markdown, Page } from "@dust-tt/sparkle";
+import {
+  Button,
+  CheckIcon,
+  CodeBlock,
+  ConversationMessage,
+  Markdown,
+  Page,
+  Popover,
+  XMarkIcon,
+} from "@dust-tt/sparkle";
 import { CodeBracketIcon, DocumentTextIcon } from "@heroicons/react/24/outline";
 import type { InferGetServerSidePropsType } from "next";
 import type { ReactElement } from "react";
@@ -10,6 +19,7 @@ import type { Action } from "@app/lib/registry";
 import { getDustProdAction } from "@app/lib/registry";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { classNames } from "@app/lib/utils";
 import { usePokeConversation } from "@app/poke/swr";
 import type {
   ContentFragmentType,
@@ -168,10 +178,41 @@ const AgentMessageView = ({
           return (
             <div
               key={`action-${i}`}
-              className="mt-1 pl-2 text-sm text-muted-foreground dark:text-muted-foreground-night"
+              className={classNames(
+                "mt-1 flex items-center pl-2 text-sm text-muted-foreground dark:text-muted-foreground-night"
+              )}
             >
-              action: step={a.step} type={a.type} functionCallName=
-              {a.functionCallName} functionCallId={a.functionCallId}
+              {a.mcpIO && (
+                <Popover
+                  className="w-[84%]"
+                  content={
+                    <CodeBlock wrapLongLines className="language-json">
+                      {JSON.stringify(
+                        {
+                          params: a.mcpIO.params,
+                          output: a.mcpIO.output,
+                          generatedFiles: a.mcpIO.generatedFiles,
+                        },
+                        undefined,
+                        2
+                      ) ?? ""}
+                    </CodeBlock>
+                  }
+                  trigger={
+                    <Button
+                      variant={a.mcpIO?.isError ? "warning" : "primary"}
+                      size="xs"
+                      icon={a.mcpIO?.isError ? XMarkIcon : CheckIcon}
+                      className="mr-2"
+                    />
+                  }
+                />
+              )}
+              action: step={a.step}{" "}
+              <b className="px-1">{a.functionCallName}()</b>{" "}
+              <i>
+                [{a.type}, {a.functionCallId}]
+              </i>
               {a.runId && (
                 <>
                   log:{" "}
