@@ -12,7 +12,7 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback } from "react";
 
 import { ConversationsNavigationProvider } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
@@ -21,7 +21,7 @@ import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import type { GetMCPActionsResponseBody } from "@app/pages/api/w/[wId]/labs/mcp_actions/[agentId]";
+import { useMCPActions } from "@app/lib/swr/mcp_actions";
 import type {
   LightAgentConfigurationType,
   SubscriptionType,
@@ -81,87 +81,29 @@ export default function AgentMCPActions({
   agent,
   agentId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  const [allActions, setAllActions] = useState<
-    Array<{
-      sId: string;
-      createdAt: string;
-      functionCallName: string | null;
-      params: Record<string, unknown>;
-      executionState: string;
-      isError: boolean;
-      conversationId: string;
-      messageId: string;
-    }>
-  >([]);
-  const [pagination, setPagination] = useState({
-    pageIndex: 0,
+  const {
+    actions,
+    totalCount,
+    currentPage,
+    isLoading,
+    setPage,
+  } = useMCPActions({
+    owner,
+    agentId,
     pageSize: 25,
   });
-  const [isLoading, setIsLoading] = useState(false);
-  const [totalCount, setTotalCount] = useState(0);
-  const [cursors, setCursors] = useState<(string | null)[]>([null]);
 
-  const startIndex = pagination.pageIndex * pagination.pageSize;
-  const endIndex = startIndex + pagination.pageSize;
-  const currentPageActions = allActions.slice(startIndex, endIndex);
+  const pagination = {
+    pageIndex: currentPage,
+    pageSize: 25,
+  };
 
-  // Check if we need to fetch more data
-  const needsMoreData =
-    pagination.pageIndex >=
-      Math.floor(allActions.length / pagination.pageSize) &&
-    cursors[cursors.length - 1] !== null;
-
-  const fetchData = useCallback(async () => {
-    if (isLoading) {
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      const targetPageIndex = Math.floor(
-        allActions.length / pagination.pageSize
-      );
-      const cursor = cursors[targetPageIndex] || null;
-      const url = cursor
-        ? `/api/w/${owner.sId}/labs/mcp_actions/${agentId}?limit=${pagination.pageSize}&cursor=${cursor}`
-        : `/api/w/${owner.sId}/labs/mcp_actions/${agentId}?limit=${pagination.pageSize}`;
-
-      const response = await fetch(url);
-      if (!response.ok) {
-        throw new Error("Failed to fetch MCP actions");
-      }
-      const data: GetMCPActionsResponseBody = await response.json();
-
-      setAllActions((prev) => [...prev, ...data.actions]);
-      setCursors((prev) => [...prev, data.nextCursor]);
-
-      // Use the actual total count from the API
-      setTotalCount(data.totalCount);
-    } catch (error) {
-      console.error("Failed to fetch data:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [
-    owner.sId,
-    agentId,
-    pagination.pageSize,
-    allActions.length,
-    cursors,
-    isLoading,
-  ]);
-
-  useEffect(() => {
-    if (needsMoreData) {
-      void fetchData();
-    }
-  }, [needsMoreData, fetchData]);
-
-  useEffect(() => {
-    if (allActions.length === 0 && !isLoading) {
-      void fetchData();
-    }
-  }, [allActions.length, isLoading, fetchData]);
+  const setPagination = useCallback(
+    (newPagination: { pageIndex: number; pageSize: number }) => {
+      setPage(newPagination.pageIndex);
+    },
+    [setPage]
+  );
 
   const items = [
     {
@@ -264,7 +206,7 @@ export default function AgentMCPActions({
           </div>
 
           <Page.Layout direction="vertical">
-            {isLoading && allActions.length === 0 ? (
+            {isLoading && actions.length === 0 ? (
               <div className="flex justify-center py-8">
                 <Spinner />
               </div>
@@ -276,9 +218,9 @@ export default function AgentMCPActions({
                     description={`${totalCount} MCP action${totalCount !== 1 ? "s" : ""} executed by this agent`}
                   />
 
-                  {currentPageActions.length > 0 ? (
+                  {actions.length > 0 ? (
                     <>
-                      {currentPageActions.map((action) => (
+                      {actions.map((action) => (
                         <ContextItem
                           key={action.sId}
                           title={action.functionCallName || "Unknown Action"}

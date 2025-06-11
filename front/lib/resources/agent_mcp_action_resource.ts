@@ -169,7 +169,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
         ? actualActions[actualActions.length - 1].createdAt.toISOString()
         : null;
 
-      const actionsData: MCPActionData[] = actualActions.map((action) => {
+      const actionsData: MCPAction[] = actualActions.map((action) => {
         const agentMessage = action.agent_message;
         return {
           sId: MCPActionType.modelIdToSId({
@@ -205,7 +205,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
   }
 }
 
-export type MCPActionData = {
+export type MCPAction = {
   sId: string;
   createdAt: string;
   functionCallName: string | null;
@@ -217,7 +217,7 @@ export type MCPActionData = {
 };
 
 export type GetMCPActionsResult = {
-  actions: MCPActionData[];
+  actions: MCPAction[];
   nextCursor: string | null;
   totalCount: number;
 };
