@@ -139,60 +139,65 @@ export function ReasoningModelConfigurationSection({
           </div>
         </Card>
       ) : (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              size="sm"
-              label={selectedReasoningModelConfig.displayName}
-              variant="outline"
-              isSelect
-            />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start">
-            {performingModels.length > 0 && (
-              <>
-                <DropdownMenuLabel>
-                  Best performing reasoning models
-                </DropdownMenuLabel>
-                {performingModels.map((model) => (
-                  <ReasoningModelDropdownMenuItem
-                    key={`${model.modelId}-${model.reasoningEffort ?? ""}`}
-                    model={model}
-                    onClick={onModelSelect}
-                    isDark={isDark}
-                  />
-                ))}
-                <DropdownMenuLabel>Other models</DropdownMenuLabel>
-              </>
-            )}
-            {[...modelsGroupedByProvider.entries()].map(
-              ([providerId, models]) => {
-                return (
-                  <DropdownMenuGroup key={providerId}>
-                    <DropdownMenuSub>
-                      <DropdownMenuSubTrigger
-                        label={`${getProviderDisplayName(providerId)} models`}
-                        icon={getModelProviderLogo(providerId, isDark)}
-                      />
-                      <DropdownMenuPortal>
-                        <DropdownMenuSubContent>
-                          {models.map((model) => (
-                            <ReasoningModelDropdownMenuItem
-                              key={`${model.modelId}-${model.reasoningEffort ?? ""}`}
-                              model={model}
-                              onClick={onModelSelect}
-                              isDark={isDark}
-                            />
-                          ))}
-                        </DropdownMenuSubContent>
-                      </DropdownMenuPortal>
-                    </DropdownMenuSub>
-                  </DropdownMenuGroup>
-                );
-              }
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                size="sm"
+                label={selectedReasoningModelConfig.displayName}
+                variant="outline"
+                isSelect
+              />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              {performingModels.length > 0 && (
+                <>
+                  <DropdownMenuLabel>
+                    Best performing reasoning models
+                  </DropdownMenuLabel>
+                  {performingModels.map((model) => (
+                    <ReasoningModelDropdownMenuItem
+                      key={`${model.modelId}-${model.reasoningEffort ?? ""}`}
+                      model={model}
+                      onClick={onModelSelect}
+                      isDark={isDark}
+                    />
+                  ))}
+                  <DropdownMenuLabel>Other models</DropdownMenuLabel>
+                </>
+              )}
+              {[...modelsGroupedByProvider.entries()].map(
+                ([providerId, models]) => {
+                  return (
+                    <DropdownMenuGroup key={providerId}>
+                      <DropdownMenuSub>
+                        <DropdownMenuSubTrigger
+                          label={`${getProviderDisplayName(providerId)} models`}
+                          icon={getModelProviderLogo(providerId, isDark)}
+                        />
+                        <DropdownMenuPortal>
+                          <DropdownMenuSubContent>
+                            {models.map((model) => (
+                              <ReasoningModelDropdownMenuItem
+                                key={`${model.modelId}-${model.reasoningEffort ?? ""}`}
+                                model={model}
+                                onClick={onModelSelect}
+                                isDark={isDark}
+                              />
+                            ))}
+                          </DropdownMenuSubContent>
+                        </DropdownMenuPortal>
+                      </DropdownMenuSub>
+                    </DropdownMenuGroup>
+                  );
+                }
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <p className="mt-2 text-xs text-muted-foreground dark:text-muted-foreground-night">
+            {selectedReasoningModelConfig.description}
+          </p>
+        </>
       )}
     </ConfigurationSectionContainer>
   );
