@@ -1,4 +1,5 @@
 import {
+  ActionDocumentTextIcon,
   ClockIcon,
   cn,
   CodeBlock,
@@ -9,7 +10,6 @@ import {
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import { MCPBrowseActionDetails } from "@app/components/actions/mcp/details/MCPBrowseActionDetails";
-import { MCPDataSourceFileSystemActionDetails } from "@app/components/actions/mcp/details/MCPDataSourceFileSystemActionDetails";
 import { MCPExtractActionDetails } from "@app/components/actions/mcp/details/MCPExtractActionDetails";
 import { MCPGetDatabaseSchemaActionDetails } from "@app/components/actions/mcp/details/MCPGetDatabaseSchemaActionDetails";
 import { MCPReasoningActionDetails } from "@app/components/actions/mcp/details/MCPReasoningActionDetails";
@@ -98,7 +98,14 @@ export function MCPActionDetails(
   } else if (isReasoning) {
     return <MCPReasoningActionDetails {...props} />;
   } else if (isDataSourceFileSystem) {
-    return <MCPDataSourceFileSystemActionDetails {...props} />;
+    return (
+      <SearchResultDetails
+        actionName="Browse data sources"
+        actionOutput={props.action.output}
+        defaultOpen={props.defaultOpen}
+        visual={ActionDocumentTextIcon}
+      />
+    );
   } else if (isExtract) {
     return <MCPExtractActionDetails {...props} />;
   } else if (isRunAgent) {
