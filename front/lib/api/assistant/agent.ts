@@ -27,6 +27,7 @@ import {
 } from "@app/lib/actions/types/guards";
 import { getCitationsCount } from "@app/lib/actions/utils";
 import { createClientSideMCPServerConfigurations } from "@app/lib/api/actions/mcp_client_side";
+import { AgentStepContentAccumulator } from "@app/lib/api/assistant/agent_step_content_accumulator";
 import {
   AgentMessageContentParser,
   getDelimitersConfiguration,
@@ -145,6 +146,9 @@ async function* runMultiActionsAgentLoop(
 
   let processedContent = "";
   const runIds = [];
+  
+  // Track step content accumulators for each step
+  const stepContentAccumulators: AgentStepContentAccumulator[] = [];
 
   for (let i = 0; i < maxStepsPerRun + 1; i++) {
     const localLogger = logger.child({
@@ -174,6 +178,13 @@ async function* runMultiActionsAgentLoop(
       isLastGenerationIteration,
       isLegacyAgent,
     });
+    
+    // Create a step content accumulator for reasoning events in this step
+    const reasoningAccumulator = new AgentStepContentAccumulator(
+      agentMessage.agentMessageId,
+      i,
+      auth.getNonNullableWorkspace().id
+    );
 
     for await (const event of loopIterationStream) {
       switch (event.type) {
@@ -267,6 +278,23 @@ async function* runMultiActionsAgentLoop(
             content: event.content,
           });
           processedContent += event.processedContent;
+          
+          // Check if we have a step accumulator for this step from runMultiActionsAgent
+          // If not, create a simple text content entry for this step
+          if (!stepContentAccumulators[i] && event.processedContent) {
+            const stepAccumulator = new AgentStepContentAccumulator(
+              agentMessage.agentMessageId,
+              i,
+              owner.id
+            );
+            stepAccumulator.handleEvent({
+              type: "tokens",
+              content: event.processedContent,
+            });
+            stepAccumulator.handleEvent({ type: "stream_end" });
+            await stepAccumulator.persistToDatabase();
+            stepContentAccumulators[i] = stepAccumulator;
+          }
           break;
 
         // Generation events
@@ -309,6 +337,53 @@ async function* runMultiActionsAgentLoop(
           }
           agentMessage.chainOfThought += event.chainOfThought;
           // This event is not useful outside of the multi-actions loop, so we don't yield it.
+          break;
+
+        // Reasoning events from action execution
+        case "reasoning_started":
+          // Start of reasoning - any accumulated text should be saved first
+          reasoningAccumulator.handleEvent({ type: "stream_end" });
+          yield event;
+          break;
+          
+        case "reasoning_tokens":
+          // Accumulate reasoning tokens
+          if (event.classification === "chain_of_thought") {
+            // This is thinking content - accumulate it as reasoning
+            reasoningAccumulator.handleEvent({
+              type: "tokens",
+              content: event.content,
+            });
+          } else {
+            // This is output content - accumulate as regular text
+            reasoningAccumulator.handleEvent({
+              type: "tokens", 
+              content: event.content,
+            });
+          }
+          yield event;
+          break;
+          
+        case "reasoning_thinking":
+          // End of thinking phase - save accumulated reasoning content
+          if (event.action.thinking) {
+            reasoningAccumulator.handleEvent({
+              type: "reasoning_item",
+              reasoning: {
+                reasoning: event.action.thinking,
+                metadata: "", // Metadata would be encrypted reasoning content
+              },
+            });
+          }
+          yield event;
+          break;
+          
+        case "reasoning_success":
+          // Reasoning completed - ensure any remaining content is saved
+          reasoningAccumulator.handleEvent({ type: "stream_end" });
+          await reasoningAccumulator.persistToDatabase();
+          stepContentAccumulators[i] = reasoningAccumulator;
+          yield event;
           break;
 
         default:
@@ -642,6 +717,14 @@ async function* runMultiActionsAgent(
 
   let rawContent = "";
 
+  // Initialize the step content accumulator
+  const owner = auth.getNonNullableWorkspace();
+  const stepContentAccumulator = new AgentStepContentAccumulator(
+    agentMessage.agentMessageId,
+    0, // This is step 0 for the initial generation
+    owner.id
+  );
+
   const _checkCancellation = async () => {
     try {
       const cancelled = await redis.get(
@@ -666,10 +749,21 @@ async function* runMultiActionsAgent(
   for await (const event of eventStream) {
     if (event.type === "function_call") {
       isGeneration = false;
+      
+      // Handle function call for step content
+      stepContentAccumulator.handleEvent({
+        type: "function_call",
+        functionCall: event.content.function_call,
+      });
     }
 
     if (event.type === "error") {
       yield* contentParser.flushTokens();
+      
+      // Handle stream end and persist any accumulated content before error
+      stepContentAccumulator.handleEvent({ type: "stream_end" });
+      await stepContentAccumulator.persistToDatabase();
+      
       yield {
         type: "agent_error",
         created: Date.now(),
@@ -695,6 +789,11 @@ async function* runMultiActionsAgent(
 
     if (shouldYieldCancel) {
       yield* contentParser.flushTokens();
+      
+      // Handle stream end and persist any accumulated content before cancellation
+      stepContentAccumulator.handleEvent({ type: "stream_end" });
+      await stepContentAccumulator.persistToDatabase();
+      
       yield {
         type: "generation_cancel",
         created: Date.now(),
@@ -707,12 +806,23 @@ async function* runMultiActionsAgent(
     if (event.type === "tokens" && isGeneration) {
       rawContent += event.content.tokens.text;
       yield* contentParser.emitTokens(event.content.tokens.text);
+      
+      // Accumulate tokens for step content
+      stepContentAccumulator.handleEvent({
+        type: "tokens",
+        content: event.content.tokens.text,
+      });
     }
 
     if (event.type === "block_execution") {
       const e = event.content.execution[0][0];
       if (e.error) {
         yield* contentParser.flushTokens();
+        
+        // Handle stream end and persist any accumulated content before error
+        stepContentAccumulator.handleEvent({ type: "stream_end" });
+        await stepContentAccumulator.persistToDatabase();
+        
         yield {
           type: "agent_error",
           created: Date.now(),
@@ -744,6 +854,12 @@ async function* runMultiActionsAgent(
   }
 
   yield* contentParser.flushTokens();
+
+  // Handle stream end for step content
+  stepContentAccumulator.handleEvent({ type: "stream_end" });
+  
+  // Persist accumulated content to database
+  await stepContentAccumulator.persistToDatabase();
 
   if (!output.actions.length) {
     const processedContent = contentParser.getContent() ?? "";
