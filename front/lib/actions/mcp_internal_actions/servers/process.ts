@@ -121,7 +121,6 @@ function createServer(
     ? {
         tagsIn: z
           .array(z.string())
-          .optional()
           .describe(
             "A list of labels (also called tags) to restrict the search based on the user request and past conversation context." +
               "If multiple labels are provided, the search will return documents that have at least one of the labels." +
@@ -130,7 +129,6 @@ function createServer(
           ),
         tagsNot: z
           .array(z.string())
-          .optional()
           .describe(
             "A list of labels (also called tags) to exclude from the search based on the user request and past conversation context." +
               "Any document having one of these labels will be excluded from the search."
@@ -178,17 +176,14 @@ function createServer(
             .nullable(),
       ...tagsInputSchema,
     },
-    async (params) => {
-      const { dataSources, objective, jsonSchema, timeFrame, ...rest } = params;
-
-      // Type-safe extraction of tags parameters
-      const tagsIn = isTagsModeConfigured
-        ? ((rest as any).tagsIn as string[] | undefined)
-        : undefined;
-      const tagsNot = isTagsModeConfigured
-        ? ((rest as any).tagsNot as string[] | undefined)
-        : undefined;
-
+    async ({
+      dataSources,
+      objective,
+      jsonSchema,
+      timeFrame,
+      tagsIn,
+      tagsNot,
+    }) => {
       // Unwrap and prepare variables.
       assert(
         agentLoopContext?.runContext,
