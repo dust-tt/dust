@@ -23,7 +23,7 @@ import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { sendRequestActionsAccessEmail } from "@app/lib/email";
-import { useMCPServerViewsNotActivated } from "@app/lib/swr/mcp_server_views";
+import { useMCPServerViewsNotActivated } from "@app/lib/swr/mcp_servers";
 import logger from "@app/logger/logger";
 import type { LightWorkspaceType, SpaceType } from "@app/types";
 
