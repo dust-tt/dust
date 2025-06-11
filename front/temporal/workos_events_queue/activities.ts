@@ -247,6 +247,18 @@ async function handleUserAddedToGroup(
     );
   }
 
+  const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
+    user.sId,
+    workspace.sId
+  );
+  const isMember = await group.isMember(userAuth);
+  if (isMember) {
+    logger.info(
+      `User "${user.sId}" is already member of group "${group.sId}", skipping`
+    );
+    return;
+  }
+
   const res = await group.addMember(auth, user.toJSON());
   if (res.isErr()) {
     throw res.error;
@@ -312,6 +324,18 @@ async function handleCreateOrUpdateWorkOSUser(
     user,
     externalUser,
   });
+
+  const membership =
+    await MembershipResource.getActiveMembershipOfUserInWorkspace({
+      user: createdOrUpdatedUser,
+      workspace,
+    });
+  if (membership) {
+    logger.info(
+      `User ${createdOrUpdatedUser.sId} already have a membership associated to workspace "${workspace.sId}", skipping`
+    );
+    return;
+  }
 
   await createAndLogMembership({
     user: createdOrUpdatedUser,
