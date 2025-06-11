@@ -228,10 +228,7 @@ async function handleUserAddedToGroup(
     return;
   }
 
-  const workOSUserRes = await fetchWorkOSUserWithEmail(
-    workspace,
-    event.user.email
-  );
+  const workOSUserRes = await fetchWorkOSUserWithEmail(event.user.email);
   if (workOSUserRes.isErr()) {
     throw workOSUserRes.error;
   }
@@ -249,6 +246,13 @@ async function handleUserAddedToGroup(
       `Group not found for workOSId "${event.group.id}" in workspace "${workspace.sId}"`
     );
   }
+  const isMember = await group.isMember(user);
+  if (isMember) {
+    logger.info(
+      `User "${user.sId}" is already member of group "${group.sId}", skipping`
+    );
+    return;
+  }
 
   const res = await group.addMember(auth, user.toJSON());
   if (res.isErr()) {
@@ -265,10 +269,7 @@ async function handleUserRemovedFromGroup(
     return;
   }
 
-  const workOSUserRes = await fetchWorkOSUserWithEmail(
-    workspace,
-    event.user.email
-  );
+  const workOSUserRes = await fetchWorkOSUserWithEmail(event.user.email);
   if (workOSUserRes.isErr()) {
     throw workOSUserRes.error;
   }
@@ -297,7 +298,7 @@ async function handleCreateOrUpdateWorkOSUser(
   workspace: LightWorkspaceType,
   event: DirectoryUser
 ) {
-  const workOSUserRes = await fetchWorkOSUserWithEmail(workspace, event.email);
+  const workOSUserRes = await fetchWorkOSUserWithEmail(event.email);
   if (workOSUserRes.isErr()) {
     throw workOSUserRes.error;
   }
@@ -319,6 +320,18 @@ async function handleCreateOrUpdateWorkOSUser(
     externalUser,
   });
 
+  const membership =
+    await MembershipResource.getActiveMembershipOfUserInWorkspace({
+      user: createdOrUpdatedUser,
+      workspace,
+    });
+  if (membership) {
+    logger.info(
+      `User ${createdOrUpdatedUser.sId} already have a membership associated to workspace "${workspace.sId}", skipping`
+    );
+    return;
+  }
+
   await createAndLogMembership({
     user: createdOrUpdatedUser,
     workspace,
@@ -330,7 +343,7 @@ async function handleDeleteWorkOSUser(
   workspace: LightWorkspaceType,
   event: DirectoryUser
 ) {
-  const workOSUserRes = await fetchWorkOSUserWithEmail(workspace, event.email);
+  const workOSUserRes = await fetchWorkOSUserWithEmail(event.email);
   if (workOSUserRes.isErr()) {
     throw workOSUserRes.error;
   }
