@@ -16,9 +16,15 @@ import {
   JsonSchemaSchema,
 } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import {
+  findTagsDescription,
+  findTagsSchema,
+  makeFindTagsTool,
+} from "@app/lib/actions/mcp_internal_actions/servers/common/find_tags_tool";
+import {
   getDataSourceConfiguration,
   shouldAutoGenerateTags,
 } from "@app/lib/actions/mcp_internal_actions/servers/utils";
+import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { ProcessActionOutputsType } from "@app/lib/actions/process";
 import { getExtractFileTitle } from "@app/lib/actions/process/utils";
 import { applyDataSourceFilters } from "@app/lib/actions/retrieval";
@@ -80,102 +86,13 @@ const EXTRACT_TOOL_JSON_SCHEMA_ARGUMENT_DESCRIPTION =
   "Must be a valid JSON schema. Use only standard JSON Schema 7 core fields (type, properties, required, description) and avoid custom keywords or extensions that are not part of the core specification.\n\n" +
   "This schema will be used as signature to extract the relevant information based on selected documents to properly follow instructions.";
 
-function createServer(
+function makeExtractInformationFromDocumentsTool(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
-): McpServer {
-  const server = new McpServer(serverInfo);
-
-  const isJsonSchemaConfigured =
-    (agentLoopContext?.listToolsContext &&
-      isServerSideMCPServerConfiguration(
-        agentLoopContext.listToolsContext.agentActionConfiguration
-      ) &&
-      agentLoopContext.listToolsContext.agentActionConfiguration.jsonSchema !==
-        null) ||
-    (agentLoopContext?.runContext &&
-      isServerSideMCPToolConfiguration(
-        agentLoopContext.runContext.actionConfiguration
-      ) &&
-      agentLoopContext.runContext.actionConfiguration.jsonSchema !== null);
-
-  const isTimeFrameConfigured =
-    (agentLoopContext?.listToolsContext &&
-      isServerSideMCPServerConfiguration(
-        agentLoopContext.listToolsContext.agentActionConfiguration
-      ) &&
-      agentLoopContext.listToolsContext.agentActionConfiguration.timeFrame !==
-        null) ||
-    (agentLoopContext?.runContext &&
-      isServerSideMCPToolConfiguration(
-        agentLoopContext.runContext.actionConfiguration
-      ) &&
-      agentLoopContext.runContext.actionConfiguration.timeFrame !== null);
-
-  const isTagsModeConfigured = agentLoopContext
-    ? shouldAutoGenerateTags(agentLoopContext)
-    : false;
-
-  // Create tag schemas if needed for tag auto-mode
-  const tagsInputSchema = isTagsModeConfigured
-    ? {
-        tagsIn: z
-          .array(z.string())
-          .describe(
-            "A list of labels (also called tags) to restrict the search based on the user request and past conversation context." +
-              "If multiple labels are provided, the search will return documents that have at least one of the labels." +
-              "You can't check that all labels are present, only that at least one is present." +
-              "If no labels are provided, the search will return all documents regardless of their labels."
-          ),
-        tagsNot: z
-          .array(z.string())
-          .describe(
-            "A list of labels (also called tags) to exclude from the search based on the user request and past conversation context." +
-              "Any document having one of these labels will be excluded from the search."
-          ),
-      }
-    : {};
-
-  server.tool(
+) {
+  return withToolLogging(
+    auth,
     "extract_information_from_documents",
-    "Extract structured information from documents in reverse chronological order, according to the needs described by the objective and specified by a" +
-      (isJsonSchemaConfigured ? " user-configured" : "") +
-      " JSON schema. This tool retrieves content" +
-      " from data sources already pre-configured by the user, ensuring the latest information is included.",
-    {
-      dataSources:
-        ConfigurableToolInputSchemas[
-          INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
-        ],
-      objective: z
-        .string()
-        .describe(
-          "The objective behind the use of the tool based on the conversation state." +
-            " This is used to guide the tool to extract the right data based on the user request."
-        ),
-
-      jsonSchema: isJsonSchemaConfigured
-        ? ConfigurableToolInputSchemas[
-            INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA
-          ]
-        : JsonSchemaSchema.describe(
-            EXTRACT_TOOL_JSON_SCHEMA_ARGUMENT_DESCRIPTION
-          ),
-      timeFrame: isTimeFrameConfigured
-        ? ConfigurableToolInputSchemas[
-            INTERNAL_MIME_TYPES.TOOL_INPUT.NULLABLE_TIME_FRAME
-          ]
-        : z
-            .object({
-              duration: z.number(),
-              unit: z.enum(["hour", "day", "week", "month", "year"]),
-            })
-            .describe(
-              "The time frame to use for documents retrieval (e.g. last 7 days, last 2 months). Leave null to search all documents regardless of time."
-            )
-            .nullable(),
-      ...tagsInputSchema,
-    },
     async ({
       dataSources,
       objective,
@@ -183,6 +100,13 @@ function createServer(
       timeFrame,
       tagsIn,
       tagsNot,
+    }: {
+      dataSources: DataSourcesToolConfigurationType[number][];
+      objective: string;
+      jsonSchema: JSONSchema;
+      timeFrame: TimeFrame | null;
+      tagsIn?: string[];
+      tagsNot?: string[];
     }) => {
       // Unwrap and prepare variables.
       assert(
@@ -191,6 +115,7 @@ function createServer(
       );
       const { agentConfiguration, conversation } = agentLoopContext.runContext;
       const { model } = agentConfiguration;
+
       // If jsonSchema was pre-configured by the user, i.e. not generated by the
       // tool, then it has an additional mimeType property, as is convention.
       // We remove it here before passing the jsonSchema to the dust app.
@@ -216,11 +141,11 @@ function createServer(
         model,
         dataSources,
         timeFrame,
-        tagsIn,
-        tagsNot,
+        tagsIn: tagsIn || undefined,
+        tagsNot: tagsNot || undefined,
       });
 
-      // Call the dust app
+      // Call the dust app.
       const res = await runActionStreamed(
         auth,
         "assistant-v2-process",
@@ -294,6 +219,128 @@ function createServer(
       return processToolOutput;
     }
   );
+}
+
+function createServer(
+  auth: Authenticator,
+  agentLoopContext?: AgentLoopContextType
+): McpServer {
+  const server = new McpServer(serverInfo);
+
+  const isJsonSchemaConfigured =
+    (agentLoopContext?.listToolsContext &&
+      isServerSideMCPServerConfiguration(
+        agentLoopContext.listToolsContext.agentActionConfiguration
+      ) &&
+      agentLoopContext.listToolsContext.agentActionConfiguration.jsonSchema !==
+        null) ||
+    (agentLoopContext?.runContext &&
+      isServerSideMCPToolConfiguration(
+        agentLoopContext.runContext.actionConfiguration
+      ) &&
+      agentLoopContext.runContext.actionConfiguration.jsonSchema !== null);
+
+  const isTimeFrameConfigured =
+    (agentLoopContext?.listToolsContext &&
+      isServerSideMCPServerConfiguration(
+        agentLoopContext.listToolsContext.agentActionConfiguration
+      ) &&
+      agentLoopContext.listToolsContext.agentActionConfiguration.timeFrame !==
+        null) ||
+    (agentLoopContext?.runContext &&
+      isServerSideMCPToolConfiguration(
+        agentLoopContext.runContext.actionConfiguration
+      ) &&
+      agentLoopContext.runContext.actionConfiguration.timeFrame !== null);
+
+  const areTagsDynamic = agentLoopContext
+    ? shouldAutoGenerateTags(agentLoopContext)
+    : false;
+
+  // Define tag schemas.
+  const tagsInputSchema = {
+    tagsIn: z
+      .array(z.string())
+      .describe(
+        "A list of labels (also called tags) to restrict the search based on the user request and past conversation context." +
+          "If multiple labels are provided, the search will return documents that have at least one of the labels." +
+          "You can't check that all labels are present, only that at least one is present." +
+          "If no labels are provided, the search will return all documents regardless of their labels."
+      ),
+    tagsNot: z
+      .array(z.string())
+      .describe(
+        "A list of labels (also called tags) to exclude from the search based on the user request and past conversation context." +
+          "Any document having one of these labels will be excluded from the search."
+      ),
+  };
+
+  const commonInputsSchema = {
+    dataSources:
+      ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE],
+    objective: z
+      .string()
+      .describe(
+        "The objective behind the use of the tool based on the conversation state." +
+          " This is used to guide the tool to extract the right data based on the user request."
+      ),
+
+    jsonSchema: isJsonSchemaConfigured
+      ? ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA]
+      : JsonSchemaSchema.describe(
+          EXTRACT_TOOL_JSON_SCHEMA_ARGUMENT_DESCRIPTION
+        ),
+    timeFrame: isTimeFrameConfigured
+      ? ConfigurableToolInputSchemas[
+          INTERNAL_MIME_TYPES.TOOL_INPUT.NULLABLE_TIME_FRAME
+        ]
+      : z
+          .object({
+            duration: z.number(),
+            unit: z.enum(["hour", "day", "week", "month", "year"]),
+          })
+          .describe(
+            "The time frame to use for documents retrieval (e.g. last 7 days, last 2 months). Leave null to search all documents regardless of time."
+          )
+          .nullable(),
+  };
+
+  const toolDescription =
+    "Extract structured information from documents in reverse chronological order, according to the needs described by the objective and specified by a" +
+    (isJsonSchemaConfigured ? " user-configured" : "") +
+    " JSON schema. This tool retrieves content" +
+    " from data sources already pre-configured by the user, ensuring the latest information is included.";
+
+  const toolImplementation = makeExtractInformationFromDocumentsTool(
+    auth,
+    agentLoopContext
+  );
+
+  if (areTagsDynamic) {
+    server.tool(
+      "extract_information_from_documents",
+      toolDescription,
+      {
+        ...commonInputsSchema,
+        ...tagsInputSchema,
+      },
+      toolImplementation
+    );
+
+    server.tool(
+      "find_tags",
+      findTagsDescription,
+      findTagsSchema,
+      makeFindTagsTool(auth)
+    );
+  } else {
+    server.tool(
+      "extract_information_from_documents",
+      toolDescription,
+      commonInputsSchema,
+      toolImplementation
+    );
+  }
 
   return server;
 }
