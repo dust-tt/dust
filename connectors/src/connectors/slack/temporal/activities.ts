@@ -27,6 +27,7 @@ import {
   getSlackChannelSourceUrl,
   getWeekEnd,
   getWeekStart,
+  MAX_SYNC_NON_THREAD_MESSAGES,
   slackChannelInternalIdFromSlackChannelId,
   slackNonThreadedMessagesInternalIdFromSlackNonThreadedMessagesIdentifier,
   slackThreadInternalIdFromSlackThreadIdentifier,
@@ -63,10 +64,6 @@ const logger = mainLogger.child({ provider: "slack" });
 
 // This controls the maximum number of concurrent calls to syncThread and syncNonThreaded.
 const MAX_CONCURRENCY_LEVEL = 2;
-// Maximum number of messages we process in a single syncNonThreaded call (1 week of unthreaded
-// messages). Some channels have integrations that post a lot of messages. Beyond this number (more
-// that 500 messages per week), the information is very likely useless.
-export const MAX_SYNC_NON_THREAD_MESSAGES = 4000;
 // Adaptive chunking constants for syncNonThreaded optimization
 const MAX_MESSAGES_PER_CHUNK = 400; // Stop processing if we hit this many messages in a chunk
 
