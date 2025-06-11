@@ -205,6 +205,10 @@ export function SearchResultDetails({
     ?.filter(isWarningResourceType)
     .map((o) => o.resource)?.[0];
 
+  const singleFileContentText = actionOutput
+    ?.filter(isDataSourceNodeContentType)
+    .map((o) => o.resource.text);
+
   const citations = (() => {
     if (!actionOutput) {
       return [];
@@ -288,7 +292,16 @@ export function SearchResultDetails({
                 Results
               </span>
             }
-            contentChildren={<PaginatedCitationsGrid items={citations} />}
+            contentChildren={
+              <>
+                {singleFileContentText && (
+                  <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+                    {singleFileContentText}
+                  </div>
+                )}
+                <PaginatedCitationsGrid items={citations} />
+              </>
+            }
           />
         </div>
       </div>
