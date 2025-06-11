@@ -37,7 +37,7 @@ export function hasErrorActionProcess(
       action.configuration._jsonSchemaString
     );
     if (validationResult.isErr()) {
-      return validationResult.error.message;
+      return `${errorMessage}. ${validationResult.error.message}`;
     }
   }
   if (Object.keys(action.configuration.dataSourceConfigurations).length === 0) {
