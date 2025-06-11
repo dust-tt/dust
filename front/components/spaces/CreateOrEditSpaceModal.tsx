@@ -1,6 +1,7 @@
 import {
   Button,
   DataTable,
+  EmptyCTA,
   Input,
   Label,
   Page,
@@ -24,7 +25,6 @@ import type {
   PaginationState,
   SortingState,
 } from "@tanstack/react-table";
-import _ from "lodash";
 import { useRouter } from "next/router";
 import * as React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -88,6 +88,7 @@ export function CreateOrEditSpaceModal({
     useState<string>("");
   const [managementType, setManagementType] =
     useState<MembersManagementType>("manual");
+  const [isDirty, setIsDirty] = useState(false);
 
   const { hasFeature } = useFeatureFlags({
     workspaceId: owner.sId,
@@ -100,11 +101,6 @@ export function CreateOrEditSpaceModal({
       setManagementType("manual");
     }
   }, [isWorkOSFeatureEnabled]);
-
-  const deduplicatedMembers = useMemo(
-    () => _.uniqBy(selectedMembers, "sId"),
-    [selectedMembers]
-  );
 
   const doCreate = useCreateSpace({ owner });
   const doUpdate = useUpdateSpace({ owner });
@@ -120,7 +116,6 @@ export function CreateOrEditSpaceModal({
   const { groups } = useGroups({
     owner,
     kinds: ["provisioned"],
-    spaceId: space?.sId,
     disabled: !isWorkOSFeatureEnabled,
   });
 
@@ -196,7 +191,7 @@ export function CreateOrEditSpaceModal({
         } else {
           await doUpdate(space, {
             isRestricted: true,
-            memberIds: deduplicatedMembers.map((vm) => vm.sId),
+            memberIds: selectedMembers.map((vm) => vm.sId),
             managementMode: "manual",
             name: spaceName,
           });
@@ -204,8 +199,6 @@ export function CreateOrEditSpaceModal({
       } else {
         await doUpdate(space, {
           isRestricted: false,
-          memberIds: null,
-          managementMode: "manual",
           name: spaceName,
         });
       }
@@ -227,7 +220,7 @@ export function CreateOrEditSpaceModal({
           createdSpace = await doCreate({
             name: spaceName,
             isRestricted: true,
-            memberIds: deduplicatedMembers.map((vm) => vm.sId),
+            memberIds: selectedMembers.map((vm) => vm.sId),
             managementMode: "manual",
           });
         }
@@ -235,8 +228,6 @@ export function CreateOrEditSpaceModal({
         createdSpace = await doCreate({
           name: spaceName,
           isRestricted: false,
-          memberIds: null,
-          managementMode: "manual",
         });
       }
 
@@ -254,8 +245,8 @@ export function CreateOrEditSpaceModal({
     isRestricted,
     mutateSpaceInfo,
     onCreated,
-    deduplicatedMembers,
     space,
+    selectedMembers,
     spaceName,
     managementType,
     selectedGroups,
@@ -301,8 +292,8 @@ export function CreateOrEditSpaceModal({
         });
 
         if (confirmed) {
-          setSelectedMembers([]);
           setManagementType("group");
+          setIsDirty(true);
         }
       }
       // If switching from group to manual mode with selected groups
@@ -320,14 +311,13 @@ export function CreateOrEditSpaceModal({
         });
 
         if (confirmed) {
-          setSelectedGroups([]);
           setManagementType("manual");
+          setIsDirty(true);
         }
       } else {
         // For direct switches without selections, clear everything and let user start fresh
-        setSelectedMembers([]);
-        setSelectedGroups([]);
         setManagementType(value);
+        setIsDirty(true);
       }
     },
     [
@@ -339,6 +329,26 @@ export function CreateOrEditSpaceModal({
     ]
   );
 
+  const disabled = useMemo(() => {
+    const canSave =
+      !isRestricted ||
+      (managementType === "manual" && selectedMembers.length > 0) ||
+      (managementType === "group" && selectedGroups.length > 0);
+
+    if (!spaceInfo) {
+      return !canSave;
+    }
+
+    return !isDirty || !canSave;
+  }, [
+    isRestricted,
+    managementType,
+    selectedMembers,
+    selectedGroups,
+    spaceInfo,
+    isDirty,
+  ]);
+  const isManual = !isWorkOSFeatureEnabled || managementType === "manual";
   return (
     <Sheet open={isOpen} onOpenChange={handleClose}>
       <SheetContent trapFocusScope={false} size="lg">
@@ -358,14 +368,20 @@ export function CreateOrEditSpaceModal({
                   name="spaceName"
                   message="Space name must be unique"
                   messageStatus="info"
-                  onChange={(e) => setSpaceName(e.target.value)}
+                  onChange={(e) => {
+                    setSpaceName(e.target.value);
+                    setIsDirty(true);
+                  }}
                 />
               ) : (
                 <Input
                   placeholder="Space's name"
                   value={spaceName}
                   name="spaceName"
-                  onChange={(e) => setSpaceName(e.target.value)}
+                  onChange={(e) => {
+                    setSpaceName(e.target.value);
+                    setIsDirty(true);
+                  }}
                 />
               )}
             </div>
@@ -375,7 +391,10 @@ export function CreateOrEditSpaceModal({
                 <Page.SectionHeader title="Restricted Access" />
                 <SliderToggle
                   selected={isRestricted}
-                  onClick={() => setIsRestricted(!isRestricted)}
+                  onClick={() => {
+                    setIsRestricted(!isRestricted);
+                    setIsDirty(true);
+                  }}
                 />
               </div>
               {isRestricted ? (
@@ -405,49 +424,93 @@ export function CreateOrEditSpaceModal({
                     </TabsList>
                   </Tabs>
                 ) : null}
-
-                <div className="flex flex-row items-center justify-between">
-                  {!isWorkOSFeatureEnabled || managementType === "manual" ? (
-                    <SearchMembersPopover
-                      owner={owner}
-                      selectedMembers={deduplicatedMembers}
-                      onMembersUpdated={setSelectedMembers}
+                {(isManual && selectedMembers.length === 0) ||
+                (!isManual && selectedGroups.length === 0) ? (
+                  isManual ? (
+                    <EmptyCTA
+                      action={
+                        <SearchMembersPopover
+                          owner={owner}
+                          selectedMembers={selectedMembers}
+                          onMembersUpdated={(members) => {
+                            setSelectedMembers(members);
+                            setIsDirty(true);
+                          }}
+                        />
+                      }
+                      message="Add members to the space"
                     />
                   ) : (
-                    <SearchGroupsDropdown
-                      owner={owner}
-                      selectedGroups={selectedGroups}
-                      onGroupsUpdated={setSelectedGroups}
+                    <EmptyCTA
+                      action={
+                        <SearchGroupsDropdown
+                          owner={owner}
+                          selectedGroups={selectedGroups}
+                          onGroupsUpdated={(groups) => {
+                            setSelectedGroups(groups);
+                            setIsDirty(true);
+                          }}
+                        />
+                      }
+                      message="Add groups to the space"
                     />
-                  )}
-                </div>
-                <SearchInput
-                  name="search"
-                  placeholder={
-                    !isWorkOSFeatureEnabled || managementType === "manual"
-                      ? "Search (email)"
-                      : "Search groups"
-                  }
-                  value={searchSelectedMembers}
-                  onChange={(s) => {
-                    setSearchSelectedMembers(s);
-                  }}
-                />
-                <ScrollArea className="h-full">
-                  {!isWorkOSFeatureEnabled || managementType === "manual" ? (
-                    <MembersTable
-                      onMembersUpdated={setSelectedMembers}
-                      selectedMembers={deduplicatedMembers}
-                      searchSelectedMembers={searchSelectedMembers}
+                  )
+                ) : (
+                  <>
+                    <div className="flex flex-row items-center justify-between">
+                      {isManual ? (
+                        <SearchMembersPopover
+                          owner={owner}
+                          selectedMembers={selectedMembers}
+                          onMembersUpdated={(members) => {
+                            setSelectedMembers(members);
+                            setIsDirty(true);
+                          }}
+                        />
+                      ) : (
+                        <SearchGroupsDropdown
+                          owner={owner}
+                          selectedGroups={selectedGroups}
+                          onGroupsUpdated={(groups) => {
+                            setSelectedGroups(groups);
+                            setIsDirty(true);
+                          }}
+                        />
+                      )}
+                    </div>
+                    <SearchInput
+                      name="search"
+                      placeholder={
+                        isManual ? "Search (email)" : "Search groups"
+                      }
+                      value={searchSelectedMembers}
+                      onChange={(s) => {
+                        setSearchSelectedMembers(s);
+                      }}
                     />
-                  ) : (
-                    <GroupsTable
-                      onGroupsUpdated={setSelectedGroups}
-                      selectedGroups={selectedGroups}
-                      searchSelectedGroups={searchSelectedMembers}
-                    />
-                  )}
-                </ScrollArea>
+                    <ScrollArea className="h-full">
+                      {isManual ? (
+                        <MembersTable
+                          onMembersUpdated={(members) => {
+                            setSelectedMembers(members);
+                            setIsDirty(true);
+                          }}
+                          selectedMembers={selectedMembers}
+                          searchSelectedMembers={searchSelectedMembers}
+                        />
+                      ) : (
+                        <GroupsTable
+                          onGroupsUpdated={(groups) => {
+                            setSelectedGroups(groups);
+                            setIsDirty(true);
+                          }}
+                          selectedGroups={selectedGroups}
+                          searchSelectedGroups={searchSelectedMembers}
+                        />
+                      )}
+                    </ScrollArea>
+                  </>
+                )}
               </>
             )}
 
@@ -481,14 +544,7 @@ export function CreateOrEditSpaceModal({
           rightButtonProps={{
             label: isSaving ? "Saving..." : space ? "Save" : "Create",
             onClick: onSave,
-            disabled:
-              !(
-                spaceName.trim().length > 0 &&
-                (!isRestricted ||
-                  (isRestricted &&
-                    (deduplicatedMembers.length > 0 ||
-                      (isWorkOSFeatureEnabled && selectedGroups.length > 0))))
-              ) || isSaving,
+            disabled: disabled,
           }}
         />
       </SheetContent>

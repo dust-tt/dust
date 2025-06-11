@@ -380,9 +380,7 @@ export function useDeleteFolderOrWebsite({
 type DoCreateOrUpdateAllowedParams =
   | {
       name: string | null;
-      memberIds: null;
       isRestricted: false;
-      managementMode?: "manual";
     }
   | {
       name: string | null;
@@ -437,7 +435,9 @@ export function useCreateSpace({ owner }: { owner: LightWorkspaceType }) {
         name,
         ...("memberIds" in params && { memberIds: params.memberIds }),
         ...("groupIds" in params && { groupIds: params.groupIds }),
-        ...(params.managementMode && { managementMode: params.managementMode }),
+        ...("managementMode" in params && {
+          managementMode: params.managementMode,
+        }),
         isRestricted,
       }),
     });
@@ -487,6 +487,8 @@ export function useUpdateSpace({ owner }: { owner: LightWorkspaceType }) {
     const { name: newName, isRestricted } = params;
     const memberIds = "memberIds" in params ? params.memberIds : undefined;
     const groupIds = "groupIds" in params ? params.groupIds : undefined;
+    const managementMode =
+      "managementMode" in params ? params.managementMode : undefined;
 
     const updatePromises: Promise<Response>[] = [];
 
@@ -517,8 +519,8 @@ export function useUpdateSpace({ owner }: { owner: LightWorkspaceType }) {
         body: JSON.stringify({
           ...(memberIds !== undefined && { memberIds }),
           ...(groupIds !== undefined && { groupIds }),
-          ...(params.managementMode && {
-            managementMode: params.managementMode,
+          ...(managementMode !== undefined && {
+            managementMode,
           }),
           isRestricted,
         }),

@@ -1,6 +1,7 @@
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import { uniq } from "lodash";
+import _ from "lodash";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getDataSourceViewsUsageByCategory } from "@app/lib/api/agent_data_sources";
@@ -103,11 +104,15 @@ async function handler(
       categories["apps"].count = apps.length;
       categories["actions"].count = actionsCount;
 
-      const currentMembers = (
-        await Promise.all(
-          space.groups.map((group) => group.getActiveMembers(auth))
-        )
-      ).flat();
+      const currentMembers = _.uniqBy(
+        (
+          await Promise.all(
+            space.groups.map((group) => group.getActiveMembers(auth))
+          )
+        ).flat(),
+        "sId"
+      );
+
       return res.status(200).json({
         space: {
           ...space.toJSON(),

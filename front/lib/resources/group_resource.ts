@@ -705,7 +705,7 @@ export class GroupResource extends BaseResource<GroupModel> {
   static async listUserGroupsInWorkspace({
     user,
     workspace,
-    groupKinds = ["global", "regular", "agent_editors"],
+    groupKinds = ["global", "regular", "provisioned", "agent_editors"],
     transaction,
   }: {
     user: UserResource;

@@ -84,15 +84,7 @@ export function SearchMembersPopover({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button
-          label={
-            selectedMembers.length === 0
-              ? "Add members manually"
-              : "Add members"
-          }
-          icon={UserIcon}
-          size="sm"
-        />
+        <Button label="Add members" icon={UserIcon} size="sm" />
       </DropdownMenuTrigger>
       <DropdownMenuContent
         className="w-80"
