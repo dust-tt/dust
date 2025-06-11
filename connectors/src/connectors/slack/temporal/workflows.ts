@@ -214,8 +214,12 @@ export async function syncOneMessageDebounced(
 
     let currentStartTsMs = startTsMs;
     let totalMessagesProcessed = 0;
+    let cursor: string | undefined = undefined;
 
-    while (currentStartTsMs < endTsMs) {
+    while (
+      currentStartTsMs < endTsMs &&
+      totalMessagesProcessed < MAX_SYNC_NON_THREAD_MESSAGES
+    ) {
       const chunkEndTsMs = Math.min(
         currentStartTsMs + INITIAL_CHUNK_SIZE_MS,
         endTsMs
@@ -228,32 +232,20 @@ export async function syncOneMessageDebounced(
         endTsMs: chunkEndTsMs,
         isBatchSync: false,
         startTsMs: currentStartTsMs,
+        weekStartTsMs: startTsMs,
+        weekEndTsMs: endTsMs,
+        cursor,
       });
 
       totalMessagesProcessed += result.messagesProcessed;
 
-      // Stop if we've processed too many messages total.
-      if (totalMessagesProcessed >= MAX_SYNC_NON_THREAD_MESSAGES) {
-        console.warn(
-          {
-            channelId,
-            channelName: channel.name,
-            connectorId,
-            totalMessagesProcessed,
-            startTsMs,
-            endTsMs,
-            currentStartTsMs,
-          },
-          `Stopping syncOneMessageDebounced: reached ${MAX_SYNC_NON_THREAD_MESSAGES} message limit`
-        );
-        break;
-      }
-
-      // If chunk completed, move to next chunk. Otherwise resume from nextStartTsMs.
       if (result.completed) {
         currentStartTsMs = chunkEndTsMs;
+        // Reset cursor for next time range.
+        cursor = undefined;
       } else {
-        currentStartTsMs = result.nextStartTsMs!;
+        // Keep same time range but continue with cursor.
+        cursor = result.nextCursor;
       }
     }
 

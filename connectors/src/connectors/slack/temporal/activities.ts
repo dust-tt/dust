@@ -438,7 +438,7 @@ export async function getMessagesForChannel(
 
 interface SyncNonThreadedChunkResult {
   completed: boolean;
-  nextStartTsMs?: number;
+  nextCursor?: string;
   messagesProcessed: number;
 }
 
@@ -446,20 +446,26 @@ export async function syncNonThreadedChunk({
   channelId,
   channelName,
   connectorId,
+  cursor,
   endTsMs,
-  isBatchSync = false,
-  startTsMs,
   ignoreMessageLimit = false,
+  isBatchSync = false,
   maxTotalMessages = MAX_SYNC_NON_THREAD_MESSAGES,
+  startTsMs,
+  weekEndTsMs,
+  weekStartTsMs,
 }: {
   channelId: string;
   channelName: string;
   connectorId: ModelId;
+  cursor?: string;
   endTsMs: number;
-  isBatchSync: boolean;
-  startTsMs: number;
   ignoreMessageLimit?: boolean;
+  isBatchSync: boolean;
   maxTotalMessages?: number;
+  startTsMs: number;
+  weekEndTsMs: number;
+  weekStartTsMs: number;
 }): Promise<SyncNonThreadedChunkResult> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
@@ -482,8 +488,6 @@ export async function syncNonThreadedChunk({
   const endTsSec = Math.round(endTsMs / 1000);
 
   let hasMore: boolean | undefined = undefined;
-  let latestTsSec = endTsSec;
-  let nextCursor: string | undefined = undefined;
 
   do {
     let c: ConversationsHistoryResponse | undefined = undefined;
@@ -492,8 +496,8 @@ export async function syncNonThreadedChunk({
         channel: channelId,
         limit: CONVERSATION_HISTORY_LIMIT,
         oldest: `${startTsSec}`,
-        latest: `${latestTsSec}`,
-        cursor: nextCursor,
+        latest: `${endTsSec}`,
+        cursor,
       });
     } catch (e) {
       const maybeSlackPlatformError = e as WebAPIPlatformError;
@@ -501,6 +505,7 @@ export async function syncNonThreadedChunk({
         maybeSlackPlatformError.code === "slack_webapi_platform_error" &&
         maybeSlackPlatformError.data?.error === "not_in_channel"
       ) {
+        // If the bot is no longer in the channel, we don't upsert anything.
         return { completed: true, messagesProcessed: 0 };
       }
       throw e;
@@ -511,15 +516,15 @@ export async function syncNonThreadedChunk({
         `Failed getting messages for channel ${channelId}: ${c.error}`
       );
     }
+
     if (c?.messages === undefined) {
       logger.error(
         {
           channelId,
           channelName,
           connectorId,
-          cursor: nextCursor,
+          cursor,
           error: c.error,
-          latest: latestTsSec,
           oldest: startTsSec,
         },
         "Failed getting messages for channel"
@@ -532,9 +537,6 @@ export async function syncNonThreadedChunk({
     await heartbeat();
 
     for (const message of c.messages) {
-      if (message.ts) {
-        latestTsSec = parseInt(message.ts);
-      }
       if (
         !message.user &&
         !(
@@ -544,6 +546,7 @@ export async function syncNonThreadedChunk({
           ))
         )
       ) {
+        // We do not support messages not posted by users for now, unless it's a whitelisted bot.
         continue;
       }
       if (!message.thread_ts && message.ts) {
@@ -551,7 +554,7 @@ export async function syncNonThreadedChunk({
       }
     }
     hasMore = c.has_more;
-    nextCursor = c.response_metadata?.next_cursor;
+    const nextCursor = c.response_metadata?.next_cursor;
 
     // Stop if we've processed enough messages for this chunk (unless ignoring limit).
     if (!ignoreMessageLimit && messages.length >= MAX_MESSAGES_PER_CHUNK) {
@@ -563,15 +566,10 @@ export async function syncNonThreadedChunk({
           channelId,
           startTsMs,
           endTsMs,
-          latestTsSec,
+          latestTsSec: c.messages?.at(-1)?.ts,
         },
         "Chunk reached max messages, splitting work"
       );
-
-      const lastMessage = messages[messages.length - 1];
-      const nextStartTsMs = lastMessage?.ts
-        ? parseInt(lastMessage.ts) * 1000
-        : latestTsSec * 1000;
 
       await processAndUpsertNonThreadedMessages({
         channelId,
@@ -579,15 +577,15 @@ export async function syncNonThreadedChunk({
         client,
         connectorId,
         dataSourceConfig,
-        endTsMs: Math.min(nextStartTsMs, endTsMs),
         isBatchSync,
         messages,
-        startTsMs,
+        weekEndTsMs,
+        weekStartTsMs,
       });
 
       return {
         completed: false,
-        nextStartTsMs: Math.min(nextStartTsMs + 1000, endTsMs),
+        nextCursor,
         messagesProcessed: messages.length,
       };
     }
@@ -618,10 +616,10 @@ export async function syncNonThreadedChunk({
       client,
       connectorId,
       dataSourceConfig,
-      endTsMs,
       isBatchSync,
       messages,
-      startTsMs,
+      weekEndTsMs,
+      weekStartTsMs,
     });
   }
 
@@ -637,20 +635,20 @@ async function processAndUpsertNonThreadedMessages({
   client,
   connectorId,
   dataSourceConfig,
-  endTsMs,
   isBatchSync,
   messages,
-  startTsMs,
+  weekEndTsMs,
+  weekStartTsMs,
 }: {
   channelId: string;
   channelName: string;
   client: WebClient;
   connectorId: ModelId;
   dataSourceConfig: DataSourceConfig;
-  endTsMs: number;
   isBatchSync: boolean;
   messages: MessageElement[];
-  startTsMs: number;
+  weekEndTsMs: number;
+  weekStartTsMs: number;
 }) {
   if (messages.length === 0) {
     return;
@@ -667,8 +665,8 @@ async function processAndUpsertNonThreadedMessages({
     slackClient: client,
   });
 
-  const startDate = new Date(startTsMs);
-  const endDate = new Date(endTsMs);
+  const startDate = new Date(weekStartTsMs);
+  const endDate = new Date(weekEndTsMs);
   const documentId =
     slackNonThreadedMessagesInternalIdFromSlackNonThreadedMessagesIdentifier({
       channelId,
@@ -774,6 +772,8 @@ export async function syncMultipleNonThreaded(
         // Ignore message limit to process entire week as single chunk.
         ignoreMessageLimit: true,
         maxTotalMessages,
+        weekStartTsMs: startTsMs,
+        weekEndTsMs: weekEndTsMs,
       })
     );
     promises.push(p);
