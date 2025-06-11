@@ -1,4 +1,7 @@
-import type { DirectoryGroup as WorkOSGroup } from "@workos-inc/node";
+import type {
+  DirectoryGroup,
+  DirectoryGroup as WorkOSGroup,
+} from "@workos-inc/node";
 import { assert } from "console";
 import type {
   Attributes,
@@ -533,6 +536,33 @@ export class GroupResource extends BaseResource<GroupModel> {
     });
 
     return group ?? null;
+  }
+
+  static async upsertByWorkOSGroupId(
+    auth: Authenticator,
+    directoryGroup: DirectoryGroup
+  ) {
+    const owner = auth.getNonNullableWorkspace();
+    const group = await this.model.findOne({
+      where: {
+        workspaceId: owner.id,
+        workOSGroupId: directoryGroup.directoryId,
+      },
+    });
+
+    if (group) {
+      const groupResource = new this(this.model, group.get());
+      await groupResource.updateName(auth, directoryGroup.name);
+      return groupResource;
+    }
+
+    return this.makeNew({
+      name: directoryGroup.name,
+      workOSGroupId: directoryGroup.directoryId,
+      updatedAt: new Date(),
+      kind: "provisioned",
+      workspaceId: owner.id,
+    });
   }
 
   static async fetchByAgentConfiguration({

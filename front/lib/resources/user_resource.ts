@@ -241,7 +241,7 @@ export class UserResource extends BaseResource<UserModel> {
 
   async delete(
     auth: Authenticator,
-    { transaction }: { transaction?: Transaction }
+    { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, Error>> {
     await this.deleteAllMetadata();
 
