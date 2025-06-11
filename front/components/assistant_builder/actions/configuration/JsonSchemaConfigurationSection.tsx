@@ -10,6 +10,7 @@ import { useState } from "react";
 import { ConfigurationSectionContainer } from "@app/components/assistant_builder/actions/configuration/ConfigurationSectionContainer";
 import { validateJsonSchema } from "@app/lib/utils/json_schemas";
 import type { Result } from "@app/types";
+import { validateConfiguredJsonSchema } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 
 interface JsonSchemaConfigurationSectionProps {
   // The agent's instructions and tool description, needed to generate the
@@ -45,6 +46,10 @@ export function JsonSchemaConfigurationSection({
   const [isGeneratingSchema, setIsGeneratingSchema] = useState(false);
   const sendNotification = useSendNotification();
   const [extractSchema, setExtractSchema] = useState(initialSchema);
+
+  const schemaValidationResult = extractSchema
+    ? validateConfiguredJsonSchema(extractSchema)
+    : null;
 
   const generateSchemaFromInstructions = async () => {
     setEdited(true);
@@ -112,7 +117,9 @@ export function JsonSchemaConfigurationSection({
       />
       <TextArea
         error={
-          extractSchema ? validateJsonSchema(extractSchema).error : undefined
+          schemaValidationResult?.isErr()
+            ? schemaValidationResult.error.message
+            : undefined
         }
         showErrorLabel={true}
         placeholder={
@@ -125,7 +132,7 @@ export function JsonSchemaConfigurationSection({
           setExtractSchema(newSchemaString);
           setEdited(true);
 
-          // If the new schema string is empty,  we reset the jsonSchema to
+          // If the new schema string is empty, we reset the jsonSchema to
           // null. Storing a null jsonSchema in the database indicates that
           // the model will auto-generate the schema.
           if (newSchemaString === "") {
@@ -135,10 +142,10 @@ export function JsonSchemaConfigurationSection({
             });
             return;
           }
-          const parsedSchema = validateJsonSchema(newSchemaString);
-          if (parsedSchema.isValid) {
+          const parsedSchema = validateConfiguredJsonSchema(newSchemaString);
+          if (parsedSchema.isOk()) {
             onConfigUpdate({
-              jsonSchema: newSchemaString ? JSON.parse(newSchemaString) : null,
+              jsonSchema: newSchemaString ? parsedSchema.value : null,
               _jsonSchemaString: newSchemaString,
             });
           } else {

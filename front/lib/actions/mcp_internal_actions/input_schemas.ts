@@ -64,10 +64,12 @@ export const JsonSchemaSchema = z.object({
  * can be used as an arg of a tool that expects an INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA.
  */
 export function validateConfiguredJsonSchema(
-  jsonSchema: JSONSchema
+  jsonSchema: JSONSchema | string
 ): Result<z.infer<typeof JsonSchemaSchema>, Error> {
   try {
-    const validated = JsonSchemaSchema.parse(jsonSchema);
+    const validated = JsonSchemaSchema.parse(
+      typeof jsonSchema !== "object" ? JSON.parse(jsonSchema) : jsonSchema
+    );
     return new Ok(validated);
   } catch (error) {
     if (error instanceof ZodError) {
