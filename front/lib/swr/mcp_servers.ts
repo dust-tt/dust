@@ -166,8 +166,8 @@ export function useDeleteMCPServer(owner: LightWorkspaceType) {
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.api_error?.message || "Failed to delete server");
+      const body = await response.json();
+      throw new Error(body.error?.message || "Failed to delete server");
     }
 
     await mutateMCPServers();
@@ -214,9 +214,9 @@ export function useCreateInternalMCPServer(owner: LightWorkspaceType) {
     });
 
     if (!response.ok) {
-      const error = await response.json();
+      const body = await response.json();
       return new Err(
-        new Error(error.error?.message || "Failed to create server")
+        new Error(body.error?.message || "Failed to create server")
       );
     }
 
@@ -251,11 +251,9 @@ export function useDiscoverOAuthMetadata(owner: LightWorkspaceType) {
       );
 
       if (!response.ok) {
-        const error = await response.json();
+        const body = await response.json();
         return new Err(
-          new Error(
-            error.api_error?.message || "Failed to check OAuth connection"
-          )
+          new Error(body.error.message || "Failed to check OAuth connection")
         );
       }
 
@@ -319,9 +317,9 @@ export function useCreateRemoteMCPServer(owner: LightWorkspaceType) {
       });
 
       if (!response.ok) {
-        const error = await response.json();
+        const body = await response.json();
         return new Err(
-          new Error(error.error?.message || "Failed to create server")
+          new Error(body.error?.message || "Failed to create server")
         );
       }
       await mutateMCPServerViews();
@@ -357,11 +355,9 @@ export function useSyncRemoteMCPServer(
     });
 
     if (!response.ok) {
-      const error = await response.json();
+      const body = await response.json();
       await mutateMCPServer();
-      throw new Error(
-        error.api_error?.message || "Failed to synchronize server"
-      );
+      throw new Error(body.error?.message || "Failed to synchronize server");
     }
 
     await mutateMCPServer();
@@ -403,8 +399,8 @@ export function useUpdateMCPServer(
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.api_error?.message || "Failed to update server");
+      const body = await response.json();
+      throw new Error(body.error?.message || "Failed to update server");
     }
 
     await mutateMCPServer();
@@ -626,10 +622,8 @@ export function useUpdateMCPServerToolsPermissions({
     );
 
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(
-        error.api_error?.message || "Failed to update permission"
-      );
+      const body = await response.json();
+      throw new Error(body.error?.message || "Failed to update permission");
     }
 
     sendNotification({
@@ -867,8 +861,8 @@ export function useAddMCPServerToSpace(owner: LightWorkspaceType) {
           );
 
           if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.api_error?.message || "Unknown error");
+            const body = await response.json();
+            throw new Error(body.error?.message || "Unknown error");
           }
 
           if (response.ok) {
