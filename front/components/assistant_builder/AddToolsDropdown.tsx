@@ -47,7 +47,7 @@ interface AddToolsDropdownProps {
   reasoningModels: ModelConfigurationType[];
 }
 
-export const DEFAULT_REASONING_MODEL_ID = O4_MINI_MODEL_ID;
+const DEFAULT_REASONING_MODEL_ID = O4_MINI_MODEL_ID;
 
 export function AddToolsDropdown({
   setEdited,
