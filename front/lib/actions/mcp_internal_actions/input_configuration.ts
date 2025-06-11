@@ -3,17 +3,11 @@ import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { Ajv } from "ajv";
 import assert from "assert";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
-import { ZodError } from "zod";
 
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
-import {
-  ConfigurableToolInputType,
-  validateConfiguredJsonSchema,
-} from "@app/lib/actions/mcp_internal_actions/input_schemas";
-import {
-  ConfigurableToolInputJSONSchemas,
-  JsonSchemaSchema,
-} from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import type { ConfigurableToolInputType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import { validateConfiguredJsonSchema } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import { ConfigurableToolInputJSONSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { isServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import type { MCPServerType, MCPServerViewType } from "@app/lib/api/mcp";
 import {
@@ -493,7 +487,7 @@ export function getMCPServerRequirements(
 }
 
 /**
- * Checks if a JSON schema matches should be idenfied as being configurable for a specific mime type.
+ * Checks if a JSON schema should be identified as being configurable for a specific mime type.
  */
 function isSchemaConfigurable(
   schema: JSONSchema,
@@ -521,7 +515,8 @@ function isSchemaConfigurable(
 /**
  * Recursively finds all property keys and subschemas match a specific sub-schema.
  * This function handles nested objects and arrays.
- * @returns A record of property keys that match the schema comparison. Empty record if no matches found.
+ * @returns A record of property keys that match the schema comparison.
+ * Empty record if no matches are found.
  */
 export function findMatchingSubSchemas(
   inputSchema: JSONSchema,

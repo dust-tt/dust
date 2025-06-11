@@ -8,9 +8,8 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { useState } from "react";
 
 import { ConfigurationSectionContainer } from "@app/components/assistant_builder/actions/configuration/ConfigurationSectionContainer";
-import { validateJsonSchema } from "@app/lib/utils/json_schemas";
-import type { Result } from "@app/types";
 import { validateConfiguredJsonSchema } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import type { Result } from "@app/types";
 
 interface JsonSchemaConfigurationSectionProps {
   // The agent's instructions and tool description, needed to generate the
