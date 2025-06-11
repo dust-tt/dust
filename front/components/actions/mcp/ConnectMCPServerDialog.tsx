@@ -99,6 +99,12 @@ export function ConnectMCPServerDialog({
               ...discoverOAuthMetadataRes.value.connectionMetadata,
             });
             setRemoteMCPServerOAuthDiscoveryDone(true);
+          } else if (discoverOAuthMetadataRes.isErr()) {
+            sendNotification({
+              type: "error",
+              title: `Failed to discover OAuth metadata for ${mcpServer.url}`,
+              description: discoverOAuthMetadataRes.error.message,
+            });
           }
         }
         setIsLoading(false);
@@ -114,6 +120,7 @@ export function ConnectMCPServerDialog({
     serverType,
     remoteMCPServerOAuthDiscoveryDone,
     discoverOAuthMetadata,
+    sendNotification,
   ]);
 
   const resetState = useCallback(() => {
@@ -177,6 +184,7 @@ export function ConnectMCPServerDialog({
     setExternalIsLoading(false);
     setIsLoading(false);
     setIsOpen(false);
+    resetState();
   };
 
   return (

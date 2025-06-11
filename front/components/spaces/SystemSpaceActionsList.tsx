@@ -5,7 +5,7 @@ import { AdminActionsList } from "@app/components/actions/mcp/AdminActionsList";
 import { MCPServerDetails } from "@app/components/actions/mcp/MCPServerDetails";
 import { useQueryParams } from "@app/hooks/useQueryParams";
 import type { MCPServerType } from "@app/lib/api/mcp";
-import { useMCPServerViews } from "@app/lib/swr/mcp_server_views";
+import { useMCPServerViews } from "@app/lib/swr/mcp_servers";
 import type { LightWorkspaceType, SpaceType } from "@app/types";
 
 interface SpaceActionsListProps {

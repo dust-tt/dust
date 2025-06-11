@@ -97,6 +97,9 @@ export function CreateMCPServerDialog({
   }, [setExternalIsLoading]);
 
   const handleSave = async (e: React.MouseEvent<HTMLButtonElement>) => {
+    let oauthConnection: MCPConnectionType | undefined;
+    setIsLoading(true);
+
     if (remoteServerUrl) {
       const urlValidation = validateUrl(remoteServerUrl);
 
@@ -105,29 +108,41 @@ export function CreateMCPServerDialog({
         setError(
           "Please provide a valid URL (e.g. https://example.com or https://example.com/a/b/c))."
         );
+        setIsLoading(false);
         return;
       }
 
-      setIsLoading(true);
-
-      if (!remoteMCPServerOAuthDiscoveryDone) {
-        const discoverOAuthMetadataRes =
-          await discoverOAuthMetadata(remoteServerUrl);
-        if (discoverOAuthMetadataRes.isOk()) {
-          if (discoverOAuthMetadataRes.value.oauthRequired) {
-            setAuthorization({
-              provider: "mcp",
-              supported_use_cases: ["platform_actions", "personal_actions"],
-            });
-
-            setAuthCredentials(
-              discoverOAuthMetadataRes.value.connectionMetadata
-            );
-          }
+      if (!sharedSecret) {
+        if (!remoteMCPServerOAuthDiscoveryDone) {
+          const discoverOAuthMetadataRes =
+            await discoverOAuthMetadata(remoteServerUrl);
           setRemoteMCPServerOAuthDiscoveryDone(true);
+
+          if (discoverOAuthMetadataRes.isOk()) {
+            if (discoverOAuthMetadataRes.value.oauthRequired) {
+              setAuthorization({
+                provider: "mcp",
+                supported_use_cases: ["platform_actions", "personal_actions"],
+              });
+
+              setAuthCredentials(
+                discoverOAuthMetadataRes.value.connectionMetadata
+              );
+              // Returning here as now the user must select the use case.
+              setIsLoading(false);
+              return;
+            }
+          } else if (discoverOAuthMetadataRes.isErr()) {
+            sendNotification({
+              type: "error",
+              title: `Failed to discover OAuth metadata for ${remoteServerUrl}`,
+              description: discoverOAuthMetadataRes.error.message,
+            });
+            setRemoteMCPServerOAuthDiscoveryDone(false);
+            setIsLoading(false);
+            return;
+          }
         }
-        setIsLoading(false);
-        return;
       }
     }
 
@@ -143,7 +158,7 @@ export function CreateMCPServerDialog({
     }
 
     // If the authorization is set, we need to setup the OAuth connection.
-    let oauthConnection: MCPConnectionType | undefined;
+
     if (authorization) {
       const cRes = await setupOAuthConnection({
         dustClientFacingUrl: `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}`,
@@ -223,6 +238,7 @@ export function CreateMCPServerDialog({
     setExternalIsLoading(false);
     setIsLoading(false);
     setIsOpen(false);
+    resetState();
   };
 
   return (
