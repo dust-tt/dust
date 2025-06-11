@@ -667,6 +667,9 @@ async function processAndUpsertNonThreadedMessages({
 
   const startDate = new Date(weekStartTsMs);
   const endDate = new Date(weekEndTsMs);
+
+  // IMPORTANT: Document ID generation relies on weekly start/end dates, not chunk boundaries.
+  // This ensures all chunks processing the same week contribute to the same document.
   const documentId =
     slackNonThreadedMessagesInternalIdFromSlackNonThreadedMessagesIdentifier({
       channelId,
