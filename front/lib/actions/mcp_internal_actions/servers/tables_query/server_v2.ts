@@ -9,6 +9,8 @@ import {
 } from "@app/lib/actions/action_file_helpers";
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type {
+  ExecuteTablesQueryMarkerResourceType,
+  GetDatabaseSchemaMarkerResourceType,
   SqlQueryOutputType,
   ThinkingOutputType,
   ToolGeneratedFileType,
@@ -38,7 +40,9 @@ import { CoreAPI } from "@app/types/core/core_api";
 type TablesQueryOutputResources =
   | ThinkingOutputType
   | SqlQueryOutputType
-  | ToolGeneratedFileType;
+  | ToolGeneratedFileType
+  | GetDatabaseSchemaMarkerResourceType
+  | ExecuteTablesQueryMarkerResourceType;
 
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "query_tables_v2",
@@ -118,6 +122,15 @@ function createServer(
       return {
         isError: false,
         content: [
+          {
+            type: "resource",
+            resource: {
+              text: "get_database_schema_marker",
+              mimeType:
+                INTERNAL_MIME_TYPES.TOOL_OUTPUT.GET_DATABASE_SCHEMA_MARKER,
+              uri: "",
+            },
+          },
           ...getSchemaContent(schemaResult.value.schemas),
           ...getQueryWritingInstructionsContent(schemaResult.value.dialect),
           ...getDatabaseExampleRowsContent(schemaResult.value.schemas),
@@ -198,9 +211,31 @@ function createServer(
           query,
         });
         if (queryResult.isErr()) {
-          return makeMCPToolTextError(
-            `Error executing database query: ${queryResult.error.message}`
-          );
+          return {
+            isError: true,
+            content: [
+              {
+                type: "resource",
+                resource: {
+                  text: "execute_tables_query_marker",
+                  mimeType:
+                    INTERNAL_MIME_TYPES.TOOL_OUTPUT.EXECUTE_TABLES_QUERY_MARKER,
+                  uri: "",
+                },
+              },
+              {
+                type: "resource",
+                resource: {
+                  text:
+                    "Error executing database query: " +
+                    queryResult.error.message,
+                  mimeType:
+                    INTERNAL_MIME_TYPES.TOOL_OUTPUT.EXECUTE_TABLES_QUERY_ERROR,
+                  uri: "",
+                },
+              },
+            ],
+          };
         }
 
         const content: {
@@ -216,6 +251,16 @@ function createServer(
               record !== null &&
               typeof record === "object"
           );
+
+        content.push({
+          type: "resource",
+          resource: {
+            text: "tables_query_v2",
+            mimeType:
+              INTERNAL_MIME_TYPES.TOOL_OUTPUT.EXECUTE_TABLES_QUERY_MARKER,
+            uri: "",
+          },
+        });
 
         if (results.length > 0) {
           // date in yyyy-mm-dd
