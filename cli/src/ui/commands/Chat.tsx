@@ -157,7 +157,7 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
             title: `CLI Question: ${questionText.substring(0, 30)}${
               questionText.length > 30 ? "..." : ""
             }`,
-            visibility: "workspace",
+            visibility: "unlisted",
             message: {
               content: questionText,
               mentions: [{ configurationId: selectedAgent.sId }],
@@ -556,18 +556,38 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
     if (key.meta && input === "f" && currentCursorPos < currentInput.length) {
       let newPosition = currentCursorPos;
 
-      while (
-        newPosition < currentInput.length &&
-        !/\s/.test(currentInput[newPosition])
-      ) {
-        newPosition++;
-      }
+      // If we're on whitespace, skip to next non-whitespace.
+      if (/\s/.test(currentInput[newPosition])) {
+        while (
+          newPosition < currentInput.length &&
+          /\s/.test(currentInput[newPosition]) &&
+          currentInput[newPosition] !== "\n"
+        ) {
+          newPosition++;
+        }
 
-      while (
-        newPosition < currentInput.length &&
-        /\s/.test(currentInput[newPosition])
-      ) {
-        newPosition++;
+        // If we hit a newline, stop there.
+        if (currentInput[newPosition] === "\n") {
+          setCurrentCursorPos(newPosition);
+          return;
+        }
+      } else {
+        // Skip the current word.
+        while (
+          newPosition < currentInput.length &&
+          !/\s/.test(currentInput[newPosition])
+        ) {
+          newPosition++;
+        }
+
+        // Skip spaces after the word, but stop at newline.
+        while (
+          newPosition < currentInput.length &&
+          /\s/.test(currentInput[newPosition]) &&
+          currentInput[newPosition] !== "\n"
+        ) {
+          newPosition++;
+        }
       }
 
       setCurrentCursorPos(newPosition);
@@ -616,13 +636,81 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
       return;
     }
 
-    if (key.upArrow) {
-      setCursorPosition(0);
+    if (key.upArrow && !isInCommandMode) {
+      const lines = currentInput.split("\n");
+      let currentPos = 0;
+      let lineIndex = 0;
+      let posInLine = 0;
+
+      // Find current line and position within that line.
+      for (let i = 0; i < lines.length; i++) {
+        if (
+          currentCursorPos >= currentPos &&
+          currentCursorPos <= currentPos + lines[i].length
+        ) {
+          lineIndex = i;
+          posInLine = currentCursorPos - currentPos;
+          break;
+        }
+        currentPos += lines[i].length + 1; // +1 for newline
+      }
+
+      // Move to previous line.
+      if (lineIndex > 0) {
+        const prevLineLength = lines[lineIndex - 1].length;
+        const newPosInLine = Math.min(posInLine, prevLineLength);
+
+        // Calculate new cursor position.
+        let newCursorPos = 0;
+        for (let i = 0; i < lineIndex - 1; i++) {
+          newCursorPos += lines[i].length + 1;
+        }
+        newCursorPos += newPosInLine;
+
+        setCurrentCursorPos(newCursorPos);
+      } else {
+        // Already on first line, go to beginning.
+        setCurrentCursorPos(0);
+      }
       return;
     }
 
-    if (key.downArrow) {
-      setCursorPosition(userInput.length);
+    if (key.downArrow && !isInCommandMode) {
+      const lines = currentInput.split("\n");
+      let currentPos = 0;
+      let lineIndex = 0;
+      let posInLine = 0;
+
+      // Find current line and position within that line.
+      for (let i = 0; i < lines.length; i++) {
+        if (
+          currentCursorPos >= currentPos &&
+          currentCursorPos <= currentPos + lines[i].length
+        ) {
+          lineIndex = i;
+          posInLine = currentCursorPos - currentPos;
+          break;
+        }
+        currentPos += lines[i].length + 1; // +1 for newline
+      }
+
+      // Move to next line.
+      if (lineIndex < lines.length - 1) {
+        const nextLineLength = lines[lineIndex + 1].length;
+        const newPosInLine = Math.min(posInLine, nextLineLength);
+
+        // Calculate new cursor position.
+        let newCursorPos = 0;
+        for (let i = 0; i <= lineIndex; i++) {
+          newCursorPos += lines[i].length + 1;
+        }
+        newCursorPos += newPosInLine;
+
+        setCurrentCursorPos(newCursorPos);
+      } else {
+        // Already on last line, go to end.
+        setCurrentCursorPos(currentInput.length);
+      }
       return;
     }
 
