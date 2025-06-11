@@ -558,7 +558,7 @@ export class GroupResource extends BaseResource<GroupModel> {
 
     return this.makeNew({
       name: directoryGroup.name,
-      workOSGroupId: directoryGroup.directoryId,
+      workOSGroupId: directoryGroup.id,
       updatedAt: new Date(),
       kind: "provisioned",
       workspaceId: owner.id,
