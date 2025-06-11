@@ -12,7 +12,7 @@ import type { ActionDetailsComponentBaseProps } from "@app/components/actions/ty
 import type { MCPActionType } from "@app/lib/actions/mcp";
 import {
   isDataSourceNodeContentType,
-  isDataSourceNodeListType,
+  isDataSourceNodeListType, isSearchQueryResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 
 export function MCPDataSourceFileSystemActionDetails({
@@ -20,6 +20,8 @@ export function MCPDataSourceFileSystemActionDetails({
   defaultOpen,
 }: ActionDetailsComponentBaseProps<MCPActionType>) {
   const { output } = action;
+
+  const searchQuery = output?.find(isSearchQueryResourceType)?.resource.text;
 
   const nodeResults =
     output?.filter(isDataSourceNodeListType).map((o) => o.resource) ?? [];
