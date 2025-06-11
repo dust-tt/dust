@@ -320,6 +320,10 @@ const createServer = (
         content: [
           {
             type: "resource" as const,
+            resource: makeQueryResourceForFind(query, rootNodeId, mimeTypes),
+          },
+          {
+            type: "resource" as const,
             resource: renderSearchResults(
               searchResult.value,
               agentDataSourceConfigurations
@@ -451,6 +455,10 @@ const createServer = (
       return {
         isError: false,
         content: [
+          {
+            type: "resource" as const,
+            resource: makeQueryResourceForList(nodeId, mimeTypes),
+          },
           {
             type: "resource" as const,
             resource: renderSearchResults(
@@ -982,6 +990,36 @@ function makeQueryResource(
     text: query
       ? `Searching "${query}", ${timeFrameAsString}.`
       : `Searching ${timeFrameAsString}.`,
+    uri: "",
+  };
+}
+
+function makeQueryResourceForFind(
+  query?: string,
+  rootNodeId?: string,
+  mimeTypes?: string[]
+): SearchQueryResourceType {
+  return {
+    mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_QUERY,
+    text:
+      "Searching " +
+      (query ? `"${query}}" ` : "") +
+      (rootNodeId ? `under ${rootNodeId} ` : "") +
+      (mimeTypes ? `of type ${mimeTypes.join(", ")} ` : ""),
+    uri: "",
+  };
+}
+
+function makeQueryResourceForList(
+  nodeId: string | null,
+  mimeTypes?: string[]
+): SearchQueryResourceType {
+  return {
+    mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_QUERY,
+    text:
+      "Listing content " +
+      (nodeId ? `under "${nodeId} " ` : "at the root ") +
+      (mimeTypes ? `of type ${mimeTypes.join(", ")} ` : ""),
     uri: "",
   };
 }
