@@ -152,7 +152,7 @@ export function AddToolsDropdown({
           ) ?? reasoningModels[0];
 
         setAction({
-          type: "insert",
+          type: "pending",
           action: {
             id: uniqueId(),
             ...action,
