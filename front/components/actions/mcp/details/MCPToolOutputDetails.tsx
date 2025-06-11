@@ -15,17 +15,17 @@ import {
   useSendNotification,
 } from "@dust-tt/sparkle";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import { useCallback, useMemo } from "react";
+import { useCallback } from "react";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import { getDocumentIcon } from "@app/components/actions/retrieval/utils";
-import {
-  isDataSourceNodeContentType,
+import type {
   ReasoningSuccessOutputType,
   SqlQueryOutputType,
   ThinkingOutputType,
   ToolGeneratedFileType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { isDataSourceNodeContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { isDataSourceNodeListType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
   isIncludeQueryResourceType,
