@@ -8,6 +8,7 @@ import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_acti
 import type {
   DataSourceNodeListType,
   SearchQueryResourceType,
+  SearchResultResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
   fetchAgentDataSourceConfiguration,
@@ -650,31 +651,33 @@ const createServer = (
 
       const refs = getRefs().slice(refsOffset, refsOffset + topK);
 
-      const results = searchResults.value.documents.map((doc) => {
-        const dataSourceView = coreSearchArgs.find(
-          (args) =>
-            args.dataSourceView.dataSource.dustAPIDataSourceId ===
-            doc.data_source_id
-        )?.dataSourceView;
+      const results = searchResults.value.documents.map(
+        (doc): SearchResultResourceType => {
+          const dataSourceView = coreSearchArgs.find(
+            (args) =>
+              args.dataSourceView.dataSource.dustAPIDataSourceId ===
+              doc.data_source_id
+          )?.dataSourceView;
 
-        assert(dataSourceView, "DataSource view not found");
+          assert(dataSourceView, "DataSource view not found");
 
-        return {
-          // TODO: use proper mime type, but curently useful to debug.
-          // mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_RESULT,
-          uri: doc.source_url ?? "",
-          text: `"${getDisplayNameForDocument(doc)}" (${doc.chunks.length} chunks)`,
+          return {
+            mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_RESULT,
+            uri: doc.source_url ?? "",
+            text: `"${getDisplayNameForDocument(doc)}" (${doc.chunks.length} chunks)`,
 
-          id: doc.document_id,
-          source: {
-            provider: dataSourceView.dataSource.connectorProvider ?? undefined,
-            name: getDataSourceNameFromView(dataSourceView),
-          },
-          tags: doc.tags,
-          ref: refs.shift() as string,
-          chunks: doc.chunks.map((chunk) => stripNullBytes(chunk.text)),
-        };
-      });
+            id: doc.document_id,
+            source: {
+              provider:
+                dataSourceView.dataSource.connectorProvider ?? undefined,
+              name: getDataSourceNameFromView(dataSourceView),
+            },
+            tags: doc.tags,
+            ref: refs.shift() as string,
+            chunks: doc.chunks.map((chunk) => stripNullBytes(chunk.text)),
+          };
+        }
+      );
 
       return {
         isError: false,
