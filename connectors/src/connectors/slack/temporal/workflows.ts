@@ -26,11 +26,17 @@ const {
   startToCloseTimeout: "10 minutes",
 });
 
-const { deleteChannel, syncThread, syncChannel, syncNonThreaded } =
-  proxyActivities<typeof activities>({
-    heartbeatTimeout: "15 minutes",
-    startToCloseTimeout: "90 minutes",
-  });
+const { deleteChannel, syncThread, syncChannel } = proxyActivities<
+  typeof activities
+>({
+  heartbeatTimeout: "15 minutes",
+  startToCloseTimeout: "90 minutes",
+});
+
+const { syncNonThreadedChunk } = proxyActivities<typeof activities>({
+  heartbeatTimeout: "5 minutes",
+  startToCloseTimeout: "10 minutes",
+});
 
 /**
  * This workflow is in charge of synchronizing all the content of the Slack channels selected by the user.
@@ -171,6 +177,8 @@ export async function syncOneThreadDebounced(
   // call here, which will allow the signal handler to be executed by the nodejs event loop. /!\
 }
 
+const INITIAL_CHUNK_SIZE_MS = 2 * 60 * 60 * 1000; // 2 hours.
+
 export async function syncOneMessageDebounced(
   connectorId: ModelId,
   channelId: string,
@@ -202,13 +210,31 @@ export async function syncOneMessageDebounced(
     const startTsMs = getWeekStart(new Date(messageTs)).getTime();
     const endTsMs = getWeekEnd(new Date(messageTs)).getTime();
     await syncChannelMetadata(connectorId, channelId, endTsMs);
-    await syncNonThreaded(
-      channelId,
-      channel.name,
-      startTsMs,
-      endTsMs,
-      connectorId
-    );
+
+    let currentStartTsMs = startTsMs;
+    while (currentStartTsMs < endTsMs) {
+      const chunkEndTsMs = Math.min(
+        currentStartTsMs + INITIAL_CHUNK_SIZE_MS,
+        endTsMs
+      );
+
+      const result = await syncNonThreadedChunk({
+        channelId,
+        channelName: channel.name,
+        connectorId,
+        endTsMs: chunkEndTsMs,
+        isBatchSync: false,
+        startTsMs: currentStartTsMs,
+      });
+
+      // If chunk completed, move to next chunk. Otherwise resume from nextStartTsMs.
+      if (result.completed) {
+        currentStartTsMs = chunkEndTsMs;
+      } else {
+        currentStartTsMs = result.nextStartTsMs!;
+      }
+    }
+
     await saveSuccessSyncActivity(connectorId);
   }
   // /!\ Any signal received outside of the while loop will be lost, so don't make any async
