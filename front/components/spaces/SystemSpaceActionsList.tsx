@@ -5,6 +5,7 @@ import { AdminActionsList } from "@app/components/actions/mcp/AdminActionsList";
 import { MCPServerDetails } from "@app/components/actions/mcp/MCPServerDetails";
 import { useQueryParams } from "@app/hooks/useQueryParams";
 import type { MCPServerType } from "@app/lib/api/mcp";
+import { useMCPServerViews } from "@app/lib/swr/mcp_server_views";
 import type { LightWorkspaceType, SpaceType } from "@app/types";
 
 interface SpaceActionsListProps {
@@ -21,6 +22,14 @@ export const SystemSpaceActionsList = ({
   const [mcpServerToShow, setMcpServerToShow] = useState<MCPServerType | null>(
     null
   );
+  const { serverViews } = useMCPServerViews({
+    owner,
+    space,
+  });
+
+  const mcpServerView = serverViews.find(
+    (view) => view.server.sId === mcpServerToShow?.sId
+  );
 
   const { q: searchParam } = useQueryParams(["q"]);
   const searchTerm = searchParam.value || "";
@@ -34,7 +43,7 @@ export const SystemSpaceActionsList = ({
       {mcpServerToShow && (
         <MCPServerDetails
           owner={owner}
-          mcpServer={mcpServerToShow}
+          mcpServerView={mcpServerView ?? null}
           onClose={() => {
             setMcpServerToShow(null);
           }}

@@ -1,6 +1,8 @@
-import { Button, Page } from "@dust-tt/sparkle";
+import { Button, ConversationMessage, Markdown, Page } from "@dust-tt/sparkle";
+import { CodeBracketIcon, DocumentTextIcon } from "@heroicons/react/24/outline";
 import type { InferGetServerSidePropsType } from "next";
 import type { ReactElement } from "react";
+import { useState } from "react";
 
 import PokeLayout from "@app/components/poke/PokeLayout";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
@@ -66,129 +68,171 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   };
 });
 
-const UserMessageView = ({ message }: { message: UserMessageType }) => {
+interface UserMessageViewProps {
+  message: UserMessageType;
+  useMarkdown: boolean;
+}
+
+const UserMessageView = ({ message, useMarkdown }: UserMessageViewProps) => {
   return (
-    <div className="ml-4 pt-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
-      {message.user && (
-        <div className="font-bold">
-          [user] @{message.user.username} (fullName={message.user.fullName}{" "}
-          email=
-          {message.user.email}) (posted{" "}
-          {new Date(message.created).toLocaleString()})
-        </div>
-      )}
-      <div className="text-muted-foreground dark:text-muted-foreground-night">
-        version={message.version}
+    <div className="flex flex-grow flex-col">
+      <div className="max-w-full self-end">
+        <ConversationMessage
+          pictureUrl={message.user?.image}
+          name={message.user?.fullName ?? message.user?.username}
+          type="user"
+        >
+          {useMarkdown ? (
+            <Markdown content={message.content} />
+          ) : (
+            <div className="whitespace-pre-wrap">{message.content}</div>
+          )}
+          <div className="mt-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
+            date: {new Date(message.created).toLocaleString()}
+          </div>
+        </ConversationMessage>
       </div>
-      <div>{message.content}</div>
     </div>
   );
 };
+
+interface AgentMessageViewProps {
+  message: PokeAgentMessageType;
+  multiActionsApp: Action;
+  useMarkdown: boolean;
+  workspaceId: string;
+}
 
 const AgentMessageView = ({
   message,
   multiActionsApp,
+  useMarkdown,
   workspaceId,
-}: {
-  message: PokeAgentMessageType;
-  multiActionsApp: Action;
-  workspaceId: string;
-}) => {
+}: AgentMessageViewProps) => {
   return (
-    <div className="ml-4 pt-2 text-sm text-muted-foreground">
-      <div className="font-bold">
-        [agent] @{message.configuration.name} {"(sId="}
-        <a
-          href={`/poke/${workspaceId}/assistants/${message.configuration.sId}`}
-          target="_blank"
-          className="text-highlight-500"
-        >
-          {message.configuration.sId}
-        </a>
-        {")"}(posted {new Date(message.created).toLocaleString()})
-      </div>
-
-      <div className="text-muted-foreground dark:text-muted-foreground-night">
-        version={message.version}
-        {message.runIds && (
+    <div className="w-full">
+      <ConversationMessage
+        pictureUrl={message.configuration.pictureUrl}
+        name={message.configuration.name}
+        renderName={() => (
           <>
-            , agent logs:{" "}
-            {message.runIds.map((runId, i) => (
-              <a
-                key={`runId-${i}`}
-                href={`/w/${multiActionsApp.app.workspaceId}/spaces/${multiActionsApp.app.appSpaceId}/apps/${multiActionsApp.app.appId}/runs/${runId}`}
-                target="_blank"
-                className="text-highlight-500"
-              >
-                {runId.substring(0, 8)}{" "}
-              </a>
-            ))}
+            {message.configuration.name}{" "}
+            <a
+              href={`/poke/${workspaceId}/assistants/${message.configuration.sId}`}
+              target="_blank"
+              className="text-highlight-500"
+            >
+              ({message.configuration.sId})
+            </a>
           </>
         )}
-      </div>
-      {message.actions.map((a, i) => {
-        return (
-          <div
-            key={`action-${i}`}
-            className="pl-2 text-muted-foreground dark:text-muted-foreground-night"
+        type="agent"
+      >
+        {message.content &&
+          (useMarkdown ? (
+            <Markdown content={message.content} />
+          ) : (
+            <div className="whitespace-pre-wrap">{message.content}</div>
+          ))}
+        {message.error && (
+          <div className="text-warning">{message.error.message}</div>
+        )}
+        <div className="mt-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
+          date: {new Date(message.created).toLocaleString()} • message version :{" "}
+          {message.version} {" • "} agent sId :
+          <a
+            href={`/poke/${workspaceId}/assistants/${message.configuration.sId}`}
+            target="_blank"
+            className="text-highlight-500"
           >
-            action: step={a.step} type={a.type}{" "}
-            {a.runId && (
-              <>
-                log:{" "}
+            {message.configuration.sId}
+          </a>
+          {message.runIds && (
+            <>
+              {" • "}
+              agent logs :{" "}
+              {message.runIds.map((runId, i) => (
                 <a
                   key={`runId-${i}`}
-                  href={`/w/${a.appWorkspaceId}/spaces/${a.appSpaceId}/apps/${a.appId}/runs/${a.runId}`}
+                  href={`/w/${multiActionsApp.app.workspaceId}/spaces/${multiActionsApp.app.appSpaceId}/apps/${multiActionsApp.app.appId}/runs/${runId}`}
                   target="_blank"
                   className="text-highlight-500"
                 >
-                  {a.runId.substring(0, 8)}{" "}
+                  {runId.substring(0, 8)}{" "}
                 </a>
-              </>
-            )}
-          </div>
-        );
-      })}
-      {message.content && <div>{message.content}</div>}
-      {message.error && (
-        <div className="text-warning">{message.error.message}</div>
-      )}
+              ))}
+            </>
+          )}
+        </div>
+        {message.actions.map((a, i) => {
+          return (
+            <div
+              key={`action-${i}`}
+              className="mt-1 pl-2 text-sm text-muted-foreground dark:text-muted-foreground-night"
+            >
+              action: step={a.step} type={a.type} functionCallName=
+              {a.functionCallName} functionCallId={a.functionCallId}
+              {a.runId && (
+                <>
+                  log:{" "}
+                  <a
+                    key={`runId-${i}`}
+                    href={`/w/${a.appWorkspaceId}/spaces/${a.appSpaceId}/apps/${a.appId}/runs/${a.runId}`}
+                    target="_blank"
+                    className="text-highlight-500"
+                  >
+                    {a.runId.substring(0, 8)}{" "}
+                  </a>
+                </>
+              )}
+            </div>
+          );
+        })}
+      </ConversationMessage>
     </div>
   );
 };
 
-const ContentFragmentView = ({ message }: { message: ContentFragmentType }) => {
+interface ContentFragmentViewProps {
+  message: ContentFragmentType;
+}
+
+const ContentFragmentView = ({ message }: ContentFragmentViewProps) => {
   return (
-    <div className="ml-4 pt-2 text-sm text-muted-foreground">
-      <div className="font-bold">
-        [content_fragment] {message.title} (posted{" "}
-        {new Date(message.created).toLocaleString()})
-      </div>
-      <div className="text-muted-foreground dark:text-muted-foreground-night">
-        version={message.version}
-      </div>
-      <div className="text-muted-foreground dark:text-muted-foreground-night">
-        textBytes={message.textBytes}
-      </div>
-      {message.sourceUrl && (
+    <div className="w-full">
+      <ConversationMessage type="system">
+        <div className="font-bold">[content_fragment] {message.title}</div>
+        <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+          date : {new Date(message.created).toLocaleString()}
+          version :{message.version} {" • "}
+          textBytes :{message.textBytes}
+        </div>
+        <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+          textBytes={message.textBytes}
+        </div>
+        {message.sourceUrl && (
+          <a
+            href={message.sourceUrl ?? ""}
+            target="_blank"
+            className="text-highlight-500"
+          >
+            [sourceUrl]
+          </a>
+        )}{" "}
         <a
-          href={message.sourceUrl ?? ""}
+          href={message.textUrl ?? ""}
           target="_blank"
           className="text-highlight-500"
         >
-          [sourceUrl]
+          [textUrl]
         </a>
-      )}{" "}
-      <a
-        href={message.textUrl ?? ""}
-        target="_blank"
-        className="text-highlight-500"
-      >
-        [textUrl]
-      </a>
+      </ConversationMessage>
     </div>
   );
 };
+
+interface ConversationPageProps
+  extends InferGetServerSidePropsType<typeof getServerSideProps> {}
 
 const ConversationPage = ({
   workspaceId,
@@ -196,8 +240,9 @@ const ConversationPage = ({
   conversationId,
   conversationDataSourceId,
   multiActionsApp,
-}: InferGetServerSidePropsType<typeof getServerSideProps>) => {
+}: ConversationPageProps) => {
   const { conversation } = usePokeConversation({ workspaceId, conversationId });
+  const [useMarkdown, setUseMarkdown] = useState(false);
 
   return (
     <>
@@ -226,45 +271,56 @@ const ConversationPage = ({
                 target="_blank"
                 enabled={!!conversationDataSourceId}
               />
+              <Button
+                label={useMarkdown ? "Plain Text" : "Preview Markdown"}
+                variant="secondary"
+                size="xs"
+                icon={useMarkdown ? DocumentTextIcon : CodeBracketIcon}
+                onClick={() => setUseMarkdown(!useMarkdown)}
+              />
             </div>
-            {conversation.content.map((messages, i) => {
-              return (
-                <div key={`messages-${i}`}>
-                  {messages.map((m, j) => {
-                    switch (m.type) {
-                      case "agent_message": {
-                        return (
-                          <AgentMessageView
-                            key={`message-${i}-${j}`}
-                            multiActionsApp={multiActionsApp}
-                            message={m}
-                            workspaceId={workspaceId}
-                          />
-                        );
+            <div className="flex w-full flex-1 flex-col justify-start gap-8 py-4">
+              {conversation.content.map((messages, i) => {
+                return (
+                  <div key={`messages-${i}`} className="flex flex-col gap-4">
+                    {messages.map((m, j) => {
+                      switch (m.type) {
+                        case "agent_message": {
+                          return (
+                            <AgentMessageView
+                              key={`message-${i}-${j}`}
+                              multiActionsApp={multiActionsApp}
+                              message={m}
+                              useMarkdown={useMarkdown}
+                              workspaceId={workspaceId}
+                            />
+                          );
+                        }
+                        case "user_message": {
+                          return (
+                            <UserMessageView
+                              message={m}
+                              key={`message-${i}-${j}`}
+                              useMarkdown={useMarkdown}
+                            />
+                          );
+                        }
+                        case "content_fragment": {
+                          return (
+                            <ContentFragmentView
+                              message={m}
+                              key={`message-${i}-${j}`}
+                            />
+                          );
+                        }
+                        default:
+                          assertNever(m);
                       }
-                      case "user_message": {
-                        return (
-                          <UserMessageView
-                            message={m}
-                            key={`message-${i}-${j}`}
-                          />
-                        );
-                      }
-                      case "content_fragment": {
-                        return (
-                          <ContentFragmentView
-                            message={m}
-                            key={`message-${i}-${j}`}
-                          />
-                        );
-                      }
-                      default:
-                        assertNever(m);
-                    }
-                  })}
-                </div>
-              );
-            })}
+                    })}
+                  </div>
+                );
+              })}
+            </div>
           </Page.Vertical>
         </div>
       )}

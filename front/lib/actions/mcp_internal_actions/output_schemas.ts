@@ -424,24 +424,6 @@ export const isRunAgentResultResourceType = (
   );
 };
 
-// Personal authentication required error.
-
-export const PersonalAuthenticationRequiredErrorResourceSchema = z.object({
-  mimeType: z.literal(
-    INTERNAL_MIME_TYPES.TOOL_ERROR.PERSONAL_AUTHENTICATION_REQUIRED
-  ),
-  text: z.string(),
-  uri: z.literal(""),
-  mcpServerId: z.string(),
-  provider: z.string(),
-  useCase: z.string(),
-  scope: z.string().optional(),
-});
-
-export type PersonalAuthenticationRequiredErrorResourceType = z.infer<
-  typeof PersonalAuthenticationRequiredErrorResourceSchema
->;
-
 // Extract data outputs: query and results.
 
 export const ExtractQueryResourceSchema = z.object({

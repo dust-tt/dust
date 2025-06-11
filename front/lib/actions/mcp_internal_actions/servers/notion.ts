@@ -1,3 +1,4 @@
+import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { Client } from "@notionhq/client";
@@ -8,13 +9,11 @@ import type {
 } from "@notionhq/client/build/src/api-endpoints";
 import { z } from "zod";
 
-import { getAccessTokenForInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/authentication";
 import {
   makeMCPToolJSONSuccess,
   makeMCPToolTextError,
 } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
-import type { Authenticator } from "@app/lib/auth";
 import { normalizeError } from "@app/types";
 
 const serverInfo: InternalMCPServerDefinitionType = {
@@ -27,6 +26,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
     supported_use_cases: ["platform_actions"] as const,
   },
   icon: "NotionLogo",
+  documentationUrl: null,
 };
 
 const uuidRegex =
@@ -257,18 +257,21 @@ export const NotionBlockSchema: z.ZodType = z.union([
   FallbackBlock,
 ]);
 
-const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
+const createServer = (): McpServer => {
   const server = new McpServer(serverInfo);
 
   // Consolidated wrapper for Notion client creation and error handling
   async function withNotionClient<T>(
-    fn: (notion: Client) => Promise<T>
+    fn: (notion: Client) => Promise<T>,
+    authInfo?: AuthInfo
   ): Promise<CallToolResult> {
     try {
-      const notion = await getNotionClient(auth, mcpServerId);
-      if (!notion) {
+      const accessToken = authInfo?.token;
+      if (!accessToken) {
         throw new Error("No access token found");
       }
+      const notion = new Client({ auth: accessToken });
+
       const result = await fn(notion);
       return makeMCPToolJSONSuccess({
         message: "Success",
@@ -299,9 +302,11 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
           "The number of items from the full list to include in the response. Maximum: 100."
         ),
     },
-    async ({ query, filter, sort, start_cursor, page_size }) =>
-      withNotionClient((notion) =>
-        notion.search({ query, filter, sort, start_cursor, page_size })
+    async ({ query, filter, sort, start_cursor, page_size }, { authInfo }) =>
+      withNotionClient(
+        (notion) =>
+          notion.search({ query, filter, sort, start_cursor, page_size }),
+        authInfo
       )
   );
 
@@ -311,8 +316,11 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
     {
       pageId: z.string().describe("The Notion page ID."),
     },
-    async ({ pageId }) =>
-      withNotionClient((notion) => notion.pages.retrieve({ page_id: pageId }))
+    async ({ pageId }, { authInfo }) =>
+      withNotionClient(
+        (notion) => notion.pages.retrieve({ page_id: pageId }),
+        authInfo
+      )
   );
 
   server.tool(
@@ -321,9 +329,10 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
     {
       databaseId: z.string().describe("The Notion database ID."),
     },
-    async ({ databaseId }) =>
-      withNotionClient((notion) =>
-        notion.databases.retrieve({ database_id: databaseId })
+    async ({ databaseId }, { authInfo }) =>
+      withNotionClient(
+        (notion) => notion.databases.retrieve({ database_id: databaseId }),
+        authInfo
       )
   );
 
@@ -340,15 +349,20 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
         .describe("Start cursor for pagination."),
       page_size: z.number().optional().describe("Page size for pagination."),
     },
-    async ({ databaseId, filter, sorts, start_cursor, page_size }) =>
-      withNotionClient((notion) =>
-        notion.databases.query({
-          database_id: databaseId,
-          filter: filter as QueryDatabaseParameters["filter"],
-          sorts,
-          start_cursor,
-          page_size,
-        })
+    async (
+      { databaseId, filter, sorts, start_cursor, page_size },
+      { authInfo }
+    ) =>
+      withNotionClient(
+        (notion) =>
+          notion.databases.query({
+            database_id: databaseId,
+            filter: filter as QueryDatabaseParameters["filter"],
+            sorts,
+            start_cursor,
+            page_size,
+          }),
+        authInfo
       )
   );
 
@@ -365,15 +379,20 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
         .describe("Start cursor for pagination."),
       page_size: z.number().optional().describe("Page size for pagination."),
     },
-    async ({ databaseId, filter, sorts, start_cursor, page_size }) =>
-      withNotionClient((notion) =>
-        notion.databases.query({
-          database_id: databaseId,
-          filter: filter as QueryDatabaseParameters["filter"],
-          sorts,
-          start_cursor,
-          page_size,
-        })
+    async (
+      { databaseId, filter, sorts, start_cursor, page_size },
+      { authInfo }
+    ) =>
+      withNotionClient(
+        (notion) =>
+          notion.databases.query({
+            database_id: databaseId,
+            filter: filter as QueryDatabaseParameters["filter"],
+            sorts,
+            start_cursor,
+            page_size,
+          }),
+        authInfo
       )
   );
 
@@ -388,9 +407,10 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
       icon: z.any().optional().describe("Icon (optional)."),
       cover: z.any().optional().describe("Cover (optional)."),
     },
-    async ({ parent, properties, icon, cover }) =>
-      withNotionClient((notion) =>
-        notion.pages.create({ parent, properties, icon, cover })
+    async ({ parent, properties, icon, cover }, { authInfo }) =>
+      withNotionClient(
+        (notion) => notion.pages.create({ parent, properties, icon, cover }),
+        authInfo
       )
   );
 
@@ -403,14 +423,16 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
       icon: z.any().optional().describe("Icon (optional)."),
       cover: z.any().optional().describe("Cover (optional)."),
     },
-    async ({ databaseId, properties, icon, cover }) =>
-      withNotionClient((notion) =>
-        notion.pages.create({
-          parent: { database_id: databaseId, type: "database_id" },
-          properties,
-          icon,
-          cover,
-        })
+    async ({ databaseId, properties, icon, cover }, { authInfo }) =>
+      withNotionClient(
+        (notion) =>
+          notion.pages.create({
+            parent: { database_id: databaseId, type: "database_id" },
+            properties,
+            icon,
+            cover,
+          }),
+        authInfo
       )
   );
 
@@ -430,9 +452,11 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
       icon: z.any().optional().describe("Icon (optional)."),
       cover: z.any().optional().describe("Cover (optional)."),
     },
-    async ({ parent, title, properties, icon, cover }) =>
-      withNotionClient((notion) =>
-        notion.databases.create({ parent, title, properties, icon, cover })
+    async ({ parent, title, properties, icon, cover }, { authInfo }) =>
+      withNotionClient(
+        (notion) =>
+          notion.databases.create({ parent, title, properties, icon, cover }),
+        authInfo
       )
   );
 
@@ -443,9 +467,10 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
       pageId: z.string().describe("The Notion page ID."),
       properties: propertiesSchema,
     },
-    async ({ pageId, properties }) =>
-      withNotionClient((notion) =>
-        notion.pages.update({ page_id: pageId, properties })
+    async ({ pageId, properties }, { authInfo }) =>
+      withNotionClient(
+        (notion) => notion.pages.update({ page_id: pageId, properties }),
+        authInfo
       )
   );
 
@@ -455,9 +480,10 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
     {
       blockId: z.string().describe("The Notion block ID."),
     },
-    async ({ blockId }) =>
-      withNotionClient((notion) =>
-        notion.blocks.retrieve({ block_id: blockId })
+    async ({ blockId }, { authInfo }) =>
+      withNotionClient(
+        (notion) => notion.blocks.retrieve({ block_id: blockId }),
+        authInfo
       )
   );
 
@@ -472,13 +498,15 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
         .describe("Start cursor for pagination."),
       page_size: z.number().optional().describe("Page size for pagination."),
     },
-    async ({ blockId, start_cursor, page_size }) =>
-      withNotionClient((notion) =>
-        notion.blocks.children.list({
-          block_id: blockId,
-          start_cursor,
-          page_size,
-        })
+    async ({ blockId, start_cursor, page_size }, { authInfo }) =>
+      withNotionClient(
+        (notion) =>
+          notion.blocks.children.list({
+            block_id: blockId,
+            start_cursor,
+            page_size,
+          }),
+        authInfo
       )
   );
 
@@ -493,12 +521,14 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
           "Array of block objects to append as children. Blocks can be parented by other blocks, pages, or databases. There is a limit of 100 block children that can be appended by a single API request."
         ),
     },
-    async ({ blockId, children }) =>
-      withNotionClient((notion) =>
-        notion.blocks.children.append({
-          block_id: blockId,
-          children: children as Array<BlockObjectRequest>,
-        })
+    async ({ blockId, children }, { authInfo }) =>
+      withNotionClient(
+        (notion) =>
+          notion.blocks.children.append({
+            block_id: blockId,
+            children: children as Array<BlockObjectRequest>,
+          }),
+        authInfo
       )
   );
 
@@ -521,7 +551,7 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
         ),
       comment: z.string().describe("The comment text."),
     },
-    async ({ parent_page_id, discussion_id, comment }) =>
+    async ({ parent_page_id, discussion_id, comment }, { authInfo }) =>
       withNotionClient((notion) => {
         if (!parent_page_id && !discussion_id) {
           throw new Error(
@@ -541,7 +571,7 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
           };
         }
         return notion.comments.create(params);
-      })
+      }, authInfo)
   );
 
   server.tool(
@@ -552,9 +582,10 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
         .string()
         .describe("The ID of the block, page, or database to delete."),
     },
-    async ({ blockId }) =>
-      withNotionClient((notion) =>
-        notion.blocks.update({ block_id: blockId, archived: true })
+    async ({ blockId }, { authInfo }) =>
+      withNotionClient(
+        (notion) => notion.blocks.update({ block_id: blockId, archived: true }),
+        authInfo
       )
   );
 
@@ -566,8 +597,11 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
         .string()
         .describe("The ID of the page or block to fetch comments from."),
     },
-    async ({ blockId }) =>
-      withNotionClient((notion) => notion.comments.list({ block_id: blockId }))
+    async ({ blockId }, { authInfo }) =>
+      withNotionClient(
+        (notion) => notion.comments.list({ block_id: blockId }),
+        authInfo
+      )
   );
 
   server.tool(
@@ -577,9 +611,10 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
       pageId: z.string().regex(uuidRegex).describe("The Notion page ID."),
       properties: propertiesSchema,
     },
-    async ({ pageId, properties }) =>
-      withNotionClient((notion) =>
-        notion.pages.update({ page_id: pageId, properties })
+    async ({ pageId, properties }, { authInfo }) =>
+      withNotionClient(
+        (notion) => notion.pages.update({ page_id: pageId, properties }),
+        authInfo
       )
   );
 
@@ -590,9 +625,11 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
       databaseId: z.string().describe("The Notion database ID."),
       properties: propertiesSchema,
     },
-    async ({ databaseId, properties }) =>
-      withNotionClient((notion) =>
-        notion.databases.update({ database_id: databaseId, properties })
+    async ({ databaseId, properties }, { authInfo }) =>
+      withNotionClient(
+        (notion) =>
+          notion.databases.update({ database_id: databaseId, properties }),
+        authInfo
       )
   );
 
@@ -600,7 +637,8 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
     "list_users",
     "List all users in the Notion workspace.",
     {},
-    async () => withNotionClient((notion) => notion.users.list({}))
+    async (_, { authInfo }) =>
+      withNotionClient((notion) => notion.users.list({}), authInfo)
   );
 
   server.tool(
@@ -609,25 +647,14 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
     {
       userId: z.string().describe("The Notion user ID."),
     },
-    async ({ userId }) =>
-      withNotionClient((notion) => notion.users.retrieve({ user_id: userId }))
+    async ({ userId }, { authInfo }) =>
+      withNotionClient(
+        (notion) => notion.users.retrieve({ user_id: userId }),
+        authInfo
+      )
   );
 
   return server;
-};
-
-const getNotionClient = async (
-  auth: any,
-  mcpServerId: string
-): Promise<Client | null> => {
-  const accessToken = await getAccessTokenForInternalMCPServer(auth, {
-    mcpServerId,
-    connectionType: "workspace",
-  });
-  if (!accessToken) {
-    return null;
-  }
-  return new Client({ auth: accessToken });
 };
 
 export default createServer;

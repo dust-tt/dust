@@ -14,6 +14,7 @@ import { useMe } from "../../utils/hooks/use_me.js";
 import AgentSelector from "../components/AgentSelector.js";
 import type { ConversationItem } from "../components/Conversation.js";
 import Conversation from "../components/Conversation.js";
+import { AVAILABLE_COMMANDS } from "./types.js";
 
 type AgentConfiguration =
   GetAgentConfigurationsResponseType["agentConfigurations"][number];
@@ -49,6 +50,10 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
     useState<AbortController | null>(null);
   const [userInput, setUserInput] = useState("");
   const [cursorPosition, setCursorPosition] = useState(0);
+  const [showCommandSelector, setShowCommandSelector] = useState(false);
+  const [commandQuery, setCommandQuery] = useState("");
+  const [selectedCommandIndex, setSelectedCommandIndex] = useState(0);
+  const [commandCursorPosition, setCommandCursorPosition] = useState(0);
 
   const updateIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const contentRef = useRef<string>("");
@@ -378,9 +383,64 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
     [selectedAgent, conversationId, me, meError, isMeLoading]
   );
 
-  // Handle keyboard events
+  // Handle keyboard events.
   useInput((input, key) => {
-    // Ctrl+G to open conversation in browser
+    const isInCommandMode = showCommandSelector;
+    const currentInput = isInCommandMode ? commandQuery : userInput;
+    const currentCursorPos = isInCommandMode
+      ? commandCursorPosition
+      : cursorPosition;
+    const setCurrentInput = isInCommandMode ? setCommandQuery : setUserInput;
+    const setCurrentCursorPos = isInCommandMode
+      ? setCommandCursorPosition
+      : setCursorPosition;
+
+    // Handle command selector specific navigation.
+    if (showCommandSelector) {
+      if (key.escape) {
+        setShowCommandSelector(false);
+        setCommandQuery("");
+        setSelectedCommandIndex(0);
+        setCommandCursorPosition(0);
+        return;
+      }
+
+      if (key.upArrow) {
+        setSelectedCommandIndex((prev) => Math.max(0, prev - 1));
+        return;
+      }
+
+      if (key.downArrow) {
+        const filteredCommands = AVAILABLE_COMMANDS.filter((cmd) =>
+          cmd.name.toLowerCase().startsWith(commandQuery.toLowerCase())
+        );
+        setSelectedCommandIndex((prev) =>
+          Math.min(filteredCommands.length - 1, prev + 1)
+        );
+        return;
+      }
+
+      if (key.return) {
+        const filteredCommands = AVAILABLE_COMMANDS.filter((cmd) =>
+          cmd.name.toLowerCase().startsWith(commandQuery.toLowerCase())
+        );
+        if (
+          filteredCommands.length > 0 &&
+          selectedCommandIndex < filteredCommands.length
+        ) {
+          const selectedCommand = filteredCommands[selectedCommandIndex];
+          void selectedCommand.execute();
+          setShowCommandSelector(false);
+          setCommandQuery("");
+          setSelectedCommandIndex(0);
+          setCommandCursorPosition(0);
+          setUserInput("");
+          setCursorPosition(0);
+        }
+        return;
+      }
+    }
+
     if (key.ctrl && input === "g") {
       if (conversationId) {
         void (async () => {
@@ -396,7 +456,6 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
       return;
     }
 
-    // ESC key to either cancel ongoing request or clear input
     if (key.escape) {
       if (isProcessingQuestion && abortController) {
         abortController.abort();
@@ -408,7 +467,7 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
     }
 
     // Check for backslash + Enter to add new line, or regular Enter to submit
-    if (key.return) {
+    if (key.return && !isInCommandMode) {
       // Check if the previous character is a backslash for multi-line input
       if (cursorPosition > 0 && userInput[cursorPosition - 1] === "\\") {
         // Remove the backslash and add a newline
@@ -435,89 +494,102 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
     }
 
     if (key.backspace || key.delete) {
-      if (cursorPosition > 0) {
-        setUserInput(
-          userInput.slice(0, cursorPosition - 1) +
-            userInput.slice(cursorPosition)
+      if (currentCursorPos > 0) {
+        setCurrentInput(
+          currentInput.slice(0, currentCursorPos - 1) +
+            currentInput.slice(currentCursorPos)
         );
-        setCursorPosition(Math.max(0, cursorPosition - 1));
+        setCurrentCursorPos(Math.max(0, currentCursorPos - 1));
+        if (isInCommandMode) {
+          setSelectedCommandIndex(0);
+        }
+      } else if (isInCommandMode && commandQuery.length === 0) {
+        // If query is empty and backspace is pressed, close command selector.
+        setShowCommandSelector(false);
+        setCommandQuery("");
+        setSelectedCommandIndex(0);
+        setCommandCursorPosition(0);
       }
       return;
     }
 
     // Handle option+left (meta+b) to move to the previous word
-    if (key.meta && input === "b" && cursorPosition > 0) {
-      let newPosition = cursorPosition - 1;
+    if (key.meta && input === "b" && currentCursorPos > 0) {
+      let newPosition = currentCursorPos - 1;
 
-      while (newPosition > 0 && /\s/.test(userInput[newPosition])) {
+      while (newPosition > 0 && /\s/.test(currentInput[newPosition])) {
         newPosition--;
       }
 
-      while (newPosition > 0 && !/\s/.test(userInput[newPosition - 1])) {
+      while (newPosition > 0 && !/\s/.test(currentInput[newPosition - 1])) {
         newPosition--;
       }
 
-      setCursorPosition(newPosition);
+      setCurrentCursorPos(newPosition);
       return;
     }
 
     // Handle option+right (meta+f) to move to the next word
-    if (key.meta && input === "f" && cursorPosition < userInput.length) {
-      let newPosition = cursorPosition;
+    if (key.meta && input === "f" && currentCursorPos < currentInput.length) {
+      let newPosition = currentCursorPos;
 
       while (
-        newPosition < userInput.length &&
-        !/\s/.test(userInput[newPosition])
+        newPosition < currentInput.length &&
+        !/\s/.test(currentInput[newPosition])
       ) {
         newPosition++;
       }
 
       while (
-        newPosition < userInput.length &&
-        /\s/.test(userInput[newPosition])
+        newPosition < currentInput.length &&
+        /\s/.test(currentInput[newPosition])
       ) {
         newPosition++;
       }
 
-      setCursorPosition(newPosition);
+      setCurrentCursorPos(newPosition);
       return;
     }
 
     // Handle cmd+left (ctrl+a) to go to beginning of line
     if (key.ctrl && input === "a") {
-      let newPosition = cursorPosition;
-
-      while (newPosition > 0 && userInput[newPosition - 1] !== "\n") {
-        newPosition--;
+      if (isInCommandMode) {
+        setCurrentCursorPos(0);
+      } else {
+        let newPosition = currentCursorPos;
+        while (newPosition > 0 && currentInput[newPosition - 1] !== "\n") {
+          newPosition--;
+        }
+        setCurrentCursorPos(newPosition);
       }
-
-      setCursorPosition(newPosition);
       return;
     }
 
     // Handle cmd+right (ctrl+e) to go to end of line
     if (key.ctrl && input === "e") {
-      let newPosition = cursorPosition;
-
-      while (
-        newPosition < userInput.length &&
-        userInput[newPosition] !== "\n"
-      ) {
-        newPosition++;
+      if (isInCommandMode) {
+        setCurrentCursorPos(currentInput.length);
+      } else {
+        let newPosition = currentCursorPos;
+        while (
+          newPosition < currentInput.length &&
+          currentInput[newPosition] !== "\n"
+        ) {
+          newPosition++;
+        }
+        setCurrentCursorPos(newPosition);
       }
-
-      setCursorPosition(newPosition);
       return;
     }
 
     // Regular arrow key handling (left/right for character movement)
-    if (key.leftArrow && cursorPosition > 0) {
-      setCursorPosition(cursorPosition - 1);
+    if (key.leftArrow && currentCursorPos > 0) {
+      setCurrentCursorPos(currentCursorPos - 1);
       return;
     }
 
-    if (key.rightArrow && cursorPosition < userInput.length) {
-      setCursorPosition(cursorPosition + 1);
+    if (key.rightArrow && currentCursorPos < currentInput.length) {
+      setCurrentCursorPos(currentCursorPos + 1);
       return;
     }
 
@@ -533,12 +605,29 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
 
     // Handle regular character input
     if (!key.ctrl && !key.meta && input && input.length === 1) {
+      // Check if typing "/" at the beginning of an empty input
+      if (
+        input === "/" &&
+        userInput === "" &&
+        cursorPosition === 0 &&
+        !isInCommandMode
+      ) {
+        setShowCommandSelector(true);
+        setCommandQuery("");
+        setSelectedCommandIndex(0);
+        setCommandCursorPosition(0);
+        return;
+      }
+
       const newInput =
-        userInput.slice(0, cursorPosition) +
+        currentInput.slice(0, currentCursorPos) +
         input +
-        userInput.slice(cursorPosition);
-      setUserInput(newInput);
-      setCursorPosition(cursorPosition + 1);
+        currentInput.slice(currentCursorPos);
+      setCurrentInput(newInput);
+      setCurrentCursorPos(currentCursorPos + 1);
+      if (isInCommandMode) {
+        setSelectedCommandIndex(0);
+      }
     } else if (input.length > 1) {
       // This is a special case that can happen with some terminals when pasting
       // without explicit keyboard shortcuts - they send the entire pasted content
@@ -548,11 +637,14 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
       const normalizedInput = input.replace(/\r/g, "\n");
 
       const newInput =
-        userInput.slice(0, cursorPosition) +
+        currentInput.slice(0, currentCursorPos) +
         normalizedInput +
-        userInput.slice(cursorPosition);
-      setUserInput(newInput);
-      setCursorPosition(cursorPosition + normalizedInput.length);
+        currentInput.slice(currentCursorPos);
+      setCurrentInput(newInput);
+      setCurrentCursorPos(currentCursorPos + normalizedInput.length);
+      if (isInCommandMode) {
+        setSelectedCommandIndex(0);
+      }
     }
   });
 
@@ -611,6 +703,10 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
       mentionPrefix={mentionPrefix}
       conversationId={conversationId}
       stdout={stdout}
+      showCommandSelector={showCommandSelector}
+      commandQuery={commandQuery}
+      selectedCommandIndex={selectedCommandIndex}
+      commandCursorPosition={commandCursorPosition}
     />
   );
 };

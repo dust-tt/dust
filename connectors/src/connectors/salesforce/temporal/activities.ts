@@ -141,22 +141,38 @@ export async function processSyncedQueryPage(
   connectorId: ModelId,
   {
     queryId,
-    offset,
+    lastModifiedDateCursor,
     limit,
     lastSeenModifiedDate,
     upToLastModifiedDate,
   }: {
     queryId: ModelId;
-    offset: number;
+    lastModifiedDateCursor: Date | null;
     limit: number;
     lastSeenModifiedDate: Date | null;
     upToLastModifiedDate: Date | null;
   }
 ): Promise<{
+  // The most recent lastModifiedDate seen
   lastSeenModifiedDate: Date | null;
+  // The older lastModifiedDate seen in this page to use for pagination
+  lastModifiedDateCursor: Date | null;
   hasMore: boolean;
   count: number;
 }> {
+  // This is terrible but temporal serializes Dates to string across workflow/activity boundary.
+  // Having the bype Date is convenient here but this ensures that we turn back serialized strings
+  // into Dates.
+  if (typeof lastSeenModifiedDate === "string") {
+    lastSeenModifiedDate = new Date(lastSeenModifiedDate);
+  }
+  if (typeof lastModifiedDateCursor === "string") {
+    lastModifiedDateCursor = new Date(lastModifiedDateCursor);
+  }
+  if (typeof upToLastModifiedDate === "string") {
+    upToLastModifiedDate = new Date(upToLastModifiedDate);
+  }
+
   const connAndCredsRes = await getConnectorAndCredentials(connectorId);
   if (connAndCredsRes.isErr()) {
     throw connAndCredsRes.error;
@@ -176,12 +192,25 @@ export async function processSyncedQueryPage(
     );
   }
 
+  logger.info(
+    {
+      connectorId,
+      queryId,
+      limit,
+      lastModifiedDateCursor,
+      lastSeenModifiedDate,
+      upToLastModifiedDate,
+      soql: syncedQuery.soql,
+    },
+    "Salesforce synced query page SOQL"
+  );
+
   // Execute SOQL query with pagination
   const queryRes = await runSOQL({
     credentials,
     soql: syncedQuery.soql,
     limit,
-    offset,
+    lastModifiedDateSmallerThan: lastModifiedDateCursor ?? undefined,
     lastModifiedDateOrder: "DESC",
   });
 
@@ -281,6 +310,11 @@ export async function processSyncedQueryPage(
           lastSeenModifiedDate && lastSeenModifiedDate > recordModifiedDate
             ? lastSeenModifiedDate
             : recordModifiedDate;
+
+        lastModifiedDateCursor =
+          lastModifiedDateCursor && recordModifiedDate >= lastModifiedDateCursor
+            ? lastModifiedDateCursor
+            : recordModifiedDate;
       }
 
       processedCount++;
@@ -290,6 +324,7 @@ export async function processSyncedQueryPage(
 
   return {
     lastSeenModifiedDate,
+    lastModifiedDateCursor,
     hasMore: processedCount > 0,
     count: processedCount,
   };

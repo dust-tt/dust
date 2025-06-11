@@ -874,8 +874,10 @@ export const GEMINI_2_5_PRO_PREVIEW_MODEL_CONFIG: ModelConfigurationType = {
   description: "Google's powerful large context model (1m context).",
   shortDescription: "Google's powerful model (preview).",
   isLegacy: false,
+  delimitersConfiguration: CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION,
   generationTokensCount: 2048,
   supportsVision: true,
+  toolUseMetaPrompt: CHAIN_OF_THOUGHT_META_PROMPT,
 };
 
 // DEPRECATED -- Replaced by GA model

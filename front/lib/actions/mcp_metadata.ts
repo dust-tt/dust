@@ -3,7 +3,7 @@ import type { SSEClientTransportOptions } from "@modelcontextprotocol/sdk/client
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
 import type { StreamableHTTPClientTransportOptions } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
-import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
+import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import type { Implementation, Tool } from "@modelcontextprotocol/sdk/types.js";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { ProxyAgent } from "undici";
@@ -13,6 +13,10 @@ import {
   DEFAULT_MCP_ACTION_NAME,
   DEFAULT_MCP_ACTION_VERSION,
 } from "@app/lib/actions/constants";
+import {
+  getConnectionForMCPServer,
+  MCPServerPersonalAuthenticationRequiredError,
+} from "@app/lib/actions/mcp_authentication";
 import { MCPServerNotFoundError } from "@app/lib/actions/mcp_errors";
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import {
@@ -20,6 +24,7 @@ import {
   isInternalAllowedIcon,
 } from "@app/lib/actions/mcp_icons";
 import { connectToInternalMCPServer } from "@app/lib/actions/mcp_internal_actions";
+import { InMemoryWithAuthTransport } from "@app/lib/actions/mcp_internal_actions/in_memory_with_auth_transport";
 import { MCPOAuthRequiredError } from "@app/lib/actions/mcp_oauth_error";
 import { MCPOAuthProvider } from "@app/lib/actions/mcp_oauth_provider";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -81,6 +86,7 @@ export function isInternalMCPServerDefinition(
 interface ConnectViaMCPServerId {
   type: "mcpServerId";
   mcpServerId: string;
+  oAuthUseCase: MCPOAuthUseCase | null;
 }
 
 export const isConnectViaMCPServerId = (
@@ -139,7 +145,9 @@ export const connectToMCPServer = async (
     params: MCPConnectionParams;
     agentLoopContext?: AgentLoopContextType;
   }
-): Promise<Result<Client, Error>> => {
+): Promise<
+  Result<Client, Error | MCPServerPersonalAuthenticationRequiredError>
+> => {
   // This is where we route the MCP client to the right server.
   const mcpClient = new Client({
     name: "dust-mcp-client",
@@ -154,14 +162,71 @@ export const connectToMCPServer = async (
         case "internal":
           // Create a pair of linked in-memory transports
           // And connect the client to the server.
-          const [client, server] = InMemoryTransport.createLinkedPair();
+          const [client, server] = InMemoryWithAuthTransport.createLinkedPair();
           await connectToInternalMCPServer(
             params.mcpServerId,
             server,
             auth,
             agentLoopContext
           );
+
           await mcpClient.connect(client);
+
+          // The server might requires authentication for tools.
+          // To avoid any unnecessary work, we only fetch the token if we are try to run a tool.
+          // If we are just listing tools, we don't need to fetch the token.
+          if (agentLoopContext?.runContext) {
+            const metadata = await extractMetadataFromServerVersion(
+              mcpClient.getServerVersion()
+            );
+            if (metadata.authorization) {
+              if (!params.oAuthUseCase) {
+                throw new Error(
+                  "Internal server requires authentication but no use case was provided - Should never happen"
+                );
+              }
+
+              const c = await getConnectionForMCPServer(auth, {
+                mcpServerId: params.mcpServerId,
+                connectionType:
+                  params.oAuthUseCase === "personal_actions"
+                    ? "personal"
+                    : "workspace",
+              });
+              if (c) {
+                const authInfo: AuthInfo = {
+                  token: c.access_token,
+                  expiresAt: c.access_token_expiry ?? undefined,
+                  clientId: "",
+                  scopes: [],
+                  extra: {
+                    ...c.connection.metadata,
+                    connectionType:
+                      params.oAuthUseCase === "personal_actions"
+                        ? "personal"
+                        : "workspace",
+                  },
+                };
+
+                client.setAuthInfo(authInfo);
+                server.setAuthInfo(authInfo);
+              } else {
+                if (params.oAuthUseCase === "personal_actions") {
+                  return new Err(
+                    new MCPServerPersonalAuthenticationRequiredError(
+                      params.mcpServerId,
+                      metadata.authorization.provider,
+                      params.oAuthUseCase,
+                      metadata.authorization.scope
+                    )
+                  );
+                } else {
+                  // TODO(mcp): We return an result to display a message to the user saying that the server requires the admin to setup the connection.
+                  // For now, keeping iso.
+                }
+              }
+            }
+          }
           break;
 
         case "remote":
@@ -321,7 +386,7 @@ export function extractMetadataFromServerVersion(
       icon: isInternalMCPServerDefinition(r) ? r.icon : DEFAULT_MCP_SERVER_ICON,
       documentationUrl: isInternalMCPServerDefinition(r)
         ? r.documentationUrl
-        : undefined,
+        : null,
     };
   }
 
@@ -331,6 +396,7 @@ export function extractMetadataFromServerVersion(
     description: DEFAULT_MCP_ACTION_DESCRIPTION,
     icon: DEFAULT_MCP_SERVER_ICON,
     authorization: null,
+    documentationUrl: null,
   };
 }
 
@@ -384,6 +450,7 @@ export async function fetchRemoteServerMetaDataByServerId(
     params: {
       type: "mcpServerId",
       mcpServerId: serverId,
+      oAuthUseCase: "platform_actions",
     },
   });
 

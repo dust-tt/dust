@@ -122,24 +122,26 @@ export function MCPServerOAuthConnexion({
           {inputs ? (
             <>
               <Chip color="warning">
-                {remoteMCPServerUrl
-                  ? `${remoteMCPServerUrl} requires authentication with `
-                  : "These tools require authentication with "}
-                {OAUTH_PROVIDER_NAMES[authorization.provider]}
-                {documentationUrl && (
-                  <>
-                    . Please follow{" "}
-                    <a
-                      href={documentationUrl}
-                      className="text-highlight-600"
-                      target="_blank"
-                    >
-                      this guide
-                    </a>{" "}
-                    to learn how to set it up
-                  </>
-                )}
-                .
+                <span>
+                  {remoteMCPServerUrl
+                    ? `${remoteMCPServerUrl} requires authentication with `
+                    : "These tools require authentication with "}
+                  {OAUTH_PROVIDER_NAMES[authorization.provider]}
+                  {documentationUrl && (
+                    <>
+                      . Follow{" "}
+                      <a
+                        href={documentationUrl}
+                        className="text-highlight-600"
+                        target="_blank"
+                      >
+                        this guide
+                      </a>{" "}
+                      to set it up
+                    </>
+                  )}
+                  .
+                </span>
               </Chip>
               {Object.entries(inputs).map(([key, inputData]) => {
                 if (inputData.value) {

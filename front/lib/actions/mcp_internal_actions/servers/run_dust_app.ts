@@ -49,6 +49,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
   description: "Run Dust Apps with specified parameters (mcp)",
   icon: "CommandLineIcon",
   authorization: null,
+  documentationUrl: null,
 };
 
 interface DustFileOutput {

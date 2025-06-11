@@ -117,6 +117,7 @@ const API_ERROR_TYPES = [
   // MCP:
   "mcp_auth_error",
   "invalid_mcp_server_id",
+  "mcp_server_not_found",
   // Workos:
   "workos_organization_not_found",
   "workos_server_error",

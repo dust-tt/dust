@@ -59,6 +59,11 @@ export const MentionDropdown = ({
     updateTriggerPosition();
   }, [triggerRect, updateTriggerPosition]);
 
+  // Only render the dropdown if we have a valid trigger.
+  if (!triggerRect) {
+    return null;
+  }
+
   return (
     <DropdownMenu open={isOpen} onOpenChange={onOpenChange}>
       <DropdownMenuTrigger asChild>

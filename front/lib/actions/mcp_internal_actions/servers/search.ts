@@ -15,6 +15,7 @@ import {
   getCoreSearchArgs,
   shouldAutoGenerateTags,
 } from "@app/lib/actions/mcp_internal_actions/servers/utils";
+import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { actionRefsOffset, getRetrievalTopK } from "@app/lib/actions/utils";
 import { getRefs } from "@app/lib/api/assistant/citations";
@@ -45,6 +46,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
   description: "Search through selected Data sources (mcp)",
   icon: "ActionMagnifyingGlassIcon",
   authorization: null,
+  documentationUrl: null,
 };
 
 function createServer(
@@ -279,7 +281,7 @@ function createServer(
         " The search is based on semantic similarity between the query and chunks of information" +
         " from the data sources.",
       commonInputsSchema,
-      searchFunction
+      withToolLogging(auth, "semantic_search", searchFunction)
     );
   } else {
     server.tool(
@@ -291,7 +293,7 @@ function createServer(
         ...commonInputsSchema,
         ...tagsInputSchema,
       },
-      searchFunction
+      withToolLogging(auth, "semantic_search", searchFunction)
     );
 
     server.tool(

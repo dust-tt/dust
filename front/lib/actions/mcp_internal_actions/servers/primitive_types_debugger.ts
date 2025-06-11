@@ -12,6 +12,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
     "Demo server showing a basic interaction with various configurable blocks.",
   icon: "ActionEmotionLaughIcon",
   authorization: null,
+  documentationUrl: null,
 };
 
 function createServer(): McpServer {
