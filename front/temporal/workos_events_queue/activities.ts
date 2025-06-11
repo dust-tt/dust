@@ -8,6 +8,7 @@ import type {
 } from "@workos-inc/node";
 import assert from "assert";
 
+import { createAndLogMembership } from "@app/lib/api/signup";
 import { getOrCreateWorkOSOrganization } from "@app/lib/api/workos/organization";
 import {
   fetchWorkOSUserWithEmail,
@@ -30,8 +31,6 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import mainLogger from "@app/logger/logger";
 import type { LightWorkspaceType, Result } from "@app/types";
-
-import { launchUpdateUsageWorkflow } from "../usage_queue/client";
 
 const logger = mainLogger.child(
   {},
@@ -307,18 +306,12 @@ async function handleCreateOrUpdateWorkOSUser(
     user,
     externalUser,
   });
-  const membership = await MembershipResource.createMembership({
+
+  await createAndLogMembership({
     user: createdOrUpdatedUser,
     workspace,
     role: "user",
   });
-  void ServerSideTracking.trackCreateMembership({
-    user: createdOrUpdatedUser.toJSON(),
-    workspace,
-    role: membership.role,
-    startAt: membership.startAt,
-  });
-  await launchUpdateUsageWorkflow({ workspaceId: workspace.sId });
 }
 
 async function handleDeleteWorkOSUser(

@@ -14,7 +14,7 @@ import { ServerSideTracking } from "@app/lib/tracking/server";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { launchUpdateUsageWorkflow } from "@app/temporal/usage_queue/client";
-import type { ActiveRoleType, Result } from "@app/types";
+import type { ActiveRoleType, LightWorkspaceType, Result } from "@app/types";
 import { Err, Ok } from "@app/types";
 
 export async function createAndLogMembership({
@@ -23,18 +23,22 @@ export async function createAndLogMembership({
   role,
 }: {
   user: UserResource;
-  workspace: Workspace;
+  workspace: Workspace | LightWorkspaceType;
   role: ActiveRoleType;
 }) {
+  const w =
+    workspace instanceof Workspace
+      ? renderLightWorkspaceType({ workspace })
+      : workspace;
   const m = await MembershipResource.createMembership({
     role,
     user,
-    workspace: renderLightWorkspaceType({ workspace }),
+    workspace: w,
   });
 
   void ServerSideTracking.trackCreateMembership({
     user: user.toJSON(),
-    workspace: renderLightWorkspaceType({ workspace }),
+    workspace: w,
     role: m.role,
     startAt: m.startAt,
   });
