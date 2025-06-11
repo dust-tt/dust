@@ -1003,20 +1003,31 @@ function makeQueryResource(
   };
 }
 
+function renderMimeType(mimeType: string) {
+  return mimeType
+    .replace("application/vnd.dust.", "")
+    .replace("-", " ")
+    .replace(".", " ");
+}
+
 function makeQueryResourceForFind(
   query?: string,
   rootNodeId?: string,
   mimeTypes?: string[],
   nextPageCursor?: string
 ): SearchQueryResourceType {
+  const queryText = query ? ` "${query}"` : " all content";
+  const scope = rootNodeId
+    ? ` under ${rootNodeId}`
+    : " across the entire data source";
+  const types = mimeTypes?.length
+    ? ` (${mimeTypes.map(renderMimeType).join(", ")} files)`
+    : "";
+  const pagination = nextPageCursor ? " - next page" : "";
+
   return {
     mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_QUERY,
-    text:
-      "Searching " +
-      (query ? `"${query}" ` : "") +
-      (rootNodeId ? `under ${rootNodeId} ` : "") +
-      (mimeTypes ? `of type ${mimeTypes.join(", ")} ` : "") +
-      (nextPageCursor ? ` (next page)` : ""),
+    text: `Searching for${queryText}${scope}${types}${pagination}.`,
     uri: "",
   };
 }
@@ -1026,13 +1037,15 @@ function makeQueryResourceForList(
   mimeTypes?: string[],
   nextPageCursor?: string
 ): SearchQueryResourceType {
+  const location = nodeId ? ` within node "${nodeId}"` : " at the root level";
+  const types = mimeTypes?.length
+    ? ` (${mimeTypes.map(renderMimeType).join(", ")} files)`
+    : "";
+  const pagination = nextPageCursor ? " - next page" : "";
+
   return {
     mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_QUERY,
-    text:
-      "Listing content " +
-      (nodeId ? `under "${nodeId} " ` : "at the root ") +
-      (mimeTypes ? `of type ${mimeTypes.join(", ")} ` : "") +
-      (nextPageCursor ? ` (next page)` : ""),
+    text: `Listing content${location}${types}${pagination}.`,
     uri: "",
   };
 }
