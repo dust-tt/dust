@@ -1,4 +1,4 @@
-FROM node:20.19.2 AS front
+FROM node:22.16.0 AS front
 
 RUN apt-get update && \
   apt-get install -y vim redis-tools postgresql-client htop libjemalloc2 libjemalloc-dev
