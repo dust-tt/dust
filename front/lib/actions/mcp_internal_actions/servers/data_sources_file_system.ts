@@ -1022,7 +1022,7 @@ function makeQueryResourceForFind(
   const queryText = query ? ` "${query}"` : " all content";
   const scope = rootNodeId
     ? ` under ${rootNodeId}`
-    : " across the entire data source";
+    : " across the entire data sources";
   const types = mimeTypes?.length
     ? ` (${mimeTypes.map(renderMimeType).join(", ")} files)`
     : "";
