@@ -32,6 +32,7 @@ import { useRouter } from "next/router";
 import * as React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { ConfirmContext } from "@app/components/Confirm";
 import { ConfirmDeleteSpaceDialog } from "@app/components/spaces/ConfirmDeleteSpaceDialog";
 import { SearchMembersPopover } from "@app/components/spaces/SearchMembersPopover";
 import { UserGroupPopover } from "@app/components/spaces/UserGroupPopover";
@@ -42,28 +43,20 @@ import {
   useSpaceInfo,
   useUpdateSpace,
 } from "@app/lib/swr/spaces";
-import type { LightWorkspaceType, SpaceType, UserType } from "@app/types";
-
-type RowData = {
-  icon: string;
-  name: string;
-  userId: string;
-  email: string;
-  onClick?: () => void;
-};
-
-type Info = CellContext<RowData, unknown>;
-
-function getTableRows(allUsers: UserType[]): RowData[] {
-  return allUsers.map((user) => ({
-    icon: user.image ?? "",
-    name: user.fullName,
-    userId: user.sId,
-    email: user.email ?? "",
-  }));
-}
+import type {
+  GroupType,
+  LightWorkspaceType,
+  SpaceType,
+  UserType,
+} from "@app/types";
 
 type MembersManagementType = "manual" | "group";
+
+function isMembersManagementType(
+  value: string
+): value is MembersManagementType {
+  return value === "manual" || value === "group";
+}
 
 interface CreateOrEditSpaceModalProps {
   defaultRestricted?: boolean;
@@ -84,11 +77,14 @@ export function CreateOrEditSpaceModal({
   owner,
   space,
 }: CreateOrEditSpaceModalProps) {
+  const confirm = React.useContext(ConfirmContext);
   const membersCount = useMembersCount(owner);
   const [spaceName, setSpaceName] = useState<string | null>(
     space?.name ?? null
   );
   const [selectedMembers, setSelectedMembers] = useState<UserType[]>([]);
+  const [selectedGroups, setSelectedGroups] = useState<GroupType[]>([]);
+
   const [isSaving, setIsSaving] = useState(false);
   const [showDeleteConfirmDialog, setShowDeleteConfirmDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -101,8 +97,10 @@ export function CreateOrEditSpaceModal({
   useEffect(() => {
     if (membersCount > 0) {
       setManagementType("manual");
+    } else if (selectedGroups.length > 0) {
+      setManagementType("group");
     }
-  }, [membersCount]);
+  }, [membersCount, selectedGroups.length]);
 
   const deduplicatedMembers = useMemo(
     () => _.uniqBy(selectedMembers, "sId"),
@@ -145,6 +143,7 @@ export function CreateOrEditSpaceModal({
       setSpaceName("");
       setIsRestricted(false);
       setSelectedMembers([]);
+      setSelectedGroups([]);
       setShowDeleteConfirmDialog(false);
       setIsDeleting(false);
       setIsSaving(false);
@@ -225,6 +224,37 @@ export function CreateOrEditSpaceModal({
     }
   }, [doDelete, handleClose, owner.sId, router, space]);
 
+  const handleManagementTypeChange = useCallback(
+    async (value: string) => {
+      if (!isMembersManagementType(value)) {
+        return;
+      }
+
+      // If switching from manual to group mode with manually added members
+      if (
+        managementType === "manual" &&
+        value === "group" &&
+        selectedMembers.length > 0
+      ) {
+        const confirmed = await confirm({
+          title: "Switch to Group Management",
+          message:
+            "Switching to group member management will remove all manually added members",
+          validateLabel: "Switch to Groups",
+          validateVariant: "warning",
+        });
+
+        if (confirmed) {
+          setSelectedMembers([]);
+          setManagementType(value);
+        }
+      } else {
+        setManagementType(value);
+      }
+    },
+    [confirm, managementType, selectedMembers.length]
+  );
+
   return (
     <Sheet open={isOpen} onOpenChange={handleClose}>
       <SheetContent trapFocusScope={false} size="lg">
@@ -276,7 +306,8 @@ export function CreateOrEditSpaceModal({
 
             {isRestricted && (
               <>
-                {deduplicatedMembers.length === 0 ? (
+                {deduplicatedMembers.length === 0 &&
+                selectedGroups.length === 0 ? (
                   <div className="flex flex-col items-center gap-2">
                     <SearchMembersPopover
                       owner={owner}
@@ -314,9 +345,7 @@ export function CreateOrEditSpaceModal({
                       <DropdownMenuContent>
                         <DropdownMenuRadioGroup
                           value={managementType}
-                          onValueChange={(value) =>
-                            setManagementType(value as MembersManagementType)
-                          }
+                          onValueChange={handleManagementTypeChange}
                         >
                           <DropdownMenuRadioItem value="manual">
                             Manual group management
@@ -331,18 +360,31 @@ export function CreateOrEditSpaceModal({
                 )}
                 <SearchInput
                   name="search"
-                  placeholder="Search (email)"
+                  placeholder={
+                    managementType === "manual"
+                      ? "Search (email)"
+                      : "Search groups"
+                  }
                   value={searchSelectedMembers}
                   onChange={(s) => {
                     setSearchSelectedMembers(s);
                   }}
                 />
                 <ScrollArea className="h-full">
-                  <MembersTable
-                    onMembersUpdated={setSelectedMembers}
-                    selectedMembers={deduplicatedMembers}
-                    searchSelectedMembers={searchSelectedMembers}
-                  />
+                  {managementType === "manual" ? (
+                    <MembersTable
+                      onMembersUpdated={setSelectedMembers}
+                      selectedMembers={deduplicatedMembers}
+                      searchSelectedMembers={searchSelectedMembers}
+                    />
+                  ) : (
+                    <GroupsTable
+                      onGroupsUpdated={setSelectedGroups}
+                      selectedGroups={selectedGroups}
+                      searchSelectedGroups={searchSelectedMembers}
+                      owner={owner}
+                    />
+                  )}
                 </ScrollArea>
               </>
             )}
@@ -381,13 +423,34 @@ export function CreateOrEditSpaceModal({
               !(
                 !!spaceName &&
                 (!isRestricted ||
-                  (isRestricted && deduplicatedMembers.length > 0))
+                  (isRestricted &&
+                    (deduplicatedMembers.length > 0 ||
+                      selectedGroups.length > 0)))
               ) || isSaving,
           }}
         />
       </SheetContent>
     </Sheet>
   );
+}
+
+type MemberRowData = {
+  icon: string;
+  name: string;
+  userId: string;
+  email: string;
+  onClick?: () => void;
+};
+
+type MemberInfo = CellContext<MemberRowData, unknown>;
+
+function getMemberTableRows(allUsers: UserType[]): MemberRowData[] {
+  return allUsers.map((user) => ({
+    icon: user.image ?? "",
+    name: user.fullName,
+    userId: user.sId,
+    email: user.email ?? "",
+  }));
 }
 
 interface MembersTableProps {
@@ -426,7 +489,7 @@ function MembersTable({
       {
         id: "name",
         accessorKey: "name",
-        cell: (info: Info) => (
+        cell: (info: MemberInfo) => (
           <>
             <DataTable.CellContent
               avatarUrl={info.row.original.icon}
@@ -448,7 +511,7 @@ function MembersTable({
       {
         id: "email",
         accessorKey: "email",
-        cell: (info: Info) => (
+        cell: (info: MemberInfo) => (
           <DataTable.BasicCellContent label={info.row.original.email} />
         ),
         enableSorting: true,
@@ -458,7 +521,7 @@ function MembersTable({
         meta: {
           className: "w-12",
         },
-        cell: (info: Info) => {
+        cell: (info: MemberInfo) => {
           return (
             <DataTable.CellContent>
               <Button
@@ -474,7 +537,10 @@ function MembersTable({
     ];
   }, [onMembersUpdated, selectedMembers, sendNotifications]);
 
-  const rows = useMemo(() => getTableRows(selectedMembers), [selectedMembers]);
+  const rows = useMemo(
+    () => getMemberTableRows(selectedMembers),
+    [selectedMembers]
+  );
   const columns = useMemo(() => getTableColumns(), [getTableColumns]);
 
   return (
@@ -491,6 +557,123 @@ function MembersTable({
       totalRowCount={rows.length}
       filter={searchSelectedMembers}
       filterColumn="email"
+    />
+  );
+}
+
+type GroupRowData = {
+  groupId: string;
+  name: string;
+  memberCount: number;
+  onClick?: () => void;
+};
+
+type GroupInfo = CellContext<GroupRowData, unknown>;
+
+function getGroupTableRows(allGroups: GroupType[]): GroupRowData[] {
+  return allGroups.map((group) => ({
+    groupId: group.sId,
+    name: group.name,
+    memberCount: 0,
+  }));
+}
+
+interface GroupsTableProps {
+  onGroupsUpdated: (groups: GroupType[]) => void;
+  selectedGroups: GroupType[];
+  searchSelectedGroups: string;
+  owner: LightWorkspaceType;
+}
+
+function GroupsTable({
+  onGroupsUpdated,
+  selectedGroups,
+  searchSelectedGroups,
+  owner,
+}: GroupsTableProps) {
+  const sendNotifications = useSendNotification();
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 50,
+  });
+  const [sorting, setSorting] = useState<SortingState>([
+    { id: "name", desc: false },
+  ]);
+
+  const getTableColumns = useCallback(() => {
+    const removeGroup = (groupId: string) => {
+      if (selectedGroups.length === 1) {
+        sendNotifications({
+          title: "Cannot remove last group.",
+          description: "You cannot remove the last group.",
+          type: "error",
+        });
+        return;
+      }
+      onGroupsUpdated(selectedGroups.filter((g) => g.sId !== groupId));
+    };
+    return [
+      {
+        id: "name",
+        accessorKey: "name",
+        cell: (info: GroupInfo) => (
+          <DataTable.CellContent>
+            {info.row.original.name}
+          </DataTable.CellContent>
+        ),
+        enableSorting: true,
+      },
+      {
+        id: "memberCount",
+        accessorKey: "memberCount",
+        cell: (info: GroupInfo) => (
+          <DataTable.BasicCellContent
+            label={`${info.row.original.memberCount} members`}
+          />
+        ),
+        enableSorting: true,
+      },
+      {
+        id: "action",
+        meta: {
+          className: "w-12",
+        },
+        cell: (info: GroupInfo) => {
+          return (
+            <DataTable.CellContent>
+              <Button
+                icon={XMarkIcon}
+                size="xs"
+                variant="ghost-secondary"
+                onClick={() => removeGroup(info.row.original.groupId)}
+              />
+            </DataTable.CellContent>
+          );
+        },
+      },
+    ];
+  }, [onGroupsUpdated, selectedGroups, sendNotifications]);
+
+  const rows = useMemo(
+    () => getGroupTableRows(selectedGroups),
+    [selectedGroups]
+  );
+  const columns = useMemo(() => getTableColumns(), [getTableColumns]);
+
+  return (
+    <DataTable
+      data={rows}
+      columns={columns}
+      columnsBreakpoints={{
+        name: "md",
+      }}
+      pagination={pagination}
+      setPagination={setPagination}
+      sorting={sorting}
+      setSorting={setSorting}
+      totalRowCount={rows.length}
+      filter={searchSelectedGroups}
+      filterColumn="name"
     />
   );
 }
