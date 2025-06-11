@@ -19,7 +19,6 @@ class MyDocument extends Document {
           )}
         </Head>
         <body>
-          {/* Google Tag Manager (noscript) */}
           <noscript>
             <iframe
               src={`https://www.googletagmanager.com/ns.html?id=${process.env.NEXT_PUBLIC_GTM_TRACKING_ID}`}
@@ -28,8 +27,6 @@ class MyDocument extends Document {
               style={{ display: "none", visibility: "hidden" }}
             ></iframe>
           </noscript>
-          {/* End Google Tag Manager (noscript) */}
-
           <Main />
           <NextScript />
         </body>

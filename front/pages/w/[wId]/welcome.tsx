@@ -84,7 +84,7 @@ export default function Welcome({
         gclid: sessionStorage.getItem("gclid") || null,
       });
     }
-  }, [user.sId, user.email, owner.name]);
+  }, [user.email, owner.name]);
 
   useEffect(() => {
     setIsFormValid(
