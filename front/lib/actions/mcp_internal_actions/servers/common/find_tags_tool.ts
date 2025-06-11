@@ -27,8 +27,8 @@ export const findTagsSchema = {
     ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE],
 };
 
-export const findTagsDescription =
-  "Find exact matching labels (also called tags) before using them in the tool `semantic_search`." +
+export const makeFindTagsDescription = (toolName: string) =>
+  `Find exact matching labels (also called tags) before using them in the tool ${toolName}.` +
   "Restricting or excluding content succeeds only with existing labels. " +
   "Searching without verifying labels first typically returns no results.";
 

@@ -16,8 +16,8 @@ import {
   JsonSchemaSchema,
 } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import {
-  findTagsDescription,
   findTagsSchema,
+  makeFindTagsDescription,
   makeFindTagsTool,
 } from "@app/lib/actions/mcp_internal_actions/servers/common/find_tags_tool";
 import {
@@ -221,6 +221,8 @@ function makeExtractInformationFromDocumentsTool(
   );
 }
 
+const PROCESS_TOOL_NAME = "extract_information_from_documents";
+
 function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
@@ -318,7 +320,7 @@ function createServer(
 
   if (areTagsDynamic) {
     server.tool(
-      "extract_information_from_documents",
+      PROCESS_TOOL_NAME,
       toolDescription,
       {
         ...commonInputsSchema,
@@ -329,13 +331,13 @@ function createServer(
 
     server.tool(
       "find_tags",
-      findTagsDescription,
+      makeFindTagsDescription(PROCESS_TOOL_NAME),
       findTagsSchema,
       makeFindTagsTool(auth)
     );
   } else {
     server.tool(
-      "extract_information_from_documents",
+      PROCESS_TOOL_NAME,
       toolDescription,
       commonInputsSchema,
       toolImplementation
