@@ -4,7 +4,6 @@ import type {
   ContentNodesViewType,
   CoreAPINodesSearchFilter,
   CoreAPISearchScope,
-  LightWorkspaceType,
   Result,
 } from "@app/types";
 import { assertNever, Err, Ok } from "@app/types";
