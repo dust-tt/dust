@@ -43,6 +43,7 @@ import {
   useSpaceInfo,
   useUpdateSpace,
 } from "@app/lib/swr/spaces";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
   GroupType,
   LightWorkspaceType,
@@ -78,9 +79,7 @@ export function CreateOrEditSpaceModal({
   space,
 }: CreateOrEditSpaceModalProps) {
   const confirm = React.useContext(ConfirmContext);
-  const [spaceName, setSpaceName] = useState<string | null>(
-    space?.name ?? null
-  );
+  const [spaceName, setSpaceName] = useState<string>(space?.name ?? "");
   const [selectedMembers, setSelectedMembers] = useState<UserType[]>([]);
   const [selectedGroups, setSelectedGroups] = useState<GroupType[]>([]);
 
@@ -93,8 +92,24 @@ export function CreateOrEditSpaceModal({
   const [managementType, setManagementType] =
     useState<MembersManagementType>(null);
 
-  // Determine management type based on selections
+  const { hasFeature } = useFeatureFlags({
+    workspaceId: owner.sId,
+  });
+
+  const isWorkOSFeatureEnabled = hasFeature("workos");
+
   useEffect(() => {
+    if (!isWorkOSFeatureEnabled && managementType === null) {
+      setManagementType("manual");
+    }
+  }, [isWorkOSFeatureEnabled, managementType]);
+
+  // Determine management type based on selections (only relevant when workos is enabled)
+  useEffect(() => {
+    if (!isWorkOSFeatureEnabled) {
+      return;
+    }
+
     const hasMembers = selectedMembers.length > 0;
     const hasGroups = selectedGroups.length > 0;
 
@@ -117,7 +132,12 @@ export function CreateOrEditSpaceModal({
     } else if (managementType === null) {
       return;
     }
-  }, [selectedMembers.length, selectedGroups.length, managementType]);
+  }, [
+    selectedMembers.length,
+    selectedGroups.length,
+    managementType,
+    isWorkOSFeatureEnabled,
+  ]);
 
   const deduplicatedMembers = useMemo(
     () => _.uniqBy(selectedMembers, "sId"),
@@ -139,6 +159,7 @@ export function CreateOrEditSpaceModal({
     owner,
     kinds: ["provisioned"],
     spaceId: space?.sId,
+    disabled: !isWorkOSFeatureEnabled,
   });
 
   useEffect(() => {
@@ -149,21 +170,26 @@ export function CreateOrEditSpaceModal({
         setSelectedMembers(spaceMembers);
       }
 
-      // Initialize selected groups based on space's groupIds
-      if (spaceInfo?.groupIds && spaceInfo.groupIds.length > 0 && groups) {
+      // Initialize selected groups based on space's groupIds (only if workos feature is enabled)
+      if (
+        isWorkOSFeatureEnabled &&
+        spaceInfo?.groupIds &&
+        spaceInfo.groupIds.length > 0 &&
+        groups
+      ) {
         const spaceGroups = groups.filter((group) =>
           spaceInfo.groupIds.includes(group.sId)
         );
         setSelectedGroups(spaceGroups);
       }
 
-      setSpaceName(spaceInfo?.name ?? null);
+      setSpaceName(spaceInfo?.name ?? "");
 
       setIsRestricted(
         spaceInfo ? spaceInfo.isRestricted : defaultRestricted ?? false
       );
     }
-  }, [defaultRestricted, isOpen, spaceInfo, groups]);
+  }, [defaultRestricted, groups, isOpen, isWorkOSFeatureEnabled, spaceInfo]);
 
   const handleClose = useCallback(() => {
     // Call the original onClose function.
@@ -205,7 +231,7 @@ export function CreateOrEditSpaceModal({
       let createdSpace;
 
       if (isRestricted) {
-        if (managementType === "group") {
+        if (isWorkOSFeatureEnabled && managementType === "group") {
           createdSpace = await doCreate({
             name: spaceName,
             isRestricted: true,
@@ -243,6 +269,9 @@ export function CreateOrEditSpaceModal({
     deduplicatedMembers,
     space,
     spaceName,
+    managementType,
+    selectedGroups,
+    isWorkOSFeatureEnabled,
   ]);
 
   const onDelete = useCallback(async () => {
@@ -265,7 +294,7 @@ export function CreateOrEditSpaceModal({
 
   const handleManagementTypeChange = useCallback(
     async (value: string) => {
-      if (!isMembersManagementType(value)) {
+      if (!isMembersManagementType(value) || !isWorkOSFeatureEnabled) {
         return;
       }
 
@@ -310,9 +339,16 @@ export function CreateOrEditSpaceModal({
         // For direct switches without selections, clear everything and let user start fresh
         setSelectedMembers([]);
         setSelectedGroups([]);
+        setManagementType(value);
       }
     },
-    [confirm, managementType, selectedMembers.length, selectedGroups.length]
+    [
+      confirm,
+      managementType,
+      selectedMembers.length,
+      selectedGroups.length,
+      isWorkOSFeatureEnabled,
+    ]
   );
 
   return (
@@ -373,14 +409,18 @@ export function CreateOrEditSpaceModal({
                       selectedMembers={deduplicatedMembers}
                       onMembersUpdated={setSelectedMembers}
                     />
-                    <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                      or
-                    </span>
-                    <SearchGroupsDropdown
-                      owner={owner}
-                      selectedGroups={selectedGroups}
-                      onGroupsUpdated={setSelectedGroups}
-                    />
+                    {isWorkOSFeatureEnabled && (
+                      <>
+                        <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                          or
+                        </span>
+                        <SearchGroupsDropdown
+                          owner={owner}
+                          selectedGroups={selectedGroups}
+                          onGroupsUpdated={setSelectedGroups}
+                        />
+                      </>
+                    )}
                   </div>
                 ) : (
                   <div className="flex flex-row items-center justify-between">
@@ -397,24 +437,26 @@ export function CreateOrEditSpaceModal({
                         onGroupsUpdated={setSelectedGroups}
                       />
                     )}
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" icon={MoreIcon} />
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent>
-                        <DropdownMenuRadioGroup
-                          value={managementType ?? ""}
-                          onValueChange={handleManagementTypeChange}
-                        >
-                          <DropdownMenuRadioItem value="manual">
-                            Manual member management
-                          </DropdownMenuRadioItem>
-                          <DropdownMenuRadioItem value="group">
-                            Group member management
-                          </DropdownMenuRadioItem>
-                        </DropdownMenuRadioGroup>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    {isWorkOSFeatureEnabled && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm" icon={MoreIcon} />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                          <DropdownMenuRadioGroup
+                            value={managementType ?? ""}
+                            onValueChange={handleManagementTypeChange}
+                          >
+                            <DropdownMenuRadioItem value="manual">
+                              Manual member management
+                            </DropdownMenuRadioItem>
+                            <DropdownMenuRadioItem value="group">
+                              Group member management
+                            </DropdownMenuRadioItem>
+                          </DropdownMenuRadioGroup>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
                   </div>
                 )}
                 {managementType !== null && (
@@ -483,11 +525,11 @@ export function CreateOrEditSpaceModal({
             onClick: onSave,
             disabled:
               !(
-                !!spaceName &&
+                spaceName.trim().length > 0 &&
                 (!isRestricted ||
                   (isRestricted &&
                     (deduplicatedMembers.length > 0 ||
-                      selectedGroups.length > 0)))
+                      (isWorkOSFeatureEnabled && selectedGroups.length > 0))))
               ) || isSaving,
           }}
         />
