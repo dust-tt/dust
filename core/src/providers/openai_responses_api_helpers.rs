@@ -776,6 +776,18 @@ async fn streamed_responses_api_completion(
                                 }
                             }
                         }
+                        "response.content_part.added" => {
+                            // Content part added events are informational.
+                            // The actual content will be streamed via delta events.
+                        }
+                        "response.output_text.done" => {
+                            // Text output completion event.
+                            // We already handle text accumulation through deltas and item completion.
+                        }
+                        "response.content_part.done" => {
+                            // Content part completion event.
+                            // We already handle completion at the item level.
+                        }
                         "response.completed" => {
                             handle_response_completed(&mut state, event_data, &event_sender)?;
                             break 'stream;
