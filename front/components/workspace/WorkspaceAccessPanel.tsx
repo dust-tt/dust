@@ -39,7 +39,9 @@ export default function WorkspaceAccessPanel({
   });
 
   const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
-  const hasWorkOSFeature = hasFeature("workos");
+  const hasWorkOSUserProvisioningFeature = hasFeature(
+    "workos_user_provisioning"
+  );
 
   return (
     <div className="flex flex-col gap-6">
@@ -56,8 +58,10 @@ export default function WorkspaceAccessPanel({
         plan={plan}
         strategyDetails={enterpriseConnectionStrategyDetails}
       />
-      {hasWorkOSFeature && <Separator />}
-      {hasWorkOSFeature && <UserProvisioning owner={owner} plan={plan} />}
+      {hasWorkOSUserProvisioningFeature && <Separator />}
+      {hasWorkOSUserProvisioningFeature && (
+        <UserProvisioning owner={owner} plan={plan} />
+      )}
     </div>
   );
 }
