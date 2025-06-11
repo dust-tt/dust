@@ -59,12 +59,9 @@ export const INTERNAL_MCP_SERVERS: Record<
     timeoutMs?: number;
   }
 > = {
-  // Notes:
-  // ids should be stable, do not change them for production internal servers as it would break existing agents.
-  // Let's start dev actions at 1000 to avoid conflicts with production actions.
-  // flag "dev_mcp_actions" for actions that are only used internally for dev and testing.
+  // Note:
+  // ids should be stable, do not change them when moving internal servers to production as it would break existing agents.
 
-  // Production
   github: {
     id: 1,
     availability: "manual",
@@ -231,7 +228,6 @@ export const INTERNAL_MCP_SERVERS: Record<
     timeoutMs: 5 * 60 * 1000, // 5 minutes
   },
 
-  // Dev
   primitive_types_debugger: {
     id: 1004,
     availability: "manual",
