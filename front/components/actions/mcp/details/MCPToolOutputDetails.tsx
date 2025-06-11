@@ -207,7 +207,8 @@ export function SearchResultDetails({
 
   const singleFileContentText = actionOutput
     ?.filter(isDataSourceNodeContentType)
-    .map((o) => o.resource.text);
+    .map((o) => o.resource.text)
+    .join("\n");
 
   const citations = (() => {
     if (!actionOutput) {
@@ -295,9 +296,12 @@ export function SearchResultDetails({
             contentChildren={
               <>
                 {singleFileContentText && (
-                  <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
-                    {singleFileContentText}
-                  </div>
+                  <Markdown
+                    content={singleFileContentText}
+                    isStreaming={false}
+                    forcedTextSize="text-sm"
+                    textColor="text-muted-foreground dark:text-muted-foreground-night"
+                  />
                 )}
                 <PaginatedCitationsGrid items={citations} />
               </>
