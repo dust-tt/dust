@@ -41,7 +41,10 @@ async function handler(
   }
 
   const flags = await getFeatureFlags(workspace);
-  if (!flags.includes("workos")) {
+  if (
+    !flags.includes("workos_user_provisioning") &&
+    !flags.includes("workos")
+  ) {
     return apiError(req, res, {
       status_code: 403,
       api_error: {
