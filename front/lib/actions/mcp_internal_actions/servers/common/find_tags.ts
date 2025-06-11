@@ -18,10 +18,10 @@ export const findTagsSchema = {
   query: z
     .string()
     .describe(
-      "The text to search for in existing labels (also called tags) using edge ngram matching (case-insensitive). " +
-        "Matches labels that start with any word in the search text. " +
-        "The returned labels can be used in tagsIn/tagsNot parameters to restrict or exclude content " +
-        "based on the user request and conversation context."
+      "The text to search for in existing labels (also called tags) using edge ngram " +
+        "matching (case-insensitive). Matches labels that start with any word in the " +
+        "search text. The returned labels can be used in tagsIn/tagsNot parameters to " +
+        "restrict or exclude content based on the user request and conversation context."
     ),
   dataSources:
     ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE],
