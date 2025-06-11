@@ -14,6 +14,7 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
   getCoreSearchArgs,
+  renderRelativeTimeFrameForToolOutput,
   shouldAutoGenerateTags,
 } from "@app/lib/actions/mcp_internal_actions/servers/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
@@ -368,16 +369,9 @@ function createServer(
 function makeQueryResource(
   timeFrame: TimeFrame | null
 ): IncludeQueryResourceType {
-  const timeFrameAsString = timeFrame
-    ? "over the last " +
-      (timeFrame.duration > 1
-        ? `${timeFrame.duration} ${timeFrame.unit}s.`
-        : `${timeFrame.unit}.`)
-    : "over all time.";
-
   return {
     mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_INCLUDE_QUERY,
-    text: `Requested to include documents ${timeFrameAsString}.`,
+    text: `Requested to include documents ${renderRelativeTimeFrameForToolOutput(timeFrame)}.`,
     uri: "",
   };
 }
@@ -387,12 +381,7 @@ function makeWarningResource(
   topK: number,
   timeFrame: TimeFrame | null
 ): WarningResourceType | null {
-  const timeFrameAsString = timeFrame
-    ? "over the last " +
-      (timeFrame.duration > 1
-        ? `${timeFrame.duration} ${timeFrame.unit}s.`
-        : `${timeFrame.unit}.`)
-    : "over all time.";
+  const timeFrameAsString = renderRelativeTimeFrameForToolOutput(timeFrame);
 
   // Check if the number of chunks reached the limit defined in params.topK.
   const tooManyChunks =

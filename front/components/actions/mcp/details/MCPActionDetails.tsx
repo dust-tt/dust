@@ -1,4 +1,5 @@
 import {
+  ActionDocumentTextIcon,
   ClockIcon,
   cn,
   CodeBlock,
@@ -9,6 +10,7 @@ import {
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import { MCPBrowseActionDetails } from "@app/components/actions/mcp/details/MCPBrowseActionDetails";
+import { DataSourceNodeContentDetails } from "@app/components/actions/mcp/details/MCPDataSourcesFileSystemActionDetails";
 import { MCPExtractActionDetails } from "@app/components/actions/mcp/details/MCPExtractActionDetails";
 import { MCPGetDatabaseSchemaActionDetails } from "@app/components/actions/mcp/details/MCPGetDatabaseSchemaActionDetails";
 import { MCPReasoningActionDetails } from "@app/components/actions/mcp/details/MCPReasoningActionDetails";
@@ -19,6 +21,8 @@ import type { ActionDetailsComponentBaseProps } from "@app/components/actions/ty
 import type { MCPActionType } from "@app/lib/actions/mcp";
 import {
   isBrowseResultResourceType,
+  isDataSourceNodeContentType,
+  isDataSourceNodeListType,
   isExecuteTablesQueryMarkerResourceType,
   isExtractResultResourceType,
   isGetDatabaseSchemaMarkerResourceType,
@@ -55,6 +59,11 @@ export function MCPActionDetails(
   // TODO(mcp): rationalize the display of results for MCP to remove the need for specific checks.
   // Hack to find out whether the output comes from the reasoning tool, links back to the TODO above.
   const isReasoning = props.action.output?.some(isReasoningSuccessOutput);
+  const isDataSourceFileSystem = props.action.output?.some(
+    isDataSourceNodeListType
+  );
+
+  const isCat = props.action.output?.some(isDataSourceNodeContentType);
 
   if (isSearch) {
     return (
@@ -91,6 +100,17 @@ export function MCPActionDetails(
     return <MCPTablesQueryActionDetails {...props} />;
   } else if (isReasoning) {
     return <MCPReasoningActionDetails {...props} />;
+  } else if (isDataSourceFileSystem) {
+    return (
+      <SearchResultDetails
+        actionName="Browse data sources"
+        actionOutput={props.action.output}
+        defaultOpen={props.defaultOpen}
+        visual={ActionDocumentTextIcon}
+      />
+    );
+  } else if (isCat) {
+    return <DataSourceNodeContentDetails {...props} />;
   } else if (isExtract) {
     return <MCPExtractActionDetails {...props} />;
   } else if (isRunAgent) {
