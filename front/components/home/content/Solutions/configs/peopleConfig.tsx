@@ -167,13 +167,13 @@ export const Stories: CustomerStory[] = [
     href: "https://blog.dust.tt/how-lucas-people-analyst-at-alan-introduced-dust-to-his-hr-team/",
     src: "https://blog.dust.tt/content/images/size/w2000/2025/01/dust_alan.png",
   },
-  // {
-  //   title: "Kyriba’s RFP Agent for improving pre-sales efficiency",
-  //   content:
-  //     "42% of Kyriba employees save 1 to 3 hours weekly leveraging Dust for RFPs.",
-  //   href: "https://blog.dust.tt/kyriba-accelerating-innovation-with-dust/",
-  //   src: "https://blog.dust.tt/content/images/size/w2000/2024/10/kyriba_dust.jpg",
-  // },
+  {
+    title: "Clay accelerates team onboarding with Dust AI agents",
+    content:
+      "Clay uses Dust AI agents to onboard new GTM engineers faster and reduce bottlenecks, achieving 100% adoption and saving 58 hours monthly across their growing team",
+    href: "https://blog.dust.tt/clay-scaling-gtme-team/",
+    src: "https://blog.dust.tt/content/images/size/w2000/2025/06/clay_dust_agents.jpg",
+  },
   // {
   //   title: "Lifen uses Dust AI agents to boost team productivity", // Soon to be replaced with Clay for RFP?
   //   content:
