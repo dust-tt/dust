@@ -18,6 +18,10 @@ import { getFeatureFlags } from "@app/lib/auth";
 import { GlobalAgentSettings } from "@app/lib/models/assistant/agent";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import {
+  getResourceNameAndIdFromSId,
+  makeSId,
+} from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import type {
   AgentConfigurationStatus,
@@ -245,7 +249,13 @@ function _getHelperGlobalAgent({
 
   const actions: AgentActionConfigurationType[] = [];
 
-  if (searchMCPServerView) {
+  const helperDatasourceViewId = config.getDustAppsHelperDatasourceViewId();
+  const helperDatasourceView = getResourceNameAndIdFromSId(
+    helperDatasourceViewId
+  );
+  const helperDatasourceViewModelId = helperDatasourceView?.resourceModelId;
+
+  if (searchMCPServerView && helperDatasourceViewModelId) {
     actions.push({
       id: -1,
       sId: GLOBAL_AGENTS_SID.HELPER + "-search-action",
@@ -256,7 +266,11 @@ function _getHelperGlobalAgent({
       internalMCPServerId: searchMCPServerView.internalMCPServerId,
       dataSources: [
         {
-          dataSourceViewId: config.getDustAppsHelperDatasourceViewId(),
+          sId: makeSId("data_source_configuration", {
+            id: helperDatasourceViewModelId, // Wrong: here it should be agentDataSourceConfiguration.id
+            workspaceId: owner.id,
+          }),
+          dataSourceViewId: helperDatasourceViewId,
           workspaceId: config.getDustAppsWorkspaceId(),
           filter: { parents: null, tags: null },
         },
@@ -1237,6 +1251,10 @@ function _getManagedDataSourceAgent(
       mcpServerViewId: searchMCPServerView.sId,
       internalMCPServerId: searchMCPServerView.internalMCPServerId,
       dataSources: filteredDataSourceViews.map((dsView) => ({
+        sId: makeSId("data_source_configuration", {
+          id: dsView.id, // Wrong: here it should be agentDataSourceConfiguration.id
+          workspaceId: owner.id,
+        }),
         dataSourceId: dsView.dataSource.sId,
         dataSourceViewId: dsView.sId,
         workspaceId: preFetchedDataSources.workspaceId,
@@ -1529,6 +1547,10 @@ The agent always respects the mardown format and generates spaces to nest conten
       mcpServerViewId: searchMCPServerView.sId,
       internalMCPServerId: searchMCPServerView.internalMCPServerId,
       dataSources: dataSourceViews.map((dsView) => ({
+        sId: makeSId("data_source_configuration", {
+          id: dsView.id, // Wrong: here it should be agentDataSourceConfiguration.id
+          workspaceId: owner.id,
+        }),
         dataSourceId: dsView.dataSource.sId,
         dataSourceViewId: dsView.sId,
         workspaceId: preFetchedDataSources.workspaceId,
@@ -1568,6 +1590,10 @@ The agent always respects the mardown format and generates spaces to nest conten
           internalMCPServerId: searchMCPServerView.internalMCPServerId,
           dataSources: [
             {
+              sId: makeSId("data_source_configuration", {
+                id: dsView.id,
+                workspaceId: auth.getNonNullableWorkspace().id,
+              }),
               workspaceId: preFetchedDataSources.workspaceId,
               dataSourceViewId: dsView.sId,
               filter: { parents: null, tags: null },
