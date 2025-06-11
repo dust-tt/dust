@@ -1,4 +1,11 @@
-import { DocumentIcon, Icon, Markdown } from "@dust-tt/sparkle";
+import {
+  Citation,
+  CitationIcons,
+  CitationTitle,
+  DocumentIcon,
+  Icon,
+  Markdown,
+} from "@dust-tt/sparkle";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import { getDocumentIcon } from "@app/components/actions/retrieval/utils";
@@ -22,46 +29,33 @@ export function DataSourceNodeContentDetails({
 
   return (
     <ActionDetailsWrapper
-      actionName="File content"
+      actionName="Retrieve file content"
       defaultOpen={defaultOpen}
       visual={DocumentIcon}
     >
       <div className="flex flex-col gap-4 pl-6 pt-4">
-        <div className="text-md mt-2 flex items-center gap-2 border-t pt-3 text-muted-foreground dark:text-muted-foreground-night">
-          <Icon
-            visual={getDocumentIcon(metadata.connectorProvider)}
-            size="sm"
-          />
-          <span
-            className={
-              metadata.sourceUrl ? "cursor-pointer hover:underline" : ""
-            }
+        <div>
+          <Citation
             onClick={
               metadata.sourceUrl
                 ? () => window.open(metadata.sourceUrl, "_blank")
                 : undefined
             }
+            tooltip={`${metadata.parentTitle || metadata.path}${metadata.lastUpdatedAt ? ` • ${metadata.lastUpdatedAt}` : ""}`}
           >
-            {metadata.title}
-          </span>
-          <span>•</span>
-          <span>{metadata.parentTitle}</span>
-          {metadata.lastUpdatedAt && (
-            <>
-              <span>•</span>
-              <span>{metadata.lastUpdatedAt}</span>
-            </>
-          )}
-        </div>
-        <div className="pt-2">
-          <Markdown
-            content={dataSourceNodeContent.text}
-            isStreaming={false}
-            textColor="text-muted-foreground dark:text-muted-foreground-night"
-            forcedTextSize="text-sm"
-          />
+            <CitationIcons>
+              <Icon visual={getDocumentIcon(metadata.connectorProvider)} />
+            </CitationIcons>
+            <CitationTitle>{metadata.title}</CitationTitle>
+          </Citation>
         </div>
 
+        <Markdown
+          content={dataSourceNodeContent.text}
+          isStreaming={false}
+          textColor="text-muted-foreground dark:text-muted-foreground-night"
+          forcedTextSize="text-sm"
+        />
       </div>
     </ActionDetailsWrapper>
   );
