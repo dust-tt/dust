@@ -80,6 +80,16 @@ export async function getWorkspaceVerifiedDomain(
   return null;
 }
 
+export async function removeAllWorkspaceDomains(
+  workspace: LightWorkspaceType
+): Promise<void> {
+  await WorkspaceHasDomainModel.destroy({
+    where: {
+      workspaceId: workspace.id,
+    },
+  });
+}
+
 export async function getWorkspaceCreationDate(
   workspaceId: string
 ): Promise<Date> {
@@ -673,4 +683,18 @@ export async function getWorkspaceAdministrationVersionLock(
     },
     "[WORKSPACE_TRACE] Advisory lock acquired"
   );
+}
+
+export async function findWorkspaceByWorkOSOrganizationId(
+  workOSOrganizationId: string
+): Promise<LightWorkspaceType | null> {
+  const workspace = await Workspace.findOne({
+    where: { workOSOrganizationId },
+  });
+
+  if (!workspace) {
+    return null;
+  }
+
+  return renderLightWorkspaceType({ workspace });
 }

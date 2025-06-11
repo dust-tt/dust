@@ -9,7 +9,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import type { LightAgentConfigurationType } from "@app/types";
-import { getHeaderFromGroupIds } from "@app/types/groups";
+import { getHeaderFromGroupIds, getHeaderFromRole } from "@app/types/groups";
 
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "agent_router",
@@ -28,13 +28,17 @@ const createServer = (auth: Authenticator): McpServer => {
     {},
     async () => {
       const owner = auth.getNonNullableWorkspace();
-      const prodCredentials = await prodAPICredentialsForOwner(owner);
       const requestedGroupIds = auth.groups().map((g) => g.sId);
+
+      const prodCredentials = await prodAPICredentialsForOwner(owner);
       const api = new DustAPI(
         apiConfig.getDustAPIConfig(),
         {
           ...prodCredentials,
-          extraHeaders: getHeaderFromGroupIds(requestedGroupIds),
+          extraHeaders: {
+            ...getHeaderFromGroupIds(requestedGroupIds),
+            ...getHeaderFromRole(auth.role()),
+          },
         },
         logger
       );
@@ -89,13 +93,17 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     async ({ userMessage }) => {
       const owner = auth.getNonNullableWorkspace();
-      const prodCredentials = await prodAPICredentialsForOwner(owner);
       const requestedGroupIds = auth.groups().map((g) => g.sId);
+
+      const prodCredentials = await prodAPICredentialsForOwner(owner);
       const api = new DustAPI(
         apiConfig.getDustAPIConfig(),
         {
           ...prodCredentials,
-          extraHeaders: getHeaderFromGroupIds(requestedGroupIds),
+          extraHeaders: {
+            ...getHeaderFromGroupIds(requestedGroupIds),
+            ...getHeaderFromRole(auth.role()),
+          },
         },
         logger
       );

@@ -512,12 +512,12 @@ export async function syncNonThreaded(
       throw e;
     }
 
-    if (c.error) {
+    if (c?.error) {
       throw new Error(
         `Failed getting messages for channel ${channelId}: ${c.error}`
       );
     }
-    if (c.messages === undefined) {
+    if (c?.messages === undefined) {
       throw new Error(
         `Failed getting messages for channel ${channelId}: messages is undefined`
       );
@@ -700,6 +700,8 @@ export async function syncThreads(
         );
         return;
       }
+
+      await heartbeat();
 
       return syncThread(
         channelId,

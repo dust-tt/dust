@@ -44,9 +44,11 @@ export const MentionDropdown = ({
       setVirtualTriggerStyle({
         position: "fixed",
         left: triggerRect.left,
-        top: triggerRect.bottom,
+        // On iOS based browsers, the position is not correct without adding the offsetTop.
+        // Something related to the position calculation when there is a scrollable area.
+        top: triggerRect.top + (window.visualViewport?.offsetTop ?? 0),
         width: 1,
-        height: 1,
+        height: triggerRect.height || 1,
         pointerEvents: "none",
         zIndex: -1,
       });
@@ -60,11 +62,7 @@ export const MentionDropdown = ({
   return (
     <DropdownMenu open={isOpen} onOpenChange={onOpenChange}>
       <DropdownMenuTrigger asChild>
-        <div
-          ref={triggerRef}
-          style={virtualTriggerStyle}
-          className="absolute"
-        />
+        <div ref={triggerRef} style={virtualTriggerStyle} />
       </DropdownMenuTrigger>
       <DropdownMenuContent
         className="w-72"

@@ -3,6 +3,7 @@ import moment from "moment-timezone";
 import { z } from "zod";
 
 import { INTERNAL_MIME_TYPES_VALUES } from "./internal_mime_types";
+import { CallToolResultSchema } from "./raw_mcp_types";
 
 type StringLiteral<T> = T extends string
   ? string extends T
@@ -808,12 +809,9 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "deepseek_r1_global_agent_feature"
   | "dev_mcp_actions"
   | "disable_run_logs"
-  | "document_tracker"
   | "force_gdrive_labels_scope"
   | "google_ai_studio_experimental_models_feature"
   | "index_private_slack_channel"
-  | "labs_connection_hubspot"
-  | "labs_connection_linear"
   | "labs_salesforce_personal_connections"
   | "labs_trackers"
   | "labs_transcripts"
@@ -832,10 +830,13 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "usage_data_api"
   | "custom_webcrawler"
   | "exploded_tables_query"
+  | "extended_max_steps_per_run"
   | "workos"
   | "salesforce_tool"
   | "gmail_tool"
+  | "google_calendar_tool"
   | "agent_builder_v2"
+  | "disallow_agent_creation_to_users"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -923,6 +924,7 @@ const MCPActionTypeSchema = BaseActionSchema.extend({
   agentMessageId: ModelIdSchema,
   functionCallName: z.string().nullable(),
   params: z.unknown(),
+  output: CallToolResultSchema.shape.content.nullable(),
   type: z.literal("tool_action"),
 });
 
@@ -1323,6 +1325,15 @@ const SearchLabelsParamsEventSchema = z.object({
   action: SearchLabelsActionTypeSchema,
 });
 
+const MCPStakeLevelSchema = z.enum(["low", "high", "never_ask"]).optional();
+
+const MCPValidationMetadataSchema = z.object({
+  mcpServerName: z.string(),
+  toolName: z.string(),
+  agentName: z.string(),
+  pubsubMessageId: z.string().optional(),
+});
+
 const MCPParamsEventSchema = z.object({
   type: z.literal("tool_params"),
   created: z.number(),
@@ -1341,9 +1352,29 @@ const NotificationTextContentSchema = z.object({
   text: z.string(),
 });
 
+const NotificationToolApproveBubbleUpContentSchema = z.object({
+  type: z.literal("tool_approval_bubble_up"),
+  configurationId: z.string(),
+  conversationId: z.string(),
+  messageId: z.string(),
+  actionId: z.string(),
+  inputs: z.record(z.any()),
+  stake: MCPStakeLevelSchema,
+  metadata: MCPValidationMetadataSchema,
+});
+
+const NotificationRunAgentContentSchema = z.object({
+  type: z.literal("run_agent"),
+  childAgentId: z.string(),
+  conversationId: z.string(),
+  query: z.string(),
+});
+
 const NotificationContentSchema = z.union([
   NotificationImageContentSchema,
   NotificationTextContentSchema,
+  NotificationRunAgentContentSchema,
+  NotificationToolApproveBubbleUpContentSchema,
 ]);
 
 const ToolNotificationProgressSchema = z.object({
@@ -1370,12 +1401,6 @@ const ToolNotificationEventSchema = z.object({
 
 export type ToolNotificationEvent = z.infer<typeof ToolNotificationEventSchema>;
 
-const MCPValidationMetadataSchema = z.object({
-  mcpServerName: z.string(),
-  toolName: z.string(),
-  agentName: z.string(),
-});
-
 export type MCPValidationMetadataPublicType = z.infer<
   typeof MCPValidationMetadataSchema
 >;
@@ -1384,10 +1409,11 @@ const MCPApproveExecutionEventSchema = z.object({
   type: z.literal("tool_approve_execution"),
   created: z.number(),
   configurationId: z.string(),
+  conversationId: z.string(),
   messageId: z.string(),
-  action: MCPActionTypeSchema,
+  actionId: z.string(),
   inputs: z.record(z.any()),
-  stake: z.optional(z.enum(["low", "high", "never_ask"])),
+  stake: MCPStakeLevelSchema,
   metadata: MCPValidationMetadataSchema,
 });
 
@@ -1603,7 +1629,6 @@ const APIErrorTypeSchema = FlexibleEnumSchema<
   | "table_not_found"
   | "template_not_found"
   | "template_not_found"
-  | "labs_connection_configuration_already_exists"
   | "transcripts_configuration_already_exists"
   | "transcripts_configuration_default_not_allowed"
   | "transcripts_configuration_not_found"
@@ -2070,6 +2095,7 @@ export const PublicPostConversationsRequestBodySchema = z.intersection(
       .enum(["unlisted", "workspace", "deleted", "test"])
       .optional()
       .default("unlisted"),
+    depth: z.number().optional(),
     message: z.union([
       z.intersection(
         z.object({
@@ -2424,6 +2450,7 @@ export const UpsertTableFromCsvRequestSchema = z.object({
   sourceUrl: z.string().nullable().optional(),
   tableId: z.string(),
   fileId: z.string(),
+  allowEmptySchema: z.boolean().optional(),
 });
 
 export type UpsertTableFromCsvRequestType = z.infer<
@@ -2666,6 +2693,12 @@ export function isWebsearchActionType(
   return action.type === "websearch_action";
 }
 
+export function isMCPActionType(
+  action: AgentActionPublicType
+): action is MCPActionPublicType {
+  return action.type === "tool_action";
+}
+
 export function isTablesQueryActionType(
   action: AgentActionPublicType
 ): action is TablesQueryActionPublicType {
@@ -2797,6 +2830,7 @@ const TextSearchBodySchema = z.intersection(
   z.object({
     query: z.string(),
     nodeIds: z.undefined().optional(),
+    searchSourceUrls: z.boolean().optional(),
   })
 );
 
@@ -2905,7 +2939,7 @@ export type ValidateActionResponseType = z.infer<
 >;
 
 export const ValidateActionRequestBodySchema = z.object({
-  actionId: z.number(),
+  actionId: z.union([z.string(), z.number()]),
   approved: z.enum(["approved", "rejected", "always_approved"]),
 });
 

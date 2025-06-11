@@ -1,76 +1,76 @@
 import type { Connection, Directory, Organization } from "@workos-inc/node";
-import { DomainDataState, GeneratePortalLinkIntent } from "@workos-inc/node";
+import {
+  DomainDataState,
+  GeneratePortalLinkIntent,
+  OrganizationDomainState,
+} from "@workos-inc/node";
+import assert from "assert";
 
+import { config } from "@app/lib/api/regions/config";
 import { getWorkOS } from "@app/lib/api/workos/client";
 import { Workspace } from "@app/lib/models/workspace";
-import { WorkspaceHasDomainModel } from "@app/lib/models/workspace_has_domain";
 import { WorkOSPortalIntent } from "@app/lib/types/workos";
 import logger from "@app/logger/logger";
-import type { Result, WorkspaceType } from "@app/types";
+import type { LightWorkspaceType, Result } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
 
-export async function getWorkOSOrganization({
-  workspace,
-  domain,
-}: {
-  workspace: WorkspaceType;
-  domain: WorkspaceHasDomainModel;
-}): Promise<Organization> {
+function isWorkOSNotFoundEntityError(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    "status" in error &&
+    error.status === 404 &&
+    "code" in error &&
+    error.code === "entity_not_found"
+  );
+}
+
+export async function getWorkOSOrganization(
+  workspace: LightWorkspaceType
+): Promise<Result<Organization | undefined, Error>> {
   try {
     const result = await getWorkOS().organizations.getOrganizationByExternalId(
       workspace.sId
     );
 
-    return result;
+    return new Ok(result);
   } catch (error) {
-    return getWorkOS().organizations.createOrganization({
-      name: `${workspace.name} - ${workspace.sId}`,
-      externalId: workspace.sId,
-      domainData: [
-        {
-          domain: domain.domain,
-          state: DomainDataState.Verified,
-        },
-      ],
-    });
+    // If the organization is not found, return undefined.
+    if (isWorkOSNotFoundEntityError(error)) {
+      return new Ok(undefined);
+    }
+
+    return new Err(new Error("Failed to get WorkOS organization."));
   }
 }
 
-export async function shouldCreateWorkOSOrganization(
-  workspace: WorkspaceType
-): Promise<
-  | { shouldCreate: false; domain: undefined }
-  | { shouldCreate: true; domain: WorkspaceHasDomainModel }
-> {
-  if (workspace.workOSOrganizationId) {
-    return { shouldCreate: false, domain: undefined };
-  }
-
-  const domain = await WorkspaceHasDomainModel.findOne({
-    where: {
-      workspaceId: workspace.id,
-    },
-  });
-
-  if (!domain) {
-    return { shouldCreate: false, domain: undefined };
-  }
-
-  return {
-    shouldCreate: true,
-    domain,
-  };
-}
-
-export async function createOrGetWorkOSOrganization({
-  workspace,
-  domain,
-}: {
-  workspace: WorkspaceType;
-  domain: WorkspaceHasDomainModel;
-}): Promise<Result<Organization, Error>> {
+export async function getOrCreateWorkOSOrganization(
+  workspace: LightWorkspaceType,
+  { domain }: { domain?: string } = {}
+): Promise<Result<Organization, Error>> {
   try {
-    const organization = await getWorkOSOrganization({ workspace, domain });
+    const organizationRes = await getWorkOSOrganization(workspace);
+    if (organizationRes.isErr()) {
+      return new Err(organizationRes.error);
+    }
+
+    let organization = organizationRes.value;
+    if (!organization) {
+      organization = await getWorkOS().organizations.createOrganization({
+        name: `${workspace.name} - ${workspace.sId}`,
+        externalId: workspace.sId,
+        metadata: {
+          region: config.getCurrentRegion(),
+        },
+        domainData: domain
+          ? [
+              {
+                domain,
+                state: DomainDataState.Verified,
+              },
+            ]
+          : undefined,
+      });
+    }
 
     await Workspace.update(
       {
@@ -91,6 +91,74 @@ export async function createOrGetWorkOSOrganization({
       new Error(`Failed to create WorkOS organization: ${e.message}`)
     );
   }
+}
+
+export async function addWorkOSOrganizationDomain(
+  workspace: LightWorkspaceType,
+  { domain }: { domain: string }
+): Promise<Result<void, Error>> {
+  const organizationRes = await getWorkOSOrganization(workspace);
+  if (organizationRes.isErr()) {
+    return new Err(organizationRes.error);
+  }
+
+  const organization = organizationRes.value;
+  if (!organization) {
+    return new Err(
+      new Error("WorkOS organization not found for this workspace.")
+    );
+  }
+
+  await getWorkOS().organizations.updateOrganization({
+    organization: organization.id,
+    domainData: [
+      ...organization.domains.map((d) => ({
+        domain: d.domain,
+        state:
+          d.state === OrganizationDomainState.Verified
+            ? DomainDataState.Verified
+            : DomainDataState.Pending,
+      })),
+      {
+        domain,
+        state: DomainDataState.Verified,
+      },
+    ],
+  });
+
+  return new Ok(undefined);
+}
+
+export async function removeWorkOSOrganizationDomain(
+  workspace: LightWorkspaceType,
+  { domain }: { domain: string }
+): Promise<Result<void, Error>> {
+  const organizationRes = await getWorkOSOrganization(workspace);
+  if (organizationRes.isErr()) {
+    return new Err(organizationRes.error);
+  }
+
+  const organization = organizationRes.value;
+  if (!organization) {
+    return new Err(
+      new Error("WorkOS organization not found for this workspace.")
+    );
+  }
+
+  await getWorkOS().organizations.updateOrganization({
+    organization: organization.id,
+    domainData: organization.domains
+      .filter(
+        (d) =>
+          d.domain !== domain && d.state === OrganizationDomainState.Verified
+      )
+      .map((d) => ({
+        domain: d.domain,
+        state: DomainDataState.Verified,
+      })),
+  });
+
+  return new Ok(undefined);
 }
 
 // Mapping WorkOSPortalIntent to GeneratePortalLinkIntent,
@@ -128,32 +196,48 @@ export function generateWorkOSAdminPortalUrl({
   });
 }
 
+/**
+ * SSO Connections.
+ */
+
 export async function getWorkOSOrganizationSSOConnections({
   workspace,
 }: {
-  workspace: WorkspaceType;
+  workspace: LightWorkspaceType;
 }): Promise<Result<Connection[], Error>> {
-  if (!workspace.workOSOrganizationId) {
-    return new Err(
-      new Error("WorkOS organization not found for this workspace.")
-    );
-  }
+  assert(workspace.workOSOrganizationId, "WorkOS organization should exist");
 
   try {
-    const { data: directories } = await getWorkOS().sso.listConnections({
+    const { data: connections } = await getWorkOS().sso.listConnections({
       organizationId: workspace.workOSOrganizationId,
     });
 
-    return new Ok(directories);
+    return new Ok(connections);
   } catch (error) {
     return new Err(normalizeError(error));
   }
 }
 
+export async function deleteWorkOSOrganizationSSOConnection(
+  connection: Connection
+): Promise<Result<void, Error>> {
+  try {
+    await getWorkOS().sso.deleteConnection(connection.id);
+
+    return new Ok(undefined);
+  } catch (error) {
+    return new Err(normalizeError(error));
+  }
+}
+
+/**
+ * Directory Sync.
+ */
+
 export async function getWorkOSOrganizationDSyncDirectories({
   workspace,
 }: {
-  workspace: WorkspaceType;
+  workspace: LightWorkspaceType;
 }): Promise<Result<Directory[], Error>> {
   if (!workspace.workOSOrganizationId) {
     return new Err(
@@ -168,6 +252,18 @@ export async function getWorkOSOrganizationDSyncDirectories({
       });
 
     return new Ok(directories);
+  } catch (error) {
+    return new Err(normalizeError(error));
+  }
+}
+
+export async function deleteWorkOSOrganizationDSyncConnection(
+  directory: Directory
+): Promise<Result<void, Error>> {
+  try {
+    await getWorkOS().directorySync.deleteDirectory(directory.id);
+
+    return new Ok(undefined);
   } catch (error) {
     return new Err(normalizeError(error));
   }

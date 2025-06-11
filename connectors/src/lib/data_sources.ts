@@ -964,6 +964,7 @@ export async function upsertDataSourceTableFromCsv({
   mimeType,
   sourceUrl,
   tags,
+  allowEmptySchema,
 }: {
   dataSourceConfig: DataSourceConfig;
   tableId: string;
@@ -978,6 +979,7 @@ export async function upsertDataSourceTableFromCsv({
   mimeType: string;
   sourceUrl?: string;
   tags?: string[];
+  allowEmptySchema?: boolean;
 }) {
   const localLogger = logger.child({ ...loggerArgs, tableId, tableName });
   const statsDTags = [
@@ -1032,6 +1034,7 @@ export async function upsertDataSourceTableFromCsv({
     timestamp: null,
     tags: tags ?? null,
     sourceUrl: sourceUrl ?? null,
+    allowEmptySchema,
   };
   const dustRequestConfig: AxiosRequestConfig = {
     headers: {

@@ -9,23 +9,45 @@ import {
   DropdownMenuTrigger,
   HistoryIcon,
 } from "@dust-tt/sparkle";
+import { Spinner } from "@dust-tt/sparkle";
 import { useCallback, useMemo } from "react";
 import React from "react";
 
-import { GaugeDiff } from "@app/components/assistant_builder/instructions/GaugeDiff";
-import type { LightAgentConfigurationType } from "@app/types";
+import { useEditors } from "@app/lib/swr/editors";
+import type {
+  LightAgentConfigurationType,
+  LightWorkspaceType,
+} from "@app/types";
 
 interface InstructionHistoryProps {
   history: LightAgentConfigurationType[];
   selectedConfig: LightAgentConfigurationType | null;
   onSelect: (config: LightAgentConfigurationType) => void;
+  owner: LightWorkspaceType;
+  agentConfigurationId: string | null;
 }
 
 export function InstructionHistory({
   history,
   onSelect,
   selectedConfig,
+  owner,
+  agentConfigurationId,
 }: InstructionHistoryProps) {
+  const { editors, isEditorsLoading } = useEditors({
+    owner,
+    agentConfigurationId,
+    disabled: !agentConfigurationId,
+  });
+
+  const authorMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    editors.forEach((editor) => {
+      map[editor.id] = editor.fullName || editor.firstName;
+    });
+    return map;
+  }, [editors]);
+
   const formatVersionLabel = useCallback(
     (config: LightAgentConfigurationType) => {
       const dateFormatter = new Intl.DateTimeFormat("en-US", {
@@ -43,20 +65,34 @@ export function InstructionHistory({
     []
   );
 
-  const historyWithPrev = useMemo(() => {
-    const sorted = [...history].sort((a, b) => {
-      const timeA = a.versionCreatedAt
-        ? new Date(a.versionCreatedAt).getTime()
-        : a.version;
-      const timeB = b.versionCreatedAt
-        ? new Date(b.versionCreatedAt).getTime()
-        : b.version;
-
-      if (timeA !== timeB) {
-        return timeB - timeA;
+  const getAuthorName = useCallback(
+    (config: LightAgentConfigurationType) => {
+      if (!config.versionAuthorId) {
+        return "System";
       }
-      return b.version - a.version;
-    });
+      return authorMap[config.versionAuthorId] || "Unknown";
+    },
+    [authorMap]
+  );
+
+  const historyWithPrev = useMemo(() => {
+    const currentVersion = Math.max(...history.map((h) => h.version));
+
+    const sorted = [...history]
+      .filter((config) => config.version !== currentVersion)
+      .sort((a, b) => {
+        const timeA = a.versionCreatedAt
+          ? new Date(a.versionCreatedAt).getTime()
+          : a.version;
+        const timeB = b.versionCreatedAt
+          ? new Date(b.versionCreatedAt).getTime()
+          : b.version;
+
+        if (timeA !== timeB) {
+          return timeB - timeA;
+        }
+        return b.version - a.version;
+      });
 
     const result: Array<{
       config: LightAgentConfigurationType;
@@ -108,36 +144,48 @@ export function InstructionHistory({
         />
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent className="w-80">
-        <DropdownMenuLabel label="Choose version to compare" />
-        <DropdownMenuSeparator />
-
-        <DropdownMenuRadioGroup
-          value={selectedConfig?.version.toString() ?? ""}
-          onValueChange={(selectedValue) => {
-            const config = history.find(
-              (c) => c.version.toString() === selectedValue
-            );
-            if (config) {
-              onSelect(config);
-            }
-          }}
-        >
-          {historyWithPrev.map(({ config, prevInstructions }) => (
-            <DropdownMenuRadioItem
-              key={config.version}
-              value={config.version.toString()}
-            >
-              <div className="flex w-full items-center justify-between">
-                <span>{formatVersionLabel(config)}</span>
-                <GaugeDiff
-                  original={prevInstructions}
-                  updated={config.instructions ?? ""}
-                />
-              </div>
-            </DropdownMenuRadioItem>
-          ))}
-        </DropdownMenuRadioGroup>
+      <DropdownMenuContent
+        className="h-96 w-72"
+        dropdownHeaders={
+          <>
+            <DropdownMenuLabel label="Choose version to compare" />
+            <DropdownMenuSeparator />
+          </>
+        }
+      >
+        {isEditorsLoading ? (
+          <div className="flex h-full w-full items-center justify-center">
+            <Spinner />
+          </div>
+        ) : (
+          <DropdownMenuRadioGroup
+            value={selectedConfig?.version.toString() ?? ""}
+            onValueChange={(selectedValue) => {
+              const config = history.find(
+                (c) => c.version.toString() === selectedValue
+              );
+              if (config) {
+                onSelect(config);
+              }
+            }}
+          >
+            {historyWithPrev.map(({ config }) => (
+              <DropdownMenuRadioItem
+                key={config.version}
+                value={config.version.toString()}
+              >
+                <div className="flex w-full items-center justify-between">
+                  <div className="flex flex-col">
+                    <span>{formatVersionLabel(config)}</span>
+                    <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+                      by {getAuthorName(config)}
+                    </span>
+                  </div>
+                </div>
+              </DropdownMenuRadioItem>
+            ))}
+          </DropdownMenuRadioGroup>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );

@@ -649,6 +649,9 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     auth: Authenticator,
     transaction?: Transaction
   ): Promise<Result<number, Error>> {
+    // Mark all content fragments that reference this data source view as expired.
+    await this.expireContentFragments(auth, transaction);
+
     // Delete agent configurations elements pointing to this data source view.
     await AgentDataSourceConfiguration.destroy({
       where: {

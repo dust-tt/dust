@@ -48,7 +48,7 @@ const getOptimisticDataForCreate = (
   space: SpaceType
 ) => {
   if (!data) {
-    return { servers: [], success: true };
+    return { servers: [], success: true as const };
   }
   const mcpServerWithViews = data.servers.find((s) => s.sId === server.sId);
 
@@ -70,6 +70,7 @@ const getOptimisticDataForCreate = (
               server,
               editedByUser: null,
               spaceId: space.sId,
+              oAuthUseCase: null,
             },
           ],
         },
@@ -84,7 +85,7 @@ const getOptimisticDataForRemove = (
   serverView: MCPServerViewType
 ) => {
   if (!data) {
-    return { servers: [], success: true };
+    return { servers: [], success: true as const };
   }
 
   const mcpServerWithViews = data.servers.find(

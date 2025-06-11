@@ -45,6 +45,7 @@ export const ConfluenceCommandSchema = t.type({
     t.literal("unignore-near-rate-limit"),
     t.literal("check-space-access"),
     t.literal("resolve-space-from-url"),
+    t.literal("sync-space"),
   ]),
   args: t.type({
     connectorId: t.union([t.number, t.undefined]),
@@ -53,6 +54,7 @@ export const ConfluenceCommandSchema = t.type({
     file: t.union([t.string, t.undefined]),
     keyInFile: t.union([t.string, t.undefined]),
     url: t.union([t.string, t.undefined]),
+    forceUpsert: t.union([t.literal("true"), t.undefined]),
   }),
 });
 export type ConfluenceCommandType = t.TypeOf<typeof ConfluenceCommandSchema>;
@@ -138,6 +140,9 @@ export const GithubCommandSchema = t.type({
     t.literal("sync-issue"),
     t.literal("force-daily-code-sync"),
     t.literal("skip-issue"),
+    t.literal("skip-repo"),
+    t.literal("unskip-repo"),
+    t.literal("list-skipped-repos"),
     t.literal("clear-installation-id"),
   ]),
   args: t.record(
@@ -606,6 +611,83 @@ export type ZendeskFetchBrandResponseType = t.TypeOf<
  */
 
 /**
+ * <Salesforce>
+ */
+export const SalesforceCommandSchema = t.type({
+  majorCommand: t.literal("salesforce"),
+  command: t.union([
+    t.literal("check-connection"),
+    t.literal("run-soql"),
+    t.literal("setup-synced-query"),
+    t.literal("sync-query"),
+  ]),
+  args: t.type({
+    wId: t.union([t.string, t.undefined]),
+    dsId: t.union([t.string, t.undefined]),
+    soql: t.union([t.string, t.undefined]),
+    limit: t.union([t.number, t.undefined]),
+    lastModifiedDateOrder: t.union([
+      t.literal("ASC"),
+      t.literal("DESC"),
+      t.undefined,
+    ]),
+    offset: t.union([t.number, t.undefined]),
+    rootNodeName: t.union([t.string, t.undefined]),
+    titleTemplate: t.union([t.string, t.undefined]),
+    contentTemplate: t.union([t.string, t.undefined]),
+    tagsTemplate: t.union([t.string, t.undefined]),
+    execute: t.union([t.boolean, t.undefined]),
+    queryId: t.union([t.number, t.undefined]),
+    full: t.union([t.boolean, t.undefined]),
+  }),
+});
+export type SalesforceCommandType = t.TypeOf<typeof SalesforceCommandSchema>;
+
+export const SalesforceCheckConnectionResponseSchema = t.type({
+  ok: t.boolean,
+});
+export type SalesforceCheckConnectionResponseType = t.TypeOf<
+  typeof SalesforceCheckConnectionResponseSchema
+>;
+
+export const SalesforceRunSoqlResponseSchema = t.type({
+  records: t.array(t.UnknownRecord), // Salesforce type, can't be iots'd
+  totalSize: t.number,
+  done: t.boolean,
+});
+export type SalesforceRunSoqlResponseType = t.TypeOf<
+  typeof SalesforceRunSoqlResponseSchema
+>;
+
+export const SalesforceSetupSyncedQueryResponseSchema = t.type({
+  documents: t.array(
+    t.type({
+      id: t.string,
+      lastModifiedDate: t.string,
+      title: t.string,
+      content: t.string,
+      tags: t.array(t.string),
+    })
+  ),
+  queryId: t.union([t.number, t.null]),
+  created: t.boolean,
+});
+export type SalesforceSetupSyncedQueryResponseType = t.TypeOf<
+  typeof SalesforceSetupSyncedQueryResponseSchema
+>;
+
+export const SalesforceSyncQueryResponseSchema = t.type({
+  workflowId: t.string,
+});
+export type SalesforceSyncQueryResponseType = t.TypeOf<
+  typeof SalesforceSyncQueryResponseSchema
+>;
+
+/**
+ * </Salesforce>
+ */
+
+/**
  * <Admin>
  */
 export const AdminCommandSchema = t.union([
@@ -623,6 +705,7 @@ export const AdminCommandSchema = t.union([
   TemporalCommandSchema,
   WebcrawlerCommandSchema,
   ZendeskCommandSchema,
+  SalesforceCommandSchema,
 ]);
 export type AdminCommandType = t.TypeOf<typeof AdminCommandSchema>;
 
@@ -662,6 +745,10 @@ export const AdminResponseSchema = t.union([
   ZendeskCountTicketsResponseSchema,
   ZendeskFetchBrandResponseSchema,
   ZendeskFetchTicketResponseSchema,
+  SalesforceCheckConnectionResponseSchema,
+  SalesforceRunSoqlResponseSchema,
+  SalesforceSetupSyncedQueryResponseSchema,
+  SalesforceSyncQueryResponseSchema,
 ]);
 export type AdminResponseType = t.TypeOf<typeof AdminResponseSchema>;
 /**

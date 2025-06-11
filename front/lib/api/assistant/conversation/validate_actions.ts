@@ -7,7 +7,7 @@ import {
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import logger from "@app/logger/logger";
 
-function getActionChannel(actionId: number): string {
+function getActionChannel(actionId: string): string {
   return `action-${actionId}`;
 }
 
@@ -21,7 +21,7 @@ export async function validateAction({
   workspaceId: string;
   conversationId: string;
   messageId: string;
-  actionId: number;
+  actionId: string;
   approved: MCPValidationOutputType;
 }): Promise<{ success: boolean }> {
   const actionChannel = getActionChannel(actionId);
@@ -44,15 +44,16 @@ export async function validateAction({
     event: JSON.stringify({
       type: approved,
       created: Date.now(),
-      actionId: actionId,
-      messageId: messageId,
+      actionId,
+      messageId,
+      conversationId,
     }),
   });
 
   await getRedisHybridManager().removeEvent((event) => {
     const payload = JSON.parse(event.message["payload"]);
     return isMCPApproveExecutionEvent(payload)
-      ? payload.action.id === actionId
+      ? payload.actionId === actionId
       : false;
   }, getMessageChannelId(messageId));
 

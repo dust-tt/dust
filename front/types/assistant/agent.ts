@@ -181,6 +181,7 @@ export function isTemplateAgentConfiguration(
 
 export const DEFAULT_MAX_STEPS_USE_PER_RUN = 8;
 export const MAX_STEPS_USE_PER_RUN_LIMIT = 24;
+export const EXTENDED_MAX_STEPS_USE_PER_RUN_LIMIT = 128;
 
 /**
  * Agent events

@@ -277,6 +277,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       owner,
       title: conversation.title,
       visibility: conversation.visibility,
+      depth: conversation.depth,
       requestedGroupIds:
         conversation.getConversationRequestedGroupIdsFromModel(auth),
     });
@@ -347,6 +348,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           owner,
           title: c.title,
           visibility: c.visibility,
+          depth: c.depth,
           requestedGroupIds: new this(
             this.model,
             c.get()

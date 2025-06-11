@@ -1,6 +1,9 @@
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import type { McpError } from "@modelcontextprotocol/sdk/types.js";
+import type {
+  CallToolResult,
+  McpError,
+} from "@modelcontextprotocol/sdk/types.js";
 import { ProgressNotificationSchema } from "@modelcontextprotocol/sdk/types.js";
 import assert from "assert";
 import EventEmitter from "events";
@@ -27,14 +30,12 @@ import {
   getInternalMCPServerNameAndWorkspaceId,
   INTERNAL_MCP_SERVERS,
 } from "@app/lib/actions/mcp_internal_actions/constants";
+import { findMatchingSubSchemas } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type {
   MCPProgressNotificationType,
-  MCPToolResult,
-  MCPToolResultContentType,
   PersonalAuthenticationRequiredErrorResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { isMCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import { findMatchingSubSchemas } from "@app/lib/actions/mcp_internal_actions/utils";
 import type {
   MCPConnectionParams,
   ServerSideMCPConnectionParams,
@@ -50,6 +51,7 @@ import type {
   AgentLoopRunContextType,
 } from "@app/lib/actions/types";
 import {
+  isClientSideMCPToolConfiguration,
   isMCPServerConfiguration,
   isMCPToolConfiguration,
   isServerSideMCPServerConfiguration,
@@ -96,6 +98,10 @@ function isEmptyInputSchema(schema: JSONSchema7): boolean {
 
 const MAX_TOOL_NAME_LENGTH = 64;
 
+const MAX_TEXT_CONTENT_SIZE = 2 * 1024 * 1024;
+const MAX_IMAGE_CONTENT_SIZE = 2 * 1024 * 1024;
+const MAX_RESOURCE_CONTENT_SIZE = 10 * 1024 * 1024;
+
 export const TOOL_NAME_SEPARATOR = "__";
 
 // Define the new type here for now, or move to a dedicated types file later.
@@ -134,6 +140,7 @@ function makeServerSideMCPToolConfigurations(
     originalName: tool.name,
     mcpServerName: config.name,
     dustAppConfiguration: config.dustAppConfiguration,
+    ...(tool.timeoutMs && { timeoutMs: tool.timeoutMs }),
   }));
 }
 
@@ -170,7 +177,7 @@ type MCPCallToolEvent =
   | {
       type: "result";
       result: Result<
-        MCPToolResult["content"],
+        CallToolResult["content"],
         Error | McpError | MCPServerPersonalAuthenticationRequiredError
       >;
     };
@@ -271,7 +278,9 @@ export async function* tryCallMCPTool(
       },
       undefined,
       {
-        timeout: DEFAULT_MCP_REQUEST_TIMEOUT_MS,
+        timeout:
+          agentLoopRunContext.actionConfiguration.timeoutMs ??
+          DEFAULT_MCP_REQUEST_TIMEOUT_MS,
       }
     );
 
@@ -304,8 +313,8 @@ export async function* tryCallMCPTool(
     const toolCallResult = await toolPromise;
 
     // Type inference is not working here because of them using passthrough in the zod schema.
-    const content: MCPToolResultContentType[] = (toolCallResult.content ??
-      []) as MCPToolResultContentType[];
+    const content: CallToolResult["content"] = (toolCallResult.content ??
+      []) as CallToolResult["content"];
 
     // Do not raise an error here as it will break the conversation.
     // Let the model decide what to do.
@@ -341,7 +350,8 @@ export async function* tryCallMCPTool(
               personalAuthenticationRequiredError.resource
                 .provider as OAuthProvider,
               personalAuthenticationRequiredError.resource
-                .useCase as OAuthUseCase
+                .useCase as OAuthUseCase,
+              personalAuthenticationRequiredError.resource.scope
             )
           ),
         };
@@ -360,7 +370,107 @@ export async function* tryCallMCPTool(
       };
     }
 
-    // TODO(mcp) refuse if the content is too large
+    const isValidContentSize = (
+      content: CallToolResult["content"]
+    ): boolean => {
+      return !content.some(
+        (item) => calculateContentSize(item) > getMaxSize(item)
+      );
+    };
+
+    const generateContentMetadata = (
+      content: CallToolResult["content"]
+    ): {
+      type: "text" | "image" | "resource" | "audio";
+      byteSize: number;
+      maxSize: number;
+    }[] => {
+      const result = [];
+      for (const item of content) {
+        const byteSize = calculateContentSize(item);
+        const maxSize = getMaxSize(item);
+        const metadata = { type: item.type, byteSize, maxSize };
+        result.push(metadata);
+
+        if (byteSize > maxSize) {
+          break;
+        }
+      }
+      return result;
+    };
+
+    const getMaxSize = (item: CallToolResult["content"][number]) => {
+      switch (item.type) {
+        case "text":
+          return MAX_TEXT_CONTENT_SIZE;
+        case "image":
+          return MAX_IMAGE_CONTENT_SIZE;
+        case "resource":
+          return MAX_RESOURCE_CONTENT_SIZE;
+        default:
+          return 1 * 1024 * 1024; // 1MB default
+      }
+    };
+
+    const calculateContentSize = (
+      item: CallToolResult["content"][number]
+    ): number => {
+      switch (item.type) {
+        case "text":
+          return item.text.length * 2;
+        case "image":
+          return Math.ceil((item.data.length * 3) / 4);
+        case "resource":
+          if (
+            "blob" in item.resource &&
+            item.resource.blob &&
+            typeof item.resource.blob === "string"
+          ) {
+            return Math.ceil((item.resource.blob.length * 3) / 4);
+          }
+          return 0;
+        case "audio":
+          return item.data.length;
+        default:
+          return 0;
+      }
+    };
+
+    const serverType = (() => {
+      if (
+        isClientSideMCPToolConfiguration(
+          agentLoopRunContext.actionConfiguration
+        )
+      ) {
+        return "client";
+      }
+      if (
+        isServerSideMCPToolConfiguration(
+          agentLoopRunContext.actionConfiguration
+        ) &&
+        agentLoopRunContext.actionConfiguration.internalMCPServerId
+      ) {
+        return "internal";
+      }
+      return "remote";
+    })();
+
+    if (serverType === "remote") {
+      const isValid = isValidContentSize(content);
+
+      if (!isValid) {
+        const contentMetadata = generateContentMetadata(content);
+        logger.info(
+          { contentMetadata, isValid },
+          "information on MCP tool result"
+        );
+
+        yield {
+          type: "result",
+          result: new Err(new Error(`MCP tool result content size too large.`)),
+        };
+      }
+    }
 
     yield {
       type: "result",
@@ -668,6 +778,7 @@ async function listToolsForServerSideMCPServer(
   );
 
   let toolsStakes: Record<string, MCPToolStakeLevelType> = {};
+  let serverTimeoutMs: number | undefined;
 
   switch (serverType) {
     case "internal": {
@@ -679,6 +790,7 @@ async function listToolsForServerSideMCPServer(
       }
       const serverName = r.value.name;
       toolsStakes = INTERNAL_MCP_SERVERS[serverName]?.tools_stakes || {};
+      serverTimeoutMs = INTERNAL_MCP_SERVERS[serverName]?.timeoutMs;
       break;
     }
 
@@ -698,7 +810,7 @@ async function listToolsForServerSideMCPServer(
       assertNever(serverType);
   }
 
-  const toolsWithStakes = allToolsRaw.map((tool) => ({
+  const toolsWithStakesAndTimeout = allToolsRaw.map((tool) => ({
     ...tool,
     stakeLevel:
       toolsStakes[tool.name] ||
@@ -707,11 +819,12 @@ async function listToolsForServerSideMCPServer(
         : FALLBACK_INTERNAL_AUTO_SERVERS_TOOL_STAKE_LEVEL),
     availability,
     toolServerId: connectionParams.mcpServerId,
+    ...(serverTimeoutMs && { timeoutMs: serverTimeoutMs }),
   }));
 
   const serverSideToolConfigs = makeServerSideMCPToolConfigurations(
     config,
-    toolsWithStakes
+    toolsWithStakesAndTimeout
   );
   return new Ok(serverSideToolConfigs);
 }

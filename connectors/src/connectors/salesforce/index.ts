@@ -31,10 +31,13 @@ import {
   RemoteSchemaModel,
   RemoteTableModel,
 } from "@connectors/lib/models/remote_databases";
-import { SalesforceConfigurationModel } from "@connectors/lib/models/salesforce";
 import { saveNodesFromPermissions } from "@connectors/lib/remote_databases/utils";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import {
+  SalesforceConfigurationResource,
+  SalesforceSyncedQueryResource,
+} from "@connectors/resources/salesforce_resources";
 import type { ConnectorPermission, ContentNode } from "@connectors/types";
 import type { DataSourceConfig } from "@connectors/types";
 
@@ -129,11 +132,8 @@ export class SalesforceConnectorManager extends BaseConnectorManager<null> {
       throw new Error(`Connector ${this.connectorId} not found`);
     }
 
-    await SalesforceConfigurationModel.destroy({
-      where: {
-        connectorId: connector.id,
-      },
-    });
+    await SalesforceConfigurationResource.deleteByConnectorId(connector.id);
+    await SalesforceSyncedQueryResource.deleteByConnectorId(connector.id);
 
     await RemoteTableModel.destroy({
       where: {

@@ -53,6 +53,7 @@ export const getRefs = () => {
  */
 export function citationMetaPrompt() {
   return (
+    "## CITING DOCUMENTS\n" +
     "To cite documents or web pages retrieved with a 2-character REFERENCE, " +
     "use the markdown directive :cite[REFERENCE] " +
     "(eg :cite[xx] or :cite[xx,xx] but not :cite[xx][xx]). " +

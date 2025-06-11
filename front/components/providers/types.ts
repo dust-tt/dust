@@ -1,11 +1,12 @@
 import {
   AnthropicLogo,
-  AnthropicWhiteLogo,
-  GoogleLogo,
+  DeepseekLogo,
+  FireworksLogo,
+  GeminiLogo,
+  GrokLogo,
   MistralLogo,
   OpenaiLogo,
-  OpenaiWhiteLogo,
-  PlanetIcon,
+  TogetheraiLogo,
 } from "@dust-tt/sparkle";
 import type { ComponentType } from "react";
 
@@ -57,29 +58,27 @@ type ModelProviderLogos = Record<
 const MODEL_PROVIDER_LOGOS: ModelProviderLogos = {
   openai: {
     light: OpenaiLogo,
-    dark: OpenaiWhiteLogo,
   },
   anthropic: {
     light: AnthropicLogo,
-    dark: AnthropicWhiteLogo,
   },
   mistral: {
     light: MistralLogo,
   },
   google_ai_studio: {
-    light: GoogleLogo,
+    light: GeminiLogo,
   },
   togetherai: {
-    light: PlanetIcon,
+    light: TogetheraiLogo,
   },
   deepseek: {
-    light: PlanetIcon,
+    light: DeepseekLogo,
   },
   fireworks: {
-    light: PlanetIcon,
+    light: FireworksLogo,
   },
   xai: {
-    light: PlanetIcon,
+    light: GrokLogo,
   },
 };
 

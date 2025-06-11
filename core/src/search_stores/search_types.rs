@@ -21,7 +21,7 @@ impl SearchItem {
             .and_then(|v| v.as_str())
             .ok_or_else(|| anyhow::anyhow!("Missing _index"))?;
 
-        // /!\ Very important, must be keep that way since both indices start with the same prefix.
+        // /!\ Very important, must be kept that way since both indices start with the same prefix.
         if index.starts_with(DATA_SOURCE_NODE_INDEX_NAME) {
             Ok(SearchItem::Node(NodeESDocument::from(source.clone())))
         } else {

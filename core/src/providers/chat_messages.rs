@@ -68,10 +68,24 @@ pub struct SystemChatMessage {
     pub role: ChatMessageRole,
 }
 
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+pub struct ReasoningContent {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub displayable_text: Option<String>,
+    pub metadata: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum AssistantContentItem {
+    TextContent { value: String },
+    FunctionCall { value: ChatFunctionCall },
+    Reasoning { value: ReasoningContent },
+}
+
 // Assistant message.
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
-#[serde(deny_unknown_fields)]
 pub struct AssistantChatMessage {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub content: Option<String>,
@@ -82,6 +96,8 @@ pub struct AssistantChatMessage {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
     pub role: ChatMessageRole,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub contents: Option<Vec<AssistantContentItem>>,
 }
 
 // Function message.

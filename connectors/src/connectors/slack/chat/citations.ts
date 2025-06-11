@@ -1,8 +1,11 @@
 import type { AgentActionPublicType } from "@dust-tt/client";
 import {
   getTitleFromRetrievedDocument,
+  isMCPActionType,
   isRetrievalActionType,
+  isSearchResultResourceType,
   isWebsearchActionType,
+  isWebsearchResultResourceType,
 } from "@dust-tt/client";
 
 interface SlackMessageFootnote {
@@ -45,6 +48,37 @@ export function annotateCitations(
           link: r.link,
           title: r.title,
         };
+      });
+    }
+    if (action && isMCPActionType(action) && action.output) {
+      // Handle MCP search results
+      action.output?.filter(isSearchResultResourceType).forEach((o) => {
+        if (o.type === "resource" && o.resource.ref) {
+          const r = o.resource;
+          const ref = r.ref;
+          if (ref) {
+            references[ref] = {
+              reference: ref,
+              link: r.uri,
+              title: r.text,
+            };
+          }
+        }
+      });
+
+      // Handle MCP websearch results
+      action.output?.filter(isWebsearchResultResourceType).forEach((o) => {
+        if (o.type === "resource" && o.resource.reference) {
+          const r = o.resource;
+          const ref = r.reference;
+          if (ref) {
+            references[ref] = {
+              reference: ref,
+              link: r.uri,
+              title: r.title,
+            };
+          }
+        }
       });
     }
   }

@@ -11,6 +11,7 @@ use std::{io::prelude::*, str::FromStr};
 use tracing::info;
 
 use super::network::NetworkUtils;
+use super::proxy_client::create_untrusted_egress_client_builder;
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct HttpRequest {
@@ -79,9 +80,9 @@ impl HttpRequest {
         // First check the initial URL.
         NetworkUtils::check_url_for_private_ip(&self.url)?;
 
-        // First create the client with the custom redirect policy.
-        let client = reqwest::Client::builder()
-            .redirect(Policy::custom(|attempt| {
+        // Create the client with the untrusted egress proxy and custom redirect policy.
+        let client_builder =
+            create_untrusted_egress_client_builder().redirect(Policy::custom(|attempt| {
                 // Log the redirect for debugging.
                 println!(
                     "Redirect attempt from: {:?} to: {}",
@@ -97,7 +98,9 @@ impl HttpRequest {
                         attempt.error(e)
                     }
                 }
-            }))
+            }));
+
+        let client = client_builder
             .build()
             .map_err(|e| anyhow!("Failed to build HTTP client: {}", e))?;
 

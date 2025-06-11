@@ -204,10 +204,30 @@ const config = {
   getWorkOSCookiePassword: (): string => {
     return EnvironmentConfig.getEnvVariable("WORKOS_COOKIE_PASSWORD");
   },
+  getWorkOSIssuerURL: (): string => {
+    return EnvironmentConfig.getEnvVariable("WORKOS_ISSUER_URL");
+  },
+  getWorkOSWebhookSecret: (): string => {
+    return EnvironmentConfig.getEnvVariable("WORKOS_WEBHOOK_SECRET");
+  },
+  getWorkOSWebhookSigningSecret: (): string => {
+    return EnvironmentConfig.getEnvVariable("WORKOS_WEBHOOK_SIGNING_SECRET");
+  },
 
   // Profiler.
   getProfilerSecret: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable("DEBUG_PROFILER_SECRET");
+  },
+  // Untrusted egress proxy.
+  getUntrustedEgressProxyHost: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable(
+      "UNTRUSTED_EGRESS_PROXY_HOST"
+    );
+  },
+  getUntrustedEgressProxyPort: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable(
+      "UNTRUSTED_EGRESS_PROXY_PORT"
+    );
   },
 };
 

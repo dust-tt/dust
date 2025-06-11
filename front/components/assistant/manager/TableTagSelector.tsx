@@ -16,6 +16,7 @@ import { useState } from "react";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useUpdateAgentTags } from "@app/lib/swr/tags";
 import type { WorkspaceType } from "@app/types";
+import { isGlobalAgentId } from "@app/types";
 import { isBuilder } from "@app/types";
 import type { TagType } from "@app/types/tag";
 
@@ -39,6 +40,10 @@ export const TableTagSelector = ({
   const updateAgentTags = useUpdateAgentTags({
     owner,
   });
+  if (isGlobalAgentId(agentConfigurationId)) {
+    return null;
+  }
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -66,34 +71,40 @@ export const TableTagSelector = ({
         <DropdownMenuLabel label="Available tags" />
         <DropdownMenuSeparator />
         <DropdownMenuTagList>
-          {tags
-            .filter((t) => isBuilder(owner) || t.kind !== "protected")
-            .map((t) => {
-              const isChecked = agentTags.some((x) => x.sId === t.sId);
-              return (
-                <div
-                  key={t.sId}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                  }}
-                >
-                  <DropdownMenuTagItem
-                    label={t.name}
-                    color="golden"
-                    icon={isChecked ? CheckIcon : undefined}
-                    onClick={async () => {
-                      setIsLoading(true);
-                      await updateAgentTags(agentConfigurationId, {
-                        addTagIds: isChecked ? [] : [t.sId],
-                        removeTagIds: isChecked ? [t.sId] : [],
-                      });
-                      await onChange();
+          {tags.length === 0 ? (
+            <div className="px-2 py-2 text-center text-sm text-muted-foreground dark:text-muted-foreground-night">
+              No tags available
+            </div>
+          ) : (
+            tags
+              .filter((t) => isBuilder(owner) || t.kind !== "protected")
+              .map((t) => {
+                const isChecked = agentTags.some((x) => x.sId === t.sId);
+                return (
+                  <div
+                    key={t.sId}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
                     }}
-                  />
-                </div>
-              );
-            })}
+                  >
+                    <DropdownMenuTagItem
+                      label={t.name}
+                      color="golden"
+                      icon={isChecked ? CheckIcon : undefined}
+                      onClick={async () => {
+                        setIsLoading(true);
+                        await updateAgentTags(agentConfigurationId, {
+                          addTagIds: isChecked ? [] : [t.sId],
+                          removeTagIds: isChecked ? [t.sId] : [],
+                        });
+                        await onChange();
+                      }}
+                    />
+                  </div>
+                );
+              })
+          )}
         </DropdownMenuTagList>
         {isLoading && (
           <div className="absolute inset-0 flex items-center justify-center bg-white/50 dark:bg-black/50">

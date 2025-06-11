@@ -11,12 +11,14 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/servers/utils";
 import {
   makeMCPToolJSONSuccess,
+  makeMCPToolRecoverableErrorSuccess,
   makeMCPToolTextError,
 } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { actionRefsOffset, getRetrievalTopK } from "@app/lib/actions/utils";
 import { getRefs } from "@app/lib/api/assistant/citations";
 import config from "@app/lib/api/config";
+import { ROOT_PARENT_ID } from "@app/lib/api/data_source_view";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import {
@@ -27,12 +29,15 @@ import type { AgentDataSourceConfiguration } from "@app/lib/models/assistant/act
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type {
+  ContentNodeType,
   CoreAPIContentNode,
+  CoreAPIError,
   CoreAPISearchNodesResponse,
   Result,
 } from "@app/types";
 import {
   CoreAPI,
+  DATA_SOURCE_NODE_ID,
   dustManagedCredentials,
   Err,
   Ok,
@@ -48,8 +53,9 @@ const serverInfo: InternalMCPServerDefinitionType = {
   description:
     "Comprehensive content navigation toolkit for browsing user data sources. Provides Unix-like " +
     "browsing (ls, find) and smart search tools to help agents efficiently explore and discover " +
-    "documents, folders, and tables from manually uploaded files or data synced from SaaS products " +
-    "(Notion, Slack, Github, etc.) organized in a filesystem-like hierarchy.",
+    "content from manually uploaded files or data synced from SaaS products (Notion, Slack, Github" +
+    ", etc.) organized in a filesystem-like hierarchy. Each item in this tree-like hierarchy is " +
+    "called a node, nodes are referenced by a nodeId.",
   authorization: null,
   icon: "ActionDocumentTextIcon",
 };
@@ -59,25 +65,24 @@ const OPTION_PARAMETERS = {
     .number()
     .optional()
     .describe(
-      "Maximum number of results to return. Use 10-20 for initial searches, " +
-        "increase if user needs more results."
+      "Maximum number of results to return. Initial searches should use 10-20."
     ),
   sortBy: z
     .enum(["title", "timestamp"])
     .optional()
     .describe(
-      "Sort results by field. Use 'title' to sort alphabetically A-Z, 'timestamp' to sort by " +
+      "Field to sort the results by. 'title' sorts alphabetically A-Z, 'timestamp' sorts by " +
         "most recent first. If not specified, results are returned in default order, which is " +
         "folders first, then both documents and tables and alphabetically by title. " +
-        "Keep the default order unless there is a specific reason to change it."
+        "The default order should be kept unless there is a specific reason to change it."
     ),
   nextPageCursor: z
     .string()
     .optional()
     .describe(
-      "Cursor for fetching the next page of results. Use this parameter only to fetch the next " +
-        "page of a previous search. The value should be exactly the 'next_page_cursor' from the " +
-        "previous search result."
+      "Cursor for fetching the next page of results. This parameter should only be used to fetch " +
+        "the next page of a previous search. The value should be exactly the 'nextPageCursor' from " +
+        "the previous search result."
     ),
 };
 
@@ -88,20 +93,141 @@ const createServer = (
   const server = new McpServer(serverInfo);
 
   server.tool(
-    "find_by_title",
-    "Find content items based on their title. Use this when you need to find specific " +
-      "files, documents, folders, or other content by searching for their titles. This searches " +
-      "through user-uploaded files and data synced from SaaS products (Notion, Slack, Github, " +
-      "etc...). This is like using 'find -name' in Unix - it will find all items whose titles " +
-      "contain or start with your search term. A good fit is when the user asks 'find the " +
-      "document called X' or 'show me files with Y in the name'.",
+    "cat",
+    "Read the contents of a document, referred to by its nodeId (named after the 'cat' unix tool). The nodeId can be obtained using the 'find_by_title', 'find' or 'search' tools.",
+    {
+      dataSources:
+        ConfigurableToolInputSchemas[
+          INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
+        ],
+      nodeId: z.string().describe("The ID of the node to read."),
+      offset: z
+        .number()
+        .optional()
+        .describe(
+          "The character position to start reading from (0-based). If not provided, starts from the beginning."
+        ),
+      limit: z
+        .number()
+        .optional()
+        .describe(
+          "The maximum number of characters to read. If not provided, reads all characters."
+        ),
+      grep: z
+        .string()
+        .optional()
+        .describe(
+          "A regular expression to filter lines. Applied after offset/limit slicing. Only lines matching this pattern will be returned."
+        ),
+    },
+    async ({ dataSources, nodeId, offset, limit, grep }) => {
+      const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+
+      // Gather data source configurations.
+      const fetchResult = await getAgentDataSourceConfigurations(dataSources);
+
+      if (fetchResult.isErr()) {
+        return makeMCPToolTextError(fetchResult.error.message);
+      }
+      const agentDataSourceConfigurations = fetchResult.value;
+
+      // Search the node using our search api.
+      const searchResult = await coreAPI.searchNodes({
+        filter: {
+          node_ids: [nodeId],
+          data_source_views: makeDataSourceViewFilter(
+            agentDataSourceConfigurations
+          ),
+        },
+      });
+
+      if (searchResult.isErr() || searchResult.value.nodes.length === 0) {
+        return makeMCPToolRecoverableErrorSuccess(
+          `Could not find node: ${nodeId} (error: ${
+            searchResult.isErr() ? searchResult.error : "No nodes found"
+          })`
+        );
+      }
+
+      const node = searchResult.value.nodes[0];
+
+      if (node.node_type !== "document") {
+        return makeMCPToolRecoverableErrorSuccess(
+          `Node is of type ${node.node_type}, not a document.`
+        );
+      }
+
+      // Get dustAPIProjectId from the data source configuration.
+      const dustAPIProjectId = agentDataSourceConfigurations.find(
+        (config) =>
+          config.dataSource.dustAPIDataSourceId === node.data_source_id
+      )?.dataSource.dustAPIProjectId;
+
+      if (!dustAPIProjectId) {
+        return makeMCPToolTextError(
+          `Could not find dustAPIProjectId for node: ${nodeId}`
+        );
+      }
+
+      // Read the node.
+      const readResult = await coreAPI.getDataSourceDocumentText({
+        dataSourceId: node.data_source_id,
+        documentId: node.node_id,
+        projectId: dustAPIProjectId,
+        offset: offset,
+        limit: limit,
+        grep: grep,
+      });
+
+      if (readResult.isErr()) {
+        return makeMCPToolTextError(
+          `Could not read node: ${nodeId} (error: ${readResult.error})`
+        );
+      }
+
+      return {
+        isError: false,
+        content: [
+          {
+            type: "text",
+            text: readResult.value.text,
+          },
+        ],
+      };
+    }
+  );
+
+  server.tool(
+    "find",
+    "Find content based on their title starting from a specific node. Can be used to to find specific " +
+      "nodes by searching for their titles. The query title can be omitted to list all nodes " +
+      "starting from a specific node. This is like using 'find' in Unix.",
     {
       query: z
         .string()
+        .optional()
         .describe(
-          "The title or name to search for. This supports partial matching - you don't need the " +
+          "The title to search for. This supports partial matching and does not require the " +
             "exact title. For example, searching for 'budget' will find 'Budget 2024.xlsx', " +
-            "'Q1 Budget Report', etc. Use keywords from the title the user mentioned."
+            "'Q1 Budget Report', etc."
+        ),
+      rootNodeId: z
+        .string()
+        .optional()
+        .describe(
+          "The node ID of the node to start the search from. If not provided, the search will " +
+            "start from the root of the filesystem. This ID can be found from previous search " +
+            "results in the 'nodeId' field. This parameter restricts the search to the children " +
+            "and descendant of a specific node. If a node output by this tool or the list tool" +
+            "has children (hasChildren: true), it means that it can be passed as a rootNodeId."
+        ),
+      mimeTypes: z
+        .array(z.string())
+        .optional()
+        .describe(
+          "The mime types to search for. If provided, only nodes with one of these mime types " +
+            "will be returned. If not provided, no filter will be applied. The mime types passed " +
+            "here must be one of the mime types found in the 'mimeType' field."
         ),
       dataSources:
         ConfigurableToolInputSchemas[
@@ -109,7 +235,15 @@ const createServer = (
         ],
       ...OPTION_PARAMETERS,
     },
-    async ({ query, dataSources, limit, sortBy, nextPageCursor }) => {
+    async ({
+      query,
+      dataSources,
+      limit,
+      sortBy,
+      nextPageCursor,
+      rootNodeId,
+      mimeTypes,
+    }) => {
       const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
       const fetchResult = await getAgentDataSourceConfigurations(dataSources);
@@ -119,12 +253,34 @@ const createServer = (
       }
       const agentDataSourceConfigurations = fetchResult.value;
 
+      const dataSourceNodeId = rootNodeId
+        ? extractDataSourceIdFromNodeId(rootNodeId)
+        : undefined;
+
+      // If rootNodeId is provided and is a data source node ID, search only in
+      // the data source. If rootNodeId is provided and is a regular node ID,
+      // reset all view_filters to this node, so only descendents of this node
+      // are searched. It is not straightforward to guess which data source it
+      // belongs to, this is why irrelevant data sources are not directly
+      // filtered out.
+      let viewFilter = makeDataSourceViewFilter(agentDataSourceConfigurations);
+
+      if (dataSourceNodeId) {
+        viewFilter = viewFilter.filter(
+          (view) => view.data_source_id === dataSourceNodeId
+        );
+      } else if (rootNodeId) {
+        viewFilter = viewFilter.map((view) => ({
+          ...view,
+          view_filter: [rootNodeId],
+        }));
+      }
+
       const searchResult = await coreAPI.searchNodes({
         query,
         filter: {
-          data_source_views: makeDataSourceViewFilter(
-            agentDataSourceConfigurations
-          ),
+          data_source_views: viewFilter,
+          mime_types: mimeTypes ? { in: mimeTypes, not: null } : undefined,
         },
         options: {
           cursor: nextPageCursor,
@@ -147,74 +303,28 @@ const createServer = (
   );
 
   server.tool(
-    "find_by_id",
-    "Retrieve specific content items when you have their exact IDs. Use this to get detailed " +
-      "information about files, documents, or folders you've already identified from other searches. " +
-      "This works with content from uploaded files or synced data sources (Notion, Slack, Github, etc.). " +
-      "This is like looking up specific files by their unique identifiers. Only use this when you have " +
-      "the exact id values from previous tool results.",
+    "list",
+    "List the direct contents of a node. Can be used to see what is inside a specific folder from " +
+      "the filesystem, like 'ls' in Unix. A good fit is to explore the filesystem structure step " +
+      "by step. This tool can be called repeatedly by passing the 'nodeId' output from a step to " +
+      "the next step's nodeId. If a node output by this tool or the find tool has children " +
+      "(hasChildren: true), it means that this tool can be used again on it.",
     {
-      nodeIds: z
-        .array(z.string())
-        .describe(
-          "Array of exact content item IDs to retrieve. These are the 'id' values from previous " +
-            "search results. Each ID uniquely identifies a specific document, folder, or table."
-        ),
-      dataSources:
-        ConfigurableToolInputSchemas[
-          INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
-        ],
-      sortBy: OPTION_PARAMETERS["sortBy"],
-      nextPageCursor: OPTION_PARAMETERS["nextPageCursor"],
-    },
-    async ({ nodeIds, dataSources, sortBy, nextPageCursor }) => {
-      const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-      const fetchResult = await getAgentDataSourceConfigurations(dataSources);
-
-      if (fetchResult.isErr()) {
-        return makeMCPToolTextError(fetchResult.error.message);
-      }
-      const agentDataSourceConfigurations = fetchResult.value;
-
-      const searchResult = await coreAPI.searchNodes({
-        filter: {
-          data_source_views: makeDataSourceViewFilter(
-            agentDataSourceConfigurations
-          ),
-          node_ids: nodeIds,
-        },
-        options: {
-          cursor: nextPageCursor,
-          sort: sortBy
-            ? [{ field: sortBy, direction: getSortDirection(sortBy) }]
-            : undefined,
-        },
-      });
-
-      if (searchResult.isErr()) {
-        return makeMCPToolTextError("Failed to search content by ID");
-      }
-
-      return makeMCPToolJSONSuccess({
-        message: "Content items found successfully.",
-        result: renderSearchResults(searchResult.value),
-      });
-    }
-  );
-
-  server.tool(
-    "list_files",
-    "List the direct contents of a folder or container. Use this when you want to see what's " +
-      "inside a specific folder from your uploaded files or synced data sources (Notion, Slack, " +
-      "Github, etc.), like 'ls' in Unix. A good fit is when you need to explore the filesystem " +
-      "structure step by step. This tool can be called repeatedly by passing the 'id' output " +
-      "at a step to the next step's parentId.",
-    {
-      parentId: z
+      nodeId: z
         .string()
+        .nullable()
         .describe(
-          "The exact ID of the folder/container whose contents you want to list. " +
-            "Get this ID from previous search results (it's the 'id' field)."
+          "The exact ID of the node to list the contents of. " +
+            "This ID can be found from previous search results in the 'nodeId' field. " +
+            "If not provided, the content at the root of the filesystem will be shown."
+        ),
+      mimeTypes: z
+        .array(z.string())
+        .optional()
+        .describe(
+          "The mime types to search for. If provided, only nodes with one of these mime types " +
+            "will be returned. If not provided, no filter will be applied. The mime types passed " +
+            "here must be one of the mime types found in the 'mimeType' field."
         ),
       dataSources:
         ConfigurableToolInputSchemas[
@@ -222,7 +332,14 @@ const createServer = (
         ],
       ...OPTION_PARAMETERS,
     },
-    async ({ parentId, dataSources, limit, sortBy, nextPageCursor }) => {
+    async ({
+      nodeId,
+      dataSources,
+      limit,
+      mimeTypes,
+      sortBy,
+      nextPageCursor,
+    }) => {
       const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
       const fetchResult = await getAgentDataSourceConfigurations(dataSources);
 
@@ -231,133 +348,80 @@ const createServer = (
       }
       const agentDataSourceConfigurations = fetchResult.value;
 
-      const searchResult = await coreAPI.searchNodes({
-        filter: {
-          data_source_views: makeDataSourceViewFilter(
-            agentDataSourceConfigurations
-          ),
-          parent_id: parentId,
-        },
-        options: {
-          cursor: nextPageCursor,
-          limit,
-          sort: sortBy
-            ? [{ field: sortBy, direction: getSortDirection(sortBy) }]
-            : undefined,
-        },
-      });
+      const options = {
+        cursor: nextPageCursor,
+        limit,
+        sort: sortBy
+          ? [{ field: sortBy, direction: getSortDirection(sortBy) }]
+          : undefined,
+      };
+
+      let searchResult: Result<CoreAPISearchNodesResponse, CoreAPIError>;
+
+      if (!nodeId) {
+        // When nodeId is null, search for data sources only
+        const dataSourceViewFilter = makeDataSourceViewFilter(
+          agentDataSourceConfigurations
+        ).map((view) => ({
+          ...view,
+          search_scope: "data_source_name" as const,
+        }));
+
+        searchResult = await coreAPI.searchNodes({
+          filter: {
+            data_source_views: dataSourceViewFilter,
+            mime_types: mimeTypes ? { in: mimeTypes, not: null } : undefined,
+          },
+          options,
+        });
+      } else if (isDataSourceNodeId(nodeId)) {
+        // If it's a data source node ID, extract the data source ID and list its root contents
+        const dataSourceId = extractDataSourceIdFromNodeId(nodeId);
+        if (!dataSourceId) {
+          return makeMCPToolTextError("Invalid data source node ID format");
+        }
+
+        const dataSourceConfig = agentDataSourceConfigurations.find(
+          ({ dataSource }) => dataSource.dustAPIDataSourceId === dataSourceId
+        );
+
+        if (!dataSourceConfig) {
+          return makeMCPToolTextError(
+            `Data source not found for ID: ${dataSourceId}`
+          );
+        }
+
+        searchResult = await coreAPI.searchNodes({
+          filter: {
+            data_source_views: makeDataSourceViewFilter([dataSourceConfig]),
+            node_ids: dataSourceConfig.parentsIn ?? undefined,
+            parent_id: dataSourceConfig.parentsIn ? undefined : ROOT_PARENT_ID,
+            mime_types: mimeTypes ? { in: mimeTypes, not: null } : undefined,
+          },
+          options,
+        });
+      } else {
+        // Regular node listing
+        const dataSourceViewFilter = makeDataSourceViewFilter(
+          agentDataSourceConfigurations
+        );
+
+        searchResult = await coreAPI.searchNodes({
+          filter: {
+            data_source_views: dataSourceViewFilter,
+            parent_id: nodeId,
+            mime_types: mimeTypes ? { in: mimeTypes, not: null } : undefined,
+          },
+          options,
+        });
+      }
 
       if (searchResult.isErr()) {
         return makeMCPToolTextError("Failed to list folder contents");
       }
 
       return makeMCPToolJSONSuccess({
-        message: "Folder contents listed successfully.",
-        result: renderSearchResults(searchResult.value),
-      });
-    }
-  );
-
-  server.tool(
-    "list_root_items",
-    "Show the top-level folders and files in the data sources - the starting point of the " +
-      "filesystem hierarchy. Use this when you want to begin exploring your uploaded files or " +
-      "synced data from SaaS products (Notion, Slack, Github, etc.). This is like listing the " +
-      "root directory - it shows you the highest-level content items.",
-    {
-      dataSources:
-        ConfigurableToolInputSchemas[
-          INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
-        ],
-      ...OPTION_PARAMETERS,
-    },
-    async ({ dataSources, limit, sortBy, nextPageCursor }) => {
-      const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-      const fetchResult = await getAgentDataSourceConfigurations(dataSources);
-
-      if (fetchResult.isErr()) {
-        return makeMCPToolTextError(fetchResult.error.message);
-      }
-      const agentDataSourceConfigurations = fetchResult.value;
-
-      const searchResult = await coreAPI.searchNodes({
-        filter: {
-          data_source_views: makeDataSourceViewFilter(
-            agentDataSourceConfigurations
-          ),
-          parent_id: "root",
-        },
-        options: {
-          cursor: nextPageCursor,
-          limit,
-          sort: sortBy
-            ? [{ field: sortBy, direction: getSortDirection(sortBy) }]
-            : undefined,
-        },
-      });
-
-      if (searchResult.isErr()) {
-        return makeMCPToolTextError("Failed to list root content");
-      }
-
-      return makeMCPToolJSONSuccess({
-        message: "Root content listed successfully.",
-        result: renderSearchResults(searchResult.value),
-      });
-    }
-  );
-
-  server.tool(
-    "find_by_type",
-    "Find all content of a specific type from your uploaded files or synced data sources (Notion, " +
-      "Slack, Github, etc.). Use this to retrieve all documents, all spreadsheets/tables, or all " +
-      "folders. Good fits are requests like 'show me all the documents', 'find all spreadsheets', " +
-      "or 'list all folders'.",
-    {
-      nodeTypes: z
-        .array(z.enum(["document", "table", "folder"]))
-        .describe(
-          "Types of content to find. Use 'document' for text files, PDFs, presentations, etc." +
-            "Use 'table' for spreadsheets, Notion databases, structured data. Use 'folder' for " +
-            "containers/directories. You can specify multiple types to get mixed results."
-        ),
-      dataSources:
-        ConfigurableToolInputSchemas[
-          INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
-        ],
-      ...OPTION_PARAMETERS,
-    },
-    async ({ nodeTypes, dataSources, limit, sortBy, nextPageCursor }) => {
-      const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-      const fetchResult = await getAgentDataSourceConfigurations(dataSources);
-
-      if (fetchResult.isErr()) {
-        return makeMCPToolTextError(fetchResult.error.message);
-      }
-      const agentDataSourceConfigurations = fetchResult.value;
-
-      const searchResult = await coreAPI.searchNodes({
-        filter: {
-          data_source_views: makeDataSourceViewFilter(
-            agentDataSourceConfigurations
-          ),
-          node_types: nodeTypes,
-        },
-        options: {
-          cursor: nextPageCursor,
-          limit,
-          sort: sortBy
-            ? [{ field: sortBy, direction: getSortDirection(sortBy) }]
-            : undefined,
-        },
-      });
-
-      if (searchResult.isErr()) {
-        return makeMCPToolTextError("Failed to search content by type");
-      }
-
-      return makeMCPToolJSONSuccess({
-        message: "Content items found successfully.",
+        message: "Content listed successfully.",
         result: renderSearchResults(searchResult.value),
       });
     }
@@ -371,7 +435,7 @@ const createServer = (
       nodeIds: z
         .array(z.string())
         .describe(
-          "Array of exact content node IDs to search within. These are the 'id' values from " +
+          "Array of exact content node IDs to search within. These are the 'nodeId' values from " +
             "previous search results, which can be folders or files. All children of the designated " +
             "nodes will be searched. If not provided, all available files and folders will be searched."
         )
@@ -427,22 +491,48 @@ const createServer = (
         { concurrency: 10 }
       );
 
-      const coreSearchArgs = removeNulls(
-        coreSearchArgsResults.map((res) => (res.isOk() ? res.value : null))
-      ).map((coreSearchArgs) => {
-        if (!nodeIds) {
-          // If the agent doesn't provide nodeIds, we keep the default filter.
-          return coreSearchArgs;
-        }
+      // Set to avoid O(n^2) complexity below.
+      const dataSourceIds = new Set<string>(
+        removeNulls(
+          nodeIds?.map((nodeId) => extractDataSourceIdFromNodeId(nodeId)) ?? []
+        )
+      );
 
-        return {
-          ...coreSearchArgs,
-          filter: {
-            ...coreSearchArgs.filter,
-            parents: { in: nodeIds, not: [] },
-          },
-        };
-      });
+      const regularNodeIds =
+        nodeIds?.filter(
+          (nodeId) =>
+            !dataSourceIds.has(extractDataSourceIdFromNodeId(nodeId) ?? "")
+        ) ?? [];
+
+      const coreSearchArgs = removeNulls(
+        coreSearchArgsResults
+          .map((res) => (res.isOk() ? res.value : null))
+          .map((coreSearchArgs) => {
+            if (coreSearchArgs === null) {
+              return null;
+            }
+
+            if (!nodeIds || dataSourceIds.has(coreSearchArgs.dataSourceId)) {
+              // If the agent doesn't provide nodeIds, or if it provides the node id
+              // of this data source, we keep the default filter.
+              return coreSearchArgs;
+            }
+
+            // If there are only data source nodeIds, that are not this one, then
+            // this data source can be excluded from the search.
+            if (regularNodeIds.length === 0) {
+              return null;
+            }
+
+            return {
+              ...coreSearchArgs,
+              filter: {
+                ...coreSearchArgs.filter,
+                parents: { in: regularNodeIds, not: [] },
+              },
+            };
+          })
+      );
 
       if (coreSearchArgs.length === 0) {
         return {
@@ -545,71 +635,171 @@ const createServer = (
     }
   );
 
-  // TODO(2025-06-01 aubin): re-enable this if useful and once mime type filtering is implemented.
-  // server.tool(
-  //   "search_by_mime_type",
-  //   `Filter nodes by their MIME type. Use this to find nodes with specific content types.`,
-  //   {
-  //     mimeTypes: z
-  //       .array(z.string())
-  //       .describe(
-  //         "Array of MIME types to search for (e.g., 'text/plain', 'application/pdf')."
-  //       ),
-  //     dataSources:
-  //       ConfigurableToolInputSchemas[
-  //         INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
-  //       ],
-  //     limit: z
-  //       .number()
-  //       .optional()
-  //       .describe("Maximum number of nodes to retrieve."),
-  //   },
-  //   async ({ mimeTypes, dataSources, limit }) => {
-  //     const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-  //     const fetchResult = await getAgentDataSourceConfigurations(dataSources);
-  //
-  //     if (fetchResult.isErr()) {
-  //       return makeMCPToolTextError(fetchResult.error.message);
-  //     }
-  //     const agentDataSourceConfigurations = fetchResult.value;
-  //
-  //     // Use excluded_node_mime_types with a workaround since there's no direct include filter
-  //     // We'll search all nodes and filter client-side for now
-  //     const searchResult = await coreAPI.searchNodes({
-  //       filter: {
-  //         data_source_views: makeDataSourceViewFilter(
-  //           agentDataSourceConfigurations
-  //         )
-  //       },
-  //       options: {
-  //         limit: limit ? limit * 10 : 1000, // Get more results to filter
-  //       },
-  //     });
-  //
-  //     if (searchResult.isErr()) {
-  //       return makeMCPToolTextError("Failed to search nodes by MIME type");
-  //     }
-  //
-  //     // Filter results by MIME type client-side
-  //     const filteredNodes = searchResult.value.nodes.filter((node) =>
-  //       mimeTypes.includes(node.mime_type)
-  //     );
-  //
-  //     // Apply limit after filtering
-  //     const limitedNodes = limit
-  //       ? filteredNodes.slice(0, limit)
-  //       : filteredNodes;
-  //
-  //     return makeMCPToolJSONSuccess({
-  //       message: "Nodes found successfully.",
-  //       result: {
-  //         ...searchResult.value,
-  //         nodes: limitedNodes,
-  //         hit_count: limitedNodes.length,
-  //       },
-  //     });
-  //   }
-  // );
+  server.tool(
+    "locate_in_tree",
+    "Show the complete path from a node to the data source root, displaying the hierarchy of parent nodes. " +
+      "This is useful for understanding where a specific node is located within the data source structure. " +
+      "The path is returned as a list of nodes, with the first node being the data source root and the last node being the target node.",
+    {
+      nodeId: z.string().describe("The ID of the node to locate in the tree."),
+      dataSources:
+        ConfigurableToolInputSchemas[
+          INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
+        ],
+    },
+    async ({ nodeId, dataSources }) => {
+      const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+      const fetchResult = await getAgentDataSourceConfigurations(dataSources);
+
+      if (fetchResult.isErr()) {
+        return makeMCPToolTextError(fetchResult.error.message);
+      }
+      const agentDataSourceConfigurations = fetchResult.value;
+
+      if (isDataSourceNodeId(nodeId)) {
+        const dataSourceId = extractDataSourceIdFromNodeId(nodeId);
+        if (!dataSourceId) {
+          return makeMCPToolTextError("Invalid data source node ID format");
+        }
+
+        const dataSourceConfig = agentDataSourceConfigurations.find(
+          ({ dataSource }) => dataSource.dustAPIDataSourceId === dataSourceId
+        );
+
+        if (!dataSourceConfig) {
+          return makeMCPToolTextError(
+            `Data source not found for ID: ${dataSourceId}`
+          );
+        }
+
+        return makeMCPToolJSONSuccess({
+          message: "Node is the data source root.",
+          result: {
+            path: [
+              {
+                nodeId: nodeId,
+                title: dataSourceConfig.dataSource.name,
+                isCurrentNode: true,
+              },
+            ],
+          },
+        });
+      }
+
+      // Search for the target node.
+      const searchResult = await coreAPI.searchNodes({
+        filter: {
+          node_ids: [nodeId],
+          data_source_views: makeDataSourceViewFilter(
+            agentDataSourceConfigurations
+          ),
+        },
+      });
+
+      if (searchResult.isErr() || searchResult.value.nodes.length === 0) {
+        return makeMCPToolRecoverableErrorSuccess(
+          `Could not find node: ${nodeId}`
+        );
+      }
+
+      const targetNode = searchResult.value.nodes[0];
+
+      const dataSourceRootId = `${DATA_SOURCE_NODE_ID}-${targetNode.data_source_id}`;
+
+      // Build path node IDs excluding the data source root and target node.
+      const parentNodeIds = targetNode.parents
+        .filter((parentId) => parentId !== nodeId)
+        .reverse();
+
+      // Fetch the parent nodes (we already have the target node)
+      const pathNodes: Record<string, CoreAPIContentNode> = {};
+      if (parentNodeIds.length > 0) {
+        const pathSearchResult = await coreAPI.searchNodes({
+          filter: {
+            node_ids: parentNodeIds,
+            data_source_views: makeDataSourceViewFilter(
+              agentDataSourceConfigurations
+            ),
+          },
+        });
+
+        if (pathSearchResult.isErr()) {
+          return makeMCPToolTextError("Failed to fetch nodes in the path");
+        }
+
+        for (const node of pathSearchResult.value.nodes) {
+          pathNodes[node.node_id] = node;
+        }
+      }
+
+      // Add the target node to pathNodes since we already have it
+      pathNodes[nodeId] = targetNode;
+
+      const dataSourceConfig = agentDataSourceConfigurations.find(
+        ({ dataSource }) =>
+          dataSource.dustAPIDataSourceId === targetNode.data_source_id
+      );
+
+      if (!dataSourceConfig) {
+        return makeMCPToolTextError("Could not find data source configuration");
+      }
+
+      // Build the path array.
+      const pathItems = removeNulls([
+        // Data source root node
+        {
+          nodeId: dataSourceRootId,
+          title: dataSourceConfig.dataSource.name,
+          nodeType: "folder" as ContentNodeType,
+          isCurrentNode: false,
+        },
+        // Parent nodes
+        ...parentNodeIds.map((parentId) => {
+          const node = pathNodes[parentId];
+          if (!node) {
+            return null;
+          }
+          return {
+            nodeId: parentId,
+            title: node.title,
+            nodeType: node.node_type,
+            isCurrentNode: false,
+          };
+        }),
+        // Target node (always last)
+        {
+          nodeId: nodeId,
+          title: targetNode.title,
+          nodeType: targetNode.node_type,
+          isCurrentNode: true,
+        },
+      ]);
+
+      // Ensure we have at least one node in the path.
+      if (pathItems.length === 0) {
+        return makeMCPToolTextError(
+          "Unable to build a path to the node. The node may be orphaned or inaccessible."
+        );
+      }
+
+      // Ensure the target node is in the path
+      const hasCurrentNode = pathItems.some((item) => item.isCurrentNode);
+      if (!hasCurrentNode) {
+        return makeMCPToolTextError(
+          "The requested node is not accessible within the allowed data sources."
+        );
+      }
+
+      const path = pathItems;
+
+      return makeMCPToolJSONSuccess({
+        message: "Path located successfully.",
+        result: {
+          path: path,
+        },
+      });
+    }
+  );
 
   return server;
 };
@@ -640,12 +830,10 @@ async function getAgentDataSourceConfigurations(
 function makeDataSourceViewFilter(
   agentDataSourceConfigurations: AgentDataSourceConfiguration[]
 ) {
-  return agentDataSourceConfigurations.map(
-    ({ dataSource, dataSourceView }) => ({
-      data_source_id: dataSource.dustAPIDataSourceId,
-      view_filter: dataSourceView.parentsIn ?? [],
-    })
-  );
+  return agentDataSourceConfigurations.map(({ dataSource, parentsIn }) => ({
+    data_source_id: dataSource.dustAPIDataSourceId,
+    view_filter: parentsIn ?? [],
+  }));
 }
 
 function getSortDirection(field: "title" | "timestamp"): "asc" | "desc" {
@@ -655,6 +843,25 @@ function getSortDirection(field: "title" | "timestamp"): "asc" | "desc" {
     case "timestamp":
       return "desc"; // Most recent first.
   }
+}
+
+/**
+ * Check if a node ID represents a data source node.
+ * Data source node IDs have the format: "datasource_node_id-{data_source_id}"
+ */
+function isDataSourceNodeId(nodeId: string): boolean {
+  return nodeId.startsWith(`${DATA_SOURCE_NODE_ID}-`);
+}
+
+/**
+ * Extract the data source ID from a data source node ID.
+ * Returns null if the node ID is not a data source node ID.
+ */
+function extractDataSourceIdFromNodeId(nodeId: string): string | null {
+  if (!isDataSourceNodeId(nodeId)) {
+    return null;
+  }
+  return nodeId.substring(`${DATA_SOURCE_NODE_ID}-`.length);
 }
 
 function formatTimestamp(timestamp: number): string {
@@ -688,18 +895,22 @@ function formatTimestamp(timestamp: number): string {
  * Removes references to the term 'content node' and simplifies the format.
  */
 function renderNode(node: CoreAPIContentNode) {
+  // Transform data source node IDs to include the data source ID
+  const nodeId =
+    node.node_id === DATA_SOURCE_NODE_ID
+      ? `${DATA_SOURCE_NODE_ID}-${node.data_source_id}`
+      : node.node_id;
+
   return {
-    id: node.node_id,
-    type: node.node_type,
+    nodeId,
     title: node.title,
-    parent_id: node.parent_id,
     path: node.parents.join("/"),
-    parent_title: node.parent_title,
-    children_count: node.children_count,
-    last_updated_at: formatTimestamp(node.timestamp),
-    source_url: node.source_url,
+    parentTitle: node.parent_title,
+    lastUpdatedAt: formatTimestamp(node.timestamp),
+    sourceUrl: node.source_url,
     // TODO(2025-06-02 aubin): see if we want a translation on these.
-    mime_type: node.mime_type,
+    mimeType: node.mime_type,
+    hasChildren: node.children_count > 0,
   };
 }
 
@@ -710,8 +921,8 @@ function renderNode(node: CoreAPIContentNode) {
 function renderSearchResults(response: CoreAPISearchNodesResponse) {
   return {
     data: response.nodes.map(renderNode),
-    next_page_cursor: response.next_page_cursor,
-    result_count: response.hit_count,
+    nextPageCursor: response.next_page_cursor,
+    resultCount: response.hit_count,
   };
 }
 

@@ -17,6 +17,7 @@ export class KeyFactory {
         workspaceId: group.workspaceId,
         isSystem: false,
         status: "active",
+        role: "builder",
       },
       group
     );
@@ -29,6 +30,7 @@ export class KeyFactory {
         workspaceId: group.workspaceId,
         isSystem: false,
         status: "disabled",
+        role: "builder",
       },
       group
     );
@@ -41,6 +43,7 @@ export class KeyFactory {
         workspaceId: group.workspaceId,
         isSystem: true,
         status: "active",
+        role: "admin",
       },
       group
     );

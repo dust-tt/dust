@@ -10,8 +10,6 @@ export const WHITELISTABLE_FEATURES = [
   "force_gdrive_labels_scope",
   "google_ai_studio_experimental_models_feature",
   "index_private_slack_channel",
-  "labs_connection_hubspot",
-  "labs_connection_linear",
   "labs_salesforce_personal_connections",
   "labs_trackers",
   "labs_transcripts",
@@ -31,7 +29,13 @@ export const WHITELISTABLE_FEATURES = [
   "workos",
   "salesforce_tool",
   "gmail_tool",
+  "google_calendar_tool",
   "agent_builder_v2",
+  "disallow_agent_creation_to_users",
+  "agent_discovery",
+  "search_knowledge_builder",
+  "snowflake_connector_feature",
+  "extended_max_steps_per_run",
 ] as const;
 export type WhitelistableFeature = (typeof WHITELISTABLE_FEATURES)[number];
 export function isWhitelistableFeature(

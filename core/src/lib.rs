@@ -81,6 +81,7 @@ pub mod providers {
 }
 pub mod http {
     pub mod network;
+    pub mod proxy_client;
     pub mod request;
 }
 pub mod blocks {
@@ -136,6 +137,7 @@ pub mod oauth {
         pub mod google_drive;
         pub mod hubspot;
         pub mod intercom;
+        pub mod mcp;
         pub mod microsoft;
         pub mod mock;
         pub mod notion;

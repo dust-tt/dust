@@ -112,6 +112,7 @@ import type {
 import {
   asDisplayName,
   assertNever,
+  EXTENDED_MAX_STEPS_USE_PER_RUN_LIMIT,
   MAX_STEPS_USE_PER_RUN_LIMIT,
 } from "@app/types";
 
@@ -428,6 +429,7 @@ export default function ActionsScreen({
                     maxStepsPerRun,
                   }));
                 }}
+                hasFeature={hasFeature}
               />
             </div>
           )}
@@ -992,7 +994,9 @@ function ActionEditor({
   });
 
   const isConnected = connections.some(
-    (c) => c.internalMCPServerId === selectedMCPServerView?.server.sId
+    (c) =>
+      c.internalMCPServerId === selectedMCPServerView?.server.sId ||
+      c.remoteMCPServerId === selectedMCPServerView?.server.sId
   );
 
   // This is to show the data description input.
@@ -1025,12 +1029,13 @@ function ActionEditor({
     <div className="flex flex-col gap-4 px-1">
       <ActionModeSection show={true}>
         <div className="flex w-full flex-row items-center justify-between px-1">
-          {selectedMCPServerView ? (
+          {action.type === "MCP" && selectedMCPServerView ? (
             <MCPActionHeader
               mcpServer={selectedMCPServerView.server}
               isAuthorized={Boolean(selectedMCPServerView.server.authorization)}
               isConnected={isConnected}
               isConnectionsLoading={isConnectionsLoading}
+              action={action}
             />
           ) : (
             <div className="flex items-center gap-3">
@@ -1126,12 +1131,18 @@ function ActionEditor({
 interface AdvancedSettingsProps {
   maxStepsPerRun: number | null;
   setMaxStepsPerRun: (maxStepsPerRun: number | null) => void;
+  hasFeature: (feature: WhitelistableFeature | null | undefined) => boolean;
 }
 
 function AdvancedSettings({
   maxStepsPerRun,
   setMaxStepsPerRun,
+  hasFeature,
 }: AdvancedSettingsProps) {
+  const maxLimit = hasFeature("extended_max_steps_per_run")
+    ? EXTENDED_MAX_STEPS_USE_PER_RUN_LIMIT
+    : MAX_STEPS_USE_PER_RUN_LIMIT;
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -1143,9 +1154,7 @@ function AdvancedSettings({
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-60 p-2" align="end">
-        <DropdownMenuLabel
-          label={`Max steps per run (up to ${MAX_STEPS_USE_PER_RUN_LIMIT})`}
-        />
+        <DropdownMenuLabel label={`Max steps per run (up to ${maxLimit})`} />
         <Input
           value={maxStepsPerRun?.toString() ?? ""}
           placeholder=""
@@ -1156,11 +1165,7 @@ function AdvancedSettings({
               return;
             }
             const value = parseInt(e.target.value);
-            if (
-              !isNaN(value) &&
-              value >= 0 &&
-              value <= MAX_STEPS_USE_PER_RUN_LIMIT
-            ) {
+            if (!isNaN(value) && value >= 0 && value <= maxLimit) {
               setMaxStepsPerRun(value);
             }
           }}
@@ -1204,7 +1209,10 @@ function AddKnowledgeDropdown({
             return r.isOk() && r.value.name === "query_tables";
           });
         case "PROCESS":
-          return false;
+          return mcpServerViewsWithKnowledge.some((v) => {
+            const r = getInternalMCPServerNameAndWorkspaceId(v.server.sId);
+            return r.isOk() && r.value.name === "extract_data";
+          });
         default:
           assertNever(key);
       }

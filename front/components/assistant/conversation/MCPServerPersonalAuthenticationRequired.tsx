@@ -1,13 +1,11 @@
-import {
-  ArrowPathIcon,
-  Button,
-  Chip,
-  CloudArrowLeftRightIcon,
-} from "@dust-tt/sparkle";
+import { Button, Chip, CloudArrowLeftRightIcon } from "@dust-tt/sparkle";
 import { useState } from "react";
 
 import { useSubmitFunction } from "@app/lib/client/utils";
-import { useCreatePersonalConnection } from "@app/lib/swr/mcp_servers";
+import {
+  useCreatePersonalConnection,
+  useMCPServer,
+} from "@app/lib/swr/mcp_servers";
 import type {
   LightWorkspaceType,
   OAuthProvider,
@@ -19,19 +17,23 @@ export function MCPServerPersonalAuthenticationRequired({
   mcpServerId,
   provider,
   useCase,
+  scope,
   retryHandler,
 }: {
   owner: LightWorkspaceType;
   mcpServerId: string;
   provider: OAuthProvider;
   useCase: OAuthUseCase;
+  scope?: string;
   retryHandler: () => void;
 }) {
+  const { server: mcpServer } = useMCPServer({
+    owner,
+    serverId: mcpServerId,
+  });
   const { createPersonalConnection } = useCreatePersonalConnection(owner);
 
-  const { submit: retry, isSubmitting: isRetrying } = useSubmitFunction(
-    async () => retryHandler()
-  );
+  const { submit: retry } = useSubmitFunction(async () => retryHandler());
 
   const [isConnected, setIsConnected] = useState<boolean>(false);
   const [isConnecting, setIsConnecting] = useState<boolean>(false);
@@ -42,16 +44,8 @@ export function MCPServerPersonalAuthenticationRequired({
         <div className="flex flex-col gap-1 sm:flex-row">
           <Chip
             color="success"
-            label={"You are now connected. The agent message can be retried"}
+            label={"You are now connected. Automatically retrying..."}
             size="xs"
-          />
-          <Button
-            label={`Retry`}
-            variant="outline"
-            size="xs"
-            icon={ArrowPathIcon}
-            disabled={isRetrying}
-            onClick={retry}
           />
         </div>
       ) : (
@@ -63,27 +57,31 @@ export function MCPServerPersonalAuthenticationRequired({
             }
             size="xs"
           />
-          <Button
-            label={`Connect`}
-            variant="outline"
-            size="xs"
-            icon={CloudArrowLeftRightIcon}
-            disabled={isConnecting}
-            onClick={async () => {
-              setIsConnecting(true);
-              const success = await createPersonalConnection(
-                mcpServerId,
-                provider,
-                useCase
-              );
-              setIsConnecting(false);
-              if (!success) {
-                setIsConnected(false);
-              } else {
-                setIsConnected(true);
-              }
-            }}
-          />
+          {mcpServer && (
+            <Button
+              label={`Connect`}
+              variant="outline"
+              size="xs"
+              icon={CloudArrowLeftRightIcon}
+              disabled={isConnecting}
+              onClick={async () => {
+                setIsConnecting(true);
+                const success = await createPersonalConnection(
+                  mcpServer,
+                  provider,
+                  useCase,
+                  scope
+                );
+                setIsConnecting(false);
+                if (!success) {
+                  setIsConnected(false);
+                } else {
+                  setIsConnected(true);
+                  await retry();
+                }
+              }}
+            />
+          )}
         </div>
       )}
     </div>

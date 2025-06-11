@@ -79,7 +79,7 @@ function makeCoreDataSourceViewFilter(
   };
 }
 
-const ROOT_PARENT_ID = "root";
+export const ROOT_PARENT_ID = "root";
 
 export async function getFlattenedContentNodesOfViewTypeForDataSourceView(
   dataSourceView: DataSourceViewResource | DataSourceViewType,

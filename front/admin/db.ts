@@ -48,6 +48,7 @@ import {
   GlobalAgentSettings,
 } from "@app/lib/models/assistant/agent";
 import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
+import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
 import {
   AgentMessage,
   AgentMessageFeedback,
@@ -89,7 +90,6 @@ import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces"
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { KeyModel } from "@app/lib/resources/storage/models/keys";
 import { KillSwitchModel } from "@app/lib/resources/storage/models/kill_switches";
-import { LabsConnectionsConfigurationModel } from "@app/lib/resources/storage/models/labs_connections";
 // Labs - Can be removed at all times if a solution is dropped
 import {
   LabsTranscriptsConfigurationModel,
@@ -189,6 +189,7 @@ async function main() {
   await AgentConversationIncludeFileAction.sync({ alter: true });
   await AgentDustAppRunAction.sync({ alter: true });
   await AgentMessageContent.sync({ alter: true });
+  await AgentStepContentModel.sync({ alter: true });
   await AgentProcessAction.sync({ alter: true });
   await AgentReasoningAction.sync({ alter: true });
   await AgentRetrievalAction.sync({ alter: true });
@@ -206,7 +207,6 @@ async function main() {
 
   await LabsTranscriptsConfigurationModel.sync({ alter: true });
   await LabsTranscriptsHistoryModel.sync({ alter: true });
-  await LabsConnectionsConfigurationModel.sync({ alter: true });
   await LabsPersonalSalesforceConnection.sync({ alter: true });
 
   await PluginRunModel.sync({ alter: true });

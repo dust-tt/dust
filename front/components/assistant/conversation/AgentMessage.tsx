@@ -66,6 +66,7 @@ import {
   isOAuthProvider,
   isOAuthUseCase,
   isSupportedImageContentType,
+  isValidScope,
 } from "@app/types";
 
 interface AgentMessageProps {
@@ -172,19 +173,20 @@ export function AgentMessage({
       // Handle validation dialog separately.
       if (eventPayload.data.type === "tool_approve_execution") {
         showValidationDialog({
-          workspaceId: owner.sId,
-          messageId: message.sId,
-          conversationId: conversationId,
-          action: eventPayload.data.action,
+          messageId: eventPayload.data.messageId,
+          conversationId: eventPayload.data.conversationId,
+          actionId: eventPayload.data.actionId,
           inputs: eventPayload.data.inputs,
           stake: eventPayload.data.stake,
           metadata: eventPayload.data.metadata,
+          // TODO(MCP 2025-06-09): Remove this once all extensions are updated.
+          action: eventPayload.data.action,
         });
 
         return;
       }
 
-      // This event is emmited in front/lib/api/assistant/pubsub.ts. It's purpose is to signal the
+      // This event is emitted in front/lib/api/assistant/pubsub.ts. Its purpose is to signal the
       // end of the stream to the client. The message reducer does not, and should not, handle this
       // event, so we just return.
       if (eventPayload.data.type === "end-of-stream") {
@@ -193,7 +195,7 @@ export function AgentMessage({
 
       dispatch(eventPayload.data);
     },
-    [showValidationDialog, owner.sId, message.sId, conversationId]
+    [showValidationDialog]
   );
 
   useEventSource(
@@ -501,7 +503,8 @@ export function AgentMessage({
         typeof agentMessage.error.metadata?.mcp_server_id === "string" &&
         agentMessage.error.metadata?.mcp_server_id.length > 0 &&
         isOAuthProvider(agentMessage.error.metadata?.provider) &&
-        isOAuthUseCase(agentMessage.error.metadata?.use_case)
+        isOAuthUseCase(agentMessage.error.metadata?.use_case) &&
+        isValidScope(agentMessage.error.metadata?.scope)
       ) {
         return (
           <MCPServerPersonalAuthenticationRequired
@@ -509,6 +512,7 @@ export function AgentMessage({
             mcpServerId={agentMessage.error.metadata.mcp_server_id}
             provider={agentMessage.error.metadata.provider}
             useCase={agentMessage.error.metadata.use_case}
+            scope={agentMessage.error.metadata.scope}
             retryHandler={async () => retryHandler(agentMessage)}
           />
         );
@@ -563,6 +567,7 @@ export function AgentMessage({
             agentMessage={agentMessage}
             conversationId={conversationId}
             lastAgentStateClassification={messageStreamState.agentState}
+            actionProgress={messageStreamState.actionProgress}
             owner={owner}
           />
 

@@ -50,6 +50,7 @@ import {
   SlackChannel,
   SlackChatBotMessage,
 } from "@connectors/lib/models/slack";
+import { createProxyAwareFetch } from "@connectors/lib/proxy";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
@@ -68,6 +69,7 @@ import {
 const MAX_FILE_SIZE_TO_UPLOAD = 10 * 1024 * 1024; // 10 MB
 
 type BotAnswerParams = {
+  responseUrl?: string;
   slackTeamId: string;
   slackChannel: string;
   slackUserId: string | null;
@@ -206,11 +208,12 @@ export async function botReplaceMention(
 }
 
 type ToolValidationParams = {
-  actionId: number;
+  actionId: string;
   approved: "approved" | "rejected";
   conversationId: string;
   messageId: string;
   slackBotMessageId: number;
+  text: string;
 };
 
 export async function botValidateToolExecution(
@@ -220,10 +223,11 @@ export async function botValidateToolExecution(
     conversationId,
     messageId,
     slackBotMessageId,
+    text,
   }: ToolValidationParams,
   params: BotAnswerParams
 ) {
-  const { slackChannel, slackMessageTs, slackTeamId } = params;
+  const { slackChannel, slackMessageTs, slackTeamId, responseUrl } = params;
 
   const connectorRes = await getSlackConnector(params);
   if (connectorRes.isErr()) {
@@ -258,11 +262,33 @@ export async function botValidateToolExecution(
       approved,
     });
 
+    if (responseUrl) {
+      // Use response_url to delete the message
+      // Deleting is preferred over updating the message (see https://github.com/dust-tt/dust/pull/13268)
+      const proxyFetch = createProxyAwareFetch();
+      const response = await proxyFetch(responseUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          delete_original: true,
+        }),
+      });
+
+      if (!response.ok) {
+        logger.error(
+          {
+            responseUrl,
+            connectorId: connector.id,
+          },
+          "Failed to delete original message using response_url"
+        );
+      }
+    }
     const slackClient = await getSlackClient(connector.id);
     await slackClient.chat.postEphemeral({
       channel: slackChannel,
       user: slackChatBotMessage.slackUserId,
-      text: `The tool execution has been ${approved}.`,
+      text,
       thread_ts: slackMessageTs,
     });
 
@@ -952,8 +978,9 @@ async function makeContentFragments(
     logger.info({ conversationId }, "Found supported files, uploading them.");
 
     // Download the files and upload them to the conversation.
+    const proxyFetch = createProxyAwareFetch();
     for (const f of supportedFiles) {
-      const response = await fetch(f.url_private_download!, {
+      const response = await proxyFetch(f.url_private_download!, {
         headers: {
           Authorization: `Bearer ${slackClient.token}`,
         },
@@ -974,7 +1001,7 @@ async function makeContentFragments(
         continue;
       }
 
-      const fileContent = await response.blob();
+      const fileContent = Buffer.from(await response.arrayBuffer());
 
       const fileName = f.name || f.title || "notitle";
 

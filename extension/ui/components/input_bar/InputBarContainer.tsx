@@ -5,9 +5,11 @@ import { getSpaceAccessPriority } from "@app/shared/lib/spaces";
 import { classNames } from "@app/shared/lib/utils";
 import { AssistantPicker } from "@app/ui/components/assistants/AssistantPicker";
 import { AttachFragment } from "@app/ui/components/conversation/AttachFragment";
+import { MentionDropdown } from "@app/ui/components/input_bar/editor/MentionDropdown";
 import type { CustomEditorProps } from "@app/ui/components/input_bar/editor/useCustomEditor";
 import useCustomEditor from "@app/ui/components/input_bar/editor/useCustomEditor";
 import useHandleMentions from "@app/ui/components/input_bar/editor/useHandleMentions";
+import { useMentionDropdown } from "@app/ui/components/input_bar/editor/useMentionDropdown";
 import { usePublicAssistantSuggestions } from "@app/ui/components/input_bar/editor/usePublicAssistantSuggestions";
 import useUrlHandler from "@app/ui/components/input_bar/editor/useUrlHandler";
 import { InputBarAttachmentsPicker } from "@app/ui/components/input_bar/InputBarAttachmentPicker";
@@ -22,8 +24,10 @@ import type {
   LightAgentConfigurationType,
 } from "@dust-tt/client";
 import { SplitButton, useSendNotification } from "@dust-tt/sparkle";
+import type { Editor } from "@tiptap/react";
 import { EditorContent } from "@tiptap/react";
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { useRef } from "react";
 
 export interface InputBarContainerProps {
   allAssistants: LightAgentConfigurationType[];
@@ -64,6 +68,9 @@ export const InputBarContainer = ({
   const [selectedNode, setSelectedNode] =
     useState<DataSourceViewContentNodeType | null>(null);
 
+  // Create a ref to hold the editor instance
+  const editorRef = useRef<Editor | null>(null);
+
   const handleUrlDetected = useCallback(
     (candidate: UrlCandidate | NodeCandidate | null) => {
       if (candidate) {
@@ -73,16 +80,27 @@ export const InputBarContainer = ({
     []
   );
 
+  const handleUrlReplaced = () => {
+    setNodeOrUrlCandidate(null);
+  };
+
+  const mentionDropdown = useMentionDropdown(suggestions, editorRef);
+
   const { editor, editorService } = useCustomEditor({
     suggestions,
     onEnterKeyDown,
     disableAutoFocus,
     onUrlDetected: handleUrlDetected,
+    suggestionHandler: mentionDropdown.getSuggestionHandler(),
   });
+
+  useEffect(() => {
+    editorRef.current = editor;
+  }, [editor]);
 
   const sendNotification = useSendNotification();
 
-  useUrlHandler(editor, selectedNode);
+  useUrlHandler(editor, selectedNode, nodeOrUrlCandidate, handleUrlReplaced);
 
   const { spaces, isSpacesLoading } = useSpaces();
   const spacesMap = useMemo(
@@ -95,7 +113,7 @@ export const InputBarContainer = ({
       ? {
           // NodeIdSearchParams
           nodeIds: nodeOrUrlCandidate?.node ? [nodeOrUrlCandidate.node] : [],
-          includeDataSources: true,
+          includeDataSources: false,
           viewType: "all",
           disabled: isSpacesLoading || !nodeOrUrlCandidate,
           spaceIds: spaces.map((s) => s.sId),
@@ -104,7 +122,7 @@ export const InputBarContainer = ({
           // TextSearchParams
           search: nodeOrUrlCandidate?.url || "",
           searchSourceUrls: true,
-          includeDataSources: true,
+          includeDataSources: false,
           viewType: "all",
           disabled: isSpacesLoading || !nodeOrUrlCandidate,
           spaceIds: spaces.map((s) => s.sId),
@@ -127,8 +145,14 @@ export const InputBarContainer = ({
         }));
       });
 
-      if (nodesWithViews.length > 0) {
-        const sortedNodes = nodesWithViews.sort(
+      const nodes = nodesWithViews.filter(
+        (node) =>
+          isNodeCandidate(nodeOrUrlCandidate) ||
+          node.sourceUrl === nodeOrUrlCandidate?.url
+      );
+
+      if (nodes.length > 0) {
+        const sortedNodes = nodes.sort(
           (a, b) =>
             b.spacePriority - a.spacePriority ||
             a.spaceName.localeCompare(b.spaceName)
@@ -136,19 +160,16 @@ export const InputBarContainer = ({
         const node = sortedNodes[0];
         onNodeSelect(node);
         setSelectedNode(node);
+        return;
       }
-
-      // Reset node candidate after processing.
-      // FIXME: This causes reset to early and it requires pasting the url twice.
-      setNodeOrUrlCandidate(null);
-    } else {
-      sendNotification({
-        title: "No match for URL",
-        description: `Pasted URL does not match any content in knowledge. ${nodeOrUrlCandidate?.provider === "microsoft" ? "(Microsoft URLs are not supported)" : ""}`,
-        type: "info",
-      });
-      setNodeOrUrlCandidate(null);
     }
+
+    sendNotification({
+      title: "No match for URL",
+      description: `Pasted URL does not match any content in knowledge. ${nodeOrUrlCandidate?.provider === "microsoft" ? "(Microsoft URLs are not supported)" : ""}`,
+      type: "info",
+    });
+    setNodeOrUrlCandidate(null);
   }, [
     searchResultNodes,
     onNodeSelect,
@@ -262,6 +283,8 @@ export const InputBarContainer = ({
           }
         />
       </div>
+
+      <MentionDropdown mentionDropdownState={mentionDropdown} />
     </div>
   );
 };

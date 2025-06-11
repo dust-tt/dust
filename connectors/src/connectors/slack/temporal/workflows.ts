@@ -15,7 +15,6 @@ import { newWebhookSignal, syncChannelSignal } from "./signals";
 
 const {
   getChannel,
-  syncChannel,
   fetchUsers,
   saveSuccessSyncActivity,
   syncChannelMetadata,
@@ -27,13 +26,11 @@ const {
   startToCloseTimeout: "10 minutes",
 });
 
-const { deleteChannel, syncThread } = proxyActivities<typeof activities>({
-  startToCloseTimeout: "30 minutes",
-});
-
-const { syncNonThreaded } = proxyActivities<typeof activities>({
-  startToCloseTimeout: "50 minutes",
-});
+const { deleteChannel, syncThread, syncChannel, syncNonThreaded } =
+  proxyActivities<typeof activities>({
+    heartbeatTimeout: "15 minutes",
+    startToCloseTimeout: "90 minutes",
+  });
 
 /**
  * This workflow is in charge of synchronizing all the content of the Slack channels selected by the user.

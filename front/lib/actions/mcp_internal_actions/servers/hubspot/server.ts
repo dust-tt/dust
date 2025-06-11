@@ -48,6 +48,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
   authorization: {
     provider: "hubspot" as const,
     use_case: "platform_actions" as const,
+    supported_use_cases: ["platform_actions"] as const,
   },
   icon: "HubspotLogo",
 };

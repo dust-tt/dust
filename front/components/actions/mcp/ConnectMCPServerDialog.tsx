@@ -7,13 +7,25 @@ import {
   DialogTitle,
   useSendNotification,
 } from "@dust-tt/sparkle";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { MCPServerOAuthConnexion } from "@app/components/actions/mcp/MCPServerOAuthConnexion";
-import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
+import {
+  getMcpServerDisplayName,
+  getServerTypeAndIdFromSId,
+  isRemoteMCPServerType,
+} from "@app/lib/actions/mcp_helper";
+import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata";
 import type { MCPServerType } from "@app/lib/api/mcp";
-import { useCreateMCPServerConnection } from "@app/lib/swr/mcp_servers";
-import type { OAuthCredentials, WorkspaceType } from "@app/types";
+import {
+  useCreateMCPServerConnection,
+  useDiscoverOAuthMetadata,
+} from "@app/lib/swr/mcp_servers";
+import type {
+  MCPOAuthUseCase,
+  OAuthCredentials,
+  WorkspaceType,
+} from "@app/types";
 import { OAUTH_PROVIDER_NAMES, setupOAuthConnection } from "@app/types";
 
 type ConnectMCPServerDialogProps = {
@@ -27,59 +39,139 @@ type ConnectMCPServerDialogProps = {
 export function ConnectMCPServerDialog({
   owner,
   mcpServer,
-  setIsLoading,
+  setIsLoading: setExternalIsLoading,
   isOpen = false,
   setIsOpen,
 }: ConnectMCPServerDialogProps) {
   const sendNotification = useSendNotification();
+  const [isLoading, setIsLoading] = useState(false);
+  const [useCase, setUseCase] = useState<MCPOAuthUseCase | null>(null);
   const [authCredentials, setAuthCredentials] =
     useState<OAuthCredentials | null>(null);
+  const [
+    remoteMCPServerOAuthDiscoveryDone,
+    setRemoteMCPServerOAuthDiscoveryDone,
+  ] = useState(false);
+  const [authorization, setAuthorization] = useState<AuthorizationInfo | null>(
+    null
+  );
   const [isFormValid, setIsFormValid] = useState(true);
-
   const { createMCPServerConnection } = useCreateMCPServerConnection({
     owner,
     connectionType: "workspace",
   });
+  const { discoverOAuthMetadata } = useDiscoverOAuthMetadata(owner);
+
+  const serverType = useMemo(
+    () =>
+      mcpServer
+        ? getServerTypeAndIdFromSId(mcpServer.sId).serverType
+        : "internal",
+    [mcpServer]
+  );
+
+  useEffect(() => {
+    const discoverOAuth = async () => {
+      if (isOpen && mcpServer) {
+        if (serverType === "internal") {
+          setAuthorization(mcpServer.authorization);
+        } else if (
+          isRemoteMCPServerType(mcpServer) &&
+          mcpServer.url &&
+          !remoteMCPServerOAuthDiscoveryDone
+        ) {
+          setIsLoading(true);
+          const discoverOAuthMetadataRes = await discoverOAuthMetadata(
+            mcpServer.url
+          );
+
+          if (
+            discoverOAuthMetadataRes.isOk() &&
+            discoverOAuthMetadataRes.value.oauthRequired
+          ) {
+            setAuthorization({
+              provider: "mcp",
+              // During setup, the use case is always "platform_actions".
+              use_case: "platform_actions",
+              supported_use_cases: ["platform_actions"], // TODO(mcp): Add personal_actions option.
+            });
+            setAuthCredentials({
+              ...discoverOAuthMetadataRes.value.connectionMetadata,
+            });
+            setRemoteMCPServerOAuthDiscoveryDone(true);
+          }
+        }
+        setIsLoading(false);
+      } else {
+        setAuthorization(null);
+      }
+    };
+
+    void discoverOAuth();
+  }, [
+    mcpServer,
+    isOpen,
+    serverType,
+    remoteMCPServerOAuthDiscoveryDone,
+    discoverOAuthMetadata,
+  ]);
 
   const resetState = useCallback(() => {
-    setIsLoading(false);
+    setExternalIsLoading(false);
     setAuthCredentials(null);
-  }, [setIsLoading]);
+    setIsLoading(false);
+    setRemoteMCPServerOAuthDiscoveryDone(false);
+    setAuthorization(null);
+    setUseCase(null);
+  }, [setExternalIsLoading]);
 
   const handleSave = async () => {
-    if (!mcpServer?.authorization) {
-      throw new Error(
-        "MCP server has no authorization while trying to connect"
-      );
+    if (!mcpServer) {
+      throw new Error("MCP server is null while trying to connect");
     }
 
-    setIsLoading(true);
+    if (!authorization) {
+      throw new Error("Authorization is null while trying to connect");
+    }
+
+    if (!useCase) {
+      throw new Error("Use case is null while trying to connect");
+    }
 
     // First setup connection
+    setIsLoading(true);
     const cRes = await setupOAuthConnection({
       dustClientFacingUrl: `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}`,
       owner,
-      provider: mcpServer.authorization.provider,
-      useCase: mcpServer.authorization.use_case,
-      extraConfig: authCredentials ?? {},
+      provider: authorization.provider,
+      // During setup, the use case is always "platform_actions".
+      useCase: "platform_actions",
+      extraConfig: {
+        ...(authCredentials ?? {}),
+        ...(authorization.scope ? { scope: authorization.scope } : {}),
+      },
     });
     if (cRes.isErr()) {
       sendNotification({
         type: "error",
-        title: `Failed to connect ${OAUTH_PROVIDER_NAMES[mcpServer.authorization.provider]}`,
+        title: `Failed to connect ${OAUTH_PROVIDER_NAMES[authorization.provider]}`,
         description: cRes.error.message,
       });
+      setIsLoading(false);
       return;
     }
 
+    setExternalIsLoading(true);
     // Then associate connection
     await createMCPServerConnection({
       connectionId: cRes.value.connection_id,
-      mcpServerId: mcpServer.sId,
-      provider: mcpServer.authorization.provider,
+      mcpServer: mcpServer,
+      provider: authorization.provider,
     });
 
+    setExternalIsLoading(false);
     setIsLoading(false);
+    setIsOpen(false);
   };
 
   return (
@@ -97,12 +189,22 @@ export function ConnectMCPServerDialog({
           </DialogTitle>
         </DialogHeader>
         <DialogContainer>
-          <MCPServerOAuthConnexion
-            authorization={mcpServer?.authorization ?? null}
-            authCredentials={authCredentials}
-            setAuthCredentials={setAuthCredentials}
-            setIsFormValid={setIsFormValid}
-          />
+          {authorization && (
+            <MCPServerOAuthConnexion
+              remoteMCPServerUrl={
+                mcpServer && isRemoteMCPServerType(mcpServer)
+                  ? mcpServer.url
+                  : undefined
+              }
+              useCase={useCase}
+              setUseCase={setUseCase}
+              authorization={authorization}
+              authCredentials={authCredentials}
+              setAuthCredentials={setAuthCredentials}
+              setIsFormValid={setIsFormValid}
+              documentationUrl={mcpServer?.documentationUrl}
+            />
+          )}
         </DialogContainer>
         <DialogFooter
           leftButtonProps={{
@@ -111,17 +213,17 @@ export function ConnectMCPServerDialog({
             onClick: resetState,
           }}
           rightButtonProps={{
-            label: mcpServer?.authorization ? "Save and connect" : "Save",
+            isLoading: isLoading,
+            label: authorization ? "Save & Connect" : "",
             variant: "primary",
             onClick: (e: React.MouseEvent<HTMLButtonElement>) => {
               e.preventDefault();
               e.stopPropagation();
               if (isFormValid) {
                 void handleSave();
-                setIsOpen(false);
               }
             },
-            disabled: !isFormValid,
+            disabled: !isFormValid || (authorization && !useCase) || isLoading,
           }}
         />
       </DialogContent>

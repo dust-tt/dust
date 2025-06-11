@@ -8,6 +8,7 @@ import type {
   WebCrawlerFolder,
   WebCrawlerPage,
 } from "@connectors/lib/models/webcrawler";
+import { createProxyAwareFetch } from "@connectors/lib/proxy";
 import type { ContentNodeType } from "@connectors/types";
 import { WEBCRAWLER_MAX_DEPTH } from "@connectors/types";
 
@@ -230,6 +231,7 @@ export async function verifyRedirect(
   let foundEndOfRedirect = false;
   let redirectCount = 0;
   const visitedUrls = new Set<string>();
+  const proxyFetch = createProxyAwareFetch();
 
   do {
     // Fail fast if it get into a loop
@@ -254,7 +256,7 @@ export async function verifyRedirect(
     const timeoutId = setTimeout(() => controller.abort(), 5000);
 
     try {
-      const response = await fetch(url, {
+      const response = await proxyFetch(url, {
         method: "GET",
         redirect: "manual",
         signal: controller.signal,

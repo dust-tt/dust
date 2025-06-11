@@ -26,9 +26,48 @@ import { destroyMCPServerViewDependencies } from "@app/lib/models/assistant/acti
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { cacheWithRedis } from "@app/lib/utils/cache";
+import type { MCPOAuthUseCase } from "@app/types";
 import { removeNulls } from "@app/types";
+import { isDevelopment } from "@app/types";
 
 const METADATA_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+// Getting the metadata is a relatively long operation, so we cache it for 5 minutes
+// as internal servers are not expected to change often.
+// In any case, when actually running the action, the metadata will be fetched from the MCP server.
+const getCachedMetadata = cacheWithRedis(
+  async (auth: Authenticator, id: string) => {
+    const s = await connectToMCPServer(auth, {
+      params: {
+        type: "mcpServerId",
+        mcpServerId: id,
+      },
+    });
+
+    if (s.isErr()) {
+      return null;
+    }
+
+    const mcpClient = s.value;
+    const md = extractMetadataFromServerVersion(mcpClient.getServerVersion());
+
+    const metadata = {
+      ...md,
+      tools: extractMetadataFromTools(
+        (await mcpClient.listTools()).tools
+      ) as any,
+      availability: isInternalMCPServerName(md.name)
+        ? getAvailabilityOfInternalMCPServerByName(md.name)
+        : "manual",
+    };
+
+    await mcpClient.close();
+
+    return metadata;
+  },
+  (_auth: Authenticator, id: string) => `internal-mcp-server-metadata-${id}`,
+  isDevelopment() ? 1000 : METADATA_CACHE_TTL_MS
+);
 
 export class InternalMCPServerInMemoryResource {
   // SID of the internal MCP server, scoped to a workspace.
@@ -57,46 +96,7 @@ export class InternalMCPServerInMemoryResource {
 
     const server = new InternalMCPServerInMemoryResource(id);
 
-    // Getting the metadata is a relatively long operation, so we cache it for 5 minutes
-    // as internal servers are not expected to change often.
-    // In any case, when actually running the action, the metadata will be fetched from the MCP server.
-    const getCachedMetadata = cacheWithRedis(
-      async (id: string) => {
-        const s = await connectToMCPServer(auth, {
-          params: {
-            type: "mcpServerId",
-            mcpServerId: id,
-          },
-        });
-
-        if (s.isErr()) {
-          return null;
-        }
-
-        const mcpClient = s.value;
-        const md = extractMetadataFromServerVersion(
-          mcpClient.getServerVersion()
-        );
-
-        const metadata = {
-          ...md,
-          tools: extractMetadataFromTools(
-            (await mcpClient.listTools()).tools
-          ) as any,
-          availability: isInternalMCPServerName(md.name)
-            ? getAvailabilityOfInternalMCPServerByName(md.name)
-            : "manual",
-        };
-
-        await mcpClient.close();
-
-        return metadata;
-      },
-      (id) => `internal-mcp-server-metadata-${id}`,
-      METADATA_CACHE_TTL_MS
-    );
-
-    const cachedMetadata = await getCachedMetadata(id);
+    const cachedMetadata = await getCachedMetadata(auth, id);
     if (!cachedMetadata) {
       return null;
     }
@@ -108,7 +108,13 @@ export class InternalMCPServerInMemoryResource {
 
   static async makeNew(
     auth: Authenticator,
-    name: InternalMCPServerNameType,
+    {
+      name,
+      useCase,
+    }: {
+      name: InternalMCPServerNameType;
+      useCase: MCPOAuthUseCase | null;
+    },
     transaction?: Transaction
   ) {
     const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
@@ -141,6 +147,7 @@ export class InternalMCPServerInMemoryResource {
         vaultId: systemSpace.id,
         editedAt: new Date(),
         editedByUserId: auth.user()?.id,
+        oAuthUseCase: useCase ?? null,
       },
       { transaction }
     );

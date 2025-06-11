@@ -24,45 +24,18 @@ export async function getDataSourceDocuments({
   pageCursor,
   sourceRegion,
   workspaceId,
+  fileName,
 }: {
   dataSourceCoreIds: DataSourceCoreIds;
   pageCursor: string | null;
   sourceRegion: RegionType;
   workspaceId: string;
+  fileName?: string;
 }) {
   const localLogger = logger.child({
     dataSourceCoreIds,
     sourceRegion,
   });
-
-  // Temporary to skip the following data source.
-  if (
-    (dataSourceCoreIds.dustAPIDataSourceId ===
-      "df69e40abbd004a2160fd1af77fcfe6a88c34a774b99f226182e96780dad7ac9" &&
-      dataSourceCoreIds.dustAPIProjectId === "12474") ||
-    (dataSourceCoreIds.dustAPIDataSourceId ===
-      "ca0f1a3af99fae9973911353df5fc6eb12b922b997e19407657f32d9db424fea" &&
-      dataSourceCoreIds.dustAPIProjectId === "7548")
-  ) {
-    const blobs: CoreDocumentAPIRelocationBlob = {
-      blobs: {
-        documents: [],
-      },
-    };
-
-    // 3) Save the document blobs to file storage.
-    const dataPath = await writeToRelocationStorage(blobs, {
-      workspaceId,
-      type: "core",
-      operation: "data_source_documents_blobs",
-    });
-
-    return {
-      dataPath,
-      // Returning null to indicate that we have processed this data source.
-      nextPageCursor: null,
-    };
-  }
 
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), localLogger);
 
@@ -160,6 +133,7 @@ export async function getDataSourceDocuments({
     workspaceId,
     type: "core",
     operation: "data_source_documents_blobs",
+    fileName,
   });
 
   localLogger.info(

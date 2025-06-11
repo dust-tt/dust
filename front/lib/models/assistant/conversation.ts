@@ -3,6 +3,7 @@ import { DataTypes } from "sequelize";
 
 import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
 import type { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
+import type { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { UserModel } from "@app/lib/resources/storage/models/user";
@@ -22,6 +23,7 @@ export class ConversationModel extends WorkspaceAwareModel<ConversationModel> {
   declare sId: string;
   declare title: string | null;
   declare visibility: CreationOptional<ConversationVisibility>;
+  declare depth: CreationOptional<number>;
 
   declare requestedGroupIds: number[][];
 }
@@ -50,6 +52,11 @@ ConversationModel.init(
       type: DataTypes.STRING,
       allowNull: false,
       defaultValue: "unlisted",
+    },
+    depth: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
     },
     requestedGroupIds: {
       type: DataTypes.ARRAY(DataTypes.ARRAY(DataTypes.BIGINT)),
@@ -256,6 +263,7 @@ export class AgentMessage extends WorkspaceAwareModel<AgentMessage> {
   declare agentConfigurationVersion: number;
 
   declare agentMessageContents?: NonAttribute<AgentMessageContent[]>;
+  declare agentStepContents?: NonAttribute<AgentStepContentModel[]>;
   declare message?: NonAttribute<Message>;
   declare feedbacks?: NonAttribute<AgentMessageFeedback[]>;
 }

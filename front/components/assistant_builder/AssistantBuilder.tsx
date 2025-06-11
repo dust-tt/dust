@@ -60,7 +60,7 @@ import { useModels } from "@app/lib/swr/models";
 import { useUser } from "@app/lib/swr/user";
 import {
   assertNever,
-  CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG,
+  CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG,
   GPT_4_1_MINI_MODEL_CONFIG,
   isAdmin,
   isBuilder,
@@ -173,7 +173,7 @@ export default function AssistantBuilder({
             ...getDefaultAssistantState().generationSettings,
             modelSettings: !isUpgraded(plan)
               ? GPT_4_1_MINI_MODEL_CONFIG
-              : CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG,
+              : CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG,
           },
         }
   );

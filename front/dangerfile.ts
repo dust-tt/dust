@@ -1,10 +1,12 @@
 import { danger, fail, warn } from "danger";
+import fs from "fs";
 
 const sdkAckLabel = "sdk-ack";
 const migrationAckLabel = "migration-ack";
 const documentationAckLabel = "documentation-ack";
 const auth0UpdateLabelAck = "auth0-update-ack";
 const rawSqlAckLabel = "raw-sql-ack";
+const sparkleVersionAckLabel = "sparkle-version-ack";
 
 const hasLabel = (label: string) => {
   return danger.github.issue.labels.some((l) => l.name === label);
@@ -124,6 +126,47 @@ function checkAppsRegistry() {
   );
 }
 
+async function checkSparkleVersionConsistency() {
+  const frontPackageJsonDiff =
+    await danger.git.diffForFile("front/package.json");
+
+  const extensionPackageJsonDiff = await danger.git.diffForFile(
+    "extension/package.json"
+  );
+
+  if (!frontPackageJsonDiff && !extensionPackageJsonDiff) {
+    return;
+  }
+
+  const frontPackageJson = JSON.parse(fs.readFileSync("package.json", "utf8"));
+
+  const extensionPackageJson = JSON.parse(
+    fs.readFileSync("../extension/package.json", "utf8")
+  );
+
+  const frontVersion = frontPackageJson.dependencies?.["@dust-tt/sparkle"];
+  const extensionVersion =
+    extensionPackageJson.dependencies?.["@dust-tt/sparkle"];
+
+  if (!frontVersion || !extensionVersion) {
+    return;
+  }
+
+  const normalizeVersion = (v: string) => v.replace(/^[~^]/, "");
+
+  if (normalizeVersion(frontVersion) !== normalizeVersion(extensionVersion)) {
+    const message = `Sparkle versions must be kept in sync:\n- front: ${frontVersion}\n- extension: ${extensionVersion}`;
+
+    if (hasLabel(sparkleVersionAckLabel)) {
+      warn(
+        `${message}\nPR has "${sparkleVersionAckLabel}" label. Ensure both are updated together.`
+      );
+    } else {
+      fail(`${message}\nUpdate both or add "${sparkleVersionAckLabel}" label.`);
+    }
+  }
+}
+
 /**
  * Check if added lines have raw SQL
  */
@@ -231,6 +274,15 @@ async function checkDiffFiles() {
   });
   if (modifiedFrontFiles.length > 0) {
     await checkRawSqlRegistry(modifiedFrontFiles);
+  }
+
+  // Sparkle version consistency check
+  const modifiedPackageJsonFiles = diffFiles.filter((path) => {
+    return path === "front/package.json" || path === "extension/package.json";
+  });
+
+  if (modifiedPackageJsonFiles.length > 0) {
+    await checkSparkleVersionConsistency();
   }
 }
 

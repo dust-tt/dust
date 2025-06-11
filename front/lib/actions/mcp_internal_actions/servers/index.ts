@@ -6,6 +6,7 @@ import { default as dataSourcesFileSystemServer } from "@app/lib/actions/mcp_int
 import { default as generateFileServer } from "@app/lib/actions/mcp_internal_actions/servers/file_generation";
 import { default as githubServer } from "@app/lib/actions/mcp_internal_actions/servers/github";
 import { default as gmailServer } from "@app/lib/actions/mcp_internal_actions/servers/gmail";
+import { default as calendarServer } from "@app/lib/actions/mcp_internal_actions/servers/google_calendar";
 import { default as hubspotServer } from "@app/lib/actions/mcp_internal_actions/servers/hubspot/server";
 import { default as imageGenerationDallEServer } from "@app/lib/actions/mcp_internal_actions/servers/image_generation";
 import { default as includeDataServer } from "@app/lib/actions/mcp_internal_actions/servers/include";
@@ -78,6 +79,8 @@ export async function getInternalMCPServer(
       return salesforceServer(auth, mcpServerId);
     case "gmail":
       return gmailServer(auth, mcpServerId);
+    case "google_calendar":
+      return calendarServer(auth, mcpServerId);
     case "data_sources_file_system":
       return dataSourcesFileSystemServer(auth, agentLoopContext);
     default:

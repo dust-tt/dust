@@ -1,7 +1,6 @@
 import { useDustAPI } from "@app/shared/lib/dust_api";
 import { asDisplayName } from "@app/shared/lib/utils";
 import type {
-  MCPActionPublicType,
   MCPToolStakeLevelPublicType,
   MCPValidationMetadataPublicType,
   MCPValidationOutputPublicType,
@@ -10,6 +9,7 @@ import {
   ActionPieChartIcon,
   Avatar,
   Button,
+  Checkbox,
   CodeBlock,
   CollapsibleComponent,
   Dialog,
@@ -19,13 +19,14 @@ import {
   DialogHeader,
   DialogTitle,
   Icon,
+  Label,
   Spinner,
 } from "@dust-tt/sparkle";
 import { createContext, useCallback, useEffect, useState } from "react";
 
 type ActionValidationContextType = {
   showValidationDialog: (validationRequest: {
-    action: MCPActionPublicType;
+    actionId: string;
     conversationId: string;
     inputs: Record<string, unknown>;
     messageId: string;
@@ -37,7 +38,7 @@ type ActionValidationContextType = {
 
 // Pending validation requests, keyed by message ID
 export type PendingValidationRequestType = {
-  action: MCPActionPublicType;
+  actionId: string;
   conversationId: string;
   inputs: Record<string, unknown>;
   messageId: string;
@@ -124,7 +125,7 @@ export function ActionValidationProvider({
       const response = await dustAPI.validateAction({
         conversationId: currentValidation.conversationId,
         messageId: currentValidation.messageId,
-        actionId: currentValidation.action.id,
+        actionId: currentValidation.actionId,
         approved,
       });
 
@@ -156,15 +157,9 @@ export function ActionValidationProvider({
     }
   }, [currentValidation]);
 
-  const showValidationDialog = (validationRequest: {
-    workspaceId: string;
-    messageId: string;
-    conversationId: string;
-    action: MCPActionPublicType;
-    inputs: Record<string, unknown>;
-    stake?: MCPToolStakeLevelPublicType;
-    metadata: MCPValidationMetadataPublicType;
-  }) => {
+  const showValidationDialog = (
+    validationRequest: PendingValidationRequestType
+  ) => {
     addToQueue(validationRequest);
     setErrorMessage(null);
   };
@@ -244,20 +239,21 @@ export function ActionValidationProvider({
                 </div>
               )}
             </div>
-          </DialogContainer>
-          <DialogFooter
-            permanentValidation={
-              currentValidation?.stake === "low"
-                ? {
-                    label: "Always allow this tool",
-                    checked: neverAskAgain,
-                    onChange: (check) => {
+            {currentValidation?.stake === "low" && (
+              <div className="mt-5">
+                <Label className="copy-sm flex w-fit cursor-pointer flex-row items-center gap-2 py-2 pr-2 font-normal">
+                  <Checkbox
+                    checked={neverAskAgain}
+                    onCheckedChange={(check) => {
                       setNeverAskAgain(!!check);
-                    },
-                  }
-                : undefined
-            }
-          >
+                    }}
+                  />
+                  <span>Always allow this tool</span>
+                </Label>
+              </div>
+            )}
+          </DialogContainer>
+          <DialogFooter>
             <Button
               label="Decline"
               variant="outline"

@@ -18,7 +18,7 @@ import {
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/actions/constants";
 import type { DustAppRunConfigurationType } from "@app/lib/actions/dust_app_run";
-import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/utils";
+import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { ReasoningModelConfiguration } from "@app/lib/actions/reasoning";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { FetchAssistantTemplateResponse } from "@app/pages/api/templates/[tId]";
@@ -42,7 +42,7 @@ import type {
 } from "@app/types";
 import {
   assertNever,
-  CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG,
+  CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG,
   DEFAULT_MAX_STEPS_USE_PER_RUN,
 } from "@app/types";
 import type { TagType } from "@app/types/tag";
@@ -318,8 +318,8 @@ export function getDefaultAssistantState() {
     avatarUrl: null,
     generationSettings: {
       modelSettings: {
-        modelId: CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG.modelId,
-        providerId: CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG.providerId,
+        modelId: CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG.modelId,
+        providerId: CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG.providerId,
       },
       temperature: 0.7,
     },

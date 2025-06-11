@@ -9,7 +9,6 @@ import type {
 import { z } from "zod";
 
 import { getAccessTokenForInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/authentication";
-import type { MCPToolResult } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
   makeMCPToolJSONSuccess,
   makeMCPToolTextError,
@@ -25,6 +24,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
   authorization: {
     provider: "notion" as const,
     use_case: "platform_actions" as const,
+    supported_use_cases: ["platform_actions"] as const,
   },
   icon: "NotionLogo",
 };
@@ -243,7 +243,7 @@ const FallbackBlock = z
   })
   .passthrough();
 
-export const NotionBlockSchema: z.ZodType<any> = z.union([
+export const NotionBlockSchema: z.ZodType = z.union([
   ParagraphBlock,
   Heading1Block,
   Heading2Block,
@@ -263,7 +263,7 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
   // Consolidated wrapper for Notion client creation and error handling
   async function withNotionClient<T>(
     fn: (notion: Client) => Promise<T>
-  ): Promise<CallToolResult | MCPToolResult> {
+  ): Promise<CallToolResult> {
     try {
       const notion = await getNotionClient(auth, mcpServerId);
       if (!notion) {

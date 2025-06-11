@@ -33,6 +33,8 @@ jobs:
             'connectors/src/resources/storage/models/'
             'front/pages/api/v1/'
             'sdks/js/'
+            'front/package.json'
+            'extension/package.json'
           )
 
           PATHS_STRING="${MONITORED_PATHS[*]}"

@@ -11,15 +11,12 @@ import logger from "@connectors/logger/logger";
 import { withLogging } from "@connectors/logger/withlogging";
 
 export const STATIC_AGENT_CONFIG = "static_agent_config";
-export const TOOL_VALIDATION_ACTIONS = [
-  "approve_tool_execution",
-  "reject_tool_execution",
-] as const;
+export const APPROVE_TOOL_EXECUTION = "approve_tool_execution";
+export const REJECT_TOOL_EXECUTION = "reject_tool_execution";
 
-const [first, second] = TOOL_VALIDATION_ACTIONS;
 const ToolValidationActionsCodec = t.union([
-  t.literal(first),
-  t.literal(second),
+  t.literal(APPROVE_TOOL_EXECUTION),
+  t.literal(REJECT_TOOL_EXECUTION),
 ]);
 
 const StaticAgentConfigSchema = t.type({
@@ -41,7 +38,14 @@ const ToolValidationActionsSchema = t.type({
   action_id: ToolValidationActionsCodec,
   block_id: t.string,
   action_ts: t.string,
+  value: t.string,
 });
+
+export type RequestToolPermissionActionValueParsed = {
+  status: "approved" | "rejected";
+  agentName: string;
+  toolName: string;
+};
 
 export const SlackInteractionPayloadSchema = t.type({
   team: t.type({
@@ -63,6 +67,7 @@ export const SlackInteractionPayloadSchema = t.type({
   actions: t.array(
     t.union([StaticAgentConfigSchema, ToolValidationActionsSchema])
   ),
+  response_url: t.string,
 });
 
 type SlackWebhookResBody = { challenge: string } | null;
@@ -96,6 +101,7 @@ const _webhookSlackInteractionsAPIHandler = async (
   }
 
   const payload = bodyValidation.right;
+  const responseUrl = payload.response_url;
 
   for (const action of payload.actions) {
     if (action.action_id === STATIC_AGENT_CONFIG) {
@@ -130,7 +136,10 @@ const _webhookSlackInteractionsAPIHandler = async (
           return;
         }
       }
-    } else if (TOOL_VALIDATION_ACTIONS.includes(action.action_id)) {
+    } else if (
+      action.action_id === APPROVE_TOOL_EXECUTION ||
+      action.action_id === REJECT_TOOL_EXECUTION
+    ) {
       const {
         workspaceId,
         conversationId,
@@ -143,6 +152,7 @@ const _webhookSlackInteractionsAPIHandler = async (
       } = JSON.parse(action.block_id);
 
       const params = {
+        responseUrl,
         slackTeamId: payload.team.id,
         slackChannel: payload.channel.id,
         slackUserId: payload.user.id,
@@ -151,8 +161,15 @@ const _webhookSlackInteractionsAPIHandler = async (
         slackMessageTs: messageTs,
       };
 
-      const approved =
-        action.action_id === "approve_tool_execution" ? "approved" : "rejected";
+      const {
+        status: approved,
+        agentName,
+        toolName,
+      } = JSON.parse(action.value) as RequestToolPermissionActionValueParsed;
+
+      const text = `Agent \`@${agentName}\`'s request to use tool \`${toolName}\` was ${
+        approved === "approved" ? "✅ approved" : "❌ rejected"
+      }`;
 
       const validationRes = await botValidateToolExecution(
         {
@@ -161,6 +178,7 @@ const _webhookSlackInteractionsAPIHandler = async (
           conversationId,
           messageId,
           slackBotMessageId,
+          text,
         },
         params
       );
@@ -173,7 +191,6 @@ const _webhookSlackInteractionsAPIHandler = async (
             conversationId,
             messageId,
             actionId,
-            approved,
           },
           "Failed to validate tool execution"
         );

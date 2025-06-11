@@ -1,6 +1,6 @@
 {
   "name": "@dust-tt/client",
-  "version": "1.0.52",
+  "version": "1.0.54",
   "description": "Client for Dust API",
   "repository": {
     "type": "git",
@@ -41,7 +41,7 @@
     "typescript": "^5.4.5"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.11.4",
+    "@modelcontextprotocol/sdk": "git://github.com:dust-tt/typescript-sdk.git#bca26e405d6db2cf71fd7211234a72ecc46d0215",
     "@types/json-schema": "^7.0.15",
     "event-source-polyfill": "^1.0.31",
     "eventsource-parser": "^1.1.1",

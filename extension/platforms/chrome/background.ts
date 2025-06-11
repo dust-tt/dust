@@ -10,15 +10,21 @@ import type {
 import type { PendingUpdate } from "@app/platforms/chrome/services/core_platform";
 import { ChromeCorePlatformService } from "@app/platforms/chrome/services/core_platform";
 import {
-  AUTH0_CLIENT_DOMAIN,
   AUTH0_CLIENT_ID,
+  DEFAULT_DUST_API_DOMAIN,
   DUST_API_AUDIENCE,
+  getAuthorizeURL,
+  getLogoutURL,
+  getOAuthClientID,
+  getTokenURL,
 } from "@app/shared/lib/config";
 import { extractPage } from "@app/shared/lib/extraction";
 import { generatePKCE } from "@app/shared/lib/utils";
-import type { Auth0AuthorizeResponse } from "@app/shared/services/auth";
+import type { OAuthAuthorizeResponse } from "@app/shared/services/auth";
+import { jwtDecode } from "jwt-decode";
 
 const log = console.error;
+const DEFAULT_TOKEN_EXPIRY_IN_SECONDS = 3600; // 1 hour.
 
 // Initialize the platform service.
 const platform = new ChromeCorePlatformService();
@@ -26,13 +32,32 @@ const platform = new ChromeCorePlatformService();
 const state: {
   refreshingToken: boolean;
   refreshRequests: ((
-    auth: Auth0AuthorizeResponse | AuthBackgroundResponse
+    auth: OAuthAuthorizeResponse | AuthBackgroundResponse
   ) => void)[];
   lastHandler: (() => void) | undefined;
+  authPlatform: "auth0" | "workos";
 } = {
   refreshingToken: false,
   refreshRequests: [],
   lastHandler: undefined,
+  authPlatform: "auth0",
+};
+
+/**
+ * Fetch the auth platform from the API
+ */
+const fetchAuthPlatform = async () => {
+  try {
+    const response = await fetch(`${DEFAULT_DUST_API_DOMAIN}/api/v1/auth`);
+    if (!response.ok) {
+      throw new Error("Failed to fetch auth platform");
+    }
+    const data = await response.json();
+    state.authPlatform = data.auth;
+  } catch (error) {
+    log("Error fetching auth platform:", error);
+    state.authPlatform = "auth0"; // Default to auth0 if there's an error
+  }
 };
 
 /**
@@ -118,7 +143,7 @@ chrome.tabs.onActivated.addListener(async (activeInfo) => {
   }
 });
 
-chrome.runtime.onConnect.addListener((port) => {
+chrome.runtime.onConnect.addListener(async (port) => {
   if (port.name === "sidepanel-connection") {
     console.log("Sidepanel is there");
     void platform.storage.set("extensionReady", true);
@@ -129,6 +154,9 @@ chrome.runtime.onConnect.addListener((port) => {
       state.lastHandler = undefined;
     });
   }
+
+  // Fetch and store the auth platform
+  void fetchAuthPlatform();
 });
 
 const getActionHandler = (menuItemId: string | number) => {
@@ -221,7 +249,7 @@ chrome.runtime.onMessage.addListener(
     sender,
     sendResponse: (
       response:
-        | Auth0AuthorizeResponse
+        | OAuthAuthorizeResponse
         | AuthBackgroundResponse
         | CaptureResponse
         | GetActiveTabBackgroundResponse
@@ -241,7 +269,7 @@ chrome.runtime.onMessage.addListener(
         void refreshToken(message.refreshToken, sendResponse);
         return true;
       case "LOGOUT":
-        logout(sendResponse);
+        void logout(sendResponse);
         return true; // Keep the message channel open.
 
       case "SIGN_CONNECT":
@@ -467,30 +495,39 @@ chrome.runtime.onMessageExternal.addListener((request) => {
 });
 
 /**
- * Authenticate the user using Auth0.
+ * Authenticate the user using Auth0 or WorkOS.
  */
 const authenticate = async (
   { isForceLogin, connection }: AuthBackgroundMessage,
-  sendResponse: (auth: Auth0AuthorizeResponse | AuthBackgroundResponse) => void
+  sendResponse: (auth: OAuthAuthorizeResponse | AuthBackgroundResponse) => void
 ) => {
   // First we call /authorize endpoint to get the authorization code (PKCE flow).
   const redirectUrl = chrome.identity.getRedirectURL();
   const { codeVerifier, codeChallenge } = await generatePKCE();
-  const options = {
-    client_id: AUTH0_CLIENT_ID,
+
+  const options: Record<string, string> = {
+    client_id: getOAuthClientID(state.authPlatform),
     response_type: "code",
-    scope:
-      "offline_access read:user_profile read:conversation create:conversation update:conversation read:agent read:file create:file delete:file",
     redirect_uri: redirectUrl,
-    audience: DUST_API_AUDIENCE,
     code_challenge_method: "S256",
     code_challenge: codeChallenge,
-    prompt: isForceLogin ? "login" : "",
-    connection: connection ?? "",
   };
 
+  if (state.authPlatform === "auth0") {
+    options.audience = DUST_API_AUDIENCE;
+    options.scope =
+      "offline_access read:user_profile read:conversation create:conversation update:conversation read:agent read:file create:file delete:file";
+    options.prompt = isForceLogin ? "login" : "";
+  } else if (state.authPlatform === "workos") {
+    options.scope = "openid profile email";
+    if (connection) {
+      options.organization_id = connection;
+    }
+    options.provider = "authkit";
+  }
+
   const queryString = new URLSearchParams(options).toString();
-  const authUrl = `https://${AUTH0_CLIENT_DOMAIN}/authorize?${queryString}`;
+  const authUrl = getAuthorizeURL({ auth: state.authPlatform, queryString });
 
   chrome.identity.launchWebAuthFlow(
     { url: authUrl, interactive: true },
@@ -509,9 +546,15 @@ const authenticate = async (
       const url = new URL(redirectUrl);
       const queryParams = new URLSearchParams(url.search);
       const authorizationCode = queryParams.get("code");
+      const error = queryParams.get("error");
+
+      if (error) {
+        log(`Authentication error: ${error}`);
+        sendResponse({ success: false });
+        return;
+      }
 
       if (authorizationCode) {
-        // Once we have the code we call /token endpoint to exchange it for tokens.
         const data = await exchangeCodeForTokens(
           authorizationCode,
           codeVerifier
@@ -530,21 +573,22 @@ const authenticate = async (
  */
 const refreshToken = async (
   refreshToken: string,
-  sendResponse: (auth: Auth0AuthorizeResponse | AuthBackgroundResponse) => void
+  sendResponse: (auth: OAuthAuthorizeResponse | AuthBackgroundResponse) => void
 ) => {
   state.refreshRequests.push(sendResponse);
   if (!state.refreshingToken) {
     state.refreshingToken = true;
     try {
-      const tokenUrl = `https://${AUTH0_CLIENT_DOMAIN}/oauth/token`;
-      const response = await fetch(tokenUrl, {
+      const tokenParams: Record<string, string> = {
+        grant_type: "refresh_token",
+        client_id: getOAuthClientID(state.authPlatform),
+        refresh_token: refreshToken,
+      };
+
+      const response = await fetch(getTokenURL(state.authPlatform), {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams({
-          grant_type: "refresh_token",
-          client_id: AUTH0_CLIENT_ID,
-          refresh_token: refreshToken,
-        }),
+        body: new URLSearchParams(tokenParams),
       });
 
       if (!response.ok) {
@@ -561,7 +605,7 @@ const refreshToken = async (
         sendResponse({
           accessToken: data.access_token,
           refreshToken: data.refresh_token || refreshToken,
-          expiresIn: data.expires_in,
+          expiresIn: data.expires_in ?? DEFAULT_TOKEN_EXPIRY_IN_SECONDS,
         });
       });
     } catch (error) {
@@ -583,19 +627,21 @@ const refreshToken = async (
 const exchangeCodeForTokens = async (
   code: string,
   codeVerifier: string
-): Promise<Auth0AuthorizeResponse | AuthBackgroundResponse> => {
+): Promise<OAuthAuthorizeResponse | AuthBackgroundResponse> => {
   try {
-    const tokenUrl = `https://${AUTH0_CLIENT_DOMAIN}/oauth/token`;
-    const response = await fetch(tokenUrl, {
+    const tokenParams: Record<string, string> = {
+      grant_type: "authorization_code",
+      client_id: getOAuthClientID(state.authPlatform),
+      code_verifier: codeVerifier,
+      code,
+      redirect_uri: chrome.identity.getRedirectURL(),
+    };
+
+    const tokenURL = getTokenURL(state.authPlatform);
+    const response = await fetch(tokenURL, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        grant_type: "authorization_code",
-        client_id: AUTH0_CLIENT_ID,
-        code_verifier: codeVerifier,
-        code,
-        redirect_uri: chrome.identity.getRedirectURL(),
-      }),
+      body: new URLSearchParams(tokenParams),
     });
 
     if (!response.ok) {
@@ -606,11 +652,11 @@ const exchangeCodeForTokens = async (
     }
 
     const data = await response.json();
-
     return {
       accessToken: data.access_token,
       refreshToken: data.refresh_token,
-      expiresIn: data.expires_in,
+      expiresIn: data.expires_in ?? DEFAULT_TOKEN_EXPIRY_IN_SECONDS,
+      ...(data.id_token && { idToken: data.id_token }),
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error.";
@@ -620,11 +666,36 @@ const exchangeCodeForTokens = async (
 };
 
 /**
- * Logout the user from Auth0.
+ * Logout the user.
  */
-const logout = (sendResponse: (response: AuthBackgroundResponse) => void) => {
+const logout = async (
+  sendResponse: (response: AuthBackgroundResponse) => void
+) => {
   const redirectUri = chrome.identity.getRedirectURL();
-  const logoutUrl = `https://${AUTH0_CLIENT_DOMAIN}/v2/logout?client_id=${AUTH0_CLIENT_ID}&returnTo=${encodeURIComponent(redirectUri)}`;
+  const queryParams: Record<string, string> = {
+    returnTo: redirectUri,
+  };
+
+  if (state.authPlatform === "auth0") {
+    queryParams.client_id = AUTH0_CLIENT_ID;
+  } else if (state.authPlatform === "workos") {
+    // We need to get the session to log out the user from WorkOS.
+    const accessToken = await platform.auth.getAccessToken();
+    if (accessToken) {
+      const decodedPayload = jwtDecode<Record<string, string>>(accessToken);
+      if (decodedPayload) {
+        queryParams.session_id = decodedPayload.sid || "";
+      }
+    } else {
+      log("No access token found for WorkOS logout.");
+      sendResponse({ success: false });
+      return;
+    }
+  }
+  const logoutUrl = getLogoutURL({
+    auth: state.authPlatform,
+    queryString: new URLSearchParams(queryParams).toString(),
+  });
 
   chrome.identity.launchWebAuthFlow(
     { url: logoutUrl, interactive: true },

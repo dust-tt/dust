@@ -73,14 +73,14 @@ type AdminActionsListProps = {
   owner: LightWorkspaceType;
   filter: string;
   systemSpace: SpaceType;
-  setMcpServer: (mcpServer: MCPServerType) => void;
+  setMcpServerToShow: (mcpServer: MCPServerType) => void;
 };
 
 export const AdminActionsList = ({
   owner,
   filter,
   systemSpace,
-  setMcpServer,
+  setMcpServerToShow,
 }: AdminActionsListProps) => {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [internalMCPServerToCreate, setInternalMCPServerToCreate] = useState<
@@ -121,7 +121,10 @@ export const AdminActionsList = ({
       setIsCreateOpen(true);
     } else {
       setIsLoading(true);
-      await createInternalMCPServer(mcpServer.name, true);
+      await createInternalMCPServer({
+        name: mcpServer.name,
+        includeGlobal: true,
+      });
       setIsLoading(false);
     }
   };
@@ -233,11 +236,13 @@ export const AdminActionsList = ({
         mcpServerView,
         spaces: spaces.filter((s) => spaceIds?.includes(s.sId)),
         isConnected: !!connections.find(
-          (c) => c.internalMCPServerId === mcpServer.sId
+          (c) =>
+            c.internalMCPServerId === mcpServer.sId ||
+            c.remoteMCPServerId === mcpServer.sId
         ),
         onClick: () => {
           if (mcpServerView && mcpServer) {
-            setMcpServer(mcpServer);
+            setMcpServerToShow(mcpServer);
           }
         },
       };
@@ -253,7 +258,7 @@ export const AdminActionsList = ({
         setIsOpen={setIsCreateOpen}
         setIsLoading={setIsLoading}
         owner={owner}
-        setMCPServer={setMcpServer}
+        setMCPServerToShow={setMcpServerToShow}
       />
       {rows.length > 0 &&
         portalToHeader(

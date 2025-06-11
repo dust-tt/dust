@@ -1,4 +1,5 @@
 use crate::{
+    http::proxy_client::create_untrusted_egress_client_builder,
     oauth::{
         connection::{
             Connection, ConnectionProvider, FinalizeResult, Provider, ProviderError, RefreshResult,
@@ -10,6 +11,7 @@ use crate::{
 };
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
+use tracing::error;
 
 pub struct SalesforceConnectionProvider {}
 
@@ -60,6 +62,17 @@ impl SalesforceConnectionProvider {
 impl Provider for SalesforceConnectionProvider {
     fn id(&self) -> ConnectionProvider {
         ConnectionProvider::Salesforce
+    }
+
+    fn reqwest_client(&self) -> reqwest::Client {
+        // Salesforce provider makes requests to user-provided instance URLs, so we use the untrusted egress proxy.
+        match create_untrusted_egress_client_builder().build() {
+            Ok(client) => client,
+            Err(e) => {
+                error!(error = ?e, "Failed to create client with untrusted egress proxy");
+                reqwest::Client::new()
+            }
+        }
     }
 
     async fn finalize(

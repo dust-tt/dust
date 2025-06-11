@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { fetchRemoteServerMetaDataByURL } from "@app/lib/actions/mcp_metadata";
+import { fetchRemoteServerMetaDataByServerId } from "@app/lib/actions/mcp_metadata";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { MCPServerType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
@@ -65,15 +65,7 @@ async function handler(
     });
   }
 
-  const r = await fetchRemoteServerMetaDataByURL(
-    auth,
-    server.url,
-    server.sharedSecret
-      ? {
-          Authorization: `Bearer ${server.sharedSecret}`,
-        }
-      : undefined
-  );
+  const r = await fetchRemoteServerMetaDataByServerId(auth, server.sId);
   if (r.isErr()) {
     await server.markAsErrored(auth, {
       lastError: r.error.message,

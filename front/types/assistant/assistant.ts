@@ -1,3 +1,6 @@
+import { CHAIN_OF_THOUGHT_META_PROMPT } from "@app/types/assistant/chain_of_thought_meta_prompt";
+import { CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION } from "@app/types/assistant/chain_of_thought_meta_prompt";
+
 import type { WhitelistableFeature } from "../shared/feature_flags";
 import type { ExtractSpecificKeys } from "../shared/typescipt_utils";
 import { ioTsEnum } from "../shared/utils/iots_utils";
@@ -95,7 +98,7 @@ export function getLargeWhitelistedModel(
   owner: WorkspaceType
 ): ModelConfigurationType | null {
   if (isProviderWhitelisted(owner, "anthropic")) {
-    return CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG;
+    return CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG;
   }
   if (isProviderWhitelisted(owner, "openai")) {
     return GPT_4_1_MODEL_CONFIG;
@@ -277,9 +280,6 @@ export type ModelConfigurationType = {
     // the next event before emitting tokens.
     incompleteDelimiterPatterns: RegExp[];
   };
-
-  // This meta-prompt is injected into the agent's system instructions every time.
-  metaPrompt?: string;
 
   // This meta-prompt is injected into the agent's system instructions if the agent is in a tool-use context.
   toolUseMetaPrompt?: string;
@@ -561,57 +561,6 @@ export const O4_MINI_HIGH_REASONING_MODEL_CONFIG: ModelConfigurationType = {
   reasoningEffort: "high",
 };
 
-const ANTHROPIC_DELIMITERS_CONFIGURATION = {
-  incompleteDelimiterPatterns: [/<\/?[a-zA-Z_]*$/],
-  delimiters: [
-    {
-      openingPattern: "<thinking>",
-      closingPattern: "</thinking>",
-      classification: "chain_of_thought" as const,
-      swallow: false,
-    },
-    {
-      openingPattern: "<search_quality_reflection>",
-      closingPattern: "</search_quality_reflection>",
-      classification: "chain_of_thought" as const,
-      swallow: false,
-    },
-    {
-      openingPattern: "<reflecting>",
-      closingPattern: "</reflecting>",
-      classification: "chain_of_thought" as const,
-      swallow: false,
-    },
-    {
-      openingPattern: "<search_quality_score>",
-      closingPattern: "</search_quality_score>",
-      classification: "chain_of_thought" as const,
-      swallow: true,
-    },
-    {
-      openingPattern: "<result>",
-      closingPattern: "</result>",
-      classification: "tokens" as const,
-      swallow: false,
-    },
-    {
-      openingPattern: "<response>",
-      closingPattern: "</response>",
-      classification: "tokens" as const,
-      swallow: false,
-    },
-  ],
-};
-
-const ANTHROPIC_TOOL_USE_META_PROMPT =
-  `Immediately before using a tool, think for one short bullet point in \`<thinking>\` tags about ` +
-  `how it evaluates against the criteria for a good and bad tool use. ` +
-  `You are restricted to a maximum of MAX_STEPS_USE_PER_RUN tool uses per run. ` +
-  `After using a tool, think for one short bullet point in \`<thinking>\` tags to evaluate ` +
-  `whether the tools results are enough to answer the user's question. ` +
-  `The response to the user must be in \`<response>\` tags. ` +
-  `There must be a single \`<response>\` after the tools use (if any).`;
-
 export const CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
   modelId: CLAUDE_3_OPUS_2024029_MODEL_ID,
@@ -623,10 +572,10 @@ export const CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   description: "Anthropic's Claude 3 Opus model (200k context).",
   shortDescription: "Anthropic's largest model.",
   isLegacy: false,
-  delimitersConfiguration: ANTHROPIC_DELIMITERS_CONFIGURATION,
+  delimitersConfiguration: CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION,
   generationTokensCount: 4096,
   supportsVision: true,
-  toolUseMetaPrompt: ANTHROPIC_TOOL_USE_META_PROMPT,
+  toolUseMetaPrompt: CHAIN_OF_THOUGHT_META_PROMPT,
   tokenCountAdjustment: 1.15,
 };
 
@@ -642,10 +591,10 @@ export const CLAUDE_3_5_SONNET_20240620_DEPRECATED_MODEL_CONFIG: ModelConfigurat
     description: "Anthropic's latest Claude 3.5 Sonnet model (200k context).",
     shortDescription: "Anthropic's latest model.",
     isLegacy: false,
-    delimitersConfiguration: ANTHROPIC_DELIMITERS_CONFIGURATION,
+    delimitersConfiguration: CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION,
     generationTokensCount: 8192,
     supportsVision: true,
-    toolUseMetaPrompt: ANTHROPIC_TOOL_USE_META_PROMPT,
+    toolUseMetaPrompt: CHAIN_OF_THOUGHT_META_PROMPT,
     tokenCountAdjustment: 1.15,
   };
 
@@ -660,10 +609,10 @@ export const CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   description: "Anthropic's latest Claude 3.5 Sonnet model (200k context).",
   shortDescription: "Anthropic's latest model.",
   isLegacy: false,
-  delimitersConfiguration: ANTHROPIC_DELIMITERS_CONFIGURATION,
+  delimitersConfiguration: CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION,
   generationTokensCount: 8192,
   supportsVision: true,
-  toolUseMetaPrompt: ANTHROPIC_TOOL_USE_META_PROMPT,
+  toolUseMetaPrompt: CHAIN_OF_THOUGHT_META_PROMPT,
   tokenCountAdjustment: 1.15,
 };
 export const CLAUDE_3_7_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
@@ -677,10 +626,10 @@ export const CLAUDE_3_7_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   description: "Anthropic's latest Claude 3.7 Sonnet model (200k context).",
   shortDescription: "Anthropic's best model.",
   isLegacy: false,
-  delimitersConfiguration: ANTHROPIC_DELIMITERS_CONFIGURATION,
+  delimitersConfiguration: CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION,
   generationTokensCount: 64_000,
   supportsVision: true,
-  toolUseMetaPrompt: ANTHROPIC_TOOL_USE_META_PROMPT,
+  toolUseMetaPrompt: CHAIN_OF_THOUGHT_META_PROMPT,
   tokenCountAdjustment: 1.15,
 };
 
@@ -696,10 +645,10 @@ export const CLAUDE_4_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
     "Anthropic's Claude 4 Opus model, the most powerful model in the Claude 4 family (200k context).",
   shortDescription: "Anthropic's most powerful model.",
   isLegacy: false,
-  delimitersConfiguration: ANTHROPIC_DELIMITERS_CONFIGURATION,
+  delimitersConfiguration: CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION,
   generationTokensCount: 32_000,
   supportsVision: true,
-  toolUseMetaPrompt: ANTHROPIC_TOOL_USE_META_PROMPT,
+  toolUseMetaPrompt: CHAIN_OF_THOUGHT_META_PROMPT,
   tokenCountAdjustment: 1.15,
   featureFlag: "claude_4_opus_feature",
 };
@@ -716,10 +665,10 @@ export const CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
     "Anthropic's Claude 4 Sonnet model, balancing power and efficiency (200k context).",
   shortDescription: "Anthropic's balanced Claude 4 model.",
   isLegacy: false,
-  delimitersConfiguration: ANTHROPIC_DELIMITERS_CONFIGURATION,
+  delimitersConfiguration: CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION,
   generationTokensCount: 64_000,
   supportsVision: true,
-  toolUseMetaPrompt: ANTHROPIC_TOOL_USE_META_PROMPT,
+  toolUseMetaPrompt: CHAIN_OF_THOUGHT_META_PROMPT,
   tokenCountAdjustment: 1.15,
 };
 export const CLAUDE_3_7_SONNET_REASONING_MODEL_CONFIG: ModelConfigurationType =
@@ -734,10 +683,10 @@ export const CLAUDE_3_7_SONNET_REASONING_MODEL_CONFIG: ModelConfigurationType =
     description: "Anthropic's latest Claude 3.7 Sonnet model (200k context).",
     shortDescription: "Anthropic's best model.",
     isLegacy: false,
-    delimitersConfiguration: ANTHROPIC_DELIMITERS_CONFIGURATION,
+    delimitersConfiguration: CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION,
     generationTokensCount: 64_000,
     supportsVision: true,
-    toolUseMetaPrompt: ANTHROPIC_TOOL_USE_META_PROMPT,
+    toolUseMetaPrompt: CHAIN_OF_THOUGHT_META_PROMPT,
     tokenCountAdjustment: 1.15,
     featureFlag: "claude_3_7_reasoning",
   };

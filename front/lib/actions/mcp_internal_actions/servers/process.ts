@@ -51,7 +51,7 @@ import { isUserMessageType, timeFrameFromNow } from "@app/types";
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "extract_data",
   version: "1.0.0",
-  description: "Structured extraction (mcp)",
+  description: "Structured extraction",
   icon: "ActionScanIcon",
   authorization: null,
 };

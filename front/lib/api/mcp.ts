@@ -10,7 +10,7 @@ import type {
   MCPServerAvailability,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata";
-import type { EditedByUser, ModelId } from "@app/types";
+import type { EditedByUser, MCPOAuthUseCase, ModelId } from "@app/types";
 
 export type MCPToolType = {
   name: string;
@@ -29,6 +29,7 @@ export type WithStakeLevelType<T> = T & {
 export type ServerSideMCPToolTypeWithStakeLevel =
   WithStakeLevelType<MCPToolWithAvailabilityType> & {
     toolServerId: string;
+    timeoutMs?: number;
   };
 
 export type ClientSideMCPToolTypeWithStakeLevel =
@@ -47,6 +48,7 @@ export type MCPServerType = {
   authorization: AuthorizationInfo | null;
   tools: MCPToolType[];
   availability: MCPServerAvailability;
+  documentationUrl?: string;
 };
 
 export type RemoteMCPServerType = MCPServerType & {
@@ -67,6 +69,7 @@ export interface MCPServerViewType {
   spaceId: string;
   serverType: "remote" | "internal";
   server: MCPServerType;
+  oAuthUseCase: MCPOAuthUseCase | null;
   editedByUser: EditedByUser | null;
 }
 

@@ -160,15 +160,22 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
   public static async create(
     auth: Authenticator,
     {
-      mcpServerId,
+      systemView,
       space,
       transaction,
     }: {
-      mcpServerId: string;
+      systemView: MCPServerViewResource;
       space: SpaceResource;
       transaction?: Transaction;
     }
   ) {
+    if (systemView.space.kind !== "system") {
+      throw new Error(
+        "You must pass the system view to create a new MCP server view"
+      );
+    }
+
+    const mcpServerId = systemView.mcpServerId;
     const { serverType, id } = getServerTypeAndIdFromSId(mcpServerId);
 
     if (space.kind === "global") {
@@ -186,6 +193,9 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
         serverType,
         internalMCPServerId: serverType === "internal" ? mcpServerId : null,
         remoteMCPServerId: serverType === "remote" ? id : null,
+        // Always copy the oAuthUseCase from the system view to the custom view.
+        // This way, it's always available on the MCP server view without having to fetch the system view.
+        oAuthUseCase: systemView.oAuthUseCase,
       },
       space,
       auth.user() ?? undefined,
@@ -361,6 +371,33 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     );
 
     return views.find((view) => view.space.kind === "global") ?? null;
+  }
+
+  static async getMCPServerViewForSystemSpace(
+    auth: Authenticator,
+    mcpServerId: string
+  ): Promise<MCPServerViewResource | null> {
+    const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
+    const { serverType, id } = getServerTypeAndIdFromSId(mcpServerId);
+    if (serverType === "internal") {
+      const views = await this.baseFetch(auth, {
+        where: {
+          serverType: "internal",
+          internalMCPServerId: mcpServerId,
+          vaultId: systemSpace.id,
+        },
+      });
+      return views[0] ?? null;
+    } else {
+      const views = await this.baseFetch(auth, {
+        where: {
+          serverType: "remote",
+          remoteMCPServerId: id,
+          vaultId: systemSpace.id,
+        },
+      });
+      return views[0] ?? null;
+    }
   }
 
   // Deletion.
@@ -543,15 +580,25 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
         // Create the missing views
         for (const id of autoInternalMCPServerIds) {
           // Check if exists in system space.
-          const isInSystemSpace = views.some(
+          let systemViewModel = views.find(
             (v) => v.internalMCPServerId === id && v.vaultId === systemSpace.id
           );
-          if (!isInSystemSpace) {
-            await MCPServerViewResource.create(auth, {
-              mcpServerId: id,
-              space: systemSpace,
+          if (!systemViewModel) {
+            systemViewModel = await MCPServerViewModel.create({
+              workspaceId: auth.getNonNullableWorkspace().id,
+              serverType: "internal",
+              internalMCPServerId: id,
+              vaultId: systemSpace.id,
+              editedAt: new Date(),
+              editedByUserId: auth.user()?.id,
+              oAuthUseCase: null,
             });
           }
+          const systemView = new this(
+            MCPServerViewModel,
+            systemViewModel.get(),
+            systemSpace
+          );
 
           // Check if exists in global space.
           const isInGlobalSpace = views.some(
@@ -559,7 +606,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
           );
           if (!isInGlobalSpace) {
             await MCPServerViewResource.create(auth, {
-              mcpServerId: id,
+              systemView,
               space: globalSpace,
             });
           }
@@ -618,6 +665,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
         this.serverType === "remote"
           ? this.getRemoteMCPServerResource().toJSON()
           : this.getInternalMCPServerResource().toJSON(),
+      oAuthUseCase: this.oAuthUseCase,
       editedByUser: this.makeEditedBy(
         this.editedByUser,
         this.remoteMCPServer ? this.remoteMCPServer.updatedAt : this.updatedAt

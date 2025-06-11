@@ -80,6 +80,7 @@ import {
 
 export * from "./internal_mime_types";
 export * from "./mcp_transport";
+export * from "./output_schemas";
 export * from "./types";
 
 interface DustResponse {
@@ -618,6 +619,7 @@ export class DustAPI {
   async createConversation({
     title,
     visibility,
+    depth,
     message,
     contentFragment,
     contentFragments,
@@ -630,6 +632,7 @@ export class DustAPI {
       body: {
         title,
         visibility,
+        depth,
         message,
         contentFragment,
         contentFragments,
