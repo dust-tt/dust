@@ -17,7 +17,6 @@ const serverInfo: InternalMCPServerDefinitionType = {
   description: "GitHub tools to manage issues and pull requests.",
   authorization: {
     provider: "github" as const,
-    use_case: "platform_actions" as const,
     supported_use_cases: ["platform_actions"] as const,
   },
   icon: "GithubLogo",
