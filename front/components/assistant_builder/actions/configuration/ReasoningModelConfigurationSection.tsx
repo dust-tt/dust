@@ -30,7 +30,7 @@ import type {
 } from "@app/types";
 import {
   GEMINI_2_5_PRO_PREVIEW_MODEL_ID,
-  mapProviderIdToDisplayName,
+  getProviderDisplayName,
   O3_MODEL_ID,
   O4_MINI_MODEL_ID,
 } from "@app/types";
@@ -73,12 +73,6 @@ function groupModelsByProvider(reasoningModels: ModelConfigurationType[]) {
     map.get(key)!.push(model);
   }
   return map;
-}
-
-export function getProviderDisplayName(
-  providerId: ModelProviderIdType
-): string {
-  return mapProviderIdToDisplayName[providerId] ?? providerId;
 }
 
 export function ReasoningModelConfigurationSection({
