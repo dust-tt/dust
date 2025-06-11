@@ -132,7 +132,7 @@ export function AddToolsDropdown({
       getMCPServerRequirements(selectedView).requiresReasoningConfiguration;
 
     // Reasoning is configurable but we select the reasoning model by default.
-    if (isReasoning) {
+    if (action.type === "MCP" && isReasoning) {
       // You should not be able to select reasoning tools if you don't have any reasoning models,
       // but in case you do for some reasons, we show an error notification.
       if (reasoningModels.length === 0) {
@@ -142,32 +142,32 @@ export function AddToolsDropdown({
             "Please add a reasoning model to your workspace to be able to use this tool",
           type: "error",
         });
-      }
+      } else {
+        // Use o4-mini (high reasoning effort) as default reasoning model, if it's not available use the first one in the list.
+        const defaultReasoningModel =
+          reasoningModels.find(
+            (model) =>
+              model.modelId === DEFAULT_REASONING_MODEL_ID &&
+              model.reasoningEffort === "high"
+          ) ?? reasoningModels[0];
 
-      // Use o4-mini (high reasoning effort) as default reasoning model, if it's not available use the first one in the list.
-      const defaultReasoningModel =
-        reasoningModels.find(
-          (model) =>
-            model.modelId === DEFAULT_REASONING_MODEL_ID &&
-            model.reasoningEffort === "high"
-        ) ?? reasoningModels[0];
-
-      setAction({
-        type: "insert",
-        action: {
-          id: uniqueId(),
-          ...action,
-          configuration: {
-            ...action.configuration,
-            reasoningModel: {
-              modelId: defaultReasoningModel.modelId,
-              providerId: defaultReasoningModel.providerId,
-              reasoningEffort: defaultReasoningModel.reasoningEffort ?? null,
-              temperature: null,
+        setAction({
+          type: "insert",
+          action: {
+            id: uniqueId(),
+            ...action,
+            configuration: {
+              ...action.configuration,
+              reasoningModel: {
+                modelId: defaultReasoningModel.modelId,
+                providerId: defaultReasoningModel.providerId,
+                reasoningEffort: defaultReasoningModel.reasoningEffort ?? null,
+                temperature: null,
+              },
             },
           },
-        },
-      });
+        });
+      }
 
       return;
     }
