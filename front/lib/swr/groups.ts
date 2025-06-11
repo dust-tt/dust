@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import type { Fetcher } from "swr";
 
-import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetGroupsResponseBody } from "@app/pages/api/w/[wId]/groups";
 import type { GroupKind, LightWorkspaceType } from "@app/types";
 
@@ -30,7 +30,7 @@ export function useGroups({
   });
 
   return {
-    groups: data ? data.groups : emptyArray(),
+    groups: data ? data.groups : [],
     isGroupsLoading: !error && !data && !disabled,
     isGroupsError: !!error,
     mutateGroups: mutate,
