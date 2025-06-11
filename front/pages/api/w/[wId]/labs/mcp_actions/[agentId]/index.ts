@@ -3,20 +3,13 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import { NumberFromString, withFallback } from "io-ts-types";
 import type { NextApiRequest, NextApiResponse } from "next";
-import { Op } from "sequelize";
 
-import { MCPActionType } from "@app/lib/actions/mcp";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
-import { AgentMCPAction } from "@app/lib/models/assistant/actions/mcp";
-import { AgentMessage } from "@app/lib/models/assistant/conversation";
-import {
-  ConversationModel,
-  Message,
-} from "@app/lib/models/assistant/conversation";
-import logger from "@app/logger/logger";
+import type { MCPActionData } from "@app/lib/resources/agent_mcp_action_resource";
+import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 
@@ -34,16 +27,7 @@ const GetMCPActionsQuerySchema = t.type({
 });
 
 export type GetMCPActionsResponseBody = {
-  actions: Array<{
-    sId: string;
-    createdAt: string;
-    functionCallName: string | null;
-    params: Record<string, unknown>;
-    executionState: string;
-    isError: boolean;
-    conversationId: string;
-    messageId: string;
-  }>;
+  actions: MCPActionData[];
   nextCursor: string | null;
   totalCount: number;
 };
@@ -115,13 +99,15 @@ async function handler(
         });
       }
 
-      const whereClause: any = {
-        workspaceId: owner.id,
-      };
+      const result = await AgentMCPActionResource.getMCPActionsForAgent(auth, {
+        agentConfigurationId: agentConfiguration.sId,
+        limit,
+        cursor,
+      });
 
-      if (cursor) {
-        const cursorDate = new Date(cursor);
-        if (isNaN(cursorDate.getTime())) {
+      if (result.isErr()) {
+        const error = result.error;
+        if (error.message === "Invalid cursor format") {
           return apiError(req, res, {
             status_code: 400,
             api_error: {
@@ -130,90 +116,7 @@ async function handler(
             },
           });
         }
-        whereClause.createdAt = {
-          [Op.lt]: cursorDate,
-        };
-      }
 
-      let mcpActions;
-      let totalCount;
-      try {
-        // Get total count for pagination
-        totalCount = await AgentMCPAction.count({
-          include: [
-            {
-              model: AgentMessage,
-              as: "agent_message",
-              required: true,
-              where: {
-                agentConfigurationId: agentConfiguration.sId,
-              },
-              include: [
-                {
-                  model: Message,
-                  as: "message",
-                  required: true,
-                  include: [
-                    {
-                      model: ConversationModel,
-                      as: "conversation",
-                      required: true,
-                      where: {
-                        visibility: { [Op.ne]: "deleted" },
-                      },
-                    },
-                  ],
-                },
-              ],
-            },
-          ],
-          where: {
-            workspaceId: owner.id,
-          },
-        });
-
-        // Get all MCP actions for the specific agent with conversation info and limit
-        mcpActions = await AgentMCPAction.findAll({
-          include: [
-            {
-              model: AgentMessage,
-              as: "agent_message",
-              required: true,
-              where: {
-                agentConfigurationId: agentConfiguration.sId,
-              },
-              include: [
-                {
-                  model: Message,
-                  as: "message",
-                  required: true,
-                  include: [
-                    {
-                      model: ConversationModel,
-                      as: "conversation",
-                      required: true,
-                      where: {
-                        visibility: { [Op.ne]: "deleted" },
-                      },
-                    },
-                  ],
-                },
-              ],
-            },
-          ],
-          where: whereClause,
-          order: [["createdAt", "DESC"]],
-          limit: limit + 1, // Fetch one extra to determine if there are more results
-        });
-      } catch (error) {
-        logger.error(
-          {
-            workspaceId: owner.id,
-            agentId,
-            error,
-          },
-          "Failed to fetch MCP actions from database"
-        );
         return apiError(req, res, {
           status_code: 500,
           api_error: {
@@ -223,32 +126,10 @@ async function handler(
         });
       }
 
-      // Determine if there are more results and get the actual results
-      const hasMore = mcpActions.length > limit;
-      const actualActions = hasMore ? mcpActions.slice(0, limit) : mcpActions;
-      const nextCursor = hasMore
-        ? actualActions[actualActions.length - 1].createdAt.toISOString()
-        : null;
-
-      const actionsData = actualActions.map((action) => {
-        const agentMessage = (action as any).agent_message;
-        return {
-          sId: MCPActionType.modelIdToSId({
-            id: action.id,
-            workspaceId: owner.id,
-          }),
-          createdAt: action.createdAt.toISOString(),
-          functionCallName: action.functionCallName,
-          params: action.params,
-          executionState: action.executionState,
-          isError: action.isError,
-          conversationId: agentMessage?.message?.conversation?.sId || "",
-          messageId: agentMessage?.message?.sId || "",
-        };
-      });
+      const { actions, nextCursor, totalCount } = result.value;
 
       return res.status(200).json({
-        actions: actionsData,
+        actions,
         nextCursor,
         totalCount,
       });
