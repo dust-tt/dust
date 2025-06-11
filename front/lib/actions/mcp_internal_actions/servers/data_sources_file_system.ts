@@ -34,6 +34,7 @@ import type { AgentDataSourceConfiguration } from "@app/lib/models/assistant/act
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type {
+  ConnectorProvider,
   ContentNodeType,
   CoreAPIContentNode,
   CoreAPIError,
@@ -164,23 +165,29 @@ const createServer = (
         );
       }
 
-      // Get dustAPIProjectId from the data source configuration.
-      const dustAPIProjectId = agentDataSourceConfigurations.find(
+      // Get dataSource from the data source configuration.
+      const dataSource = agentDataSourceConfigurations.find(
         (config) =>
           config.dataSource.dustAPIDataSourceId === node.data_source_id
-      )?.dataSource.dustAPIProjectId;
+      )?.dataSource;
 
-      if (!dustAPIProjectId) {
+      if (!dataSource) {
         return makeMCPToolTextError(
-          `Could not find dustAPIProjectId for node: ${nodeId}`
+          `Could not find dataSource for node: ${nodeId}`
         );
       }
+
+      const dataSourceIdToConnectorMap = new Map();
+      dataSourceIdToConnectorMap.set(
+        dataSource.dustAPIDataSourceId,
+        dataSource.connectorProvider
+      );
 
       // Read the node.
       const readResult = await coreAPI.getDataSourceDocumentText({
         dataSourceId: node.data_source_id,
         documentId: node.node_id,
-        projectId: dustAPIProjectId,
+        projectId: dataSource.dustAPIProjectId,
         offset: offset,
         limit: limit,
         grep: grep,
@@ -202,7 +209,7 @@ const createServer = (
                 INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_NODE_CONTENT,
               uri: node.source_url ?? "",
               text: readResult.value.text,
-              metadata: renderNode(node),
+              metadata: renderNode(node, dataSourceIdToConnectorMap),
             },
           },
         ],
@@ -313,7 +320,10 @@ const createServer = (
         content: [
           {
             type: "resource" as const,
-            resource: renderSearchResults(searchResult.value),
+            resource: renderSearchResults(
+              searchResult.value,
+              agentDataSourceConfigurations
+            ),
           },
         ],
       };
@@ -443,7 +453,10 @@ const createServer = (
         content: [
           {
             type: "resource" as const,
-            resource: renderSearchResults(searchResult.value),
+            resource: renderSearchResults(
+              searchResult.value,
+              agentDataSourceConfigurations
+            ),
           },
         ],
       };
@@ -901,7 +914,10 @@ function formatTimestamp(timestamp: number): string {
  * Translation from a content node to the format expected to the agent.
  * Removes references to the term 'content node' and simplifies the format.
  */
-function renderNode(node: CoreAPIContentNode) {
+function renderNode(
+  node: CoreAPIContentNode,
+  dataSourceIdToConnectorMap: Map<string, ConnectorProvider | null>
+) {
   // Transform data source node IDs to include the data source ID
   const nodeId =
     node.node_id === DATA_SOURCE_NODE_ID
@@ -918,6 +934,8 @@ function renderNode(node: CoreAPIContentNode) {
     // TODO(2025-06-02 aubin): see if we want a translation on these.
     mimeType: node.mime_type,
     hasChildren: node.children_count > 0,
+    connectorProvider:
+      dataSourceIdToConnectorMap.get(node.data_source_id) ?? null,
   };
 }
 
@@ -926,13 +944,27 @@ function renderNode(node: CoreAPIContentNode) {
  * Removes references to the term 'content node' and simplifies the format.
  */
 function renderSearchResults(
-  response: CoreAPISearchNodesResponse
+  response: CoreAPISearchNodesResponse,
+  agentDataSourceConfigurations: AgentDataSourceConfiguration[]
 ): DataSourceNodeListType {
+  const dataSourceIdToConnectorMap = new Map<
+    string,
+    ConnectorProvider | null
+  >();
+  for (const config of agentDataSourceConfigurations) {
+    dataSourceIdToConnectorMap.set(
+      config.dataSource.dustAPIDataSourceId,
+      config.dataSource.connectorProvider
+    );
+  }
+
   return {
     mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_NODE_LIST,
     text: "Content successfully retrieved.",
     uri: "",
-    data: response.nodes.map(renderNode),
+    data: response.nodes.map((node) =>
+      renderNode(node, dataSourceIdToConnectorMap)
+    ),
     nextPageCursor: response.next_page_cursor,
     resultCount: response.hit_count,
   };
