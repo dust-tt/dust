@@ -199,7 +199,7 @@ export function SearchResultDetails({
         return null;
       })
       .filter(Boolean)
-      .join("\n") ?? "No query provided";
+      .join("\n") || "No query provided";
 
   const warning = actionOutput
     ?.filter(isWarningResourceType)
