@@ -32,7 +32,7 @@ const JsonTypeSchema = z.union([
 
 const JsonPropertySchema = z.object({
   type: JsonTypeSchema,
-  description: z.string(),
+  description: z.string().optional(),
   properties: z
     .record(
       z.string(),
