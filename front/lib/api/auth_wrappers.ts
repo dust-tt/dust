@@ -584,7 +584,8 @@ async function handleWorkOSAuth<T>(
       });
     }
 
-    logger.error(decoded.error, "Failed to verify WorkOS token");
+    // TODO(workos): Actively log errors when WorkOS is the sole login method.
+    // logger.error(decoded.error, "Failed to verify WorkOS token");
     return new Err({
       status_code: 401,
       api_error: {

@@ -362,6 +362,7 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
       lastSyncAt: this.lastSyncAt?.getTime() ?? null,
       lastError: this.lastError,
       sharedSecret: secret,
+      documentationUrl: null,
     };
   }
 }

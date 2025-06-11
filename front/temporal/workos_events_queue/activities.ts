@@ -1,7 +1,19 @@
-import type { Event, OrganizationDomain } from "@workos-inc/node";
+import type {
+  DirectoryGroup,
+  DirectoryUser,
+  DsyncGroupUserAddedEvent,
+  DsyncGroupUserRemovedEvent,
+  Event,
+  OrganizationDomain,
+} from "@workos-inc/node";
 import assert from "assert";
 
+import { createAndLogMembership } from "@app/lib/api/signup";
 import { getOrCreateWorkOSOrganization } from "@app/lib/api/workos/organization";
+import {
+  fetchWorkOSUserWithEmail,
+  getUserNicknameFromEmail,
+} from "@app/lib/api/workos/user";
 import {
   findWorkspaceByWorkOSOrganizationId,
   getWorkspaceInfos,
@@ -10,8 +22,22 @@ import {
   deleteWorkspaceDomain,
   upsertWorkspaceDomain,
 } from "@app/lib/api/workspace_domains";
-import logger from "@app/logger/logger";
-import type { Result } from "@app/types";
+import { Authenticator } from "@app/lib/auth";
+import type { ExternalUser } from "@app/lib/iam/provider";
+import { createOrUpdateUser } from "@app/lib/iam/users";
+import { GroupResource } from "@app/lib/resources/group_resource";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { UserResource } from "@app/lib/resources/user_resource";
+import { ServerSideTracking } from "@app/lib/tracking/server";
+import mainLogger from "@app/logger/logger";
+import type { LightWorkspaceType, Result } from "@app/types";
+
+const logger = mainLogger.child(
+  {},
+  {
+    msgPrefix: "[WorkOS Event] ",
+  }
+);
 
 async function handleOrganizationDomainEvent(
   eventData: OrganizationDomain,
@@ -26,10 +52,7 @@ async function handleOrganizationDomainEvent(
 
   const workspace = await findWorkspaceByWorkOSOrganizationId(organizationId);
   if (!workspace) {
-    logger.warn(
-      { organizationId },
-      "[WorkOS Event] Workspace not found for organization"
-    );
+    logger.warn({ organizationId }, "Workspace not found for organization");
     // Skip processing if workspace not found - it likely belongs to another region.
     // This is expected in a multi-region setup. DataDog monitors these warnings
     // and will alert if they occur across all regions.
@@ -54,6 +77,27 @@ async function handleOrganizationDomainEvent(
   logger.info({ domain }, "Domain updated/deleted");
 }
 
+/**
+ * Verify if workspace exist, if it does will call the callback with the found workspace.
+ * Otherwise will return undefined
+ */
+async function verifyWorkOSWorkspace<E extends object, R>(
+  organizationId: string | null,
+  event: E,
+  handler: (workspace: LightWorkspaceType, eventData: E) => R
+) {
+  if (organizationId === null) {
+    return;
+  }
+
+  const workspace = await findWorkspaceByWorkOSOrganizationId(organizationId);
+  if (!workspace) {
+    throw new Error(`Workspace not found for workspace "${organizationId}"`);
+  }
+
+  return handler(workspace, event);
+}
+
 // WorkOS webhooks do not guarantee event ordering. Events can arrive out of sequence.
 // We rely on Temporal's retry strategies and the idempotency of these activities
 // to correctly process events even if they are received in a non-chronological order.
@@ -69,6 +113,56 @@ export async function processWorkOSEventActivity({
 
     case "organization_domain.verification_failed":
       await handleOrganizationDomainVerificationFailed(eventPayload.data);
+      break;
+
+    case "dsync.group.created":
+    case "dsync.group.updated":
+      await verifyWorkOSWorkspace(
+        eventPayload.data.organizationId,
+        eventPayload.data,
+        handleGroupUpsert
+      );
+      break;
+
+    case "dsync.group.deleted":
+      await verifyWorkOSWorkspace(
+        eventPayload.data.organizationId,
+        eventPayload.data,
+        handleGroupDelete
+      );
+      break;
+
+    case "dsync.group.user_added":
+      await verifyWorkOSWorkspace(
+        eventPayload.data.user.organizationId,
+        eventPayload.data,
+        handleUserAddedToGroup
+      );
+      break;
+
+    case "dsync.group.user_removed":
+      await verifyWorkOSWorkspace(
+        eventPayload.data.user.organizationId,
+        eventPayload.data,
+        handleUserRemovedFromGroup
+      );
+      break;
+
+    case "dsync.user.created":
+    case "dsync.user.updated":
+      await verifyWorkOSWorkspace(
+        eventPayload.data.organizationId,
+        eventPayload.data,
+        handleCreateOrUpdateWorkOSUser
+      );
+      break;
+
+    case "dsync.user.deleted":
+      await verifyWorkOSWorkspace(
+        eventPayload.data.organizationId,
+        eventPayload.data,
+        handleDeleteWorkOSUser
+      );
       break;
 
     default:
@@ -115,4 +209,169 @@ export async function handleWorkspaceSubscriptionCreated({
     );
     throw organisationRes.error;
   }
+}
+
+async function handleGroupUpsert(
+  workspace: LightWorkspaceType,
+  event: DirectoryGroup
+) {
+  const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+  await GroupResource.upsertByWorkOSGroupId(auth, event);
+}
+
+async function handleUserAddedToGroup(
+  workspace: LightWorkspaceType,
+  event: DsyncGroupUserAddedEvent["data"]
+) {
+  if (!event.user.email) {
+    logger.warn("Try to 'dsync.group.user_added' without an email");
+    return;
+  }
+
+  const workOSUserRes = await fetchWorkOSUserWithEmail(
+    workspace,
+    event.user.email
+  );
+  if (workOSUserRes.isErr()) {
+    throw workOSUserRes.error;
+  }
+  const workOSUser = workOSUserRes.value;
+
+  const user = await UserResource.fetchByWorkOSUserId(workOSUser.id);
+  if (!user) {
+    throw new Error(`User not found with workOSId "${workOSUser.id}"`);
+  }
+
+  const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+  const group = await GroupResource.fetchByWorkOSGroupId(auth, event.group.id);
+  if (!group) {
+    throw new Error(
+      `Group not found for workOSId "${event.group.id}" in workspace "${workspace.sId}"`
+    );
+  }
+
+  const res = await group.addMember(auth, user.toJSON());
+  if (res.isErr()) {
+    throw res.error;
+  }
+}
+
+async function handleUserRemovedFromGroup(
+  workspace: LightWorkspaceType,
+  event: DsyncGroupUserRemovedEvent["data"]
+) {
+  if (!event.user.email) {
+    logger.warn("Try to 'dsync.group.user_removed' without an email");
+    return;
+  }
+
+  const workOSUserRes = await fetchWorkOSUserWithEmail(
+    workspace,
+    event.user.email
+  );
+  if (workOSUserRes.isErr()) {
+    throw workOSUserRes.error;
+  }
+  const workOSUser = workOSUserRes.value;
+
+  const user = await UserResource.fetchByWorkOSUserId(workOSUser.id);
+  if (!user) {
+    throw new Error(`User not found with workOSId "${workOSUser.id}"`);
+  }
+
+  const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+  const group = await GroupResource.fetchByWorkOSGroupId(auth, event.group.id);
+  if (!group) {
+    throw new Error(
+      `Group not found for workOSId "${event.group.id}" in workspace "${workspace.sId}"`
+    );
+  }
+
+  const res = await group.removeMember(auth, user.toJSON());
+  if (res.isErr()) {
+    throw res.error;
+  }
+}
+
+async function handleCreateOrUpdateWorkOSUser(
+  workspace: LightWorkspaceType,
+  event: DirectoryUser
+) {
+  const workOSUserRes = await fetchWorkOSUserWithEmail(workspace, event.email);
+  if (workOSUserRes.isErr()) {
+    throw workOSUserRes.error;
+  }
+  const workOSUser = workOSUserRes.value;
+
+  const user = await UserResource.fetchByWorkOSUserId(workOSUser.id);
+  const externalUser: ExternalUser = {
+    auth0Sub: null,
+    email: workOSUser.email,
+    email_verified: true,
+    name: workOSUser.email ?? "",
+    nickname: getUserNicknameFromEmail(workOSUser.email) ?? "",
+    workOSUserId: workOSUser.id,
+    picture: workOSUser.profilePictureUrl ?? undefined,
+  };
+
+  const { user: createdOrUpdatedUser } = await createOrUpdateUser({
+    user,
+    externalUser,
+  });
+
+  await createAndLogMembership({
+    user: createdOrUpdatedUser,
+    workspace,
+    role: "user",
+  });
+}
+
+async function handleDeleteWorkOSUser(
+  workspace: LightWorkspaceType,
+  event: DirectoryUser
+) {
+  const workOSUserRes = await fetchWorkOSUserWithEmail(workspace, event.email);
+  if (workOSUserRes.isErr()) {
+    throw workOSUserRes.error;
+  }
+  const workOSUser = workOSUserRes.value;
+
+  const user = await UserResource.fetchByWorkOSUserId(workOSUser.id);
+  if (!user) {
+    throw new Error(
+      `Didn't found user to delete for workOSUserId "${workOSUser.id}" in workspace "${workspace.sId}"`
+    );
+  }
+
+  const membershipRevokeResult = await MembershipResource.revokeMembership({
+    user,
+    workspace,
+  });
+
+  if (membershipRevokeResult.isErr()) {
+    throw membershipRevokeResult.error;
+  }
+
+  void ServerSideTracking.trackRevokeMembership({
+    user: user.toJSON(),
+    workspace,
+    ...membershipRevokeResult.value,
+  });
+}
+
+async function handleGroupDelete(
+  workspace: LightWorkspaceType,
+  event: DirectoryGroup
+) {
+  const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+  const group = await GroupResource.fetchByWorkOSGroupId(
+    auth,
+    event.directoryId
+  );
+
+  if (!group) {
+    throw new Error("Group to delete not found");
+  }
+
+  await group.delete(auth);
 }
