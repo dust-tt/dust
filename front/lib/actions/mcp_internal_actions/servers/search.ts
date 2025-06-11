@@ -14,7 +14,7 @@ import {
   findTagsDescription,
   findTagsSchema,
   makeFindTagsTool,
-} from "@app/lib/actions/mcp_internal_actions/servers/common/find_tags";
+} from "@app/lib/actions/mcp_internal_actions/servers/common/find_tags_tool";
 import {
   getCoreSearchArgs,
   shouldAutoGenerateTags,
