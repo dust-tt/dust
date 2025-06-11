@@ -187,7 +187,6 @@ export default async function createServer(
       const childAgentId = childAgentIdRes.value;
 
       const user = auth.user();
-      const requestedGroupIds = auth.groups().map((g) => g.sId);
 
       const prodCredentials = await prodAPICredentialsForOwner(owner);
       const api = new DustAPI(
@@ -197,8 +196,8 @@ export default async function createServer(
           // We use a system API key here meaning that we can impersonate the user or the groups we
           // have access to.
           extraHeaders: {
-            ...getHeaderFromGroupIds(requestedGroupIds),
-            ...getHeaderFromRole(auth.role()),
+            // We have to use the user override here as the sub-agent may rely on personal actions
+            // that have to be operated in the name of the user initiating the interaction.
             ...getHeaderFromUserEmail(user?.email),
           },
         },
