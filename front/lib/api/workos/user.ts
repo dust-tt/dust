@@ -12,6 +12,7 @@ import config from "@app/lib/api/config";
 import type { RegionType } from "@app/lib/api/regions/config";
 import { getWorkOS } from "@app/lib/api/workos/client";
 import type { SessionWithUser } from "@app/lib/iam/provider";
+import logger from "@app/logger/logger";
 
 export type SessionCookie = {
   sessionData: string;
@@ -71,7 +72,7 @@ export async function getWorkOSSession(
         authenticationMethod,
       };
     } catch (error) {
-      console.error("Session authentication error:", error);
+      logger.error({ error }, "Session authentication error");
       return undefined;
     }
   }
