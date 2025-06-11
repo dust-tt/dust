@@ -87,13 +87,13 @@ export type UserMessageOrigin =
   | "github-copilot-chat"
   | "gsheet"
   | "make"
-  | "mcp"
   | "n8n"
   | "raycast"
   | "slack"
   | "web"
   | "zapier"
-  | "zendesk";
+  | "zendesk"
+  | "run_agent";
 
 export type UserMessageContext = {
   username: string;

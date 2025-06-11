@@ -186,11 +186,11 @@ export default async function createServer(
         config.getDustAPIConfig(),
         {
           ...prodCredentials,
-          // We use a system API key here meaning that we can impersonate the user or the groups we
-          // have access to.
           extraHeaders: {
-            // We have to use the user override here as the sub-agent may rely on personal actions
-            // that have to be operated in the name of the user initiating the interaction.
+            // We use a system API key to override the user here (not groups and role) so that the
+            // sub-agent can access the same spaces as the user but also as the sub-agent may rely
+            // on personal actions that have to be operated in the name of the user initiating the
+            // interaction.
             ...getHeaderFromUserEmail(user?.email),
           },
         },
@@ -210,7 +210,8 @@ export default async function createServer(
             fullName: `@${mainAgent.name}`,
             email: null,
             profilePictureUrl: mainAgent.pictureUrl,
-            origin: "mcp",
+            // `run_agent` origin will skip adding the conversation to the user history.
+            origin: "run_agent",
           },
         },
         contentFragment: undefined,
