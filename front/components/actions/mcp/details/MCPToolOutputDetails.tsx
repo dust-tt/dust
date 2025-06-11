@@ -25,6 +25,7 @@ import type {
   ThinkingOutputType,
   ToolGeneratedFileType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { isDataSourceNodeListType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
   isIncludeQueryResourceType,
   isIncludeResultResourceType,
@@ -213,22 +214,36 @@ export function SearchResultDetails({
       return [];
     }
     return removeNulls(
-      actionOutput.map((r) => {
+      actionOutput.flatMap((r) => {
         if (isWebsearchResultResourceType(r)) {
-          return {
-            description: r.resource.text,
-            title: r.resource.title,
-            icon: getDocumentIcon("webcrawler"),
-            href: r.resource.uri,
-          };
+          return [
+            {
+              description: r.resource.text,
+              title: r.resource.title,
+              icon: getDocumentIcon("webcrawler"),
+              href: r.resource.uri,
+            },
+          ];
         }
         if (isSearchResultResourceType(r) || isIncludeResultResourceType(r)) {
-          return {
-            description: "",
-            title: r.resource.text,
-            icon: getDocumentIcon(r.resource.source.provider),
-            href: r.resource.uri,
-          };
+          return [
+            {
+              description: "",
+              title: r.resource.text,
+              icon: getDocumentIcon(r.resource.source.provider),
+              href: r.resource.uri,
+            },
+          ];
+        }
+        if (isDataSourceNodeListType(r)) {
+          return r.resource.data.map((node) => ({
+            description: `${node.path}${
+              node.lastUpdatedAt ? ` • ${node.lastUpdatedAt}` : ""
+            }`,
+            title: node.title,
+            icon: getDocumentIcon(node.connectorProvider),
+            href: node.sourceUrl || undefined,
+          }));
         }
         return null;
       })
