@@ -68,6 +68,7 @@ import type {
   UserMessageType,
   WorkspaceType,
 } from "@app/types";
+import { CLAUDE_4_SONNET_20250514_MODEL_ID } from "@app/types";
 import { assertNever, removeNulls, SUPPORTED_MODEL_CONFIGS } from "@app/types";
 
 const CANCELLATION_CHECK_INTERVAL = 500;
@@ -569,6 +570,14 @@ async function* runMultiActionsAgent(
       agentConfiguration.model.responseFormat
     );
   }
+  if (model.modelId === CLAUDE_4_SONNET_20250514_MODEL_ID) {
+    // Pass some extra field: https://docs.anthropic.com/en/docs/about-claude/models/extended-thinking-models#extended-output-capabilities-beta
+    runConfig.MODEL.anthropic_beta_thinking = {
+      type: "enabled",
+      budget_tokens: 6400,
+    };
+  }
+
   const anthropicBetaFlags = config.getMultiActionsAgentAnthropicBetaFlags();
   if (anthropicBetaFlags) {
     runConfig.MODEL.anthropic_beta_flags = anthropicBetaFlags;
