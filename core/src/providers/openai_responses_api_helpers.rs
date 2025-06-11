@@ -119,7 +119,7 @@ pub enum OpenAIResponseOutputItem {
         id: String,
         status: String,
         content: Vec<OpenAIResponseMessageContent>,
-        role: String,
+        role: OpenAIChatMessageRole,
     },
     FunctionCall {
         id: String,
