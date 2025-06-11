@@ -585,9 +585,9 @@ export async function processAndStoreFromUrl(
   }
 }
 
-interface UploadBase64ImageToFileStorageArgs {
+interface UploadBase64DataToFileStorageArgs {
   base64: string;
-  contentType: SupportedImageContentType;
+  contentType: SupportedFileContentType | SupportedImageContentType;
   fileName: string;
   useCase: FileUseCase;
   useCaseMetadata?: FileUseCaseMetadata;
@@ -601,13 +601,34 @@ export async function uploadBase64ImageToFileStorage(
     fileName,
     useCase,
     useCaseMetadata,
-  }: UploadBase64ImageToFileStorageArgs
+  }: UploadBase64DataToFileStorageArgs & {
+    contentType: SupportedImageContentType;
+  }
 ): Promise<Result<FileResource, ProcessAndStoreFileError>> {
   // Remove data URL prefix for any supported image type.
   const base64Data = base64.replace(/^data:image\/[a-z]+;base64,/, "");
 
+  return uploadBase64DataToFileStorage(auth, {
+    base64: base64Data,
+    contentType,
+    fileName,
+    useCase,
+    useCaseMetadata,
+  });
+}
+
+export async function uploadBase64DataToFileStorage(
+  auth: Authenticator,
+  {
+    base64,
+    contentType,
+    fileName,
+    useCase,
+    useCaseMetadata,
+  }: UploadBase64DataToFileStorageArgs
+): Promise<Result<FileResource, ProcessAndStoreFileError>> {
   // Convert base64 to buffer.
-  const buffer = Buffer.from(base64Data, "base64");
+  const buffer = Buffer.from(base64, "base64");
 
   const fileSizeInBytes = buffer.length;
 
