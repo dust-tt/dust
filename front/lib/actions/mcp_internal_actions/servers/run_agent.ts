@@ -22,14 +22,7 @@ import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
-import {
-  Err,
-  getHeaderFromGroupIds,
-  getHeaderFromRole,
-  getHeaderFromUserEmail,
-  normalizeError,
-  Ok,
-} from "@app/types";
+import { Err, getHeaderFromUserEmail, normalizeError, Ok } from "@app/types";
 
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "run_agent",
