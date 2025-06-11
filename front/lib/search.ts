@@ -5,8 +5,9 @@ import type {
   CoreAPINodesSearchFilter,
   CoreAPISearchScope,
   LightWorkspaceType,
+  Result,
 } from "@app/types";
-import { assertNever } from "@app/types";
+import { assertNever, Err, Ok } from "@app/types";
 
 export function getCoreViewTypeFilter(viewType: ContentNodesViewType) {
   switch (viewType) {
@@ -48,8 +49,14 @@ export function searchScopeForDataSource({
   return "nodes_titles";
 }
 
+class InvalidSearchFilterError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "InvalidSearchFilterError";
+  }
+}
+
 export function getSearchFilterFromDataSourceViews(
-  workspace: LightWorkspaceType,
   dataSourceViews: DataSourceViewResource[],
   {
     excludedNodeMimeTypes,
@@ -64,7 +71,15 @@ export function getSearchFilterFromDataSourceViews(
     nodeIds?: string[];
     parentId?: string;
   }
-): CoreAPINodesSearchFilter {
+): Result<CoreAPINodesSearchFilter, InvalidSearchFilterError> {
+  if (includeDataSources && !!nodeIds) {
+    return new Err(
+      new InvalidSearchFilterError(
+        "Cannot filter by node ids when includeDataSources is true (data sources do not have node ids)."
+      )
+    );
+  }
+
   const groupedPerDataSource = dataSourceViews.reduce(
     (acc, dsv) => {
       const dataSourceId = dsv.dataSource.dustAPIDataSourceId;
@@ -103,7 +118,7 @@ export function getSearchFilterFromDataSourceViews(
     throw new Error("Must have at least one datasource");
   }
 
-  return {
+  return new Ok({
     data_source_views: entries.map(([data_source_id, entry]) => ({
       data_source_id,
       view_filter: entry.parentsIn ? [...new Set(entry.parentsIn)] : [],
@@ -117,5 +132,5 @@ export function getSearchFilterFromDataSourceViews(
     node_types: getCoreViewTypeFilter(viewType),
     node_ids: nodeIds,
     ...(parentId && { parent_id: parentId }),
-  };
+  });
 }
