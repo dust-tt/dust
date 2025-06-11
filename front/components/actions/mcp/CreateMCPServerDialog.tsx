@@ -118,7 +118,7 @@ export function CreateMCPServerDialog({
             setAuthorization({
               provider: "mcp",
               use_case: "platform_actions",
-              supported_use_cases: ["platform_actions"], // TODO(mcp): Add personal_actions option.
+              supported_use_cases: ["platform_actions", "personal_actions"],
             });
 
             setAuthCredentials(

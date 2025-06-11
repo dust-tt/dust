@@ -85,7 +85,7 @@ export function MCPServerOAuthConnexion({
       };
       void fetchCredentialInputs();
     }
-  }, [authorization, setAuthCredentials, useCase]);
+  }, [authorization.provider, setAuthCredentials, useCase]);
 
   // We check if the form is valid.
   useEffect(() => {
