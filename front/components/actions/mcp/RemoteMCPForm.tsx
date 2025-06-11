@@ -26,7 +26,7 @@ import type { RemoteMCPServerType } from "@app/lib/api/mcp";
 import {
   useMCPServers,
   useSyncRemoteMCPServer,
-  useUpdateRemoteMCPServer,
+  useUpdateMCPServer,
 } from "@app/lib/swr/mcp_servers";
 import type { LightWorkspaceType } from "@app/types";
 import { normalizeError } from "@app/types";
@@ -69,7 +69,7 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
   });
 
   // Use the serverId from state for the hooks
-  const { updateServer } = useUpdateRemoteMCPServer(owner, mcpServer.sId);
+  const { updateServer } = useUpdateMCPServer(owner, mcpServer.sId);
   const { syncServer } = useSyncRemoteMCPServer(owner, mcpServer.sId);
 
   const onSubmit = useCallback(

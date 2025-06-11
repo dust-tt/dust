@@ -25,11 +25,8 @@ import { ConnectMCPServerDialog } from "@app/components/actions/mcp/ConnectMCPSe
 import { MCPServerDetailsInfo } from "@app/components/actions/mcp/MCPServerDetailsInfo";
 import { MCPServerDetailsSharing } from "@app/components/actions/mcp/MCPServerDetailsSharing";
 import { MCPActionHeader } from "@app/components/actions/MCPActionHeader";
-import {
-  getMcpServerDisplayName,
-  getServerTypeAndIdFromSId,
-} from "@app/lib/actions/mcp_helper";
-import type { MCPServerType } from "@app/lib/api/mcp";
+import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
+import type { MCPServerType, MCPServerViewType } from "@app/lib/api/mcp";
 import {
   useDeleteMCPServer,
   useDeleteMCPServerConnection,
@@ -41,25 +38,23 @@ import type { WorkspaceType } from "@app/types";
 type MCPServerDetailsProps = {
   owner: WorkspaceType;
   onClose: () => void;
-  mcpServer: MCPServerType | null;
+  mcpServerView: MCPServerViewType | null;
   isOpen: boolean;
 };
 
 export function MCPServerDetails({
   owner,
-  mcpServer,
+  mcpServerView,
   isOpen,
   onClose,
 }: MCPServerDetailsProps) {
   const [selectedTab, setSelectedTab] = useState<string>("info");
 
-  const serverType = mcpServer
-    ? getServerTypeAndIdFromSId(mcpServer.sId).serverType
-    : "internal";
+  const serverType = mcpServerView?.serverType;
 
   const { server: updatedMCPServer } = useMCPServer({
     owner,
-    serverId: mcpServer?.sId || "",
+    serverId: mcpServerView?.server.sId || "",
     disabled: serverType !== "remote",
   });
 
@@ -69,7 +64,7 @@ export function MCPServerDetails({
     }
   }, [isOpen]);
 
-  const effectiveMCPServer = updatedMCPServer || mcpServer;
+  const effectiveMCPServer = updatedMCPServer || mcpServerView?.server;
 
   const authorization = effectiveMCPServer?.authorization;
   const { deleteServer } = useDeleteMCPServer(owner);
@@ -100,7 +95,7 @@ export function MCPServerDetails({
     <>
       <ConnectMCPServerDialog
         owner={owner}
-        mcpServer={mcpServer}
+        mcpServer={effectiveMCPServer ?? null}
         setIsLoading={setIsLoading}
         isOpen={isConnectDialogOpen}
         setIsOpen={setIsConnectDialogOpen}
@@ -161,7 +156,7 @@ export function MCPServerDetails({
             {effectiveMCPServer && (
               <MCPActionHeader
                 mcpServer={effectiveMCPServer}
-                isAuthorized={Boolean(authorization)}
+                oAuthUseCase={mcpServerView?.oAuthUseCase ?? null}
                 isConnected={Boolean(connection)}
                 isConnectionsLoading={isConnectionsLoading}
               />
@@ -207,7 +202,7 @@ export function MCPServerDetails({
                   icon={InformationCircleIcon}
                   onClick={() => setSelectedTab("info")}
                 />
-                {mcpServer?.availability === "manual" && (
+                {effectiveMCPServer?.availability === "manual" && (
                   <TabsTrigger
                     value="sharing"
                     label="Sharing"
@@ -221,7 +216,7 @@ export function MCPServerDetails({
                     <>
                       <div className="grow" />
                       <Button
-                        variant="outline"
+                        variant="warning"
                         icon={TrashIcon}
                         label={"Remove"}
                         size="sm"

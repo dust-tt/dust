@@ -8,6 +8,7 @@ import type { UserResource } from "@app/lib/resources/user_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import { itInTransaction } from "@app/tests/utils/utils";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { LightWorkspaceType } from "@app/types/user";
 
@@ -136,44 +137,56 @@ describe("ConversationResource", () => {
       });
     });
 
-    it("should return only conversations with all messages before cutoff date: 90 days ago", async () => {
-      const oldConversations = await ConversationResource.listAllBeforeDate({
-        auth,
-        cutoffDate: dateFromDaysAgo(90),
-      });
-      expect(oldConversations.length).toBe(2);
-      const oldConversationIds = oldConversations.map((c) => c.sId);
-      expect(oldConversationIds).toContain(convo3Id);
-      expect(oldConversationIds).toContain(convo4Id);
-    });
+    itInTransaction(
+      "should return only conversations with all messages before cutoff date: 90 days ago",
+      async () => {
+        const oldConversations = await ConversationResource.listAllBeforeDate({
+          auth,
+          cutoffDate: dateFromDaysAgo(90),
+        });
+        expect(oldConversations.length).toBe(2);
+        const oldConversationIds = oldConversations.map((c) => c.sId);
+        expect(oldConversationIds).toContain(convo3Id);
+        expect(oldConversationIds).toContain(convo4Id);
+      }
+    );
 
-    it("should return only conversations with all messages before cutoff date: 200 days ago", async () => {
-      const oldConversations = await ConversationResource.listAllBeforeDate({
-        auth,
-        cutoffDate: dateFromDaysAgo(200),
-      });
-      expect(oldConversations.length).toBe(0);
-    });
+    itInTransaction(
+      "should return only conversations with all messages before cutoff date: 200 days ago",
+      async () => {
+        const oldConversations = await ConversationResource.listAllBeforeDate({
+          auth,
+          cutoffDate: dateFromDaysAgo(200),
+        });
+        expect(oldConversations.length).toBe(0);
+      }
+    );
 
-    it("should return only conversations with all messages before cutoff date: 5 days ago", async () => {
-      const oldConversations = await ConversationResource.listAllBeforeDate({
-        auth,
-        cutoffDate: dateFromDaysAgo(5),
-      });
-      expect(oldConversations.length).toBe(3);
-      const oldConversationIds = oldConversations.map((c) => c.sId);
-      expect(oldConversationIds).toContain(convo1Id);
-      expect(oldConversationIds).toContain(convo3Id);
-      expect(oldConversationIds).toContain(convo4Id);
-    });
+    itInTransaction(
+      "should return only conversations with all messages before cutoff date: 5 days ago",
+      async () => {
+        const oldConversations = await ConversationResource.listAllBeforeDate({
+          auth,
+          cutoffDate: dateFromDaysAgo(5),
+        });
+        expect(oldConversations.length).toBe(3);
+        const oldConversationIds = oldConversations.map((c) => c.sId);
+        expect(oldConversationIds).toContain(convo1Id);
+        expect(oldConversationIds).toContain(convo3Id);
+        expect(oldConversationIds).toContain(convo4Id);
+      }
+    );
 
-    it("should return all old conversations no matter the batch size", async () => {
-      const oldConversations = await ConversationResource.listAllBeforeDate({
-        auth,
-        cutoffDate: dateFromDaysAgo(1),
-        batchSize: 1,
-      });
-      expect(oldConversations.length).toBe(4);
-    });
+    itInTransaction(
+      "should return all old conversations no matter the batch size",
+      async () => {
+        const oldConversations = await ConversationResource.listAllBeforeDate({
+          auth,
+          cutoffDate: dateFromDaysAgo(1),
+          batchSize: 1,
+        });
+        expect(oldConversations.length).toBe(4);
+      }
+    );
   });
 });

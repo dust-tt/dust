@@ -10,9 +10,9 @@ import type {
 } from "@app/types";
 import { getOAuthConnectionAccessToken } from "@app/types";
 
-// Dedicated function to get the connection details for a given provider for internal MCP servers.
+// Dedicated function to get the connection details for an MCP server.
 // Not using the one from mcp_metadata.ts to avoid circular dependency.
-export async function getConnectionForInternalMCPServer(
+export async function getConnectionForMCPServer(
   auth: Authenticator,
   {
     mcpServerId,

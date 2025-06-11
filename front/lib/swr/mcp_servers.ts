@@ -346,9 +346,9 @@ export function useSyncRemoteMCPServer(
 }
 
 /**
- * Hook to update a remote MCP server
+ * Hook to update an MCP server
  */
-export function useUpdateRemoteMCPServer(
+export function useUpdateMCPServer(
   owner: LightWorkspaceType,
   serverId: string
 ) {
@@ -358,12 +358,18 @@ export function useUpdateRemoteMCPServer(
     serverId,
   });
 
-  const updateServer = async (data: {
-    name: string;
-    icon: string;
-    description: string;
-    sharedSecret?: string;
-  }): Promise<PatchMCPServerResponseBody> => {
+  const updateServer = async (
+    data:
+      | {
+          name: string;
+          icon: string;
+          description: string;
+          sharedSecret?: string;
+        }
+      | {
+          oAuthUseCase: MCPOAuthUseCase;
+        }
+  ): Promise<PatchMCPServerResponseBody> => {
     const response = await fetch(`/api/w/${owner.sId}/mcp/${serverId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
