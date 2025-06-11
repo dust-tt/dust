@@ -81,17 +81,12 @@ export default function AgentMCPActions({
   agent,
   agentId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  const {
-    actions,
-    totalCount,
-    currentPage,
-    isLoading,
-    setPage,
-  } = useMCPActions({
-    owner,
-    agentId,
-    pageSize: 25,
-  });
+  const { actions, totalCount, currentPage, isLoading, setPage } =
+    useMCPActions({
+      owner,
+      agentId,
+      pageSize: 25,
+    });
 
   const pagination = {
     pageIndex: currentPage,

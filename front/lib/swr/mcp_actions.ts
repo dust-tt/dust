@@ -49,10 +49,10 @@ export function useMCPActions({
   const handleSetPage = useCallback(
     (page: number) => {
       setCurrentPage(page);
-      
+
       // If we're going to a page we haven't fetched yet, add the cursor
       if (data?.nextCursor && page === cursors.length) {
-        setCursors(prev => [...prev, data.nextCursor]);
+        setCursors((prev) => [...prev, data.nextCursor]);
       }
     },
     [data?.nextCursor, cursors.length]
@@ -70,7 +70,9 @@ export function useMCPActions({
     }
   }, [currentPage]);
 
-  const totalPages = data?.totalCount ? Math.ceil(data.totalCount / pageSize) : 0;
+  const totalPages = data?.totalCount
+    ? Math.ceil(data.totalCount / pageSize)
+    : 0;
   const canGoNext = Boolean(data?.nextCursor);
   const canGoPrevious = currentPage > 0;
 
@@ -88,4 +90,4 @@ export function useMCPActions({
     canGoPrevious,
     mutate,
   };
-} 
+}
