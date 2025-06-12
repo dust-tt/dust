@@ -180,15 +180,17 @@ export class SalesforceOAuthProvider implements BaseOAuthStrategyProvider {
             metadata: { workspace_id: workspaceId, user_id: userId },
           },
           cleanedConfig: {
+            ...restConfig,
             client_id: connection.metadata.client_id,
             instance_url: connection.metadata.instance_url,
             code_verifier,
             code_challenge,
-            ...restConfig,
           },
         };
       }
     }
+
+    const { code_verifier, code_challenge } = await getPKCEConfig();
 
     const { client_secret, ...restConfig } = extraConfig;
     // Keep client_id in metadata in clear text.
@@ -200,7 +202,11 @@ export class SalesforceOAuthProvider implements BaseOAuthStrategyProvider {
         },
         metadata: { workspace_id: workspaceId, user_id: userId },
       },
-      cleanedConfig: restConfig,
+      cleanedConfig: {
+        ...restConfig,
+        code_verifier,
+        code_challenge,
+      },
     };
   }
 }

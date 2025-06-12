@@ -1,7 +1,6 @@
 import * as t from "io-ts";
 
-import type { PCKEConfig } from "@app/lib/utils/pkce";
-import { getPKCEConfig } from "@app/lib/utils/pkce";
+import type { LightWorkspaceType } from "@app/types";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export const OAUTH_USE_CASES = [
@@ -55,37 +54,6 @@ export const OAUTH_PROVIDER_NAMES: Record<OAuthProvider, string> = {
   mcp: "MCP",
 };
 
-export const getProviderAdditionalClientSideAuthCredentials = async ({
-  provider,
-  useCase,
-}: {
-  provider: OAuthProvider;
-  useCase: OAuthUseCase;
-}): Promise<PCKEConfig | null> => {
-  switch (provider) {
-    case "salesforce":
-    case "gmail":
-      if (useCase === "personal_actions" || useCase === "platform_actions") {
-        return getPKCEConfig();
-      }
-      return null;
-    case "mcp":
-    case "hubspot":
-    case "zendesk":
-    case "slack":
-    case "gong":
-    case "microsoft":
-    case "notion":
-    case "confluence":
-    case "github":
-    case "google_drive":
-    case "intercom":
-      return null;
-    default:
-      assertNever(provider);
-  }
-};
-
 const SUPPORTED_OAUTH_CREDENTIALS = [
   "client_id",
   "client_secret",
@@ -126,9 +94,6 @@ export const getProviderRequiredOAuthCredentialInputs = async ({
   provider: OAuthProvider;
   useCase: OAuthUseCase;
 }): Promise<OAuthCredentialInputs | null> => {
-  const additionalCredentials =
-    await getProviderAdditionalClientSideAuthCredentials({ provider, useCase });
-
   switch (provider) {
     case "salesforce":
       if (useCase === "personal_actions" || useCase === "platform_actions") {
@@ -154,19 +119,12 @@ export const getProviderRequiredOAuthCredentialInputs = async ({
             validator: isValidClientIdOrSecret,
           },
         };
-        if (!additionalCredentials) {
-          return result;
-        }
-        Object.entries(additionalCredentials).forEach(([key, value]) => {
-          if (isSupportedOAuthCredential(key)) {
-            result[key] = { label: key, value };
-          }
-        });
+
         return result;
       }
       return null;
     case "gmail":
-      if (useCase === "personal_actions") {
+      if (useCase === "personal_actions" || useCase === "platform_actions") {
         const result: OAuthCredentialInputs = {
           client_id: {
             label: "OAuth Client ID",
@@ -181,14 +139,6 @@ export const getProviderRequiredOAuthCredentialInputs = async ({
             validator: isValidClientIdOrSecret,
           },
         };
-        if (!additionalCredentials) {
-          return result;
-        }
-        Object.entries(additionalCredentials).forEach(([key, value]) => {
-          if (isSupportedOAuthCredential(key)) {
-            result[key] = { label: key, value };
-          }
-        });
         return result;
       }
       return null;
@@ -203,16 +153,7 @@ export const getProviderRequiredOAuthCredentialInputs = async ({
     case "google_drive":
     case "intercom":
     case "mcp":
-      if (!additionalCredentials) {
-        return null;
-      }
-      const result: OAuthCredentialInputs = {};
-      Object.entries(additionalCredentials).forEach(([key, value]) => {
-        if (isSupportedOAuthCredential(key)) {
-          result[key] = { label: key, value };
-        }
-      });
-      return Object.keys(result).length > 0 ? result : null;
+      return null;
     default:
       assertNever(provider);
   }

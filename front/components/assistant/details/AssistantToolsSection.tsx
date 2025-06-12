@@ -10,7 +10,10 @@ import _ from "lodash";
 
 import { getModelProviderLogo } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
-import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
+import {
+  getMcpServerDisplayName,
+  getServerTypeAndIdFromSId,
+} from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { AgentActionConfigurationType } from "@app/lib/actions/types/agent";
 import {
@@ -27,12 +30,7 @@ import {
 import type { MCPServerTypeWithViews } from "@app/lib/api/mcp";
 import { useMCPServers } from "@app/lib/swr/mcp_servers";
 import type { AgentConfigurationType, LightWorkspaceType } from "@app/types";
-import {
-  asDisplayName,
-  assertNever,
-  removeNulls,
-  SUPPORTED_MODEL_CONFIGS,
-} from "@app/types";
+import { assertNever, removeNulls, SUPPORTED_MODEL_CONFIGS } from "@app/types";
 
 interface AssistantToolsSectionProps {
   agentConfiguration: AgentConfigurationType;
@@ -95,7 +93,7 @@ export function AssistantToolsSection({
                 key={action.title}
               >
                 {action.avatar}
-                <div>{asDisplayName(action.title)}</div>
+                <div>{action.title}</div>
               </div>
             ))}
           </div>
@@ -164,7 +162,7 @@ function renderOtherAction(
     const { serverType } = getServerTypeAndIdFromSId(mcpServer.sId);
     const avatar = getAvatar(mcpServer, "xs");
     return {
-      title: action.name,
+      title: getMcpServerDisplayName(mcpServer),
       avatar,
       order: serverType === "internal" ? 1 : 3,
     };

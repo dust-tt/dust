@@ -41,10 +41,8 @@ function finalizeUriForProvider(provider: OAuthProvider): string {
   return config.getClientFacingUrl() + `/oauth/${provider}/finalize`;
 }
 
-export const PROVIDER_STRATEGIES: Record<
-  OAuthProvider,
-  BaseOAuthStrategyProvider
-> = {
+// DO NOT USE THIS DIRECTLY, USE getProviderStrategy instead.
+const _PROVIDER_STRATEGIES: Record<OAuthProvider, BaseOAuthStrategyProvider> = {
   confluence: new ConfluenceOAuthProvider(),
   github: new GithubOAuthProvider(),
   gmail: new GmailOAuthProvider(),
@@ -60,6 +58,12 @@ export const PROVIDER_STRATEGIES: Record<
   zendesk: new ZendeskOAuthProvider(),
 };
 
+function getProviderStrategy(
+  provider: OAuthProvider
+): BaseOAuthStrategyProvider {
+  return _PROVIDER_STRATEGIES[provider];
+}
+
 export async function createConnectionAndGetSetupUrl(
   auth: Authenticator,
   provider: OAuthProvider,
@@ -68,7 +72,9 @@ export async function createConnectionAndGetSetupUrl(
 ): Promise<Result<string, OAuthError>> {
   const api = new OAuthAPI(config.getOAuthAPIConfig(), logger);
 
-  if (!PROVIDER_STRATEGIES[provider].isExtraConfigValid(extraConfig, useCase)) {
+  const providerStrategy = getProviderStrategy(provider);
+
+  if (!providerStrategy.isExtraConfigValid(extraConfig, useCase)) {
     logger.error(
       { provider, useCase, extraConfig },
       "OAuth: Invalid extraConfig before getting related credential"
@@ -90,8 +96,8 @@ export async function createConnectionAndGetSetupUrl(
   const workspaceId = auth.getNonNullableWorkspace().sId;
   const userId = auth.getNonNullableUser().sId;
 
-  if (PROVIDER_STRATEGIES[provider].getRelatedCredential) {
-    const result = await PROVIDER_STRATEGIES[provider].getRelatedCredential!(
+  if (providerStrategy.getRelatedCredential) {
+    const result = await providerStrategy.getRelatedCredential!(
       auth,
       extraConfig,
       workspaceId,
@@ -104,8 +110,8 @@ export async function createConnectionAndGetSetupUrl(
 
       if (
         //TODO: add the same verification for other providers with a getRelatedCredential method.
-        PROVIDER_STRATEGIES[provider].isExtraConfigValidPostRelatedCredential &&
-        !PROVIDER_STRATEGIES[provider].isExtraConfigValidPostRelatedCredential!(
+        providerStrategy.isExtraConfigValidPostRelatedCredential &&
+        !providerStrategy.isExtraConfigValidPostRelatedCredential!(
           extraConfig,
           useCase
         )
@@ -152,7 +158,7 @@ export async function createConnectionAndGetSetupUrl(
   const forceLabelsScope = flags.includes("force_gdrive_labels_scope");
 
   return new Ok(
-    PROVIDER_STRATEGIES[provider].setupUri({
+    providerStrategy.setupUri({
       connection,
       extraConfig,
       relatedCredential,
@@ -167,7 +173,8 @@ export async function finalizeConnection(
   provider: OAuthProvider,
   query: ParsedUrlQuery
 ): Promise<Result<OAuthConnectionType, OAuthError>> {
-  const code = PROVIDER_STRATEGIES[provider].codeFromQuery(query);
+  const providerStrategy = getProviderStrategy(provider);
+  const code = providerStrategy.codeFromQuery(query);
 
   if (!code) {
     logger.error(
@@ -180,8 +187,7 @@ export async function finalizeConnection(
     });
   }
 
-  const connectionId =
-    PROVIDER_STRATEGIES[provider].connectionIdFromQuery(query);
+  const connectionId = providerStrategy.connectionIdFromQuery(query);
 
   if (!connectionId) {
     logger.error(
