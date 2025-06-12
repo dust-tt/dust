@@ -31,6 +31,7 @@ import SettingsScreen, {
 } from "@app/components/assistant_builder/SettingsScreen";
 import { submitAssistantBuilderForm } from "@app/components/assistant_builder/submitAssistantBuilderForm";
 import type {
+  AssistantBuilderInitialState,
   AssistantBuilderLightProps,
   AssistantBuilderPendingAction,
   AssistantBuilderSetActionType,
@@ -58,6 +59,7 @@ import { useAssistantConfigurationActions } from "@app/lib/swr/actions";
 import { useKillSwitches } from "@app/lib/swr/kill";
 import { useModels } from "@app/lib/swr/models";
 import { useUser } from "@app/lib/swr/user";
+import type { AgentConfigurationScope, PlanType } from "@app/types";
 import {
   assertNever,
   CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG,
@@ -71,6 +73,48 @@ function isValidTab(tab: string): tab is BuilderScreen {
   return BUILDER_SCREENS.includes(tab as BuilderScreen);
 }
 
+function getDefaultBuilderState(
+  initialBuilderState: AssistantBuilderInitialState | null,
+  defaultScope: Exclude<AgentConfigurationScope, "global">,
+  plan: PlanType
+) {
+  if (initialBuilderState) {
+    // We fetch actions on the client side, but in case of duplicating an agent,
+    // we need to use the actions from the original agent.
+    const duplicatedActions = initialBuilderState.actions.map((action) => ({
+      id: uniqueId(),
+      ...action,
+    }));
+
+    // We need to add data viz as a fake action if it's enabled.
+    if (initialBuilderState.visualizationEnabled) {
+      duplicatedActions.push(getDataVisualizationActionConfiguration());
+    }
+
+    return {
+      ...initialBuilderState,
+      generationSettings: initialBuilderState.generationSettings ?? {
+        ...getDefaultAssistantState().generationSettings,
+      },
+      actions: duplicatedActions,
+      maxStepsPerRun:
+        initialBuilderState.maxStepsPerRun ??
+        getDefaultAssistantState().maxStepsPerRun,
+    };
+  }
+
+  return {
+    ...getDefaultAssistantState(),
+    scope: defaultScope,
+    generationSettings: {
+      ...getDefaultAssistantState().generationSettings,
+      modelSettings: !isUpgraded(plan)
+        ? GPT_4_1_MINI_MODEL_CONFIG
+        : CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG,
+    },
+  };
+}
+
 export default function AssistantBuilder({
   owner,
   subscription,
@@ -81,6 +125,7 @@ export default function AssistantBuilder({
   defaultIsEdited,
   baseUrl,
   defaultTemplate,
+  isAgentDuplication = false,
 }: AssistantBuilderLightProps) {
   const router = useRouter();
   const sendNotification = useSendNotification();
@@ -132,9 +177,9 @@ export default function AssistantBuilder({
       return;
     }
 
-    // In case of duplicating an agent, we should not override the original actions from
-    // the fetched actions (= empty actions).
-    if (actions.length > 0) {
+    // In case of duplicating an agent, we set initial action state from the original agent.
+    // We should not override it with the actions we fetched from the client side (= empty actions).
+    if (!isAgentDuplication) {
       setBuilderState((prevState) => ({
         ...prevState,
         actions: [
@@ -148,43 +193,10 @@ export default function AssistantBuilder({
         ],
       }));
     }
-  }, [actions, error, sendNotification]);
+  }, [actions, error, sendNotification, isAgentDuplication]);
 
-  const [builderState, setBuilderState] = useState<AssistantBuilderState>(
-    initialBuilderState
-      ? {
-          handle: initialBuilderState.handle,
-          description: initialBuilderState.description,
-          scope: initialBuilderState.scope,
-          instructions: initialBuilderState.instructions,
-          avatarUrl: initialBuilderState.avatarUrl,
-          generationSettings: initialBuilderState.generationSettings ?? {
-            ...getDefaultAssistantState().generationSettings,
-          },
-          // We fetch actions on the client side, but in case of duplicating an agent,
-          // we need to use the actions from the original agent.
-          actions: initialBuilderState.actions.map((action) => ({
-            id: uniqueId(),
-            ...action,
-          })),
-          maxStepsPerRun:
-            initialBuilderState.maxStepsPerRun ??
-            getDefaultAssistantState().maxStepsPerRun,
-          visualizationEnabled: initialBuilderState.visualizationEnabled,
-          templateId: initialBuilderState.templateId,
-          tags: initialBuilderState.tags,
-          editors: initialBuilderState.editors,
-        }
-      : {
-          ...getDefaultAssistantState(),
-          scope: defaultScope,
-          generationSettings: {
-            ...getDefaultAssistantState().generationSettings,
-            modelSettings: !isUpgraded(plan)
-              ? GPT_4_1_MINI_MODEL_CONFIG
-              : CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG,
-          },
-        }
+  const [builderState, setBuilderState] = useState<AssistantBuilderState>(() =>
+    getDefaultBuilderState(initialBuilderState, defaultScope, plan)
   );
 
   const [pendingAction, setPendingAction] =
