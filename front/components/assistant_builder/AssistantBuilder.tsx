@@ -91,8 +91,6 @@ function getDefaultBuilderState(
       duplicatedActions.push(getDataVisualizationActionConfiguration());
     }
 
-    console.log("initialBuilderState", initialBuilderState);
-
     return {
       ...initialBuilderState,
       generationSettings: initialBuilderState.generationSettings ?? {
