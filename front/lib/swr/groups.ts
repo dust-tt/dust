@@ -1,9 +1,9 @@
 import { useMemo } from "react";
 import type { Fetcher } from "swr";
 
-import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetGroupsResponseBody } from "@app/pages/api/w/[wId]/groups";
-import type { GroupKind, LightWorkspaceType } from "@app/types";
+import type { GroupKind, GroupType, LightWorkspaceType } from "@app/types";
 
 export function useGroups({
   owner,

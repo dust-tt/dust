@@ -25,6 +25,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { launchUpdateSpacePermissionsWorkflow } from "@app/temporal/permissions_queue/client";
 import type {
   CombinedResourcePermissions,
+  GroupPermission,
   ModelId,
   Result,
   SpaceKind,
