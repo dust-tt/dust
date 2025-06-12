@@ -71,13 +71,16 @@ export function EnumSelect({
                     onValueChange(option.value);
                   }}
                 >
-                  <div className="flex items-center gap-2 w-full">
-                    {option.checked ? (
-                      <CheckCircle className="h-4 w-4 text-green-600" />
-                    ) : (
-                      <Circle className="h-4 w-4 text-gray-400" />
-                    )}
-                    <span className={cn(option.checked && "font-medium")}>{option.label}</span>
+                  <div className="flex w-full items-center gap-2">
+                    {"checked" in option &&
+                      (option.checked ? (
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                      ) : (
+                        <Circle className="h-4 w-4 text-gray-400" />
+                      ))}
+                    <span className={cn(option.checked && "font-medium")}>
+                      {option.label}
+                    </span>
                   </div>
                   <Check
                     className={cn(

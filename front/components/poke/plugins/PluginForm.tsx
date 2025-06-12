@@ -140,7 +140,7 @@ export function PluginForm({
                               ? (asyncArgs[key] as EnumValues)
                               : arg.values
                           }
-                          placeholder="Select feature flag"
+                          placeholder="Select value"
                           value={field.value}
                         />
                       )}
