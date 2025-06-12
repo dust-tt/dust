@@ -3,6 +3,11 @@ import _ from "lodash";
 import type { SlackChannel } from "@connectors/lib/models/slack";
 import type { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
 
+// Maximum number of messages we process in a single syncNonThreaded call (1 week of unthreaded
+// messages). Some channels have integrations that post a lot of messages. Beyond this number (more
+// that 500 messages per week), the information is very likely useless.
+export const MAX_SYNC_NON_THREAD_MESSAGES = 4000;
+
 export function getWeekStart(date: Date): Date {
   const dateCopy = new Date(date);
 
