@@ -61,8 +61,31 @@ diff --unified=0 --color=always main_output.txt current_output.txt
 echo "Running diff and extracting SQL statements..."
 diff_output=$(diff --unified=0 main_output.txt current_output.txt | awk '/^\+[^+]/ {print substr($0, 2)}' | sed 's/;*$/;/')
 if [ -n "$diff_output" ]; then
-  echo "-- Migration created on $current_date" > diff_output.txt
-  echo "$diff_output" >> diff_output.txt
+  # Create migration wrapped in procedure that requires --apply flag
+  cat > diff_output.txt << EOF
+-- Migration created on $current_date
+\set QUIET ON
+CREATE OR REPLACE FUNCTION perform_migration()
+RETURNS VARCHAR AS \$\$
+BEGIN
+    $diff_output
+
+    RETURN 'success';
+END;
+\$\$ LANGUAGE plpgsql;
+\set QUIET OFF
+
+\\if :{?apply}
+   SELECT perform_migration();
+\\else
+    \\echo '!! Migration was NOT applied !!'
+    \\echo 'Use npm run migration:apply -- migration_xxx.sql to apply this migration.'
+\\endif
+
+\set QUIET ON
+DROP FUNCTION perform_migration();
+\set QUIET OFF
+EOF
 else
     echo "No migration necessary."
     exit 0

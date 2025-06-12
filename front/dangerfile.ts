@@ -213,10 +213,50 @@ async function checkRawSqlRegistry(filePaths: string[]) {
   }
 }
 
+/**
+ * Check if SQL migration files have been properly generated with create_db_migration_file.sh
+ */
+async function checkMigrationFileFormat() {
+  const migrationFiles = danger.git.modified_files
+    .concat(danger.git.created_files)
+    .filter(
+      (path) =>
+        path.startsWith("migrations/db/migration_") && path.endsWith(".sql")
+    );
+
+  for (const file of migrationFiles) {
+    try {
+      const content = await danger.git.diffForFile(file);
+      if (content === null) continue;
+
+      // Check if the file has the proper wrapping procedure
+      const hasProcedure = content.added.includes(
+        "CREATE OR REPLACE FUNCTION perform_migration()"
+      );
+      const hasApplyFlag = content.added.includes("\\if :{?apply}");
+      const hasDropFunction = content.added.includes(
+        "DROP FUNCTION perform_migration()"
+      );
+
+      if (!hasProcedure || !hasApplyFlag || !hasDropFunction) {
+        fail(
+          `Migration file "${file}" does not appear to have been generated using create_db_migration_file.sh.\n` +
+            `Please use the script to generate migration files to ensure proper formatting and safety checks.`
+        );
+      }
+    } catch (error) {
+      console.error(`Error checking migration file ${file}:`, error);
+    }
+  }
+}
+
 async function checkDiffFiles() {
   const diffFiles = danger.git.modified_files
     .concat(danger.git.created_files)
     .concat(danger.git.deleted_files);
+
+  // Check migration file format
+  await checkMigrationFileFormat();
 
   // Model files
   const modifiedModelFiles = diffFiles.filter((path) => {

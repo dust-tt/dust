@@ -1,12 +1,12 @@
--- -- This migration is dependent on a backfill script.
--- -- The backfill script is: BACKFILL_SCRIPT_NAME.
--- -- Run the psql command with the --set=backfilled=1 flag if the script was run.
+-- This migration is dependant on a backfill script
+-- The backfill script is: BACKFILL_SCRIPT_NAME
+-- run psql with --set=backfilled=1 argument if you have run the script.
 
 CREATE OR REPLACE FUNCTION perform_migration(backfilled boolean DEFAULT false)
 RETURNS VARCHAR AS $$
 BEGIN
     IF NOT backfilled THEN
-        RAISE NOTICE 'The script BACKFILL_SCRIPT_NAME has to be run before applying this migration. If already done, run the psql command with the --set=backfilled=1 flag.';
+        RAISE NOTICE 'The backfill script: BACKFILL_SCRIPT_NAME is required before applying this migration. If you already did it, run psql with --set=backfilled=1 argument.';
     END IF;
 
     MIGRATION_STATEMENTS
@@ -15,11 +15,16 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-\if :{?backfilled}
-   SELECT perform_migration(:'backfilled'::boolean);
+\if :{?apply}
+    \if :{?backfilled}
+       SELECT perform_migration(:'backfilled'::boolean);
+    \else
+        \echo '!! Migration was NOT applied !!'
+        \echo 'The backfill script: BACKFILL_SCRIPT_NAME is required before applying this migration. If you already did it, run psql with --set=backfilled=1 argument.'
+    \endif
 \else
     \echo '!! Migration was NOT applied !!'
-    \echo 'The script BACKFILL_SCRIPT_NAME has to be run before applying this migration. If already done, run the psql command with the --set=backfilled=1 flag.'
+    \echo 'Use npm run migration:apply -- migration_xxx.sql to apply this migration.'
 \endif
 
 DROP FUNCTION perform_migration(boolean);
