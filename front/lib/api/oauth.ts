@@ -16,7 +16,6 @@ import { SalesforceOAuthProvider } from "@app/lib/api/oauth/providers/salesforce
 import { SlackOAuthProvider } from "@app/lib/api/oauth/providers/slack";
 import { ZendeskOAuthProvider } from "@app/lib/api/oauth/providers/zendesk";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import type { ExtraConfigType } from "@app/pages/w/[wId]/oauth/[provider]/setup";
 import type {
@@ -154,9 +153,6 @@ export async function createConnectionAndGetSetupUrl(
 
   const connection = cRes.value.connection;
 
-  const flags = await getFeatureFlags(auth.getNonNullableWorkspace());
-  const forceLabelsScope = flags.includes("force_gdrive_labels_scope");
-
   return new Ok(
     providerStrategy.setupUri({
       connection,
@@ -164,7 +160,6 @@ export async function createConnectionAndGetSetupUrl(
       relatedCredential,
       useCase,
       clientId,
-      forceLabelsScope,
     })
   );
 }
