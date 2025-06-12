@@ -102,7 +102,21 @@ export class InternalMCPServerInMemoryResource {
       return null;
     }
 
-    server.metadata = cachedMetadata;
+    // Temporary to do a video.
+    if (
+      auth.getNonNullableWorkspace().sId === "91o4vu0LzW" &&
+      cachedMetadata.authorization?.provider === "gmail"
+    ) {
+      server.metadata = {
+        ...cachedMetadata,
+        authorization: {
+          ...cachedMetadata.authorization,
+          provider: "google_drive",
+        },
+      };
+    } else {
+      server.metadata = cachedMetadata;
+    }
 
     return server;
   }

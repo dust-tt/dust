@@ -15,10 +15,12 @@ export class GoogleDriveOAuthProvider implements BaseOAuthStrategyProvider {
     connection,
     useCase,
     forceLabelsScope,
+    extraConfig,
   }: {
     connection: OAuthConnectionType;
     useCase: OAuthUseCase;
     forceLabelsScope?: boolean;
+    extraConfig?: ExtraConfigType;
   }) {
     const scopes =
       useCase === "labs_transcripts"
@@ -37,7 +39,7 @@ export class GoogleDriveOAuthProvider implements BaseOAuthStrategyProvider {
       client_id: config.getOAuthGoogleDriveClientId(),
       state: connection.connection_id,
       redirect_uri: finalizeUriForProvider("google_drive"),
-      scope: scopes.join(" "),
+      scope: extraConfig?.scope ?? scopes.join(" "),
       access_type: "offline",
       prompt: "consent",
     });
@@ -53,7 +55,13 @@ export class GoogleDriveOAuthProvider implements BaseOAuthStrategyProvider {
     return getStringFromQuery(query, "state");
   }
 
-  isExtraConfigValid(extraConfig: ExtraConfigType) {
+  isExtraConfigValid(extraConfig: ExtraConfigType, useCase: OAuthUseCase) {
+    if (useCase === "personal_actions" || useCase === "platform_actions") {
+      if (extraConfig.scope) {
+        return true;
+      }
+    }
+
     return Object.keys(extraConfig).length === 0;
   }
 }

@@ -41,7 +41,7 @@ export const OAUTH_PROVIDERS = [
 export const OAUTH_PROVIDER_NAMES: Record<OAuthProvider, string> = {
   confluence: "Confluence",
   github: "GitHub",
-  google_drive: "Google Drive",
+  google_drive: "Google",
   gmail: "Gmail",
   intercom: "Intercom",
   notion: "Notion",
