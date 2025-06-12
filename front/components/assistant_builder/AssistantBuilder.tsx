@@ -131,19 +131,21 @@ export default function AssistantBuilder({
       });
       return;
     }
-
-    setBuilderState((prevState) => ({
-      ...prevState,
-      actions: [
-        ...actions.map((action) => ({
-          id: uniqueId(),
-          ...action,
-        })),
-        ...(prevState.visualizationEnabled
-          ? [getDataVisualizationActionConfiguration()]
-          : []),
-      ],
-    }));
+    // Do not override the actions if they are already set.
+    if (actions.length > 0) {
+      setBuilderState((prevState) => ({
+        ...prevState,
+        actions: [
+          ...actions.map((action) => ({
+            id: uniqueId(),
+            ...action,
+          })),
+          ...(prevState.visualizationEnabled
+            ? [getDataVisualizationActionConfiguration()]
+            : []),
+        ],
+      }));
+    }
   }, [actions, error, sendNotification]);
 
   const [builderState, setBuilderState] = useState<AssistantBuilderState>(
@@ -157,7 +159,10 @@ export default function AssistantBuilder({
           generationSettings: initialBuilderState.generationSettings ?? {
             ...getDefaultAssistantState().generationSettings,
           },
-          actions: [], // Actions will be populated later from the client
+          actions: initialBuilderState.actions.map((action) => ({
+            id: uniqueId(),
+            ...action,
+          })),
           maxStepsPerRun:
             initialBuilderState.maxStepsPerRun ??
             getDefaultAssistantState().maxStepsPerRun,
