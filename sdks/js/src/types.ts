@@ -3028,3 +3028,16 @@ const MCP_VALIDATION_OUTPUTS = [
 ] as const;
 export type MCPValidationOutputPublicType =
   (typeof MCP_VALIDATION_OUTPUTS)[number];
+
+export const PostSpaceMembersRequestBodySchema = z.object({
+  userIds: z.array(z.string()),
+});
+
+export interface PostSpaceMembersResponseBody {
+  space: SpaceType;
+  users: Pick<UserType, "sId" | "id" | "email">[];
+}
+
+export interface GetWorkspaceMembersResponseBody {
+  users: Pick<UserType, "sId" | "id" | "email">[];
+}
