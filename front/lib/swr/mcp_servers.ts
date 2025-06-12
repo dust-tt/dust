@@ -43,7 +43,6 @@ import type {
   Result,
 } from "@app/types";
 import { Err, Ok, setupOAuthConnection } from "@app/types";
-import { getProviderAdditionalClientSideAuthCredentials } from "@app/types/oauth/lib";
 
 export type MCPConnectionType = {
   useCase: MCPOAuthUseCase;
@@ -658,19 +657,6 @@ export function useCreatePersonalConnection(owner: LightWorkspaceType) {
         mcp_server_id: mcpServer.sId,
       };
 
-      const additionalCredentials =
-        await getProviderAdditionalClientSideAuthCredentials({
-          provider,
-          // @ts-expect-error useCase is too broad here but will fixed when we remove salesforce labs integration.
-          use_case: useCase,
-        });
-      if (additionalCredentials) {
-        Object.entries(additionalCredentials).forEach(([key, value]) => {
-          if (typeof value === "string") {
-            extraConfig[key] = value;
-          }
-        });
-      }
       if (scope) {
         extraConfig.scope = scope;
       }
