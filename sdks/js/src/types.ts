@@ -3021,12 +3021,12 @@ export type MCPValidationOutputPublicType =
   (typeof MCP_VALIDATION_OUTPUTS)[number];
 
 export const PostSpaceMembersRequestBodySchema = z.object({
-  userId: z.string(),
+  userIds: z.array(z.string()),
 });
 
 export interface PostSpaceMembersResponseBody {
   space: SpaceType;
-  user: Pick<UserType, "sId" | "id" | "email">;
+  users: Pick<UserType, "sId" | "id" | "email">[];
 }
 
 export interface GetWorkspaceMembersResponseBody {

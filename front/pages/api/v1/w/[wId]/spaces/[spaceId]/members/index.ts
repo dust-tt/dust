@@ -67,10 +67,10 @@ async function handler(
         });
       }
 
-      const { userId } = bodyValidation.data;
+      const { userIds } = bodyValidation.data;
 
       const updateRes = await space.manageMember(auth, {
-        userId: userId,
+        userIds: userIds,
         operation: "add",
       });
       if (updateRes.isErr()) {
@@ -97,15 +97,15 @@ async function handler(
         }
       }
 
-      const userJson = updateRes.value.toJSON();
+      const usersJson = updateRes.value.map((user) => user.toJSON());
 
       return res.status(200).json({
         space: space.toJSON(),
-        user: {
+        users: usersJson.map((userJson) => ({
           sId: userJson.sId,
           id: userJson.id,
           email: userJson.email,
-        },
+        })),
       });
     }
     default:

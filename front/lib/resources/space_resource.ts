@@ -520,13 +520,13 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   async manageMember(
     auth: Authenticator,
     {
-      userId,
+      userIds,
       operation,
     }: {
-      userId: string;
+      userIds: string[];
       operation: "add" | "remove";
     }
-  ): Promise<Result<UserResource, DustError>> {
+  ): Promise<Result<UserResource[], DustError>> {
     if (!this.canAdministrate(auth)) {
       return new Err(
         new DustError(
@@ -537,18 +537,18 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     }
 
     const defaultSpaceGroup = this.getDefaultSpaceGroup();
-    const user = await UserResource.fetchById(userId);
+    const users = await UserResource.fetchByIds(userIds);
 
-    if (!user) {
+    if (!users) {
       return new Err(new DustError("user_not_found", "User not found."));
     }
 
     switch (operation) {
       case "add":
         // Add user to the space's regular group
-        const addMemberRes = await defaultSpaceGroup.addMember(
+        const addMemberRes = await defaultSpaceGroup.addMembers(
           auth,
-          user.toJSON()
+          users.map((user) => user.toJSON())
         );
         if (addMemberRes.isErr()) {
           return addMemberRes;
@@ -556,16 +556,16 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         break;
       case "remove":
         // Remove user from the space's regular group
-        const removeMemberRes = await defaultSpaceGroup.removeMember(
+        const removeMemberRes = await defaultSpaceGroup.removeMembers(
           auth,
-          user.toJSON()
+          users.map((user) => user.toJSON())
         );
         if (removeMemberRes.isErr()) {
           return removeMemberRes;
         }
         break;
     }
-    return new Ok(user);
+    return new Ok(users);
   }
 
   private getDefaultSpaceGroup(): GroupResource {
