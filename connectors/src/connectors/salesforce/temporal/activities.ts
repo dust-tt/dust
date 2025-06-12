@@ -171,7 +171,7 @@ export async function processSyncedQueryPage(
   let lastModifiedDateCursor = lastModifiedDateStringCursor
     ? new Date(lastModifiedDateStringCursor)
     : null;
-  let upToLastModifiedDate = upToLastModifiedDateString
+  const upToLastModifiedDate = upToLastModifiedDateString
     ? new Date(upToLastModifiedDateString)
     : null;
 
