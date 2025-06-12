@@ -61,9 +61,8 @@ async function handler(
 
   switch (req.method) {
     case "DELETE": {
-      const updateRes = await space.manageMember(auth, {
+      const updateRes = await space.removeMembers(auth, {
         userIds: [userId],
-        operation: "remove",
       });
       if (updateRes.isErr()) {
         if (

@@ -517,14 +517,12 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     });
   }
 
-  async manageMember(
+  async addMembers(
     auth: Authenticator,
     {
       userIds,
-      operation,
     }: {
       userIds: string[];
-      operation: "add" | "remove";
     }
   ): Promise<Result<UserResource[], DustError>> {
     if (!this.canAdministrate(auth)) {
@@ -543,28 +541,51 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       return new Err(new DustError("user_not_found", "User not found."));
     }
 
-    switch (operation) {
-      case "add":
-        // Add user to the space's regular group
-        const addMemberRes = await defaultSpaceGroup.addMembers(
-          auth,
-          users.map((user) => user.toJSON())
-        );
-        if (addMemberRes.isErr()) {
-          return addMemberRes;
-        }
-        break;
-      case "remove":
-        // Remove user from the space's regular group
-        const removeMemberRes = await defaultSpaceGroup.removeMembers(
-          auth,
-          users.map((user) => user.toJSON())
-        );
-        if (removeMemberRes.isErr()) {
-          return removeMemberRes;
-        }
-        break;
+    const addMemberRes = await defaultSpaceGroup.addMembers(
+      auth,
+      users.map((user) => user.toJSON())
+    );
+
+    if (addMemberRes.isErr()) {
+      return addMemberRes;
     }
+
+    return new Ok(users);
+  }
+
+  async removeMembers(
+    auth: Authenticator,
+    {
+      userIds,
+    }: {
+      userIds: string[];
+    }
+  ): Promise<Result<UserResource[], DustError>> {
+    if (!this.canAdministrate(auth)) {
+      return new Err(
+        new DustError(
+          "unauthorized",
+          "You do not have permission to add members to this space."
+        )
+      );
+    }
+
+    const defaultSpaceGroup = this.getDefaultSpaceGroup();
+    const users = await UserResource.fetchByIds(userIds);
+
+    if (!users) {
+      return new Err(new DustError("user_not_found", "User not found."));
+    }
+
+    const removeMemberRes = await defaultSpaceGroup.removeMembers(
+      auth,
+      users.map((user) => user.toJSON())
+    );
+
+    if (removeMemberRes.isErr()) {
+      return removeMemberRes;
+    }
+
     return new Ok(users);
   }
 

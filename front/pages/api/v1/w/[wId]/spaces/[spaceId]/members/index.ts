@@ -69,9 +69,8 @@ async function handler(
 
       const { userIds } = bodyValidation.data;
 
-      const updateRes = await space.manageMember(auth, {
+      const updateRes = await space.addMembers(auth, {
         userIds: userIds,
-        operation: "add",
       });
       if (updateRes.isErr()) {
         if (
