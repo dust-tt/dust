@@ -1,8 +1,16 @@
-import { Page, SearchInput, Separator } from "@dust-tt/sparkle";
+import {
+  Page,
+  SearchInput,
+  Separator,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@dust-tt/sparkle";
 import { UsersIcon } from "@heroicons/react/20/solid";
 import type { PaginationState } from "@tanstack/react-table";
 import type { InferGetServerSidePropsType } from "next";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import type { WorkspaceLimit } from "@app/components/app/ReachedLimitPopup";
 import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
@@ -28,6 +36,8 @@ import {
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { useSearchMembers } from "@app/lib/swr/memberships";
+import { useWorkOSSSOStatus } from "@app/lib/swr/workos";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
   PlanType,
   SubscriptionPerSeatPricing,
@@ -106,34 +116,21 @@ export default function WorkspaceAdmin({
   const [inviteBlockedPopupReason, setInviteBlockedPopupReason] =
     useState<WorkspaceLimit | null>(null);
 
-  const onInviteClick = (event: MouseEvent) => {
-    if (!isUpgraded(plan)) {
-      setInviteBlockedPopupReason("cant_invite_free_plan");
-      event.preventDefault();
-    } else if (subscription.paymentFailingSince) {
-      setInviteBlockedPopupReason("cant_invite_payment_failure");
-      event.preventDefault();
-    } else if (!workspaceHasAvailableSeats) {
-      setInviteBlockedPopupReason("cant_invite_no_seats_available");
-      event.preventDefault();
-    }
-  };
-
-  const popup = useMemo(() => {
-    if (!inviteBlockedPopupReason) {
-      return <></>;
-    }
-
-    return (
-      <ReachedLimitPopup
-        isOpened={!!inviteBlockedPopupReason}
-        onClose={() => setInviteBlockedPopupReason(null)}
-        subscription={subscription}
-        owner={owner}
-        code={inviteBlockedPopupReason}
-      />
-    );
-  }, [inviteBlockedPopupReason, owner, subscription]);
+  const onInviteClick = useCallback(
+    (event: MouseEvent) => {
+      if (!isUpgraded(plan)) {
+        setInviteBlockedPopupReason("cant_invite_free_plan");
+        event.preventDefault();
+      } else if (subscription.paymentFailingSince) {
+        setInviteBlockedPopupReason("cant_invite_payment_failure");
+        event.preventDefault();
+      } else if (!workspaceHasAvailableSeats) {
+        setInviteBlockedPopupReason("cant_invite_no_seats_available");
+        event.preventDefault();
+      }
+    },
+    [plan, subscription.paymentFailingSince, workspaceHasAvailableSeats]
+  );
 
   return (
     <AppContentLayout
@@ -162,9 +159,7 @@ export default function WorkspaceAdmin({
               placeholder="Search members (email)"
               value={searchTerm}
               name="search"
-              onChange={(s) => {
-                setSearchTerm(s);
-              }}
+              onChange={setSearchTerm}
             />
             <InviteEmailModal
               owner={owner}
@@ -180,7 +175,15 @@ export default function WorkspaceAdmin({
             searchTerm={searchTerm}
           />
         </div>
-        {popup}
+        {inviteBlockedPopupReason && (
+          <ReachedLimitPopup
+            isOpened={!!inviteBlockedPopupReason}
+            onClose={() => setInviteBlockedPopupReason(null)}
+            subscription={subscription}
+            owner={owner}
+            code={inviteBlockedPopupReason}
+          />
+        )}
       </Page.Vertical>
     </AppContentLayout>
   );
@@ -204,6 +207,8 @@ function WorkspaceMembersList({
     pageSize: DEFAULT_PAGE_SIZE,
   });
 
+  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
+  const { ssoStatus } = useWorkOSSSOStatus({ owner });
   const membersData = useSearchMembers({
     workspaceId: owner.sId,
     searchTerm,
@@ -220,15 +225,42 @@ function WorkspaceMembersList({
 
   return (
     <div className="flex flex-col gap-1 pt-2">
-      <Page.H variant="h6">Members</Page.H>
-      <MembersList
-        currentUser={currentUser}
-        membersData={membersData}
-        onRowClick={setSelectedMember}
-        showColumns={["name", "email", "role"]}
-        pagination={pagination}
-        setPagination={setPagination}
-      />
+      {hasFeature("workos_user_provisioning") ? (
+        <Tabs defaultValue="members">
+          <TabsList className="mb-4">
+            <TabsTrigger value="members" label="Members" />
+            <TabsTrigger
+              value="directories"
+              label={`Directories${ssoStatus?.connection ? ` (${ssoStatus.connection.type})` : ""}`}
+            />
+          </TabsList>
+          <TabsContent value="members">
+            <MembersList
+              currentUser={currentUser}
+              membersData={membersData}
+              onRowClick={setSelectedMember}
+              showColumns={["name", "email", "role"]}
+              pagination={pagination}
+              setPagination={setPagination}
+            />
+          </TabsContent>
+          <TabsContent value="directories">
+            <></>
+          </TabsContent>
+        </Tabs>
+      ) : (
+        <>
+          <Page.H variant="h6">Members</Page.H>
+          <MembersList
+            currentUser={currentUser}
+            membersData={membersData}
+            onRowClick={setSelectedMember}
+            showColumns={["name", "email", "role"]}
+            pagination={pagination}
+            setPagination={setPagination}
+          />
+        </>
+      )}
       <ChangeMemberModal
         onClose={() => setSelectedMember(null)}
         member={selectedMember}
