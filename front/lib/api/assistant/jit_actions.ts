@@ -126,55 +126,46 @@ async function getJITActions(
       "conversation_files"
     );
 
-  if (!conversationFilesView) {
-    logger.error(
-      {
-        workspaceId: auth.getNonNullableWorkspace().sId,
-      },
-      "MCP server view not found for conversation_files in JIT actions"
-    );
-    // Fall back to legacy action if MCP server view is not available
-    const { makeConversationIncludeFileConfiguration } = await import(
-      "@app/lib/actions/conversation/include_file"
-    );
-    actions.push(makeConversationIncludeFileConfiguration());
-  } else {
-    // Create MCP tool for conversation_include_file
-    const includeFileTool: ServerSideMCPToolConfigurationType = {
-      id: -1,
-      sId: generateRandomModelSId(),
-      type: "mcp_configuration",
-      name: DEFAULT_CONVERSATION_INCLUDE_FILE_ACTION_NAME,
-      description: DEFAULT_CONVERSATION_INCLUDE_FILE_ACTION_DESCRIPTION,
-      inputSchema: {
-        type: "object",
-        properties: {
-          fileId: {
-            type: "string",
-            description:
-              "The fileId of the attachment to include in the conversation as returned by the conversation_list_files action",
-          },
+  assert(
+    conversationFilesView,
+    "MCP server view not found for conversation_files. Ensure auto tools are created."
+  );
+
+  // Create MCP tool for conversation_include_file
+  const includeFileTool: ServerSideMCPToolConfigurationType = {
+    id: -1,
+    sId: generateRandomModelSId(),
+    type: "mcp_configuration",
+    name: DEFAULT_CONVERSATION_INCLUDE_FILE_ACTION_NAME,
+    description: DEFAULT_CONVERSATION_INCLUDE_FILE_ACTION_DESCRIPTION,
+    inputSchema: {
+      type: "object",
+      properties: {
+        fileId: {
+          type: "string",
+          description:
+            "The fileId of the attachment to include in the conversation as returned by the conversation_list_files action",
         },
-        required: ["fileId"],
       },
-      availability: "auto",
-      permission: "never_ask",
-      toolServerId: "include_file",
-      originalName: "include_file",
-      mcpServerName: "conversation_files",
-      internalMCPServerId: conversationFilesView.mcpServerId,
-      dataSources: null,
-      tables: null,
-      childAgentId: null,
-      reasoningModel: null,
-      timeFrame: null,
-      jsonSchema: null,
-      additionalConfiguration: {},
-      mcpServerViewId: conversationFilesView.sId,
-      dustAppConfiguration: null,
-    };
-    actions.push(includeFileTool);
-  }
+      required: ["fileId"],
+    },
+    availability: "auto",
+    permission: "never_ask",
+    toolServerId: "include_file",
+    originalName: "include_file",
+    mcpServerName: "conversation_files",
+    internalMCPServerId: conversationFilesView.mcpServerId,
+    dataSources: null,
+    tables: null,
+    childAgentId: null,
+    reasoningModel: null,
+    timeFrame: null,
+    jsonSchema: null,
+    additionalConfiguration: {},
+    mcpServerViewId: conversationFilesView.sId,
+    dustAppConfiguration: null,
+  };
+  actions.push(includeFileTool);
 
   // Check tables for the table query action.
   const filesUsableAsTableQuery = files.filter((f) => f.isQueryable);
