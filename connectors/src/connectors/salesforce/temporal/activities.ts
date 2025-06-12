@@ -23,6 +23,8 @@ import { SalesforceSyncedQueryResource } from "@connectors/resources/salesforce_
 import type { ModelId } from "@connectors/types";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
 
+type DateString = string | null;
+
 export async function syncSalesforceConnection(connectorId: ModelId) {
   const connAndCredsRes = await getConnectorAndCredentials(connectorId);
   if (connAndCredsRes.isErr()) {
@@ -141,16 +143,16 @@ export async function processSyncedQueryPage(
   connectorId: ModelId,
   {
     queryId,
-    lastModifiedDateCursor,
+    lastModifiedDateStringCursor,
     limit,
-    lastSeenModifiedDate,
-    upToLastModifiedDate,
+    lastSeenModifiedDateString,
+    upToLastModifiedDateString,
   }: {
     queryId: ModelId;
-    lastModifiedDateCursor: Date | null;
+    lastModifiedDateStringCursor: DateString;
     limit: number;
-    lastSeenModifiedDate: Date | null;
-    upToLastModifiedDate: Date | null;
+    lastSeenModifiedDateString: DateString;
+    upToLastModifiedDateString: DateString;
   }
 ): Promise<{
   // The most recent lastModifiedDate seen
@@ -163,15 +165,15 @@ export async function processSyncedQueryPage(
   // This is terrible but temporal serializes Dates to string across workflow/activity boundary.
   // Having the bype Date is convenient here but this ensures that we turn back serialized strings
   // into Dates.
-  if (typeof lastSeenModifiedDate === "string") {
-    lastSeenModifiedDate = new Date(lastSeenModifiedDate);
-  }
-  if (typeof lastModifiedDateCursor === "string") {
-    lastModifiedDateCursor = new Date(lastModifiedDateCursor);
-  }
-  if (typeof upToLastModifiedDate === "string") {
-    upToLastModifiedDate = new Date(upToLastModifiedDate);
-  }
+  let lastSeenModifiedDate = lastSeenModifiedDateString
+    ? new Date(lastSeenModifiedDateString)
+    : null;
+  let lastModifiedDateCursor = lastModifiedDateStringCursor
+    ? new Date(lastModifiedDateStringCursor)
+    : null;
+  let upToLastModifiedDate = upToLastModifiedDateString
+    ? new Date(upToLastModifiedDateString)
+    : null;
 
   const connAndCredsRes = await getConnectorAndCredentials(connectorId);
   if (connAndCredsRes.isErr()) {
@@ -337,7 +339,7 @@ export async function updateSyncedQueryLastSeenModifiedDate(
     lastSeenModifiedDate,
   }: {
     queryId: ModelId;
-    lastSeenModifiedDate: Date | null;
+    lastSeenModifiedDate: Date;
   }
 ) {
   const syncedQuery = await SalesforceSyncedQueryResource.fetchById(queryId);
