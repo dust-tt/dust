@@ -6,24 +6,18 @@ import {
   useCreatePersonalConnection,
   useMCPServer,
 } from "@app/lib/swr/mcp_servers";
-import type {
-  LightWorkspaceType,
-  OAuthProvider,
-  OAuthUseCase,
-} from "@app/types";
+import type { LightWorkspaceType, OAuthProvider } from "@app/types";
 
 export function MCPServerPersonalAuthenticationRequired({
   owner,
   mcpServerId,
   provider,
-  useCase,
   scope,
   retryHandler,
 }: {
   owner: LightWorkspaceType;
   mcpServerId: string;
   provider: OAuthProvider;
-  useCase: OAuthUseCase;
   scope?: string;
   retryHandler: () => void;
 }) {
@@ -69,7 +63,7 @@ export function MCPServerPersonalAuthenticationRequired({
                 const success = await createPersonalConnection(
                   mcpServer,
                   provider,
-                  useCase,
+                  "personal_actions",
                   scope
                 );
                 setIsConnecting(false);

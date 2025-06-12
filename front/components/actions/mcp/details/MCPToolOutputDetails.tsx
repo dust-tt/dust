@@ -15,7 +15,7 @@ import {
   useSendNotification,
 } from "@dust-tt/sparkle";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import { useCallback, useMemo } from "react";
+import { useCallback } from "react";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import { getDocumentIcon } from "@app/components/actions/retrieval/utils";
@@ -25,6 +25,8 @@ import type {
   ThinkingOutputType,
   ToolGeneratedFileType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { isDataSourceNodeContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { isDataSourceNodeListType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
   isIncludeQueryResourceType,
   isIncludeResultResourceType,
@@ -184,56 +186,89 @@ export function SearchResultDetails({
   visual,
   actionOutput,
 }: SearchResultProps) {
-  const query = useMemo(() => {
-    return (
-      actionOutput
-        ?.map((r) => {
-          if (
-            isSearchQueryResourceType(r) ||
-            isWebsearchQueryResourceType(r) ||
-            isIncludeQueryResourceType(r)
-          ) {
-            return r.resource.text.trim();
-          }
-          return null;
-        })
-        .filter(Boolean)
-        .join("\n") ?? "No query provided"
-    );
-  }, [actionOutput]);
+  const query =
+    actionOutput
+      ?.map((r) => {
+        if (
+          isSearchQueryResourceType(r) ||
+          isWebsearchQueryResourceType(r) ||
+          isIncludeQueryResourceType(r)
+        ) {
+          return r.resource.text.trim();
+        }
+        return null;
+      })
+      .filter(Boolean)
+      .join("\n") || "No query provided";
 
-  const warning = useMemo(
-    () =>
-      actionOutput?.filter(isWarningResourceType).map((o) => o.resource)?.[0],
-    [actionOutput]
-  );
+  const warning = actionOutput
+    ?.filter(isWarningResourceType)
+    .map((o) => o.resource)?.[0];
 
-  const citations = useMemo(() => {
+  const singleFileContentText = actionOutput
+    ?.filter(isDataSourceNodeContentType)
+    .map((o) => o.resource.text)
+    .join("\n");
+
+  const citations = (() => {
     if (!actionOutput) {
       return [];
     }
     return removeNulls(
-      actionOutput.map((r) => {
+      actionOutput.flatMap((r) => {
         if (isWebsearchResultResourceType(r)) {
-          return {
-            description: r.resource.text,
-            title: r.resource.title,
-            icon: getDocumentIcon("webcrawler"),
-            href: r.resource.uri,
-          };
+          const IconComponent = getDocumentIcon("webcrawler");
+          return [
+            {
+              description: r.resource.text,
+              title: r.resource.title,
+              icon: <IconComponent />,
+              href: r.resource.uri,
+            },
+          ];
         }
         if (isSearchResultResourceType(r) || isIncludeResultResourceType(r)) {
-          return {
-            description: "",
-            title: r.resource.text,
-            icon: getDocumentIcon(r.resource.source.provider),
-            href: r.resource.uri,
-          };
+          const IconComponent = getDocumentIcon(r.resource.source.provider);
+          return [
+            {
+              description: "",
+              title: r.resource.text,
+              icon: <IconComponent />,
+              href: r.resource.uri,
+            },
+          ];
         }
-        return null;
+        if (isDataSourceNodeListType(r)) {
+          return r.resource.data.map((node) => {
+            const IconComponent = getDocumentIcon(node.connectorProvider);
+            return {
+              description: `${node.path}${
+                node.lastUpdatedAt ? ` • ${node.lastUpdatedAt}` : ""
+              }`,
+              title: node.title,
+              icon: <IconComponent />,
+              href: node.sourceUrl || undefined,
+            };
+          });
+        }
+        if (isDataSourceNodeContentType(r)) {
+          const { metadata } = r.resource;
+          const IconComponent = getDocumentIcon(metadata.connectorProvider);
+          return [
+            {
+              description: `${metadata.path}${
+                metadata.lastUpdatedAt ? ` • ${metadata.lastUpdatedAt}` : ""
+              }`,
+              title: metadata.title,
+              icon: <IconComponent />,
+              href: metadata.sourceUrl || undefined,
+            },
+          ];
+        }
+        return [null];
       })
     );
-  }, [actionOutput]);
+  })();
 
   return (
     <ActionDetailsWrapper
@@ -264,7 +299,19 @@ export function SearchResultDetails({
                 Results
               </span>
             }
-            contentChildren={<PaginatedCitationsGrid items={citations} />}
+            contentChildren={
+              <>
+                {singleFileContentText && (
+                  <Markdown
+                    content={singleFileContentText}
+                    isStreaming={false}
+                    forcedTextSize="text-sm"
+                    textColor="text-muted-foreground dark:text-muted-foreground-night"
+                  />
+                )}
+                <PaginatedCitationsGrid items={citations} />
+              </>
+            }
           />
         </div>
       </div>

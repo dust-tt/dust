@@ -252,36 +252,34 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
         />
       </div>
 
-      <CollapsibleComponent
-        triggerChildren={<div className="heading-lg">Advanced Settings</div>}
-        contentChildren={
-          <div className="space-y-2">
-            <Controller
-              control={form.control}
-              name="sharedSecret"
-              render={({ field }) => (
-                <>
-                  <Input
-                    {...field}
-                    label="Bearer Token (Authorization)"
-                    isError={!!form.formState.errors.sharedSecret}
-                    message={form.formState.errors.sharedSecret?.message}
-                    placeholder="Paste the Bearer Token here"
-                  />
-                  <p className="text-xs text-gray-500 dark:text-gray-500-night">
-                    This will be sent alongside the request made to your server
-                    as a Bearer token in the headers.
-                  </p>
-                  {/** NOTE: Once we implemented the OAuth flow for remote servers
-                   * we should remove this field if the server is using OAuth.
-                   * It's one or the other.
-                   */}
-                </>
-              )}
-            />
-          </div>
-        }
-      />
+      {!mcpServer.authorization && (
+        <CollapsibleComponent
+          triggerChildren={<div className="heading-lg">Advanced Settings</div>}
+          contentChildren={
+            <div className="space-y-2">
+              <Controller
+                control={form.control}
+                name="sharedSecret"
+                render={({ field }) => (
+                  <>
+                    <Input
+                      {...field}
+                      label="Bearer Token (Authorization)"
+                      isError={!!form.formState.errors.sharedSecret}
+                      message={form.formState.errors.sharedSecret?.message}
+                      placeholder="Paste the Bearer Token here"
+                    />
+                    <p className="text-xs text-gray-500 dark:text-gray-500-night">
+                      This will be sent alongside the request made to your
+                      server as a Bearer token in the headers.
+                    </p>
+                  </>
+                )}
+              />
+            </div>
+          }
+        />
+      )}
 
       {form.formState.isDirty && (
         <div className="flex flex-row items-end justify-end gap-2">

@@ -2,7 +2,6 @@ import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import assert from "assert";
-import { trim } from "lodash";
 import { z } from "zod";
 
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
@@ -12,7 +11,14 @@ import type {
   SearchResultResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
+  findTagsDescription,
+  findTagsSchema,
+  makeFindTagsTool,
+} from "@app/lib/actions/mcp_internal_actions/servers/common/find_tags_tool";
+import {
   getCoreSearchArgs,
+  renderRelativeTimeFrameForToolOutput,
+  renderTagsForToolOutput,
   shouldAutoGenerateTags,
 } from "@app/lib/actions/mcp_internal_actions/servers/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
@@ -37,8 +43,6 @@ import {
   stripNullBytes,
   timeFrameFromNow,
 } from "@app/types";
-
-const DEFAULT_SEARCH_LABELS_LIMIT = 10;
 
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "search",
@@ -298,87 +302,9 @@ function createServer(
 
     server.tool(
       "find_tags",
-      "Find exact matching labels (also called tags) before using them in the tool `semantic_search`." +
-        "Restricting or excluding content succeeds only with existing labels. " +
-        "Searching without verifying labels first typically returns no results.",
-      {
-        query: z
-          .string()
-          .describe(
-            "The text to search for in existing labels (also called tags) using edge ngram matching (case-insensitive). " +
-              "Matches labels that start with any word in the search text. " +
-              "The returned labels can be used in tagsIn/tagsNot parameters to restrict or exclude content " +
-              "based on the user request and conversation context."
-          ),
-        dataSources:
-          ConfigurableToolInputSchemas[
-            INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
-          ],
-      },
-      async ({ query, dataSources }) => {
-        const coreSearchArgsResults = await concurrentExecutor(
-          dataSources,
-          async (dataSourceConfiguration) =>
-            getCoreSearchArgs(auth, dataSourceConfiguration),
-          { concurrency: 10 }
-        );
-
-        if (coreSearchArgsResults.some((res) => res.isErr())) {
-          return {
-            isError: true,
-            content: [{ type: "text", text: "Invalid data sources" }],
-          };
-        }
-
-        const coreSearchArgs = removeNulls(
-          coreSearchArgsResults.map((res) => (res.isOk() ? res.value : null))
-        );
-
-        if (coreSearchArgs.length === 0) {
-          return {
-            isError: true,
-            content: [
-              {
-                type: "text",
-                text: "Search action must have at least one data source configured.",
-              },
-            ],
-          };
-        }
-
-        const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-        const result = await coreAPI.searchTags({
-          dataSourceViews: coreSearchArgs.map((arg) => arg.dataSourceView),
-          limit: DEFAULT_SEARCH_LABELS_LIMIT,
-          query,
-          queryType: "match",
-        });
-
-        if (result.isErr()) {
-          return {
-            isError: true,
-            content: [{ type: "text", text: "Error searching for labels" }],
-          };
-        }
-
-        return {
-          isError: false,
-          content: [
-            {
-              type: "text",
-              text:
-                "Labels found:\n\n" +
-                removeNulls(
-                  result.value.tags.map((tag) =>
-                    tag.tag && trim(tag.tag)
-                      ? `${tag.tag} (${tag.match_count} matches)`
-                      : null
-                  )
-                ).join("\n"),
-            },
-          ],
-        };
-      }
+      findTagsDescription,
+      findTagsSchema,
+      makeFindTagsTool(auth)
     );
   }
 
@@ -391,24 +317,15 @@ function makeQueryResource(
   tagsIn?: string[],
   tagsNot?: string[]
 ): SearchQueryResourceType {
-  const timeFrameAsString = relativeTimeFrame
-    ? "over the last " +
-      (relativeTimeFrame.duration > 1
-        ? `${relativeTimeFrame.duration} ${relativeTimeFrame.unit}s`
-        : `${relativeTimeFrame.unit}`)
-    : "across all time periods";
-  const tagsInAsString =
-    tagsIn && tagsIn.length > 0 ? `, with labels ${tagsIn?.join(", ")}` : "";
-  const tagsNotAsString =
-    tagsNot && tagsNot.length > 0
-      ? `, excluding labels ${tagsNot?.join(", ")}`
-      : "";
+  const timeFrameAsString =
+    renderRelativeTimeFrameForToolOutput(relativeTimeFrame);
+  const tagsAsString = renderTagsForToolOutput(tagsIn, tagsNot);
 
   return {
     mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_QUERY,
     text: query
-      ? `Searching "${query}", ${timeFrameAsString}${tagsInAsString}${tagsNotAsString}.`
-      : `Searching ${timeFrameAsString}${tagsInAsString}${tagsNotAsString}.`,
+      ? `Searching "${query}", ${timeFrameAsString}${tagsAsString}.`
+      : `Searching ${timeFrameAsString}${tagsAsString}.`,
     uri: "",
   };
 }

@@ -38,7 +38,7 @@ export function getDocumentIcon(provider: string | null | undefined) {
       provider,
       fallback: DocumentIcon,
     });
-    return <IconComponent />;
+    return IconComponent;
   }
-  return <DocumentIcon />;
+  return DocumentIcon;
 }

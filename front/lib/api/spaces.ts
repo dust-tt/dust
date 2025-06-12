@@ -317,16 +317,23 @@ export async function searchContenNodesInSpace(
 
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
-  const searchFilter = getSearchFilterFromDataSourceViews(
-    auth.getNonNullableWorkspace(),
-    dataSourceViews,
-    {
-      excludedNodeMimeTypes,
-      includeDataSources,
-      viewType,
-      parentId,
-    }
-  );
+  const searchFilterRes = getSearchFilterFromDataSourceViews(dataSourceViews, {
+    excludedNodeMimeTypes,
+    includeDataSources,
+    viewType,
+    parentId,
+  });
+
+  if (searchFilterRes.isErr()) {
+    return new Err(
+      new DustError(
+        "internal_error",
+        `Invalid search filter parameters: ${searchFilterRes.error.message}`
+      )
+    );
+  }
+
+  const searchFilter = searchFilterRes.value;
 
   const searchRes = await coreAPI.searchNodes({
     query,

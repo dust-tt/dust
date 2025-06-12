@@ -5,9 +5,15 @@ import { z } from "zod";
 
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import type {
+  DataSourceNodeListType,
+  SearchQueryResourceType,
+  SearchResultResourceType,
+} from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
   fetchAgentDataSourceConfiguration,
   getCoreSearchArgs,
+  renderRelativeTimeFrameForToolOutput,
 } from "@app/lib/actions/mcp_internal_actions/servers/utils";
 import {
   makeMCPToolJSONSuccess,
@@ -29,11 +35,13 @@ import type { AgentDataSourceConfiguration } from "@app/lib/models/assistant/act
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type {
+  ConnectorProvider,
   ContentNodeType,
   CoreAPIContentNode,
   CoreAPIError,
   CoreAPISearchNodesResponse,
   Result,
+  TimeFrame,
 } from "@app/types";
 import {
   CoreAPI,
@@ -158,23 +166,29 @@ const createServer = (
         );
       }
 
-      // Get dustAPIProjectId from the data source configuration.
-      const dustAPIProjectId = agentDataSourceConfigurations.find(
+      // Get dataSource from the data source configuration.
+      const dataSource = agentDataSourceConfigurations.find(
         (config) =>
           config.dataSource.dustAPIDataSourceId === node.data_source_id
-      )?.dataSource.dustAPIProjectId;
+      )?.dataSource;
 
-      if (!dustAPIProjectId) {
+      if (!dataSource) {
         return makeMCPToolTextError(
-          `Could not find dustAPIProjectId for node: ${nodeId}`
+          `Could not find dataSource for node: ${nodeId}`
         );
       }
+
+      const dataSourceIdToConnectorMap = new Map();
+      dataSourceIdToConnectorMap.set(
+        dataSource.dustAPIDataSourceId,
+        dataSource.connectorProvider
+      );
 
       // Read the node.
       const readResult = await coreAPI.getDataSourceDocumentText({
         dataSourceId: node.data_source_id,
         documentId: node.node_id,
-        projectId: dustAPIProjectId,
+        projectId: dataSource.dustAPIProjectId,
         offset: offset,
         limit: limit,
         grep: grep,
@@ -190,8 +204,14 @@ const createServer = (
         isError: false,
         content: [
           {
-            type: "text",
-            text: readResult.value.text,
+            type: "resource" as const,
+            resource: {
+              mimeType:
+                INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_NODE_CONTENT,
+              uri: node.source_url ?? "",
+              text: readResult.value.text,
+              metadata: renderNode(node, dataSourceIdToConnectorMap),
+            },
           },
         ],
       };
@@ -296,10 +316,27 @@ const createServer = (
         return makeMCPToolTextError("Failed to search content");
       }
 
-      return makeMCPToolJSONSuccess({
-        message: "Search successful.",
-        result: renderSearchResults(searchResult.value),
-      });
+      return {
+        isError: false,
+        content: [
+          {
+            type: "resource" as const,
+            resource: makeQueryResourceForFind(
+              query,
+              rootNodeId,
+              mimeTypes,
+              nextPageCursor
+            ),
+          },
+          {
+            type: "resource" as const,
+            resource: renderSearchResults(
+              searchResult.value,
+              agentDataSourceConfigurations
+            ),
+          },
+        ],
+      };
     }
   );
 
@@ -421,10 +458,26 @@ const createServer = (
         return makeMCPToolTextError("Failed to list folder contents");
       }
 
-      return makeMCPToolJSONSuccess({
-        message: "Content listed successfully.",
-        result: renderSearchResults(searchResult.value),
-      });
+      return {
+        isError: false,
+        content: [
+          {
+            type: "resource" as const,
+            resource: makeQueryResourceForList(
+              nodeId,
+              mimeTypes,
+              nextPageCursor
+            ),
+          },
+          {
+            type: "resource" as const,
+            resource: renderSearchResults(
+              searchResult.value,
+              agentDataSourceConfigurations
+            ),
+          },
+        ],
+      };
     }
   );
 
@@ -598,35 +651,41 @@ const createServer = (
 
       const refs = getRefs().slice(refsOffset, refsOffset + topK);
 
-      const results = searchResults.value.documents.map((doc) => {
-        const dataSourceView = coreSearchArgs.find(
-          (args) =>
-            args.dataSourceView.dataSource.dustAPIDataSourceId ===
-            doc.data_source_id
-        )?.dataSourceView;
+      const results = searchResults.value.documents.map(
+        (doc): SearchResultResourceType => {
+          const dataSourceView = coreSearchArgs.find(
+            (args) =>
+              args.dataSourceView.dataSource.dustAPIDataSourceId ===
+              doc.data_source_id
+          )?.dataSourceView;
 
-        assert(dataSourceView, "DataSource view not found");
+          assert(dataSourceView, "DataSource view not found");
 
-        return {
-          // TODO: use proper mime type, but curently useful to debug.
-          // mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_RESULT,
-          uri: doc.source_url ?? "",
-          text: `"${getDisplayNameForDocument(doc)}" (${doc.chunks.length} chunks)`,
+          return {
+            mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_RESULT,
+            uri: doc.source_url ?? "",
+            text: `"${getDisplayNameForDocument(doc)}" (${doc.chunks.length} chunks)`,
 
-          id: doc.document_id,
-          source: {
-            provider: dataSourceView.dataSource.connectorProvider ?? undefined,
-            name: getDataSourceNameFromView(dataSourceView),
-          },
-          tags: doc.tags,
-          ref: refs.shift() as string,
-          chunks: doc.chunks.map((chunk) => stripNullBytes(chunk.text)),
-        };
-      });
+            id: doc.document_id,
+            source: {
+              provider:
+                dataSourceView.dataSource.connectorProvider ?? undefined,
+              name: getDataSourceNameFromView(dataSourceView),
+            },
+            tags: doc.tags,
+            ref: refs.shift() as string,
+            chunks: doc.chunks.map((chunk) => stripNullBytes(chunk.text)),
+          };
+        }
+      );
 
       return {
         isError: false,
         content: [
+          {
+            type: "resource" as const,
+            resource: makeQueryResource(query, timeFrame),
+          },
           ...results.map((result) => ({
             type: "resource" as const,
             resource: result,
@@ -733,9 +792,6 @@ const createServer = (
         }
       }
 
-      // Add the target node to pathNodes since we already have it
-      pathNodes[nodeId] = targetNode;
-
       const dataSourceConfig = agentDataSourceConfigurations.find(
         ({ dataSource }) =>
           dataSource.dustAPIDataSourceId === targetNode.data_source_id
@@ -776,27 +832,10 @@ const createServer = (
         },
       ]);
 
-      // Ensure we have at least one node in the path.
-      if (pathItems.length === 0) {
-        return makeMCPToolTextError(
-          "Unable to build a path to the node. The node may be orphaned or inaccessible."
-        );
-      }
-
-      // Ensure the target node is in the path
-      const hasCurrentNode = pathItems.some((item) => item.isCurrentNode);
-      if (!hasCurrentNode) {
-        return makeMCPToolTextError(
-          "The requested node is not accessible within the allowed data sources."
-        );
-      }
-
-      const path = pathItems;
-
       return makeMCPToolJSONSuccess({
         message: "Path located successfully.",
         result: {
-          path: path,
+          path: pathItems,
         },
       });
     }
@@ -895,7 +934,10 @@ function formatTimestamp(timestamp: number): string {
  * Translation from a content node to the format expected to the agent.
  * Removes references to the term 'content node' and simplifies the format.
  */
-function renderNode(node: CoreAPIContentNode) {
+function renderNode(
+  node: CoreAPIContentNode,
+  dataSourceIdToConnectorMap: Map<string, ConnectorProvider | null>
+) {
   // Transform data source node IDs to include the data source ID
   const nodeId =
     node.node_id === DATA_SOURCE_NODE_ID
@@ -912,6 +954,8 @@ function renderNode(node: CoreAPIContentNode) {
     // TODO(2025-06-02 aubin): see if we want a translation on these.
     mimeType: node.mime_type,
     hasChildren: node.children_count > 0,
+    connectorProvider:
+      dataSourceIdToConnectorMap.get(node.data_source_id) ?? null,
   };
 }
 
@@ -919,11 +963,93 @@ function renderNode(node: CoreAPIContentNode) {
  * Translation from core's response to the format expected to the agent.
  * Removes references to the term 'content node' and simplifies the format.
  */
-function renderSearchResults(response: CoreAPISearchNodesResponse) {
+function renderSearchResults(
+  response: CoreAPISearchNodesResponse,
+  agentDataSourceConfigurations: AgentDataSourceConfiguration[]
+): DataSourceNodeListType {
+  const dataSourceIdToConnectorMap = new Map<
+    string,
+    ConnectorProvider | null
+  >();
+  for (const config of agentDataSourceConfigurations) {
+    dataSourceIdToConnectorMap.set(
+      config.dataSource.dustAPIDataSourceId,
+      config.dataSource.connectorProvider
+    );
+  }
+
   return {
-    data: response.nodes.map(renderNode),
+    mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_NODE_LIST,
+    text: "Content successfully retrieved.",
+    uri: "",
+    data: response.nodes.map((node) =>
+      renderNode(node, dataSourceIdToConnectorMap)
+    ),
     nextPageCursor: response.next_page_cursor,
     resultCount: response.hit_count,
+  };
+}
+
+function makeQueryResource(
+  query: string,
+  relativeTimeFrame: TimeFrame | null
+): SearchQueryResourceType {
+  const timeFrameAsString =
+    renderRelativeTimeFrameForToolOutput(relativeTimeFrame);
+
+  return {
+    mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_QUERY,
+    text: query
+      ? `Searching "${query}", ${timeFrameAsString}.`
+      : `Searching ${timeFrameAsString}.`,
+    uri: "",
+  };
+}
+
+function renderMimeType(mimeType: string) {
+  return mimeType
+    .replace("application/vnd.dust.", "")
+    .replace("-", " ")
+    .replace(".", " ");
+}
+
+function makeQueryResourceForFind(
+  query?: string,
+  rootNodeId?: string,
+  mimeTypes?: string[],
+  nextPageCursor?: string
+): SearchQueryResourceType {
+  const queryText = query ? ` "${query}"` : " all content";
+  const scope = rootNodeId
+    ? ` under ${rootNodeId}`
+    : " across the entire data sources";
+  const types = mimeTypes?.length
+    ? ` (${mimeTypes.map(renderMimeType).join(", ")} files)`
+    : "";
+  const pagination = nextPageCursor ? " - next page" : "";
+
+  return {
+    mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_QUERY,
+    text: `Searching for${queryText}${scope}${types}${pagination}.`,
+    uri: "",
+  };
+}
+
+function makeQueryResourceForList(
+  nodeId: string | null,
+  mimeTypes?: string[],
+  nextPageCursor?: string
+): SearchQueryResourceType {
+  const location = nodeId ? ` within node "${nodeId}"` : " at the root level";
+  const types = mimeTypes?.length
+    ? ` (${mimeTypes.map(renderMimeType).join(", ")} files)`
+    : "";
+  const pagination = nextPageCursor ? " - next page" : "";
+
+  return {
+    mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_QUERY,
+    text: `Listing content${location}${types}${pagination}.`,
+    uri: "",
   };
 }
 

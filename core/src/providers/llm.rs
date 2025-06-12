@@ -1,6 +1,6 @@
 use crate::cached_request::CachedRequest;
 use crate::project::Project;
-use crate::providers::chat_messages::{AssistantChatMessage, ChatMessage};
+use crate::providers::chat_messages::{AssistantChatMessage, AssistantContentItem, ChatMessage};
 use crate::providers::provider::{provider, with_retryable_back_off, ProviderID};
 use crate::run::Credentials;
 use crate::stores::store::Store;
@@ -527,7 +527,36 @@ impl LLMChatRequest {
         .await;
 
         match out {
-            Ok(c) => {
+            Ok(mut c) => {
+                // Backfill contents array if it's None but legacy fields are present.
+                for completion in &mut c.completions {
+                    if completion.contents.is_none() {
+                        let mut contents = Vec::new();
+
+                        // Add text content if present.
+                        if let Some(ref content) = completion.content {
+                            if !content.is_empty() {
+                                contents.push(AssistantContentItem::TextContent {
+                                    value: content.clone(),
+                                });
+                            }
+                        }
+
+                        // Add function calls if present.
+                        if let Some(ref function_calls) = completion.function_calls {
+                            for fc in function_calls {
+                                contents
+                                    .push(AssistantContentItem::FunctionCall { value: fc.clone() });
+                            }
+                        }
+
+                        // Only set contents if we actually have items.
+                        if !contents.is_empty() {
+                            completion.contents = Some(contents);
+                        }
+                    }
+                }
+
                 info!(
                     provider_id = self.provider_id.to_string(),
                     model_id = self.model_id,

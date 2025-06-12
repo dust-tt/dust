@@ -133,6 +133,13 @@ export const getProviderRequiredOAuthCredentialInputs = async ({
     case "salesforce":
       if (useCase === "personal_actions" || useCase === "platform_actions") {
         const result: OAuthCredentialInputs = {
+          instance_url: {
+            label: "Instance URL",
+            value: undefined,
+            helpMessage:
+              "Must be a valid Salesforce domain in https and ending with « .salesforce.com ».",
+            validator: isValidSalesforceDomain,
+          },
           client_id: {
             label: "OAuth Client ID",
             value: undefined,
@@ -145,13 +152,6 @@ export const getProviderRequiredOAuthCredentialInputs = async ({
             helpMessage:
               "The client secret from your Salesforce connected app.",
             validator: isValidClientIdOrSecret,
-          },
-          instance_url: {
-            label: "Instance URL",
-            value: undefined,
-            helpMessage:
-              "Must be a valid Salesforce domain in https and ending with « .salesforce.com ».",
-            validator: isValidSalesforceDomain,
           },
         };
         if (!additionalCredentials) {

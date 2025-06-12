@@ -2,17 +2,21 @@ import { Box, Text } from "ink";
 import React from "react";
 
 import type { Command } from "../commands/types.js";
-import { AVAILABLE_COMMANDS } from "../commands/types.js";
 
 interface CommandSelectorProps {
   query: string;
   selectedIndex: number;
+  commands: Command[];
   onSelect: (command: Command) => void;
 }
 
-export function CommandSelector({ query, selectedIndex }: CommandSelectorProps) {
-  // Filter commands based on the query
-  const filteredCommands = AVAILABLE_COMMANDS.filter((command) =>
+export function CommandSelector({
+  query,
+  selectedIndex,
+  commands,
+}: CommandSelectorProps) {
+  // Filter commands based on the query.
+  const filteredCommands = commands.filter((command) =>
     command.name.toLowerCase().startsWith(query.toLowerCase())
   );
 
@@ -34,14 +38,14 @@ export function CommandSelector({ query, selectedIndex }: CommandSelectorProps) 
           return (
             <Box key={command.name} flexDirection="row">
               <Box width={15}>
-                <Text
-                  color={isSelected ? "blue" : undefined}
-                  bold={isSelected}
-                >
+                <Text color={isSelected ? "blue" : undefined} bold={isSelected}>
                   /{command.name}
                 </Text>
               </Box>
-              <Text dimColor={!isSelected} color={isSelected ? undefined : undefined}>
+              <Text
+                dimColor={!isSelected}
+                color={isSelected ? undefined : undefined}
+              >
                 {command.description}
               </Text>
             </Box>

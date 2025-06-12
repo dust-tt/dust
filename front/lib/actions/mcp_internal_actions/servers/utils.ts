@@ -1,4 +1,3 @@
-import {} from "@dust-tt/client";
 import { Op } from "sequelize";
 
 import { renderDataSourceConfiguration } from "@app/lib/actions/configuration/helpers";
@@ -28,6 +27,7 @@ import type {
   CoreAPISearchFilter,
   DataSourceViewType,
   Result,
+  TimeFrame,
 } from "@app/types";
 import { Err, Ok } from "@app/types";
 
@@ -245,4 +245,28 @@ export function shouldAutoGenerateTags(
   }
 
   return false;
+}
+
+export function renderRelativeTimeFrameForToolOutput(
+  relativeTimeFrame: TimeFrame | null
+): string {
+  return relativeTimeFrame
+    ? "over the last " +
+        (relativeTimeFrame.duration > 1
+          ? `${relativeTimeFrame.duration} ${relativeTimeFrame.unit}s`
+          : `${relativeTimeFrame.unit}`)
+    : "across all time periods";
+}
+
+export function renderTagsForToolOutput(
+  tagsIn?: string[],
+  tagsNot?: string[]
+): string {
+  const tagsInAsString =
+    tagsIn && tagsIn.length > 0 ? `, with labels ${tagsIn?.join(", ")}` : "";
+  const tagsNotAsString =
+    tagsNot && tagsNot.length > 0
+      ? `, excluding labels ${tagsNot?.join(", ")}`
+      : "";
+  return `${tagsInAsString}${tagsNotAsString}`;
 }

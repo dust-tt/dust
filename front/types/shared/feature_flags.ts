@@ -21,6 +21,7 @@ export const WHITELISTABLE_FEATURES = [
   "google_ai_studio_experimental_models_feature",
   "google_calendar_tool",
   "index_private_slack_channel",
+  "labs_mcp_actions_dashboard",
   "labs_salesforce_personal_connections",
   "labs_trackers",
   "labs_transcripts",
@@ -38,8 +39,10 @@ export const WHITELISTABLE_FEATURES = [
   "show_debug_tools",
   "snowflake_connector_feature",
   "usage_data_api",
+  "workos_user_provisioning",
   "workos",
   "xai_feature",
+  "labs_mcp_actions_dashboard",
 ] as const;
 export type WhitelistableFeature = (typeof WHITELISTABLE_FEATURES)[number];
 export function isWhitelistableFeature(

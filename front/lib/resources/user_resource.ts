@@ -239,6 +239,12 @@ export class UserResource extends BaseResource<UserModel> {
     });
   }
 
+  async recordLoginActivity() {
+    return this.update({
+      lastLoginAt: new Date(),
+    });
+  }
+
   async delete(
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}

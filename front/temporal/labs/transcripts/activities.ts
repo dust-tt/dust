@@ -562,7 +562,7 @@ export async function processTranscriptActivity(
 
     const initialConversation = await createConversation(auth, {
       title: transcriptTitle,
-      visibility: "workspace",
+      visibility: "unlisted",
     });
 
     const baseContext = {

@@ -157,7 +157,6 @@ async function handler(
             authorization = {
               provider: "mcp",
               supported_use_cases: ["platform_actions", "personal_actions"],
-              use_case: "platform_actions",
             };
           } else {
             // We fail early if the connectionId is provided but the access token cannot be fetched.

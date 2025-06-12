@@ -42,12 +42,16 @@ import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_r
 import { validateJsonSchema } from "@app/lib/utils/json_schemas";
 import logger from "@app/logger/logger";
 import type { MCPOAuthUseCase, OAuthProvider, Result } from "@app/types";
-import { assertNever, Err, isOAuthProvider, Ok } from "@app/types";
+import {
+  assertNever,
+  Err,
+  isOAuthProvider,
+  normalizeError,
+  Ok,
+} from "@app/types";
 
 export type AuthorizationInfo = {
   provider: OAuthProvider;
-  // TODO(mcp): remove use_case once the code has been updated to use the view.
-  use_case: MCPOAuthUseCase;
   supported_use_cases: MCPOAuthUseCase[];
   scope?: string;
 };
@@ -210,7 +214,6 @@ export const connectToMCPServer = async (
                     new MCPServerPersonalAuthenticationRequiredError(
                       params.mcpServerId,
                       metadata.authorization.provider,
-                      params.oAuthUseCase,
                       metadata.authorization.scope
                     )
                   );
@@ -267,8 +270,7 @@ export const connectToMCPServer = async (
                 return new Err(
                   new MCPServerPersonalAuthenticationRequiredError(
                     params.mcpServerId,
-                    remoteMCPServer.authorization.provider,
-                    params.oAuthUseCase
+                    "mcp"
                   )
                 );
               } else {
@@ -340,9 +342,7 @@ export const connectToMCPServer = async (
           },
           "Error establishing connection to remote MCP server via URL"
         );
-        return new Err(
-          new Error("Check URL and if a bearer token is required.")
-        );
+        return new Err(normalizeError(e));
       }
       break;
     }

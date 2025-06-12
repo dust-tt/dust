@@ -257,13 +257,13 @@ const UserMessageOriginSchema = FlexibleEnumSchema<
   | "github-copilot-chat"
   | "gsheet"
   | "make"
-  | "mcp"
   | "n8n"
   | "raycast"
   | "slack"
   | "web"
   | "zapier"
   | "zendesk"
+  | "run_agent"
 >()
   .or(z.null())
   .or(z.undefined());
@@ -837,8 +837,10 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "show_debug_tools"
   | "snowflake_connector_feature"
   | "usage_data_api"
+  | "workos_user_provisioning"
   | "workos"
   | "xai_feature"
+  | "labs_mcp_actions_dashboard"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -2094,7 +2096,7 @@ export const PublicPostConversationsRequestBodySchema = z.intersection(
   z.object({
     title: z.string().nullable().optional(),
     visibility: z
-      .enum(["unlisted", "workspace", "deleted", "test"])
+      .enum(["workspace", "unlisted", "deleted", "test"])
       .optional()
       .default("unlisted"),
     depth: z.number().optional(),

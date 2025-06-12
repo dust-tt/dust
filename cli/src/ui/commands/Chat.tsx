@@ -11,10 +11,11 @@ import AuthService from "../../utils/authService.js";
 import { getDustClient } from "../../utils/dustClient.js";
 import { normalizeError } from "../../utils/errors.js";
 import { useMe } from "../../utils/hooks/use_me.js";
+import { clearTerminal } from "../../utils/terminal.js";
 import AgentSelector from "../components/AgentSelector.js";
 import type { ConversationItem } from "../components/Conversation.js";
 import Conversation from "../components/Conversation.js";
-import { AVAILABLE_COMMANDS } from "./types.js";
+import { createCommands } from "./types.js";
 
 type AgentConfiguration =
   GetAgentConfigurationsResponseType["agentConfigurations"][number];
@@ -54,6 +55,7 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
   const [commandQuery, setCommandQuery] = useState("");
   const [selectedCommandIndex, setSelectedCommandIndex] = useState(0);
   const [commandCursorPosition, setCommandCursorPosition] = useState(0);
+  const [isSelectingNewAgent, setIsSelectingNewAgent] = useState(false);
 
   const updateIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const contentRef = useRef<string>("");
@@ -63,11 +65,27 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
 
   const { me, isLoading: isMeLoading, error: meError } = useMe();
 
+  const triggerAgentSwitch = useCallback(async () => {
+    // Clear all input states before switching.
+    setUserInput("");
+    setCursorPosition(0);
+    setShowCommandSelector(false);
+    setCommandQuery("");
+    setSelectedCommandIndex(0);
+    setCommandCursorPosition(0);
+
+    await clearTerminal();
+    setIsSelectingNewAgent(true);
+  }, []);
+
+  const commands = createCommands({ triggerAgentSwitch });
+
   const canSubmit =
     me &&
     !meError &&
     !isMeLoading &&
     !isProcessingQuestion &&
+    !isSelectingNewAgent &&
     !!userInput.trim();
 
   const handleSubmitQuestion = useCallback(
@@ -139,7 +157,7 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
             title: `CLI Question: ${questionText.substring(0, 30)}${
               questionText.length > 30 ? "..." : ""
             }`,
-            visibility: "workspace",
+            visibility: "unlisted",
             message: {
               content: questionText,
               mentions: [{ configurationId: selectedAgent.sId }],
@@ -385,6 +403,11 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
 
   // Handle keyboard events.
   useInput((input, key) => {
+    // Skip all input handling when selecting a new agent
+    if (!selectedAgent || isSelectingNewAgent) {
+      return;
+    }
+
     const isInCommandMode = showCommandSelector;
     const currentInput = isInCommandMode ? commandQuery : userInput;
     const currentCursorPos = isInCommandMode
@@ -411,7 +434,7 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
       }
 
       if (key.downArrow) {
-        const filteredCommands = AVAILABLE_COMMANDS.filter((cmd) =>
+        const filteredCommands = commands.filter((cmd) =>
           cmd.name.toLowerCase().startsWith(commandQuery.toLowerCase())
         );
         setSelectedCommandIndex((prev) =>
@@ -421,7 +444,7 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
       }
 
       if (key.return) {
-        const filteredCommands = AVAILABLE_COMMANDS.filter((cmd) =>
+        const filteredCommands = commands.filter((cmd) =>
           cmd.name.toLowerCase().startsWith(commandQuery.toLowerCase())
         );
         if (
@@ -429,7 +452,7 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
           selectedCommandIndex < filteredCommands.length
         ) {
           const selectedCommand = filteredCommands[selectedCommandIndex];
-          void selectedCommand.execute();
+          void selectedCommand.execute({ triggerAgentSwitch });
           setShowCommandSelector(false);
           setCommandQuery("");
           setSelectedCommandIndex(0);
@@ -533,18 +556,38 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
     if (key.meta && input === "f" && currentCursorPos < currentInput.length) {
       let newPosition = currentCursorPos;
 
-      while (
-        newPosition < currentInput.length &&
-        !/\s/.test(currentInput[newPosition])
-      ) {
-        newPosition++;
-      }
+      // If we're on whitespace, skip to next non-whitespace.
+      if (/\s/.test(currentInput[newPosition])) {
+        while (
+          newPosition < currentInput.length &&
+          /\s/.test(currentInput[newPosition]) &&
+          currentInput[newPosition] !== "\n"
+        ) {
+          newPosition++;
+        }
 
-      while (
-        newPosition < currentInput.length &&
-        /\s/.test(currentInput[newPosition])
-      ) {
-        newPosition++;
+        // If we hit a newline, stop there.
+        if (currentInput[newPosition] === "\n") {
+          setCurrentCursorPos(newPosition);
+          return;
+        }
+      } else {
+        // Skip the current word.
+        while (
+          newPosition < currentInput.length &&
+          !/\s/.test(currentInput[newPosition])
+        ) {
+          newPosition++;
+        }
+
+        // Skip spaces after the word, but stop at newline.
+        while (
+          newPosition < currentInput.length &&
+          /\s/.test(currentInput[newPosition]) &&
+          currentInput[newPosition] !== "\n"
+        ) {
+          newPosition++;
+        }
       }
 
       setCurrentCursorPos(newPosition);
@@ -593,13 +636,81 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
       return;
     }
 
-    if (key.upArrow) {
-      setCursorPosition(0);
+    if (key.upArrow && !isInCommandMode) {
+      const lines = currentInput.split("\n");
+      let currentPos = 0;
+      let lineIndex = 0;
+      let posInLine = 0;
+
+      // Find current line and position within that line.
+      for (let i = 0; i < lines.length; i++) {
+        if (
+          currentCursorPos >= currentPos &&
+          currentCursorPos <= currentPos + lines[i].length
+        ) {
+          lineIndex = i;
+          posInLine = currentCursorPos - currentPos;
+          break;
+        }
+        currentPos += lines[i].length + 1; // +1 for newline
+      }
+
+      // Move to previous line.
+      if (lineIndex > 0) {
+        const prevLineLength = lines[lineIndex - 1].length;
+        const newPosInLine = Math.min(posInLine, prevLineLength);
+
+        // Calculate new cursor position.
+        let newCursorPos = 0;
+        for (let i = 0; i < lineIndex - 1; i++) {
+          newCursorPos += lines[i].length + 1;
+        }
+        newCursorPos += newPosInLine;
+
+        setCurrentCursorPos(newCursorPos);
+      } else {
+        // Already on first line, go to beginning.
+        setCurrentCursorPos(0);
+      }
       return;
     }
 
-    if (key.downArrow) {
-      setCursorPosition(userInput.length);
+    if (key.downArrow && !isInCommandMode) {
+      const lines = currentInput.split("\n");
+      let currentPos = 0;
+      let lineIndex = 0;
+      let posInLine = 0;
+
+      // Find current line and position within that line.
+      for (let i = 0; i < lines.length; i++) {
+        if (
+          currentCursorPos >= currentPos &&
+          currentCursorPos <= currentPos + lines[i].length
+        ) {
+          lineIndex = i;
+          posInLine = currentCursorPos - currentPos;
+          break;
+        }
+        currentPos += lines[i].length + 1; // +1 for newline
+      }
+
+      // Move to next line.
+      if (lineIndex < lines.length - 1) {
+        const nextLineLength = lines[lineIndex + 1].length;
+        const newPosInLine = Math.min(posInLine, nextLineLength);
+
+        // Calculate new cursor position.
+        let newCursorPos = 0;
+        for (let i = 0; i <= lineIndex; i++) {
+          newCursorPos += lines[i].length + 1;
+        }
+        newCursorPos += newPosInLine;
+
+        setCurrentCursorPos(newCursorPos);
+      } else {
+        // Already on last line, go to end.
+        setCurrentCursorPos(currentInput.length);
+      }
       return;
     }
 
@@ -669,23 +780,39 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
     );
   }
 
-  // Render agent selector
-  if (!selectedAgent) {
+  if (!selectedAgent || isSelectingNewAgent) {
+    const isInitialSelection = !selectedAgent;
+
     return (
       <AgentSelector
         selectMultiple={false}
-        requestedSIds={requestedSId ? [requestedSId] : []}
+        requestedSIds={isInitialSelection && requestedSId ? [requestedSId] : []}
         onError={setError}
-        onConfirm={(agents) => {
+        onConfirm={async (agents) => {
           setSelectedAgent(agents[0]);
-          setConversationItems([
-            {
-              key: "welcome_header",
-              type: "welcome_header",
-              agentName: agents[0].name,
-              agentId: agents[0].sId,
-            },
-          ]);
+
+          if (isInitialSelection) {
+            setConversationItems([
+              {
+                key: "welcome_header",
+                type: "welcome_header",
+                agentName: agents[0].name,
+                agentId: agents[0].sId,
+              },
+            ]);
+          } else {
+            setIsSelectingNewAgent(false);
+
+            setUserInput("");
+            setCursorPosition(0);
+            setShowCommandSelector(false);
+            setCommandQuery("");
+            setSelectedCommandIndex(0);
+            setCommandCursorPosition(0);
+
+            // Clear terminal and force re-render.
+            await clearTerminal();
+          }
         }}
       />
     );
@@ -707,6 +834,7 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
       commandQuery={commandQuery}
       selectedCommandIndex={selectedCommandIndex}
       commandCursorPosition={commandCursorPosition}
+      commands={commands}
     />
   );
 };

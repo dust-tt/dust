@@ -70,13 +70,13 @@ import {
   LabsTranscriptsConfigurationModel,
   LabsTranscriptsHistoryModel,
 } from "@app/lib/resources/storage/models/labs_transcripts";
+import { TagResource } from "@app/lib/resources/tags_resource";
 import { TrackerConfigurationResource } from "@app/lib/resources/tracker_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { deleteAllConversations } from "@app/temporal/scrub_workspace/activities";
 import { CoreAPI } from "@app/types";
-import { TagResource } from "@app/lib/resources/tags_resource";
 
 const hardDeleteLogger = logger.child({ activity: "hard-delete" });
 
@@ -253,7 +253,7 @@ export async function deleteAgentsActivity({
     const mcpActions = await AgentMCPAction.findAll({
       where: {
         mcpServerConfigurationId: {
-          [Op.in]: mcpServerConfigurations.map((r) => r.id),
+          [Op.in]: mcpServerConfigurations.map((r) => `${r.id}`),
         },
       },
     });

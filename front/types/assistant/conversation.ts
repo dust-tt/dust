@@ -87,13 +87,13 @@ export type UserMessageOrigin =
   | "github-copilot-chat"
   | "gsheet"
   | "make"
-  | "mcp"
   | "n8n"
   | "raycast"
   | "slack"
   | "web"
   | "zapier"
-  | "zendesk";
+  | "zendesk"
+  | "run_agent";
 
 export type UserMessageContext = {
   username: string;
@@ -240,11 +240,7 @@ export function isAgentMessageType(arg: MessageType): arg is AgentMessageType {
  * when a user 'tests' an agent not in their list using the "test" button:
  * those conversations do not show in users' histories.
  */
-export type ConversationVisibility =
-  | "unlisted"
-  | "workspace"
-  | "deleted"
-  | "test";
+export type ConversationVisibility = "unlisted" | "deleted" | "test";
 
 /**
  * A lighter version of Conversation without the content (for menu display).

@@ -3,11 +3,7 @@ import type { Authenticator } from "@app/lib/auth";
 import type { MCPServerConnectionConnectionType } from "@app/lib/resources/mcp_server_connection_resource";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import logger from "@app/logger/logger";
-import type {
-  OAuthConnectionType,
-  OAuthProvider,
-  OAuthUseCase,
-} from "@app/types";
+import type { OAuthConnectionType, OAuthProvider } from "@app/types";
 import { getOAuthConnectionAccessToken } from "@app/types";
 
 // Dedicated function to get the connection details for an MCP server.
@@ -49,20 +45,13 @@ const MCPServerRequiresPersonalAuthenticationErrorName =
 export class MCPServerPersonalAuthenticationRequiredError extends Error {
   mcpServerId: string;
   provider: OAuthProvider;
-  useCase: OAuthUseCase;
   scope?: string;
 
-  constructor(
-    mcpServerId: string,
-    provider: OAuthProvider,
-    useCase: OAuthUseCase,
-    scope?: string
-  ) {
+  constructor(mcpServerId: string, provider: OAuthProvider, scope?: string) {
     super(`MCP server ${mcpServerId} requires personal authentication`);
     this.name = MCPServerRequiresPersonalAuthenticationErrorName;
     this.mcpServerId = mcpServerId;
     this.provider = provider;
-    this.useCase = useCase;
     this.scope = scope;
   }
 
