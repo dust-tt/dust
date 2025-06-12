@@ -241,7 +241,7 @@ async function checkMigrationFileFormat() {
       if (!hasProcedure || !hasApplyFlag || !hasDropFunction) {
         fail(
           `Migration file "${file}" does not appear to have been generated using create_db_migration_file.sh.\n` +
-            `Please use the script to generate migration files to ensure proper formatting and safety checks.`
+            "Please use the script to generate migration files to ensure proper formatting and safety checks."
         );
       }
     } catch (error) {
