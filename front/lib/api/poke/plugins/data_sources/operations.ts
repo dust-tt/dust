@@ -73,7 +73,7 @@ export const connectorOperationsPlugin = createPlugin({
       },
       "Executing operation on connector"
     );
-    const res = await doOperation(op, connectorId.toString());
+    const res = await doOperation(op as OperationType, connectorId.toString());
     if (res.isErr()) {
       return new Err(new Error(res.error.message));
     }
