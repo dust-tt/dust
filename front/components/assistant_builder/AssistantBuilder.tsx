@@ -125,6 +125,7 @@ export default function AssistantBuilder({
   defaultIsEdited,
   baseUrl,
   defaultTemplate,
+  isAgentDuplication = false,
 }: AssistantBuilderLightProps) {
   const router = useRouter();
   const sendNotification = useSendNotification();
@@ -178,10 +179,7 @@ export default function AssistantBuilder({
 
     // In case of duplicating an agent, we set initial action state from the original agent.
     // We should not override it with the actions we fetched from the client side (= empty actions).
-    if (
-      initialBuilderState?.actions &&
-      initialBuilderState.actions.length === 0
-    ) {
+    if (!isAgentDuplication) {
       setBuilderState((prevState) => ({
         ...prevState,
         actions: [
@@ -195,7 +193,7 @@ export default function AssistantBuilder({
         ],
       }));
     }
-  }, [actions, error, sendNotification, initialBuilderState?.actions]);
+  }, [actions, error, sendNotification, isAgentDuplication]);
 
   const [builderState, setBuilderState] = useState<AssistantBuilderState>(() =>
     getDefaultBuilderState(initialBuilderState, defaultScope, plan)
