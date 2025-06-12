@@ -43,7 +43,7 @@ export function EnumSelect({
             role="combobox"
             className={cn(
               "w-auto justify-between",
-              !value && "text-muted-foreground"
+              !value && "text-muted-foreground dark:text-muted-foreground-night"
             )}
           >
             {value
