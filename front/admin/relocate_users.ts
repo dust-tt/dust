@@ -169,7 +169,7 @@ async function changeWorkOSUserRegion(
 
   logger.info({ user: workOSUserId }, "Setting region for user");
 
-  if (execute || true) {
+  if (execute) {
     try {
       await throttler(() => workOS.userManagement.getUser(workOSUserId));
     } catch (err) {
