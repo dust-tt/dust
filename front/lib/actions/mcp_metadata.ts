@@ -252,8 +252,18 @@ export const connectToMCPServer = async (
           const url = new URL(remoteMCPServer.url);
 
           let token: OAuthTokens | undefined;
+
+          // If the server has a shared secret, we use it to authenticate.
+          if (remoteMCPServer.sharedSecret) {
+            token = {
+              access_token: remoteMCPServer.sharedSecret,
+              token_type: "bearer",
+              expires_in: undefined,
+              scope: "",
+            };
+          }
           // The server requires authentication.
-          if (remoteMCPServer.authorization) {
+          else if (remoteMCPServer.authorization) {
             // We only fetch the personal token if we are running a tool.
             // Otherwise, for listing tools etc.., we use the workspace token.
             const connectionType =
