@@ -4,10 +4,12 @@ import webpack from "webpack";
 import WebpackDevServer from "webpack-dev-server";
 
 import { getConfig as getChromeConfig } from "../platforms/chrome/webpack.config";
+import { getConfig as getFirefoxConfig } from "../platforms/firefox/webpack.config";
 import { getConfig as getFrontConfig } from "../platforms/front/webpack.config";
 
 const configPerPlatform: Record<PlatformType, any> = {
   chrome: getChromeConfig,
+  firefox: getFirefoxConfig,
   front: getFrontConfig,
 };
 
