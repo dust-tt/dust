@@ -27,6 +27,9 @@ import {
   MAX_LIMIT,
   searchCrmObjects,
   SIMPLE_OBJECTS,
+  updateContact,
+  updateCompany,
+  updateDeal,
 } from "@app/lib/actions/mcp_internal_actions/servers/hubspot/hubspot_api_helper";
 import {
   ERROR_MESSAGES,
@@ -690,6 +693,91 @@ const createServer = (): McpServer => {
     "quotes",
     "feedback_submissions",
   ]); // Add other searchable types as needed
+
+  server.tool(
+    "update_contact",
+    "Updates properties of a HubSpot contact by ID.",
+    {
+      contactId: z.string().describe("The ID of the contact to update."),
+      properties: z
+        .record(z.string())
+        .describe(
+          "An object containing the properties to update with their new values."
+        ),
+    },
+    async ({ contactId, properties }, { authInfo }) => {
+      return withAuth({
+        action: async (accessToken) => {
+          const result = await updateContact({
+            accessToken,
+            contactId,
+            properties,
+          });
+          return makeMCPToolJSONSuccess({
+            result,
+          });
+        },
+        authInfo,
+      });
+    }
+  );
+
+  server.tool(
+    "update_company",
+    "Updates properties of a HubSpot company by ID.",
+    {
+      companyId: z.string().describe("The ID of the company to update."),
+      properties: z
+        .record(z.string())
+        .describe(
+          "An object containing the properties to update with their new values."
+        ),
+    },
+    async ({ companyId, properties }, { authInfo }) => {
+      return withAuth({
+        action: async (accessToken) => {
+          const result = await updateCompany({
+            accessToken,
+            companyId,
+            properties,
+          });
+          return makeMCPToolJSONSuccess({
+            result,
+          });
+        },
+        authInfo,
+      });
+    }
+  );
+
+  server.tool(
+    "update_deal",
+    "Updates properties of a HubSpot deal by ID.",
+    {
+      dealId: z.string().describe("The ID of the deal to update."),
+      properties: z
+        .record(z.string())
+        .describe(
+          "An object containing the properties to update with their new values."
+        ),
+    },
+    async ({ dealId, properties }, { authInfo }) => {
+      return withAuth({
+        action: async (accessToken) => {
+          const result = await updateDeal({
+            accessToken,
+            dealId,
+            properties,
+          });
+          return makeMCPToolJSONSuccess({
+            result,
+          });
+        },
+        authInfo,
+      });
+    }
+  );
+
   server.tool(
     "search_crm_objects",
     "Searches CRM objects of a specific type based on filters, query, and properties.",
