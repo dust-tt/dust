@@ -9,6 +9,7 @@ import {
 
 import type * as activities from "@connectors/connectors/webcrawler/temporal/activities";
 import type { ModelId } from "@connectors/types";
+import { WEBCRAWLER_MAX_PAGES } from "@connectors/types";
 
 // timeout for crawling a single url = timeout for upserting (5 minutes) + 2mn
 // leeway to crawl on slow websites
@@ -17,7 +18,9 @@ export const REQUEST_HANDLING_TIMEOUT = 420;
 // them 20mn to hearbeat.
 export const HEARTBEAT_TIMEOUT = 1200;
 
-export const MAX_TIME_TO_CRAWL_MINUTES = 240;
+export const FIRECRAWL_REQ_TIMEOUT = 30_000; // millisecond
+export const MAX_TIME_TO_CRAWL_MINUTES =
+  (WEBCRAWLER_MAX_PAGES * FIRECRAWL_REQ_TIMEOUT) / 1000 / 60; // X millisecond timeout per page, and we have a hardcoded limit of Y pages
 export const MIN_EXTRACTED_TEXT_LENGTH = 1024;
 export const MAX_BLOCKED_RATIO = 0.9;
 export const MAX_PAGES_TOO_LARGE_RATIO = 0.9;

@@ -18,6 +18,7 @@ import {
   WebCrawlerError,
 } from "@connectors/connectors/webcrawler/lib/utils";
 import {
+  FIRECRAWL_REQ_TIMEOUT,
   MAX_BLOCKED_RATIO,
   MAX_PAGES_TOO_LARGE_RATIO,
   MAX_TIME_TO_CRAWL_MINUTES,
@@ -188,6 +189,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
             onlyMainContent: true,
             formats: ["markdown", "links"],
             headers: customHeaders,
+            timeout: FIRECRAWL_REQ_TIMEOUT,
           });
 
           if (!crawlerResponse.success) {
