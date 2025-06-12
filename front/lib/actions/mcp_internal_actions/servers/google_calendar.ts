@@ -22,7 +22,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
       "https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/calendar.events" as const,
   },
   icon: "GcalLogo",
-  documentationUrl: "https://docs.dust.tt/docs/google-calendar",
+  documentationUrl: "https://docs.dust.tt/docs/gmail",
 };
 
 const createServer = (): McpServer => {
