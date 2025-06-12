@@ -700,10 +700,15 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       {
         workspaceId: this.workspaceId,
         roles: [{ role: "admin", permissions: ["admin"] }],
-        groups: this.groups.filter(groupFilter).map((group) => ({
-          id: group.id,
-          permissions: ["read", "write"],
-        })),
+        groups: this.groups.reduce((acc, group) => {
+          if (groupFilter(group)) {
+            acc.push({
+              id: group.id,
+              permissions: ["read", "write"],
+            });
+          }
+          return acc;
+        }, [] as GroupPermission[]),
       },
     ];
   }
