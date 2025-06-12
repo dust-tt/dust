@@ -3,13 +3,14 @@ import assert from "assert";
 import {
   DEFAULT_CONVERSATION_EXTRACT_ACTION_DATA_DESCRIPTION,
   DEFAULT_CONVERSATION_EXTRACT_ACTION_NAME,
+  DEFAULT_CONVERSATION_INCLUDE_FILE_ACTION_DESCRIPTION,
+  DEFAULT_CONVERSATION_INCLUDE_FILE_ACTION_NAME,
   DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_DATA_DESCRIPTION,
   DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME,
   DEFAULT_CONVERSATION_SEARCH_ACTION_DATA_DESCRIPTION,
   DEFAULT_CONVERSATION_SEARCH_ACTION_NAME,
   DEFAULT_SEARCH_LABELS_ACTION_NAME,
 } from "@app/lib/actions/constants";
-import { makeConversationIncludeFileConfiguration } from "@app/lib/actions/conversation/include_file";
 import type {
   ConversationAttachmentType,
   ConversationContentNodeType,
@@ -20,6 +21,7 @@ import {
   isConversationFileType,
   makeConversationListFilesAction,
 } from "@app/lib/actions/conversation/list_files";
+import type { ServerSideMCPToolConfigurationType } from "@app/lib/actions/mcp";
 import type { ProcessConfigurationType } from "@app/lib/actions/process";
 import type { RetrievalConfigurationType } from "@app/lib/actions/retrieval";
 import type { TablesQueryConfigurationType } from "@app/lib/actions/tables_query";
@@ -40,6 +42,7 @@ import {
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
@@ -116,8 +119,62 @@ async function getJITActions(
     return actions;
   }
 
-  // conversation_include_file_action
-  actions.push(makeConversationIncludeFileConfiguration());
+  // Get MCP server view for conversation_files
+  const conversationFilesView =
+    await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
+      auth,
+      "conversation_files"
+    );
+
+  if (!conversationFilesView) {
+    logger.error(
+      {
+        workspaceId: auth.getNonNullableWorkspace().sId,
+      },
+      "MCP server view not found for conversation_files in JIT actions"
+    );
+    // Fall back to legacy action if MCP server view is not available
+    const { makeConversationIncludeFileConfiguration } = await import(
+      "@app/lib/actions/conversation/include_file"
+    );
+    actions.push(makeConversationIncludeFileConfiguration());
+  } else {
+    // Create MCP tool for conversation_include_file
+    const includeFileTool: ServerSideMCPToolConfigurationType = {
+      id: -1,
+      sId: generateRandomModelSId(),
+      type: "mcp_configuration",
+      name: DEFAULT_CONVERSATION_INCLUDE_FILE_ACTION_NAME,
+      description: DEFAULT_CONVERSATION_INCLUDE_FILE_ACTION_DESCRIPTION,
+      inputSchema: {
+        type: "object",
+        properties: {
+          fileId: {
+            type: "string",
+            description:
+              "The fileId of the attachment to include in the conversation as returned by the conversation_list_files action",
+          },
+        },
+        required: ["fileId"],
+      },
+      availability: "auto",
+      permission: "never_ask",
+      toolServerId: "include_file",
+      originalName: "include_file",
+      mcpServerName: "conversation_files",
+      internalMCPServerId: conversationFilesView.mcpServerId,
+      dataSources: null,
+      tables: null,
+      childAgentId: null,
+      reasoningModel: null,
+      timeFrame: null,
+      jsonSchema: null,
+      additionalConfiguration: {},
+      mcpServerViewId: conversationFilesView.sId,
+      dustAppConfiguration: null,
+    };
+    actions.push(includeFileTool);
+  }
 
   // Check tables for the table query action.
   const filesUsableAsTableQuery = files.filter((f) => f.isQueryable);
