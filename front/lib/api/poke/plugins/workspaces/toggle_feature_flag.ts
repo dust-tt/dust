@@ -1,8 +1,18 @@
 import { createPlugin } from "@app/lib/api/poke/types";
 import { FeatureFlag } from "@app/lib/models/feature_flag";
-import type { WhitelistableFeature } from "@app/types";
-import { Ok } from "@app/types";
+import type { EnumValue, WhitelistableFeature } from "@app/types";
+import { mapToEnumValues, Ok } from "@app/types";
 import { WHITELISTABLE_FEATURES } from "@app/types/shared/feature_flags";
+
+function convertFeatureFlagToEnumValue(
+  featureFlag: WhitelistableFeature
+): EnumValue {
+  return {
+    label: featureFlag,
+    value: featureFlag,
+    checked: false,
+  };
+}
 
 export const toggleFeatureFlagPlugin = createPlugin({
   manifest: {
@@ -17,9 +27,31 @@ export const toggleFeatureFlagPlugin = createPlugin({
         type: "enum",
         label: "Feature Flag",
         description: "Select which feature flag you want to enable/disable",
-        values: WHITELISTABLE_FEATURES,
+        async: true,
+        values: mapToEnumValues(
+          WHITELISTABLE_FEATURES,
+          convertFeatureFlagToEnumValue
+        ),
       },
     },
+  },
+  populateAsyncArgs: async (auth) => {
+    const workspace = auth.getNonNullableWorkspace();
+    const enabledFlags = await FeatureFlag.findAll({
+      where: {
+        workspaceId: workspace.id,
+      },
+    });
+
+    const enabledFlagNames = new Set(enabledFlags.map((flag) => flag.name));
+
+    return new Ok({
+      feature: WHITELISTABLE_FEATURES.map((feature) => ({
+        label: feature,
+        value: feature,
+        checked: enabledFlagNames.has(feature),
+      })),
+    });
   },
   execute: async (auth, _, args) => {
     const workspace = auth.getNonNullableWorkspace();

@@ -1,13 +1,14 @@
 import type { Fetcher } from "swr";
 
-import { PluginListItem } from "@app/lib/api/poke/types";
+import type { PluginListItem } from "@app/lib/api/poke/types";
 import {
-  fetcher,
   emptyArray,
+  fetcher,
   getErrorFromResponse,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import type { PokeListPluginsForScopeResponseBody } from "@app/pages/api/poke/plugins/";
+import type { PokeGetPluginAsyncArgsResponseBody } from "@app/pages/api/poke/plugins/[pluginId]/async-args";
 import type { PokeGetPluginDetailsResponseBody } from "@app/pages/api/poke/plugins/[pluginId]/manifest";
 import type { PokeRunPluginResponseBody } from "@app/pages/api/poke/plugins/[pluginId]/run";
 import type { PluginResourceTarget, Result } from "@app/types";
@@ -69,6 +70,42 @@ export function usePokePluginManifest({
 
   return {
     manifest: data ? data.manifest : null,
+    isLoading: !error && !data && !disabled,
+    isError: error,
+  };
+}
+
+export function usePokePluginAsyncArgs({
+  disabled,
+  pluginId,
+  pluginResourceTarget,
+}: {
+  disabled?: boolean;
+  pluginId: string;
+  pluginResourceTarget: PluginResourceTarget;
+}) {
+  const pluginAsyncArgsFetcher: Fetcher<PokeGetPluginAsyncArgsResponseBody> =
+    fetcher;
+
+  const urlSearchParams = new URLSearchParams({
+    resourceType: pluginResourceTarget.resourceType,
+  });
+
+  if ("resourceId" in pluginResourceTarget) {
+    urlSearchParams.append("resourceId", pluginResourceTarget.resourceId);
+    urlSearchParams.append("workspaceId", pluginResourceTarget.workspace.sId);
+  }
+
+  const { data, error } = useSWRWithDefaults(
+    `/api/poke/plugins/${pluginId}/async-args?${urlSearchParams.toString()}`,
+    pluginAsyncArgsFetcher,
+    {
+      disabled,
+    }
+  );
+
+  return {
+    asyncArgs: data ? data.asyncArgs : null,
     isLoading: !error && !data && !disabled,
     isError: error,
   };

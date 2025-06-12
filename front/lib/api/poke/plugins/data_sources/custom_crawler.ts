@@ -14,7 +14,10 @@ export const customCrawlerPlugin = createPlugin({
         type: "enum",
         label: "Crawler",
         description: "Select a crawler",
-        values: ["firecrawl", "default"],
+        values: [
+          { label: "Firecrawl", value: "firecrawl" },
+          { label: "Default", value: "default" },
+        ],
       },
     },
   },
