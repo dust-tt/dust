@@ -194,16 +194,17 @@ export async function createRegularSpaceAndGroup(
   params:
     | {
         name: string;
-        memberIds: string[] | null;
-        isRestricted: boolean;
-        managementMode?: "manual";
+        isRestricted: true;
+        memberIds: string[];
+        managementMode: "manual";
       }
     | {
         name: string;
+        isRestricted: true;
         groupIds: string[];
-        isRestricted: boolean;
-        managementMode?: "group";
-      },
+        managementMode: "group";
+      }
+    | { name: string; isRestricted: false },
   { ignoreWorkspaceLimit = false }: { ignoreWorkspaceLimit?: boolean } = {}
 ): Promise<Result<SpaceResource, DustError | Error>> {
   const owner = auth.getNonNullableWorkspace();
@@ -227,8 +228,8 @@ export async function createRegularSpaceAndGroup(
       );
     }
 
-    const { name, isRestricted, managementMode = "manual" } = params;
-
+    const { name, isRestricted } = params;
+    const managementMode = isRestricted ? params.managementMode : "manual";
     const nameAvailable = await SpaceResource.isNameAvailable(auth, name, t);
     if (!nameAvailable) {
       return new Err(
