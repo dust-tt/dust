@@ -23,6 +23,7 @@ const GroupKindCodec = t.keyof({
 
 const GetGroupsQuerySchema = t.partial({
   kind: t.union([GroupKindCodec, t.array(GroupKindCodec)]),
+  spaceId: t.string,
 });
 
 async function handler(
@@ -44,19 +45,32 @@ async function handler(
         });
       }
 
-      const { kind } = queryValidation.right;
+      const { kind, spaceId } = queryValidation.right;
       const groupKinds: GroupKind[] = kind
         ? Array.isArray(kind)
           ? kind
           : [kind]
         : ["global", "regular"];
 
-      const groups = await GroupResource.listAllWorkspaceGroups(auth, {
-        groupKinds,
-      });
+      let groups: GroupResource[];
+      if (spaceId) {
+        // Fetch groups associated with the specific space
+        groups = await GroupResource.listForSpaceById(auth, spaceId, {
+          groupKinds,
+        });
+      } else {
+        // Fetch all workspace groups (existing behavior)
+        groups = await GroupResource.listAllWorkspaceGroups(auth, {
+          groupKinds,
+        });
+      }
+
+      const groupsWithMemberCount = await Promise.all(
+        groups.map((group) => group.toJSONWithMemberCount(auth))
+      );
 
       return res.status(200).json({
-        groups: groups.map((group) => group.toJSON()),
+        groups: groupsWithMemberCount,
       });
     }
 

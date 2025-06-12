@@ -1,12 +1,11 @@
 import {
   Avatar,
   Button,
-  PopoverContent,
-  PopoverRoot,
-  PopoverTrigger,
-  ScrollArea,
-  SearchInput,
-  Separator,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSearchbar,
+  DropdownMenuTrigger,
   UserIcon,
 } from "@dust-tt/sparkle";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
@@ -83,52 +82,46 @@ export function SearchMembersPopover({
   const hasMore = totalMembersCount > allMembers.length;
 
   return (
-    <PopoverRoot>
-      <PopoverTrigger asChild>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
         <Button label="Add members" icon={UserIcon} size="sm" />
-      </PopoverTrigger>
-      <PopoverContent className="mr-2 p-4">
-        <SearchInput
-          name="search"
-          placeholder="Search members (email)"
-          value={searchTerm}
-          onChange={(e) => {
-            setSearchTerm(e);
-          }}
-        />
-        <ScrollArea className="mt-2 flex max-h-[300px] flex-col">
-          <div className="space-y-1">
-            {filteredMembers.map((member) => (
-              <div
-                key={member.sId}
-                className="flex cursor-pointer flex-col items-start hover:opacity-80"
-                onClick={addMember(member)}
-              >
-                <div className="my-1 flex items-center gap-2">
-                  <Avatar size="sm" visual={member.image || ""} />
-                  <div>
-                    <div className="text-sm">{member.fullName}</div>
-                    <div className="text-xs text-muted-foreground dark:text-muted-foreground-night">
-                      {member.email}
-                    </div>
-                  </div>
-                </div>
-                <Separator />
-              </div>
-            ))}
-          </div>
-          <InfiniteScroll
-            nextPage={loadNextPage}
-            hasMore={hasMore}
-            showLoader={isLoading}
-            loader={
-              <div className="py-2 text-center text-sm text-muted-foreground dark:text-muted-foreground-night">
-                Loading more members...
-              </div>
-            }
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        className="w-80"
+        dropdownHeaders={
+          <DropdownMenuSearchbar
+            value={searchTerm}
+            onChange={setSearchTerm}
+            name="search"
+            placeholder="Search members (email)"
           />
-        </ScrollArea>
-      </PopoverContent>
-    </PopoverRoot>
+        }
+      >
+        {filteredMembers.map((member) => (
+          <DropdownMenuItem
+            key={member.sId}
+            onClick={addMember(member)}
+            icon={() => <Avatar size="sm" visual={member.image || ""} />}
+            label={member.fullName}
+            description={member.email}
+          />
+        ))}
+        {filteredMembers.length === 0 && !isLoading && (
+          <div className="py-6 text-center text-sm text-muted-foreground">
+            {searchTerm ? "No members found" : "No members available"}
+          </div>
+        )}
+        <InfiniteScroll
+          nextPage={loadNextPage}
+          hasMore={hasMore}
+          showLoader={isLoading}
+          loader={
+            <div className="py-2 text-center text-sm text-muted-foreground">
+              Loading more members...
+            </div>
+          }
+        />
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

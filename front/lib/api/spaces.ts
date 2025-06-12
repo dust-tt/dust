@@ -13,6 +13,7 @@ import { GroupResource } from "@app/lib/resources/group_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { getSearchFilterFromDataSourceViews } from "@app/lib/search";
 import { isPrivateSpacesLimitReached } from "@app/lib/spaces";
@@ -190,11 +191,20 @@ export async function hardDeleteSpace(
 
 export async function createRegularSpaceAndGroup(
   auth: Authenticator,
-  {
-    name,
-    memberIds,
-    isRestricted,
-  }: { name: string; memberIds: string[] | null; isRestricted: boolean },
+  params:
+    | {
+        name: string;
+        isRestricted: true;
+        memberIds: string[];
+        managementMode: "manual";
+      }
+    | {
+        name: string;
+        isRestricted: true;
+        groupIds: string[];
+        managementMode: "group";
+      }
+    | { name: string; isRestricted: false },
   { ignoreWorkspaceLimit = false }: { ignoreWorkspaceLimit?: boolean } = {}
 ): Promise<Result<SpaceResource, DustError | Error>> {
   const owner = auth.getNonNullableWorkspace();
@@ -218,6 +228,8 @@ export async function createRegularSpaceAndGroup(
       );
     }
 
+    const { name, isRestricted } = params;
+    const managementMode = isRestricted ? params.managementMode : "manual";
     const nameAvailable = await SpaceResource.isNameAvailable(auth, name, t);
     if (!nameAvailable) {
       return new Err(
@@ -250,15 +262,17 @@ export async function createRegularSpaceAndGroup(
       {
         name,
         kind: "regular",
+        managementMode,
         workspaceId: owner.id,
       },
       groups,
       t
     );
 
-    if (memberIds) {
-      const users = (await UserResource.fetchByIds(memberIds)).map((user) =>
-        user.toJSON()
+    // Handle member-based space creation
+    if ("memberIds" in params && params.memberIds) {
+      const users = (await UserResource.fetchByIds(params.memberIds)).map(
+        (user) => user.toJSON()
       );
       const groupsResult = await group.addMembers(auth, users, {
         transaction: t,
@@ -272,6 +286,36 @@ export async function createRegularSpaceAndGroup(
         );
 
         return new Err(new Error("The space cannot be created."));
+      }
+    }
+
+    // Handle group-based space creation
+    if ("groupIds" in params && params.groupIds.length > 0) {
+      // For group-based spaces, we need to associate the selected groups with the space
+      const selectedGroupsResult = await GroupResource.fetchByIds(
+        auth,
+        params.groupIds
+      );
+      if (selectedGroupsResult.isErr()) {
+        logger.error(
+          {
+            error: selectedGroupsResult.error,
+          },
+          "The space cannot be created - failed to fetch groups"
+        );
+        return new Err(new Error("The space cannot be created."));
+      }
+
+      const selectedGroups = selectedGroupsResult.value;
+      for (const selectedGroup of selectedGroups) {
+        await GroupSpaceModel.create(
+          {
+            groupId: selectedGroup.id,
+            vaultId: space.id,
+            workspaceId: space.workspaceId,
+          },
+          { transaction: t }
+        );
       }
     }
 
