@@ -797,30 +797,32 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       base64Data: string,
       mimeType: string,
       fileName: string,
-      resourceType: "image" | "file",
       block: CallToolResult["content"][number]
     ): Promise<{
       content: CallToolResult["content"][number];
       file: FileResource | null;
     }> {
-      if (base64Data.length > MAX_BLOB_SIZE_BYTES) {
+      const resourceType = isSupportedFileContentType(mimeType)
+        ? "file"
+        : isSupportedImageContentType(mimeType)
+          ? "image"
+          : null;
+
+      if (!resourceType) {
         return {
           content: {
             type: "text",
-            text: `The generated ${resourceType} was too large to be stored.`,
+            text: `The mime type of the generated resource (${mimeType}) is not supported.`,
           },
           file: null,
         };
       }
 
-      if (
-        (resourceType === "image" && !isSupportedImageContentType(mimeType)) ||
-        (resourceType === "file" && !isSupportedFileContentType(mimeType))
-      ) {
+      if (base64Data.length > MAX_BLOB_SIZE_BYTES) {
         return {
           content: {
             type: "text",
-            text: `The mime type of the generated ${resourceType} is not supported.`,
+            text: `The generated ${resourceType} was too large to be stored.`,
           },
           file: null,
         };
@@ -863,8 +865,9 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
         return {
           content: {
             ...block,
+            // Remove the data from the block to avoid storing it in the database.
             ...(block.type === "image" ? { data: "" } : {}),
-            ...(block.type === "resource" && "resource" in block
+            ...(isBlobResource(block)
               ? { resource: { ...block.resource, blob: "" } }
               : {}),
           },
@@ -916,7 +919,6 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
               block.data,
               block.mimeType,
               fileName,
-              "image",
               block
             );
           }
@@ -959,7 +961,6 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
                   block.resource.blob,
                   block.resource.mimeType,
                   fileName,
-                  "file",
                   block
                 );
               }
