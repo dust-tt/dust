@@ -35,7 +35,7 @@ export function useGroups({
   });
 
   return {
-    groups: data ? data.groups : [],
+    groups: data ? data.groups : emptyArray<GroupType>(),
     isGroupsLoading: !error && !data && !disabled,
     isGroupsError: !!error,
     mutateGroups: mutate,
