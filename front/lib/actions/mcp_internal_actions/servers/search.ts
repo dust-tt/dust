@@ -11,8 +11,8 @@ import type {
   SearchResultResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
-  findTagsDescription,
   findTagsSchema,
+  makeFindTagsDescription,
   makeFindTagsTool,
 } from "@app/lib/actions/mcp_internal_actions/servers/common/find_tags_tool";
 import {
@@ -52,6 +52,8 @@ const serverInfo: InternalMCPServerDefinitionType = {
   authorization: null,
   documentationUrl: null,
 };
+
+const SEARCH_TOOL_NAME = "semantic_search";
 
 function createServer(
   auth: Authenticator,
@@ -285,11 +287,11 @@ function createServer(
         " The search is based on semantic similarity between the query and chunks of information" +
         " from the data sources.",
       commonInputsSchema,
-      withToolLogging(auth, "semantic_search", searchFunction)
+      withToolLogging(auth, SEARCH_TOOL_NAME, searchFunction)
     );
   } else {
     server.tool(
-      "semantic_search",
+      SEARCH_TOOL_NAME,
       "Search the data sources specified by the user." +
         " The search is based on semantic similarity between the query and chunks of information" +
         " from the data sources.",
@@ -297,12 +299,12 @@ function createServer(
         ...commonInputsSchema,
         ...tagsInputSchema,
       },
-      withToolLogging(auth, "semantic_search", searchFunction)
+      withToolLogging(auth, SEARCH_TOOL_NAME, searchFunction)
     );
 
     server.tool(
       "find_tags",
-      findTagsDescription,
+      makeFindTagsDescription(SEARCH_TOOL_NAME),
       findTagsSchema,
       makeFindTagsTool(auth)
     );
