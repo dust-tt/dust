@@ -815,7 +815,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "document_tracker"
   | "exploded_tables_query"
   | "extended_max_steps_per_run"
-  | "force_gdrive_labels_scope"
   | "gmail_tool"
   | "google_ai_studio_experimental_models_feature"
   | "google_calendar_tool"

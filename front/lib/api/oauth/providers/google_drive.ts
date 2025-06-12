@@ -14,12 +14,10 @@ export class GoogleDriveOAuthProvider implements BaseOAuthStrategyProvider {
   setupUri({
     connection,
     useCase,
-    forceLabelsScope,
     extraConfig,
   }: {
     connection: OAuthConnectionType;
     useCase: OAuthUseCase;
-    forceLabelsScope?: boolean;
     extraConfig?: ExtraConfigType;
   }) {
     const scopes =
@@ -28,11 +26,8 @@ export class GoogleDriveOAuthProvider implements BaseOAuthStrategyProvider {
         : [
             "https://www.googleapis.com/auth/drive.metadata.readonly",
             "https://www.googleapis.com/auth/drive.readonly",
+            "https://www.googleapis.com/auth/drive.labels.readonly",
           ];
-
-    if (forceLabelsScope) {
-      scopes.push("https://www.googleapis.com/auth/drive.labels.readonly");
-    }
 
     const qs = querystring.stringify({
       response_type: "code",

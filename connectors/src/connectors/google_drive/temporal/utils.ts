@@ -297,8 +297,6 @@ export async function _getLabels(
   connectorId: ModelId,
   authCredentials: OAuth2Client
 ) {
-  // For now, return empty array until we have the new scope approved.
-  return [];
   try {
     const driveLabels = google.drivelabels({
       version: "v2",
