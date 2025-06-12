@@ -131,7 +131,9 @@ export default function AssistantBuilder({
       });
       return;
     }
-    // Do not override the actions if they are already set.
+
+    // In case of duplicating an agent, we should not override the original actions from
+    // the fetched actions (= empty actions).
     if (actions.length > 0) {
       setBuilderState((prevState) => ({
         ...prevState,
@@ -159,6 +161,8 @@ export default function AssistantBuilder({
           generationSettings: initialBuilderState.generationSettings ?? {
             ...getDefaultAssistantState().generationSettings,
           },
+          // We fetch actions on the client side, but in case of duplicating an agent,
+          // we need to use the actions from the original agent.
           actions: initialBuilderState.actions.map((action) => ({
             id: uniqueId(),
             ...action,
