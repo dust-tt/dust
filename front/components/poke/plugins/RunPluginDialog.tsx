@@ -18,7 +18,11 @@ import {
   PokeAlertTitle,
 } from "@app/components/poke/shadcn/ui/alert";
 import type { PluginListItem, PluginResponse } from "@app/lib/api/poke/types";
-import { usePokePluginManifest, usePokePluginAsyncArgs, useRunPokePlugin } from "@app/poke/swr/plugins";
+import {
+  usePokePluginAsyncArgs,
+  usePokePluginManifest,
+  useRunPokePlugin,
+} from "@app/poke/swr/plugins";
 import type { PluginResourceTarget } from "@app/types";
 
 type ExecutePluginDialogProps = {
@@ -41,7 +45,9 @@ export function RunPluginDialog({
   });
 
   // Check if any args are marked as async
-  const hasAsyncArgs = manifest ? Object.values(manifest.args).some(arg => arg.async) : false;
+  const hasAsyncArgs = manifest
+    ? Object.values(manifest.args).some((arg) => arg.async)
+    : false;
 
   const { asyncArgs, isLoading: isLoadingAsyncArgs } = usePokePluginAsyncArgs({
     disabled: !manifest || !hasAsyncArgs,

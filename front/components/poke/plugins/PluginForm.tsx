@@ -19,7 +19,7 @@ import {
   PokeFormUpload,
 } from "@app/components/poke/shadcn/ui/form";
 import type { PokeGetPluginDetailsResponseBody } from "@app/pages/api/poke/plugins/[pluginId]/manifest";
-import type { EnumValue, EnumValues } from "@app/types";
+import type { EnumValues } from "@app/types";
 import { createIoTsCodecFromArgs } from "@app/types";
 
 type FallbackArgs = Record<string, unknown>;
@@ -28,7 +28,7 @@ type FormValues<T> = T extends t.TypeC<any> ? t.TypeOf<T> : FallbackArgs;
 
 interface PluginFormProps {
   asyncArgs?: Partial<
-    Record<string, string | number | boolean | EnumValue[]>
+    Record<string, string | number | boolean | EnumValues>
   > | null;
   disabled?: boolean;
   manifest: PokeGetPluginDetailsResponseBody["manifest"];

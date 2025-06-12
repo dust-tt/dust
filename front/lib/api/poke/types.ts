@@ -120,6 +120,10 @@ export type Plugin<
     ? PluginWithAsyncArgs<T, R>
     : PluginWithoutAsyncArgs<T, R>;
 
+export type AllPlugins =
+  | PluginWithAsyncArgs<PluginArgs, SupportedResourceType>
+  | PluginWithoutAsyncArgs<PluginArgs, SupportedResourceType>;
+
 export function createPlugin<
   T extends PluginArgs,
   R extends SupportedResourceType,

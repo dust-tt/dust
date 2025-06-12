@@ -10,13 +10,13 @@ import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { apiError } from "@app/logger/withlogging";
 import type {
-  EnumValue,
+  EnumValues,
   SupportedResourceType,
   WithAPIErrorResponse,
 } from "@app/types";
 
 export interface PokeGetPluginAsyncArgsResponseBody {
-  asyncArgs: Record<string, string | number | boolean | EnumValue[]>;
+  asyncArgs: Record<string, string | number | boolean | EnumValues>;
 }
 
 const asyncArgsCodec = t.type({
