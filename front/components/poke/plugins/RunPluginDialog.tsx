@@ -18,7 +18,7 @@ import {
   PokeAlertTitle,
 } from "@app/components/poke/shadcn/ui/alert";
 import type { PluginListItem, PluginResponse } from "@app/lib/api/poke/types";
-import { usePokePluginManifest, useRunPokePlugin } from "@app/poke/swr/plugins";
+import { usePokePluginManifest, usePokePluginAsyncArgs, useRunPokePlugin } from "@app/poke/swr/plugins";
 import type { PluginResourceTarget } from "@app/types";
 
 type ExecutePluginDialogProps = {
@@ -38,6 +38,15 @@ export function RunPluginDialog({
   const { isLoading, manifest } = usePokePluginManifest({
     disabled: !open,
     pluginId: plugin?.id,
+  });
+
+  // Check if any args are marked as async
+  const hasAsyncArgs = manifest ? Object.values(manifest.args).some(arg => arg.async) : false;
+
+  const { asyncArgs, isLoading: isLoadingAsyncArgs } = usePokePluginAsyncArgs({
+    disabled: !manifest || !hasAsyncArgs,
+    pluginId: plugin.id,
+    pluginResourceTarget,
   });
 
   const { doRunPlugin } = useRunPokePlugin({
@@ -74,7 +83,7 @@ export function RunPluginDialog({
           <DialogDescription>{plugin.description}</DialogDescription>
         </DialogHeader>
         <DialogContainer>
-          {isLoading ? (
+          {isLoading || (hasAsyncArgs && isLoadingAsyncArgs) ? (
             <Spinner />
           ) : !manifest ? (
             <PokeAlert variant="destructive">
@@ -131,6 +140,7 @@ export function RunPluginDialog({
               <PluginForm
                 disabled={result !== null}
                 manifest={manifest}
+                asyncArgs={asyncArgs}
                 onSubmit={onSubmit}
               />
               {manifest.warning && (

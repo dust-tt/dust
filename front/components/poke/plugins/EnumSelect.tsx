@@ -5,7 +5,7 @@ import {
   PopoverRoot,
   PopoverTrigger,
 } from "@dust-tt/sparkle";
-import { Check } from "lucide-react";
+import { Check, CheckCircle, Circle } from "lucide-react";
 
 import { PokeButton } from "@app/components/poke/shadcn/ui/button";
 import {
@@ -17,11 +17,12 @@ import {
   PokeCommandList,
 } from "@app/components/poke/shadcn/ui/command";
 import { PokeFormControl } from "@app/components/poke/shadcn/ui/form";
+import type { EnumValues } from "@app/types/poke/plugins";
 
 interface EnumSelectProps {
   label?: string;
   onValueChange: (value: string) => void;
-  options: readonly string[];
+  options: EnumValues;
   placeholder?: string;
   value: string;
 }
@@ -45,7 +46,9 @@ export function EnumSelect({
               !value && "text-muted-foreground"
             )}
           >
-            {value ? options.find((option) => option === value) : placeholder}
+            {value
+              ? options.find((option) => option.value === value)?.label
+              : placeholder}
             <ChevronDownIcon className="opacity-50" />
           </PokeButton>
         </PokeFormControl>
@@ -62,17 +65,24 @@ export function EnumSelect({
             <PokeCommandGroup>
               {options.map((option) => (
                 <PokeCommandItem
-                  value={option}
-                  key={option}
+                  value={option.value}
+                  key={option.value}
                   onSelect={() => {
-                    onValueChange(option);
+                    onValueChange(option.value);
                   }}
                 >
-                  {option}
+                  <div className="flex items-center gap-2 w-full">
+                    {option.checked ? (
+                      <CheckCircle className="h-4 w-4 text-green-600" />
+                    ) : (
+                      <Circle className="h-4 w-4 text-gray-400" />
+                    )}
+                    <span className={cn(option.checked && "font-medium")}>{option.label}</span>
+                  </div>
                   <Check
                     className={cn(
                       "ml-auto",
-                      option === value ? "opacity-100" : "opacity-0"
+                      option.value === value ? "opacity-100" : "opacity-0"
                     )}
                   />
                 </PokeCommandItem>

@@ -6,13 +6,32 @@ interface BaseArgDefinition {
   description?: string;
   label: string;
   redact?: boolean;
+  async?: boolean;
 }
 
 type AtLeastTwoElements<T> = readonly [T, T, ...T[]];
 
+export type EnumValue = {
+  label: string;
+  value: string;
+  checked?: boolean;
+};
+
+export type EnumValues = AtLeastTwoElements<EnumValue>;
+
+// Helper function to convert arrays with at least 2 elements to EnumValues.
+export function mapToEnumValues<T>(
+  items: AtLeastTwoElements<T>,
+  mapper: (item: T) => EnumValue
+): AtLeastTwoElements<EnumValue> {
+  const [first, second, ...rest] = items;
+
+  return [mapper(first), mapper(second), ...rest.map(mapper)];
+}
+
 interface EnumArgDefinition extends BaseArgDefinition {
   type: "enum";
-  values: AtLeastTwoElements<string>;
+  values: EnumValues;
 }
 
 interface StringArgDefinition extends BaseArgDefinition {
@@ -53,6 +72,17 @@ export type StrictPluginArgs = {
 };
 
 export type PluginArgs = Record<string, PluginArgDefinition>;
+
+// Utility types for async field detection.
+export type HasAsyncFields<T extends PluginArgs> = {
+  [K in keyof T]: T[K] extends { async: true } ? true : never;
+}[keyof T] extends never
+  ? false
+  : true;
+
+export type AsyncFieldKeys<T extends PluginArgs> = {
+  [K in keyof T]: T[K] extends { async: true } ? K : never;
+}[keyof T];
 
 export interface PluginManifest<
   T extends PluginArgs,
@@ -105,11 +135,15 @@ export function createIoTsCodecFromArgs(
             `Enum argument "${key}" must have at least two values`
           );
         }
+
+        // Extract values from EnumValue objects.
+        const enumValues = arg.values.map((v) => v.value);
         codecProps[key] = t.union([
-          t.literal(arg.values[0]),
-          t.literal(arg.values[1]),
-          ...arg.values.slice(2).map((v) => t.literal(v)),
+          t.literal(enumValues[0]),
+          t.literal(enumValues[1]),
+          ...enumValues.slice(2).map((v) => t.literal(v)),
         ]);
+        break;
       case "file":
         codecProps[key] = t.any;
         break;

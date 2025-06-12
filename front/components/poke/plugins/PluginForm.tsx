@@ -19,6 +19,7 @@ import {
   PokeFormUpload,
 } from "@app/components/poke/shadcn/ui/form";
 import type { PokeGetPluginDetailsResponseBody } from "@app/pages/api/poke/plugins/[pluginId]/manifest";
+import type { EnumValue, EnumValues } from "@app/types";
 import { createIoTsCodecFromArgs } from "@app/types";
 
 type FallbackArgs = Record<string, unknown>;
@@ -26,18 +27,28 @@ type FallbackArgs = Record<string, unknown>;
 type FormValues<T> = T extends t.TypeC<any> ? t.TypeOf<T> : FallbackArgs;
 
 interface PluginFormProps {
+  asyncArgs?: Partial<
+    Record<string, string | number | boolean | EnumValue[]>
+  > | null;
   disabled?: boolean;
   manifest: PokeGetPluginDetailsResponseBody["manifest"];
   onSubmit: (args: FormValues<any>) => Promise<void>;
 }
 
-export function PluginForm({ disabled, manifest, onSubmit }: PluginFormProps) {
+export function PluginForm({
+  asyncArgs,
+  disabled,
+  manifest,
+  onSubmit,
+}: PluginFormProps) {
   const [isSubmitted, setIsSubmitted] = useState(false);
 
   const argsCodec = useMemo(() => {
     if (!manifest) {
       return null;
     }
+
+    // Create codec from original manifest - async values are handled in rendering
     return createIoTsCodecFromArgs(manifest.args);
   }, [manifest]);
 
@@ -124,7 +135,11 @@ export function PluginForm({ disabled, manifest, onSubmit }: PluginFormProps) {
                         <EnumSelect
                           label={arg.label}
                           onValueChange={(value) => field.onChange(value)}
-                          options={arg.values}
+                          options={
+                            arg.async && asyncArgs?.[key]
+                              ? (asyncArgs[key] as EnumValues)
+                              : arg.values
+                          }
                           placeholder="Select feature flag"
                           value={field.value}
                         />
