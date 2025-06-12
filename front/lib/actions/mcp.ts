@@ -17,6 +17,7 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { ProgressNotificationContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
+  isBlobResource,
   isMCPProgressNotificationType,
   isResourceWithName,
   isToolApproveBubbleUpNotificationType,
@@ -42,6 +43,7 @@ import { getExecutionStatusFromConfig } from "@app/lib/actions/utils";
 import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration";
 import {
   processAndStoreFromUrl,
+  uploadBase64DataToFileStorage,
   uploadBase64ImageToFileStorage,
 } from "@app/lib/api/files/upload";
 import type { Authenticator } from "@app/lib/auth";
@@ -66,6 +68,8 @@ import type {
   ModelConfigurationType,
   ModelId,
   Result,
+  SupportedFileContentType,
+  SupportedImageContentType,
   TimeFrame,
 } from "@app/types";
 import {
@@ -789,6 +793,107 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       conversationId: conversation.sId,
     };
 
+    async function handleBase64Upload(
+      base64Data: string,
+      mimeType: string,
+      fileName: string,
+      block: CallToolResult["content"][number]
+    ): Promise<{
+      content: CallToolResult["content"][number];
+      file: FileResource | null;
+    }> {
+      const resourceType = isSupportedFileContentType(mimeType)
+        ? "file"
+        : isSupportedImageContentType(mimeType)
+          ? "image"
+          : null;
+
+      if (!resourceType) {
+        return {
+          content: {
+            type: "text",
+            text: `The mime type of the generated resource (${mimeType}) is not supported.`,
+          },
+          file: null,
+        };
+      }
+
+      if (base64Data.length > MAX_BLOB_SIZE_BYTES) {
+        return {
+          content: {
+            type: "text",
+            text: `The generated ${resourceType} was too large to be stored.`,
+          },
+          file: null,
+        };
+      }
+
+      try {
+        const uploadResult =
+          resourceType === "image"
+            ? await uploadBase64ImageToFileStorage(auth, {
+                base64: base64Data,
+                // Cast is valid because of the previous check.
+                contentType: mimeType as SupportedImageContentType,
+                fileName,
+                useCase: fileUseCase,
+                useCaseMetadata: fileUseCaseMetadata,
+              })
+            : await uploadBase64DataToFileStorage(auth, {
+                base64: base64Data,
+                // Cast is valid because of the previous check.
+                contentType: mimeType as SupportedFileContentType,
+                fileName,
+                useCase: fileUseCase,
+                useCaseMetadata: fileUseCaseMetadata,
+              });
+
+        if (uploadResult.isErr()) {
+          localLogger.error(
+            { error: uploadResult.error },
+            `Error upserting ${resourceType} from base64`
+          );
+          return {
+            content: {
+              type: "text",
+              text: `Failed to upsert the generated ${resourceType} as a file.`,
+            },
+            file: null,
+          };
+        }
+
+        return {
+          content: {
+            ...block,
+            // Remove the data from the block to avoid storing it in the database.
+            ...(block.type === "image" ? { data: "" } : {}),
+            ...(isBlobResource(block)
+              ? { resource: { ...block.resource, blob: "" } }
+              : {}),
+          },
+          file: uploadResult.value,
+        };
+      } catch (error) {
+        logger.error(
+          {
+            action: "mcp_tool",
+            tool: `generate_${resourceType}`,
+            workspaceId: owner.sId,
+            error,
+          },
+          `Failed to save the generated ${resourceType}.`
+        );
+
+        return {
+          content: {
+            type: "text",
+            text: `Failed to save the generated ${resourceType}.`,
+          },
+          file: null,
+        };
+      }
+    }
+
     const cleanContent: {
       content: CallToolResult["content"][number];
       file: FileResource | null;
@@ -806,78 +911,16 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
             };
           }
           case "image": {
-            if (block.data.length > MAX_BLOB_SIZE_BYTES) {
-              return {
-                content: {
-                  type: "text",
-                  text: "The generated image was too large to be stored.",
-                },
-                file: null,
-              };
-            }
-            if (!isSupportedImageContentType(block.mimeType)) {
-              return {
-                content: {
-                  type: "text",
-                  text: "The mime type of the image generated is not supported.",
-                },
-                file: null,
-              };
-            }
-            try {
-              const imageUpsertResult = await uploadBase64ImageToFileStorage(
-                auth,
-                {
-                  base64: block.data,
-                  contentType: block.mimeType,
-                  fileName: isResourceWithName(block)
-                    ? block.name
-                    : `generated-image-${Date.now()}.${extensionsForContentType(block.mimeType)[0]}`,
-                  useCase: fileUseCase,
-                  useCaseMetadata: fileUseCaseMetadata,
-                }
-              );
+            const fileName = isResourceWithName(block)
+              ? block.name
+              : `generated-image-${Date.now()}.${extensionsForContentType(block.mimeType as SupportedImageContentType)[0]}`;
 
-              if (imageUpsertResult.isErr()) {
-                localLogger.error(
-                  { error: imageUpsertResult.error },
-                  "Error upserting image from base64"
-                );
-                return {
-                  content: {
-                    type: "text",
-                    text: "Failed to upsert the generated image as a file.",
-                  },
-                  file: null,
-                };
-              }
-
-              return {
-                content: {
-                  ...block,
-                  data: "", // Remove the data from the block to avoid storing it in the database.
-                },
-                file: imageUpsertResult.value,
-              };
-            } catch (error) {
-              logger.error(
-                {
-                  action: "mcp_tool",
-                  tool: "generate_image",
-                  workspaceId: owner.sId,
-                  error,
-                },
-                "Failed to save the generated image."
-              );
-
-              return {
-                content: {
-                  type: "text",
-                  text: "Failed to save the generated image.",
-                },
-                file: null,
-              };
-            }
+            return handleBase64Upload(
+              block.data,
+              block.mimeType,
+              fileName,
+              block
+            );
           }
           case "audio": {
             return {
@@ -909,6 +952,19 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
               // File generated by the tool, not upserted yet.
               isSupportedFileContentType(block.resource.mimeType)
             ) {
+              if (isBlobResource(block)) {
+                const fileName = isResourceWithName(block)
+                  ? block.name
+                  : `generated-file-${Date.now()}.${extensionsForContentType(block.resource.mimeType as SupportedFileContentType)[0]}`;
+
+                return handleBase64Upload(
+                  block.resource.blob,
+                  block.resource.mimeType,
+                  fileName,
+                  block
+                );
+              }
+
               const fileName = isResourceWithName(block.resource)
                 ? block.resource.name
                 : block.resource.uri.split("/").pop() ?? "generated-file";
@@ -939,21 +995,22 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
                 content: block,
                 file: fileUpsertResult.value,
               };
-            }
-            // Generic case for other kinds of resources.
-            return {
-              content: {
-                type: block.type,
-                resource: {
-                  ...block.resource,
-                  ...("text" in block.resource &&
-                  typeof block.resource.text === "string"
-                    ? { text: stripNullBytes(block.resource.text) }
-                    : {}),
+            } else {
+              // Generic case for other kinds of resources.
+              return {
+                content: {
+                  type: block.type,
+                  resource: {
+                    ...block.resource,
+                    ...("text" in block.resource &&
+                    typeof block.resource.text === "string"
+                      ? { text: stripNullBytes(block.resource.text) }
+                      : {}),
+                  },
                 },
-              },
-              file: null,
-            };
+                file: null,
+              };
+            }
           }
           default:
             assertNever(block);
