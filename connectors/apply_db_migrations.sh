@@ -28,7 +28,6 @@ if [[ ! -f "$migration_file" ]]; then
 fi
 
 psql "$CONNECTORS_DATABASE_URI" -f "$migration_file" --set=apply=1
-echo ""
 
 if [[ $? -eq 0 ]]; then
     echo "Migration applied successfully: $migration_name"

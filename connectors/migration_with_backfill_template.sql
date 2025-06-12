@@ -7,6 +7,7 @@ RETURNS VARCHAR AS $$
 BEGIN
     IF NOT backfilled THEN
         RAISE NOTICE 'The backfill script: BACKFILL_SCRIPT_NAME is required before applying this migration. If you already did it, run psql with --set=backfilled=1 argument.';
+        RETURN 'backfill_required';
     END IF;
 
     MIGRATION_STATEMENTS
