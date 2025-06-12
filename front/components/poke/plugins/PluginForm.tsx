@@ -1,10 +1,28 @@
-import { Button, Checkbox } from "@dust-tt/sparkle";
+import {
+  Button,
+  Checkbox,
+  ChevronDownIcon,
+  cn,
+  PopoverContent,
+  PopoverRoot,
+  PopoverTrigger,
+} from "@dust-tt/sparkle";
 import { ioTsResolver } from "@hookform/resolvers/io-ts";
 import type * as t from "io-ts";
+import { Check } from "lucide-react";
 import { useMemo, useState } from "react";
 import React from "react";
 import { useForm } from "react-hook-form";
 
+import { PokeButton } from "@app/components/poke/shadcn/ui/button";
+import {
+  PokeCommand,
+  PokeCommandEmpty,
+  PokeCommandGroup,
+  PokeCommandInput,
+  PokeCommandItem,
+  PokeCommandList,
+} from "@app/components/poke/shadcn/ui/command";
 import {
   PokeForm,
   PokeFormControl,
@@ -17,13 +35,6 @@ import {
   PokeFormTextArea,
   PokeFormUpload,
 } from "@app/components/poke/shadcn/ui/form";
-import {
-  PokeSelect,
-  PokeSelectContent,
-  PokeSelectItem,
-  PokeSelectTrigger,
-  PokeSelectValue,
-} from "@app/components/poke/shadcn/ui/select";
 import type { PokeGetPluginDetailsResponseBody } from "@app/pages/api/poke/plugins/[pluginId]/manifest";
 import { createIoTsCodecFromArgs } from "@app/types";
 
@@ -127,25 +138,65 @@ export function PluginForm({ disabled, manifest, onSubmit }: PluginFormProps) {
                         />
                       )}
                       {arg.type === "enum" && (
-                        <PokeSelect
-                          value={field.value ? field.value.toString() : ""}
-                          onValueChange={field.onChange}
-                        >
-                          <PokeFormControl>
-                            <PokeSelectTrigger>
-                              <PokeSelectValue placeholder={arg.label} />
-                            </PokeSelectTrigger>
-                          </PokeFormControl>
-                          <PokeSelectContent>
-                            <div className="bg-muted-background dark:bg-muted-background-night">
-                              {arg.values.map((option) => (
-                                <PokeSelectItem key={option} value={option}>
-                                  {option}
-                                </PokeSelectItem>
-                              ))}
-                            </div>
-                          </PokeSelectContent>
-                        </PokeSelect>
+                        <PopoverRoot modal={false}>
+                          <PopoverTrigger asChild>
+                            <PokeFormControl>
+                              <PokeButton
+                                variant="outline"
+                                role="combobox"
+                                className={cn(
+                                  "w-auto justify-between",
+                                  !field.value && "text-muted-foreground"
+                                )}
+                              >
+                                {field.value
+                                  ? arg.values.find(
+                                      (option) => option === field.value
+                                    )
+                                  : "Select value"}
+                                <ChevronDownIcon className="opacity-50" />
+                              </PokeButton>
+                            </PokeFormControl>
+                          </PopoverTrigger>
+                          <PopoverContent
+                            className="w-[400px] p-0"
+                            mountPortal={false}
+                            align="start"
+                          >
+                            <PokeCommand className="gap-2 py-3">
+                              <PokeCommandInput
+                                placeholder={arg.label}
+                                className="h-9 p-2"
+                              />
+                              <PokeCommandList>
+                                <PokeCommandEmpty>
+                                  No framework found.
+                                </PokeCommandEmpty>
+                                <PokeCommandGroup>
+                                  {arg.values.map((value) => (
+                                    <PokeCommandItem
+                                      value={value}
+                                      key={value}
+                                      onSelect={() => {
+                                        form.setValue(key, value);
+                                      }}
+                                    >
+                                      {value}
+                                      <Check
+                                        className={cn(
+                                          "ml-auto",
+                                          value === field.value
+                                            ? "opacity-100"
+                                            : "opacity-0"
+                                        )}
+                                      />
+                                    </PokeCommandItem>
+                                  ))}
+                                </PokeCommandGroup>
+                              </PokeCommandList>
+                            </PokeCommand>
+                          </PopoverContent>
+                        </PopoverRoot>
                       )}
                       {arg.type === "file" && (
                         <PokeFormUpload type="file" {...field} />

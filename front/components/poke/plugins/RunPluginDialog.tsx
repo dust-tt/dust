@@ -68,7 +68,7 @@ export function RunPluginDialog({
 
   return (
     <Dialog open={true} onOpenChange={handleClose}>
-      <DialogContent className="w-auto bg-muted-background sm:min-w-[600px] sm:max-w-[1000px]">
+      <DialogContent className="w-auto overflow-visible bg-muted-background sm:min-w-[600px] sm:max-w-[1000px]">
         <DialogHeader>
           <DialogTitle>Run {plugin.name} plugin</DialogTitle>
           <DialogDescription>{plugin.description}</DialogDescription>
