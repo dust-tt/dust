@@ -123,6 +123,11 @@ export const INTERNAL_MCP_SERVERS: Record<
       create_communication: "high",
       create_meeting: "high",
 
+      // Update operations.
+      update_contact: "high",
+      update_company: "high",
+      update_deal: "high",
+
       // Other operations.
       count_objects_by_properties: "never_ask",
       search_crm_objects: "never_ask",

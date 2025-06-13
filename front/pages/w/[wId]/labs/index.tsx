@@ -48,7 +48,7 @@ const LABS_FEATURES: LabsFeatureItemType[] = [
     id: "mcp_actions",
     label: "MCP Actions Dashboard",
     featureFlag: "labs_mcp_actions_dashboard",
-    visibleWithoutAccess: true,
+    visibleWithoutAccess: false,
     icon: ActionCodeBoxIcon,
     description:
       "Monitor and track MCP (Model Context Protocol) actions executed by your agents.",
