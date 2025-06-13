@@ -34,10 +34,6 @@ import {
 import { saveNodesFromPermissions } from "@connectors/lib/remote_databases/utils";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import {
-  SalesforceConfigurationResource,
-  SalesforceSyncedQueryResource,
-} from "@connectors/resources/salesforce_resources";
 import type { ConnectorPermission, ContentNode } from "@connectors/types";
 import type { DataSourceConfig } from "@connectors/types";
 
