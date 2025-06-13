@@ -131,7 +131,7 @@ export async function salesforceSyncQueryWorkflow({
   let lastSeenModifiedDateT: DateT = null;
   let lastModifiedDateTCursor: DateT = null;
   const upToLastModifiedDateT: DateT = upToLastModifiedDate
-    ? upToLastModifiedDate.toISOString()
+    ? upToLastModifiedDate.getTime()
     : null;
   let hasMore = true;
 

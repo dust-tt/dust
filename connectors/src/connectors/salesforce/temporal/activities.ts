@@ -320,10 +320,10 @@ export async function processSyncedQueryPage(
   );
 
   if (lastSeenModifiedDate) {
-    lastSeenModifiedDateT = lastSeenModifiedDate.toISOString();
+    lastSeenModifiedDateT = lastSeenModifiedDate.getTime();
   }
   if (lastModifiedDateCursor) {
-    lastModifiedDateTCursor = lastModifiedDateCursor.toISOString();
+    lastModifiedDateTCursor = lastModifiedDateCursor.getTime();
   }
 
   return {
