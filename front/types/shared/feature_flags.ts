@@ -39,7 +39,6 @@ export const WHITELISTABLE_FEATURES = [
   "workos_user_provisioning",
   "workos",
   "xai_feature",
-  "labs_mcp_actions_dashboard",
 ] as const;
 export type WhitelistableFeature = (typeof WHITELISTABLE_FEATURES)[number];
 export function isWhitelistableFeature(

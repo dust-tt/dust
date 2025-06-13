@@ -65,7 +65,7 @@ const logger = mainLogger.child({ provider: "slack" });
 // This controls the maximum number of concurrent calls to syncThread and syncNonThreaded.
 const MAX_CONCURRENCY_LEVEL = 2;
 // Adaptive chunking constants for syncNonThreaded optimization
-const MAX_MESSAGES_PER_CHUNK = 400; // Stop processing if we hit this many messages in a chunk
+const MAX_MESSAGES_PER_CHUNK = 200; // Stop processing if we hit this many messages in a chunk.
 
 const CONVERSATION_HISTORY_LIMIT = 100;
 
