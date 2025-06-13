@@ -189,7 +189,6 @@ export type BaseAgentMessageType = {
   status: AgentMessageStatus;
   content: string | null;
   chainOfThought: string | null;
-  contents?: AssistantContentItemType[];
   error: {
     code: string;
     message: string;
@@ -209,6 +208,7 @@ export type AgentMessageType = BaseAgentMessageType & {
     step: number;
     content: string;
   }>;
+  contents: Array<{ step: number; content: AssistantContentItemType }>;
 };
 
 export type LightAgentMessageType = BaseAgentMessageType & {
