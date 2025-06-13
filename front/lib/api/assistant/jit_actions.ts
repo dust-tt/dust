@@ -356,11 +356,12 @@ export async function getEmulatedAndJITActions(
 
   // Add conversation_files MCP server if there are conversation files
   if (files.length > 0) {
-    const conversationFilesView = await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
-      auth,
-      "conversation_files"
-    );
-    
+    const conversationFilesView =
+      await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
+        auth,
+        "conversation_files"
+      );
+
     assert(
       conversationFilesView,
       "MCP server view not found for conversation_files. Ensure auto tools are created."
