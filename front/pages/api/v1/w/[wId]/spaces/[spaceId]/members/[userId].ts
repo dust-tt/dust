@@ -3,11 +3,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import {
-  apiError,
-  dustErrorToApiErrorType,
-  dustErrorToHttpStatusCode,
-} from "@app/logger/withlogging";
+import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import { assertNever, isString } from "@app/types";
 
@@ -71,33 +67,33 @@ async function handler(
         switch (updateRes.error.code) {
           case "unauthorized":
             return apiError(req, res, {
-              status_code: dustErrorToHttpStatusCode(updateRes),
+              status_code: 401,
               api_error: {
-                type: dustErrorToApiErrorType(updateRes),
+                type: "workspace_auth_error",
                 message: "You are not authorized to update the space.",
               },
             });
           case "user_not_member":
             return apiError(req, res, {
-              status_code: dustErrorToHttpStatusCode(updateRes),
+              status_code: 400,
               api_error: {
-                type: dustErrorToApiErrorType(updateRes),
+                type: "invalid_request_error",
                 message: "The user is not a member of the space.",
               },
             });
           case "user_not_found":
             return apiError(req, res, {
-              status_code: dustErrorToHttpStatusCode(updateRes),
+              status_code: 404,
               api_error: {
-                type: dustErrorToApiErrorType(updateRes),
+                type: "user_not_found",
                 message: "The user was not found in the workspace.",
               },
             });
           case "system_or_global_group":
             return apiError(req, res, {
-              status_code: dustErrorToHttpStatusCode(updateRes),
+              status_code: 400,
               api_error: {
-                type: dustErrorToApiErrorType(updateRes),
+                type: "invalid_request_error",
                 message:
                   "Users cannot be removed from system or global groups.",
               },

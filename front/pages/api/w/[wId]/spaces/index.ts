@@ -6,11 +6,7 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import { createRegularSpaceAndGroup } from "@app/lib/api/spaces";
 import type { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import {
-  apiError,
-  dustErrorToApiErrorType,
-  dustErrorToHttpStatusCode,
-} from "@app/logger/withlogging";
+import { apiError } from "@app/logger/withlogging";
 import type { SpaceType, WithAPIErrorResponse } from "@app/types";
 import { assertNever, PostSpaceRequestBodySchema } from "@app/types";
 
@@ -109,26 +105,26 @@ async function handler(
         switch (spaceRes.error.code) {
           case "limit_reached":
             return apiError(req, res, {
-              status_code: dustErrorToHttpStatusCode(spaceRes),
+              status_code: 403,
               api_error: {
-                type: dustErrorToApiErrorType(spaceRes),
+                type: "plan_limit_error",
                 message:
                   "Limit of spaces allowed for your plan reached. Contact support to upgrade.",
               },
             });
           case "space_already_exists":
             return apiError(req, res, {
-              status_code: dustErrorToHttpStatusCode(spaceRes),
+              status_code: 400,
               api_error: {
-                type: dustErrorToApiErrorType(spaceRes),
+                type: "space_already_exists",
                 message: "Space with that name already exists.",
               },
             });
           case "internal_error":
             return apiError(req, res, {
-              status_code: dustErrorToHttpStatusCode(spaceRes),
+              status_code: 500,
               api_error: {
-                type: dustErrorToApiErrorType(spaceRes),
+                type: "internal_server_error",
                 message: spaceRes.error.message,
               },
             });

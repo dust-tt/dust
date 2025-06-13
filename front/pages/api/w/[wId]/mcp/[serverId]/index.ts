@@ -8,11 +8,7 @@ import { DustError } from "@app/lib/error";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
-import {
-  apiError,
-  dustErrorToApiErrorType,
-  dustErrorToHttpStatusCode,
-} from "@app/logger/withlogging";
+import { apiError } from "@app/logger/withlogging";
 import type { MCPOAuthUseCase, Result, WithAPIErrorResponse } from "@app/types";
 import { assertNever, Err, Ok } from "@app/types";
 
@@ -147,17 +143,17 @@ async function handler(
             switch (r.error.code) {
               case "unauthorized":
                 return apiError(req, res, {
-                  status_code: dustErrorToHttpStatusCode(r),
+                  status_code: 401,
                   api_error: {
-                    type: dustErrorToApiErrorType(r),
+                    type: "workspace_auth_error",
                     message: "You are not authorized to update the MCP server.",
                   },
                 });
               case "mcp_server_view_not_found":
                 return apiError(req, res, {
-                  status_code: dustErrorToHttpStatusCode(r),
+                  status_code: 404,
                   api_error: {
-                    type: dustErrorToApiErrorType(r),
+                    type: "mcp_server_view_not_found",
                     message: "Could not find the associated MCP server view.",
                   },
                 });
@@ -220,9 +216,9 @@ async function handler(
               switch (r.error.code) {
                 case "unauthorized":
                   return apiError(req, res, {
-                    status_code: dustErrorToHttpStatusCode(r),
+                    status_code: 401,
                     api_error: {
-                      type: dustErrorToApiErrorType(r),
+                      type: "workspace_auth_error",
                       message:
                         "You are not authorized to update the MCP server.",
                     },
@@ -242,18 +238,18 @@ async function handler(
               switch (r.error.code) {
                 case "unauthorized":
                   return apiError(req, res, {
-                    status_code: dustErrorToHttpStatusCode(r),
+                    status_code: 401,
                     api_error: {
-                      type: dustErrorToApiErrorType(r),
+                      type: "workspace_auth_error",
                       message:
                         "You are not authorized to update the MCP server.",
                     },
                   });
                 case "mcp_server_view_not_found":
                   return apiError(req, res, {
-                    status_code: dustErrorToHttpStatusCode(r),
+                    status_code: 404,
                     api_error: {
-                      type: dustErrorToApiErrorType(r),
+                      type: "mcp_server_view_not_found",
                       message: "Could not find the associated MCP server view.",
                     },
                   });
@@ -298,9 +294,9 @@ async function handler(
         switch (r.error.code) {
           case "unauthorized":
             return apiError(req, res, {
-              status_code: dustErrorToHttpStatusCode(r),
+              status_code: 401,
               api_error: {
-                type: dustErrorToApiErrorType(r),
+                type: "workspace_auth_error",
                 message: "You are not authorized to delete the MCP server.",
               },
             });
