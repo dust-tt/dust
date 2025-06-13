@@ -19,15 +19,94 @@ jobs:
       (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')))
     runs-on: ubuntu-latest
     permissions:
-      contents: read
-      pull-requests: read
-      issues: read
+      contents: write
+      pull-requests: write
+      issues: write
       id-token: write
+    
+    services:
+      postgres:
+        image: postgres:14.13
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: dust
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      
+      redis:
+        image: redis:7.2.5
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+    
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 1
+          fetch-depth: 0  # Full depth for better git operations
+      
+      # Setup Node.js for JS/TS projects
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.13.0
+          cache: 'npm'
+      
+      # Setup Rust for core project
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      
+      # Install nvm for version management
+      - name: Install nvm
+        run: |
+          curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
+          echo 'export NVM_DIR="$HOME/.nvm"' >> $GITHUB_ENV
+          echo '[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"' >> $GITHUB_ENV
+      
+      # Pre-install dependencies for better performance
+      - name: Install dependencies
+        run: |
+          # Install global tools
+          npm install -g tsx
+          
+          # Pre-build SDK as it's a dependency for front and connectors
+          cd sdks/js && npm install && npm run build && cd ../..
+          
+          # Install dependencies for each project (non-blocking)
+          cd front && npm ci && cd .. || true
+          cd connectors && npm install && cd .. || true
+          cd cli && npm ci && cd .. || true
+          cd extension && npm ci && cd .. || true
+          cd sparkle && npm ci && cd .. || true
+          cd viz && npm ci && cd .. || true
+      
+      # Setup database for tests
+      - name: Setup test databases
+        env:
+          DATABASE_URI: postgres://postgres:postgres@localhost:5432/dust
+          FRONT_DATABASE_URI: postgres://postgres:postgres@localhost:5432/dust
+          CONNECTORS_DATABASE_URI: postgres://postgres:postgres@localhost:5432/dust
+        run: |
+          # Initialize core database
+          cd core && cargo run --bin init_db && cd .. || true
+          
+          # Run migrations for front
+          cd front && npx tsx admin/db.ts && cd .. || true
+          
+          # Run migrations for connectors
+          cd connectors && npx tsx src/admin/db.ts && cd .. || true
 
       - name: Run Claude Code
         id: claude
@@ -35,8 +114,8 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           
-          # Optional: Specify model (defaults to Claude Sonnet 4, uncomment for Claude Opus 4)
-          # model: "claude-opus-4-20250514"
+          # Specify model (defaults to Claude Sonnet 4, using Claude Opus 4)
+          model: "claude-opus-4-20250514"
           
           # Optional: Customize the trigger phrase (default: @claude)
           # trigger_phrase: "/claude"
@@ -44,16 +123,62 @@ jobs:
           # Optional: Trigger when specific user is assigned to an issue
           # assignee_trigger: "claude-bot"
           
-          # Optional: Allow Claude to run specific commands
-          # allowed_tools: "Bash(npm install),Bash(npm run build),Bash(npm run test:*),Bash(npm run lint:*)"
+          # Allow Claude to use all available tools
+          allowed_tools: |
+            Agent(*),
+            Bash(*),
+            Edit(*),
+            Glob(*),
+            Grep(*),
+            LS(*),
+            MultiEdit(*),
+            NotebookEdit(*),
+            NotebookRead(*),
+            Read(*),
+            TodoRead(*),
+            TodoWrite(*),
+            WebFetch(*),
+            WebSearch(*),
+            Write(*)
           
-          # Optional: Add custom instructions for Claude to customize its behavior for your project
-          # custom_instructions: |
-          #   Follow our coding standards
-          #   Ensure all new code has tests
-          #   Use TypeScript for new files
+          # Custom instructions based on CLAUDE.md
+          custom_instructions: |
+            ### Build/Lint/Typecheck Commands by Project:
+            
+            **front**: cd front && nvm use && npm ci && npx tsc --noEmit && npm run lint && npm run format:check
+            **connectors**: cd connectors && npm install && npm run build && npm run lint && npm run format:check
+            **cli**: cd cli && npm ci && npx tsc && npm run lint
+            **core**: cd core && cargo check && cargo fmt --all -- --check && cargo test --all
+            **extension**: cd extension && npm ci && npm run build && npm run lint
+            **sparkle**: cd sparkle && npm install && npm run build && npm run lint
+            **viz**: cd viz && npm install && npm run build && npm run check
+            **sdks/js**: cd sdks/js && npm install && npm run build && npm run lint
+            
+            ### Important Rules:
+            - Always run `nvm use` before running npm commands in directories with .nvmrc
+            - For TypeScript projects, run `npx tsc --noEmit` before committing
+            - For Rust projects, run `cargo check` before committing
+            - SDK must be built before building front or connectors
+            - Never run servers or execute applications, only build/lint/test
+            - Follow all CODING_RULES.md files in each project directory
+            - Let exceptions propagate, avoid defensive patterns
+            - Make minimal changes required
+            - Use normalizeError() instead of `err as Error`
+            
+            ### Database URLs (for tests):
+            DATABASE_URI: postgres://postgres:postgres@localhost:5432/dust
+            FRONT_DATABASE_URI: postgres://postgres:postgres@localhost:5432/dust
+            CONNECTORS_DATABASE_URI: postgres://postgres:postgres@localhost:5432/dust
+            REDIS_URL: redis://localhost:6379
           
-          # Optional: Custom environment variables for Claude
-          # claude_env: |
-          #   NODE_ENV: test
+          # Environment variables for Claude
+          claude_env: |
+            NODE_ENV: test
+            DATABASE_URI: postgres://postgres:postgres@localhost:5432/dust
+            FRONT_DATABASE_URI: postgres://postgres:postgres@localhost:5432/dust
+            CONNECTORS_DATABASE_URI: postgres://postgres:postgres@localhost:5432/dust
+            REDIS_URL: redis://localhost:6379
+            POSTGRES_USER: postgres
+            POSTGRES_PASSWORD: postgres
+            POSTGRES_DB: dust
 
