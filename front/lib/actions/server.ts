@@ -43,7 +43,6 @@ const DustAppChatBlockFunctionCallSchema = z.object({
   name: z.string(),
 });
 
-// Define Zod schema for DustAppChatBlock
 const DustAppChatBlockSchema = z.object({
   message: z.object({
     content: z.string().optional(),
@@ -58,6 +57,13 @@ const DustAppChatBlockSchema = z.object({
         z.object({
           type: z.literal("function_call"),
           value: DustAppChatBlockFunctionCallSchema,
+        }),
+        z.object({
+          type: z.literal("reasoning"),
+          value: z.object({
+            reasoning: z.string().optional(),
+            metadata: z.string(),
+          }),
         }),
       ])
     ),

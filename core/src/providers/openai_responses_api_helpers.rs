@@ -226,7 +226,7 @@ fn responses_api_input_from_chat_messages(
                                     encrypted_content: value.metadata.clone(),
                                     summary: vec![OpenAIResponseSummaryItem {
                                         r#type: "summary_text".to_string(),
-                                        text: value.displayable_text.clone().unwrap_or_default(),
+                                        text: value.reasoning.clone().unwrap_or_default(),
                                     }],
                                 });
                             }
@@ -305,14 +305,14 @@ fn assistant_chat_message_from_responses_api_output(
                 encrypted_content,
                 summary,
             } => {
-                let displayable_text = summary
+                let reasoning = summary
                     .as_ref()
                     .and_then(|s| s.first())
                     .map(|s| s.text.clone());
 
                 contents.push(AssistantContentItem::Reasoning {
                     value: ReasoningContent {
-                        displayable_text,
+                        reasoning,
                         metadata: encrypted_content.unwrap_or_default(),
                     },
                 });
