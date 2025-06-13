@@ -445,7 +445,8 @@ export async function syncNonThreadedChunk({
   connectorId,
   cursor,
   endTsMs,
-  ignoreApiCallLimit = false,
+  // Name is confusing, but kept to avoid breaking changes in Temporal activities.
+  ignoreMessageLimit = false,
   isBatchSync = false,
   maxTotalMessages = MAX_SYNC_NON_THREAD_MESSAGES,
   startTsMs,
@@ -457,7 +458,7 @@ export async function syncNonThreadedChunk({
   connectorId: ModelId;
   cursor?: string;
   endTsMs: number;
-  ignoreApiCallLimit?: boolean;
+  ignoreMessageLimit?: boolean;
   isBatchSync: boolean;
   maxTotalMessages?: number;
   startTsMs: number;
@@ -557,7 +558,7 @@ export async function syncNonThreadedChunk({
     nextCursor = c.response_metadata?.next_cursor;
 
     // Stop if we've made enough API calls for this chunk (unless ignoring limit).
-    if (!ignoreApiCallLimit && apiCallCount >= MAX_API_CALLS_PER_CHUNK) {
+    if (!ignoreMessageLimit && apiCallCount >= MAX_API_CALLS_PER_CHUNK) {
       logger.info(
         {
           apiCallCount,
@@ -774,7 +775,7 @@ export async function syncMultipleNonThreaded(
         connectorId,
         isBatchSync: true,
         // Ignore API call limit to process entire week as single chunk.
-        ignoreApiCallLimit: true,
+        ignoreMessageLimit: true,
         maxTotalMessages,
         weekStartTsMs: startTsMs,
         weekEndTsMs: weekEndTsMs,
