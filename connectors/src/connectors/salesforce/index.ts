@@ -132,9 +132,6 @@ export class SalesforceConnectorManager extends BaseConnectorManager<null> {
       throw new Error(`Connector ${this.connectorId} not found`);
     }
 
-    await SalesforceConfigurationResource.deleteByConnectorId(connector.id);
-    await SalesforceSyncedQueryResource.deleteByConnectorId(connector.id);
-
     await RemoteTableModel.destroy({
       where: {
         connectorId: connector.id,
