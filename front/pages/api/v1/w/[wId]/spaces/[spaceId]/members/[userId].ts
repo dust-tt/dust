@@ -2,11 +2,14 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { DustError } from "@app/lib/error";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { apiError } from "@app/logger/withlogging";
+import {
+  apiError,
+  dustErrorToApiErrorType,
+  dustErrorToHttpStatusCode,
+} from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-import { isString } from "@app/types";
+import { assertNever, isString } from "@app/types";
 
 /**
  * @ignoreswagger
@@ -65,26 +68,42 @@ async function handler(
         userIds: [userId],
       });
       if (updateRes.isErr()) {
-        if (
-          updateRes.error instanceof DustError &&
-          updateRes.error.code === "unauthorized"
-        ) {
-          return apiError(req, res, {
-            status_code: 403,
-            api_error: {
-              type: "workspace_auth_error",
-              message:
-                "Only users that are `admins` can administrate space members.",
-            },
-          });
-        } else {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message: updateRes.error.message,
-            },
-          });
+        switch (updateRes.error.code) {
+          case "unauthorized":
+            return apiError(req, res, {
+              status_code: dustErrorToHttpStatusCode(updateRes),
+              api_error: {
+                type: dustErrorToApiErrorType(updateRes),
+                message: "You are not authorized to update the space.",
+              },
+            });
+          case "user_not_member":
+            return apiError(req, res, {
+              status_code: dustErrorToHttpStatusCode(updateRes),
+              api_error: {
+                type: dustErrorToApiErrorType(updateRes),
+                message: "The user is not a member of the space.",
+              },
+            });
+          case "user_not_found":
+            return apiError(req, res, {
+              status_code: dustErrorToHttpStatusCode(updateRes),
+              api_error: {
+                type: dustErrorToApiErrorType(updateRes),
+                message: "The user was not found in the workspace.",
+              },
+            });
+          case "system_or_global_group":
+            return apiError(req, res, {
+              status_code: dustErrorToHttpStatusCode(updateRes),
+              api_error: {
+                type: dustErrorToApiErrorType(updateRes),
+                message:
+                  "Users cannot be removed from system or global groups.",
+              },
+            });
+          default:
+            assertNever(updateRes.error.code);
         }
       }
 

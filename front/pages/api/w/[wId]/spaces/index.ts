@@ -5,12 +5,14 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { createRegularSpaceAndGroup } from "@app/lib/api/spaces";
 import type { Authenticator } from "@app/lib/auth";
-import { DustError } from "@app/lib/error";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import logger from "@app/logger/logger";
-import { apiError } from "@app/logger/withlogging";
+import {
+  apiError,
+  dustErrorToApiErrorType,
+  dustErrorToHttpStatusCode,
+} from "@app/logger/withlogging";
 import type { SpaceType, WithAPIErrorResponse } from "@app/types";
-import { PostSpaceRequestBodySchema } from "@app/types";
+import { assertNever, PostSpaceRequestBodySchema } from "@app/types";
 
 export type GetSpacesResponseBody = {
   spaces: SpaceType[];
@@ -104,42 +106,35 @@ async function handler(
         bodyValidation.right
       );
       if (spaceRes.isErr()) {
-        if (spaceRes.error instanceof DustError) {
-          if (spaceRes.error.code === "limit_reached") {
+        switch (spaceRes.error.code) {
+          case "limit_reached":
             return apiError(req, res, {
-              status_code: 400,
+              status_code: dustErrorToHttpStatusCode(spaceRes),
               api_error: {
-                type: "invalid_request_error",
-                message: "The maximum number of spaces has been reached.",
+                type: dustErrorToApiErrorType(spaceRes),
+                message:
+                  "Limit of spaces allowed for your plan reached. Contact support to upgrade.",
               },
             });
-          }
-
-          if (spaceRes.error.code === "space_already_exists") {
+          case "space_already_exists":
             return apiError(req, res, {
-              status_code: 400,
+              status_code: dustErrorToHttpStatusCode(spaceRes),
               api_error: {
-                type: "space_already_exists",
-                message: "This space name is already used.",
+                type: dustErrorToApiErrorType(spaceRes),
+                message: "Space with that name already exists.",
               },
             });
-          }
+          case "internal_error":
+            return apiError(req, res, {
+              status_code: dustErrorToHttpStatusCode(spaceRes),
+              api_error: {
+                type: dustErrorToApiErrorType(spaceRes),
+                message: spaceRes.error.message,
+              },
+            });
+          default:
+            assertNever(spaceRes.error.code);
         }
-
-        logger.error(
-          {
-            error: spaceRes.error,
-          },
-          "The space cannot be created"
-        );
-
-        return apiError(req, res, {
-          status_code: 500,
-          api_error: {
-            type: "internal_server_error",
-            message: "The space cannot be created.",
-          },
-        });
       }
 
       return res.status(201).json({ space: spaceRes.value.toJSON() });

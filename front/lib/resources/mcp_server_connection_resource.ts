@@ -134,7 +134,7 @@ export class MCPServerConnectionResource extends BaseResource<MCPServerConnectio
     if (connections.length !== ids.length) {
       return new Err(
         new DustError(
-          "resource_not_found",
+          "connection_not_found",
           ids.length === 1
             ? "Connection not found"
             : "Some connections were not found"
@@ -174,7 +174,7 @@ export class MCPServerConnectionResource extends BaseResource<MCPServerConnectio
 
     return connections.length > 0
       ? new Ok(connections[0])
-      : new Err(new DustError("resource_not_found", "Connection not found"));
+      : new Err(new DustError("connection_not_found", "Connection not found"));
   }
 
   static async listByWorkspace({

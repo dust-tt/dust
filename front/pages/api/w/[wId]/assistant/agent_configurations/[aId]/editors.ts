@@ -9,11 +9,16 @@ import {
 } from "@app/lib/api/assistant/configuration";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { DustError } from "@app/lib/error";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
-import { apiError, withLogging } from "@app/logger/withlogging";
+import {
+  apiError,
+  dustErrorToApiErrorType,
+  dustErrorToHttpStatusCode,
+  withLogging,
+} from "@app/logger/withlogging";
 import type { UserType, WithAPIErrorResponse } from "@app/types";
+import { assertNever } from "@app/types";
 
 // Changed schema to accept optional add/remove lists
 export const PatchAgentEditorsRequestBodySchema = t.intersection([
@@ -78,29 +83,42 @@ async function handler(
     agent
   );
   if (editorGroupRes.isErr()) {
-    // Handle cases like group not found or auth errors from fetchById
-    if (
-      editorGroupRes.error instanceof DustError &&
-      (editorGroupRes.error.code === "resource_not_found" ||
-        editorGroupRes.error.code === "unauthorized")
-    ) {
-      // Return 404 for not found or unauthorized to find the group
-      return apiError(req, res, {
-        status_code: 404,
-        api_error: {
-          type: "agent_configuration_not_found", // Keep error generic
-          message: "The agent configuration editor group was not found.",
-        },
-      });
+    switch (editorGroupRes.error.code) {
+      case "unauthorized":
+        return apiError(req, res, {
+          status_code: dustErrorToHttpStatusCode(editorGroupRes),
+          api_error: {
+            type: dustErrorToApiErrorType(editorGroupRes),
+            message: "You are not authorized to update the agent editors.",
+          },
+        });
+      case "invalid_id":
+        return apiError(req, res, {
+          status_code: dustErrorToHttpStatusCode(editorGroupRes),
+          api_error: {
+            type: dustErrorToApiErrorType(editorGroupRes),
+            message: "Some of the passed ids are invalid.",
+          },
+        });
+      case "group_not_found":
+        return apiError(req, res, {
+          status_code: dustErrorToHttpStatusCode(editorGroupRes),
+          api_error: {
+            type: dustErrorToApiErrorType(editorGroupRes),
+            message: "Unable to find the editor group for the agent.",
+          },
+        });
+      case "internal_error":
+        return apiError(req, res, {
+          status_code: dustErrorToHttpStatusCode(editorGroupRes),
+          api_error: {
+            type: dustErrorToApiErrorType(editorGroupRes),
+            message: editorGroupRes.error.message,
+          },
+        });
+      default:
+        assertNever(editorGroupRes.error.code);
     }
-    // Generic internal error for other cases
-    return apiError(req, res, {
-      status_code: 500,
-      api_error: {
-        type: "internal_server_error",
-        message: `Failed to retrieve editor group: ${editorGroupRes.error.message}`,
-      },
-    });
   }
 
   const editorGroup = editorGroupRes.value;
@@ -185,29 +203,76 @@ async function handler(
       });
 
       if (updateRes.isErr()) {
-        // Handle specific errors from updateAgentPermissions/setMembers if needed
-        if (
-          updateRes.error instanceof DustError &&
-          // Add specific error checks from addMembers/removeMembers if needed
-          (updateRes.error.code === "user_not_member" ||
-            updateRes.error.code === "user_already_member")
-        ) {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message: updateRes.error.message,
-            },
-          });
+        switch (updateRes.error.code) {
+          case "unauthorized":
+            return apiError(req, res, {
+              status_code: dustErrorToHttpStatusCode(updateRes),
+              api_error: {
+                type: dustErrorToApiErrorType(updateRes),
+                message: "You are not authorized to update the agent editors.",
+              },
+            });
+          case "invalid_id":
+            return apiError(req, res, {
+              status_code: dustErrorToHttpStatusCode(updateRes),
+              api_error: {
+                type: dustErrorToApiErrorType(updateRes),
+                message: "Some of the passed ids are invalid.",
+              },
+            });
+          case "group_not_found":
+            return apiError(req, res, {
+              status_code: dustErrorToHttpStatusCode(updateRes),
+              api_error: {
+                type: dustErrorToApiErrorType(updateRes),
+                message: "Unable to find the editor group for the agent.",
+              },
+            });
+          case "user_not_found":
+            return apiError(req, res, {
+              status_code: dustErrorToHttpStatusCode(updateRes),
+              api_error: {
+                type: dustErrorToApiErrorType(updateRes),
+                message: "The user was not found in the workspace.",
+              },
+            });
+          case "user_not_member":
+            return apiError(req, res, {
+              status_code: dustErrorToHttpStatusCode(updateRes),
+              api_error: {
+                type: dustErrorToApiErrorType(updateRes),
+                message: "The user is not a member of the agent editors group.",
+              },
+            });
+          case "system_or_global_group":
+            return apiError(req, res, {
+              status_code: dustErrorToHttpStatusCode(updateRes),
+              api_error: {
+                type: dustErrorToApiErrorType(updateRes),
+                message:
+                  "Users cannot be removed from system or global groups.",
+              },
+            });
+          case "user_already_member":
+            return apiError(req, res, {
+              status_code: dustErrorToHttpStatusCode(updateRes),
+              api_error: {
+                type: dustErrorToApiErrorType(updateRes),
+                message:
+                  "The user is already a member of the agent editors group.",
+              },
+            });
+          case "internal_error":
+            return apiError(req, res, {
+              status_code: dustErrorToHttpStatusCode(updateRes),
+              api_error: {
+                type: dustErrorToApiErrorType(updateRes),
+                message: updateRes.error.message,
+              },
+            });
+          default:
+            assertNever(updateRes.error.code);
         }
-        // Generic error
-        return apiError(req, res, {
-          status_code: 500,
-          api_error: {
-            type: "internal_server_error",
-            message: `Failed to update agent editors: ${updateRes.error.message}`,
-          },
-        });
       }
 
       // Refetch members to return the updated list

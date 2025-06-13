@@ -13,6 +13,7 @@ import type {
   ResourceLogJSON,
 } from "@app/lib/resources/base_resource";
 import type {
+  APIErrorType,
   APIErrorWithStatusCode,
   Err,
   WithAPIErrorResponse,
@@ -167,29 +168,71 @@ export function withLogging<T>(
   };
 }
 
-export function dustErrorToApiError(
+// TODO: add other error codes as we use this method in other places
+type SupportedDustErrorType = Omit<DustError, "code"> & {
+  code:
+    | "unauthorized"
+    | "internal_error"
+    | "user_not_found"
+    | "user_not_member"
+    | "user_already_member"
+    | "system_or_global_group"
+    | "group_not_found"
+    | "mcp_server_view_not_found"
+    | "limit_reached"
+    | "space_already_exists"
+    | "invalid_id";
+};
+
+export function dustErrorToApiErrorType(
+  r: Err<SupportedDustErrorType>
+): APIErrorType {
+  switch (r.error.code) {
+    case "unauthorized":
+      return "workspace_auth_error";
+    case "group_not_found":
+      return "group_not_found";
+    case "user_not_found":
+      return "user_not_found";
+    case "mcp_server_view_not_found":
+      return "mcp_server_view_not_found";
+    case "limit_reached":
+      return "plan_limit_error";
+    case "space_already_exists":
+      return "space_already_exists";
+    case "user_not_member":
+    case "user_already_member":
+    case "invalid_id":
+    case "system_or_global_group":
+      return "invalid_request_error";
+    case "internal_error":
+      return "internal_server_error";
+    default:
+      assertNever(r.error.code);
+  }
+}
+
+export function dustErrorToHttpStatusCode(
   // TODO: add other error codes as we use this method in other places
-  r: Err<Omit<DustError, "code"> & { code: "unauthorized" | "internal_error" }>,
-  req: NextApiRequest,
-  res: NextApiResponse
+  r: Err<SupportedDustErrorType>
 ) {
   switch (r.error.code) {
     case "unauthorized":
-      return apiError(req, res, {
-        status_code: 401,
-        api_error: {
-          type: "workspace_auth_error",
-          message: r.error.message,
-        },
-      });
+      return 401;
+    case "group_not_found":
+    case "user_not_found":
+    case "mcp_server_view_not_found":
+      return 404;
+    case "limit_reached":
+      return 403;
+    case "space_already_exists":
+    case "user_not_member":
+    case "user_already_member":
+    case "invalid_id":
+    case "system_or_global_group":
+      return 400;
     case "internal_error":
-      return apiError(req, res, {
-        status_code: 500,
-        api_error: {
-          type: "internal_server_error",
-          message: r.error.message,
-        },
-      });
+      return 500;
     default:
       assertNever(r.error.code);
   }

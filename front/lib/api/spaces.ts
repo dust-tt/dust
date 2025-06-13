@@ -206,7 +206,12 @@ export async function createRegularSpaceAndGroup(
       }
     | { name: string; isRestricted: false },
   { ignoreWorkspaceLimit = false }: { ignoreWorkspaceLimit?: boolean } = {}
-): Promise<Result<SpaceResource, DustError | Error>> {
+): Promise<
+  Result<
+    SpaceResource,
+    DustError<"limit_reached" | "space_already_exists" | "internal_error">
+  >
+> {
   const owner = auth.getNonNullableWorkspace();
   const plan = auth.getNonNullablePlan();
 
@@ -285,7 +290,9 @@ export async function createRegularSpaceAndGroup(
           "The space cannot be created - group members could not be added"
         );
 
-        return new Err(new Error("The space cannot be created."));
+        return new Err(
+          new DustError("internal_error", "The space cannot be created.")
+        );
       }
     }
 
@@ -303,7 +310,9 @@ export async function createRegularSpaceAndGroup(
           },
           "The space cannot be created - failed to fetch groups"
         );
-        return new Err(new Error("The space cannot be created."));
+        return new Err(
+          new DustError("internal_error", "The space cannot be created.")
+        );
       }
 
       const selectedGroups = selectedGroupsResult.value;

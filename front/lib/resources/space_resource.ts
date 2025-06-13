@@ -435,7 +435,20 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       | { isRestricted: true; memberIds: string[]; managementMode: "manual" }
       | { isRestricted: true; groupIds: string[]; managementMode: "group" }
       | { isRestricted: false }
-  ): Promise<Result<undefined, DustError>> {
+  ): Promise<
+    Result<
+      undefined,
+      DustError<
+        | "unauthorized"
+        | "group_not_found"
+        | "user_not_found"
+        | "user_not_member"
+        | "user_already_member"
+        | "system_or_global_group"
+        | "invalid_id"
+      >
+    >
+  > {
     if (!this.canAdministrate(auth)) {
       return new Err(
         new DustError(
@@ -603,7 +616,17 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     }: {
       userIds: string[];
     }
-  ): Promise<Result<UserResource[], DustError>> {
+  ): Promise<
+    Result<
+      UserResource[],
+      DustError<
+        | "unauthorized"
+        | "user_not_found"
+        | "user_already_member"
+        | "system_or_global_group"
+      >
+    >
+  > {
     if (!this.canAdministrate(auth)) {
       return new Err(
         new DustError(
@@ -639,7 +662,17 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     }: {
       userIds: string[];
     }
-  ): Promise<Result<UserResource[], DustError>> {
+  ): Promise<
+    Result<
+      UserResource[],
+      DustError<
+        | "unauthorized"
+        | "user_not_found"
+        | "user_not_member"
+        | "system_or_global_group"
+      >
+    >
+  > {
     if (!this.canAdministrate(auth)) {
       return new Err(
         new DustError(
