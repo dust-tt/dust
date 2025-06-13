@@ -268,7 +268,7 @@ export async function deleteAgentsActivity({
     await AgentReasoningAction.destroy({
       where: {
         reasoningConfigurationId: {
-          [Op.in]: mcpReasoningConfigurations.map((r) => r.id),
+          [Op.in]: mcpReasoningConfigurations.map((r) => `${r.id}`),
         },
       },
     });
