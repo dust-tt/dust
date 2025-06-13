@@ -19,10 +19,11 @@ import config from "@app/lib/api/config";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
+import { getGlobalAgents } from "@app/lib/api/assistant/global_agents";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
-import { Err, getHeaderFromUserEmail, normalizeError, Ok } from "@app/types";
+import { Err, getHeaderFromUserEmail, isGlobalAgentId, normalizeError, Ok } from "@app/types";
 
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "run_agent",
@@ -62,6 +63,19 @@ async function leakyGetAgentNameAndDescriptionForChildAgent(
   name: string;
   description: string;
 } | null> {
+  // Check if it's a global agent
+  if (isGlobalAgentId(agentId)) {
+    const globalAgents = await getGlobalAgents(auth, [agentId], "light");
+    if (globalAgents.length > 0 && globalAgents[0].status === "active") {
+      return {
+        name: globalAgents[0].name,
+        description: globalAgents[0].description,
+      };
+    }
+    return null;
+  }
+
+  // Otherwise, check for workspace-specific agents
   const owner = auth.getNonNullableWorkspace();
   const agentConfiguration = await AgentConfiguration.findOne({
     where: {
