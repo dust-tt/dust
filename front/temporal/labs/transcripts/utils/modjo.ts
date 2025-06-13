@@ -91,6 +91,9 @@ const ModjoCallSchema = t.partial({
 });
 
 const ModjoPaginationSchema = t.partial({
+  page: t.number,
+  perPage: t.number,
+  nextPage: t.number,
   totalValues: t.number,
   lastPage: t.number,
 });
@@ -164,11 +167,28 @@ export async function retrieveModjoTranscripts(
 
   const modjoApiKey = modjoApiKeyRes.value.credential.content.api_key;
 
-  const daysOfHistory = 14;
-
-  const fromDateTime = new Date(
-    Date.now() - daysOfHistory * 24 * 60 * 60 * 1000
-  ).toISOString();
+  // Check if this is the first sync by looking for any existing history
+  const hasAnyHistory = await transcriptsConfiguration.hasAnyHistory();
+  
+  let fromDateTime: string;
+  if (!hasAnyHistory) {
+    // First sync: no date restriction to pull all historical transcripts
+    fromDateTime = new Date(0).toISOString(); // Start from epoch to get all history
+    localLogger.info(
+      {},
+      "[retrieveModjoTranscripts] First sync detected - retrieving all historical transcripts"
+    );
+  } else {
+    // Subsequent syncs: only pull last day
+    const daysOfHistory = 1;
+    fromDateTime = new Date(
+      Date.now() - daysOfHistory * 24 * 60 * 60 * 1000
+    ).toISOString();
+    localLogger.info(
+      {},
+      "[retrieveModjoTranscripts] Subsequent sync - retrieving last day of transcripts"
+    );
+  }
 
   const fileIdsToProcess: string[] = [];
   let page = 1;
@@ -267,27 +287,57 @@ export async function retrieveModjoTranscripts(
         fileIdsToProcess.push(fileId);
       }
 
+      const paginationInfo = validatedData.pagination;
       localLogger.info(
-        { page, totalProcessed: fileIdsToProcess.length },
+        { 
+          page, 
+          totalProcessed: fileIdsToProcess.length,
+          pageSize: validatedData.values.length,
+          totalValues: paginationInfo?.totalValues,
+          lastPage: paginationInfo?.lastPage,
+          nextPage: paginationInfo?.nextPage
+        },
         "[retrieveModjoTranscripts] Processed page of Modjo transcripts"
       );
 
-      if (
-        !validatedData.pagination?.lastPage ||
-        page >= validatedData.pagination.lastPage
-      ) {
+      // Check if we should continue to next page
+      if (paginationInfo?.nextPage && page < (paginationInfo.lastPage || 0)) {
+        page = paginationInfo.nextPage;
+      } else if (!paginationInfo?.nextPage || page >= (paginationInfo.lastPage || 0)) {
         hasMorePages = false;
+        localLogger.info(
+          { 
+            finalPage: page,
+            totalTranscriptsFound: fileIdsToProcess.length,
+            totalCallsReviewed: paginationInfo?.totalValues || 0
+          },
+          "[retrieveModjoTranscripts] Completed pagination - no more pages"
+        );
       } else {
         page++;
       }
     } catch (error) {
       localLogger.error(
-        { error },
-        "[retrieveModjoTranscripts] Error processing Modjo transcripts page"
+        { 
+          error,
+          page,
+          totalProcessedSoFar: fileIdsToProcess.length,
+          perPage
+        },
+        "[retrieveModjoTranscripts] Error processing Modjo transcripts page - stopping pagination"
       );
       break;
     }
   }
+
+  localLogger.info(
+    {
+      totalPages: page - 1,
+      totalTranscriptsToProcess: fileIdsToProcess.length,
+      syncType: !hasAnyHistory ? "full" : "incremental"
+    },
+    "[retrieveModjoTranscripts] Pagination completed successfully"
+  );
 
   return fileIdsToProcess;
 }
