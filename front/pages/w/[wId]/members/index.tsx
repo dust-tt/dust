@@ -2,6 +2,7 @@ import {
   Page,
   SearchInput,
   Separator,
+  Spinner,
   Tabs,
   TabsContent,
   TabsList,
@@ -10,10 +11,11 @@ import {
 import { UsersIcon } from "@heroicons/react/20/solid";
 import type { PaginationState } from "@tanstack/react-table";
 import type { InferGetServerSidePropsType } from "next";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import type { WorkspaceLimit } from "@app/components/app/ReachedLimitPopup";
 import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
+import { GroupsList } from "@app/components/groups/GroupsList";
 import { InviteEmailModal } from "@app/components/members/InvitationModal";
 import { InvitationsList } from "@app/components/members/InvitationsList";
 import { MembersList } from "@app/components/members/MembersList";
@@ -35,6 +37,7 @@ import {
 } from "@app/lib/api/workspace";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
+import { useGroups } from "@app/lib/swr/groups";
 import { useSearchMembers } from "@app/lib/swr/memberships";
 import { useWorkOSSSOStatus } from "@app/lib/swr/workos";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
@@ -116,6 +119,12 @@ export default function WorkspaceAdmin({
   const [inviteBlockedPopupReason, setInviteBlockedPopupReason] =
     useState<WorkspaceLimit | null>(null);
 
+  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
+  const hasWorkOSProvisioning = useMemo(
+    () => featureFlags.includes("workos_user_provisioning"),
+    [featureFlags]
+  );
+
   const onInviteClick = useCallback(
     (event: MouseEvent) => {
       if (!isUpgraded(plan)) {
@@ -153,10 +162,14 @@ export default function WorkspaceAdmin({
         />
         <Separator />
         <div className="flex flex-col gap-2">
-          <Page.H variant="h4">Member list</Page.H>
+          <Page.H variant="h4">
+            {hasWorkOSProvisioning ? "Members and directories" : "Member list"}
+          </Page.H>
           <div className="flex flex-row gap-2">
             <SearchInput
-              placeholder="Search members (email)"
+              placeholder={
+                hasWorkOSProvisioning ? "Search" : "Search members (email)"
+              }
               value={searchTerm}
               name="search"
               onChange={setSearchTerm}
@@ -169,7 +182,7 @@ export default function WorkspaceAdmin({
             />
           </div>
           <InvitationsList owner={owner} searchText={searchTerm} />
-          <WorkspaceMembersList
+          <WorkspaceMembersGroupsList
             currentUser={user}
             owner={owner}
             searchTerm={searchTerm}
@@ -197,31 +210,24 @@ interface WorkspaceMembersListProps {
   searchTerm: string;
 }
 
-function WorkspaceMembersList({
+function WorkspaceMembersGroupsList({
   currentUser,
   owner,
   searchTerm,
 }: WorkspaceMembersListProps) {
-  const [pagination, setPagination] = useState<PaginationState>({
-    pageIndex: 0,
-    pageSize: DEFAULT_PAGE_SIZE,
-  });
-
-  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
-  const { ssoStatus } = useWorkOSSSOStatus({ owner });
-  const membersData = useSearchMembers({
+  const { hasFeature, isFeatureFlagsLoading } = useFeatureFlags({
     workspaceId: owner.sId,
-    searchTerm,
-    pageIndex: pagination.pageIndex,
-    pageSize: DEFAULT_PAGE_SIZE,
   });
 
-  useEffect(() => {
-    setPagination({ pageIndex: 0, pageSize: DEFAULT_PAGE_SIZE });
-  }, [setPagination]);
+  const { ssoStatus, isLoading } = useWorkOSSSOStatus({ owner });
 
-  const [selectedMember, setSelectedMember] =
-    useState<UserTypeWithWorkspaces | null>(null);
+  if (isFeatureFlagsLoading || isLoading) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <Spinner size="lg" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-1 pt-2">
@@ -235,38 +241,111 @@ function WorkspaceMembersList({
             />
           </TabsList>
           <TabsContent value="members">
-            <MembersList
+            <WorkspaceMembersList
               currentUser={currentUser}
-              membersData={membersData}
-              onRowClick={setSelectedMember}
-              showColumns={["name", "email", "role"]}
-              pagination={pagination}
-              setPagination={setPagination}
+              owner={owner}
+              searchTerm={searchTerm}
             />
           </TabsContent>
           <TabsContent value="directories">
-            <></>
+            <WorkspaceGroupsList owner={owner} searchTerm={searchTerm} />
           </TabsContent>
         </Tabs>
       ) : (
         <>
           <Page.H variant="h6">Members</Page.H>
-          <MembersList
+          <WorkspaceMembersList
             currentUser={currentUser}
-            membersData={membersData}
-            onRowClick={setSelectedMember}
-            showColumns={["name", "email", "role"]}
-            pagination={pagination}
-            setPagination={setPagination}
+            owner={owner}
+            searchTerm={searchTerm}
           />
         </>
       )}
+    </div>
+  );
+}
+
+function WorkspaceMembersList({
+  currentUser,
+  owner,
+  searchTerm,
+}: {
+  currentUser: UserType | null;
+  owner: WorkspaceType;
+  searchTerm: string;
+}) {
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: DEFAULT_PAGE_SIZE,
+  });
+
+  const [selectedMember, setSelectedMember] =
+    useState<UserTypeWithWorkspaces | null>(null);
+
+  const membersData = useSearchMembers({
+    workspaceId: owner.sId,
+    searchTerm,
+    pageIndex: pagination.pageIndex,
+    pageSize: DEFAULT_PAGE_SIZE,
+  });
+
+  useEffect(() => {
+    setPagination({ pageIndex: 0, pageSize: DEFAULT_PAGE_SIZE });
+  }, [setPagination]);
+
+  const resetSelectedMember = useCallback(() => {
+    setSelectedMember(null);
+  }, [setSelectedMember]);
+
+  return (
+    <>
+      <MembersList
+        currentUser={currentUser}
+        membersData={membersData}
+        onRowClick={setSelectedMember}
+        showColumns={["name", "email", "role"]}
+        pagination={pagination}
+        setPagination={setPagination}
+      />
       <ChangeMemberModal
-        onClose={() => setSelectedMember(null)}
+        onClose={resetSelectedMember}
         member={selectedMember}
         mutateMembers={membersData.mutateRegardlessOfQueryParams}
       />
-    </div>
+    </>
+  );
+}
+
+function WorkspaceGroupsList({
+  owner,
+  searchTerm,
+}: {
+  owner: WorkspaceType;
+  searchTerm: string;
+}) {
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: DEFAULT_PAGE_SIZE,
+  });
+
+  const { groups, isGroupsLoading } = useGroups({
+    owner,
+    kinds: ["provisioned"],
+  });
+
+  useEffect(() => {
+    setPagination({ pageIndex: 0, pageSize: DEFAULT_PAGE_SIZE });
+  }, [setPagination]);
+
+  return (
+    <GroupsList
+      searchTerm={searchTerm}
+      isLoading={isGroupsLoading}
+      groups={groups}
+      showColumns={["name", "memberCount"]}
+      pagination={pagination}
+      setPagination={setPagination}
+    />
   );
 }
 
