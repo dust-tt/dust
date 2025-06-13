@@ -20,7 +20,7 @@ import { parseInternalId } from "@connectors/lib/remote_databases/utils";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import logger from "@connectors/logger/logger";
 import { SalesforceSyncedQueryResource } from "@connectors/resources/salesforce_resources";
-import type { DateT, ModelId } from "@connectors/types";
+import type { DateTs, ModelId } from "@connectors/types";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
 
 export async function syncSalesforceConnection(connectorId: ModelId) {
@@ -141,33 +141,33 @@ export async function processSyncedQueryPage(
   connectorId: ModelId,
   {
     queryId,
-    lastModifiedDateTCursor,
+    lastModifiedDateTsCursor,
     limit,
-    lastSeenModifiedDateT,
-    upToLastModifiedDateT,
+    lastSeenModifiedDateTs,
+    upToLastModifiedDateTs,
   }: {
     queryId: ModelId;
-    lastModifiedDateTCursor: DateT;
+    lastModifiedDateTsCursor: DateTs;
     limit: number;
-    lastSeenModifiedDateT: DateT;
-    upToLastModifiedDateT: DateT;
+    lastSeenModifiedDateTs: DateTs;
+    upToLastModifiedDateTs: DateTs;
   }
 ): Promise<{
   // The most recent lastModifiedDate seen
-  lastSeenModifiedDateT: DateT;
+  lastSeenModifiedDateTs: DateTs;
   // The older lastModifiedDate seen in this page to use for pagination
-  lastModifiedDateTCursor: DateT;
+  lastModifiedDateTsCursor: DateTs;
   hasMore: boolean;
   count: number;
 }> {
-  let lastSeenModifiedDate = lastSeenModifiedDateT
-    ? new Date(lastSeenModifiedDateT)
+  let lastSeenModifiedDate = lastSeenModifiedDateTs
+    ? new Date(lastSeenModifiedDateTs)
     : null;
-  let lastModifiedDateCursor = lastModifiedDateTCursor
-    ? new Date(lastModifiedDateTCursor)
+  let lastModifiedDateCursor = lastModifiedDateTsCursor
+    ? new Date(lastModifiedDateTsCursor)
     : null;
-  const upToLastModifiedDate = upToLastModifiedDateT
-    ? new Date(upToLastModifiedDateT)
+  const upToLastModifiedDate = upToLastModifiedDateTs
+    ? new Date(upToLastModifiedDateTs)
     : null;
 
   const connAndCredsRes = await getConnectorAndCredentials(connectorId);
@@ -320,15 +320,15 @@ export async function processSyncedQueryPage(
   );
 
   if (lastSeenModifiedDate) {
-    lastSeenModifiedDateT = lastSeenModifiedDate.getTime();
+    lastSeenModifiedDateTs = lastSeenModifiedDate.getTime();
   }
   if (lastModifiedDateCursor) {
-    lastModifiedDateTCursor = lastModifiedDateCursor.getTime();
+    lastModifiedDateTsCursor = lastModifiedDateCursor.getTime();
   }
 
   return {
-    lastSeenModifiedDateT,
-    lastModifiedDateTCursor,
+    lastSeenModifiedDateTs,
+    lastModifiedDateTsCursor,
     hasMore: processedCount > 0,
     count: processedCount,
   };

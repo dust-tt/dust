@@ -198,4 +198,4 @@ export type DustMimeType =
   | ZendeskMimeType
   | SalesforceMimeType;
 
-export type DateT = number | null;
+export type DateTs = number | null;
