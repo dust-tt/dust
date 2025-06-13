@@ -106,54 +106,63 @@ export const AllColors = () => (
         size="sm"
         color="primary"
         label="Primary"
+        onClick={() => alert("Clicked")}
         onRemove={() => alert("Removed")}
       />
       <Chip
         size="sm"
         color="highlight"
         label="Highlight"
+        onClick={() => alert("Clicked")}
         onRemove={() => alert("Removed")}
       />
       <Chip
         size="sm"
         color="success"
         label="Success"
+        onClick={() => alert("Clicked")}
         onRemove={() => alert("Removed")}
       />
       <Chip
         size="sm"
         color="warning"
         label="Warning"
+        onClick={() => alert("Clicked")}
         onRemove={() => alert("Removed")}
       />
       <Chip
         size="sm"
         color="info"
         label="Info"
+        onClick={() => alert("Clicked")}
         onRemove={() => alert("Removed")}
       />
       <Chip
         size="sm"
         color="green"
         label="Green"
+        onClick={() => alert("Clicked")}
         onRemove={() => alert("Removed")}
       />
       <Chip
         size="sm"
         color="blue"
         label="Blue"
+        onClick={() => alert("Clicked")}
         onRemove={() => alert("Removed")}
       />
       <Chip
         size="sm"
         color="rose"
         label="Rose"
+        onClick={() => alert("Clicked")}
         onRemove={() => alert("Removed")}
       />
       <Chip
         size="sm"
         color="golden"
         label="Golden"
+        onClick={() => alert("Clicked")}
         onRemove={() => alert("Removed")}
       />
     </div>
