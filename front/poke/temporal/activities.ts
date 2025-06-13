@@ -255,6 +255,32 @@ export async function deleteAgentsActivity({
         },
       },
     });
+
+    const mcpReasoningConfigurations =
+      await AgentReasoningConfiguration.findAll({
+        where: {
+          mcpServerConfigurationId: {
+            [Op.in]: mcpServerConfigurations.map((r) => `${r.id}`),
+          },
+        },
+      });
+
+    await AgentReasoningAction.destroy({
+      where: {
+        reasoningConfigurationId: {
+          [Op.in]: mcpReasoningConfigurations.map((r) => r.id),
+        },
+      },
+    });
+
+    await AgentReasoningConfiguration.destroy({
+      where: {
+        mcpServerConfigurationId: {
+          [Op.in]: mcpServerConfigurations.map((r) => `${r.id}`),
+        },
+      },
+    });
+
     const mcpActions = await AgentMCPAction.findAll({
       where: {
         mcpServerConfigurationId: {
