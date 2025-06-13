@@ -225,16 +225,23 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     });
 
     const filteredViews: MCPServerViewResource[] = [];
-    await concurrentExecutor(
-      views,
-      async (view) => {
-        const r = await view.init(auth);
-        if (r.isOk()) {
-          filteredViews.push(view);
-        }
-      },
-      { concurrency: 10 }
-    );
+
+    // If we are including deleted views, it's probably for the deletion activity.
+    // We can just return the views and ignore the related mcp server state.
+    if (options.includeDeleted) {
+      filteredViews.push(...views);
+    } else {
+      await concurrentExecutor(
+        views,
+        async (view) => {
+          const r = await view.init(auth);
+          if (r.isOk()) {
+            filteredViews.push(view);
+          }
+        },
+        { concurrency: 10 }
+      );
+    }
 
     return filteredViews;
   }
