@@ -433,17 +433,6 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       where,
       distinct: true,
       col: "userId",
-      include: [
-        {
-          model: UserModel,
-          required: true,
-          where: {
-            lastLoginAt: {
-              [Op.ne]: null,
-            },
-          },
-        },
-      ],
       transaction,
     });
   }
