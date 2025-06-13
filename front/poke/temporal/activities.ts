@@ -31,6 +31,10 @@ import {
   AgentProcessAction,
   AgentProcessConfiguration,
 } from "@app/lib/models/assistant/actions/process";
+import {
+  AgentReasoningAction,
+  AgentReasoningConfiguration,
+} from "@app/lib/models/assistant/actions/reasoning";
 import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
 import {
   AgentTablesQueryAction,
@@ -46,6 +50,7 @@ import {
   AgentUserRelation,
   GlobalAgentSettings,
 } from "@app/lib/models/assistant/agent";
+import { TagAgentModel } from "@app/lib/models/assistant/tag_agent";
 import { DustAppSecret } from "@app/lib/models/dust_app_secret";
 import { FeatureFlag } from "@app/lib/models/feature_flag";
 import { MembershipInvitationModel } from "@app/lib/models/membership_invitation";
@@ -299,6 +304,26 @@ export async function deleteAgentsActivity({
       },
     });
 
+    const reasoningConfigurations = await AgentReasoningConfiguration.findAll({
+      where: {
+        agentConfigurationId: agent.id,
+        workspaceId: workspace.id,
+      },
+    });
+    await AgentReasoningAction.destroy({
+      where: {
+        reasoningConfigurationId: {
+          [Op.in]: reasoningConfigurations.map((r) => r.id),
+        },
+      },
+    });
+    await AgentReasoningConfiguration.destroy({
+      where: {
+        agentConfigurationId: agent.id,
+        workspaceId: workspace.id,
+      },
+    });
+
     const dustAppRunConfigurations = await AgentDustAppRunConfiguration.findAll(
       {
         where: {
@@ -420,6 +445,13 @@ export async function deleteAgentsActivity({
     await AgentUserRelation.destroy({
       where: {
         agentConfiguration: agent.sId,
+      },
+    });
+
+    await TagAgentModel.destroy({
+      where: {
+        agentConfigurationId: agent.id,
+        workspaceId: workspace.id,
       },
     });
 
