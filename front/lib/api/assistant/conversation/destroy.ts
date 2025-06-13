@@ -17,6 +17,7 @@ import { AgentSearchLabelsAction } from "@app/lib/models/assistant/actions/searc
 import { AgentTablesQueryAction } from "@app/lib/models/assistant/actions/tables_query";
 import { AgentWebsearchAction } from "@app/lib/models/assistant/actions/websearch";
 import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
+import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
 import {
   AgentMessage,
   AgentMessageFeedback,
@@ -242,6 +243,9 @@ export async function destroyConversation(
       where: { id: userMessageIds },
     });
     await AgentMessageContent.destroy({
+      where: { agentMessageId: agentMessageIds },
+    });
+    await AgentStepContentModel.destroy({
       where: { agentMessageId: agentMessageIds },
     });
     await AgentMessageFeedback.destroy({
