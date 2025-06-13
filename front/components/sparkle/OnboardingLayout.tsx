@@ -83,7 +83,8 @@ export default function OnboardingLayout({
           j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
           'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
           })(window,document,'script','dataLayer','${process.env.NEXT_PUBLIC_GTM_TRACKING_ID}');
-          (function(){var urlParams = new URLSearchParams(window.location.search);var gclid = urlParams.get('gclid');if (gclid) {sessionStorage.setItem('gclid', gclid);}})();
+          // Store the gclid query parameter in sessionStorage if present.
+          (function(){var g=new URLSearchParams(window.location.search).get('gclid');g&&sessionStorage.setItem('gclid',g);})();
         `}
       </Script>
     </>
