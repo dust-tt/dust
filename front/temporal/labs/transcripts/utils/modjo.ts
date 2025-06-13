@@ -19,6 +19,27 @@ const ModjoSpeakerSchema = t.partial({
   type: t.string,
 });
 
+const ModjoContactSchema = t.partial({
+  contactId: t.number,
+  firstName: t.union([t.string, t.null, t.undefined]),
+  lastName: t.union([t.string, t.null, t.undefined]),
+  email: t.union([t.string, t.null, t.undefined]),
+  phoneNumber: t.union([t.string, t.null, t.undefined]),
+  company: t.union([t.string, t.null, t.undefined]),
+  position: t.union([t.string, t.null, t.undefined]),
+  accountId: t.union([t.number, t.null, t.undefined]),
+});
+
+const ModjoAccountSchema = t.partial({
+  accountId: t.number,
+  name: t.union([t.string, t.null, t.undefined]),
+  domain: t.union([t.string, t.null, t.undefined]),
+  industry: t.union([t.string, t.null, t.undefined]),
+  size: t.union([t.string, t.null, t.undefined]),
+  revenue: t.union([t.string, t.null, t.undefined]),
+  description: t.union([t.string, t.null, t.undefined]),
+});
+
 const ModjoTopicSchema = t.partial({
   topicId: t.number,
   name: t.string,
@@ -54,6 +75,8 @@ const ModjoRelationsSchema = t.partial({
   speakers: t.array(ModjoSpeakerSchema),
   transcript: t.array(ModjoTranscriptEntrySchema),
   tags: t.array(ModjoTagSchema),
+  contacts: t.array(ModjoContactSchema),
+  accounts: t.array(ModjoAccountSchema),
 });
 
 const ModjoCallSchema = t.partial({
@@ -174,6 +197,8 @@ export async function retrieveModjoTranscripts(
             transcript: true,
             speakers: true,
             tags: true,
+            contacts: true,
+            accounts: true,
           },
         }),
       });
@@ -332,6 +357,8 @@ export async function retrieveModjoTranscriptContent(
         transcript: true,
         speakers: true,
         tags: true,
+        contacts: true,
+        accounts: true,
       },
     }),
   });
@@ -401,9 +428,61 @@ export async function retrieveModjoTranscriptContent(
   // Add speakers section
   transcriptContent += "Speakers:\n";
   callData.relations?.speakers?.forEach((speaker) => {
-    transcriptContent += `${speaker.name || "Unknown"} (${speaker.type || "Unknown"})\n`;
+    transcriptContent += `${speaker.name || "Unknown"} (${speaker.type || "Unknown"})`;
+    if (speaker.email) {
+      transcriptContent += ` - ${speaker.email}`;
+    }
+    if (speaker.phoneNumber) {
+      transcriptContent += ` - ${speaker.phoneNumber}`;
+    }
+    transcriptContent += "\n";
   });
   transcriptContent += "\n";
+
+  // Add contacts section if available
+  if (callData.relations?.contacts && callData.relations.contacts.length > 0) {
+    transcriptContent += "Contacts:\n";
+    callData.relations.contacts.forEach((contact) => {
+      const fullName = [contact.firstName, contact.lastName].filter(Boolean).join(" ");
+      transcriptContent += `${fullName || "Unknown"}`;
+      if (contact.position) {
+        transcriptContent += ` - ${contact.position}`;
+      }
+      if (contact.company) {
+        transcriptContent += ` at ${contact.company}`;
+      }
+      if (contact.email) {
+        transcriptContent += ` (${contact.email})`;
+      }
+      if (contact.phoneNumber) {
+        transcriptContent += ` - ${contact.phoneNumber}`;
+      }
+      transcriptContent += "\n";
+    });
+    transcriptContent += "\n";
+  }
+
+  // Add accounts section if available
+  if (callData.relations?.accounts && callData.relations.accounts.length > 0) {
+    transcriptContent += "Accounts:\n";
+    callData.relations.accounts.forEach((account) => {
+      transcriptContent += `${account.name || "Unknown"}`;
+      if (account.domain) {
+        transcriptContent += ` (${account.domain})`;
+      }
+      if (account.industry) {
+        transcriptContent += ` - Industry: ${account.industry}`;
+      }
+      if (account.size) {
+        transcriptContent += ` - Size: ${account.size}`;
+      }
+      if (account.description) {
+        transcriptContent += ` - ${account.description}`;
+      }
+      transcriptContent += "\n";
+    });
+    transcriptContent += "\n";
+  }
 
   // Add transcript content
   callData.relations?.transcript?.forEach((entry) => {
