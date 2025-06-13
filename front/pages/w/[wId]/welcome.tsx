@@ -84,6 +84,17 @@ export default function Welcome({
   const { submit, isSubmitting } = useSubmitFunction(async () => {
     await patchUser(firstName, lastName, false, jobType);
 
+    // GTM signup event tracking: only fire after successful submit
+    if (typeof window !== "undefined") {
+      window.dataLayer = window.dataLayer || [];
+      window.dataLayer.push({
+        event: "signup_completed",
+        user_email: user.email,
+        company_name: owner.name,
+        gclid: sessionStorage.getItem("gclid") || null,
+      });
+    }
+
     await router.push(
       `/w/${owner.sId}/assistant/new?welcome=true${
         conversationId ? `&cId=${conversationId}` : ""
