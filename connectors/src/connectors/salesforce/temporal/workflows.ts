@@ -122,16 +122,19 @@ export function makeSalesforceSyncQueryWorkflowId(
 export async function salesforceSyncQueryWorkflow({
   connectorId,
   queryId,
-  upToLastModifiedDateString,
+  upToLastModifiedDate,
 }: {
   connectorId: ModelId;
   queryId: ModelId;
-  upToLastModifiedDateString: DateString;
+  upToLastModifiedDate: Date | null;
 }) {
   await upsertSyncedQueryRootNode(connectorId, { queryId });
 
   let lastSeenModifiedDateString: DateString = null;
   let lastModifiedDateStringCursor: DateString = null;
+  let upToLastModifiedDateString: DateString = upToLastModifiedDate
+    ? upToLastModifiedDate.toISOString()
+    : null;
   let hasMore = true;
 
   while (hasMore) {
