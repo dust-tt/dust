@@ -148,7 +148,14 @@ export class GroupResource extends BaseResource<GroupModel> {
   static async findEditorGroupForAgent(
     auth: Authenticator,
     agent: LightAgentConfigurationType
-  ): Promise<Result<GroupResource, Error>> {
+  ): Promise<
+    Result<
+      GroupResource,
+      DustError<
+        "group_not_found" | "internal_error" | "unauthorized" | "invalid_id"
+      >
+    >
+  > {
     const owner = auth.getNonNullableWorkspace();
 
     const groupAgents = await GroupAgentModel.findAll({
@@ -170,7 +177,10 @@ export class GroupResource extends BaseResource<GroupModel> {
 
     if (groupAgents.length > 1) {
       return new Err(
-        new Error("Multiple editor group associations found for agent.")
+        new DustError(
+          "internal_error",
+          "Multiple editor group associations found for agent."
+        )
       );
     }
 
@@ -192,7 +202,10 @@ export class GroupResource extends BaseResource<GroupModel> {
       // Should not happen based on creation logic, but good to check.
       // Might change when we allow other group kinds to be associated with agents.
       return new Err(
-        new Error("Associated group is not an agent_editors group.")
+        new DustError(
+          "internal_error",
+          "Associated group is not an agent_editors group."
+        )
       );
     }
 
@@ -475,7 +488,12 @@ export class GroupResource extends BaseResource<GroupModel> {
   static async fetchById(
     auth: Authenticator,
     id: string
-  ): Promise<Result<GroupResource, DustError>> {
+  ): Promise<
+    Result<
+      GroupResource,
+      DustError<"group_not_found" | "unauthorized" | "invalid_id">
+    >
+  > {
     const groupRes = await this.fetchByIds(auth, [id]);
 
     if (groupRes.isErr()) {
@@ -488,7 +506,12 @@ export class GroupResource extends BaseResource<GroupModel> {
   static async fetchByIds(
     auth: Authenticator,
     ids: string[]
-  ): Promise<Result<GroupResource[], DustError>> {
+  ): Promise<
+    Result<
+      GroupResource[],
+      DustError<"group_not_found" | "unauthorized" | "invalid_id">
+    >
+  > {
     const groupModelIds = removeNulls(
       ids.map((id) => getResourceIdFromSId(id))
     );
@@ -507,7 +530,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     if (groups.length !== ids.length) {
       return new Err(
         new DustError(
-          "resource_not_found",
+          "group_not_found",
           ids.length === 1 ? "Group not found" : "Some groups were not found"
         )
       );
@@ -641,7 +664,7 @@ export class GroupResource extends BaseResource<GroupModel> {
 
     if (!group) {
       return new Err(
-        new DustError("resource_not_found", "System group not found")
+        new DustError("group_not_found", "System group not found")
       );
     }
 
@@ -650,7 +673,7 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   static async fetchWorkspaceGlobalGroup(
     auth: Authenticator
-  ): Promise<Result<GroupResource, DustError>> {
+  ): Promise<Result<GroupResource, DustError<"group_not_found">>> {
     const [group] = await this.baseFetch(auth, {
       where: {
         kind: "global",
@@ -659,7 +682,7 @@ export class GroupResource extends BaseResource<GroupModel> {
 
     if (!group) {
       return new Err(
-        new DustError("resource_not_found", "Global group not found")
+        new DustError("group_not_found", "Global group not found")
       );
     }
 
@@ -884,7 +907,17 @@ export class GroupResource extends BaseResource<GroupModel> {
     auth: Authenticator,
     users: UserType[],
     { transaction }: { transaction?: Transaction } = {}
-  ): Promise<Result<undefined, DustError>> {
+  ): Promise<
+    Result<
+      undefined,
+      DustError<
+        | "unauthorized"
+        | "user_not_found"
+        | "user_already_member"
+        | "system_or_global_group"
+      >
+    >
+  > {
     if (!this.canWrite(auth)) {
       return new Err(
         new DustError(
@@ -920,7 +953,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     ) {
       return new Err(
         new DustError(
-          "user_not_member",
+          "user_not_found",
           userIds.length === 1
             ? "Cannot add: user is not a member of the workspace"
             : "Cannot add: users are not members of the workspace"
@@ -981,7 +1014,17 @@ export class GroupResource extends BaseResource<GroupModel> {
     auth: Authenticator,
     users: UserType[],
     { transaction }: { transaction?: Transaction } = {}
-  ): Promise<Result<undefined, DustError>> {
+  ): Promise<
+    Result<
+      undefined,
+      DustError<
+        | "unauthorized"
+        | "user_not_found"
+        | "user_not_member"
+        | "system_or_global_group"
+      >
+    >
+  > {
     if (!this.canWrite(auth)) {
       return new Err(
         new DustError(
@@ -1077,7 +1120,18 @@ export class GroupResource extends BaseResource<GroupModel> {
     auth: Authenticator,
     users: UserType[],
     { transaction }: { transaction?: Transaction } = {}
-  ): Promise<Result<undefined, DustError>> {
+  ): Promise<
+    Result<
+      undefined,
+      DustError<
+        | "unauthorized"
+        | "user_not_found"
+        | "user_not_member"
+        | "user_already_member"
+        | "system_or_global_group"
+      >
+    >
+  > {
     if (!this.canWrite(auth)) {
       return new Err(
         new DustError(

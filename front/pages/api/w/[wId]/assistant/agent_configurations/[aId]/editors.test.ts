@@ -280,7 +280,7 @@ describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId]/editors", () =
     });
   });
 
-  it("should return 400 when adding existing editor", async () => {
+  it("should return 409 when adding existing editor", async () => {
     const { req, res, agentOwner } = await setupTest({
       requestUserRole: "admin",
       method: "PATCH",
@@ -289,16 +289,16 @@ describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId]/editors", () =
     req.body = { addEditorIds: [agentOwner.sId] }; // Try to re-add owner
 
     await handler(req, res);
-    expect(res._getStatusCode()).toBe(400);
+    expect(res._getStatusCode()).toBe(409);
     expect(res._getJSONData()).toEqual({
       error: {
         type: "invalid_request_error",
-        message: "Cannot add: user is already a member of the group",
+        message: "The user is already a member of the agent editors group.",
       },
     });
   });
 
-  it("should return 400 when removing non-editor", async () => {
+  it("should return 409 when removing non-editor", async () => {
     const { req, res, workspace } = await setupTest({
       requestUserRole: "admin",
       method: "PATCH",
@@ -310,11 +310,11 @@ describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId]/editors", () =
     req.body = { removeEditorIds: [nonEditor.sId] };
 
     await handler(req, res);
-    expect(res._getStatusCode()).toBe(400);
+    expect(res._getStatusCode()).toBe(409);
     expect(res._getJSONData()).toEqual({
       error: {
         type: "invalid_request_error",
-        message: "Cannot remove: user is not a member of the group",
+        message: "The user is not a member of the agent editors group.",
       },
     });
   });

@@ -5,11 +5,10 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { DustError } from "@app/lib/error";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { SpaceType, WithAPIErrorResponse } from "@app/types";
-import { PatchSpaceMembersRequestBodySchema } from "@app/types";
+import { assertNever, PatchSpaceMembersRequestBodySchema } from "@app/types";
 
 interface PatchSpaceMembersResponseBody {
   space: SpaceType;
@@ -65,26 +64,67 @@ async function handler(
         bodyValidation.right
       );
       if (updateRes.isErr()) {
-        if (
-          updateRes.error instanceof DustError &&
-          updateRes.error.code === "unauthorized"
-        ) {
-          return apiError(req, res, {
-            status_code: 403,
-            api_error: {
-              type: "workspace_auth_error",
-              message:
-                "Only users that are `admins` can administrate space members.",
-            },
-          });
-        } else {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message: updateRes.error.message,
-            },
-          });
+        switch (updateRes.error.code) {
+          case "unauthorized":
+            return apiError(req, res, {
+              status_code: 401,
+              api_error: {
+                type: "workspace_auth_error",
+                message:
+                  "Only users that are `admins` can administrate space members.",
+              },
+            });
+          case "user_not_found":
+            return apiError(req, res, {
+              status_code: 404,
+              api_error: {
+                type: "user_not_found",
+                message: "The user was not found in the workspace.",
+              },
+            });
+          case "user_not_member":
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message: "The user is not a member of the workspace.",
+              },
+            });
+          case "group_not_found":
+            return apiError(req, res, {
+              status_code: 404,
+              api_error: {
+                type: "group_not_found",
+                message: "The group was not found in the workspace.",
+              },
+            });
+          case "user_already_member":
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message: "The user is already a member of the space.",
+              },
+            });
+          case "invalid_id":
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message: "Some of the passed ids are invalid.",
+              },
+            });
+          case "system_or_global_group":
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message:
+                  "Users cannot be removed from system or global groups.",
+              },
+            });
+          default:
+            assertNever(updateRes.error.code);
         }
       }
 
