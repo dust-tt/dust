@@ -2,8 +2,10 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import { ConversationIncludeFileActionType } from "@app/lib/actions/conversation/include_file";
+import { conversationAttachmentId } from "@app/lib/actions/conversation/list_files";
 import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
+import { listFiles } from "@app/lib/api/assistant/jit_utils";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
@@ -67,6 +69,10 @@ function createServer(
 
       const { content, title } = fileRes.value;
 
+      // Get the file metadata to extract the actual content type
+      const files = listFiles(conversation);
+      const file = files.find((f) => conversationAttachmentId(f) === fileId);
+
       if (isTextContent(content)) {
         return {
           isError: false,
@@ -78,7 +84,7 @@ function createServer(
           ],
         };
       } else if (isImageContent(content)) {
-        // For images, we return the URL as a resource
+        // For images, we return the URL as a resource with the correct MIME type
         return {
           isError: false,
           content: [
@@ -86,7 +92,7 @@ function createServer(
               type: "resource",
               resource: {
                 uri: content.image_url.url,
-                mimeType: "image/png",
+                mimeType: file?.contentType || "application/octet-stream",
                 text: `Image: ${title}`,
               },
             },
@@ -94,7 +100,9 @@ function createServer(
         };
       }
 
-      return makeMCPToolTextError("File has no text or image content");
+      return makeMCPToolTextError(
+        `File ${file?.title || fileId} of type ${file?.contentType || "unknown"} has no text or image content`
+      );
     }
   );
 

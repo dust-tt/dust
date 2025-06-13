@@ -229,7 +229,7 @@ export const INTERNAL_MCP_SERVERS: Record<
     timeoutMs: 5 * 60 * 1000, // 5 minutes
   },
   conversation_files: {
-    id: 1011,
+    id: 17,
     availability: "auto_hidden_builder",
   },
 

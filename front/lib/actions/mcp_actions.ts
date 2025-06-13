@@ -551,7 +551,7 @@ export async function tryListMCPTools(
     ...(agentLoopListToolsContext.clientSideActionConfigurations ?? []),
   ].filter(isMCPServerConfiguration);
 
-  // Discover all the tools exposed by all the mcp servers available.
+  // Discover all tools exposed by all available MCP servers.
   const results = await concurrentExecutor(
     mcpServerActions,
     async (action) => {
