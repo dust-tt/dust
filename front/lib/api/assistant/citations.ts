@@ -221,10 +221,7 @@ export const getLightAgentMessageFromAgentMessage = (
     chainOfThought: agentMessage.chainOfThought,
     error: agentMessage.error,
     status: agentMessage.status,
-    actions: agentMessage.actions.map((a) => ({
-      type: a.type,
-      id: a.id,
-    })),
+    actions: agentMessage.actions,
     configuration: {
       sId: agentMessage.configuration.sId,
       name: agentMessage.configuration.name,

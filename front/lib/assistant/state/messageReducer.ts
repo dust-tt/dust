@@ -55,8 +55,7 @@ function updateMessageWithAction(
     actions: [
       ...m.actions.filter((a) => a.id !== action.id),
       {
-        type: action.type,
-        id: action.id,
+        ...action,
       },
     ],
   };

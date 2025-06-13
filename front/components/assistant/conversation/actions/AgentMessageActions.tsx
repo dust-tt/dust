@@ -56,7 +56,6 @@ export function AgentMessageActions({
   return (
     <div className="flex flex-col items-start gap-y-4">
       <AgentMessageActionsDrawer
-        conversationId={conversationId}
         message={agentMessage}
         isOpened={isActionDrawerOpened}
         onClose={() => setIsActionDrawerOpened(false)}

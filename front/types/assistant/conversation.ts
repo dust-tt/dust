@@ -147,6 +147,29 @@ export type AgentActionType =
   | ConversationAgentActionType
   | SearchLabelsActionType;
 
+export function isAgentActionType(obj: any): obj is AgentActionType {
+  return (
+    obj &&
+    typeof obj === "object" &&
+    "type" in obj &&
+    "id" in obj &&
+    "agentMessageId" in obj &&
+    typeof obj.agentMessageId === "number" &&
+    "step" in obj &&
+    typeof obj.step === "number"
+  );
+}
+
+export function assertAllAgentActionType(
+  actions: any[]
+): asserts actions is AgentActionType[] {
+  if (actions.some((a) => !isAgentActionType(a))) {
+    throw new Error(
+      `Expected all actions to be AgentActionType, but found invalid actions`
+    );
+  }
+}
+
 export type AgentMessageStatus =
   | "created"
   | "succeeded"
