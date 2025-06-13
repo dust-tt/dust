@@ -74,11 +74,16 @@ export function EnumSelect({
                   <div className="flex w-full items-center gap-2">
                     {"checked" in option &&
                       (option.checked ? (
-                        <CheckCircle className="h-4 w-4 text-green-600" />
+                        <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-600-night" />
                       ) : (
-                        <Circle className="h-4 w-4 text-gray-400" />
+                        <Circle className="h-4 w-4 text-gray-400 dark:text-gray-400-night" />
                       ))}
-                    <span className={cn(option.checked && "font-medium")}>
+                    <span
+                      className={cn(
+                        option.checked && "font-medium",
+                        "text-gray-900 dark:text-gray-900-night"
+                      )}
+                    >
                       {option.label}
                     </span>
                   </div>
