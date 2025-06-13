@@ -71,7 +71,7 @@ pub struct SystemChatMessage {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct ReasoningContent {
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub displayable_text: Option<String>,
+    pub reasoning: Option<String>,
     pub metadata: String,
 }
 
