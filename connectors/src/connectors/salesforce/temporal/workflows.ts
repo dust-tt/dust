@@ -9,6 +9,8 @@ import type { ModelId } from "@connectors/types";
 //   startToCloseTimeout: "10 minutes",
 // });
 
+type DateString = string | null;
+
 const {
   syncSalesforceConnection,
   upsertSyncedQueryRootNode,
@@ -120,31 +122,32 @@ export function makeSalesforceSyncQueryWorkflowId(
 export async function salesforceSyncQueryWorkflow({
   connectorId,
   queryId,
-  upToLastModifiedDate,
+  upToLastModifiedDateString,
 }: {
   connectorId: ModelId;
   queryId: ModelId;
-  upToLastModifiedDate: Date | null;
+  upToLastModifiedDateString: DateString;
 }) {
   await upsertSyncedQueryRootNode(connectorId, { queryId });
 
-  let lastSeenModifiedDate: Date | null = null;
-  let lastModifiedDateCursor: Date | null = null;
+  let lastSeenModifiedDateString: DateString = null;
+  let lastModifiedDateStringCursor: DateString = null;
   let hasMore = true;
 
   while (hasMore) {
-    ({ lastSeenModifiedDate, lastModifiedDateCursor, hasMore } =
+    ({ lastSeenModifiedDateString, lastModifiedDateStringCursor, hasMore } =
       await processSyncedQueryPage(connectorId, {
         queryId,
-        lastModifiedDateCursor,
+        lastModifiedDateStringCursor,
         limit: SALESFORCE_SYNC_QUERY_PAGE_LIMIT,
-        lastSeenModifiedDate,
-        upToLastModifiedDate,
+        lastSeenModifiedDateString,
+        upToLastModifiedDateString,
       }));
   }
 
   // Finally update the lastSeenModifiedDate for the syncedQuery
-  if (lastSeenModifiedDate) {
+  if (lastSeenModifiedDateString) {
+    const lastSeenModifiedDate = new Date(lastSeenModifiedDateString);
     await updateSyncedQueryLastSeenModifiedDate(connectorId, {
       queryId,
       lastSeenModifiedDate,

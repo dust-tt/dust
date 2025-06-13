@@ -156,15 +156,12 @@ export async function processSyncedQueryPage(
   }
 ): Promise<{
   // The most recent lastModifiedDate seen
-  lastSeenModifiedDate: Date | null;
+  lastSeenModifiedDateString: DateString;
   // The older lastModifiedDate seen in this page to use for pagination
-  lastModifiedDateCursor: Date | null;
+  lastModifiedDateStringCursor: DateString;
   hasMore: boolean;
   count: number;
 }> {
-  // This is terrible but temporal serializes Dates to string across workflow/activity boundary.
-  // Having the bype Date is convenient here but this ensures that we turn back serialized strings
-  // into Dates.
   let lastSeenModifiedDate = lastSeenModifiedDateString
     ? new Date(lastSeenModifiedDateString)
     : null;
@@ -324,9 +321,16 @@ export async function processSyncedQueryPage(
     { concurrency: 8 }
   );
 
+  if (lastSeenModifiedDate) {
+    lastSeenModifiedDateString = lastSeenModifiedDate.toISOString();
+  }
+  if (lastModifiedDateCursor) {
+    lastModifiedDateStringCursor = lastModifiedDateCursor.toISOString();
+  }
+
   return {
-    lastSeenModifiedDate,
-    lastModifiedDateCursor,
+    lastSeenModifiedDateString,
+    lastModifiedDateStringCursor,
     hasMore: processedCount > 0,
     count: processedCount,
   };
