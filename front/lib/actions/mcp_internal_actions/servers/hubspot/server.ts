@@ -27,8 +27,8 @@ import {
   MAX_LIMIT,
   searchCrmObjects,
   SIMPLE_OBJECTS,
-  updateContact,
   updateCompany,
+  updateContact,
   updateDeal,
 } from "@app/lib/actions/mcp_internal_actions/servers/hubspot/hubspot_api_helper";
 import {
