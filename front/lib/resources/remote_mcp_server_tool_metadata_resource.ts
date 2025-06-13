@@ -1,4 +1,3 @@
-import assert from "assert";
 import type {
   Attributes,
   CreationAttributes,
@@ -8,6 +7,7 @@ import type {
 
 import type { RemoteMCPToolStakeLevelType } from "@app/lib/actions/constants";
 import type { Authenticator } from "@app/lib/auth";
+import { DustError } from "@app/lib/error";
 import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/assistant/actions/remote_mcp_server_tool_metadata";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -40,11 +40,15 @@ export class RemoteMCPServerToolMetadataResource extends BaseResource<RemoteMCPS
     blob: CreationAttributes<RemoteMCPServerToolMetadataModel>,
     transaction?: Transaction
   ) {
-    const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
-    assert(
-      systemSpace.canWrite(auth),
-      "The user is not authorized to create a tool metadata"
-    );
+    const canAdministrate =
+      await SpaceResource.canAdministrateSystemSpace(auth);
+
+    if (!canAdministrate) {
+      throw new DustError(
+        "unauthorized",
+        "The user is not authorized to create a tool metadata"
+      );
+    }
 
     const toolMetadata = await this.model.create(
       {
@@ -131,11 +135,15 @@ export class RemoteMCPServerToolMetadataResource extends BaseResource<RemoteMCPS
       permission: RemoteMCPToolStakeLevelType;
     }
   ) {
-    const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
-    assert(
-      systemSpace.canWrite(auth),
-      "The user is not authorized to update a tool metadata"
-    );
+    const canAdministrate =
+      await SpaceResource.canAdministrateSystemSpace(auth);
+
+    if (!canAdministrate) {
+      throw new DustError(
+        "unauthorized",
+        "The user is not authorized to update a tool metadata"
+      );
+    }
 
     const [toolMetadata] = await this.model.upsert({
       remoteMCPServerId: serverId,
@@ -153,11 +161,15 @@ export class RemoteMCPServerToolMetadataResource extends BaseResource<RemoteMCPS
     auth: Authenticator,
     { transaction }: { transaction?: Transaction }
   ): Promise<Result<undefined | number, Error>> {
-    const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
-    assert(
-      systemSpace.canWrite(auth),
-      "The user is not authorized to delete a tool metadata"
-    );
+    const canAdministrate =
+      await SpaceResource.canAdministrateSystemSpace(auth);
+
+    if (!canAdministrate) {
+      throw new DustError(
+        "unauthorized",
+        "The user is not authorized to delete a tool metadata"
+      );
+    }
 
     const result = await RemoteMCPServerToolMetadataModel.destroy({
       where: {

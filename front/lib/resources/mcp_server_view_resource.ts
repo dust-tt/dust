@@ -403,7 +403,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
   public async updateOAuthUseCase(
     auth: Authenticator,
     oAuthUseCase: MCPOAuthUseCase
-  ): Promise<Result<number, Error>> {
+  ): Promise<Result<number, DustError<"unauthorized">>> {
     if (!this.canAdministrate(auth)) {
       return new Err(
         new DustError("unauthorized", "Not allowed to update OAuth use case.")
