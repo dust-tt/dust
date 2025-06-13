@@ -20,12 +20,32 @@ const serverInfo: InternalMCPServerDefinitionType = {
   documentationUrl: null,
 };
 
+export const LIST_ALL_AGENTS_TOOL_NAME = "list_all_published_agents";
+export const SUGGEST_AGENTS_TOOL_NAME = "suggest_agents_for_content";
+
+const SERVER_INSTRUCTIONS = `This toolset provides access to specialized agents available in the workspace.
+A good usage of these tools is:
+- when the user asks for a list of agents or when the user asks for suggestions for an agent.
+- when the agent is not able to handle the user's request and tries to suggest an agent that might be able to handle the request.
+
+# Agent Presentation Format
+Both tools return agents with a "mention" field containing a clickable format (e.g., \`:mention[AgentName]{sId=abc123}\`). This format allows users to directly select and interact with the suggested agents.
+
+# Specialized Agent Examples
+The workspace may contain specialized agents for:
+- Platform integrations (Salesforce, Slack, GitHub, etc.)
+- Business domains (HR, Sales, Marketing, etc.)
+- Specific workflows or processes
+`;
+
 const createServer = (auth: Authenticator): McpServer => {
-  const server = new McpServer(serverInfo);
+  const server = new McpServer(serverInfo, {
+    instructions: SERVER_INSTRUCTIONS,
+  });
 
   server.tool(
-    "list_agents",
-    "List all active published agents in the workspace. The mention directive allows the user to click on the agent name to select it.",
+    LIST_ALL_AGENTS_TOOL_NAME,
+    "Returns a complete list of all published agents in the workspace. Each agent includes: name and description, and a clickable mention format for easy selection",
     {},
     async () => {
       const owner = auth.getNonNullableWorkspace();
@@ -86,8 +106,8 @@ const createServer = (auth: Authenticator): McpServer => {
   );
 
   server.tool(
-    "suggest_agents",
-    "Suggest agents for the current user's query. The mention directive allows the user to click on the agent name to select it.",
+    SUGGEST_AGENTS_TOOL_NAME,
+    "Analyzes a user query and returns relevant specialized agents that might be better suited to handle specific requests. The tool uses semantic matching to find agents whose capabilities align with the query content.",
     {
       userMessage: z.string().describe("The user's message."),
       conversationId: z.string().describe("The conversation id."),
