@@ -224,9 +224,6 @@ export function AgentMessage({
     }
   })();
 
-  const [lastAgentStateClassification, setLastAgentStateClassification] =
-    useState<AgentStateClassification>(shouldStream ? "thinking" : "done");
-
   const [lastTokenClassification, setLastTokenClassification] = useState<
     null | "tokens" | "chain_of_thought"
   >(null);
@@ -446,7 +443,7 @@ export function AgentMessage({
   );
 
   const buttons =
-    message.status === "failed" || lastAgentStateClassification === "thinking"
+    message.status === "failed" || messageStreamState.agentState === "thinking"
       ? []
       : [
           <Button
@@ -550,7 +547,7 @@ export function AgentMessage({
         <div className="flex flex-col gap-2">
           <AgentMessageActions
             agentMessage={agentMessage}
-            lastAgentStateClassification={lastAgentStateClassification}
+            lastAgentStateClassification={messageStreamState.agentState}
             owner={owner}
           />
 
