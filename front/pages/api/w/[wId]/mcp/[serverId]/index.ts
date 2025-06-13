@@ -191,13 +191,22 @@ async function handler(
           }
 
           if (name || icon || description || sharedSecret) {
-            await server.updateMetadata(auth, {
+            const r = await server.updateMetadata(auth, {
               name,
               icon,
               description,
               sharedSecret,
               lastSyncAt: new Date(),
             });
+            if (r.isErr()) {
+              return apiError(req, res, {
+                status_code: 500,
+                api_error: {
+                  type: "internal_server_error",
+                  message: r.error.message,
+                },
+              });
+            }
           }
 
           if (oAuthUseCase) {
@@ -245,7 +254,17 @@ async function handler(
         });
       }
 
-      await server.delete(auth);
+      const r = await server.delete(auth);
+
+      if (r.isErr()) {
+        return apiError(req, res, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: r.error.message,
+          },
+        });
+      }
 
       return res.status(200).json({
         deleted: true,

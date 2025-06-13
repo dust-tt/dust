@@ -278,6 +278,11 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     return spaces.filter((s) => s.canRead(auth));
   }
 
+  static async canAdministrateSystemSpace(auth: Authenticator) {
+    const systemSpace = await this.fetchWorkspaceSystemSpace(auth);
+    return systemSpace.canAdministrate(auth);
+  }
+
   static async fetchWorkspaceSystemSpace(
     auth: Authenticator
   ): Promise<SpaceResource> {
