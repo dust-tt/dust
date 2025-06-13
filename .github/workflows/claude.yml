@@ -67,13 +67,6 @@ jobs:
         with:
           components: rustfmt
       
-      # Install nvm for version management
-      - name: Install nvm
-        run: |
-          curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
-          echo 'export NVM_DIR="$HOME/.nvm"' >> $GITHUB_ENV
-          echo '[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"' >> $GITHUB_ENV
-      
       # Pre-install dependencies for better performance
       - name: Install dependencies
         run: |
@@ -144,7 +137,7 @@ jobs:
           custom_instructions: |
             ### Build/Lint/Typecheck Commands by Project:
             
-            **front**: cd front && nvm use && npm ci && npx tsc --noEmit && npm run lint && npm run format:check
+            **front**: cd front && npm ci && npx tsc --noEmit && npm run lint && npm run format:check
             **connectors**: cd connectors && npm install && npm run build && npm run lint && npm run format:check
             **cli**: cd cli && npm ci && npx tsc && npm run lint
             **core**: cd core && cargo check && cargo fmt --all -- --check && cargo test --all
@@ -154,7 +147,6 @@ jobs:
             **sdks/js**: cd sdks/js && npm install && npm run build && npm run lint
             
             ### Important Rules:
-            - Always run `nvm use` before running npm commands in directories with .nvmrc
             - For TypeScript projects, run `npx tsc --noEmit` before committing
             - For Rust projects, run `cargo check` before committing
             - SDK must be built before building front or connectors
