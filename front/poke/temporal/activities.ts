@@ -260,7 +260,7 @@ export async function deleteAgentsActivity({
       await AgentReasoningConfiguration.findAll({
         where: {
           mcpServerConfigurationId: {
-            [Op.in]: mcpServerConfigurations.map((r) => `${r.id}`),
+            [Op.in]: mcpServerConfigurations.map((r) => r.id),
           },
         },
       });
@@ -276,7 +276,7 @@ export async function deleteAgentsActivity({
     await AgentReasoningConfiguration.destroy({
       where: {
         mcpServerConfigurationId: {
-          [Op.in]: mcpServerConfigurations.map((r) => `${r.id}`),
+          [Op.in]: mcpServerConfigurations.map((r) => r.id),
         },
       },
     });
