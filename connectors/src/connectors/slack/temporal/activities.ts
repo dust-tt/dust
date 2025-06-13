@@ -65,7 +65,7 @@ const logger = mainLogger.child({ provider: "slack" });
 // This controls the maximum number of concurrent calls to syncThread and syncNonThreaded.
 const MAX_CONCURRENCY_LEVEL = 2;
 // Adaptive chunking constants for syncNonThreaded optimization
-const MAX_MESSAGES_PER_CHUNK = 200; // Stop processing if we hit this many messages in a chunk.
+const MAX_API_CALLS_PER_CHUNK = 20; // Stop processing if we hit this many API calls in a chunk.
 
 const CONVERSATION_HISTORY_LIMIT = 100;
 
@@ -445,6 +445,7 @@ export async function syncNonThreadedChunk({
   connectorId,
   cursor,
   endTsMs,
+  // Name is confusing, but kept to avoid breaking changes in Temporal activities.
   ignoreMessageLimit = false,
   isBatchSync = false,
   maxTotalMessages = MAX_SYNC_NON_THREAD_MESSAGES,
@@ -485,8 +486,11 @@ export async function syncNonThreadedChunk({
   const endTsSec = Math.round(endTsMs / 1000);
 
   let hasMore: boolean | undefined = undefined;
+  let nextCursor: string | undefined = cursor;
+  let apiCallCount = 0;
 
   do {
+    apiCallCount++;
     let c: ConversationsHistoryResponse | undefined = undefined;
     try {
       c = await client.conversations.history({
@@ -494,7 +498,7 @@ export async function syncNonThreadedChunk({
         limit: CONVERSATION_HISTORY_LIMIT,
         oldest: `${startTsSec}`,
         latest: `${endTsSec}`,
-        cursor,
+        cursor: nextCursor,
       });
     } catch (e) {
       const maybeSlackPlatformError = e as WebAPIPlatformError;
@@ -551,12 +555,13 @@ export async function syncNonThreadedChunk({
       }
     }
     hasMore = c.has_more;
-    const nextCursor = c.response_metadata?.next_cursor;
+    nextCursor = c.response_metadata?.next_cursor;
 
-    // Stop if we've processed enough messages for this chunk (unless ignoring limit).
-    if (!ignoreMessageLimit && messages.length >= MAX_MESSAGES_PER_CHUNK) {
+    // Stop if we've made enough API calls for this chunk (unless ignoring limit).
+    if (!ignoreMessageLimit && apiCallCount >= MAX_API_CALLS_PER_CHUNK) {
       logger.info(
         {
+          apiCallCount,
           messagesCount: messages.length,
           connectorId,
           channelName,
@@ -565,7 +570,7 @@ export async function syncNonThreadedChunk({
           endTsMs,
           latestTsSec: c.messages?.at(-1)?.ts,
         },
-        "Chunk reached max messages, splitting work"
+        "Chunk reached max API calls, splitting work"
       );
 
       await processAndUpsertNonThreadedMessages({
@@ -769,7 +774,7 @@ export async function syncMultipleNonThreaded(
         endTsMs: weekEndTsMs,
         connectorId,
         isBatchSync: true,
-        // Ignore message limit to process entire week as single chunk.
+        // Ignore API call limit to process entire week as single chunk.
         ignoreMessageLimit: true,
         maxTotalMessages,
         weekStartTsMs: startTsMs,
