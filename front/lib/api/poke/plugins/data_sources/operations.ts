@@ -1,7 +1,13 @@
 import config from "@app/lib/api/config";
 import { createPlugin } from "@app/lib/api/poke/types";
 import logger, { auditLog } from "@app/logger/logger";
-import { assertNever, ConnectorsAPI, Err, Ok } from "@app/types";
+import {
+  assertNever,
+  ConnectorsAPI,
+  Err,
+  mapToEnumValues,
+  Ok,
+} from "@app/types";
 
 const OPERATIONS = ["STOP", "PAUSE", "UNPAUSE", "RESUME", "SYNC"] as const;
 
@@ -40,7 +46,10 @@ export const connectorOperationsPlugin = createPlugin({
         type: "enum",
         label: "Operation",
         description: "Select operation to execute",
-        values: OPERATIONS,
+        values: mapToEnumValues(OPERATIONS, (op) => ({
+          label: op,
+          value: op,
+        })),
       },
     },
   },
@@ -64,7 +73,7 @@ export const connectorOperationsPlugin = createPlugin({
       },
       "Executing operation on connector"
     );
-    const res = await doOperation(op, connectorId.toString());
+    const res = await doOperation(op as OperationType, connectorId.toString());
     if (res.isErr()) {
       return new Err(new Error(res.error.message));
     }

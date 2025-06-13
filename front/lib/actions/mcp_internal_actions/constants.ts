@@ -56,14 +56,12 @@ export const INTERNAL_MCP_SERVERS: Record<
       featureFlags: WhitelistableFeature[]
     ) => boolean;
     tools_stakes?: Record<string, MCPToolStakeLevelType>;
+    timeoutMs?: number;
   }
 > = {
-  // Notes:
-  // ids should be stable, do not change them for production internal servers as it would break existing agents.
-  // Let's start dev actions at 1000 to avoid conflicts with production actions.
-  // flag "dev_mcp_actions" for actions that are only used internally for dev and testing.
+  // Note:
+  // ids should be stable, do not change them when moving internal servers to production as it would break existing agents.
 
-  // Production
   github: {
     id: 1,
     availability: "manual",
@@ -144,9 +142,6 @@ export const INTERNAL_MCP_SERVERS: Record<
   run_dust_app: {
     id: 10,
     availability: "auto",
-    isRestricted: (plan, featureFlags) => {
-      return featureFlags.includes("dev_mcp_actions");
-    },
   },
   notion: {
     id: 11,
@@ -177,9 +172,6 @@ export const INTERNAL_MCP_SERVERS: Record<
   extract_data: {
     id: 12,
     availability: "auto",
-    isRestricted: (plan, featureFlags) => {
-      return featureFlags.includes("dev_mcp_actions");
-    },
   },
   missing_action_catcher: {
     id: 13,
@@ -223,10 +215,19 @@ export const INTERNAL_MCP_SERVERS: Record<
       create_event: "low",
       update_event: "low",
       delete_event: "low",
+      check_availability: "never_ask",
     },
   },
+  search: {
+    id: 1006,
+    availability: "auto",
+  },
+  run_agent: {
+    id: 1008,
+    availability: "auto",
+    timeoutMs: 5 * 60 * 1000, // 5 minutes
+  },
 
-  // Dev
   primitive_types_debugger: {
     id: 1004,
     availability: "manual",
@@ -234,20 +235,9 @@ export const INTERNAL_MCP_SERVERS: Record<
       return featureFlags.includes("dev_mcp_actions");
     },
   },
-  search: {
-    id: 1006,
-    availability: "auto",
-  },
   reasoning: {
     id: 1007,
     availability: "auto",
-  },
-  run_agent: {
-    id: 1008,
-    availability: "auto",
-    isRestricted: (plan, featureFlags) => {
-      return featureFlags.includes("dev_mcp_actions");
-    },
   },
   query_tables_v2: {
     id: 1009,

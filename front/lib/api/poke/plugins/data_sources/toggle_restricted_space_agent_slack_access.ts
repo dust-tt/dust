@@ -1,7 +1,7 @@
 import config from "@app/lib/api/config";
 import { createPlugin } from "@app/lib/api/poke/types";
 import logger from "@app/logger/logger";
-import { ConnectorsAPI } from "@app/types";
+import { ConnectorsAPI, mapToEnumValues } from "@app/types";
 import { Err, Ok } from "@app/types/shared/result";
 
 export const restrictedSpaceAgentsPlugin = createPlugin({
@@ -17,7 +17,10 @@ export const restrictedSpaceAgentsPlugin = createPlugin({
         label: "Action",
         description:
           "Select whether to enable or disable restricted space agents for Slack",
-        values: ["enable", "disable"],
+        values: mapToEnumValues(["enable", "disable"], (action) => ({
+          label: action,
+          value: action,
+        })),
       },
       confirm: {
         type: "boolean",

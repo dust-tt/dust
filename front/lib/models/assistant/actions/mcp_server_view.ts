@@ -6,6 +6,7 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { SoftDeletableWorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
+import type { MCPOAuthUseCase } from "@app/types";
 import { assertNever } from "@app/types";
 
 export class MCPServerViewModel extends SoftDeletableWorkspaceAwareModel<MCPServerViewModel> {
@@ -25,6 +26,8 @@ export class MCPServerViewModel extends SoftDeletableWorkspaceAwareModel<MCPServ
   declare editedByUser: NonAttribute<UserModel>;
   declare space: NonAttribute<SpaceModel>;
   declare remoteMCPServer: NonAttribute<RemoteMCPServerModel>;
+
+  declare oAuthUseCase: MCPOAuthUseCase | null;
 }
 MCPServerViewModel.init(
   {
@@ -33,6 +36,7 @@ MCPServerViewModel.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
+
     deletedAt: {
       type: DataTypes.DATE,
     },
@@ -63,6 +67,13 @@ MCPServerViewModel.init(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
+    },
+    oAuthUseCase: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      validate: {
+        isIn: [["platform_actions", "personal_actions"]],
+      },
     },
   },
   {

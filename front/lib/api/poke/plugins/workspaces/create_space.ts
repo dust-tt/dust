@@ -36,7 +36,14 @@ export const createSpacePlugin = createPlugin({
 
     const spaceRes = await createRegularSpaceAndGroup(
       auth,
-      { name: formattedName, memberIds: [], isRestricted },
+      isRestricted
+        ? {
+            name: formattedName,
+            memberIds: [],
+            isRestricted: true,
+            managementMode: "manual",
+          }
+        : { name: formattedName, isRestricted: false },
       {
         ignoreWorkspaceLimit: args.ignoreWorkspaceLimit,
       }

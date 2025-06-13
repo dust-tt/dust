@@ -2,13 +2,11 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { Octokit } from "@octokit/core";
 import { z } from "zod";
 
-import { getAccessTokenForInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/authentication";
 import {
   makeMCPToolTextError,
   makeMCPToolTextSuccess,
 } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
-import type { Authenticator } from "@app/lib/auth";
 import { normalizeError } from "@app/types";
 
 const GITHUB_GET_PULL_REQUEST_ACTION_MAX_COMMITS = 32;
@@ -19,12 +17,13 @@ const serverInfo: InternalMCPServerDefinitionType = {
   description: "GitHub tools to manage issues and pull requests.",
   authorization: {
     provider: "github" as const,
-    use_case: "platform_actions" as const,
+    supported_use_cases: ["platform_actions"] as const,
   },
   icon: "GithubLogo",
+  documentationUrl: null,
 };
 
-const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
+const createServer = (): McpServer => {
   const server = new McpServer(serverInfo);
 
   server.tool(
@@ -48,11 +47,8 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
         .optional()
         .describe("Labels to associate with this issue."),
     },
-    async ({ owner, repo, title, body, assignees, labels }) => {
-      const accessToken = await getAccessTokenForInternalMCPServer(auth, {
-        mcpServerId,
-        connectionType: "workspace",
-      });
+    async ({ owner, repo, title, body, assignees, labels }, { authInfo }) => {
+      const accessToken = authInfo?.token;
 
       const octokit = new Octokit({ auth: accessToken });
 
@@ -93,11 +89,8 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
       repo: z.string().describe("The name of the repository."),
       pullNumber: z.number().describe("The pull request number."),
     },
-    async ({ owner, repo, pullNumber }) => {
-      const accessToken = await getAccessTokenForInternalMCPServer(auth, {
-        mcpServerId,
-        connectionType: "workspace",
-      });
+    async ({ owner, repo, pullNumber }, { authInfo }) => {
+      const accessToken = authInfo?.token;
 
       const octokit = new Octokit({ auth: accessToken });
 
@@ -401,11 +394,11 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
         .describe("File comments to leave as part of the review.")
         .optional(),
     },
-    async ({ owner, repo, pullNumber, body, event, comments = [] }) => {
-      const accessToken = await getAccessTokenForInternalMCPServer(auth, {
-        mcpServerId,
-        connectionType: "workspace",
-      });
+    async (
+      { owner, repo, pullNumber, body, event, comments = [] },
+      { authInfo }
+    ) => {
+      const accessToken = authInfo?.token;
 
       const octokit = new Octokit({ auth: accessToken });
 
@@ -443,11 +436,8 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
           "The owner of the repository (account or organization name)."
         ),
     },
-    async ({ owner }) => {
-      const accessToken = await getAccessTokenForInternalMCPServer(auth, {
-        mcpServerId,
-        connectionType: "workspace",
-      });
+    async ({ owner }, { authInfo }) => {
+      const accessToken = authInfo?.token;
 
       const octokit = new Octokit({ auth: accessToken });
 
@@ -578,11 +568,8 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
           "Optional field configuration with both fieldId and optionId required if provided."
         ),
     },
-    async ({ owner, repo, issueNumber, projectId, field }) => {
-      const accessToken = await getAccessTokenForInternalMCPServer(auth, {
-        mcpServerId,
-        connectionType: "workspace",
-      });
+    async ({ owner, repo, issueNumber, projectId, field }, { authInfo }) => {
+      const accessToken = authInfo?.token;
 
       const octokit = new Octokit({ auth: accessToken });
 
@@ -685,11 +672,8 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
         .string()
         .describe("The contents of the comment (GitHub markdown)."),
     },
-    async ({ owner, repo, issueNumber, body }) => {
-      const accessToken = await getAccessTokenForInternalMCPServer(auth, {
-        mcpServerId,
-        connectionType: "workspace",
-      });
+    async ({ owner, repo, issueNumber, body }, { authInfo }) => {
+      const accessToken = authInfo?.token;
 
       const octokit = new Octokit({ auth: accessToken });
 
@@ -727,11 +711,8 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
       repo: z.string().describe("The name of the repository."),
       issueNumber: z.number().describe("The issue number."),
     },
-    async ({ owner, repo, issueNumber }) => {
-      const accessToken = await getAccessTokenForInternalMCPServer(auth, {
-        mcpServerId,
-        connectionType: "workspace",
-      });
+    async ({ owner, repo, issueNumber }, { authInfo }) => {
+      const accessToken = authInfo?.token;
 
       const octokit = new Octokit({ auth: accessToken });
 
@@ -878,19 +859,19 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
         .optional()
         .describe("Results per page. Defaults to 30, max 100."),
     },
-    async ({
-      owner,
-      repo,
-      state = "OPEN",
-      labels,
-      sort = "CREATED_AT",
-      direction = "DESC",
-      perPage = 30,
-    }) => {
-      const accessToken = await getAccessTokenForInternalMCPServer(auth, {
-        mcpServerId,
-        connectionType: "workspace",
-      });
+    async (
+      {
+        owner,
+        repo,
+        state = "OPEN",
+        labels,
+        sort = "CREATED_AT",
+        direction = "DESC",
+        perPage = 30,
+      },
+      { authInfo }
+    ) => {
+      const accessToken = authInfo?.token;
 
       const octokit = new Octokit({ auth: accessToken });
 

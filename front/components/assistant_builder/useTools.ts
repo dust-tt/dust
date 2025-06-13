@@ -19,7 +19,7 @@ import {
   DATA_VISUALIZATION_SPECIFICATION,
 } from "@app/lib/actions/utils";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import type { SpaceType } from "@app/types";
+import type { ModelConfigurationType, SpaceType } from "@app/types";
 
 const DEFAULT_TOOLS_WITH_CONFIGURATION = [
   "DUST_APP_RUN",
@@ -125,9 +125,10 @@ function getGroupedMCPServerViews({
 
 interface UseToolsProps {
   actions: AssistantBuilderActionState[];
+  reasoningModels: ModelConfigurationType[];
 }
 
-export const useTools = ({ actions }: UseToolsProps) => {
+export const useTools = ({ actions, reasoningModels }: UseToolsProps) => {
   const { mcpServerViews, spaces } = useContext(AssistantBuilderContext);
 
   const hideAction = useCallback(
@@ -179,21 +180,30 @@ export const useTools = ({ actions }: UseToolsProps) => {
     [nonDefaultMCPActions, actions]
   );
 
-  const selectableDefaultMCPServerViews = useMemo(
-    () =>
-      defaultMCPServerViews.filter((view) => {
-        const selectedAction = actions.find(
-          (action) => action.name === view.server.name
-        );
+  const hasReasoningModel = reasoningModels.length > 0;
 
-        if (selectedAction) {
-          return !selectedAction.noConfigurationRequired;
-        }
+  const selectableDefaultMCPServerViews = useMemo(() => {
+    const filteredList = defaultMCPServerViews.filter((view) => {
+      const selectedAction = actions.find(
+        (action) => action.name === view.server.name
+      );
 
-        return true;
-      }),
-    [defaultMCPServerViews, actions]
-  );
+      if (selectedAction) {
+        return !selectedAction.noConfigurationRequired;
+      }
+
+      return true;
+    });
+
+    if (hasReasoningModel) {
+      return filteredList;
+    }
+
+    // You should not be able to select Reasoning if there is no reasoning model available.
+    return filteredList.filter(
+      (view) => !getMCPServerRequirements(view).requiresReasoningConfiguration
+    );
+  }, [defaultMCPServerViews, actions, hasReasoningModel]);
 
   const selectableNonDefaultMCPServerViews = useMemo(
     () =>

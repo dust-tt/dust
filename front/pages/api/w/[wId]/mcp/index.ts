@@ -41,11 +41,22 @@ const PostQueryParamsSchema = t.union([
     url: t.string,
     includeGlobal: t.union([t.boolean, t.undefined]),
     sharedSecret: t.union([t.string, t.undefined]),
+    useCase: t.union([
+      t.literal("platform_actions"),
+      t.literal("personal_actions"),
+      t.undefined,
+    ]),
     connectionId: t.union([t.string, t.undefined]),
   }),
   t.type({
     serverType: t.literal("internal"),
     name: t.string,
+    useCase: t.union([
+      t.literal("platform_actions"),
+      t.literal("personal_actions"),
+      t.undefined,
+    ]),
+    connectionId: t.union([t.string, t.undefined]),
     includeGlobal: t.union([t.boolean, t.undefined]),
   }),
 ]);
@@ -145,7 +156,7 @@ async function handler(
             bearerToken = token.value.access_token;
             authorization = {
               provider: "mcp",
-              use_case: "platform_actions", // TODO (mcp): handle correctly the personal connections.
+              supported_use_cases: ["platform_actions", "personal_actions"],
             };
           } else {
             // We fail early if the connectionId is provided but the access token cannot be fetched.
@@ -192,6 +203,7 @@ async function handler(
           version: metadata.version,
           sharedSecret: sharedSecret || null,
           authorization,
+          oAuthUseCase: body.useCase ?? null,
         });
 
         if (body.connectionId) {
@@ -207,11 +219,28 @@ async function handler(
         }
 
         if (body.includeGlobal) {
+          const systemView =
+            await MCPServerViewResource.getMCPServerViewForSystemSpace(
+              auth,
+              newRemoteMCPServer.sId
+            );
+
+          if (!systemView) {
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message:
+                  "Missing system view for remote MCP server, it should have been created when creating the remote server.",
+              },
+            });
+          }
+
           const globalSpace =
             await SpaceResource.fetchWorkspaceGlobalSpace(auth);
 
           await MCPServerViewResource.create(auth, {
-            mcpServerId: newRemoteMCPServer.sId,
+            systemView,
             space: globalSpace,
           });
         }
@@ -255,14 +284,46 @@ async function handler(
         }
 
         const newInternalMCPServer =
-          await InternalMCPServerInMemoryResource.makeNew(auth, name);
+          await InternalMCPServerInMemoryResource.makeNew(auth, {
+            name,
+            useCase: body.useCase ?? null,
+          });
+
+        if (body.connectionId) {
+          // We create a connection to the internal MCP server to allow the user to use the MCP server in the future.
+          // The connexion is of type "workspace" because it is created by the admin.
+          // If the server can use personal connections, we rely on this "workspace" connection to get the related credentials.
+          await MCPServerConnectionResource.makeNew(auth, {
+            connectionId: body.connectionId,
+            connectionType: "workspace",
+            serverType: "internal",
+            internalMCPServerId: newInternalMCPServer.id,
+          });
+        }
 
         if (body.includeGlobal) {
           const globalSpace =
             await SpaceResource.fetchWorkspaceGlobalSpace(auth);
 
+          const systemView =
+            await MCPServerViewResource.getMCPServerViewForSystemSpace(
+              auth,
+              newInternalMCPServer.id
+            );
+
+          if (!systemView) {
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message:
+                  "Missing system view for internal MCP server, it should have been created when creating the internal server.",
+              },
+            });
+          }
+
           await MCPServerViewResource.create(auth, {
-            mcpServerId: newInternalMCPServer.id,
+            systemView,
             space: globalSpace,
           });
         }

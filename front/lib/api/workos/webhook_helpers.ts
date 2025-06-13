@@ -1,4 +1,4 @@
-import type { Event } from "@workos-inc/node";
+import type { ActionContext, Event } from "@workos-inc/node";
 
 import config from "@app/lib/api/config";
 import { getWorkOS } from "@app/lib/api/workos/client";
@@ -49,6 +49,25 @@ export async function validateWorkOSWebhookEvent(
       payload,
       sigHeader: signatureHeader,
       secret: config.getWorkOSWebhookSigningSecret(),
+    });
+
+    return new Ok(verifiedEvent);
+  } catch (error) {
+    return new Err(normalizeError(error));
+  }
+}
+
+export async function validateWorkOSActionEvent(
+  payload: unknown,
+  { signatureHeader }: { signatureHeader: string }
+): Promise<Result<ActionContext, Error>> {
+  const workOS = getWorkOS();
+
+  try {
+    const verifiedEvent = await workOS.actions.constructAction({
+      payload,
+      sigHeader: signatureHeader,
+      secret: config.getWorkOSActionSigningSecret(),
     });
 
     return new Ok(verifiedEvent);

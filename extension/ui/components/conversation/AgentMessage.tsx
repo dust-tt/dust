@@ -258,13 +258,13 @@ export function AgentMessage({
       // Handle validation dialog separately.
       if (eventPayload.data.type === "tool_approve_execution") {
         showValidationDialog({
-          workspaceId: owner.sId,
-          messageId: message.sId,
+          actionId: eventPayload.data.actionId,
           conversationId: conversationId,
-          action: eventPayload.data.action,
           inputs: eventPayload.data.inputs,
-          stake: eventPayload.data.stake,
+          messageId: message.sId,
           metadata: eventPayload.data.metadata,
+          stake: eventPayload.data.stake,
+          workspaceId: owner.sId,
         });
 
         return;

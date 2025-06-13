@@ -25,6 +25,7 @@ export class UserFactory {
 
       isDustSuperUser: superUser,
       createdAt,
+      lastLoginAt: null,
     };
   };
 

@@ -22,14 +22,7 @@ import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
-import {
-  Err,
-  getHeaderFromGroupIds,
-  getHeaderFromRole,
-  getHeaderFromUserEmail,
-  normalizeError,
-  Ok,
-} from "@app/types";
+import { Err, getHeaderFromUserEmail, normalizeError, Ok } from "@app/types";
 
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "run_agent",
@@ -37,6 +30,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
   description: "Run a child agent (agent as tool).",
   icon: "ActionRobotIcon",
   authorization: null,
+  documentationUrl: null,
 };
 
 function parseAgentConfigurationUri(uri: string): Result<string, Error> {
@@ -49,7 +43,7 @@ function parseAgentConfigurationUri(uri: string): Result<string, Error> {
 }
 
 /**
- * This method fetchs the name and description of a child agent. It returns it even even if the
+ * This method fetches the name and description of a child agent. It returns it even if the
  * agent is private as it is referenced from a parent agent which requires a name and description
  * for the associated run_agent tool rendering.
  *
@@ -120,7 +114,10 @@ export default async function createServer(
     childAgentId = agentLoopContext.runContext.actionConfiguration.childAgentId;
   }
 
-  let childAgentBlob: { name: string; description: string } | null = null;
+  let childAgentBlob: {
+    name: string;
+    description: string;
+  } | null = null;
 
   if (childAgentId) {
     childAgentBlob = await leakyGetAgentNameAndDescriptionForChildAgent(
@@ -162,8 +159,8 @@ export default async function createServer(
       query: z
         .string()
         .describe(
-          `The query sent to the agent. This is the question or instruction that will be ` +
-            `processed by the agent, which will respond with its own capabilities and knowledge.`
+          "The query sent to the agent. This is the question or instruction that will be " +
+            "processed by the agent, which will respond with its own capabilities and knowledge."
         ),
       childAgent:
         ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.AGENT],
@@ -171,7 +168,7 @@ export default async function createServer(
     async ({ query, childAgent: { uri } }, { sendNotification, _meta }) => {
       assert(
         agentLoopContext?.runContext,
-        "agentLoopContext is required where the tool is called."
+        "agentLoopContext is required where the tool is called"
       );
       const { agentConfiguration: mainAgent, conversation: mainConversation } =
         agentLoopContext.runContext;
@@ -183,18 +180,17 @@ export default async function createServer(
       const childAgentId = childAgentIdRes.value;
 
       const user = auth.user();
-      const requestedGroupIds = auth.groups().map((g) => g.sId);
 
       const prodCredentials = await prodAPICredentialsForOwner(owner);
       const api = new DustAPI(
         config.getDustAPIConfig(),
         {
           ...prodCredentials,
-          // We use a system API key here meaning that we can impersonate the user or the groups we
-          // have access to.
           extraHeaders: {
-            ...getHeaderFromGroupIds(requestedGroupIds),
-            ...getHeaderFromRole(auth.role()),
+            // We use a system API key to override the user here (not groups and role) so that the
+            // sub-agent can access the same spaces as the user but also as the sub-agent may rely
+            // on personal actions that have to be operated in the name of the user initiating the
+            // interaction.
             ...getHeaderFromUserEmail(user?.email),
           },
         },
@@ -210,11 +206,12 @@ export default async function createServer(
           mentions: [{ configurationId: childAgentId }],
           context: {
             timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-            username: user?.username ?? "unknown",
-            fullName: user?.fullName(),
-            email: user?.email,
-            profilePictureUrl: user?.imageUrl,
-            origin: "mcp",
+            username: mainAgent.name,
+            fullName: `@${mainAgent.name}`,
+            email: null,
+            profilePictureUrl: mainAgent.pictureUrl,
+            // `run_agent` origin will skip adding the conversation to the user history.
+            origin: "run_agent",
           },
         },
         contentFragment: undefined,
@@ -267,10 +264,23 @@ export default async function createServer(
       }
 
       let finalContent = "";
+      let chainOfThought = "";
       try {
         for await (const event of streamRes.value.eventStream) {
           if (event.type === "generation_tokens") {
-            finalContent += event.text;
+            // Separate content based on classification
+            if (event.classification === "chain_of_thought") {
+              chainOfThought += event.text;
+            } else if (event.classification === "tokens") {
+              finalContent += event.text;
+            } else if (
+              event.classification === "closing_delimiter" &&
+              event.delimiterClassification === "chain_of_thought" &&
+              chainOfThought.length > 0
+            ) {
+              // For closing chain of thought delimiters, add a newline
+              chainOfThought += "\n";
+            }
           } else if (event.type === "agent_error") {
             const errorMessage = `Agent error: ${event.error.message}`;
             return makeMCPToolTextError(errorMessage);
@@ -279,6 +289,35 @@ export default async function createServer(
             return makeMCPToolTextError(errorMessage);
           } else if (event.type === "agent_message_success") {
             break;
+          } else if (event.type === "tool_approve_execution") {
+            // We catch tool approval events and bubble them up as progress notifications to the
+            // parent tool execution.
+            // In the MCP server runner, we translate them into a tool_approve_execution event
+            // that can be ultimately shown to the end user.
+            // This part only passes along the event data without modifying them.
+            const notification: MCPProgressNotificationType = {
+              method: "notifications/progress",
+              params: {
+                progress: 0,
+                total: 1,
+                progressToken: 0,
+                data: {
+                  label: "Waiting for tool approval...",
+                  output: {
+                    type: "tool_approval_bubble_up",
+                    configurationId: event.configurationId,
+                    conversationId: event.conversationId,
+                    messageId: event.messageId,
+                    actionId: event.actionId,
+                    metadata: event.metadata,
+                    stake: event.stake,
+                    inputs: event.inputs,
+                  },
+                },
+              },
+            };
+
+            await sendNotification(notification);
           }
         }
       } catch (streamError) {
@@ -287,7 +326,8 @@ export default async function createServer(
         }`;
         return makeMCPToolTextError(errorMessage);
       }
-      finalContent.trim();
+      finalContent = finalContent.trim();
+      chainOfThought = chainOfThought.trim();
 
       return {
         isError: false,
@@ -306,7 +346,9 @@ export default async function createServer(
             resource: {
               mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.RUN_AGENT_RESULT,
               conversationId: conversation.sId,
-              text: finalContent.trim(),
+              text: finalContent,
+              chainOfThought:
+                chainOfThought.length > 0 ? chainOfThought : undefined,
               uri: `${config.getClientFacingUrl()}/w/${auth.getNonNullableWorkspace().sId}/assistant/${conversation.sId}`,
             },
           },

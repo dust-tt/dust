@@ -90,9 +90,9 @@ export function InvitationsList({
         owner={owner}
         onClose={() => setSelectedInvite(null)}
       />
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-1 pt-2">
         {filteredInvitations.length > 0 && (
-          <Page.H variant="h5">Invitations</Page.H>
+          <Page.H variant="h6">Invitations</Page.H>
         )}
 
         {isInvitationsLoading ? (

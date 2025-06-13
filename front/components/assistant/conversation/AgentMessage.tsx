@@ -64,7 +64,6 @@ import {
   assertNever,
   GLOBAL_AGENTS_SID,
   isOAuthProvider,
-  isOAuthUseCase,
   isSupportedImageContentType,
   isValidScope,
 } from "@app/types";
@@ -173,18 +172,20 @@ export function AgentMessage({
       // Handle validation dialog separately.
       if (eventPayload.data.type === "tool_approve_execution") {
         showValidationDialog({
-          messageId: message.sId,
+          messageId: eventPayload.data.messageId,
           conversationId: eventPayload.data.conversationId,
           actionId: eventPayload.data.actionId,
           inputs: eventPayload.data.inputs,
           stake: eventPayload.data.stake,
           metadata: eventPayload.data.metadata,
+          // TODO(MCP 2025-06-09): Remove this once all extensions are updated.
+          action: eventPayload.data.action,
         });
 
         return;
       }
 
-      // This event is emmited in front/lib/api/assistant/pubsub.ts. It's purpose is to signal the
+      // This event is emitted in front/lib/api/assistant/pubsub.ts. Its purpose is to signal the
       // end of the stream to the client. The message reducer does not, and should not, handle this
       // event, so we just return.
       if (eventPayload.data.type === "end-of-stream") {
@@ -193,7 +194,7 @@ export function AgentMessage({
 
       dispatch(eventPayload.data);
     },
-    [showValidationDialog, message.sId]
+    [showValidationDialog]
   );
 
   useEventSource(
@@ -501,7 +502,6 @@ export function AgentMessage({
         typeof agentMessage.error.metadata?.mcp_server_id === "string" &&
         agentMessage.error.metadata?.mcp_server_id.length > 0 &&
         isOAuthProvider(agentMessage.error.metadata?.provider) &&
-        isOAuthUseCase(agentMessage.error.metadata?.use_case) &&
         isValidScope(agentMessage.error.metadata?.scope)
       ) {
         return (
@@ -509,7 +509,6 @@ export function AgentMessage({
             owner={owner}
             mcpServerId={agentMessage.error.metadata.mcp_server_id}
             provider={agentMessage.error.metadata.provider}
-            useCase={agentMessage.error.metadata.use_case}
             scope={agentMessage.error.metadata.scope}
             retryHandler={async () => retryHandler(agentMessage)}
           />

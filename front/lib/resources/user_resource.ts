@@ -239,9 +239,15 @@ export class UserResource extends BaseResource<UserModel> {
     });
   }
 
+  async recordLoginActivity(date?: Date) {
+    return this.update({
+      lastLoginAt: date ?? new Date(),
+    });
+  }
+
   async delete(
     auth: Authenticator,
-    { transaction }: { transaction?: Transaction }
+    { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, Error>> {
     await this.deleteAllMetadata();
 
@@ -364,6 +370,7 @@ export class UserResource extends BaseResource<UserModel> {
       lastName: this.lastName,
       fullName: this.fullName(),
       image: this.imageUrl,
+      lastLoginAt: this.lastLoginAt?.getTime(),
     };
   }
 

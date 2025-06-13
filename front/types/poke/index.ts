@@ -1,3 +1,6 @@
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+
+import type { ActionGeneratedFileType } from "@app/lib/actions/types";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 
 import type {
@@ -44,6 +47,12 @@ type PokeAgentActionType = AgentMessageType["actions"][0] & {
   appWorkspaceId?: string | null;
   appSpaceId?: string | null;
   appId?: string | null;
+  mcpIO?: {
+    params: Record<string, unknown>;
+    output: CallToolResult["content"] | null;
+    generatedFiles: ActionGeneratedFileType[];
+    isError: boolean;
+  };
 };
 
 export type PokeAgentMessageType = Omit<AgentMessageType, "actions"> & {

@@ -39,7 +39,6 @@ export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
   workspaceVerifiedDomain: string | null;
 }>(async (context, auth, session) => {
   const user = await getUserFromSession(session);
-
   if (!user) {
     return {
       notFound: true,
@@ -54,7 +53,6 @@ export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
   let workspace: Workspace | null = null;
   let workspaceVerifiedDomain: string | null = null;
   let status: "auto-join-disabled" | "revoked";
-
   if (flow === "no-auto-join") {
     status = "auto-join-disabled";
     const workspaceHasDomain = await fetchWorkspaceDetails(user);
@@ -85,7 +83,9 @@ export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
     }
     workspace = res.value;
   } else {
-    throw new Error("No workspace found.");
+    return {
+      notFound: true,
+    };
   }
 
   return {

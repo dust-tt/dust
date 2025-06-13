@@ -27,6 +27,31 @@ export const MODEL_PROVIDER_IDS = [
 ] as const;
 export type ModelProviderIdType = (typeof MODEL_PROVIDER_IDS)[number];
 
+export function getProviderDisplayName(
+  providerId: ModelProviderIdType
+): string {
+  switch (providerId) {
+    case "openai":
+      return "OpenAI";
+    case "anthropic":
+      return "Anthropic";
+    case "mistral":
+      return "Mistral";
+    case "google_ai_studio":
+      return "Google";
+    case "togetherai":
+      return "TogetherAI";
+    case "deepseek":
+      return "DeepSeek";
+    case "fireworks":
+      return "Fireworks";
+    case "xai":
+      return "xAI";
+    default:
+      return providerId;
+  }
+}
+
 export const REASONING_EFFORT_IDS = ["low", "medium", "high"] as const;
 export type ReasoningEffortIdType = (typeof REASONING_EFFORT_IDS)[number];
 
@@ -874,8 +899,10 @@ export const GEMINI_2_5_PRO_PREVIEW_MODEL_CONFIG: ModelConfigurationType = {
   description: "Google's powerful large context model (1m context).",
   shortDescription: "Google's powerful model (preview).",
   isLegacy: false,
+  delimitersConfiguration: CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION,
   generationTokensCount: 2048,
   supportsVision: true,
+  toolUseMetaPrompt: CHAIN_OF_THOUGHT_META_PROMPT,
 };
 
 // DEPRECATED -- Replaced by GA model

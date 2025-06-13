@@ -57,6 +57,7 @@ export type GroupType = {
   sId: string;
   kind: GroupKind;
   workspaceId: ModelId;
+  memberCount: number;
 };
 
 const DustGroupIdsHeader = "X-Dust-Group-Ids";

@@ -1,6 +1,6 @@
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
-import { uniq } from "lodash";
+import { uniq, uniqBy } from "lodash";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getDataSourceViewsUsageByCategory } from "@app/lib/api/agent_data_sources";
@@ -13,6 +13,7 @@ import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
 import type {
   DataSourceWithAgentsUsageType,
@@ -103,11 +104,17 @@ async function handler(
       categories["apps"].count = apps.length;
       categories["actions"].count = actionsCount;
 
-      const currentMembers = (
-        await Promise.all(
-          space.groups.map((group) => group.getActiveMembers(auth))
-        )
-      ).flat();
+      const currentMembers = uniqBy(
+        (
+          await concurrentExecutor(
+            space.groups,
+            (group) => group.getActiveMembers(auth),
+            { concurrency: 10 }
+          )
+        ).flat(),
+        "sId"
+      );
+
       return res.status(200).json({
         space: {
           ...space.toJSON(),

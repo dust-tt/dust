@@ -238,6 +238,8 @@ makeScript(
     for (const workspace of workspaces) {
       const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
+      await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
+
       const workspaceRevertSql = await migrateWorkspaceExtractActions(auth, {
         execute,
         parentLogger,

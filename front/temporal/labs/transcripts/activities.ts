@@ -352,11 +352,25 @@ export async function processTranscriptActivity(
   }
 
   try {
-    await transcriptsConfiguration.recordHistory({
-      fileId,
-      fileName: transcriptTitle.substring(0, 255),
-      workspace: owner,
-    });
+    const labsTranscriptsHistory = await transcriptsConfiguration.recordHistory(
+      {
+        fileId,
+        fileName: transcriptTitle.substring(0, 255),
+        workspace: owner,
+      }
+    );
+    localLogger.info(
+      {
+        labsTranscriptsHistoryId: labsTranscriptsHistory.id,
+        fileName: labsTranscriptsHistory.fileName,
+        fileId: labsTranscriptsHistory.fileId,
+        conversationId: labsTranscriptsHistory.conversationId,
+        stored: labsTranscriptsHistory.stored,
+        createdAt: labsTranscriptsHistory.createdAt,
+        updatedAt: labsTranscriptsHistory.updatedAt,
+      },
+      "[processTranscriptActivity] History record created."
+    );
   } catch (error) {
     if (error instanceof UniqueConstraintError) {
       localLogger.info(
@@ -562,7 +576,7 @@ export async function processTranscriptActivity(
 
     const initialConversation = await createConversation(auth, {
       title: transcriptTitle,
-      visibility: "workspace",
+      visibility: "unlisted",
     });
 
     const baseContext = {

@@ -3,7 +3,13 @@ import { createPlugin } from "@app/lib/api/poke/types";
 import { isManaged, isWebsite } from "@app/lib/data_sources";
 import logger from "@app/logger/logger";
 import type { AdminCommandType } from "@app/types";
-import { CONNECTORS_ERROR_TYPES, ConnectorsAPI, Err, Ok } from "@app/types";
+import {
+  CONNECTORS_ERROR_TYPES,
+  ConnectorsAPI,
+  Err,
+  mapToEnumValues,
+  Ok,
+} from "@app/types";
 
 export const markConnectorAsErrorPlugin = createPlugin({
   manifest: {
@@ -16,7 +22,10 @@ export const markConnectorAsErrorPlugin = createPlugin({
         type: "enum",
         label: "Error Type",
         description: "Select error type to set",
-        values: CONNECTORS_ERROR_TYPES,
+        values: mapToEnumValues(CONNECTORS_ERROR_TYPES, (errorType) => ({
+          label: errorType,
+          value: errorType,
+        })),
       },
     },
   },

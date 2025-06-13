@@ -34,6 +34,7 @@ export class RemoteMCPServerFactory {
       icon: DEFAULT_MCP_SERVER_ICON,
       version: DEFAULT_MCP_ACTION_VERSION,
       authorization: null,
+      oAuthUseCase: null,
     });
   }
 }

@@ -1,12 +1,12 @@
-import type { Plugin } from "@app/lib/api/poke/types";
-import type { PluginArgs, SupportedResourceType } from "@app/types";
+import type { AllPlugins } from "@app/lib/api/poke/types";
+import type { SupportedResourceType } from "@app/types";
 
 import * as allPlugins from "./plugins";
 
 class PluginManager {
-  private plugins: Map<string, Plugin<PluginArgs>> = new Map();
+  private plugins: Map<string, AllPlugins> = new Map();
   private pluginsByResourceType: Partial<
-    Record<SupportedResourceType, Plugin<PluginArgs>[]>
+    Record<SupportedResourceType, AllPlugins[]>
   > = {};
 
   constructor() {
@@ -29,23 +29,21 @@ class PluginManager {
     }
   }
 
-  private isPlugin(obj: any): obj is Plugin<PluginArgs> {
+  private isPlugin(obj: any): obj is AllPlugins {
     return obj && typeof obj === "object" && "manifest" in obj;
   }
 
   private getResourceTypesFromPlugin(
-    plugin: Plugin<PluginArgs>
+    plugin: AllPlugins
   ): SupportedResourceType[] {
     return plugin.manifest.resourceTypes || ["default"];
   }
 
-  getPluginsForResourceType(
-    resourceType: SupportedResourceType
-  ): Plugin<PluginArgs>[] {
+  getPluginsForResourceType(resourceType: SupportedResourceType): AllPlugins[] {
     return this.pluginsByResourceType[resourceType] || [];
   }
 
-  getPluginById(pluginId: string): Plugin<PluginArgs> | undefined {
+  getPluginById(pluginId: string): AllPlugins | undefined {
     return this.plugins.get(pluginId);
   }
 }

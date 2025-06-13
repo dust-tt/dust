@@ -58,8 +58,12 @@ export function useMcpServer() {
           return;
         }
 
-        const result = await platform.mcp.getOrCreateServer(dustAPI);
-
+        const result = await platform.mcp.getOrCreateServer(
+          dustAPI,
+          (serverId) => {
+            setServerId(serverId);
+          }
+        );
         if (!result.server) {
           console.log("MCP server creation returned null");
           if (isMounted) {

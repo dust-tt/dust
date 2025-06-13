@@ -9,7 +9,10 @@ import type { WhitelistableFeature, WithAPIErrorResponse } from "@app/types";
 import { isWhitelistableFeature } from "@app/types";
 
 export type GetPokeFeaturesResponseBody = {
-  features: WhitelistableFeature[];
+  features: {
+    name: WhitelistableFeature;
+    createdAt: string;
+  }[];
 };
 
 export type CreateOrDeleteFeatureFlagResponseBody = {
@@ -52,77 +55,20 @@ async function handler(
     });
   }
 
-  let existingFlag: FeatureFlag | null = null;
-  if (flag) {
-    existingFlag = await FeatureFlag.findOne({
-      where: {
-        workspaceId: owner.id,
-        name: flag,
-      },
-    });
-  }
-
   switch (req.method) {
     case "GET":
-      const flags = (
-        await FeatureFlag.findAll({
-          where: {
-            workspaceId: owner.id,
-          },
-        })
-      ).map((f) => f.name);
-
-      return res.status(200).json({ features: flags });
-
-    case "POST":
-      if (!flag) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: "The name of the feature flag is required.",
-          },
-        });
-      }
-      if (existingFlag) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "feature_flag_already_exists",
-            message: "The feature flag already exists.",
-          },
-        });
-      }
-
-      await FeatureFlag.create({
-        workspaceId: owner.id,
-        name: flag,
+      const flags = await FeatureFlag.findAll({
+        where: {
+          workspaceId: owner.id,
+        },
       });
 
-      return res.status(200).json({ success: true });
+      const features = flags.map((f) => ({
+        name: f.name,
+        createdAt: f.createdAt.toISOString(),
+      }));
 
-    case "DELETE":
-      if (!flag) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: "The name of the feature flag is required.",
-          },
-        });
-      }
-      if (!existingFlag) {
-        return apiError(req, res, {
-          status_code: 404,
-          api_error: {
-            type: "feature_flag_not_found",
-            message: "Could not find the feature flag.",
-          },
-        });
-      }
-
-      await existingFlag.destroy();
-      return res.status(200).json({ success: true });
+      return res.status(200).json({ features });
 
     default:
       return apiError(req, res, {

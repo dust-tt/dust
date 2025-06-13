@@ -14,6 +14,7 @@ export type SpaceType = {
   groupIds: string[];
   isRestricted: boolean;
   kind: SpaceKind;
+  managementMode: "manual" | "group";
   name: string;
   sId: string;
   updatedAt: number;

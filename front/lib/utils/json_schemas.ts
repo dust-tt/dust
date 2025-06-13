@@ -128,6 +128,10 @@ export function setValueAtPath(
   current[path[path.length - 1]] = value;
 }
 
+/**
+ * Validates a generic JSON schema as per the JSON schema specification.
+ * Less strict than the JsonSchemaSchema zod schema.
+ */
 export function validateJsonSchema(value: object | string | null | undefined): {
   isValid: boolean;
   error?: string;

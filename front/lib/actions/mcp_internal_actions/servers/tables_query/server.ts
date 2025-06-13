@@ -49,6 +49,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
   description: "Tables, Spreadsheets, Notion DBs (quantitative).",
   icon: "ActionTableIcon",
   authorization: null,
+  documentationUrl: null,
 };
 
 function createServer(

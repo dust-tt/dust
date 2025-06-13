@@ -37,9 +37,9 @@ export type DustErrorCode =
   // Space errors
   | "space_already_exists";
 
-export class DustError extends Error {
+export class DustError<T extends DustErrorCode = DustErrorCode> extends Error {
   constructor(
-    readonly code: DustErrorCode,
+    readonly code: T,
     message: string
   ) {
     super(message);

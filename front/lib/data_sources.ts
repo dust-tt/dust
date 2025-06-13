@@ -5,6 +5,7 @@ import type {
   CoreAPIDocument,
   DataSourceType,
   DataSourceViewType,
+  WhitelistableFeature,
   WithConnector,
 } from "@app/types";
 
@@ -92,8 +93,15 @@ const STRUCTURED_DATA_SOURCES: ConnectorProvider[] = [
   "salesforce",
 ];
 
-export function supportsDocumentsData(ds: DataSource): boolean {
-  return !isRemoteDatabase(ds);
+export function supportsDocumentsData(
+  ds: DataSource,
+  featureFlags: WhitelistableFeature[]
+): boolean {
+  return (
+    !isRemoteDatabase(ds) ||
+    (ds.connectorProvider === "salesforce" &&
+      featureFlags.includes("salesforce_synced_queries"))
+  );
 }
 
 export function supportsStructuredData(ds: DataSource): boolean {

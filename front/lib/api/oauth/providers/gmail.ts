@@ -56,6 +56,7 @@ export class GmailOAuthProvider implements BaseOAuthStrategyProvider {
       if (extraConfig.mcp_server_id) {
         return true;
       }
+    } else if (useCase === "platform_actions") {
       return !!(extraConfig.client_id && extraConfig.client_secret);
     }
     return Object.keys(extraConfig).length === 0;

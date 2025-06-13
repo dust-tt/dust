@@ -67,7 +67,7 @@ const AssistantDetailsPage = ({
     <div>
       <div className="flex">
         <h3 className="flex-grow text-xl font-bold">
-          Assistant of workspace:{" "}
+          Agent of workspace:{" "}
           <a href={`/poke/${workspace.sId}`} className="text-highlight-500">
             {workspace.name}
           </a>

@@ -1,5 +1,6 @@
 import type { Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
+import type { Record } from "jsforce";
 
 import { ConnectorManagerError } from "@connectors/connectors/interface";
 import type { SalesforceAPICredentials } from "@connectors/connectors/salesforce/lib/oauth";
@@ -36,3 +37,18 @@ export const getConnectorAndCredentials = async (
     credentials,
   });
 };
+
+export function syncQueryTemplateInterpolate(
+  template: string,
+  record: Record,
+  hardCheck = true
+): string {
+  return template.replace(/\$\{([^}]+)\}/g, (_, m) => {
+    const key = m.split(".")[1].trim();
+    if (!(key in record) && hardCheck) {
+      throw new Error(`Key ${key} not found in record`);
+    }
+    const value = record[key];
+    return value?.toString() || "";
+  });
+}

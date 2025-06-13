@@ -9,6 +9,8 @@ import {
 } from "@app/lib/actions/action_file_helpers";
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type {
+  ExecuteTablesQueryMarkerResourceType,
+  GetDatabaseSchemaMarkerResourceType,
   SqlQueryOutputType,
   ThinkingOutputType,
   ToolGeneratedFileType,
@@ -24,6 +26,7 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/servers/tables_query/server";
 import { fetchAgentTableConfigurations } from "@app/lib/actions/mcp_internal_actions/servers/utils";
 import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
+import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import config from "@app/lib/api/config";
 import type { CSVRecord } from "@app/lib/api/csv";
@@ -37,7 +40,9 @@ import { CoreAPI } from "@app/types/core/core_api";
 type TablesQueryOutputResources =
   | ThinkingOutputType
   | SqlQueryOutputType
-  | ToolGeneratedFileType;
+  | ToolGeneratedFileType
+  | GetDatabaseSchemaMarkerResourceType
+  | ExecuteTablesQueryMarkerResourceType;
 
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "query_tables_v2",
@@ -46,6 +51,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
     "Tables, Spreadsheets, Notion DBs (quantitative) (mcp, exploded).",
   icon: "ActionTableIcon",
   authorization: null,
+  documentationUrl: null,
 };
 
 function createServer(
@@ -116,6 +122,15 @@ function createServer(
       return {
         isError: false,
         content: [
+          {
+            type: "resource",
+            resource: {
+              text: "get_database_schema_marker",
+              mimeType:
+                INTERNAL_MIME_TYPES.TOOL_OUTPUT.GET_DATABASE_SCHEMA_MARKER,
+              uri: "",
+            },
+          },
           ...getSchemaContent(schemaResult.value.schemas),
           ...getQueryWritingInstructionsContent(schemaResult.value.dialect),
           ...getDatabaseExampleRowsContent(schemaResult.value.schemas),
@@ -139,168 +154,207 @@ function createServer(
         .string()
         .describe("The name of the file to save the results to."),
     },
-    async ({ tables, query, fileName }) => {
-      // TODO(mcp): @fontanierh: we should not have a strict dependency on the agentLoopRunContext.
-      if (!agentLoopContext?.runContext) {
-        throw new Error("Unreachable: missing agentLoopContext.");
-      }
+    withToolLogging(
+      auth,
+      "tables_query",
+      async ({ tables, query, fileName }) => {
+        // TODO(mcp): @fontanierh: we should not have a strict dependency on the agentLoopRunContext.
+        if (!agentLoopContext?.runContext) {
+          throw new Error("Unreachable: missing agentLoopContext.");
+        }
 
-      const agentLoopRunContext = agentLoopContext.runContext;
+        const agentLoopRunContext = agentLoopContext.runContext;
 
-      // Fetch table configurations
-      const agentTableConfigurationsRes = await fetchAgentTableConfigurations(
-        auth,
-        tables
-      );
-      if (agentTableConfigurationsRes.isErr()) {
-        return makeMCPToolTextError(
-          `Error fetching table configurations: ${agentTableConfigurationsRes.error.message}`
-        );
-      }
-      const agentTableConfigurations = agentTableConfigurationsRes.value;
-      if (agentTableConfigurations.length === 0) {
-        return makeMCPToolTextError(
-          "The agent does not have access to any tables. Please edit the agent's Query Tables tool to add tables, or remove the tool."
-        );
-      }
-      const dataSourceViews = await DataSourceViewResource.fetchByModelIds(
-        auth,
-        [...new Set(agentTableConfigurations.map((t) => t.dataSourceViewId))]
-      );
-      const dataSourceViewsMap = new Map(
-        dataSourceViews.map((dsv) => [dsv.id, dsv])
-      );
-
-      // Call Core API's /query_database endpoint
-      const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-      const queryResult = await coreAPI.queryDatabase({
-        tables: agentTableConfigurations.map((t) => {
-          const dataSourceView = dataSourceViewsMap.get(t.dataSourceViewId);
-          if (
-            !dataSourceView ||
-            !dataSourceView.dataSource.dustAPIDataSourceId
-          ) {
-            throw new Error(
-              `Missing data source ID for view ${t.dataSourceViewId}`
-            );
-          }
-          return {
-            project_id: parseInt(dataSourceView.dataSource.dustAPIProjectId),
-            data_source_id: dataSourceView.dataSource.dustAPIDataSourceId,
-            table_id: t.tableId,
-          };
-        }),
-        query,
-      });
-      if (queryResult.isErr()) {
-        return makeMCPToolTextError(
-          `Error executing database query: ${queryResult.error.message}`
-        );
-      }
-
-      const content: {
-        type: "resource";
-        resource: TablesQueryOutputResources;
-      }[] = [];
-
-      const results: CSVRecord[] = queryResult.value.results
-        .map((r) => r.value)
-        .filter(
-          (record) =>
-            record !== undefined &&
-            record !== null &&
-            typeof record === "object"
-        );
-
-      if (results.length > 0) {
-        // date in yyyy-mm-dd
-        const humanReadableDate = new Date().toISOString().split("T")[0];
-        const queryTitle = `${fileName} (${humanReadableDate})`;
-
-        // Generate the CSV file.
-        const { csvFile, csvSnippet } = await generateCSVFileAndSnippet(auth, {
-          title: queryTitle,
-          conversationId: agentLoopRunContext.conversation.sId,
-          results,
-        });
-
-        // Upload the CSV file to the conversation data source.
-        await uploadFileToConversationDataSource({
+        // Fetch table configurations
+        const agentTableConfigurationsRes = await fetchAgentTableConfigurations(
           auth,
-          file: csvFile,
-        });
+          tables
+        );
+        if (agentTableConfigurationsRes.isErr()) {
+          return makeMCPToolTextError(
+            `Error fetching table configurations: ${agentTableConfigurationsRes.error.message}`
+          );
+        }
+        const agentTableConfigurations = agentTableConfigurationsRes.value;
+        if (agentTableConfigurations.length === 0) {
+          return makeMCPToolTextError(
+            "The agent does not have access to any tables. Please edit the agent's Query Tables tool to add tables, or remove the tool."
+          );
+        }
+        const dataSourceViews = await DataSourceViewResource.fetchByModelIds(
+          auth,
+          [...new Set(agentTableConfigurations.map((t) => t.dataSourceViewId))]
+        );
+        const dataSourceViewsMap = new Map(
+          dataSourceViews.map((dsv) => [dsv.id, dsv])
+        );
 
-        // Append the CSV file to the output of the tool as an agent-generated file.
+        // Call Core API's /query_database endpoint
+        const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+        const queryResult = await coreAPI.queryDatabase({
+          tables: agentTableConfigurations.map((t) => {
+            const dataSourceView = dataSourceViewsMap.get(t.dataSourceViewId);
+            if (
+              !dataSourceView ||
+              !dataSourceView.dataSource.dustAPIDataSourceId
+            ) {
+              throw new Error(
+                `Missing data source ID for view ${t.dataSourceViewId}`
+              );
+            }
+            return {
+              project_id: parseInt(dataSourceView.dataSource.dustAPIProjectId),
+              data_source_id: dataSourceView.dataSource.dustAPIDataSourceId,
+              table_id: t.tableId,
+            };
+          }),
+          query,
+        });
+        if (queryResult.isErr()) {
+          return {
+            isError: true,
+            content: [
+              {
+                type: "resource",
+                resource: {
+                  text: "execute_tables_query_marker",
+                  mimeType:
+                    INTERNAL_MIME_TYPES.TOOL_OUTPUT.EXECUTE_TABLES_QUERY_MARKER,
+                  uri: "",
+                },
+              },
+              {
+                type: "resource",
+                resource: {
+                  text:
+                    "Error executing database query: " +
+                    queryResult.error.message,
+                  mimeType:
+                    INTERNAL_MIME_TYPES.TOOL_OUTPUT.EXECUTE_TABLES_QUERY_ERROR,
+                  uri: "",
+                },
+              },
+            ],
+          };
+        }
+
+        const content: {
+          type: "resource";
+          resource: TablesQueryOutputResources;
+        }[] = [];
+
+        const results: CSVRecord[] = queryResult.value.results
+          .map((r) => r.value)
+          .filter(
+            (record) =>
+              record !== undefined &&
+              record !== null &&
+              typeof record === "object"
+          );
+
         content.push({
           type: "resource",
           resource: {
-            text: `Your query results were generated successfully.`,
-            uri: csvFile.getPublicUrl(auth),
-            mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
-            fileId: csvFile.sId,
-            title: queryTitle,
-            contentType: csvFile.contentType,
-            snippet: csvSnippet,
+            text: "tables_query_v2",
+            mimeType:
+              INTERNAL_MIME_TYPES.TOOL_OUTPUT.EXECUTE_TABLES_QUERY_MARKER,
+            uri: "",
           },
         });
 
-        // Check if we should generate a section JSON file.
-        const shouldGenerateSectionFile = results.some((result) =>
-          Object.values(result).some(
-            (value) =>
-              typeof value === "string" &&
-              value.length > TABLES_QUERY_SECTION_FILE_MIN_COLUMN_LENGTH
-          )
-        );
+        if (results.length > 0) {
+          // date in yyyy-mm-dd
+          const humanReadableDate = new Date().toISOString().split("T")[0];
+          const queryTitle = `${fileName} (${humanReadableDate})`;
 
-        if (shouldGenerateSectionFile) {
-          // First, we fetch the connector provider for the data source, cause the chunking
-          // strategy of the section file depends on it: Since all tables are from the same
-          // data source, we can just take the first table's data source view id.
-          const [dataSourceView] = await DataSourceViewResource.fetchByModelIds(
+          // Generate the CSV file.
+          const { csvFile, csvSnippet } = await generateCSVFileAndSnippet(
             auth,
-            [agentTableConfigurations[0].dataSourceViewId]
+            {
+              title: queryTitle,
+              conversationId: agentLoopRunContext.conversation.sId,
+              results,
+            }
           );
-          const connectorProvider =
-            dataSourceView?.dataSource?.connectorProvider ?? null;
-          const sectionColumnsPrefix =
-            getSectionColumnsPrefix(connectorProvider);
 
-          // Generate the section file.
-          const sectionFile = await generateSectionFile(auth, {
-            title: queryTitle,
-            conversationId: agentLoopRunContext.conversation.sId,
-            results,
-            sectionColumnsPrefix,
-          });
-
-          // Upload the section file to the conversation data source.
+          // Upload the CSV file to the conversation data source.
           await uploadFileToConversationDataSource({
             auth,
-            file: sectionFile,
+            file: csvFile,
           });
 
-          // Append the section file to the output of the tool as an agent-generated file.
+          // Append the CSV file to the output of the tool as an agent-generated file.
           content.push({
             type: "resource",
             resource: {
-              text: "Your query results were generated successfully.",
-              uri: sectionFile.getPublicUrl(auth),
+              text: `Your query results were generated successfully.`,
+              uri: csvFile.getPublicUrl(auth),
               mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
-              fileId: sectionFile.sId,
-              title: `${queryTitle} (Rich Text)`,
-              contentType: sectionFile.contentType,
-              snippet: null,
+              fileId: csvFile.sId,
+              title: queryTitle,
+              contentType: csvFile.contentType,
+              snippet: csvSnippet,
             },
           });
-        }
-      }
 
-      return {
-        isError: false,
-        content,
-      };
-    }
+          // Check if we should generate a section JSON file.
+          const shouldGenerateSectionFile = results.some((result) =>
+            Object.values(result).some(
+              (value) =>
+                typeof value === "string" &&
+                value.length > TABLES_QUERY_SECTION_FILE_MIN_COLUMN_LENGTH
+            )
+          );
+
+          if (shouldGenerateSectionFile) {
+            // First, we fetch the connector provider for the data source, cause the chunking
+            // strategy of the section file depends on it: Since all tables are from the same
+            // data source, we can just take the first table's data source view id.
+            const [dataSourceView] =
+              await DataSourceViewResource.fetchByModelIds(auth, [
+                agentTableConfigurations[0].dataSourceViewId,
+              ]);
+            const connectorProvider =
+              dataSourceView?.dataSource?.connectorProvider ?? null;
+            const sectionColumnsPrefix =
+              getSectionColumnsPrefix(connectorProvider);
+
+            // Generate the section file.
+            const sectionFile = await generateSectionFile(auth, {
+              title: queryTitle,
+              conversationId: agentLoopRunContext.conversation.sId,
+              results,
+              sectionColumnsPrefix,
+            });
+
+            // Upload the section file to the conversation data source.
+            await uploadFileToConversationDataSource({
+              auth,
+              file: sectionFile,
+            });
+
+            // Append the section file to the output of the tool as an agent-generated file.
+            content.push({
+              type: "resource",
+              resource: {
+                text: "Your query results were generated successfully.",
+                uri: sectionFile.getPublicUrl(auth),
+                mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
+                fileId: sectionFile.sId,
+                title: `${queryTitle} (Rich Text)`,
+                contentType: sectionFile.contentType,
+                snippet: null,
+              },
+            });
+          }
+        }
+
+        return {
+          isError: false,
+          content,
+        };
+      }
+    )
   );
 
   return server;

@@ -67,6 +67,14 @@ async function handler(
             // Return the oauth connectionMetadata to the client to allow them to handle the oauth flow.
             connectionMetadata: r2.error.connectionMetadata,
           });
+        } else {
+          return apiError(req, res, {
+            status_code: 500,
+            api_error: {
+              type: "internal_server_error",
+              message: r2.error.message,
+            },
+          });
         }
       }
       return res.status(200).json({

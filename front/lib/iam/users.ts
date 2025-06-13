@@ -201,6 +201,8 @@ export async function createOrUpdateUser({
       name: externalUser.name,
       firstName,
       lastName,
+      imageUrl: externalUser.picture,
+      lastLoginAt: null,
     });
 
     if (existingWorkOSUser) {

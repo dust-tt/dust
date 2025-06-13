@@ -115,17 +115,25 @@ export function usePokePlans() {
   };
 }
 
-export function usePokeFeatureFlags({ workspaceId }: { workspaceId: string }) {
+export function usePokeFeatureFlags({
+  disabled,
+  owner,
+}: {
+  disabled?: boolean;
+  owner: LightWorkspaceType;
+}) {
   const featureFlagsFetcher: Fetcher<GetPokeFeaturesResponseBody> = fetcher;
 
-  const { data, error } = useSWRWithDefaults(
-    `/api/poke/workspaces/${workspaceId}/features`,
-    featureFlagsFetcher
+  const { data, error, mutate } = useSWRWithDefaults(
+    `/api/poke/workspaces/${owner.sId}/features`,
+    featureFlagsFetcher,
+    { disabled }
   );
 
   return {
-    featureFlags: data?.features ?? emptyArray(),
-    isFeatureFlagsLoading: !error && !data,
-    isFeatureFlagsError: error,
+    data: data?.features ?? emptyArray(),
+    isLoading: !error && !data,
+    isError: error,
+    mutate,
   };
 }

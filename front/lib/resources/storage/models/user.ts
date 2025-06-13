@@ -9,6 +9,8 @@ export class UserModel extends BaseModel<UserModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
+  declare lastLoginAt: Date | null;
+
   declare sId: string;
   declare auth0Sub: string | null;
   declare workOSUserId: string | null;
@@ -35,6 +37,11 @@ UserModel.init(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
+    },
+    lastLoginAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      defaultValue: null,
     },
     sId: {
       type: DataTypes.STRING,

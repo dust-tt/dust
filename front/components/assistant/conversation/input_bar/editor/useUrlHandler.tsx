@@ -10,7 +10,8 @@ import type { URLState } from "./extensions/URLStorageExtension";
 const useUrlHandler = (
   editor: Editor | null,
   selectedNode: DataSourceViewContentNode | null,
-  candidate: UrlCandidate | NodeCandidate | null
+  candidate: UrlCandidate | NodeCandidate | null,
+  onUrlReplaced: () => void
 ) => {
   const replaceUrl = useCallback(
     async (pendingUrl: URLState, node: DataSourceViewContentNode) => {
@@ -94,8 +95,10 @@ const useUrlHandler = (
     const urlState = { ...pendingUrl };
     pendingUrls.delete(nodeId);
 
-    void replaceUrl(urlState, selectedNode);
-  }, [editor, selectedNode, replaceUrl, candidate]);
+    void replaceUrl(urlState, selectedNode).then(() => {
+      onUrlReplaced();
+    });
+  }, [editor, selectedNode, replaceUrl, candidate, onUrlReplaced]);
 };
 
 export default useUrlHandler;

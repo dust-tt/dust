@@ -85,7 +85,7 @@ RemoteMCPServerModel.init(
       defaultValue: null,
     },
     sharedSecret: {
-      type: DataTypes.STRING,
+      type: DataTypes.TEXT,
       allowNull: true,
     },
     authorization: {

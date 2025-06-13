@@ -1,15 +1,14 @@
+import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import assert from "assert";
 import { google } from "googleapis";
 import { z } from "zod";
 
-import { makeMCPToolPersonalAuthenticationRequiredError } from "@app/lib/actions/mcp_internal_actions/authentication";
-import { getConnectionForInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/authentication";
 import {
   makeMCPToolJSONSuccess,
   makeMCPToolTextError,
 } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
-import type { Authenticator } from "@app/lib/auth";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 const serverInfo: InternalMCPServerDefinitionType = {
@@ -18,26 +17,23 @@ const serverInfo: InternalMCPServerDefinitionType = {
   description: "Tools for managing Google calendars and events.",
   authorization: {
     provider: "gmail",
-    use_case: "personal_actions",
+    supported_use_cases: ["personal_actions"] as const,
     scope:
       "https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/calendar.events" as const,
   },
   icon: "GcalLogo",
-  documentationUrl: "https://docs.dust.tt/docs/google-calendar",
+  documentationUrl: "https://docs.dust.tt/docs/gmail",
 };
 
-const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
+const createServer = (): McpServer => {
   const server = new McpServer(serverInfo);
 
-  async function getCalendarClient() {
-    const connection = await getConnectionForInternalMCPServer(auth, {
-      mcpServerId,
-      connectionType: "personal",
-    });
-    const accessToken = connection?.access_token;
+  async function getCalendarClient(authInfo?: AuthInfo) {
+    const accessToken = authInfo?.token;
     if (!accessToken) {
       return null;
     }
+
     const oauth2Client = new google.auth.OAuth2();
     oauth2Client.setCredentials({ access_token: accessToken });
     return google.calendar({
@@ -56,14 +52,13 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
         .optional()
         .describe("Maximum number of calendars to return (max 250)."),
     },
-    async ({ pageToken, maxResults }) => {
-      const calendar = await getCalendarClient();
-      if (!calendar) {
-        return makeMCPToolPersonalAuthenticationRequiredError(
-          mcpServerId,
-          serverInfo.authorization!
-        );
-      }
+    async ({ pageToken, maxResults }, { authInfo }) => {
+      const calendar = await getCalendarClient(authInfo);
+      assert(
+        calendar,
+        "Calendar client could not be created - it should never happen"
+      );
+
       try {
         const res = await calendar.calendarList.list({
           pageToken,
@@ -107,21 +102,16 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
         .describe("Maximum number of events to return (max 2500)."),
       pageToken: z.string().optional().describe("Page token for pagination."),
     },
-    async ({
-      calendarId = "primary",
-      q,
-      timeMin,
-      timeMax,
-      maxResults,
-      pageToken,
-    }) => {
-      const calendar = await getCalendarClient();
-      if (!calendar) {
-        return makeMCPToolPersonalAuthenticationRequiredError(
-          mcpServerId,
-          serverInfo.authorization!
-        );
-      }
+    async (
+      { calendarId = "primary", q, timeMin, timeMax, maxResults, pageToken },
+      { authInfo }
+    ) => {
+      const calendar = await getCalendarClient(authInfo);
+      assert(
+        calendar,
+        "Calendar client could not be created - it should never happen"
+      );
+
       try {
         const res = await calendar.events.list({
           calendarId,
@@ -153,14 +143,13 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
         .describe("The calendar ID (default: 'primary')."),
       eventId: z.string().describe("The ID of the event to retrieve."),
     },
-    async ({ calendarId = "primary", eventId }) => {
-      const calendar = await getCalendarClient();
-      if (!calendar) {
-        return makeMCPToolPersonalAuthenticationRequiredError(
-          mcpServerId,
-          serverInfo.authorization!
-        );
-      }
+    async ({ calendarId = "primary", eventId }, { authInfo }) => {
+      const calendar = await getCalendarClient(authInfo);
+      assert(
+        calendar,
+        "Calendar client could not be created - it should never happen"
+      );
+
       try {
         const res = await calendar.events.get({
           calendarId,
@@ -201,23 +190,25 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
       location: z.string().optional().describe("Location of the event."),
       colorId: z.string().optional().describe("Color ID for the event."),
     },
-    async ({
-      calendarId = "primary",
-      summary,
-      description,
-      start,
-      end,
-      attendees,
-      location,
-      colorId,
-    }) => {
-      const calendar = await getCalendarClient();
-      if (!calendar) {
-        return makeMCPToolPersonalAuthenticationRequiredError(
-          mcpServerId,
-          serverInfo.authorization!
-        );
-      }
+    async (
+      {
+        calendarId = "primary",
+        summary,
+        description,
+        start,
+        end,
+        attendees,
+        location,
+        colorId,
+      },
+      { authInfo }
+    ) => {
+      const calendar = await getCalendarClient(authInfo);
+      assert(
+        calendar,
+        "Calendar client could not be created - it should never happen"
+      );
+
       try {
         const event: {
           summary: string;
@@ -284,24 +275,26 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
       location: z.string().optional().describe("Location of the event."),
       colorId: z.string().optional().describe("Color ID for the event."),
     },
-    async ({
-      calendarId = "primary",
-      eventId,
-      summary,
-      description,
-      start,
-      end,
-      attendees,
-      location,
-      colorId,
-    }) => {
-      const calendar = await getCalendarClient();
-      if (!calendar) {
-        return makeMCPToolPersonalAuthenticationRequiredError(
-          mcpServerId,
-          serverInfo.authorization!
-        );
-      }
+    async (
+      {
+        calendarId = "primary",
+        eventId,
+        summary,
+        description,
+        start,
+        end,
+        attendees,
+        location,
+        colorId,
+      },
+      { authInfo }
+    ) => {
+      const calendar = await getCalendarClient(authInfo);
+      assert(
+        calendar,
+        "Calendar client could not be created - it should never happen"
+      );
+
       try {
         const event: {
           summary?: string;
@@ -360,14 +353,13 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
         .describe("The calendar ID (default: 'primary')."),
       eventId: z.string().describe("The ID of the event to delete."),
     },
-    async ({ calendarId = "primary", eventId }) => {
-      const calendar = await getCalendarClient();
-      if (!calendar) {
-        return makeMCPToolPersonalAuthenticationRequiredError(
-          mcpServerId,
-          serverInfo.authorization!
-        );
-      }
+    async ({ calendarId = "primary", eventId }, { authInfo }) => {
+      const calendar = await getCalendarClient(authInfo);
+      assert(
+        calendar,
+        "Calendar client could not be created - it should never happen"
+      );
+
       try {
         await calendar.events.delete({
           calendarId,
@@ -380,6 +372,61 @@ const createServer = (auth: Authenticator, mcpServerId: string): McpServer => {
       } catch (err) {
         return makeMCPToolTextError(
           normalizeError(err).message || "Failed to delete event"
+        );
+      }
+    }
+  );
+
+  server.tool(
+    "check_availability",
+    "Check the calendar availability of a specific person for a given time slot.",
+    {
+      email: z
+        .string()
+        .describe("The email address of the person to check availability for"),
+      startTime: z
+        .string()
+        .describe("The start time in ISO format (e.g., 2024-03-20T10:00:00Z)"),
+      endTime: z
+        .string()
+        .describe("The end time in ISO format (e.g., 2024-03-20T11:00:00Z)"),
+      timeZone: z
+        .string()
+        .optional()
+        .describe(
+          "Time zone used in the response. Optional. The default is UTC."
+        ),
+    },
+    async ({ email, startTime, endTime, timeZone }, { authInfo }) => {
+      const calendar = await getCalendarClient(authInfo);
+      assert(
+        calendar,
+        "Calendar client could not be created - it should never happen"
+      );
+
+      try {
+        const res = await calendar.freebusy.query({
+          requestBody: {
+            timeMin: startTime,
+            timeMax: endTime,
+            timeZone,
+            items: [{ id: email }],
+          },
+        });
+        const busySlots = res.data.calendars?.[email]?.busy || [];
+        const available = busySlots.length === 0;
+        return makeMCPToolJSONSuccess({
+          result: {
+            available,
+            busySlots: busySlots.map((slot) => ({
+              start: slot.start || "",
+              end: slot.end || "",
+            })),
+          },
+        });
+      } catch (err) {
+        return makeMCPToolTextError(
+          normalizeError(err).message || "Failed to check calendar availability"
         );
       }
     }

@@ -4,8 +4,8 @@
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
 
 import type {
+  AllPlugins,
   InferPluginArgs,
-  Plugin,
   PluginResponse,
 } from "@app/lib/api/poke/types";
 import type { Authenticator } from "@app/lib/auth";
@@ -26,7 +26,7 @@ import { Err, normalizeError, Ok } from "@app/types";
 import type { UserResource } from "./user_resource";
 
 function redactPluginArgs(
-  plugin: Plugin<PluginArgs>,
+  plugin: AllPlugins,
   args: InferPluginArgs<PluginArgs>
 ) {
   const sanitizedArgs: Record<string, unknown> = {};
@@ -73,7 +73,7 @@ export class PluginRunResource extends BaseResource<PluginRunModel> {
   }
 
   static async makeNew(
-    plugin: Plugin<PluginArgs>,
+    plugin: AllPlugins,
     args: InferPluginArgs<PluginArgs>,
     author: UserResource,
     workspace: LightWorkspaceType | null,

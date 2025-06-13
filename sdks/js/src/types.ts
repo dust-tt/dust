@@ -3,6 +3,7 @@ import moment from "moment-timezone";
 import { z } from "zod";
 
 import { INTERNAL_MIME_TYPES_VALUES } from "./internal_mime_types";
+import { CallToolResultSchema } from "./raw_mcp_types";
 
 type StringLiteral<T> = T extends string
   ? string extends T
@@ -256,13 +257,13 @@ const UserMessageOriginSchema = FlexibleEnumSchema<
   | "github-copilot-chat"
   | "gsheet"
   | "make"
-  | "mcp"
   | "n8n"
   | "raycast"
   | "slack"
   | "web"
   | "zapier"
   | "zendesk"
+  | "run_agent"
 >()
   .or(z.null())
   .or(z.undefined());
@@ -800,20 +801,24 @@ type TablesQueryActionPublicType = z.infer<typeof TablesQueryActionTypeSchema>;
 
 const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "advanced_notion_management"
+  | "agent_builder_v2"
   | "agent_discovery"
   | "claude_3_7_reasoning"
   | "claude_4_opus_feature"
   | "co_edition"
+  | "custom_webcrawler"
   | "deepseek_feature"
   | "deepseek_r1_global_agent_feature"
   | "dev_mcp_actions"
   | "disable_run_logs"
+  | "disallow_agent_creation_to_users"
   | "document_tracker"
-  | "force_gdrive_labels_scope"
+  | "exploded_tables_query"
+  | "extended_max_steps_per_run"
+  | "gmail_tool"
   | "google_ai_studio_experimental_models_feature"
+  | "google_calendar_tool"
   | "index_private_slack_channel"
-  | "labs_connection_hubspot"
-  | "labs_connection_linear"
   | "labs_salesforce_personal_connections"
   | "labs_trackers"
   | "labs_transcripts"
@@ -823,21 +828,18 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "openai_o1_high_reasoning_custom_assistants_feature"
   | "openai_o1_high_reasoning_feature"
   | "openai_o1_mini_feature"
-  | "xai_feature"
   | "pro_plan_salesforce_connector"
   | "salesforce_feature"
+  | "salesforce_synced_queries"
+  | "salesforce_tool"
   | "search_knowledge_builder"
   | "show_debug_tools"
   | "snowflake_connector_feature"
   | "usage_data_api"
-  | "custom_webcrawler"
-  | "exploded_tables_query"
+  | "workos_user_provisioning"
   | "workos"
-  | "salesforce_tool"
-  | "gmail_tool"
-  | "google_calendar_tool"
-  | "agent_builder_v2"
-  | "disallow_agent_creation_to_users"
+  | "xai_feature"
+  | "labs_mcp_actions_dashboard"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -925,6 +927,7 @@ const MCPActionTypeSchema = BaseActionSchema.extend({
   agentMessageId: ModelIdSchema,
   functionCallName: z.string().nullable(),
   params: z.unknown(),
+  output: CallToolResultSchema.shape.content.nullable(),
   type: z.literal("tool_action"),
 });
 
@@ -1325,6 +1328,15 @@ const SearchLabelsParamsEventSchema = z.object({
   action: SearchLabelsActionTypeSchema,
 });
 
+const MCPStakeLevelSchema = z.enum(["low", "high", "never_ask"]).optional();
+
+const MCPValidationMetadataSchema = z.object({
+  mcpServerName: z.string(),
+  toolName: z.string(),
+  agentName: z.string(),
+  pubsubMessageId: z.string().optional(),
+});
+
 const MCPParamsEventSchema = z.object({
   type: z.literal("tool_params"),
   created: z.number(),
@@ -1343,7 +1355,18 @@ const NotificationTextContentSchema = z.object({
   text: z.string(),
 });
 
-const NotificationRunAgentCotnentSchema = z.object({
+const NotificationToolApproveBubbleUpContentSchema = z.object({
+  type: z.literal("tool_approval_bubble_up"),
+  configurationId: z.string(),
+  conversationId: z.string(),
+  messageId: z.string(),
+  actionId: z.string(),
+  inputs: z.record(z.any()),
+  stake: MCPStakeLevelSchema,
+  metadata: MCPValidationMetadataSchema,
+});
+
+const NotificationRunAgentContentSchema = z.object({
   type: z.literal("run_agent"),
   childAgentId: z.string(),
   conversationId: z.string(),
@@ -1353,7 +1376,8 @@ const NotificationRunAgentCotnentSchema = z.object({
 const NotificationContentSchema = z.union([
   NotificationImageContentSchema,
   NotificationTextContentSchema,
-  NotificationRunAgentCotnentSchema,
+  NotificationRunAgentContentSchema,
+  NotificationToolApproveBubbleUpContentSchema,
 ]);
 
 const ToolNotificationProgressSchema = z.object({
@@ -1380,12 +1404,6 @@ const ToolNotificationEventSchema = z.object({
 
 export type ToolNotificationEvent = z.infer<typeof ToolNotificationEventSchema>;
 
-const MCPValidationMetadataSchema = z.object({
-  mcpServerName: z.string(),
-  toolName: z.string(),
-  agentName: z.string(),
-});
-
 export type MCPValidationMetadataPublicType = z.infer<
   typeof MCPValidationMetadataSchema
 >;
@@ -1394,11 +1412,11 @@ const MCPApproveExecutionEventSchema = z.object({
   type: z.literal("tool_approve_execution"),
   created: z.number(),
   configurationId: z.string(),
-  messageId: z.string(),
   conversationId: z.string(),
+  messageId: z.string(),
   actionId: z.string(),
   inputs: z.record(z.any()),
-  stake: z.optional(z.enum(["low", "high", "never_ask"])),
+  stake: MCPStakeLevelSchema,
   metadata: MCPValidationMetadataSchema,
 });
 
@@ -1614,7 +1632,6 @@ const APIErrorTypeSchema = FlexibleEnumSchema<
   | "table_not_found"
   | "template_not_found"
   | "template_not_found"
-  | "labs_connection_configuration_already_exists"
   | "transcripts_configuration_already_exists"
   | "transcripts_configuration_default_not_allowed"
   | "transcripts_configuration_not_found"
@@ -2078,7 +2095,7 @@ export const PublicPostConversationsRequestBodySchema = z.intersection(
   z.object({
     title: z.string().nullable().optional(),
     visibility: z
-      .enum(["unlisted", "workspace", "deleted", "test"])
+      .enum(["workspace", "unlisted", "deleted", "test"])
       .optional()
       .default("unlisted"),
     depth: z.number().optional(),
@@ -2679,6 +2696,12 @@ export function isWebsearchActionType(
   return action.type === "websearch_action";
 }
 
+export function isMCPActionType(
+  action: AgentActionPublicType
+): action is MCPActionPublicType {
+  return action.type === "tool_action";
+}
+
 export function isTablesQueryActionType(
   action: AgentActionPublicType
 ): action is TablesQueryActionPublicType {
@@ -2810,6 +2833,7 @@ const TextSearchBodySchema = z.intersection(
   z.object({
     query: z.string(),
     nodeIds: z.undefined().optional(),
+    searchSourceUrls: z.boolean().optional(),
   })
 );
 
@@ -2918,7 +2942,7 @@ export type ValidateActionResponseType = z.infer<
 >;
 
 export const ValidateActionRequestBodySchema = z.object({
-  actionId: z.string(),
+  actionId: z.union([z.string(), z.number()]),
   approved: z.enum(["approved", "rejected", "always_approved"]),
 });
 
@@ -3003,3 +3027,16 @@ const MCP_VALIDATION_OUTPUTS = [
 ] as const;
 export type MCPValidationOutputPublicType =
   (typeof MCP_VALIDATION_OUTPUTS)[number];
+
+export const PostSpaceMembersRequestBodySchema = z.object({
+  userIds: z.array(z.string()),
+});
+
+export interface PostSpaceMembersResponseBody {
+  space: SpaceType;
+  users: Pick<UserType, "sId" | "id" | "email">[];
+}
+
+export interface GetWorkspaceMembersResponseBody {
+  users: Pick<UserType, "sId" | "id" | "email">[];
+}

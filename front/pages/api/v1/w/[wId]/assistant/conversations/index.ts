@@ -77,13 +77,6 @@ const MAX_CONVERSATION_DEPTH = 4;
  *                 type: string
  *                 description: The title of the conversation
  *                 example: My conversation
- *               visibility:
- *                 type: string
- *                 description: The visibility of the conversation (The API only accepts `unlisted`)
- *                 enum:
- *                   - workspace
- *                   - unlisted
- *                 example: unlisted
  *               skipToolsValidation:
  *                 type: boolean
  *                 description: Whether to skip the tools validation of the agent messages triggered by this user message (optional, defaults to false)
@@ -261,7 +254,8 @@ async function handler(
 
       let conversation = await createConversation(auth, {
         title: title ?? null,
-        visibility,
+        // Temporary translation layer for deprecated "workspace" visibility.
+        visibility: visibility === "workspace" ? "unlisted" : visibility,
         depth,
       });
 

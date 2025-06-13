@@ -9,7 +9,7 @@ import type {
 } from "@app/lib/actions/constants";
 import type { DustAppRunConfigurationType } from "@app/lib/actions/dust_app_run";
 import { tryCallMCPTool } from "@app/lib/actions/mcp_actions";
-import { MCPServerPersonalAuthenticationRequiredError } from "@app/lib/actions/mcp_internal_actions/authentication";
+import { MCPServerPersonalAuthenticationRequiredError } from "@app/lib/actions/mcp_authentication";
 import type { MCPServerAvailability } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
   augmentInputsWithConfiguration,
@@ -17,8 +17,10 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { ProgressNotificationContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
+  isBlobResource,
   isMCPProgressNotificationType,
   isResourceWithName,
+  isToolApproveBubbleUpNotificationType,
   isToolGeneratedFile,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { getMCPEvents } from "@app/lib/actions/pubsub";
@@ -41,6 +43,7 @@ import { getExecutionStatusFromConfig } from "@app/lib/actions/utils";
 import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration";
 import {
   processAndStoreFromUrl,
+  uploadBase64DataToFileStorage,
   uploadBase64ImageToFileStorage,
 } from "@app/lib/api/files/upload";
 import type { Authenticator } from "@app/lib/auth";
@@ -65,6 +68,8 @@ import type {
   ModelConfigurationType,
   ModelId,
   Result,
+  SupportedFileContentType,
+  SupportedImageContentType,
   TimeFrame,
 } from "@app/types";
 import {
@@ -124,6 +129,7 @@ export type ServerSideMCPToolType = Omit<
   availability: MCPServerAvailability;
   permission: MCPToolStakeLevelType;
   toolServerId: string;
+  timeoutMs?: number;
 };
 
 export type ClientSideMCPToolType = Omit<
@@ -134,6 +140,7 @@ export type ClientSideMCPToolType = Omit<
   permission: MCPToolStakeLevelType;
   toolServerId: string;
   type: "mcp_configuration";
+  timeoutMs?: number;
 };
 
 type WithToolNameMetadata<T> = T & {
@@ -153,6 +160,9 @@ export type MCPToolConfigurationType =
 
 export type MCPApproveExecutionEvent = {
   type: "tool_approve_execution";
+  // Temporary code to be backwards compatible with the old actionId format.
+  // TODO(MCP 2025-06-09): Remove this once all extensions are updated.
+  action: MCPActionType;
   created: number;
   configurationId: string;
   messageId: string;
@@ -202,6 +212,7 @@ export type ToolNotificationEvent = {
   type: "tool_notification";
   created: number;
   configurationId: string;
+  conversationId: string;
   messageId: string;
   action: MCPActionType;
   notification: ProgressNotificationContentType;
@@ -352,7 +363,7 @@ export class MCPActionType extends BaseAction {
     });
   }
 
-  private static modelIdToSId({
+  static modelIdToSId({
     id,
     workspaceId,
   }: {
@@ -503,6 +514,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
         messageId: agentMessage.sId,
         conversationId: conversation.sId,
         actionId: mcpAction.getSId(owner),
+        action: mcpAction,
         inputs: rawInputs,
         stake: actionConfiguration.permission,
         metadata: {
@@ -659,14 +671,51 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       } else if (event.type === "notification") {
         const { notification } = event;
         if (isMCPProgressNotificationType(notification)) {
-          yield {
-            type: "tool_notification",
-            created: Date.now(),
-            configurationId: agentConfiguration.sId,
-            messageId: agentMessage.sId,
-            action: mcpAction,
-            notification: notification.params,
-          };
+          const { output: notificationOutput } = notification.params.data;
+          // Tool approval notifications have a specific handling:
+          // they are not yielded as regular notifications but are bubbled up as
+          // `tool_approval_bubble_up` events instead. We attach the messageId from the
+          // main conversation as `pubsubMessageId` to route the event to the main conversation channel.
+          if (isToolApproveBubbleUpNotificationType(notificationOutput)) {
+            const {
+              conversationId,
+              messageId,
+              configurationId,
+              actionId,
+              inputs,
+              stake,
+              metadata,
+            } = notificationOutput;
+
+            yield {
+              created: Date.now(),
+              type: "tool_approve_execution",
+              // Added to make it backwards compatible, this is not the action of sub agent but it won't be used.
+              // TODO(MCP 2025-06-09): Remove this once all extensions are updated.
+              action: mcpAction,
+              configurationId,
+              conversationId,
+              messageId,
+              actionId,
+              inputs,
+              stake,
+              metadata: {
+                ...metadata,
+                pubsubMessageId: agentMessage.sId,
+              },
+            };
+          } else {
+            // Regular notifications, we yield them as is with the type "tool_notification".
+            yield {
+              type: "tool_notification",
+              created: Date.now(),
+              configurationId: agentConfiguration.sId,
+              conversationId: conversation.sId,
+              messageId: agentMessage.sId,
+              action: mcpAction,
+              notification: notification.params,
+            };
+          }
         }
       }
     }
@@ -706,7 +755,6 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
             metadata: {
               mcp_server_id: toolCallResult.error.mcpServerId,
               provider: toolCallResult.error.provider,
-              use_case: toolCallResult.error.useCase,
               ...(toolCallResult.error.scope && {
                 scope: toolCallResult.error.scope,
               }),
@@ -745,6 +793,107 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       conversationId: conversation.sId,
     };
 
+    async function handleBase64Upload(
+      base64Data: string,
+      mimeType: string,
+      fileName: string,
+      block: CallToolResult["content"][number]
+    ): Promise<{
+      content: CallToolResult["content"][number];
+      file: FileResource | null;
+    }> {
+      const resourceType = isSupportedFileContentType(mimeType)
+        ? "file"
+        : isSupportedImageContentType(mimeType)
+          ? "image"
+          : null;
+
+      if (!resourceType) {
+        return {
+          content: {
+            type: "text",
+            text: `The mime type of the generated resource (${mimeType}) is not supported.`,
+          },
+          file: null,
+        };
+      }
+
+      if (base64Data.length > MAX_BLOB_SIZE_BYTES) {
+        return {
+          content: {
+            type: "text",
+            text: `The generated ${resourceType} was too large to be stored.`,
+          },
+          file: null,
+        };
+      }
+
+      try {
+        const uploadResult =
+          resourceType === "image"
+            ? await uploadBase64ImageToFileStorage(auth, {
+                base64: base64Data,
+                // Cast is valid because of the previous check.
+                contentType: mimeType as SupportedImageContentType,
+                fileName,
+                useCase: fileUseCase,
+                useCaseMetadata: fileUseCaseMetadata,
+              })
+            : await uploadBase64DataToFileStorage(auth, {
+                base64: base64Data,
+                // Cast is valid because of the previous check.
+                contentType: mimeType as SupportedFileContentType,
+                fileName,
+                useCase: fileUseCase,
+                useCaseMetadata: fileUseCaseMetadata,
+              });
+
+        if (uploadResult.isErr()) {
+          localLogger.error(
+            { error: uploadResult.error },
+            `Error upserting ${resourceType} from base64`
+          );
+          return {
+            content: {
+              type: "text",
+              text: `Failed to upsert the generated ${resourceType} as a file.`,
+            },
+            file: null,
+          };
+        }
+
+        return {
+          content: {
+            ...block,
+            // Remove the data from the block to avoid storing it in the database.
+            ...(block.type === "image" ? { data: "" } : {}),
+            ...(isBlobResource(block)
+              ? { resource: { ...block.resource, blob: "" } }
+              : {}),
+          },
+          file: uploadResult.value,
+        };
+      } catch (error) {
+        logger.error(
+          {
+            action: "mcp_tool",
+            tool: `generate_${resourceType}`,
+            workspaceId: owner.sId,
+            error,
+          },
+          `Failed to save the generated ${resourceType}.`
+        );
+
+        return {
+          content: {
+            type: "text",
+            text: `Failed to save the generated ${resourceType}.`,
+          },
+          file: null,
+        };
+      }
+    }
+
     const cleanContent: {
       content: CallToolResult["content"][number];
       file: FileResource | null;
@@ -762,78 +911,16 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
             };
           }
           case "image": {
-            if (block.data.length > MAX_BLOB_SIZE_BYTES) {
-              return {
-                content: {
-                  type: "text",
-                  text: "The generated image was too large to be stored.",
-                },
-                file: null,
-              };
-            }
-            if (!isSupportedImageContentType(block.mimeType)) {
-              return {
-                content: {
-                  type: "text",
-                  text: "The mime type of the image generated is not supported.",
-                },
-                file: null,
-              };
-            }
-            try {
-              const imageUpsertResult = await uploadBase64ImageToFileStorage(
-                auth,
-                {
-                  base64: block.data,
-                  contentType: block.mimeType,
-                  fileName: isResourceWithName(block)
-                    ? block.name
-                    : `generated-image-${Date.now()}.${extensionsForContentType(block.mimeType)[0]}`,
-                  useCase: fileUseCase,
-                  useCaseMetadata: fileUseCaseMetadata,
-                }
-              );
+            const fileName = isResourceWithName(block)
+              ? block.name
+              : `generated-image-${Date.now()}.${extensionsForContentType(block.mimeType as SupportedImageContentType)[0]}`;
 
-              if (imageUpsertResult.isErr()) {
-                localLogger.error(
-                  { error: imageUpsertResult.error },
-                  "Error upserting image from base64"
-                );
-                return {
-                  content: {
-                    type: "text",
-                    text: "Failed to upsert the generated image as a file.",
-                  },
-                  file: null,
-                };
-              }
-
-              return {
-                content: {
-                  ...block,
-                  data: "", // Remove the data from the block to avoid storing it in the database.
-                },
-                file: imageUpsertResult.value,
-              };
-            } catch (error) {
-              logger.error(
-                {
-                  action: "mcp_tool",
-                  tool: "generate_image",
-                  workspaceId: owner.sId,
-                  error,
-                },
-                "Failed to save the generated image."
-              );
-
-              return {
-                content: {
-                  type: "text",
-                  text: "Failed to save the generated image.",
-                },
-                file: null,
-              };
-            }
+            return handleBase64Upload(
+              block.data,
+              block.mimeType,
+              fileName,
+              block
+            );
           }
           case "audio": {
             return {
@@ -865,6 +952,19 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
               // File generated by the tool, not upserted yet.
               isSupportedFileContentType(block.resource.mimeType)
             ) {
+              if (isBlobResource(block)) {
+                const fileName = isResourceWithName(block)
+                  ? block.name
+                  : `generated-file-${Date.now()}.${extensionsForContentType(block.resource.mimeType as SupportedFileContentType)[0]}`;
+
+                return handleBase64Upload(
+                  block.resource.blob,
+                  block.resource.mimeType,
+                  fileName,
+                  block
+                );
+              }
+
               const fileName = isResourceWithName(block.resource)
                 ? block.resource.name
                 : block.resource.uri.split("/").pop() ?? "generated-file";
@@ -895,21 +995,22 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
                 content: block,
                 file: fileUpsertResult.value,
               };
-            }
-            // Generic case for other kinds of resources.
-            return {
-              content: {
-                type: block.type,
-                resource: {
-                  ...block.resource,
-                  ...("text" in block.resource &&
-                  typeof block.resource.text === "string"
-                    ? { text: stripNullBytes(block.resource.text) }
-                    : {}),
+            } else {
+              // Generic case for other kinds of resources.
+              return {
+                content: {
+                  type: block.type,
+                  resource: {
+                    ...block.resource,
+                    ...("text" in block.resource &&
+                    typeof block.resource.text === "string"
+                      ? { text: stripNullBytes(block.resource.text) }
+                      : {}),
+                  },
                 },
-              },
-              file: null,
-            };
+                file: null,
+              };
+            }
           }
           default:
             assertNever(block);

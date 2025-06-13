@@ -1,5 +1,11 @@
 import {
+  Button,
+  Chip,
   ContentMessage,
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
   InformationCircleIcon,
   Input,
   Label,
@@ -7,49 +13,79 @@ import {
 import { useEffect, useState } from "react";
 
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata";
-import type { OAuthCredentialInputs, OAuthCredentials } from "@app/types";
+import type {
+  MCPOAuthUseCase,
+  OAuthCredentialInputs,
+  OAuthCredentials,
+} from "@app/types";
 import {
   getProviderRequiredOAuthCredentialInputs,
   isSupportedOAuthCredential,
   OAUTH_PROVIDER_NAMES,
 } from "@app/types";
 
+const OAUTH_USE_CASE_TO_LABEL: Record<MCPOAuthUseCase, string> = {
+  platform_actions: "Workspace",
+  personal_actions: "Personal",
+};
+
 type MCPServerOauthConnexionProps = {
-  authorization: AuthorizationInfo | null;
+  remoteMCPServerUrl?: string;
+  authorization: AuthorizationInfo;
   authCredentials: OAuthCredentials | null;
+  useCase: MCPOAuthUseCase | null;
+  setUseCase: (useCase: MCPOAuthUseCase) => void;
   setAuthCredentials: (authCredentials: OAuthCredentials) => void;
   setIsFormValid: (isFormValid: boolean) => void;
   documentationUrl?: string;
 };
 
 export function MCPServerOAuthConnexion({
+  remoteMCPServerUrl,
   authorization,
   authCredentials,
+  useCase,
+  setUseCase,
   setAuthCredentials,
   setIsFormValid,
   documentationUrl,
 }: MCPServerOauthConnexionProps) {
+  const [containerRef, setContainerRef] = useState<HTMLDivElement | null>(null);
   const [inputs, setInputs] = useState<OAuthCredentialInputs | null>(null);
 
-  // We fetch the credential inputs for this provider and use case.
   useEffect(() => {
-    const fetchCredentialInputs = async () => {
-      const credentialInputs =
-        await getProviderRequiredOAuthCredentialInputs(authorization);
-      setInputs(credentialInputs);
-      // Set the auth credentials to the values in the credentials object
-      // that already have a value as we will not ask the user for these values.
-      if (credentialInputs) {
-        setAuthCredentials(
-          Object.entries(credentialInputs).reduce(
-            (acc, [key, { value }]) => ({ ...acc, [key]: value }),
-            {}
-          )
+    // Pick first choice by default.
+    if (authorization.supported_use_cases.length > 0 && !useCase) {
+      setUseCase(authorization.supported_use_cases[0]);
+    }
+  }, [authorization.supported_use_cases, setUseCase, useCase]);
+
+  useEffect(() => {
+    if (useCase) {
+      // We fetch the credential inputs for this provider and use case.
+      const fetchCredentialInputs = async () => {
+        const credentialInputs = await getProviderRequiredOAuthCredentialInputs(
+          {
+            provider: authorization.provider,
+            useCase: useCase,
+          }
         );
-      }
-    };
-    void fetchCredentialInputs();
-  }, [authorization, setAuthCredentials]);
+        setInputs(credentialInputs);
+
+        // Set the auth credentials to the values in the credentials object
+        // that already have a value as we will not ask the user for these values.
+        if (credentialInputs) {
+          setAuthCredentials(
+            Object.entries(credentialInputs).reduce(
+              (acc, [key, { value }]) => ({ ...acc, [key]: value }),
+              {}
+            )
+          );
+        }
+      };
+      void fetchCredentialInputs();
+    }
+  }, [authorization.provider, setAuthCredentials, useCase]);
 
   // We check if the form is valid.
   useEffect(() => {
@@ -70,21 +106,28 @@ export function MCPServerOAuthConnexion({
           break;
         }
       }
-      setIsFormValid(isFormValid);
+
+      setIsFormValid(isFormValid && !!useCase);
     }
-  }, [authCredentials, inputs, setIsFormValid]);
+  }, [authCredentials, inputs, setIsFormValid, useCase]);
 
   return (
-    authorization && (
-      <div className="flex flex-col items-center gap-2">
-        {inputs ? (
-          <>
-            <span className="text-500 w-full font-semibold">
-              These tools require admin authentication with{" "}
+    <div
+      className="flex flex-col items-center gap-2"
+      id="mcp-server-oauth-connexion-container"
+      ref={setContainerRef}
+    >
+      {authorization && (
+        <>
+          <Chip color="warning">
+            <span>
+              {remoteMCPServerUrl
+                ? `${remoteMCPServerUrl} requires authentication with `
+                : "These tools require authentication with "}
               {OAUTH_PROVIDER_NAMES[authorization.provider]}
               {documentationUrl && (
                 <>
-                  . Please follow{" "}
+                  . Follow{" "}
                   <a
                     href={documentationUrl}
                     className="text-highlight-600"
@@ -92,12 +135,74 @@ export function MCPServerOAuthConnexion({
                   >
                     this guide
                   </a>{" "}
-                  to learn how to set it up
+                  to set it up
                 </>
               )}
               .
             </span>
-            {Object.entries(inputs).map(([key, inputData]) => {
+          </Chip>
+
+          {authorization.supported_use_cases.length > 1 && containerRef && (
+            <div className="w-full">
+              <Label>Credentials Type</Label>
+              <div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      isSelect
+                      variant="outline"
+                      label={
+                        useCase
+                          ? OAUTH_USE_CASE_TO_LABEL[useCase]
+                          : "Select credentials type"
+                      }
+                      size="sm"
+                    />
+                  </DropdownMenuTrigger>
+
+                  <DropdownMenuContent mountPortalContainer={containerRef}>
+                    {authorization.supported_use_cases.map(
+                      (selectableUseCase) => (
+                        <DropdownMenuCheckboxItem
+                          key={selectableUseCase}
+                          checked={selectableUseCase === useCase}
+                          onCheckedChange={() => setUseCase(selectableUseCase)}
+                        >
+                          {OAUTH_USE_CASE_TO_LABEL[selectableUseCase]}
+                        </DropdownMenuCheckboxItem>
+                      )
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </div>
+          )}
+          <div className="w-full">
+            {useCase === "platform_actions" && (
+              <ContentMessage
+                size="lg"
+                variant="golden"
+                title="Workspace level credentials."
+                icon={InformationCircleIcon}
+              >
+                The authentication credentials you provide during setup will be
+                shared by all users in this workspace when using these tools.
+              </ContentMessage>
+            )}
+            {useCase === "personal_actions" && (
+              <ContentMessage
+                size="lg"
+                variant="highlight"
+                title="Personal level credentials."
+                icon={InformationCircleIcon}
+              >
+                Once setup for the workspace, each user will have to connect
+                their own credentials to interact with these tools.
+              </ContentMessage>
+            )}
+          </div>
+          {inputs &&
+            Object.entries(inputs).map(([key, inputData]) => {
               if (inputData.value) {
                 // If the credential is already set, we don't need to ask the user for it.
                 return null;
@@ -131,40 +236,8 @@ export function MCPServerOAuthConnexion({
                 </div>
               );
             })}
-          </>
-        ) : (
-          <Label className="self-start">
-            These tools require authentication with{" "}
-            {OAUTH_PROVIDER_NAMES[authorization.provider]}.
-          </Label>
-        )}
-
-        <div className="w-full pt-4">
-          {authorization.use_case === "platform_actions" && (
-            <ContentMessage
-              size="md"
-              variant="warning"
-              title="These tools are using workspace level credentials."
-              icon={InformationCircleIcon}
-            >
-              Authentication credentials will be shared by all users of this
-              workspace when they use these tools.
-            </ContentMessage>
-          )}
-          {authorization.use_case === "personal_actions" && (
-            <ContentMessage
-              size="md"
-              variant="highlight"
-              title="These tools are using personal level credentials."
-              icon={InformationCircleIcon}
-            >
-              Once setup for the workspace, each user will have to connect their
-              own {OAUTH_PROVIDER_NAMES[authorization.provider]} credentials to
-              interact with these tools.
-            </ContentMessage>
-          )}
-        </div>
-      </div>
-    )
+        </>
+      )}
+    </div>
   );
 }

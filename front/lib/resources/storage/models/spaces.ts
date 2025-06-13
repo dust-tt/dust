@@ -14,6 +14,7 @@ export class SpaceModel extends SoftDeletableWorkspaceAwareModel<SpaceModel> {
 
   declare name: string;
   declare kind: SpaceKind;
+  declare managementMode: CreationOptional<"manual" | "group">;
 
   declare groups: NonAttribute<GroupModel[]>;
 }
@@ -39,6 +40,11 @@ SpaceModel.init(
     kind: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    managementMode: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: "manual",
     },
   },
   {

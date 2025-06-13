@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import React from "react";
 import { useForm } from "react-hook-form";
 
+import { EnumSelect } from "@app/components/poke/plugins/EnumSelect";
 import {
   PokeForm,
   PokeFormControl,
@@ -17,14 +18,8 @@ import {
   PokeFormTextArea,
   PokeFormUpload,
 } from "@app/components/poke/shadcn/ui/form";
-import {
-  PokeSelect,
-  PokeSelectContent,
-  PokeSelectItem,
-  PokeSelectTrigger,
-  PokeSelectValue,
-} from "@app/components/poke/shadcn/ui/select";
 import type { PokeGetPluginDetailsResponseBody } from "@app/pages/api/poke/plugins/[pluginId]/manifest";
+import type { EnumValues } from "@app/types";
 import { createIoTsCodecFromArgs } from "@app/types";
 
 type FallbackArgs = Record<string, unknown>;
@@ -32,18 +27,28 @@ type FallbackArgs = Record<string, unknown>;
 type FormValues<T> = T extends t.TypeC<any> ? t.TypeOf<T> : FallbackArgs;
 
 interface PluginFormProps {
+  asyncArgs?: Partial<
+    Record<string, string | number | boolean | EnumValues>
+  > | null;
   disabled?: boolean;
   manifest: PokeGetPluginDetailsResponseBody["manifest"];
   onSubmit: (args: FormValues<any>) => Promise<void>;
 }
 
-export function PluginForm({ disabled, manifest, onSubmit }: PluginFormProps) {
+export function PluginForm({
+  asyncArgs,
+  disabled,
+  manifest,
+  onSubmit,
+}: PluginFormProps) {
   const [isSubmitted, setIsSubmitted] = useState(false);
 
   const argsCodec = useMemo(() => {
     if (!manifest) {
       return null;
     }
+
+    // Create codec from original manifest - async values are handled in rendering
     return createIoTsCodecFromArgs(manifest.args);
   }, [manifest]);
 
@@ -127,25 +132,17 @@ export function PluginForm({ disabled, manifest, onSubmit }: PluginFormProps) {
                         />
                       )}
                       {arg.type === "enum" && (
-                        <PokeSelect
-                          value={field.value ? field.value.toString() : ""}
-                          onValueChange={field.onChange}
-                        >
-                          <PokeFormControl>
-                            <PokeSelectTrigger>
-                              <PokeSelectValue placeholder={arg.label} />
-                            </PokeSelectTrigger>
-                          </PokeFormControl>
-                          <PokeSelectContent>
-                            <div className="bg-muted-background dark:bg-muted-background-night">
-                              {arg.values.map((option) => (
-                                <PokeSelectItem key={option} value={option}>
-                                  {option}
-                                </PokeSelectItem>
-                              ))}
-                            </div>
-                          </PokeSelectContent>
-                        </PokeSelect>
+                        <EnumSelect
+                          label={arg.label}
+                          onValueChange={(value) => field.onChange(value)}
+                          options={
+                            arg.async && asyncArgs?.[key]
+                              ? (asyncArgs[key] as EnumValues)
+                              : arg.values
+                          }
+                          placeholder="Select value"
+                          value={field.value}
+                        />
                       )}
                       {arg.type === "file" && (
                         <PokeFormUpload type="file" {...field} />

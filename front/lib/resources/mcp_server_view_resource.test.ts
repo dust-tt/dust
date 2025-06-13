@@ -68,13 +68,19 @@ describe("MCPServerViewResource", () => {
         // Internal server in the right workspace
         const internalServer1 = await InternalMCPServerInMemoryResource.makeNew(
           auth1,
-          "think",
+          {
+            name: "think",
+            useCase: null,
+          },
           t
         );
 
         const internalServer2 = await InternalMCPServerInMemoryResource.makeNew(
           auth2,
-          "think",
+          {
+            name: "think",
+            useCase: null,
+          },
           t
         );
 

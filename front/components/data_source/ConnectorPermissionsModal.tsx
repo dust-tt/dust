@@ -631,7 +631,7 @@ export function ConnectorPermissionsModal({
   >(null);
 
   const { activeSubscription } = useWorkspaceActiveSubscription({
-    workspaceId: owner.sId,
+    owner,
     disabled: !isAdmin,
   });
   const plan = activeSubscription ? activeSubscription.plan : null;

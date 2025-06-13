@@ -12,7 +12,7 @@ import { Workspace } from "@app/lib/models/workspace";
 import { WorkspaceHasDomainModel } from "@app/lib/models/workspace_has_domain";
 import { isDomain } from "@app/lib/utils";
 import type { Result } from "@app/types";
-import { Err, Ok } from "@app/types";
+import { Err, mapToEnumValues, Ok } from "@app/types";
 
 async function handleAddDomain(
   auth: Authenticator,
@@ -122,7 +122,10 @@ export const addAuthorizedDomain = createPlugin({
         type: "enum",
         label: "Operation",
         description: "Select operation to perform",
-        values: ["add", "remove"],
+        values: mapToEnumValues(["add", "remove"], (operation) => ({
+          label: operation,
+          value: operation,
+        })),
       },
     },
   },

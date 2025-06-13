@@ -4251,11 +4251,11 @@ fn main() {
         )
         .route(
             "/projects/:project_id/data_sources/:data_source_id/tables/:table_id/rows",
-            post(tables_rows_upsert),
+            post(tables_rows_upsert), // yolo
         )
         .route(
             "/projects/:project_id/data_sources/:data_source_id/tables/:table_id/csv",
-            post(tables_csv_upsert),
+            post(tables_csv_upsert), // yolo
         )
         .route(
             "/projects/:project_id/data_sources/:data_source_id/tables/:table_id/rows/:row_id",

@@ -32,7 +32,7 @@ import {
 } from "@app/lib/spaces";
 import { useApps } from "@app/lib/swr/apps";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
-import { useMCPServerViews } from "@app/lib/swr/mcp_server_views";
+import { useMCPServerViews } from "@app/lib/swr/mcp_servers";
 import {
   useSpaceDataSourceViews,
   useSpaceInfo,

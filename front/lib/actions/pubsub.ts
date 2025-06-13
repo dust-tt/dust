@@ -23,11 +23,11 @@ export async function* getMCPEvents({
   },
   void
 > {
-  const pubsubChannel = getMCPChannelid(actionId);
+  const pubSubChannel = getMCPChannelId(actionId);
 
   const reader = createCallbackReader<EventPayload | "close">();
   const { history, unsubscribe } = await getRedisHybridManager().subscribe(
-    pubsubChannel,
+    pubSubChannel,
     reader.callback,
     null,
     "action_events"
@@ -69,6 +69,6 @@ export async function* getMCPEvents({
   }
 }
 
-function getMCPChannelid(actionId: string) {
+function getMCPChannelId(actionId: string) {
   return `action-${actionId}`;
 }

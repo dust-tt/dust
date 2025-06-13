@@ -1,11 +1,21 @@
 import * as t from "io-ts";
-const PostRestrictedSpace = t.type({
-  memberIds: t.array(t.string),
-  isRestricted: t.literal(true),
-});
+const PostRestrictedSpace = t.intersection([
+  t.type({
+    isRestricted: t.literal(true),
+  }),
+  t.union([
+    t.type({
+      memberIds: t.array(t.string),
+      managementMode: t.literal("manual"),
+    }),
+    t.type({
+      groupIds: t.array(t.string),
+      managementMode: t.literal("group"),
+    }),
+  ]),
+]);
 
 const PostUnrestrictedSpace = t.type({
-  memberIds: t.null,
   isRestricted: t.literal(false),
 });
 

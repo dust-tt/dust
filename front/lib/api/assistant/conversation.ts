@@ -646,7 +646,15 @@ export async function* postUserMessage(
       },
       variant: "light",
     }),
-    ConversationResource.upsertParticipation(auth, conversation),
+    (() => {
+      // If the origin of the user message is "run_agent", we do not want to update the
+      // participation of the user so that the conversation does not appear in the user's history.
+      if (context.origin === "run_agent") {
+        return;
+      }
+
+      return ConversationResource.upsertParticipation(auth, conversation);
+    })(),
   ]);
 
   const agentConfigurations = removeNulls(results[0]);

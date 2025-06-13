@@ -3,6 +3,11 @@ import type {
   AgentActionConfigurationType,
   AgentActionSpecification,
 } from "@app/lib/actions/types/agent";
+import type {
+  ReasoningContentType,
+  TextContentType,
+} from "@app/types/assistant/agent_message_content";
+import type { FunctionCallContentType } from "@app/types/assistant/agent_message_content";
 import type { TagType } from "@app/types/tag";
 import type { UserType } from "@app/types/user";
 
@@ -181,6 +186,7 @@ export function isTemplateAgentConfiguration(
 
 export const DEFAULT_MAX_STEPS_USE_PER_RUN = 8;
 export const MAX_STEPS_USE_PER_RUN_LIMIT = 24;
+export const EXTENDED_MAX_STEPS_USE_PER_RUN_LIMIT = 128;
 
 /**
  * Agent events
@@ -269,6 +275,8 @@ export type AgentChainOfThoughtEvent = {
   chainOfThought: string;
 };
 
+// Deprecated
+// TODO(agent-step-content): Remove this event
 export type AgentContentEvent = {
   type: "agent_message_content";
   created: number;
@@ -276,4 +284,13 @@ export type AgentContentEvent = {
   messageId: string;
   content: string;
   processedContent: string;
+};
+
+export type AgentStepContentEvent = {
+  type: "agent_step_content";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  index: number;
+  content: TextContentType | FunctionCallContentType | ReasoningContentType;
 };

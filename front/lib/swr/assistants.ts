@@ -515,14 +515,14 @@ export function useDeleteAgentConfiguration({
       sendNotification({
         type: "success",
         title: `Successfully deleted ${agentConfiguration.name}`,
-        description: `${agentConfiguration.name} was successfully deleted.`,
+        description: `${agentConfiguration.name} was successfully archived.`,
       });
     } else {
       const errorData = await getErrorFromResponse(res);
 
       sendNotification({
         type: "error",
-        title: `Error deleting ${agentConfiguration.name}`,
+        title: `Error archiving ${agentConfiguration.name}`,
         description: `Error: ${errorData.message}`,
       });
     }
@@ -726,7 +726,11 @@ export function useRestoreAgentConfiguration({
   return doRestore;
 }
 
-export function useBatchUpdateAgents({ owner }: { owner: LightWorkspaceType }) {
+export function useBatchUpdateAgentTags({
+  owner,
+}: {
+  owner: LightWorkspaceType;
+}) {
   const batchUpdateAgentTags = useCallback(
     async (
       agentIds: string[],
@@ -750,4 +754,31 @@ export function useBatchUpdateAgents({ owner }: { owner: LightWorkspaceType }) {
   );
 
   return batchUpdateAgentTags;
+}
+
+export function useBatchUpdateAgentScope({
+  owner,
+}: {
+  owner: LightWorkspaceType;
+}) {
+  const batchUpdateAgentScope = useCallback(
+    async (agentIds: string[], body: { scope: "visible" | "hidden" }) => {
+      await fetch(
+        `/api/w/${owner.sId}/assistant/agent_configurations/batch_update_scope`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            agentIds,
+            ...body,
+          }),
+        }
+      );
+    },
+    [owner]
+  );
+
+  return batchUpdateAgentScope;
 }

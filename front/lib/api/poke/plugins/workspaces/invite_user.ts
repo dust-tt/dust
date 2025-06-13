@@ -1,7 +1,8 @@
 import { handleMembershipInvitations } from "@app/lib/api/invitation";
 import { createPlugin } from "@app/lib/api/poke/types";
 import { isEmailValid } from "@app/lib/utils";
-import { Err, MEMBERSHIP_ROLE_TYPES, Ok } from "@app/types";
+import type { MembershipRoleType } from "@app/types";
+import { Err, mapToEnumValues, MEMBERSHIP_ROLE_TYPES, Ok } from "@app/types";
 
 export const inviteUser = createPlugin({
   manifest: {
@@ -19,7 +20,10 @@ export const inviteUser = createPlugin({
         type: "enum",
         label: "Role",
         description: "Role of the user to invite",
-        values: MEMBERSHIP_ROLE_TYPES,
+        values: mapToEnumValues(MEMBERSHIP_ROLE_TYPES, (role) => ({
+          label: role,
+          value: role,
+        })),
       },
     },
   },
@@ -50,6 +54,7 @@ export const inviteUser = createPlugin({
       invitationRequests: [
         {
           ...args,
+          role: args.role as MembershipRoleType,
           email,
         },
       ],

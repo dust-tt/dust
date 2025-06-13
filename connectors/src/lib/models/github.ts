@@ -140,6 +140,8 @@ export class GithubCodeRepository extends ConnectorBaseModel<GithubCodeRepositor
   declare codeUpdatedAt: CreationOptional<Date>;
   declare forceDailySync: boolean;
 
+  declare skipReason: string | null;
+
   declare repoId: string;
   declare repoLogin: string;
   declare repoName: string;
@@ -172,6 +174,10 @@ GithubCodeRepository.init(
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: false,
+    },
+    skipReason: {
+      type: DataTypes.STRING,
+      allowNull: true,
     },
     repoId: {
       type: DataTypes.STRING,

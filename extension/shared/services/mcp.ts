@@ -10,14 +10,19 @@ export abstract class McpService {
    * Primary method for workspace-scoped MCP implementation
    */
   abstract getOrCreateServer(
-    dustAPI: DustAPI
+    dustAPI: DustAPI,
+    onServerIdReceived: (serverId: string) => void
   ): Promise<{ server: McpServer | null; serverId: string | undefined }>;
 
   /**
    * Connect the MCP server to a transport
    * This should be called after creating the server
    */
-  abstract connectServer(server: McpServer, dustAPI: DustAPI): Promise<void>;
+  abstract connectServer(
+    server: McpServer,
+    dustAPI: DustAPI,
+    onServerIdReceived: (serverId: string) => void
+  ): Promise<void>;
 
   /**
    * Get the current server ID

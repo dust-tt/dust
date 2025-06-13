@@ -1,3 +1,5 @@
+import type { NodeCandidate, UrlCandidate } from "@app/shared/lib/connectors";
+import { isUrlCandidate } from "@app/shared/lib/connectors";
 import type { DataSourceViewContentNodeType } from "@dust-tt/client";
 import type { Editor } from "@tiptap/core";
 import { useCallback, useEffect } from "react";
@@ -6,7 +8,9 @@ import type { URLState } from "./extensions/URLStorageExtension";
 
 const useUrlHandler = (
   editor: Editor | null,
-  selectedNode: DataSourceViewContentNodeType | null
+  selectedNode: DataSourceViewContentNodeType | null,
+  candidate: UrlCandidate | NodeCandidate | null,
+  onUrlReplaced: () => void
 ) => {
   const replaceUrl = useCallback(
     async (pendingUrl: URLState, node: DataSourceViewContentNodeType) => {
@@ -77,7 +81,9 @@ const useUrlHandler = (
     }
 
     const { pendingUrls } = editor.storage.URLStorage;
-    const nodeId = selectedNode.internalId;
+    const nodeId = isUrlCandidate(candidate)
+      ? selectedNode.sourceUrl
+      : selectedNode.internalId;
     const pendingUrl = pendingUrls.get(nodeId);
 
     if (!pendingUrl) {
@@ -88,8 +94,10 @@ const useUrlHandler = (
     const urlState = { ...pendingUrl };
     pendingUrls.delete(nodeId);
 
-    void replaceUrl(urlState, selectedNode);
-  }, [editor, selectedNode, replaceUrl]);
+    void replaceUrl(urlState, selectedNode).then(() => {
+      onUrlReplaced();
+    });
+  }, [editor, selectedNode, replaceUrl, candidate, onUrlReplaced]);
 };
 
 export default useUrlHandler;

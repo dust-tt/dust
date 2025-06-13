@@ -1,4 +1,3 @@
-import assert from "assert";
 import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
 
@@ -26,9 +25,49 @@ import { destroyMCPServerViewDependencies } from "@app/lib/models/assistant/acti
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { cacheWithRedis } from "@app/lib/utils/cache";
-import { removeNulls } from "@app/types";
+import type { MCPOAuthUseCase, Result } from "@app/types";
+import { Err, Ok, removeNulls } from "@app/types";
+import { isDevelopment } from "@app/types";
 
 const METADATA_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+// Getting the metadata is a relatively long operation, so we cache it for 5 minutes
+// as internal servers are not expected to change often.
+// In any case, when actually running the action, the metadata will be fetched from the MCP server.
+const getCachedMetadata = cacheWithRedis(
+  async (auth: Authenticator, id: string) => {
+    const s = await connectToMCPServer(auth, {
+      params: {
+        type: "mcpServerId",
+        mcpServerId: id,
+        oAuthUseCase: null,
+      },
+    });
+
+    if (s.isErr()) {
+      return null;
+    }
+
+    const mcpClient = s.value;
+    const md = extractMetadataFromServerVersion(mcpClient.getServerVersion());
+
+    const metadata = {
+      ...md,
+      tools: extractMetadataFromTools(
+        (await mcpClient.listTools()).tools
+      ) as any,
+      availability: isInternalMCPServerName(md.name)
+        ? getAvailabilityOfInternalMCPServerByName(md.name)
+        : "manual",
+    };
+
+    await mcpClient.close();
+
+    return metadata;
+  },
+  (_auth: Authenticator, id: string) => `internal-mcp-server-metadata-${id}`,
+  isDevelopment() ? 1000 : METADATA_CACHE_TTL_MS
+);
 
 export class InternalMCPServerInMemoryResource {
   // SID of the internal MCP server, scoped to a workspace.
@@ -57,66 +96,50 @@ export class InternalMCPServerInMemoryResource {
 
     const server = new InternalMCPServerInMemoryResource(id);
 
-    // Getting the metadata is a relatively long operation, so we cache it for 5 minutes
-    // as internal servers are not expected to change often.
-    // In any case, when actually running the action, the metadata will be fetched from the MCP server.
-    const getCachedMetadata = cacheWithRedis(
-      async (id: string) => {
-        const s = await connectToMCPServer(auth, {
-          params: {
-            type: "mcpServerId",
-            mcpServerId: id,
-          },
-        });
-
-        if (s.isErr()) {
-          return null;
-        }
-
-        const mcpClient = s.value;
-        const md = extractMetadataFromServerVersion(
-          mcpClient.getServerVersion()
-        );
-
-        const metadata = {
-          ...md,
-          tools: extractMetadataFromTools(
-            (await mcpClient.listTools()).tools
-          ) as any,
-          availability: isInternalMCPServerName(md.name)
-            ? getAvailabilityOfInternalMCPServerByName(md.name)
-            : "manual",
-        };
-
-        await mcpClient.close();
-
-        return metadata;
-      },
-      (id) => `internal-mcp-server-metadata-${id}`,
-      METADATA_CACHE_TTL_MS
-    );
-
-    const cachedMetadata = await getCachedMetadata(id);
+    const cachedMetadata = await getCachedMetadata(auth, id);
     if (!cachedMetadata) {
       return null;
     }
 
-    server.metadata = cachedMetadata;
+    // Temporary to do a video.
+    if (
+      auth.getNonNullableWorkspace().sId === "91o4vu0LzW" &&
+      cachedMetadata.authorization?.provider === "gmail"
+    ) {
+      server.metadata = {
+        ...cachedMetadata,
+        authorization: {
+          ...cachedMetadata.authorization,
+          provider: "google_drive",
+        },
+      };
+    } else {
+      server.metadata = cachedMetadata;
+    }
 
     return server;
   }
 
   static async makeNew(
     auth: Authenticator,
-    name: InternalMCPServerNameType,
+    {
+      name,
+      useCase,
+    }: {
+      name: InternalMCPServerNameType;
+      useCase: MCPOAuthUseCase | null;
+    },
     transaction?: Transaction
   ) {
-    const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
+    const canAdministrate =
+      await SpaceResource.canAdministrateSystemSpace(auth);
 
-    assert(
-      systemSpace.canWrite(auth),
-      "The user is not authorized to create an MCP server"
-    );
+    if (!canAdministrate) {
+      throw new DustError(
+        "unauthorized",
+        "The user is not authorized to create an internal MCP server"
+      );
+    }
 
     const server = await InternalMCPServerInMemoryResource.init(
       auth,
@@ -133,6 +156,8 @@ export class InternalMCPServerInMemoryResource {
       );
     }
 
+    const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
+
     await MCPServerViewModel.create(
       {
         workspaceId: auth.getNonNullableWorkspace().id,
@@ -141,6 +166,7 @@ export class InternalMCPServerInMemoryResource {
         vaultId: systemSpace.id,
         editedAt: new Date(),
         editedByUserId: auth.user()?.id,
+        oAuthUseCase: useCase ?? null,
       },
       { transaction }
     );
@@ -148,7 +174,21 @@ export class InternalMCPServerInMemoryResource {
     return server;
   }
 
-  async delete(auth: Authenticator) {
+  async delete(
+    auth: Authenticator
+  ): Promise<Result<number, DustError<"unauthorized">>> {
+    const canAdministrate =
+      await SpaceResource.canAdministrateSystemSpace(auth);
+
+    if (!canAdministrate) {
+      throw new Err(
+        new DustError(
+          "unauthorized",
+          "The user is not authorized to delete an internal MCP server"
+        )
+      );
+    }
+
     const mcpServerViews = await MCPServerViewModel.findAll({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
@@ -180,6 +220,8 @@ export class InternalMCPServerInMemoryResource {
         internalMCPServerId: this.id,
       },
     });
+
+    return new Ok(1);
   }
 
   static async fetchById(auth: Authenticator, id: string) {

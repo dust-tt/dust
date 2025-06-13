@@ -6,7 +6,7 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { AddActionMenu } from "@app/components/actions/mcp/AddActionMenu";
 import { CreateMCPServerDialog } from "@app/components/actions/mcp/CreateMCPServerDialog";
@@ -121,14 +121,50 @@ export const AdminActionsList = ({
       setIsCreateOpen(true);
     } else {
       setIsLoading(true);
-      await createInternalMCPServer(mcpServer.name, true);
+      await createInternalMCPServer({
+        name: mcpServer.name,
+        includeGlobal: true,
+      });
       setIsLoading(false);
     }
   };
 
   const enabledMCPServers = mcpServers.map((s) => s.sId);
 
-  const getTableColumns = (): ColumnDef<RowData>[] => {
+  const rows: RowData[] = useMemo(
+    () =>
+      mcpServers
+        .filter((mcpServer) => mcpServer.availability === "manual")
+        .map((mcpServer) => {
+          const mcpServerWithViews = mcpServers.find(
+            (s) => s.sId === mcpServer.sId
+          );
+          const mcpServerView = mcpServerWithViews?.views.find(
+            (v) => v.spaceId === systemSpace?.sId
+          );
+          const spaceIds = mcpServerWithViews
+            ? mcpServerWithViews.views.map((v) => v.spaceId)
+            : [];
+          return {
+            mcpServer,
+            mcpServerView,
+            spaces: spaces.filter((s) => spaceIds?.includes(s.sId)),
+            isConnected: !!connections.find(
+              (c) =>
+                c.internalMCPServerId === mcpServer.sId ||
+                c.remoteMCPServerId === mcpServer.sId
+            ),
+            onClick: () => {
+              if (mcpServerView && mcpServer) {
+                setMcpServerToShow(mcpServer);
+              }
+            },
+          };
+        })
+        .sort(mcpServersSortingFn),
+    [connections, mcpServers, setMcpServerToShow, spaces, systemSpace?.sId]
+  );
+  const columns = useMemo((): ColumnDef<RowData>[] => {
     const columns: ColumnDef<RowData, any>[] = [];
 
     columns.push(
@@ -214,38 +250,7 @@ export const AdminActionsList = ({
     );
 
     return columns;
-  };
-
-  const rows: RowData[] = mcpServers
-    .filter((mcpServer) => mcpServer.availability === "manual")
-    .map((mcpServer) => {
-      const mcpServerWithViews = mcpServers.find(
-        (s) => s.sId === mcpServer.sId
-      );
-      const mcpServerView = mcpServerWithViews?.views.find(
-        (v) => v.spaceId === systemSpace?.sId
-      );
-      const spaceIds = mcpServerWithViews
-        ? mcpServerWithViews.views.map((v) => v.spaceId)
-        : [];
-      return {
-        mcpServer,
-        mcpServerView,
-        spaces: spaces.filter((s) => spaceIds?.includes(s.sId)),
-        isConnected: !!connections.find(
-          (c) =>
-            c.internalMCPServerId === mcpServer.sId ||
-            c.remoteMCPServerId === mcpServer.sId
-        ),
-        onClick: () => {
-          if (mcpServerView && mcpServer) {
-            setMcpServerToShow(mcpServer);
-          }
-        },
-      };
-    })
-    .sort(mcpServersSortingFn);
-  const columns = getTableColumns();
+  }, []);
 
   return (
     <>

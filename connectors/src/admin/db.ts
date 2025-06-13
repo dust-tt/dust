@@ -52,7 +52,10 @@ import {
   RemoteSchemaModel,
   RemoteTableModel,
 } from "@connectors/lib/models/remote_databases";
-import { SalesforceConfigurationModel } from "@connectors/lib/models/salesforce";
+import {
+  SalesforceConfigurationModel,
+  SalesforceSyncedQueryModel,
+} from "@connectors/lib/models/salesforce";
 import {
   SlackBotWhitelistModel,
   SlackChannel,
@@ -136,6 +139,7 @@ async function main(): Promise<void> {
   await ZendeskArticleModel.sync({ alter: true });
   await ZendeskTicketModel.sync({ alter: true });
   await SalesforceConfigurationModel.sync({ alter: true });
+  await SalesforceSyncedQueryModel.sync({ alter: true });
   await GongConfigurationModel.sync({ alter: true });
   await GongTranscriptModel.sync({ alter: true });
   await GongUserModel.sync({ alter: true });

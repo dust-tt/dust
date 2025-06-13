@@ -76,11 +76,13 @@ pub mod providers {
     pub mod google_ai_studio;
     pub mod helpers;
     pub mod openai_compatible_helpers;
+    pub mod openai_responses_api_helpers;
     pub mod togetherai;
     pub mod xai;
 }
 pub mod http {
     pub mod network;
+    pub mod proxy_client;
     pub mod request;
 }
 pub mod blocks {

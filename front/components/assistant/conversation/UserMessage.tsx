@@ -51,7 +51,7 @@ export function UserMessage({
     <div className="flex flex-grow flex-col">
       <div className="max-w-full self-end">
         <ConversationMessage
-          pictureUrl={message.user?.image || message.context.profilePictureUrl}
+          pictureUrl={message.context.profilePictureUrl || message.user?.image}
           name={message.context.fullName ?? undefined}
           renderName={(name) => <div className="heading-base">{name}</div>}
           type="user"

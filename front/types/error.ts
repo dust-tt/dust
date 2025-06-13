@@ -92,7 +92,6 @@ const API_ERROR_TYPES = [
   "transcripts_configuration_not_found",
   "transcripts_configuration_default_not_allowed",
   "transcripts_configuration_already_exists",
-  "labs_connection_configuration_already_exists",
   // Files:
   "file_not_found",
   "file_too_large",
@@ -118,6 +117,7 @@ const API_ERROR_TYPES = [
   // MCP:
   "mcp_auth_error",
   "invalid_mcp_server_id",
+  "mcp_server_not_found",
   // Workos:
   "workos_organization_not_found",
   "workos_server_error",

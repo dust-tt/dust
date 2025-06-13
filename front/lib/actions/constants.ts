@@ -83,4 +83,5 @@ export type MCPValidationMetadataType = {
   toolName: string;
   mcpServerName: string;
   agentName: string;
+  pubsubMessageId?: string;
 };

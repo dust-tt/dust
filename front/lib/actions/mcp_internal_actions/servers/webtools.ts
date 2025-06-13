@@ -25,10 +25,8 @@ export const serverInfo: InternalMCPServerDefinitionType = {
   description:
     "Agent can search (Google) and retrieve information from specific websites.",
   icon: "ActionGlobeAltIcon",
-  authorization: {
-    provider,
-    use_case: "connection" as const,
-  },
+  authorization: null,
+  documentationUrl: null,
 };
 
 const createServer = (agentLoopContext?: AgentLoopContextType): McpServer => {

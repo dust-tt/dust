@@ -22,6 +22,7 @@ import type {
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import type { MCPServerAvailability } from "@app/lib/actions/mcp_internal_actions/constants";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
+import { validateConfiguredJsonSchema } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { isDustAppRunConfiguration } from "@app/lib/actions/types/guards";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { LightWorkspaceType, SpaceType, TimeFrame } from "@app/types";
@@ -390,6 +391,17 @@ export function hasErrorActionMCP(
       !action.configuration.dustAppConfiguration
     ) {
       return "Please select a Dust App.";
+    }
+    if (
+      requirements.mayRequireJsonSchemaConfiguration &&
+      action.configuration._jsonSchemaString
+    ) {
+      const validationResult = validateConfiguredJsonSchema(
+        action.configuration._jsonSchemaString
+      );
+      if (validationResult.isErr()) {
+        return validationResult.error.message;
+      }
     }
 
     const missingFields = [];

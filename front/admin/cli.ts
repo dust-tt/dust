@@ -30,11 +30,12 @@ import { REGISTERED_CHECKS } from "@app/temporal/production_checks/activities";
 import {
   assertNever,
   ConnectorsAPI,
+  isRoleType,
   removeNulls,
   SUPPORTED_MODEL_CONFIGS,
 } from "@app/types";
-import { LabsTranscriptsConfigurationModel } from "@app/lib/resources/storage/models/labs_transcripts";
 import path from "path";
+import { KeyResource } from "@app/lib/resources/key_resource";
 
 // `cli` takes an object type and a command as first two arguments and then a list of arguments.
 const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
@@ -571,6 +572,39 @@ const productionCheck = async (command: string, args: parseArgs.ParsedArgs) => {
   }
 };
 
+async function apikeys(command: string, args: parseArgs.ParsedArgs) {
+  switch (command) {
+    case "set-role": {
+      if (!args.wId) {
+        throw new Error("Missing --wId argument");
+      }
+
+      if (!args.name) {
+        throw new Error("Missing --name argument");
+      }
+
+      if (!args.role || !isRoleType(args.role)) {
+        throw new Error(
+          "Missing or Incorrect --role argument. Must be admin | user | builder."
+        );
+      }
+
+      const auth = await Authenticator.internalAdminForWorkspace(args.wId);
+
+      const key = await KeyResource.fetchByName(auth, { name: args.name });
+      if (!key) {
+        throw new Error(`Key not found`);
+      }
+
+      await key.updateRole({
+        newRole: args.role,
+      });
+
+      return;
+    }
+  }
+}
+
 export const CLI_OBJECT_TYPES = [
   "workspace",
   "user",
@@ -579,6 +613,7 @@ export const CLI_OBJECT_TYPES = [
   "transcripts",
   "registry",
   "production-check",
+  "api-key",
 ] as const;
 
 export type CliObjectType = (typeof CLI_OBJECT_TYPES)[number];
@@ -624,6 +659,8 @@ const main = async () => {
       return registry(command);
     case "production-check":
       return productionCheck(command, argv);
+    case "api-key":
+      return apikeys(command, argv);
     default:
       assertNever(objectType);
   }

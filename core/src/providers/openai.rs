@@ -36,6 +36,7 @@ use super::azure_openai::AzureOpenAIEmbedder;
 use super::openai_compatible_helpers::{
     openai_compatible_chat_completion, OpenAIError, TransformSystemMessages,
 };
+use super::openai_responses_api_helpers::openai_responses_api_completion;
 
 pub const REMAINING_TOKENS_MARGIN: u64 = 500_000;
 #[derive(Debug)]
@@ -48,6 +49,8 @@ lazy_static! {
     // Map of API key to rate limit details
     static ref RATE_LIMITS: RwLock<HashMap<String, RateLimitDetails>> = RwLock::new(HashMap::new());
 }
+
+static RESPONSES_API_ENABLED: bool = false;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Usage {
@@ -697,6 +700,10 @@ impl OpenAILLM {
         Ok(format!("https://api.openai.com/v1/chat/completions",).parse::<Uri>()?)
     }
 
+    fn responses_uri(&self) -> Result<Uri> {
+        Ok(format!("https://api.openai.com/v1/responses",).parse::<Uri>()?)
+    }
+
     fn tokenizer(&self) -> Arc<RwLock<CoreBPE>> {
         match self.id.as_str() {
             "code_davinci-002" | "code-cushman-001" => p50k_base_singleton(),
@@ -1025,6 +1032,7 @@ impl LLM for OpenAILLM {
         let is_reasoning_model = self.id.as_str().starts_with("o3")
             || self.id.as_str().starts_with("o1")
             || self.id.as_str().starts_with("o4");
+
         // o1-mini specifically does not support any type of system messages.
         let remove_system_messages = self.id.as_str().starts_with("o1-mini");
 
@@ -1033,39 +1041,69 @@ impl LLM for OpenAILLM {
             None => Err(anyhow!("OPENAI_API_KEY is not set."))?,
         };
 
-        openai_compatible_chat_completion(
-            self.chat_uri()?,
-            self.id.clone(),
-            api_key,
-            &messages,
-            functions,
-            function_call,
-            if is_reasoning_model { 1.0 } else { temperature },
-            top_p,
-            n,
-            stop,
-            max_tokens,
-            presence_penalty,
-            frequency_penalty,
-            logprobs,
-            top_logprobs,
-            extras,
-            event_sender,
-            false,
-            // Some models (o1-mini) don't support any system messages.
-            if remove_system_messages {
-                TransformSystemMessages::Remove
-            // Other reasoning models replace system messages with developer messages.
-            } else if is_reasoning_model {
-                TransformSystemMessages::ReplaceWithDeveloper
-            // Standard non-reasoning models use regular system messages.
-            } else {
-                TransformSystemMessages::Keep
-            },
-            "OpenAI".to_string(),
-            false, // Don't squash text contents.
-        )
-        .await
+        let transform_system_messages = if remove_system_messages {
+            TransformSystemMessages::Remove
+        } else if is_reasoning_model {
+            TransformSystemMessages::ReplaceWithDeveloper
+        } else {
+            TransformSystemMessages::Keep
+        };
+
+        let temperature = if is_reasoning_model { 1.0 } else { temperature };
+
+        let provider_name = "OpenAI".to_string();
+
+        let is_auto_function_call = match &function_call {
+            Some(f) => f.to_lowercase() == "auto",
+            None => true,
+        };
+
+        // Use response API only when function_call is not forced and when n == 1.
+        if RESPONSES_API_ENABLED
+            && is_auto_function_call
+            && n == 1
+            && (self.id.as_str().starts_with("o3") || self.id.as_str().starts_with("o4"))
+        {
+            openai_responses_api_completion(
+                self.responses_uri()?,
+                self.id.clone(),
+                api_key,
+                &messages,
+                functions,
+                temperature,
+                max_tokens,
+                extras,
+                event_sender,
+                transform_system_messages,
+                provider_name,
+            )
+            .await
+        } else {
+            openai_compatible_chat_completion(
+                self.chat_uri()?,
+                self.id.clone(),
+                api_key,
+                &messages,
+                functions,
+                function_call,
+                temperature,
+                top_p,
+                n,
+                stop,
+                max_tokens,
+                presence_penalty,
+                frequency_penalty,
+                logprobs,
+                top_logprobs,
+                extras,
+                event_sender,
+                false,
+                transform_system_messages,
+                provider_name,
+                false, // Don't squash text contents.
+            )
+            .await
+        }
     }
 }
 

@@ -55,13 +55,26 @@ impl TryFrom<SnowflakeSchemaColumn> for TableSchemaColumn {
     type Error = anyhow::Error;
 
     fn try_from(col: SnowflakeSchemaColumn) -> Result<Self> {
-        let col_type = match col.r#type.as_str() {
+        // Extract base type name before any parentheses (e.g., "VARCHAR(255)" -> "VARCHAR").
+        let base_type = col
+            .r#type
+            .split('(')
+            .next()
+            .unwrap_or(&col.r#type)
+            .trim()
+            .to_ascii_uppercase();
+
+        let col_type = match base_type.as_str() {
             "NUMBER" | "INT" | "INTEGER" | "BIGINT" | "SMALLINT" | "TINYINT" | "BYTEINT" => {
                 TableSchemaFieldType::Int
             }
-            "STRING" | "TEXT" | "VARCHAR" | "CHAR" => TableSchemaFieldType::Text,
-            "BOOLEAN" => TableSchemaFieldType::Bool,
-            "TIMESTAMP" => TableSchemaFieldType::DateTime,
+            "FLOAT" | "DOUBLE" | "DECIMAL" | "NUMERIC" | "REAL" => TableSchemaFieldType::Float,
+            "STRING" | "TEXT" | "VARCHAR" | "CHAR" | "CHARACTER" | "NCHAR" | "NVARCHAR" => {
+                TableSchemaFieldType::Text
+            }
+            "BOOLEAN" | "BOOL" => TableSchemaFieldType::Bool,
+            "TIMESTAMP" | "TIMESTAMP_NTZ" | "TIMESTAMP_LTZ" | "TIMESTAMP_TZ" | "DATE" | "TIME"
+            | "DATETIME" => TableSchemaFieldType::DateTime,
             _ => TableSchemaFieldType::Text,
         };
 
@@ -92,7 +105,16 @@ impl TryFrom<SnowflakeRow> for QueryResult {
         let mut map = serde_json::Map::new();
         for col in row.column_types() {
             let name = col.name();
-            let snowflake_type = col.column_type().snowflake_type().to_ascii_uppercase();
+            // Extract base type name before any parentheses for consistency.
+            let snowflake_type = col
+                .column_type()
+                .snowflake_type()
+                .split('(')
+                .next()
+                .unwrap_or(col.column_type().snowflake_type())
+                .trim()
+                .to_ascii_uppercase();
+
             let value = match snowflake_type.as_str() {
                 "NUMBER" | "INT" | "INTEGER" | "BIGINT" | "SMALLINT" | "TINYINT" | "BYTEINT" => {
                     match decode_column::<i64>(&row, name)? {
@@ -100,17 +122,27 @@ impl TryFrom<SnowflakeRow> for QueryResult {
                         None => serde_json::Value::Null,
                     }
                 }
-                "STRING" | "TEXT" | "VARCHAR" | "CHAR" => {
+                "FLOAT" | "DOUBLE" | "DECIMAL" | "NUMERIC" | "REAL" => {
+                    match decode_column::<f64>(&row, name)? {
+                        Some(f) => serde_json::Value::Number(
+                            serde_json::Number::from_f64(f)
+                                .ok_or_else(|| anyhow!("Cannot represent {} as JSON number", f))?,
+                        ),
+                        None => serde_json::Value::Null,
+                    }
+                }
+                "STRING" | "TEXT" | "VARCHAR" | "CHAR" | "CHARACTER" | "NCHAR" | "NVARCHAR" => {
                     match decode_column::<String>(&row, name)? {
                         Some(s) => serde_json::Value::String(s.into()),
                         None => serde_json::Value::Null,
                     }
                 }
-                "BOOLEAN" => match decode_column::<bool>(&row, name)? {
+                "BOOLEAN" | "BOOL" => match decode_column::<bool>(&row, name)? {
                     Some(b) => serde_json::Value::Bool(b),
                     None => serde_json::Value::Null,
                 },
-                "TIMESTAMP" => match decode_column::<String>(&row, name)? {
+                "TIMESTAMP" | "TIMESTAMP_NTZ" | "TIMESTAMP_LTZ" | "TIMESTAMP_TZ" | "DATE"
+                | "TIME" | "DATETIME" => match decode_column::<String>(&row, name)? {
                     Some(s) => serde_json::Value::String(s.into()),
                     None => serde_json::Value::Null,
                 },

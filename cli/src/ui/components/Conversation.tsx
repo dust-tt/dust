@@ -13,6 +13,8 @@ import React, {
 
 import { useTerminalSize } from "../../utils/hooks/use_terminal_size.js";
 import { clearTerminal } from "../../utils/terminal.js";
+import type { Command } from "../commands/types.js";
+import { CommandSelector } from "./CommandSelector.js";
 import { InputBox } from "./InputBox.js";
 
 export type ConversationItem = { key: string } & (
@@ -58,6 +60,11 @@ interface ConversationProps {
   mentionPrefix: string;
   conversationId: string | null;
   stdout: NodeJS.WriteStream | null;
+  showCommandSelector: boolean;
+  commandQuery: string;
+  selectedCommandIndex: number;
+  commandCursorPosition: number;
+  commands?: Command[];
 }
 
 const _Conversation: FC<ConversationProps> = ({
@@ -68,6 +75,11 @@ const _Conversation: FC<ConversationProps> = ({
   mentionPrefix,
   conversationId,
   stdout,
+  showCommandSelector,
+  commandQuery,
+  selectedCommandIndex,
+  commandCursorPosition,
+  commands = [],
 }: ConversationProps) => {
   return (
     <Box flexDirection="column" height="100%">
@@ -92,17 +104,29 @@ const _Conversation: FC<ConversationProps> = ({
       )}
 
       <InputBox
-        userInput={userInput}
-        cursorPosition={cursorPosition}
+        userInput={showCommandSelector ? `/${commandQuery}` : userInput}
+        cursorPosition={
+          showCommandSelector ? commandCursorPosition + 1 : cursorPosition
+        }
         isProcessingQuestion={isProcessingQuestion}
         mentionPrefix={mentionPrefix}
       />
-      <Box marginTop={0}>
-        <Text dimColor>
-          ↵ to send · \↵ for new line · ESC to clear
-          {conversationId && "· Ctrl+G to open in browser"}
-        </Text>
-      </Box>
+      {showCommandSelector && (
+        <CommandSelector
+          query={commandQuery}
+          selectedIndex={selectedCommandIndex}
+          commands={commands}
+          onSelect={() => {}}
+        />
+      )}
+      {!showCommandSelector && (
+        <Box marginTop={0} paddingLeft={1}>
+          <Text dimColor>
+            ↵ to send · \↵ for new line · ESC to clear
+            {conversationId && " · Ctrl+G to open in browser"}
+          </Text>
+        </Box>
+      )}
     </Box>
   );
 };

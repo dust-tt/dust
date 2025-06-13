@@ -1,8 +1,10 @@
+import { RateLimitExceededException } from "@workos-inc/node";
 import type { ApiResponse } from "auth0";
 
 import { getAuth0ManagemementClient } from "@app/lib/api/auth0";
 import type { RegionType } from "@app/lib/api/regions/config";
 import { SUPPORTED_REGIONS } from "@app/lib/api/regions/config";
+import { getWorkOS } from "@app/lib/api/workos/client";
 import { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { Workspace } from "@app/lib/models/workspace";
@@ -50,6 +52,31 @@ function makeAuth0Throttler<T>(
   };
 }
 
+function makeWorkOSThrottler<T>(logger: Logger) {
+  return async (fn: () => Promise<T>) => {
+    try {
+      return await fn();
+    } catch (err) {
+      if (
+        err instanceof RateLimitExceededException &&
+        err.retryAfter !== null
+      ) {
+        // During testing with 500 concurrent requests, WorkOS returned:
+        // - status: 429
+        // - message: 'Rate limit exceeded. See the WorkOS docs for more information: https://workos.com/docs/reference/rate-limits'
+        // - retryAfter: 0
+        // Since retryAfter is 0, we add 1 second to ensure we don't retry immediately
+        const waitTime = (err.retryAfter + 1) * 1000;
+        logger.info({ waitTime }, "Waiting");
+        await new Promise((resolve) => setTimeout(resolve, waitTime));
+        return await fn();
+      } else {
+        throw err; // let others bubble up
+      }
+    }
+  };
+}
+
 async function isWorkspaceEmpty(auth: Authenticator) {
   const workspace = auth.getNonNullableWorkspace();
   const subscription = auth.getNonNullableSubscription();
@@ -81,7 +108,7 @@ async function isWorkspaceEmpty(auth: Authenticator) {
   return true;
 }
 
-async function changeUserRegion(
+async function changeAuth0UserRegion(
   {
     auth0Id,
     region,
@@ -120,6 +147,45 @@ async function changeUserRegion(
     );
 
     logger.info({ user: auth0Id }, "Region set for user");
+  }
+
+  return true;
+}
+
+async function changeWorkOSUserRegion(
+  {
+    workOSUserId,
+    region,
+    execute,
+  }: {
+    workOSUserId: string;
+    region: string;
+    execute: boolean;
+  },
+  throttler: ReturnType<typeof makeWorkOSThrottler>,
+  logger: Logger
+) {
+  const workOS = getWorkOS();
+
+  logger.info({ user: workOSUserId }, "Setting region for user");
+
+  if (execute) {
+    try {
+      await throttler(() => workOS.userManagement.getUser(workOSUserId));
+    } catch (err) {
+      logger.error({ user: workOSUserId, err }, "Error fetching user");
+      return false;
+    }
+
+    await throttler(() =>
+      workOS.userManagement.updateUser({
+        userId: workOSUserId,
+        metadata: {
+          region,
+        },
+      })
+    );
+    logger.info({ user: workOSUserId }, "Region set for user");
   }
 
   return true;
@@ -209,18 +275,52 @@ export async function updateAllWorkspaceUsersRegionMetadata(
   }
 
   const users = await UserResource.fetchByModelIds(userIds);
-  const auth0Ids = removeNulls(users.map((u) => u.auth0Sub));
 
-  logger.info(`Will relocate ${users.length} users`);
+  const auth0Ids = removeNulls(users.map((u) => u.auth0Sub));
+  const countAuth0Relocations = await relocateAuth0Users(
+    auth0Ids,
+    newRegion,
+    execute,
+    rateLimitThreshold,
+    logger
+  );
+  logger.info(
+    { count: countAuth0Relocations, newRegion, workspaceId: workspace.sId },
+    "Relocated users in Auth0"
+  );
+
+  const workOSUserIds = removeNulls(users.map((u) => u.workOSUserId));
+  const countWorkOSRelocations = await relocateWorkOSUsers(
+    workOSUserIds,
+    newRegion,
+    execute,
+    logger
+  );
+  logger.info(
+    { count: countWorkOSRelocations, newRegion, workspaceId: workspace.sId },
+    "Relocated users in WorkOS"
+  );
+
+  return new Ok(undefined);
+}
+
+async function relocateAuth0Users(
+  auth0Ids: string[],
+  newRegion: string,
+  execute: boolean,
+  rateLimitThreshold: number,
+  logger: Logger
+) {
+  logger.info(`Will relocate ${auth0Ids.length} auth0 users`);
 
   let count = 0;
 
-  const throttler = makeAuth0Throttler({ rateLimitThreshold }, logger);
+  const auth0Throttler = makeAuth0Throttler({ rateLimitThreshold }, logger);
 
   for (const auth0Id of auth0Ids) {
-    const hasChanged = await changeUserRegion(
+    const hasChanged = await changeAuth0UserRegion(
       { auth0Id, region: newRegion, execute },
-      throttler,
+      auth0Throttler,
       logger
     );
 
@@ -229,12 +329,33 @@ export async function updateAllWorkspaceUsersRegionMetadata(
     }
   }
 
-  logger.info(
-    { count, newRegion, workspaceId: workspace.sId },
-    "Relocated users in Auth0"
-  );
+  return count;
+}
 
-  return new Ok(undefined);
+async function relocateWorkOSUsers(
+  workOSUserIds: string[],
+  newRegion: string,
+  execute: boolean,
+  logger: Logger
+) {
+  logger.info(`Will relocate ${workOSUserIds.length} WorkOS users`);
+
+  let count = 0;
+
+  const workOSThrottler = makeWorkOSThrottler(logger);
+
+  for (const workOSUserId of workOSUserIds) {
+    const hasChanged = await changeWorkOSUserRegion(
+      { workOSUserId, region: newRegion, execute },
+      workOSThrottler,
+      logger
+    );
+
+    if (hasChanged) {
+      count++;
+    }
+  }
+  return count;
 }
 
 // Only run the script if this file is being executed directly.

@@ -1,4 +1,5 @@
 use crate::{
+    http::proxy_client::create_untrusted_egress_client_builder,
     oauth::{
         connection::{
             Connection, ConnectionProvider, FinalizeResult, Provider, ProviderError, RefreshResult,
@@ -12,7 +13,7 @@ use crate::{
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use serde::Deserialize;
-use tracing::info;
+use tracing::{error, info};
 
 use super::utils::ProviderHttpRequestError;
 
@@ -67,6 +68,17 @@ impl MCPConnectionProvider {
 impl Provider for MCPConnectionProvider {
     fn id(&self) -> ConnectionProvider {
         ConnectionProvider::Mcp
+    }
+
+    fn reqwest_client(&self) -> reqwest::Client {
+        // MCP provider makes requests to user-provided URLs, so we use the untrusted egress proxy.
+        match create_untrusted_egress_client_builder().build() {
+            Ok(client) => client,
+            Err(e) => {
+                error!(error = ?e, "Failed to create client with untrusted egress proxy");
+                reqwest::Client::new()
+            }
+        }
     }
 
     async fn finalize(

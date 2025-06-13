@@ -1,4 +1,7 @@
-import type { DirectoryGroup as WorkOSGroup } from "@workos-inc/node";
+import type {
+  DirectoryGroup,
+  DirectoryGroup as WorkOSGroup,
+} from "@workos-inc/node";
 import { assert } from "console";
 import type {
   Attributes,
@@ -535,6 +538,33 @@ export class GroupResource extends BaseResource<GroupModel> {
     return group ?? null;
   }
 
+  static async upsertByWorkOSGroupId(
+    auth: Authenticator,
+    directoryGroup: DirectoryGroup
+  ) {
+    const owner = auth.getNonNullableWorkspace();
+    const group = await this.model.findOne({
+      where: {
+        workspaceId: owner.id,
+        workOSGroupId: directoryGroup.id,
+      },
+    });
+
+    if (group) {
+      const groupResource = new this(this.model, group.get());
+      await groupResource.updateName(auth, directoryGroup.name);
+      return groupResource;
+    }
+
+    return this.makeNew({
+      name: directoryGroup.name,
+      workOSGroupId: directoryGroup.id,
+      updatedAt: new Date(),
+      kind: "provisioned",
+      workspaceId: owner.id,
+    });
+  }
+
   static async fetchByAgentConfiguration({
     auth,
     agentConfiguration,
@@ -654,10 +684,58 @@ export class GroupResource extends BaseResource<GroupModel> {
     return groups.filter((group) => group.canRead(auth));
   }
 
+  static async listForSpaceById(
+    auth: Authenticator,
+    spaceId: string,
+    options: { groupKinds?: GroupKind[] } = {}
+  ): Promise<GroupResource[]> {
+    const workspace = auth.getNonNullableWorkspace();
+    const spaceModelId = getResourceIdFromSId(spaceId);
+
+    if (!spaceModelId) {
+      return [];
+    }
+
+    // Find groups associated with the space through GroupSpaceModel
+    const groupSpaces = await GroupSpaceModel.findAll({
+      where: {
+        vaultId: spaceModelId,
+        workspaceId: workspace.id,
+      },
+      attributes: ["groupId"],
+    });
+
+    if (groupSpaces.length === 0) {
+      return [];
+    }
+
+    const groupIds = groupSpaces.map((gs) => gs.groupId);
+    const { groupKinds } = options;
+
+    const whereClause: any = {
+      id: {
+        [Op.in]: groupIds,
+      },
+    };
+
+    // Apply groupKinds filter if provided
+    if (groupKinds && groupKinds.length > 0) {
+      whereClause.kind = {
+        [Op.in]: groupKinds,
+      };
+    }
+
+    const groups = await this.baseFetch(auth, {
+      where: whereClause,
+    });
+
+    return groups.filter((group) => group.canRead(auth));
+  }
+
   static async listUserGroupsInWorkspace({
     user,
     workspace,
-    groupKinds = ["global", "regular", "agent_editors"],
+    groupKinds = ["global", "regular", "provisioned", "agent_editors"],
     transaction,
   }: {
     user: UserResource;
@@ -722,13 +800,10 @@ export class GroupResource extends BaseResource<GroupModel> {
     return groups.map((group) => new this(GroupModel, group.get()));
   }
 
-  async isMember(auth: Authenticator): Promise<boolean> {
-    const owner = auth.getNonNullableWorkspace();
-
+  async isMember(user: UserResource): Promise<boolean> {
     if (this.isGlobal()) {
       return true;
     }
-
     if (this.isSystem()) {
       return false;
     }
@@ -736,10 +811,10 @@ export class GroupResource extends BaseResource<GroupModel> {
     const membership = await GroupMembershipModel.findOne({
       where: {
         groupId: this.id,
-        workspaceId: owner.id,
+        workspaceId: this.workspaceId,
         startAt: { [Op.lte]: new Date() },
         [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
-        userId: auth.getNonNullableUser().id,
+        userId: user.id,
       },
     });
 
@@ -782,6 +857,27 @@ export class GroupResource extends BaseResource<GroupModel> {
     return users.filter((user) =>
       workspaceMemberships.some((m) => m.userId === user.id)
     );
+  }
+
+  async getMemberCount(auth: Authenticator): Promise<number> {
+    const owner = auth.getNonNullableWorkspace();
+
+    // The global group does not have a DB entry for each workspace member.
+    if (this.isGlobal()) {
+      const { memberships } = await MembershipResource.getActiveMemberships({
+        workspace: auth.getNonNullableWorkspace(),
+      });
+      return memberships.length;
+    } else {
+      return GroupMembershipModel.count({
+        where: {
+          groupId: this.id,
+          workspaceId: owner.id,
+          startAt: { [Op.lte]: new Date() },
+          [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
+        },
+      });
+    }
   }
 
   async addMembers(
@@ -1213,6 +1309,19 @@ export class GroupResource extends BaseResource<GroupModel> {
       name: this.name,
       workspaceId: this.workspaceId,
       kind: this.kind,
+      memberCount: 0, // Default value, use toJSONWithMemberCount for actual count
+    };
+  }
+
+  async toJSONWithMemberCount(auth: Authenticator): Promise<GroupType> {
+    const memberCount = await this.getMemberCount(auth);
+    return {
+      id: this.id,
+      sId: this.sId,
+      name: this.name,
+      workspaceId: this.workspaceId,
+      kind: this.kind,
+      memberCount,
     };
   }
 }

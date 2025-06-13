@@ -45,7 +45,7 @@ export default function WorkspaceAdmin({
   const [isDownloadingData, setIsDownloadingData] = useState(false);
 
   const { subscriptions } = useWorkspaceSubscriptions({
-    workspaceId: owner.sId,
+    owner,
   });
 
   const formValidation = useCallback(() => {

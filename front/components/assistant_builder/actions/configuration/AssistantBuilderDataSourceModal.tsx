@@ -16,6 +16,7 @@ import {
   supportsDocumentsData,
   supportsStructuredData,
 } from "@app/lib/data_sources";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
   ContentNodesViewType,
   DataSourceViewSelectionConfigurations,
@@ -51,6 +52,10 @@ export default function AssistantBuilderDataSourceModal({
       initialDataSourceConfigurations
     );
 
+  const { featureFlags } = useFeatureFlags({
+    workspaceId: owner.sId,
+  });
+
   useEffect(() => {
     if (isOpen) {
       setSelectionConfigurations(initialDataSourceConfigurations);
@@ -82,12 +87,12 @@ export default function AssistantBuilderDataSourceModal({
         );
       case "document":
         return dataSourceViews.filter((dsv) =>
-          supportsDocumentsData(dsv.dataSource)
+          supportsDocumentsData(dsv.dataSource, featureFlags)
         );
       default:
         assertNever(viewType);
     }
-  }, [dataSourceViews, viewType]);
+  }, [dataSourceViews, viewType, featureFlags]);
 
   const selectedTableCount = useMemo(() => {
     if (viewType !== "table") {

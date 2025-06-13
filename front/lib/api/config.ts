@@ -213,10 +213,27 @@ const config = {
   getWorkOSWebhookSigningSecret: (): string => {
     return EnvironmentConfig.getEnvVariable("WORKOS_WEBHOOK_SIGNING_SECRET");
   },
+  getWorkOSActionSecret: (): string => {
+    return EnvironmentConfig.getEnvVariable("WORKOS_ACTION_SECRET");
+  },
+  getWorkOSActionSigningSecret: (): string => {
+    return EnvironmentConfig.getEnvVariable("WORKOS_ACTION_SIGNING_SECRET");
+  },
 
   // Profiler.
   getProfilerSecret: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable("DEBUG_PROFILER_SECRET");
+  },
+  // Untrusted egress proxy.
+  getUntrustedEgressProxyHost: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable(
+      "UNTRUSTED_EGRESS_PROXY_HOST"
+    );
+  },
+  getUntrustedEgressProxyPort: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable(
+      "UNTRUSTED_EGRESS_PROXY_PORT"
+    );
   },
 };
 

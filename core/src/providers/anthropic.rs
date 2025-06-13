@@ -625,6 +625,7 @@ impl TryFrom<ChatResponse> for AssistantChatMessage {
             content: text_content,
             function_call,
             function_calls,
+            contents: None,
         })
     }
 }

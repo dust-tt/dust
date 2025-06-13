@@ -123,6 +123,8 @@ type AuthQuery = Record<
   QueryParam
 >;
 
+const HANDLED_ERROR_REASONS = ["email_not_verified"];
+
 export default handleAuth({
   login: handleLogin((req) => {
     // req.query is defined on NextApiRequest (page-router), but not on NextRequest (app-router).
@@ -181,9 +183,12 @@ export default handleAuth({
           "login error in auth0 callback"
         );
 
-        statsDClient.increment("login.callback.error", 1, [
-          `error:${error.cause?.message}`,
-        ]);
+        // Only increment errors that are not handled by the afterCallback.
+        if (reason && !HANDLED_ERROR_REASONS.includes(reason)) {
+          statsDClient.increment("login.callback.error", 1, [
+            `error:${error.cause?.message}`,
+          ]);
+        }
 
         return res.redirect(`/login-error?reason=${reason}`);
       }

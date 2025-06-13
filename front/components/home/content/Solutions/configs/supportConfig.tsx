@@ -167,6 +167,13 @@ export const DemoVideo: DemoVideoProps = {
 
 export const Stories: CustomerStory[] = [
   {
+    title: "Blueground accelerates customer support resolution time with Dust",
+    content:
+      "Discover how Blueground boosted satisfaction and cut resolution time using Dust agents.",
+    href: "https://blog.dust.tt/customer-support-blueground/",
+    src: "https://blog.dust.tt/content/images/size/w2000/2025/06/Blueground_dust.jpg",
+  },
+  {
     title: "Malt cuts support ticket closing time by 50% with Dust",
     content:
       "Malt streamlines customer support using Dust’s AI platform for rapid, consistent multilingual responses.",

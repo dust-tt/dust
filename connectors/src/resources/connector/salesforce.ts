@@ -1,6 +1,6 @@
 import type { Transaction } from "sequelize";
 
-import { SalesforceConfigurationModel } from "@connectors/lib/models/salesforce";
+import type { SalesforceConfigurationModel } from "@connectors/lib/models/salesforce";
 import type {
   ConnectorProviderConfigurationType,
   ConnectorProviderModelResourceMapping,
@@ -10,6 +10,11 @@ import type {
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types";
 
+import {
+  SalesforceConfigurationResource,
+  SalesforceSyncedQueryResource,
+} from "../salesforce_resources";
+
 export class SalesforceConnectorStrategy
   implements ConnectorProviderStrategy<"salesforce">
 {
@@ -18,13 +23,11 @@ export class SalesforceConnectorStrategy
     blob: WithCreationAttributes<SalesforceConfigurationModel>,
     transaction: Transaction
   ): Promise<ConnectorProviderModelResourceMapping["salesforce"] | null> {
-    await SalesforceConfigurationModel.create(
-      {
-        ...blob,
-        connectorId,
-      },
-      { transaction }
-    );
+    await SalesforceConfigurationResource.makeNew({
+      blob: { ...blob, connectorId },
+      transaction,
+    });
+
     return null;
   }
 
@@ -32,18 +35,35 @@ export class SalesforceConnectorStrategy
     connector: ConnectorResource,
     transaction: Transaction
   ): Promise<void> {
-    await SalesforceConfigurationModel.destroy({
-      where: {
-        connectorId: connector.id,
-      },
-      transaction,
-    });
+    const config = await SalesforceConfigurationResource.fetchByConnectorId(
+      connector.id
+    );
+    if (!config) {
+      throw new Error(
+        `Salesforce configuration not found for connector ${connector.id}`
+      );
+    }
+    await config.delete(transaction);
+
+    const delRes = await SalesforceSyncedQueryResource.deleteByConnectorId(
+      connector.id,
+      transaction
+    );
+    if (!delRes) {
+      throw new Error(
+        `Failed to delete Salesforce synced queries for connector ${connector.id}`
+      );
+    }
+
+    return;
   }
 
-  async fetchConfigurationsbyConnectorIds(): Promise<
+  async fetchConfigurationsbyConnectorIds(
+    connectorIds: ModelId[]
+  ): Promise<
     Record<ModelId, ConnectorProviderModelResourceMapping["salesforce"]>
   > {
-    return {};
+    return SalesforceConfigurationResource.fetchByConnectorIds(connectorIds);
   }
 
   configurationJSON(): ConnectorProviderConfigurationType {

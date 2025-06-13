@@ -366,6 +366,7 @@ impl TryFrom<&OpenAICompletionChatMessage> for AssistantChatMessage {
             name,
             function_call,
             function_calls,
+            contents: None,
         })
     }
 }

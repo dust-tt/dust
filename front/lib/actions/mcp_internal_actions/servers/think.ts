@@ -9,6 +9,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
   description: "Expand thinking and reasoning capabilities.",
   icon: "ActionBrainIcon",
   authorization: null,
+  documentationUrl: null,
 };
 
 const createServer = (): McpServer => {

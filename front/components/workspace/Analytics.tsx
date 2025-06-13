@@ -9,7 +9,7 @@ interface QuickInsightsProps {
 
 export function QuickInsights({ owner }: QuickInsightsProps) {
   const { analytics, isMemberCountLoading } = useWorkspaceAnalytics({
-    workspaceId: owner.sId,
+    owner,
     disabled: false,
   });
 

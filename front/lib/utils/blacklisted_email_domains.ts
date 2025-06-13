@@ -1,6 +1,3 @@
-// WARNING: only changing this list will have no effect
-// The blacklist should be updated in auth0 too (actions -> triggers -> pre-user-registration)
-// This list is commited here for reference & traceability
 const BLACKLISTED_EMAIL_DOMAINS = new Set([
   "0-mail.com",
   "027168.com",
@@ -3766,8 +3763,6 @@ const BLACKLISTED_EMAIL_DOMAINS = new Set([
   "namya.app",
 ]);
 
-// Not used directly in code yet, but used in Okta auth flow (inside interface)
-// we commit the list here so it is saved in the repo
 export function isBlacklistedEmailDomain(emailDomain: string) {
   return BLACKLISTED_EMAIL_DOMAINS.has(emailDomain);
 }

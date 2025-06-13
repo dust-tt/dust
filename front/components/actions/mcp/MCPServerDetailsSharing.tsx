@@ -12,7 +12,7 @@ import type { MCPServerType, MCPServerViewType } from "@app/lib/api/mcp";
 import {
   useAddMCPServerToSpace,
   useRemoveMCPServerViewFromSpace,
-} from "@app/lib/swr/mcp_server_views";
+} from "@app/lib/swr/mcp_servers";
 import { useMCPServers } from "@app/lib/swr/mcp_servers";
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
 import type { LightWorkspaceType, SpaceType } from "@app/types";

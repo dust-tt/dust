@@ -8,48 +8,17 @@ import type {
 
 import { MCPOAuthRequiredError } from "@app/lib/actions/mcp_oauth_error";
 import config from "@app/lib/api/config";
-import apiConfig from "@app/lib/api/config";
 import { finalizeUriForProvider } from "@app/lib/api/oauth/utils";
 import type { Authenticator } from "@app/lib/auth";
-import type { MCPServerConnectionConnectionType } from "@app/lib/resources/mcp_server_connection_resource";
-import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
-import type { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
-import logger from "@app/logger/logger";
-import { assertNever } from "@app/types";
-import { getOAuthConnectionAccessToken } from "@app/types/oauth/client/access_token";
-
-async function getAccessTokenForRemoteMCPServer(
-  auth: Authenticator,
-  remoteMCPServer: RemoteMCPServerResource,
-  connectionType: MCPServerConnectionConnectionType
-) {
-  const metadata = remoteMCPServer.toJSON();
-
-  if (metadata.authorization) {
-    const connection = await MCPServerConnectionResource.findByMCPServer({
-      auth,
-      mcpServerId: metadata.sId,
-      connectionType,
-    });
-    if (connection.isOk()) {
-      const token = await getOAuthConnectionAccessToken({
-        config: apiConfig.getOAuthAPIConfig(),
-        logger,
-        connectionId: connection.value.connectionId,
-      });
-      return token.isOk() ? token.value : null;
-    }
-  }
-}
 
 export class MCPOAuthProvider implements OAuthClientProvider {
-  private readonly remoteMCPServer: RemoteMCPServerResource | undefined;
+  private token: OAuthTokens | undefined;
   private auth: Authenticator;
   private metadata: OAuthMetadata | undefined;
 
-  constructor(auth: Authenticator, remoteMCPServer?: RemoteMCPServerResource) {
+  constructor(auth: Authenticator, tokens?: OAuthTokens) {
     this.auth = auth;
-    this.remoteMCPServer = remoteMCPServer ?? undefined;
+    this.token = tokens;
   }
   get redirectUrl(): string {
     throw new Error(
@@ -126,58 +95,7 @@ export class MCPOAuthProvider implements OAuthClientProvider {
   }
 
   async tokens(): Promise<OAuthTokens | undefined> {
-    if (this.remoteMCPServer) {
-      // Case of a remote MCP server with a user-provided bearer token.
-      if (this.remoteMCPServer.sharedSecret) {
-        return {
-          token_type: "bearer",
-          access_token: this.remoteMCPServer.sharedSecret,
-          refresh_token: undefined,
-          expires_in: undefined,
-        };
-      }
-
-      // TODO(mcp): change this to the correct connection type later.
-      // eslint-disable-next-line no-constant-condition
-      const connectionType: MCPServerConnectionConnectionType = true
-        ? "workspace"
-        : "personal";
-
-      // Case of a remote MCP server requiring an OAuth connection.
-      const accessToken = await getAccessTokenForRemoteMCPServer(
-        this.auth,
-        this.remoteMCPServer,
-        connectionType
-      );
-
-      if (!accessToken) {
-        switch (connectionType) {
-          case "workspace": {
-            // This will let the oauth flow continue to the metadata discovery step.
-            return undefined;
-          }
-          case "personal": {
-            throw new Error(
-              "For now, personal connections are not supported for remote MCP servers."
-            );
-          }
-          default: {
-            assertNever(connectionType);
-          }
-        }
-      }
-
-      return {
-        token_type: "bearer",
-        access_token: accessToken.access_token,
-        refresh_token: undefined,
-        expires_in: accessToken.access_token_expiry ?? undefined,
-      };
-    }
-
-    // If we don't have a remoteMCPServer, it means we are trying to add via an URL.
-    // In this case, we don't have any tokens to return.
-    return undefined;
+    return this.token;
   }
 
   saveTokens() {

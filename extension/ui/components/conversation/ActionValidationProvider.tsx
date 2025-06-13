@@ -1,7 +1,6 @@
 import { useDustAPI } from "@app/shared/lib/dust_api";
 import { asDisplayName } from "@app/shared/lib/utils";
 import type {
-  MCPActionPublicType,
   MCPToolStakeLevelPublicType,
   MCPValidationMetadataPublicType,
   MCPValidationOutputPublicType,
@@ -27,7 +26,7 @@ import { createContext, useCallback, useEffect, useState } from "react";
 
 type ActionValidationContextType = {
   showValidationDialog: (validationRequest: {
-    action: MCPActionPublicType;
+    actionId: string;
     conversationId: string;
     inputs: Record<string, unknown>;
     messageId: string;
@@ -39,7 +38,7 @@ type ActionValidationContextType = {
 
 // Pending validation requests, keyed by message ID
 export type PendingValidationRequestType = {
-  action: MCPActionPublicType;
+  actionId: string;
   conversationId: string;
   inputs: Record<string, unknown>;
   messageId: string;
@@ -126,7 +125,7 @@ export function ActionValidationProvider({
       const response = await dustAPI.validateAction({
         conversationId: currentValidation.conversationId,
         messageId: currentValidation.messageId,
-        actionId: currentValidation.action.id,
+        actionId: currentValidation.actionId,
         approved,
       });
 
@@ -158,15 +157,9 @@ export function ActionValidationProvider({
     }
   }, [currentValidation]);
 
-  const showValidationDialog = (validationRequest: {
-    workspaceId: string;
-    messageId: string;
-    conversationId: string;
-    action: MCPActionPublicType;
-    inputs: Record<string, unknown>;
-    stake?: MCPToolStakeLevelPublicType;
-    metadata: MCPValidationMetadataPublicType;
-  }) => {
+  const showValidationDialog = (
+    validationRequest: PendingValidationRequestType
+  ) => {
     addToQueue(validationRequest);
     setErrorMessage(null);
   };

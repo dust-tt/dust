@@ -160,7 +160,12 @@ export async function getPokeConversation(
                   }
 
                   case "tool_action":
-                    //TODO(mcp) link to the MCP action logs
+                    a.mcpIO = {
+                      params: a.params,
+                      output: a.output,
+                      generatedFiles: a.generatedFiles,
+                      isError: a.isError,
+                    };
                     break;
 
                   case "conversation_include_file_action":

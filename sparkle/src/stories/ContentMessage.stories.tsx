@@ -38,6 +38,7 @@ const meta = {
         "blue",
         "rose",
         "golden",
+        "outline",
       ],
       control: { type: "select" },
       description: "Visual style variant",

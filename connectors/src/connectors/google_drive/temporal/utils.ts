@@ -7,6 +7,7 @@ import { OAuth2Client } from "googleapis-common";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import { getOAuthConnectionAccessTokenWithThrow } from "@connectors/lib/oauth";
 import logger from "@connectors/logger/logger";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { GoogleDriveObjectType, ModelId } from "@connectors/types";
 import { cacheWithRedis } from "@connectors/types";
 
@@ -214,6 +215,31 @@ export async function driveObjectToDustType(
   }
 }
 
+export async function folderHasChildren(
+  connectorId: ModelId,
+  folderId: string
+): Promise<boolean> {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error(`Connector ${connectorId} not found`);
+  }
+
+  const drive = await getDriveClient(connector.connectionId);
+  const res = await drive.files.list({
+    corpora: "allDrives",
+    pageSize: 1,
+    includeItemsFromAllDrives: true,
+    supportsAllDrives: true,
+    fields: "nextPageToken, files(id)",
+    q: `'${folderId}' in parents and mimeType='application/vnd.google-apps.folder'`,
+  });
+  if (!res.data.files) {
+    return false;
+  }
+
+  return res.data.files?.length > 0;
+}
+
 export async function getAuthObject(
   connectionId: string
 ): Promise<OAuth2Client> {
@@ -271,8 +297,6 @@ export async function _getLabels(
   connectorId: ModelId,
   authCredentials: OAuth2Client
 ) {
-  // For now, return empty array until we have the new scope approved.
-  return [];
   try {
     const driveLabels = google.drivelabels({
       version: "v2",

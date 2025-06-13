@@ -133,8 +133,7 @@ export async function handleSearch(
   const excludedNodeMimeTypes =
     nodeIds || searchSourceUrls ? [] : NON_SEARCHABLE_NODES_MIME_TYPES;
 
-  const searchFilter = getSearchFilterFromDataSourceViews(
-    auth.getNonNullableWorkspace(),
+  const searchFilterRes = getSearchFilterFromDataSourceViews(
     allDatasourceViews,
     {
       excludedNodeMimeTypes,
@@ -143,6 +142,17 @@ export async function handleSearch(
       nodeIds,
     }
   );
+  if (searchFilterRes.isErr()) {
+    return new Err({
+      status: 400,
+      error: {
+        type: "invalid_request_error",
+        message: `Invalid search filter parameters: ${searchFilterRes.error.message}`,
+      },
+    });
+  }
+
+  const searchFilter = searchFilterRes.value;
 
   const paginationRes = getCursorPaginationParams(req);
   if (paginationRes.isErr()) {

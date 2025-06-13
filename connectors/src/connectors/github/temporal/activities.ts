@@ -989,6 +989,7 @@ export async function githubCodeSyncActivity({
     repoLogin,
     ...loggerArgs,
   });
+
   const connectorState = await GithubConnectorState.findOne({
     where: {
       connectorId: connector.id,
@@ -1028,6 +1029,21 @@ export async function githubCodeSyncActivity({
     return;
   }
 
+  let githubCodeRepository = await GithubCodeRepository.findOne({
+    where: {
+      connectorId: connector.id,
+      repoId: repoId.toString(),
+    },
+  });
+
+  if (githubCodeRepository && githubCodeRepository.skipReason) {
+    logger.info(
+      { skipReason: githubCodeRepository.skipReason },
+      "Repository skipped, not syncing."
+    );
+    return;
+  }
+
   // upserting a folder for the code root in data_source_folders (core)
   await upsertDataSourceFolder({
     dataSourceConfig,
@@ -1037,13 +1053,6 @@ export async function githubCodeSyncActivity({
     parentId: getRepositoryInternalId(repoId),
     mimeType: INTERNAL_MIME_TYPES.GITHUB.CODE_ROOT,
     sourceUrl: getRepoUrl(repoLogin, repoName),
-  });
-
-  let githubCodeRepository = await GithubCodeRepository.findOne({
-    where: {
-      connectorId: connector.id,
-      repoId: repoId.toString(),
-    },
   });
 
   if (!githubCodeRepository) {

@@ -159,16 +159,21 @@ export async function getContentFragmentBlob(
         timestamp: dsView.dataSource.createdAt.getTime(),
       };
     } else {
-      const searchFilter = getSearchFilterFromDataSourceViews(
-        auth.getNonNullableWorkspace(),
-        [dsView],
-        {
-          excludedNodeMimeTypes: [],
-          includeDataSources: true,
-          viewType: "all",
-          nodeIds: [cf.nodeId],
-        }
-      );
+      const searchFilterRes = getSearchFilterFromDataSourceViews([dsView], {
+        excludedNodeMimeTypes: [],
+        includeDataSources: false,
+        viewType: "all",
+        nodeIds: [cf.nodeId],
+      });
+      if (searchFilterRes.isErr()) {
+        return new Err(
+          new Error(
+            `Content node not found for content fragment node id: ${cf.nodeId}`
+          )
+        );
+      }
+
+      const searchFilter = searchFilterRes.value;
 
       const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
       const searchRes = await coreAPI.searchNodes({
