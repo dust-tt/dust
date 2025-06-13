@@ -10,7 +10,13 @@ interface LastLoginData {
   last_login: string;
 }
 
-const backfillLastLoginAt = async (execute: boolean, filePath: string) => {
+const backfillLastLoginAt = async ({
+  execute,
+  filePath,
+}: {
+  execute: boolean;
+  filePath: string;
+}) => {
   const fileStream = fs.createReadStream(filePath);
   const rl = readline.createInterface({
     input: fileStream,
@@ -26,6 +32,10 @@ const backfillLastLoginAt = async (execute: boolean, filePath: string) => {
   logger.info(
     `Loaded ${lastLoginMap.size} last login records from ${filePath}`
   );
+
+  let updatedCount = 0;
+  let skippedCount = 0;
+  let notFoundCount = 0;
 
   // Process each auth0Sub
   await concurrentExecutor(
@@ -51,6 +61,7 @@ const backfillLastLoginAt = async (execute: boolean, filePath: string) => {
       const user = await UserResource.fetchByAuth0Sub(auth0Sub);
       if (!user) {
         logger.info({ auth0Sub }, "No user found for auth0Sub");
+        notFoundCount++;
         return;
       }
 
@@ -61,6 +72,7 @@ const backfillLastLoginAt = async (execute: boolean, filePath: string) => {
         logger.info(
           `User ${user.auth0Sub} already has lastLoginAt set to ${user.lastLoginAt}, skipping`
         );
+        skippedCount++;
         return;
       }
 
@@ -70,9 +82,14 @@ const backfillLastLoginAt = async (execute: boolean, filePath: string) => {
 
       if (execute) {
         await user.recordLoginActivity(lastLogin);
+        updatedCount++;
       }
     },
     { concurrency: 16 }
+  );
+
+  logger.info(
+    `Backfill completed: ${updatedCount} users updated, ${skippedCount} skipped (already up to date), ${notFoundCount} not found`
   );
 };
 
@@ -85,6 +102,6 @@ makeScript(
     },
   },
   async ({ execute, filePath }) => {
-    await backfillLastLoginAt(execute, filePath);
+    await backfillLastLoginAt({ execute, filePath });
   }
 );
