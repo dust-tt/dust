@@ -20,7 +20,7 @@ import { parseInternalId } from "@connectors/lib/remote_databases/utils";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import logger from "@connectors/logger/logger";
 import { SalesforceSyncedQueryResource } from "@connectors/resources/salesforce_resources";
-import type { ModelId } from "@connectors/types";
+import type { DateTs, ModelId } from "@connectors/types";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
 
 export async function syncSalesforceConnection(connectorId: ModelId) {
@@ -141,37 +141,34 @@ export async function processSyncedQueryPage(
   connectorId: ModelId,
   {
     queryId,
-    lastModifiedDateCursor,
+    lastModifiedDateTsCursor,
     limit,
-    lastSeenModifiedDate,
-    upToLastModifiedDate,
+    lastSeenModifiedDateTs,
+    upToLastModifiedDateTs,
   }: {
     queryId: ModelId;
-    lastModifiedDateCursor: Date | null;
+    lastModifiedDateTsCursor: DateTs;
     limit: number;
-    lastSeenModifiedDate: Date | null;
-    upToLastModifiedDate: Date | null;
+    lastSeenModifiedDateTs: DateTs;
+    upToLastModifiedDateTs: DateTs;
   }
 ): Promise<{
   // The most recent lastModifiedDate seen
-  lastSeenModifiedDate: Date | null;
+  lastSeenModifiedDateTs: DateTs;
   // The older lastModifiedDate seen in this page to use for pagination
-  lastModifiedDateCursor: Date | null;
+  lastModifiedDateTsCursor: DateTs;
   hasMore: boolean;
   count: number;
 }> {
-  // This is terrible but temporal serializes Dates to string across workflow/activity boundary.
-  // Having the bype Date is convenient here but this ensures that we turn back serialized strings
-  // into Dates.
-  if (typeof lastSeenModifiedDate === "string") {
-    lastSeenModifiedDate = new Date(lastSeenModifiedDate);
-  }
-  if (typeof lastModifiedDateCursor === "string") {
-    lastModifiedDateCursor = new Date(lastModifiedDateCursor);
-  }
-  if (typeof upToLastModifiedDate === "string") {
-    upToLastModifiedDate = new Date(upToLastModifiedDate);
-  }
+  let lastSeenModifiedDate = lastSeenModifiedDateTs
+    ? new Date(lastSeenModifiedDateTs)
+    : null;
+  let lastModifiedDateCursor = lastModifiedDateTsCursor
+    ? new Date(lastModifiedDateTsCursor)
+    : null;
+  const upToLastModifiedDate = upToLastModifiedDateTs
+    ? new Date(upToLastModifiedDateTs)
+    : null;
 
   const connAndCredsRes = await getConnectorAndCredentials(connectorId);
   if (connAndCredsRes.isErr()) {
@@ -322,9 +319,16 @@ export async function processSyncedQueryPage(
     { concurrency: 8 }
   );
 
+  if (lastSeenModifiedDate) {
+    lastSeenModifiedDateTs = lastSeenModifiedDate.getTime();
+  }
+  if (lastModifiedDateCursor) {
+    lastModifiedDateTsCursor = lastModifiedDateCursor.getTime();
+  }
+
   return {
-    lastSeenModifiedDate,
-    lastModifiedDateCursor,
+    lastSeenModifiedDateTs,
+    lastModifiedDateTsCursor,
     hasMore: processedCount > 0,
     count: processedCount,
   };
