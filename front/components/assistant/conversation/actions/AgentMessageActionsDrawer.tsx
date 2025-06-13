@@ -32,19 +32,7 @@ export function AgentMessageActionsDrawer({
   onClose,
   owner,
 }: AgentMessageActionsDrawerProps) {
-  const [frozenActions, setFrozenActions] = useState(message.actions);
-
-  useEffect(() => {
-    const shouldUpdate =
-      message.actions.length > frozenActions.length ||
-      message.status === "succeeded";
-
-    if (shouldUpdate) {
-      setFrozenActions(message.actions);
-    }
-  }, [message.actions.length, message.status, frozenActions.length]);
-
-  const actions = frozenActions;
+  const actions = message.actions;
 
   const groupedActionsByStep = actions
     ? actions.reduce<Record<number, AgentActionType[]>>((acc, current) => {
