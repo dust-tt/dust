@@ -343,6 +343,16 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     return history.get();
   }
 
+  async hasAnyHistory(): Promise<boolean> {
+    const count = await LabsTranscriptsHistoryModel.count({
+      where: {
+        configurationId: this.id,
+      },
+    });
+
+    return count > 0;
+  }
+
   private async deleteHistory(
     auth: Authenticator,
     transaction?: Transaction
