@@ -6,6 +6,10 @@ import { DEFAULT_RETRIEVAL_ACTION_NAME } from "@app/lib/actions/constants";
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
 import { internalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
+import {
+  LIST_ALL_AGENTS_TOOL_NAME,
+  SUGGEST_AGENTS_TOOL_NAME,
+} from "@app/lib/actions/mcp_internal_actions/servers/agent_router";
 import type { AgentActionConfigurationType } from "@app/lib/actions/types/agent";
 import { getFavoriteStates } from "@app/lib/api/assistant/get_favorite_states";
 import config from "@app/lib/api/config";
@@ -158,7 +162,7 @@ function _getAgentRouterToolsConfiguration(
       id: -1,
       sId: agentId + "-agent-router-list-action",
       type: "mcp_server_configuration",
-      name: "list_agents",
+      name: LIST_ALL_AGENTS_TOOL_NAME,
       description: "List the published agents of the workspace.",
       mcpServerViewId: mcpServerView.sId,
       internalMCPServerId,
@@ -175,7 +179,7 @@ function _getAgentRouterToolsConfiguration(
       id: -1,
       sId: agentId + "-agent-router-suggest-agents",
       type: "mcp_server_configuration",
-      name: "suggest_agents",
+      name: SUGGEST_AGENTS_TOOL_NAME,
       description: "Suggest agents based on the user's query.",
       mcpServerViewId: mcpServerView.sId,
       internalMCPServerId,
