@@ -3,6 +3,7 @@ import { Context } from "@temporalio/activity";
 import { isCancellation } from "@temporalio/workflow";
 import { BasicCrawler, CheerioCrawler, Configuration, LogLevel } from "crawlee";
 import { randomUUID } from "crypto";
+import path from "path";
 import { Op } from "sequelize";
 import turndown from "turndown";
 
@@ -18,6 +19,7 @@ import {
   WebCrawlerError,
 } from "@connectors/connectors/webcrawler/lib/utils";
 import {
+  FIRECRAWL_REQ_TIMEOUT,
   MAX_BLOCKED_RATIO,
   MAX_PAGES_TOO_LARGE_RATIO,
   MAX_TIME_TO_CRAWL_MINUTES,
@@ -152,6 +154,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
         async requestHandler({ request, enqueueLinks }) {
           Context.current().heartbeat({
             type: "http_request",
+            url: request.url,
           });
 
           const checkUrl = await verifyRedirect(request.url);
@@ -166,6 +169,11 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
             );
             return;
           }
+
+          Context.current().heartbeat({
+            type: "verify_redirect",
+            url: checkUrl,
+          });
 
           const currentRequestDepth = request.userData.depth || 0;
 
@@ -188,6 +196,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
             onlyMainContent: true,
             formats: ["markdown", "links"],
             headers: customHeaders,
+            timeout: FIRECRAWL_REQ_TIMEOUT,
           });
 
           if (!crawlerResponse.success) {
@@ -207,6 +216,11 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
             },
             "Receive response"
           );
+
+          Context.current().heartbeat({
+            type: "scraping",
+            url: checkUrl,
+          });
 
           // try-catch allowing activity cancellation by temporal (various timeouts, or signal)
           try {
@@ -341,6 +355,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
 
           Context.current().heartbeat({
             type: "upserting",
+            url: checkUrl,
           });
 
           try {
@@ -867,7 +882,7 @@ function formatDocumentContent({
   const TITLE_MAX_LENGTH = 300;
 
   const parsedUrl = new URL(url);
-  const urlWithoutQuery = `${parsedUrl.origin}/${parsedUrl.pathname}`;
+  const urlWithoutQuery = path.join(parsedUrl.origin, parsedUrl.pathname);
 
   const sanitizedContent = stripNullBytes(content);
   const sanitizedTitle = stripNullBytes(title);
