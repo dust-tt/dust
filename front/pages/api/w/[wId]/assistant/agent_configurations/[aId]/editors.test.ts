@@ -293,7 +293,7 @@ describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId]/editors", () =
     expect(res._getJSONData()).toEqual({
       error: {
         type: "invalid_request_error",
-        message: "Cannot add: user is already a member of the group",
+        message: "The user is already a member of the agent editors group.",
       },
     });
   });
@@ -314,7 +314,7 @@ describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId]/editors", () =
     expect(res._getJSONData()).toEqual({
       error: {
         type: "invalid_request_error",
-        message: "Cannot remove: user is not a member of the group",
+        message: "The user is not a member of the agent editors group.",
       },
     });
   });
