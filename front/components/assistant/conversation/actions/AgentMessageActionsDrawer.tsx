@@ -6,7 +6,6 @@ import {
   SheetTitle,
   Spinner,
 } from "@dust-tt/sparkle";
-import { useEffect, useState } from "react";
 
 import { getActionSpecification } from "@app/components/actions/types";
 import type { ActionProgressState } from "@app/lib/assistant/state/messageReducer";
