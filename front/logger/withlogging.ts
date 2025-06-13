@@ -2,6 +2,7 @@ import tracer from "dd-trace";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getSession } from "@app/lib/auth";
+import type { DustError } from "@app/lib/error";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import type {
   CustomGetServerSideProps,
@@ -11,7 +12,12 @@ import type {
   BaseResource,
   ResourceLogJSON,
 } from "@app/lib/resources/base_resource";
-import type { APIErrorWithStatusCode, WithAPIErrorResponse } from "@app/types";
+import type {
+  APIErrorWithStatusCode,
+  Err,
+  WithAPIErrorResponse,
+} from "@app/types";
+import { assertNever } from "@app/types";
 
 import logger from "./logger";
 import { statsDClient } from "./statsDClient";
@@ -159,6 +165,34 @@ export function withLogging<T>(
       "Processed request"
     );
   };
+}
+
+export function dustErrorToApiError(
+  // TODO: add other error codes as we use this method in other places
+  r: Err<Omit<DustError, "code"> & { code: "unauthorized" | "internal_error" }>,
+  req: NextApiRequest,
+  res: NextApiResponse
+) {
+  switch (r.error.code) {
+    case "unauthorized":
+      return apiError(req, res, {
+        status_code: 401,
+        api_error: {
+          type: "workspace_auth_error",
+          message: r.error.message,
+        },
+      });
+    case "internal_error":
+      return apiError(req, res, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: r.error.message,
+        },
+      });
+    default:
+      assertNever(r.error.code);
+  }
 }
 
 export function apiError<T>(

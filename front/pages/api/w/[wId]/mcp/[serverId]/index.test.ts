@@ -116,7 +116,7 @@ describe("PATCH /api/w/[wId]/mcp/[serverId]", () => {
 
       await handler(req, res);
 
-      expect(res._getStatusCode()).toBe(500);
+      expect(res._getStatusCode()).toBe(401);
     }
   );
 
@@ -199,7 +199,7 @@ describe("PATCH /api/w/[wId]/mcp/[serverId]", () => {
       req.body = { oAuthUseCase: "personal_actions" };
       await handler(req, res);
 
-      expect(res._getStatusCode()).toBe(500);
+      expect(res._getStatusCode()).toBe(401);
     }
   );
 
@@ -287,7 +287,7 @@ describe("DELETE /api/w/[wId]/mcp/[serverId]", () => {
 
     await handler(req, res);
 
-    expect(res._getStatusCode()).toBe(500);
+    expect(res._getStatusCode()).toBe(401);
 
     const responseData = res._getJSONData();
     expect(responseData).toHaveProperty("error");

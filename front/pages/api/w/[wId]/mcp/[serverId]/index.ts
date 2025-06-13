@@ -7,8 +7,8 @@ import type { Authenticator } from "@app/lib/auth";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
-import { apiError } from "@app/logger/withlogging";
-import type { MCPOAuthUseCase, Result, WithAPIErrorResponse } from "@app/types";
+import { apiError, dustErrorToApiError } from "@app/logger/withlogging";
+import type { MCPOAuthUseCase, WithAPIErrorResponse } from "@app/types";
 import { assertNever, Ok } from "@app/types";
 
 export type GetMCPServerResponseBody = {
@@ -139,13 +139,7 @@ async function handler(
           });
 
           if (r.isErr()) {
-            return apiError(req, res, {
-              status_code: 500,
-              api_error: {
-                type: "internal_server_error",
-                message: r.error.message,
-              },
-            });
+            return dustErrorToApiError(r, req, res);
           }
 
           return res.status(200).json({
@@ -199,13 +193,7 @@ async function handler(
               lastSyncAt: new Date(),
             });
             if (r.isErr()) {
-              return apiError(req, res, {
-                status_code: 500,
-                api_error: {
-                  type: "internal_server_error",
-                  message: r.error.message,
-                },
-              });
+              return dustErrorToApiError(r, req, res);
             }
           }
 
@@ -215,13 +203,7 @@ async function handler(
               oAuthUseCase,
             });
             if (r.isErr()) {
-              return apiError(req, res, {
-                status_code: 500,
-                api_error: {
-                  type: "internal_server_error",
-                  message: r.error.message,
-                },
-              });
+              return dustErrorToApiError(r, req, res);
             }
           }
 
@@ -257,13 +239,7 @@ async function handler(
       const r = await server.delete(auth);
 
       if (r.isErr()) {
-        return apiError(req, res, {
-          status_code: 500,
-          api_error: {
-            type: "internal_server_error",
-            message: r.error.message,
-          },
-        });
+        return dustErrorToApiError(r, req, res);
       }
 
       return res.status(200).json({
@@ -293,7 +269,7 @@ async function updateOAuthUseCaseForMCPServer(
     mcpServerId: string;
     oAuthUseCase: MCPOAuthUseCase;
   }
-): Promise<Result<void, Error>> {
+) {
   const views = await MCPServerViewResource.listByMCPServer(auth, mcpServerId);
 
   for (const view of views) {

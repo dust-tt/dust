@@ -174,7 +174,9 @@ export class InternalMCPServerInMemoryResource {
     return server;
   }
 
-  async delete(auth: Authenticator): Promise<Result<number, Error>> {
+  async delete(
+    auth: Authenticator
+  ): Promise<Result<number, DustError<"unauthorized">>> {
     const canAdministrate =
       await SpaceResource.canAdministrateSystemSpace(auth);
 

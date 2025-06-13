@@ -198,7 +198,7 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
 
   async delete(
     auth: Authenticator
-  ): Promise<Result<undefined | number, Error>> {
+  ): Promise<Result<undefined | number, DustError<"unauthorized">>> {
     const canAdministrate =
       await SpaceResource.canAdministrateSystemSpace(auth);
 
@@ -296,7 +296,7 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
       lastSyncAt: Date;
       clearError?: boolean;
     }
-  ): Promise<Result<undefined, Error>> {
+  ): Promise<Result<undefined, DustError<"unauthorized">>> {
     const canAdministrate =
       await SpaceResource.canAdministrateSystemSpace(auth);
 
