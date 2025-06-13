@@ -378,12 +378,11 @@ async function* runMultiActionsAgent(
     }
   }
 
-  const { emulatedActions, jitActions, jitServers } =
-    await getEmulatedAndJITActions(auth, {
-      agentActions,
-      agentMessage,
-      conversation,
-    });
+  const { emulatedActions, jitActions } = await getEmulatedAndJITActions(auth, {
+    agentActions,
+    agentMessage,
+    conversation,
+  });
 
   // Get client-side MCP server configurations from user message context.
   const clientSideMCPActionConfigurations =
@@ -395,16 +394,12 @@ async function* runMultiActionsAgent(
   const {
     serverToolsAndInstructions: mcpActions,
     error: mcpToolsListingError,
-  } = await tryListMCPTools(
-    auth,
-    {
-      agentConfiguration,
-      conversation,
-      agentMessage,
-      clientSideActionConfigurations: clientSideMCPActionConfigurations,
-    },
-    jitServers
-  );
+  } = await tryListMCPTools(auth, {
+    agentConfiguration,
+    conversation,
+    agentMessage,
+    clientSideActionConfigurations: clientSideMCPActionConfigurations,
+  });
 
   if (!isLastGenerationIteration) {
     availableActions.push(...jitActions);
