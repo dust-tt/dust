@@ -161,6 +161,8 @@ type ChipLinkProps = ChipBaseProps &
 
 type ChipProps = ChipLinkProps | ChipButtonProps;
 
+// Since we can have a button inside a button, the top level element is a div
+// with a role="button", a tabIndex={0} to make it focusable, and onKeyDown handler.
 const Chip = React.forwardRef<HTMLDivElement, ChipProps>(
   (
     {
