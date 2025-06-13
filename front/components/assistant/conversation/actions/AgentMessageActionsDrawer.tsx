@@ -9,14 +9,10 @@ import {
 
 import { getActionSpecification } from "@app/components/actions/types";
 import type { ActionProgressState } from "@app/lib/assistant/state/messageReducer";
-import type {
-  AgentActionType,
-  LightAgentMessageType,
-  LightWorkspaceType,
-} from "@app/types";
+import type { AgentActionType, LightWorkspaceType } from "@app/types";
 
 interface AgentMessageActionsDrawerProps {
-  message: LightAgentMessageType;
+  messageActions: AgentActionType[];
   actionProgress: ActionProgressState;
   isOpened: boolean;
   isActing: boolean;
@@ -24,14 +20,14 @@ interface AgentMessageActionsDrawerProps {
   owner: LightWorkspaceType;
 }
 export function AgentMessageActionsDrawer({
-  message,
+  messageActions,
   actionProgress,
   isOpened,
   isActing,
   onClose,
   owner,
 }: AgentMessageActionsDrawerProps) {
-  const actions = message.actions;
+  const actions = messageActions;
 
   const groupedActionsByStep = actions
     ? actions.reduce<Record<number, AgentActionType[]>>((acc, current) => {
