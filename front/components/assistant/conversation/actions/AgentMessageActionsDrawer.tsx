@@ -15,7 +15,6 @@ import type {
   LightAgentMessageType,
   LightWorkspaceType,
 } from "@app/types";
-import { assertAllAgentActionType } from "@app/types";
 
 interface AgentMessageActionsDrawerProps {
   message: LightAgentMessageType;
@@ -46,8 +45,6 @@ export function AgentMessageActionsDrawer({
   }, [message.actions.length, message.status, frozenActions.length]);
 
   const actions = frozenActions;
-
-  assertAllAgentActionType(actions);
 
   const groupedActionsByStep = actions
     ? actions.reduce<Record<number, AgentActionType[]>>((acc, current) => {
