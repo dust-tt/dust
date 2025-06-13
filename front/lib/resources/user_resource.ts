@@ -370,7 +370,7 @@ export class UserResource extends BaseResource<UserModel> {
       lastName: this.lastName,
       fullName: this.fullName(),
       image: this.imageUrl,
-      lastLoginAt: this.lastLoginAt?.getTime(),
+      lastLoginAt: this.lastLoginAt?.getTime() ?? null,
     };
   }
 

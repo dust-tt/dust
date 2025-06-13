@@ -43,6 +43,7 @@ function renderUserType(user: UserModel): UserType {
     lastName: user.lastName,
     fullName: user.firstName + (user.lastName ? ` ${user.lastName}` : ""),
     image: user.imageUrl,
+    lastLoginAt: user.lastLoginAt?.getTime() ?? null,
   };
 }
 

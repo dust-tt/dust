@@ -202,8 +202,12 @@ async function handler(
     }
 
     case "POST": {
-      // Check if the user is a builder for the workspace or it's a conversation file
-      if (!auth.isBuilder() && file.useCase !== "conversation") {
+      // Check if the user is a builder for the workspace or it's a conversation file or avatar
+      if (
+        !auth.isBuilder() &&
+        file.useCase !== "conversation" &&
+        file.useCase !== "avatar"
+      ) {
         return apiError(req, res, {
           status_code: 403,
           api_error: {

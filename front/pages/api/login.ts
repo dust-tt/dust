@@ -99,6 +99,7 @@ async function handler(
       lastName: user.lastName,
       image: user.imageUrl,
       fullName: user.name,
+      lastLoginAt: user.lastLoginAt?.getTime() ?? null,
     },
   });
 
