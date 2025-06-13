@@ -20,10 +20,8 @@ import { parseInternalId } from "@connectors/lib/remote_databases/utils";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import logger from "@connectors/logger/logger";
 import { SalesforceSyncedQueryResource } from "@connectors/resources/salesforce_resources";
-import type { ModelId } from "@connectors/types";
+import type { DateString, ModelId } from "@connectors/types";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
-
-type DateString = string | null;
 
 export async function syncSalesforceConnection(connectorId: ModelId) {
   const connAndCredsRes = await getConnectorAndCredentials(connectorId);

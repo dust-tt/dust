@@ -197,3 +197,5 @@ export type DustMimeType =
   | WebcrawlerMimeType
   | ZendeskMimeType
   | SalesforceMimeType;
+
+export type DateString = string | null;
