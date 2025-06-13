@@ -60,7 +60,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20.13.0
-          cache: 'npm'
       
       # Setup Rust for core project
       - name: Setup Rust
