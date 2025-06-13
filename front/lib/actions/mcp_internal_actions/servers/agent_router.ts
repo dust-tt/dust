@@ -20,12 +20,64 @@ const serverInfo: InternalMCPServerDefinitionType = {
   documentationUrl: null,
 };
 
+export const LIST_ALL_AGENTS_TOOL_NAME = "list_all_published_agents";
+export const SUGGEST_AGENTS_TOOL_NAME = "suggest_agents_for_content";
+
+const SERVER_INSTRUCTIONS = `You have access to the following tools: ${LIST_ALL_AGENTS_TOOL_NAME}, ${SUGGEST_AGENTS_TOOL_NAME}.
+
+# IMPORTANT: Check for specialized agents BEFORE attempting to answer
+
+**CRITICAL**: Before searching for data or attempting to answer any request, ALWAYS check if there's a specialized agent for the topic using suggest_agents. This is especially important for:
+
+- **Platform/Service-specific requests**: Salesforce, HubSpot, Slack, GitHub, Jira, Notion, Google Drive, etc.
+- **Domain-specific questions**: HR, Sales, Marketing, Legal, Finance, Engineering, etc.
+- **Tool-specific queries**: Any mention of specific software, platforms, or services
+
+# When to use these tools
+
+1. **ALWAYS as your FIRST action when**:
+   - The user mentions a specific platform or service name (e.g., "Salesforce accounts", "GitHub issues", "Slack messages")
+   - The request is about data from a specific system
+   - The query relates to a specific business function or domain
+
+2. **When explicitly asked**: If the user asks to see available agents, list agents, or find a suitable agent.
+
+3. **When the request seems specific**: Any request that appears to be about a specific domain, platform, or specialized task.
+
+# Example patterns that MUST trigger suggest_agents:
+- "What's the latest [anything] on [platform name]?" → Check for platform-specific agent
+- "Show me [data type] from [service]" → Check for service-specific agent
+- "[Platform name] [any request]" → Check for platform agent
+- Questions about specific business functions → Check for domain agents
+
+# ${LIST_ALL_AGENTS_TOOL_NAME}
+Lists all active published agents in the workspace. Use when the user wants to browse all available agents.
+
+# ${SUGGEST_AGENTS_TOOL_NAME}
+Suggests the most relevant agents based on the user's query. **USE THIS FIRST** before attempting to search or answer questions about specific platforms, services, or domains.
+
+**Workflow**:
+1. Receive user request
+2. If it mentions a platform/service/domain → Use suggest_agents IMMEDIATELY
+3. If specialized agents exist → Present them to the user using the mention directive
+4. Only proceed with general search if no specialized agents are found
+
+**CRITICAL: How to present agents to users**
+When you find relevant agents, you MUST use the mention directive format provided by the tools. This allows users to click on the agent name to select it. The tools return agents with a "mention" field that contains the clickable format - USE THIS FORMAT when presenting agents to users.
+
+Example: If the tool returns an agent with mention \`:mention[Salesforce]{sId=abc123}\`, present it exactly like that in your response so the user can click on it.
+
+Always inform the user about specialized agents and let them choose whether to use them.
+`;
+
 const createServer = (auth: Authenticator): McpServer => {
-  const server = new McpServer(serverInfo);
+  const server = new McpServer(serverInfo, {
+    instructions: SERVER_INSTRUCTIONS,
+  });
 
   server.tool(
-    "list_agents",
-    "List all active published agents in the workspace. The mention directive allows the user to click on the agent name to select it.",
+    LIST_ALL_AGENTS_TOOL_NAME,
+    "List all active published agents in the workspace.",
     {},
     async () => {
       const owner = auth.getNonNullableWorkspace();
@@ -86,8 +138,8 @@ const createServer = (auth: Authenticator): McpServer => {
   );
 
   server.tool(
-    "suggest_agents",
-    "Suggest agents for the current user's query. The mention directive allows the user to click on the agent name to select it.",
+    SUGGEST_AGENTS_TOOL_NAME,
+    "Suggest agents for the current user's query.",
     {
       userMessage: z.string().describe("The user's message."),
       conversationId: z.string().describe("The conversation id."),
