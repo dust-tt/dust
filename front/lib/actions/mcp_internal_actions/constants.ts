@@ -124,9 +124,9 @@ export const INTERNAL_MCP_SERVERS: Record<
       create_meeting: "high",
 
       // Update operations.
-      update_contact: "low",
-      update_company: "low",
-      update_deal: "low",
+      update_contact: "high",
+      update_company: "high",
+      update_deal: "high",
 
       // Other operations.
       count_objects_by_properties: "never_ask",
