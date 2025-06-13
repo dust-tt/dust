@@ -5,6 +5,7 @@ import { getAuth0ManagemementClient } from "@app/lib/api/auth0";
 import type { RegionType } from "@app/lib/api/regions/config";
 import { SUPPORTED_REGIONS } from "@app/lib/api/regions/config";
 import { getWorkOS } from "@app/lib/api/workos/client";
+import { getOrCreateWorkOSOrganization } from "@app/lib/api/workos/organization";
 import { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { Workspace } from "@app/lib/models/workspace";
@@ -71,7 +72,8 @@ function makeWorkOSThrottler<T>(logger: Logger) {
         await new Promise((resolve) => setTimeout(resolve, waitTime));
         return await fn();
       } else {
-        throw err; // let others bubble up
+        logger.error({ err }, "When calling WorkOS");
+        process.exit(1);
       }
     }
   };
@@ -288,6 +290,29 @@ export async function updateAllWorkspaceUsersRegionMetadata(
     { count: countAuth0Relocations, newRegion, workspaceId: workspace.sId },
     "Relocated users in Auth0"
   );
+
+  const organizationRes = await getOrCreateWorkOSOrganization(workspace);
+  if (organizationRes.isErr()) {
+    logger.error(
+      { error: organizationRes.error },
+      "When calling getOrCreateWorkOSOrganization"
+    );
+    process.exit(1);
+  }
+  const organization = organizationRes.value;
+  if (execute && organization.metadata.region !== newRegion) {
+    try {
+      await getWorkOS().organizations.updateOrganization({
+        organization: organization.id,
+        metadata: {
+          region: newRegion,
+        },
+      });
+    } catch (error) {
+      logger.error({ error }, "When calling getOrCreateWorkOSOrganization");
+      process.exit(1);
+    }
+  }
 
   const workOSUserIds = removeNulls(users.map((u) => u.workOSUserId));
   const countWorkOSRelocations = await relocateWorkOSUsers(
