@@ -14,6 +14,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   // We'll prefix all tools with the server name to avoid conflicts.
   // It's okay to change the name of the server as we don't refer to it directly.
   "agent_router",
+  "conversation_files",
   "data_sources_file_system",
   "extract_data",
   "file_generation",
@@ -226,6 +227,10 @@ export const INTERNAL_MCP_SERVERS: Record<
     id: 1008,
     availability: "auto",
     timeoutMs: 5 * 60 * 1000, // 5 minutes
+  },
+  conversation_files: {
+    id: 17,
+    availability: "auto_hidden_builder",
   },
 
   primitive_types_debugger: {
