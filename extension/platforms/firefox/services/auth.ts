@@ -70,6 +70,7 @@ export class FirefoxAuthService extends AuthService {
   }) {
     try {
       const response = await sendAuthMessage(isForceLogin, forcedConnection);
+
       if (!response.accessToken) {
         throw new Error("No access token received.");
       }

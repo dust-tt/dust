@@ -1,3 +1,4 @@
+/// <reference types="webextension-polyfill" />
 // Tailwind base globals
 import "../../ui/css/global.css";
 // Use sparkle styles, override local globals
@@ -6,9 +7,10 @@ import "@dust-tt/sparkle/dist/sparkle.css";
 import "../../ui/css/components.css";
 // Local custom styles
 import "../../ui/css/custom.css";
+import browser from "webextension-polyfill";
 
-import { PortProvider } from "@app/platforms/chrome/context/PortContext";
-import { ChromePlatformService } from "@app/platforms/chrome/services/platform";
+import { PortProvider } from "@app/platforms/firefox/context/PortContext";
+import { FirefoxPlatformService } from "@app/platforms/firefox/services/platform";
 import {
   PlatformProvider,
   usePlatform,
@@ -29,8 +31,8 @@ import { createBrowserRouter, RouterProvider } from "react-router-dom";
 
 const router = createBrowserRouter(routes);
 
-const ChromeExtensionWrapper = () => {
-  const platform = usePlatform() as ChromePlatformService;
+const FirefoxExtensionWrapper = () => {
+  const platform = usePlatform() as FirefoxPlatformService;
   const [isLatestVersion, setIsLatestVersion] = React.useState(true);
 
   const checkIsLatestVersion = async () => {
@@ -38,7 +40,7 @@ const ChromeExtensionWrapper = () => {
     if (!pendingUpdate) {
       return null;
     }
-    const currentVersion = chrome.runtime.getManifest().version;
+    const currentVersion = browser.runtime.getManifest().version;
     if (compare(pendingUpdate.version, currentVersion, ">")) {
       setIsLatestVersion(false);
     }
@@ -76,7 +78,7 @@ const ChromeExtensionWrapper = () => {
             <Button
               label="Update now"
               onClick={async () => {
-                chrome.runtime.reload();
+                browser.runtime.reload();
               }}
             />
           </div>
@@ -88,7 +90,7 @@ const ChromeExtensionWrapper = () => {
   return <RouterProvider router={router} />;
 };
 
-const platformService = new ChromePlatformService();
+const platformService = new FirefoxPlatformService();
 
 const App = () => {
   return (
@@ -96,7 +98,7 @@ const App = () => {
       <PortProvider>
         <AuthProvider>
           <Notification.Area>
-            <ChromeExtensionWrapper />
+            <FirefoxExtensionWrapper />
           </Notification.Area>
         </AuthProvider>
       </PortProvider>

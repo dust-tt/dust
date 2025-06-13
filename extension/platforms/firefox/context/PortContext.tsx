@@ -1,14 +1,13 @@
-import { createContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useEffect, useState } from "react";
+import browser from "webextension-polyfill";
 
-export const PortContext = createContext<chrome.runtime.Port | null>(null);
+export const PortContext = createContext<browser.Runtime.Port | null>(null);
 
 export const PortProvider = ({ children }: { children: React.ReactNode }) => {
-  const [port, setPort] = useState<chrome.runtime.Port | null>(null);
+  const [port, setPort] = useState<browser.Runtime.Port | null>(null);
 
   useEffect(() => {
-    console.log("Connecting to sidepanel");
-    const port = chrome.runtime.connect({ name: "sidepanel-connection" });
-
+    const port = browser.runtime.connect({ name: "sidepanel-connection" });
     setPort(port);
 
     return () => {
@@ -17,4 +16,12 @@ export const PortProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   return <PortContext.Provider value={port}>{children}</PortContext.Provider>;
+};
+
+export const usePort = () => {
+  const port = useContext(PortContext);
+  if (!port) {
+    throw new Error("usePort must be used within a PortProvider");
+  }
+  return port;
 };

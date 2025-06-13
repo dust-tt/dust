@@ -1,3 +1,4 @@
+import browser from "webextension-polyfill";
 import type {
   AuthBackgroundMessage,
   AuthBackgroundResponse,
@@ -6,9 +7,9 @@ import type {
   GetActiveTabBackgroundMessage,
   GetActiveTabBackgroundResponse,
   InputBarStatusMessage,
-} from "@app/platforms/chrome/messages";
-import type { PendingUpdate } from "@app/platforms/chrome/services/core_platform";
-import { ChromeCorePlatformService } from "@app/platforms/chrome/services/core_platform";
+} from "@app/platforms/firefox/messages";
+import type { PendingUpdate } from "@app/platforms/firefox/services/core_platform";
+import { FirefoxCorePlatformService } from "@app/platforms/firefox/services/core_platform";
 import {
   AUTH0_CLIENT_ID,
   DEFAULT_DUST_API_DOMAIN,
@@ -27,7 +28,7 @@ const log = console.error;
 const DEFAULT_TOKEN_EXPIRY_IN_SECONDS = 3600; // 1 hour.
 
 // Initialize the platform service.
-const platform = new ChromeCorePlatformService();
+const platform = new FirefoxCorePlatformService();
 
 const state: {
   refreshingToken: boolean;
@@ -40,7 +41,7 @@ const state: {
   refreshingToken: false,
   refreshRequests: [],
   lastHandler: undefined,
-  authPlatform: "auth0",
+  authPlatform: "workos",
 };
 
 /**
@@ -63,71 +64,63 @@ const fetchAuthPlatform = async () => {
 /**
  * Listener for force update mechanism.
  */
-chrome.runtime.onUpdateAvailable.addListener(async (details) => {
+browser.runtime.onUpdateAvailable.addListener(async (details) => {
   const pendingUpdate: PendingUpdate = {
     version: details.version,
     detectedAt: Date.now(),
   };
-
   await platform.savePendingUpdate(pendingUpdate);
 });
 
 /**
  * Listener to open/close the side panel when the user clicks on the extension icon.
+ * (Sidebar panel is set in manifest, not at runtime in Firefox)
  */
-chrome.runtime.onInstalled.addListener(() => {
+browser.runtime.onInstalled.addListener(() => {
   void platform.storage.set("extensionReady", false);
-  void chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
-  chrome.contextMenus.create({
+  browser.contextMenus.create({
     id: "add_tab_content",
     title: "Add tab content to conversation",
     contexts: ["all"],
   });
-  chrome.contextMenus.create({
+  browser.contextMenus.create({
     id: "add_tab_screenshot",
     title: "Add tab screenshot to conversation",
     contexts: ["all"],
   });
-
-  chrome.contextMenus.create({
+  browser.contextMenus.create({
     id: "add_selection",
     title: "Add selection to conversation",
     contexts: ["selection"],
   });
 });
 
-/**
- * Util & listeners to disable context menu items based on the domain.
- */
 const shouldDisableContextMenuForDomain = async (
   url: string
 ): Promise<boolean> => {
-  if (url.startsWith("chrome://")) {
+  if (url.startsWith("firefox://")) {
     return true;
   }
-
   const user = await platform.auth.getStoredUser();
   if (!user || !user.selectedWorkspace) {
     return false;
   }
-
   const blacklistedDomains =
     user.workspaces.find((w) => w.sId === user.selectedWorkspace)
       ?.blacklistedDomains || [];
-
   return blacklistedDomains.some((d) => url.includes(d));
 };
 
 const toggleContextMenus = (isDisabled: boolean) => {
   ["add_tab_content", "add_tab_screenshot", "add_selection"].forEach(
     (menuId) => {
-      chrome.contextMenus.update(menuId, { enabled: !isDisabled });
+      browser.contextMenus.update(menuId, { enabled: !isDisabled });
     }
   );
 };
 
 // Add URL change listener to update context menu state.
-chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+browser.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   if (changeInfo.status === "complete" && tab.url) {
     const isDisabled = await shouldDisableContextMenuForDomain(tab.url);
     toggleContextMenus(isDisabled);
@@ -135,15 +128,15 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
 });
 
 // Also add URL change listener for active tab changes.
-chrome.tabs.onActivated.addListener(async (activeInfo) => {
-  const tab = await chrome.tabs.get(activeInfo.tabId);
+browser.tabs.onActivated.addListener(async (activeInfo) => {
+  const tab = await browser.tabs.get(activeInfo.tabId);
   if (tab.url) {
     const isDisabled = await shouldDisableContextMenuForDomain(tab.url);
     toggleContextMenus(isDisabled);
   }
 });
 
-chrome.runtime.onConnect.addListener(async (port) => {
+browser.runtime.onConnect.addListener(async (port) => {
   if (port.name === "sidepanel-connection") {
     console.log("Sidepanel is there");
     void platform.storage.set("extensionReady", true);
@@ -154,34 +147,15 @@ chrome.runtime.onConnect.addListener(async (port) => {
       state.lastHandler = undefined;
     });
   }
-
   // Fetch and store the auth platform
   void fetchAuthPlatform();
 });
 
 const getActionHandler = (menuItemId: string | number) => {
   switch (menuItemId) {
-    /**
-     * We have the logic to add an action that will open a convo and pre-post a message.
-     * We're not using it anymore at the moment but keeping ref here for future iteration
-     * if we want to experiment again with quick actions.
-     *
-     * const params = JSON.stringify({
-     *    includeContent: true,
-     *    includeCapture: false,
-     *    text: ":mention[dust]{sId=dust} summarize this page.",
-     *    configurationId: "dust",
-     *  });
-     *  void chrome.runtime.sendMessage({
-     *    type: "EXT_ROUTE_CHANGE",
-     *    pathname: "/run",
-     *    search: `?${params}`,
-     *  });
-     *
-     */
     case "add_tab_content":
       return () => {
-        void chrome.runtime.sendMessage({
+        void browser.runtime.sendMessage({
           type: "EXT_ATTACH_TAB",
           includeContent: true,
           includeCapture: false,
@@ -189,7 +163,7 @@ const getActionHandler = (menuItemId: string | number) => {
       };
     case "add_tab_screenshot":
       return () => {
-        void chrome.runtime.sendMessage({
+        void browser.runtime.sendMessage({
           type: "EXT_ATTACH_TAB",
           includeContent: false,
           includeCapture: true,
@@ -197,7 +171,7 @@ const getActionHandler = (menuItemId: string | number) => {
       };
     case "add_selection":
       return () => {
-        void chrome.runtime.sendMessage({
+        void browser.runtime.sendMessage({
           type: "EXT_ATTACH_TAB",
           includeContent: true,
           includeCapture: false,
@@ -207,40 +181,30 @@ const getActionHandler = (menuItemId: string | number) => {
   }
 };
 
-chrome.contextMenus.onClicked.addListener(async (event, tab) => {
+browser.contextMenus.onClicked.addListener(async (event, tab) => {
   const handler = getActionHandler(event.menuItemId);
-  if (!handler) {
-    return;
-  }
-
+  if (!handler) return;
   const isExtensionReady =
     await platform.storage.get<boolean>("extensionReady");
-
   if (!isExtensionReady && tab) {
-    // Store the handler for later use when the extension is ready.
     state.lastHandler = handler;
-    void chrome.sidePanel.open({
-      windowId: tab.windowId,
-    });
+    void browser.sidebarAction.open();
   } else {
     void handler();
   }
 });
 
 function capture(sendResponse: (x: CaptureResponse) => void) {
-  return chrome.tabs.captureVisibleTab(function (dataURI) {
+  browser.tabs.captureVisibleTab().then((dataURI) => {
     if (dataURI) {
       sendResponse({ dataURI });
+      return dataURI;
     }
   });
 }
 
-/**
- * Listener for messages sent from the react app to the background script.
- * For now we use messages to authenticate the user.
- */
-chrome.runtime.onMessage.addListener(
-  (
+browser.runtime.onMessage.addListener(
+  async (
     message:
       | AuthBackgroundMessage
       | GetActiveTabBackgroundMessage
@@ -257,157 +221,124 @@ chrome.runtime.onMessage.addListener(
   ) => {
     switch (message.type) {
       case "AUTHENTICATE":
-        void authenticate(message, sendResponse);
-        return true; // Keep the message channel open for async response.
-
+        const r = await authenticate(
+          message as AuthBackgroundMessage,
+          sendResponse
+        );
+        return r;
       case "REFRESH_TOKEN":
-        if (!message.refreshToken) {
+        if (!(message as any).refreshToken) {
           log("No refresh token provided on REFRESH_TOKEN message.");
           sendResponse({ success: false });
           return true;
         }
-        void refreshToken(message.refreshToken, sendResponse);
-        return true;
+        const res = await refreshToken(
+          (message as any).refreshToken,
+          sendResponse
+        );
+        console.log(res);
+        return res;
       case "LOGOUT":
-        void logout(sendResponse);
-        return true; // Keep the message channel open.
-
+        await logout(sendResponse);
+        return true;
       case "SIGN_CONNECT":
         return true;
-
       case "CAPTURE":
-        capture(sendResponse);
-        return true;
-
-      case "GET_ACTIVE_TAB":
-        chrome.tabs.query(
-          { active: true, currentWindow: true },
-          async (tabs) => {
-            const tab = tabs[0];
-            if (!tab?.id) {
-              log("No active tab found.");
-              sendResponse({ url: "", content: "", title: "" });
-              return;
-            }
-
-            try {
-              const includeContent = message.includeContent ?? true;
-              const includeCapture = message.includeCapture ?? false;
-              const [mimetypeExecution] = await chrome.scripting.executeScript({
+        const rc = capture(sendResponse);
+        return rc;
+      case "GET_ACTIVE_TAB": {
+        const tabs = await browser.tabs.query({
+          active: true,
+          currentWindow: true,
+        });
+        const tab = tabs[0];
+        if (!tab?.id) {
+          log("No active tab found.");
+          sendResponse({ url: "", content: "", title: "" });
+          return true;
+        }
+        try {
+          const includeContent = (message as any).includeContent ?? true;
+          const includeCapture = (message as any).includeCapture ?? false;
+          const [mimetypeExecution] = await browser.scripting.executeScript({
+            target: { tabId: tab.id },
+            func: () => document.contentType,
+          });
+          let captures: string[] | undefined;
+          if (includeCapture) {
+            if (mimetypeExecution.result === "text/html") {
+              await browser.scripting.executeScript({
                 target: { tabId: tab.id },
-                func: () => document.contentType,
+                files: ["page.js"],
               });
-
-              let captures: string[] | undefined;
-              if (includeCapture) {
-                if (mimetypeExecution.result === "text/html") {
-                  // Full page capture
-                  await chrome.scripting.executeScript({
-                    target: { tabId: tab.id },
-                    files: ["page.js"],
-                  });
-                  captures = await new Promise((resolve, reject) => {
-                    if (tab?.id) {
-                      const timeout = setTimeout(() => {
-                        console.error("Timeout waiting for full page capture");
-                        reject(
-                          new Error("Timeout waiting for full page screenshot.")
-                        );
-                      }, 10000);
-                      chrome.tabs.sendMessage(
-                        tab.id,
-                        { type: "PAGE_CAPTURE_FULL_PAGE" },
-                        (res) => {
-                          clearTimeout(timeout);
-                          resolve(res);
-                        }
-                      );
-                    } else {
-                      console.error("No tab id");
-                      reject(new Error("No tab selected."));
-                    }
-                  });
-                } else {
-                  captures = [
-                    await new Promise<string>((resolve, reject) => {
-                      const timeout = setTimeout(() => {
-                        console.error("Timeout waiting for capture");
-                        reject(
-                          new Error("Timeout waiting for page screenshot")
-                        );
-                      }, 2000);
-                      chrome.tabs.captureVisibleTab((res) => {
-                        clearTimeout(timeout);
-                        resolve(res);
-                      });
-                    }),
-                  ];
-                }
-                if (!captures || captures.length === 0) {
-                  console.error("Empty captures array");
-                  throw new Error("Failed to get a screenshot of the page.");
-                }
-              }
-              let content: string | undefined;
-              if (includeContent) {
-                if (message.includeSelectionOnly) {
-                  const [execution] = await chrome.scripting.executeScript({
-                    target: { tabId: tab.id },
-                    func: () => window.getSelection()?.toString(),
-                  });
-                  content = execution?.result ?? "no content.";
-                } else {
-                  // TODO - handle non-HTML content. For now we just extract the page content.
-                  const [execution] = await chrome.scripting.executeScript({
-                    target: { tabId: tab.id },
-                    func: extractPage(tab.url || ""),
-                  });
-                  content = execution?.result ?? "no content.";
-                }
-              }
-              sendResponse({
-                title: tab.title || "",
-                url: tab.url || "",
-                content,
-                captures,
-              });
-            } catch (error) {
-              log("Error getting active tab content:", error);
-              sendResponse({
-                url: tab.url || "",
-                content: "",
-                title: "",
-                error:
-                  error instanceof Error
-                    ? error.message
-                    : "Failed to get content from the current tab.",
-              });
+              captures = [
+                await browser.tabs.sendMessage(tab.id, {
+                  type: "PAGE_CAPTURE_FULL_PAGE",
+                }),
+              ];
+            } else {
+              captures = [await browser.tabs.captureVisibleTab()];
+            }
+            if (!captures || captures.length === 0) {
+              throw new Error("Failed to get a screenshot of the page.");
             }
           }
-        );
+          let content: string | undefined;
+          if (includeContent) {
+            if ((message as any).includeSelectionOnly) {
+              const [execution] = await browser.scripting.executeScript({
+                target: { tabId: tab.id },
+                func: () => window.getSelection()?.toString(),
+              });
+              content = execution?.result ?? "no content.";
+            } else {
+              const [execution] = await browser.scripting.executeScript({
+                target: { tabId: tab.id },
+                func: extractPage(tab.url || ""),
+              });
+              content = execution?.result ?? "no content.";
+            }
+          }
+          sendResponse({
+            title: tab.title || "",
+            url: tab.url || "",
+            content,
+            captures,
+          });
+          return {
+            title: tab.title || "",
+            url: tab.url || "",
+            content,
+            captures,
+          };
+        } catch (error) {
+          log("Error getting active tab content:", error);
+          sendResponse({
+            url: tab.url || "",
+            content: "",
+            title: "",
+            error:
+              error instanceof Error
+                ? error.message
+                : "Failed to get content from the current tab.",
+          });
+        }
         return true;
-
+      }
       case "INPUT_BAR_STATUS":
-        // Enable or disable the context menu items based on the input bar status. Actions are only available when the input bar is visible.
-        if (state.lastHandler && message.available) {
+        if (state.lastHandler && (message as any).available) {
           state.lastHandler();
           state.lastHandler = undefined;
         }
-        return false;
-
+        return;
       default:
-        log(`Unknown message: ${message}.`);
+        log(`Unknown message: ${JSON.stringify(message)}`);
+        return;
     }
   }
 );
 
-/**
- * Listener for messages sent from external websites that are whitelisted on the manifest.
- * It allows to open the side panel and navigate to a specific conversation.
- *
- * We return true to keep the message channel open for async response.
- */
-chrome.runtime.onMessageExternal.addListener((request) => {
+browser.runtime.onMessageExternal.addListener(async (request) => {
   if (
     request.action !== "openSidePanel" ||
     !request.conversationId ||
@@ -418,93 +349,67 @@ chrome.runtime.onMessageExternal.addListener((request) => {
     log("[onMessageExternal] Invalid params:", request);
     return true;
   }
-
-  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-    if (tabs[0]) {
-      void chrome.sidePanel
-        .open({
-          windowId: tabs[0].windowId,
-        })
-        .then(() => {
-          chrome.storage.local.get(
-            ["extensionReady", "user"],
-            ({ extensionReady, user }) => {
-              if (request.workspaceId != user?.selectedWorkspace) {
-                log("[onMessageExternal] User selected another workspace.");
-                return;
-              }
-
-              const sendMessage = () => {
-                const params = JSON.stringify({
-                  conversationId: request.conversationId,
-                });
-                void chrome.runtime.sendMessage({
-                  type: "EXT_ROUTE_CHANGE",
-                  pathname: "/run",
-                  search: `?${params}`,
-                });
-              };
-
-              if (!extensionReady) {
-                let retries = 0;
-                const MAX_RETRIES = 15;
-                const RETRY_INTERVAL = 500; // Check every 500ms 15 times = 7.5s total.
-
-                const checkReady = () => {
-                  if (retries >= MAX_RETRIES) {
-                    log(
-                      "[onMessageExternal] Max retries reached waiting for extension ready."
-                    );
-                    return;
-                  }
-
-                  chrome.storage.local.get(
-                    ["extensionReady"],
-                    ({ extensionReady }) => {
-                      if (chrome.runtime.lastError) {
-                        log(
-                          "[onMessageExternal] Error checking extension ready:",
-                          chrome.runtime.lastError
-                        );
-                        return;
-                      }
-
-                      if (extensionReady) {
-                        sendMessage();
-                      } else {
-                        retries++;
-                        setTimeout(checkReady, RETRY_INTERVAL);
-                      }
-                    }
-                  );
-                };
-                checkReady();
-              } else {
-                sendMessage();
-              }
-            }
-          );
-        })
-        .catch((err) => {
-          log("[onMessageExternal] Error opening side panel:", err);
+  const tabs = await browser.tabs.query({ active: true, currentWindow: true });
+  if (tabs[0]) {
+    try {
+      await browser.sidebarAction.open();
+      const { extensionReady, user } = await browser.storage.local.get([
+        "extensionReady",
+        "user",
+      ]);
+      if (request.workspaceId != user?.selectedWorkspace) {
+        log("[onMessageExternal] User selected another workspace.");
+        return true;
+      }
+      const sendMessage = () => {
+        const params = JSON.stringify({
+          conversationId: request.conversationId,
         });
+        void browser.runtime.sendMessage({
+          type: "EXT_ROUTE_CHANGE",
+          pathname: "/run",
+          search: `?${params}`,
+        });
+      };
+      if (!extensionReady) {
+        let retries = 0;
+        const MAX_RETRIES = 15;
+        const RETRY_INTERVAL = 500;
+        const checkReady = async () => {
+          if (retries >= MAX_RETRIES) {
+            log(
+              "[onMessageExternal] Max retries reached waiting for extension ready."
+            );
+            return;
+          }
+          const { extensionReady } = await browser.storage.local.get([
+            "extensionReady",
+          ]);
+          if (extensionReady) {
+            sendMessage();
+          } else {
+            retries++;
+            setTimeout(checkReady, RETRY_INTERVAL);
+          }
+          return;
+        };
+        checkReady();
+      } else {
+        sendMessage();
+      }
+    } catch (err) {
+      log("[onMessageExternal] Error opening sidebar:", err);
     }
-  });
-
+  }
   return true;
 });
 
-/**
- * Authenticate the user using Auth0 or WorkOS.
- */
 const authenticate = async (
   { isForceLogin, connection }: AuthBackgroundMessage,
   sendResponse: (auth: OAuthAuthorizeResponse | AuthBackgroundResponse) => void
 ) => {
-  // First we call /authorize endpoint to get the authorization code (PKCE flow).
-  const redirectUrl = chrome.identity.getRedirectURL();
+  const redirectUrl = browser.identity.getRedirectURL();
   const { codeVerifier, codeChallenge } = await generatePKCE();
-
   const options: Record<string, string> = {
     client_id: getOAuthClientID(state.authPlatform),
     response_type: "code",
@@ -512,7 +417,6 @@ const authenticate = async (
     code_challenge_method: "S256",
     code_challenge: codeChallenge,
   };
-
   if (state.authPlatform === "auth0") {
     options.audience = DUST_API_AUDIENCE;
     options.scope =
@@ -525,52 +429,44 @@ const authenticate = async (
     }
     options.provider = "authkit";
   }
-
   const queryString = new URLSearchParams(options).toString();
   const authUrl = getAuthorizeURL({ auth: state.authPlatform, queryString });
 
-  chrome.identity.launchWebAuthFlow(
-    { url: authUrl, interactive: true },
-    async (redirectUrl) => {
-      if (chrome.runtime.lastError) {
-        log(`launchWebAuthFlow error: ${chrome.runtime.lastError.message}`);
-        sendResponse({ success: false });
-        return;
-      }
-      if (!redirectUrl || redirectUrl.includes("error")) {
-        log(`launchWebAuthFlow error in redirect URL: ${redirectUrl}`);
-        sendResponse({ success: false });
-        return;
-      }
-
-      const url = new URL(redirectUrl);
-      const queryParams = new URLSearchParams(url.search);
-      const authorizationCode = queryParams.get("code");
-      const error = queryParams.get("error");
-
-      if (error) {
-        log(`Authentication error: ${error}`);
-        sendResponse({ success: false });
-        return;
-      }
-
-      if (authorizationCode) {
-        const data = await exchangeCodeForTokens(
-          authorizationCode,
-          codeVerifier
-        );
-        sendResponse(data);
-      } else {
-        log(`launchWebAuthFlow missing code in redirect URL: ${redirectUrl}`);
-        sendResponse({ success: false });
-      }
+  try {
+    const redirectUrlResult = await browser.identity.launchWebAuthFlow({
+      url: authUrl,
+      interactive: true,
+    });
+    if (!redirectUrlResult || redirectUrlResult.includes("error")) {
+      log(`launchWebAuthFlow error in redirect URL: ${redirectUrlResult}`);
+      sendResponse({ success: false });
+      return;
     }
-  );
+    const url = new URL(redirectUrlResult);
+    const queryParams = new URLSearchParams(url.search);
+    const authorizationCode = queryParams.get("code");
+    const error = queryParams.get("error");
+    if (error) {
+      log(`Authentication error: ${error}`);
+      sendResponse({ success: false });
+      return;
+    }
+    if (authorizationCode) {
+      const data = await exchangeCodeForTokens(authorizationCode, codeVerifier);
+      sendResponse(data);
+      return data;
+    } else {
+      log(
+        `launchWebAuthFlow missing code in redirect URL: ${redirectUrlResult}`
+      );
+      sendResponse({ success: false });
+    }
+  } catch (err) {
+    log(`launchWebAuthFlow error: ${err}`);
+    sendResponse({ success: false });
+  }
 };
 
-/**
- * Refresh the access token using the refresh token.
- */
 const refreshToken = async (
   refreshToken: string,
   sendResponse: (auth: OAuthAuthorizeResponse | AuthBackgroundResponse) => void
@@ -584,20 +480,17 @@ const refreshToken = async (
         client_id: getOAuthClientID(state.authPlatform),
         refresh_token: refreshToken,
       };
-
       const response = await fetch(getTokenURL(state.authPlatform), {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: new URLSearchParams(tokenParams),
       });
-
       if (!response.ok) {
         const data = await response.json();
         throw new Error(
           `Token refresh failed: ${data.error} - ${data.error_description}`
         );
       }
-
       const data = await response.json();
       const handlers = state.refreshRequests;
       state.refreshRequests = [];
@@ -608,6 +501,11 @@ const refreshToken = async (
           expiresIn: data.expires_in ?? DEFAULT_TOKEN_EXPIRY_IN_SECONDS,
         });
       });
+      return {
+        accessToken: data.access_token,
+        refreshToken: data.refresh_token || refreshToken,
+        expiresIn: data.expires_in ?? DEFAULT_TOKEN_EXPIRY_IN_SECONDS,
+      };
     } catch (error) {
       log("Token refresh failed: unknown error", error);
       const handlers = state.refreshRequests;
@@ -621,9 +519,6 @@ const refreshToken = async (
   }
 };
 
-/**
- *  Exchange authorization code for tokens
- */
 const exchangeCodeForTokens = async (
   code: string,
   codeVerifier: string
@@ -634,23 +529,20 @@ const exchangeCodeForTokens = async (
       client_id: getOAuthClientID(state.authPlatform),
       code_verifier: codeVerifier,
       code,
-      redirect_uri: chrome.identity.getRedirectURL(),
+      redirect_uri: browser.identity.getRedirectURL(),
     };
-
     const tokenURL = getTokenURL(state.authPlatform);
     const response = await fetch(tokenURL, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams(tokenParams),
     });
-
     if (!response.ok) {
       const data = await response.json();
       throw new Error(
         `Token exchange failed: ${data.error} - ${data.error_description}`
       );
     }
-
     const data = await response.json();
     return {
       accessToken: data.access_token,
@@ -665,21 +557,16 @@ const exchangeCodeForTokens = async (
   }
 };
 
-/**
- * Logout the user.
- */
 const logout = async (
   sendResponse: (response: AuthBackgroundResponse) => void
 ) => {
-  const redirectUri = chrome.identity.getRedirectURL();
+  const redirectUri = browser.identity.getRedirectURL();
   const queryParams: Record<string, string> = {
     returnTo: redirectUri,
   };
-
   if (state.authPlatform === "auth0") {
     queryParams.client_id = AUTH0_CLIENT_ID;
   } else if (state.authPlatform === "workos") {
-    // We need to get the session to log out the user from WorkOS.
     const accessToken = await platform.auth.getAccessToken();
     if (accessToken) {
       const decodedPayload = jwtDecode<Record<string, string>>(accessToken);
@@ -696,16 +583,14 @@ const logout = async (
     auth: state.authPlatform,
     queryString: new URLSearchParams(queryParams).toString(),
   });
-
-  chrome.identity.launchWebAuthFlow(
-    { url: logoutUrl, interactive: true },
-    () => {
-      if (chrome.runtime.lastError) {
-        log("Logout failed:", chrome.runtime.lastError.message);
-        sendResponse({ success: false });
-      } else {
-        sendResponse({ success: true });
-      }
-    }
-  );
+  try {
+    await browser.identity.launchWebAuthFlow({
+      url: logoutUrl,
+      interactive: true,
+    });
+    sendResponse({ success: true });
+  } catch (err) {
+    log("Logout failed:", err);
+    sendResponse({ success: false });
+  }
 };

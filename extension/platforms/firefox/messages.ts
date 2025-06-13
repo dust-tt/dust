@@ -56,12 +56,14 @@ export type CaptureFullPageMessage = {
 };
 
 const sendMessage = <T, U>(message: T): Promise<U> => {
-  return browser.runtime.sendMessage(message).then((response: U | undefined) => {
-    if (!response) {
-      throw new Error("No response received.");
-    }
-    return response;
-  });
+  return browser.runtime
+    .sendMessage(message)
+    .then((response: U | undefined) => {
+      if (!response) {
+        throw new Error("No response received.");
+      }
+      return response;
+    });
 };
 
 /**
@@ -77,12 +79,14 @@ export const sendAuthMessage = (
     isForceLogin,
     connection,
   };
-  return browser.runtime.sendMessage(message).then((response: OAuthAuthorizeResponse | undefined) => {
-    if (!response) {
-      throw new Error("No response received.");
-    }
-    return response;
-  });
+  return browser.runtime
+    .sendMessage(message)
+    .then((response: OAuthAuthorizeResponse | undefined) => {
+      if (!response) {
+        throw new Error("No response received.");
+      }
+      return response;
+    });
 };
 
 export const sendRefreshTokenMessage = (
@@ -93,20 +97,22 @@ export const sendRefreshTokenMessage = (
     type: "REFRESH_TOKEN",
     refreshToken,
   };
-  return browser.runtime.sendMessage(message).then((response: OAuthAuthorizeResponse | undefined) => {
-    if (!response) {
-      throw new Error("No response received.");
-    }
-    if (
-      !response.accessToken ||
-      !response.refreshToken ||
-      !response.expiresIn
-    ) {
-      throw new Error("Invalid response received.");
-    }
-    void authService.saveTokens(response);
-    return response;
-  });
+  return browser.runtime
+    .sendMessage(message)
+    .then((response: OAuthAuthorizeResponse | undefined) => {
+      if (!response) {
+        throw new Error("No response received.");
+      }
+      if (
+        !response.accessToken ||
+        !response.refreshToken ||
+        !response.expiresIn
+      ) {
+        throw new Error("Invalid response received.");
+      }
+      void authService.saveTokens(response);
+      return response;
+    });
 };
 
 export const sentLogoutMessage = (): Promise<AuthBackgroundResponse> => {

@@ -25,8 +25,8 @@
  * THE SOFTWARE.
  */
 
-import type { CaptureFullPageMessage } from "@app/platforms/chrome/messages";
-
+import type { CaptureFullPageMessage } from "@app/platforms/firefox/messages";
+import browser from "webextension-polyfill";
 declare global {
   interface Window {
     hasScreenCapturePage: any;
@@ -40,14 +40,13 @@ declare global {
 
   if (!window.hasScreenCapturePage) {
     window.hasScreenCapturePage = true;
-    chrome.runtime.onMessage.addListener(
+    browser.runtime.onMessage.addListener(
       (message: CaptureFullPageMessage, sender, callback) => {
         if (message.type === "PAGE_CAPTURE_FULL_PAGE") {
           try {
             getPositions(callback);
           } catch (error) {
             console.log(error);
-            callback([]);
           }
           return true;
         }
@@ -254,7 +253,7 @@ declare global {
       window.setTimeout(function () {
         // In case the below callback never returns, cleanup
         const cleanUpTimeout = window.setTimeout(cleanUp, 1250);
-        chrome.runtime.sendMessage({ type: "CAPTURE" }, function ({ dataURI }) {
+        browser.runtime.sendMessage({ type: "CAPTURE" }).then(({ dataURI }) => {
           window.clearTimeout(cleanUpTimeout);
           if (dataURI) {
             const image = new Image();
