@@ -378,7 +378,7 @@ async function* runMultiActionsAgent(
     }
   }
 
-  const { emulatedActions, jitActions } = await getEmulatedAndJITActions(auth, {
+  const { emulatedActions, jitActions, jitServers } = await getEmulatedAndJITActions(auth, {
     agentActions,
     agentMessage,
     conversation,
@@ -394,12 +394,16 @@ async function* runMultiActionsAgent(
   const {
     serverToolsAndInstructions: mcpActions,
     error: mcpToolsListingError,
-  } = await tryListMCPTools(auth, {
-    agentConfiguration,
-    conversation,
-    agentMessage,
-    clientSideActionConfigurations: clientSideMCPActionConfigurations,
-  });
+  } = await tryListMCPTools(
+    auth,
+    {
+      agentConfiguration,
+      conversation,
+      agentMessage,
+      clientSideActionConfigurations: clientSideMCPActionConfigurations,
+    },
+    jitServers
+  );
 
   if (!isLastGenerationIteration) {
     availableActions.push(...jitActions);

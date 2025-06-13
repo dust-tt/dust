@@ -3,8 +3,6 @@ import assert from "assert";
 import {
   DEFAULT_CONVERSATION_EXTRACT_ACTION_DATA_DESCRIPTION,
   DEFAULT_CONVERSATION_EXTRACT_ACTION_NAME,
-  DEFAULT_CONVERSATION_INCLUDE_FILE_ACTION_DESCRIPTION,
-  DEFAULT_CONVERSATION_INCLUDE_FILE_ACTION_NAME,
   DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_DATA_DESCRIPTION,
   DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME,
   DEFAULT_CONVERSATION_SEARCH_ACTION_DATA_DESCRIPTION,
@@ -21,7 +19,10 @@ import {
   isConversationFileType,
   makeConversationListFilesAction,
 } from "@app/lib/actions/conversation/list_files";
-import type { ServerSideMCPToolConfigurationType } from "@app/lib/actions/mcp";
+import type {
+  MCPServerConfigurationType,
+  ServerSideMCPServerConfigurationType,
+} from "@app/lib/actions/mcp";
 import type { ProcessConfigurationType } from "@app/lib/actions/process";
 import type { RetrievalConfigurationType } from "@app/lib/actions/retrieval";
 import type { TablesQueryConfigurationType } from "@app/lib/actions/tables_query";
@@ -118,54 +119,6 @@ async function getJITActions(
   if (files.length === 0) {
     return actions;
   }
-
-  // Get MCP server view for conversation_files
-  const conversationFilesView =
-    await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
-      auth,
-      "conversation_files"
-    );
-
-  assert(
-    conversationFilesView,
-    "MCP server view not found for conversation_files. Ensure auto tools are created."
-  );
-
-  // Create MCP tool for conversation_include_file
-  const includeFileTool: ServerSideMCPToolConfigurationType = {
-    id: -1,
-    sId: generateRandomModelSId(),
-    type: "mcp_configuration",
-    name: DEFAULT_CONVERSATION_INCLUDE_FILE_ACTION_NAME,
-    description: DEFAULT_CONVERSATION_INCLUDE_FILE_ACTION_DESCRIPTION,
-    inputSchema: {
-      type: "object",
-      properties: {
-        fileId: {
-          type: "string",
-          description:
-            "The fileId of the attachment to include in the conversation as returned by the conversation_list_files action",
-        },
-      },
-      required: ["fileId"],
-    },
-    availability: "auto",
-    permission: "never_ask",
-    toolServerId: "include_file",
-    originalName: "include_file",
-    mcpServerName: "conversation_files",
-    internalMCPServerId: conversationFilesView.mcpServerId,
-    dataSources: null,
-    tables: null,
-    childAgentId: null,
-    reasoningModel: null,
-    timeFrame: null,
-    jsonSchema: null,
-    additionalConfiguration: {},
-    mcpServerViewId: conversationFilesView.sId,
-    dustAppConfiguration: null,
-  };
-  actions.push(includeFileTool);
 
   // Check tables for the table query action.
   const filesUsableAsTableQuery = files.filter((f) => f.isQueryable);
@@ -380,9 +333,11 @@ export async function getEmulatedAndJITActions(
 ): Promise<{
   emulatedActions: AgentActionType[];
   jitActions: ActionConfigurationType[];
+  jitServers: MCPServerConfigurationType[];
 }> {
   const emulatedActions: AgentActionType[] = [];
   let jitActions: ActionConfigurationType[] = [];
+  const jitServers: MCPServerConfigurationType[] = [];
 
   const files = listFiles(conversation);
   const a = makeConversationListFilesAction({
@@ -399,13 +354,46 @@ export async function getEmulatedAndJITActions(
     agentActions,
   });
 
+  // Add conversation_files MCP server if there are conversation files
+  if (files.length > 0) {
+    const conversationFilesView = await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
+      auth,
+      "conversation_files"
+    );
+    
+    assert(
+      conversationFilesView,
+      "MCP server view not found for conversation_files. Ensure auto tools are created."
+    );
+
+    const conversationFilesServer: ServerSideMCPServerConfigurationType = {
+      id: -1,
+      sId: generateRandomModelSId(),
+      type: "mcp_server_configuration",
+      name: "conversation_files",
+      description: "Access and include files from the conversation",
+      dataSources: null,
+      tables: null,
+      childAgentId: null,
+      reasoningModel: null,
+      timeFrame: null,
+      jsonSchema: null,
+      additionalConfiguration: {},
+      mcpServerViewId: conversationFilesView.sId,
+      dustAppConfiguration: null,
+      internalMCPServerId: conversationFilesView.mcpServerId,
+    };
+
+    jitServers.push(conversationFilesServer);
+  }
+
   // We ensure that all emulated actions are injected with step -1.
   assert(
     emulatedActions.every((a) => a.step === -1),
     "Emulated actions must have step -1"
   );
 
-  return { emulatedActions, jitActions };
+  return { emulatedActions, jitActions, jitServers };
 }
 
 async function getTablesFromMultiSheetSpreadsheet(
