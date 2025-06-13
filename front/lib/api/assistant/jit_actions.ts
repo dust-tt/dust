@@ -9,7 +9,6 @@ import {
   DEFAULT_CONVERSATION_SEARCH_ACTION_NAME,
   DEFAULT_SEARCH_LABELS_ACTION_NAME,
 } from "@app/lib/actions/constants";
-import { makeConversationIncludeFileConfiguration } from "@app/lib/actions/conversation/include_file";
 import type {
   ConversationAttachmentType,
   ConversationContentNodeType,
@@ -20,6 +19,10 @@ import {
   isConversationFileType,
   makeConversationListFilesAction,
 } from "@app/lib/actions/conversation/list_files";
+import type {
+  MCPServerConfigurationType,
+  ServerSideMCPServerConfigurationType,
+} from "@app/lib/actions/mcp";
 import type { ProcessConfigurationType } from "@app/lib/actions/process";
 import type { RetrievalConfigurationType } from "@app/lib/actions/retrieval";
 import type { TablesQueryConfigurationType } from "@app/lib/actions/tables_query";
@@ -40,6 +43,7 @@ import {
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
@@ -115,9 +119,6 @@ async function getJITActions(
   if (files.length === 0) {
     return actions;
   }
-
-  // conversation_include_file_action
-  actions.push(makeConversationIncludeFileConfiguration());
 
   // Check tables for the table query action.
   const filesUsableAsTableQuery = files.filter((f) => f.isQueryable);
@@ -332,9 +333,11 @@ export async function getEmulatedAndJITActions(
 ): Promise<{
   emulatedActions: AgentActionType[];
   jitActions: ActionConfigurationType[];
+  jitServers: MCPServerConfigurationType[];
 }> {
   const emulatedActions: AgentActionType[] = [];
   let jitActions: ActionConfigurationType[] = [];
+  const jitServers: MCPServerConfigurationType[] = [];
 
   const files = listFiles(conversation);
   const a = makeConversationListFilesAction({
@@ -351,13 +354,47 @@ export async function getEmulatedAndJITActions(
     agentActions,
   });
 
+  // Add conversation_files MCP server if there are conversation files
+  if (files.length > 0) {
+    const conversationFilesView =
+      await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
+        auth,
+        "conversation_files"
+      );
+
+    assert(
+      conversationFilesView,
+      "MCP server view not found for conversation_files. Ensure auto tools are created."
+    );
+
+    const conversationFilesServer: ServerSideMCPServerConfigurationType = {
+      id: -1,
+      sId: generateRandomModelSId(),
+      type: "mcp_server_configuration",
+      name: "conversation_files",
+      description: "Access and include files from the conversation",
+      dataSources: null,
+      tables: null,
+      childAgentId: null,
+      reasoningModel: null,
+      timeFrame: null,
+      jsonSchema: null,
+      additionalConfiguration: {},
+      mcpServerViewId: conversationFilesView.sId,
+      dustAppConfiguration: null,
+      internalMCPServerId: conversationFilesView.mcpServerId,
+    };
+
+    jitServers.push(conversationFilesServer);
+  }
+
   // We ensure that all emulated actions are injected with step -1.
   assert(
     emulatedActions.every((a) => a.step === -1),
     "Emulated actions must have step -1"
   );
 
-  return { emulatedActions, jitActions };
+  return { emulatedActions, jitActions, jitServers };
 }
 
 async function getTablesFromMultiSheetSpreadsheet(
