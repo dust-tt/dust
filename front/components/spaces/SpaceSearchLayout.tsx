@@ -242,6 +242,16 @@ function BackendSearch({
     resetPagination();
   }, [debouncedSearch, resetPagination]);
 
+  const commonSearchParams = {
+    owner,
+    viewType,
+    spaceIds: [space.sId],
+    pagination: { cursor: cursorPagination.cursor, limit: PAGE_SIZE },
+    // Required by search API to allow admins to search the system space
+    allowAdminSearch: true,
+    disabled: !debouncedSearch,
+  };
+
   // Use the spaces search hook for backend search with URL/node support
   const {
     isSearchLoading,
@@ -249,27 +259,17 @@ function BackendSearch({
     searchResultNodes,
     nextPageCursor,
   } = useSpacesSearch(
-    isNodeCandidate(nodeOrUrlCandidate)
+    isNodeCandidate(nodeOrUrlCandidate) && nodeOrUrlCandidate.node
       ? {
-          // NodeIdSearchParams
-          nodeIds: nodeOrUrlCandidate.node ? [nodeOrUrlCandidate.node] : [],
+          ...commonSearchParams,
+          nodeIds: [nodeOrUrlCandidate.node],
           includeDataSources: false,
-          owner,
-          viewType,
-          disabled: !nodeOrUrlCandidate.node && !debouncedSearch,
-          spaceIds: [space.sId],
-          pagination: { cursor: cursorPagination.cursor, limit: PAGE_SIZE },
         }
       : {
-          // TextSearchParams
+          ...commonSearchParams,
           search: debouncedSearch,
           searchSourceUrls: isUrlCandidate(nodeOrUrlCandidate),
           includeDataSources: true,
-          owner,
-          viewType,
-          disabled: !debouncedSearch,
-          spaceIds: [space.sId],
-          pagination: { cursor: cursorPagination.cursor, limit: PAGE_SIZE },
         }
   );
 
