@@ -9,7 +9,8 @@ import {
 
 import type * as activities from "@connectors/connectors/webcrawler/temporal/activities";
 import type { ModelId } from "@connectors/types";
-import { WEBCRAWLER_MAX_PAGES } from "@connectors/types";
+
+import { WEBCRAWLER_MAX_PAGES } from "../../../types/webcrawler";
 
 // timeout for crawling a single url = timeout for upserting (5 minutes) + 2mn
 // leeway to crawl on slow websites

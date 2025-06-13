@@ -268,7 +268,7 @@ export async function deleteAgentsActivity({
     await AgentMCPAction.destroy({
       where: {
         mcpServerConfigurationId: {
-          [Op.in]: mcpServerConfigurations.map((r) => r.id),
+          [Op.in]: mcpServerConfigurations.map((r) => `${r.id}`),
         },
       },
     });

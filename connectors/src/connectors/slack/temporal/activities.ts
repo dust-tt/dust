@@ -521,7 +521,7 @@ export async function syncNonThreadedChunk({
           channelName,
           connectorId,
           cursor,
-          error: c.error,
+          error: c?.error,
           oldest: startTsSec,
         },
         "Failed getting messages for channel"
