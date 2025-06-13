@@ -27,6 +27,13 @@ import {
   MAX_LIMIT,
   searchCrmObjects,
   SIMPLE_OBJECTS,
+  updateCompany,
+  updateContact,
+  updateDeal,
+  updateMeeting,
+  updateNote,
+  updateTask,
+  updateTicket,
 } from "@app/lib/actions/mcp_internal_actions/servers/hubspot/hubspot_api_helper";
 import {
   ERROR_MESSAGES,
@@ -43,7 +50,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
   name: "hubspot",
   version: "1.0.0",
   description:
-    "Supports creating, retrieving, and searching CRM objects (contacts, companies, deals, etc.), managing engagements, and accessing object properties, etc.",
+    "Supports creating, updating, retrieving, and searching CRM objects (contacts, companies, deals, etc.), managing engagements, and accessing object properties, etc.",
   authorization: {
     provider: "hubspot" as const,
     supported_use_cases: ["platform_actions"] as const,
@@ -733,6 +740,203 @@ const createServer = (): McpServer => {
           }
           return makeMCPToolJSONSuccess({
             message: "CRM objects searched successfully.",
+            result,
+          });
+        },
+        authInfo,
+      });
+    }
+  );
+
+  // Update tools
+  server.tool(
+    "update_contact",
+    "Updates an existing contact in Hubspot.",
+    {
+      contactId: z.string().describe("The ID of the contact to update."),
+      properties: z
+        .record(z.string())
+        .describe("An object containing the properties to update for the contact."),
+    },
+    async ({ contactId, properties }, { authInfo }) => {
+      return withAuth({
+        action: async (accessToken) => {
+          const result = await updateContact({
+            accessToken,
+            contactId,
+            properties,
+          });
+          return makeMCPToolJSONSuccess({
+            message: "Contact updated successfully.",
+            result,
+          });
+        },
+        authInfo,
+      });
+    }
+  );
+
+  server.tool(
+    "update_company",
+    "Updates an existing company in Hubspot.",
+    {
+      companyId: z.string().describe("The ID of the company to update."),
+      properties: z
+        .record(z.string())
+        .describe("An object containing the properties to update for the company."),
+    },
+    async ({ companyId, properties }, { authInfo }) => {
+      return withAuth({
+        action: async (accessToken) => {
+          const result = await updateCompany({
+            accessToken,
+            companyId,
+            properties,
+          });
+          return makeMCPToolJSONSuccess({
+            message: "Company updated successfully.",
+            result,
+          });
+        },
+        authInfo,
+      });
+    }
+  );
+
+  server.tool(
+    "update_deal",
+    "Updates an existing deal in Hubspot.",
+    {
+      dealId: z.string().describe("The ID of the deal to update."),
+      properties: z
+        .record(z.string())
+        .describe("An object containing the properties to update for the deal."),
+    },
+    async ({ dealId, properties }, { authInfo }) => {
+      return withAuth({
+        action: async (accessToken) => {
+          const result = await updateDeal({
+            accessToken,
+            dealId,
+            properties,
+          });
+          return makeMCPToolJSONSuccess({
+            message: "Deal updated successfully.",
+            result,
+          });
+        },
+        authInfo,
+      });
+    }
+  );
+
+  server.tool(
+    "update_ticket",
+    "Updates an existing ticket in Hubspot.",
+    {
+      ticketId: z.string().describe("The ID of the ticket to update."),
+      properties: z
+        .record(z.string())
+        .describe("An object containing the properties to update for the ticket."),
+    },
+    async ({ ticketId, properties }, { authInfo }) => {
+      return withAuth({
+        action: async (accessToken) => {
+          const result = await updateTicket({
+            accessToken,
+            ticketId,
+            properties,
+          });
+          return makeMCPToolJSONSuccess({
+            message: "Ticket updated successfully.",
+            result,
+          });
+        },
+        authInfo,
+      });
+    }
+  );
+
+  server.tool(
+    "update_task",
+    "Updates an existing task in Hubspot.",
+    {
+      taskId: z.string().describe("The ID of the task to update."),
+      properties: z
+        .record(z.string())
+        .describe("An object containing the properties to update for the task."),
+    },
+    async ({ taskId, properties }, { authInfo }) => {
+      return withAuth({
+        action: async (accessToken) => {
+          const result = await updateTask({
+            accessToken,
+            taskId,
+            properties,
+          });
+          return makeMCPToolJSONSuccess({
+            message: "Task updated successfully.",
+            result,
+          });
+        },
+        authInfo,
+      });
+    }
+  );
+
+  server.tool(
+    "update_note",
+    "Updates an existing note in Hubspot.",
+    {
+      noteId: z.string().describe("The ID of the note to update."),
+      properties: z
+        .object({
+          hs_note_body: z.string().optional().describe("The content of the note."),
+          hs_timestamp: z
+            .string()
+            .optional()
+            .describe("The timestamp of the note (ISO 8601 format)."),
+        })
+        .passthrough()
+        .describe("Properties to update for the note."),
+    },
+    async ({ noteId, properties }, { authInfo }) => {
+      return withAuth({
+        action: async (accessToken) => {
+          const result = await updateNote({
+            accessToken,
+            noteId,
+            properties,
+          });
+          return makeMCPToolJSONSuccess({
+            message: "Note updated successfully.",
+            result,
+          });
+        },
+        authInfo,
+      });
+    }
+  );
+
+  server.tool(
+    "update_meeting",
+    "Updates an existing meeting in Hubspot.",
+    {
+      meetingId: z.string().describe("The ID of the meeting to update."),
+      properties: z
+        .record(z.any())
+        .describe("An object containing the properties to update for the meeting."),
+    },
+    async ({ meetingId, properties }, { authInfo }) => {
+      return withAuth({
+        action: async (accessToken) => {
+          const result = await updateMeeting({
+            accessToken,
+            meetingId,
+            properties,
+          });
+          return makeMCPToolJSONSuccess({
+            message: "Meeting updated successfully.",
             result,
           });
         },

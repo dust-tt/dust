@@ -3,6 +3,7 @@ import { FilterOperatorEnum } from "@hubspot/api-client/lib/codegen/crm/contacts
 import { AssociationSpecAssociationCategoryEnum } from "@hubspot/api-client/lib/codegen/crm/objects/models/AssociationSpec";
 import type { SimplePublicObject } from "@hubspot/api-client/lib/codegen/crm/objects/models/SimplePublicObject";
 import type { SimplePublicObjectInputForCreate } from "@hubspot/api-client/lib/codegen/crm/objects/models/SimplePublicObjectInputForCreate";
+import type { SimplePublicObjectInput } from "@hubspot/api-client/lib/codegen/crm/objects/models/SimplePublicObjectInput";
 import type { PublicOwner } from "@hubspot/api-client/lib/codegen/crm/owners/models/PublicOwner";
 import type { Property } from "@hubspot/api-client/lib/codegen/crm/properties/models/Property";
 
@@ -1141,6 +1142,183 @@ export const searchCrmObjects = async ({
     };
   } catch (error: any) {
     console.error(`Error searching ${objectType}:`, error);
+    throw normalizeError(error);
+  }
+};
+
+/**
+ * Update a contact in Hubspot.
+ */
+export const updateContact = async ({
+  accessToken,
+  contactId,
+  properties,
+}: {
+  accessToken: string;
+  contactId: string;
+  properties: Record<string, string>;
+}): Promise<SimplePublicObject> => {
+  const hubspotClient = new Client({ accessToken });
+
+  const contactData: SimplePublicObjectInput = {
+    properties,
+  };
+
+  return hubspotClient.crm.contacts.basicApi.update(contactId, contactData);
+};
+
+/**
+ * Update a company in Hubspot.
+ */
+export const updateCompany = async ({
+  accessToken,
+  companyId,
+  properties,
+}: {
+  accessToken: string;
+  companyId: string;
+  properties: Record<string, string>;
+}): Promise<SimplePublicObject> => {
+  const hubspotClient = new Client({ accessToken });
+
+  const companyData: SimplePublicObjectInput = {
+    properties,
+  };
+
+  return hubspotClient.crm.companies.basicApi.update(companyId, companyData);
+};
+
+/**
+ * Update a deal in Hubspot.
+ */
+export const updateDeal = async ({
+  accessToken,
+  dealId,
+  properties,
+}: {
+  accessToken: string;
+  dealId: string;
+  properties: Record<string, string>;
+}): Promise<SimplePublicObject> => {
+  const hubspotClient = new Client({ accessToken });
+
+  const dealData: SimplePublicObjectInput = {
+    properties,
+  };
+
+  return hubspotClient.crm.deals.basicApi.update(dealId, dealData);
+};
+
+/**
+ * Update a ticket in Hubspot.
+ */
+export const updateTicket = async ({
+  accessToken,
+  ticketId,
+  properties,
+}: {
+  accessToken: string;
+  ticketId: string;
+  properties: Record<string, string>;
+}): Promise<SimplePublicObject> => {
+  const hubspotClient = new Client({ accessToken });
+
+  const ticketData: SimplePublicObjectInput = {
+    properties,
+  };
+
+  return hubspotClient.crm.objects.basicApi.update("tickets", ticketId, ticketData);
+};
+
+/**
+ * Update a task in Hubspot.
+ */
+export const updateTask = async ({
+  accessToken,
+  taskId,
+  properties,
+}: {
+  accessToken: string;
+  taskId: string;
+  properties: Record<string, string>;
+}): Promise<SimplePublicObject> => {
+  const hubspotClient = new Client({ accessToken });
+
+  const taskData: SimplePublicObjectInput = {
+    properties,
+  };
+
+  return hubspotClient.crm.objects.basicApi.update("tasks", taskId, taskData);
+};
+
+/**
+ * Update a note in Hubspot.
+ */
+export const updateNote = async ({
+  accessToken,
+  noteId,
+  properties,
+}: {
+  accessToken: string;
+  noteId: string;
+  properties: {
+    hs_note_body?: string;
+    hs_timestamp?: string;
+    [key: string]: any;
+  };
+}): Promise<SimplePublicObject> => {
+  const hubspotClient = new Client({ accessToken });
+
+  const noteData: SimplePublicObjectInput = {
+    properties,
+  };
+
+  try {
+    const updatedNote = await hubspotClient.crm.objects.basicApi.update(
+      "notes",
+      noteId,
+      noteData
+    );
+    return updatedNote;
+  } catch (error) {
+    console.error(
+      `Error updating note ${noteId}. Input: ${JSON.stringify(noteData, null, 2)}`,
+      error
+    );
+    throw normalizeError(error);
+  }
+};
+
+/**
+ * Update a meeting in Hubspot.
+ */
+export const updateMeeting = async ({
+  accessToken,
+  meetingId,
+  properties,
+}: {
+  accessToken: string;
+  meetingId: string;
+  properties: Record<string, any>;
+}): Promise<SimplePublicObject> => {
+  const hubspotClient = new Client({ accessToken });
+
+  const meetingData: SimplePublicObjectInput = {
+    properties,
+  };
+
+  try {
+    const updatedMeeting = await hubspotClient.crm.objects.basicApi.update(
+      "engagements",
+      meetingId,
+      meetingData
+    );
+    return updatedMeeting;
+  } catch (error) {
+    console.error(
+      `Error updating meeting ${meetingId}. Input: ${JSON.stringify(meetingData, null, 2)}`,
+      error
+    );
     throw normalizeError(error);
   }
 };
