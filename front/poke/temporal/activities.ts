@@ -31,6 +31,10 @@ import {
   AgentProcessAction,
   AgentProcessConfiguration,
 } from "@app/lib/models/assistant/actions/process";
+import {
+  AgentReasoningAction,
+  AgentReasoningConfiguration,
+} from "@app/lib/models/assistant/actions/reasoning";
 import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
 import {
   AgentTablesQueryAction,
@@ -46,6 +50,7 @@ import {
   AgentUserRelation,
   GlobalAgentSettings,
 } from "@app/lib/models/assistant/agent";
+import { TagAgentModel } from "@app/lib/models/assistant/tag_agent";
 import { DustAppSecret } from "@app/lib/models/dust_app_secret";
 import { FeatureFlag } from "@app/lib/models/feature_flag";
 import { MembershipInvitationModel } from "@app/lib/models/membership_invitation";
@@ -250,6 +255,32 @@ export async function deleteAgentsActivity({
         },
       },
     });
+
+    const mcpReasoningConfigurations =
+      await AgentReasoningConfiguration.findAll({
+        where: {
+          mcpServerConfigurationId: {
+            [Op.in]: mcpServerConfigurations.map((r) => `${r.id}`),
+          },
+        },
+      });
+
+    await AgentReasoningAction.destroy({
+      where: {
+        reasoningConfigurationId: {
+          [Op.in]: mcpReasoningConfigurations.map((r) => r.id),
+        },
+      },
+    });
+
+    await AgentReasoningConfiguration.destroy({
+      where: {
+        mcpServerConfigurationId: {
+          [Op.in]: mcpServerConfigurations.map((r) => `${r.id}`),
+        },
+      },
+    });
+
     const mcpActions = await AgentMCPAction.findAll({
       where: {
         mcpServerConfigurationId: {
@@ -293,6 +324,26 @@ export async function deleteAgentsActivity({
       },
     });
     await AgentRetrievalConfiguration.destroy({
+      where: {
+        agentConfigurationId: agent.id,
+        workspaceId: workspace.id,
+      },
+    });
+
+    const reasoningConfigurations = await AgentReasoningConfiguration.findAll({
+      where: {
+        agentConfigurationId: agent.id,
+        workspaceId: workspace.id,
+      },
+    });
+    await AgentReasoningAction.destroy({
+      where: {
+        reasoningConfigurationId: {
+          [Op.in]: reasoningConfigurations.map((r) => r.id),
+        },
+      },
+    });
+    await AgentReasoningConfiguration.destroy({
       where: {
         agentConfigurationId: agent.id,
         workspaceId: workspace.id,
@@ -420,6 +471,13 @@ export async function deleteAgentsActivity({
     await AgentUserRelation.destroy({
       where: {
         agentConfiguration: agent.sId,
+      },
+    });
+
+    await TagAgentModel.destroy({
+      where: {
+        agentConfigurationId: agent.id,
+        workspaceId: workspace.id,
       },
     });
 
@@ -648,7 +706,29 @@ export async function deleteSpacesActivity({
     includeDeleted: true,
   });
 
-  for (const space of spaces) {
+  // We need to delete global and system spaces last, as some resources rely on them.
+  const sortedSpaces = spaces.sort((a, b) => {
+    // First sort by space kind priority (system last, then global, then others).
+    const getSpacePriority = (space: SpaceResource) => {
+      if (space.kind === "system") {
+        return 2;
+      }
+      if (space.kind === "global") {
+        return 1;
+      }
+      return 0;
+    };
+
+    const priorityDiff = getSpacePriority(a) - getSpacePriority(b);
+    if (priorityDiff !== 0) {
+      return priorityDiff;
+    }
+
+    // Then sort by creation time for spaces of the same priority.
+    return a.createdAt.getTime() - b.createdAt.getTime();
+  });
+
+  for (const space of sortedSpaces) {
     const res = await space.delete(auth, { hardDelete: false });
     if (res.isErr()) {
       throw res.error;
