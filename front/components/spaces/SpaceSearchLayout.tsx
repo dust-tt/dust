@@ -33,7 +33,7 @@ import {
   getVisualForDataSourceViewContentNode,
 } from "@app/lib/content_nodes";
 import { useDataSourceViews } from "@app/lib/swr/data_source_views";
-import { useSpacesSearch } from "@app/lib/swr/spaces";
+import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
 import type {
   APIError,
   ContentNodesViewType,
