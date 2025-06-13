@@ -72,10 +72,10 @@ type BotAnswerParams = {
   responseUrl?: string;
   slackTeamId: string;
   slackChannel: string;
-  slackUserId: string | null;
-  slackBotId: string | null;
+  slackUserId: string;
+  slackBotId?: string;
   slackMessageTs: string;
-  slackThreadTs: string | null;
+  slackThreadTs?: string;
 };
 
 export async function getSlackConnector(params: BotAnswerParams) {
@@ -212,7 +212,7 @@ type ToolValidationParams = {
   approved: "approved" | "rejected";
   conversationId: string;
   messageId: string;
-  slackBotMessageId: number;
+  slackChatBotMessageId: number;
   text: string;
 };
 
@@ -222,7 +222,7 @@ export async function botValidateToolExecution(
     approved,
     conversationId,
     messageId,
-    slackBotMessageId,
+    slackChatBotMessageId,
     text,
   }: ToolValidationParams,
   params: BotAnswerParams
@@ -237,7 +237,7 @@ export async function botValidateToolExecution(
 
   try {
     const slackChatBotMessage = await SlackChatBotMessage.findOne({
-      where: { id: slackBotMessageId },
+      where: { id: slackChatBotMessageId },
     });
     if (!slackChatBotMessage) {
       throw new Error("Missing Slack message");
