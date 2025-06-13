@@ -3,7 +3,7 @@ import { proxyActivities, setHandler } from "@temporalio/workflow";
 import type * as activities from "@connectors/connectors/salesforce/temporal/activities";
 import { resyncSignal } from "@connectors/connectors/salesforce/temporal/signals";
 // import type * as sync_status from "@connectors/lib/sync_status";
-import type { DateString, ModelId } from "@connectors/types";
+import type { DateT, ModelId } from "@connectors/types";
 
 // const { syncSucceeded, syncStarted } = proxyActivities<typeof sync_status>({
 //   startToCloseTimeout: "10 minutes",
@@ -128,27 +128,27 @@ export async function salesforceSyncQueryWorkflow({
 }) {
   await upsertSyncedQueryRootNode(connectorId, { queryId });
 
-  let lastSeenModifiedDateString: DateString = null;
-  let lastModifiedDateStringCursor: DateString = null;
-  const upToLastModifiedDateString: DateString = upToLastModifiedDate
+  let lastSeenModifiedDateT: DateT = null;
+  let lastModifiedDateTCursor: DateT = null;
+  const upToLastModifiedDateT: DateT = upToLastModifiedDate
     ? upToLastModifiedDate.toISOString()
     : null;
   let hasMore = true;
 
   while (hasMore) {
-    ({ lastSeenModifiedDateString, lastModifiedDateStringCursor, hasMore } =
+    ({ lastSeenModifiedDateT, lastModifiedDateTCursor, hasMore } =
       await processSyncedQueryPage(connectorId, {
         queryId,
-        lastModifiedDateStringCursor,
+        lastModifiedDateTCursor,
         limit: SALESFORCE_SYNC_QUERY_PAGE_LIMIT,
-        lastSeenModifiedDateString,
-        upToLastModifiedDateString,
+        lastSeenModifiedDateT,
+        upToLastModifiedDateT,
       }));
   }
 
   // Finally update the lastSeenModifiedDate for the syncedQuery
-  if (lastSeenModifiedDateString) {
-    const lastSeenModifiedDate = new Date(lastSeenModifiedDateString);
+  if (lastSeenModifiedDateT) {
+    const lastSeenModifiedDate = new Date(lastSeenModifiedDateT);
     await updateSyncedQueryLastSeenModifiedDate(connectorId, {
       queryId,
       lastSeenModifiedDate,
