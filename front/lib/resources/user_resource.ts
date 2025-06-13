@@ -239,9 +239,9 @@ export class UserResource extends BaseResource<UserModel> {
     });
   }
 
-  async recordLoginActivity() {
+  async recordLoginActivity(date?: Date) {
     return this.update({
-      lastLoginAt: new Date(),
+      lastLoginAt: date ?? new Date(),
     });
   }
 
@@ -370,6 +370,7 @@ export class UserResource extends BaseResource<UserModel> {
       lastName: this.lastName,
       fullName: this.fullName(),
       image: this.imageUrl,
+      lastLoginAt: this.lastLoginAt?.getTime(),
     };
   }
 
