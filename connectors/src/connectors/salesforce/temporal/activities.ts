@@ -343,7 +343,7 @@ export async function updateSyncedQueryLastSeenModifiedDate(
     lastSeenModifiedDate,
   }: {
     queryId: ModelId;
-    lastSeenModifiedDate: Date;
+    lastSeenModifiedDate: Date | null;
   }
 ) {
   const syncedQuery = await SalesforceSyncedQueryResource.fetchById(queryId);

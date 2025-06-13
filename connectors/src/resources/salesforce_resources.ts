@@ -189,7 +189,7 @@ export class SalesforceSyncedQueryResource extends BaseResource<SalesforceSynced
     return syncedQueries.map((brand) => new this(this.model, brand.get()));
   }
 
-  async updateLastSeenModifiedAt(lastSeenModifiedDate: Date) {
+  async updateLastSeenModifiedAt(lastSeenModifiedDate: Date | null) {
     await this.update({
       lastSeenModifiedDate,
     });
