@@ -233,9 +233,9 @@ async function handler(
             });
           case "user_not_member":
             return apiError(req, res, {
-              status_code: 403,
+              status_code: 409,
               api_error: {
-                type: "workspace_auth_error",
+                type: "invalid_request_error",
                 message: "The user is not a member of the agent editors group.",
               },
             });
