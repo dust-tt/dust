@@ -706,7 +706,29 @@ export async function deleteSpacesActivity({
     includeDeleted: true,
   });
 
-  for (const space of spaces) {
+  // We need to delete global and system spaces last, as some resources rely on them.
+  const sortedSpaces = spaces.sort((a, b) => {
+    // First sort by space kind priority (system last, then global, then others).
+    const getSpacePriority = (space: SpaceResource) => {
+      if (space.kind === "system") {
+        return 2;
+      }
+      if (space.kind === "global") {
+        return 1;
+      }
+      return 0;
+    };
+
+    const priorityDiff = getSpacePriority(a) - getSpacePriority(b);
+    if (priorityDiff !== 0) {
+      return priorityDiff;
+    }
+
+    // Then sort by creation time for spaces of the same priority.
+    return a.createdAt.getTime() - b.createdAt.getTime();
+  });
+
+  for (const space of sortedSpaces) {
     const res = await space.delete(auth, { hardDelete: false });
     if (res.isErr()) {
       throw res.error;
