@@ -562,7 +562,6 @@ export function AgentMessage({
         <div className="flex flex-col gap-2">
           <AgentMessageActions
             agentMessage={agentMessage}
-            conversationId={conversationId}
             lastAgentStateClassification={messageStreamState.agentState}
             actionProgress={messageStreamState.actionProgress}
             owner={owner}
