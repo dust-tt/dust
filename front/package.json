@@ -17,7 +17,8 @@
     "test:ci": "vitest --reporter=junit --outputFile=junit.xml --watch=false",
     "coverage": "vitest --coverage",
     "initdb": "./admin/init_db.sh",
-    "create-db-migration": "./create_db_migration_file.sh",
+    "migration:create": "./create_db_migration_file.sh",
+    "migration:apply": "./apply_db_migrations.sh",
     "prepare": "cd .. && husky .husky",
     "debug:profiler": "tsx ./scripts/debug/run_profiler.ts"
   },
