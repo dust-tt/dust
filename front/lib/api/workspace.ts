@@ -58,26 +58,24 @@ export async function getWorkspaceInfos(
   return renderLightWorkspaceType({ workspace });
 }
 
-export async function getWorkspaceVerifiedDomain(
+export async function getWorkspaceVerifiedDomains(
   workspace: LightWorkspaceType
-): Promise<WorkspaceDomain | null> {
-  const workspaceDomain = await WorkspaceHasDomainModel.findOne({
+): Promise<WorkspaceDomain[]> {
+  const workspaceDomains = await WorkspaceHasDomainModel.findAll({
     attributes: ["domain", "domainAutoJoinEnabled"],
     where: {
       workspaceId: workspace.id,
     },
-    // For now, one workspace can only have one domain.
-    limit: 1,
   });
 
-  if (workspaceDomain) {
-    return {
-      domain: workspaceDomain.domain,
-      domainAutoJoinEnabled: workspaceDomain.domainAutoJoinEnabled,
-    };
+  if (workspaceDomains) {
+    return workspaceDomains.map((domain) => ({
+      domain: domain.domain,
+      domainAutoJoinEnabled: domain.domainAutoJoinEnabled,
+    }));
   }
 
-  return null;
+  return [];
 }
 
 export async function removeAllWorkspaceDomains(

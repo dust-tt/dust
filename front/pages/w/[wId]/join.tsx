@@ -11,7 +11,7 @@ import OnboardingLayout from "@app/components/sparkle/OnboardingLayout";
 import config from "@app/lib/api/config";
 import {
   getWorkspaceInfos,
-  getWorkspaceVerifiedDomain,
+  getWorkspaceVerifiedDomains,
 } from "@app/lib/api/workspace";
 import { makeGetServerSidePropsRequirementsWrapper } from "@app/lib/iam/session";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
@@ -65,7 +65,7 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
     };
   }
 
-  const workspaceDomain = await getWorkspaceVerifiedDomain(workspace);
+  const workspaceDomains = await getWorkspaceVerifiedDomains(workspace);
 
   const cId = typeof context.query.cId === "string" ? context.query.cId : null;
   const token = typeof context.query.t === "string" ? context.query.t : null;
@@ -81,7 +81,7 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
 
   // Redirect to 404 if in a flow where we need a verified domain and there is none.
   if (
-    !workspaceDomain?.domainAutoJoinEnabled &&
+    !workspaceDomains.some((d) => d.domainAutoJoinEnabled) &&
     ["domain_conversation_link", "domain_invite_link"].includes(onboardingType)
   ) {
     return {

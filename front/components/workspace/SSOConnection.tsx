@@ -39,16 +39,14 @@ export default function SSOConnection({
     return null;
   }
 
-  if (!hasWorkOSSSOFeatureFlag) {
-    return (
-      <Auth0SSOConnection
-        domains={domains}
-        owner={owner}
-        plan={plan}
-        strategyDetails={strategyDetails}
-      />
-    );
-  }
-
-  return <WorkOSSSOConnection domains={domains} owner={owner} plan={plan} />;
+  return !hasWorkOSSSOFeatureFlag ? (
+    <Auth0SSOConnection
+      domains={domains}
+      owner={owner}
+      plan={plan}
+      strategyDetails={strategyDetails}
+    />
+  ) : (
+    <WorkOSSSOConnection domains={domains} owner={owner} plan={plan} />
+  );
 }

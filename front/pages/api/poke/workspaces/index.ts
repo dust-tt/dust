@@ -3,7 +3,7 @@ import type { FindOptions, Order, WhereOptions } from "sequelize";
 import { Op } from "sequelize";
 
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
-import { getWorkspaceVerifiedDomain } from "@app/lib/api/workspace";
+import { getWorkspaceVerifiedDomains } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { Plan, Subscription } from "@app/lib/models/plan";
@@ -39,7 +39,7 @@ export type PokeWorkspaceType = LightWorkspaceType & {
   adminEmail: string | null;
   membersCount: number;
   dataSourcesCount: number;
-  workspaceDomain: WorkspaceDomain | null;
+  workspaceDomains: WorkspaceDomain[];
 };
 
 export type GetPokeWorkspacesResponseBody = {
@@ -314,8 +314,8 @@ async function handler(
                 activeOnly: true,
               });
 
-            const verifiedDomain =
-              await getWorkspaceVerifiedDomain(lightWorkspace);
+            const verifiedDomains =
+              await getWorkspaceVerifiedDomains(lightWorkspace);
 
             return {
               ...lightWorkspace,
@@ -324,7 +324,7 @@ async function handler(
               adminEmail: firstAdmin?.email ?? null,
               membersCount,
               dataSourcesCount,
-              workspaceDomain: verifiedDomain,
+              workspaceDomains: verifiedDomains,
             };
           })
         ),
