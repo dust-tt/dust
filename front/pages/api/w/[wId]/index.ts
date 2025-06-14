@@ -25,7 +25,7 @@ const WorkspaceSsoEnforceUpdateBodySchema = t.type({
 });
 
 const WorkspaceAllowedDomainUpdateBodySchema = t.type({
-  domain: t.string,
+  domain: t.union([t.string, t.undefined]),
   domainAutoJoinEnabled: t.boolean,
 });
 
@@ -127,7 +127,7 @@ async function handler(
           {
             where: {
               workspaceId: w.id,
-              domain,
+              ...(domain ? { domain } : {}),
             },
           }
         );

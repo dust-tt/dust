@@ -15,12 +15,12 @@ import type {
 
 export function WorkspaceInfoTable({
   owner,
-  workspaceVerifiedDomain,
+  workspaceVerifiedDomains,
   worspaceCreationDay,
   extensionConfig,
 }: {
   owner: WorkspaceType;
-  workspaceVerifiedDomain: WorkspaceDomain | null;
+  workspaceVerifiedDomains: WorkspaceDomain[];
   worspaceCreationDay: string;
   extensionConfig: ExtensionConfigurationType | null;
 }) {
@@ -63,9 +63,17 @@ export function WorkspaceInfoTable({
             <PokeTableRow>
               <PokeTableCell>Auto Join</PokeTableCell>
               <PokeTableCell>
-                {workspaceVerifiedDomain?.domainAutoJoinEnabled ? "✅" : "❌"}
+                {workspaceVerifiedDomains.every((d) => d.domainAutoJoinEnabled)
+                  ? "✅"
+                  : workspaceVerifiedDomains.some(
+                        (d) => d.domainAutoJoinEnabled
+                      )
+                    ? "⚠️"
+                    : "❌"}
               </PokeTableCell>
-              <PokeTableCell>{workspaceVerifiedDomain?.domain}</PokeTableCell>
+              <PokeTableCell>
+                {workspaceVerifiedDomains.map((d) => d.domain).join(", ")}
+              </PokeTableCell>
             </PokeTableRow>
             <PokeTableRow>
               <PokeTableCell className="max-w-48">

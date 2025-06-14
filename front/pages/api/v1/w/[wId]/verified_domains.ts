@@ -2,7 +2,7 @@ import type { GetWorkspaceVerifiedDomainsResponseType } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
-import { getWorkspaceVerifiedDomain } from "@app/lib/api/workspace";
+import { getWorkspaceVerifiedDomains } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
@@ -31,13 +31,11 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const verifiedDomain = await getWorkspaceVerifiedDomain(
+      const verifiedDomains = await getWorkspaceVerifiedDomains(
         auth.getNonNullableWorkspace()
       );
 
-      return res
-        .status(200)
-        .json({ verified_domains: verifiedDomain ? [verifiedDomain] : [] });
+      return res.status(200).json({ verified_domains: verifiedDomains });
 
     default:
       return apiError(req, res, {

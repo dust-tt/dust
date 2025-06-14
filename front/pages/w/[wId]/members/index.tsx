@@ -23,7 +23,7 @@ import {
 } from "@app/lib/api/enterprise_connection";
 import {
   checkWorkspaceSeatAvailabilityUsingAuth,
-  getWorkspaceVerifiedDomain,
+  getWorkspaceVerifiedDomains,
 } from "@app/lib/api/workspace";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
@@ -46,7 +46,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   enterpriseConnectionStrategyDetails: EnterpriseConnectionStrategyDetails;
   plan: PlanType;
   workspaceHasAvailableSeats: boolean;
-  workspaceVerifiedDomain: WorkspaceDomain | null;
+  workspaceVerifiedDomains: WorkspaceDomain[];
 }>(async (context, auth) => {
   const plan = auth.plan();
   const owner = auth.workspace();
@@ -60,7 +60,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   }
 
   // TODO(workos 2025-06-09): Remove this once fully migrated to WorkOS.
-  const workspaceVerifiedDomain = await getWorkspaceVerifiedDomain(owner);
+  const workspaceVerifiedDomains = await getWorkspaceVerifiedDomains(owner);
   const workspaceHasAvailableSeats =
     await checkWorkspaceSeatAvailabilityUsingAuth(auth);
 
@@ -88,7 +88,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       enterpriseConnectionStrategyDetails,
       plan,
       workspaceHasAvailableSeats,
-      workspaceVerifiedDomain,
+      workspaceVerifiedDomains,
     },
   };
 });
@@ -101,6 +101,7 @@ export default function WorkspaceAdmin({
   enterpriseConnectionStrategyDetails,
   plan,
   workspaceHasAvailableSeats,
+  workspaceVerifiedDomains,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [searchTerm, setSearchTerm] = useState("");
   const [inviteBlockedPopupReason, setInviteBlockedPopupReason] =
@@ -151,6 +152,7 @@ export default function WorkspaceAdmin({
           enterpriseConnectionStrategyDetails={
             enterpriseConnectionStrategyDetails
           }
+          workspaceVerifiedDomains={workspaceVerifiedDomains}
           owner={owner}
           plan={plan}
         />
