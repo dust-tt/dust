@@ -1,10 +1,9 @@
 import type { Organization } from "@workos-inc/node";
 
 import Auth0SSOConnection from "@app/components/workspace/sso/Auth0SSOConnection";
-import { AutoJoinToggle } from "@app/components/workspace/sso/AutoJoinToggle";
 import WorkOSSSOConnection from "@app/components/workspace/sso/WorkOSSSOConnection";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import type { PlanType, WorkspaceDomain, WorkspaceType } from "@app/types";
+import type { PlanType, WorkspaceType } from "@app/types";
 
 export interface EnterpriseConnectionStrategyDetails {
   callbackUrl: string;
