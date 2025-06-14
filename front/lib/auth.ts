@@ -978,7 +978,9 @@ export async function getSession(
   res: NextApiResponse | GetServerSidePropsContext["res"]
 ): Promise<SessionWithUser | null> {
   return (
-    (await getWorkOSSession(req)) || (await getAuth0Session(req, res)) || null
+    (await getWorkOSSession(req, res)) ||
+    (await getAuth0Session(req, res)) ||
+    null
   );
 }
 
