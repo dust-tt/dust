@@ -81,9 +81,8 @@ export default function RootLayout({
               isAPIErrorResponse(error) &&
               error.error.type === "not_authenticated"
             ) {
-              console.log("not_authenticated", error);
               // Redirect to login page.
-              // await router.push("/api/auth/login");
+              await router.push("/api/auth/login");
             }
           },
         }}

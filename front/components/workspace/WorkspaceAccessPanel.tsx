@@ -108,8 +108,8 @@ function DomainVerification({
         <DomainVerificationTable
           addDomainLink={addDomainLink}
           domains={domains}
-          owner={owner}
           workspaceVerifiedDomains={workspaceVerifiedDomains}
+          owner={owner}
         />
       )}
     </div>
@@ -126,10 +126,10 @@ interface DomainVerificationTableProps {
 // Define the row data type that extends TBaseData
 interface DomainRowData {
   domain: string;
+  workspaceVerifiedDomain?: WorkspaceDomain;
   status: string;
   onClick?: () => void;
   moreMenuItems?: any[];
-  workspaceVerifiedDomain?: WorkspaceDomain;
 }
 
 function DomainVerificationTable({
