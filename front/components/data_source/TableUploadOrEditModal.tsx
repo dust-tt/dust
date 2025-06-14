@@ -108,7 +108,7 @@ export const TableUploadOrEditModal = ({
           upsertRes = await doUpdate({
             name: table.name,
             description: table.description,
-            truncate: true,
+            truncate: false,
             title: table.name,
             mimeType: "text/csv",
             sourceUrl: null,
