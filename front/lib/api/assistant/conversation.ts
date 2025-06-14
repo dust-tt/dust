@@ -25,6 +25,7 @@ import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
+import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
 import {
   AgentMessage,
   Mention,
@@ -256,6 +257,11 @@ export async function getConversation(
           {
             model: AgentMessageContent,
             as: "agentMessageContents",
+            required: false,
+          },
+          {
+            model: AgentStepContentModel,
+            as: "agentStepContents",
             required: false,
           },
         ],
@@ -845,6 +851,7 @@ export async function* postUserMessage(
                   configuration,
                   rank: messageRow.rank,
                   skipToolsValidation: agentMessageRow.skipToolsValidation,
+                  contents: [],
                 } satisfies AgentMessageWithRankType,
               };
             })();
@@ -1360,6 +1367,7 @@ export async function* editUserMessage(
                 configuration,
                 rank: messageRow.rank,
                 skipToolsValidation: agentMessageRow.skipToolsValidation,
+                contents: [],
               } satisfies AgentMessageWithRankType,
             };
           })();
@@ -1611,6 +1619,7 @@ export async function* retryAgentMessage(
         configuration: message.configuration,
         rank: m.rank,
         skipToolsValidation: agentMessageRow.skipToolsValidation,
+        contents: [],
       };
 
       return {

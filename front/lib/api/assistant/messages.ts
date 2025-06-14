@@ -20,6 +20,7 @@ import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import type { PaginationParams } from "@app/lib/api/pagination";
 import { Authenticator } from "@app/lib/auth";
 import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
+import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
 import {
   AgentMessage,
   Mention,
@@ -278,6 +279,13 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
             step: rc.step,
             content: rc.content,
           })) ?? [],
+        contents:
+          agentMessage.agentStepContents
+            ?.sort((a, b) => a.step - b.step || a.index - b.index)
+            .map((sc) => ({
+              step: sc.step,
+              content: sc.value,
+            })) ?? [],
         error,
         configuration: agentConfiguration,
         skipToolsValidation: agentMessage.skipToolsValidation,
@@ -413,6 +421,11 @@ async function fetchMessagesForPage(
           {
             model: AgentMessageContent,
             as: "agentMessageContents",
+            required: false,
+          },
+          {
+            model: AgentStepContentModel,
+            as: "agentStepContents",
             required: false,
           },
         ],
