@@ -142,7 +142,7 @@ export async function renderConversationForModel(
         .map(([, step]) => step);
 
       if (excludeActions) {
-        // In Exclude Actions mode, we only render the last step that has content.
+        // In Exclude Actions mode, we only render the last step that has text content.
         const stepsWithContent = steps.filter((s) => s?.contents.length);
         if (stepsWithContent.length) {
           const lastStepWithContent =
@@ -151,6 +151,7 @@ export async function renderConversationForModel(
             role: "assistant",
             name: m.configuration.name,
             content: lastStepWithContent.contents.join("\n"),
+            contents: m.contents,
           } satisfies AssistantContentMessageTypeModel);
         }
       } else {
@@ -185,12 +186,14 @@ export async function renderConversationForModel(
               role: "assistant",
               function_calls: step.actions.map((s) => s.call),
               content: step.contents.join("\n"),
+              contents: m.contents,
             } satisfies AssistantFunctionCallMessageTypeModel);
           } else {
             messages.push({
               role: "assistant",
               content: step.contents.join("\n"),
               name: m.configuration.name,
+              contents: m.contents,
             } satisfies AssistantContentMessageTypeModel);
           }
 
