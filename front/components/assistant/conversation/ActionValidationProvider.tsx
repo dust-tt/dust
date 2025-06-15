@@ -1,4 +1,5 @@
 import {
+  ActionIcons,
   ActionPieChartIcon,
   Avatar,
   Button,
@@ -20,6 +21,7 @@ import { createContext, useEffect, useState } from "react";
 import { useNavigationLock } from "@app/components/assistant_builder/useNavigationLock";
 import type { MCPValidationOutputType } from "@app/lib/actions/constants";
 import type { MCPApproveExecutionEvent } from "@app/lib/actions/mcp";
+import { getAvatarFromIcon } from "@app/lib/actions/mcp_icons";
 import type { LightWorkspaceType } from "@app/types";
 import { asDisplayName } from "@app/types";
 
@@ -172,10 +174,11 @@ export function ActionValidationProvider({
           <DialogHeader>
             <DialogTitle
               visual={
-                <Avatar
-                  size="sm"
-                  visual={<Icon visual={ActionPieChartIcon} />}
-                />
+                currentValidation?.metadata.icon ? (
+                  getAvatarFromIcon(currentValidation.metadata.icon)
+                ) : (
+                  <Icon visual={ActionPieChartIcon} size="sm" />
+                )
               }
             >
               Tool Validation Required

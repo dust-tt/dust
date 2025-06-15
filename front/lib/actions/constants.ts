@@ -1,3 +1,8 @@
+import type {
+  InternalAllowedIconType,
+  RemoteAllowedIconType,
+} from "@app/lib/actions/mcp_icons";
+
 // Stored in a separate file to prevent a circular dependency issue.
 
 // Use top_k of 768 as 512 worked really smoothly during initial tests. Might update to 1024 in the
@@ -84,4 +89,5 @@ export type MCPValidationMetadataType = {
   mcpServerName: string;
   agentName: string;
   pubsubMessageId?: string;
+  icon?: InternalAllowedIconType | RemoteAllowedIconType;
 };

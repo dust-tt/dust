@@ -116,6 +116,7 @@ function makeServerSideMCPToolConfigurations(
     sId: generateRandomModelSId(),
     type: "mcp_configuration",
     name: tool.name,
+    icon: config.icon,
     description: tool.description ?? null,
     inputSchema:
       !tool.inputSchema || isEmptyInputSchema(tool.inputSchema)
@@ -163,6 +164,7 @@ function makeClientSideMCPToolConfigurations(
     // Use the base serverId (without suffix) to ensure tools are shared across all instances
     // of the same server name, allowing for consistent tool behavior.
     toolServerId: getBaseServerId(config.clientSideMcpServerId),
+    icon: config.icon,
   }));
 }
 
