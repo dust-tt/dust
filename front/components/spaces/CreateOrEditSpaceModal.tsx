@@ -30,6 +30,7 @@ import * as React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { ConfirmContext } from "@app/components/Confirm";
+import { GroupsList } from "@app/components/groups/GroupsList";
 import { ConfirmDeleteSpaceDialog } from "@app/components/spaces/ConfirmDeleteSpaceDialog";
 import { SearchGroupsDropdown } from "@app/components/spaces/SearchGroupsDropdown";
 import { SearchMembersPopover } from "@app/components/spaces/SearchMembersPopover";
@@ -679,23 +680,6 @@ function MembersTable({
   );
 }
 
-type GroupRowData = {
-  groupId: string;
-  name: string;
-  memberCount: number;
-  onClick?: () => void;
-};
-
-type GroupInfo = CellContext<GroupRowData, unknown>;
-
-function getGroupTableRows(allGroups: GroupType[]): GroupRowData[] {
-  return allGroups.map((group) => ({
-    groupId: group.sId,
-    name: group.name,
-    memberCount: group.memberCount,
-  }));
-}
-
 interface GroupsTableProps {
   onGroupsUpdated: (groups: GroupType[]) => void;
   selectedGroups: GroupType[];
@@ -712,12 +696,9 @@ function GroupsTable({
     pageIndex: 0,
     pageSize: 50,
   });
-  const [sorting, setSorting] = useState<SortingState>([
-    { id: "name", desc: false },
-  ]);
 
-  const getTableColumns = useCallback(() => {
-    const removeGroup = (groupId: string) => {
+  const removeGroup = useCallback(
+    (group: GroupType) => {
       if (selectedGroups.length === 1) {
         sendNotifications({
           title: "Cannot remove last group.",
@@ -726,70 +707,19 @@ function GroupsTable({
         });
         return;
       }
-      onGroupsUpdated(selectedGroups.filter((g) => g.sId !== groupId));
-    };
-    return [
-      {
-        id: "name",
-        accessorKey: "name",
-        cell: (info: GroupInfo) => (
-          <DataTable.CellContent>
-            {info.row.original.name}
-          </DataTable.CellContent>
-        ),
-        enableSorting: true,
-      },
-      {
-        id: "memberCount",
-        accessorKey: "memberCount",
-        cell: (info: GroupInfo) => (
-          <DataTable.BasicCellContent
-            label={`${info.row.original.memberCount} members`}
-          />
-        ),
-        enableSorting: true,
-      },
-      {
-        id: "action",
-        meta: {
-          className: "w-12",
-        },
-        cell: (info: GroupInfo) => {
-          return (
-            <DataTable.CellContent>
-              <Button
-                icon={XMarkIcon}
-                size="xs"
-                variant="ghost-secondary"
-                onClick={() => removeGroup(info.row.original.groupId)}
-              />
-            </DataTable.CellContent>
-          );
-        },
-      },
-    ];
-  }, [onGroupsUpdated, selectedGroups, sendNotifications]);
-
-  const rows = useMemo(
-    () => getGroupTableRows(selectedGroups),
-    [selectedGroups]
+      onGroupsUpdated(selectedGroups.filter((g) => g.sId !== group.sId));
+    },
+    [onGroupsUpdated, selectedGroups, sendNotifications]
   );
-  const columns = useMemo(() => getTableColumns(), [getTableColumns]);
 
   return (
-    <DataTable
-      data={rows}
-      columns={columns}
-      columnsBreakpoints={{
-        name: "md",
-      }}
+    <GroupsList
+      groups={selectedGroups}
+      searchTerm={searchSelectedGroups}
+      showColumns={["name", "memberCount", "action"]}
+      onRemoveGroupClick={removeGroup}
       pagination={pagination}
       setPagination={setPagination}
-      sorting={sorting}
-      setSorting={setSorting}
-      totalRowCount={rows.length}
-      filter={searchSelectedGroups}
-      filterColumn="name"
     />
   );
 }

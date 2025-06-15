@@ -47,6 +47,9 @@ const groupColumns = [
   },
   {
     id: "action" as const,
+    meta: {
+      className: "w-[44px]",
+    },
     cell: (info: GroupInfo) => {
       return (
         <DataTable.CellContent>
@@ -72,7 +75,7 @@ const filterColumn = (shownColumns: GroupColumnIDs) => {
 
 export type GroupsListProps = {
   searchTerm?: string;
-  isLoading: boolean;
+  isLoading?: boolean;
   groups: GroupType[];
   showColumns: GroupColumnIDs;
   onRemoveGroupClick?: (group: GroupType) => void;
@@ -116,6 +119,9 @@ export function GroupsList({
       filterColumn="name"
       data={rows}
       columns={groupColumns.filter(filterColumn(showColumns))}
+      columnsBreakpoints={{
+        name: "md",
+      }}
       {...tableProps}
     />
   );
