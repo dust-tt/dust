@@ -6,7 +6,10 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import type { ConfigurableToolInputType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
-import { validateConfiguredJsonSchema } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import {
+  DATA_SOURCE_CONFIGURATION_URI_PATTERN,
+  validateConfiguredJsonSchema,
+} from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { ConfigurableToolInputJSONSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { isServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import type { MCPServerType, MCPServerViewType } from "@app/lib/api/mcp";
@@ -19,6 +22,16 @@ import {
 } from "@app/lib/utils/json_schemas";
 import type { WorkspaceType } from "@app/types";
 import { assertNever } from "@app/types";
+import { DataSourceConfiguration } from "@app/lib/api/assistant/configuration";
+
+function getDataSourceURI(config: DataSourceConfiguration): string {
+  const { workspaceId, sId, dataSourceViewId, filter } = config;
+  if (sId) {
+    return `data_source_configuration://dust/w/${workspaceId}/data_source_configurations/sId/${sId}`;
+  }
+  const encodedFilter = encodeURIComponent(JSON.stringify(filter));
+  return `data_source_configuration://dust/w/${workspaceId}/data_source_configurations/viewId/${dataSourceViewId}/filter/${encodedFilter}`;
+}
 
 /**
  * Defines how we fill the actual inputs of the tool for each mime type.
@@ -44,7 +57,7 @@ function generateConfiguredInput({
     case INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE: {
       return (
         actionConfiguration.dataSources?.map((config) => ({
-          uri: `data_source_configuration://dust/w/${owner.sId}/data_source_configurations/${config.sId}`,
+          uri: getDataSourceURI(config),
           mimeType,
         })) || []
       );

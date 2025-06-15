@@ -229,6 +229,17 @@ async function getJITActions(
   }
 
   if (filesUsableAsRetrievalQuery.length > 0) {
+    const retrievalView =
+      await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
+        auth,
+        "search"
+      );
+
+    assert(
+      retrievalView,
+      "MCP server view not found for search. Ensure auto tools are created."
+    );
+
     const dataSources: DataSourceConfiguration[] = filesUsableAsRetrievalQuery
       // For each searchable content node, we add its datasourceview with itself as parent
       // filter.
@@ -253,18 +264,25 @@ async function getJITActions(
         filter: { parents: null, tags: null },
       });
     }
-    const action: RetrievalConfigurationType = {
-      description: DEFAULT_CONVERSATION_SEARCH_ACTION_DATA_DESCRIPTION,
-      type: "retrieval_configuration",
+
+    const retrievalServer: ServerSideMCPServerConfigurationType = {
       id: -1,
-      name: DEFAULT_CONVERSATION_SEARCH_ACTION_NAME,
       sId: generateRandomModelSId(),
-      topK: "auto",
-      query: "auto",
-      relativeTimeFrame: "auto",
+      type: "mcp_server_configuration",
+      name: "conversation_search",
+      description: "Semantic search over all files from the conversation",
       dataSources,
+      tables: null,
+      childAgentId: null,
+      reasoningModel: null,
+      timeFrame: null,
+      jsonSchema: null,
+      additionalConfiguration: {},
+      mcpServerViewId: retrievalView.sId,
+      dustAppConfiguration: null,
+      internalMCPServerId: retrievalView.mcpServerId,
     };
-    actions.push(action);
+    jitServers.push(retrievalServer);
   }
 
   // Add process action for processable files

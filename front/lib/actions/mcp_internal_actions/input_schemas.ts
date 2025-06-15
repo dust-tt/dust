@@ -8,8 +8,13 @@ import type { Result } from "@app/types";
 import { normalizeError } from "@app/types";
 import { Err, Ok } from "@app/types";
 
+/**
+ * URI pattern for configuring the data source to use within an action.
+ * Either an sId pointing to a configuration in the database,
+ * or a viewId and a filter, representing the configuration directly.
+ */
 export const DATA_SOURCE_CONFIGURATION_URI_PATTERN =
-  /^data_source_configuration:\/\/dust\/w\/(\w+)\/data_source_configurations\/(\w+)$/;
+  /^data_source_configuration:\/\/dust\/w\/(\w+)\/data_source_configurations\/(?:sId\/(\w+)|viewId\/(\w+)\/filter\/(.+))$/;
 
 export const TABLE_CONFIGURATION_URI_PATTERN =
   /^table_configuration:\/\/dust\/w\/(\w+)\/table_configurations\/(\w+)$/;
