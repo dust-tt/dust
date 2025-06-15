@@ -13,7 +13,7 @@ import {
   TextArea,
   useSendNotification,
 } from "@dust-tt/sparkle";
-import { useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useMemo, useState } from "react";
 import { mutate } from "swr";
 
 import { ConfirmContext } from "@app/components/Confirm";
@@ -32,6 +32,31 @@ import type {
   WorkspaceType,
 } from "@app/types";
 
+const useGetEmailsListAndError = (
+  inviteEmails: string
+): { inviteEmailsList: string[] | null; emailError: string } => {
+  return useMemo(() => {
+    const inviteEmailsList = inviteEmails
+      .split(/[\n,]+/)
+      .map((e) => e.trim())
+      .filter((e) => e !== "")
+      .filter((e, i, self) => self.indexOf(e) === i);
+
+    const invalidEmails = inviteEmailsList.filter((e) => !isEmailValid(e));
+    if (invalidEmails.length > 0) {
+      return {
+        inviteEmailsList: null,
+        emailError: "Invalid email addresses: " + invalidEmails.join(", "),
+      };
+    }
+
+    return {
+      inviteEmailsList,
+      emailError: "",
+    };
+  }, [inviteEmails]);
+};
+
 export function InviteEmailModal({
   owner,
   prefillText,
@@ -44,29 +69,14 @@ export function InviteEmailModal({
   onInviteClick: (event: MouseEvent) => void;
 }) {
   const [inviteEmails, setInviteEmails] = useState<string>("");
-  const [emailError, setEmailError] = useState("");
+  const { inviteEmailsList, emailError } =
+    useGetEmailsListAndError(inviteEmails);
   const [open, setOpen] = useState(false);
 
   const sendNotification = useSendNotification();
   const confirm = useContext(ConfirmContext);
   const [invitationRole, setInvitationRole] = useState<ActiveRoleType>("user");
   const handleMembersRoleChange = useChangeMembersRoles({ owner });
-
-  function getEmailsList(): string[] | null {
-    const inviteEmailsList = inviteEmails
-      .split(/[\n,]+/)
-      .map((e) => e.trim())
-      .filter((e) => e !== "")
-      .filter((e, i, self) => self.indexOf(e) === i);
-    if (inviteEmailsList.map(isEmailValid).includes(false)) {
-      setEmailError(
-        "Invalid email addresses: " +
-          inviteEmailsList.filter((e) => !isEmailValid(e)).join(", ")
-      );
-      return null;
-    }
-    return inviteEmailsList;
-  }
 
   async function handleSendInvitations(
     inviteEmailsList: string[]
@@ -208,7 +218,6 @@ export function InviteEmailModal({
                 value={inviteEmails}
                 onChange={(e) => {
                   setInviteEmails(e.target.value);
-                  setEmailError("");
                 }}
                 error={emailError}
                 showErrorLabel
@@ -242,7 +251,6 @@ export function InviteEmailModal({
             label: "Send Invite",
             onClick: async (event: MouseEvent) => {
               event.preventDefault();
-              const inviteEmailsList = getEmailsList();
               if (!inviteEmailsList) {
                 return;
               }
