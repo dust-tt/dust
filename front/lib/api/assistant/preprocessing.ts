@@ -61,7 +61,7 @@ export async function renderConversationForModel(
   const now = Date.now();
   const messages: ModelMessageTypeMultiActions[] = [];
 
-  // Render loop: dender all messages and all actions.
+  // Render loop: render all messages and all actions.
   for (const versions of conversation.content) {
     const m = versions[versions.length - 1];
 
@@ -103,7 +103,33 @@ export async function renderConversationForModel(
         });
       }
 
-      for (const content of m.rawContents) {
+      // Use the contents array if available, otherwise use the rawContents array.
+      let rawContents: { step: number; content: string }[] = [];
+      if (m.rawContents.length || m.contents.length) {
+        if (m.contents.length) {
+          for (const content of m.contents) {
+            if (content.content.type === "text_content") {
+              rawContents.push({
+                step: content.step,
+                content: content.content.value,
+              });
+            }
+          }
+        } else {
+          logger.info(
+            {
+              workspaceId: conversation.owner.sId,
+              conversationId: conversation.sId,
+              agentMessageId: m.sId,
+            },
+            "[CONVERSATION RENDERING] Rendering from rawContents"
+          );
+
+          rawContents = m.rawContents;
+        }
+      }
+
+      for (const content of rawContents) {
         stepByStepIndex[content.step] =
           stepByStepIndex[content.step] || emptyStep();
         if (content.content.trim()) {
@@ -116,7 +142,7 @@ export async function renderConversationForModel(
         .map(([, step]) => step);
 
       if (excludeActions) {
-        // In Exclude Actions mode, we only render the last step that has content.
+        // In Exclude Actions mode, we only render the last step that has text content.
         const stepsWithContent = steps.filter((s) => s?.contents.length);
         if (stepsWithContent.length) {
           const lastStepWithContent =
@@ -125,6 +151,7 @@ export async function renderConversationForModel(
             role: "assistant",
             name: m.configuration.name,
             content: lastStepWithContent.contents.join("\n"),
+            contents: m.contents,
           } satisfies AssistantContentMessageTypeModel);
         }
       } else {
@@ -159,12 +186,14 @@ export async function renderConversationForModel(
               role: "assistant",
               function_calls: step.actions.map((s) => s.call),
               content: step.contents.join("\n"),
+              contents: m.contents,
             } satisfies AssistantFunctionCallMessageTypeModel);
           } else {
             messages.push({
               role: "assistant",
               content: step.contents.join("\n"),
               name: m.configuration.name,
+              contents: m.contents,
             } satisfies AssistantContentMessageTypeModel);
           }
 
