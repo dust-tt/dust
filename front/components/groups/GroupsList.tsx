@@ -37,6 +37,9 @@ const groupColumns = [
     id: "memberCount" as const,
     accessorKey: "memberCount",
     header: "Members",
+    meta: {
+      className: "w-[120px]",
+    },
     cell: (info: GroupInfo) => (
       <DataTable.BasicCellContent label={`${info.row.original.memberCount}`} />
     ),
@@ -44,9 +47,6 @@ const groupColumns = [
   },
   {
     id: "action" as const,
-    meta: {
-      className: "text-right",
-    },
     cell: (info: GroupInfo) => {
       return (
         <DataTable.CellContent>
