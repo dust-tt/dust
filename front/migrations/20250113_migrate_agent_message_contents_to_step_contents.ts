@@ -407,7 +407,7 @@ function createFunctionCallContent(
   }
 }
 
-async function migrateAgentMessageContentsToStepContents(
+async function migrateAgentMessageContentsAndActionsToStepContents(
   workspace: LightWorkspaceType,
   { execute, logger }: { execute: boolean; logger: Logger }
 ) {
@@ -679,7 +679,7 @@ async function migrateForWorkspace(
     totalActionsProcessed,
     totalActionsCreated,
     actionTypeCounts,
-  } = await migrateAgentMessageContentsToStepContents(workspace, {
+  } = await migrateAgentMessageContentsAndActionsToStepContents(workspace, {
     execute,
     logger,
   });
