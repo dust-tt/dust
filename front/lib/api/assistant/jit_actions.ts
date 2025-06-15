@@ -107,18 +107,55 @@ async function getJITActions(
     conversation: ConversationType;
     files: ConversationAttachmentType[];
   }
-): Promise<ActionConfigurationType[]> {
+): Promise<{
+  jitActions: ActionConfigurationType[];
+  jitServers: MCPServerConfigurationType[];
+}> {
   const actions: ActionConfigurationType[] = [];
 
   // Get supporting actions from available actions.
   const supportingActions = getSupportingActions(agentActions);
 
+  const jitServers: MCPServerConfigurationType[] = [];
+
   // Add supporting actions first.
   actions.push(...supportingActions);
 
   if (files.length === 0) {
-    return actions;
+    return { jitActions: actions, jitServers: [] };
   }
+
+  // Add conversation_files MCP server if there are conversation files
+  const conversationFilesView =
+    await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
+      auth,
+      "conversation_files"
+    );
+
+  assert(
+    conversationFilesView,
+    "MCP server view not found for conversation_files. Ensure auto tools are created."
+  );
+
+  const conversationFilesServer: ServerSideMCPServerConfigurationType = {
+    id: -1,
+    sId: generateRandomModelSId(),
+    type: "mcp_server_configuration",
+    name: "conversation_files",
+    description: "Access and include files from the conversation",
+    dataSources: null,
+    tables: null,
+    childAgentId: null,
+    reasoningModel: null,
+    timeFrame: null,
+    jsonSchema: null,
+    additionalConfiguration: {},
+    mcpServerViewId: conversationFilesView.sId,
+    dustAppConfiguration: null,
+    internalMCPServerId: conversationFilesView.mcpServerId,
+  };
+
+  jitServers.push(conversationFilesServer);
 
   // Check tables for the table query action.
   const filesUsableAsTableQuery = files.filter((f) => f.isQueryable);
@@ -130,193 +167,195 @@ async function getJITActions(
   const filesUsableForExtracting = files.filter((f) => f.isExtractable);
 
   if (
-    filesUsableAsTableQuery.length > 0 ||
-    filesUsableAsRetrievalQuery.length > 0 ||
-    filesUsableForExtracting.length > 0
+    filesUsableAsTableQuery.length === 0 &&
+    filesUsableAsRetrievalQuery.length === 0 &&
+    filesUsableForExtracting.length === 0
   ) {
-    // Get the datasource view for the conversation.
-    const conversationDataSourceView =
-      await DataSourceViewResource.fetchByConversation(auth, conversation);
-
-    // Assign tables to multi-sheet spreadsheets.
-    await concurrentExecutor(
-      filesUsableAsTableQuery.filter((f) =>
-        isMultiSheetSpreadsheetContentType(f.contentType)
-      ),
-      async (f) => {
-        assert(
-          isConversationContentNodeType(f),
-          "Unreachable: file should be a content node"
-        );
-        f.generatedTables = await getTablesFromMultiSheetSpreadsheet(auth, f);
-      },
-      {
-        concurrency: 10,
-      }
-    );
-
-    if (filesUsableAsTableQuery.length > 0) {
-      const action: TablesQueryConfigurationType = {
-        // The description here is the description of the data, a meta description of the action
-        // is prepended automatically.
-        description: DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_DATA_DESCRIPTION,
-        type: "tables_query_configuration",
-        id: -1,
-        name: DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME,
-        sId: generateRandomModelSId(),
-        tables: filesUsableAsTableQuery.flatMap((f) => {
-          if (isConversationFileType(f)) {
-            assert(
-              conversationDataSourceView,
-              "No conversation datasource view found for table when trying to get JIT actions"
-            );
-            return f.generatedTables.map((tableId) => ({
-              workspaceId: auth.getNonNullableWorkspace().sId,
-              dataSourceViewId: conversationDataSourceView.sId,
-              tableId,
-            }));
-          } else if (isConversationContentNodeType(f)) {
-            return f.generatedTables.map((tableId) => ({
-              workspaceId: auth.getNonNullableWorkspace().sId,
-              dataSourceViewId: f.nodeDataSourceViewId,
-              tableId,
-            }));
-          }
-          assertNever(f);
-        }),
-      };
-      actions.push(action);
-    }
-
-    if (filesUsableAsRetrievalQuery.length > 0) {
-      const dataSources: DataSourceConfiguration[] = filesUsableAsRetrievalQuery
-        // For each searchable content node, we add its datasourceview with itself as parent
-        // filter.
-        .filter((f) => isConversationContentNodeType(f))
-        .map((f) => ({
-          workspaceId: auth.getNonNullableWorkspace().sId,
-          // Cast ok here because of the filter above.
-          dataSourceViewId: (f as ConversationContentNodeType)
-            .nodeDataSourceViewId,
-          filter: {
-            parents: {
-              in: [(f as ConversationContentNodeType).nodeId],
-              not: [],
-            },
-            tags: null,
-          },
-        }));
-      if (conversationDataSourceView) {
-        dataSources.push({
-          workspaceId: auth.getNonNullableWorkspace().sId,
-          dataSourceViewId: conversationDataSourceView.sId,
-          filter: { parents: null, tags: null },
-        });
-      }
-      const action: RetrievalConfigurationType = {
-        description: DEFAULT_CONVERSATION_SEARCH_ACTION_DATA_DESCRIPTION,
-        type: "retrieval_configuration",
-        id: -1,
-        name: DEFAULT_CONVERSATION_SEARCH_ACTION_NAME,
-        sId: generateRandomModelSId(),
-        topK: "auto",
-        query: "auto",
-        relativeTimeFrame: "auto",
-        dataSources,
-      };
-      actions.push(action);
-    }
-
-    // Add process action for processable files
-    if (filesUsableForExtracting.length > 0) {
-      const dataSources: DataSourceConfiguration[] = filesUsableForExtracting
-        // For each extractable content node, we add its datasourceview with itself as parent filter.
-        .filter((f) => isConversationContentNodeType(f))
-        .map((f) => ({
-          workspaceId: auth.getNonNullableWorkspace().sId,
-          // Cast ok here because of the filter above.
-          dataSourceViewId: (f as ConversationContentNodeType)
-            .nodeDataSourceViewId,
-          filter: {
-            parents: {
-              in: [(f as ConversationContentNodeType).nodeId],
-              not: [],
-            },
-            tags: null,
-          },
-        }));
-      if (conversationDataSourceView) {
-        dataSources.push({
-          workspaceId: auth.getNonNullableWorkspace().sId,
-          dataSourceViewId: conversationDataSourceView.sId,
-          filter: { parents: null, tags: null },
-        });
-      }
-
-      const action: ProcessConfigurationType = {
-        description: DEFAULT_CONVERSATION_EXTRACT_ACTION_DATA_DESCRIPTION,
-        type: "process_configuration",
-        id: -1,
-        name: DEFAULT_CONVERSATION_EXTRACT_ACTION_NAME,
-        sId: generateRandomModelSId(),
-        dataSources,
-        relativeTimeFrame: "auto",
-        jsonSchema: null,
-      };
-      actions.push(action);
-    }
-
-    for (const [i, f] of files
-      .filter((f) => isConversationContentNodeType(f) && isSearchableFolder(f))
-      .entries()) {
-      // This is valid because of the filter above.
-      const folder = f as ConversationContentNodeType;
-      const dataSources: DataSourceConfiguration[] = [
-        {
-          workspaceId: auth.getNonNullableWorkspace().sId,
-          dataSourceViewId: folder.nodeDataSourceViewId,
-          filter: {
-            // Do not filter on parent if the folder is a data source node.
-            parents: isContentFragmentDataSourceNode(folder)
-              ? null
-              : {
-                  in: [folder.nodeId],
-                  not: [],
-                },
-            tags: null,
-          },
-        },
-      ];
-      // add retrieval action for the folder
-      const action: RetrievalConfigurationType = {
-        description: `Search content within the documents inside "${folder.title}"`,
-        type: "retrieval_configuration",
-        id: -1,
-        name: `search_folder_${i}`,
-        sId: generateRandomModelSId(),
-        topK: "auto",
-        query: "auto",
-        relativeTimeFrame: "auto",
-        dataSources,
-      };
-      actions.push(action);
-
-      // add process action for the folder
-      const processAction: ProcessConfigurationType = {
-        description: `Extract structured data from the documents inside "${folder.title}"`,
-        type: "process_configuration",
-        id: -1,
-        name: `extract_folder_${i}`,
-        sId: generateRandomModelSId(),
-        dataSources,
-        relativeTimeFrame: "auto",
-        jsonSchema: null,
-      };
-      actions.push(processAction);
-    }
+    return { jitActions: actions, jitServers };
   }
 
-  return actions;
+  // Get the datasource view for the conversation.
+  const conversationDataSourceView =
+    await DataSourceViewResource.fetchByConversation(auth, conversation);
+
+  // Assign tables to multi-sheet spreadsheets.
+  await concurrentExecutor(
+    filesUsableAsTableQuery.filter((f) =>
+      isMultiSheetSpreadsheetContentType(f.contentType)
+    ),
+    async (f) => {
+      assert(
+        isConversationContentNodeType(f),
+        "Unreachable: file should be a content node"
+      );
+      f.generatedTables = await getTablesFromMultiSheetSpreadsheet(auth, f);
+    },
+    {
+      concurrency: 10,
+    }
+  );
+
+  if (filesUsableAsTableQuery.length > 0) {
+    const action: TablesQueryConfigurationType = {
+      // The description here is the description of the data, a meta description of the action
+      // is prepended automatically.
+      description: DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_DATA_DESCRIPTION,
+      type: "tables_query_configuration",
+      id: -1,
+      name: DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME,
+      sId: generateRandomModelSId(),
+      tables: filesUsableAsTableQuery.flatMap((f) => {
+        if (isConversationFileType(f)) {
+          assert(
+            conversationDataSourceView,
+            "No conversation datasource view found for table when trying to get JIT actions"
+          );
+          return f.generatedTables.map((tableId) => ({
+            workspaceId: auth.getNonNullableWorkspace().sId,
+            dataSourceViewId: conversationDataSourceView.sId,
+            tableId,
+          }));
+        } else if (isConversationContentNodeType(f)) {
+          return f.generatedTables.map((tableId) => ({
+            workspaceId: auth.getNonNullableWorkspace().sId,
+            dataSourceViewId: f.nodeDataSourceViewId,
+            tableId,
+          }));
+        }
+        assertNever(f);
+      }),
+    };
+    actions.push(action);
+  }
+
+  if (filesUsableAsRetrievalQuery.length > 0) {
+    const dataSources: DataSourceConfiguration[] = filesUsableAsRetrievalQuery
+      // For each searchable content node, we add its datasourceview with itself as parent
+      // filter.
+      .filter((f) => isConversationContentNodeType(f))
+      .map((f) => ({
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        // Cast ok here because of the filter above.
+        dataSourceViewId: (f as ConversationContentNodeType)
+          .nodeDataSourceViewId,
+        filter: {
+          parents: {
+            in: [(f as ConversationContentNodeType).nodeId],
+            not: [],
+          },
+          tags: null,
+        },
+      }));
+    if (conversationDataSourceView) {
+      dataSources.push({
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        dataSourceViewId: conversationDataSourceView.sId,
+        filter: { parents: null, tags: null },
+      });
+    }
+    const action: RetrievalConfigurationType = {
+      description: DEFAULT_CONVERSATION_SEARCH_ACTION_DATA_DESCRIPTION,
+      type: "retrieval_configuration",
+      id: -1,
+      name: DEFAULT_CONVERSATION_SEARCH_ACTION_NAME,
+      sId: generateRandomModelSId(),
+      topK: "auto",
+      query: "auto",
+      relativeTimeFrame: "auto",
+      dataSources,
+    };
+    actions.push(action);
+  }
+
+  // Add process action for processable files
+  if (filesUsableForExtracting.length > 0) {
+    const dataSources: DataSourceConfiguration[] = filesUsableForExtracting
+      // For each extractable content node, we add its datasourceview with itself as parent filter.
+      .filter((f) => isConversationContentNodeType(f))
+      .map((f) => ({
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        // Cast ok here because of the filter above.
+        dataSourceViewId: (f as ConversationContentNodeType)
+          .nodeDataSourceViewId,
+        filter: {
+          parents: {
+            in: [(f as ConversationContentNodeType).nodeId],
+            not: [],
+          },
+          tags: null,
+        },
+      }));
+    if (conversationDataSourceView) {
+      dataSources.push({
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        dataSourceViewId: conversationDataSourceView.sId,
+        filter: { parents: null, tags: null },
+      });
+    }
+
+    const action: ProcessConfigurationType = {
+      description: DEFAULT_CONVERSATION_EXTRACT_ACTION_DATA_DESCRIPTION,
+      type: "process_configuration",
+      id: -1,
+      name: DEFAULT_CONVERSATION_EXTRACT_ACTION_NAME,
+      sId: generateRandomModelSId(),
+      dataSources,
+      relativeTimeFrame: "auto",
+      jsonSchema: null,
+    };
+    actions.push(action);
+  }
+
+  for (const [i, f] of files
+    .filter((f) => isConversationContentNodeType(f) && isSearchableFolder(f))
+    .entries()) {
+    // This is valid because of the filter above.
+    const folder = f as ConversationContentNodeType;
+    const dataSources: DataSourceConfiguration[] = [
+      {
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        dataSourceViewId: folder.nodeDataSourceViewId,
+        filter: {
+          // Do not filter on parent if the folder is a data source node.
+          parents: isContentFragmentDataSourceNode(folder)
+            ? null
+            : {
+                in: [folder.nodeId],
+                not: [],
+              },
+          tags: null,
+        },
+      },
+    ];
+    // add retrieval action for the folder
+    const action: RetrievalConfigurationType = {
+      description: `Search content within the documents inside "${folder.title}"`,
+      type: "retrieval_configuration",
+      id: -1,
+      name: `search_folder_${i}`,
+      sId: generateRandomModelSId(),
+      topK: "auto",
+      query: "auto",
+      relativeTimeFrame: "auto",
+      dataSources,
+    };
+    actions.push(action);
+
+    // add process action for the folder
+    const processAction: ProcessConfigurationType = {
+      description: `Extract structured data from the documents inside "${folder.title}"`,
+      type: "process_configuration",
+      id: -1,
+      name: `extract_folder_${i}`,
+      sId: generateRandomModelSId(),
+      dataSources,
+      relativeTimeFrame: "auto",
+      jsonSchema: null,
+    };
+    actions.push(processAction);
+  }
+
+  return { jitActions: actions, jitServers };
 }
 
 export async function getEmulatedAndJITActions(
@@ -336,8 +375,6 @@ export async function getEmulatedAndJITActions(
   jitServers: MCPServerConfigurationType[];
 }> {
   const emulatedActions: AgentActionType[] = [];
-  let jitActions: ActionConfigurationType[] = [];
-  const jitServers: MCPServerConfigurationType[] = [];
 
   const files = listFiles(conversation);
   const a = makeConversationListFilesAction({
@@ -348,45 +385,11 @@ export async function getEmulatedAndJITActions(
     emulatedActions.push(a);
   }
 
-  jitActions = await getJITActions(auth, {
+  const { jitActions, jitServers } = await getJITActions(auth, {
     conversation,
     files,
     agentActions,
   });
-
-  // Add conversation_files MCP server if there are conversation files
-  if (files.length > 0) {
-    const conversationFilesView =
-      await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
-        auth,
-        "conversation_files"
-      );
-
-    assert(
-      conversationFilesView,
-      "MCP server view not found for conversation_files. Ensure auto tools are created."
-    );
-
-    const conversationFilesServer: ServerSideMCPServerConfigurationType = {
-      id: -1,
-      sId: generateRandomModelSId(),
-      type: "mcp_server_configuration",
-      name: "conversation_files",
-      description: "Access and include files from the conversation",
-      dataSources: null,
-      tables: null,
-      childAgentId: null,
-      reasoningModel: null,
-      timeFrame: null,
-      jsonSchema: null,
-      additionalConfiguration: {},
-      mcpServerViewId: conversationFilesView.sId,
-      dustAppConfiguration: null,
-      internalMCPServerId: conversationFilesView.mcpServerId,
-    };
-
-    jitServers.push(conversationFilesServer);
-  }
 
   // We ensure that all emulated actions are injected with step -1.
   assert(
