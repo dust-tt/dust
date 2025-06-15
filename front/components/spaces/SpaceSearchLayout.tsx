@@ -22,12 +22,18 @@ import { SpacePageHeader } from "@app/components/spaces/SpacePageHeaders";
 import { useCursorPaginationForDataTable } from "@app/hooks/useCursorPaginationForDataTable";
 import { useDebounce } from "@app/hooks/useDebounce";
 import { useQueryParams } from "@app/hooks/useQueryParams";
+import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
+import {
+  isNodeCandidate,
+  isUrlCandidate,
+  nodeCandidateFromUrl,
+} from "@app/lib/connectors";
 import {
   getLocationForDataSourceViewContentNode,
   getVisualForDataSourceViewContentNode,
 } from "@app/lib/content_nodes";
 import { useDataSourceViews } from "@app/lib/swr/data_source_views";
-import { useSpaces, useSpaceSearch } from "@app/lib/swr/spaces";
+import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
 import type {
   APIError,
   ContentNodesViewType,
@@ -168,6 +174,9 @@ function BackendSearch({
   const [effectiveContentNode, setEffectiveContentNode] =
     React.useState<LightContentNode | null>(null);
   const effectiveDataSourceView = dataSourceView || searchResultDataSourceView;
+  const [nodeOrUrlCandidate, setNodeOrUrlCandidate] = React.useState<
+    UrlCandidate | NodeCandidate | null
+  >(null);
 
   const handleOpenDocument = React.useCallback(
     (node: DataSourceViewContentNode) => {
@@ -197,12 +206,23 @@ function BackendSearch({
   const handleClearSearch = React.useCallback(() => {
     searchParam.setParam(undefined);
     setSearchValue("");
+    setNodeOrUrlCandidate(null);
   }, [searchParam, setSearchValue]);
 
   const handleSearchChange = (value: string) => {
     searchParam.setParam(value);
     setSearchValue(value);
   };
+
+  // Check if the search term is a URL
+  React.useEffect(() => {
+    if (debouncedSearch.length >= MIN_SEARCH_QUERY_SIZE) {
+      const candidate = nodeCandidateFromUrl(debouncedSearch.trim());
+      setNodeOrUrlCandidate(candidate);
+    } else {
+      setNodeOrUrlCandidate(null);
+    }
+  }, [debouncedSearch]);
 
   const shouldShowSearchResults = debouncedSearch.length > 0;
 
@@ -222,35 +242,65 @@ function BackendSearch({
     resetPagination();
   }, [debouncedSearch, resetPagination]);
 
-  // Use the space search hook for backend search
+  const commonSearchParams = {
+    owner,
+    viewType,
+    spaceIds: [space.sId],
+    pagination: { cursor: cursorPagination.cursor, limit: PAGE_SIZE },
+    // Required by search API to allow admins to search the system space
+    allowAdminSearch: true,
+    disabled: !debouncedSearch,
+  };
+
+  // Use the spaces search hook for backend search with URL/node support
   const {
     isSearchLoading,
     isSearchValidating,
     searchResultNodes,
-    total: totalNodesCount,
     nextPageCursor,
-  } = useSpaceSearch({
-    dataSourceViews: targetDataSourceViews,
-    disabled: !debouncedSearch,
-    includeDataSources: true,
-    pagination: { cursor: cursorPagination.cursor, limit: PAGE_SIZE },
-    owner,
-    search: debouncedSearch,
-    space,
-    viewType,
-  });
+  } = useSpacesSearch(
+    isNodeCandidate(nodeOrUrlCandidate) && nodeOrUrlCandidate.node
+      ? {
+          ...commonSearchParams,
+          nodeIds: [nodeOrUrlCandidate.node],
+          includeDataSources: false,
+        }
+      : {
+          ...commonSearchParams,
+          search: debouncedSearch,
+          searchSourceUrls: isUrlCandidate(nodeOrUrlCandidate),
+          includeDataSources: true,
+        }
+  );
 
   const isLoading = isDebouncing || isSearchLoading || isSearchValidating;
 
   React.useEffect(() => {
+    // Process search results to convert them to DataSourceViewContentNode format
+    const processedResults = searchResultNodes.flatMap((node) => {
+      const { dataSourceViews, ...rest } = node;
+      return dataSourceViews.map((view) => ({
+        ...rest,
+        dataSourceView: view,
+      }));
+    });
+
+    // Filter results based on URL match if we have a URL candidate
+    const filteredResults =
+      nodeOrUrlCandidate && !isNodeCandidate(nodeOrUrlCandidate)
+        ? processedResults.filter(
+            (node) => node.sourceUrl === nodeOrUrlCandidate.url
+          )
+        : processedResults;
+
     if (tablePagination.pageIndex === 0) {
       // Replace results on new search (first page)
-      setSearchResults(searchResultNodes);
-    } else if (searchResultNodes.length > 0) {
+      setSearchResults(filteredResults);
+    } else if (filteredResults.length > 0) {
       // Append results for subsequent pages
-      setSearchResults((prev) => [...prev, ...searchResultNodes]);
+      setSearchResults((prev) => [...prev, ...filteredResults]);
     }
-  }, [searchResultNodes, tablePagination.pageIndex]);
+  }, [searchResultNodes, tablePagination.pageIndex, nodeOrUrlCandidate]);
 
   const handleLoadMore = React.useCallback(() => {
     if (nextPageCursor && !isSearchValidating) {
@@ -284,10 +334,10 @@ function BackendSearch({
   }, [shouldShowSearchResults, showSearch]);
 
   React.useEffect(() => {
-    if (totalNodesCount !== undefined && !isSearchValidating && !isLoading) {
-      setSearchHitCount(totalNodesCount);
+    if (!isSearchValidating && !isLoading) {
+      setSearchHitCount(searchResults.length);
     }
-  }, [isLoading, isSearchValidating, totalNodesCount]);
+  }, [isLoading, isSearchValidating, searchResults]);
   return (
     <SpaceSearchContext.Provider value={searchContextValue}>
       <SearchInput
