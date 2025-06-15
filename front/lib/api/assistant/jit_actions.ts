@@ -5,8 +5,6 @@ import {
   DEFAULT_CONVERSATION_EXTRACT_ACTION_NAME,
   DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_DATA_DESCRIPTION,
   DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME,
-  DEFAULT_CONVERSATION_SEARCH_ACTION_DATA_DESCRIPTION,
-  DEFAULT_CONVERSATION_SEARCH_ACTION_NAME,
   DEFAULT_SEARCH_LABELS_ACTION_NAME,
 } from "@app/lib/actions/constants";
 import type {
@@ -24,7 +22,6 @@ import type {
   ServerSideMCPServerConfigurationType,
 } from "@app/lib/actions/mcp";
 import type { ProcessConfigurationType } from "@app/lib/actions/process";
-import type { RetrievalConfigurationType } from "@app/lib/actions/retrieval";
 import type { TablesQueryConfigurationType } from "@app/lib/actions/tables_query";
 import type {
   ActionConfigurationType,
@@ -228,18 +225,19 @@ async function getJITActions(
     actions.push(action);
   }
 
-  if (filesUsableAsRetrievalQuery.length > 0) {
-    const retrievalView =
-      await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
-        auth,
-        "search"
-      );
-
-    assert(
-      retrievalView,
-      "MCP server view not found for search. Ensure auto tools are created."
+  // Get the retrieval view once - we'll need it for search functionality
+  const retrievalView =
+    await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
+      auth,
+      "search"
     );
 
+  assert(
+    retrievalView,
+    "MCP server view not found for search. Ensure auto tools are created."
+  );
+
+  if (filesUsableAsRetrievalQuery.length > 0) {
     const dataSources: DataSourceConfiguration[] = filesUsableAsRetrievalQuery
       // For each searchable content node, we add its datasourceview with itself as parent
       // filter.
@@ -345,19 +343,26 @@ async function getJITActions(
         },
       },
     ];
-    // add retrieval action for the folder
-    const action: RetrievalConfigurationType = {
-      description: `Search content within the documents inside "${folder.title}"`,
-      type: "retrieval_configuration",
+
+    // add search server for the folder
+    const folderSearchServer: ServerSideMCPServerConfigurationType = {
       id: -1,
-      name: `search_folder_${i}`,
       sId: generateRandomModelSId(),
-      topK: "auto",
-      query: "auto",
-      relativeTimeFrame: "auto",
+      type: "mcp_server_configuration",
+      name: `search_folder_${i}`,
+      description: `Search content within the documents inside "${folder.title}"`,
       dataSources,
+      tables: null,
+      childAgentId: null,
+      reasoningModel: null,
+      timeFrame: null,
+      jsonSchema: null,
+      additionalConfiguration: {},
+      mcpServerViewId: retrievalView.sId,
+      dustAppConfiguration: null,
+      internalMCPServerId: retrievalView.mcpServerId,
     };
-    actions.push(action);
+    jitServers.push(folderSearchServer);
 
     // add process action for the folder
     const processAction: ProcessConfigurationType = {

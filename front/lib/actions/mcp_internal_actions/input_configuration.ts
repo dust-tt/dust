@@ -6,12 +6,10 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import type { ConfigurableToolInputType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
-import {
-  DATA_SOURCE_CONFIGURATION_URI_PATTERN,
-  validateConfiguredJsonSchema,
-} from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import { validateConfiguredJsonSchema } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { ConfigurableToolInputJSONSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { isServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
+import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration";
 import type { MCPServerType, MCPServerViewType } from "@app/lib/api/mcp";
 import {
   areSchemasEqual,
@@ -22,7 +20,6 @@ import {
 } from "@app/lib/utils/json_schemas";
 import type { WorkspaceType } from "@app/types";
 import { assertNever } from "@app/types";
-import { DataSourceConfiguration } from "@app/lib/api/assistant/configuration";
 
 function getDataSourceURI(config: DataSourceConfiguration): string {
   const { workspaceId, sId, dataSourceViewId, filter } = config;
