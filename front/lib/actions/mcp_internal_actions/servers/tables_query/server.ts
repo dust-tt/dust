@@ -23,7 +23,6 @@ import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
-import type { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
 import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { LabsSalesforcePersonalConnectionResource } from "@app/lib/resources/labs_salesforce_personal_connection_resource";
@@ -113,21 +112,20 @@ function createServer(
         getDustProdAction("assistant-v2-query-tables").config
       );
 
-      const agentTableConfigurationsRes = await fetchAgentTableConfigurations(
+      const tableConfigurationsRes = await fetchAgentTableConfigurations(
         auth,
         tables
       );
-      if (agentTableConfigurationsRes.isErr()) {
+      if (tableConfigurationsRes.isErr()) {
         return makeMCPToolTextError(
-          `Error fetching table configurations: ${agentTableConfigurationsRes.error.message}`
+          `Error fetching table configurations: ${tableConfigurationsRes.error.message}`
         );
       }
 
-      const agentTableConfigurations = agentTableConfigurationsRes.value;
-      const dataSourceViews = await DataSourceViewResource.fetchByModelIds(
-        auth,
-        [...new Set(agentTableConfigurations.map((t) => t.dataSourceViewId))]
-      );
+      const tableConfigurations = tableConfigurationsRes.value;
+      const dataSourceViews = await DataSourceViewResource.fetchByIds(auth, [
+        ...new Set(tableConfigurations.map((t) => t.dataSourceViewId)),
+      ]);
 
       const personalConnectionIds: Record<string, string> = {};
 
@@ -156,28 +154,18 @@ function createServer(
       }
       // End salesforce specific
 
-      const dataSourceViewsMap = new Map(
-        dataSourceViews.map((dsv) => [dsv.id, dsv])
-      );
-
-      const configuredTables = agentTableConfigurations.map(
-        (t: AgentTablesQueryConfigurationTable) => {
-          const dataSourceViewId = dataSourceViewsMap.get(
-            t.dataSourceViewId
-          )?.sId;
-
-          return {
-            workspace_id: owner.sId,
-            table_id: t.tableId,
-            // Note: This value is passed to the registry for lookup.
-            // The registry will return the associated data source's dustAPIDataSourceId.
-            data_source_id: dataSourceViewId,
-            remote_database_secret_id: dataSourceViewId
-              ? personalConnectionIds[dataSourceViewId]
-              : null,
-          };
-        }
-      );
+      const configuredTables = tableConfigurations.map((t) => {
+        return {
+          workspace_id: t.workspaceId,
+          table_id: t.tableId,
+          // Note: This value is passed to the registry for lookup.
+          // The registry will return the associated data source's dustAPIDataSourceId.
+          data_source_id: t.dataSourceViewId,
+          remote_database_secret_id: t.dataSourceViewId
+            ? personalConnectionIds[t.dataSourceViewId]
+            : null,
+        };
+      });
       if (configuredTables.length === 0) {
         return makeMCPToolTextError(
           "The agent does not have access to any tables. Please edit the agent's Query Tables tool to add tables, or remove the tool."
@@ -351,9 +339,9 @@ function createServer(
         // First, we fetch the connector provider for the data source, cause the chunking
         // strategy of the section file depends on it: Since all tables are from the same
         // data source, we can just take the first table's data source view id.
-        const [dataSourceView] = await DataSourceViewResource.fetchByModelIds(
+        const dataSourceView = await DataSourceViewResource.fetchById(
           auth,
-          [agentTableConfigurations[0].dataSourceViewId]
+          tableConfigurations[0].dataSourceViewId
         );
         const connectorProvider =
           dataSourceView?.dataSource?.connectorProvider ?? null;

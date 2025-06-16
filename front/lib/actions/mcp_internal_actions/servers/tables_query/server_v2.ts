@@ -69,33 +69,32 @@ function createServer(
     },
     async ({ tables }) => {
       // Fetch table configurations
-      const agentTableConfigurationsRes = await fetchAgentTableConfigurations(
+      const tableConfigurationsRes = await fetchAgentTableConfigurations(
         auth,
         tables
       );
-      if (agentTableConfigurationsRes.isErr()) {
+      if (tableConfigurationsRes.isErr()) {
         return makeMCPToolTextError(
-          `Error fetching table configurations: ${agentTableConfigurationsRes.error.message}`
+          `Error fetching table configurations: ${tableConfigurationsRes.error.message}`
         );
       }
-      const agentTableConfigurations = agentTableConfigurationsRes.value;
-      if (agentTableConfigurations.length === 0) {
+      const tableConfigurations = tableConfigurationsRes.value;
+      if (tableConfigurations.length === 0) {
         return makeMCPToolTextError(
           "The agent does not have access to any tables. Please edit the agent's Query Tables tool to add tables, or remove the tool."
         );
       }
-      const dataSourceViews = await DataSourceViewResource.fetchByModelIds(
-        auth,
-        [...new Set(agentTableConfigurations.map((t) => t.dataSourceViewId))]
-      );
+      const dataSourceViews = await DataSourceViewResource.fetchByIds(auth, [
+        ...new Set(tableConfigurations.map((t) => t.dataSourceViewId)),
+      ]);
       const dataSourceViewsMap = new Map(
-        dataSourceViews.map((dsv) => [dsv.id, dsv])
+        dataSourceViews.map((dsv) => [dsv.sId, dsv])
       );
 
       // Call Core API's /database_schema endpoint
       const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
       const schemaResult = await coreAPI.getDatabaseSchema({
-        tables: agentTableConfigurations.map((t) => {
+        tables: tableConfigurations.map((t) => {
           const dataSourceView = dataSourceViewsMap.get(t.dataSourceViewId);
           if (
             !dataSourceView ||
@@ -166,33 +165,32 @@ function createServer(
         const agentLoopRunContext = agentLoopContext.runContext;
 
         // Fetch table configurations
-        const agentTableConfigurationsRes = await fetchAgentTableConfigurations(
+        const tableConfigurationsRes = await fetchAgentTableConfigurations(
           auth,
           tables
         );
-        if (agentTableConfigurationsRes.isErr()) {
+        if (tableConfigurationsRes.isErr()) {
           return makeMCPToolTextError(
-            `Error fetching table configurations: ${agentTableConfigurationsRes.error.message}`
+            `Error fetching table configurations: ${tableConfigurationsRes.error.message}`
           );
         }
-        const agentTableConfigurations = agentTableConfigurationsRes.value;
-        if (agentTableConfigurations.length === 0) {
+        const tableConfigurations = tableConfigurationsRes.value;
+        if (tableConfigurations.length === 0) {
           return makeMCPToolTextError(
             "The agent does not have access to any tables. Please edit the agent's Query Tables tool to add tables, or remove the tool."
           );
         }
-        const dataSourceViews = await DataSourceViewResource.fetchByModelIds(
-          auth,
-          [...new Set(agentTableConfigurations.map((t) => t.dataSourceViewId))]
-        );
+        const dataSourceViews = await DataSourceViewResource.fetchByIds(auth, [
+          ...new Set(tableConfigurations.map((t) => t.dataSourceViewId)),
+        ]);
         const dataSourceViewsMap = new Map(
-          dataSourceViews.map((dsv) => [dsv.id, dsv])
+          dataSourceViews.map((dsv) => [dsv.sId, dsv])
         );
 
         // Call Core API's /query_database endpoint
         const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
         const queryResult = await coreAPI.queryDatabase({
-          tables: agentTableConfigurations.map((t) => {
+          tables: tableConfigurations.map((t) => {
             const dataSourceView = dataSourceViewsMap.get(t.dataSourceViewId);
             if (
               !dataSourceView ||
@@ -310,10 +308,10 @@ function createServer(
             // First, we fetch the connector provider for the data source, cause the chunking
             // strategy of the section file depends on it: Since all tables are from the same
             // data source, we can just take the first table's data source view id.
-            const [dataSourceView] =
-              await DataSourceViewResource.fetchByModelIds(auth, [
-                agentTableConfigurations[0].dataSourceViewId,
-              ]);
+            const dataSourceView = await DataSourceViewResource.fetchById(
+              auth,
+              tableConfigurations[0].dataSourceViewId
+            );
             const connectorProvider =
               dataSourceView?.dataSource?.connectorProvider ?? null;
             const sectionColumnsPrefix =

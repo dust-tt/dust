@@ -153,10 +153,35 @@ describe("MCP Internal Actions Server Utils", () => {
         expect(result.isOk()).toBe(true);
         if (result.isOk()) {
           expect(result.value).toHaveLength(1);
-          expect(result.value[0].id).toBe(tableConfig.id);
+          expect(result.value[0].tableId).toBe(tableConfig.tableId);
+          expect(result.value[0].workspaceId).toBe(workspace.sId);
         }
       }
     );
+
+    itInTransaction("should handle dynamic table configurations", async () => {
+      const workspace = await WorkspaceFactory.basic();
+      const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+      const tablesConfiguration = [
+        {
+          uri: `table_configuration://dust/w/${workspace.sId}/data_source_views/dsv_12345/tables/table%20name`,
+          mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE,
+        },
+      ];
+
+      const result = await fetchAgentTableConfigurations(
+        auth,
+        tablesConfiguration
+      );
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value).toHaveLength(1);
+        expect(result.value[0].tableId).toBe("table name");
+        expect(result.value[0].workspaceId).toBe(workspace.sId);
+        expect(result.value[0].dataSourceViewId).toBe("dsv_12345");
+      }
+    });
   });
 
   describe("getCoreSearchArgs", () => {

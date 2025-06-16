@@ -1,5 +1,3 @@
-import { Op } from "sequelize";
-
 import { renderDataSourceConfiguration } from "@app/lib/actions/configuration/helpers";
 import type {
   DataSourcesToolConfigurationType,
@@ -9,6 +7,7 @@ import {
   DATA_SOURCE_CONFIGURATION_URI_PATTERN,
   TABLE_CONFIGURATION_URI_PATTERN,
 } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import type { TableDataSourceConfiguration } from "@app/lib/actions/tables_query";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import {
   isServerSideMCPServerConfiguration,
@@ -78,8 +77,9 @@ export async function fetchAgentDataSourceConfiguration(
 export async function fetchAgentTableConfigurations(
   auth: Authenticator,
   tablesConfiguration: TablesConfigurationToolType
-): Promise<Result<AgentTablesQueryConfigurationTable[], Error>> {
-  const configurationIds = [];
+): Promise<Result<TableDataSourceConfiguration[], Error>> {
+  const results: TableDataSourceConfiguration[] = [];
+
   for (const tableConfiguration of tablesConfiguration) {
     const match = tableConfiguration.uri.match(TABLE_CONFIGURATION_URI_PATTERN);
     if (!match) {
@@ -89,38 +89,78 @@ export async function fetchAgentTableConfigurations(
         )
       );
     }
-    // Safe to do because the inputs are already checked against the zod schema here.
-    const [, , tableConfigId] = match;
-    const sIdParts = getResourceNameAndIdFromSId(tableConfigId);
-    if (!sIdParts) {
+
+    const [, workspaceId, tableConfigId, viewId, tableId] = match;
+
+    if (tableConfigId) {
+      // Database configuration
+      const sIdParts = getResourceNameAndIdFromSId(tableConfigId);
+      if (!sIdParts) {
+        return new Err(
+          new Error(`Invalid table configuration ID: ${tableConfigId}`)
+        );
+      }
+      if (sIdParts.resourceName !== "table_configuration") {
+        return new Err(
+          new Error(`ID is not a table configuration ID: ${tableConfigId}`)
+        );
+      }
+      if (sIdParts.workspaceModelId !== auth.getNonNullableWorkspace().id) {
+        return new Err(
+          new Error(
+            `Table configuration ${tableConfigId} does not belong to workspace ${sIdParts.workspaceModelId}`
+          )
+        );
+      }
+
+      const agentTableConfiguration =
+        await AgentTablesQueryConfigurationTable.findOne({
+          where: {
+            id: sIdParts.resourceModelId,
+            workspaceId: auth.getNonNullableWorkspace().id,
+          },
+        });
+
+      if (!agentTableConfiguration) {
+        return new Err(
+          new Error(`Table configuration ${tableConfigId} not found`)
+        );
+      }
+
+      // Convert to TableDataSourceConfiguration
+      const dataSourceView = await DataSourceViewResource.fetchByModelIds(
+        auth,
+        [agentTableConfiguration.dataSourceViewId]
+      );
+
+      if (dataSourceView.length !== 1) {
+        return new Err(
+          new Error(
+            `Data source view not found for table configuration ${tableConfigId}`
+          )
+        );
+      }
+
+      results.push({
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        dataSourceViewId: dataSourceView[0].sId,
+        tableId: agentTableConfiguration.tableId,
+      });
+    } else if (viewId && tableId) {
+      // Dynamic configuration
+      results.push({
+        workspaceId,
+        dataSourceViewId: viewId,
+        tableId: decodeURIComponent(tableId),
+      });
+    } else {
       return new Err(
-        new Error(`Invalid table configuration ID: ${tableConfigId}`)
+        new Error(`Invalid URI format: ${tableConfiguration.uri}`)
       );
     }
-    if (sIdParts.resourceName !== "table_configuration") {
-      return new Err(
-        new Error(`ID is not a table configuration ID: ${tableConfigId}`)
-      );
-    }
-    if (sIdParts.workspaceModelId !== auth.getNonNullableWorkspace().id) {
-      return new Err(
-        new Error(
-          `Table configuration ${tableConfigId} does not belong to workspace ${sIdParts.workspaceModelId}`
-        )
-      );
-    }
-    configurationIds.push(sIdParts.resourceModelId);
   }
 
-  const agentTableConfigurations =
-    await AgentTablesQueryConfigurationTable.findAll({
-      where: {
-        id: { [Op.in]: configurationIds },
-        workspaceId: auth.getNonNullableWorkspace().id,
-      },
-    });
-
-  return new Ok(agentTableConfigurations);
+  return new Ok(results);
 }
 
 type CoreSearchArgs = {
