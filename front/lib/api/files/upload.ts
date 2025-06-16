@@ -10,14 +10,14 @@ import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
 import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
-import {
+import type {
   FileUseCase,
   FileUseCaseMetadata,
-  normalizeError,
   Result,
   SupportedFileContentType,
   SupportedImageContentType,
 } from "@app/types";
+import { normalizeError } from "@app/types";
 import {
   assertNever,
   Err,
@@ -70,6 +70,14 @@ const uploadToPublicBucket: ProcessingFunction = async (
 };
 
 // Images processing.
+
+const createReadableFromUrl = async (url: string): Promise<Readable> => {
+  const response = await fetch(url);
+  if (!response.ok || !response.body) {
+    throw new Error(`Failed to fetch from URL: ${response.statusText}`);
+  }
+  return Readable.fromWeb(response.body as any); // Type assertion needed due to Node.js types mismatch
+};
 
 const resizeAndUploadToFileStorage: ProcessingFunction = async (
   auth: Authenticator,
@@ -142,14 +150,6 @@ const resizeAndUploadToFileStorage: ProcessingFunction = async (
   });
 
   try {
-    const createReadableFromUrl = async (url: string): Promise<Readable> => {
-      const response = await fetch(url);
-      if (!response.ok || !response.body) {
-        throw new Error(`Failed to fetch from URL: ${response.statusText}`);
-      }
-      return Readable.fromWeb(response.body as any); // Type assertion needed due to Node.js types mismatch
-    };
-
     const stream = await createReadableFromUrl(result.file.url);
 
     await pipeline(stream, writeStream);
