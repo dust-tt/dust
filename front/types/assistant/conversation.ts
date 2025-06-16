@@ -21,7 +21,7 @@ import type {
   AgentConfigurationStatus,
   LightAgentConfigurationType,
 } from "./agent";
-import type { AssistantContentItemType } from "./agent_message_content";
+import type { AgentContentItemType } from "./agent_message_content";
 
 /**
  * Mentions
@@ -208,7 +208,7 @@ export type AgentMessageType = BaseAgentMessageType & {
     step: number;
     content: string;
   }>;
-  contents: Array<{ step: number; content: AssistantContentItemType }>;
+  contents: Array<{ step: number; content: AgentContentItemType }>;
 };
 
 export type LightAgentMessageType = BaseAgentMessageType & {

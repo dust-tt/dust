@@ -27,6 +27,7 @@ import {
   Ok,
   removeNulls,
 } from "@app/types";
+import type { AgentContentItemType } from "@app/types/assistant/agent_message_content";
 
 /**
  * Model conversation rendering
@@ -75,7 +76,8 @@ export async function renderConversationForModel(
       const stepByStepIndex = {} as Record<
         string,
         {
-          contents: string[];
+          legacyTextContents: string[];
+          contents: Array<{ step: number; content: AgentContentItemType }>;
           actions: Array<{
             call: FunctionCallType;
             result: FunctionMessageTypeModel;
@@ -85,6 +87,7 @@ export async function renderConversationForModel(
 
       const emptyStep = () =>
         ({
+          legacyTextContents: [],
           contents: [],
           actions: [],
         }) satisfies (typeof stepByStepIndex)[number];
@@ -133,8 +136,19 @@ export async function renderConversationForModel(
         stepByStepIndex[content.step] =
           stepByStepIndex[content.step] || emptyStep();
         if (content.content.trim()) {
-          stepByStepIndex[content.step].contents.push(content.content);
+          stepByStepIndex[content.step].legacyTextContents.push(
+            content.content
+          );
         }
+      }
+
+      for (const content of m.contents) {
+        stepByStepIndex[content.step] =
+          stepByStepIndex[content.step] || emptyStep();
+        stepByStepIndex[content.step].contents.push({
+          step: content.step,
+          content: content.content,
+        });
       }
 
       const steps = Object.entries(stepByStepIndex)
@@ -143,15 +157,17 @@ export async function renderConversationForModel(
 
       if (excludeActions) {
         // In Exclude Actions mode, we only render the last step that has text content.
-        const stepsWithContent = steps.filter((s) => s?.contents.length);
+        const stepsWithContent = steps.filter(
+          (s) => s?.legacyTextContents.length
+        );
         if (stepsWithContent.length) {
           const lastStepWithContent =
             stepsWithContent[stepsWithContent.length - 1];
           messages.push({
             role: "assistant",
             name: m.configuration.name,
-            content: lastStepWithContent.contents.join("\n"),
-            contents: m.contents,
+            content: lastStepWithContent.legacyTextContents.join("\n"),
+            contents: lastStepWithContent.contents,
           } satisfies AssistantContentMessageTypeModel);
         }
       } else {
@@ -169,7 +185,7 @@ export async function renderConversationForModel(
             );
             continue;
           }
-          if (!step.actions.length && !step.contents.length) {
+          if (!step.actions.length && !step.legacyTextContents.length) {
             logger.error(
               {
                 workspaceId: conversation.owner.sId,
@@ -185,15 +201,15 @@ export async function renderConversationForModel(
             messages.push({
               role: "assistant",
               function_calls: step.actions.map((s) => s.call),
-              content: step.contents.join("\n"),
-              contents: m.contents,
+              content: step.legacyTextContents.join("\n"),
+              contents: step.contents,
             } satisfies AssistantFunctionCallMessageTypeModel);
           } else {
             messages.push({
               role: "assistant",
-              content: step.contents.join("\n"),
+              content: step.legacyTextContents.join("\n"),
               name: m.configuration.name,
-              contents: m.contents,
+              contents: step.contents,
             } satisfies AssistantContentMessageTypeModel);
           }
 

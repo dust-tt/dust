@@ -18,25 +18,25 @@ export type FunctionCallContentType = {
   value: FunctionCallType;
 };
 
-export type AssistantContentItemType =
+export type AgentContentItemType =
   | TextContentType
   | ReasoningContentType
   | FunctionCallContentType;
 
 export function isTextContent(
-  content: AssistantContentItemType
+  content: AgentContentItemType
 ): content is TextContentType {
   return content.type === "text_content";
 }
 
 export function isReasoningContent(
-  content: AssistantContentItemType
+  content: AgentContentItemType
 ): content is ReasoningContentType {
   return content.type === "reasoning";
 }
 
 export function isFunctionCallContent(
-  content: AssistantContentItemType
+  content: AgentContentItemType
 ): content is FunctionCallContentType {
   return content.type === "function_call";
 }
