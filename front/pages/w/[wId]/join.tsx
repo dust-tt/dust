@@ -65,6 +65,7 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
       notFound: true,
     };
   }
+
   const flags = await getFeatureFlags(workspace);
   const workOSEnabled =
     flags.includes("workos") && isString(workspace.workOSOrganizationId);
