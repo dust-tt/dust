@@ -161,6 +161,11 @@ type ChipLinkProps = ChipBaseProps &
 
 type ChipProps = ChipLinkProps | ChipButtonProps;
 
+// TODO(yuka: 1606): we should update this component so that you cannot have both
+// onClick and onRemove at the same time. We should use div when there is no onClick,
+// but use button when there is onClick.
+// Since we can have a button inside a button with current implementation, the top level element is a div
+// with a role="button", a tabIndex={0} to make it focusable, and onKeyDown handler.
 const Chip = React.forwardRef<HTMLDivElement, ChipProps>(
   (
     {
@@ -183,20 +188,28 @@ const Chip = React.forwardRef<HTMLDivElement, ChipProps>(
         className={cn(
           chipVariants({ size, background: color, text: color }),
           className,
-          onRemove && "s-cursor-pointer"
+          onClick && "s-cursor-pointer"
         )}
         aria-label={label}
         ref={ref}
         onClick={onClick ? () => onClick() : undefined}
+        role={onClick ? "button" : undefined}
+        onKeyDown={(e) => {
+          if (
+            onClick &&
+            (e.key === "Enter" || e.key === " ") &&
+            e.target === e.currentTarget
+          ) {
+            onClick();
+          }
+        }}
+        tabIndex={onClick ? 0 : undefined}
       >
         {children}
         {icon && <Icon visual={icon} size={size as IconProps["size"]} />}
         {label && (
           <span
-            className={cn(
-              "s-pointer s-grow s-truncate",
-              onClick ? "s-cursor-pointer" : "s-cursor-default"
-            )}
+            className={cn("s-grow s-truncate", onClick && "s-cursor-pointer")}
           >
             {isBusy ? (
               <AnimatedText variant={color}>{label}</AnimatedText>
@@ -206,7 +219,12 @@ const Chip = React.forwardRef<HTMLDivElement, ChipProps>(
           </span>
         )}
         {onRemove && (
-          <div onClick={onRemove ?? undefined}>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onRemove();
+            }}
+          >
             <Icon
               visual={XMarkIcon}
               size={size}
@@ -215,7 +233,7 @@ const Chip = React.forwardRef<HTMLDivElement, ChipProps>(
                 closeIconVariants[color || "primary"]
               )}
             />
-          </div>
+          </button>
         )}
       </div>
     );
