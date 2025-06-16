@@ -300,7 +300,7 @@ async function handleUserAddedToGroup(
 
   const res = await group.addMember(auth, user.toJSON());
   if (res.isErr()) {
-    throw res.error;
+    throw new Error(res.error.message);
   }
 }
 
@@ -334,7 +334,7 @@ async function handleUserRemovedFromGroup(
 
   const res = await group.removeMember(auth, user.toJSON());
   if (res.isErr()) {
-    throw res.error;
+    throw new Error(res.error.message);
   }
 }
 
