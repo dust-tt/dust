@@ -58,6 +58,9 @@ const DATABASE_TIMEOUT_DURATION: Duration = std::time::Duration::from_secs(5 * 6
 // Default number of milliseconds after which a query execution is considered timed out.
 const DEFAULT_QUERY_TIMEOUT_MS: u64 = 10_000;
 
+// Cleanup databases every 30 seconds instead of every loop iteration.
+const CLEANUP_INTERVAL: Duration = Duration::from_secs(30);
+
 struct DatabaseEntry {
     database: Arc<Mutex<SqliteDatabase>>,
     last_accessed: Instant,
@@ -85,6 +88,8 @@ impl WorkerState {
     }
 
     async fn run_loop(&self) {
+        let mut last_cleanup = Instant::now();
+
         loop {
             if self.is_shutting_down.load(Ordering::SeqCst) {
                 break;
@@ -100,7 +105,16 @@ impl WorkerState {
                 }
             }
 
-            self.cleanup_inactive_databases().await;
+            // Run cleanup in background if enough time has passed.
+            if last_cleanup.elapsed() >= CLEANUP_INTERVAL {
+                let registry = self.registry.clone();
+                tokio::task::spawn(async move {
+                    registry.lock().await.retain(|_, entry| {
+                        entry.last_accessed.elapsed() < DATABASE_TIMEOUT_DURATION
+                    });
+                });
+                last_cleanup = Instant::now();
+            }
 
             tokio::time::sleep(std::time::Duration::from_millis(1024)).await;
         }
@@ -142,11 +156,6 @@ impl WorkerState {
             }
             None => (),
         }
-    }
-
-    async fn cleanup_inactive_databases(&self) {
-        let mut registry = self.registry.lock().await;
-        registry.retain(|_, entry| entry.last_accessed.elapsed() < DATABASE_TIMEOUT_DURATION);
     }
 
     async fn _core_request(&self, method: &str) -> Result<()> {
