@@ -139,7 +139,7 @@ describe("JSON Schema Utilities", () => {
                           uri: {
                             type: "string",
                             pattern:
-                              "^table_configuration:\\/\\/dust\\/w\\/(\\w+)\\/table_configurations\\/(\\w+)$",
+                              "^table_configuration:\\/\\/dust\\/w\\/(\\w+)\\/(?:table_configurations\\/(\\w+)|data_source_views\\/(\\w+)\\/tables\\/(.+))$",
                           },
                           mimeType: {
                             type: "string",
