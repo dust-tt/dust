@@ -56,7 +56,11 @@ async function verifyWorkOSWorkspace<E extends object, R>(
 
   const workspace = await findWorkspaceByWorkOSOrganizationId(organizationId);
   if (!workspace) {
-    throw new Error(`Workspace not found for workspace "${organizationId}"`);
+    logger.warn({ organizationId }, "Workspace not found for organization");
+    // Skip processing if workspace not found - it likely belongs to another region.
+    // This is expected in a multi-region setup. DataDog monitors these warnings
+    // and will alert if they occur across all regions.
+    return;
   }
 
   return handler(workspace, event);
@@ -72,15 +76,27 @@ export async function processWorkOSEventActivity({
 }) {
   switch (eventPayload.event) {
     case "organization_domain.verified":
-      await handleOrganizationDomainVerified(eventPayload.data);
+      await verifyWorkOSWorkspace(
+        eventPayload.data.organizationId,
+        eventPayload.data,
+        handleOrganizationDomainVerified
+      );
       break;
 
     case "organization_domain.verification_failed":
-      await handleOrganizationDomainVerificationFailed(eventPayload.data);
+      await verifyWorkOSWorkspace(
+        eventPayload.data.organizationId,
+        eventPayload.data,
+        handleOrganizationDomainVerificationFailed
+      );
       break;
 
     case "organization.updated":
-      await handleOrganizationUpdated(eventPayload.data);
+      await verifyWorkOSWorkspace(
+        eventPayload.data.id,
+        eventPayload.data,
+        handleOrganizationUpdated
+      );
       break;
 
     case "dsync.group.created":
@@ -147,24 +163,16 @@ export async function processWorkOSEventActivity({
  */
 
 async function handleOrganizationDomainEvent(
+  workspace: LightWorkspaceType,
   eventData: OrganizationDomain,
   expectedState: "verified" | "failed"
 ) {
-  const { domain, organizationId, state } = eventData;
+  const { domain, state } = eventData;
 
   assert(
     state === expectedState,
     `Domain state is not ${expectedState} -- expected ${expectedState} but got ${state}`
   );
-
-  const workspace = await findWorkspaceByWorkOSOrganizationId(organizationId);
-  if (!workspace) {
-    logger.warn({ organizationId }, "Workspace not found for organization");
-    // Skip processing if workspace not found - it likely belongs to another region.
-    // This is expected in a multi-region setup. DataDog monitors these warnings
-    // and will alert if they occur across all regions.
-    return;
-  }
 
   let domainResult: Result<any, Error>;
   if (expectedState === "verified") {
@@ -184,24 +192,25 @@ async function handleOrganizationDomainEvent(
   logger.info({ domain }, "Domain updated/deleted");
 }
 
-async function handleOrganizationDomainVerified(eventData: OrganizationDomain) {
-  await handleOrganizationDomainEvent(eventData, "verified");
+async function handleOrganizationDomainVerified(
+  workspace: LightWorkspaceType,
+  eventData: OrganizationDomain
+) {
+  await handleOrganizationDomainEvent(workspace, eventData, "verified");
 }
 
 async function handleOrganizationDomainVerificationFailed(
+  workspace: LightWorkspaceType,
   eventData: OrganizationDomain
 ) {
-  await handleOrganizationDomainEvent(eventData, "failed");
+  await handleOrganizationDomainEvent(workspace, eventData, "failed");
 }
 
-async function handleOrganizationUpdated(eventData: Organization) {
-  const { domains, id: organizationId } = eventData;
-
-  const workspace = await findWorkspaceByWorkOSOrganizationId(organizationId);
-  if (!workspace) {
-    logger.warn({ organizationId }, "Workspace not found for organization");
-    return;
-  }
+async function handleOrganizationUpdated(
+  workspace: LightWorkspaceType,
+  eventData: Organization
+) {
+  const { domains } = eventData;
 
   const existingVerifiedDomains = await getWorkspaceVerifiedDomains(workspace);
   const existingVerifiedDomainsSet = new Set(
