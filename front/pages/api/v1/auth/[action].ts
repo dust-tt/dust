@@ -7,20 +7,24 @@ type Provider = {
   authenticateUri: string;
   logoutUri: string;
   clientId: string;
+  scopes: string;
 };
 
 const providers: Record<string, Provider> = {
   workos: {
     authorizeUri: "api.workos.com/user_management/authorize",
     authenticateUri: "api.workos.com/user_management/authenticate",
-    logoutUri: "api/workos/com/user_management/sessions/logout",
+    logoutUri: "api.workos.com/user_management/sessions/logout",
     clientId: config.getWorkOSClientId(),
+    scopes: "openid profile email",
   },
   auth0: {
-    authorizeUri: "dust-tt.us.auth0.com/authorize",
-    authenticateUri: "dust-tt.us.auth0.com/oauth/token",
-    logoutUri: "dust-tt.us.auth0.com/v2/logout",
-    clientId: config.getAuth0WebApplicationId(),
+    authorizeUri: config.getAuth0TenantUrl() + "/authorize",
+    authenticateUri: config.getAuth0TenantUrl() + "/oauth/token",
+    logoutUri: config.getAuth0TenantUrl() + "/v2/logout",
+    clientId: config.getAuth0ExtensionApplicationId(),
+    scopes:
+      "offline_access read:user_profile read:conversation create:conversation update:conversation read:agent read:file create:file delete:file",
   },
 };
 
@@ -55,8 +59,9 @@ async function handleAuthorize(req: NextApiRequest, res: NextApiResponse) {
   const params = new URLSearchParams({
     ...query,
     client_id: getProvider().clientId,
+    scope: getProvider().scopes,
   }).toString();
-  const authorizeUrl = `https://${getProvider().authorizeUri}?${params}}`;
+  const authorizeUrl = `https://${getProvider().authorizeUri}?${params}`;
   res.redirect(authorizeUrl);
 }
 
@@ -69,7 +74,10 @@ async function handleAuthenticate(req: NextApiRequest, res: NextApiResponse) {
         Origin: req.headers.origin || "",
       },
       credentials: "include",
-      body: new URLSearchParams(req.body).toString(),
+      body: new URLSearchParams({
+        ...req.body,
+        client_id: getProvider().clientId,
+      }).toString(),
     });
     const data = await response.json();
     res.status(response.status).json(data);
@@ -85,6 +93,10 @@ async function handleLogout(req: NextApiRequest, res: NextApiResponse) {
     ...query,
     client_id: getProvider().clientId,
   }).toString();
+  console.log(
+    "Redirecting to logout URL:",
+    `https://${getProvider().logoutUri}?${params}`
+  );
   const authorizeUrl = `https://${getProvider().logoutUri}?${params}`;
   res.redirect(authorizeUrl);
 }
