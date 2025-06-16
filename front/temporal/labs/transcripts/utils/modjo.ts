@@ -57,6 +57,17 @@ const ModjoTagSchema = t.partial({
   name: t.string,
 });
 
+const ModjoDealSchema = t.partial({
+  dealId: t.number,
+  name: t.union([t.string, t.null, t.undefined]),
+  stage: t.union([t.string, t.null, t.undefined]),
+  amount: t.union([t.number, t.null, t.undefined]),
+  currency: t.union([t.string, t.null, t.undefined]),
+  closeDate: t.union([t.string, t.null, t.undefined]),
+  probability: t.union([t.number, t.null, t.undefined]),
+  status: t.union([t.string, t.null, t.undefined]),
+});
+
 const ModjoRecordingSchema = t.partial({
   url: t.string,
 });
@@ -76,7 +87,8 @@ const ModjoRelationsSchema = t.partial({
   transcript: t.array(ModjoTranscriptEntrySchema),
   tags: t.array(ModjoTagSchema),
   contacts: t.array(ModjoContactSchema),
-  accounts: t.array(ModjoAccountSchema),
+  account: ModjoAccountSchema,
+  deal: ModjoDealSchema,
 });
 
 const ModjoCallSchema = t.partial({
@@ -218,7 +230,8 @@ export async function retrieveModjoTranscripts(
             speakers: true,
             tags: true,
             contacts: true,
-            accounts: true,
+            account: true,
+            deal: true,
           },
         }),
       });
@@ -354,6 +367,7 @@ export async function retrieveModjoTranscriptContent(
   transcriptTitle: string;
   transcriptContent: string;
   userParticipated: boolean;
+  tags: string[];
 } | null> {
   if (!transcriptsConfiguration || !transcriptsConfiguration.credentialId) {
     throw new Error(
@@ -411,7 +425,8 @@ export async function retrieveModjoTranscriptContent(
         speakers: true,
         tags: true,
         contacts: true,
-        accounts: true,
+        account: true,
+        deal: true,
       },
     }),
   });
@@ -517,26 +532,54 @@ export async function retrieveModjoTranscriptContent(
     transcriptContent += "\n";
   }
 
-  // Add accounts section if available
-  if (callData.relations?.accounts && callData.relations.accounts.length > 0) {
-    transcriptContent += "Accounts:\n";
-    callData.relations.accounts.forEach((account) => {
-      transcriptContent += `${account.name || "Unknown"}`;
-      if (account.domain) {
-        transcriptContent += ` (${account.domain})`;
-      }
-      if (account.industry) {
-        transcriptContent += ` - Industry: ${account.industry}`;
-      }
-      if (account.size) {
-        transcriptContent += ` - Size: ${account.size}`;
-      }
-      if (account.description) {
-        transcriptContent += ` - ${account.description}`;
-      }
-      transcriptContent += "\n";
-    });
-    transcriptContent += "\n";
+  // Add account section if available
+  if (callData.relations?.account) {
+    transcriptContent += "Account:\n";
+    const account = callData.relations.account;
+    transcriptContent += `${account.name || "Unknown"}`;
+    if (account.domain) {
+      transcriptContent += ` (${account.domain})`;
+    }
+    if (account.industry) {
+      transcriptContent += ` - Industry: ${account.industry}`;
+    }
+    if (account.size) {
+      transcriptContent += ` - Size: ${account.size}`;
+    }
+    if (account.description) {
+      transcriptContent += ` - ${account.description}`;
+    }
+    transcriptContent += "\n\n";
+  }
+
+  // Add deal section if available
+  if (callData.relations?.deal) {
+    transcriptContent += "Deal:\n";
+    const deal = callData.relations.deal;
+    transcriptContent += `${deal.name || "Unknown"}`;
+    if (deal.stage) {
+      transcriptContent += ` - Stage: ${deal.stage}`;
+    }
+    if (deal.amount && deal.currency) {
+      transcriptContent += ` - Amount: ${deal.amount} ${deal.currency}`;
+    }
+    if (deal.closeDate) {
+      transcriptContent += ` - Close Date: ${deal.closeDate}`;
+    }
+    if (deal.probability !== undefined) {
+      transcriptContent += ` - Probability: ${deal.probability}%`;
+    }
+    if (deal.status) {
+      transcriptContent += ` - Status: ${deal.status}`;
+    }
+    transcriptContent += "\n\n";
+  }
+
+  // Add tags section if available
+  if (callData.relations?.tags && callData.relations.tags.length > 0) {
+    transcriptContent += "Tags: ";
+    transcriptContent += callData.relations.tags.map(tag => tag.name).filter(Boolean).join(", ");
+    transcriptContent += "\n\n";
   }
 
   // Add transcript content
@@ -548,5 +591,23 @@ export async function retrieveModjoTranscriptContent(
     transcriptContent += `${speakerName}: ${entry.content || ""}\n`;
   });
 
-  return { transcriptTitle, transcriptContent, userParticipated };
+  // Extract tags from Modjo data
+  const tags: string[] = [];
+  
+  // Add Modjo tags
+  if (callData.relations?.tags && callData.relations.tags.length > 0) {
+    tags.push(...callData.relations.tags.map(tag => tag.name).filter(Boolean));
+  }
+  
+  // Add account name as tag if available
+  if (callData.relations?.account?.name) {
+    tags.push(`account:${callData.relations.account.name}`);
+  }
+  
+  // Add deal stage as tag if available
+  if (callData.relations?.deal?.stage) {
+    tags.push(`deal-stage:${callData.relations.deal.stage}`);
+  }
+
+  return { transcriptTitle, transcriptContent, userParticipated, tags };
 }
