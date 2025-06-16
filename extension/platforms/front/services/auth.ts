@@ -1,16 +1,13 @@
 import {
-  WORKOS_CLIENT_ID,
-  WORKOS_DOMAIN,
   DUST_API_AUDIENCE,
   FRONT_EXTENSION_URL,
   getOAuthClientID,
-  AUTH0_CLIENT_ID,
+  DUST_US_URL,
 } from "@app/shared/lib/config";
-import type { StoredTokens, StoredUser } from "@app/shared/services/auth";
+import type { StoredTokens } from "@app/shared/services/auth";
 import {
   AuthError,
   AuthService,
-  getConnectionDetails,
   getDustDomain,
 } from "@app/shared/services/auth";
 import type { StorageService } from "@app/shared/services/storage";
@@ -19,16 +16,11 @@ import { Err, Ok } from "@dust-tt/client";
 import { jwtDecode } from "jwt-decode";
 import { generatePKCE } from "@app/shared/lib/utils";
 
-const API_SCOPES =
-  "offline_access read:user_profile read:conversation create:conversation update:conversation read:agent read:file create:file delete:file";
-
 export class FrontAuthService extends AuthService {
-  private workosClientId: string;
   private popupWindow: Window | null = null;
 
   constructor(storage: StorageService) {
     super(storage);
-    this.workosClientId = WORKOS_CLIENT_ID;
   }
 
   private async openAuthPopup(
@@ -40,7 +32,7 @@ export class FrontAuthService extends AuthService {
     const top = window.screenY + (window.outerHeight - height) / 2;
 
     const queryString = new URLSearchParams(options).toString();
-    const authUrl = `http://localhost:3000/api/v1/auth/authorize?${queryString}`;
+    const authUrl = `${DUST_US_URL}/api/v1/auth/authorize?${queryString}`;
 
     console.log("[WorkOS Auth] Opening popup with URL:", authUrl);
 
@@ -127,19 +119,15 @@ export class FrontAuthService extends AuthService {
         code: result.code,
         redirect_uri: FRONT_EXTENSION_URL,
       });
-
-      const response = await fetch(
-        `http://localhost:3000/api/v1/auth/authenticate`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/x-www-form-urlencoded",
-            Origin: FRONT_EXTENSION_URL,
-          },
-          credentials: "include",
-          body: tokenParams,
-        }
-      );
+      const response = await fetch(`${DUST_US_URL}/api/v1/auth/authenticate`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          Origin: FRONT_EXTENSION_URL,
+        },
+        credentials: "include",
+        body: tokenParams,
+      });
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -187,7 +175,7 @@ export class FrontAuthService extends AuthService {
 
   async logout(): Promise<boolean> {
     const queryParams: Record<string, string> = {
-      returnTo: "http://localhost:3000",
+      returnTo: FRONT_EXTENSION_URL,
     };
 
     const accessToken = await this.getAccessToken();
@@ -198,10 +186,53 @@ export class FrontAuthService extends AuthService {
       }
     }
 
-    const logoutUrl = `http://localhost:3000/api/v1/auth/logout?${new URLSearchParams(
+    const user = await this.getStoredUser();
+    if (!user) {
+      return false;
+    }
+
+    const logoutUrl = `${user.dustDomain}/api/v1/auth/logout?${new URLSearchParams(
       queryParams
     )}`;
-    window.open(logoutUrl, "_blank");
+
+    const width = 600;
+    const height = 700;
+    const left = window.screenX + (window.outerWidth - width) / 2;
+    const top = window.screenY + (window.outerHeight - height) / 2;
+
+    const popup = window.open(
+      logoutUrl,
+      "Logout",
+      `width=${width},height=${height},left=${left},top=${top}`
+    );
+
+    if (!popup) {
+      console.log("[Logout] Popup blocked by browser");
+      throw new Error("Popup blocked");
+    }
+
+    // Wait for the popup to complete logout
+    await new Promise<void>((resolve, reject) => {
+      const checkPopup = setInterval(() => {
+        if (popup.closed) {
+          clearInterval(checkPopup);
+          resolve();
+        }
+
+        try {
+          // Check if we have reached the returnTo URL
+          const popupUrl = popup.location.href;
+          if (popupUrl.includes(FRONT_EXTENSION_URL)) {
+            clearInterval(checkPopup);
+            popup.close();
+            resolve();
+          }
+        } catch (e) {
+          // Ignore cross-origin errors
+        }
+      }, 100);
+    });
+
     this.storage.clear();
     return true;
   }
@@ -232,8 +263,15 @@ export class FrontAuthService extends AuthService {
         );
       }
 
+      const user = await this.getStoredUser();
+      if (!user) {
+        return new Err(
+          new AuthError("invalid_oauth_token_error", "No user found")
+        );
+      }
+
       const response = await fetch(
-        "http://localhost:3000/api/v1/auth/authenticate",
+        `${user.dustDomain}/api/v1/auth/authenticate`,
         {
           method: "POST",
           headers: { "Content-Type": "application/x-www-form-urlencoded" },
