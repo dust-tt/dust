@@ -90,6 +90,64 @@ export function ensureFileSize(
   return false;
 }
 
+// Function to validate file size and return detailed information on error.
+export function validateFileSize(
+  contentType: SupportedFileContentType,
+  fileSize: number
+): {
+  isValid: boolean;
+  error?: {
+    actualSize: string;
+    maxAllowed: string;
+    category: FileFormatCategory;
+    suggestions: string[];
+  };
+} {
+  const format = getFileFormat(contentType);
+
+  if (!format) {
+    return { isValid: false };
+  }
+
+  const maxSize = MAX_FILE_SIZES[format.cat];
+  const isValid = fileSize <= maxSize;
+
+  if (isValid) {
+    return { isValid: true };
+  }
+
+  const suggestions: string[] = [];
+
+  switch (format.cat) {
+    case "delimited":
+      suggestions.push("Split the CSV into smaller files");
+      suggestions.push("Remove unnecessary columns or rows");
+      break;
+    case "data":
+      suggestions.push("Split the content into multiple smaller documents");
+      suggestions.push("Remove embedded images or media if possible");
+      break;
+    case "image":
+      suggestions.push("Compress the image");
+      suggestions.push("Reduce image resolution or quality");
+      break;
+    case "code":
+      suggestions.push("Remove build artifacts or dependencies");
+      suggestions.push("Split into multiple smaller files");
+      break;
+  }
+
+  return {
+    isValid: false,
+    error: {
+      actualSize: maxFileSizeToHumanReadable(fileSize, 1),
+      maxAllowed: maxFileSizeToHumanReadable(maxSize, 0),
+      category: format.cat,
+      suggestions,
+    },
+  };
+}
+
 type FileFormat = {
   cat: FileFormatCategory;
   exts: string[];
