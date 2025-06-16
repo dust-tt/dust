@@ -1,7 +1,5 @@
 import {
-  ActionIcons,
   ActionPieChartIcon,
-  Avatar,
   Button,
   Checkbox,
   CodeBlock,
