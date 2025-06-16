@@ -108,7 +108,7 @@ impl WorkerState {
             // Run cleanup in background if enough time has passed.
             if last_cleanup.elapsed() >= CLEANUP_INTERVAL {
                 let registry = self.registry.clone();
-                tokio::task::spawn(async move {
+                tokio::task::spawn_blocking(async move {
                     registry.lock().await.retain(|_, entry| {
                         entry.last_accessed.elapsed() < DATABASE_TIMEOUT_DURATION
                     });
