@@ -46,6 +46,7 @@ import type {
   TimeFrame,
 } from "@app/types";
 import {
+  assertNever,
   CoreAPI,
   DATA_SOURCE_NODE_ID,
   dustManagedCredentials,
@@ -135,7 +136,10 @@ const createServer = (
       const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
       // Gather data source configurations.
-      const fetchResult = await getAgentDataSourceConfigurations(dataSources);
+      const fetchResult = await getAgentDataSourceConfigurations(
+        auth,
+        dataSources
+      );
 
       if (fetchResult.isErr()) {
         return makeMCPToolTextError(fetchResult.error.message);
@@ -269,7 +273,10 @@ const createServer = (
     }) => {
       const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
-      const fetchResult = await getAgentDataSourceConfigurations(dataSources);
+      const fetchResult = await getAgentDataSourceConfigurations(
+        auth,
+        dataSources
+      );
 
       if (fetchResult.isErr()) {
         return makeMCPToolTextError(fetchResult.error.message);
@@ -381,7 +388,10 @@ const createServer = (
       nextPageCursor,
     }) => {
       const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-      const fetchResult = await getAgentDataSourceConfigurations(dataSources);
+      const fetchResult = await getAgentDataSourceConfigurations(
+        auth,
+        dataSources
+      );
 
       if (fetchResult.isErr()) {
         return makeMCPToolTextError(fetchResult.error.message);
@@ -713,7 +723,10 @@ const createServer = (
     },
     async ({ nodeId, dataSources }) => {
       const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-      const fetchResult = await getAgentDataSourceConfigurations(dataSources);
+      const fetchResult = await getAgentDataSourceConfigurations(
+        auth,
+        dataSources
+      );
 
       if (fetchResult.isErr()) {
         return makeMCPToolTextError(fetchResult.error.message);
@@ -859,6 +872,7 @@ type ResolvedDataSourceConfiguration = DataSourceConfiguration & {
 };
 
 async function getAgentDataSourceConfigurations(
+  auth: Authenticator,
   dataSources: DataSourcesToolConfigurationType
 ): Promise<Result<ResolvedDataSourceConfiguration[], Error>> {
   const configResults = await concurrentExecutor(
@@ -874,79 +888,92 @@ async function getAgentDataSourceConfigurations(
 
       const configInfo = configInfoRes.value;
 
-      if (configInfo.type === "database") {
-        // Database configuration
-        const r = await fetchAgentDataSourceConfiguration(configInfo.sId);
-        if (r.isErr()) {
-          return r;
+      switch (configInfo.type) {
+        case "database": {
+          // Database configuration
+          const r = await fetchAgentDataSourceConfiguration(configInfo.sId);
+          if (r.isErr()) {
+            return r;
+          }
+          const agentConfig = r.value;
+          const dataSourceViewSId = DataSourceViewResource.modelIdToSId({
+            id: agentConfig.dataSourceView.id,
+            workspaceId: agentConfig.dataSourceView.workspaceId,
+          });
+          const resolved: ResolvedDataSourceConfiguration = {
+            workspaceId: agentConfig.dataSourceView.workspace.sId,
+            dataSourceViewId: dataSourceViewSId,
+            filter: {
+              parents:
+                agentConfig.parentsIn || agentConfig.parentsNotIn
+                  ? {
+                      in: agentConfig.parentsIn || [],
+                      not: agentConfig.parentsNotIn || [],
+                    }
+                  : null,
+              tags:
+                agentConfig.tagsIn || agentConfig.tagsNotIn
+                  ? {
+                      in: agentConfig.tagsIn || [],
+                      not: agentConfig.tagsNotIn || [],
+                      mode: agentConfig.tagsMode || "custom",
+                    }
+                  : undefined,
+            },
+            dataSource: {
+              dustAPIProjectId: agentConfig.dataSource.dustAPIProjectId,
+              dustAPIDataSourceId: agentConfig.dataSource.dustAPIDataSourceId,
+              connectorProvider: agentConfig.dataSource.connectorProvider,
+              name: agentConfig.dataSource.name,
+            },
+          };
+          return new Ok(resolved);
         }
-        const agentConfig = r.value;
-        const dataSourceViewSId = DataSourceViewResource.modelIdToSId({
-          id: agentConfig.dataSourceView.id,
-          workspaceId: agentConfig.dataSourceView.workspaceId,
-        });
-        const resolved: ResolvedDataSourceConfiguration = {
-          workspaceId: agentConfig.dataSourceView.workspace.sId,
-          dataSourceViewId: dataSourceViewSId,
-          filter: {
-            parents:
-              agentConfig.parentsIn || agentConfig.parentsNotIn
-                ? {
-                    in: agentConfig.parentsIn || [],
-                    not: agentConfig.parentsNotIn || [],
-                  }
-                : null,
-            tags:
-              agentConfig.tagsIn || agentConfig.tagsNotIn
-                ? {
-                    in: agentConfig.tagsIn || [],
-                    not: agentConfig.tagsNotIn || [],
-                    mode: agentConfig.tagsMode || "custom",
-                  }
-                : undefined,
-          },
-          dataSource: {
-            dustAPIProjectId: agentConfig.dataSource.dustAPIProjectId,
-            dustAPIDataSourceId: agentConfig.dataSource.dustAPIDataSourceId,
-            connectorProvider: agentConfig.dataSource.connectorProvider,
-            name: agentConfig.dataSource.name,
-          },
-        };
-        return new Ok(resolved);
-      } else {
-        // Dynamic configuration
-        const { Authenticator } = await import("@app/lib/auth");
-        const auth = await Authenticator.internalAdminForWorkspace(
-          configInfo.configuration.workspaceId
-        );
 
-        // Fetch the data source view
-        const dataSourceViews =
-          await DataSourceViewResource.listByWorkspace(auth);
-        const dataSourceView = dataSourceViews.find(
-          (dsv) => dsv.sId === configInfo.configuration.dataSourceViewId
-        );
+        case "dynamic": {
+          // Dynamic configuration
+          // Verify the workspace ID matches the auth
+          if (
+            configInfo.configuration.workspaceId !==
+            auth.getNonNullableWorkspace().sId
+          ) {
+            return new Err(
+              new Error(
+                `Workspace mismatch: configuration workspace ${configInfo.configuration.workspaceId} does not match authenticated workspace`
+              )
+            );
+          }
 
-        if (!dataSourceView) {
-          return new Err(
-            new Error(
-              `Data source view not found: ${configInfo.configuration.dataSourceViewId}`
-            )
+          // Fetch the specific data source view by ID
+          const dataSourceView = await DataSourceViewResource.fetchById(
+            auth,
+            configInfo.configuration.dataSourceViewId
           );
+
+          if (!dataSourceView) {
+            return new Err(
+              new Error(
+                `Data source view not found: ${configInfo.configuration.dataSourceViewId}`
+              )
+            );
+          }
+
+          const dataSource = dataSourceView.dataSource;
+
+          const resolved: ResolvedDataSourceConfiguration = {
+            ...configInfo.configuration,
+            dataSource: {
+              dustAPIProjectId: dataSource.dustAPIProjectId,
+              dustAPIDataSourceId: dataSource.dustAPIDataSourceId,
+              connectorProvider: dataSource.connectorProvider,
+              name: dataSource.name,
+            },
+          };
+          return new Ok(resolved);
         }
 
-        const dataSource = dataSourceView.dataSource;
-
-        const resolved: ResolvedDataSourceConfiguration = {
-          ...configInfo.configuration,
-          dataSource: {
-            dustAPIProjectId: dataSource.dustAPIProjectId,
-            dustAPIDataSourceId: dataSource.dustAPIDataSourceId,
-            connectorProvider: dataSource.connectorProvider,
-            name: dataSource.name,
-          },
-        };
-        return new Ok(resolved);
+        default:
+          assertNever(configInfo);
       }
     },
     { concurrency: 10 }

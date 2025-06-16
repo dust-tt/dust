@@ -29,7 +29,7 @@ import type {
   Result,
   TimeFrame,
 } from "@app/types";
-import { Err, Ok } from "@app/types";
+import { assertNever, Err, Ok } from "@app/types";
 
 export async function fetchAgentDataSourceConfiguration(
   dataSourceConfigSId: string
@@ -202,16 +202,25 @@ export async function getDataSourceConfiguration(
 
   const configInfo = configInfoRes.value;
 
-  if (configInfo.type === "database") {
-    const r = await fetchAgentDataSourceConfiguration(configInfo.sId);
-    if (r.isErr()) {
-      return r;
+  switch (configInfo.type) {
+    case "database": {
+      const r = await fetchAgentDataSourceConfiguration(configInfo.sId);
+      if (r.isErr()) {
+        return r;
+      }
+      const agentDataSourceConfiguration = r.value;
+      return new Ok(
+        renderDataSourceConfiguration(agentDataSourceConfiguration)
+      );
     }
-    const agentDataSourceConfiguration = r.value;
-    return new Ok(renderDataSourceConfiguration(agentDataSourceConfiguration));
-  } else {
-    // Dynamic configuration - return directly
-    return new Ok(configInfo.configuration);
+
+    case "dynamic": {
+      // Dynamic configuration - return directly
+      return new Ok(configInfo.configuration);
+    }
+
+    default:
+      assertNever(configInfo);
   }
 }
 
@@ -229,76 +238,86 @@ export async function getCoreSearchArgs(
 
   const configInfo = configInfoRes.value;
 
-  if (configInfo.type === "database") {
-    const r = await fetchAgentDataSourceConfiguration(configInfo.sId);
+  switch (configInfo.type) {
+    case "database": {
+      const r = await fetchAgentDataSourceConfiguration(configInfo.sId);
 
-    if (r.isErr()) {
-      return r;
-    }
+      if (r.isErr()) {
+        return r;
+      }
 
-    const agentDataSourceConfiguration = r.value;
-    const dataSource = agentDataSourceConfiguration.dataSource;
+      const agentDataSourceConfiguration = r.value;
+      const dataSource = agentDataSourceConfiguration.dataSource;
 
-    const dataSourceViews = await DataSourceViewResource.fetchByModelIds(auth, [
-      agentDataSourceConfiguration.dataSourceViewId,
-    ]);
-    if (dataSourceViews.length !== 1) {
-      return new Err(
-        new Error(`Expected 1 data source view, got ${dataSourceViews.length}`)
+      const dataSourceViews = await DataSourceViewResource.fetchByModelIds(
+        auth,
+        [agentDataSourceConfiguration.dataSourceViewId]
       );
+      if (dataSourceViews.length !== 1) {
+        return new Err(
+          new Error(
+            `Expected 1 data source view, got ${dataSourceViews.length}`
+          )
+        );
+      }
+      const dataSourceView = dataSourceViews[0];
+
+      return new Ok({
+        projectId: dataSource.dustAPIProjectId,
+        dataSourceId: dataSource.dustAPIDataSourceId,
+        filter: {
+          tags: {
+            in: agentDataSourceConfiguration.tagsIn,
+            not: agentDataSourceConfiguration.tagsNotIn,
+          },
+          parents: {
+            in: agentDataSourceConfiguration.parentsIn,
+            not: agentDataSourceConfiguration.parentsNotIn,
+          },
+        },
+        view_filter: dataSourceView.toViewFilter(),
+        dataSourceView: dataSourceView.toJSON(),
+      });
     }
-    const dataSourceView = dataSourceViews[0];
 
-    return new Ok({
-      projectId: dataSource.dustAPIProjectId,
-      dataSourceId: dataSource.dustAPIDataSourceId,
-      filter: {
-        tags: {
-          in: agentDataSourceConfiguration.tagsIn,
-          not: agentDataSourceConfiguration.tagsNotIn,
-        },
-        parents: {
-          in: agentDataSourceConfiguration.parentsIn,
-          not: agentDataSourceConfiguration.parentsNotIn,
-        },
-      },
-      view_filter: dataSourceView.toViewFilter(),
-      dataSourceView: dataSourceView.toJSON(),
-    });
-  } else {
-    // Dynamic configuration
-    const config = configInfo.configuration;
+    case "dynamic": {
+      // Dynamic configuration
+      const config = configInfo.configuration;
 
-    // Fetch the data source view
-    const dataSourceViews = await DataSourceViewResource.listByWorkspace(auth);
-    const dataSourceView = dataSourceViews.find(
-      (dsv) => dsv.sId === config.dataSourceViewId
-    );
-
-    if (!dataSourceView) {
-      return new Err(
-        new Error(`Data source view not found: ${config.dataSourceViewId}`)
+      // Fetch the data source view by ID
+      const dataSourceView = await DataSourceViewResource.fetchById(
+        auth,
+        config.dataSourceViewId
       );
+
+      if (!dataSourceView) {
+        return new Err(
+          new Error(`Data source view not found: ${config.dataSourceViewId}`)
+        );
+      }
+
+      const dataSource = dataSourceView.dataSource;
+
+      return new Ok({
+        projectId: dataSource.dustAPIProjectId,
+        dataSourceId: dataSource.dustAPIDataSourceId,
+        filter: {
+          tags: {
+            in: config.filter.tags?.in || null,
+            not: config.filter.tags?.not || null,
+          },
+          parents: {
+            in: config.filter.parents?.in || null,
+            not: config.filter.parents?.not || null,
+          },
+        },
+        view_filter: dataSourceView.toViewFilter(),
+        dataSourceView: dataSourceView.toJSON(),
+      });
     }
 
-    const dataSource = dataSourceView.dataSource;
-
-    return new Ok({
-      projectId: dataSource.dustAPIProjectId,
-      dataSourceId: dataSource.dustAPIDataSourceId,
-      filter: {
-        tags: {
-          in: config.filter.tags?.in || null,
-          not: config.filter.tags?.not || null,
-        },
-        parents: {
-          in: config.filter.parents?.in || null,
-          not: config.filter.parents?.not || null,
-        },
-      },
-      view_filter: dataSourceView.toViewFilter(),
-      dataSourceView: dataSourceView.toJSON(),
-    });
+    default:
+      assertNever(configInfo);
   }
 }
 
