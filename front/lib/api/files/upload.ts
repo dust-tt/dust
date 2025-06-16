@@ -99,15 +99,15 @@ const resizeAndUploadToFileStorage: ProcessingFunction = async (
   // OpenAI https://platform.openai.com/docs/guides/vision#calculating-costs
 
   // Anthropic recommends <= 1568px on any side.
-  // OpenAI recommends <= 2048px on the longuest side, 768px on the shortest side.
+  // OpenAI recommends <= 2048px on the longest side, 768px on the shortest side.
 
   // Resize the image, preserving the aspect ratio based on the longest side compatible with both
-  // models. In case of GPT, it might incure a resize on their side as well but doing the math here
+  // models. In the case of GPT, it might incur a resize on their side as well, but doing the math here
   // would mean downloading the file first instead of streaming it.
 
   const resizedImageStream = sharp().resize(1568, 1568, {
-    fit: sharp.fit.inside, // Ensure longest side is 1568px.
-    withoutEnlargement: true, // Avoid upscaling if image is smaller than 1568px.
+    fit: sharp.fit.inside, // Ensure the longest side is 1568px.
+    withoutEnlargement: true, // Avoid upscaling if the image is smaller than 1568px.
   });
   */
 
@@ -175,12 +175,15 @@ const extractTextFromFileAndUpload: ProcessingFunction = async (
   auth: Authenticator,
   file: FileResource
 ) => {
+  if (!isTextExtractionSupportedContentType(file.contentType)) {
+    return new Err(
+      new Error(
+        "Failed extracting text from file. Cannot extract text from this file type " +
+          +`${file.contentType}. Action: check than caller filters out unsupported file types.`
+      )
+    );
+  }
   try {
-    if (!isTextExtractionSupportedContentType(file.contentType)) {
-      throw new Error(
-        `Cannot extract text from this file type ${file.contentType}. Action: check than caller filters out unsupported file types.`
-      );
-    }
     const readStream = file.getReadStream({
       auth,
       version: "original",
@@ -279,8 +282,8 @@ const getProcessingFunction = ({
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
       contentType === "application/vnd.ms-excel"
     ) {
-      // We use tika to extract from excel files, it will turn into a html table
-      // We will upsert from the html table later
+      // We use Tika to extract from Excel files, it will turn into an HTML table
+      // We will upsert from the HTML table later
       return extractTextFromFileAndUpload;
     } else if (
       [
