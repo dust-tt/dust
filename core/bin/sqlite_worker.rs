@@ -108,12 +108,9 @@ impl WorkerState {
             // Run cleanup in background if enough time has passed.
             if last_cleanup.elapsed() >= DATABASE_CLEANUP_INTERVAL {
                 let registry = self.registry.clone();
-                tokio::task::spawn_blocking(move || {
-                    let rt = tokio::runtime::Handle::current();
-                    rt.block_on(async move {
-                        registry.lock().await.retain(|_, entry| {
-                            entry.last_accessed.elapsed() < DATABASE_TIMEOUT_DURATION
-                        });
+                tokio::task::spawn(async move {
+                    registry.lock().await.retain(|_, entry| {
+                        entry.last_accessed.elapsed() < DATABASE_TIMEOUT_DURATION
                     });
                 });
                 last_cleanup = Instant::now();
