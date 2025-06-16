@@ -7,6 +7,7 @@ import { AgentMCPAction } from "@app/lib/models/assistant/actions/mcp";
 import { AgentProcessAction } from "@app/lib/models/assistant/actions/process";
 import { AgentReasoningAction } from "@app/lib/models/assistant/actions/reasoning";
 import { AgentRetrievalAction } from "@app/lib/models/assistant/actions/retrieval";
+import { AgentSearchLabelsAction } from "@app/lib/models/assistant/actions/search_labels";
 import { AgentTablesQueryAction } from "@app/lib/models/assistant/actions/tables_query";
 import { AgentWebsearchAction } from "@app/lib/models/assistant/actions/websearch";
 import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
@@ -30,7 +31,8 @@ type ActionModelType =
   | AgentBrowseAction
   | AgentMCPAction
   | AgentReasoningAction
-  | AgentConversationIncludeFileAction;
+  | AgentConversationIncludeFileAction
+  | AgentSearchLabelsAction;
 
 type ActionType =
   | "retrieval"
@@ -41,7 +43,8 @@ type ActionType =
   | "browse"
   | "mcp"
   | "reasoning"
-  | "includeFile";
+  | "includeFile"
+  | "searchLabels";
 
 interface ActionWithMetadata {
   actionType: ActionType;
@@ -65,6 +68,7 @@ async function fetchAllActionsForAgentMessages(
     mcpActions,
     reasoningActions,
     includeFileActions,
+    searchLabelsActions,
   ] = await Promise.all([
     AgentRetrievalAction.findAll({
       where: {
@@ -115,6 +119,12 @@ async function fetchAllActionsForAgentMessages(
       },
     }),
     AgentConversationIncludeFileAction.findAll({
+      where: {
+        agentMessageId: { [Op.in]: agentMessageIds },
+        workspaceId,
+      },
+    }),
+    AgentSearchLabelsAction.findAll({
       where: {
         agentMessageId: { [Op.in]: agentMessageIds },
         workspaceId,
@@ -232,6 +242,18 @@ async function fetchAllActionsForAgentMessages(
     if (agentActions) {
       agentActions.push({
         actionType: "includeFile",
+        action,
+        step: action.step,
+        createdAt: action.createdAt,
+      });
+    }
+  });
+
+  searchLabelsActions.forEach((action) => {
+    const agentActions = actionsByAgentMessageId.get(action.agentMessageId);
+    if (agentActions) {
+      agentActions.push({
+        actionType: "searchLabels",
         action,
         step: action.step,
         createdAt: action.createdAt,
@@ -386,6 +408,20 @@ function createFunctionCallContent(
             includeFileAction.functionCallId || `call_${includeFileAction.id}`,
           name: includeFileAction.functionCallName || "include_file",
           arguments: JSON.stringify({ fileId: includeFileAction.fileId }),
+        };
+        break;
+      }
+      case "searchLabels": {
+        const searchLabelsAction = action as AgentSearchLabelsAction;
+        functionCall = {
+          id:
+            searchLabelsAction.functionCallId ||
+            `call_${searchLabelsAction.id}`,
+          name: searchLabelsAction.functionCallName || "search_labels",
+          arguments: JSON.stringify({
+            searchText: searchLabelsAction.searchText,
+            parentTool: searchLabelsAction.parentTool,
+          }),
         };
         break;
       }
