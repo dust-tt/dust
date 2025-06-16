@@ -209,7 +209,7 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
 
     if (isString(state)) {
       const stateObj = JSON.parse(
-        Buffer.from(state as string, "base64").toString("utf-8")
+        Buffer.from(state, "base64").toString("utf-8")
       );
       if (isString(stateObj.returnTo)) {
         res.redirect(stateObj.returnTo);
