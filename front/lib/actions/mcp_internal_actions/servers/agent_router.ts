@@ -20,6 +20,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
   documentationUrl: null,
 };
 
+const MAX_INSTRUCTIONS_LENGTH = 1000;
 export const LIST_ALL_AGENTS_TOOL_NAME = "list_all_published_agents";
 export const SUGGEST_AGENTS_TOOL_NAME = "suggest_agents_for_content";
 
@@ -152,6 +153,23 @@ const createServer = (auth: Authenticator): McpServer => {
         };
       }
 
+      const suggestedAgents = suggestedAgentsRes.value;
+      const formattedSuggestedAgents = suggestedAgents
+        .filter((agent) => agent.sId !== "dust")
+        .map((agent) => {
+          const instructions = agent.instructions || "";
+          const truncatedInstructions =
+            instructions.length > MAX_INSTRUCTIONS_LENGTH
+              ? instructions.slice(0, MAX_INSTRUCTIONS_LENGTH) + " (truncated)"
+              : instructions;
+
+          return {
+            mention: `:mention[${agent.name}]{sId=${agent.sId}}`,
+            description: agent.description,
+            instructions: truncatedInstructions,
+          };
+        });
+
       return {
         isError: false,
         content: [
@@ -161,7 +179,7 @@ const createServer = (auth: Authenticator): McpServer => {
           },
           {
             type: "text",
-            text: JSON.stringify(suggestedAgentsRes.value),
+            text: JSON.stringify(formattedSuggestedAgents),
           },
         ],
       };
