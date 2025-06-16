@@ -11,6 +11,7 @@ import { getPersistedNavigationSelection } from "@app/lib/persisted_navigation_s
 import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
 import { Landing } from "@app/pages/home";
+import { isString } from "@app/types/shared/utils/general";
 
 export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   requireUserPrivilege: "none",
@@ -57,10 +58,9 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
     }
 
     // This allows linking to the assistant template creation page from external sources.
-    if (context.query.goto === "template" && context.query.templateId) {
-      url =
-        url +
-        `/builder/assistants/create?templateId=${context.query.templateId}`;
+    const { goto, templateId } = context.query;
+    if (goto === "template" && isString(templateId)) {
+      url = url + `/builder/assistants/create?templateId=${templateId}`;
     }
 
     if (context.query.inviteToken) {
