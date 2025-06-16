@@ -24,7 +24,7 @@ import { assertNever } from "@app/types";
 function getDataSourceURI(config: DataSourceConfiguration): string {
   const { workspaceId, sId, dataSourceViewId, filter } = config;
   if (sId) {
-    return `data_source_configuration://dust/w/${workspaceId}/data_source_configurations/sId/${sId}`;
+    return `data_source_configuration://dust/w/${workspaceId}/data_source_configurations/${sId}`;
   }
   const encodedFilter = encodeURIComponent(JSON.stringify(filter));
   return `data_source_configuration://dust/w/${workspaceId}/data_source_views/${dataSourceViewId}/filter/${encodedFilter}`;
