@@ -74,7 +74,7 @@ export async function fetchAgentDataSourceConfiguration(
   return new Ok(agentDataSourceConfiguration);
 }
 
-export async function fetchAgentTableConfigurations(
+export async function fetchTableDataSourceConfigurations(
   auth: Authenticator,
   tablesConfiguration: TablesConfigurationToolType
 ): Promise<Result<TableDataSourceConfiguration[], Error>> {

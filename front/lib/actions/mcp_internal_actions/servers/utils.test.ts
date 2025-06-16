@@ -11,7 +11,7 @@ import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { itInTransaction } from "@app/tests/utils/utils";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 
-import { fetchAgentTableConfigurations, getCoreSearchArgs } from "./utils";
+import { fetchTableDataSourceConfigurations, getCoreSearchArgs } from "./utils";
 
 describe("MCP Internal Actions Server Utils", () => {
   describe("fetchAgentTableConfigurations", () => {
@@ -53,7 +53,7 @@ describe("MCP Internal Actions Server Utils", () => {
           },
         ];
 
-        const result = await fetchAgentTableConfigurations(
+        const result = await fetchTableDataSourceConfigurations(
           auth,
           tablesConfiguration
         );
@@ -81,7 +81,7 @@ describe("MCP Internal Actions Server Utils", () => {
           },
         ];
 
-        const result = await fetchAgentTableConfigurations(
+        const result = await fetchTableDataSourceConfigurations(
           auth,
           tablesConfiguration
         );
@@ -146,7 +146,7 @@ describe("MCP Internal Actions Server Utils", () => {
           },
         ];
 
-        const result = await fetchAgentTableConfigurations(
+        const result = await fetchTableDataSourceConfigurations(
           auth,
           tablesConfiguration
         );
@@ -170,7 +170,7 @@ describe("MCP Internal Actions Server Utils", () => {
         },
       ];
 
-      const result = await fetchAgentTableConfigurations(
+      const result = await fetchTableDataSourceConfigurations(
         auth,
         tablesConfiguration
       );

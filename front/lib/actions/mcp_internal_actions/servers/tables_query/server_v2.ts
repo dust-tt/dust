@@ -24,7 +24,7 @@ import {
   getSectionColumnsPrefix,
   TABLES_QUERY_SECTION_FILE_MIN_COLUMN_LENGTH,
 } from "@app/lib/actions/mcp_internal_actions/servers/tables_query/server";
-import { fetchAgentTableConfigurations } from "@app/lib/actions/mcp_internal_actions/servers/utils";
+import { fetchTableDataSourceConfigurations } from "@app/lib/actions/mcp_internal_actions/servers/utils";
 import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -69,7 +69,7 @@ function createServer(
     },
     async ({ tables }) => {
       // Fetch table configurations
-      const tableConfigurationsRes = await fetchAgentTableConfigurations(
+      const tableConfigurationsRes = await fetchTableDataSourceConfigurations(
         auth,
         tables
       );
@@ -165,7 +165,7 @@ function createServer(
         const agentLoopRunContext = agentLoopContext.runContext;
 
         // Fetch table configurations
-        const tableConfigurationsRes = await fetchAgentTableConfigurations(
+        const tableConfigurationsRes = await fetchTableDataSourceConfigurations(
           auth,
           tables
         );

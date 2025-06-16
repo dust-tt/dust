@@ -13,7 +13,7 @@ import type {
   ThinkingOutputType,
   ToolGeneratedFileType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import { fetchAgentTableConfigurations } from "@app/lib/actions/mcp_internal_actions/servers/utils";
+import { fetchTableDataSourceConfigurations } from "@app/lib/actions/mcp_internal_actions/servers/utils";
 import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
 import { runActionStreamed } from "@app/lib/actions/server";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -112,7 +112,7 @@ function createServer(
         getDustProdAction("assistant-v2-query-tables").config
       );
 
-      const tableConfigurationsRes = await fetchAgentTableConfigurations(
+      const tableConfigurationsRes = await fetchTableDataSourceConfigurations(
         auth,
         tables
       );
@@ -123,15 +123,16 @@ function createServer(
       }
 
       const tableConfigurations = tableConfigurationsRes.value;
-      const dataSourceViews = await DataSourceViewResource.fetchByIds(auth, [
-        ...new Set(tableConfigurations.map((t) => t.dataSourceViewId)),
-      ]);
 
       const personalConnectionIds: Record<string, string> = {};
 
       // This is for Salesforce personal connections.
       const flags = await getFeatureFlags(owner);
       if (flags.includes("labs_salesforce_personal_connections")) {
+        const dataSourceViews = await DataSourceViewResource.fetchByIds(auth, [
+          ...new Set(tableConfigurations.map((t) => t.dataSourceViewId)),
+        ]);
+
         for (const dataSourceView of dataSourceViews) {
           if (dataSourceView.dataSource.connectorProvider === "salesforce") {
             const personalConnection =
