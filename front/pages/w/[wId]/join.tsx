@@ -11,10 +11,12 @@ import OnboardingLayout from "@app/components/sparkle/OnboardingLayout";
 import config from "@app/lib/api/config";
 import { getWorkspaceInfos } from "@app/lib/api/workspace";
 import { getWorkspaceVerifiedDomains } from "@app/lib/api/workspace_domains";
+import { getFeatureFlags } from "@app/lib/auth";
 import { makeGetServerSidePropsRequirementsWrapper } from "@app/lib/iam/session";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
 import { getSignUpUrl } from "@app/lib/signup";
 import type { LightWorkspaceType } from "@app/types";
+import { isString } from "@app/types";
 
 /**
  * 3 ways to end up here:
@@ -48,6 +50,7 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   onboardingType: OnboardingType;
   signUpCallbackUrl: string;
   workspace: LightWorkspaceType;
+  workOSEnabled: boolean;
 }>(async (context) => {
   const wId = context.query.wId as string;
   if (!wId) {
@@ -62,6 +65,9 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
       notFound: true,
     };
   }
+  const flags = await getFeatureFlags(workspace);
+  const workOSEnabled =
+    flags.includes("workos") && isString(workspace.workOSOrganizationId);
 
   const workspaceDomains = await getWorkspaceVerifiedDomains(workspace);
 
@@ -131,6 +137,7 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
       onboardingType,
       signUpCallbackUrl,
       workspace,
+      workOSEnabled,
     },
   };
 });
@@ -140,10 +147,12 @@ export default function Join({
   onboardingType,
   signUpCallbackUrl,
   workspace,
+  workOSEnabled,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const signUpUrl = getSignUpUrl({
     signupCallbackUrl: signUpCallbackUrl,
     invitationEmail: invitationEmail ?? undefined,
+    workOSEnabled,
   });
 
   return (
