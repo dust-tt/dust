@@ -45,7 +45,7 @@ export function extractMetadataFromDocumentUrl(ticketUrl: string): {
 } {
   // Format: https://${subdomain}.zendesk.com/tickets/${ticketId}.
   const match = ticketUrl.match(
-    /^https:\/\/([^.]+)\.zendesk\.com\/tickets\/#?(\d+)/
+    /^https:\/\/([^.]+)\.zendesk\.com\/(?:agent\/)?tickets\/#?(\d+)/
   );
   if (!match || !match[1] || !match[2]) {
     throw new Error(`Invalid ticket URL: ${ticketUrl}`);
