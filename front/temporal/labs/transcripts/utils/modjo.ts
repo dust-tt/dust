@@ -19,6 +19,27 @@ const ModjoSpeakerSchema = t.partial({
   type: t.string,
 });
 
+const ModjoContactSchema = t.partial({
+  contactId: t.number,
+  firstName: t.union([t.string, t.null, t.undefined]),
+  lastName: t.union([t.string, t.null, t.undefined]),
+  email: t.union([t.string, t.null, t.undefined]),
+  phoneNumber: t.union([t.string, t.null, t.undefined]),
+  company: t.union([t.string, t.null, t.undefined]),
+  position: t.union([t.string, t.null, t.undefined]),
+  accountId: t.union([t.number, t.null, t.undefined]),
+});
+
+const ModjoAccountSchema = t.partial({
+  accountId: t.number,
+  name: t.union([t.string, t.null, t.undefined]),
+  domain: t.union([t.string, t.null, t.undefined]),
+  industry: t.union([t.string, t.null, t.undefined]),
+  size: t.union([t.string, t.null, t.undefined]),
+  revenue: t.union([t.string, t.null, t.undefined]),
+  description: t.union([t.string, t.null, t.undefined]),
+});
+
 const ModjoTopicSchema = t.partial({
   topicId: t.number,
   name: t.string,
@@ -54,6 +75,8 @@ const ModjoRelationsSchema = t.partial({
   speakers: t.array(ModjoSpeakerSchema),
   transcript: t.array(ModjoTranscriptEntrySchema),
   tags: t.array(ModjoTagSchema),
+  contacts: t.array(ModjoContactSchema),
+  accounts: t.array(ModjoAccountSchema),
 });
 
 const ModjoCallSchema = t.partial({
@@ -68,6 +91,9 @@ const ModjoCallSchema = t.partial({
 });
 
 const ModjoPaginationSchema = t.partial({
+  page: t.number,
+  perPage: t.number,
+  nextPage: t.number,
   totalValues: t.number,
   lastPage: t.number,
 });
@@ -141,11 +167,28 @@ export async function retrieveModjoTranscripts(
 
   const modjoApiKey = modjoApiKeyRes.value.credential.content.api_key;
 
-  const daysOfHistory = 14;
+  // Check if this is the first sync by looking for any existing history
+  const hasAnyHistory = await transcriptsConfiguration.hasAnyHistory();
 
-  const fromDateTime = new Date(
-    Date.now() - daysOfHistory * 24 * 60 * 60 * 1000
-  ).toISOString();
+  let fromDateTime: string;
+  if (!hasAnyHistory) {
+    // First sync: no date restriction to pull all historical transcripts
+    fromDateTime = new Date(0).toISOString(); // Start from epoch to get all history
+    localLogger.info(
+      {},
+      "[retrieveModjoTranscripts] First sync detected - retrieving all historical transcripts"
+    );
+  } else {
+    // Subsequent syncs: only pull last day
+    const daysOfHistory = 1;
+    fromDateTime = new Date(
+      Date.now() - daysOfHistory * 24 * 60 * 60 * 1000
+    ).toISOString();
+    localLogger.info(
+      {},
+      "[retrieveModjoTranscripts] Subsequent sync - retrieving last day of transcripts"
+    );
+  }
 
   const fileIdsToProcess: string[] = [];
   let page = 1;
@@ -174,6 +217,8 @@ export async function retrieveModjoTranscripts(
             transcript: true,
             speakers: true,
             tags: true,
+            contacts: true,
+            accounts: true,
           },
         }),
       });
@@ -242,27 +287,60 @@ export async function retrieveModjoTranscripts(
         fileIdsToProcess.push(fileId);
       }
 
+      const paginationInfo = validatedData.pagination;
       localLogger.info(
-        { page, totalProcessed: fileIdsToProcess.length },
+        {
+          page,
+          totalProcessed: fileIdsToProcess.length,
+          pageSize: validatedData.values.length,
+          totalValues: paginationInfo?.totalValues,
+          lastPage: paginationInfo?.lastPage,
+          nextPage: paginationInfo?.nextPage,
+        },
         "[retrieveModjoTranscripts] Processed page of Modjo transcripts"
       );
 
-      if (
-        !validatedData.pagination?.lastPage ||
-        page >= validatedData.pagination.lastPage
+      // Check if we should continue to next page
+      if (paginationInfo?.nextPage && page < (paginationInfo.lastPage || 0)) {
+        page = paginationInfo.nextPage;
+      } else if (
+        !paginationInfo?.nextPage ||
+        page >= (paginationInfo.lastPage || 0)
       ) {
         hasMorePages = false;
+        localLogger.info(
+          {
+            finalPage: page,
+            totalTranscriptsFound: fileIdsToProcess.length,
+            totalCallsReviewed: paginationInfo?.totalValues || 0,
+          },
+          "[retrieveModjoTranscripts] Completed pagination - no more pages"
+        );
       } else {
         page++;
       }
     } catch (error) {
       localLogger.error(
-        { error },
-        "[retrieveModjoTranscripts] Error processing Modjo transcripts page"
+        {
+          error,
+          page,
+          totalProcessedSoFar: fileIdsToProcess.length,
+          perPage,
+        },
+        "[retrieveModjoTranscripts] Error processing Modjo transcripts page - stopping pagination"
       );
       break;
     }
   }
+
+  localLogger.info(
+    {
+      totalPages: page - 1,
+      totalTranscriptsToProcess: fileIdsToProcess.length,
+      syncType: !hasAnyHistory ? "full" : "incremental",
+    },
+    "[retrieveModjoTranscripts] Pagination completed successfully"
+  );
 
   return fileIdsToProcess;
 }
@@ -332,6 +410,8 @@ export async function retrieveModjoTranscriptContent(
         transcript: true,
         speakers: true,
         tags: true,
+        contacts: true,
+        accounts: true,
       },
     }),
   });
@@ -401,9 +481,63 @@ export async function retrieveModjoTranscriptContent(
   // Add speakers section
   transcriptContent += "Speakers:\n";
   callData.relations?.speakers?.forEach((speaker) => {
-    transcriptContent += `${speaker.name || "Unknown"} (${speaker.type || "Unknown"})\n`;
+    transcriptContent += `${speaker.name || "Unknown"} (${speaker.type || "Unknown"})`;
+    if (speaker.email) {
+      transcriptContent += ` - ${speaker.email}`;
+    }
+    if (speaker.phoneNumber) {
+      transcriptContent += ` - ${speaker.phoneNumber}`;
+    }
+    transcriptContent += "\n";
   });
   transcriptContent += "\n";
+
+  // Add contacts section if available
+  if (callData.relations?.contacts && callData.relations.contacts.length > 0) {
+    transcriptContent += "Contacts:\n";
+    callData.relations.contacts.forEach((contact) => {
+      const fullName = [contact.firstName, contact.lastName]
+        .filter(Boolean)
+        .join(" ");
+      transcriptContent += `${fullName || "Unknown"}`;
+      if (contact.position) {
+        transcriptContent += ` - ${contact.position}`;
+      }
+      if (contact.company) {
+        transcriptContent += ` at ${contact.company}`;
+      }
+      if (contact.email) {
+        transcriptContent += ` (${contact.email})`;
+      }
+      if (contact.phoneNumber) {
+        transcriptContent += ` - ${contact.phoneNumber}`;
+      }
+      transcriptContent += "\n";
+    });
+    transcriptContent += "\n";
+  }
+
+  // Add accounts section if available
+  if (callData.relations?.accounts && callData.relations.accounts.length > 0) {
+    transcriptContent += "Accounts:\n";
+    callData.relations.accounts.forEach((account) => {
+      transcriptContent += `${account.name || "Unknown"}`;
+      if (account.domain) {
+        transcriptContent += ` (${account.domain})`;
+      }
+      if (account.industry) {
+        transcriptContent += ` - Industry: ${account.industry}`;
+      }
+      if (account.size) {
+        transcriptContent += ` - Size: ${account.size}`;
+      }
+      if (account.description) {
+        transcriptContent += ` - ${account.description}`;
+      }
+      transcriptContent += "\n";
+    });
+    transcriptContent += "\n";
+  }
 
   // Add transcript content
   callData.relations?.transcript?.forEach((entry) => {
