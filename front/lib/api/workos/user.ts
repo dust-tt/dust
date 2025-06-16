@@ -157,5 +157,7 @@ export async function fetchWorkOSUserWithEmail(
     return new Err(new Error(`User not found with email "${email}"`));
   }
 
+  logger.info({ workOSUser, email }, "Found workOS user for webhook event");
+
   return new Ok(workOSUser);
 }
