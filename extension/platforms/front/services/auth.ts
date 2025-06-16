@@ -4,6 +4,7 @@ import {
   DUST_API_AUDIENCE,
   FRONT_EXTENSION_URL,
   getOAuthClientID,
+  AUTH0_CLIENT_ID,
 } from "@app/shared/lib/config";
 import type { StoredTokens, StoredUser } from "@app/shared/services/auth";
 import {
@@ -30,27 +31,13 @@ export class FrontAuthService extends AuthService {
     this.workosClientId = WORKOS_CLIENT_ID;
   }
 
-  private async openAuthPopup(provider: string): Promise<Window> {
+  private async openAuthPopup(
+    options: Record<string, string>
+  ): Promise<Window> {
     const width = 600;
     const height = 700;
     const left = window.screenX + (window.outerWidth - width) / 2;
     const top = window.screenY + (window.outerHeight - height) / 2;
-
-    // Generate PKCE values
-    const { codeVerifier, codeChallenge } = await generatePKCE();
-
-    // Store code verifier for later use
-    await this.storage.set("code_verifier", codeVerifier);
-
-    const options: Record<string, string> = {
-      client_id: this.workosClientId,
-      response_type: "code",
-      redirect_uri: FRONT_EXTENSION_URL,
-      code_challenge_method: "S256",
-      code_challenge: codeChallenge,
-      scope: "openid profile email",
-      provider: "authkit",
-    };
 
     const queryString = new URLSearchParams(options).toString();
     const authUrl = `http://localhost:3000/api/v1/auth/authorize?${queryString}`;
@@ -79,9 +66,26 @@ export class FrontAuthService extends AuthService {
     isForceLogin?: boolean;
     forcedConnection?: string;
   }) {
+    const { codeVerifier, codeChallenge } = await generatePKCE();
+
+    // Store code verifier for later use
+    await this.storage.set("code_verifier", codeVerifier);
+
     try {
-      // Open the popup with the selected provider
-      this.popupWindow = await this.openAuthPopup("authkit");
+      const options: Record<string, string> = {
+        response_type: "code",
+        redirect_uri: FRONT_EXTENSION_URL,
+        code_challenge_method: "S256",
+        code_challenge: codeChallenge,
+      };
+      // AUTH0 SPECIFICS
+      options.audience = DUST_API_AUDIENCE;
+      options.prompt = isForceLogin ? "login" : "";
+      // WORKOS SPECIFICS
+      options.provider = "authkit";
+      options.connection = forcedConnection ?? "";
+
+      this.popupWindow = await this.openAuthPopup(options);
 
       // Wait for the popup to complete authentication
       const result = await new Promise<{ code: string }>((resolve, reject) => {
@@ -119,7 +123,6 @@ export class FrontAuthService extends AuthService {
 
       const tokenParams = new URLSearchParams({
         grant_type: "authorization_code",
-        client_id: this.workosClientId,
         code_verifier: storedCodeVerifier,
         code: result.code,
         redirect_uri: FRONT_EXTENSION_URL,
@@ -183,7 +186,23 @@ export class FrontAuthService extends AuthService {
   }
 
   async logout(): Promise<boolean> {
-    await this.storage.clear();
+    const queryParams: Record<string, string> = {
+      returnTo: "http://localhost:3000",
+    };
+
+    const accessToken = await this.getAccessToken();
+    if (accessToken) {
+      const decodedPayload = jwtDecode<Record<string, string>>(accessToken);
+      if (decodedPayload) {
+        queryParams.session_id = decodedPayload.sid || "";
+      }
+    }
+
+    const logoutUrl = `http://localhost:3000/api/v1/auth/logout?${new URLSearchParams(
+      queryParams
+    )}`;
+    window.open(logoutUrl, "_blank");
+    this.storage.clear();
     return true;
   }
 
