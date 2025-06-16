@@ -43,7 +43,7 @@ export default async function handler(
 
 async function handleLogin(req: NextApiRequest, res: NextApiResponse) {
   try {
-    const { organizationId, screen_hint, login_hint, returnTo } = req.query;
+    const { organizationId, screenHint, loginHint, returnTo } = req.query;
     let enterpriseParams: { organizationId?: string; connectionId?: string } =
       {};
     if (organizationId && typeof organizationId === "string") {
@@ -67,8 +67,8 @@ async function handleLogin(req: NextApiRequest, res: NextApiResponse) {
       state:
         returnTo &&
         Buffer.from(JSON.stringify({ returnTo })).toString("base64"),
-      ...(isValidScreenHint(screen_hint) ? { screenHint: screen_hint } : {}),
-      ...(isString(login_hint) ? { loginHint: login_hint } : {}),
+      ...(isValidScreenHint(screenHint) ? { screenHint } : {}),
+      ...(isString(loginHint) ? { loginHint } : {}),
     });
 
     res.redirect(authorizationUrl);
