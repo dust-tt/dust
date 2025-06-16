@@ -39,6 +39,8 @@ export async function getSlackClient(
   }
   const slackClient = new WebClient(slackAccessToken, {
     timeout: SLACK_NETWORK_TIMEOUT_MS,
+    // Do not let Slack client retry rate limited calls.
+    rejectRateLimitedCalls: true,
     retryConfig: {
       retries: 1,
       factor: 1,
