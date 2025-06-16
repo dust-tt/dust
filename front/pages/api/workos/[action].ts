@@ -37,14 +37,18 @@ export default async function handler(
 async function handleLogin(req: NextApiRequest, res: NextApiResponse) {
   try {
     const { organizationId } = req.query;
-    let connectionId: string | undefined = undefined;
+    let enterpriseParams: { organizationId?: string; connectionId?: string } =
+      {};
     if (organizationId && typeof organizationId === "string") {
       // TODO(workos): We will want to cache this data
       const connections = await getWorkOS().sso.listConnections({
         organizationId,
       });
-      connectionId =
-        connections.data.length > 0 ? connections.data[0]?.id : undefined;
+      enterpriseParams = {
+        organizationId,
+        connectionId:
+          connections.data.length > 0 ? connections.data[0]?.id : undefined,
+      };
     }
 
     const authorizationUrl = getWorkOS().userManagement.getAuthorizationUrl({
@@ -52,7 +56,7 @@ async function handleLogin(req: NextApiRequest, res: NextApiResponse) {
       provider: "authkit",
       redirectUri: `${config.getClientFacingUrl()}/api/workos/callback`,
       clientId: config.getWorkOSClientId(),
-      connectionId,
+      ...enterpriseParams,
     });
 
     res.redirect(authorizationUrl);
