@@ -385,6 +385,9 @@ export async function getBuildersUsageData(
             [Op.gt]: startDate,
             [Op.lt]: endDate,
           },
+          status: {
+            [Op.not]: "draft",
+          },
         },
         include: [
           {
