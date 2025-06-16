@@ -16,19 +16,21 @@ import { UpgradePlanDialog } from "@app/components/workspace/UpgradePlanDialog";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import type { PlanType, WorkspaceDomain, WorkspaceType } from "@app/types";
 
+type DomainAutoJoinModalProps = {
+  domains: Organization["domains"];
+  domainAutoJoinEnabled: boolean;
+  isOpen: boolean;
+  onClose: () => void;
+  owner: WorkspaceType;
+};
+
 function DomainAutoJoinModal({
   domains,
   domainAutoJoinEnabled,
   isOpen,
   onClose,
   owner,
-}: {
-  domains: Organization["domains"];
-  domainAutoJoinEnabled: boolean;
-  isOpen: boolean;
-  onClose: () => void;
-  owner: WorkspaceType;
-}) {
+}: DomainAutoJoinModalProps) {
   const sendNotification = useSendNotification();
   const title = domainAutoJoinEnabled
     ? "De-activate Auto-join"

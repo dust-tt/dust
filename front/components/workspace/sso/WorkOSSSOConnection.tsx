@@ -110,6 +110,7 @@ export default function WorkOSSSOConnection({
           </div>
         )}
       </div>
+      {/* TODO(workos): Remove this once we have a clear way to enforce SSO with workos */}
       {isSSOConfigured ? (
         <div className="w-full space-y-4">
           <div className="flex flex-col space-y-4">
