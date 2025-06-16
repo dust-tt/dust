@@ -76,9 +76,16 @@ export const getAvatar = (
   mcpServer: MCPServerType,
   size: ComponentProps<typeof Avatar>["size"] = "sm"
 ): React.ReactNode => {
-  if (isRemoteAllowedIconType(mcpServer.icon)) {
-    return <Avatar icon={ActionIcons[mcpServer.icon]} size={size} />;
+  return getAvatarFromIcon(mcpServer.icon, size);
+};
+
+export const getAvatarFromIcon = (
+  icon: InternalAllowedIconType | RemoteAllowedIconType,
+  size: ComponentProps<typeof Avatar>["size"] = "sm"
+): React.ReactNode => {
+  if (isRemoteAllowedIconType(icon)) {
+    return <Avatar icon={ActionIcons[icon]} size={size} />;
   }
 
-  return <Avatar icon={InternalActionIcons[mcpServer.icon]} size={size} />;
+  return <Avatar icon={InternalActionIcons[icon]} size={size} />;
 };

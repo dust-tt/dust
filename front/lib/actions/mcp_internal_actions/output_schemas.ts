@@ -7,6 +7,14 @@ import { NotificationSchema } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
 import { MCP_TOOL_STAKE_LEVELS } from "@app/lib/actions/constants";
+import type {
+  InternalAllowedIconType,
+  RemoteAllowedIconType,
+} from "@app/lib/actions/mcp_icons";
+import {
+  INTERNAL_ALLOWED_ICONS,
+  REMOTE_ALLOWED_ICONS,
+} from "@app/lib/actions/mcp_icons";
 import type { SupportedFileContentType } from "@app/types";
 import { CONNECTOR_PROVIDERS } from "@app/types";
 import { FILE_FORMATS } from "@app/types";
@@ -627,6 +635,17 @@ const NotificationImageContentSchema = z.object({
 
 type ImageProgressOutput = z.infer<typeof NotificationImageContentSchema>;
 
+const InternalAllowedIconSchema = z.enum(
+  INTERNAL_ALLOWED_ICONS as [
+    InternalAllowedIconType,
+    ...InternalAllowedIconType[],
+  ]
+);
+
+const RemoteAllowedIconSchema = z.enum(
+  REMOTE_ALLOWED_ICONS as [RemoteAllowedIconType, ...RemoteAllowedIconType[]]
+);
+
 // Schema for the resource of a notification where the tool is asking for tool approval.
 // This schema contains all the information that the MCP server runner
 // needs to emit an event for tool approval.
@@ -642,6 +661,9 @@ const NotificationToolApproveBubbleUpContentSchema = z.object({
     mcpServerName: z.string(),
     toolName: z.string(),
     agentName: z.string(),
+    icon: z
+      .union([InternalAllowedIconSchema, RemoteAllowedIconSchema])
+      .optional(),
   }),
 });
 

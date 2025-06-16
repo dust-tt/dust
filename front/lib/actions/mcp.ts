@@ -10,6 +10,10 @@ import type {
 import type { DustAppRunConfigurationType } from "@app/lib/actions/dust_app_run";
 import { tryCallMCPTool } from "@app/lib/actions/mcp_actions";
 import { MCPServerPersonalAuthenticationRequiredError } from "@app/lib/actions/mcp_authentication";
+import type {
+  InternalAllowedIconType,
+  RemoteAllowedIconType,
+} from "@app/lib/actions/mcp_icons";
 import type { MCPServerAvailability } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
   augmentInputsWithConfiguration,
@@ -93,6 +97,7 @@ export type BaseMCPServerConfigurationType = {
 
   name: string;
   description: string | null;
+  icon?: RemoteAllowedIconType | InternalAllowedIconType;
 };
 
 // Server-side MCP server = Remote MCP Server OR our own MCP server.
@@ -521,6 +526,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
           toolName: actionConfiguration.originalName,
           mcpServerName: actionConfiguration.mcpServerName,
           agentName: agentConfiguration.name,
+          icon: actionConfiguration.icon,
         },
       };
 
