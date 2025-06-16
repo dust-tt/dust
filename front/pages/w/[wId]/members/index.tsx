@@ -47,7 +47,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
   perSeatPricing: SubscriptionPerSeatPricing | null;
-  enterpriseConnectionStrategyDetails: EnterpriseConnectionStrategyDetails;
   plan: PlanType;
   workspaceHasAvailableSeats: boolean;
   workspaceVerifiedDomains: WorkspaceDomain[];
