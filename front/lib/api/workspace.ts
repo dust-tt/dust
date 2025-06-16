@@ -255,21 +255,22 @@ export async function searchMembers(
     total = results.total;
   }
 
-  const { memberships } = await MembershipResource.getActiveMemberships({
-    users,
-    workspace: owner,
-  });
-
   const usersWithWorkspaces = users.map((u) => {
-    const membership = memberships.find(
-      (m) => m.userId === u.id && m.workspaceId === owner.id
-    );
-    const role =
-      membership && !membership.isRevoked()
+    const [m] = u.memberships ?? [];
+    let role: RoleType = "none";
+
+    if (m) {
+      const membership = new MembershipResource(
+        MembershipResource.model,
+        m.get()
+      );
+
+      role = !membership.isRevoked()
         ? ACTIVE_ROLES.includes(membership.role)
           ? membership.role
-          : ("none" as RoleType)
-        : ("none" as RoleType);
+          : "none"
+        : "none";
+    }
 
     return {
       ...u.toJSON(),
