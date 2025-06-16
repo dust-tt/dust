@@ -18,12 +18,19 @@ import type { ModelId } from "@connectors/types";
 // Timeout in ms for all network requests;
 const SLACK_NETWORK_TIMEOUT_MS = 30000;
 
-export async function getSlackClient(connectorId: ModelId): Promise<WebClient>;
 export async function getSlackClient(
-  slackAccessToken: string
+  connectorId: ModelId,
+  options?: { rejectRateLimitedCalls?: boolean }
 ): Promise<WebClient>;
 export async function getSlackClient(
-  connectorIdOrAccessToken: string | ModelId
+  slackAccessToken: string,
+  options?: { rejectRateLimitedCalls?: boolean }
+): Promise<WebClient>;
+export async function getSlackClient(
+  connectorIdOrAccessToken: string | ModelId,
+  options: { rejectRateLimitedCalls?: boolean } = {
+    rejectRateLimitedCalls: true,
+  }
 ): Promise<WebClient> {
   let slackAccessToken: string | undefined = undefined;
   if (typeof connectorIdOrAccessToken === "number") {
@@ -39,8 +46,7 @@ export async function getSlackClient(
   }
   const slackClient = new WebClient(slackAccessToken, {
     timeout: SLACK_NETWORK_TIMEOUT_MS,
-    // Do not let Slack client retry rate limited calls.
-    rejectRateLimitedCalls: true,
+    rejectRateLimitedCalls: options.rejectRateLimitedCalls ?? true,
     retryConfig: {
       retries: 1,
       factor: 1,
