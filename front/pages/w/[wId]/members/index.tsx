@@ -31,10 +31,7 @@ import {
   makeEnterpriseConnectionInitiateLoginUrl,
   makeSamlAcsUrl,
 } from "@app/lib/api/enterprise_connection";
-import {
-  checkWorkspaceSeatAvailabilityUsingAuth,
-  getWorkspaceVerifiedDomains,
-} from "@app/lib/api/workspace";
+import { checkWorkspaceSeatAvailabilityUsingAuth } from "@app/lib/api/workspace";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { useGroups } from "@app/lib/swr/groups";
@@ -50,6 +47,7 @@ import type {
   WorkspaceDomain,
   WorkspaceType,
 } from "@app/types";
+import { getWorkspaceVerifiedDomains } from "@app/lib/api/workspace_domains";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   user: UserType;

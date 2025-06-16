@@ -3,7 +3,6 @@ import type { FindOptions, Order, WhereOptions } from "sequelize";
 import { Op } from "sequelize";
 
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
-import { getWorkspaceVerifiedDomains } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { Plan, Subscription } from "@app/lib/models/plan";
@@ -32,6 +31,7 @@ import type {
   WithAPIErrorResponse,
   WorkspaceDomain,
 } from "@app/types";
+import { getWorkspaceVerifiedDomains } from "@app/lib/api/workspace_domains";
 
 export type PokeWorkspaceType = LightWorkspaceType & {
   createdAt: string;
