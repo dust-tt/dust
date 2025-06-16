@@ -1129,6 +1129,28 @@ function ZendeskTicketCheck({
                   />
                 }
               />
+              {ticketDetails.ticket && (
+                <Tooltip
+                  label={
+                    ticketDetails.shouldSyncTicket
+                      ? "Looking at its state, the ticket should be synced with Dust."
+                      : "Looking at its state, the ticket should not be synced with Dust."
+                  }
+                  className="max-w-md"
+                  trigger={
+                    <Chip
+                      label={
+                        ticketDetails.shouldSyncTicket
+                          ? "Should be synced"
+                          : "Should not be synced"
+                      }
+                      color={
+                        ticketDetails.shouldSyncTicket ? "success" : "info"
+                      }
+                    />
+                  }
+                />
+              )}
             </div>
             {ticketDetails.ticket && (
               <div className="ml-4 pt-2 text-xs text-muted-foreground">
