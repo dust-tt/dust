@@ -9,10 +9,8 @@ import type { InferGetServerSidePropsType } from "next";
 
 import OnboardingLayout from "@app/components/sparkle/OnboardingLayout";
 import config from "@app/lib/api/config";
-import {
-  getWorkspaceInfos,
-  getWorkspaceVerifiedDomains,
-} from "@app/lib/api/workspace";
+import { getWorkspaceInfos } from "@app/lib/api/workspace";
+import { getWorkspaceVerifiedDomains } from "@app/lib/api/workspace_domains";
 import { makeGetServerSidePropsRequirementsWrapper } from "@app/lib/iam/session";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
 import { getSignUpUrl } from "@app/lib/signup";

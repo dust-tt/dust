@@ -30,10 +30,8 @@ import { ActiveSubscriptionTable } from "@app/components/poke/subscriptions/tabl
 import { TrackerDataTable } from "@app/components/poke/trackers/table";
 import { WorkspaceInfoTable } from "@app/components/poke/workspace/table";
 import config from "@app/lib/api/config";
-import {
-  getWorkspaceCreationDate,
-  getWorkspaceVerifiedDomains,
-} from "@app/lib/api/workspace";
+import { getWorkspaceCreationDate } from "@app/lib/api/workspace";
+import { getWorkspaceVerifiedDomains } from "@app/lib/api/workspace_domains";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { Plan, Subscription } from "@app/lib/models/plan";
