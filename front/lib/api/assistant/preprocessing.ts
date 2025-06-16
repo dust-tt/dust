@@ -107,16 +107,45 @@ export async function renderConversationForModel(
       }
 
       // Use the contents array if available, otherwise use the rawContents array.
-      let rawContents: { step: number; content: string }[] = [];
+      const rawContents: { step: number; content: string }[] = m.rawContents;
+      const shadowReadRawContents: { step: number; content: string }[] = [];
       if (m.rawContents.length || m.contents.length) {
         if (m.contents.length) {
           for (const content of m.contents) {
             if (content.content.type === "text_content") {
-              rawContents.push({
+              shadowReadRawContents.push({
                 step: content.step,
                 content: content.content.value,
               });
             }
+          }
+
+          // Check if the shadowReadRawContents is the same as the rawContents.
+          if (
+            shadowReadRawContents.length === rawContents.length &&
+            shadowReadRawContents.every(
+              (sc, i) => sc.content === rawContents[i].content
+            )
+          ) {
+            logger.info(
+              {
+                workspaceId: conversation.owner.sId,
+                conversationId: conversation.sId,
+                agentMessageId: m.sId,
+              },
+              "[CONVERSATION RENDERING] Shadow read raw contents is the same as the raw contents"
+            );
+          } else {
+            logger.info(
+              {
+                workspaceId: conversation.owner.sId,
+                conversationId: conversation.sId,
+                agentMessageId: m.sId,
+                shadowReadRawContents,
+                rawContents,
+              },
+              "[CONVERSATION RENDERING] Shadow read raw contents is different from the raw contents"
+            );
           }
         } else {
           logger.info(
@@ -125,10 +154,8 @@ export async function renderConversationForModel(
               conversationId: conversation.sId,
               agentMessageId: m.sId,
             },
-            "[CONVERSATION RENDERING] Rendering from rawContents"
+            "[CONVERSATION RENDERING] No contents available."
           );
-
-          rawContents = m.rawContents;
         }
       }
 
