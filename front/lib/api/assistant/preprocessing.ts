@@ -27,6 +27,7 @@ import {
   Ok,
   removeNulls,
 } from "@app/types";
+import type { AgentContentItemType } from "@app/types/assistant/agent_message_content";
 
 /**
  * Model conversation rendering
@@ -61,7 +62,7 @@ export async function renderConversationForModel(
   const now = Date.now();
   const messages: ModelMessageTypeMultiActions[] = [];
 
-  // Render loop: dender all messages and all actions.
+  // Render loop: render all messages and all actions.
   for (const versions of conversation.content) {
     const m = versions[versions.length - 1];
 
@@ -75,7 +76,8 @@ export async function renderConversationForModel(
       const stepByStepIndex = {} as Record<
         string,
         {
-          contents: string[];
+          legacyTextContents: string[];
+          contents: Array<{ step: number; content: AgentContentItemType }>;
           actions: Array<{
             call: FunctionCallType;
             result: FunctionMessageTypeModel;
@@ -85,6 +87,7 @@ export async function renderConversationForModel(
 
       const emptyStep = () =>
         ({
+          legacyTextContents: [],
           contents: [],
           actions: [],
         }) satisfies (typeof stepByStepIndex)[number];
@@ -103,12 +106,76 @@ export async function renderConversationForModel(
         });
       }
 
-      for (const content of m.rawContents) {
+      // Use the contents array if available, otherwise use the rawContents array.
+      const rawContents: { step: number; content: string }[] = m.rawContents;
+      const shadowReadRawContents: { step: number; content: string }[] = [];
+      if (m.rawContents.length || m.contents.length) {
+        if (m.contents.length) {
+          for (const content of m.contents) {
+            if (content.content.type === "text_content") {
+              shadowReadRawContents.push({
+                step: content.step,
+                content: content.content.value,
+              });
+            }
+          }
+
+          // Check if the shadowReadRawContents is the same as the rawContents.
+          if (
+            shadowReadRawContents.length === rawContents.length &&
+            shadowReadRawContents.every(
+              (sc, i) => sc.content === rawContents[i].content
+            )
+          ) {
+            logger.info(
+              {
+                workspaceId: conversation.owner.sId,
+                conversationId: conversation.sId,
+                agentMessageId: m.sId,
+              },
+              "[CONVERSATION RENDERING] Shadow read raw contents is the same as the raw contents"
+            );
+          } else {
+            logger.info(
+              {
+                workspaceId: conversation.owner.sId,
+                conversationId: conversation.sId,
+                agentMessageId: m.sId,
+                shadowReadRawContents,
+                rawContents,
+              },
+              "[CONVERSATION RENDERING] Shadow read raw contents is different from the raw contents"
+            );
+          }
+        } else {
+          logger.info(
+            {
+              workspaceId: conversation.owner.sId,
+              conversationId: conversation.sId,
+              agentMessageId: m.sId,
+            },
+            "[CONVERSATION RENDERING] No contents available."
+          );
+        }
+      }
+
+      for (const content of rawContents) {
         stepByStepIndex[content.step] =
           stepByStepIndex[content.step] || emptyStep();
         if (content.content.trim()) {
-          stepByStepIndex[content.step].contents.push(content.content);
+          stepByStepIndex[content.step].legacyTextContents.push(
+            content.content
+          );
         }
+      }
+
+      for (const content of m.contents) {
+        stepByStepIndex[content.step] =
+          stepByStepIndex[content.step] || emptyStep();
+        stepByStepIndex[content.step].contents.push({
+          step: content.step,
+          content: content.content,
+        });
       }
 
       const steps = Object.entries(stepByStepIndex)
@@ -116,15 +183,18 @@ export async function renderConversationForModel(
         .map(([, step]) => step);
 
       if (excludeActions) {
-        // In Exclude Actions mode, we only render the last step that has content.
-        const stepsWithContent = steps.filter((s) => s?.contents.length);
+        // In Exclude Actions mode, we only render the last step that has text content.
+        const stepsWithContent = steps.filter(
+          (s) => s?.legacyTextContents.length
+        );
         if (stepsWithContent.length) {
           const lastStepWithContent =
             stepsWithContent[stepsWithContent.length - 1];
           messages.push({
             role: "assistant",
             name: m.configuration.name,
-            content: lastStepWithContent.contents.join("\n"),
+            content: lastStepWithContent.legacyTextContents.join("\n"),
+            contents: lastStepWithContent.contents,
           } satisfies AssistantContentMessageTypeModel);
         }
       } else {
@@ -142,7 +212,7 @@ export async function renderConversationForModel(
             );
             continue;
           }
-          if (!step.actions.length && !step.contents.length) {
+          if (!step.actions.length && !step.legacyTextContents.length) {
             logger.error(
               {
                 workspaceId: conversation.owner.sId,
@@ -158,13 +228,15 @@ export async function renderConversationForModel(
             messages.push({
               role: "assistant",
               function_calls: step.actions.map((s) => s.call),
-              content: step.contents.join("\n"),
+              content: step.legacyTextContents.join("\n"),
+              contents: step.contents,
             } satisfies AssistantFunctionCallMessageTypeModel);
           } else {
             messages.push({
               role: "assistant",
-              content: step.contents.join("\n"),
+              content: step.legacyTextContents.join("\n"),
               name: m.configuration.name,
+              contents: step.contents,
             } satisfies AssistantContentMessageTypeModel);
           }
 

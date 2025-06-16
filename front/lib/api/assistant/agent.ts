@@ -288,6 +288,10 @@ async function* runMultiActionsAgentLoop(
             type: event.content.type,
             value: event.content,
           });
+          agentMessage.contents.push({
+            step: i,
+            content: event.content,
+          });
           break;
 
         // Generation events

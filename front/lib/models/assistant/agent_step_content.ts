@@ -4,7 +4,7 @@ import { DataTypes } from "sequelize";
 import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
-import type { AssistantContentItemType } from "@app/types/assistant/agent_message_content";
+import type { AgentContentItemType } from "@app/types/assistant/agent_message_content";
 
 export class AgentStepContentModel extends WorkspaceAwareModel<AgentStepContentModel> {
   declare createdAt: CreationOptional<Date>;
@@ -13,8 +13,8 @@ export class AgentStepContentModel extends WorkspaceAwareModel<AgentStepContentM
   declare agentMessageId: ForeignKey<AgentMessage["id"]>;
   declare step: number;
   declare index: number;
-  declare type: AssistantContentItemType["type"];
-  declare value: AssistantContentItemType;
+  declare type: AgentContentItemType["type"];
+  declare value: AgentContentItemType;
 
   declare agentMessage?: NonAttribute<AgentMessage>;
 }
