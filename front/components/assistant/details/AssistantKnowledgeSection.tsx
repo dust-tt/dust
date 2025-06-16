@@ -91,7 +91,7 @@ export function AssistantKnowledgeSection({
       }
       return acc;
     }, initial);
-  }, [agentConfiguration.actions, agentConfiguration.sId]);
+  }, [agentConfiguration.actions]);
 
   const retrievalByDataSources = useMemo(() => {
     const acc: Record<string, DataSourceConfiguration> = {};
