@@ -2,17 +2,29 @@ import { Button, Chip, CompanyIcon, RocketIcon } from "@dust-tt/sparkle";
 import Link from "next/link";
 import type { ReactElement } from "react";
 
+import { DemoVideo as BaseDemoVideo } from "@app/components/home/content/Solutions/configs/supportConfig";
 import {
-  DemoVideo,
-  Stories,
-} from "@app/components/home/content/Industry/configs/b2bSaasConfig";
-import { CustomerStoriesSection } from "@app/components/home/content/Solutions/CustomerStoriesSection";
+  CustomerStoriesSection,
+  defaultCustomerStories,
+} from "@app/components/home/content/Solutions/CustomerStoriesSection";
 import { DemoVideoSection } from "@app/components/home/content/Solutions/DemoVideoSection";
 import { Grid, H1, H2, H3, P } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import TrustedBy from "@app/components/home/TrustedBy";
 import { classNames } from "@app/lib/utils";
+
+export async function getStaticProps() {
+  return {
+    props: {
+      gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
+    },
+  };
+}
+const DemoVideo = {
+  ...BaseDemoVideo,
+  sectionTitle: "See Dust in action for B2B SaaS",
+};
 
 const GRID_SECTION_CLASSES = classNames(
   "flex flex-col gap-16",
@@ -70,7 +82,7 @@ const CustomHeroSection = () => (
         <div className="absolute -bottom-10 left-8 -z-20 hidden h-48 w-48 lg:block">
           <img
             src="/static/landing/industry/shapes/diamond.svg"
-            alt="diamond"
+            alt="Losange"
             className="h-full w-full"
           />
         </div>
@@ -562,7 +574,10 @@ export default function B2BSaaS() {
       <TestimonialSection />
       <Grid>
         <div className={GRID_SECTION_CLASSES}>
-          <CustomerStoriesSection title="Customer stories" stories={Stories} />
+          <CustomerStoriesSection
+            title="Customer stories"
+            stories={defaultCustomerStories}
+          />
         </div>
       </Grid>
       <JustUseDustSection />
