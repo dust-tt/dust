@@ -1,4 +1,7 @@
-import { extractMetadataFromDocumentUrl } from "@connectors/connectors/zendesk/lib/sync_ticket";
+import {
+  extractMetadataFromDocumentUrl,
+  shouldSyncTicket,
+} from "@connectors/connectors/zendesk/lib/sync_ticket";
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import {
   fetchZendeskBrand,
@@ -127,6 +130,12 @@ export const zendesk = async ({
       return { success: true };
     }
     case "fetch-ticket": {
+      const configuration =
+        await ZendeskConfigurationResource.fetchByConnectorId(connector.id);
+      if (!configuration) {
+        throw new Error(`No configuration found for connector ${connector.id}`);
+      }
+
       const { accessToken, subdomain } =
         await getZendeskSubdomainAndAccessToken(connector.connectionId);
 
@@ -142,6 +151,7 @@ export const zendesk = async ({
         } catch (e) {
           return {
             ticket: null,
+            shouldSyncTicket: false,
             isTicketOnDb: false,
           };
         }
@@ -164,6 +174,8 @@ export const zendesk = async ({
 
         return {
           ticket: ticket as { [key: string]: unknown } | null,
+          shouldSyncTicket:
+            ticket !== null && shouldSyncTicket(ticket, configuration),
           isTicketOnDb: ticketOnDb !== null,
         };
       }
@@ -197,6 +209,8 @@ export const zendesk = async ({
 
       return {
         ticket: ticket as { [key: string]: unknown } | null,
+        shouldSyncTicket:
+          ticket !== null && shouldSyncTicket(ticket, configuration),
         isTicketOnDb: ticketOnDb !== null,
       };
     }
