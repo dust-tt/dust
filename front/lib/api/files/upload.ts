@@ -10,9 +10,10 @@ import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
 import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
-import type {
+import {
   FileUseCase,
   FileUseCaseMetadata,
+  normalizeError,
   Result,
   SupportedFileContentType,
   SupportedImageContentType,
@@ -113,20 +114,27 @@ const resizeAndUploadToFileStorage: ProcessingFunction = async (
   const originalUrl = await file.getSignedUrlForDownload(auth, "original");
   const convertapi = new ConvertAPI(process.env.CONVERTAPI_API_KEY);
 
-  const result = await convertapi.convert(
-    originalFormat,
-    {
-      File: originalUrl,
-      ScaleProportions: true,
-      ImageResolution: "72",
-      ScaleImage: "true",
-      ScaleIfLarger: "true",
-      ImageHeight: "1538",
-      ImageWidth: "1538",
-    },
-    originalFormat,
-    30
-  );
+  let result;
+  try {
+    result = await convertapi.convert(
+      originalFormat,
+      {
+        File: originalUrl,
+        ScaleProportions: true,
+        ImageResolution: "72",
+        ScaleImage: "true",
+        ScaleIfLarger: "true",
+        ImageHeight: "1538",
+        ImageWidth: "1538",
+      },
+      originalFormat,
+      30
+    );
+  } catch (e) {
+    return new Err(
+      new Error(`Failed resizing image: ${normalizeError(e).message}`)
+    );
+  }
 
   const writeStream = file.getWriteStream({
     auth,
