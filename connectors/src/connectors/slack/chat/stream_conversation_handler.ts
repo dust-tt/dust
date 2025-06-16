@@ -2,9 +2,10 @@ import type {
   AgentActionPublicType,
   ConversationPublicType,
   DustAPI,
+  LightAgentConfigurationType,
+  Result,
   UserMessageType,
 } from "@dust-tt/client";
-import type { LightAgentConfigurationType, Result } from "@dust-tt/client";
 import { ACTION_RUNNING_LABELS, assertNever, Err, Ok } from "@dust-tt/client";
 import type { ChatPostMessageResponse, WebClient } from "@slack/web-api";
 import slackifyMarkdown from "slackify-markdown";
@@ -22,6 +23,20 @@ import type { SlackUserInfo } from "@connectors/connectors/slack/lib/slack_clien
 import type { SlackChatBotMessage } from "@connectors/lib/models/slack";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
+
+export type SlackBlockIdStaticAgentConfig = {
+  slackChatBotMessageId: number;
+  messageTs?: string;
+  slackThreadTs?: string;
+  botId?: string;
+};
+
+export type SlackBlockIdToolValidation = {
+  actionId: string;
+  conversationId: string;
+  messageId: string;
+  workspaceId: string;
+} & SlackBlockIdStaticAgentConfig;
 
 interface StreamConversationToSlackParams {
   assistantName: string;
@@ -155,7 +170,7 @@ async function streamAgentAnswerToSlack(
           "Tool validation request"
         );
 
-        const blockId = JSON.stringify({
+        const blockId: SlackBlockIdToolValidation = {
           workspaceId: connector.workspaceId,
           conversationId: conversation.sId,
           messageId: event.messageId,
@@ -163,8 +178,8 @@ async function streamAgentAnswerToSlack(
           slackThreadTs: mainMessage.message?.thread_ts,
           messageTs: mainMessage.message?.ts,
           botId: mainMessage.message?.bot_id,
-          slackBotMessageId: slackChatBotMessage.id,
-        });
+          slackChatBotMessageId: slackChatBotMessage.id,
+        };
 
         if (slackUserId && !slackUserInfo.is_bot) {
           await slackClient.chat.postEphemeral({
@@ -174,7 +189,7 @@ async function streamAgentAnswerToSlack(
             blocks: makeToolValidationBlock({
               agentName: event.metadata.agentName,
               toolName: event.metadata.toolName,
-              id: blockId,
+              id: JSON.stringify(blockId),
             }),
             thread_ts: slackMessageTs,
           });
@@ -266,18 +281,19 @@ async function streamAgentAnswerToSlack(
           !slackUserInfo.is_bot &&
           agentConfigurations.length > 0
         ) {
+          const blockId: SlackBlockIdStaticAgentConfig = {
+            slackChatBotMessageId: slackChatBotMessage.id,
+            slackThreadTs: mainMessage.message?.thread_ts,
+            messageTs: mainMessage.message?.ts,
+            botId: mainMessage.message?.bot_id,
+          };
           await slackClient.chat.postEphemeral({
             channel: slackChannelId,
             user: slackUserId,
             text: "You can use another agent by using the dropdown in slack.",
             blocks: makeAssistantSelectionBlock(
               agentConfigurations,
-              JSON.stringify({
-                slackChatBotMessage: slackChatBotMessage.id,
-                slackThreadTs: mainMessage.message?.thread_ts,
-                messageTs: mainMessage.message?.ts,
-                botId: mainMessage.message?.bot_id,
-              })
+              JSON.stringify(blockId)
             ),
             thread_ts: slackMessageTs,
           });
