@@ -23,20 +23,9 @@ const serverInfo: InternalMCPServerDefinitionType = {
 export const LIST_ALL_AGENTS_TOOL_NAME = "list_all_published_agents";
 export const SUGGEST_AGENTS_TOOL_NAME = "suggest_agents_for_content";
 
-const SERVER_INSTRUCTIONS = `This toolset provides access to specialized agents available in the workspace.
-A good usage of these tools is:
-- when the user asks for a list of agents or when the user asks for suggestions for an agent.
-- when the agent is not able to handle the user's request and tries to suggest an agent that might be able to handle the request.
-
-# Agent Presentation Format
-Both tools return agents with a "mention" field containing a clickable format (e.g., \`:mention[AgentName]{sId=abc123}\`). This format allows users to directly select and interact with the suggested agents.
-
-# Specialized Agent Examples
-The workspace may contain specialized agents for:
-- Platform integrations (Salesforce, Slack, GitHub, etc.)
-- Business domains (HR, Sales, Marketing, etc.)
-- Specific workflows or processes
-`;
+const SERVER_INSTRUCTIONS = `These tools provide discoverability to published agents available in the workspace.
+The tools return agents with their "mention" markdown directive.
+The directive should be used to display a clickable version of the agent name in the response.`;
 
 const createServer = (auth: Authenticator): McpServer => {
   const server = new McpServer(serverInfo, {
@@ -45,7 +34,7 @@ const createServer = (auth: Authenticator): McpServer => {
 
   server.tool(
     LIST_ALL_AGENTS_TOOL_NAME,
-    "Returns a complete list of all published agents in the workspace. Each agent includes: name and description, and a clickable mention format for easy selection",
+    "Returns a complete list of all published agents in the workspace.",
     {},
     async () => {
       const owner = auth.getNonNullableWorkspace();
