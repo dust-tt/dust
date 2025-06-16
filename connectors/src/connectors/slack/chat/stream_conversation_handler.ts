@@ -8,6 +8,7 @@ import type {
 } from "@dust-tt/client";
 import { ACTION_RUNNING_LABELS, assertNever, Err, Ok } from "@dust-tt/client";
 import type { ChatPostMessageResponse, WebClient } from "@slack/web-api";
+import * as t from "io-ts";
 import slackifyMarkdown from "slackify-markdown";
 
 import type { SlackMessageUpdate } from "@connectors/connectors/slack/chat/blocks";
@@ -24,19 +25,22 @@ import type { SlackChatBotMessage } from "@connectors/lib/models/slack";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 
-export type SlackBlockIdStaticAgentConfig = {
-  slackChatBotMessageId: number;
-  messageTs?: string;
-  slackThreadTs?: string;
-  botId?: string;
-};
+export const SlackBlockIdStaticAgentConfigSchema = t.type({
+  slackChatBotMessageId: t.number,
+  messageTs: t.union([t.string, t.undefined]),
+  slackThreadTs: t.union([t.string, t.undefined]),
+  botId: t.union([t.string, t.undefined]),
+});
 
-export type SlackBlockIdToolValidation = {
-  actionId: string;
-  conversationId: string;
-  messageId: string;
-  workspaceId: string;
-} & SlackBlockIdStaticAgentConfig;
+export const SlackBlockIdToolValidationSchema = t.intersection([
+  SlackBlockIdStaticAgentConfigSchema,
+  t.type({
+    actionId: t.string,
+    conversationId: t.string,
+    messageId: t.string,
+    workspaceId: t.string,
+  }),
+]);
 
 interface StreamConversationToSlackParams {
   assistantName: string;
@@ -170,7 +174,7 @@ async function streamAgentAnswerToSlack(
           "Tool validation request"
         );
 
-        const blockId: SlackBlockIdToolValidation = {
+        const blockId = SlackBlockIdToolValidationSchema.encode({
           workspaceId: connector.workspaceId,
           conversationId: conversation.sId,
           messageId: event.messageId,
@@ -179,7 +183,7 @@ async function streamAgentAnswerToSlack(
           messageTs: mainMessage.message?.ts,
           botId: mainMessage.message?.bot_id,
           slackChatBotMessageId: slackChatBotMessage.id,
-        };
+        });
 
         if (slackUserId && !slackUserInfo.is_bot) {
           await slackClient.chat.postEphemeral({
@@ -281,12 +285,12 @@ async function streamAgentAnswerToSlack(
           !slackUserInfo.is_bot &&
           agentConfigurations.length > 0
         ) {
-          const blockId: SlackBlockIdStaticAgentConfig = {
+          const blockId = SlackBlockIdStaticAgentConfigSchema.encode({
             slackChatBotMessageId: slackChatBotMessage.id,
             slackThreadTs: mainMessage.message?.thread_ts,
             messageTs: mainMessage.message?.ts,
             botId: mainMessage.message?.bot_id,
-          };
+          });
           await slackClient.chat.postEphemeral({
             channel: slackChannelId,
             user: slackUserId,
