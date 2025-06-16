@@ -80,8 +80,10 @@ export default function TrustedBy({
           onMouseLeave={() => setIsPaused(false)}
         >
           <div
-            className="animate-marquee flex"
-            style={{ animationPlayState: isPaused ? "paused" : "running" }}
+            className={classNames(
+              "animate-marquee flex",
+              isPaused && "animate-none"
+            )}
           >
             {/* First set */}
             {logos.map((logo, index) => (
@@ -118,21 +120,6 @@ export default function TrustedBy({
           <div className="pointer-events-none absolute left-0 top-0 z-10 h-full w-16 bg-gradient-to-r from-white via-white/80 to-transparent sm:w-24 lg:w-32"></div>
           <div className="pointer-events-none absolute right-0 top-0 z-10 h-full w-16 bg-gradient-to-l from-white via-white/80 to-transparent sm:w-24 lg:w-32"></div>
         </div>
-
-        <style jsx>{`
-          @keyframes marquee {
-            0% {
-              transform: translate3d(0, 0, 0);
-            }
-            100% {
-              transform: translate3d(-50%, 0, 0);
-            }
-          }
-
-          .animate-marquee {
-            animation: marquee 25s linear infinite;
-          }
-        `}</style>
       </div>
     </div>
   );
