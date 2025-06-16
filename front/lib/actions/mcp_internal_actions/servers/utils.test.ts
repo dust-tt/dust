@@ -11,18 +11,18 @@ import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { itInTransaction } from "@app/tests/utils/utils";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 
-import { fetchAgentTableConfigurations, getCoreSearchArgs } from "./utils";
+import {
+  fetchAgentTableConfiguration,
+  getCoreSearchArgs,
+  parseTableConfigurationURI,
+} from "./utils";
 
 describe("MCP Internal Actions Server Utils", () => {
-  describe("fetchAgentTableConfigurations", () => {
+  describe("fetchAgentTableConfiguration", () => {
     itInTransaction(
       "should return error when table configuration belongs to different workspace",
       async (t: Transaction) => {
-        const workspace = await WorkspaceFactory.basic();
         const otherWorkspace = await WorkspaceFactory.basic();
-        const auth = await Authenticator.internalAdminForWorkspace(
-          workspace.sId
-        );
 
         const otherSpace = await SpaceFactory.global(otherWorkspace, t);
         const otherFolder = await DataSourceViewFactory.folder(
@@ -46,16 +46,23 @@ describe("MCP Internal Actions Server Utils", () => {
           id: tableConfig.id,
           workspaceId: otherWorkspace.id,
         });
-        const tablesConfiguration = [
-          {
-            uri: `table_configuration://dust/w/${otherWorkspace.sId}/table_configurations/${tableConfigId}`,
-            mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE,
-          },
-        ];
+        const uri = `table_configuration://dust/w/${otherWorkspace.sId}/table_configurations/${tableConfigId}`;
 
-        const result = await fetchAgentTableConfigurations(
-          auth,
-          tablesConfiguration
+        // Parse the URI first
+        const configInfoRes = parseTableConfigurationURI(uri);
+        expect(configInfoRes.isOk()).toBe(true);
+        if (configInfoRes.isErr()) {
+          return;
+        }
+
+        expect(configInfoRes.value.type).toBe("database");
+        if (configInfoRes.value.type !== "database") {
+          return;
+        }
+
+        // Now fetch with the sId
+        const result = await fetchAgentTableConfiguration(
+          configInfoRes.value.sId
         );
         expect(result.isErr()).toBe(true);
         if (result.isErr()) {
@@ -66,41 +73,21 @@ describe("MCP Internal Actions Server Utils", () => {
       }
     );
 
-    itInTransaction(
-      "should return error for invalid table configuration URI",
-      async () => {
-        const workspace = await WorkspaceFactory.basic();
-        const auth = await Authenticator.internalAdminForWorkspace(
-          workspace.sId
+    it("should return error for invalid table configuration URI", () => {
+      const uri = "invalid_uri";
+      const result = parseTableConfigurationURI(uri);
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.message).toContain(
+          "Invalid URI for a table configuration"
         );
-
-        const tablesConfiguration = [
-          {
-            uri: "invalid_uri",
-            mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE,
-          },
-        ];
-
-        const result = await fetchAgentTableConfigurations(
-          auth,
-          tablesConfiguration
-        );
-        expect(result.isErr()).toBe(true);
-        if (result.isErr()) {
-          expect(result.error.message).toContain(
-            "Invalid URI for a table configuration"
-          );
-        }
       }
-    );
+    });
 
     itInTransaction(
       "should return table configurations when they belong to the workspace",
       async (t: Transaction) => {
         const workspace = await WorkspaceFactory.basic();
-        const auth = await Authenticator.internalAdminForWorkspace(
-          workspace.sId
-        );
 
         const space = await SpaceFactory.global(workspace, t);
         const folder = await DataSourceViewFactory.folder(workspace, space, t);
@@ -139,21 +126,27 @@ describe("MCP Internal Actions Server Utils", () => {
           id: tableConfig.id,
           workspaceId: workspace.id,
         });
-        const tablesConfiguration = [
-          {
-            uri: `table_configuration://dust/w/${workspace.sId}/table_configurations/${tableConfigId}`,
-            mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE,
-          },
-        ];
+        const uri = `table_configuration://dust/w/${workspace.sId}/table_configurations/${tableConfigId}`;
 
-        const result = await fetchAgentTableConfigurations(
-          auth,
-          tablesConfiguration
+        // Parse the URI first
+        const configInfoRes = parseTableConfigurationURI(uri);
+        expect(configInfoRes.isOk()).toBe(true);
+        if (configInfoRes.isErr()) {
+          return;
+        }
+
+        expect(configInfoRes.value.type).toBe("database");
+        if (configInfoRes.value.type !== "database") {
+          return;
+        }
+
+        // Now fetch with the sId
+        const result = await fetchAgentTableConfiguration(
+          configInfoRes.value.sId
         );
         expect(result.isOk()).toBe(true);
         if (result.isOk()) {
-          expect(result.value).toHaveLength(1);
-          expect(result.value[0].id).toBe(tableConfig.id);
+          expect(result.value.id).toBe(tableConfig.id);
         }
       }
     );

@@ -1,10 +1,5 @@
-import { Op } from "sequelize";
-
 import { renderDataSourceConfiguration } from "@app/lib/actions/configuration/helpers";
-import type {
-  DataSourcesToolConfigurationType,
-  TablesConfigurationToolType,
-} from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import {
   DATA_SOURCE_CONFIGURATION_URI_PATTERN,
   TABLE_CONFIGURATION_URI_PATTERN,
@@ -119,89 +114,44 @@ export function parseTableConfigurationURI(
   }
 }
 
-export async function fetchAgentTableConfigurations(
-  auth: Authenticator,
-  tablesConfiguration: TablesConfigurationToolType
-): Promise<Result<AgentTablesQueryConfigurationTable[], Error>> {
-  const configurationIds = [];
-  const dynamicTables: AgentTablesQueryConfigurationTable[] = [];
-
-  for (const tableConfiguration of tablesConfiguration) {
-    const configInfoRes = parseTableConfigurationURI(tableConfiguration.uri);
-    if (configInfoRes.isErr()) {
-      return configInfoRes;
-    }
-
-    const configInfo = configInfoRes.value;
-
-    switch (configInfo.type) {
-      case "database": {
-        const sIdParts = getResourceNameAndIdFromSId(configInfo.sId);
-        if (!sIdParts) {
-          return new Err(
-            new Error(`Invalid table configuration ID: ${configInfo.sId}`)
-          );
-        }
-        if (sIdParts.resourceName !== "table_configuration") {
-          return new Err(
-            new Error(`ID is not a table configuration ID: ${configInfo.sId}`)
-          );
-        }
-        if (sIdParts.workspaceModelId !== auth.getNonNullableWorkspace().id) {
-          return new Err(
-            new Error(
-              `Table configuration ${configInfo.sId} does not belong to workspace ${sIdParts.workspaceModelId}`
-            )
-          );
-        }
-        configurationIds.push(sIdParts.resourceModelId);
-        break;
-      }
-
-      case "dynamic": {
-        // For dynamic configurations, fetch the data source view to get its ID
-        const dataSourceView = await DataSourceViewResource.fetchById(
-          auth,
-          configInfo.dataSourceViewId
-        );
-        if (!dataSourceView) {
-          return new Err(
-            new Error(
-              `Data source view not found: ${configInfo.dataSourceViewId}`
-            )
-          );
-        }
-
-        // Create minimal table configuration objects for each table
-        for (const tableId of configInfo.tableIds) {
-          // Create a minimal object that matches what the server expects
-          const minimalTable = {
-            id: -1, // Dynamic tables don't have database IDs
-            dataSourceViewId: dataSourceView.id,
-            tableId,
-            workspaceId: auth.getNonNullableWorkspace().id,
-          } as unknown as AgentTablesQueryConfigurationTable;
-
-          dynamicTables.push(minimalTable);
-        }
-        break;
-      }
-
-      default:
-        assertNever(configInfo);
-    }
+export async function fetchAgentTableConfiguration(
+  tableConfigSId: string
+): Promise<Result<AgentTablesQueryConfigurationTable, Error>> {
+  const sIdParts = getResourceNameAndIdFromSId(tableConfigSId);
+  if (!sIdParts) {
+    return new Err(
+      new Error(`Invalid table configuration ID: ${tableConfigSId}`)
+    );
+  }
+  if (sIdParts.resourceName !== "table_configuration") {
+    return new Err(
+      new Error(`ID is not a table configuration ID: ${tableConfigSId}`)
+    );
   }
 
-  const agentTableConfigurations =
-    await AgentTablesQueryConfigurationTable.findAll({
+  const agentTableConfiguration =
+    await AgentTablesQueryConfigurationTable.findOne({
       where: {
-        id: { [Op.in]: configurationIds },
-        workspaceId: auth.getNonNullableWorkspace().id,
+        id: sIdParts.resourceModelId,
+        workspaceId: sIdParts.workspaceModelId,
       },
     });
 
-  return new Ok([...agentTableConfigurations, ...dynamicTables]);
+  if (!agentTableConfiguration) {
+    return new Err(
+      new Error(`Table configuration ${tableConfigSId} not found`)
+    );
+  }
+
+  return new Ok(agentTableConfiguration);
 }
+
+// Type representing a resolved table configuration with all necessary data
+export type ResolvedTableConfiguration = {
+  tableId: string;
+  dataSourceViewId: string;
+  workspaceId: string;
+};
 
 type CoreSearchArgs = {
   projectId: string;

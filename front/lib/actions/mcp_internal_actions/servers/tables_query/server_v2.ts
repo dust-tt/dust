@@ -24,7 +24,11 @@ import {
   getSectionColumnsPrefix,
   TABLES_QUERY_SECTION_FILE_MIN_COLUMN_LENGTH,
 } from "@app/lib/actions/mcp_internal_actions/servers/tables_query/server";
-import { fetchAgentTableConfigurations } from "@app/lib/actions/mcp_internal_actions/servers/utils";
+import type { ResolvedTableConfiguration } from "@app/lib/actions/mcp_internal_actions/servers/utils";
+import {
+  fetchAgentTableConfiguration,
+  parseTableConfigurationURI,
+} from "@app/lib/actions/mcp_internal_actions/servers/utils";
 import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -34,6 +38,7 @@ import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import logger from "@app/logger/logger";
+import { assertNever } from "@app/types";
 import { CoreAPI } from "@app/types/core/core_api";
 
 // Types for the resources that are output by the tools of this server.
@@ -68,34 +73,88 @@ function createServer(
         ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE],
     },
     async ({ tables }) => {
-      // Fetch table configurations
-      const agentTableConfigurationsRes = await fetchAgentTableConfigurations(
-        auth,
-        tables
-      );
-      if (agentTableConfigurationsRes.isErr()) {
-        return makeMCPToolTextError(
-          `Error fetching table configurations: ${agentTableConfigurationsRes.error.message}`
-        );
+      // Parse and resolve table configurations
+      const resolvedTableConfigurations: ResolvedTableConfiguration[] = [];
+      const dataSourceViewModelIdsToFetch = new Set<number>();
+
+      for (const tableConfig of tables) {
+        const configInfoRes = parseTableConfigurationURI(tableConfig.uri);
+        if (configInfoRes.isErr()) {
+          return makeMCPToolTextError(
+            `Error parsing table configuration: ${configInfoRes.error.message}`
+          );
+        }
+
+        const configInfo = configInfoRes.value;
+
+        switch (configInfo.type) {
+          case "database": {
+            const agentTableConfigRes = await fetchAgentTableConfiguration(
+              configInfo.sId
+            );
+            if (agentTableConfigRes.isErr()) {
+              return makeMCPToolTextError(
+                `Error fetching table configuration: ${agentTableConfigRes.error.message}`
+              );
+            }
+            const agentTableConfig = agentTableConfigRes.value;
+            dataSourceViewModelIdsToFetch.add(
+              agentTableConfig.dataSourceViewId
+            );
+
+            resolvedTableConfigurations.push({
+              tableId: agentTableConfig.tableId,
+              dataSourceViewId: String(agentTableConfig.dataSourceViewId),
+              workspaceId: auth.getNonNullableWorkspace().sId,
+            });
+            break;
+          }
+
+          case "dynamic": {
+            const dataSourceView = await DataSourceViewResource.fetchById(
+              auth,
+              configInfo.dataSourceViewId
+            );
+            if (!dataSourceView) {
+              return makeMCPToolTextError(
+                `Data source view not found: ${configInfo.dataSourceViewId}`
+              );
+            }
+            dataSourceViewModelIdsToFetch.add(dataSourceView.id);
+
+            for (const tableId of configInfo.tableIds) {
+              resolvedTableConfigurations.push({
+                tableId,
+                dataSourceViewId: String(dataSourceView.id),
+                workspaceId: auth.getNonNullableWorkspace().sId,
+              });
+            }
+            break;
+          }
+
+          default:
+            assertNever(configInfo);
+        }
       }
-      const agentTableConfigurations = agentTableConfigurationsRes.value;
-      if (agentTableConfigurations.length === 0) {
+
+      if (resolvedTableConfigurations.length === 0) {
         return makeMCPToolTextError(
           "The agent does not have access to any tables. Please edit the agent's Query Tables tool to add tables, or remove the tool."
         );
       }
+
       const dataSourceViews = await DataSourceViewResource.fetchByModelIds(
         auth,
-        [...new Set(agentTableConfigurations.map((t) => t.dataSourceViewId))]
+        Array.from(dataSourceViewModelIdsToFetch)
       );
       const dataSourceViewsMap = new Map(
-        dataSourceViews.map((dsv) => [dsv.id, dsv])
+        dataSourceViews.map((dsv) => [String(dsv.id), dsv])
       );
 
       // Call Core API's /database_schema endpoint
       const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
       const schemaResult = await coreAPI.getDatabaseSchema({
-        tables: agentTableConfigurations.map((t) => {
+        tables: resolvedTableConfigurations.map((t) => {
           const dataSourceView = dataSourceViewsMap.get(t.dataSourceViewId);
           if (
             !dataSourceView ||
@@ -165,34 +224,87 @@ function createServer(
 
         const agentLoopRunContext = agentLoopContext.runContext;
 
-        // Fetch table configurations
-        const agentTableConfigurationsRes = await fetchAgentTableConfigurations(
-          auth,
-          tables
-        );
-        if (agentTableConfigurationsRes.isErr()) {
-          return makeMCPToolTextError(
-            `Error fetching table configurations: ${agentTableConfigurationsRes.error.message}`
-          );
+        // Parse and resolve table configurations
+        const resolvedTableConfigurations: ResolvedTableConfiguration[] = [];
+        const dataSourceViewModelIdsToFetch = new Set<number>();
+
+        for (const tableConfig of tables) {
+          const configInfoRes = parseTableConfigurationURI(tableConfig.uri);
+          if (configInfoRes.isErr()) {
+            return makeMCPToolTextError(
+              `Error parsing table configuration: ${configInfoRes.error.message}`
+            );
+          }
+
+          const configInfo = configInfoRes.value;
+
+          switch (configInfo.type) {
+            case "database": {
+              const agentTableConfigRes = await fetchAgentTableConfiguration(
+                configInfo.sId
+              );
+              if (agentTableConfigRes.isErr()) {
+                return makeMCPToolTextError(
+                  `Error fetching table configuration: ${agentTableConfigRes.error.message}`
+                );
+              }
+              const agentTableConfig = agentTableConfigRes.value;
+              dataSourceViewModelIdsToFetch.add(
+                agentTableConfig.dataSourceViewId
+              );
+
+              resolvedTableConfigurations.push({
+                tableId: agentTableConfig.tableId,
+                dataSourceViewId: String(agentTableConfig.dataSourceViewId),
+                workspaceId: auth.getNonNullableWorkspace().sId,
+              });
+              break;
+            }
+
+            case "dynamic": {
+              const dataSourceView = await DataSourceViewResource.fetchById(
+                auth,
+                configInfo.dataSourceViewId
+              );
+              if (!dataSourceView) {
+                return makeMCPToolTextError(
+                  `Data source view not found: ${configInfo.dataSourceViewId}`
+                );
+              }
+              dataSourceViewModelIdsToFetch.add(dataSourceView.id);
+
+              for (const tableId of configInfo.tableIds) {
+                resolvedTableConfigurations.push({
+                  tableId,
+                  dataSourceViewId: String(dataSourceView.id),
+                  workspaceId: auth.getNonNullableWorkspace().sId,
+                });
+              }
+              break;
+            }
+
+            default:
+              assertNever(configInfo);
+          }
         }
-        const agentTableConfigurations = agentTableConfigurationsRes.value;
-        if (agentTableConfigurations.length === 0) {
+
+        if (resolvedTableConfigurations.length === 0) {
           return makeMCPToolTextError(
             "The agent does not have access to any tables. Please edit the agent's Query Tables tool to add tables, or remove the tool."
           );
         }
         const dataSourceViews = await DataSourceViewResource.fetchByModelIds(
           auth,
-          [...new Set(agentTableConfigurations.map((t) => t.dataSourceViewId))]
+          Array.from(dataSourceViewModelIdsToFetch)
         );
         const dataSourceViewsMap = new Map(
-          dataSourceViews.map((dsv) => [dsv.id, dsv])
+          dataSourceViews.map((dsv) => [String(dsv.id), dsv])
         );
 
         // Call Core API's /query_database endpoint
         const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
         const queryResult = await coreAPI.queryDatabase({
-          tables: agentTableConfigurations.map((t) => {
+          tables: resolvedTableConfigurations.map((t) => {
             const dataSourceView = dataSourceViewsMap.get(t.dataSourceViewId);
             if (
               !dataSourceView ||
@@ -310,10 +422,8 @@ function createServer(
             // First, we fetch the connector provider for the data source, cause the chunking
             // strategy of the section file depends on it: Since all tables are from the same
             // data source, we can just take the first table's data source view id.
-            const [dataSourceView] =
-              await DataSourceViewResource.fetchByModelIds(auth, [
-                agentTableConfigurations[0].dataSourceViewId,
-              ]);
+            const firstViewId = resolvedTableConfigurations[0].dataSourceViewId;
+            const dataSourceView = dataSourceViewsMap.get(firstViewId);
             const connectorProvider =
               dataSourceView?.dataSource?.connectorProvider ?? null;
             const sectionColumnsPrefix =

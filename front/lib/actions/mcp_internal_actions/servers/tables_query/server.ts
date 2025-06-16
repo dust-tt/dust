@@ -13,7 +13,11 @@ import type {
   ThinkingOutputType,
   ToolGeneratedFileType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import { fetchAgentTableConfigurations } from "@app/lib/actions/mcp_internal_actions/servers/utils";
+import type { ResolvedTableConfiguration } from "@app/lib/actions/mcp_internal_actions/servers/utils";
+import {
+  fetchAgentTableConfiguration,
+  parseTableConfigurationURI,
+} from "@app/lib/actions/mcp_internal_actions/servers/utils";
 import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
 import { runActionStreamed } from "@app/lib/actions/server";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -23,7 +27,6 @@ import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
-import type { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
 import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { LabsSalesforcePersonalConnectionResource } from "@app/lib/resources/labs_salesforce_personal_connection_resource";
@@ -113,20 +116,78 @@ function createServer(
         getDustProdAction("assistant-v2-query-tables").config
       );
 
-      const agentTableConfigurationsRes = await fetchAgentTableConfigurations(
-        auth,
-        tables
-      );
-      if (agentTableConfigurationsRes.isErr()) {
-        return makeMCPToolTextError(
-          `Error fetching table configurations: ${agentTableConfigurationsRes.error.message}`
-        );
+      // Parse table configurations and resolve them
+      const resolvedTableConfigurations: ResolvedTableConfiguration[] = [];
+      const dataSourceViewModelIdsToFetch = new Set<number>();
+
+      for (const tableConfig of tables) {
+        const configInfoRes = parseTableConfigurationURI(tableConfig.uri);
+        if (configInfoRes.isErr()) {
+          return makeMCPToolTextError(
+            `Error parsing table configuration: ${configInfoRes.error.message}`
+          );
+        }
+
+        const configInfo = configInfoRes.value;
+
+        switch (configInfo.type) {
+          case "database": {
+            const agentTableConfigRes = await fetchAgentTableConfiguration(
+              configInfo.sId
+            );
+            if (agentTableConfigRes.isErr()) {
+              return makeMCPToolTextError(
+                `Error fetching table configuration: ${agentTableConfigRes.error.message}`
+              );
+            }
+            const agentTableConfig = agentTableConfigRes.value;
+            dataSourceViewModelIdsToFetch.add(
+              agentTableConfig.dataSourceViewId
+            );
+
+            // Convert to resolved configuration
+            for (const tableId of [agentTableConfig.tableId]) {
+              resolvedTableConfigurations.push({
+                tableId,
+                dataSourceViewId: String(agentTableConfig.dataSourceViewId),
+                workspaceId: owner.sId,
+              });
+            }
+            break;
+          }
+
+          case "dynamic": {
+            // For dynamic configs, validate the data source view exists
+            const dataSourceView = await DataSourceViewResource.fetchById(
+              auth,
+              configInfo.dataSourceViewId
+            );
+            if (!dataSourceView) {
+              return makeMCPToolTextError(
+                `Data source view not found: ${configInfo.dataSourceViewId}`
+              );
+            }
+            dataSourceViewModelIdsToFetch.add(dataSourceView.id);
+
+            // Create resolved configurations for each table
+            for (const tableId of configInfo.tableIds) {
+              resolvedTableConfigurations.push({
+                tableId,
+                dataSourceViewId: String(dataSourceView.id),
+                workspaceId: owner.sId,
+              });
+            }
+            break;
+          }
+
+          default:
+            assertNever(configInfo);
+        }
       }
 
-      const agentTableConfigurations = agentTableConfigurationsRes.value;
       const dataSourceViews = await DataSourceViewResource.fetchByModelIds(
         auth,
-        [...new Set(agentTableConfigurations.map((t) => t.dataSourceViewId))]
+        Array.from(dataSourceViewModelIdsToFetch)
       );
 
       const personalConnectionIds: Record<string, string> = {};
@@ -157,27 +218,25 @@ function createServer(
       // End salesforce specific
 
       const dataSourceViewsMap = new Map(
-        dataSourceViews.map((dsv) => [dsv.id, dsv])
+        dataSourceViews.map((dsv) => [String(dsv.id), dsv])
       );
 
-      const configuredTables = agentTableConfigurations.map(
-        (t: AgentTablesQueryConfigurationTable) => {
-          const dataSourceViewId = dataSourceViewsMap.get(
-            t.dataSourceViewId
-          )?.sId;
+      const configuredTables = resolvedTableConfigurations.map((t) => {
+        const dataSourceViewId = dataSourceViewsMap.get(
+          t.dataSourceViewId
+        )?.sId;
 
-          return {
-            workspace_id: owner.sId,
-            table_id: t.tableId,
-            // Note: This value is passed to the registry for lookup.
-            // The registry will return the associated data source's dustAPIDataSourceId.
-            data_source_id: dataSourceViewId,
-            remote_database_secret_id: dataSourceViewId
-              ? personalConnectionIds[dataSourceViewId]
-              : null,
-          };
-        }
-      );
+        return {
+          workspace_id: owner.sId,
+          table_id: t.tableId,
+          // Note: This value is passed to the registry for lookup.
+          // The registry will return the associated data source's dustAPIDataSourceId.
+          data_source_id: dataSourceViewId,
+          remote_database_secret_id: dataSourceViewId
+            ? personalConnectionIds[dataSourceViewId]
+            : null,
+        };
+      });
       if (configuredTables.length === 0) {
         return makeMCPToolTextError(
           "The agent does not have access to any tables. Please edit the agent's Query Tables tool to add tables, or remove the tool."
@@ -351,10 +410,8 @@ function createServer(
         // First, we fetch the connector provider for the data source, cause the chunking
         // strategy of the section file depends on it: Since all tables are from the same
         // data source, we can just take the first table's data source view id.
-        const [dataSourceView] = await DataSourceViewResource.fetchByModelIds(
-          auth,
-          [agentTableConfigurations[0].dataSourceViewId]
-        );
+        const firstViewId = resolvedTableConfigurations[0].dataSourceViewId;
+        const dataSourceView = dataSourceViewsMap.get(firstViewId);
         const connectorProvider =
           dataSourceView?.dataSource?.connectorProvider ?? null;
         const sectionColumnsPrefix = getSectionColumnsPrefix(connectorProvider);
