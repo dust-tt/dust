@@ -59,7 +59,7 @@ const DATABASE_TIMEOUT_DURATION: Duration = std::time::Duration::from_secs(5 * 6
 const DEFAULT_QUERY_TIMEOUT_MS: u64 = 10_000;
 
 // Cleanup databases every 30 seconds instead of every loop iteration.
-const CLEANUP_INTERVAL: Duration = Duration::from_secs(30);
+const DATABASE_CLEANUP_INTERVAL: Duration = Duration::from_secs(30);
 
 struct DatabaseEntry {
     database: Arc<Mutex<SqliteDatabase>>,
@@ -106,11 +106,14 @@ impl WorkerState {
             }
 
             // Run cleanup in background if enough time has passed.
-            if last_cleanup.elapsed() >= CLEANUP_INTERVAL {
+            if last_cleanup.elapsed() >= DATABASE_CLEANUP_INTERVAL {
                 let registry = self.registry.clone();
-                tokio::task::spawn_blocking(async move {
-                    registry.lock().await.retain(|_, entry| {
-                        entry.last_accessed.elapsed() < DATABASE_TIMEOUT_DURATION
+                tokio::task::spawn_blocking(move || {
+                    let rt = tokio::runtime::Handle::current();
+                    rt.block_on(async move {
+                        registry.lock().await.retain(|_, entry| {
+                            entry.last_accessed.elapsed() < DATABASE_TIMEOUT_DURATION
+                        });
                     });
                 });
                 last_cleanup = Instant::now();
