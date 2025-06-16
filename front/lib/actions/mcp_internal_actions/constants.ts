@@ -137,9 +137,6 @@ export const INTERNAL_MCP_SERVERS: Record<
   agent_router: {
     id: 8,
     availability: "auto_hidden_builder",
-    isRestricted: (plan, featureFlags) => {
-      return featureFlags.includes("dev_mcp_actions");
-    },
   },
   include_data: {
     id: 9,

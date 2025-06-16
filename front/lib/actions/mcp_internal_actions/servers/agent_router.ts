@@ -20,12 +20,21 @@ const serverInfo: InternalMCPServerDefinitionType = {
   documentationUrl: null,
 };
 
+export const LIST_ALL_AGENTS_TOOL_NAME = "list_all_published_agents";
+export const SUGGEST_AGENTS_TOOL_NAME = "suggest_agents_for_content";
+
+const SERVER_INSTRUCTIONS = `These tools provide discoverability to published agents available in the workspace.
+The tools return agents with their "mention" markdown directive.
+The directive should be used to display a clickable version of the agent name in the response.`;
+
 const createServer = (auth: Authenticator): McpServer => {
-  const server = new McpServer(serverInfo);
+  const server = new McpServer(serverInfo, {
+    instructions: SERVER_INSTRUCTIONS,
+  });
 
   server.tool(
-    "list_agents",
-    "List all active published agents in the workspace. The mention directive allows the user to click on the agent name to select it.",
+    LIST_ALL_AGENTS_TOOL_NAME,
+    "Returns a complete list of all published agents in the workspace.",
     {},
     async () => {
       const owner = auth.getNonNullableWorkspace();
@@ -86,8 +95,8 @@ const createServer = (auth: Authenticator): McpServer => {
   );
 
   server.tool(
-    "suggest_agents",
-    "Suggest agents for the current user's query. The mention directive allows the user to click on the agent name to select it.",
+    SUGGEST_AGENTS_TOOL_NAME,
+    "Analyzes a user query and returns relevant specialized agents that might be better suited to handle specific requests. The tool uses semantic matching to find agents whose capabilities align with the query content.",
     {
       userMessage: z.string().describe("The user's message."),
       conversationId: z.string().describe("The conversation id."),

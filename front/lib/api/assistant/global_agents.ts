@@ -6,6 +6,10 @@ import { DEFAULT_RETRIEVAL_ACTION_NAME } from "@app/lib/actions/constants";
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
 import { internalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
+import {
+  LIST_ALL_AGENTS_TOOL_NAME,
+  SUGGEST_AGENTS_TOOL_NAME,
+} from "@app/lib/actions/mcp_internal_actions/servers/agent_router";
 import type { AgentActionConfigurationType } from "@app/lib/actions/types/agent";
 import { getFavoriteStates } from "@app/lib/api/assistant/get_favorite_states";
 import config from "@app/lib/api/config";
@@ -158,7 +162,7 @@ function _getAgentRouterToolsConfiguration(
       id: -1,
       sId: agentId + "-agent-router-list-action",
       type: "mcp_server_configuration",
-      name: "list_agents",
+      name: LIST_ALL_AGENTS_TOOL_NAME,
       description: "List the published agents of the workspace.",
       mcpServerViewId: mcpServerView.sId,
       internalMCPServerId,
@@ -175,7 +179,7 @@ function _getAgentRouterToolsConfiguration(
       id: -1,
       sId: agentId + "-agent-router-suggest-agents",
       type: "mcp_server_configuration",
-      name: "suggest_agents",
+      name: SUGGEST_AGENTS_TOOL_NAME,
       description: "Suggest agents based on the user's query.",
       mcpServerViewId: mcpServerView.sId,
       internalMCPServerId,
@@ -1379,13 +1383,33 @@ function _getDustGlobalAgent(
       }
     : dummyModelConfiguration;
 
-  const instructions = `The agent answers with precision and brevity. It produces short and straight to the point answers. The agent should not provide additional information or content that the user did not ask for. When possible, the agent should answer using a single sentence.
-    # When the user asks a questions to the agent, the agent should analyze the situation as follows.
-    1. If the user's question requires information that is likely private or internal to the company (and therefore unlikely to be found on the public internet or within the agent's own knowledge), the agent should search in the company's internal data sources to answer the question. Searching in all datasources is the default behavior unless the user has specified the location in which case it is better to search only on the specific data source. It's important to not pick a restrictive timeframe unless it's explicitly requested or obviously needed.
-    2. If the users's question requires information that is recent and likely to be found on the public internet, the agent should use the internet to answer the question. That means performing a websearch and potentially browse some webpages.
-    3. If it is not obvious whether the information would be included in the internal company data sources or on the public internet, the agent should both search the internal company data sources and the public internet before answering the user's question.
-    4. If the user's query require neither internal company data or recent public knowledge, the agent is allowed to answer without using any tool.
-    The agent always respects the mardown format and generates spaces to nest content.`;
+  const instructions = `The agent answers with precision and brevity. It produces short and straight to the point answers.
+The agent should not provide additional information or content that the user did not ask for.
+When possible, the agent should answer using a single sentence.
+
+# When the user asks a questions to the agent, the agent should analyze the situation as follows:
+
+1. If the user's question requires information that is likely private or internal to the company
+   (and therefore unlikely to be found on the public internet or within the agent's own knowledge),
+   the agent should search in the company's internal data sources to answer the question.
+   Searching in all datasources is the default behavior unless the user has specified the location
+   in which case it is better to search only on the specific data source.
+   It's important to not pick a restrictive timeframe unless it's explicitly requested or obviously needed.
+   If no relevant information is found but the user's question seems to be internal to the company,
+   the agent should use the ${SUGGEST_AGENTS_TOOL_NAME} tool to suggest an agent that might be able to handle the request.
+
+2. If the users's question requires information that is recent and likely to be found on the public internet,
+   the agent should use the internet to answer the question.
+   That means performing a websearch and potentially browse some webpages.
+
+3. If it is not obvious whether the information would be included in the internal company data sources
+   or on the public internet, the agent should both search the internal company data sources
+   and the public internet before answering the user's question.
+
+4. If the user's query require neither internal company data or recent public knowledge,
+   the agent is allowed to answer without using any tool.
+
+The agent always respects the mardown format and generates spaces to nest content.`;
 
   const dustAgent = {
     id: -1,
