@@ -16,7 +16,6 @@ import React from "react";
 import { ConfirmContext } from "@app/components/Confirm";
 import UserProvisioning from "@app/components/workspace/DirectorySync";
 import { AutoJoinToggle } from "@app/components/workspace/sso/AutoJoinToggle";
-import type { EnterpriseConnectionStrategyDetails } from "@app/components/workspace/SSOConnection";
 import SSOConnection from "@app/components/workspace/SSOConnection";
 import {
   useRemoveWorkspaceDomain,
@@ -26,14 +25,12 @@ import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { LightWorkspaceType, PlanType, WorkspaceDomain } from "@app/types";
 
 interface WorkspaceAccessPanelProps {
-  enterpriseConnectionStrategyDetails: EnterpriseConnectionStrategyDetails;
   workspaceVerifiedDomains: WorkspaceDomain[];
   owner: LightWorkspaceType;
   plan: PlanType;
 }
 
 export default function WorkspaceAccessPanel({
-  enterpriseConnectionStrategyDetails,
   workspaceVerifiedDomains,
   owner,
   plan,
@@ -44,8 +41,9 @@ export default function WorkspaceAccessPanel({
 
   const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
   // Both workos and workos_user_provisioning are required to enable user provisioning.
-  const hasWorkOSUserProvisioningFeature =
-    hasFeature("workos") && hasFeature("workos_user_provisioning");
+  const hasWorkOSUserProvisioningFeature = hasFeature(
+    "workos_user_provisioning"
+  );
 
   return (
     <div className="flex flex-col gap-6">
@@ -57,12 +55,7 @@ export default function WorkspaceAccessPanel({
         owner={owner}
       />
       <Separator />
-      <SSOConnection
-        domains={domains}
-        plan={plan}
-        strategyDetails={enterpriseConnectionStrategyDetails}
-        owner={owner}
-      />
+      <SSOConnection domains={domains} plan={plan} owner={owner} />
       <AutoJoinToggle
         domains={domains}
         workspaceVerifiedDomains={workspaceVerifiedDomains}
