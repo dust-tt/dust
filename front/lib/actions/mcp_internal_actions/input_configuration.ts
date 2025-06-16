@@ -36,8 +36,7 @@ function getTableURI(config: TableDataSourceConfiguration): string {
   if (sId) {
     return `table_configuration://dust/w/${workspaceId}/table_configurations/${sId}`;
   }
-  const encodedTableId = encodeURIComponent(tableId);
-  return `table_configuration://dust/w/${workspaceId}/data_source_views/${dataSourceViewId}/tables/${encodedTableId}`;
+  return `table_configuration://dust/w/${workspaceId}/data_source_views/${dataSourceViewId}/tables/${tableId}`;
 }
 
 /**

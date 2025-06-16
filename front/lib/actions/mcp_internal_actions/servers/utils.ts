@@ -151,7 +151,7 @@ export async function fetchTableDataSourceConfigurations(
       results.push({
         workspaceId,
         dataSourceViewId: viewId,
-        tableId: decodeURIComponent(tableId),
+        tableId,
       });
     } else {
       return new Err(

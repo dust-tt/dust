@@ -165,7 +165,7 @@ describe("MCP Internal Actions Server Utils", () => {
 
       const tablesConfiguration = [
         {
-          uri: `table_configuration://dust/w/${workspace.sId}/data_source_views/dsv_12345/tables/table%20name`,
+          uri: `table_configuration://dust/w/${workspace.sId}/data_source_views/dsv_12345/tables/table_name`,
           mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE,
         },
       ];
@@ -177,7 +177,7 @@ describe("MCP Internal Actions Server Utils", () => {
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
         expect(result.value).toHaveLength(1);
-        expect(result.value[0].tableId).toBe("table name");
+        expect(result.value[0].tableId).toBe("table_name");
         expect(result.value[0].workspaceId).toBe(workspace.sId);
         expect(result.value[0].dataSourceViewId).toBe("dsv_12345");
       }
