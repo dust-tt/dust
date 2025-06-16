@@ -5,7 +5,11 @@ export function getSignUpUrl({
   signupCallbackUrl: string;
   invitationEmail?: string;
 }) {
-  let signUpUrl = `/api/auth/login?returnTo=${signupCallbackUrl}&prompt=login&screen_hint=signup`;
+  // if (featureFlags.includes("workos") && workspace.workOSOrganizationId) {
+  //   return `api/workos/login?organizationId=${workspace.workOSOrganizationId}`;
+  // }
+
+  let signUpUrl = `/api/workos/login?returnTo=${signupCallbackUrl}&screen_hint=sign-up`;
 
   if (invitationEmail) {
     signUpUrl += `&login_hint=${encodeURIComponent(invitationEmail)}`;
