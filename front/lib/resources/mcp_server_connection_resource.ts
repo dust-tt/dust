@@ -145,15 +145,16 @@ export class MCPServerConnectionResource extends BaseResource<MCPServerConnectio
     return new Ok(connections);
   }
 
-  static async findByMCPServer({
-    auth,
-    mcpServerId,
-    connectionType,
-  }: {
-    auth: Authenticator;
-    mcpServerId: string;
-    connectionType: MCPServerConnectionConnectionType;
-  }): Promise<Result<MCPServerConnectionResource, DustError>> {
+  static async findByMCPServer(
+    auth: Authenticator,
+    {
+      mcpServerId,
+      connectionType,
+    }: {
+      mcpServerId: string;
+      connectionType: MCPServerConnectionConnectionType;
+    }
+  ): Promise<Result<MCPServerConnectionResource, DustError>> {
     const { serverType, id } = getServerTypeAndIdFromSId(mcpServerId);
 
     const connections = await this.baseFetch(auth, {
@@ -177,13 +178,10 @@ export class MCPServerConnectionResource extends BaseResource<MCPServerConnectio
       : new Err(new DustError("connection_not_found", "Connection not found"));
   }
 
-  static async listByWorkspace({
-    auth,
-    connectionType,
-  }: {
-    auth: Authenticator;
-    connectionType: MCPServerConnectionConnectionType;
-  }): Promise<MCPServerConnectionResource[]> {
+  static async listByWorkspace(
+    auth: Authenticator,
+    { connectionType }: { connectionType: MCPServerConnectionConnectionType }
+  ): Promise<MCPServerConnectionResource[]> {
     const connections: MCPServerConnectionResource[] = [];
 
     if (connectionType === "personal") {
