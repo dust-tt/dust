@@ -48,25 +48,27 @@ const DustAppChatBlockSchema = z.object({
     content: z.string().optional(),
     function_calls: z.array(DustAppChatBlockFunctionCallSchema).optional(),
     role: z.string(),
-    contents: z.array(
-      z.union([
-        z.object({
-          type: z.literal("text_content"),
-          value: z.string(),
-        }),
-        z.object({
-          type: z.literal("function_call"),
-          value: DustAppChatBlockFunctionCallSchema,
-        }),
-        z.object({
-          type: z.literal("reasoning"),
-          value: z.object({
-            reasoning: z.string().optional(),
-            metadata: z.string(),
+    contents: z
+      .array(
+        z.union([
+          z.object({
+            type: z.literal("text_content"),
+            value: z.string(),
           }),
-        }),
-      ])
-    ),
+          z.object({
+            type: z.literal("function_call"),
+            value: DustAppChatBlockFunctionCallSchema,
+          }),
+          z.object({
+            type: z.literal("reasoning"),
+            value: z.object({
+              reasoning: z.string().optional(),
+              metadata: z.string(),
+            }),
+          }),
+        ])
+      )
+      .optional(),
   }),
 });
 
