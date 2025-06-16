@@ -161,7 +161,10 @@ type ChipLinkProps = ChipBaseProps &
 
 type ChipProps = ChipLinkProps | ChipButtonProps;
 
-// Since we can have a button inside a button, the top level element is a div
+// TODO(yuka: 1606): we should update this component so that you cannot have both
+// onClick and onRemove at the same time. We should use div when there is no onClick,
+// but use button when there is onClick.
+// Since we can have a button inside a button with current implementation, the top level element is a div
 // with a role="button", a tabIndex={0} to make it focusable, and onKeyDown handler.
 const Chip = React.forwardRef<HTMLDivElement, ChipProps>(
   (
