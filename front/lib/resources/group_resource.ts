@@ -1064,11 +1064,12 @@ export class GroupResource extends BaseResource<GroupModel> {
       );
     }
 
-    if (this.kind !== "regular" && this.kind !== "agent_editors") {
+    // Users can only be added to regular, agent_editors or provisioned groups.
+    if (!["regular", "agent_editors", "provisioned"].includes(this.kind)) {
       return new Err(
         new DustError(
           "system_or_global_group",
-          "Users can only be removed from regular or agent_editors groups."
+          "Users can only be removed from regular, agent_editors or provisioned groups."
         )
       );
     }
