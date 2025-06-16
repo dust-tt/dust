@@ -496,7 +496,11 @@ export async function processTranscriptActivity(
       projectId: dataSource.dustAPIProjectId,
       dataSourceId: dataSource.dustAPIDataSourceId,
       documentId: transcriptTitle,
-      tags: ["transcript", transcriptsConfiguration.provider, ...additionalTags],
+      tags: [
+        "transcript",
+        transcriptsConfiguration.provider,
+        ...additionalTags,
+      ],
       parentId: null,
       parents: [transcriptTitle],
       sourceUrl: null,

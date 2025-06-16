@@ -578,7 +578,10 @@ export async function retrieveModjoTranscriptContent(
   // Add tags section if available
   if (callData.relations?.tags && callData.relations.tags.length > 0) {
     transcriptContent += "Tags: ";
-    transcriptContent += callData.relations.tags.map(tag => tag.name).filter(Boolean).join(", ");
+    transcriptContent += callData.relations.tags
+      .map((tag) => tag.name)
+      .filter(Boolean)
+      .join(", ");
     transcriptContent += "\n\n";
   }
 
@@ -593,17 +596,21 @@ export async function retrieveModjoTranscriptContent(
 
   // Extract tags from Modjo data
   const tags: string[] = [];
-  
+
   // Add Modjo tags
   if (callData.relations?.tags && callData.relations.tags.length > 0) {
-    tags.push(...callData.relations.tags.map(tag => tag.name).filter(Boolean));
+    tags.push(
+      ...callData.relations.tags
+        .map((tag) => tag.name)
+        .filter((name): name is string => !!name)
+    );
   }
-  
+
   // Add account name as tag if available
   if (callData.relations?.account?.name) {
     tags.push(`account:${callData.relations.account.name}`);
   }
-  
+
   // Add deal stage as tag if available
   if (callData.relations?.deal?.stage) {
     tags.push(`deal-stage:${callData.relations.deal.stage}`);
