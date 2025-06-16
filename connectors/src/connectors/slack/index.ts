@@ -127,7 +127,10 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
 
     if (connectionId) {
       const accessToken = await getSlackAccessToken(connectionId);
-      const slackClient = await getSlackClient(accessToken);
+      const slackClient = await getSlackClient(accessToken, {
+        // Do not reject rate limited calls in update connector. Called from the API.
+        rejectRateLimitedCalls: false,
+      });
       const teamInfoRes = await slackClient.team.info();
       if (!teamInfoRes.ok || !teamInfoRes.team?.id) {
         throw new Error("Can't get the Slack team information.");
@@ -754,7 +757,10 @@ export async function uninstallSlack(connectionId: string) {
 
   try {
     const slackAccessToken = await getSlackAccessToken(connectionId);
-    const slackClient = await getSlackClient(slackAccessToken);
+    const slackClient = await getSlackClient(slackAccessToken, {
+      // Do not reject rate limited calls in uninstall slack. Called from the API.
+      rejectRateLimitedCalls: false,
+    });
     await slackClient.auth.test();
     const deleteRes = await slackClient.apps.uninstall({
       client_id: SLACK_CLIENT_ID,

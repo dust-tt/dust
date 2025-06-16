@@ -153,7 +153,10 @@ export async function joinChannel(
     throw new Error(`Connector ${connectorId} not found`);
   }
 
-  const client = await getSlackClient(connector.id);
+  const client = await getSlackClient(connector.id, {
+    // Do not reject rate limited calls in join channel.
+    rejectRateLimitedCalls: false,
+  });
   try {
     const channelInfo = await client.conversations.info({ channel: channelId });
     if (!channelInfo.ok || !channelInfo.channel?.name) {
