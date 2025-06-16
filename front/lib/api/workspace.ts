@@ -27,7 +27,6 @@ import type {
   RoleType,
   SubscriptionType,
   UserTypeWithWorkspaces,
-  WorkspaceDomain,
   WorkspaceSegmentationType,
   WorkspaceType,
 } from "@app/types";
