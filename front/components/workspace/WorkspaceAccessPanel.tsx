@@ -9,11 +9,13 @@ import {
   Spinner,
   XMarkIcon,
 } from "@dust-tt/sparkle";
+import type { CellContext } from "@tanstack/react-table";
 import type { Organization } from "@workos-inc/node";
 import React from "react";
 
 import { ConfirmContext } from "@app/components/Confirm";
 import UserProvisioning from "@app/components/workspace/DirectorySync";
+import { AutoJoinToggle } from "@app/components/workspace/sso/AutoJoinToggle";
 import type { EnterpriseConnectionStrategyDetails } from "@app/components/workspace/SSOConnection";
 import SSOConnection from "@app/components/workspace/SSOConnection";
 import {
@@ -21,16 +23,18 @@ import {
   useWorkspaceDomains,
 } from "@app/lib/swr/workos";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import type { LightWorkspaceType, PlanType } from "@app/types";
+import type { LightWorkspaceType, PlanType, WorkspaceDomain } from "@app/types";
 
 interface WorkspaceAccessPanelProps {
   enterpriseConnectionStrategyDetails: EnterpriseConnectionStrategyDetails;
+  workspaceVerifiedDomains: WorkspaceDomain[];
   owner: LightWorkspaceType;
   plan: PlanType;
 }
 
 export default function WorkspaceAccessPanel({
   enterpriseConnectionStrategyDetails,
+  workspaceVerifiedDomains,
   owner,
   plan,
 }: WorkspaceAccessPanelProps) {
@@ -48,15 +52,22 @@ export default function WorkspaceAccessPanel({
       <DomainVerification
         addDomainLink={addDomainLink}
         domains={domains}
+        workspaceVerifiedDomains={workspaceVerifiedDomains}
         isDomainsLoading={isDomainsLoading}
         owner={owner}
       />
       <Separator />
       <SSOConnection
         domains={domains}
-        owner={owner}
         plan={plan}
         strategyDetails={enterpriseConnectionStrategyDetails}
+        owner={owner}
+      />
+      <AutoJoinToggle
+        domains={domains}
+        workspaceVerifiedDomains={workspaceVerifiedDomains}
+        owner={owner}
+        plan={plan}
       />
       {hasWorkOSUserProvisioningFeature && <Separator />}
       {hasWorkOSUserProvisioningFeature && (
@@ -69,6 +80,7 @@ export default function WorkspaceAccessPanel({
 interface DomainVerificationProps {
   addDomainLink?: string;
   domains: Organization["domains"];
+  workspaceVerifiedDomains: WorkspaceDomain[];
   isDomainsLoading: boolean;
   owner: LightWorkspaceType;
 }
@@ -76,6 +88,7 @@ interface DomainVerificationProps {
 function DomainVerification({
   addDomainLink,
   domains,
+  workspaceVerifiedDomains,
   isDomainsLoading,
   owner,
 }: DomainVerificationProps) {
@@ -95,6 +108,7 @@ function DomainVerification({
         <DomainVerificationTable
           addDomainLink={addDomainLink}
           domains={domains}
+          workspaceVerifiedDomains={workspaceVerifiedDomains}
           owner={owner}
         />
       )}
@@ -105,12 +119,14 @@ function DomainVerification({
 interface DomainVerificationTableProps {
   addDomainLink?: string;
   domains: Organization["domains"];
+  workspaceVerifiedDomains: WorkspaceDomain[];
   owner: LightWorkspaceType;
 }
 
 // Define the row data type that extends TBaseData
 interface DomainRowData {
   domain: string;
+  workspaceVerifiedDomain?: WorkspaceDomain;
   status: string;
   onClick?: () => void;
   moreMenuItems?: any[];
@@ -119,10 +135,10 @@ interface DomainRowData {
 function DomainVerificationTable({
   addDomainLink,
   domains,
+  workspaceVerifiedDomains,
   owner,
 }: DomainVerificationTableProps) {
   const confirm = React.useContext(ConfirmContext);
-
   const { doRemoveWorkspaceDomain } = useRemoveWorkspaceDomain({ owner });
 
   const handleDeleteDomain = React.useCallback(
@@ -154,33 +170,34 @@ function DomainVerificationTable({
         header: "Domain",
         accessorKey: "domain",
         classname: "text-xs font-medium",
-        cell: ({ row }: { row: { original: DomainRowData } }) => {
+        cell: ({ row }: CellContext<DomainRowData, string>) => {
           return `@${row.original.domain}`;
         },
       },
       {
         header: "Status",
         accessorKey: "status",
-        cell: ({ getValue }: { getValue: () => string }) => {
+        cell: ({ getValue, row }: CellContext<DomainRowData, string>) => {
           const status = getValue();
+          const workspaceVerifiedDomain = row.original.workspaceVerifiedDomain;
           let chipColor: "success" | "info" | "rose" = "info";
-
-          if (status === "verified" || status === "legacy_verified") {
+          let label: string = "Pending";
+          if (workspaceVerifiedDomain && status === "verified") {
             chipColor = "success";
+            label = "Verified";
           } else if (status === "failed") {
             chipColor = "rose";
-          } else if (status === "pending") {
-            chipColor = "info";
+            label = "Failed";
           }
 
-          return <Chip color={chipColor} label={status} size="xs" />;
+          return <Chip color={chipColor} label={label} size="xs" />;
         },
       },
       {
         header: "",
         accessorKey: "actions",
         meta: { className: "w-14" },
-        cell: ({ row }: { row: { original: DomainRowData } }) => {
+        cell: ({ row }: CellContext<DomainRowData, string>) => {
           return (
             <IconButton
               icon={XMarkIcon}
@@ -200,20 +217,25 @@ function DomainVerificationTable({
     return domains.map((domain) => ({
       domain: domain.domain,
       status: domain.state,
+      workspaceVerifiedDomain: workspaceVerifiedDomains.find(
+        (d) => d.domain === domain.domain
+      ),
     }));
-  }, [domains]);
+  }, [domains, workspaceVerifiedDomains]);
 
   return (
     <div className="flex w-auto flex-col gap-6">
       <DataTable className="pt-6" columns={columns} data={data} />
       {addDomainLink && (
-        <Button
-          label="Add Domain"
-          variant="primary"
-          href={addDomainLink}
-          target="_blank"
-          icon={PlusIcon}
-        />
+        <div>
+          <Button
+            label="Add Domain"
+            variant="primary"
+            href={addDomainLink}
+            target="_blank"
+            icon={PlusIcon}
+          />
+        </div>
       )}
     </div>
   );

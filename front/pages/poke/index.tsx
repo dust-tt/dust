@@ -55,8 +55,10 @@ const renderWorkspaces = (title: string, workspaces: PokeWorkspaceType[]) => (
                 <PokeTableRow>
                   <PokeTableCell className="max-w-[200px] overflow-hidden text-ellipsis">
                     {ws.adminEmail}{" "}
-                    {ws.workspaceDomain && (
-                      <label>({ws.workspaceDomain.domain})</label>
+                    {ws.workspaceDomains && (
+                      <label>
+                        ({ws.workspaceDomains.map((d) => d.domain).join(", ")})
+                      </label>
                     )}
                   </PokeTableCell>
                   <PokeTableCell align="center">

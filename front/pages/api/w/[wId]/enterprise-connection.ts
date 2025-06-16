@@ -142,6 +142,7 @@ async function handler(
       }
       const { right: body } = bodyValidation;
 
+      //TODO(workos): handle multiple domains
       const workspaceWithVerifiedDomain = await WorkspaceHasDomainModel.findOne(
         {
           where: {
