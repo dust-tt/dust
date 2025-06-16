@@ -69,8 +69,8 @@ const CustomHeroSection = () => (
         </div>
         <div className="absolute -bottom-10 left-8 -z-20 hidden h-48 w-48 lg:block">
           <img
-            src="/static/landing/industry/shapes/losange.svg"
-            alt="Losange"
+            src="/static/landing/industry/shapes/diamond.svg"
+            alt="diamond"
             className="h-full w-full"
           />
         </div>
