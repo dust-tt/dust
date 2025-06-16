@@ -71,7 +71,7 @@ export async function crawlWebsiteSchedulerWorkflow() {
         connectorId: [connectorId],
       },
       args: [connectorId],
-      parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_ABANDON,
+      parentClosePolicy: ParentClosePolicy.ABANDON,
       memo: workflowInfo().memo,
     });
   }

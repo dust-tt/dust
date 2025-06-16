@@ -1,16 +1,35 @@
 import type { Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
+import type { ScrapeResponse } from "@mendable/firecrawl-js";
 import { hash as blake3 } from "blake3";
 import { NonRetryableError } from "crawlee";
+import { randomUUID } from "crypto";
 import dns from "dns";
+import path from "path";
 
-import type {
+import type { CoreAPIDataSourceDocumentSection } from "@connectors/lib/data_sources";
+import {
+  MAX_SMALL_DOCUMENT_TXT_LEN,
+  upsertDataSourceDocument,
+  upsertDataSourceFolder,
+} from "@connectors/lib/data_sources";
+import {
   WebCrawlerFolder,
   WebCrawlerPage,
 } from "@connectors/lib/models/webcrawler";
 import { createProxyAwareFetch } from "@connectors/lib/proxy";
-import type { ContentNodeType } from "@connectors/types";
-import { WEBCRAWLER_MAX_DEPTH } from "@connectors/types";
+import { redisClient } from "@connectors/lib/redis";
+import logger from "@connectors/logger/logger";
+import { statsDClient } from "@connectors/logger/withlogging";
+import type { ContentNodeType, DataSourceConfig } from "@connectors/types";
+import {
+  INTERNAL_MIME_TYPES,
+  stripNullBytes,
+  validateUrl,
+  WEBCRAWLER_MAX_DEPTH,
+} from "@connectors/types";
+
+import { makeCrawlerRedisKey } from "./redis_keys";
 
 const MAX_REDIRECTS = 20;
 const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
@@ -316,4 +335,208 @@ export async function verifyRedirect(
   } while (!foundEndOfRedirect);
 
   return new Ok(url);
+}
+
+function formatDocumentContent({
+  title,
+  content,
+  url,
+}: {
+  title: string;
+  content: string;
+  url: string;
+}): CoreAPIDataSourceDocumentSection {
+  const URL_MAX_LENGTH = 128;
+  const TITLE_MAX_LENGTH = 300;
+
+  const parsedUrl = new URL(url);
+  const urlWithoutQuery = path.join(parsedUrl.origin, parsedUrl.pathname);
+
+  const sanitizedContent = stripNullBytes(content);
+  const sanitizedTitle = stripNullBytes(title);
+  const sanitizedUrlWithoutQuery = stripNullBytes(urlWithoutQuery);
+
+  return {
+    prefix: `URL: ${sanitizedUrlWithoutQuery.slice(0, URL_MAX_LENGTH)}${
+      sanitizedUrlWithoutQuery.length > URL_MAX_LENGTH ? "..." : ""
+    }\n`,
+    content: `TITLE: ${sanitizedTitle.substring(0, TITLE_MAX_LENGTH)}\n${sanitizedContent}`,
+    sections: [],
+  };
+}
+
+export async function upsertDocumentsAndPages({
+  url,
+  connectorId,
+  webCrawlerConfigId,
+  crawlerResponse,
+  dataSourceConfig,
+  currentRequestDepth,
+}: {
+  url: string;
+  webCrawlerConfigId: number;
+  connectorId: number;
+  crawlerResponse: ScrapeResponse;
+  dataSourceConfig: DataSourceConfig;
+  currentRequestDepth: number;
+}): Promise<Result<{ extracted: number }, "upsert" | "too_large">> {
+  const redis = await redisClient({ origin: "webcrawler_sync" });
+
+  const crawlerFoldersRedisKey = makeCrawlerRedisKey(
+    "folders",
+    webCrawlerConfigId
+  );
+
+  const childLogger = logger.child({
+    connectorId,
+  });
+
+  const extracted = crawlerResponse.markdown ?? "[NO CONTENT]";
+
+  // totalExtracted += extracted.length;
+  const pageTitle = crawlerResponse.metadata?.title ?? randomUUID();
+
+  // note that parentFolderUrls.length === parentFolderIds.length -1
+  // since parentFolderIds includes the page as first element
+  // and parentFolderUrls does not
+  const parentFolderUrls = getAllFoldersForUrl(url);
+  const parentFolderIds = getParentsForPage(url, false);
+
+  for (const [index, folder] of parentFolderUrls.entries()) {
+    const hasFolder = await redis.sIsMember(crawlerFoldersRedisKey, folder);
+    if (hasFolder) {
+      continue;
+    }
+
+    const logicalParent = isTopFolder(url) ? null : getFolderForUrl(folder);
+    const [webCrawlerFolder] = await WebCrawlerFolder.upsert({
+      url: folder,
+      parentUrl: logicalParent,
+      connectorId,
+      webcrawlerConfigurationId: webCrawlerConfigId,
+      internalId: stableIdForUrl({
+        url: folder,
+        ressourceType: "folder",
+      }),
+      lastSeenAt: new Date(),
+    });
+
+    // parent folder ids of the page are in hierarchy order from the
+    // page to the root so for the current folder, its parents start at
+    // index+1 (including itself as first parent) and end at the root
+    const parents = parentFolderIds.slice(index + 1);
+    await upsertDataSourceFolder({
+      dataSourceConfig,
+      folderId: webCrawlerFolder.internalId,
+      timestampMs: webCrawlerFolder.updatedAt.getTime(),
+      parents,
+      parentId: parents[1] || null,
+      title: getDisplayNameForFolder(webCrawlerFolder),
+      mimeType: INTERNAL_MIME_TYPES.WEBCRAWLER.FOLDER,
+      sourceUrl: webCrawlerFolder.url,
+    });
+
+    await redis.sAdd(crawlerFoldersRedisKey, folder);
+  }
+  const documentId = stableIdForUrl({
+    url,
+    ressourceType: "document",
+  });
+
+  await WebCrawlerPage.upsert({
+    url,
+    parentUrl: isTopFolder(url) ? null : getFolderForUrl(url),
+    connectorId,
+    webcrawlerConfigurationId: webCrawlerConfigId,
+    documentId: documentId,
+    title: pageTitle,
+    depth: currentRequestDepth,
+    lastSeenAt: new Date(),
+  });
+
+  childLogger.info(
+    {
+      documentId,
+      configId: webCrawlerConfigId,
+      documentLen: extracted.length,
+      url,
+    },
+    "Successfully upserted page"
+  );
+
+  statsDClient.increment("connectors_webcrawler_crawls.count", 1);
+  statsDClient.increment(
+    "connectors_webcrawler_crawls_bytes.count",
+    extracted.length
+  );
+
+  try {
+    if (extracted.length > MAX_SMALL_DOCUMENT_TXT_LEN) {
+      return new Err("too_large");
+    }
+    if (
+      extracted.length > 0 &&
+      extracted.length <= MAX_SMALL_DOCUMENT_TXT_LEN
+    ) {
+      const validatedUrl = validateUrl(url);
+      if (!validatedUrl.valid || !validatedUrl.standardized) {
+        childLogger.info(
+          {
+            documentId,
+            configId: webCrawlerConfigId,
+            url,
+          },
+          `Invalid document or URL. Skipping`
+        );
+        return new Ok({ extracted: 0 });
+      }
+
+      const formattedDocumentContent = formatDocumentContent({
+        title: pageTitle,
+        content: extracted,
+        url: validatedUrl.standardized,
+      });
+
+      await upsertDataSourceDocument({
+        dataSourceConfig,
+        documentId: documentId,
+        documentContent: formattedDocumentContent,
+        documentUrl: validatedUrl.standardized,
+        timestampMs: new Date().getTime(),
+        tags: [`title:${stripNullBytes(pageTitle)}`],
+        parents: parentFolderIds,
+        parentId: parentFolderIds[1] || null,
+        upsertContext: {
+          sync_type: "batch",
+        },
+        title: stripNullBytes(pageTitle),
+        mimeType: "text/html",
+        async: true,
+      });
+    } else {
+      childLogger.info(
+        {
+          documentId,
+          configId: webCrawlerConfigId,
+          documentLen: extracted.length,
+          title: pageTitle,
+          url,
+        },
+        `Document is empty or too big to be upserted. Skipping`
+      );
+      return new Ok({ extracted: extracted.length });
+    }
+  } catch (e) {
+    childLogger.error(
+      {
+        error: e,
+        configId: webCrawlerConfigId,
+        url,
+      },
+      "Webcrawler error while upserting document"
+    );
+    return new Err("upsert");
+  }
+
+  return new Ok({ extracted: extracted.length });
 }
