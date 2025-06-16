@@ -5,8 +5,12 @@ import type {
   RefreshSessionResponse,
   User as WorkOSUser,
 } from "@workos-inc/node";
-import { unsealData } from "iron-session";
-import type { GetServerSidePropsContext, NextApiRequest } from "next";
+import { sealData, unsealData } from "iron-session";
+import type {
+  GetServerSidePropsContext,
+  NextApiRequest,
+  NextApiResponse,
+} from "next";
 
 import config from "@app/lib/api/config";
 import type { RegionType } from "@app/lib/api/regions/config";
@@ -29,14 +33,20 @@ export function getUserNicknameFromEmail(email: string) {
 }
 
 export async function getWorkOSSession(
-  req: NextApiRequest | GetServerSidePropsContext["req"]
+  req: NextApiRequest | GetServerSidePropsContext["req"],
+  res: NextApiResponse | GetServerSidePropsContext["res"]
 ): Promise<SessionWithUser | undefined> {
   const workOSSessionCookie = req.cookies["workos_session"];
   if (workOSSessionCookie) {
-    const { sessionData, organizationId, authenticationMethod, workspaceId } =
-      await unsealData<SessionCookie>(workOSSessionCookie, {
-        password: config.getWorkOSCookiePassword(),
-      });
+    const {
+      sessionData,
+      organizationId,
+      authenticationMethod,
+      workspaceId,
+      region,
+    } = await unsealData<SessionCookie>(workOSSessionCookie, {
+      password: config.getWorkOSCookiePassword(),
+    });
     const session = getWorkOS().userManagement.loadSealedSession({
       sessionData,
       cookiePassword: config.getWorkOSCookiePassword(),
@@ -50,8 +60,30 @@ export async function getWorkOSSession(
 
       if (!r.authenticated) {
         // If authentication fails, try to refresh the session
-        r = await session.refresh();
-        if (!r.authenticated) {
+        r = await session.refresh({
+          cookiePassword: config.getWorkOSCookiePassword(),
+        });
+        if (r.authenticated) {
+          // Update the session cookie with new session data
+          const sealedCookie = await sealData(
+            {
+              sessionData: r.sealedSession,
+              organizationId,
+              authenticationMethod,
+              region,
+              workspaceId,
+            },
+            {
+              password: config.getWorkOSCookiePassword(),
+            }
+          );
+
+          // Set the new cookie
+          res.setHeader("Set-Cookie", [
+            `workos_session=${sealedCookie}; Path=/; HttpOnly; Secure;SameSite=Lax; Max-Age=86400`,
+            `sessionType=workos; Path=/; Secure;SameSite=Lax; Max-Age=86400`,
+          ]);
+        } else {
           return undefined;
         }
       }
