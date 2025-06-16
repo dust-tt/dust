@@ -19,7 +19,6 @@ import { newWebhookSignal, syncChannelSignal } from "./signals";
 
 const {
   getChannel,
-  getChannels,
   fetchUsers,
   saveSuccessSyncActivity,
   syncChannelMetadata,
@@ -164,14 +163,7 @@ export async function syncOneThreadDebounced(
       debounceCount++;
       continue;
     }
-
-    // We first try to get the channel from the cache of all channels, if it's not found, we fetch it from the API.
-    let channel = (await getChannels(connectorId, false)).find(
-      (c) => c.id === channelId
-    );
-    if (!channel) {
-      channel = await getChannel(connectorId, channelId);
-    }
+    const channel = await getChannel(connectorId, channelId);
     if (!channel.name) {
       throw new Error(`Could not find channel name for channel ${channelId}`);
     }
@@ -214,13 +206,7 @@ export async function syncOneMessageDebounced(
     }
     console.log(`Talked to slack after debouncing ${debounceCount} time(s)`);
 
-    // We first try to get the channel from the cache of all channels, if it's not found, we fetch it from the API.
-    let channel = (await getChannels(connectorId, false)).find(
-      (c) => c.id === channelId
-    );
-    if (!channel) {
-      channel = await getChannel(connectorId, channelId);
-    }
+    const channel = await getChannel(connectorId, channelId);
     if (!channel.name) {
       throw new Error(`Could not find channel name for channel ${channelId}`);
     }
