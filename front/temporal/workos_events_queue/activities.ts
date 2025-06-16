@@ -56,7 +56,11 @@ async function verifyWorkOSWorkspace<E extends object, R>(
 
   const workspace = await findWorkspaceByWorkOSOrganizationId(organizationId);
   if (!workspace) {
-    throw new Error(`Workspace not found for workspace "${organizationId}"`);
+    // Skip processing if workspace not found - it likely belongs to another region.
+    // This is expected in a multi-region setup. DataDog monitors these warnings
+    // and will alert if they occur across all regions.
+    logger.warn({ organizationId }, "Workspace not found for organization");
+    return;
   }
 
   return handler(workspace, event);
