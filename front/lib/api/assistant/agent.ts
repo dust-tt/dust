@@ -811,7 +811,7 @@ async function* runMultiActionsAgent(
           output.generation = block.message.content ?? null;
         }
 
-        output.contents = block.message.contents;
+        output.contents = block.message.contents ?? [];
         break;
       }
     }
