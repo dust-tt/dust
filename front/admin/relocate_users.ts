@@ -72,8 +72,7 @@ function makeWorkOSThrottler<T>(logger: Logger) {
         await new Promise((resolve) => setTimeout(resolve, waitTime));
         return await fn();
       } else {
-        logger.error({ err }, "When calling WorkOS");
-        process.exit(1);
+        throw err;
       }
     }
   };
@@ -293,25 +292,16 @@ export async function updateAllWorkspaceUsersRegionMetadata(
 
   const organizationRes = await getOrCreateWorkOSOrganization(workspace);
   if (organizationRes.isErr()) {
-    logger.error(
-      { error: organizationRes.error },
-      "When calling getOrCreateWorkOSOrganization"
-    );
-    process.exit(1);
+    return new Err(organizationRes.error);
   }
   const organization = organizationRes.value;
   if (execute && organization.metadata.region !== newRegion) {
-    try {
-      await getWorkOS().organizations.updateOrganization({
-        organization: organization.id,
-        metadata: {
-          region: newRegion,
-        },
-      });
-    } catch (error) {
-      logger.error({ error }, "When calling getOrCreateWorkOSOrganization");
-      process.exit(1);
-    }
+    await getWorkOS().organizations.updateOrganization({
+      organization: organization.id,
+      metadata: {
+        region: newRegion,
+      },
+    });
   }
 
   const workOSUserIds = removeNulls(users.map((u) => u.workOSUserId));
