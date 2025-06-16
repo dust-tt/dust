@@ -20,7 +20,7 @@ import type { Logger } from "@app/logger/logger";
 import { launchDeleteWorkspaceWorkflow } from "@app/poke/temporal/client";
 import { makeScript } from "@app/scripts/helpers";
 import type { Result } from "@app/types";
-import { Err, Ok, removeNulls } from "@app/types";
+import { Err, normalizeError, Ok, removeNulls } from "@app/types";
 
 let remaining = 10;
 let resetTime = Date.now();
@@ -72,7 +72,7 @@ function makeWorkOSThrottler<T>(logger: Logger) {
         await new Promise((resolve) => setTimeout(resolve, waitTime));
         return await fn();
       } else {
-        throw err;
+        throw normalizeError(err);
       }
     }
   };
