@@ -6,6 +6,7 @@ type Provider = {
   authorizeUri: string;
   authenticateUri: string;
   logoutUri: string;
+  clientId: string;
 };
 
 const providers: Record<string, Provider> = {
@@ -13,11 +14,13 @@ const providers: Record<string, Provider> = {
     authorizeUri: "api.workos.com/user_management/authorize",
     authenticateUri: "api.workos.com/user_management/authenticate",
     logoutUri: "api/workos/com/user_management/sessions/logout",
+    clientId: config.getWorkOSClientId(),
   },
   auth0: {
     authorizeUri: "dust-tt.us.auth0.com/authorize",
     authenticateUri: "dust-tt.us.auth0.com/oauth/token",
     logoutUri: "dust-tt.us.auth0.com/v2/logout",
+    clientId: config.getAuth0WebApplicationId(),
   },
 };
 
@@ -49,7 +52,11 @@ export default async function handler(
 
 async function handleAuthorize(req: NextApiRequest, res: NextApiResponse) {
   const { query } = req;
-  const authorizeUrl = `https://${getProvider().authorizeUri}?${query}`;
+  const params = new URLSearchParams({
+    ...query,
+    client_id: getProvider().clientId,
+  }).toString();
+  const authorizeUrl = `https://${getProvider().authorizeUri}?${params}}`;
   res.redirect(authorizeUrl);
 }
 
@@ -74,6 +81,10 @@ async function handleAuthenticate(req: NextApiRequest, res: NextApiResponse) {
 
 async function handleLogout(req: NextApiRequest, res: NextApiResponse) {
   const { query } = req;
-  const authorizeUrl = `https://${getProvider().logoutUri}?${query}`;
+  const params = new URLSearchParams({
+    ...query,
+    client_id: getProvider().clientId,
+  }).toString();
+  const authorizeUrl = `https://${getProvider().logoutUri}?${params}`;
   res.redirect(authorizeUrl);
 }
