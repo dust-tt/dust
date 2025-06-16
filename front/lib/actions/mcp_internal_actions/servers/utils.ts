@@ -75,41 +75,121 @@ export async function fetchAgentDataSourceConfiguration(
   return new Ok(agentDataSourceConfiguration);
 }
 
+type TableConfigInfo =
+  | {
+      type: "database";
+      sId: string;
+    }
+  | {
+      type: "dynamic";
+      dataSourceViewId: string;
+      tableIds: string[];
+    };
+
+export function parseTableConfigurationURI(
+  uri: string
+): Result<TableConfigInfo, Error> {
+  const match = uri.match(TABLE_CONFIGURATION_URI_PATTERN);
+  if (!match) {
+    return new Err(new Error(`Invalid URI for a table configuration: ${uri}`));
+  }
+
+  const [, , tableConfigId, viewId, tablesStr] = match;
+
+  if (tableConfigId) {
+    // Database configuration
+    return new Ok({
+      type: "database",
+      sId: tableConfigId,
+    });
+  } else if (viewId && tablesStr) {
+    // Dynamic configuration
+    try {
+      const tableIds = JSON.parse(decodeURIComponent(tablesStr));
+      return new Ok({
+        type: "dynamic",
+        dataSourceViewId: viewId,
+        tableIds,
+      });
+    } catch (e) {
+      return new Err(new Error(`Failed to parse tables from URI: ${e}`));
+    }
+  } else {
+    return new Err(new Error(`Invalid URI format: ${uri}`));
+  }
+}
+
 export async function fetchAgentTableConfigurations(
   auth: Authenticator,
   tablesConfiguration: TablesConfigurationToolType
 ): Promise<Result<AgentTablesQueryConfigurationTable[], Error>> {
   const configurationIds = [];
+  const dynamicTables: AgentTablesQueryConfigurationTable[] = [];
+
   for (const tableConfiguration of tablesConfiguration) {
-    const match = tableConfiguration.uri.match(TABLE_CONFIGURATION_URI_PATTERN);
-    if (!match) {
-      return new Err(
-        new Error(
-          `Invalid URI for a table configuration: ${tableConfiguration.uri}`
-        )
-      );
+    const configInfoRes = parseTableConfigurationURI(tableConfiguration.uri);
+    if (configInfoRes.isErr()) {
+      return configInfoRes;
     }
-    // Safe to do because the inputs are already checked against the zod schema here.
-    const [, , tableConfigId] = match;
-    const sIdParts = getResourceNameAndIdFromSId(tableConfigId);
-    if (!sIdParts) {
-      return new Err(
-        new Error(`Invalid table configuration ID: ${tableConfigId}`)
-      );
+
+    const configInfo = configInfoRes.value;
+
+    switch (configInfo.type) {
+      case "database": {
+        const sIdParts = getResourceNameAndIdFromSId(configInfo.sId);
+        if (!sIdParts) {
+          return new Err(
+            new Error(`Invalid table configuration ID: ${configInfo.sId}`)
+          );
+        }
+        if (sIdParts.resourceName !== "table_configuration") {
+          return new Err(
+            new Error(`ID is not a table configuration ID: ${configInfo.sId}`)
+          );
+        }
+        if (sIdParts.workspaceModelId !== auth.getNonNullableWorkspace().id) {
+          return new Err(
+            new Error(
+              `Table configuration ${configInfo.sId} does not belong to workspace ${sIdParts.workspaceModelId}`
+            )
+          );
+        }
+        configurationIds.push(sIdParts.resourceModelId);
+        break;
+      }
+
+      case "dynamic": {
+        // For dynamic configurations, fetch the data source view to get its ID
+        const dataSourceView = await DataSourceViewResource.fetchById(
+          auth,
+          configInfo.dataSourceViewId
+        );
+        if (!dataSourceView) {
+          return new Err(
+            new Error(
+              `Data source view not found: ${configInfo.dataSourceViewId}`
+            )
+          );
+        }
+
+        // Create minimal table configuration objects for each table
+        for (const tableId of configInfo.tableIds) {
+          // Create a minimal object that matches what the server expects
+          const minimalTable = {
+            id: -1, // Dynamic tables don't have database IDs
+            dataSourceViewId: dataSourceView.id,
+            tableId,
+            workspaceId: auth.getNonNullableWorkspace().id,
+          } as unknown as AgentTablesQueryConfigurationTable;
+
+          dynamicTables.push(minimalTable);
+        }
+        break;
+      }
+
+      default:
+        assertNever(configInfo);
     }
-    if (sIdParts.resourceName !== "table_configuration") {
-      return new Err(
-        new Error(`ID is not a table configuration ID: ${tableConfigId}`)
-      );
-    }
-    if (sIdParts.workspaceModelId !== auth.getNonNullableWorkspace().id) {
-      return new Err(
-        new Error(
-          `Table configuration ${tableConfigId} does not belong to workspace ${sIdParts.workspaceModelId}`
-        )
-      );
-    }
-    configurationIds.push(sIdParts.resourceModelId);
   }
 
   const agentTableConfigurations =
@@ -120,7 +200,7 @@ export async function fetchAgentTableConfigurations(
       },
     });
 
-  return new Ok(agentTableConfigurations);
+  return new Ok([...agentTableConfigurations, ...dynamicTables]);
 }
 
 type CoreSearchArgs = {

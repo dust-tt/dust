@@ -17,7 +17,7 @@ export const DATA_SOURCE_CONFIGURATION_URI_PATTERN =
   /^data_source_configuration:\/\/dust\/w\/(\w+)\/(?:data_source_configurations\/(\w+)|data_source_views\/(\w+)\/filter\/(.+))$/;
 
 export const TABLE_CONFIGURATION_URI_PATTERN =
-  /^table_configuration:\/\/dust\/w\/(\w+)\/table_configurations\/(\w+)$/;
+  /^table_configuration:\/\/dust\/w\/(\w+)\/(?:table_configurations\/(\w+)|data_source_views\/(\w+)\/tables\/(.+))$/;
 
 // URI pattern for configuring the agent to use within an action.
 export const AGENT_CONFIGURATION_URI_PATTERN =
