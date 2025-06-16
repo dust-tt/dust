@@ -53,10 +53,12 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const connections = await MCPServerConnectionResource.listByWorkspace({
+      const connections = await MCPServerConnectionResource.listByWorkspace(
         auth,
-        connectionType,
-      });
+        {
+          connectionType,
+        }
+      );
       return res.status(200).json({
         connections: connections.map((c) => c.toJSON()),
       });

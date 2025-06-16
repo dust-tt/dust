@@ -153,15 +153,13 @@ describe("MCP Connection API Handler", () => {
       expect(deleteRes._getJSONData()).toEqual({ success: true });
 
       const remainingPersonalConnections =
-        await MCPServerConnectionResource.listByWorkspace({
-          auth: authenticator,
+        await MCPServerConnectionResource.listByWorkspace(authenticator, {
           connectionType: "personal",
         });
       expect(remainingPersonalConnections).toHaveLength(0);
 
       const remainingUser2PersonalConnections =
-        await MCPServerConnectionResource.listByWorkspace({
-          auth: authenticator2,
+        await MCPServerConnectionResource.listByWorkspace(authenticator2, {
           connectionType: "personal",
         });
       expect(remainingUser2PersonalConnections).toHaveLength(1);
@@ -206,15 +204,13 @@ describe("MCP Connection API Handler", () => {
 
       // Verify both connections are deleted
       const remainingWorkspaceConnections =
-        await MCPServerConnectionResource.listByWorkspace({
-          auth: authenticator,
+        await MCPServerConnectionResource.listByWorkspace(authenticator, {
           connectionType: "workspace",
         });
       expect(remainingWorkspaceConnections).toHaveLength(0);
 
       const remainingPersonalConnections =
-        await MCPServerConnectionResource.listByWorkspace({
-          auth: authenticator,
+        await MCPServerConnectionResource.listByWorkspace(authenticator, {
           connectionType: "personal",
         });
       expect(remainingPersonalConnections).toHaveLength(0);

@@ -23,8 +23,7 @@ export async function getConnectionForMCPServer(
   access_token_expiry: number | null;
   scrubbed_raw_json: unknown;
 } | null> {
-  const connection = await MCPServerConnectionResource.findByMCPServer({
-    auth,
+  const connection = await MCPServerConnectionResource.findByMCPServer(auth, {
     mcpServerId,
     connectionType,
   });

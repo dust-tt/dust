@@ -27,6 +27,7 @@ import {
   AgentMCPActionOutputItem,
   AgentMCPServerConfiguration,
 } from "@app/lib/models/assistant/actions/mcp";
+import { MCPServerConnection } from "@app/lib/models/assistant/actions/mcp_server_connection";
 import {
   AgentProcessAction,
   AgentProcessConfiguration,
@@ -64,6 +65,7 @@ import { ExtensionConfigurationResource } from "@app/lib/resources/extension";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
+import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { PluginRunResource } from "@app/lib/resources/plugin_run_resource";
@@ -573,6 +575,25 @@ export const deleteRemoteMCPServersActivity = async ({
   workspaceId: string;
 }) => {
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
+
+  const personalConnections = await MCPServerConnectionResource.listByWorkspace(
+    auth,
+    {
+      connectionType: "personal",
+    }
+  );
+  for (const mcpServerConnection of personalConnections) {
+    await mcpServerConnection.delete(auth);
+  }
+
+  const workspaceConnections =
+    await MCPServerConnectionResource.listByWorkspace(auth, {
+      connectionType: "workspace",
+    });
+  for (const mcpServerConnection of workspaceConnections) {
+    await mcpServerConnection.delete(auth);
+  }
+
   const remoteMCPServers = await RemoteMCPServerResource.listByWorkspace(auth);
   for (const remoteMCPServer of remoteMCPServers) {
     await remoteMCPServer.delete(auth);
