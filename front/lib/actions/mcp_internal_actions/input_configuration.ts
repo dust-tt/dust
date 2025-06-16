@@ -8,6 +8,7 @@ import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import type { ConfigurableToolInputType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { validateConfiguredJsonSchema } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { ConfigurableToolInputJSONSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import type { TableDataSourceConfiguration } from "@app/lib/actions/tables_query";
 import { isServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration";
 import type { MCPServerType, MCPServerViewType } from "@app/lib/api/mcp";
@@ -28,6 +29,15 @@ function getDataSourceURI(config: DataSourceConfiguration): string {
   }
   const encodedFilter = encodeURIComponent(JSON.stringify(filter));
   return `data_source_configuration://dust/w/${workspaceId}/data_source_views/${dataSourceViewId}/filter/${encodedFilter}`;
+}
+
+function getTableURI(config: TableDataSourceConfiguration): string {
+  const { workspaceId, sId, dataSourceViewId, tableId } = config;
+  if (sId) {
+    return `table_configuration://dust/w/${workspaceId}/table_configurations/${sId}`;
+  }
+  const encodedTableId = encodeURIComponent(tableId);
+  return `table_configuration://dust/w/${workspaceId}/data_source_views/${dataSourceViewId}/tables/${encodedTableId}`;
 }
 
 /**
@@ -63,7 +73,7 @@ function generateConfiguredInput({
     case INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE: {
       return (
         actionConfiguration.tables?.map((config) => ({
-          uri: `table_configuration://dust/w/${owner.sId}/table_configurations/${config.sId}`,
+          uri: getTableURI(config),
           mimeType,
         })) || []
       );
