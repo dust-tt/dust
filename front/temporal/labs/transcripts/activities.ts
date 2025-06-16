@@ -278,6 +278,7 @@ export async function processTranscriptActivity(
   let transcriptContent = "";
   let userParticipated = true;
   let fileContentIsAccessible = true;
+  let additionalTags: string[] = [];
 
   localLogger.info(
     {},
@@ -330,13 +331,14 @@ export async function processTranscriptActivity(
           {
             fileId,
           },
-          "[processTranscriptActivity] No Gong result found. Stopping."
+          "[processTranscriptActivity] No Modjo result found. Stopping."
         );
         return;
       }
       transcriptTitle = modjoResult.transcriptTitle || "";
       transcriptContent = modjoResult.transcriptContent || "";
       userParticipated = modjoResult.userParticipated;
+      additionalTags = modjoResult.tags || [];
       break;
 
     default:
@@ -494,7 +496,11 @@ export async function processTranscriptActivity(
       projectId: dataSource.dustAPIProjectId,
       dataSourceId: dataSource.dustAPIDataSourceId,
       documentId: transcriptTitle,
-      tags: ["transcript", transcriptsConfiguration.provider],
+      tags: [
+        "transcript",
+        transcriptsConfiguration.provider,
+        ...additionalTags,
+      ],
       parentId: null,
       parents: [transcriptTitle],
       sourceUrl: null,
