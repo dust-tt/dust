@@ -1,8 +1,9 @@
 import {
-  AUTH0_CLIENT_DOMAIN,
-  AUTH0_CLIENT_ID,
+  WORKOS_CLIENT_ID,
+  WORKOS_DOMAIN,
   DUST_API_AUDIENCE,
   FRONT_EXTENSION_URL,
+  getOAuthClientID,
 } from "@app/shared/lib/config";
 import type { StoredTokens, StoredUser } from "@app/shared/services/auth";
 import {
@@ -12,61 +13,63 @@ import {
   getDustDomain,
 } from "@app/shared/services/auth";
 import type { StorageService } from "@app/shared/services/storage";
-import { Auth0Client } from "@auth0/auth0-spa-js";
 import type { Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
 import { jwtDecode } from "jwt-decode";
+import { generatePKCE } from "@app/shared/lib/utils";
 
 const API_SCOPES =
   "offline_access read:user_profile read:conversation create:conversation update:conversation read:agent read:file create:file delete:file";
 
 export class FrontAuthService extends AuthService {
-  private auth0: Auth0Client;
+  private workosClientId: string;
+  private popupWindow: Window | null = null;
 
   constructor(storage: StorageService) {
     super(storage);
-
-    this.auth0 = new Auth0Client({
-      domain: AUTH0_CLIENT_DOMAIN,
-      clientId: AUTH0_CLIENT_ID,
-    });
+    this.workosClientId = WORKOS_CLIENT_ID;
   }
 
-  // We store the basic user information with list of workspaces and currently selected
-  // workspace in Chrome storage.
-  async saveUser(user: StoredUser) {
-    await this.storage.set("user", user);
+  private async openAuthPopup(provider: string): Promise<Window> {
+    const width = 600;
+    const height = 700;
+    const left = window.screenX + (window.outerWidth - width) / 2;
+    const top = window.screenY + (window.outerHeight - height) / 2;
 
-    return user;
-  }
+    // Generate PKCE values
+    const { codeVerifier, codeChallenge } = await generatePKCE();
 
-  private async getAndSaveTokens(): Promise<Result<StoredTokens, AuthError>> {
-    try {
-      const authResponse = await this.auth0.getTokenSilently({
-        authorizationParams: {
-          audience: DUST_API_AUDIENCE,
-          scope: API_SCOPES,
-        },
-        detailedResponse: true,
-        cacheMode: "off",
-      });
+    // Store code verifier for later use
+    await this.storage.set("code_verifier", codeVerifier);
 
-      const { access_token: token } = authResponse;
-      const claims = jwtDecode<Record<string, string>>(token);
+    const options: Record<string, string> = {
+      client_id: this.workosClientId,
+      response_type: "code",
+      redirect_uri: FRONT_EXTENSION_URL,
+      code_challenge_method: "S256",
+      code_challenge: codeChallenge,
+      scope: "openid profile email",
+      provider: "authkit",
+    };
 
-      const expiresInSeconds =
-        Number.parseInt(claims.exp, 10) - Math.floor(Date.now() / 1000);
+    const queryString = new URLSearchParams(options).toString();
+    const authUrl = `http://localhost:3000/api/v1/auth/authorize?${queryString}`;
 
-      const tokens = await this.saveTokens({
-        accessToken: token,
-        refreshToken: "",
-        expiresIn: expiresInSeconds,
-      });
+    console.log("[WorkOS Auth] Opening popup with URL:", authUrl);
 
-      return new Ok(tokens);
-    } catch (error) {
-      return new Err(new AuthError("not_authenticated", error?.toString()));
+    const popup = window.open(
+      authUrl,
+      "WorkOS Auth",
+      `width=${width},height=${height},left=${left},top=${top}`
+    );
+
+    if (!popup) {
+      console.log("[WorkOS Auth] Popup blocked by browser");
+      throw new Error("Popup blocked");
     }
+
+    console.log("[WorkOS Auth] Popup opened successfully");
+    return popup;
   }
 
   async login({
@@ -77,56 +80,110 @@ export class FrontAuthService extends AuthService {
     forcedConnection?: string;
   }) {
     try {
-      await this.auth0.loginWithPopup({
-        authorizationParams: {
-          scope: API_SCOPES,
-          audience: DUST_API_AUDIENCE,
-          prompt: isForceLogin ? "login" : "none",
-          connection: forcedConnection ?? "",
-        },
+      // Open the popup with the selected provider
+      this.popupWindow = await this.openAuthPopup("authkit");
+
+      // Wait for the popup to complete authentication
+      const result = await new Promise<{ code: string }>((resolve, reject) => {
+        const checkPopup = setInterval(() => {
+          if (this.popupWindow?.closed) {
+            clearInterval(checkPopup);
+            reject(new Error("Authentication cancelled"));
+          }
+
+          try {
+            // Check if we have the auth code in the popup URL
+            const popupUrl = this.popupWindow?.location.href;
+            if (popupUrl?.includes("code=")) {
+              const code = new URL(popupUrl).searchParams.get("code");
+              if (code) {
+                clearInterval(checkPopup);
+                this.popupWindow?.close();
+                resolve({ code });
+              }
+            }
+          } catch (e) {
+            // Ignore cross-origin errors
+          }
+        }, 100);
       });
+
+      // Get the stored code verifier
+      const storedCodeVerifier =
+        await this.storage.get<string>("code_verifier");
+      if (!storedCodeVerifier) {
+        return new Err(
+          new AuthError("not_authenticated", "No code verifier found")
+        );
+      }
+
+      const tokenParams = new URLSearchParams({
+        grant_type: "authorization_code",
+        client_id: this.workosClientId,
+        code_verifier: storedCodeVerifier,
+        code: result.code,
+        redirect_uri: FRONT_EXTENSION_URL,
+      });
+
+      const response = await fetch(
+        `http://localhost:3000/api/v1/auth/authenticate`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+            Origin: FRONT_EXTENSION_URL,
+          },
+          credentials: "include",
+          body: tokenParams,
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        return new Err(
+          new AuthError(
+            "invalid_oauth_token_error",
+            `Token exchange failed: ${response.status} ${response.statusText}. Error: ${errorText}`
+          )
+        );
+      }
+
+      const data = await response.json();
+
+      await this.storage.delete("code_verifier");
+
+      // Store tokens
+      const tokens = await this.saveTokens({
+        accessToken: data.access_token,
+        refreshToken: data.refresh_token || "",
+        expiresIn: data.expires_in || 60,
+      });
+
+      const claims = jwtDecode<Record<string, string>>(data.access_token);
+      // Get user details and workspaces
+      const res = await this.fetchMe({
+        accessToken: data.access_token,
+        dustDomain: getDustDomain(claims),
+      });
+
+      if (res.isErr()) {
+        return res;
+      }
+
+      const workspaces = res.value.user.workspaces;
+      const storedUser = await this.saveUser({
+        ...res.value.user,
+        dustDomain: getDustDomain(claims),
+        selectedWorkspace: workspaces.length === 1 ? workspaces[0].sId : null,
+      });
+      return new Ok({ tokens, user: storedUser });
     } catch (error) {
       return new Err(new AuthError("not_authenticated", error?.toString()));
     }
-
-    const tokensResult = await this.getAndSaveTokens();
-    if (tokensResult.isErr()) {
-      return tokensResult;
-    }
-    const tokens = tokensResult.value;
-
-    const claims = jwtDecode<Record<string, string>>(tokens.accessToken);
-    const dustDomain = getDustDomain(claims);
-    const connectionDetails = getConnectionDetails(claims);
-
-    const res = await this.fetchMe({
-      accessToken: tokens.accessToken,
-      dustDomain,
-    });
-    if (res.isErr()) {
-      return res;
-    }
-
-    const workspaces = res.value.user.workspaces;
-    const user = await this.saveUser({
-      ...res.value.user,
-      ...connectionDetails,
-      dustDomain,
-      selectedWorkspace: workspaces.length === 1 ? workspaces[0].sId : null,
-    });
-
-    return new Ok({ tokens, user });
   }
 
   async logout(): Promise<boolean> {
-    await this.auth0.logout({
-      logoutParams: {
-        returnTo: FRONT_EXTENSION_URL,
-      },
-    });
-
     await this.storage.clear();
-
     return true;
   }
 
@@ -138,11 +195,53 @@ export class FrontAuthService extends AuthService {
         tokens = refreshRes.value;
       }
     }
-
     return tokens?.accessToken ?? null;
   }
 
   async refreshToken(): Promise<Result<StoredTokens, AuthError>> {
-    return this.getAndSaveTokens();
+    console.log("[refreshToken] Attempting to refresh token...");
+    try {
+      const tokenParams: Record<string, string> = {
+        grant_type: "refresh_token",
+        client_id: getOAuthClientID("workos"),
+        refresh_token: (await this.getStoredTokens())?.refreshToken || "",
+      };
+
+      if (!tokenParams.refresh_token) {
+        return new Err(
+          new AuthError("invalid_oauth_token_error", "No refresh token")
+        );
+      }
+
+      const response = await fetch(
+        "http://localhost:3000/api/v1/auth/authenticate",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams(tokenParams),
+        }
+      );
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(
+          `Token refresh failed: ${data.error} - ${data.error_description}`
+        );
+      }
+
+      const data = await response.json();
+      const storedTokens = await this.saveTokens({
+        accessToken: data.access_token,
+        refreshToken: data.refresh_token || "",
+        expiresIn: data.expires_in || 60,
+      });
+      console.log("[refreshToken] Tokens saved successfully");
+      return new Ok(storedTokens);
+    } catch (error) {
+      console.error("[refreshToken] Error during token refresh:");
+      return new Err(
+        new AuthError("invalid_oauth_token_error", error?.toString())
+      );
+    }
   }
 }
