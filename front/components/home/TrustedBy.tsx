@@ -81,7 +81,7 @@ export default function TrustedBy({
         >
           <div
             className={classNames(
-              "animate-marquee flex",
+              "flex animate-marquee",
               isPaused && "animate-none"
             )}
           >
