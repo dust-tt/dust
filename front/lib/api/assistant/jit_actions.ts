@@ -21,16 +21,12 @@ import type {
   MCPServerConfigurationType,
   ServerSideMCPServerConfigurationType,
 } from "@app/lib/actions/mcp";
-import type { ProcessConfigurationType } from "@app/lib/actions/process";
 import type { TableDataSourceConfiguration } from "@app/lib/actions/tables_query";
 import type {
   ActionConfigurationType,
   AgentActionConfigurationType,
 } from "@app/lib/actions/types/agent";
-import {
-  isProcessConfiguration,
-  isRetrievalConfiguration,
-} from "@app/lib/actions/types/guards";
+import { isRetrievalConfiguration } from "@app/lib/actions/types/guards";
 import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration";
 import {
   isMultiSheetSpreadsheetContentType,
@@ -67,7 +63,7 @@ function getSupportingActions(
   agentActions: AgentActionConfigurationType[]
 ): ActionConfigurationType[] {
   return agentActions.flatMap((action) => {
-    if (isProcessConfiguration(action) || isRetrievalConfiguration(action)) {
+    if (isRetrievalConfiguration(action)) {
       const hasAutoTags = action.dataSources.some(
         (ds) => ds.filter.tags?.mode === "auto"
       );
@@ -259,6 +255,18 @@ async function getJITActions(
     "MCP server view not found for search. Ensure auto tools are created."
   );
 
+  // Get the extract_data view once - we'll need it for extract functionality
+  const extractDataView =
+    await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
+      auth,
+      "extract_data"
+    );
+
+  assert(
+    extractDataView,
+    "MCP server view not found for extract_data. Ensure auto tools are created."
+  );
+
   if (filesUsableAsRetrievalQuery.length > 0) {
     const dataSources: DataSourceConfiguration[] = filesUsableAsRetrievalQuery
       // For each searchable content node, we add its datasourceview with itself as parent
@@ -305,7 +313,7 @@ async function getJITActions(
     jitServers.push(retrievalServer);
   }
 
-  // Add process action for processable files
+  // Add extract data MCP server for processable files
   if (filesUsableForExtracting.length > 0) {
     const dataSources: DataSourceConfiguration[] = filesUsableForExtracting
       // For each extractable content node, we add its datasourceview with itself as parent filter.
@@ -331,17 +339,27 @@ async function getJITActions(
       });
     }
 
-    const action: ProcessConfigurationType = {
-      description: DEFAULT_CONVERSATION_EXTRACT_ACTION_DATA_DESCRIPTION,
-      type: "process_configuration",
+    const extractServer: ServerSideMCPServerConfigurationType = {
       id: -1,
-      name: DEFAULT_CONVERSATION_EXTRACT_ACTION_NAME,
       sId: generateRandomModelSId(),
+      type: "mcp_server_configuration",
+      name: DEFAULT_CONVERSATION_EXTRACT_ACTION_NAME,
+      description: DEFAULT_CONVERSATION_EXTRACT_ACTION_DATA_DESCRIPTION,
       dataSources,
-      relativeTimeFrame: "auto",
+      tables: null,
+      childAgentId: null,
+      reasoningModel: null,
+      timeFrame: {
+        duration: 1,
+        unit: "month",
+      },
       jsonSchema: null,
+      additionalConfiguration: {},
+      mcpServerViewId: extractDataView.sId,
+      dustAppConfiguration: null,
+      internalMCPServerId: extractDataView.mcpServerId,
     };
-    actions.push(action);
+    jitServers.push(extractServer);
   }
 
   for (const [i, f] of files
@@ -386,18 +404,28 @@ async function getJITActions(
     };
     jitServers.push(folderSearchServer);
 
-    // add process action for the folder
-    const processAction: ProcessConfigurationType = {
-      description: `Extract structured data from the documents inside "${folder.title}"`,
-      type: "process_configuration",
+    // add extract server for the folder
+    const folderExtractServer: ServerSideMCPServerConfigurationType = {
       id: -1,
-      name: `extract_folder_${i}`,
       sId: generateRandomModelSId(),
+      type: "mcp_server_configuration",
+      name: `extract_folder_${i}`,
+      description: `Extract structured data from the documents inside "${folder.title}"`,
       dataSources,
-      relativeTimeFrame: "auto",
+      tables: null,
+      childAgentId: null,
+      reasoningModel: null,
+      timeFrame: {
+        duration: 1,
+        unit: "month",
+      },
       jsonSchema: null,
+      additionalConfiguration: {},
+      mcpServerViewId: extractDataView.sId,
+      dustAppConfiguration: null,
+      internalMCPServerId: extractDataView.mcpServerId,
     };
-    actions.push(processAction);
+    jitServers.push(folderExtractServer);
   }
 
   return { jitActions: actions, jitServers };
