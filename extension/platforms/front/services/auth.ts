@@ -1,9 +1,10 @@
 import {
   DUST_API_AUDIENCE,
+  DUST_US_URL,
   FRONT_EXTENSION_URL,
   getOAuthClientID,
-  DUST_US_URL,
 } from "@app/shared/lib/config";
+import { generatePKCE, normalizeError } from "@app/shared/lib/utils";
 import type { StoredTokens } from "@app/shared/services/auth";
 import {
   AuthError,
@@ -14,7 +15,6 @@ import type { StorageService } from "@app/shared/services/storage";
 import type { Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
 import { jwtDecode } from "jwt-decode";
-import { generatePKCE } from "@app/shared/lib/utils";
 
 export class FrontAuthService extends AuthService {
   private popupWindow: Window | null = null;
@@ -99,7 +99,7 @@ export class FrontAuthService extends AuthService {
               }
             }
           } catch (e) {
-            // Ignore cross-origin errors
+            reject(normalizeError(e));
           }
         }, 100);
       });
@@ -228,12 +228,12 @@ export class FrontAuthService extends AuthService {
             resolve();
           }
         } catch (e) {
-          // Ignore cross-origin errors
+          reject(normalizeError(e));
         }
       }, 100);
     });
 
-    this.storage.clear();
+    await this.storage.clear();
     return true;
   }
 
