@@ -771,7 +771,18 @@ async function* runMultiActionsAgent(
             },
             "Received unparsable MODEL block."
           );
-          break;
+          yield {
+            type: "agent_error",
+            created: Date.now(),
+            configurationId: agentConfiguration.sId,
+            messageId: agentMessage.sId,
+            error: {
+              code: "multi_actions_error",
+              message: "Received unparsable MODEL block.",
+              metadata: null,
+            },
+          } satisfies AgentErrorEvent;
+          return;
         }
 
         output = {
@@ -815,8 +826,6 @@ async function* runMultiActionsAgent(
         } else {
           output.generation = block.message.content ?? null;
         }
-
-        break;
       }
     }
   }
