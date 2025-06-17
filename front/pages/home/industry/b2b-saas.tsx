@@ -95,7 +95,7 @@ const CustomHeroSection = () => (
                   mono
                   className="mb-6 text-xl leading-relaxed text-white sm:mb-8 sm:text-2xl lg:text-3xl xl:text-4xl"
                 >
-                  "Dust is the most impactful software we’ve adopted since
+                  "Dust is the most impactful software we've adopted since
                   building Clay."
                 </H2>
               </div>
@@ -132,14 +132,13 @@ const AIAgentsSection = () => (
           mono
           className="text-center text-3xl sm:text-4xl md:text-5xl lg:text-6xl"
         >
-          What If Your Best People Focused Only on Growth?
+          What if your teams focused on growth?
         </H2>
         <P size="lg" className="max-w-3xl text-center text-muted-foreground">
-          Accelerate your SaaS growth with AI agents designed for modern
-          business challenges. Dust handles the heavy lifting on sales
-          enablement, customer support, and market intelligence—empowering your
-          teams to focus on strategic decisions that drive growth and
-          competitive advantage.
+          Deploy agents that research information, share insights across teams,
+          and automate routine tasks—handling all the time-consuming work that
+          slows you down. Your teams focus on growing your business while
+          leveraging everything your organization has already built.
         </P>
         <div className="mt-4 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
           <Link href="/home/pricing" shallow={true}>
@@ -169,23 +168,23 @@ const AIAgentsSection = () => (
 const PAIN_POINTS = [
   {
     icon: "/static/landing/industry/d-blue.svg",
-    title: "Sales Teams Waste Time on Admin & Information Hunting",
+    title: "Trade busy work for strategic work",
     description:
-      "Sales reps spend hours researching accounts, writing RFP responses, and managing routine communications—instead of closing deals.",
+      "Stop wasting hours on research and admin tasks. Focus your team on high-value work that actually moves the business forward.",
     color: "blue",
   },
   {
     icon: "/static/landing/industry/d-red.svg",
-    title: "Critical Insights Remain Trapped in Silos",
+    title: "Stop losing customer intelligence",
     description:
-      "Valuable data scattered across tools prevents teams from making informed decisions and capitalizing on opportunities.",
+      "Surface knowledge trapped in customer calls, support threads, and account discussions—making critical customer insights instantly available to every team.",
     color: "red",
   },
   {
     icon: "/static/landing/industry/d-green.svg",
-    title: "Domain Experts Become Bottlenecks",
+    title: "Scale your best people instantly",
     description:
-      "Key knowledge holders are overwhelmed with repetitive questions, limiting their strategic impact and slowing team velocity.",
+      "Let AI handle routine questions so your experts can focus on solving the problems that really matter.",
     color: "green",
   },
 ];
@@ -228,19 +227,19 @@ const USE_CASE_FEATURES = {
         icon: "bg-red-500",
         title: "360° Account Intelligence",
         description:
-          "Merge engagement, CRM, and market signals for every account.",
+          "Merge engagement, CRM, and market signals for every account",
       },
       {
         icon: "bg-yellow-400 rounded-tr-full",
         title: "Automated Follow-Ups",
         description:
-          "Automate customer follow-ups and update your CRM using meeting transcripts and notes.",
+          "Automate customer follow-ups and update your CRM using meeting transcripts and notes",
       },
       {
         icon: "bg-blue-500 rounded-bl-full",
         title: "Prospect Questions",
         description:
-          "Automate RFP responses and prospect answers using your internal knowledge base.",
+          "Automate RFP responses and prospect answers using your internal knowledge base",
       },
       {
         icon: "bg-sky-400 rounded-br-full",
@@ -495,7 +494,7 @@ const TestimonialSection = () => (
     <div className="container mx-auto px-6 md:px-8 lg:px-12">
       <div className="flex flex-col justify-center">
         <H1 className="mb-10 text-3xl !font-normal text-white sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl">
-          "Dust is the most impactful software we’ve adopted since building
+          "Dust is the most impactful software we've adopted since building
           Clay."
         </H1>
         <div className="flex flex-col gap-4 pt-8 sm:flex-row sm:items-end sm:justify-between sm:gap-8">
@@ -561,7 +560,7 @@ export default function B2BSaaS() {
     <div className="container flex w-full flex-col gap-16 px-2 py-2 pb-12">
       <CustomHeroSection />
       <AIAgentsSection />
-      <TrustedBy />
+      <TrustedBy title="Trusted by SaaS leaders" logoSet="b2bSaas" />
       <PainPointsSection />
       <DustInActionSection />
       <ImpactMetricsSection />
@@ -570,7 +569,7 @@ export default function B2BSaaS() {
           <DemoVideoSection demoVideo={DemoVideo} />
         </div>
       </Grid>
-      <TrustedBy />
+      <TrustedBy title="Trusted by SaaS leaders" logoSet="b2bSaas" />
       <TestimonialSection />
       <Grid>
         <div className={GRID_SECTION_CLASSES}>

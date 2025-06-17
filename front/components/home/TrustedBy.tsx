@@ -56,7 +56,7 @@ interface TrustedByProps {
 
 export default function TrustedBy({
   logoSet = "default",
-  title = "Trusted by SaaS Leaders",
+  title = "Trusted by 1,000+ organizations",
 }: TrustedByProps) {
   const [isPaused, setIsPaused] = useState(false);
   const logos = LOGO_SETS[logoSet];
