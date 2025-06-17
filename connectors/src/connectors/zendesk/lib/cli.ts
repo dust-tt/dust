@@ -1,6 +1,7 @@
 import {
   extractMetadataFromDocumentUrl,
   shouldSyncTicket,
+  syncTicket,
 } from "@connectors/connectors/zendesk/lib/sync_ticket";
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import {
@@ -9,12 +10,15 @@ import {
   fetchZendeskTicket,
   getZendeskBrandSubdomain,
   getZendeskTicketCount,
+  listZendeskTicketComments,
+  listZendeskUsers,
 } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import { syncZendeskBrandActivity } from "@connectors/connectors/zendesk/temporal/activities";
 import {
   launchZendeskSyncWorkflow,
   launchZendeskTicketReSyncWorkflow,
 } from "@connectors/connectors/zendesk/temporal/client";
+import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { default as topLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import {
@@ -44,6 +48,7 @@ export const zendesk = async ({
 > => {
   const logger = topLogger.child({ majorCommand: "zendesk", command, args });
 
+  // Fetch the connector.
   let connector;
   if (args.wId && args.dsId) {
     connector = await ConnectorResource.findByDataSource({
@@ -71,6 +76,15 @@ export const zendesk = async ({
     throw new Error(`Connector ${args.connectorId} is not of type zendesk`);
   }
 
+  // Fetch the configuration.
+  const configuration = await ZendeskConfigurationResource.fetchByConnectorId(
+    connector.id
+  );
+  if (!configuration) {
+    throw new Error(`No configuration found for connector ${connector.id}`);
+  }
+
+  // Run the command.
   switch (command) {
     case "check-is-admin": {
       const user = await fetchZendeskCurrentUser(
@@ -84,14 +98,9 @@ export const zendesk = async ({
       };
     }
     case "count-tickets": {
-      const brandId = args.brandId ? Number(args.brandId) : null;
+      const brandId = args.brandId ?? null;
       if (!brandId) {
         throw new Error(`Missing --brandId argument`);
-      }
-      const configuration =
-        await ZendeskConfigurationResource.fetchByConnectorId(connector.id);
-      if (!configuration) {
-        throw new Error(`No configuration found for connector ${connector.id}`);
       }
       const { retentionPeriodDays } = configuration;
 
@@ -130,12 +139,6 @@ export const zendesk = async ({
       return { success: true };
     }
     case "fetch-ticket": {
-      const configuration =
-        await ZendeskConfigurationResource.fetchByConnectorId(connector.id);
-      if (!configuration) {
-        throw new Error(`No configuration found for connector ${connector.id}`);
-      }
-
       const { accessToken, subdomain } =
         await getZendeskSubdomainAndAccessToken(connector.connectionId);
 
@@ -180,11 +183,11 @@ export const zendesk = async ({
         };
       }
 
-      const brandId = args.brandId ? Number(args.brandId) : null;
+      const brandId = args.brandId ?? null;
       if (!brandId) {
         throw new Error(`Missing --brandId argument`);
       }
-      const ticketId = args.ticketId ? Number(args.ticketId) : null;
+      const ticketId = args.ticketId ?? null;
       if (!ticketId) {
         throw new Error(`Missing --ticketId argument`);
       }
@@ -215,7 +218,7 @@ export const zendesk = async ({
       };
     }
     case "fetch-brand": {
-      const brandId = args.brandId ? args.brandId : null;
+      const brandId = args.brandId ?? null;
       if (!brandId) {
         throw new Error(`Missing --brandId argument`);
       }
@@ -266,7 +269,7 @@ export const zendesk = async ({
     // Resyncs the metadata of a brand already in DB.
     // Can be used to sync the data_sources_folders relative to the brand.
     case "resync-brand-metadata": {
-      const brandId = args.brandId ? args.brandId : null;
+      const brandId = args.brandId ?? null;
       if (!brandId) {
         throw new Error(`Missing --brandId argument`);
       }
@@ -275,6 +278,91 @@ export const zendesk = async ({
         brandId,
         currentSyncDateMs: Date.now(),
       });
+      return { success: true };
+    }
+    case "sync-ticket": {
+      const brandId = args.brandId ?? null;
+      if (!brandId) {
+        throw new Error(`Missing --brandId argument`);
+      }
+      const ticketId = args.ticketId ?? null;
+      if (!ticketId) {
+        throw new Error(`Missing --ticketId argument`);
+      }
+
+      const { accessToken, subdomain } =
+        await getZendeskSubdomainAndAccessToken(connector.connectionId);
+
+      const brandSubdomain = await getZendeskBrandSubdomain({
+        connectorId: connector.id,
+        brandId,
+        subdomain,
+        accessToken,
+      });
+
+      const ticket = await fetchZendeskTicket({
+        accessToken,
+        ticketId,
+        brandSubdomain,
+      });
+      if (!ticket) {
+        throw new Error(`Ticket ${ticketId} not found`);
+      }
+
+      if (!shouldSyncTicket(ticket, configuration)) {
+        logger.info(
+          { ticketId, brandId, status: ticket.status },
+          "Ticket should not be synced based on status and configuration."
+        );
+        return { success: true };
+      }
+
+      const comments = await listZendeskTicketComments({
+        accessToken,
+        brandSubdomain,
+        ticketId,
+      });
+
+      const userIds = Array.from(
+        new Set(
+          [
+            ticket.requester_id,
+            ticket.assignee_id,
+            ticket.submitter_id,
+            ...comments.map((comment) => comment.author_id),
+          ].filter(Boolean)
+        )
+      );
+
+      const users = await listZendeskUsers({
+        accessToken,
+        brandSubdomain,
+        userIds,
+      });
+
+      const dataSourceConfig = dataSourceConfigFromConnector(connector);
+
+      await syncTicket({
+        ticket,
+        connector,
+        configuration,
+        brandId,
+        currentSyncDateMs: Date.now(),
+        dataSourceConfig,
+        loggerArgs: {
+          dataSourceId: dataSourceConfig.dataSourceId,
+          provider: "zendesk",
+          workspaceId: dataSourceConfig.workspaceId,
+        },
+        forceResync: args.forceResync === "true",
+        comments,
+        users,
+      });
+
+      logger.info(
+        { ticketId, brandId, connectorId: connector.id },
+        "Successfully synced single ticket"
+      );
       return { success: true };
     }
   }
