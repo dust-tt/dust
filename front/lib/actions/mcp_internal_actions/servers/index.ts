@@ -49,7 +49,7 @@ export async function getInternalMCPServer(
     case "query_tables":
       return tablesQueryServer(auth, agentLoopContext);
     case "query_tables_v2":
-      return tablesQueryServerV2(auth, agentLoopContext);
+      return tablesQueryServerV2(auth);
     case "primitive_types_debugger":
       return primitiveTypesDebuggerServer();
     case "think":

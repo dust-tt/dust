@@ -8,6 +8,8 @@ import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
 import type { CoreAPIDataSourceDocumentSection } from "@app/types";
 
+export { generateCSVSnippet } from "@app/lib/api/csv";
+
 /**
  * Generate a plain text file.
  * Save the file to the database and return it.
@@ -51,6 +53,33 @@ export async function generatePlainTextFile(
 }
 
 /**
+ * Generate CSV output from results.
+ * Returns the CSV content, content type, and filename.
+ */
+export async function generateCSVOutput(
+  title: string,
+  results: Array<CSVRecord>
+): Promise<{
+  csvOutput: string;
+  contentType: "text/csv" | "text/plain";
+  fileName: string;
+}> {
+  if (results.length > 0) {
+    return {
+      csvOutput: await toCsv(results),
+      contentType: "text/csv",
+      fileName: `${title}.csv`,
+    };
+  } else {
+    return {
+      csvOutput: "The query produced no results.",
+      contentType: "text/plain",
+      fileName: `${title}.txt`,
+    };
+  }
+}
+
+/**
  * Generate a CSV file and a snippet of the file.
  * Save the file to the database and return the file and the snippet.
  */
@@ -72,26 +101,11 @@ export async function generateCSVFileAndSnippet(
   const workspace = auth.getNonNullableWorkspace();
   const user = auth.user();
 
-  const {
-    csvOutput,
-    contentType,
-    fileName,
-  }: {
-    csvOutput: string;
-    contentType: "text/csv" | "text/plain";
-    fileName: string;
-  } =
-    results.length > 0
-      ? {
-          csvOutput: await toCsv(results),
-          contentType: "text/csv",
-          fileName: `${title}.csv`,
-        }
-      : {
-          csvOutput: "The query produced no results.",
-          contentType: "text/plain",
-          fileName: `${title}.txt`,
-        };
+  const { csvOutput, contentType, fileName } = await generateCSVOutput(
+    title,
+    results
+  );
+
   const csvFile = await FileResource.makeNew({
     workspaceId: workspace.id,
     userId: user?.id ?? null,
@@ -229,6 +243,35 @@ export async function uploadFileToConversationDataSource({
 }
 
 /**
+ * Generate JSON output and snippet from data.
+ */
+export function generateJSONOutput(
+  data: unknown
+): {
+  jsonOutput: string;
+  jsonSnippet: string;
+} {
+  const jsonOutput = JSON.stringify(data, null, 2);
+
+  let jsonSnippet = "";
+  if (Array.isArray(data)) {
+    const displayItems = data.slice(0, 5);
+    const remainingCount = data.length > 5 ? data.length - 5 : 0;
+    jsonSnippet = JSON.stringify(displayItems, null, 2);
+    if (remainingCount > 0) {
+      jsonSnippet += `\n\n... ${remainingCount} more items`;
+    }
+  } else {
+    jsonSnippet = JSON.stringify(data, null, 2);
+    if (jsonSnippet.length > 1000) {
+      jsonSnippet = jsonSnippet.substring(0, 1000) + "... (truncated)";
+    }
+  }
+
+  return { jsonOutput, jsonSnippet };
+}
+
+/**
  * Generate a JSON file and a snippet of the file.
  * Save the file to the database and return the file and the snippet.
  */
@@ -250,7 +293,8 @@ export async function generateJSONFileAndSnippet(
   const workspace = auth.getNonNullableWorkspace();
   const user = auth.user();
 
-  const jsonOutput = JSON.stringify(data, null, 2);
+  const { jsonOutput, jsonSnippet } = generateJSONOutput(data);
+
   const jsonFile = await FileResource.makeNew({
     workspaceId: workspace.id,
     userId: user?.id ?? null,
@@ -262,25 +306,6 @@ export async function generateJSONFileAndSnippet(
       conversationId,
     },
   });
-
-  // Generate a snippet of the JSON for display in the conversation
-  // The snippet will show only the first few entries if it's an array
-  // or a truncated version if it's an object
-  let jsonSnippet = "";
-  if (Array.isArray(data)) {
-    const displayItems = data.slice(0, 5);
-    const remainingCount = data.length > 5 ? data.length - 5 : 0;
-    jsonSnippet = JSON.stringify(displayItems, null, 2);
-    if (remainingCount > 0) {
-      jsonSnippet += `\n\n... ${remainingCount} more items`;
-    }
-  } else {
-    jsonSnippet = JSON.stringify(data, null, 2);
-    // Truncate if too long
-    if (jsonSnippet.length > 1000) {
-      jsonSnippet = jsonSnippet.substring(0, 1000) + "... (truncated)";
-    }
-  }
 
   await processAndStoreFile(auth, {
     file: jsonFile,

@@ -6,16 +6,14 @@ import { z } from "zod";
 
 import { getDustAppRunResultsFileTitle } from "@app/components/actions/dust_app_run/utils";
 import {
-  generateCSVFileAndSnippet,
-  generatePlainTextFile,
-  uploadFileToConversationDataSource,
+  generateCSVOutput,
+  generateCSVSnippet,
 } from "@app/lib/actions/action_file_helpers";
 import { DUST_CONVERSATION_HISTORY_MAGIC_INPUT_KEY } from "@app/lib/actions/constants";
 import type {
   ServerSideMCPServerConfigurationType,
   ServerSideMCPToolConfigurationType,
 } from "@app/lib/actions/mcp";
-import type { ToolGeneratedFileType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { AgentLoopRunContextType } from "@app/lib/actions/types";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -128,12 +126,28 @@ async function prepareAppContext(
 }
 
 async function processDustFileOutput(
-  auth: Authenticator,
   sanitizedOutput: DustFileOutput,
-  conversation: any,
   appName: string
-): Promise<{ type: "resource"; resource: ToolGeneratedFileType }[]> {
-  const content: { type: "resource"; resource: ToolGeneratedFileType }[] = [];
+): Promise<
+  {
+    type: "resource";
+    resource: {
+      uri: string;
+      name: string;
+      mimeType: string;
+      blob: string;
+    };
+  }[]
+> {
+  const content: {
+    type: "resource";
+    resource: {
+      uri: string;
+      name: string;
+      mimeType: string;
+      blob: string;
+    };
+  }[] = [];
 
   const containsValidStructuredOutput = (
     output: DustFileOutput
@@ -174,27 +188,25 @@ async function processDustFileOutput(
       resultsFileContentType: "text/csv",
     });
 
-    const { csvFile } = await generateCSVFileAndSnippet(auth, {
-      title: fileTitle,
-      conversationId: conversation.sId,
-      results: sanitizedOutput.__dust_file?.content ?? [],
+    const { csvOutput, contentType, fileName } = await generateCSVOutput(
+      fileTitle,
+      sanitizedOutput.__dust_file?.content ?? []
+    );
+
+    const csvSnippet = generateCSVSnippet({
+      content: csvOutput,
+      totalRecords: sanitizedOutput.__dust_file?.content.length ?? 0,
     });
 
-    await uploadFileToConversationDataSource({
-      auth,
-      file: csvFile,
-    });
+    const base64Data = Buffer.from(csvOutput).toString("base64");
 
     content.push({
       type: "resource",
       resource: {
-        mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
-        uri: `file://${csvFile.id}`,
-        fileId: csvFile.sId,
-        title: fileTitle,
-        contentType: csvFile.contentType,
-        snippet: csvFile.snippet,
-        text: `Generated CSV file: ${fileTitle}`,
+        uri: `data:${contentType};base64,${csvSnippet.substring(0, 100)}...`,
+        name: fileName,
+        mimeType: contentType,
+        blob: base64Data,
       },
     });
 
@@ -205,22 +217,16 @@ async function processDustFileOutput(
       resultsFileContentType: "text/plain",
     });
 
-    const plainTextFile = await generatePlainTextFile(auth, {
-      title: fileTitle,
-      conversationId: conversation.sId,
-      content: sanitizedOutput.__dust_file?.content ?? "",
-    });
+    const textContent = sanitizedOutput.__dust_file?.content ?? "";
+    const base64Data = Buffer.from(textContent).toString("base64");
 
     content.push({
       type: "resource",
       resource: {
-        mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
-        uri: `file://${plainTextFile.id}`,
-        fileId: plainTextFile.sId,
-        title: fileTitle,
-        contentType: plainTextFile.contentType,
-        snippet: plainTextFile.snippet,
-        text: `Generated text file: ${fileTitle}`,
+        uri: `data:text/plain;base64,${textContent.substring(0, 100)}...`,
+        name: fileTitle,
+        mimeType: "text/plain",
+        blob: base64Data,
       },
     });
 
@@ -330,7 +336,15 @@ export default async function createServer(
       async (params) => {
         const content: (
           | TextContent
-          | { type: "resource"; resource: ToolGeneratedFileType }
+          | {
+              type: "resource";
+              resource: {
+                uri: string;
+                name: string;
+                mimeType: string;
+                blob: string;
+              };
+            }
         )[] = [];
 
         params = await prepareParamsWithHistory(
@@ -409,14 +423,9 @@ export default async function createServer(
           "type" in output.__dust_file &&
           "content" in output.__dust_file;
 
-        if (
-          containsFileOutput(sanitizedOutput) &&
-          agentLoopContext.runContext?.conversation
-        ) {
+        if (containsFileOutput(sanitizedOutput)) {
           const fileContent = await processDustFileOutput(
-            auth,
             sanitizedOutput,
-            agentLoopContext.runContext.conversation,
             app.name
           );
           content.push(...fileContent);

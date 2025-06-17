@@ -23,7 +23,6 @@ import type {
   ReasoningSuccessOutputType,
   SqlQueryOutputType,
   ThinkingOutputType,
-  ToolGeneratedFileType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { isDataSourceNodeContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { isDataSourceNodeListType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
@@ -108,7 +107,11 @@ export function SqlQueryBlock({ resource }: SqlQueryBlockProps) {
 }
 
 interface ToolGeneratedFileDetailsProps {
-  resource: ToolGeneratedFileType;
+  resource: {
+    fileId: string;
+    title: string;
+    snippet: string | null;
+  };
   icon: React.ComponentType<{ className?: string }>;
   owner: LightWorkspaceType;
 }
