@@ -13,16 +13,16 @@ import type { LightAgentMessageType, LightWorkspaceType } from "@app/types";
 import { assertNever } from "@app/types";
 
 interface AgentMessageActionsProps {
-  conversationId: string;
   agentMessage: LightAgentMessageType;
+  conversationId: string;
   lastAgentStateClassification: AgentStateClassification;
   actionProgress: ActionProgressState;
   owner: LightWorkspaceType;
 }
 
 export function AgentMessageActions({
-  conversationId,
   agentMessage,
+  conversationId,
   lastAgentStateClassification,
   actionProgress,
   owner,
