@@ -61,15 +61,6 @@ import {
 
 import { DustHttpClient } from "../lib/http";
 
-const { DUST_CONNECTORS_WEBHOOKS_SECRET, CONNECTORS_PUBLIC_URL } = process.env;
-
-if (!DUST_CONNECTORS_WEBHOOKS_SECRET) {
-  throw new Error("DUST_CONNECTORS_WEBHOOKS_SECRET is not defined");
-}
-if (!CONNECTORS_PUBLIC_URL) {
-  throw new Error("CONNECTORS_PUBLIC_URL is not defined");
-}
-
 const CONCURRENCY = 1;
 
 export async function markAsCrawled(connectorId: ModelId) {
@@ -171,7 +162,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
         maxAge: 43_200_000, // Use last 12h of cache
       },
       webhook: {
-        url: `${CONNECTORS_PUBLIC_URL}/webhooks/${DUST_CONNECTORS_WEBHOOKS_SECRET}/firecrawl`,
+        url: `${apiConfig.getConnectorsPublicURL()}/webhooks/${apiConfig.getDustConnectorsWebhooksSecret()}/firecrawl`,
         metadata: {
           connectorId: String(connectorId),
         },
