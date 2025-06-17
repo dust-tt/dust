@@ -168,8 +168,8 @@ async function _getTypedChannelsUncached(
 
 export async function getChannelsToSync(connectorId: number) {
   const [remoteChannels, localChannels] = await Promise.all([
-    await getChannels(connectorId, true),
-    await SlackChannel.findAll({
+    getChannels(connectorId, true),
+    SlackChannel.findAll({
       where: {
         connectorId: connectorId,
         permission: {
