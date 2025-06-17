@@ -26,6 +26,7 @@ export function DataSourceNodeContentDetails({
   }
 
   const { metadata } = dataSourceNodeContent;
+  const { sourceUrl } = metadata;
 
   return (
     <ActionDetailsWrapper
@@ -36,12 +37,9 @@ export function DataSourceNodeContentDetails({
       <div className="flex flex-col gap-4 pl-6 pt-4">
         <div>
           <Citation
-            onClick={(() => {
-              const { sourceUrl } = metadata;
-              return sourceUrl
-                ? () => window.open(sourceUrl, "_blank")
-                : undefined;
-            })()}
+            onClick={
+              sourceUrl ? () => window.open(sourceUrl, "_blank") : undefined
+            }
             tooltip={`${metadata.parentTitle || metadata.path}${metadata.lastUpdatedAt ? ` • ${metadata.lastUpdatedAt}` : ""}`}
           >
             <CitationIcons>
