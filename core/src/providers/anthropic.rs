@@ -576,18 +576,23 @@ impl TryFrom<StreamChatResponse> for ChatResponse {
     }
 }
 
-// This code converts a ChatResponse to a ChatMessage, but only supports one tool call.
-// It takes the first tool call from the vector of AnthropicResponseContent,
-// potentially discarding others. Anthropic often returns the CoT content as a first message,
-// which gets combined with the first tool call in the resulting ChatMessage.
 impl TryFrom<ChatResponse> for AssistantChatMessage {
     type Error = anyhow::Error;
 
     fn try_from(cr: ChatResponse) -> Result<Self, Self::Error> {
-        let text_content = cr.content.iter().find_map(|item| match item.get_text() {
-            Some(text) => Some(text.clone()),
-            _ => None,
-        });
+        let text_content = cr
+            .content
+            .iter()
+            .filter_map(|item| item.get_text())
+            .filter(|text| !text.is_empty())
+            .cloned()
+            .collect::<Vec<String>>();
+
+        let text_content = if text_content.is_empty() {
+            None
+        } else {
+            Some(text_content.join(""))
+        };
 
         let tool_uses: Vec<&ToolUse> = cr
             .content
