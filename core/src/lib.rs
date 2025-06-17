@@ -138,6 +138,7 @@ pub mod oauth {
         pub mod google_drive;
         pub mod hubspot;
         pub mod intercom;
+        pub mod jira;
         pub mod mcp;
         pub mod microsoft;
         pub mod mock;

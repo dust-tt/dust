@@ -9,6 +9,7 @@ import { GongOAuthProvider } from "@app/lib/api/oauth/providers/gong";
 import { GoogleDriveOAuthProvider } from "@app/lib/api/oauth/providers/google_drive";
 import { HubspotOAuthProvider } from "@app/lib/api/oauth/providers/hubspot";
 import { IntercomOAuthProvider } from "@app/lib/api/oauth/providers/intercom";
+import { JiraOAuthProvider } from "@app/lib/api/oauth/providers/jira";
 import { MCPOAuthProvider } from "@app/lib/api/oauth/providers/mcp";
 import { MicrosoftOAuthProvider } from "@app/lib/api/oauth/providers/microsoft";
 import { NotionOAuthProvider } from "@app/lib/api/oauth/providers/notion";
@@ -49,6 +50,7 @@ const _PROVIDER_STRATEGIES: Record<OAuthProvider, BaseOAuthStrategyProvider> = {
   google_drive: new GoogleDriveOAuthProvider(),
   hubspot: new HubspotOAuthProvider(),
   intercom: new IntercomOAuthProvider(),
+  jira: new JiraOAuthProvider(),
   mcp: new MCPOAuthProvider(),
   microsoft: new MicrosoftOAuthProvider(),
   notion: new NotionOAuthProvider(),

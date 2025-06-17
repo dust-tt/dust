@@ -8,6 +8,7 @@ use crate::oauth::{
         microsoft::MicrosoftConnectionProvider, mock::MockConnectionProvider,
         notion::NotionConnectionProvider, salesforce::SalesforceConnectionProvider,
         slack::SlackConnectionProvider, zendesk::ZendeskConnectionProvider,
+        jira::JiraConnectionProvider,
     },
     store::OAuthStore,
 };
@@ -94,6 +95,7 @@ pub enum ConnectionProvider {
     GoogleDrive,
     Gmail,
     Intercom,
+    Jira,
     Microsoft,
     Notion,
     Slack,
@@ -229,6 +231,7 @@ pub fn provider(t: ConnectionProvider) -> Box<dyn Provider + Sync + Send> {
         ConnectionProvider::GoogleDrive => Box::new(GoogleDriveConnectionProvider::new()),
         ConnectionProvider::Gmail => Box::new(GmailConnectionProvider::new()),
         ConnectionProvider::Intercom => Box::new(IntercomConnectionProvider::new()),
+        ConnectionProvider::Jira => Box::new(JiraConnectionProvider::new()),
         ConnectionProvider::Microsoft => Box::new(MicrosoftConnectionProvider::new()),
         ConnectionProvider::Notion => Box::new(NotionConnectionProvider::new()),
         ConnectionProvider::Slack => Box::new(SlackConnectionProvider::new()),

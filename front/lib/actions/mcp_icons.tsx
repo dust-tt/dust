@@ -20,6 +20,7 @@ import {
   GithubLogo,
   GmailLogo,
   HubspotLogo,
+  JiraLogo,
   NotionLogo,
   SalesforceLogo,
 } from "@dust-tt/sparkle";
@@ -49,6 +50,7 @@ export const InternalActionIcons = {
   ActionTimeIcon,
   GithubLogo,
   HubspotLogo,
+  JiraLogo,
   CommandLineIcon,
   NotionLogo,
   SalesforceLogo,

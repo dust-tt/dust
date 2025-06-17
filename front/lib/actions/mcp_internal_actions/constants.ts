@@ -23,6 +23,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "hubspot",
   "image_generation",
   "include_data",
+  "jira",
   "missing_action_catcher",
   "notion",
   "primitive_types_debugger",
@@ -219,6 +220,13 @@ export const INTERNAL_MCP_SERVERS: Record<
       update_event: "low",
       delete_event: "low",
       check_availability: "never_ask",
+    },
+  },
+  jira: {
+    id: 17,
+    availability: "manual",
+    isRestricted: (plan, featureFlags) => {
+      return featureFlags.includes("jira_tool");
     },
   },
   search: {

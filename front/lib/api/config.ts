@@ -173,6 +173,9 @@ const config = {
   getOAuthHubspotClientId: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_HUBSPOT_CLIENT_ID");
   },
+  getOAuthJiraClientId: (): string => {
+    return EnvironmentConfig.getEnvVariable("OAUTH_JIRA_CLIENT_ID");
+  },
 
   // Text extraction.
   getTextExtractionUrl: (): string => {
