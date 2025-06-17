@@ -16,39 +16,92 @@ import type { Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
 import { jwtDecode } from "jwt-decode";
 
-export class FrontAuthService extends AuthService {
-  private popupWindow: Window | null = null;
+const POPUP_CONFIG = {
+  WIDTH: 600,
+  HEIGHT: 700,
+  CHECK_INTERVAL_MS: 100,
+} as const;
 
+const DEFAULT_TOKEN_EXPIRY = 5 * 6; // 5 minutes in seconds
+
+interface PopupResult<T = void> {
+  data?: T;
+  error?: Error;
+}
+
+const openAndWaitForPopup = async <T>(
+  url: string,
+  title: string,
+  checkForResult: (popup: Window) => PopupResult<T> | null
+): Promise<PopupResult<T>> => {
+  const left = window.screenX + (window.outerWidth - POPUP_CONFIG.WIDTH) / 2;
+  const top = window.screenY + (window.outerHeight - POPUP_CONFIG.HEIGHT) / 2;
+
+  const popup = window.open(
+    url,
+    title,
+    `width=${POPUP_CONFIG.WIDTH},height=${POPUP_CONFIG.HEIGHT},left=${left},top=${top}`
+  );
+
+  if (!popup) {
+    return { error: new Error("Popup blocked") };
+  }
+
+  return new Promise((resolve) => {
+    const checkPopup = setInterval(() => {
+      if (popup.closed) {
+        clearInterval(checkPopup);
+        resolve({ error: new Error("Authentication cancelled") });
+      }
+
+      try {
+        const result = checkForResult(popup);
+        if (result) {
+          clearInterval(checkPopup);
+          popup.close();
+          resolve(result);
+        }
+      } catch (e) {
+        // Ignore errors accessing popup location (cross-origin)
+        console.log("[Dust Auth] Error accessing popup location:", e);
+      }
+    }, POPUP_CONFIG.CHECK_INTERVAL_MS);
+  });
+};
+
+export class FrontAuthService extends AuthService {
   constructor(storage: StorageService) {
     super(storage);
   }
 
   private async openAuthPopup(
     options: Record<string, string>
-  ): Promise<Window> {
-    const width = 600;
-    const height = 700;
-    const left = window.screenX + (window.outerWidth - width) / 2;
-    const top = window.screenY + (window.outerHeight - height) / 2;
-
+  ): Promise<{ code: string }> {
     const queryString = new URLSearchParams(options).toString();
     const authUrl = `${DUST_US_URL}/api/v1/auth/authorize?${queryString}`;
 
-    console.log("[WorkOS Auth] Opening popup with URL:", authUrl);
-
-    const popup = window.open(
+    const result = await openAndWaitForPopup<{ code: string }>(
       authUrl,
       "WorkOS Auth",
-      `width=${width},height=${height},left=${left},top=${top}`
+      (popup) => {
+        const popupUrl = popup.location.href;
+        if (popupUrl?.includes("code=")) {
+          const code = new URL(popupUrl).searchParams.get("code");
+          return code ? { data: { code } } : null;
+        }
+        return null;
+      }
     );
 
-    if (!popup) {
-      console.log("[WorkOS Auth] Popup blocked by browser");
-      throw new Error("Popup blocked");
+    if (result.error) {
+      throw result.error;
     }
 
-    console.log("[WorkOS Auth] Popup opened successfully");
-    return popup;
+    if (!result.data?.code) {
+      throw new Error("No code received from authentication");
+    }
+
+    return result.data;
   }
 
   async login({
@@ -77,33 +130,7 @@ export class FrontAuthService extends AuthService {
       options.provider = "authkit";
       options.connection = forcedConnection ?? "";
 
-      this.popupWindow = await this.openAuthPopup(options);
-
-      // Wait for the popup to complete authentication
-      const result = await new Promise<{ code: string }>((resolve, reject) => {
-        const checkPopup = setInterval(() => {
-          if (this.popupWindow?.closed) {
-            clearInterval(checkPopup);
-            reject(new Error("Authentication cancelled"));
-          }
-
-          try {
-            // Check if we have the auth code in the popup URL
-            const popupUrl = this.popupWindow?.location.href;
-            if (popupUrl?.includes("code=")) {
-              const code = new URL(popupUrl).searchParams.get("code");
-              if (code) {
-                clearInterval(checkPopup);
-                this.popupWindow?.close();
-                resolve({ code });
-              }
-            }
-          } finally {
-            // Ignore errors accessing popup location (cross-origin)
-            // This is expected if the popup has navigated to a different domain
-          }
-        }, 100);
-      });
+      const result = await this.openAuthPopup(options);
 
       // Get the stored code verifier
       const storedCodeVerifier =
@@ -148,7 +175,7 @@ export class FrontAuthService extends AuthService {
       const tokens = await this.saveTokens({
         accessToken: data.access_token,
         refreshToken: data.refresh_token || "",
-        expiresIn: data.expires_in || 60,
+        expiresIn: DEFAULT_TOKEN_EXPIRY,
       });
 
       const claims = jwtDecode<Record<string, string>>(data.access_token);
@@ -189,53 +216,28 @@ export class FrontAuthService extends AuthService {
 
     const user = await this.getStoredUser();
     if (!user) {
-      return false;
+      return true;
     }
 
     const logoutUrl = `${user.dustDomain}/api/v1/auth/logout?${new URLSearchParams(
       queryParams
     )}`;
 
-    const width = 600;
-    const height = 700;
-    const left = window.screenX + (window.outerWidth - width) / 2;
-    const top = window.screenY + (window.outerHeight - height) / 2;
-
-    const popup = window.open(
+    const result = await openAndWaitForPopup<void>(
       logoutUrl,
       "Logout",
-      `width=${width},height=${height},left=${left},top=${top}`
+      (popup) => {
+        const popupUrl = popup.location.href;
+        return popupUrl.includes(FRONT_EXTENSION_URL)
+          ? { data: undefined }
+          : null;
+      }
     );
 
-    if (!popup) {
-      console.log("[Logout] Popup blocked by browser");
-      throw new Error("Popup blocked");
+    if (result.error) {
+      throw result.error;
     }
 
-    // Wait for the popup to complete logout
-    await new Promise<void>((resolve) => {
-      const checkPopup = setInterval(() => {
-        if (popup.closed) {
-          clearInterval(checkPopup);
-          resolve();
-        }
-
-        try {
-          // Check if we have reached the returnTo URL
-          const popupUrl = popup.location.href;
-          if (popupUrl.includes(FRONT_EXTENSION_URL)) {
-            clearInterval(checkPopup);
-            popup.close();
-            resolve();
-          }
-        } finally {
-          // Ignore errors accessing popup location (cross-origin)
-          // This is expected if the popup has navigated to a different domain
-        }
-      }, 100);
-    });
-
-    await this.storage.clear();
     return true;
   }
 
@@ -251,7 +253,6 @@ export class FrontAuthService extends AuthService {
   }
 
   async refreshToken(): Promise<Result<StoredTokens, AuthError>> {
-    console.log("[refreshToken] Attempting to refresh token...");
     try {
       const tokenParams: Record<string, string> = {
         grant_type: "refresh_token",
@@ -292,12 +293,10 @@ export class FrontAuthService extends AuthService {
       const storedTokens = await this.saveTokens({
         accessToken: data.access_token,
         refreshToken: data.refresh_token || "",
-        expiresIn: data.expires_in || 60,
+        expiresIn: DEFAULT_TOKEN_EXPIRY,
       });
-      console.log("[refreshToken] Tokens saved successfully");
       return new Ok(storedTokens);
     } catch (error) {
-      console.error("[refreshToken] Error during token refresh:");
       return new Err(
         new AuthError("invalid_oauth_token_error", error?.toString())
       );
