@@ -323,7 +323,6 @@ function createServer(
         },
       });
 
-      // TODO(mcp) probably do the same for the section file
       // Check if we should generate a section JSON file.
       const shouldGenerateSectionFile = results.some((result) =>
         Object.values(result).some(
