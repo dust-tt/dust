@@ -590,8 +590,7 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
       );
     }
     await connector.markAsPaused();
-    await terminateAllWorkflowsForConnectorId(this.connectorId);
-    return new Ok(undefined);
+    return this.stop();
   }
 
   async unpause(): Promise<Result<undefined, Error>> {
@@ -602,26 +601,7 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
       );
     }
     await connector.markAsUnpaused();
-    const r = await launchMicrosoftFullSyncWorkflow(this.connectorId);
-    if (r.isErr()) {
-      return r;
-    }
-
-    const gcRes = await launchMicrosoftGarbageCollectionWorkflow(
-      this.connectorId
-    );
-
-    if (gcRes.isErr()) {
-      return gcRes;
-    }
-
-    const incrementalSync = await launchMicrosoftIncrementalSyncWorkflow(
-      this.connectorId
-    );
-    if (incrementalSync.isErr()) {
-      return incrementalSync;
-    }
-    return new Ok(undefined);
+    return this.resume();
   }
 
   async garbageCollect(): Promise<Result<string, Error>> {

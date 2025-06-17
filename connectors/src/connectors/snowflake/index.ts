@@ -368,12 +368,7 @@ export class SnowflakeConnectorManager extends BaseConnectorManager<null> {
     }
 
     await connector.markAsPaused();
-    const stopRes = await this.stop();
-    if (stopRes.isErr()) {
-      return stopRes;
-    }
-
-    return new Ok(undefined);
+    return this.stop();
   }
 
   async unpause(): Promise<Result<undefined, Error>> {
@@ -387,12 +382,7 @@ export class SnowflakeConnectorManager extends BaseConnectorManager<null> {
     }
 
     await connector.markAsUnpaused();
-    const r = await launchSnowflakeSyncWorkflow(this.connectorId);
-    if (r.isErr()) {
-      return r;
-    }
-
-    return new Ok(undefined);
+    return this.resume();
   }
 
   async setConfigurationKey(): Promise<Result<void, Error>> {

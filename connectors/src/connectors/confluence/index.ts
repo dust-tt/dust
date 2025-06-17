@@ -416,12 +416,7 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
     }
 
     await connector.markAsPaused();
-    const r = await stopConfluenceSyncWorkflow(this.connectorId);
-    if (r.isErr()) {
-      return r;
-    }
-
-    return new Ok(undefined);
+    return this.stop();
   }
 
   async unpause(): Promise<Result<undefined, Error>> {
@@ -432,12 +427,7 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
     }
 
     await connector.markAsUnpaused();
-    const r = await launchConfluenceSyncWorkflow(this.connectorId, null);
-    if (r.isErr()) {
-      return r;
-    }
-
-    return new Ok(undefined);
+    return this.resume();
   }
 
   async retrieveContentNodeParents({

@@ -343,12 +343,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
     }
 
     await connector.markAsPaused();
-    const stopRes = await this.stop();
-    if (stopRes.isErr()) {
-      return stopRes;
-    }
-
-    return new Ok(undefined);
+    return this.stop();
   }
 
   async unpause(): Promise<Result<undefined, Error>> {
@@ -366,12 +361,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
     }
 
     await connector.markAsUnpaused();
-    const r = await this.resume();
-    if (r.isErr()) {
-      return r;
-    }
-
-    return new Ok(undefined);
+    return this.resume();
   }
 
   async sync({

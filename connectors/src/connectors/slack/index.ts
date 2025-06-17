@@ -703,8 +703,7 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
       );
     }
     await connector.markAsPaused();
-    await terminateAllWorkflowsForConnectorId(this.connectorId);
-    return new Ok(undefined);
+    return this.stop();
   }
 
   async unpause(): Promise<Result<undefined, Error>> {
@@ -723,10 +722,15 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
   }
 
   async stop(): Promise<Result<undefined, Error>> {
-    logger.info(
-      { connectorId: this.connectorId },
-      `Stopping Slack connector is a no-op.`
-    );
+    const connector = await ConnectorResource.fetchById(this.connectorId);
+    if (!connector) {
+      return new Err(
+        new Error(`Connector not found with id ${this.connectorId}`)
+      );
+    }
+
+    await terminateAllWorkflowsForConnectorId(this.connectorId);
+
     return new Ok(undefined);
   }
 

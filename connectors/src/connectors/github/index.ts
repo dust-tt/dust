@@ -589,8 +589,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
       return new Err(new Error("Connector not found"));
     }
     await connector.markAsPaused();
-    await terminateAllWorkflowsForConnectorId(this.connectorId);
-    return new Ok(undefined);
+    return this.stop();
   }
 
   async unpause(): Promise<Result<undefined, Error>> {
@@ -600,12 +599,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
       return new Err(new Error("Connector not found"));
     }
     await connector.markAsUnpaused();
-    await launchGithubFullSyncWorkflow({
-      connectorId: this.connectorId,
-      syncCodeOnly: false,
-    });
-
-    return new Ok(undefined);
+    return this.resume();
   }
 
   async setPermissions(): Promise<Result<void, Error>> {

@@ -265,11 +265,7 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
       throw new Error("Connector not found.");
     }
     await connector.markAsPaused();
-    const stopRes = await stopCrawlWebsiteWorkflow(this.connectorId);
-    if (stopRes.isErr()) {
-      return stopRes;
-    }
-    return new Ok(undefined);
+    return this.stop();
   }
 
   async unpause(): Promise<Result<undefined, Error>> {
@@ -278,13 +274,7 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
       throw new Error("Connector not found.");
     }
     await connector.markAsUnpaused();
-
-    const r = await this.resume();
-    if (r.isErr()) {
-      return r;
-    }
-
-    return new Ok(undefined);
+    return this.resume();
   }
 
   async configure({

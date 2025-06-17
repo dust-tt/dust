@@ -783,8 +783,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
       );
     }
     await connector.markAsPaused();
-    await terminateAllWorkflowsForConnectorId(this.connectorId);
-    return new Ok(undefined);
+    return this.stop();
   }
 
   async unpause(): Promise<Result<undefined, Error>> {
@@ -795,21 +794,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
       );
     }
     await connector.markAsUnpaused();
-    const r = await launchGoogleDriveFullSyncWorkflow(
-      this.connectorId,
-      null,
-      []
-    );
-    if (r.isErr()) {
-      return r;
-    }
-    const incrementalSync = await launchGoogleDriveIncrementalSyncWorkflow(
-      this.connectorId
-    );
-    if (incrementalSync.isErr()) {
-      return incrementalSync;
-    }
-    return new Ok(undefined);
+    return this.resume();
   }
 
   async stop(): Promise<Result<undefined, Error>> {

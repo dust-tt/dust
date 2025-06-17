@@ -244,9 +244,17 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
     }
 
     const dataSourceConfig = dataSourceConfigFromConnector(connector);
+    const teamsIds = await IntercomTeamModel.findAll({
+      where: {
+        connectorId: this.connectorId,
+      },
+      attributes: ["teamId"],
+    });
+    const toBeSignaledTeamIds = teamsIds.map((team) => team.teamId);
     try {
       await launchIntercomSyncWorkflow({
         connectorId: this.connectorId,
+        teamIds: toBeSignaledTeamIds,
       });
     } catch (e) {
       logger.error(
@@ -631,12 +639,7 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
     }
 
     await connector.markAsPaused();
-    const stopRes = await this.stop();
-    if (stopRes.isErr()) {
-      return stopRes;
-    }
-
-    return new Ok(undefined);
+    return this.stop();
   }
 
   async unpause(): Promise<Result<undefined, Error>> {
@@ -650,22 +653,7 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
     }
 
     await connector.markAsUnpaused();
-    const teamsIds = await IntercomTeamModel.findAll({
-      where: {
-        connectorId: this.connectorId,
-      },
-      attributes: ["teamId"],
-    });
-    const toBeSignaledTeamIds = teamsIds.map((team) => team.teamId);
-    const r = await launchIntercomSyncWorkflow({
-      connectorId: this.connectorId,
-      teamIds: toBeSignaledTeamIds,
-    });
-    if (r.isErr()) {
-      return r;
-    }
-
-    return new Ok(undefined);
+    return this.resume();
   }
 
   async garbageCollect(): Promise<Result<string, Error>> {

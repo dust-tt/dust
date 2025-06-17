@@ -332,12 +332,7 @@ export class SalesforceConnectorManager extends BaseConnectorManager<null> {
     }
 
     await connector.markAsPaused();
-    const stopRes = await this.stop();
-    if (stopRes.isErr()) {
-      return stopRes;
-    }
-
-    return new Ok(undefined);
+    return this.stop();
   }
 
   async unpause(): Promise<Result<undefined, Error>> {
@@ -354,12 +349,7 @@ export class SalesforceConnectorManager extends BaseConnectorManager<null> {
       return new Err(new Error("Connector not found"));
     }
     await connector.markAsUnpaused();
-    const r = await this.resume();
-    if (r.isErr()) {
-      return r;
-    }
-
-    return new Ok(undefined);
+    return this.resume();
   }
 
   async setConfigurationKey(): Promise<Result<void, Error>> {
