@@ -124,7 +124,7 @@ export async function renderConversationForModel(
           if (
             shadowReadRawContents.length === rawContents.length &&
             shadowReadRawContents.every(
-              (sc, i) => sc.content === rawContents[i].content
+              (sc, i) => sc.content.trim() === rawContents[i].content.trim()
             )
           ) {
             logger.info(
