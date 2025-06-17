@@ -1,8 +1,8 @@
 import {
   Button,
   DataTable,
-  FolderIcon,
   Spinner,
+  UserGroupIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import type { CellContext, PaginationState } from "@tanstack/react-table";
@@ -27,7 +27,7 @@ const groupColumns = [
     accessorKey: "name",
     header: "Directory name",
     cell: (info: GroupInfo) => (
-      <DataTable.CellContent icon={FolderIcon}>
+      <DataTable.CellContent icon={UserGroupIcon}>
         {info.row.original.name}
       </DataTable.CellContent>
     ),
