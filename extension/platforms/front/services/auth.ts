@@ -22,7 +22,7 @@ const POPUP_CONFIG = {
   CHECK_INTERVAL_MS: 100,
 } as const;
 
-const DEFAULT_TOKEN_EXPIRY = 5 * 6; // 5 minutes in seconds
+const DEFAULT_TOKEN_EXPIRY = 5 * 60; // 5 minutes in seconds
 
 interface PopupResult<T = void> {
   data?: T;
