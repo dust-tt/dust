@@ -115,7 +115,7 @@ async function lookupInOtherRegion(
 
 export async function lookupAuthInOtherRegion(
   userLookup: UserLookup
-): Promise<Result<"auth0" | "workos", Error>> {
+): Promise<Result<"auth0" | "workos" | undefined, Error>> {
   const { url } = config.getOtherRegionInfo();
 
   const body: UserLookupRequestBodyType = {
@@ -178,21 +178,57 @@ export async function checkUserRegionAffinity(
   return new Ok({ hasAffinity: false });
 }
 
+// TODO(workos): Temporary list of configuration ids.
+const blacklistedWorkspaceIds = [
+  "109a6a027a",
+  "14bba9443a",
+  "2WJ4Akk9tx",
+  "47aae7df59",
+  "49f9ef0520",
+  "5494230b3c",
+  "5b5f30b499",
+  "5sV32qY0CX",
+  "CZMLkRTiAy",
+  "ee616a51bc",
+  "jaeLj27yy8",
+  "KasY4WHFNf",
+  "PtjoV2S5nS",
+  "qKNiPCOITw",
+  "QPGtsLvpcZ",
+  "sqYRp9mFBN",
+  "T6h6dqbS2C",
+  "WUuX9VBqwF",
+  "x4HNFfZpnq",
+  "Xk3jvKCLjU",
+  "ba367d3014",
+  "ed3dc1294e",
+  "ef6fba0c62",
+  "GaH4W8m6q3",
+  "jM9Th6kS0J",
+  "nMirSWe3CL",
+  "qCZ9IFeZoC",
+  "VALNLBpCNq",
+  "SB0HhCoUEW",
+  "VzmXb9Egzu",
+];
+
 export async function lookupAuth(
   userLookup: UserLookup
-): Promise<"auth0" | "workos"> {
+): Promise<"auth0" | "workos" | undefined> {
   const workspaceHasDomain = await findWorkspaceWithVerifiedDomain({
     email: userLookup.email,
     email_verified: true,
   });
   const workspace = workspaceHasDomain?.workspace;
-  if (workspace) {
+
+  if (workspace && blacklistedWorkspaceIds.includes(workspace?.sId)) {
     const ff = await getFeatureFlags(renderLightWorkspaceType({ workspace }));
     // Workspace is switched to workos: use workos
     if (ff.includes("workos")) {
       return "workos";
     }
+    return "auth0";
   }
 
-  return "auth0";
+  return undefined;
 }

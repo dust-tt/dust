@@ -25,7 +25,7 @@ export type UserLookupResponse = {
 };
 
 export type AuthLookupResponse = {
-  auth: "auth0" | "workos";
+  auth: "auth0" | "workos" | undefined;
 };
 
 const ExternalUserCodec = t.type({
