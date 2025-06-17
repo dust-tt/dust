@@ -1,6 +1,7 @@
 import {
   extractMetadataFromDocumentUrl,
   shouldSyncTicket,
+  syncTicket,
 } from "@connectors/connectors/zendesk/lib/sync_ticket";
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import {
@@ -9,12 +10,15 @@ import {
   fetchZendeskTicket,
   getZendeskBrandSubdomain,
   getZendeskTicketCount,
+  listZendeskTicketComments,
+  listZendeskUsers,
 } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import { syncZendeskBrandActivity } from "@connectors/connectors/zendesk/temporal/activities";
 import {
   launchZendeskSyncWorkflow,
   launchZendeskTicketReSyncWorkflow,
 } from "@connectors/connectors/zendesk/temporal/client";
+import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { default as topLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import {
@@ -84,7 +88,7 @@ export const zendesk = async ({
       };
     }
     case "count-tickets": {
-      const brandId = args.brandId ? Number(args.brandId) : null;
+      const brandId = args.brandId ?? null;
       if (!brandId) {
         throw new Error(`Missing --brandId argument`);
       }
@@ -180,11 +184,11 @@ export const zendesk = async ({
         };
       }
 
-      const brandId = args.brandId ? Number(args.brandId) : null;
+      const brandId = args.brandId ?? null;
       if (!brandId) {
         throw new Error(`Missing --brandId argument`);
       }
-      const ticketId = args.ticketId ? Number(args.ticketId) : null;
+      const ticketId = args.ticketId ?? null;
       if (!ticketId) {
         throw new Error(`Missing --ticketId argument`);
       }
@@ -215,7 +219,7 @@ export const zendesk = async ({
       };
     }
     case "fetch-brand": {
-      const brandId = args.brandId ? args.brandId : null;
+      const brandId = args.brandId ?? null;
       if (!brandId) {
         throw new Error(`Missing --brandId argument`);
       }
@@ -266,7 +270,7 @@ export const zendesk = async ({
     // Resyncs the metadata of a brand already in DB.
     // Can be used to sync the data_sources_folders relative to the brand.
     case "resync-brand-metadata": {
-      const brandId = args.brandId ? args.brandId : null;
+      const brandId = args.brandId ?? null;
       if (!brandId) {
         throw new Error(`Missing --brandId argument`);
       }
@@ -275,6 +279,101 @@ export const zendesk = async ({
         brandId,
         currentSyncDateMs: Date.now(),
       });
+      return { success: true };
+    }
+    case "sync-single-ticket": {
+      const brandId = args.brandId ?? null;
+      if (!brandId) {
+        throw new Error(`Missing --brandId argument`);
+      }
+      const ticketId = args.ticketId ?? null;
+      if (!ticketId) {
+        throw new Error(`Missing --ticketId argument`);
+      }
+
+      const configuration =
+        await ZendeskConfigurationResource.fetchByConnectorId(connector.id);
+      if (!configuration) {
+        throw new Error(`No configuration found for connector ${connector.id}`);
+      }
+
+      const { accessToken, subdomain } =
+        await getZendeskSubdomainAndAccessToken(connector.connectionId);
+
+      const brandSubdomain = await getZendeskBrandSubdomain({
+        connectorId: connector.id,
+        brandId,
+        subdomain,
+        accessToken,
+      });
+
+      // Fetch the ticket
+      const ticket = await fetchZendeskTicket({
+        accessToken,
+        ticketId,
+        brandSubdomain,
+      });
+
+      if (!ticket) {
+        throw new Error(`Ticket ${ticketId} not found`);
+      }
+
+      // Check if ticket should be synced
+      if (!shouldSyncTicket(ticket, configuration)) {
+        logger.info(
+          { ticketId, brandId, status: ticket.status },
+          "Ticket should not be synced based on configuration"
+        );
+        return { success: true };
+      }
+
+      // Fetch comments
+      const comments = await listZendeskTicketComments({
+        accessToken,
+        brandSubdomain,
+        ticketId,
+      });
+
+      // Get unique user IDs from ticket and comments
+      const userIds = Array.from(
+        new Set(
+          [
+            ticket.requester_id,
+            ticket.assignee_id,
+            ticket.submitter_id,
+            ...comments.map((comment) => comment.author_id),
+          ].filter(Boolean)
+        )
+      );
+
+      // Fetch users
+      const users = await listZendeskUsers({
+        accessToken,
+        brandSubdomain,
+        userIds,
+      });
+
+      // Get data source config
+      const dataSourceConfig = dataSourceConfigFromConnector(connector);
+
+      // Sync the ticket
+      await syncTicket({
+        ticket,
+        connector,
+        configuration,
+        brandId,
+        currentSyncDateMs: Date.now(),
+        dataSourceConfig,
+        loggerArgs: { ticketId, brandId },
+        forceResync: args.forceResync === "true",
+        comments,
+        users,
+      });
+
+      logger.info(
+        { ticketId, brandId, connectorId: connector.id },
+        "Successfully synced single ticket"
+      );
       return { success: true };
     }
   }
