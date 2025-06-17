@@ -55,6 +55,7 @@ import type {
   MessageTemporaryState,
 } from "@app/lib/assistant/state/messageReducer";
 import { messageReducer } from "@app/lib/assistant/state/messageReducer";
+import { useConversationMessage } from "@app/lib/swr/conversations";
 import type {
   LightAgentMessageType,
   UserType,
@@ -68,7 +69,6 @@ import {
   isSupportedImageContentType,
   isValidScope,
 } from "@app/types";
-import { useConversationMessage } from "@app/lib/swr/conversations";
 
 interface AgentMessageProps {
   conversationId: string;
@@ -165,7 +165,6 @@ export function AgentMessage({
   const { showValidationDialog } = React.useContext(ActionValidationContext);
 
   const { mutateMessage } = useConversationMessage({
-    // Return a mutate
     conversationId,
     workspaceId: owner.sId,
     messageId: message.sId,
@@ -173,7 +172,7 @@ export function AgentMessage({
   });
 
   const onEventCallback = React.useCallback(
-    (eventStr: string) => {
+    async (eventStr: string) => {
       const eventPayload: {
         eventId: string;
         data: AgentMessageStateWithControlEvent;
@@ -201,10 +200,12 @@ export function AgentMessage({
       if (eventPayload.data.type === "end-of-stream") {
         return;
       }
-      mutateMessage();
+
+      await mutateMessage();
+
       dispatch(eventPayload.data);
     },
-    [showValidationDialog]
+    [showValidationDialog, mutateMessage]
   );
 
   useEventSource(

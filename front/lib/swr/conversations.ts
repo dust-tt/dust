@@ -12,6 +12,7 @@ import {
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import type { GetConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations";
+import type { FetchConversationMessageResponse } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/messages/[mId]";
 import type { FetchConversationParticipantsResponse } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/participants";
 import type {
   ConversationError,
@@ -20,7 +21,6 @@ import type {
   FetchConversationMessagesResponse,
   LightWorkspaceType,
 } from "@app/types";
-import { FetchConversationMessageResponse } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/messages/[mId]";
 
 export function useConversation({
   conversationId,
@@ -274,12 +274,12 @@ export function useConversationMessage({
   conversationId,
   workspaceId,
   messageId,
-  options: { disabled },
+  options,
 }: {
   conversationId: string | null;
   workspaceId: string;
   messageId: string | null;
-  options: {
+  options?: {
     disabled: boolean;
   };
 }) {
@@ -289,7 +289,8 @@ export function useConversationMessage({
     messageId
       ? `/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages/${messageId}`
       : null,
-    messageFetcher
+    messageFetcher,
+    options
   );
 
   return {

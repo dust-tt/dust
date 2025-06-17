@@ -9,12 +9,12 @@ import {
 
 import { getActionSpecification } from "@app/components/actions/types";
 import type { ActionProgressState } from "@app/lib/assistant/state/messageReducer";
+import { useConversationMessage } from "@app/lib/swr/conversations";
 import type {
   AgentActionType,
   LightAgentMessageType,
   LightWorkspaceType,
 } from "@app/types";
-import { useConversationMessage } from "@app/lib/swr/conversations";
 
 interface AgentMessageActionsDrawerProps {
   conversationId: string;
@@ -39,9 +39,6 @@ export function AgentMessageActionsDrawer({
       conversationId,
       workspaceId: owner.sId,
       messageId: isOpened ? message.sId : null,
-      options: {
-        disabled: false,
-      },
     });
 
   const actions =
