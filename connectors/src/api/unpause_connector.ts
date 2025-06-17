@@ -40,7 +40,7 @@ const _unpauseConnectorAPIHandler = async (
     const unpauseRes = await getConnectorManager({
       connectorProvider: connector.type,
       connectorId: connector.id,
-    }).unpause();
+    }).unpauseAndResume();
 
     if (unpauseRes.isErr()) {
       return apiError(req, res, {

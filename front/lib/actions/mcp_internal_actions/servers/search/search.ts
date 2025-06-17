@@ -18,7 +18,7 @@ import type { Authenticator } from "@app/lib/auth";
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "search",
   version: "1.0.0",
-  description: "Search through selected Data sources (mcp)",
+  description: "Search through selected Data sources",
   icon: "ActionMagnifyingGlassIcon",
   authorization: null,
   documentationUrl: null,

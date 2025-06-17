@@ -106,7 +106,8 @@ const createServer = (
 
   server.tool(
     "cat",
-    "Read the contents of a document, referred to by its nodeId (named after the 'cat' unix tool). The nodeId can be obtained using the 'find_by_title', 'find' or 'search' tools.",
+    "Read the contents of a document, referred to by its nodeId (named after the 'cat' unix tool). " +
+      "The nodeId can be obtained using the 'find', 'list' or 'search' tools.",
     {
       dataSources:
         ConfigurableToolInputSchemas[
@@ -117,7 +118,8 @@ const createServer = (
         .number()
         .optional()
         .describe(
-          "The character position to start reading from (0-based). If not provided, starts from the beginning."
+          "The character position to start reading from (0-based). If not provided, starts from " +
+            "the beginning."
         ),
       limit: z
         .number()
@@ -129,7 +131,8 @@ const createServer = (
         .string()
         .optional()
         .describe(
-          "A regular expression to filter lines. Applied after offset/limit slicing. Only lines matching this pattern will be returned."
+          "A regular expression to filter lines. Applied after offset/limit slicing. Only lines " +
+            "matching this pattern will be returned."
         ),
     },
     async ({ dataSources, nodeId, offset, limit, grep }) => {
@@ -713,7 +716,8 @@ const createServer = (
     "locate_in_tree",
     "Show the complete path from a node to the data source root, displaying the hierarchy of parent nodes. " +
       "This is useful for understanding where a specific node is located within the data source structure. " +
-      "The path is returned as a list of nodes, with the first node being the data source root and the last node being the target node.",
+      "The path is returned as a list of nodes, with the first node being the data source root and " +
+      "the last node being the target node.",
     {
       nodeId: z.string().describe("The ID of the node to locate in the tree."),
       dataSources:
@@ -939,7 +943,8 @@ async function getAgentDataSourceConfigurations(
           ) {
             return new Err(
               new Error(
-                `Workspace mismatch: configuration workspace ${configInfo.configuration.workspaceId} does not match authenticated workspace`
+                "Workspace mismatch: configuration workspace " +
+                  `${configInfo.configuration.workspaceId} does not match authenticated workspace.`
               )
             );
           }

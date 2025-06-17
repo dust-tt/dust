@@ -46,7 +46,7 @@ import {
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "include_data",
   version: "1.0.0",
-  description: "Include data exhaustively (mcp)",
+  description: "Include data exhaustively",
   icon: "ActionTimeIcon",
   authorization: null,
   documentationUrl: null,

@@ -129,7 +129,7 @@ export interface ContentNode {
   parentInternalId: string | null;
   permission: ConnectorPermission;
   preventSelection?: boolean;
-  providerVisibility?: ProviderVisibility;
+  providerVisibility: ProviderVisibility | null;
   sourceUrl: string | null;
   title: string;
   type: ContentNodeType;
@@ -137,7 +137,7 @@ export interface ContentNode {
 
 export interface ContentNodeWithParent extends ContentNode {
   parentInternalIds: string[] | null;
-  parentTitle?: string;
+  parentTitle: string | null;
 }
 
 export type GoogleDriveFolderType = {

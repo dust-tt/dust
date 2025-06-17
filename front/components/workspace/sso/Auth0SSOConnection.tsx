@@ -27,7 +27,6 @@ import type { Organization } from "@workos-inc/node";
 import React from "react";
 
 import { ToggleEnforceEnterpriseConnectionModal } from "@app/components/workspace/sso/Toggle";
-import type { EnterpriseConnectionStrategyDetails } from "@app/components/workspace/SSOConnection";
 import { UpgradePlanDialog } from "@app/components/workspace/UpgradePlanDialog";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { useWorkspaceEnterpriseConnection } from "@app/lib/swr/workspaces";
@@ -43,6 +42,14 @@ import type {
   WorkspaceType,
 } from "@app/types";
 import { connectionStrategyToHumanReadable } from "@app/types";
+
+export interface EnterpriseConnectionStrategyDetails {
+  callbackUrl: string;
+  initiateLoginUrl: string;
+  // SAML Specific.
+  audienceUri: string;
+  samlAcsUrl: string;
+}
 
 interface Auth0SSOConnectionProps {
   domains: Organization["domains"];

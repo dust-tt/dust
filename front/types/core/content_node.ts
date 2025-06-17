@@ -12,10 +12,10 @@ export type CoreAPIContentNode = {
   timestamp: number;
   title: string;
   mime_type: string;
-  provider_visibility?: ProviderVisibility;
-  parent_id?: string;
+  provider_visibility: ProviderVisibility | null;
+  parent_id: string | null;
   parents: string[];
-  source_url?: string;
+  source_url: string | null;
   children_count: number;
-  parent_title?: string;
+  parent_title: string | null;
 };
