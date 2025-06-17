@@ -464,6 +464,7 @@ export function CreateOrEditSpaceModal({
                     </TabsList>
                   </Tabs>
                 ) : null}
+
                 {isManual && selectedMembers.length === 0 && (
                   <EmptyCTA
                     action={
@@ -494,7 +495,8 @@ export function CreateOrEditSpaceModal({
                     message="Add groups to the space"
                   />
                 )}
-                {isManual && selectedGroups.length > 0 && (
+
+                {isManual && selectedMembers.length > 0 && (
                   <>
                     <div className="flex flex-row items-center justify-between">
                       <SearchMembersPopover
