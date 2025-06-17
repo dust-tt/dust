@@ -1,14 +1,26 @@
 import { assertNever } from "@dust-tt/client";
 import type { Request, Response } from "express";
 
+import {
+  launchFirecrawlCrawlCompletedWorkflow,
+  launchFirecrawlCrawlFailedWorkflow,
+  launchFirecrawlCrawlPageWorkflow,
+  launchFirecrawlCrawlStartedWorkflow,
+} from "@connectors/connectors/webcrawler/temporal/client";
 import mainLogger from "@connectors/logger/logger";
 import { withLogging } from "@connectors/logger/withlogging";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { WithConnectorsAPIErrorReponse } from "@connectors/types";
 
-const logger = mainLogger.child({
-  provider: "webcrawler",
-  service: "firecrawl",
-});
+const logger = mainLogger.child(
+  {
+    provider: "webcrawler",
+    service: "firecrawl",
+  },
+  {
+    msgPrefix: "[Firecrawl] ",
+  }
+);
 
 type FirecrawlWebhookResBody = WithConnectorsAPIErrorReponse<null>;
 
@@ -32,7 +44,7 @@ const _webhookFirecrawlAPIHandler = async (
         };
       }>;
       metadata: {
-        [key: string]: unknown;
+        connectorId: string;
       };
       error: string | null;
     }
@@ -40,7 +52,8 @@ const _webhookFirecrawlAPIHandler = async (
   res: Response<FirecrawlWebhookResBody>
 ) => {
   const { success, type, id, data, metadata, error } = req.body;
-  logger.info("[Firecrwal] Received webhook", {
+
+  logger.info("Received webhook", {
     success,
     type,
     id,
@@ -48,36 +61,153 @@ const _webhookFirecrawlAPIHandler = async (
     error,
   });
 
+  if (!metadata.connectorId || isNaN(parseInt(metadata.connectorId))) {
+    logger.error(
+      {
+        metadata,
+      },
+      "Missing or invalid connectorId in metadata"
+    );
+    // We ignore the webhook.
+    return res.status(200);
+  }
+
+  const connector = await ConnectorResource.fetchById(
+    parseInt(metadata.connectorId)
+  );
+  if (!connector) {
+    logger.error({ connectorId: metadata.connectorId }, "Connector not found");
+    // We ignore the webhook.
+    return res.status(200);
+  }
+
   switch (type) {
     case "crawl.started": {
-      logger.info({ id, metadata }, "[Firecrawl] Crawl started");
+      logger.info(
+        {
+          id,
+          metadata,
+          connectorId: connector.id,
+        },
+        "Crawl started"
+      );
+      const launchRes = await launchFirecrawlCrawlStartedWorkflow(
+        connector.id,
+        id
+      );
+      if (!launchRes.isOk()) {
+        logger.error(
+          { id, metadata, error: launchRes.error },
+          "Failed to launch crawl started workflow"
+        );
+        return res.status(500).json({
+          error: {
+            type: "internal_server_error",
+            message: "Failed to launch crawl started workflow",
+          },
+        });
+      }
       break;
     }
     case "crawl.page": {
-      if (data && data.length > 0 && data[0]) {
-        // We receive the crawlId and scrapeId so we should be able to retrieve the scrape through
-        // these Ids in a workflow launched from here and don't need to store the data here which is
-        // good as we really want webhooks to simply trigger workflows and nothing else.
-        logger.info(
-          {
+      if (data && data.length > 0) {
+        for (const page of data) {
+          logger.info(
+            {
+              id,
+              scrapeId: page.metadata.scrapeId,
+              connectorId: connector.id,
+            },
+            "[Firecrawl] Page crawled"
+          );
+          if (!page.metadata.scrapeId) {
+            logger.error(
+              {
+                id,
+                connectorId: connector.id,
+              },
+              "[Firecrawl] Page crawled with no scrapeId"
+            );
+            // Interrupt and refuse the webhook.
+            return res.status(400).json({
+              error: {
+                type: "invalid_request_error",
+                message: "Page metadata missing scrapeId",
+              },
+            });
+          }
+
+          const launchRes = await launchFirecrawlCrawlPageWorkflow(
+            connector.id,
             id,
-            sourceURL: data[0].metadata.sourceURL,
-            scrapeId: data[0].metadata.scrapeId,
-            metadata,
-          },
-          "[Firecrawl] Page crawled"
-        );
-      } else {
-        logger.warn({ id, metadata }, "[Firecrawl] Page crawled with no data");
+            page.metadata.scrapeId
+          );
+
+          if (!launchRes.isOk()) {
+            logger.error(
+              {
+                id,
+                connectorId: connector.id,
+                scrapeId: page.metadata.scrapeId,
+                error: launchRes.error,
+              },
+              "Failed to launch crawl page workflow"
+            );
+            return res.status(500).json({
+              error: {
+                type: "internal_server_error",
+                message: "Failed to launch crawl page workflow",
+              },
+            });
+          }
+        }
       }
       break;
     }
     case "crawl.completed": {
-      logger.info({ id, metadata }, "[Firecrawl] Crawl completed");
+      logger.info(
+        { id, metadata, connectorId: connector.id },
+        "Crawl completed"
+      );
+      const launchRes = await launchFirecrawlCrawlCompletedWorkflow(
+        connector.id,
+        id
+      );
+      if (!launchRes.isOk()) {
+        logger.error(
+          { id, metadata, error: launchRes.error },
+          "Failed to launch crawl completed workflow"
+        );
+        return res.status(500).json({
+          error: {
+            type: "internal_server_error",
+            message: "Failed to launch crawl completed workflow",
+          },
+        });
+      }
       break;
     }
     case "crawl.failed": {
-      logger.error({ id, metadata, error }, "[Firecrawl] Crawl failed");
+      logger.info(
+        { id, metadata, connectorId: connector.id, error },
+        "Crawl Failed"
+      );
+      const launchRes = await launchFirecrawlCrawlFailedWorkflow(
+        connector.id,
+        id
+      );
+      if (!launchRes.isOk()) {
+        logger.error(
+          { id, metadata, error: launchRes.error },
+          "Failed to launch crawl failed workflow"
+        );
+        return res.status(500).json({
+          error: {
+            type: "internal_server_error",
+            message: "Failed to launch crawl failed workflow",
+          },
+        });
+      }
       break;
     }
     default:

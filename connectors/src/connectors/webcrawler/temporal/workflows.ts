@@ -37,10 +37,18 @@ const { crawlWebsiteByConnectorId, webCrawlerGarbageCollector } =
     },
   });
 
-const { getConnectorIdsForWebsitesToCrawl, markAsCrawled } = proxyActivities<
-  typeof activities
->({
+const {
+  getConnectorIdsForWebsitesToCrawl,
+  markAsCrawled,
+  firecrawlCrawlFailed,
+  firecrawlCrawlStarted,
+  firecrawlCrawlCompleted,
+} = proxyActivities<typeof activities>({
   startToCloseTimeout: "2 minutes",
+});
+
+const { firecrawlCrawlPage } = proxyActivities<typeof activities>({
+  startToCloseTimeout: "10 minute",
 });
 
 export async function crawlWebsiteWorkflow(
@@ -79,4 +87,64 @@ export async function crawlWebsiteSchedulerWorkflow() {
 
 export function crawlWebsiteSchedulerWorkflowId() {
   return `webcrawler-scheduler`;
+}
+
+// Firecrawl crawl specific workflows
+
+export function firecrawlCrawlFailedWorkflowId(
+  connectorId: ModelId,
+  crawlId: string
+) {
+  return `webcrawler-${connectorId}-firecrawl-crawl-${crawlId}-failed`;
+}
+
+export async function firecrawlCrawlFailedWorkflow(
+  connectorId: ModelId,
+  crawlId: string
+) {
+  await firecrawlCrawlFailed(connectorId, crawlId);
+}
+
+export function firecrawlCrawlStartedWorkflowId(
+  connectorId: ModelId,
+  crawlId: string
+) {
+  return `webcrawler-${connectorId}-firecrawl-crawl-${crawlId}-started`;
+}
+
+export async function firecrawlCrawlStartedWorkflow(
+  connectorId: ModelId,
+  crawlId: string
+) {
+  await firecrawlCrawlStarted(connectorId, crawlId);
+}
+
+export function firecrawlCrawlCompletedWorkflowId(
+  connectorId: ModelId,
+  crawlId: string
+) {
+  return `webcrawler-${connectorId}-firecrawl-crawl-${crawlId}-completed`;
+}
+
+export async function firecrawlCrawlCompletedWorkflow(
+  connectorId: ModelId,
+  crawlId: string
+) {
+  await firecrawlCrawlCompleted(connectorId, crawlId);
+}
+
+export function firecrawlCrawlPageWorkflowId(
+  connectorId: ModelId,
+  crawlId: string,
+  scrapeId: string
+) {
+  return `webcrawler-${connectorId}-firecrawl-crawl-${crawlId}-page-${scrapeId}`;
+}
+
+export async function firecrawlCrawlPageWorkflow(
+  connectorId: ModelId,
+  crawlId: string,
+  scrapeId: string
+) {
+  await firecrawlCrawlPage(connectorId, crawlId, scrapeId);
 }
