@@ -464,90 +464,97 @@ export function CreateOrEditSpaceModal({
                     </TabsList>
                   </Tabs>
                 ) : null}
-                {(isManual && selectedMembers.length === 0) ||
-                (!isManual && selectedGroups.length === 0) ? (
-                  isManual ? (
-                    <EmptyCTA
-                      action={
-                        <SearchMembersPopover
-                          owner={owner}
-                          selectedMembers={selectedMembers}
-                          onMembersUpdated={(members) => {
-                            setSelectedMembers(members);
-                            setIsDirty(true);
-                          }}
-                        />
-                      }
-                      message="Add members to the space"
-                    />
-                  ) : (
-                    <EmptyCTA
-                      action={
-                        <SearchGroupsDropdown
-                          owner={owner}
-                          selectedGroups={selectedGroups}
-                          onGroupsUpdated={(groups) => {
-                            setSelectedGroups(groups);
-                            setIsDirty(true);
-                          }}
-                        />
-                      }
-                      message="Add groups to the space"
-                    />
-                  )
-                ) : (
+                {isManual && selectedMembers.length === 0 && (
+                  <EmptyCTA
+                    action={
+                      <SearchMembersPopover
+                        owner={owner}
+                        selectedMembers={selectedMembers}
+                        onMembersUpdated={(members) => {
+                          setSelectedMembers(members);
+                          setIsDirty(true);
+                        }}
+                      />
+                    }
+                    message="Add members to the space"
+                  />
+                )}
+                {!isManual && selectedGroups.length === 0 && (
+                  <EmptyCTA
+                    action={
+                      <SearchGroupsDropdown
+                        owner={owner}
+                        selectedGroups={selectedGroups}
+                        onGroupsUpdated={(groups) => {
+                          setSelectedGroups(groups);
+                          setIsDirty(true);
+                        }}
+                      />
+                    }
+                    message="Add groups to the space"
+                  />
+                )}
+                {isManual && selectedGroups.length > 0 && (
                   <>
                     <div className="flex flex-row items-center justify-between">
-                      {isManual ? (
-                        <SearchMembersPopover
-                          owner={owner}
-                          selectedMembers={selectedMembers}
-                          onMembersUpdated={(members) => {
-                            setSelectedMembers(members);
-                            setIsDirty(true);
-                          }}
-                        />
-                      ) : (
-                        <SearchGroupsDropdown
-                          owner={owner}
-                          selectedGroups={selectedGroups}
-                          onGroupsUpdated={(groups) => {
-                            setSelectedGroups(groups);
-                            setIsDirty(true);
-                          }}
-                        />
-                      )}
+                      <SearchMembersPopover
+                        owner={owner}
+                        selectedMembers={selectedMembers}
+                        onMembersUpdated={(members) => {
+                          setSelectedMembers(members);
+                          setIsDirty(true);
+                        }}
+                      />
                     </div>
                     <SearchInput
                       name="search"
-                      placeholder={
-                        isManual ? "Search (email)" : "Search groups"
-                      }
+                      placeholder={"Search (email)"}
                       value={searchSelectedMembers}
                       onChange={(s) => {
                         setSearchSelectedMembers(s);
                       }}
                     />
                     <ScrollArea className="h-full">
-                      {isManual ? (
-                        <MembersTable
-                          onMembersUpdated={(members) => {
-                            setSelectedMembers(members);
-                            setIsDirty(true);
-                          }}
-                          selectedMembers={selectedMembers}
-                          searchSelectedMembers={searchSelectedMembers}
-                        />
-                      ) : (
-                        <GroupsTable
-                          onGroupsUpdated={(groups) => {
-                            setSelectedGroups(groups);
-                            setIsDirty(true);
-                          }}
-                          selectedGroups={selectedGroups}
-                          searchSelectedGroups={searchSelectedMembers}
-                        />
-                      )}
+                      <MembersTable
+                        onMembersUpdated={(members) => {
+                          setSelectedMembers(members);
+                          setIsDirty(true);
+                        }}
+                        selectedMembers={selectedMembers}
+                        searchSelectedMembers={searchSelectedMembers}
+                      />
+                    </ScrollArea>
+                  </>
+                )}
+                {!isManual && selectedGroups.length > 0 && (
+                  <>
+                    <div className="flex flex-row items-center justify-between">
+                      <SearchGroupsDropdown
+                        owner={owner}
+                        selectedGroups={selectedGroups}
+                        onGroupsUpdated={(groups) => {
+                          setSelectedGroups(groups);
+                          setIsDirty(true);
+                        }}
+                      />
+                    </div>
+                    <SearchInput
+                      name="search"
+                      placeholder={"Search groups"}
+                      value={searchSelectedMembers}
+                      onChange={(s) => {
+                        setSearchSelectedMembers(s);
+                      }}
+                    />
+                    <ScrollArea className="h-full">
+                      <GroupsTable
+                        onGroupsUpdated={(groups) => {
+                          setSelectedGroups(groups);
+                          setIsDirty(true);
+                        }}
+                        selectedGroups={selectedGroups}
+                        searchSelectedGroups={searchSelectedMembers}
+                      />
                     </ScrollArea>
                   </>
                 )}
