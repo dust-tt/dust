@@ -25,8 +25,6 @@ export class SlackCastKnownErrorsInterceptor
             nextRetryDelay: err.retryAfter,
           });
         }
-
-        throw err;
       }
 
       throw err;
