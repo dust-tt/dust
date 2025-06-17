@@ -345,6 +345,12 @@ export function DataSourceViewsSelector({
     viewType,
     spaceIds: [space.sId],
     disabled: !debouncedSearch,
+    dataSourceViewIdsBySpaceId:
+      filteredDSVs.length > 0
+        ? {
+            [space.sId]: filteredDSVs.map((dsv) => dsv.sId),
+          }
+        : undefined,
   };
 
   const {

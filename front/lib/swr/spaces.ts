@@ -632,6 +632,7 @@ type BaseSearchParams = {
   viewType: ContentNodesViewType;
   pagination?: CursorPaginationParams;
   allowAdminSearch?: boolean;
+  dataSourceViewIdsBySpaceId?: Record<string, string[]>;
 };
 
 // Text search variant
@@ -661,6 +662,7 @@ export function useSpacesSearch({
   pagination,
   searchSourceUrls = false,
   allowAdminSearch = false,
+  dataSourceViewIdsBySpaceId,
 }: SpacesSearchParams): {
   isSearchLoading: boolean;
   isSearchError: boolean;
@@ -687,6 +689,7 @@ export function useSpacesSearch({
     spaceIds,
     viewType,
     allowAdminSearch,
+    dataSourceViewIdsBySpaceId,
   };
 
   // Only perform a query if we have a valid search
