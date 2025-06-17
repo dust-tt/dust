@@ -166,7 +166,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
       delay: 3,
       scrapeOptions: {
         onlyMainContent: true,
-        formats: ["markdown", "changeTracking"],
+        formats: ["markdown"],
         headers: customHeaders,
         maxAge: 43_200_000, // Use last 12h of cache
       },
