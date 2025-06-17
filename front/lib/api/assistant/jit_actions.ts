@@ -5,7 +5,6 @@ import {
   DEFAULT_CONVERSATION_EXTRACT_ACTION_NAME,
   DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_DATA_DESCRIPTION,
   DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME,
-  DEFAULT_SEARCH_LABELS_ACTION_NAME,
 } from "@app/lib/actions/constants";
 import type {
   ConversationAttachmentType,
@@ -26,7 +25,6 @@ import type {
   ActionConfigurationType,
   AgentActionConfigurationType,
 } from "@app/lib/actions/types/agent";
-import { isRetrievalConfiguration } from "@app/lib/actions/types/guards";
 import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration";
 import {
   isMultiSheetSpreadsheetContentType,
@@ -47,75 +45,20 @@ import type {
 } from "@app/types";
 import { assertNever, CoreAPI } from "@app/types";
 
-/**
- * Returns a list of supporting actions that should be made available to the model alongside this
- * action.  These actions provide additional functionality that can be useful when using this
- * action, but they are not required - the model may choose to use them or not.
- *
- * For example, a retrieval action with auto tags may return a search_tags action to help the model
- * find relevant tags, but the model can still use the retrieval action without searching for tags
- * first.
- *
- * TODO(mcp): in a MCP world, the supporting actions are part of the MCP server tools for the main
- * action. Should be removed once everything has been migrated to MCP.
- */
-function getSupportingActions(
-  agentActions: AgentActionConfigurationType[]
-): ActionConfigurationType[] {
-  return agentActions.flatMap((action) => {
-    if (isRetrievalConfiguration(action)) {
-      const hasAutoTags = action.dataSources.some(
-        (ds) => ds.filter.tags?.mode === "auto"
-      );
-
-      if (hasAutoTags) {
-        return [
-          {
-            id: -1,
-            sId: generateRandomModelSId(),
-            type: "search_labels_configuration" as const,
-            // Tool name must be unique. We use the parent tool name to make it unique.
-            name: `${DEFAULT_SEARCH_LABELS_ACTION_NAME}_${action.name}`,
-            dataSourceViewIds: action.dataSources.map(
-              (ds) => ds.dataSourceViewId
-            ),
-            parentTool: action.name,
-          },
-        ];
-      }
-    }
-
-    return [];
-  });
-}
-
-async function getJITActions(
+async function getJITServers(
   auth: Authenticator,
   {
-    agentActions,
     conversation,
     files,
   }: {
-    agentActions: AgentActionConfigurationType[];
     conversation: ConversationType;
     files: ConversationAttachmentType[];
   }
-): Promise<{
-  jitActions: ActionConfigurationType[];
-  jitServers: MCPServerConfigurationType[];
-}> {
-  const actions: ActionConfigurationType[] = [];
-
-  // Get supporting actions from available actions.
-  const supportingActions = getSupportingActions(agentActions);
-
+): Promise<MCPServerConfigurationType[]> {
   const jitServers: MCPServerConfigurationType[] = [];
 
-  // Add supporting actions first.
-  actions.push(...supportingActions);
-
   if (files.length === 0) {
-    return { jitActions: actions, jitServers: [] };
+    return [];
   }
 
   // Add conversation_files MCP server if there are conversation files
@@ -164,7 +107,7 @@ async function getJITActions(
     filesUsableAsRetrievalQuery.length === 0 &&
     filesUsableForExtracting.length === 0
   ) {
-    return { jitActions: actions, jitServers };
+    return jitServers;
   }
 
   // Get the datasource view for the conversation.
@@ -428,14 +371,14 @@ async function getJITActions(
     jitServers.push(folderExtractServer);
   }
 
-  return { jitActions: actions, jitServers };
+  return jitServers;
 }
 
 export async function getEmulatedAndJITActions(
   auth: Authenticator,
   {
     agentMessage,
-    agentActions,
+    agentActions, // eslint-disable-line @typescript-eslint/no-unused-vars
     conversation,
   }: {
     agentMessage: AgentMessageType;
@@ -458,10 +401,9 @@ export async function getEmulatedAndJITActions(
     emulatedActions.push(a);
   }
 
-  const { jitActions, jitServers } = await getJITActions(auth, {
+  const jitServers = await getJITServers(auth, {
     conversation,
     files,
-    agentActions,
   });
 
   // We ensure that all emulated actions are injected with step -1.
@@ -470,7 +412,7 @@ export async function getEmulatedAndJITActions(
     "Emulated actions must have step -1"
   );
 
-  return { emulatedActions, jitActions, jitServers };
+  return { emulatedActions, jitActions: [], jitServers };
 }
 
 async function getTablesFromMultiSheetSpreadsheet(
