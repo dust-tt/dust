@@ -95,7 +95,7 @@ const CustomHeroSection = () => (
                   mono
                   className="mb-6 text-xl leading-relaxed text-white sm:mb-8 sm:text-2xl lg:text-3xl xl:text-4xl"
                 >
-                  "Dust is the most impactful software we've adopted since
+                  "Dust is the most impactful software we’ve adopted since
                   building Clay."
                 </H2>
               </div>
