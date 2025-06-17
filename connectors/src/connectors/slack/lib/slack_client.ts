@@ -57,6 +57,26 @@ function isWebAPIPlatformError(error: unknown): error is WebAPIPlatformError {
   );
 }
 
+/**
+ * Creates a Slack WebClient instance for making API calls.
+ *
+ * IMPORTANT: When using this client in Temporal activities, wrap all API calls
+ * with `withSlackErrorHandling()` to properly convert Slack errors to workflow errors
+ * (rate limits, auth errors, etc.) that can be handled by Temporal interceptors.
+ *
+ * @example
+ * ```typescript
+ * const slackClient = await getSlackClient(connectorId);
+ *
+ * // ✅ Correct usage in Temporal activities:
+ * const result = await withSlackErrorHandling(() =>
+ *   slackClient.conversations.list({ types: "public_channel" })
+ * );
+ *
+ * // ❌ Incorrect usage in Temporal activities (raw Slack errors won't be converted):
+ * const result = await slackClient.conversations.list({ types: "public_channel" });
+ * ```
+ */
 export async function getSlackClient(
   connectorId: ModelId,
   options?: { rejectRateLimitedCalls?: boolean }
