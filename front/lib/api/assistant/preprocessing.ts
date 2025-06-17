@@ -109,7 +109,10 @@ export async function renderConversationForModel(
       // Use the contents array if available, otherwise use the rawContents array.
       const rawContents: { step: number; content: string }[] = m.rawContents;
       const shadowReadRawContents: { step: number; content: string }[] = [];
-      if (m.rawContents.length || m.contents.length) {
+      if (
+        m.rawContents.filter((c) => !!c.content).length ||
+        m.contents.length
+      ) {
         if (m.contents.length) {
           for (const content of m.contents) {
             if (content.content.type === "text_content") {
