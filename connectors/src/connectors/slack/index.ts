@@ -191,7 +191,7 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
 
     // If connector was previously paused, unpause it.
     if (c.isPaused()) {
-      await this.unpause();
+      await this.unpauseAndResume();
     }
 
     return new Ok(c.id.toString());

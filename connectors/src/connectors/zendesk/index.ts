@@ -181,7 +181,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
 
       // if the connector was previously paused, unpause it.
       if (connector.isPaused()) {
-        await this.unpause();
+        await this.unpauseAndResume();
       }
     }
     return new Ok(connector.id.toString());

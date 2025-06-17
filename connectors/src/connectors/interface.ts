@@ -98,7 +98,7 @@ export abstract class BaseConnectorManager<T extends ConnectorConfiguration> {
 
   abstract garbageCollect(): Promise<Result<string, Error>>;
 
-  async pause(): Promise<Result<undefined, Error>> {
+  async pauseAndStop(): Promise<Result<undefined, Error>> {
     const connector = await ConnectorResource.fetchById(this.connectorId);
     if (!connector) {
       throw new Error(
@@ -109,7 +109,7 @@ export abstract class BaseConnectorManager<T extends ConnectorConfiguration> {
     return this.stop();
   }
 
-  async unpause(): Promise<Result<undefined, Error>> {
+  async unpauseAndResume(): Promise<Result<undefined, Error>> {
     const connector = await ConnectorResource.fetchById(this.connectorId);
     if (!connector) {
       throw new Error(
