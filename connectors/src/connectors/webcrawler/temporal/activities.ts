@@ -166,8 +166,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
         maxAge: 43_200_000, // Use last 12h of cache
       },
       webhook: {
-        url: "https://8c1635ae940f.ngrok.app/webhooks/mywebhooksecret/firecrawl",
-        // url: `${apiConfig.getConnectorsPublicURL()}/webhooks/${apiConfig.getDustConnectorsWebhooksSecret()}/firecrawl`,
+        url: `${apiConfig.getConnectorsPublicURL()}/webhooks/${apiConfig.getDustConnectorsWebhooksSecret()}/firecrawl`,
         metadata: {
           connectorId: String(connectorId),
         },
