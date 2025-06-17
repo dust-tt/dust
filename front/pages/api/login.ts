@@ -76,7 +76,18 @@ async function handler(
     externalUser: session.user,
   });
 
-  await user.recordLoginActivity();
+  try {
+    await user.recordLoginActivity();
+  } catch (error) {
+    logger.error(
+      {
+        userId: user.id,
+        workspaceId: targetWorkspaceId,
+        error,
+      },
+      "Failed to record login activity for user."
+    );
+  }
 
   // TODO(workos): Remove after switch to workos. Update user information when user is created with auth0.
   if (userCreated && session.type === "auth0" && session.user.workOSUserId) {
