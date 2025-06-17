@@ -21,7 +21,6 @@ import type {
   ServerSideMCPServerConfigurationType,
 } from "@app/lib/actions/mcp";
 import type { TableDataSourceConfiguration } from "@app/lib/actions/tables_query";
-import type { AgentActionConfigurationType } from "@app/lib/actions/types/agent";
 import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration";
 import {
   isMultiSheetSpreadsheetContentType,
@@ -371,15 +370,13 @@ async function getJITServers(
   return jitServers;
 }
 
-export async function getEmulatedAndJITActions(
+export async function getEmulatedActionsAndJITServers(
   auth: Authenticator,
   {
     agentMessage,
-    agentActions, // eslint-disable-line @typescript-eslint/no-unused-vars
     conversation,
   }: {
     agentMessage: AgentMessageType;
-    agentActions: AgentActionConfigurationType[];
     conversation: ConversationType;
   }
 ): Promise<{
