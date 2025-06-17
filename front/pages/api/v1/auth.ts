@@ -6,9 +6,6 @@ import {
   lookupAuthInOtherRegion,
 } from "@app/lib/api/regions/lookup";
 import { fetchWorkOSUserWithEmail } from "@app/lib/api/workos/user";
-import { getFeatureFlags } from "@app/lib/auth";
-import { findWorkspaceWithVerifiedDomain } from "@app/lib/iam/workspaces";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 
