@@ -129,17 +129,17 @@ export async function salesforceSyncQueryWorkflow({
   await upsertSyncedQueryRootNode(connectorId, { queryId });
 
   let lastSeenModifiedDateTs: DateTs = null;
-  let lastModifiedDateTsCursor: DateTs = null;
+  let lastModifiedDateCursorTs: DateTs = null;
   const upToLastModifiedDateTs: DateTs = upToLastModifiedDate
     ? upToLastModifiedDate.getTime()
     : null;
   let hasMore = true;
 
   while (hasMore) {
-    ({ lastSeenModifiedDateTs, lastModifiedDateTsCursor, hasMore } =
+    ({ lastSeenModifiedDateTs, lastModifiedDateCursorTs, hasMore } =
       await processSyncedQueryPage(connectorId, {
         queryId,
-        lastModifiedDateTsCursor,
+        lastModifiedDateCursorTs,
         limit: SALESFORCE_SYNC_QUERY_PAGE_LIMIT,
         lastSeenModifiedDateTs,
         upToLastModifiedDateTs,

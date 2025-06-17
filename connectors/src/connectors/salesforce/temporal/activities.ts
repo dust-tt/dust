@@ -141,13 +141,13 @@ export async function processSyncedQueryPage(
   connectorId: ModelId,
   {
     queryId,
-    lastModifiedDateTsCursor,
+    lastModifiedDateCursorTs,
     limit,
     lastSeenModifiedDateTs,
     upToLastModifiedDateTs,
   }: {
     queryId: ModelId;
-    lastModifiedDateTsCursor: DateTs;
+    lastModifiedDateCursorTs: DateTs;
     limit: number;
     lastSeenModifiedDateTs: DateTs;
     upToLastModifiedDateTs: DateTs;
@@ -156,15 +156,15 @@ export async function processSyncedQueryPage(
   // The most recent lastModifiedDate seen
   lastSeenModifiedDateTs: DateTs;
   // The older lastModifiedDate seen in this page to use for pagination
-  lastModifiedDateTsCursor: DateTs;
+  lastModifiedDateCursorTs: DateTs;
   hasMore: boolean;
   count: number;
 }> {
   let lastSeenModifiedDate = lastSeenModifiedDateTs
     ? new Date(lastSeenModifiedDateTs)
     : null;
-  let lastModifiedDateCursor = lastModifiedDateTsCursor
-    ? new Date(lastModifiedDateTsCursor)
+  let lastModifiedDateCursor = lastModifiedDateCursorTs
+    ? new Date(lastModifiedDateCursorTs)
     : null;
   const upToLastModifiedDate = upToLastModifiedDateTs
     ? new Date(upToLastModifiedDateTs)
@@ -323,12 +323,12 @@ export async function processSyncedQueryPage(
     lastSeenModifiedDateTs = lastSeenModifiedDate.getTime();
   }
   if (lastModifiedDateCursor) {
-    lastModifiedDateTsCursor = lastModifiedDateCursor.getTime();
+    lastModifiedDateCursorTs = lastModifiedDateCursor.getTime();
   }
 
   return {
     lastSeenModifiedDateTs,
-    lastModifiedDateTsCursor,
+    lastModifiedDateCursorTs,
     hasMore: processedCount > 0,
     count: processedCount,
   };
