@@ -1,4 +1,4 @@
-import type { Result } from "@dust-tt/client";
+import type { ConnectorProvider, Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
 
 import type {
@@ -44,6 +44,8 @@ import {
 } from "./temporal/client";
 
 export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerConfigurationType> {
+  readonly provider: ConnectorProvider = "webcrawler";
+
   static async create({
     dataSourceConfig,
     configuration,
@@ -257,24 +259,6 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
   }): Promise<Result<string[], Error>> {
     // This isn't used for webcrawler.
     return new Ok([internalId]);
-  }
-
-  async pause(): Promise<Result<undefined, Error>> {
-    const connector = await ConnectorResource.fetchById(this.connectorId);
-    if (!connector) {
-      throw new Error("Connector not found.");
-    }
-    await connector.markAsPaused();
-    return this.stop();
-  }
-
-  async unpause(): Promise<Result<undefined, Error>> {
-    const connector = await ConnectorResource.fetchById(this.connectorId);
-    if (!connector) {
-      throw new Error("Connector not found.");
-    }
-    await connector.markAsUnpaused();
-    return this.resume();
   }
 
   async configure({

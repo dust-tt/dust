@@ -1,4 +1,4 @@
-import type { Result } from "@dust-tt/client";
+import type { ConnectorProvider, Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
 
 import {
@@ -44,6 +44,8 @@ const logger = mainLogger.child({
 });
 
 export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
+  readonly provider: ConnectorProvider = "confluence";
+
   static async create({
     dataSourceConfig,
     connectionId,
@@ -406,28 +408,6 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
     }
 
     return new Ok(undefined);
-  }
-
-  async pause(): Promise<Result<undefined, Error>> {
-    const connector = await ConnectorResource.fetchById(this.connectorId);
-    if (!connector) {
-      logger.error({ connectorId: this.connectorId }, "Connector not found.");
-      return new Err(new Error("Connector not found"));
-    }
-
-    await connector.markAsPaused();
-    return this.stop();
-  }
-
-  async unpause(): Promise<Result<undefined, Error>> {
-    const connector = await ConnectorResource.fetchById(this.connectorId);
-    if (!connector) {
-      logger.error({ connectorId: this.connectorId }, "Connector not found.");
-      return new Err(new Error("Connector not found"));
-    }
-
-    await connector.markAsUnpaused();
-    return this.resume();
   }
 
   async retrieveContentNodeParents({

@@ -1,4 +1,4 @@
-import type { Result } from "@dust-tt/client";
+import type { ConnectorProvider, Result } from "@dust-tt/client";
 import { assertNever, Err, Ok } from "@dust-tt/client";
 
 import type { TestConnectionError } from "@connectors/connectors/bigquery/lib/bigquery_api";
@@ -53,6 +53,8 @@ function handleTestConnectionError(
 }
 
 export class BigQueryConnectorManager extends BaseConnectorManager<null> {
+  readonly provider: ConnectorProvider = "bigquery";
+
   static async create({
     dataSourceConfig,
     connectionId,
@@ -358,28 +360,6 @@ export class BigQueryConnectorManager extends BaseConnectorManager<null> {
     memoizationKey?: string;
   }): Promise<Result<string[], Error>> {
     return new Ok([internalId]);
-  }
-
-  async pause(): Promise<Result<undefined, Error>> {
-    const connector = await ConnectorResource.fetchById(this.connectorId);
-    if (!connector) {
-      return new Err(
-        new Error(`Connector not found with id ${this.connectorId}`)
-      );
-    }
-    await connector.markAsPaused();
-    return this.stop();
-  }
-
-  async unpause(): Promise<Result<undefined, Error>> {
-    const connector = await ConnectorResource.fetchById(this.connectorId);
-    if (!connector) {
-      return new Err(
-        new Error(`Connector not found with id ${this.connectorId}`)
-      );
-    }
-    await connector.markAsUnpaused();
-    return this.resume();
   }
 
   async setConfigurationKey({

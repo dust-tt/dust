@@ -1,4 +1,4 @@
-import type { Result } from "@dust-tt/client";
+import type { ConnectorProvider, Result } from "@dust-tt/client";
 import { Err, Ok, removeNulls } from "@dust-tt/client";
 import type { drive_v3 } from "googleapis";
 import type { GaxiosResponse, OAuth2Client } from "googleapis-common";
@@ -67,6 +67,8 @@ import {
 } from "@connectors/types";
 
 export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
+  readonly provider: ConnectorProvider = "google_drive";
+
   static async create({
     dataSourceConfig,
     connectionId,
@@ -773,28 +775,6 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
     }
 
     return launchGoogleGarbageCollector(this.connectorId);
-  }
-
-  async pause(): Promise<Result<undefined, Error>> {
-    const connector = await ConnectorResource.fetchById(this.connectorId);
-    if (!connector) {
-      return new Err(
-        new Error(`Connector not found with id ${this.connectorId}`)
-      );
-    }
-    await connector.markAsPaused();
-    return this.stop();
-  }
-
-  async unpause(): Promise<Result<undefined, Error>> {
-    const connector = await ConnectorResource.fetchById(this.connectorId);
-    if (!connector) {
-      return new Err(
-        new Error(`Connector not found with id ${this.connectorId}`)
-      );
-    }
-    await connector.markAsUnpaused();
-    return this.resume();
   }
 
   async stop(): Promise<Result<undefined, Error>> {

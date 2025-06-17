@@ -1,4 +1,4 @@
-import type { Result } from "@dust-tt/client";
+import type { ConnectorProvider, Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
 
 import { makeGongTranscriptFolderInternalId } from "@connectors/connectors/gong/lib/internal_ids";
@@ -57,6 +57,8 @@ export function makeGongForceResyncWorkflowId(
 }
 
 export class GongConnectorManager extends BaseConnectorManager<null> {
+  readonly provider: ConnectorProvider = "gong";
+
   static async create({
     dataSourceConfig,
     connectionId,
@@ -267,22 +269,6 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
 
   async setPermissions(): Promise<Result<void, Error>> {
     throw new Error("Method not supported.");
-  }
-
-  async pause(): Promise<Result<undefined, Error>> {
-    const connector = await fetchGongConnector({
-      connectorId: this.connectorId,
-    });
-    await connector.markAsPaused();
-    return this.stop();
-  }
-
-  async unpause(): Promise<Result<undefined, Error>> {
-    const connector = await fetchGongConnector({
-      connectorId: this.connectorId,
-    });
-    await connector.markAsUnpaused();
-    return this.resume();
   }
 
   async garbageCollect(): Promise<Result<string, Error>> {

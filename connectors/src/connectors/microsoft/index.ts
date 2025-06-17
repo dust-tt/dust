@@ -1,4 +1,4 @@
-import type { Result } from "@dust-tt/client";
+import type { ConnectorProvider, Result } from "@dust-tt/client";
 import { assertNever, Err, Ok } from "@dust-tt/client";
 import { Client } from "@microsoft/microsoft-graph-client";
 
@@ -62,6 +62,8 @@ import type {
 import type { DataSourceConfig } from "@connectors/types";
 
 export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
+  readonly provider: ConnectorProvider = "microsoft";
+
   static async create({
     dataSourceConfig,
     connectionId,
@@ -580,28 +582,6 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
       default:
         return new Err(new Error(`Invalid config key ${configKey}`));
     }
-  }
-
-  async pause(): Promise<Result<undefined, Error>> {
-    const connector = await ConnectorResource.fetchById(this.connectorId);
-    if (!connector) {
-      return new Err(
-        new Error(`Connector not found with id ${this.connectorId}`)
-      );
-    }
-    await connector.markAsPaused();
-    return this.stop();
-  }
-
-  async unpause(): Promise<Result<undefined, Error>> {
-    const connector = await ConnectorResource.fetchById(this.connectorId);
-    if (!connector) {
-      return new Err(
-        new Error(`Connector not found with id ${this.connectorId}`)
-      );
-    }
-    await connector.markAsUnpaused();
-    return this.resume();
   }
 
   async garbageCollect(): Promise<Result<string, Error>> {

@@ -1,4 +1,4 @@
-import type { Result } from "@dust-tt/client";
+import type { ConnectorProvider, Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
 import _ from "lodash";
 
@@ -78,6 +78,8 @@ export async function workspaceIdFromConnectionId(connectionId: string) {
 }
 
 export class NotionConnectorManager extends BaseConnectorManager<null> {
+  readonly provider: ConnectorProvider = "notion";
+
   static async create({
     dataSourceConfig,
     connectionId,
@@ -326,42 +328,6 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
     }
 
     return new Ok(undefined);
-  }
-
-  async pause(): Promise<Result<undefined, Error>> {
-    const connector = await ConnectorResource.fetchById(this.connectorId);
-
-    if (!connector) {
-      logger.error(
-        {
-          connectorId: this.connectorId,
-        },
-        "Notion connector not found."
-      );
-
-      return new Err(new Error("Connector not found"));
-    }
-
-    await connector.markAsPaused();
-    return this.stop();
-  }
-
-  async unpause(): Promise<Result<undefined, Error>> {
-    const connector = await ConnectorResource.fetchById(this.connectorId);
-
-    if (!connector) {
-      logger.error(
-        {
-          connectorId: this.connectorId,
-        },
-        "Notion connector not found."
-      );
-
-      return new Err(new Error("Connector not found"));
-    }
-
-    await connector.markAsUnpaused();
-    return this.resume();
   }
 
   async sync({

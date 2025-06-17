@@ -1,4 +1,4 @@
-import type { Result } from "@dust-tt/client";
+import type { ConnectorProvider, Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
 import { WebClient } from "@slack/web-api";
 import PQueue from "p-queue";
@@ -51,6 +51,8 @@ import {
 const { SLACK_CLIENT_ID, SLACK_CLIENT_SECRET } = process.env;
 
 export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurationType> {
+  readonly provider: ConnectorProvider = "slack";
+
   static async create({
     dataSourceConfig,
     connectionId,
@@ -693,32 +695,6 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
       default:
         return new Err(new Error(`Invalid config key ${configKey}`));
     }
-  }
-
-  async pause(): Promise<Result<undefined, Error>> {
-    const connector = await ConnectorResource.fetchById(this.connectorId);
-    if (!connector) {
-      return new Err(
-        new Error(`Connector not found with id ${this.connectorId}`)
-      );
-    }
-    await connector.markAsPaused();
-    return this.stop();
-  }
-
-  async unpause(): Promise<Result<undefined, Error>> {
-    const connector = await ConnectorResource.fetchById(this.connectorId);
-    if (!connector) {
-      return new Err(
-        new Error(`Connector not found with id ${this.connectorId}`)
-      );
-    }
-    await connector.markAsUnpaused();
-    const r = await launchSlackSyncWorkflow(this.connectorId, null);
-    if (r.isErr()) {
-      return r;
-    }
-    return new Ok(undefined);
   }
 
   async stop(): Promise<Result<undefined, Error>> {

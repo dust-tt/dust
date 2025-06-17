@@ -1,5 +1,6 @@
-import type { Result } from "@dust-tt/client";
+import type { ConnectorProvider, Result } from "@dust-tt/client";
 
+import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type {
   ConnectorConfiguration,
   ConnectorPermission,
@@ -35,6 +36,8 @@ export class ConnectorManagerError<T extends string> extends Error {
 
 export abstract class BaseConnectorManager<T extends ConnectorConfiguration> {
   readonly connectorId: ModelId;
+
+  abstract get provider(): ConnectorProvider;
 
   constructor(connectorId: ModelId) {
     this.connectorId = connectorId;
@@ -95,9 +98,27 @@ export abstract class BaseConnectorManager<T extends ConnectorConfiguration> {
 
   abstract garbageCollect(): Promise<Result<string, Error>>;
 
-  abstract pause(): Promise<Result<undefined, Error>>;
+  async pause(): Promise<Result<undefined, Error>> {
+    const connector = await ConnectorResource.fetchById(this.connectorId);
+    if (!connector) {
+      throw new Error(
+        `Connector ID ${this.connectorId} on provider ${this.provider} not found.`
+      );
+    }
+    await connector.markAsPaused();
+    return this.stop();
+  }
 
-  abstract unpause(): Promise<Result<undefined, Error>>;
+  async unpause(): Promise<Result<undefined, Error>> {
+    const connector = await ConnectorResource.fetchById(this.connectorId);
+    if (!connector) {
+      throw new Error(
+        `Connector ID ${this.connectorId} on provider ${this.provider} not found.`
+      );
+    }
+    await connector.markAsUnpaused();
+    return this.resume();
+  }
 
   abstract configure(params: {
     configuration: T;
