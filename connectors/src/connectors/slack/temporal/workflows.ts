@@ -1,4 +1,5 @@
 import {
+  continueAsNew,
   executeChild,
   proxyActivities,
   setHandler,
@@ -41,6 +42,10 @@ const { syncNonThreadedChunk } = proxyActivities<typeof activities>({
   heartbeatTimeout: "5 minutes",
   startToCloseTimeout: "10 minutes",
 });
+
+// we have a maximum of 990 debounces before we continue as new
+// this is to avoid "Failed to signalWithStart Workflow: 3 INVALID_ARGUMENT: exceeded workflow execution limit for signal events"
+const MAX_DEBOUNCE_COUNT = 990;
 
 /**
  * This workflow is in charge of synchronizing all the content of the Slack channels selected by the user.
@@ -161,6 +166,13 @@ export async function syncOneThreadDebounced(
     await sleep(10000);
     if (signaled) {
       debounceCount++;
+      if (debounceCount >= MAX_DEBOUNCE_COUNT) {
+        console.log(
+          `Continuing as new due to too many debounces: ${debounceCount}`
+        );
+        await continueAsNew(connectorId, channelId, threadTs);
+        return;
+      }
       continue;
     }
     const channel = await getChannel(connectorId, channelId);
@@ -201,6 +213,13 @@ export async function syncOneMessageDebounced(
     await sleep(10000);
     if (signaled) {
       debounceCount++;
+      if (debounceCount >= MAX_DEBOUNCE_COUNT) {
+        console.log(
+          `Continuing as new due to too many debounces: ${debounceCount}`
+        );
+        await continueAsNew(connectorId, channelId, threadTs);
+        return;
+      }
       console.log("Debouncing, sleep 10 secs");
       continue;
     }
