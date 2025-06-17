@@ -72,8 +72,7 @@ export function SearchGroupsDropdown({
             onClick={addGroup(group)}
             icon={UserGroupIcon}
             label={group.name}
-            // TODO: add member count
-            description=""
+            description={`${group.memberCount} members`}
           />
         ))}
         {filteredGroups.length === 0 && !isGroupsLoading && (
