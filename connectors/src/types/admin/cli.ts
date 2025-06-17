@@ -561,7 +561,7 @@ export const ZendeskCommandSchema = t.type({
     t.literal("fetch-brand"),
     t.literal("resync-help-centers"),
     t.literal("resync-brand-metadata"),
-    t.literal("sync-single-ticket"),
+    t.literal("sync-ticket"),
   ]),
   args: t.type({
     wId: t.union([t.string, t.undefined]),

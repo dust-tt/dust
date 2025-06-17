@@ -281,7 +281,7 @@ export const zendesk = async ({
       });
       return { success: true };
     }
-    case "sync-single-ticket": {
+    case "sync-ticket": {
       const brandId = args.brandId ?? null;
       if (!brandId) {
         throw new Error(`Missing --brandId argument`);
