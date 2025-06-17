@@ -166,7 +166,8 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
         maxAge: 43_200_000, // Use last 12h of cache
       },
       webhook: {
-        url: `${apiConfig.getConnectorsPublicURL()}/webhooks/${apiConfig.getDustConnectorsWebhooksSecret()}/firecrawl`,
+        url: "https://8c1635ae940f.ngrok.app/webhooks/mywebhooksecret/firecrawl",
+        // url: `${apiConfig.getConnectorsPublicURL()}/webhooks/${apiConfig.getDustConnectorsWebhooksSecret()}/firecrawl`,
         metadata: {
           connectorId: String(connectorId),
         },
@@ -1097,7 +1098,6 @@ export async function firecrawlCrawlPage(
 
   const extracted = r.data.markdown ?? "[NO CONTENT]";
 
-  //totalExtracted += extracted.length;
   const pageTitle = r.data.metadata?.title ?? randomUUID();
   const sourceUrl = r.data.metadata?.sourceURL;
   if (!sourceUrl) {
@@ -1108,17 +1108,12 @@ export async function firecrawlCrawlPage(
     return;
   }
 
-  // note that parentFolderUrls.length === parentFolderIds.length -1
-  // since parentFolderIds includes the page as first element
-  // and parentFolderUrls does not
+  // Note that parentFolderUrls.length === parentFolderIds.length -1 since parentFolderIds includes
+  // the page as first element and parentFolderUrls does not.
   const parentFolderUrls = getAllFoldersForUrl(sourceUrl);
   const parentFolderIds = getParentsForPage(sourceUrl, false);
 
   for (const [index, folder] of parentFolderUrls.entries()) {
-    // if (createdFolders.has(folder)) {
-    //   continue;
-    // }
-
     const logicalParent = isTopFolder(sourceUrl)
       ? null
       : getFolderForUrl(folder);
@@ -1134,9 +1129,9 @@ export async function firecrawlCrawlPage(
       lastSeenAt: new Date(),
     });
 
-    // parent folder ids of the page are in hierarchy order from the
-    // page to the root so for the current folder, its parents start at
-    // index+1 (including itself as first parent) and end at the root
+    // Parent folder ids of the page are in hierarchy order from the page to the root so for the
+    // current folder, its parents start at index+1 (including itself as first parent) and end at
+    // the root.
     const parents = parentFolderIds.slice(index + 1);
     await upsertDataSourceFolder({
       dataSourceConfig,
@@ -1148,8 +1143,6 @@ export async function firecrawlCrawlPage(
       mimeType: INTERNAL_MIME_TYPES.WEBCRAWLER.FOLDER,
       sourceUrl: webCrawlerFolder.url,
     });
-
-    // createdFolders.add(folder);
   }
   const documentId = stableIdForUrl({
     url: sourceUrl,
@@ -1252,9 +1245,19 @@ export async function firecrawlCrawlPage(
     );
   }
 
-  // TODO(spolu): report progress to the connector. Do it only if lastSyncSuccessfulTime is non
-  // null.
-  // await reportInitialSyncProgress(connector.id, `${pageCount.valid} pages`);
+  // TODO: we have a bit of a race condition here as the completed event can come before we get here
+  // so we want to tweak the method to not override lastSyncSuccessfulTime.
+
+  // if (!connector?.lastSyncSuccessfulTime) {
+  //   // If this is the first sync we report the initial sync progress.
+  //   const pagesCount = await WebCrawlerPage.count({
+  //     where: {
+  //       connectorId,
+  //       webcrawlerConfigurationId: webCrawlerConfig.id,
+  //     },
+  //   });
+  //   await reportInitialSyncProgress(connector.id, `${pagesCount} pages`);
+  // }
 }
 
 export async function firecrawlCrawlCompleted(
