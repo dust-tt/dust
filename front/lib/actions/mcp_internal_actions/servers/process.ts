@@ -5,10 +5,7 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import _ from "lodash";
 import { z } from "zod";
 
-import {
-  generateJSONFileAndSnippet,
-  uploadFileToConversationDataSource,
-} from "@app/lib/actions/action_file_helpers";
+import { generateJSONSnippet } from "@app/lib/actions/action_file_helpers";
 import { PROCESS_ACTION_TOP_K } from "@app/lib/actions/constants";
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import {
@@ -29,10 +26,7 @@ import type { ProcessActionOutputsType } from "@app/lib/actions/process";
 import { getExtractFileTitle } from "@app/lib/actions/process/utils";
 import { applyDataSourceFilters } from "@app/lib/actions/retrieval";
 import { runActionStreamed } from "@app/lib/actions/server";
-import type {
-  ActionGeneratedFileType,
-  AgentLoopContextType,
-} from "@app/lib/actions/types";
+import type { AgentLoopContextType } from "@app/lib/actions/types";
 import {
   isServerSideMCPServerConfiguration,
   isServerSideMCPToolConfiguration,
@@ -200,20 +194,12 @@ function makeExtractInformationFromDocumentsTool(
         }
       }
 
-      // Generate file and process tool output
-      const { jsonFile, processToolOutput } = await generateProcessToolOutput({
-        auth,
-        conversation,
+      // Generate process tool output with blob resource
+      const processToolOutput = await generateProcessToolOutput({
         outputs,
         jsonSchema,
         timeFrame,
         objective,
-      });
-      // Upload the file to the conversation data source.
-      // This step is critical for file persistence across sessions.
-      await uploadFileToConversationDataSource({
-        auth,
-        file: jsonFile,
       });
 
       return processToolOutput;
@@ -517,15 +503,11 @@ function processToolError({
 }
 
 async function generateProcessToolOutput({
-  auth,
-  conversation,
   outputs,
   jsonSchema,
   timeFrame,
   objective,
 }: {
-  auth: Authenticator;
-  conversation: ConversationType;
   outputs: ProcessActionOutputsType | null;
   jsonSchema: JSONSchema;
   timeFrame: TimeFrame | null;
@@ -534,17 +516,11 @@ async function generateProcessToolOutput({
   const fileTitle = getExtractFileTitle({
     schema: jsonSchema,
   });
-  const { jsonFile, jsonSnippet } = await generateJSONFileAndSnippet(auth, {
-    title: fileTitle,
-    conversationId: conversation.sId,
-    data: outputs?.data,
-  });
-  const generatedFile: ActionGeneratedFileType = {
-    fileId: jsonFile.sId,
-    title: fileTitle,
-    contentType: jsonFile.contentType,
-    snippet: jsonSnippet,
-  };
+
+  const jsonOutput = JSON.stringify(outputs?.data, null, 2);
+  const jsonSnippet = generateJSONSnippet(outputs?.data);
+  const jsonBase64 = Buffer.from(jsonOutput).toString("base64");
+
   const timeFrameAsString = timeFrame
     ? "the last " +
       (timeFrame.duration > 1
@@ -552,38 +528,27 @@ async function generateProcessToolOutput({
         : `${timeFrame.unit}`)
     : "all time";
 
-  const extractResult =
-    "PROCESSED OUTPUTS:\n" +
-    (outputs?.data && outputs.data.length > 0
-      ? outputs.data.map((d) => JSON.stringify(d)).join("\n")
-      : "(none)");
-
   return {
-    jsonFile,
-    processToolOutput: {
-      isError: false,
-      content: [
-        {
-          type: "resource" as const,
-          resource: {
-            mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.EXTRACT_QUERY,
-            text: `Extracted from ${outputs?.total_documents} documents over ${timeFrameAsString}.\nObjective: ${objective}`,
-            uri: "",
-          },
+    isError: false,
+    content: [
+      {
+        type: "resource" as const,
+        resource: {
+          mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.EXTRACT_QUERY,
+          text: `Extracted from ${outputs?.total_documents} documents over ${timeFrameAsString}.\nObjective: ${objective}`,
+          uri: "",
         },
-        {
-          type: "resource" as const,
-          resource: {
-            mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.EXTRACT_RESULT,
-            text: extractResult,
-            uri: jsonFile.getPublicUrl(auth),
-            fileId: generatedFile.fileId,
-            title: generatedFile.title,
-            contentType: generatedFile.contentType,
-            snippet: generatedFile.snippet,
-          },
+      },
+      {
+        type: "resource" as const,
+        name: fileTitle,
+        resource: {
+          uri: `data:application/json;base64,transient-content`,
+          mimeType: "application/json",
+          blob: jsonBase64,
+          snippet: jsonSnippet,
         },
-      ],
-    },
+      },
+    ],
   };
 }

@@ -14,8 +14,9 @@ import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapp
 import type { ActionDetailsComponentBaseProps } from "@app/components/actions/types";
 import type { MCPActionType } from "@app/lib/actions/mcp";
 import {
+  BlobCallToolResultBlock,
+  isBlobResource,
   isExtractQueryResourceType,
-  isExtractResultResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { isTimeFrame } from "@app/types/shared/utils/time_frame";
 
@@ -28,18 +29,6 @@ interface MCPExtractActionQueryProps {
   };
 }
 
-interface MCPExtractActionResultsProps {
-  resultResource?: {
-    text: string;
-    uri: string;
-    mimeType: string;
-    fileId: string;
-    title: string;
-    contentType: string;
-    snippet: string | null;
-  };
-}
-
 export function MCPExtractActionDetails({
   action,
   defaultOpen,
@@ -48,9 +37,7 @@ export function MCPExtractActionDetails({
     ?.filter(isExtractQueryResourceType)
     .map((o) => o.resource)?.[0];
 
-  const resultResource = action.output
-    ?.filter(isExtractResultResourceType)
-    .map((o) => o.resource)?.[0];
+  const resultResource = action.output?.find((o) => isBlobResource(o));
 
   const jsonSchema = action.params?.jsonSchema as JSONSchema | undefined;
 
@@ -103,7 +90,10 @@ export function MCPExtractActionDetails({
               </span>
             }
             contentChildren={
-              <MCPExtractActionResults resultResource={resultResource} />
+              <MCPExtractActionResults
+                resource={resultResource?.resource}
+                name={resultResource?.name}
+              />
             }
           />
         </div>
@@ -143,11 +133,15 @@ function MCPExtractActionQuery({
 }
 
 function MCPExtractActionResults({
-  resultResource,
-}: MCPExtractActionResultsProps) {
+  resource,
+  name,
+}: {
+  resource: BlobCallToolResultBlock["resource"] | undefined;
+  name?: string;
+}) {
   const [isDownloading, setIsDownloading] = useState(false);
 
-  if (!resultResource) {
+  if (!resource) {
     return (
       <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
         No data was extracted.
@@ -158,13 +152,15 @@ function MCPExtractActionResults({
   const handleDownload = async () => {
     setIsDownloading(true);
     try {
-      window.open(resultResource.uri, "_blank");
+      window.open(resource.uri, "_blank");
     } catch (error) {
       console.error("Download failed:", error);
     } finally {
       setIsDownloading(false);
     }
   };
+
+  const title = name || "extract_results";
 
   return (
     <div className="flex flex-col gap-4">
@@ -173,17 +169,17 @@ function MCPExtractActionResults({
           className="w-48 min-w-48 max-w-48"
           containerClassName="my-2"
           onClick={handleDownload}
-          tooltip={resultResource.title}
+          tooltip={title}
           isLoading={isDownloading}
         >
           <CitationIcons>
             <Icon visual={ScanIcon} />
           </CitationIcons>
-          <CitationTitle>{resultResource.title}</CitationTitle>
+          <CitationTitle>{title}</CitationTitle>
         </Citation>
       </div>
 
-      {resultResource.snippet && (
+      {resource.snippet && (
         <CollapsibleComponent
           rootProps={{ defaultOpen: false }}
           triggerChildren={
@@ -197,7 +193,7 @@ function MCPExtractActionResults({
                 className="language-json max-h-60 overflow-y-auto"
                 wrapLongLines={true}
               >
-                {resultResource.snippet}
+                {resource.snippet}
               </CodeBlock>
             </div>
           }

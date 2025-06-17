@@ -2,16 +2,14 @@ import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 import {
-  generateCSVFileAndSnippet,
-  generateSectionFile,
-  uploadFileToConversationDataSource,
+  generateCSVOutput,
+  generateCSVSnippet,
 } from "@app/lib/actions/action_file_helpers";
 import { DEFAULT_TABLES_QUERY_ACTION_NAME } from "@app/lib/actions/constants";
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type {
   SqlQueryOutputType,
   ThinkingOutputType,
-  ToolGeneratedFileType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { fetchTableDataSourceConfigurations } from "@app/lib/actions/mcp_internal_actions/servers/utils";
 import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
@@ -28,6 +26,7 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { LabsSalesforcePersonalConnectionResource } from "@app/lib/resources/labs_salesforce_personal_connection_resource";
 import { sanitizeJSONOutput } from "@app/lib/utils";
 import logger from "@app/logger/logger";
+import type { CoreAPIDataSourceDocumentSection } from "@app/types";
 import type { ConnectorProvider } from "@app/types";
 import { assertNever } from "@app/types";
 
@@ -35,7 +34,13 @@ import { assertNever } from "@app/types";
 type TablesQueryOutputResources =
   | ThinkingOutputType
   | SqlQueryOutputType
-  | ToolGeneratedFileType;
+  | {
+      uri: string;
+      name: string;
+      mimeType: string;
+      blob: string;
+      snippet?: string;
+    };
 
 export // We need a model with at least 54k tokens to run tables_query.
 const TABLES_QUERY_MIN_TOKEN = 50_000;
@@ -254,10 +259,22 @@ function createServer(
         unknown
       >;
 
-      const content: {
-        type: "resource";
-        resource: TablesQueryOutputResources;
-      }[] = [];
+      const content: (
+        | {
+            type: "resource";
+            resource: TablesQueryOutputResources;
+          }
+        | {
+            type: "resource";
+            name: string;
+            resource: {
+              uri: string;
+              mimeType: string;
+              blob: string;
+              snippet?: string;
+            };
+          }
+      )[] = [];
 
       if (typeof output?.thinking === "string") {
         content.push({
@@ -297,29 +314,26 @@ function createServer(
         output: sanitizedOutput,
       });
 
-      // Generate the CSV file.
-      const { csvFile, csvSnippet } = await generateCSVFileAndSnippet(auth, {
-        title: queryTitle,
-        conversationId: agentLoopRunContext.conversation.sId,
-        results,
+      // Generate CSV content
+      const { csvOutput, contentType, fileName } = await generateCSVOutput(
+        queryTitle,
+        results
+      );
+
+      const csvSnippet = generateCSVSnippet({
+        content: csvOutput,
+        totalRecords: results.length,
       });
 
-      // Upload the CSV file to the conversation data source.
-      await uploadFileToConversationDataSource({
-        auth,
-        file: csvFile,
-      });
-
-      // Append the CSV file to the output of the tool as an agent-generated file.
+      // Convert to blob resource
+      const csvBase64 = Buffer.from(csvOutput).toString("base64");
       content.push({
         type: "resource",
+        name: fileName,
         resource: {
-          text: `Your query results were generated successfully.`,
-          uri: csvFile.getPublicUrl(auth),
-          mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
-          fileId: csvFile.sId,
-          title: queryTitle,
-          contentType: csvFile.contentType,
+          uri: `data:${contentType};base64,transient-content`,
+          mimeType: contentType,
+          blob: csvBase64,
           snippet: csvSnippet,
         },
       });
@@ -345,31 +359,28 @@ function createServer(
           dataSourceView?.dataSource?.connectorProvider ?? null;
         const sectionColumnsPrefix = getSectionColumnsPrefix(connectorProvider);
 
-        // Generate the section file.
-        const sectionFile = await generateSectionFile(auth, {
-          title: queryTitle,
-          conversationId: agentLoopRunContext.conversation.sId,
+        // Generate section content
+        const sectionContent = generateSectionContent(
+          queryTitle,
           results,
-          sectionColumnsPrefix,
-        });
+          sectionColumnsPrefix
+        );
 
-        // Upload the section file to the conversation data source.
-        await uploadFileToConversationDataSource({
-          auth,
-          file: sectionFile,
-        });
+        // Convert to blob resource
+        const sectionBase64 = Buffer.from(sectionContent).toString("base64");
+        const sectionSnippet =
+          sectionContent.length > 1000
+            ? sectionContent.substring(0, 1000) + "... (truncated)"
+            : sectionContent;
 
-        // Append the section file to the output of the tool as an agent-generated file.
         content.push({
           type: "resource",
+          name: `${queryTitle} (Rich Text)`,
           resource: {
-            text: "Your query results were generated successfully.",
-            uri: sectionFile.getPublicUrl(auth),
-            mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
-            fileId: sectionFile.sId,
-            title: `${queryTitle} (Rich Text)`,
-            contentType: sectionFile.contentType,
-            snippet: null,
+            uri: `data:application/vnd.dust.section.json;base64,section`,
+            mimeType: "application/vnd.dust.section.json",
+            blob: sectionBase64,
+            snippet: sectionSnippet,
           },
         });
       }
@@ -382,6 +393,35 @@ function createServer(
   );
 
   return server;
+}
+
+export function generateSectionContent(
+  queryTitle: string,
+  results: Array<CSVRecord>,
+  sectionColumnsPrefix: string[] | null
+): string {
+  const sections: Array<CoreAPIDataSourceDocumentSection> = [];
+  for (const row of results) {
+    const prefix = sectionColumnsPrefix
+      ? sectionColumnsPrefix
+          .map((c) => row[c] ?? "")
+          .join(" ")
+          .trim() || null
+      : null;
+    const rowContent = JSON.stringify(row);
+    const section: CoreAPIDataSourceDocumentSection = {
+      prefix,
+      content: rowContent,
+      sections: [],
+    };
+    sections.push(section);
+  }
+  const section = {
+    prefix: queryTitle,
+    content: null,
+    sections,
+  };
+  return JSON.stringify(section);
 }
 
 function getTablesQueryResultsFileTitle({

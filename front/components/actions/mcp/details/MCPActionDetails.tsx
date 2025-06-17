@@ -27,7 +27,7 @@ import {
   isDataSourceNodeContentType,
   isDataSourceNodeListType,
   isExecuteTablesQueryMarkerResourceType,
-  isExtractResultResourceType,
+  isExtractQueryResourceType,
   isFilesystemPathType,
   isGetDatabaseSchemaMarkerResourceType,
   isIncludeResultResourceType,
@@ -55,7 +55,8 @@ export function MCPActionDetails(
     isGetDatabaseSchemaMarkerResourceType
   );
 
-  const isExtract = props.action.output?.some(isExtractResultResourceType);
+  const isExtract = props.action.output?.some(isExtractQueryResourceType);
+
   const isRunAgent =
     props.action.output?.some(isRunAgentResultResourceType) ||
     isRunAgentProgressOutput(props.lastNotification?.data.output);
