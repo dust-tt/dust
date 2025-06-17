@@ -977,6 +977,8 @@ export async function firecrawlCrawlFailed(
     localLogger.error({ connectorId }, "Connector not found");
     return;
   }
+
+  // TODO: mark the connector as failed?
 }
 
 export async function firecrawlCrawlStarted(
@@ -993,6 +995,8 @@ export async function firecrawlCrawlStarted(
     localLogger.error({ connectorId }, "Connector not found");
     return;
   }
+
+  // TODO: maybe nothing?
 }
 
 export async function firecrawlCrawlPage(
@@ -1011,6 +1015,8 @@ export async function firecrawlCrawlPage(
     localLogger.error({ connectorId }, "Connector not found");
     return;
   }
+
+  // TODO: retrieve scrape, upsert, update page lastSeenAt.
 }
 
 export async function firecrawlCrawlCompleted(
@@ -1027,4 +1033,7 @@ export async function firecrawlCrawlCompleted(
     localLogger.error({ connectorId }, "Connector not found");
     return;
   }
+
+  // TODO: maybe nothing? update connector state, if needed. launching the GC will happen in the
+  // workflow above
 }
