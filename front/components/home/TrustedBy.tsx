@@ -80,10 +80,8 @@ export default function TrustedBy({
           onMouseLeave={() => setIsPaused(false)}
         >
           <div
-            className={classNames(
-              "flex animate-marquee",
-              isPaused && "animate-none"
-            )}
+            className={classNames("animate-marquee flex")}
+            style={{ animationPlayState: isPaused ? "paused" : "running" }}
           >
             {/* First set */}
             {logos.map((logo, index) => (
