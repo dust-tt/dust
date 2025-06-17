@@ -1077,7 +1077,6 @@ function renderNode(
     parentTitle: node.parent_title,
     lastUpdatedAt: formatTimestamp(node.timestamp),
     sourceUrl: node.source_url,
-    // TODO(2025-06-02 aubin): see if we want a translation on these.
     mimeType: node.mime_type,
     hasChildren: node.children_count > 0,
     connectorProvider:
