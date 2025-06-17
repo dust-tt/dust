@@ -149,6 +149,7 @@ export async function renderConversationForModel(
                 agentMessageId: m.sId,
                 shadowReadRawContents,
                 nonEmptyRawContents,
+                messageCreatedAt: new Date(m.created).toISOString(),
               },
               "[CONVERSATION RENDERING] Shadow read raw contents is different from the raw contents"
             );
