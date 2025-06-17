@@ -106,7 +106,8 @@ const createServer = (
 
   server.tool(
     "cat",
-    "Read the contents of a document, referred to by its nodeId (named after the 'cat' unix tool). The nodeId can be obtained using the 'find', 'list' or 'search' tools.",
+    "Read the contents of a document, referred to by its nodeId (named after the 'cat' unix tool). " +
+      "The nodeId can be obtained using the 'find', 'list' or 'search' tools.",
     {
       dataSources:
         ConfigurableToolInputSchemas[
