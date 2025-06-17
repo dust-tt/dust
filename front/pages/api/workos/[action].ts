@@ -240,10 +240,10 @@ async function handleLogout(req: NextApiRequest, res: NextApiResponse) {
     }
   }
 
-  res.setHeader(
-    "Set-Cookie",
-    "workos_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=Lax"
-  );
+  res.setHeader("Set-Cookie", [
+    "workos_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=Lax",
+    "sessionType=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax",
+  ]);
 
   res.redirect(returnTo as string);
 }
