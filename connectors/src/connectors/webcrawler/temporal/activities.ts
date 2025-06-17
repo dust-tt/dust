@@ -118,8 +118,6 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
   // We mark the crawler as started which will store startedat as lastSyncStartTime. This is what
   // we'll use to run the GC
   const startedAt = new Date();
-  const launchGarbageCollect = true;
-
   await syncStarted(connectorId, startedAt);
 
   const customHeaders = webCrawlerConfig.getCustomHeaders();
@@ -182,7 +180,10 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
       { crawlerId: crawlerResponse.id, url: rootUrl },
       "Firecrawl crawler started"
     );
-    return;
+    return {
+      launchGarbageCollect: false,
+      startedAtTs: startedAt.getTime(),
+    };
   } else if (
     webCrawlerConfig.customCrawler ===
     ("firecrawl" satisfies WebcrawlerCustomCrawler)
@@ -901,7 +902,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
   );
 
   return {
-    launchGarbageCollect,
+    launchGarbageCollect: true,
     startedAtTs: startedAt.getTime(),
     pageCount: pageCount.valid,
     crawlingError,
