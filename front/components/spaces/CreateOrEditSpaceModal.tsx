@@ -294,8 +294,8 @@ export function CreateOrEditSpaceModal({
           message:
             "This switches from manual member to group-based access. " +
             "Your current member list will be saved but no longer active.",
-          validateLabel: "Switch to Groups",
-          validateVariant: "warning",
+          validateLabel: "Confirm",
+          validateVariant: "primary",
         });
 
         if (confirmed) {
@@ -314,8 +314,8 @@ export function CreateOrEditSpaceModal({
           message:
             "This switches from group-based access to manual member management. " +
             "Your current group settings will be saved but no longer active.",
-          validateLabel: "Switch to Manual",
-          validateVariant: "warning",
+          validateLabel: "Confirm",
+          validateVariant: "primary",
         });
 
         if (confirmed) {
