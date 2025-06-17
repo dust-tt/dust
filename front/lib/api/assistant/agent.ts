@@ -648,7 +648,7 @@ async function* runMultiActionsAgent(
   }
 
   const { eventStream, dustRunId } = res.value;
-  const output: {
+  let output: {
     actions: Array<{
       functionCallId: string | null;
       name: string | null;
@@ -658,11 +658,7 @@ async function* runMultiActionsAgent(
     contents: Array<
       TextContentType | FunctionCallContentType | ReasoningContentType
     >;
-  } = {
-    actions: [],
-    generation: null,
-    contents: [],
-  };
+  } | null = null;
 
   let shouldYieldCancel = false;
   let lastCheckCancellation = Date.now();
@@ -674,8 +670,6 @@ async function* runMultiActionsAgent(
     agentMessage.sId,
     getDelimitersConfiguration({ agentConfiguration })
   );
-
-  let rawContent = "";
 
   const _checkCancellation = async () => {
     try {
@@ -698,6 +692,7 @@ async function* runMultiActionsAgent(
     }
   };
 
+  let rawContent = "";
   for await (const event of eventStream) {
     if (event.type === "function_call") {
       isGeneration = false;
@@ -779,6 +774,12 @@ async function* runMultiActionsAgent(
           break;
         }
 
+        output = {
+          actions: [],
+          generation: null,
+          contents: block.message.contents ?? [],
+        };
+
         if (block.message.function_calls?.length) {
           for (const fc of block.message.function_calls) {
             try {
@@ -815,13 +816,27 @@ async function* runMultiActionsAgent(
           output.generation = block.message.content ?? null;
         }
 
-        output.contents = block.message.contents ?? [];
         break;
       }
     }
   }
 
   yield* contentParser.flushTokens();
+
+  if (!output) {
+    yield {
+      type: "agent_error",
+      created: Date.now(),
+      configurationId: agentConfiguration.sId,
+      messageId: agentMessage.sId,
+      error: {
+        code: "multi_actions_error",
+        message: "Agent execution didn't complete.",
+        metadata: null,
+      },
+    } satisfies AgentErrorEvent;
+    return;
+  }
 
   for (const [i, content] of output.contents.entries()) {
     yield {
