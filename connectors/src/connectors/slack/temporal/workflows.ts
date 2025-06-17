@@ -1,6 +1,5 @@
 import {
   executeChild,
-  proxyActivities,
   setHandler,
   sleep,
   workflowInfo,
@@ -11,36 +10,59 @@ import type * as activities from "@connectors/connectors/slack/temporal/activiti
 import type { ModelId } from "@connectors/types";
 
 import {
+  getActivitiesForConnector,
+  getConnectorIdFromWorkflow,
+} from "../../../lib/temporal_queue_routing";
+import {
   getWeekEnd,
   getWeekStart,
   MAX_SYNC_NON_THREAD_MESSAGES,
 } from "../lib/utils";
+import { QUEUE_NAME } from "./config";
 import { newWebhookSignal, syncChannelSignal } from "./signals";
 
-const {
-  getChannel,
-  fetchUsers,
-  saveSuccessSyncActivity,
-  syncChannelMetadata,
-  reportInitialSyncProgressActivity,
-  getChannelsToGarbageCollect,
-  attemptChannelJoinActivity,
-  deleteChannelsFromConnectorDb,
-} = proxyActivities<typeof activities>({
-  startToCloseTimeout: "10 minutes",
-});
+// Configuration for slow lane routing.
+const SLOW_LANE_CONNECTOR_IDS: string[] = [
+  // Add connector IDs that should be routed to slow lane.
+  "5", // Workspace 4d76593070.
+];
 
-const { deleteChannel, syncThread, syncChannel } = proxyActivities<
-  typeof activities
->({
-  heartbeatTimeout: "15 minutes",
-  startToCloseTimeout: "90 minutes",
-});
+// Dynamic activity creation based on connector ID
+function getSlackActivities() {
+  const connectorId = getConnectorIdFromWorkflow();
 
-const { syncNonThreadedChunk } = proxyActivities<typeof activities>({
-  heartbeatTimeout: "5 minutes",
-  startToCloseTimeout: "10 minutes",
-});
+  return {
+    // Short timeout activities
+    shortTimeout: getActivitiesForConnector<typeof activities>({
+      baseQueue: QUEUE_NAME,
+      connectorId,
+      slowLaneConnectorIds: SLOW_LANE_CONNECTOR_IDS,
+      activityOptions: { startToCloseTimeout: "10 minutes" },
+    }),
+
+    // Long timeout activities
+    longTimeout: getActivitiesForConnector<typeof activities>({
+      baseQueue: QUEUE_NAME,
+      connectorId,
+      slowLaneConnectorIds: SLOW_LANE_CONNECTOR_IDS,
+      activityOptions: {
+        heartbeatTimeout: "15 minutes",
+        startToCloseTimeout: "90 minutes",
+      },
+    }),
+
+    // Medium timeout activities
+    mediumTimeout: getActivitiesForConnector<typeof activities>({
+      baseQueue: QUEUE_NAME,
+      connectorId,
+      slowLaneConnectorIds: SLOW_LANE_CONNECTOR_IDS,
+      activityOptions: {
+        heartbeatTimeout: "5 minutes",
+        startToCloseTimeout: "10 minutes",
+      },
+    }),
+  };
+}
 
 /**
  * This workflow is in charge of synchronizing all the content of the Slack channels selected by the user.
@@ -63,6 +85,8 @@ export async function workspaceFullSync(
   connectorId: ModelId,
   fromTs: number | null
 ): Promise<void> {
+  const slackActivities = getSlackActivities();
+
   let i = 1;
   const childWorkflowQueue = new PQueue({
     concurrency: 1,
@@ -70,7 +94,7 @@ export async function workspaceFullSync(
   setHandler(syncChannelSignal, async (input) => {
     for (const channelId of input.channelIds) {
       void childWorkflowQueue.add(async () => {
-        await reportInitialSyncProgressActivity(
+        await slackActivities.shortTimeout.reportInitialSyncProgressActivity(
           connectorId,
           `${i - 1}/${input.channelIds.length} channels`
         );
@@ -86,7 +110,7 @@ export async function workspaceFullSync(
       });
     }
   });
-  await fetchUsers(connectorId);
+  await slackActivities.shortTimeout.fetchUsers(connectorId);
   await childWorkflowQueue.onIdle();
 
   await executeChild(slackGarbageCollectorWorkflow, {
@@ -98,7 +122,7 @@ export async function workspaceFullSync(
     memo: workflowInfo().memo,
   });
 
-  await saveSuccessSyncActivity(connectorId);
+  await slackActivities.shortTimeout.saveSuccessSyncActivity(connectorId);
   console.log(`Workspace sync done for connector ${connectorId}`);
 }
 
@@ -113,10 +137,13 @@ export async function syncOneChannel(
   updateSyncStatus: boolean,
   fromTs: number | null
 ) {
-  const channelJoinSuccess = await attemptChannelJoinActivity(
-    connectorId,
-    channelId
-  );
+  const slackActivities = getSlackActivities();
+
+  const channelJoinSuccess =
+    await slackActivities.shortTimeout.attemptChannelJoinActivity(
+      connectorId,
+      channelId
+    );
   if (!channelJoinSuccess) {
     return;
   }
@@ -125,7 +152,7 @@ export async function syncOneChannel(
   let weeksSynced: Record<number, boolean> = {};
 
   do {
-    const syncChannelRes = await syncChannel(
+    const syncChannelRes = await slackActivities.longTimeout.syncChannel(
       channelId,
       connectorId,
       fromTs,
@@ -139,7 +166,7 @@ export async function syncOneChannel(
   } while (messagesCursor);
 
   if (updateSyncStatus) {
-    await saveSuccessSyncActivity(connectorId);
+    await slackActivities.shortTimeout.saveSuccessSyncActivity(connectorId);
   }
 }
 
@@ -148,6 +175,8 @@ export async function syncOneThreadDebounced(
   channelId: string,
   threadTs: string
 ) {
+  const slackActivities = getSlackActivities();
+
   let signaled = false;
   let debounceCount = 0;
 
@@ -163,19 +192,27 @@ export async function syncOneThreadDebounced(
       debounceCount++;
       continue;
     }
-    const channel = await getChannel(connectorId, channelId);
+    const channel = await slackActivities.shortTimeout.getChannel(
+      connectorId,
+      channelId
+    );
     if (!channel.name) {
       throw new Error(`Could not find channel name for channel ${channelId}`);
     }
 
     console.log(`Talked to slack after debouncing ${debounceCount} time(s)`);
-    await syncChannelMetadata(
+    await slackActivities.shortTimeout.syncChannelMetadata(
       connectorId,
       channelId,
       parseInt(threadTs, 10) * 1000
     );
-    await syncThread(channelId, channel.name, threadTs, connectorId);
-    await saveSuccessSyncActivity(connectorId);
+    await slackActivities.longTimeout.syncThread(
+      channelId,
+      channel.name,
+      threadTs,
+      connectorId
+    );
+    await slackActivities.shortTimeout.saveSuccessSyncActivity(connectorId);
   }
   // /!\ Any signal received outside of the while loop will be lost, so don't make any async
   // call here, which will allow the signal handler to be executed by the nodejs event loop. /!\
@@ -188,6 +225,8 @@ export async function syncOneMessageDebounced(
   channelId: string,
   threadTs: string
 ) {
+  const slackActivities = getSlackActivities();
+
   let signaled = false;
   let debounceCount = 0;
 
@@ -206,14 +245,21 @@ export async function syncOneMessageDebounced(
     }
     console.log(`Talked to slack after debouncing ${debounceCount} time(s)`);
 
-    const channel = await getChannel(connectorId, channelId);
+    const channel = await slackActivities.shortTimeout.getChannel(
+      connectorId,
+      channelId
+    );
     if (!channel.name) {
       throw new Error(`Could not find channel name for channel ${channelId}`);
     }
     const messageTs = parseInt(threadTs, 10) * 1000;
     const startTsMs = getWeekStart(new Date(messageTs)).getTime();
     const endTsMs = getWeekEnd(new Date(messageTs)).getTime();
-    await syncChannelMetadata(connectorId, channelId, endTsMs);
+    await slackActivities.shortTimeout.syncChannelMetadata(
+      connectorId,
+      channelId,
+      endTsMs
+    );
 
     let currentStartTsMs = startTsMs;
     let totalMessagesProcessed = 0;
@@ -228,7 +274,7 @@ export async function syncOneMessageDebounced(
         endTsMs
       );
 
-      const result = await syncNonThreadedChunk({
+      const result = await slackActivities.mediumTimeout.syncNonThreadedChunk({
         channelId,
         channelName: channel.name,
         connectorId,
@@ -252,7 +298,7 @@ export async function syncOneMessageDebounced(
       }
     }
 
-    await saveSuccessSyncActivity(connectorId);
+    await slackActivities.shortTimeout.saveSuccessSyncActivity(connectorId);
   }
   // /!\ Any signal received outside of the while loop will be lost, so don't make any async
   // call here, which will allow the signal handler to be executed by the nodejs event loop. /!\
@@ -266,12 +312,14 @@ export async function syncOneMessageDebounced(
 export async function slackGarbageCollectorWorkflow(
   connectorId: ModelId
 ): Promise<void> {
+  const slackActivities = getSlackActivities();
+
   const { channelsToDeleteFromConnectorsDb, channelsToDeleteFromDataSource } =
-    await getChannelsToGarbageCollect(connectorId);
+    await slackActivities.shortTimeout.getChannelsToGarbageCollect(connectorId);
   for (const channelId of channelsToDeleteFromDataSource) {
-    await deleteChannel(channelId, connectorId);
+    await slackActivities.longTimeout.deleteChannel(channelId, connectorId);
   }
-  await deleteChannelsFromConnectorDb(
+  await slackActivities.shortTimeout.deleteChannelsFromConnectorDb(
     channelsToDeleteFromConnectorsDb,
     connectorId
   );

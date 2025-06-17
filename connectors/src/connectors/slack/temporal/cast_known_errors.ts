@@ -21,7 +21,7 @@ export class SlackCastKnownErrorsInterceptor
       if (err instanceof ProviderRateLimitError) {
         if (err.retryAfter) {
           throw ApplicationFailure.create({
-            message: `${err.message}. Retry after ${err.retryAfter}s`,
+            message: `${err.message}. Retry after ${err.retryAfter / 1000}s`,
             nextRetryDelay: err.retryAfter,
           });
         }
