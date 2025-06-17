@@ -30,7 +30,6 @@ export function isBlobResource(
   return outputBlock.type === "resource" && "blob" in outputBlock.resource;
 }
 
-
 // Thinking tokens generated during the tool execution.
 
 const ThinkingOutputSchema = z.object({

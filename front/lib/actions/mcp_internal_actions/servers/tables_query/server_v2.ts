@@ -57,10 +57,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
   documentationUrl: null,
 };
 
-function createServer(
-  auth: Authenticator
-  // TODO: agentLoopContext parameter removed as it's not used
-): McpServer {
+function createServer(auth: Authenticator): McpServer {
   const server = new McpServer(serverInfo);
 
   server.tool(
@@ -160,7 +157,6 @@ function createServer(
       auth,
       "tables_query",
       async ({ tables, query, fileName }) => {
-
         // Fetch table configurations
         const tableConfigurationsRes = await fetchTableDataSourceConfigurations(
           auth,
@@ -263,10 +259,11 @@ function createServer(
           const queryTitle = `${fileName} (${humanReadableDate})`;
 
           // Generate CSV content
-          const { csvOutput, contentType, fileName: csvFileName } = await generateCSVOutput(
-            queryTitle,
-            results
-          );
+          const {
+            csvOutput,
+            contentType,
+            fileName: csvFileName,
+          } = await generateCSVOutput(queryTitle, results);
 
           const csvSnippet = generateCSVSnippet({
             content: csvOutput,
@@ -332,7 +329,8 @@ function createServer(
             const sectionContent = JSON.stringify(section);
 
             // Convert to blob resource
-            const sectionBase64 = Buffer.from(sectionContent).toString("base64");
+            const sectionBase64 =
+              Buffer.from(sectionContent).toString("base64");
             content.push({
               type: "resource",
               resource: {

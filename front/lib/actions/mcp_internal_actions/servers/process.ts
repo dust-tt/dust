@@ -516,17 +516,16 @@ async function generateProcessToolOutput({
   const fileTitle = getExtractFileTitle({
     schema: jsonSchema,
   });
-  
+
   const { jsonOutput, jsonSnippet } = generateJSONOutput(outputs?.data);
   const jsonBase64 = Buffer.from(jsonOutput).toString("base64");
-  
+
   const timeFrameAsString = timeFrame
     ? "the last " +
       (timeFrame.duration > 1
         ? `${timeFrame.duration} ${timeFrame.unit}s`
         : `${timeFrame.unit}`)
     : "all time";
-
 
   return {
     isError: false,

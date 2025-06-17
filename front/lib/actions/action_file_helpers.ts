@@ -245,9 +245,7 @@ export async function uploadFileToConversationDataSource({
 /**
  * Generate JSON output and snippet from data.
  */
-export function generateJSONOutput(
-  data: unknown
-): {
+export function generateJSONOutput(data: unknown): {
   jsonOutput: string;
   jsonSnippet: string;
 } {
