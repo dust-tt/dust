@@ -115,7 +115,7 @@ async function handler(
           case "invalid_csv_content":
           case "invalid_csv_and_file":
           case "invalid_content_error":
-          case "resource_not_found":
+          case "connection_not_found":
           case "table_not_found":
           case "file_not_found":
             status_code = 400;

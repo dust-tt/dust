@@ -35,11 +35,13 @@ describe("MCPServerConnectionResource", () => {
           });
         await SpaceFactory.system(workspace2, t);
 
-        const result = await MCPServerConnectionResource.findByMCPServer({
-          auth: authenticator2,
-          mcpServerId: remoteServer1.sId,
-          connectionType: "personal",
-        });
+        const result = await MCPServerConnectionResource.findByMCPServer(
+          authenticator2,
+          {
+            mcpServerId: remoteServer1.sId,
+            connectionType: "personal",
+          }
+        );
 
         expect(result.isErr()).toBe(true);
         if (result.isErr()) {
@@ -76,11 +78,13 @@ describe("MCPServerConnectionResource", () => {
           );
 
         // Try to access workspace connection as regular user
-        const result = await MCPServerConnectionResource.findByMCPServer({
-          auth: regularUserAuthenticator,
-          mcpServerId: remoteServer.sId,
-          connectionType: "workspace",
-        });
+        const result = await MCPServerConnectionResource.findByMCPServer(
+          regularUserAuthenticator,
+          {
+            mcpServerId: remoteServer.sId,
+            connectionType: "workspace",
+          }
+        );
 
         expect(result.isOk()).toBe(true);
         if (result.isOk()) {
@@ -115,11 +119,13 @@ describe("MCPServerConnectionResource", () => {
         );
 
         // Try to access connection as second user
-        const result = await MCPServerConnectionResource.findByMCPServer({
-          auth: authenticator2,
-          mcpServerId: remoteServer.sId,
-          connectionType: "personal",
-        });
+        const result = await MCPServerConnectionResource.findByMCPServer(
+          authenticator2,
+          {
+            mcpServerId: remoteServer.sId,
+            connectionType: "personal",
+          }
+        );
 
         expect(result.isErr()).toBe(true);
         if (result.isErr()) {
@@ -128,8 +134,7 @@ describe("MCPServerConnectionResource", () => {
 
         // Verify original user can still access their connection
         const originalUserResult =
-          await MCPServerConnectionResource.findByMCPServer({
-            auth: authenticator1,
+          await MCPServerConnectionResource.findByMCPServer(authenticator1, {
             mcpServerId: remoteServer.sId,
             connectionType: "personal",
           });

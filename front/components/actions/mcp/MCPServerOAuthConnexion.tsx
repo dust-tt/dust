@@ -55,10 +55,10 @@ export function MCPServerOAuthConnexion({
 
   useEffect(() => {
     // Pick first choice by default.
-    if (authorization.supported_use_cases.length > 0) {
+    if (authorization.supported_use_cases.length > 0 && !useCase) {
       setUseCase(authorization.supported_use_cases[0]);
     }
-  }, [authorization, setUseCase]);
+  }, [authorization.supported_use_cases, setUseCase, useCase]);
 
   useEffect(() => {
     if (useCase) {
@@ -85,7 +85,7 @@ export function MCPServerOAuthConnexion({
       };
       void fetchCredentialInputs();
     }
-  }, [authorization, setAuthCredentials, useCase]);
+  }, [authorization.provider, setAuthCredentials, useCase]);
 
   // We check if the form is valid.
   useEffect(() => {
@@ -119,71 +119,29 @@ export function MCPServerOAuthConnexion({
     >
       {authorization && (
         <>
-          {inputs ? (
-            <>
-              <Chip color="warning">
-                <span>
-                  {remoteMCPServerUrl
-                    ? `${remoteMCPServerUrl} requires authentication with `
-                    : "These tools require authentication with "}
-                  {OAUTH_PROVIDER_NAMES[authorization.provider]}
-                  {documentationUrl && (
-                    <>
-                      . Follow{" "}
-                      <a
-                        href={documentationUrl}
-                        className="text-highlight-600"
-                        target="_blank"
-                      >
-                        this guide
-                      </a>{" "}
-                      to set it up
-                    </>
-                  )}
-                  .
-                </span>
-              </Chip>
-              {Object.entries(inputs).map(([key, inputData]) => {
-                if (inputData.value) {
-                  // If the credential is already set, we don't need to ask the user for it.
-                  return null;
-                }
-                if (!isSupportedOAuthCredential(key)) {
-                  // Can't happen but to make typescript happy.
-                  return null;
-                }
-                const value = authCredentials?.[key] ?? "";
-                return (
-                  <div key={key} className="w-full">
-                    <Label htmlFor={key}>{inputData.label}</Label>
-                    <Input
-                      id={key}
-                      value={value}
-                      onChange={(e) =>
-                        setAuthCredentials({
-                          ...authCredentials,
-                          [key]: e.target.value,
-                        })
-                      }
-                      message={inputData.helpMessage}
-                      messageStatus={
-                        value.length > 0 &&
-                        inputData.validator &&
-                        !inputData.validator(value)
-                          ? "error"
-                          : undefined
-                      }
-                    />
-                  </div>
-                );
-              })}
-            </>
-          ) : (
-            <Chip color="warning">
-              {remoteMCPServerUrl ? <b>{remoteMCPServerUrl}</b> : "These tools"}{" "}
-              requires authentication.
-            </Chip>
-          )}
+          <Chip color="warning">
+            <span>
+              {remoteMCPServerUrl
+                ? `${remoteMCPServerUrl} requires authentication with `
+                : "These tools require authentication with "}
+              {OAUTH_PROVIDER_NAMES[authorization.provider]}
+              {documentationUrl && (
+                <>
+                  . Follow{" "}
+                  <a
+                    href={documentationUrl}
+                    className="text-highlight-600"
+                    target="_blank"
+                  >
+                    this guide
+                  </a>{" "}
+                  to set it up
+                </>
+              )}
+              .
+            </span>
+          </Chip>
+
           {authorization.supported_use_cases.length > 1 && containerRef && (
             <div className="w-full">
               <Label>Credentials Type</Label>
@@ -243,6 +201,41 @@ export function MCPServerOAuthConnexion({
               </ContentMessage>
             )}
           </div>
+          {inputs &&
+            Object.entries(inputs).map(([key, inputData]) => {
+              if (inputData.value) {
+                // If the credential is already set, we don't need to ask the user for it.
+                return null;
+              }
+              if (!isSupportedOAuthCredential(key)) {
+                // Can't happen but to make typescript happy.
+                return null;
+              }
+              const value = authCredentials?.[key] ?? "";
+              return (
+                <div key={key} className="w-full">
+                  <Label htmlFor={key}>{inputData.label}</Label>
+                  <Input
+                    id={key}
+                    value={value}
+                    onChange={(e) =>
+                      setAuthCredentials({
+                        ...authCredentials,
+                        [key]: e.target.value,
+                      })
+                    }
+                    message={inputData.helpMessage}
+                    messageStatus={
+                      value.length > 0 &&
+                      inputData.validator &&
+                      !inputData.validator(value)
+                        ? "error"
+                        : undefined
+                    }
+                  />
+                </div>
+              );
+            })}
         </>
       )}
     </div>

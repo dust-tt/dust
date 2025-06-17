@@ -31,6 +31,10 @@ import {
   AgentProcessAction,
   AgentProcessConfiguration,
 } from "@app/lib/models/assistant/actions/process";
+import {
+  AgentReasoningAction,
+  AgentReasoningConfiguration,
+} from "@app/lib/models/assistant/actions/reasoning";
 import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
 import {
   AgentTablesQueryAction,
@@ -46,6 +50,7 @@ import {
   AgentUserRelation,
   GlobalAgentSettings,
 } from "@app/lib/models/assistant/agent";
+import { TagAgentModel } from "@app/lib/models/assistant/tag_agent";
 import { DustAppSecret } from "@app/lib/models/dust_app_secret";
 import { FeatureFlag } from "@app/lib/models/feature_flag";
 import { MembershipInvitationModel } from "@app/lib/models/membership_invitation";
@@ -59,6 +64,7 @@ import { ExtensionConfigurationResource } from "@app/lib/resources/extension";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
+import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { PluginRunResource } from "@app/lib/resources/plugin_run_resource";
@@ -70,13 +76,13 @@ import {
   LabsTranscriptsConfigurationModel,
   LabsTranscriptsHistoryModel,
 } from "@app/lib/resources/storage/models/labs_transcripts";
+import { TagResource } from "@app/lib/resources/tags_resource";
 import { TrackerConfigurationResource } from "@app/lib/resources/tracker_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { deleteAllConversations } from "@app/temporal/scrub_workspace/activities";
 import { CoreAPI } from "@app/types";
-import { TagResource } from "@app/lib/resources/tags_resource";
 
 const hardDeleteLogger = logger.child({ activity: "hard-delete" });
 
@@ -250,10 +256,36 @@ export async function deleteAgentsActivity({
         },
       },
     });
-    const mcpActions = await AgentMCPAction.findAll({
+
+    const mcpReasoningConfigurations =
+      await AgentReasoningConfiguration.findAll({
+        where: {
+          mcpServerConfigurationId: {
+            [Op.in]: mcpServerConfigurations.map((r) => r.id),
+          },
+        },
+      });
+
+    await AgentReasoningAction.destroy({
+      where: {
+        reasoningConfigurationId: {
+          [Op.in]: mcpReasoningConfigurations.map((r) => `${r.id}`),
+        },
+      },
+    });
+
+    await AgentReasoningConfiguration.destroy({
       where: {
         mcpServerConfigurationId: {
           [Op.in]: mcpServerConfigurations.map((r) => r.id),
+        },
+      },
+    });
+
+    const mcpActions = await AgentMCPAction.findAll({
+      where: {
+        mcpServerConfigurationId: {
+          [Op.in]: mcpServerConfigurations.map((r) => `${r.id}`),
         },
       },
     });
@@ -268,7 +300,7 @@ export async function deleteAgentsActivity({
     await AgentMCPAction.destroy({
       where: {
         mcpServerConfigurationId: {
-          [Op.in]: mcpServerConfigurations.map((r) => r.id),
+          [Op.in]: mcpServerConfigurations.map((r) => `${r.id}`),
         },
       },
     });
@@ -293,6 +325,26 @@ export async function deleteAgentsActivity({
       },
     });
     await AgentRetrievalConfiguration.destroy({
+      where: {
+        agentConfigurationId: agent.id,
+        workspaceId: workspace.id,
+      },
+    });
+
+    const reasoningConfigurations = await AgentReasoningConfiguration.findAll({
+      where: {
+        agentConfigurationId: agent.id,
+        workspaceId: workspace.id,
+      },
+    });
+    await AgentReasoningAction.destroy({
+      where: {
+        reasoningConfigurationId: {
+          [Op.in]: reasoningConfigurations.map((r) => r.id),
+        },
+      },
+    });
+    await AgentReasoningConfiguration.destroy({
       where: {
         agentConfigurationId: agent.id,
         workspaceId: workspace.id,
@@ -423,6 +475,13 @@ export async function deleteAgentsActivity({
       },
     });
 
+    await TagAgentModel.destroy({
+      where: {
+        agentConfigurationId: agent.id,
+        workspaceId: workspace.id,
+      },
+    });
+
     const group = await GroupResource.fetchByAgentConfiguration({
       auth,
       agentConfiguration: agent,
@@ -515,6 +574,11 @@ export const deleteRemoteMCPServersActivity = async ({
   workspaceId: string;
 }) => {
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
+
+  await MCPServerConnectionResource.deleteAllForWorkspace(
+    auth.getNonNullableWorkspace()
+  );
+
   const remoteMCPServers = await RemoteMCPServerResource.listByWorkspace(auth);
   for (const remoteMCPServer of remoteMCPServers) {
     await remoteMCPServer.delete(auth);
@@ -648,7 +712,29 @@ export async function deleteSpacesActivity({
     includeDeleted: true,
   });
 
-  for (const space of spaces) {
+  // We need to delete global and system spaces last, as some resources rely on them.
+  const sortedSpaces = spaces.sort((a, b) => {
+    // First sort by space kind priority (system last, then global, then others).
+    const getSpacePriority = (space: SpaceResource) => {
+      if (space.kind === "system") {
+        return 2;
+      }
+      if (space.kind === "global") {
+        return 1;
+      }
+      return 0;
+    };
+
+    const priorityDiff = getSpacePriority(a) - getSpacePriority(b);
+    if (priorityDiff !== 0) {
+      return priorityDiff;
+    }
+
+    // Then sort by creation time for spaces of the same priority.
+    return a.createdAt.getTime() - b.createdAt.getTime();
+  });
+
+  for (const space of sortedSpaces) {
     const res = await space.delete(auth, { hardDelete: false });
     if (res.isErr()) {
       throw res.error;

@@ -19,7 +19,7 @@ import {
   TrashIcon,
 } from "@dust-tt/sparkle";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { ConnectMCPServerDialog } from "@app/components/actions/mcp/ConnectMCPServerDialog";
 import { MCPServerDetailsInfo } from "@app/components/actions/mcp/MCPServerDetailsInfo";
@@ -64,9 +64,15 @@ export function MCPServerDetails({
     }
   }, [isOpen]);
 
-  const effectiveMCPServer = updatedMCPServer || mcpServerView?.server;
+  const effectiveMCPServer = useMemo(
+    () => updatedMCPServer || mcpServerView?.server,
+    [updatedMCPServer, mcpServerView?.server]
+  );
 
-  const authorization = effectiveMCPServer?.authorization;
+  const authorization = useMemo(
+    () => effectiveMCPServer?.authorization,
+    [effectiveMCPServer?.authorization]
+  );
   const { deleteServer } = useDeleteMCPServer(owner);
   const [mcpServerToDelete, setMCPServerToDelete] = useState<
     MCPServerType | undefined
@@ -78,16 +84,30 @@ export function MCPServerDetails({
     disabled: !authorization,
   });
 
-  const connection = connections.find(
-    (c) =>
-      c.internalMCPServerId === effectiveMCPServer?.sId ||
-      c.remoteMCPServerId === effectiveMCPServer?.sId
+  const connection = useMemo(
+    () =>
+      connections.find(
+        (c) =>
+          c.internalMCPServerId === effectiveMCPServer?.sId ||
+          c.remoteMCPServerId === effectiveMCPServer?.sId
+      ),
+    [connections, effectiveMCPServer?.sId]
   );
 
   const [isLoading, setIsLoading] = useState(false);
   const { deleteMCPServerConnection } = useDeleteMCPServerConnection({
     owner,
   });
+
+  const handleDeleteConnection = useCallback(() => {
+    if (!connection || !effectiveMCPServer) {
+      return;
+    }
+    void deleteMCPServerConnection({
+      connection,
+      mcpServer: effectiveMCPServer,
+    });
+  }, [deleteMCPServerConnection, connection, effectiveMCPServer]);
 
   const [isConnectDialogOpen, setIsConnectDialogOpen] = useState(false);
 
@@ -183,12 +203,7 @@ export function MCPServerDetails({
                     disabled={isConnectionsLoading}
                     label={"Disconnect"}
                     size="sm"
-                    onClick={() => {
-                      void deleteMCPServerConnection({
-                        connection,
-                        mcpServer: effectiveMCPServer,
-                      });
-                    }}
+                    onClick={handleDeleteConnection}
                   />
                 </div>
               )}

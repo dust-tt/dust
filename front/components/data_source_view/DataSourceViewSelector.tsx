@@ -767,6 +767,7 @@ export function DataSourceViewSelector({
               ...v.node,
               dataSourceView: dataSourceView,
               parentInternalIds: v.parents,
+              parentTitle: null, // The parentTitle is not known here, but it also not necessary.
             })),
           isSelectAll: false,
         };

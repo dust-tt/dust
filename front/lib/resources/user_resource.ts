@@ -43,6 +43,8 @@ export interface UserResource extends ReadonlyAttributesType<UserModel> {}
 export class UserResource extends BaseResource<UserModel> {
   static model: ModelStatic<UserModel> = UserModel;
 
+  readonly memberships?: MembershipModel[];
+
   constructor(model: ModelStatic<UserModel>, blob: Attributes<UserModel>) {
     super(UserModel, blob);
   }
@@ -239,6 +241,12 @@ export class UserResource extends BaseResource<UserModel> {
     });
   }
 
+  async recordLoginActivity(date?: Date) {
+    return this.update({
+      lastLoginAt: date ?? new Date(),
+    });
+  }
+
   async delete(
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}
@@ -364,6 +372,7 @@ export class UserResource extends BaseResource<UserModel> {
       lastName: this.lastName,
       fullName: this.fullName(),
       image: this.imageUrl,
+      lastLoginAt: this.lastLoginAt?.getTime() ?? null,
     };
   }
 

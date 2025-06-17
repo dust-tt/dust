@@ -5,6 +5,7 @@ import { Workspace } from "@app/lib/models/workspace";
 import { WorkspaceHasDomainModel } from "@app/lib/models/workspace_has_domain";
 import { isFreePlan } from "@app/lib/plans/plan_codes";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
@@ -69,6 +70,9 @@ export async function createWorkspaceInternal({
     systemGroup,
     globalGroup,
   });
+
+  // Ensure all auto MCP server views are created for the workspace
+  await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
 
   if (planCode) {
     await SubscriptionResource.internalSubscribeWorkspaceToFreePlan({

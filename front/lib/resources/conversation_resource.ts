@@ -307,7 +307,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     const includedConversationVisibilities: ConversationVisibility[] = [
       "unlisted",
-      "workspace",
     ];
 
     if (options?.includeDeleted) {

@@ -2,6 +2,7 @@ import type { Context } from "@temporalio/activity";
 import { Worker } from "@temporalio/worker";
 
 import * as activities from "@connectors/connectors/slack/temporal/activities";
+import { SlackCastKnownErrorsInterceptor } from "@connectors/connectors/slack/temporal/cast_known_errors";
 import {
   getTemporalWorkerConnection,
   TEMPORAL_MAXED_CACHED_WORKFLOWS,
@@ -27,6 +28,7 @@ export async function runSlackWorker() {
         (ctx: Context) => {
           return new ActivityInboundLogInterceptor(ctx, logger);
         },
+        () => new SlackCastKnownErrorsInterceptor(),
       ],
     },
   });

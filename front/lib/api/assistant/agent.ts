@@ -5,7 +5,10 @@ import {
 } from "@app/lib/actions/mcp_actions";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { getRunnerForActionConfiguration } from "@app/lib/actions/runners";
-import { runActionStreamed } from "@app/lib/actions/server";
+import {
+  isDustAppChatBlockType,
+  runActionStreamed,
+} from "@app/lib/actions/server";
 import type {
   ActionConfigurationType,
   AgentActionConfigurationType,
@@ -36,7 +39,7 @@ import {
   getAgentConfigurations,
 } from "@app/lib/api/assistant/configuration";
 import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
-import { getEmulatedAndJITActions } from "@app/lib/api/assistant/jit_actions";
+import { getEmulatedActionsAndJITServers } from "@app/lib/api/assistant/jit_actions";
 import { isLegacyAgentConfiguration } from "@app/lib/api/assistant/legacy_agent";
 import { renderConversationForModel } from "@app/lib/api/assistant/preprocessing";
 import config from "@app/lib/api/config";
@@ -44,6 +47,7 @@ import { getRedisClient } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
+import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
 import type { KillSwitchType } from "@app/lib/poke/types";
 import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
@@ -60,6 +64,7 @@ import type {
   AgentGenerationCancelledEvent,
   AgentMessageSuccessEvent,
   AgentMessageType,
+  AgentStepContentEvent,
   ConversationType,
   GenerationCancelEvent,
   GenerationSuccessEvent,
@@ -69,6 +74,11 @@ import type {
   WorkspaceType,
 } from "@app/types";
 import { assertNever, removeNulls, SUPPORTED_MODEL_CONFIGS } from "@app/types";
+import type {
+  FunctionCallContentType,
+  ReasoningContentType,
+} from "@app/types/assistant/agent_message_content";
+import type { TextContentType } from "@app/types/assistant/agent_message_content";
 
 const CANCELLATION_CHECK_INTERVAL = 500;
 const MAX_ACTIONS_PER_STEP = 16;
@@ -269,6 +279,21 @@ async function* runMultiActionsAgentLoop(
           processedContent += event.processedContent;
           break;
 
+        case "agent_step_content":
+          await AgentStepContentModel.create({
+            workspaceId: conversation.owner.id,
+            agentMessageId: agentMessage.agentMessageId,
+            step: i,
+            index: event.index,
+            type: event.content.type,
+            value: event.content,
+          });
+          agentMessage.contents.push({
+            step: i,
+            content: event.content,
+          });
+          break;
+
         // Generation events
         case "generation_tokens":
           yield event;
@@ -347,6 +372,7 @@ async function* runMultiActionsAgent(
   | AgentActionsEvent
   | AgentChainOfThoughtEvent
   | AgentContentEvent
+  | AgentStepContentEvent
 > {
   const model = SUPPORTED_MODEL_CONFIGS.find(
     (m) =>
@@ -378,11 +404,13 @@ async function* runMultiActionsAgent(
     }
   }
 
-  const { emulatedActions, jitActions } = await getEmulatedAndJITActions(auth, {
-    agentActions,
-    agentMessage,
-    conversation,
-  });
+  const { emulatedActions, jitServers } = await getEmulatedActionsAndJITServers(
+    auth,
+    {
+      agentMessage,
+      conversation,
+    }
+  );
 
   // Get client-side MCP server configurations from user message context.
   const clientSideMCPActionConfigurations =
@@ -394,15 +422,18 @@ async function* runMultiActionsAgent(
   const {
     serverToolsAndInstructions: mcpActions,
     error: mcpToolsListingError,
-  } = await tryListMCPTools(auth, {
-    agentConfiguration,
-    conversation,
-    agentMessage,
-    clientSideActionConfigurations: clientSideMCPActionConfigurations,
-  });
+  } = await tryListMCPTools(
+    auth,
+    {
+      agentConfiguration,
+      conversation,
+      agentMessage,
+      clientSideActionConfigurations: clientSideMCPActionConfigurations,
+    },
+    jitServers
+  );
 
   if (!isLastGenerationIteration) {
-    availableActions.push(...jitActions);
     availableActions.push(...mcpActions.flatMap((s) => s.tools));
   }
 
@@ -617,17 +648,17 @@ async function* runMultiActionsAgent(
   }
 
   const { eventStream, dustRunId } = res.value;
-  const output: {
+  let output: {
     actions: Array<{
       functionCallId: string | null;
       name: string | null;
       arguments: Record<string, string | boolean | number> | null;
     }>;
     generation: string | null;
-  } = {
-    actions: [],
-    generation: null,
-  };
+    contents: Array<
+      TextContentType | FunctionCallContentType | ReasoningContentType
+    >;
+  } | null = null;
 
   let shouldYieldCancel = false;
   let lastCheckCancellation = Date.now();
@@ -639,8 +670,6 @@ async function* runMultiActionsAgent(
     agentMessage.sId,
     getDelimitersConfiguration({ agentConfiguration })
   );
-
-  let rawContent = "";
 
   const _checkCancellation = async () => {
     try {
@@ -663,6 +692,7 @@ async function* runMultiActionsAgent(
     }
   };
 
+  let rawContent = "";
   for await (const event of eventStream) {
     if (event.type === "function_call") {
       isGeneration = false;
@@ -727,23 +757,97 @@ async function* runMultiActionsAgent(
         return;
       }
 
-      if (event.content.block_name === "OUTPUT" && e.value) {
+      if (event.content.block_name === "MODEL" && e.value) {
         // Flush early as we know the generation is terminated here.
         yield* contentParser.flushTokens();
 
-        const v = e.value as any;
-        if ("actions" in v) {
-          output.actions = v.actions;
+        const block = e.value;
+        if (!isDustAppChatBlockType(block)) {
+          logger.error(
+            {
+              workspaceId: conversation.owner.sId,
+              conversationId: conversation.sId,
+              error: block,
+            },
+            "Received unparsable MODEL block."
+          );
+          break;
         }
-        if ("generation" in v) {
-          output.generation = v.generation;
+
+        output = {
+          actions: [],
+          generation: null,
+          contents: block.message.contents ?? [],
+        };
+
+        if (block.message.function_calls?.length) {
+          for (const fc of block.message.function_calls) {
+            try {
+              const args = JSON.parse(fc.arguments);
+              output.actions.push({
+                name: fc.name,
+                functionCallId: fc.id,
+                arguments: args,
+              });
+            } catch (error) {
+              logger.error(
+                {
+                  workspaceId: conversation.owner.sId,
+                  conversationId: conversation.sId,
+                  error,
+                },
+                "Error parsing function call arguments."
+              );
+              yield {
+                type: "agent_error",
+                created: Date.now(),
+                configurationId: agentConfiguration.sId,
+                messageId: agentMessage.sId,
+                error: {
+                  code: "function_call_error",
+                  message: `Error parsing function call arguments: ${error}`,
+                  metadata: null,
+                },
+              } satisfies AgentErrorEvent;
+              return;
+            }
+          }
+        } else {
+          output.generation = block.message.content ?? null;
         }
+
         break;
       }
     }
   }
 
   yield* contentParser.flushTokens();
+
+  if (!output) {
+    yield {
+      type: "agent_error",
+      created: Date.now(),
+      configurationId: agentConfiguration.sId,
+      messageId: agentMessage.sId,
+      error: {
+        code: "multi_actions_error",
+        message: "Agent execution didn't complete.",
+        metadata: null,
+      },
+    } satisfies AgentErrorEvent;
+    return;
+  }
+
+  for (const [i, content] of output.contents.entries()) {
+    yield {
+      type: "agent_step_content",
+      created: Date.now(),
+      configurationId: agentConfiguration.sId,
+      messageId: agentMessage.sId,
+      index: i,
+      content,
+    } satisfies AgentStepContentEvent;
+  }
 
   if (!output.actions.length) {
     const processedContent = contentParser.getContent() ?? "";

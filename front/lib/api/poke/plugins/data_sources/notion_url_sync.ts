@@ -7,6 +7,7 @@ import logger from "@app/logger/logger";
 import {
   ConnectorsAPI,
   Err,
+  mapToEnumValues,
   NotionFindUrlResponseSchema,
   Ok,
 } from "@app/types";
@@ -27,7 +28,10 @@ export const notionUrlSyncPlugin = createPlugin({
         type: "enum",
         label: "Operation",
         description: "Select operation to perform",
-        values: NOTION_OPERATIONS,
+        values: mapToEnumValues(NOTION_OPERATIONS, (operation) => ({
+          label: operation,
+          value: operation,
+        })),
       },
       urls: {
         type: "text",

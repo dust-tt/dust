@@ -93,14 +93,18 @@ export function ConnectMCPServerDialog({
           ) {
             setAuthorization({
               provider: "mcp",
-              // During setup, the use case is always "platform_actions".
-              use_case: "platform_actions",
-              supported_use_cases: ["platform_actions"], // TODO(mcp): Add personal_actions option.
+              supported_use_cases: ["platform_actions", "personal_actions"],
             });
             setAuthCredentials({
               ...discoverOAuthMetadataRes.value.connectionMetadata,
             });
             setRemoteMCPServerOAuthDiscoveryDone(true);
+          } else if (discoverOAuthMetadataRes.isErr()) {
+            sendNotification({
+              type: "error",
+              title: `Failed to discover OAuth metadata for ${mcpServer.url}`,
+              description: discoverOAuthMetadataRes.error.message,
+            });
           }
         }
         setIsLoading(false);
@@ -116,6 +120,7 @@ export function ConnectMCPServerDialog({
     serverType,
     remoteMCPServerOAuthDiscoveryDone,
     discoverOAuthMetadata,
+    sendNotification,
   ]);
 
   const resetState = useCallback(() => {
@@ -179,6 +184,7 @@ export function ConnectMCPServerDialog({
     setExternalIsLoading(false);
     setIsLoading(false);
     setIsOpen(false);
+    resetState();
   };
 
   return (

@@ -148,7 +148,14 @@ export class GroupResource extends BaseResource<GroupModel> {
   static async findEditorGroupForAgent(
     auth: Authenticator,
     agent: LightAgentConfigurationType
-  ): Promise<Result<GroupResource, Error>> {
+  ): Promise<
+    Result<
+      GroupResource,
+      DustError<
+        "group_not_found" | "internal_error" | "unauthorized" | "invalid_id"
+      >
+    >
+  > {
     const owner = auth.getNonNullableWorkspace();
 
     const groupAgents = await GroupAgentModel.findAll({
@@ -170,7 +177,10 @@ export class GroupResource extends BaseResource<GroupModel> {
 
     if (groupAgents.length > 1) {
       return new Err(
-        new Error("Multiple editor group associations found for agent.")
+        new DustError(
+          "internal_error",
+          "Multiple editor group associations found for agent."
+        )
       );
     }
 
@@ -192,7 +202,10 @@ export class GroupResource extends BaseResource<GroupModel> {
       // Should not happen based on creation logic, but good to check.
       // Might change when we allow other group kinds to be associated with agents.
       return new Err(
-        new Error("Associated group is not an agent_editors group.")
+        new DustError(
+          "internal_error",
+          "Associated group is not an agent_editors group."
+        )
       );
     }
 
@@ -475,7 +488,12 @@ export class GroupResource extends BaseResource<GroupModel> {
   static async fetchById(
     auth: Authenticator,
     id: string
-  ): Promise<Result<GroupResource, DustError>> {
+  ): Promise<
+    Result<
+      GroupResource,
+      DustError<"group_not_found" | "unauthorized" | "invalid_id">
+    >
+  > {
     const groupRes = await this.fetchByIds(auth, [id]);
 
     if (groupRes.isErr()) {
@@ -488,7 +506,12 @@ export class GroupResource extends BaseResource<GroupModel> {
   static async fetchByIds(
     auth: Authenticator,
     ids: string[]
-  ): Promise<Result<GroupResource[], DustError>> {
+  ): Promise<
+    Result<
+      GroupResource[],
+      DustError<"group_not_found" | "unauthorized" | "invalid_id">
+    >
+  > {
     const groupModelIds = removeNulls(
       ids.map((id) => getResourceIdFromSId(id))
     );
@@ -507,7 +530,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     if (groups.length !== ids.length) {
       return new Err(
         new DustError(
-          "resource_not_found",
+          "group_not_found",
           ids.length === 1 ? "Group not found" : "Some groups were not found"
         )
       );
@@ -546,7 +569,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     const group = await this.model.findOne({
       where: {
         workspaceId: owner.id,
-        workOSGroupId: directoryGroup.directoryId,
+        workOSGroupId: directoryGroup.id,
       },
     });
 
@@ -558,7 +581,7 @@ export class GroupResource extends BaseResource<GroupModel> {
 
     return this.makeNew({
       name: directoryGroup.name,
-      workOSGroupId: directoryGroup.directoryId,
+      workOSGroupId: directoryGroup.id,
       updatedAt: new Date(),
       kind: "provisioned",
       workspaceId: owner.id,
@@ -641,7 +664,7 @@ export class GroupResource extends BaseResource<GroupModel> {
 
     if (!group) {
       return new Err(
-        new DustError("resource_not_found", "System group not found")
+        new DustError("group_not_found", "System group not found")
       );
     }
 
@@ -650,7 +673,7 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   static async fetchWorkspaceGlobalGroup(
     auth: Authenticator
-  ): Promise<Result<GroupResource, DustError>> {
+  ): Promise<Result<GroupResource, DustError<"group_not_found">>> {
     const [group] = await this.baseFetch(auth, {
       where: {
         kind: "global",
@@ -659,7 +682,7 @@ export class GroupResource extends BaseResource<GroupModel> {
 
     if (!group) {
       return new Err(
-        new DustError("resource_not_found", "Global group not found")
+        new DustError("group_not_found", "Global group not found")
       );
     }
 
@@ -684,10 +707,58 @@ export class GroupResource extends BaseResource<GroupModel> {
     return groups.filter((group) => group.canRead(auth));
   }
 
+  static async listForSpaceById(
+    auth: Authenticator,
+    spaceId: string,
+    options: { groupKinds?: GroupKind[] } = {}
+  ): Promise<GroupResource[]> {
+    const workspace = auth.getNonNullableWorkspace();
+    const spaceModelId = getResourceIdFromSId(spaceId);
+
+    if (!spaceModelId) {
+      return [];
+    }
+
+    // Find groups associated with the space through GroupSpaceModel
+    const groupSpaces = await GroupSpaceModel.findAll({
+      where: {
+        vaultId: spaceModelId,
+        workspaceId: workspace.id,
+      },
+      attributes: ["groupId"],
+    });
+
+    if (groupSpaces.length === 0) {
+      return [];
+    }
+
+    const groupIds = groupSpaces.map((gs) => gs.groupId);
+    const { groupKinds } = options;
+
+    const whereClause: any = {
+      id: {
+        [Op.in]: groupIds,
+      },
+    };
+
+    // Apply groupKinds filter if provided
+    if (groupKinds && groupKinds.length > 0) {
+      whereClause.kind = {
+        [Op.in]: groupKinds,
+      };
+    }
+
+    const groups = await this.baseFetch(auth, {
+      where: whereClause,
+    });
+
+    return groups.filter((group) => group.canRead(auth));
+  }
+
   static async listUserGroupsInWorkspace({
     user,
     workspace,
-    groupKinds = ["global", "regular", "agent_editors"],
+    groupKinds = ["global", "regular", "provisioned", "agent_editors"],
     transaction,
   }: {
     user: UserResource;
@@ -752,13 +823,10 @@ export class GroupResource extends BaseResource<GroupModel> {
     return groups.map((group) => new this(GroupModel, group.get()));
   }
 
-  async isMember(auth: Authenticator): Promise<boolean> {
-    const owner = auth.getNonNullableWorkspace();
-
+  async isMember(user: UserResource): Promise<boolean> {
     if (this.isGlobal()) {
       return true;
     }
-
     if (this.isSystem()) {
       return false;
     }
@@ -766,10 +834,10 @@ export class GroupResource extends BaseResource<GroupModel> {
     const membership = await GroupMembershipModel.findOne({
       where: {
         groupId: this.id,
-        workspaceId: owner.id,
+        workspaceId: this.workspaceId,
         startAt: { [Op.lte]: new Date() },
         [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
-        userId: auth.getNonNullableUser().id,
+        userId: user.id,
       },
     });
 
@@ -814,11 +882,42 @@ export class GroupResource extends BaseResource<GroupModel> {
     );
   }
 
+  async getMemberCount(auth: Authenticator): Promise<number> {
+    const owner = auth.getNonNullableWorkspace();
+
+    // The global group does not have a DB entry for each workspace member.
+    if (this.isGlobal()) {
+      const { memberships } = await MembershipResource.getActiveMemberships({
+        workspace: auth.getNonNullableWorkspace(),
+      });
+      return memberships.length;
+    } else {
+      return GroupMembershipModel.count({
+        where: {
+          groupId: this.id,
+          workspaceId: owner.id,
+          startAt: { [Op.lte]: new Date() },
+          [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
+        },
+      });
+    }
+  }
+
   async addMembers(
     auth: Authenticator,
     users: UserType[],
     { transaction }: { transaction?: Transaction } = {}
-  ): Promise<Result<undefined, DustError>> {
+  ): Promise<
+    Result<
+      undefined,
+      DustError<
+        | "unauthorized"
+        | "user_not_found"
+        | "user_already_member"
+        | "system_or_global_group"
+      >
+    >
+  > {
     if (!this.canWrite(auth)) {
       return new Err(
         new DustError(
@@ -854,7 +953,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     ) {
       return new Err(
         new DustError(
-          "user_not_member",
+          "user_not_found",
           userIds.length === 1
             ? "Cannot add: user is not a member of the workspace"
             : "Cannot add: users are not members of the workspace"
@@ -915,7 +1014,17 @@ export class GroupResource extends BaseResource<GroupModel> {
     auth: Authenticator,
     users: UserType[],
     { transaction }: { transaction?: Transaction } = {}
-  ): Promise<Result<undefined, DustError>> {
+  ): Promise<
+    Result<
+      undefined,
+      DustError<
+        | "unauthorized"
+        | "user_not_found"
+        | "user_not_member"
+        | "system_or_global_group"
+      >
+    >
+  > {
     if (!this.canWrite(auth)) {
       return new Err(
         new DustError(
@@ -955,11 +1064,12 @@ export class GroupResource extends BaseResource<GroupModel> {
       );
     }
 
-    if (this.kind !== "regular" && this.kind !== "agent_editors") {
+    // Users can only be added to regular, agent_editors or provisioned groups.
+    if (!["regular", "agent_editors", "provisioned"].includes(this.kind)) {
       return new Err(
         new DustError(
           "system_or_global_group",
-          "Users can only be removed from regular or agent_editors groups."
+          "Users can only be removed from regular, agent_editors or provisioned groups."
         )
       );
     }
@@ -1011,7 +1121,18 @@ export class GroupResource extends BaseResource<GroupModel> {
     auth: Authenticator,
     users: UserType[],
     { transaction }: { transaction?: Transaction } = {}
-  ): Promise<Result<undefined, DustError>> {
+  ): Promise<
+    Result<
+      undefined,
+      DustError<
+        | "unauthorized"
+        | "user_not_found"
+        | "user_not_member"
+        | "user_already_member"
+        | "system_or_global_group"
+      >
+    >
+  > {
     if (!this.canWrite(auth)) {
       return new Err(
         new DustError(
@@ -1243,6 +1364,19 @@ export class GroupResource extends BaseResource<GroupModel> {
       name: this.name,
       workspaceId: this.workspaceId,
       kind: this.kind,
+      memberCount: 0, // Default value, use toJSONWithMemberCount for actual count
+    };
+  }
+
+  async toJSONWithMemberCount(auth: Authenticator): Promise<GroupType> {
+    const memberCount = await this.getMemberCount(auth);
+    return {
+      id: this.id,
+      sId: this.sId,
+      name: this.name,
+      workspaceId: this.workspaceId,
+      kind: this.kind,
+      memberCount,
     };
   }
 }

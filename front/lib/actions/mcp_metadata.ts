@@ -4,6 +4,7 @@ import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
 import type { StreamableHTTPClientTransportOptions } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
+import type { OAuthTokens } from "@modelcontextprotocol/sdk/shared/auth.js";
 import type { Implementation, Tool } from "@modelcontextprotocol/sdk/types.js";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { ProxyAgent } from "undici";
@@ -45,14 +46,12 @@ import {
   assertNever,
   Err,
   isOAuthProvider,
-  isOAuthUseCase,
+  normalizeError,
   Ok,
 } from "@app/types";
 
 export type AuthorizationInfo = {
   provider: OAuthProvider;
-  // TODO(mcp): remove use_case once the code has been updated to use the view.
-  use_case: MCPOAuthUseCase;
   supported_use_cases: MCPOAuthUseCase[];
   scope?: string;
 };
@@ -63,8 +62,7 @@ export function isAuthorizationInfo(a: unknown): a is AuthorizationInfo {
     a !== null &&
     "provider" in a &&
     isOAuthProvider(a.provider) &&
-    "use_case" in a &&
-    isOAuthUseCase(a.use_case)
+    "supported_use_cases" in a
   );
 }
 
@@ -172,18 +170,29 @@ export const connectToMCPServer = async (
 
           await mcpClient.connect(client);
 
-          // The server might requires authentication for tools.
-          // To avoid any unnecessary work, we only fetch the token if we are try to run a tool.
-          // If we are just listing tools, we don't need to fetch the token.
+          // For internal servers, to avoid any unnecessary work, we only try to fetch the token if we are trying to run a tool.
           if (agentLoopContext?.runContext) {
             const metadata = await extractMetadataFromServerVersion(
               mcpClient.getServerVersion()
             );
+
+            // The server requires authentication.
             if (metadata.authorization) {
               if (!params.oAuthUseCase) {
                 throw new Error(
                   "Internal server requires authentication but no use case was provided - Should never happen"
                 );
+              }
+
+              // Temporary to do a video.
+              if (
+                auth.getNonNullableWorkspace().sId === "91o4vu0LzW" &&
+                metadata.authorization.provider === "gmail"
+              ) {
+                metadata.authorization = {
+                  ...metadata.authorization,
+                  provider: "google_drive",
+                };
               }
 
               const c = await getConnectionForMCPServer(auth, {
@@ -216,7 +225,6 @@ export const connectToMCPServer = async (
                     new MCPServerPersonalAuthenticationRequiredError(
                       params.mcpServerId,
                       metadata.authorization.provider,
-                      params.oAuthUseCase,
                       metadata.authorization.scope
                     )
                   );
@@ -243,13 +251,63 @@ export const connectToMCPServer = async (
 
           const url = new URL(remoteMCPServer.url);
 
+          let token: OAuthTokens | undefined;
+
+          // If the server has a shared secret, we use it to authenticate.
+          if (remoteMCPServer.sharedSecret) {
+            token = {
+              access_token: remoteMCPServer.sharedSecret,
+              token_type: "bearer",
+              expires_in: undefined,
+              scope: "",
+            };
+          }
+          // The server requires authentication.
+          else if (remoteMCPServer.authorization) {
+            // We only fetch the personal token if we are running a tool.
+            // Otherwise, for listing tools etc.., we use the workspace token.
+            const connectionType =
+              params.oAuthUseCase === "personal_actions" &&
+              agentLoopContext?.runContext
+                ? "personal"
+                : "workspace";
+
+            const c = await getConnectionForMCPServer(auth, {
+              mcpServerId: params.mcpServerId,
+              connectionType: connectionType,
+            });
+            if (c) {
+              token = {
+                access_token: c.access_token,
+                token_type: "bearer",
+                expires_in: c.access_token_expiry ?? undefined,
+                scope: c.connection.metadata.scope,
+              };
+            } else {
+              if (
+                params.oAuthUseCase === "personal_actions" &&
+                connectionType === "personal"
+              ) {
+                return new Err(
+                  new MCPServerPersonalAuthenticationRequiredError(
+                    params.mcpServerId,
+                    "mcp"
+                  )
+                );
+              } else {
+                // TODO(mcp): We return an result to display a message to the user saying that the server requires the admin to setup the connection.
+                // For now, keeping iso.
+              }
+            }
+          }
+
           try {
             const req = {
               requestInit: {
                 headers: undefined,
                 dispatcher: createMCPDispatcher(),
               },
-              authProvider: new MCPOAuthProvider(auth, remoteMCPServer),
+              authProvider: new MCPOAuthProvider(auth, token),
             };
 
             await connectToRemoteMCPServer(mcpClient, url, req);
@@ -305,9 +363,7 @@ export const connectToMCPServer = async (
           },
           "Error establishing connection to remote MCP server via URL"
         );
-        return new Err(
-          new Error("Check URL and if a bearer token is required.")
-        );
+        return new Err(normalizeError(e));
       }
       break;
     }

@@ -76,6 +76,8 @@ async function handler(
     externalUser: session.user,
   });
 
+  await user.recordLoginActivity();
+
   // TODO(workos): Remove after switch to workos. Update user information when user is created with auth0.
   if (userCreated && session.type === "auth0" && session.user.workOSUserId) {
     await updateUserFromAuth0(
@@ -97,6 +99,7 @@ async function handler(
       lastName: user.lastName,
       image: user.imageUrl,
       fullName: user.name,
+      lastLoginAt: user.lastLoginAt?.getTime() ?? null,
     },
   });
 

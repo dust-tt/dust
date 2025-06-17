@@ -116,6 +116,7 @@ function makeServerSideMCPToolConfigurations(
     sId: generateRandomModelSId(),
     type: "mcp_configuration",
     name: tool.name,
+    icon: config.icon,
     description: tool.description ?? null,
     inputSchema:
       !tool.inputSchema || isEmptyInputSchema(tool.inputSchema)
@@ -163,6 +164,7 @@ function makeClientSideMCPToolConfigurations(
     // Use the base serverId (without suffix) to ensure tools are shared across all instances
     // of the same server name, allowing for consistent tool behavior.
     toolServerId: getBaseServerId(config.clientSideMcpServerId),
+    icon: config.icon,
   }));
 }
 
@@ -538,7 +540,8 @@ type AgentLoopListToolsContextWithoutConfigurationType = Omit<
  */
 export async function tryListMCPTools(
   auth: Authenticator,
-  agentLoopListToolsContext: AgentLoopListToolsContextWithoutConfigurationType
+  agentLoopListToolsContext: AgentLoopListToolsContextWithoutConfigurationType,
+  jitServers?: MCPServerConfigurationType[]
 ): Promise<{
   serverToolsAndInstructions: ServerToolsAndInstructions[];
   error?: string;
@@ -549,9 +552,10 @@ export async function tryListMCPTools(
   const mcpServerActions = [
     ...agentLoopListToolsContext.agentConfiguration.actions,
     ...(agentLoopListToolsContext.clientSideActionConfigurations ?? []),
+    ...(jitServers ?? []),
   ].filter(isMCPServerConfiguration);
 
-  // Discover all the tools exposed by all the mcp servers available.
+  // Discover all tools exposed by all available MCP servers.
   const results = await concurrentExecutor(
     mcpServerActions,
     async (action) => {

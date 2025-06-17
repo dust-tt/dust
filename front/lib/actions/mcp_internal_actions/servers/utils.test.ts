@@ -11,7 +11,7 @@ import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { itInTransaction } from "@app/tests/utils/utils";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 
-import { fetchAgentTableConfigurations, getCoreSearchArgs } from "./utils";
+import { fetchTableDataSourceConfigurations, getCoreSearchArgs } from "./utils";
 
 describe("MCP Internal Actions Server Utils", () => {
   describe("fetchAgentTableConfigurations", () => {
@@ -53,7 +53,7 @@ describe("MCP Internal Actions Server Utils", () => {
           },
         ];
 
-        const result = await fetchAgentTableConfigurations(
+        const result = await fetchTableDataSourceConfigurations(
           auth,
           tablesConfiguration
         );
@@ -81,7 +81,7 @@ describe("MCP Internal Actions Server Utils", () => {
           },
         ];
 
-        const result = await fetchAgentTableConfigurations(
+        const result = await fetchTableDataSourceConfigurations(
           auth,
           tablesConfiguration
         );
@@ -146,17 +146,42 @@ describe("MCP Internal Actions Server Utils", () => {
           },
         ];
 
-        const result = await fetchAgentTableConfigurations(
+        const result = await fetchTableDataSourceConfigurations(
           auth,
           tablesConfiguration
         );
         expect(result.isOk()).toBe(true);
         if (result.isOk()) {
           expect(result.value).toHaveLength(1);
-          expect(result.value[0].id).toBe(tableConfig.id);
+          expect(result.value[0].tableId).toBe(tableConfig.tableId);
+          expect(result.value[0].workspaceId).toBe(workspace.sId);
         }
       }
     );
+
+    itInTransaction("should handle dynamic table configurations", async () => {
+      const workspace = await WorkspaceFactory.basic();
+      const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+      const tablesConfiguration = [
+        {
+          uri: `table_configuration://dust/w/${workspace.sId}/data_source_views/dsv_12345/tables/table_name`,
+          mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE,
+        },
+      ];
+
+      const result = await fetchTableDataSourceConfigurations(
+        auth,
+        tablesConfiguration
+      );
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value).toHaveLength(1);
+        expect(result.value[0].tableId).toBe("table_name");
+        expect(result.value[0].workspaceId).toBe(workspace.sId);
+        expect(result.value[0].dataSourceViewId).toBe("dsv_12345");
+      }
+    });
   });
 
   describe("getCoreSearchArgs", () => {

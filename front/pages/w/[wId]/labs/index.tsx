@@ -1,4 +1,5 @@
 import {
+  ActionCodeBoxIcon,
   BookOpenIcon,
   ContextItem,
   EyeIcon,
@@ -42,6 +43,16 @@ const LABS_FEATURES: LabsFeatureItemType[] = [
     description:
       "Document monitoring made simple - receive alerts when documents are out of date.",
     onlyAdminCanManage: false,
+  },
+  {
+    id: "mcp_actions",
+    label: "MCP Actions Dashboard",
+    featureFlag: "labs_mcp_actions_dashboard",
+    visibleWithoutAccess: false,
+    icon: ActionCodeBoxIcon,
+    description:
+      "Monitor and track MCP (Model Context Protocol) actions executed by your agents.",
+    onlyAdminCanManage: true,
   },
   {
     id: "salesforce_personal_connections",

@@ -12,7 +12,7 @@ export type PermissionType = (typeof SUPPORTED_OPERATIONS)[number];
  * @property id - Unique identifier for the group (ModelId type)
  * @property permissions - Array of permissions granted to the group
  */
-type GroupPermission = {
+export type GroupPermission = {
   id: ModelId;
   permissions: PermissionType[];
 };

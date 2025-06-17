@@ -72,10 +72,10 @@ type BotAnswerParams = {
   responseUrl?: string;
   slackTeamId: string;
   slackChannel: string;
-  slackUserId: string | null;
-  slackBotId: string | null;
+  slackUserId: string;
+  slackBotId?: string;
   slackMessageTs: string;
-  slackThreadTs: string | null;
+  slackThreadTs?: string;
 };
 
 export async function getSlackConnector(params: BotAnswerParams) {
@@ -135,7 +135,10 @@ export async function botAnswerMessage(
       // This means that the message has been deleted, so we don't need to send an error message.
       return new Ok(undefined);
     }
-    const slackClient = await getSlackClient(connector.id);
+    const slackClient = await getSlackClient(connector.id, {
+      // Do not reject rate limited calls in bot answer message.
+      rejectRateLimitedCalls: false,
+    });
     try {
       await slackClient.chat.postMessage({
         channel: slackChannel,
@@ -196,7 +199,10 @@ export async function botReplaceMention(
       },
       "Unexpected exception updating mention on Chat Bot message"
     );
-    const slackClient = await getSlackClient(connector.id);
+    const slackClient = await getSlackClient(connector.id, {
+      // Do not reject rate limited calls in bot replace mention.
+      rejectRateLimitedCalls: false,
+    });
     await slackClient.chat.postMessage({
       channel: slackChannel,
       text: "An unexpected error occurred. Our team has been notified.",
@@ -212,7 +218,7 @@ type ToolValidationParams = {
   approved: "approved" | "rejected";
   conversationId: string;
   messageId: string;
-  slackBotMessageId: number;
+  slackChatBotMessageId: number;
   text: string;
 };
 
@@ -222,7 +228,7 @@ export async function botValidateToolExecution(
     approved,
     conversationId,
     messageId,
-    slackBotMessageId,
+    slackChatBotMessageId,
     text,
   }: ToolValidationParams,
   params: BotAnswerParams
@@ -237,7 +243,7 @@ export async function botValidateToolExecution(
 
   try {
     const slackChatBotMessage = await SlackChatBotMessage.findOne({
-      where: { id: slackBotMessageId },
+      where: { id: slackChatBotMessageId },
     });
     if (!slackChatBotMessage) {
       throw new Error("Missing Slack message");
@@ -284,7 +290,10 @@ export async function botValidateToolExecution(
         );
       }
     }
-    const slackClient = await getSlackClient(connector.id);
+    const slackClient = await getSlackClient(connector.id, {
+      // Do not reject rate limited calls in bot validate tool execution.
+      rejectRateLimitedCalls: false,
+    });
     await slackClient.chat.postEphemeral({
       channel: slackChannel,
       user: slackChatBotMessage.slackUserId,
@@ -302,7 +311,10 @@ export async function botValidateToolExecution(
       },
       "Unexpected exception validating tool execution"
     );
-    const slackClient = await getSlackClient(connector.id);
+    const slackClient = await getSlackClient(connector.id, {
+      // Do not reject rate limited calls in bot validate tool execution.
+      rejectRateLimitedCalls: false,
+    });
     await slackClient.chat.postMessage({
       channel: slackChannel,
       text: "An unexpected error occurred while sending the validation. Our team has been notified.",
@@ -344,7 +356,10 @@ async function processErrorResult(
       slackChatBotMessage?.conversationId
     );
 
-    const slackClient = await getSlackClient(connector.id);
+    const slackClient = await getSlackClient(connector.id, {
+      // Do not reject rate limited calls in process error result.
+      rejectRateLimitedCalls: false,
+    });
 
     const errorPost = makeErrorBlock(
       conversationUrl,
@@ -404,7 +419,10 @@ async function answerMessage(
   }
 
   // We start by retrieving the slack user info.
-  const slackClient = await getSlackClient(connector.id);
+  const slackClient = await getSlackClient(connector.id, {
+    // Do not reject rate limited calls in answer message.
+    rejectRateLimitedCalls: false,
+  });
 
   let slackUserInfo: SlackUserInfo | null = null;
 

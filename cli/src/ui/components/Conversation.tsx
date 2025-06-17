@@ -13,6 +13,7 @@ import React, {
 
 import { useTerminalSize } from "../../utils/hooks/use_terminal_size.js";
 import { clearTerminal } from "../../utils/terminal.js";
+import type { Command } from "../commands/types.js";
 import { CommandSelector } from "./CommandSelector.js";
 import { InputBox } from "./InputBox.js";
 
@@ -63,6 +64,7 @@ interface ConversationProps {
   commandQuery: string;
   selectedCommandIndex: number;
   commandCursorPosition: number;
+  commands?: Command[];
 }
 
 const _Conversation: FC<ConversationProps> = ({
@@ -77,6 +79,7 @@ const _Conversation: FC<ConversationProps> = ({
   commandQuery,
   selectedCommandIndex,
   commandCursorPosition,
+  commands = [],
 }: ConversationProps) => {
   return (
     <Box flexDirection="column" height="100%">
@@ -102,7 +105,9 @@ const _Conversation: FC<ConversationProps> = ({
 
       <InputBox
         userInput={showCommandSelector ? `/${commandQuery}` : userInput}
-        cursorPosition={showCommandSelector ? commandCursorPosition + 1 : cursorPosition}
+        cursorPosition={
+          showCommandSelector ? commandCursorPosition + 1 : cursorPosition
+        }
         isProcessingQuestion={isProcessingQuestion}
         mentionPrefix={mentionPrefix}
       />
@@ -110,6 +115,7 @@ const _Conversation: FC<ConversationProps> = ({
         <CommandSelector
           query={commandQuery}
           selectedIndex={selectedCommandIndex}
+          commands={commands}
           onSelect={() => {}}
         />
       )}

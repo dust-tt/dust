@@ -2,6 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { default as agentRouterServer } from "@app/lib/actions/mcp_internal_actions/servers/agent_router";
+import { default as conversationFilesServer } from "@app/lib/actions/mcp_internal_actions/servers/conversation_files";
 import { default as dataSourcesFileSystemServer } from "@app/lib/actions/mcp_internal_actions/servers/data_sources_file_system";
 import { default as generateFileServer } from "@app/lib/actions/mcp_internal_actions/servers/file_generation";
 import { default as githubServer } from "@app/lib/actions/mcp_internal_actions/servers/github";
@@ -18,7 +19,7 @@ import { default as reasoningServer } from "@app/lib/actions/mcp_internal_action
 import { default as runAgentServer } from "@app/lib/actions/mcp_internal_actions/servers/run_agent";
 import { default as dustAppServer } from "@app/lib/actions/mcp_internal_actions/servers/run_dust_app";
 import { default as salesforceServer } from "@app/lib/actions/mcp_internal_actions/servers/salesforce";
-import { default as searchServer } from "@app/lib/actions/mcp_internal_actions/servers/search";
+import { default as searchServer } from "@app/lib/actions/mcp_internal_actions/servers/search/search";
 import { default as tablesQueryServer } from "@app/lib/actions/mcp_internal_actions/servers/tables_query/server";
 import { default as tablesQueryServerV2 } from "@app/lib/actions/mcp_internal_actions/servers/tables_query/server_v2";
 import { default as thinkServer } from "@app/lib/actions/mcp_internal_actions/servers/think";
@@ -81,6 +82,8 @@ export async function getInternalMCPServer(
       return calendarServer();
     case "data_sources_file_system":
       return dataSourcesFileSystemServer(auth, agentLoopContext);
+    case "conversation_files":
+      return conversationFilesServer(auth, agentLoopContext);
     default:
       assertNever(internalMCPServerName);
   }

@@ -42,7 +42,7 @@ export function HelpDropdown({
   const handleAskHelp = () => {
     if (router.pathname === "/w/[wId]/assistant/[cId]") {
       // If we're on /assistant/new page, we just set the selected agent on top of what's already there in the input bar if any.
-      // This allows to not loose your potential input when you click on the help button.
+      // This allows to not lose your potential input when you click on the help button.
       setSelectedAssistant({ configurationId: GLOBAL_AGENTS_SID.HELPER });
       setAnimate(true);
     } else {

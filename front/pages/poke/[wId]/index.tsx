@@ -30,10 +30,8 @@ import { ActiveSubscriptionTable } from "@app/components/poke/subscriptions/tabl
 import { TrackerDataTable } from "@app/components/poke/trackers/table";
 import { WorkspaceInfoTable } from "@app/components/poke/workspace/table";
 import config from "@app/lib/api/config";
-import {
-  getWorkspaceCreationDate,
-  getWorkspaceVerifiedDomain,
-} from "@app/lib/api/workspace";
+import { getWorkspaceCreationDate } from "@app/lib/api/workspace";
+import { getWorkspaceVerifiedDomains } from "@app/lib/api/workspace_domains";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { Plan, Subscription } from "@app/lib/models/plan";
@@ -59,7 +57,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   registry: ActionRegistry;
   subscriptions: SubscriptionType[];
   whitelistableFeatures: WhitelistableFeature[];
-  workspaceVerifiedDomain: WorkspaceDomain | null;
+  workspaceVerifiedDomains: WorkspaceDomain[];
   worspaceCreationDay: string;
 }>(async (context, auth) => {
   const owner = auth.workspace();
@@ -91,7 +89,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
     })
   );
 
-  const workspaceVerifiedDomain = await getWorkspaceVerifiedDomain(owner);
+  const workspaceVerifiedDomains = await getWorkspaceVerifiedDomains(owner);
   const worspaceCreationDate = await getWorkspaceCreationDate(owner.sId);
 
   const extensionConfig =
@@ -105,7 +103,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
       whitelistableFeatures:
         WHITELISTABLE_FEATURES as unknown as WhitelistableFeature[],
       registry: getDustProdActionRegistry(),
-      workspaceVerifiedDomain,
+      workspaceVerifiedDomains,
       worspaceCreationDay: format(worspaceCreationDate, "yyyy-MM-dd"),
       extensionConfig: extensionConfig?.toJSON() ?? null,
       baseUrl: config.getClientFacingUrl(),
@@ -119,7 +117,7 @@ const WorkspacePage = ({
   subscriptions,
   whitelistableFeatures,
   registry,
-  workspaceVerifiedDomain,
+  workspaceVerifiedDomains,
   worspaceCreationDay,
   extensionConfig,
   baseUrl,
@@ -200,7 +198,7 @@ const WorkspacePage = ({
             <div className="mt-4 flex flex-col space-x-3 lg:flex-row">
               <WorkspaceInfoTable
                 owner={owner}
-                workspaceVerifiedDomain={workspaceVerifiedDomain}
+                workspaceVerifiedDomains={workspaceVerifiedDomains}
                 worspaceCreationDay={worspaceCreationDay}
                 extensionConfig={extensionConfig}
               />

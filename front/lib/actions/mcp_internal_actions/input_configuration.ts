@@ -3,15 +3,14 @@ import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { Ajv } from "ajv";
 import assert from "assert";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
-import { ZodError } from "zod";
 
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import type { ConfigurableToolInputType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
-import {
-  ConfigurableToolInputJSONSchemas,
-  JsonSchemaSchema,
-} from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import { validateConfiguredJsonSchema } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import { ConfigurableToolInputJSONSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import type { TableDataSourceConfiguration } from "@app/lib/actions/tables_query";
 import { isServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
+import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration";
 import type { MCPServerType, MCPServerViewType } from "@app/lib/api/mcp";
 import {
   areSchemasEqual,
@@ -22,6 +21,23 @@ import {
 } from "@app/lib/utils/json_schemas";
 import type { WorkspaceType } from "@app/types";
 import { assertNever } from "@app/types";
+
+function getDataSourceURI(config: DataSourceConfiguration): string {
+  const { workspaceId, sId, dataSourceViewId, filter } = config;
+  if (sId) {
+    return `data_source_configuration://dust/w/${workspaceId}/data_source_configurations/${sId}`;
+  }
+  const encodedFilter = encodeURIComponent(JSON.stringify(filter));
+  return `data_source_configuration://dust/w/${workspaceId}/data_source_views/${dataSourceViewId}/filter/${encodedFilter}`;
+}
+
+function getTableURI(config: TableDataSourceConfiguration): string {
+  const { workspaceId, sId, dataSourceViewId, tableId } = config;
+  if (sId) {
+    return `table_configuration://dust/w/${workspaceId}/table_configurations/${sId}`;
+  }
+  return `table_configuration://dust/w/${workspaceId}/data_source_views/${dataSourceViewId}/tables/${tableId}`;
+}
 
 /**
  * Defines how we fill the actual inputs of the tool for each mime type.
@@ -47,7 +63,7 @@ function generateConfiguredInput({
     case INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE: {
       return (
         actionConfiguration.dataSources?.map((config) => ({
-          uri: `data_source_configuration://dust/w/${owner.sId}/data_source_configurations/${config.sId}`,
+          uri: getDataSourceURI(config),
           mimeType,
         })) || []
       );
@@ -56,7 +72,7 @@ function generateConfiguredInput({
     case INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE: {
       return (
         actionConfiguration.tables?.map((config) => ({
-          uri: `table_configuration://dust/w/${owner.sId}/table_configurations/${config.sId}`,
+          uri: getTableURI(config),
           mimeType,
         })) || []
       );
@@ -102,22 +118,14 @@ function generateConfiguredInput({
       if (!jsonSchema) {
         return null;
       }
-      try {
-        const validatedSchema = JsonSchemaSchema.parse(jsonSchema);
-        return {
-          ...validatedSchema,
-          mimeType,
-        };
-      } catch (error) {
-        if (error instanceof ZodError) {
-          throw new Error(
-            `Invalid jsonSchema configuration for mimeType JSON_SCHEMA: ${error.errors
-              .map((e) => `${e.path.join(".")}: ${e.message}`)
-              .join(", ")}`
-          );
-        }
-        throw error;
+      const validationResult = validateConfiguredJsonSchema(jsonSchema);
+      if (validationResult.isErr()) {
+        throw validationResult.error;
       }
+      return {
+        ...validationResult.value,
+        mimeType,
+      };
     }
 
     case INTERNAL_MIME_TYPES.TOOL_INPUT.STRING: {
@@ -498,7 +506,7 @@ export function getMCPServerRequirements(
 }
 
 /**
- * Checks if a JSON schema matches should be idenfied as being configurable for a specific mime type.
+ * Checks if a JSON schema should be identified as being configurable for a specific mime type.
  */
 function isSchemaConfigurable(
   schema: JSONSchema,
@@ -526,7 +534,8 @@ function isSchemaConfigurable(
 /**
  * Recursively finds all property keys and subschemas match a specific sub-schema.
  * This function handles nested objects and arrays.
- * @returns A record of property keys that match the schema comparison. Empty record if no matches found.
+ * @returns A record of property keys that match the schema comparison.
+ * Empty record if no matches are found.
  */
 export function findMatchingSubSchemas(
   inputSchema: JSONSchema,

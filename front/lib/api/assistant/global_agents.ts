@@ -6,6 +6,10 @@ import { DEFAULT_RETRIEVAL_ACTION_NAME } from "@app/lib/actions/constants";
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
 import { internalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
+import {
+  LIST_ALL_AGENTS_TOOL_NAME,
+  SUGGEST_AGENTS_TOOL_NAME,
+} from "@app/lib/actions/mcp_internal_actions/servers/agent_router";
 import type { AgentActionConfigurationType } from "@app/lib/actions/types/agent";
 import { getFavoriteStates } from "@app/lib/api/assistant/get_favorite_states";
 import config from "@app/lib/api/config";
@@ -158,7 +162,7 @@ function _getAgentRouterToolsConfiguration(
       id: -1,
       sId: agentId + "-agent-router-list-action",
       type: "mcp_server_configuration",
-      name: "list_agents",
+      name: LIST_ALL_AGENTS_TOOL_NAME,
       description: "List the published agents of the workspace.",
       mcpServerViewId: mcpServerView.sId,
       internalMCPServerId,
@@ -175,7 +179,7 @@ function _getAgentRouterToolsConfiguration(
       id: -1,
       sId: agentId + "-agent-router-suggest-agents",
       type: "mcp_server_configuration",
-      name: "suggest_agents",
+      name: SUGGEST_AGENTS_TOOL_NAME,
       description: "Suggest agents based on the user's query.",
       mcpServerViewId: mcpServerView.sId,
       internalMCPServerId,
@@ -203,11 +207,13 @@ function _getHelperGlobalAgent({
   helperPromptInstance,
   agentRouterMCPServerView,
   webSearchBrowseMCPServerView,
+  searchMCPServerView,
 }: {
   auth: Authenticator;
   helperPromptInstance: HelperAssistantPrompt;
   agentRouterMCPServerView: MCPServerViewResource | null;
   webSearchBrowseMCPServerView: MCPServerViewResource | null;
+  searchMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {
   let prompt = "";
 
@@ -237,6 +243,52 @@ function _getHelperGlobalAgent({
     : dummyModelConfiguration;
   const status = modelConfiguration ? "active" : "disabled_by_admin";
 
+  const actions: AgentActionConfigurationType[] = [];
+
+  if (searchMCPServerView) {
+    actions.push({
+      id: -1,
+      sId: GLOBAL_AGENTS_SID.HELPER + "-search-action",
+      type: "mcp_server_configuration",
+      name: "search_dust_docs",
+      description: "The documentation of the Dust platform.",
+      mcpServerViewId: searchMCPServerView.sId,
+      internalMCPServerId: searchMCPServerView.internalMCPServerId,
+      dataSources: [
+        {
+          dataSourceViewId: config.getDustAppsHelperDatasourceViewId(),
+          workspaceId: config.getDustAppsWorkspaceId(),
+          filter: { parents: null, tags: null },
+        },
+      ],
+      tables: null,
+      childAgentId: null,
+      reasoningModel: null,
+      additionalConfiguration: {},
+      timeFrame: null,
+      dustAppConfiguration: null,
+      jsonSchema: null,
+    });
+  }
+
+  actions.push(
+    ..._getDefaultWebActionsForGlobalAgent({
+      agentSid: GLOBAL_AGENTS_SID.HELPER,
+      webSearchBrowseMCPServerView,
+    })
+  );
+
+  actions.push(
+    ..._getAgentRouterToolsConfiguration(
+      GLOBAL_AGENTS_SID.HELPER,
+      agentRouterMCPServerView,
+      internalMCPServerNameToSId({
+        name: "agent_router",
+        workspaceId: owner.id,
+      })
+    )
+  );
+
   return {
     id: -1,
     sId: GLOBAL_AGENTS_SID.HELPER,
@@ -251,37 +303,7 @@ function _getHelperGlobalAgent({
     userFavorite: false,
     scope: "global",
     model: model,
-    actions: [
-      {
-        id: -1,
-        sId: GLOBAL_AGENTS_SID.HELPER + "-datasource-action",
-        type: "retrieval_configuration",
-        query: "auto",
-        relativeTimeFrame: "auto",
-        topK: "auto",
-        dataSources: [
-          {
-            dataSourceViewId: config.getDustAppsHelperDatasourceViewId(),
-            workspaceId: config.getDustAppsWorkspaceId(),
-            filter: { parents: null, tags: null },
-          },
-        ],
-        name: "search_dust_docs",
-        description: `The documentation of the Dust platform.`,
-      },
-      ..._getDefaultWebActionsForGlobalAgent({
-        agentSid: GLOBAL_AGENTS_SID.HELPER,
-        webSearchBrowseMCPServerView,
-      }),
-      ..._getAgentRouterToolsConfiguration(
-        GLOBAL_AGENTS_SID.HELPER,
-        agentRouterMCPServerView,
-        internalMCPServerNameToSId({
-          name: "agent_router",
-          workspaceId: owner.id,
-        })
-      ),
-    ],
+    actions,
     maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
     visualizationEnabled: true,
     templateId: null,
@@ -1120,6 +1142,7 @@ function _getManagedDataSourceAgent(
     instructions,
     pictureUrl,
     preFetchedDataSources,
+    searchMCPServerView,
   }: {
     settings: GlobalAgentSettings | null;
     connectorProvider: ConnectorProvider;
@@ -1129,6 +1152,7 @@ function _getManagedDataSourceAgent(
     instructions: string | null;
     pictureUrl: string;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
+    searchMCPServerView: MCPServerViewResource | null;
   }
 ): AgentConfigurationType | null {
   const owner = auth.getNonNullableWorkspace();
@@ -1202,27 +1226,35 @@ function _getManagedDataSourceAgent(
     };
   }
 
+  const actions: AgentActionConfigurationType[] = [];
+  if (searchMCPServerView) {
+    actions.push({
+      id: -1,
+      sId: agentId + "-search-action",
+      type: "mcp_server_configuration",
+      name: DEFAULT_RETRIEVAL_ACTION_NAME,
+      description: `The user's ${connectorProvider} data source.`,
+      mcpServerViewId: searchMCPServerView.sId,
+      internalMCPServerId: searchMCPServerView.internalMCPServerId,
+      dataSources: filteredDataSourceViews.map((dsView) => ({
+        dataSourceViewId: dsView.sId,
+        workspaceId: preFetchedDataSources.workspaceId,
+        filter: { tags: null, parents: null },
+      })),
+      tables: null,
+      childAgentId: null,
+      reasoningModel: null,
+      additionalConfiguration: {},
+      timeFrame: null,
+      dustAppConfiguration: null,
+      jsonSchema: null,
+    });
+  }
+
   return {
     ...agent,
     status: "active",
-    actions: [
-      {
-        id: -1,
-        sId: agentId + "-action",
-        type: "retrieval_configuration",
-        query: "auto",
-        relativeTimeFrame: "auto",
-        topK: "auto",
-        dataSources: filteredDataSourceViews.map((dsView) => ({
-          dataSourceId: dsView.dataSource.sId,
-          dataSourceViewId: dsView.sId,
-          workspaceId: preFetchedDataSources.workspaceId,
-          filter: { tags: null, parents: null },
-        })),
-        name: DEFAULT_RETRIEVAL_ACTION_NAME,
-        description: `The user's ${connectorProvider} data source.`,
-      },
-    ],
+    actions,
     maxStepsPerRun: 1,
   };
 }
@@ -1232,9 +1264,11 @@ function _getGoogleDriveGlobalAgent(
   {
     settings,
     preFetchedDataSources,
+    searchMCPServerView,
   }: {
     settings: GlobalAgentSettings | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
+    searchMCPServerView: MCPServerViewResource | null;
   }
 ): AgentConfigurationType | null {
   return _getManagedDataSourceAgent(auth, {
@@ -1248,6 +1282,7 @@ function _getGoogleDriveGlobalAgent(
       "Assist the user based on the retrieved data from their Google Drives." +
       `\n${BREVITY_PROMPT}`,
     preFetchedDataSources,
+    searchMCPServerView,
   });
 }
 
@@ -1256,9 +1291,11 @@ function _getSlackGlobalAgent(
   {
     settings,
     preFetchedDataSources,
+    searchMCPServerView,
   }: {
     settings: GlobalAgentSettings | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
+    searchMCPServerView: MCPServerViewResource | null;
   }
 ) {
   return _getManagedDataSourceAgent(auth, {
@@ -1272,6 +1309,7 @@ function _getSlackGlobalAgent(
       "Assist the user based on the retrieved data from their Slack channels." +
       `\n${BREVITY_PROMPT}`,
     preFetchedDataSources,
+    searchMCPServerView,
   });
 }
 
@@ -1280,9 +1318,11 @@ function _getGithubGlobalAgent(
   {
     settings,
     preFetchedDataSources,
+    searchMCPServerView,
   }: {
     settings: GlobalAgentSettings | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
+    searchMCPServerView: MCPServerViewResource | null;
   }
 ) {
   return _getManagedDataSourceAgent(auth, {
@@ -1296,6 +1336,7 @@ function _getGithubGlobalAgent(
       "Assist the user based on the retrieved data from their Github Issues and Discussions." +
       `\n${BREVITY_PROMPT}`,
     preFetchedDataSources,
+    searchMCPServerView,
   });
 }
 
@@ -1304,9 +1345,11 @@ function _getNotionGlobalAgent(
   {
     settings,
     preFetchedDataSources,
+    searchMCPServerView,
   }: {
     settings: GlobalAgentSettings | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
+    searchMCPServerView: MCPServerViewResource | null;
   }
 ) {
   return _getManagedDataSourceAgent(auth, {
@@ -1320,6 +1363,7 @@ function _getNotionGlobalAgent(
       "Assist the user based on the retrieved data from their Notion Spaces." +
       `\n${BREVITY_PROMPT}`,
     preFetchedDataSources,
+    searchMCPServerView,
   });
 }
 
@@ -1328,9 +1372,11 @@ function _getIntercomGlobalAgent(
   {
     settings,
     preFetchedDataSources,
+    searchMCPServerView,
   }: {
     settings: GlobalAgentSettings | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
+    searchMCPServerView: MCPServerViewResource | null;
   }
 ) {
   return _getManagedDataSourceAgent(auth, {
@@ -1344,6 +1390,7 @@ function _getIntercomGlobalAgent(
       "Assist the user based on the retrieved data from their Intercom Workspace." +
       `\n${BREVITY_PROMPT}`,
     preFetchedDataSources,
+    searchMCPServerView,
   });
 }
 
@@ -1354,11 +1401,13 @@ function _getDustGlobalAgent(
     preFetchedDataSources,
     agentRouterMCPServerView,
     webSearchBrowseMCPServerView,
+    searchMCPServerView,
   }: {
     settings: GlobalAgentSettings | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
     agentRouterMCPServerView: MCPServerViewResource | null;
     webSearchBrowseMCPServerView: MCPServerViewResource | null;
+    searchMCPServerView: MCPServerViewResource | null;
   }
 ): AgentConfigurationType | null {
   const owner = auth.getNonNullableWorkspace();
@@ -1379,13 +1428,33 @@ function _getDustGlobalAgent(
       }
     : dummyModelConfiguration;
 
-  const instructions = `The agent answers with precision and brevity. It produces short and straight to the point answers. The agent should not provide additional information or content that the user did not ask for. When possible, the agent should answer using a single sentence.
-    # When the user asks a questions to the agent, the agent should analyze the situation as follows.
-    1. If the user's question requires information that is likely private or internal to the company (and therefore unlikely to be found on the public internet or within the agent's own knowledge), the agent should search in the company's internal data sources to answer the question. Searching in all datasources is the default behavior unless the user has specified the location in which case it is better to search only on the specific data source. It's important to not pick a restrictive timeframe unless it's explicitly requested or obviously needed.
-    2. If the users's question requires information that is recent and likely to be found on the public internet, the agent should use the internet to answer the question. That means performing a websearch and potentially browse some webpages.
-    3. If it is not obvious whether the information would be included in the internal company data sources or on the public internet, the agent should both search the internal company data sources and the public internet before answering the user's question.
-    4. If the user's query require neither internal company data or recent public knowledge, the agent is allowed to answer without using any tool.
-    The agent always respects the mardown format and generates spaces to nest content.`;
+  const instructions = `The agent answers with precision and brevity. It produces short and straight to the point answers.
+The agent should not provide additional information or content that the user did not ask for.
+When possible, the agent should answer using a single sentence.
+
+# When the user asks a questions to the agent, the agent should analyze the situation as follows:
+
+1. If the user's question requires information that is likely private or internal to the company
+   (and therefore unlikely to be found on the public internet or within the agent's own knowledge),
+   the agent should search in the company's internal data sources to answer the question.
+   Searching in all datasources is the default behavior unless the user has specified the location
+   in which case it is better to search only on the specific data source.
+   It's important to not pick a restrictive timeframe unless it's explicitly requested or obviously needed.
+   If no relevant information is found but the user's question seems to be internal to the company,
+   the agent should use the ${SUGGEST_AGENTS_TOOL_NAME} tool to suggest an agent that might be able to handle the request.
+
+2. If the users's question requires information that is recent and likely to be found on the public internet,
+   the agent should use the internet to answer the question.
+   That means performing a websearch and potentially browse some webpages.
+
+3. If it is not obvious whether the information would be included in the internal company data sources
+   or on the public internet, the agent should both search the internal company data sources
+   and the public internet before answering the user's question.
+
+4. If the user's query require neither internal company data or recent public knowledge,
+   the agent is allowed to answer without using any tool.
+
+The agent always respects the mardown format and generates spaces to nest content.`;
 
   const dustAgent = {
     id: -1,
@@ -1446,61 +1515,73 @@ function _getDustGlobalAgent(
       maxStepsPerRun: 0,
     };
   }
+  const actions: AgentActionConfigurationType[] = [];
 
-  // We push one action with all data sources
-  const actions: AgentActionConfigurationType[] = [
-    {
+  if (searchMCPServerView) {
+    // We push one action with all data sources
+    actions.push({
       id: -1,
       sId: GLOBAL_AGENTS_SID.DUST + "-datasource-action",
-      type: "retrieval_configuration",
-      query: "auto",
-      relativeTimeFrame: "auto",
-      topK: "auto",
+      type: "mcp_server_configuration",
+      name: "search_all_data_sources",
+      description: "The user's entire workspace data sources",
+      mcpServerViewId: searchMCPServerView.sId,
+      internalMCPServerId: searchMCPServerView.internalMCPServerId,
       dataSources: dataSourceViews.map((dsView) => ({
-        dataSourceId: dsView.dataSource.sId,
         dataSourceViewId: dsView.sId,
         workspaceId: preFetchedDataSources.workspaceId,
         filter: { parents: null, tags: null },
       })),
-      name: "search_all_data_sources",
-      description: `The user's entire workspace data sources`,
-    },
-  ];
+      tables: null,
+      childAgentId: null,
+      reasoningModel: null,
+      additionalConfiguration: {},
+      timeFrame: null,
+      dustAppConfiguration: null,
+      jsonSchema: null,
+    });
 
-  // Add one action per managed data source to improve search results for queries like
-  // "search in <data_source>".
-  // Only include data sources from the global space to limit actions for the same
-  // data source.
-  // Hack: Prefix action names with "hidden_" to prevent them from appearing in the UI,
-  // avoiding duplicate display of data sources.
-  dataSourceViews.forEach((dsView) => {
-    if (
-      dsView.dataSource.connectorProvider &&
-      dsView.dataSource.connectorProvider !== "webcrawler" &&
-      dsView.isInGlobalSpace
-    ) {
-      actions.push({
-        id: -1,
-        sId:
-          GLOBAL_AGENTS_SID.DUST +
-          "-datasource-action-" +
-          dsView.dataSource.sId,
-        type: "retrieval_configuration",
-        query: "auto",
-        relativeTimeFrame: "auto",
-        topK: "auto",
-        dataSources: [
-          {
-            workspaceId: preFetchedDataSources.workspaceId,
-            dataSourceViewId: dsView.sId,
-            filter: { parents: null, tags: null },
-          },
-        ],
-        name: "hidden_dust_search_" + dsView.dataSource.name,
-        description: `The user's ${dsView.dataSource.connectorProvider} data source.`,
-      });
-    }
-  });
+    // Add one action per managed data source to improve search results for queries like
+    // "search in <data_source>".
+    // Only include data sources from the global space to limit actions for the same
+    // data source.
+    // Hack: Prefix action names with "hidden_" to prevent them from appearing in the UI,
+    // avoiding duplicate display of data sources.
+    dataSourceViews.forEach((dsView) => {
+      if (
+        dsView.dataSource.connectorProvider &&
+        dsView.dataSource.connectorProvider !== "webcrawler" &&
+        dsView.isInGlobalSpace
+      ) {
+        actions.push({
+          id: -1,
+          sId:
+            GLOBAL_AGENTS_SID.DUST +
+            "-datasource-action-" +
+            dsView.dataSource.sId,
+          type: "mcp_server_configuration",
+          name: "hidden_dust_search_" + dsView.dataSource.name,
+          description: `The user's ${dsView.dataSource.connectorProvider} data source.`,
+          mcpServerViewId: searchMCPServerView.sId,
+          internalMCPServerId: searchMCPServerView.internalMCPServerId,
+          dataSources: [
+            {
+              workspaceId: preFetchedDataSources.workspaceId,
+              dataSourceViewId: dsView.sId,
+              filter: { parents: null, tags: null },
+            },
+          ],
+          tables: null,
+          childAgentId: null,
+          reasoningModel: null,
+          additionalConfiguration: {},
+          timeFrame: null,
+          dustAppConfiguration: null,
+          jsonSchema: null,
+        });
+      }
+    });
+  }
 
   actions.push(
     ..._getDefaultWebActionsForGlobalAgent({
@@ -1538,6 +1619,7 @@ function getGlobalAgent({
   globaAgentSettings,
   agentRouterMCPServerView,
   webSearchBrowseMCPServerView,
+  searchMCPServerView,
 }: {
   auth: Authenticator;
   sId: string | number;
@@ -1546,6 +1628,7 @@ function getGlobalAgent({
   globaAgentSettings: GlobalAgentSettings[];
   agentRouterMCPServerView: MCPServerViewResource | null;
   webSearchBrowseMCPServerView: MCPServerViewResource | null;
+  searchMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType | null {
   const settings =
     globaAgentSettings.find((settings) => settings.agentId === sId) ?? null;
@@ -1558,6 +1641,7 @@ function getGlobalAgent({
         helperPromptInstance,
         agentRouterMCPServerView,
         webSearchBrowseMCPServerView,
+        searchMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.GPT35_TURBO:
@@ -1651,30 +1735,35 @@ function getGlobalAgent({
       agentConfiguration = _getSlackGlobalAgent(auth, {
         settings,
         preFetchedDataSources,
+        searchMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.GOOGLE_DRIVE:
       agentConfiguration = _getGoogleDriveGlobalAgent(auth, {
         settings,
         preFetchedDataSources,
+        searchMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.NOTION:
       agentConfiguration = _getNotionGlobalAgent(auth, {
         settings,
         preFetchedDataSources,
+        searchMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.GITHUB:
       agentConfiguration = _getGithubGlobalAgent(auth, {
         settings,
         preFetchedDataSources,
+        searchMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.INTERCOM:
       agentConfiguration = _getIntercomGlobalAgent(auth, {
         settings,
         preFetchedDataSources,
+        searchMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST:
@@ -1683,6 +1772,7 @@ function getGlobalAgent({
         preFetchedDataSources,
         agentRouterMCPServerView,
         webSearchBrowseMCPServerView,
+        searchMCPServerView,
       });
       break;
     default:
@@ -1741,6 +1831,7 @@ export async function getGlobalAgents(
     helperPromptInstance,
     agentRouterMCPServerView,
     webSearchBrowseMCPServerView,
+    searchMCPServerView,
   ] = await Promise.all([
     variant === "full"
       ? getDataSourcesAndWorkspaceIdForGlobalAgents(auth)
@@ -1759,6 +1850,12 @@ export async function getGlobalAgents(
       ? MCPServerViewResource.getMCPServerViewForAutoInternalTool(
           auth,
           "web_search_&_browse"
+        )
+      : null,
+    variant === "full"
+      ? MCPServerViewResource.getMCPServerViewForAutoInternalTool(
+          auth,
+          "search"
         )
       : null,
   ]);
@@ -1809,6 +1906,7 @@ export async function getGlobalAgents(
       globaAgentSettings,
       agentRouterMCPServerView,
       webSearchBrowseMCPServerView,
+      searchMCPServerView,
     })
   );
 

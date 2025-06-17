@@ -9,14 +9,14 @@ import type { InferGetServerSidePropsType } from "next";
 
 import OnboardingLayout from "@app/components/sparkle/OnboardingLayout";
 import config from "@app/lib/api/config";
-import {
-  getWorkspaceInfos,
-  getWorkspaceVerifiedDomain,
-} from "@app/lib/api/workspace";
+import { getWorkspaceInfos } from "@app/lib/api/workspace";
+import { getWorkspaceVerifiedDomains } from "@app/lib/api/workspace_domains";
+import { getFeatureFlags } from "@app/lib/auth";
 import { makeGetServerSidePropsRequirementsWrapper } from "@app/lib/iam/session";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
 import { getSignUpUrl } from "@app/lib/signup";
 import type { LightWorkspaceType } from "@app/types";
+import { isString } from "@app/types";
 
 /**
  * 3 ways to end up here:
@@ -50,6 +50,7 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   onboardingType: OnboardingType;
   signUpCallbackUrl: string;
   workspace: LightWorkspaceType;
+  workOSEnabled: boolean;
 }>(async (context) => {
   const wId = context.query.wId as string;
   if (!wId) {
@@ -65,7 +66,11 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
     };
   }
 
-  const workspaceDomain = await getWorkspaceVerifiedDomain(workspace);
+  const flags = await getFeatureFlags(workspace);
+  const workOSEnabled =
+    flags.includes("workos") && isString(workspace.workOSOrganizationId);
+
+  const workspaceDomains = await getWorkspaceVerifiedDomains(workspace);
 
   const cId = typeof context.query.cId === "string" ? context.query.cId : null;
   const token = typeof context.query.t === "string" ? context.query.t : null;
@@ -81,7 +86,7 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
 
   // Redirect to 404 if in a flow where we need a verified domain and there is none.
   if (
-    !workspaceDomain?.domainAutoJoinEnabled &&
+    !workspaceDomains.some((d) => d.domainAutoJoinEnabled) &&
     ["domain_conversation_link", "domain_invite_link"].includes(onboardingType)
   ) {
     return {
@@ -133,6 +138,7 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
       onboardingType,
       signUpCallbackUrl,
       workspace,
+      workOSEnabled,
     },
   };
 });
@@ -142,10 +148,12 @@ export default function Join({
   onboardingType,
   signUpCallbackUrl,
   workspace,
+  workOSEnabled,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const signUpUrl = getSignUpUrl({
     signupCallbackUrl: signUpCallbackUrl,
     invitationEmail: invitationEmail ?? undefined,
+    workOSEnabled,
   });
 
   return (

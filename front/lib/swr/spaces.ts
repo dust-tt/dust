@@ -378,8 +378,22 @@ export function useDeleteFolderOrWebsite({
 }
 
 type DoCreateOrUpdateAllowedParams =
-  | { name: string | null; memberIds: null; isRestricted: false }
-  | { name: string | null; memberIds: string[]; isRestricted: true };
+  | {
+      name: string | null;
+      isRestricted: false;
+    }
+  | {
+      name: string | null;
+      memberIds: string[];
+      isRestricted: true;
+      managementMode?: "manual";
+    }
+  | {
+      name: string | null;
+      groupIds: string[];
+      isRestricted: true;
+      managementMode?: "group";
+    };
 
 export function useCreateSpace({ owner }: { owner: LightWorkspaceType }) {
   const sendNotification = useSendNotification();
@@ -392,17 +406,23 @@ export function useCreateSpace({ owner }: { owner: LightWorkspaceType }) {
     disabled: true, // Needed just to mutate.
   });
 
-  const doCreate = async ({
-    name,
-    memberIds,
-    isRestricted,
-  }: DoCreateOrUpdateAllowedParams) => {
+  const doCreate = async (params: DoCreateOrUpdateAllowedParams) => {
+    const { name, isRestricted } = params;
     if (!name) {
       return null;
     }
 
-    if (isRestricted && (!memberIds || memberIds?.length < 1)) {
-      return null;
+    if (isRestricted) {
+      const memberIds = "memberIds" in params ? params.memberIds : undefined;
+      const groupIds = "groupIds" in params ? params.groupIds : undefined;
+
+      // Must have either memberIds or groupIds for restricted spaces
+      if (
+        (!memberIds || memberIds.length < 1) &&
+        (!groupIds || groupIds.length < 1)
+      ) {
+        return null;
+      }
     }
 
     const url = `/api/w/${owner.sId}/spaces`;
@@ -413,7 +433,11 @@ export function useCreateSpace({ owner }: { owner: LightWorkspaceType }) {
       },
       body: JSON.stringify({
         name,
-        memberIds,
+        ...("memberIds" in params && { memberIds: params.memberIds }),
+        ...("groupIds" in params && { groupIds: params.groupIds }),
+        ...("managementMode" in params && {
+          managementMode: params.managementMode,
+        }),
         isRestricted,
       }),
     });
@@ -460,7 +484,11 @@ export function useUpdateSpace({ owner }: { owner: LightWorkspaceType }) {
     space: SpaceType,
     params: DoCreateOrUpdateAllowedParams
   ) => {
-    const { name: newName, memberIds, isRestricted } = params;
+    const { name: newName, isRestricted } = params;
+    const memberIds = "memberIds" in params ? params.memberIds : undefined;
+    const groupIds = "groupIds" in params ? params.groupIds : undefined;
+    const managementMode =
+      "managementMode" in params ? params.managementMode : undefined;
 
     const updatePromises: Promise<Response>[] = [];
 
@@ -489,7 +517,11 @@ export function useUpdateSpace({ owner }: { owner: LightWorkspaceType }) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          memberIds,
+          ...(memberIds !== undefined && { memberIds }),
+          ...(groupIds !== undefined && { groupIds }),
+          ...(managementMode !== undefined && {
+            managementMode,
+          }),
           isRestricted,
         }),
       })
@@ -688,6 +720,7 @@ type BaseSearchParams = {
   spaceIds?: string[];
   viewType: ContentNodesViewType;
   pagination?: CursorPaginationParams;
+  allowAdminSearch?: boolean;
 };
 
 // Text search variant
@@ -716,6 +749,7 @@ export function useSpacesSearch({
   viewType,
   pagination,
   searchSourceUrls = false,
+  allowAdminSearch = false,
 }: SpacesSearchParams): {
   isSearchLoading: boolean;
   isSearchError: boolean;
@@ -741,6 +775,7 @@ export function useSpacesSearch({
     searchSourceUrls,
     spaceIds,
     viewType,
+    allowAdminSearch,
   };
 
   // Only perform a query if we have a valid search
@@ -787,6 +822,7 @@ export function useSpacesSearchWithInfiniteScroll({
   spaceIds,
   viewType,
   pageSize = 25,
+  allowAdminSearch = false,
 }: SpacesSearchParams & { pageSize?: number }): {
   isSearchLoading: boolean;
   isSearchError: boolean;
@@ -802,6 +838,7 @@ export function useSpacesSearchWithInfiniteScroll({
     spaceIds,
     includeDataSources,
     limit: pageSize,
+    allowAdminSearch,
   };
 
   // Only perform a query if we have a valid search

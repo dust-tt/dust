@@ -1,4 +1,3 @@
-import assert from "assert";
 import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
 
@@ -26,8 +25,8 @@ import { destroyMCPServerViewDependencies } from "@app/lib/models/assistant/acti
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { cacheWithRedis } from "@app/lib/utils/cache";
-import type { MCPOAuthUseCase } from "@app/types";
-import { removeNulls } from "@app/types";
+import type { MCPOAuthUseCase, Result } from "@app/types";
+import { Err, Ok, removeNulls } from "@app/types";
 import { isDevelopment } from "@app/types";
 
 const METADATA_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
@@ -102,7 +101,21 @@ export class InternalMCPServerInMemoryResource {
       return null;
     }
 
-    server.metadata = cachedMetadata;
+    // Temporary to do a video.
+    if (
+      auth.getNonNullableWorkspace().sId === "91o4vu0LzW" &&
+      cachedMetadata.authorization?.provider === "gmail"
+    ) {
+      server.metadata = {
+        ...cachedMetadata,
+        authorization: {
+          ...cachedMetadata.authorization,
+          provider: "google_drive",
+        },
+      };
+    } else {
+      server.metadata = cachedMetadata;
+    }
 
     return server;
   }
@@ -118,12 +131,15 @@ export class InternalMCPServerInMemoryResource {
     },
     transaction?: Transaction
   ) {
-    const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
+    const canAdministrate =
+      await SpaceResource.canAdministrateSystemSpace(auth);
 
-    assert(
-      systemSpace.canWrite(auth),
-      "The user is not authorized to create an MCP server"
-    );
+    if (!canAdministrate) {
+      throw new DustError(
+        "unauthorized",
+        "The user is not authorized to create an internal MCP server"
+      );
+    }
 
     const server = await InternalMCPServerInMemoryResource.init(
       auth,
@@ -139,6 +155,8 @@ export class InternalMCPServerInMemoryResource {
         "Failed to create internal MCP server, the id is probably invalid."
       );
     }
+
+    const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
 
     await MCPServerViewModel.create(
       {
@@ -156,7 +174,21 @@ export class InternalMCPServerInMemoryResource {
     return server;
   }
 
-  async delete(auth: Authenticator) {
+  async delete(
+    auth: Authenticator
+  ): Promise<Result<number, DustError<"unauthorized">>> {
+    const canAdministrate =
+      await SpaceResource.canAdministrateSystemSpace(auth);
+
+    if (!canAdministrate) {
+      throw new Err(
+        new DustError(
+          "unauthorized",
+          "The user is not authorized to delete an internal MCP server"
+        )
+      );
+    }
+
     const mcpServerViews = await MCPServerViewModel.findAll({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
@@ -188,6 +220,8 @@ export class InternalMCPServerInMemoryResource {
         internalMCPServerId: this.id,
       },
     });
+
+    return new Ok(1);
   }
 
   static async fetchById(auth: Authenticator, id: string) {

@@ -2,6 +2,8 @@ import { stringify } from "csv-stringify/sync";
 import { format } from "date-fns/format";
 import { Op, QueryTypes, Sequelize } from "sequelize";
 
+import { internalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
+import { AVAILABLE_INTERNAL_MCP_SERVER_NAMES } from "@app/lib/actions/mcp_internal_actions/constants";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
@@ -97,6 +99,11 @@ export async function unsafeGetUsageData(
   workspace: WorkspaceType
 ): Promise<string> {
   const wId = workspace.sId;
+  const names = AVAILABLE_INTERNAL_MCP_SERVER_NAMES;
+  const sids = names.map((name) =>
+    internalMCPServerNameToSId({ name, workspaceId: workspace.id })
+  );
+
   const readReplica = getFrontReplicaDbConnection();
   // eslint-disable-next-line dust/no-raw-sql -- Leggit
   const results = await readReplica.query<WorkspaceUsageQueryResult>(
@@ -116,10 +123,16 @@ export async function unsafeGetUsageData(
         COALESCE(ac."sId", am."agentConfigurationId") AS "assistantId",
         COALESCE(ac."name", am."agentConfigurationId") AS "assistantName",
         CASE
-            WHEN COUNT(DISTINCT arc."id") > 0 AND COUNT(DISTINCT atqc."id") = 0 AND COUNT(DISTINCT adarc."id") = 0 THEN 'retrieval'
-            WHEN COUNT(DISTINCT arc."id") = 0 AND COUNT(DISTINCT atqc."id") > 0 AND COUNT(DISTINCT adarc."id") = 0 THEN 'tablesQuery'
-            WHEN COUNT(DISTINCT arc."id") = 0 AND COUNT(DISTINCT atqc."id") = 0 AND COUNT(DISTINCT adarc."id") > 0 THEN 'dustAppRun'
-            WHEN COUNT(DISTINCT arc."id") + COUNT(DISTINCT atqc."id") + COUNT(DISTINCT adarc."id") > 1 THEN 'multiActions'
+            WHEN COUNT(DISTINCT arc."id") > 0 AND COUNT(DISTINCT atqc."id") = 0 AND COUNT(DISTINCT adarc."id") = 0 AND COUNT(DISTINCT msv."id") = 0 THEN 'retrieval'
+            WHEN COUNT(DISTINCT arc."id") = 0 AND COUNT(DISTINCT atqc."id") > 0 AND COUNT(DISTINCT adarc."id") = 0 AND COUNT(DISTINCT msv."id") = 0 THEN 'tablesQuery'
+            WHEN COUNT(DISTINCT arc."id") = 0 AND COUNT(DISTINCT atqc."id") = 0 AND COUNT(DISTINCT adarc."id") > 0 AND COUNT(DISTINCT msv."id") = 0 THEN 'dustAppRun'
+            WHEN COUNT(DISTINCT arc."id") = 0 AND COUNT(DISTINCT atqc."id") = 0 AND COUNT(DISTINCT adarc."id") = 0 AND COUNT(DISTINCT msv."id") > 0 THEN 
+              CASE 
+                WHEN msv."internalMCPServerId" IN (:sids) THEN 
+                  (SELECT name FROM (SELECT unnest(ARRAY[:sids]) as sid, unnest(ARRAY[:names]) as name) as t WHERE t.sid = msv."internalMCPServerId")
+                ELSE msv."internalMCPServerId"
+              END
+            WHEN COUNT(DISTINCT arc."id") + COUNT(DISTINCT atqc."id") + COUNT(DISTINCT adarc."id") + COUNT(DISTINCT msv."id") > 1 THEN 'multiActions'
             ELSE NULL
         END AS "actionType",
         um."userContextOrigin" AS "source"
@@ -146,12 +159,16 @@ export async function unsafeGetUsageData(
     LEFT JOIN
         "agent_dust_app_run_configurations" adarc ON ac."id" = adarc."agentConfigurationId"
     LEFT JOIN
+        "agent_mcp_server_configurations" amsc ON ac."id" = amsc."agentConfigurationId"
+    LEFT JOIN
+        "mcp_server_views" msv ON amsc."mcpServerViewId" = msv."id"
+    LEFT JOIN
         "messages" p ON m."parentId" = p."id"
     WHERE
         w."sId" = :wId AND
         m."createdAt" >= :startDate AND m."createdAt" <= :endDate
     GROUP BY
-        m."id", c."id", um."id", am."id", cf."id", ac."id", p."id"
+        m."id", c."id", um."id", am."id", cf."id", ac."id", p."id", msv."internalMCPServerId"
     ORDER BY
         m."createdAt" DESC
     `,
@@ -160,6 +177,8 @@ export async function unsafeGetUsageData(
         wId,
         startDate: format(startDate, "yyyy-MM-dd'T'00:00:00"), // Use first day of start month
         endDate: format(endDate, "yyyy-MM-dd'T'23:59:59"), // Use last day of end month
+        sids,
+        names,
       },
       type: QueryTypes.SELECT,
     }
@@ -365,6 +384,9 @@ export async function getBuildersUsageData(
           createdAt: {
             [Op.gt]: startDate,
             [Op.lt]: endDate,
+          },
+          status: {
+            [Op.not]: "draft",
           },
         },
         include: [

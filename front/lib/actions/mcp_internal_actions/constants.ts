@@ -14,6 +14,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   // We'll prefix all tools with the server name to avoid conflicts.
   // It's okay to change the name of the server as we don't refer to it directly.
   "agent_router",
+  "conversation_files",
   "data_sources_file_system",
   "extract_data",
   "file_generation",
@@ -59,12 +60,9 @@ export const INTERNAL_MCP_SERVERS: Record<
     timeoutMs?: number;
   }
 > = {
-  // Notes:
-  // ids should be stable, do not change them for production internal servers as it would break existing agents.
-  // Let's start dev actions at 1000 to avoid conflicts with production actions.
-  // flag "dev_mcp_actions" for actions that are only used internally for dev and testing.
+  // Note:
+  // ids should be stable, do not change them when moving internal servers to production as it would break existing agents.
 
-  // Production
   github: {
     id: 1,
     availability: "manual",
@@ -126,6 +124,11 @@ export const INTERNAL_MCP_SERVERS: Record<
       create_communication: "high",
       create_meeting: "high",
 
+      // Update operations.
+      update_contact: "high",
+      update_company: "high",
+      update_deal: "high",
+
       // Other operations.
       count_objects_by_properties: "never_ask",
       search_crm_objects: "never_ask",
@@ -134,9 +137,6 @@ export const INTERNAL_MCP_SERVERS: Record<
   agent_router: {
     id: 8,
     availability: "auto_hidden_builder",
-    isRestricted: (plan, featureFlags) => {
-      return featureFlags.includes("dev_mcp_actions");
-    },
   },
   include_data: {
     id: 9,
@@ -221,8 +221,20 @@ export const INTERNAL_MCP_SERVERS: Record<
       check_availability: "never_ask",
     },
   },
+  search: {
+    id: 1006,
+    availability: "auto",
+  },
+  run_agent: {
+    id: 1008,
+    availability: "auto",
+    timeoutMs: 5 * 60 * 1000, // 5 minutes
+  },
+  conversation_files: {
+    id: 17,
+    availability: "auto_hidden_builder",
+  },
 
-  // Dev
   primitive_types_debugger: {
     id: 1004,
     availability: "manual",
@@ -230,21 +242,9 @@ export const INTERNAL_MCP_SERVERS: Record<
       return featureFlags.includes("dev_mcp_actions");
     },
   },
-  search: {
-    id: 1006,
-    availability: "auto",
-  },
   reasoning: {
     id: 1007,
     availability: "auto",
-  },
-  run_agent: {
-    id: 1008,
-    availability: "auto",
-    isRestricted: (plan, featureFlags) => {
-      return featureFlags.includes("dev_mcp_actions");
-    },
-    timeoutMs: 5 * 60 * 1000, // 5 minutes
   },
   query_tables_v2: {
     id: 1009,

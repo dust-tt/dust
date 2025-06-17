@@ -180,6 +180,7 @@ export default function CreateAssistant({
         subscription={subscription}
         plan={plan}
         flow={flow}
+        isAgentDuplication={!!agentConfiguration}
         initialBuilderState={
           agentConfiguration
             ? {

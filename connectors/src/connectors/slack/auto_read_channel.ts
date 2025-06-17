@@ -46,7 +46,10 @@ export async function autoReadChannel(
   if (!connector) {
     return new Err(new Error(`Connector ${connectorId} not found`));
   }
-  const slackClient = await getSlackClient(connectorId);
+  const slackClient = await getSlackClient(connectorId, {
+    // Do not reject rate limited calls in auto read channel. Mostly calls from webhooks.
+    rejectRateLimitedCalls: false,
+  });
   const remoteChannel = await slackClient.conversations.info({
     channel: slackChannelId,
   });

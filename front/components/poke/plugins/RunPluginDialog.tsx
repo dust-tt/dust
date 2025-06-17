@@ -1,5 +1,6 @@
 import {
   Button,
+  cn,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -18,7 +19,11 @@ import {
   PokeAlertTitle,
 } from "@app/components/poke/shadcn/ui/alert";
 import type { PluginListItem, PluginResponse } from "@app/lib/api/poke/types";
-import { usePokePluginManifest, useRunPokePlugin } from "@app/poke/swr/plugins";
+import {
+  usePokePluginAsyncArgs,
+  usePokePluginManifest,
+  useRunPokePlugin,
+} from "@app/poke/swr/plugins";
 import type { PluginResourceTarget } from "@app/types";
 
 type ExecutePluginDialogProps = {
@@ -38,6 +43,17 @@ export function RunPluginDialog({
   const { isLoading, manifest } = usePokePluginManifest({
     disabled: !open,
     pluginId: plugin?.id,
+  });
+
+  // Check if any args are marked as async
+  const hasAsyncArgs = manifest
+    ? Object.values(manifest.args).some((arg) => arg.async)
+    : false;
+
+  const { asyncArgs, isLoading: isLoadingAsyncArgs } = usePokePluginAsyncArgs({
+    disabled: !manifest || !hasAsyncArgs,
+    pluginId: plugin.id,
+    pluginResourceTarget,
   });
 
   const { doRunPlugin } = useRunPokePlugin({
@@ -68,13 +84,19 @@ export function RunPluginDialog({
 
   return (
     <Dialog open={true} onOpenChange={handleClose}>
-      <DialogContent className="w-auto bg-muted-background sm:min-w-[600px] sm:max-w-[1000px]">
+      <DialogContent
+        className={cn(
+          "w-auto overflow-visible",
+          "bg-muted-background dark:bg-muted-background-night",
+          "sm:min-w-[600px] sm:max-w-[1000px]"
+        )}
+      >
         <DialogHeader>
           <DialogTitle>Run {plugin.name} plugin</DialogTitle>
           <DialogDescription>{plugin.description}</DialogDescription>
         </DialogHeader>
         <DialogContainer>
-          {isLoading ? (
+          {isLoading || (hasAsyncArgs && isLoadingAsyncArgs) ? (
             <Spinner />
           ) : !manifest ? (
             <PokeAlert variant="destructive">
@@ -131,6 +153,7 @@ export function RunPluginDialog({
               <PluginForm
                 disabled={result !== null}
                 manifest={manifest}
+                asyncArgs={asyncArgs}
                 onSubmit={onSubmit}
               />
               {manifest.warning && (

@@ -55,6 +55,7 @@ export type PostCreateEnterpriseConnectionRequestBodySchemaType =
   | IdpSpecificConnectionTypeDetails
   | SAMLConnectionTypeDetails;
 
+// TODO(workos): Remove this once we have migrated to WorkOS.
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
@@ -142,6 +143,7 @@ async function handler(
       }
       const { right: body } = bodyValidation;
 
+      //TODO(workos): handle multiple domains
       const workspaceWithVerifiedDomain = await WorkspaceHasDomainModel.findOne(
         {
           where: {

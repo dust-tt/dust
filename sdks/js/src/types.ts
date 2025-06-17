@@ -4,6 +4,10 @@ import { z } from "zod";
 
 import { INTERNAL_MIME_TYPES_VALUES } from "./internal_mime_types";
 import { CallToolResultSchema } from "./raw_mcp_types";
+import {
+  MCPExternalActionIconSchema,
+  MCPInternalActionIconSchema,
+} from "./mcp_icon_types";
 
 type StringLiteral<T> = T extends string
   ? string extends T
@@ -257,13 +261,13 @@ const UserMessageOriginSchema = FlexibleEnumSchema<
   | "github-copilot-chat"
   | "gsheet"
   | "make"
-  | "mcp"
   | "n8n"
   | "raycast"
   | "slack"
   | "web"
   | "zapier"
   | "zendesk"
+  | "run_agent"
 >()
   .or(z.null())
   .or(z.undefined());
@@ -801,16 +805,23 @@ type TablesQueryActionPublicType = z.infer<typeof TablesQueryActionTypeSchema>;
 
 const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "advanced_notion_management"
+  | "agent_builder_v2"
   | "agent_discovery"
   | "claude_3_7_reasoning"
   | "claude_4_opus_feature"
   | "co_edition"
+  | "custom_webcrawler"
   | "deepseek_feature"
   | "deepseek_r1_global_agent_feature"
   | "dev_mcp_actions"
   | "disable_run_logs"
-  | "force_gdrive_labels_scope"
+  | "disallow_agent_creation_to_users"
+  | "document_tracker"
+  | "exploded_tables_query"
+  | "extended_max_steps_per_run"
+  | "gmail_tool"
   | "google_ai_studio_experimental_models_feature"
+  | "google_calendar_tool"
   | "index_private_slack_channel"
   | "labs_salesforce_personal_connections"
   | "labs_trackers"
@@ -821,23 +832,18 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "openai_o1_high_reasoning_custom_assistants_feature"
   | "openai_o1_high_reasoning_feature"
   | "openai_o1_mini_feature"
-  | "xai_feature"
   | "pro_plan_salesforce_connector"
   | "salesforce_feature"
   | "salesforce_synced_queries"
+  | "salesforce_tool"
   | "search_knowledge_builder"
   | "show_debug_tools"
   | "snowflake_connector_feature"
   | "usage_data_api"
-  | "custom_webcrawler"
-  | "exploded_tables_query"
-  | "extended_max_steps_per_run"
+  | "workos_user_provisioning"
   | "workos"
-  | "salesforce_tool"
-  | "gmail_tool"
-  | "google_calendar_tool"
-  | "agent_builder_v2"
-  | "disallow_agent_creation_to_users"
+  | "xai_feature"
+  | "labs_mcp_actions_dashboard"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -1333,6 +1339,9 @@ const MCPValidationMetadataSchema = z.object({
   toolName: z.string(),
   agentName: z.string(),
   pubsubMessageId: z.string().optional(),
+  icon: z
+    .union([MCPInternalActionIconSchema, MCPExternalActionIconSchema])
+    .optional(),
 });
 
 const MCPParamsEventSchema = z.object({
@@ -2093,7 +2102,7 @@ export const PublicPostConversationsRequestBodySchema = z.intersection(
   z.object({
     title: z.string().nullable().optional(),
     visibility: z
-      .enum(["unlisted", "workspace", "deleted", "test"])
+      .enum(["workspace", "unlisted", "deleted", "test"])
       .optional()
       .default("unlisted"),
     depth: z.number().optional(),
@@ -3025,3 +3034,16 @@ const MCP_VALIDATION_OUTPUTS = [
 ] as const;
 export type MCPValidationOutputPublicType =
   (typeof MCP_VALIDATION_OUTPUTS)[number];
+
+export const PostSpaceMembersRequestBodySchema = z.object({
+  userIds: z.array(z.string()),
+});
+
+export interface PostSpaceMembersResponseBody {
+  space: SpaceType;
+  users: Pick<UserType, "sId" | "id" | "email">[];
+}
+
+export interface GetWorkspaceMembersResponseBody {
+  users: Pick<UserType, "sId" | "id" | "email">[];
+}

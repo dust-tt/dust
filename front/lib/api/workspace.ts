@@ -27,7 +27,6 @@ import type {
   RoleType,
   SubscriptionType,
   UserTypeWithWorkspaces,
-  WorkspaceDomain,
   WorkspaceSegmentationType,
   WorkspaceType,
 } from "@app/types";
@@ -56,28 +55,6 @@ export async function getWorkspaceInfos(
   }
 
   return renderLightWorkspaceType({ workspace });
-}
-
-export async function getWorkspaceVerifiedDomain(
-  workspace: LightWorkspaceType
-): Promise<WorkspaceDomain | null> {
-  const workspaceDomain = await WorkspaceHasDomainModel.findOne({
-    attributes: ["domain", "domainAutoJoinEnabled"],
-    where: {
-      workspaceId: workspace.id,
-    },
-    // For now, one workspace can only have one domain.
-    limit: 1,
-  });
-
-  if (workspaceDomain) {
-    return {
-      domain: workspaceDomain.domain,
-      domainAutoJoinEnabled: workspaceDomain.domainAutoJoinEnabled,
-    };
-  }
-
-  return null;
 }
 
 export async function removeAllWorkspaceDomains(
@@ -257,21 +234,22 @@ export async function searchMembers(
     total = results.total;
   }
 
-  const { memberships } = await MembershipResource.getActiveMemberships({
-    users,
-    workspace: owner,
-  });
-
   const usersWithWorkspaces = users.map((u) => {
-    const membership = memberships.find(
-      (m) => m.userId === u.id && m.workspaceId === owner.id
-    );
-    const role =
-      membership && !membership.isRevoked()
+    const [m] = u.memberships ?? [];
+    let role: RoleType = "none";
+
+    if (m) {
+      const membership = new MembershipResource(
+        MembershipResource.model,
+        m.get()
+      );
+
+      role = !membership.isRevoked()
         ? ACTIVE_ROLES.includes(membership.role)
           ? membership.role
-          : ("none" as RoleType)
-        : ("none" as RoleType);
+          : "none"
+        : "none";
+    }
 
     return {
       ...u.toJSON(),

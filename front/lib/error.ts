@@ -3,7 +3,7 @@ export type DustErrorCode =
   | "internal_error"
   | "invalid_id"
   | "limit_reached"
-  | "resource_not_found"
+  | "connection_not_found"
   | "file_not_found"
   | "unauthorized"
   // Data source
@@ -34,12 +34,13 @@ export type DustErrorCode =
   // MCP Server errors
   | "remote_server_not_found"
   | "internal_server_not_found"
+  | "mcp_server_view_not_found"
   // Space errors
   | "space_already_exists";
 
-export class DustError extends Error {
+export class DustError<T extends DustErrorCode = DustErrorCode> extends Error {
   constructor(
-    readonly code: DustErrorCode,
+    readonly code: T,
     message: string
   ) {
     super(message);

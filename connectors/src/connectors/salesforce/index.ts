@@ -1,4 +1,4 @@
-import type { Result } from "@dust-tt/client";
+import type { ConnectorProvider, Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
 
 import type {
@@ -34,10 +34,6 @@ import {
 import { saveNodesFromPermissions } from "@connectors/lib/remote_databases/utils";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import {
-  SalesforceConfigurationResource,
-  SalesforceSyncedQueryResource,
-} from "@connectors/resources/salesforce_resources";
 import type { ConnectorPermission, ContentNode } from "@connectors/types";
 import type { DataSourceConfig } from "@connectors/types";
 
@@ -46,6 +42,8 @@ const logger = mainLogger.child({
 });
 
 export class SalesforceConnectorManager extends BaseConnectorManager<null> {
+  readonly provider: ConnectorProvider = "salesforce";
+
   static async create({
     dataSourceConfig,
     connectionId,
@@ -131,9 +129,6 @@ export class SalesforceConnectorManager extends BaseConnectorManager<null> {
     if (!connector) {
       throw new Error(`Connector ${this.connectorId} not found`);
     }
-
-    await SalesforceConfigurationResource.deleteByConnectorId(connector.id);
-    await SalesforceSyncedQueryResource.deleteByConnectorId(connector.id);
 
     await RemoteTableModel.destroy({
       where: {
@@ -319,51 +314,6 @@ export class SalesforceConnectorManager extends BaseConnectorManager<null> {
     const launchRes = await launchSalesforceSyncWorkflow(this.connectorId);
     if (launchRes.isErr()) {
       return launchRes;
-    }
-
-    return new Ok(undefined);
-  }
-
-  async pause(): Promise<Result<undefined, Error>> {
-    const connector = await ConnectorResource.fetchById(this.connectorId);
-
-    if (!connector) {
-      logger.error(
-        {
-          connectorId: this.connectorId,
-        },
-        "Notion connector not found."
-      );
-
-      return new Err(new Error("Connector not found"));
-    }
-
-    await connector.markAsPaused();
-    const stopRes = await this.stop();
-    if (stopRes.isErr()) {
-      return stopRes;
-    }
-
-    return new Ok(undefined);
-  }
-
-  async unpause(): Promise<Result<undefined, Error>> {
-    const connector = await ConnectorResource.fetchById(this.connectorId);
-
-    if (!connector) {
-      logger.error(
-        {
-          connectorId: this.connectorId,
-        },
-        "Notion connector not found."
-      );
-
-      return new Err(new Error("Connector not found"));
-    }
-    await connector.markAsUnpaused();
-    const r = await this.resume();
-    if (r.isErr()) {
-      return r;
     }
 
     return new Ok(undefined);

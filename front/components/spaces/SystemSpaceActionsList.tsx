@@ -1,11 +1,11 @@
 import * as React from "react";
-import { useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import { AdminActionsList } from "@app/components/actions/mcp/AdminActionsList";
 import { MCPServerDetails } from "@app/components/actions/mcp/MCPServerDetails";
 import { useQueryParams } from "@app/hooks/useQueryParams";
 import type { MCPServerType } from "@app/lib/api/mcp";
-import { useMCPServerViews } from "@app/lib/swr/mcp_server_views";
+import { useMCPServerViews } from "@app/lib/swr/mcp_servers";
 import type { LightWorkspaceType, SpaceType } from "@app/types";
 
 interface SpaceActionsListProps {
@@ -27,12 +27,17 @@ export const SystemSpaceActionsList = ({
     space,
   });
 
-  const mcpServerView = serverViews.find(
-    (view) => view.server.sId === mcpServerToShow?.sId
+  const mcpServerView = useMemo(
+    () => serverViews.find((view) => view.server.sId === mcpServerToShow?.sId),
+    [serverViews, mcpServerToShow?.sId]
   );
 
   const { q: searchParam } = useQueryParams(["q"]);
   const searchTerm = searchParam.value || "";
+
+  const handleClose = useCallback(() => {
+    setMcpServerToShow(null);
+  }, []);
 
   if (!isAdmin) {
     return null;
@@ -44,9 +49,7 @@ export const SystemSpaceActionsList = ({
         <MCPServerDetails
           owner={owner}
           mcpServerView={mcpServerView ?? null}
-          onClose={() => {
-            setMcpServerToShow(null);
-          }}
+          onClose={handleClose}
           isOpen={!!mcpServerToShow}
         />
       )}
@@ -54,9 +57,7 @@ export const SystemSpaceActionsList = ({
         owner={owner}
         filter={searchTerm}
         systemSpace={space}
-        setMcpServerToShow={(mcpServer) => {
-          setMcpServerToShow(mcpServer);
-        }}
+        setMcpServerToShow={setMcpServerToShow}
       />
     </>
   );

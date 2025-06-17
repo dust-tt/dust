@@ -27,6 +27,9 @@ import {
   MAX_LIMIT,
   searchCrmObjects,
   SIMPLE_OBJECTS,
+  updateCompany,
+  updateContact,
+  updateDeal,
 } from "@app/lib/actions/mcp_internal_actions/servers/hubspot/hubspot_api_helper";
 import {
   ERROR_MESSAGES,
@@ -46,7 +49,6 @@ const serverInfo: InternalMCPServerDefinitionType = {
     "Supports creating, retrieving, and searching CRM objects (contacts, companies, deals, etc.), managing engagements, and accessing object properties, etc.",
   authorization: {
     provider: "hubspot" as const,
-    use_case: "platform_actions" as const,
     supported_use_cases: ["platform_actions"] as const,
   },
   icon: "HubspotLogo",
@@ -412,9 +414,6 @@ const createServer = (): McpServer => {
           hs_note_body: z.string().describe("The content of the note."),
           hs_timestamp: z
             .string()
-            .datetime({
-              message: "Timestamp must be a valid ISO 8601 date string",
-            })
             .optional()
             .describe(
               "The timestamp of the note (ISO 8601 format). Defaults to current time if not provided."
@@ -694,6 +693,91 @@ const createServer = (): McpServer => {
     "quotes",
     "feedback_submissions",
   ]); // Add other searchable types as needed
+
+  server.tool(
+    "update_contact",
+    "Updates properties of a HubSpot contact by ID.",
+    {
+      contactId: z.string().describe("The ID of the contact to update."),
+      properties: z
+        .record(z.string())
+        .describe(
+          "An object containing the properties to update with their new values."
+        ),
+    },
+    async ({ contactId, properties }, { authInfo }) => {
+      return withAuth({
+        action: async (accessToken) => {
+          const result = await updateContact({
+            accessToken,
+            contactId,
+            properties,
+          });
+          return makeMCPToolJSONSuccess({
+            result,
+          });
+        },
+        authInfo,
+      });
+    }
+  );
+
+  server.tool(
+    "update_company",
+    "Updates properties of a HubSpot company by ID.",
+    {
+      companyId: z.string().describe("The ID of the company to update."),
+      properties: z
+        .record(z.string())
+        .describe(
+          "An object containing the properties to update with their new values."
+        ),
+    },
+    async ({ companyId, properties }, { authInfo }) => {
+      return withAuth({
+        action: async (accessToken) => {
+          const result = await updateCompany({
+            accessToken,
+            companyId,
+            properties,
+          });
+          return makeMCPToolJSONSuccess({
+            result,
+          });
+        },
+        authInfo,
+      });
+    }
+  );
+
+  server.tool(
+    "update_deal",
+    "Updates properties of a HubSpot deal by ID.",
+    {
+      dealId: z.string().describe("The ID of the deal to update."),
+      properties: z
+        .record(z.string())
+        .describe(
+          "An object containing the properties to update with their new values."
+        ),
+    },
+    async ({ dealId, properties }, { authInfo }) => {
+      return withAuth({
+        action: async (accessToken) => {
+          const result = await updateDeal({
+            accessToken,
+            dealId,
+            properties,
+          });
+          return makeMCPToolJSONSuccess({
+            result,
+          });
+        },
+        authInfo,
+      });
+    }
+  );
+
   server.tool(
     "search_crm_objects",
     "Searches CRM objects of a specific type based on filters, query, and properties.",

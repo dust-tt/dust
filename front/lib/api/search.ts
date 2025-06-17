@@ -38,16 +38,29 @@ type SearchError = {
   error: APIError;
 };
 
-const BaseSearchBody = t.type({
-  viewType: t.union([
-    t.literal("table"),
-    t.literal("document"),
-    t.literal("all"),
-  ]),
-  spaceIds: t.union([t.array(t.string), t.undefined]),
-  includeDataSources: t.boolean,
-  limit: t.number,
-});
+const BaseSearchBody = t.intersection([
+  t.type({
+    viewType: t.union([
+      t.literal("table"),
+      t.literal("document"),
+      t.literal("all"),
+    ]),
+    spaceIds: t.union([t.array(t.string), t.undefined]),
+    includeDataSources: t.boolean,
+    limit: t.number,
+  }),
+  /**
+   * Search uses the "read" permission by default so admins can't search
+   * spaces they aren't in as users. If allowAdminSpaces is true, the search
+   * will use the "admin" permission instead, allowing admins to search all
+   * spaces they can administrate.
+   *
+   * Used to allow admins to useSpaces on global
+   */
+  t.partial({
+    allowAdminSearch: t.boolean,
+  }),
+]);
 
 const TextSearchBody = t.intersection([
   BaseSearchBody,
@@ -87,9 +100,15 @@ export async function handleSearch(
     spaceIds,
     nodeIds,
     searchSourceUrls,
+    allowAdminSearch,
   } = searchParams;
 
-  const spaces = await SpaceResource.listWorkspaceSpacesAsMember(auth);
+  const spaces = allowAdminSearch
+    ? (await SpaceResource.listWorkspaceSpaces(auth)).filter(
+        (s) => s.canAdministrate(auth) || s.canRead(auth)
+      )
+    : await SpaceResource.listWorkspaceSpacesAsMember(auth);
+
   if (!spaces.length) {
     return new Err({
       status: 400,
@@ -133,8 +152,7 @@ export async function handleSearch(
   const excludedNodeMimeTypes =
     nodeIds || searchSourceUrls ? [] : NON_SEARCHABLE_NODES_MIME_TYPES;
 
-  const searchFilter = getSearchFilterFromDataSourceViews(
-    auth.getNonNullableWorkspace(),
+  const searchFilterRes = getSearchFilterFromDataSourceViews(
     allDatasourceViews,
     {
       excludedNodeMimeTypes,
@@ -143,6 +161,17 @@ export async function handleSearch(
       nodeIds,
     }
   );
+  if (searchFilterRes.isErr()) {
+    return new Err({
+      status: 400,
+      error: {
+        type: "invalid_request_error",
+        message: `Invalid search filter parameters: ${searchFilterRes.error.message}`,
+      },
+    });
+  }
+
+  const searchFilter = searchFilterRes.value;
 
   const paginationRes = getCursorPaginationParams(req);
   if (paginationRes.isErr()) {

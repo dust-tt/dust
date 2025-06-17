@@ -9,6 +9,8 @@ import {
 } from "@app/lib/actions/action_file_helpers";
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type {
+  ExecuteTablesQueryMarkerResourceType,
+  GetDatabaseSchemaMarkerResourceType,
   SqlQueryOutputType,
   ThinkingOutputType,
   ToolGeneratedFileType,
@@ -22,7 +24,7 @@ import {
   getSectionColumnsPrefix,
   TABLES_QUERY_SECTION_FILE_MIN_COLUMN_LENGTH,
 } from "@app/lib/actions/mcp_internal_actions/servers/tables_query/server";
-import { fetchAgentTableConfigurations } from "@app/lib/actions/mcp_internal_actions/servers/utils";
+import { fetchTableDataSourceConfigurations } from "@app/lib/actions/mcp_internal_actions/servers/utils";
 import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -38,7 +40,9 @@ import { CoreAPI } from "@app/types/core/core_api";
 type TablesQueryOutputResources =
   | ThinkingOutputType
   | SqlQueryOutputType
-  | ToolGeneratedFileType;
+  | ToolGeneratedFileType
+  | GetDatabaseSchemaMarkerResourceType
+  | ExecuteTablesQueryMarkerResourceType;
 
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "query_tables_v2",
@@ -65,33 +69,32 @@ function createServer(
     },
     async ({ tables }) => {
       // Fetch table configurations
-      const agentTableConfigurationsRes = await fetchAgentTableConfigurations(
+      const tableConfigurationsRes = await fetchTableDataSourceConfigurations(
         auth,
         tables
       );
-      if (agentTableConfigurationsRes.isErr()) {
+      if (tableConfigurationsRes.isErr()) {
         return makeMCPToolTextError(
-          `Error fetching table configurations: ${agentTableConfigurationsRes.error.message}`
+          `Error fetching table configurations: ${tableConfigurationsRes.error.message}`
         );
       }
-      const agentTableConfigurations = agentTableConfigurationsRes.value;
-      if (agentTableConfigurations.length === 0) {
+      const tableConfigurations = tableConfigurationsRes.value;
+      if (tableConfigurations.length === 0) {
         return makeMCPToolTextError(
           "The agent does not have access to any tables. Please edit the agent's Query Tables tool to add tables, or remove the tool."
         );
       }
-      const dataSourceViews = await DataSourceViewResource.fetchByModelIds(
-        auth,
-        [...new Set(agentTableConfigurations.map((t) => t.dataSourceViewId))]
-      );
+      const dataSourceViews = await DataSourceViewResource.fetchByIds(auth, [
+        ...new Set(tableConfigurations.map((t) => t.dataSourceViewId)),
+      ]);
       const dataSourceViewsMap = new Map(
-        dataSourceViews.map((dsv) => [dsv.id, dsv])
+        dataSourceViews.map((dsv) => [dsv.sId, dsv])
       );
 
       // Call Core API's /database_schema endpoint
       const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
       const schemaResult = await coreAPI.getDatabaseSchema({
-        tables: agentTableConfigurations.map((t) => {
+        tables: tableConfigurations.map((t) => {
           const dataSourceView = dataSourceViewsMap.get(t.dataSourceViewId);
           if (
             !dataSourceView ||
@@ -118,6 +121,15 @@ function createServer(
       return {
         isError: false,
         content: [
+          {
+            type: "resource",
+            resource: {
+              text: "get_database_schema_marker",
+              mimeType:
+                INTERNAL_MIME_TYPES.TOOL_OUTPUT.GET_DATABASE_SCHEMA_MARKER,
+              uri: "",
+            },
+          },
           ...getSchemaContent(schemaResult.value.schemas),
           ...getQueryWritingInstructionsContent(schemaResult.value.dialect),
           ...getDatabaseExampleRowsContent(schemaResult.value.schemas),
@@ -153,33 +165,32 @@ function createServer(
         const agentLoopRunContext = agentLoopContext.runContext;
 
         // Fetch table configurations
-        const agentTableConfigurationsRes = await fetchAgentTableConfigurations(
+        const tableConfigurationsRes = await fetchTableDataSourceConfigurations(
           auth,
           tables
         );
-        if (agentTableConfigurationsRes.isErr()) {
+        if (tableConfigurationsRes.isErr()) {
           return makeMCPToolTextError(
-            `Error fetching table configurations: ${agentTableConfigurationsRes.error.message}`
+            `Error fetching table configurations: ${tableConfigurationsRes.error.message}`
           );
         }
-        const agentTableConfigurations = agentTableConfigurationsRes.value;
-        if (agentTableConfigurations.length === 0) {
+        const tableConfigurations = tableConfigurationsRes.value;
+        if (tableConfigurations.length === 0) {
           return makeMCPToolTextError(
             "The agent does not have access to any tables. Please edit the agent's Query Tables tool to add tables, or remove the tool."
           );
         }
-        const dataSourceViews = await DataSourceViewResource.fetchByModelIds(
-          auth,
-          [...new Set(agentTableConfigurations.map((t) => t.dataSourceViewId))]
-        );
+        const dataSourceViews = await DataSourceViewResource.fetchByIds(auth, [
+          ...new Set(tableConfigurations.map((t) => t.dataSourceViewId)),
+        ]);
         const dataSourceViewsMap = new Map(
-          dataSourceViews.map((dsv) => [dsv.id, dsv])
+          dataSourceViews.map((dsv) => [dsv.sId, dsv])
         );
 
         // Call Core API's /query_database endpoint
         const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
         const queryResult = await coreAPI.queryDatabase({
-          tables: agentTableConfigurations.map((t) => {
+          tables: tableConfigurations.map((t) => {
             const dataSourceView = dataSourceViewsMap.get(t.dataSourceViewId);
             if (
               !dataSourceView ||
@@ -198,9 +209,31 @@ function createServer(
           query,
         });
         if (queryResult.isErr()) {
-          return makeMCPToolTextError(
-            `Error executing database query: ${queryResult.error.message}`
-          );
+          return {
+            isError: true,
+            content: [
+              {
+                type: "resource",
+                resource: {
+                  text: "execute_tables_query_marker",
+                  mimeType:
+                    INTERNAL_MIME_TYPES.TOOL_OUTPUT.EXECUTE_TABLES_QUERY_MARKER,
+                  uri: "",
+                },
+              },
+              {
+                type: "resource",
+                resource: {
+                  text:
+                    "Error executing database query: " +
+                    queryResult.error.message,
+                  mimeType:
+                    INTERNAL_MIME_TYPES.TOOL_OUTPUT.EXECUTE_TABLES_QUERY_ERROR,
+                  uri: "",
+                },
+              },
+            ],
+          };
         }
 
         const content: {
@@ -216,6 +249,16 @@ function createServer(
               record !== null &&
               typeof record === "object"
           );
+
+        content.push({
+          type: "resource",
+          resource: {
+            text: "tables_query_v2",
+            mimeType:
+              INTERNAL_MIME_TYPES.TOOL_OUTPUT.EXECUTE_TABLES_QUERY_MARKER,
+            uri: "",
+          },
+        });
 
         if (results.length > 0) {
           // date in yyyy-mm-dd
@@ -265,10 +308,10 @@ function createServer(
             // First, we fetch the connector provider for the data source, cause the chunking
             // strategy of the section file depends on it: Since all tables are from the same
             // data source, we can just take the first table's data source view id.
-            const [dataSourceView] =
-              await DataSourceViewResource.fetchByModelIds(auth, [
-                agentTableConfigurations[0].dataSourceViewId,
-              ]);
+            const dataSourceView = await DataSourceViewResource.fetchById(
+              auth,
+              tableConfigurations[0].dataSourceViewId
+            );
             const connectorProvider =
               dataSourceView?.dataSource?.connectorProvider ?? null;
             const sectionColumnsPrefix =

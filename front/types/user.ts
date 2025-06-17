@@ -94,6 +94,7 @@ export type UserType = {
   lastName: string | null;
   fullName: string;
   image: string | null;
+  lastLoginAt: number | null;
 };
 
 export type UserTypeWithWorkspaces = UserType & {

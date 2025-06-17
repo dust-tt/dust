@@ -1,15 +1,23 @@
 import type {
+  AuthenticateWithSessionCookieFailedResponse,
+  AuthenticateWithSessionCookieSuccessResponse,
   AuthenticationResponse as WorkOSAuthenticationResponse,
+  RefreshSessionResponse,
   User as WorkOSUser,
 } from "@workos-inc/node";
-import { unsealData } from "iron-session";
-import type { GetServerSidePropsContext, NextApiRequest } from "next";
+import { sealData, unsealData } from "iron-session";
+import type {
+  GetServerSidePropsContext,
+  NextApiRequest,
+  NextApiResponse,
+} from "next";
 
 import config from "@app/lib/api/config";
 import type { RegionType } from "@app/lib/api/regions/config";
 import { getWorkOS } from "@app/lib/api/workos/client";
 import type { SessionWithUser } from "@app/lib/iam/provider";
-import type { LightWorkspaceType, Result } from "@app/types";
+import logger from "@app/logger/logger";
+import type { Result } from "@app/types";
 import { Err, Ok } from "@app/types";
 
 export type SessionCookie = {
@@ -25,43 +33,82 @@ export function getUserNicknameFromEmail(email: string) {
 }
 
 export async function getWorkOSSession(
-  req: NextApiRequest | GetServerSidePropsContext["req"]
+  req: NextApiRequest | GetServerSidePropsContext["req"],
+  res: NextApiResponse | GetServerSidePropsContext["res"]
 ): Promise<SessionWithUser | undefined> {
   const workOSSessionCookie = req.cookies["workos_session"];
   if (workOSSessionCookie) {
-    const { sessionData, organizationId, authenticationMethod, workspaceId } =
-      await unsealData<SessionCookie>(workOSSessionCookie, {
-        password: config.getWorkOSCookiePassword(),
-      });
-
+    const {
+      sessionData,
+      organizationId,
+      authenticationMethod,
+      workspaceId,
+      region,
+    } = await unsealData<SessionCookie>(workOSSessionCookie, {
+      password: config.getWorkOSCookiePassword(),
+    });
     const session = getWorkOS().userManagement.loadSealedSession({
       sessionData,
       cookiePassword: config.getWorkOSCookiePassword(),
     });
 
-    const r = await session.authenticate();
+    try {
+      let r:
+        | AuthenticateWithSessionCookieSuccessResponse
+        | AuthenticateWithSessionCookieFailedResponse
+        | RefreshSessionResponse = await session.authenticate();
 
-    if (!r.authenticated) {
+      if (!r.authenticated) {
+        // If authentication fails, try to refresh the session
+        r = await session.refresh({
+          cookiePassword: config.getWorkOSCookiePassword(),
+        });
+        if (r.authenticated) {
+          // Update the session cookie with new session data
+          const sealedCookie = await sealData(
+            {
+              sessionData: r.sealedSession,
+              organizationId,
+              authenticationMethod,
+              region,
+              workspaceId,
+            },
+            {
+              password: config.getWorkOSCookiePassword(),
+            }
+          );
+
+          // Set the new cookie
+          res.setHeader("Set-Cookie", [
+            `workos_session=${sealedCookie}; Path=/; HttpOnly; Secure;SameSite=Lax; Max-Age=86400`,
+            `sessionType=workos; Path=/; Secure;SameSite=Lax; Max-Age=86400`,
+          ]);
+        } else {
+          return undefined;
+        }
+      }
+
+      return {
+        type: "workos" as const,
+        sessionId: r.sessionId,
+        user: {
+          email: r.user.email,
+          email_verified: r.user.emailVerified,
+          name: r.user.email ?? "",
+          nickname: getUserNicknameFromEmail(r.user.email) ?? "",
+          auth0Sub: null,
+          workOSUserId: r.user.id,
+        },
+        // TODO(workos): Should we resolve the workspaceId and remove organizationId from here?
+        organizationId,
+        workspaceId,
+        isSSO: authenticationMethod === "SSO",
+        authenticationMethod,
+      };
+    } catch (error) {
+      logger.error({ error }, "Session authentication error");
       return undefined;
     }
-
-    return {
-      type: "workos" as const,
-      sessionId: r.sessionId,
-      user: {
-        email: r.user.email,
-        email_verified: r.user.emailVerified,
-        name: r.user.email ?? "",
-        nickname: getUserNicknameFromEmail(r.user.email) ?? "",
-        auth0Sub: null,
-        workOSUserId: r.user.id,
-      },
-      // TODO(workos): Should we resolve the workspaceId and remove organizationId from here?
-      organizationId,
-      workspaceId,
-      isSSO: authenticationMethod === "SSO",
-      authenticationMethod,
-    };
   }
 }
 
@@ -95,7 +142,6 @@ export async function updateUserFromAuth0(
 }
 
 export async function fetchWorkOSUserWithEmail(
-  workspace: LightWorkspaceType,
   email?: string | null
 ): Promise<Result<WorkOSUser, Error>> {
   if (email == null) {
@@ -103,18 +149,15 @@ export async function fetchWorkOSUserWithEmail(
   }
 
   const workOSUserResponse = await getWorkOS().userManagement.listUsers({
-    organizationId: workspace.workOSOrganizationId ?? undefined,
     email,
   });
 
   const [workOSUser] = workOSUserResponse.data;
   if (!workOSUser) {
-    return new Err(
-      new Error(
-        `User not found with email "${email}" in workOS for workspace "${workspace.sId}"`
-      )
-    );
+    return new Err(new Error(`User not found with email "${email}"`));
   }
+
+  logger.info({ workOSUser, email }, "Found workOS user for webhook event");
 
   return new Ok(workOSUser);
 }

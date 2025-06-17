@@ -601,7 +601,10 @@ const _webhookSlackAPIHandler = async (
             return res.status(200).send();
           }
 
-          const slackClient = await getSlackClient(slackConfig.connectorId);
+          const slackClient = await getSlackClient(slackConfig.connectorId, {
+            // Do not reject rate limited calls in webhook handler.
+            rejectRateLimitedCalls: false,
+          });
 
           const channelInfo = await slackClient.conversations.info({
             channel: event.channel,

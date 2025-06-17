@@ -38,6 +38,7 @@ import {
   getConnectorConfigAPIHandler,
   setConnectorConfigAPIHandler,
 } from "./api/connector_config";
+import { webhookFirecrawlAPIHandler } from "./api/webhooks/webhook_firecrawl";
 
 export function startServer(port: number) {
   setupGlobalErrorHandler(logger);
@@ -144,6 +145,11 @@ export function startServer(port: number) {
     "/webhooks/:webhooks_secret/intercom/uninstall",
     bodyParser.raw({ type: "application/json" }),
     webhookIntercomUninstallAPIHandler
+  );
+  app.post(
+    "/webhooks/:webhooks_secret/firecrawl",
+    bodyParser.raw({ type: "application/json" }),
+    webhookFirecrawlAPIHandler
   );
 
   // /configuration/ is the new configration method, replacing the old /config/ method

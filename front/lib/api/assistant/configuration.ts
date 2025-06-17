@@ -36,6 +36,7 @@ import { getFavoriteStates } from "@app/lib/api/assistant/get_favorite_states";
 import { getGlobalAgents } from "@app/lib/api/assistant/global_agents";
 import { agentConfigurationWasUpdatedBy } from "@app/lib/api/assistant/recent_authors";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
+import type { DustError } from "@app/lib/error";
 import { getPublicUploadBucket } from "@app/lib/file_storage";
 import { AgentBrowseConfiguration } from "@app/lib/models/assistant/actions/browse";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
@@ -91,6 +92,7 @@ import {
   isGlobalAgentId,
   isTimeFrame,
   MAX_STEPS_USE_PER_RUN_LIMIT,
+  normalizeAsInternalDustError,
   normalizeError,
   Ok,
   removeNulls,
@@ -1768,7 +1770,21 @@ export async function updateAgentPermissions(
     usersToAdd: UserType[];
     usersToRemove: UserType[];
   }
-): Promise<Result<undefined, Error>> {
+): Promise<
+  Result<
+    undefined,
+    DustError<
+      | "group_not_found"
+      | "internal_error"
+      | "unauthorized"
+      | "invalid_id"
+      | "system_or_global_group"
+      | "user_not_found"
+      | "user_not_member"
+      | "user_already_member"
+    >
+  >
+> {
   const editorGroupRes = await GroupResource.findEditorGroupForAgent(
     auth,
     agent
@@ -1807,7 +1823,7 @@ export async function updateAgentPermissions(
     return result;
   } catch (error) {
     // Catch errors thrown from within the transaction
-    return new Err(normalizeError(error));
+    return new Err(normalizeAsInternalDustError(error));
   }
 }
 

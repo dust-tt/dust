@@ -83,8 +83,7 @@ export class GmailOAuthProvider implements BaseOAuthStrategyProvider {
 
       if (mcp_server_id) {
         const mcpServerConnectionRes =
-          await MCPServerConnectionResource.findByMCPServer({
-            auth,
+          await MCPServerConnectionResource.findByMCPServer(auth, {
             mcpServerId: mcp_server_id,
             connectionType: "workspace",
           });

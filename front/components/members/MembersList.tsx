@@ -159,7 +159,7 @@ export function MembersList({
       onRemoveMemberClick,
       currentUserId: currentUser?.sId ?? "current-user-not-loaded",
     });
-  }, [members, onRowClick, onRemoveMemberClick, currentUser]);
+  }, [members, onRowClick, onRemoveMemberClick, currentUser?.sId]);
 
   return (
     <>

@@ -4,6 +4,7 @@ import type {
   DsyncGroupUserAddedEvent,
   DsyncGroupUserRemovedEvent,
   Event,
+  Organization,
   OrganizationDomain,
 } from "@workos-inc/node";
 import assert from "assert";
@@ -20,6 +21,7 @@ import {
 } from "@app/lib/api/workspace";
 import {
   deleteWorkspaceDomain,
+  getWorkspaceVerifiedDomains,
   upsertWorkspaceDomain,
 } from "@app/lib/api/workspace_domains";
 import { Authenticator } from "@app/lib/auth";
@@ -39,44 +41,6 @@ const logger = mainLogger.child(
   }
 );
 
-async function handleOrganizationDomainEvent(
-  eventData: OrganizationDomain,
-  expectedState: "verified" | "failed"
-) {
-  const { domain, organizationId, state } = eventData;
-
-  assert(
-    state === expectedState,
-    `Domain state is not ${expectedState} -- expected ${expectedState} but got ${state}`
-  );
-
-  const workspace = await findWorkspaceByWorkOSOrganizationId(organizationId);
-  if (!workspace) {
-    logger.warn({ organizationId }, "Workspace not found for organization");
-    // Skip processing if workspace not found - it likely belongs to another region.
-    // This is expected in a multi-region setup. DataDog monitors these warnings
-    // and will alert if they occur across all regions.
-    return;
-  }
-
-  let domainResult: Result<any, Error>;
-  if (expectedState === "verified") {
-    domainResult = await upsertWorkspaceDomain(workspace, { domain });
-  } else {
-    domainResult = await deleteWorkspaceDomain(workspace, { domain });
-  }
-
-  if (domainResult.isErr()) {
-    logger.error(
-      { error: domainResult.error },
-      "Error updating/deleting domain"
-    );
-    throw domainResult.error;
-  }
-
-  logger.info({ domain }, "Domain updated/deleted");
-}
-
 /**
  * Verify if workspace exist, if it does will call the callback with the found workspace.
  * Otherwise will return undefined
@@ -92,7 +56,11 @@ async function verifyWorkOSWorkspace<E extends object, R>(
 
   const workspace = await findWorkspaceByWorkOSOrganizationId(organizationId);
   if (!workspace) {
-    throw new Error(`Workspace not found for workspace "${organizationId}"`);
+    logger.warn({ organizationId }, "Workspace not found for organization");
+    // Skip processing if workspace not found - it likely belongs to another region.
+    // This is expected in a multi-region setup. DataDog monitors these warnings
+    // and will alert if they occur across all regions.
+    return;
   }
 
   return handler(workspace, event);
@@ -108,11 +76,27 @@ export async function processWorkOSEventActivity({
 }) {
   switch (eventPayload.event) {
     case "organization_domain.verified":
-      await handleOrganizationDomainVerified(eventPayload.data);
+      await verifyWorkOSWorkspace(
+        eventPayload.data.organizationId,
+        eventPayload.data,
+        handleOrganizationDomainVerified
+      );
       break;
 
     case "organization_domain.verification_failed":
-      await handleOrganizationDomainVerificationFailed(eventPayload.data);
+      await verifyWorkOSWorkspace(
+        eventPayload.data.organizationId,
+        eventPayload.data,
+        handleOrganizationDomainVerificationFailed
+      );
+      break;
+
+    case "organization.updated":
+      await verifyWorkOSWorkspace(
+        eventPayload.data.id,
+        eventPayload.data,
+        handleOrganizationUpdated
+      );
       break;
 
     case "dsync.group.created":
@@ -174,14 +158,83 @@ export async function processWorkOSEventActivity({
   }
 }
 
-async function handleOrganizationDomainVerified(eventData: OrganizationDomain) {
-  await handleOrganizationDomainEvent(eventData, "verified");
+/**
+ * Organization related events.
+ */
+
+async function handleOrganizationDomainEvent(
+  workspace: LightWorkspaceType,
+  eventData: OrganizationDomain,
+  expectedState: "verified" | "failed"
+) {
+  const { domain, state } = eventData;
+
+  assert(
+    state === expectedState,
+    `Domain state is not ${expectedState} -- expected ${expectedState} but got ${state}`
+  );
+
+  let domainResult: Result<any, Error>;
+  if (expectedState === "verified") {
+    domainResult = await upsertWorkspaceDomain(workspace, { domain });
+  } else {
+    domainResult = await deleteWorkspaceDomain(workspace, { domain });
+  }
+
+  if (domainResult.isErr()) {
+    logger.error(
+      { error: domainResult.error },
+      "Error updating/deleting domain"
+    );
+    throw domainResult.error;
+  }
+
+  logger.info({ domain }, "Domain updated/deleted");
+}
+
+async function handleOrganizationDomainVerified(
+  workspace: LightWorkspaceType,
+  eventData: OrganizationDomain
+) {
+  await handleOrganizationDomainEvent(workspace, eventData, "verified");
 }
 
 async function handleOrganizationDomainVerificationFailed(
+  workspace: LightWorkspaceType,
   eventData: OrganizationDomain
 ) {
-  await handleOrganizationDomainEvent(eventData, "failed");
+  await handleOrganizationDomainEvent(workspace, eventData, "failed");
+}
+
+async function handleOrganizationUpdated(
+  workspace: LightWorkspaceType,
+  eventData: Organization
+) {
+  const { domains } = eventData;
+
+  const existingVerifiedDomains = await getWorkspaceVerifiedDomains(workspace);
+  const existingVerifiedDomainsSet = new Set(
+    existingVerifiedDomains.map((d) => d.domain)
+  );
+
+  // Get all verified domains from WorkOS.
+  const workOSVerifiedDomains = new Set(
+    domains.filter((d) => d.state === "verified").map((d) => d.domain)
+  );
+
+  // Add new verified domains that don't exist yet.
+  for (const domain of workOSVerifiedDomains) {
+    if (!existingVerifiedDomainsSet.has(domain)) {
+      await upsertWorkspaceDomain(workspace, { domain });
+    }
+  }
+
+  // Delete domains that are no longer verified in WorkOS.
+  for (const domain of existingVerifiedDomainsSet) {
+    if (!workOSVerifiedDomains.has(domain)) {
+      await deleteWorkspaceDomain(workspace, { domain });
+    }
+  }
 }
 
 export async function handleWorkspaceSubscriptionCreated({
@@ -228,10 +281,7 @@ async function handleUserAddedToGroup(
     return;
   }
 
-  const workOSUserRes = await fetchWorkOSUserWithEmail(
-    workspace,
-    event.user.email
-  );
+  const workOSUserRes = await fetchWorkOSUserWithEmail(event.user.email);
   if (workOSUserRes.isErr()) {
     throw workOSUserRes.error;
   }
@@ -249,10 +299,17 @@ async function handleUserAddedToGroup(
       `Group not found for workOSId "${event.group.id}" in workspace "${workspace.sId}"`
     );
   }
+  const isMember = await group.isMember(user);
+  if (isMember) {
+    logger.info(
+      `User "${user.sId}" is already member of group "${group.sId}", skipping`
+    );
+    return;
+  }
 
   const res = await group.addMember(auth, user.toJSON());
   if (res.isErr()) {
-    throw res.error;
+    throw new Error(res.error.message);
   }
 }
 
@@ -265,10 +322,7 @@ async function handleUserRemovedFromGroup(
     return;
   }
 
-  const workOSUserRes = await fetchWorkOSUserWithEmail(
-    workspace,
-    event.user.email
-  );
+  const workOSUserRes = await fetchWorkOSUserWithEmail(event.user.email);
   if (workOSUserRes.isErr()) {
     throw workOSUserRes.error;
   }
@@ -289,7 +343,7 @@ async function handleUserRemovedFromGroup(
 
   const res = await group.removeMember(auth, user.toJSON());
   if (res.isErr()) {
-    throw res.error;
+    throw new Error(res.error.message);
   }
 }
 
@@ -297,7 +351,7 @@ async function handleCreateOrUpdateWorkOSUser(
   workspace: LightWorkspaceType,
   event: DirectoryUser
 ) {
-  const workOSUserRes = await fetchWorkOSUserWithEmail(workspace, event.email);
+  const workOSUserRes = await fetchWorkOSUserWithEmail(event.email);
   if (workOSUserRes.isErr()) {
     throw workOSUserRes.error;
   }
@@ -319,6 +373,18 @@ async function handleCreateOrUpdateWorkOSUser(
     externalUser,
   });
 
+  const membership =
+    await MembershipResource.getActiveMembershipOfUserInWorkspace({
+      user: createdOrUpdatedUser,
+      workspace,
+    });
+  if (membership) {
+    logger.info(
+      `User ${createdOrUpdatedUser.sId} already have a membership associated to workspace "${workspace.sId}", skipping`
+    );
+    return;
+  }
+
   await createAndLogMembership({
     user: createdOrUpdatedUser,
     workspace,
@@ -330,7 +396,7 @@ async function handleDeleteWorkOSUser(
   workspace: LightWorkspaceType,
   event: DirectoryUser
 ) {
-  const workOSUserRes = await fetchWorkOSUserWithEmail(workspace, event.email);
+  const workOSUserRes = await fetchWorkOSUserWithEmail(event.email);
   if (workOSUserRes.isErr()) {
     throw workOSUserRes.error;
   }

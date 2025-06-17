@@ -8,7 +8,7 @@ import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { MCPServerConnectionType } from "@app/lib/resources/mcp_server_connection_resource";
-import { useMCPServerViewsFromSpaces } from "@app/lib/swr/mcp_server_views";
+import { useMCPServerViewsFromSpaces } from "@app/lib/swr/mcp_servers";
 import {
   useDeleteMCPServerConnection,
   useMCPServerConnections,

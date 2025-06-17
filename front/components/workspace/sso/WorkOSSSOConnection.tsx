@@ -1,5 +1,6 @@
 import {
   Button,
+  Checkbox,
   Chip,
   Dialog,
   DialogContainer,
@@ -7,12 +8,14 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  Label,
   Page,
   Spinner,
 } from "@dust-tt/sparkle";
 import type { Organization } from "@workos-inc/node";
 import React from "react";
 
+import { ToggleEnforceEnterpriseConnectionModal } from "@app/components/workspace/sso/Toggle";
 import { UpgradePlanDialog } from "@app/components/workspace/UpgradePlanDialog";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import {
@@ -38,6 +41,10 @@ export default function WorkOSSSOConnection({
   const [
     showDisableWorkOSSSOConnectionModal,
     setShowDisableWorkOSSSOConnectionModal,
+  ] = React.useState(false);
+  const [
+    isToggleEnforceEnterpriseConnectionModalOpened,
+    setIsToggleEnforceEnterpriseConnectionModalOpened,
   ] = React.useState(false);
 
   const { ssoStatus, isLoading: isLoadingSSO } = useWorkOSSSOStatus({ owner });
@@ -103,6 +110,30 @@ export default function WorkOSSSOConnection({
           </div>
         )}
       </div>
+      {/* TODO(workos): Remove this once we have a clear way to enforce SSO with workos */}
+      {isSSOConfigured ? (
+        <div className="w-full space-y-4">
+          <div className="flex flex-col space-y-4">
+            <div className="flex flex-row items-center space-x-2">
+              <Checkbox
+                id="sso-enforced"
+                checked={owner.ssoEnforced}
+                onClick={async () => {
+                  setIsToggleEnforceEnterpriseConnectionModalOpened(true);
+                }}
+              />
+              <Label htmlFor="sso-enforced" className="text-md font-normal">
+                Enforce SSO login
+              </Label>
+            </div>
+            <Page.P variant="secondary">
+              When SSO is enforced, users will no longer be able to use social
+              logins and will be redirected to the SSO portal.
+            </Page.P>
+          </div>
+        </div>
+      ) : null}
+
       <UpgradePlanDialog
         isOpen={showUpgradePlanDialog}
         onClose={() => setShowUpgradePlanDialog(false)}
@@ -110,6 +141,20 @@ export default function WorkOSSSOConnection({
         title="Free plan"
         description="You cannot enable SSO with the free plan. Upgrade your plan to access SSO features."
       />
+      <ToggleEnforceEnterpriseConnectionModal
+        isOpen={isToggleEnforceEnterpriseConnectionModalOpened}
+        onClose={async (updated: boolean) => {
+          setIsToggleEnforceEnterpriseConnectionModalOpened(false);
+
+          if (updated) {
+            // We perform a full refresh so that the Workspace name updates and we get a fresh owner
+            // object so that the formValidation logic keeps working.
+            window.location.reload();
+          }
+        }}
+        owner={owner}
+      />
+
       <DisableWorkOSSSOConnectionModal
         isOpen={showDisableWorkOSSSOConnectionModal}
         onClose={() => setShowDisableWorkOSSSOConnectionModal(false)}

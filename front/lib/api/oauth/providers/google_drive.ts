@@ -14,11 +14,11 @@ export class GoogleDriveOAuthProvider implements BaseOAuthStrategyProvider {
   setupUri({
     connection,
     useCase,
-    forceLabelsScope,
+    extraConfig,
   }: {
     connection: OAuthConnectionType;
     useCase: OAuthUseCase;
-    forceLabelsScope?: boolean;
+    extraConfig?: ExtraConfigType;
   }) {
     const scopes =
       useCase === "labs_transcripts"
@@ -26,18 +26,15 @@ export class GoogleDriveOAuthProvider implements BaseOAuthStrategyProvider {
         : [
             "https://www.googleapis.com/auth/drive.metadata.readonly",
             "https://www.googleapis.com/auth/drive.readonly",
+            "https://www.googleapis.com/auth/drive.labels.readonly",
           ];
-
-    if (forceLabelsScope) {
-      scopes.push("https://www.googleapis.com/auth/drive.labels.readonly");
-    }
 
     const qs = querystring.stringify({
       response_type: "code",
       client_id: config.getOAuthGoogleDriveClientId(),
       state: connection.connection_id,
       redirect_uri: finalizeUriForProvider("google_drive"),
-      scope: scopes.join(" "),
+      scope: extraConfig?.scope ?? scopes.join(" "),
       access_type: "offline",
       prompt: "consent",
     });
@@ -53,7 +50,13 @@ export class GoogleDriveOAuthProvider implements BaseOAuthStrategyProvider {
     return getStringFromQuery(query, "state");
   }
 
-  isExtraConfigValid(extraConfig: ExtraConfigType) {
+  isExtraConfigValid(extraConfig: ExtraConfigType, useCase: OAuthUseCase) {
+    if (useCase === "personal_actions" || useCase === "platform_actions") {
+      if (extraConfig.scope) {
+        return true;
+      }
+    }
+
     return Object.keys(extraConfig).length === 0;
   }
 }

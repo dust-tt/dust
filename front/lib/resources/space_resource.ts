@@ -25,6 +25,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { launchUpdateSpacePermissionsWorkflow } from "@app/temporal/permissions_queue/client";
 import type {
   CombinedResourcePermissions,
+  GroupPermission,
   ModelId,
   Result,
   SpaceKind,
@@ -277,6 +278,11 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     return spaces.filter((s) => s.canRead(auth));
   }
 
+  static async canAdministrateSystemSpace(auth: Authenticator) {
+    const systemSpace = await this.fetchWorkspaceSystemSpace(auth);
+    return systemSpace.canAdministrate(auth);
+  }
+
   static async fetchWorkspaceSystemSpace(
     auth: Authenticator
   ): Promise<SpaceResource> {
@@ -425,11 +431,24 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
   async updatePermissions(
     auth: Authenticator,
-    {
-      isRestricted,
-      memberIds,
-    }: { isRestricted: boolean; memberIds: string[] | null }
-  ): Promise<Result<undefined, DustError>> {
+    params:
+      | { isRestricted: true; memberIds: string[]; managementMode: "manual" }
+      | { isRestricted: true; groupIds: string[]; managementMode: "group" }
+      | { isRestricted: false }
+  ): Promise<
+    Result<
+      undefined,
+      DustError<
+        | "unauthorized"
+        | "group_not_found"
+        | "user_not_found"
+        | "user_not_member"
+        | "user_already_member"
+        | "system_or_global_group"
+        | "invalid_id"
+      >
+    >
+  > {
     if (!this.canAdministrate(auth)) {
       return new Err(
         new DustError(
@@ -438,6 +457,14 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         )
       );
     }
+
+    if (!this.isRegular()) {
+      return new Err(
+        new DustError("unauthorized", "Only regular spaces can have members.")
+      );
+    }
+
+    const { isRestricted } = params;
 
     const regularGroups = this.groups.filter(
       (group) => group.kind === "regular"
@@ -461,43 +488,108 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     }
 
     const globalGroup = groupRes.value;
-    if (isRestricted) {
-      // If the space should be restricted and was not restricted before, remove the global group.
-      if (!wasRestricted) {
-        await this.removeGroup(globalGroup);
-      }
 
-      if (memberIds) {
-        const users = await UserResource.fetchByIds(memberIds);
+    return frontSequelize.transaction(async (t) => {
+      // Update managementMode if provided
+      if (isRestricted) {
+        const { managementMode } = params;
 
-        const setMembersRes = await defaultSpaceGroup.setMembers(
-          auth,
-          users.map((u) => u.toJSON())
-        );
+        // If the space should be restricted and was not restricted before, remove the global group.
+        if (!wasRestricted) {
+          await this.removeGroup(globalGroup);
+        }
+
+        await this.update({ managementMode }, t);
+
+        if (managementMode === "manual") {
+          const memberIds = params.memberIds;
+          // Handle member-based management
+          const users = await UserResource.fetchByIds(memberIds);
+
+          const setMembersRes = await defaultSpaceGroup.setMembers(
+            auth,
+            users.map((u) => u.toJSON()),
+            { transaction: t }
+          );
+          if (setMembersRes.isErr()) {
+            return setMembersRes;
+          }
+        } else if (managementMode === "group") {
+          // Handle group-based management
+          const groupIds = params.groupIds;
+
+          // Remove existing external groups
+          const existingExternalGroups = this.groups.filter(
+            (g) => g.kind === "provisioned"
+          );
+          for (const group of existingExternalGroups) {
+            await GroupSpaceModel.destroy({
+              where: {
+                groupId: group.id,
+                vaultId: this.id,
+              },
+              transaction: t,
+            });
+          }
+
+          // Add the new groups
+          const selectedGroupsResult = await GroupResource.fetchByIds(
+            auth,
+            groupIds
+          );
+          if (selectedGroupsResult.isErr()) {
+            return selectedGroupsResult;
+          }
+
+          const selectedGroups = selectedGroupsResult.value;
+          for (const selectedGroup of selectedGroups) {
+            await GroupSpaceModel.create(
+              {
+                groupId: selectedGroup.id,
+                vaultId: this.id,
+                workspaceId: this.workspaceId,
+              },
+              { transaction: t }
+            );
+          }
+        }
+      } else {
+        // If the space should not be restricted and was restricted before, add the global group.
+        if (wasRestricted) {
+          await this.addGroup(globalGroup);
+        }
+
+        // Remove all members from default group.
+        const setMembersRes = await defaultSpaceGroup.setMembers(auth, [], {
+          transaction: t,
+        });
         if (setMembersRes.isErr()) {
           return setMembersRes;
         }
-      }
-    } else {
-      // If the space should not be restricted and was restricted before, add the global group.
-      if (wasRestricted) {
-        await this.addGroup(globalGroup);
+
+        // Remove any external groups
+        const externalGroups = this.groups.filter(
+          (g) => g.kind === "provisioned"
+        );
+        for (const group of externalGroups) {
+          await GroupSpaceModel.destroy({
+            where: {
+              groupId: group.id,
+              vaultId: this.id,
+            },
+            transaction: t,
+          });
+        }
       }
 
-      // Remove all members.
-      const setMembersRes = await defaultSpaceGroup.setMembers(auth, []);
-      if (setMembersRes.isErr()) {
-        return setMembersRes;
+      // If the restriction has changed, start a workflow to update all associated resource
+      // permissions.
+      if (hasRestrictionChanged) {
+        await launchUpdateSpacePermissionsWorkflow(auth, this);
       }
-    }
 
-    // If the restriction has changed, start a workflow to update all associated resource
-    // permissions.
-    if (hasRestrictionChanged) {
-      await launchUpdateSpacePermissionsWorkflow(auth, this);
-    }
-
-    return new Ok(undefined);
+      return new Ok(undefined);
+    });
   }
 
   private async addGroup(group: GroupResource) {
@@ -515,6 +607,109 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         vaultId: this.id,
       },
     });
+  }
+
+  async addMembers(
+    auth: Authenticator,
+    {
+      userIds,
+    }: {
+      userIds: string[];
+    }
+  ): Promise<
+    Result<
+      UserResource[],
+      DustError<
+        | "unauthorized"
+        | "user_not_found"
+        | "user_already_member"
+        | "system_or_global_group"
+      >
+    >
+  > {
+    if (!this.canAdministrate(auth)) {
+      return new Err(
+        new DustError(
+          "unauthorized",
+          "You do not have permission to add members to this space."
+        )
+      );
+    }
+
+    const defaultSpaceGroup = this.getDefaultSpaceGroup();
+    const users = await UserResource.fetchByIds(userIds);
+
+    if (!users) {
+      return new Err(new DustError("user_not_found", "User not found."));
+    }
+
+    const addMemberRes = await defaultSpaceGroup.addMembers(
+      auth,
+      users.map((user) => user.toJSON())
+    );
+
+    if (addMemberRes.isErr()) {
+      return addMemberRes;
+    }
+
+    return new Ok(users);
+  }
+
+  async removeMembers(
+    auth: Authenticator,
+    {
+      userIds,
+    }: {
+      userIds: string[];
+    }
+  ): Promise<
+    Result<
+      UserResource[],
+      DustError<
+        | "unauthorized"
+        | "user_not_found"
+        | "user_not_member"
+        | "system_or_global_group"
+      >
+    >
+  > {
+    if (!this.canAdministrate(auth)) {
+      return new Err(
+        new DustError(
+          "unauthorized",
+          "You do not have permission to add members to this space."
+        )
+      );
+    }
+
+    const defaultSpaceGroup = this.getDefaultSpaceGroup();
+    const users = await UserResource.fetchByIds(userIds);
+
+    if (!users) {
+      return new Err(new DustError("user_not_found", "User not found."));
+    }
+
+    const removeMemberRes = await defaultSpaceGroup.removeMembers(
+      auth,
+      users.map((user) => user.toJSON())
+    );
+
+    if (removeMemberRes.isErr()) {
+      return removeMemberRes;
+    }
+
+    return new Ok(users);
+  }
+
+  private getDefaultSpaceGroup(): GroupResource {
+    const regularGroups = this.groups.filter(
+      (group) => group.kind === "regular"
+    );
+    assert(
+      regularGroups.length === 1,
+      `Expected exactly one regular group for the space, but found ${regularGroups.length}.`
+    );
+    return regularGroups[0];
   }
 
   /**
@@ -544,10 +739,6 @@ export class SpaceResource extends BaseResource<SpaceModel> {
    * @returns Array of ResourcePermission objects based on space type
    */
   requestedPermissions(): CombinedResourcePermissions[] {
-    const globalGroup = this.isRegular()
-      ? this.groups.find((group) => group.isGlobal())
-      : undefined;
-
     // System space.
     if (this.isSystem()) {
       return [
@@ -599,12 +790,17 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       ];
     }
 
+    const groupFilter =
+      this.managementMode === "manual"
+        ? (group: GroupResource) => !group.isProvisioned()
+        : (group: GroupResource) => group.isProvisioned();
+
     // Open space.
     // Currently only using global group for simplicity.
     // TODO(2024-10-25 flav): Refactor to store a list of ResourcePermission on conversations and
     // agent_configurations. This will allow proper handling of multiple groups instead of only
     // using the global group as a temporary solution.
-    if (globalGroup) {
+    if (this.isRegularAndOpen()) {
       return [
         {
           workspaceId: this.workspaceId,
@@ -613,10 +809,15 @@ export class SpaceResource extends BaseResource<SpaceModel> {
             { role: "builder", permissions: ["read", "write"] },
             { role: "user", permissions: ["read"] },
           ],
-          groups: this.groups.map((group) => ({
-            id: group.id,
-            permissions: ["read"],
-          })),
+          groups: this.groups.reduce((acc, group) => {
+            if (groupFilter(group)) {
+              acc.push({
+                id: group.id,
+                permissions: ["read"],
+              });
+            }
+            return acc;
+          }, [] as GroupPermission[]),
         },
       ];
     }
@@ -626,10 +827,15 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       {
         workspaceId: this.workspaceId,
         roles: [{ role: "admin", permissions: ["admin"] }],
-        groups: this.groups.map((group) => ({
-          id: group.id,
-          permissions: ["read", "write"],
-        })),
+        groups: this.groups.reduce((acc, group) => {
+          if (groupFilter(group)) {
+            acc.push({
+              id: group.id,
+              permissions: ["read", "write"],
+            });
+          }
+          return acc;
+        }, [] as GroupPermission[]),
       },
     ];
   }
@@ -670,6 +876,10 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     return this.isRegular() && !this.groups.some((group) => group.isGlobal());
   }
 
+  isRegularAndOpen() {
+    return this.isRegular() && this.groups.some((group) => group.isGlobal());
+  }
+
   isPublic() {
     return this.kind === "public";
   }
@@ -693,6 +903,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       groupIds: this.groups.map((group) => group.sId),
       isRestricted: this.isRegularAndRestricted(),
       kind: this.kind,
+      managementMode: this.managementMode,
       name: this.name,
       sId: this.sId,
       updatedAt: this.updatedAt.getTime(),
