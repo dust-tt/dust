@@ -22,7 +22,7 @@ import type {
   ServerSideMCPServerConfigurationType,
 } from "@app/lib/actions/mcp";
 import type { ProcessConfigurationType } from "@app/lib/actions/process";
-import type { TablesQueryConfigurationType } from "@app/lib/actions/tables_query";
+import type { TableDataSourceConfiguration } from "@app/lib/actions/tables_query";
 import type {
   ActionConfigurationType,
   AgentActionConfigurationType,
@@ -193,15 +193,20 @@ async function getJITActions(
   );
 
   if (filesUsableAsTableQuery.length > 0) {
-    const action: TablesQueryConfigurationType = {
-      // The description here is the description of the data, a meta description of the action
-      // is prepended automatically.
-      description: DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_DATA_DESCRIPTION,
-      type: "tables_query_configuration",
-      id: -1,
-      name: DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME,
-      sId: generateRandomModelSId(),
-      tables: filesUsableAsTableQuery.flatMap((f) => {
+    // Get the query_tables MCP server view
+    const queryTablesView =
+      await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
+        auth,
+        "query_tables"
+      );
+
+    assert(
+      queryTablesView,
+      "MCP server view not found for query_tables. Ensure auto tools are created."
+    );
+
+    const tables: TableDataSourceConfiguration[] =
+      filesUsableAsTableQuery.flatMap((f) => {
         if (isConversationFileType(f)) {
           assert(
             conversationDataSourceView,
@@ -220,9 +225,26 @@ async function getJITActions(
           }));
         }
         assertNever(f);
-      }),
+      });
+
+    const tablesServer: ServerSideMCPServerConfigurationType = {
+      id: -1,
+      sId: generateRandomModelSId(),
+      type: "mcp_server_configuration",
+      name: DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME,
+      description: DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_DATA_DESCRIPTION,
+      dataSources: null,
+      tables,
+      childAgentId: null,
+      reasoningModel: null,
+      timeFrame: null,
+      jsonSchema: null,
+      additionalConfiguration: {},
+      mcpServerViewId: queryTablesView.sId,
+      dustAppConfiguration: null,
+      internalMCPServerId: queryTablesView.mcpServerId,
     };
-    actions.push(action);
+    jitServers.push(tablesServer);
   }
 
   // Get the retrieval view once - we'll need it for search functionality
