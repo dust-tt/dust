@@ -44,6 +44,16 @@ async function handler(
 ): Promise<void> {
   switch (req.method) {
     case "GET":
+      if (!auth.isAdmin()) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "workspace_auth_error",
+            message: "Only workspace admins can search members.",
+          },
+        });
+      }
+
       const queryRes = SearchMembersQueryCodec.decode(req.query);
 
       if (isLeft(queryRes)) {
