@@ -48,6 +48,7 @@ export const zendesk = async ({
 > => {
   const logger = topLogger.child({ majorCommand: "zendesk", command, args });
 
+  // Fetch the connector.
   let connector;
   if (args.wId && args.dsId) {
     connector = await ConnectorResource.findByDataSource({
@@ -75,6 +76,15 @@ export const zendesk = async ({
     throw new Error(`Connector ${args.connectorId} is not of type zendesk`);
   }
 
+  // Fetch the configuration.
+  const configuration = await ZendeskConfigurationResource.fetchByConnectorId(
+    connector.id
+  );
+  if (!configuration) {
+    throw new Error(`No configuration found for connector ${connector.id}`);
+  }
+
+  // Run the command.
   switch (command) {
     case "check-is-admin": {
       const user = await fetchZendeskCurrentUser(
@@ -91,11 +101,6 @@ export const zendesk = async ({
       const brandId = args.brandId ?? null;
       if (!brandId) {
         throw new Error(`Missing --brandId argument`);
-      }
-      const configuration =
-        await ZendeskConfigurationResource.fetchByConnectorId(connector.id);
-      if (!configuration) {
-        throw new Error(`No configuration found for connector ${connector.id}`);
       }
       const { retentionPeriodDays } = configuration;
 
@@ -134,12 +139,6 @@ export const zendesk = async ({
       return { success: true };
     }
     case "fetch-ticket": {
-      const configuration =
-        await ZendeskConfigurationResource.fetchByConnectorId(connector.id);
-      if (!configuration) {
-        throw new Error(`No configuration found for connector ${connector.id}`);
-      }
-
       const { accessToken, subdomain } =
         await getZendeskSubdomainAndAccessToken(connector.connectionId);
 
@@ -291,12 +290,6 @@ export const zendesk = async ({
         throw new Error(`Missing --ticketId argument`);
       }
 
-      const configuration =
-        await ZendeskConfigurationResource.fetchByConnectorId(connector.id);
-      if (!configuration) {
-        throw new Error(`No configuration found for connector ${connector.id}`);
-      }
-
       const { accessToken, subdomain } =
         await getZendeskSubdomainAndAccessToken(connector.connectionId);
 
@@ -318,7 +311,7 @@ export const zendesk = async ({
         throw new Error(`Ticket ${ticketId} not found`);
       }
 
-      // Check if ticket should be synced
+      // Check if the ticket should be synced
       if (!shouldSyncTicket(ticket, configuration)) {
         logger.info(
           { ticketId, brandId, status: ticket.status },
