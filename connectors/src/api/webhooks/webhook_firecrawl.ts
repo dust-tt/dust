@@ -12,11 +12,15 @@ import { withLogging } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { WithConnectorsAPIErrorReponse } from "@connectors/types";
 
-const logger = mainLogger.child({
-  provider: "webcrawler",
-  service: "firecrawl",
-  msgPrefix: "[Firecrawl] ",
-});
+const logger = mainLogger.child(
+  {
+    provider: "webcrawler",
+    service: "firecrawl",
+  },
+  {
+    msgPrefix: "[Firecrawl] ",
+  }
+);
 
 type FirecrawlWebhookResBody = WithConnectorsAPIErrorReponse<null>;
 
@@ -40,7 +44,7 @@ const _webhookFirecrawlAPIHandler = async (
         };
       }>;
       metadata: {
-        connectorId: number;
+        connectorId: string;
       };
       error: string | null;
     }
@@ -57,13 +61,20 @@ const _webhookFirecrawlAPIHandler = async (
     error,
   });
 
-  if (!metadata.connectorId) {
-    logger.error("Missing connectorId in metadata");
+  if (!metadata.connectorId || isNaN(parseInt(metadata.connectorId))) {
+    logger.error(
+      {
+        metadata,
+      },
+      "Missing or invalid connectorId in metadata"
+    );
     // We ignore the webhook.
     return res.status(200);
   }
 
-  const connector = await ConnectorResource.fetchById(metadata.connectorId);
+  const connector = await ConnectorResource.fetchById(
+    parseInt(metadata.connectorId)
+  );
   if (!connector) {
     logger.error({ connectorId: metadata.connectorId }, "Connector not found");
     // We ignore the webhook.
