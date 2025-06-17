@@ -20,22 +20,59 @@ export const withAuth = async ({
   authInfo?: AuthInfo;
 }): Promise<CallToolResult> => {
   const accessToken = authInfo?.token;
-  const baseUrl = authInfo?.metadata?.baseUrl as string;
-  
+
   if (!accessToken) {
     return makeMCPToolTextError(ERROR_MESSAGES.NO_ACCESS_TOKEN);
   }
-  
-  if (!baseUrl) {
-    return makeMCPToolTextError(ERROR_MESSAGES.NO_BASE_URL);
-  }
-  
+
   try {
+    // Get the base URL from accessible resources
+    const baseUrl = await getJiraBaseUrl(accessToken);
+    if (!baseUrl) {
+      return makeMCPToolTextError(ERROR_MESSAGES.NO_BASE_URL);
+    }
+
     return await action(baseUrl, accessToken);
   } catch (error: any) {
     return logAndReturnError({ error, params, message: "Operation failed" });
   }
 };
+
+async function getJiraBaseUrl(accessToken: string): Promise<string | null> {
+  try {
+    const response = await fetch(
+      "https://api.atlassian.com/oauth/token/accessible-resources",
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+      }
+    );
+
+    if (!response.ok) {
+      logger.error(
+        { status: response.status, statusText: response.statusText },
+        "Failed to fetch accessible resources"
+      );
+      return null;
+    }
+
+    const resources = await response.json();
+    
+    // Get the first accessible resource (primary workspace)
+    if (resources && resources.length > 0) {
+      return resources[0].url;
+    }
+
+    return null;
+  } catch (error) {
+    logger.error({ error }, "Error fetching JIRA accessible resources");
+    return null;
+  }
+}
 
 export const logAndReturnError = ({
   error,

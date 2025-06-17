@@ -38,6 +38,13 @@ export interface JiraTicket {
   };
 }
 
+export interface JiraSearchResult {
+  issues: JiraTicket[];
+  total: number;
+  startAt: number;
+  maxResults: number;
+}
+
 export const getTicket = async (
   baseUrl: string,
   accessToken: string,
@@ -58,7 +65,7 @@ export const getTicket = async (
         return null;
       }
       const error = new Error(
-        `Failed to fetch ticket ${ticketKey}: ${response.status} ${response.statusText}`
+        `Failed to fetch ticket ${baseUrl} ${ticketKey}: ${response.status} ${response.statusText}`
       );
       throw normalizeError(error);
     }
@@ -66,7 +73,42 @@ export const getTicket = async (
     const ticket = await response.json();
     return ticket as JiraTicket;
   } catch (error) {
-    console.error(`Error fetching JIRA ticket ${ticketKey}:`, error);
+    console.error(`${baseUrl} Error fetching JIRA ticket ${ticketKey}:`, error);
+    throw normalizeError(error);
+  }
+};
+
+export const searchTickets = async (
+  baseUrl: string,
+  accessToken: string,
+  jql: string = "*",
+  startAt: number = 0,
+  maxResults: number = MAX_LIMIT
+): Promise<JiraSearchResult> => {
+  try {
+    const response = await fetch(
+      `${baseUrl}/rest/api/3/search?jql=${encodeURIComponent(jql)}&startAt=${startAt}&maxResults=${maxResults}`,
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+      }
+    );
+
+    if (!response.ok) {
+      const error = new Error(
+        `Failed to search tickets: ${response.status} ${response.statusText}`
+      );
+      throw normalizeError(error);
+    }
+
+    const result = await response.json();
+    return result as JiraSearchResult;
+  } catch (error) {
+    console.error("Error searching JIRA tickets:", error);
     throw normalizeError(error);
   }
 };
