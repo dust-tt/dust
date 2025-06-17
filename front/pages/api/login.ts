@@ -76,21 +76,6 @@ async function handler(
     externalUser: session.user,
   });
 
-  try {
-    await user.recordLoginActivity();
-  } catch (error) {
-    logger.error(
-      {
-        session,
-        user,
-        nullableUser,
-        workspaceId: targetWorkspaceId,
-        error,
-      },
-      "Failed to record login activity for user."
-    );
-  }
-
   // TODO(workos): Remove after switch to workos. Update user information when user is created with auth0.
   if (userCreated && session.type === "auth0" && session.user.workOSUserId) {
     await updateUserFromAuth0(
@@ -192,6 +177,19 @@ async function handler(
   if (!u || u.workspaces.length === 0) {
     res.redirect("/no-workspace?flow=revoked");
     return;
+  }
+
+  try {
+    await user.recordLoginActivity();
+  } catch (error) {
+    logger.error(
+      {
+        userId: user.id,
+        worksOSUserId: user.workOSUserId,
+        error,
+      },
+      "Failed to record login activity for user."
+    );
   }
 
   if (targetWorkspace) {
