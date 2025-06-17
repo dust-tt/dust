@@ -220,7 +220,7 @@ const PainPointsSection = () => (
 const USE_CASE_FEATURES = {
   gtm: {
     title: "GTM Operations & Sales Enablement",
-    image: "/static/landing/industry/features/GTM_ops.svg",
+    image: "/static/landing/industry/features/GTM_Ops.svg",
     bgColor: "bg-blue-100",
     features: [
       {
