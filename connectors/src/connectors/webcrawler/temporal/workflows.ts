@@ -11,7 +11,6 @@ import type * as activities from "@connectors/connectors/webcrawler/temporal/act
 import type { ModelId } from "@connectors/types";
 
 import { WEBCRAWLER_MAX_PAGES } from "../../../types/webcrawler";
-import { last } from "lodash";
 
 // timeout for crawling a single url = timeout for upserting (5 minutes) + 2mn
 // leeway to crawl on slow websites
