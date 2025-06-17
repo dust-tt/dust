@@ -3,7 +3,7 @@ import { proxyActivities, setHandler } from "@temporalio/workflow";
 import type * as activities from "@connectors/connectors/salesforce/temporal/activities";
 import { resyncSignal } from "@connectors/connectors/salesforce/temporal/signals";
 // import type * as sync_status from "@connectors/lib/sync_status";
-import type { DateTs, ModelId } from "@connectors/types";
+import type { ModelId } from "@connectors/types";
 
 // const { syncSucceeded, syncStarted } = proxyActivities<typeof sync_status>({
 //   startToCloseTimeout: "10 minutes",
@@ -128,9 +128,9 @@ export async function salesforceSyncQueryWorkflow({
 }) {
   await upsertSyncedQueryRootNode(connectorId, { queryId });
 
-  let lastSeenModifiedDateTs: DateTs = null;
-  let lastModifiedDateCursorTs: DateTs = null;
-  const upToLastModifiedDateTs: DateTs = upToLastModifiedDate
+  let lastSeenModifiedDateTs: number | null = null;
+  let lastModifiedDateCursorTs: number | null = null;
+  const upToLastModifiedDateTs: number | null = upToLastModifiedDate
     ? upToLastModifiedDate.getTime()
     : null;
   let hasMore = true;

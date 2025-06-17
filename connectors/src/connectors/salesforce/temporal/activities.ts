@@ -20,7 +20,7 @@ import { parseInternalId } from "@connectors/lib/remote_databases/utils";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import logger from "@connectors/logger/logger";
 import { SalesforceSyncedQueryResource } from "@connectors/resources/salesforce_resources";
-import type { DateTs, ModelId } from "@connectors/types";
+import type { ModelId } from "@connectors/types";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
 
 export async function syncSalesforceConnection(connectorId: ModelId) {
@@ -147,16 +147,16 @@ export async function processSyncedQueryPage(
     upToLastModifiedDateTs,
   }: {
     queryId: ModelId;
-    lastModifiedDateCursorTs: DateTs;
+    lastModifiedDateCursorTs: number | null;
     limit: number;
-    lastSeenModifiedDateTs: DateTs;
-    upToLastModifiedDateTs: DateTs;
+    lastSeenModifiedDateTs: number | null;
+    upToLastModifiedDateTs: number | null;
   }
 ): Promise<{
   // The most recent lastModifiedDate seen
-  lastSeenModifiedDateTs: DateTs;
+  lastSeenModifiedDateTs: number | null;
   // The older lastModifiedDate seen in this page to use for pagination
-  lastModifiedDateCursorTs: DateTs;
+  lastModifiedDateCursorTs: number | null;
   hasMore: boolean;
   count: number;
 }> {
