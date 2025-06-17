@@ -500,6 +500,10 @@ module.exports = {
             transform: "translate3d(2px, 0, 0)",
           },
         },
+        marquee: {
+          "0%": { transform: "translate3d(0, 0, 0)" },
+          "100%": { transform: "translate3d(-50%, 0, 0)" },
+        },
       },
       animation: {
         "move-square": "move-square 4s ease-out infinite",
@@ -509,6 +513,7 @@ module.exports = {
         shake: "shake 0.82s cubic-bezier(.36,.07,.19,.97) both",
         reload: "reload 1000ms ease-out",
         fadeout: "fadeout 500ms ease-out",
+        marquee: "marquee 25s linear infinite",
       },
       colors: {
         // Creates night shades for all colors

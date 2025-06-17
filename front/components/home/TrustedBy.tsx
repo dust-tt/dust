@@ -1,48 +1,107 @@
 import Image from "next/image";
+import { useState } from "react";
 
-import { H3 } from "@app/components/home/ContentComponents";
+import { H4 } from "@app/components/home/ContentComponents";
 import { classNames } from "@app/lib/utils";
 
-const LOGOS = [
-  { name: "clay", src: "/static/landing/logos/gray/clay.svg" },
-  { name: "doctolib", src: "/static/landing/logos/gray/doctolib.svg" },
-  { name: "watershed", src: "/static/landing/logos/gray/watershed.svg" },
-  { name: "photoroom", src: "/static/landing/logos/gray/photoroom.svg" },
-  { name: "pennylane", src: "/static/landing/logos/gray/pennylane.svg" },
-  { name: "payfit", src: "/static/landing/logos/gray/payfit.svg" },
-  { name: "patch", src: "/static/landing/logos/gray/patch.svg" },
-  { name: "alan", src: "/static/landing/logos/gray/alan.svg" },
-  { name: "blueground", src: "/static/landing/logos/gray/blueground.svg" },
-  { name: "qonto", src: "/static/landing/logos/gray/qonto.svg" },
-];
+// Define logo sets for different pages
+const LOGO_SETS = {
+  default: [
+    { name: "clay", src: "/static/landing/logos/gray/clay.svg" },
+    { name: "payfit", src: "/static/landing/logos/gray/payfit.svg" },
+    { name: "patch", src: "/static/landing/logos/gray/patch.svg" },
+    { name: "alan", src: "/static/landing/logos/gray/alan.svg" },
+    { name: "photoroom", src: "/static/landing/logos/gray/photoroom.svg" },
+    { name: "blueground", src: "/static/landing/logos/gray/blueground.svg" },
+    { name: "qonto", src: "/static/landing/logos/gray/qonto.svg" },
+  ],
+  landing: [
+    { name: "clay", src: "/static/landing/logos/gray/clay.svg" },
+    { name: "payfit", src: "/static/landing/logos/gray/payfit.svg" },
+    { name: "patch", src: "/static/landing/logos/gray/patch.svg" },
+    { name: "alan", src: "/static/landing/logos/gray/alan.svg" },
+    { name: "photoroom", src: "/static/landing/logos/gray/photoroom.svg" },
+    { name: "blueground", src: "/static/landing/logos/gray/blueground.svg" },
+    { name: "qonto", src: "/static/landing/logos/gray/qonto.svg" },
+    {
+      name: "contentsquare",
+      src: "/static/landing/logos/gray/contentsquare.svg",
+    },
+    { name: "spendesk", src: "/static/landing/logos/gray/spendesk.svg" },
+    { name: "gitguardian", src: "/static/landing/logos/gray/gitguardian.svg" },
+    { name: "watershed", src: "/static/landing/logos/gray/watershed.svg" },
+    { name: "doctolib", src: "/static/landing/logos/gray/doctolib.svg" },
+    { name: "malt", src: "/static/landing/logos/gray/malt.svg" },
+  ],
+  b2bSaas: [
+    { name: "clay", src: "/static/landing/logos/gray/clay.svg" },
+    {
+      name: "contentsquare",
+      src: "/static/landing/logos/gray/contentsquare.svg",
+    },
+    { name: "payfit", src: "/static/landing/logos/gray/payfit.svg" },
+    { name: "spendesk", src: "/static/landing/logos/gray/spendesk.svg" },
+    { name: "gitguardian", src: "/static/landing/logos/gray/gitguardian.svg" },
+    { name: "watershed", src: "/static/landing/logos/gray/watershed.svg" },
+    { name: "doctolib", src: "/static/landing/logos/gray/doctolib.svg" },
+  ],
+} as const;
 
-export default function TrustedBy() {
+type LogoSetKey = keyof typeof LOGO_SETS;
+
+interface TrustedByProps {
+  logoSet?: LogoSetKey;
+  title?: string;
+}
+
+export default function TrustedBy({
+  logoSet = "default",
+  title = "Trusted by 1,000+ organizations",
+}: TrustedByProps) {
+  const [isPaused, setIsPaused] = useState(false);
+  // We duplicate the logos to create a seamless animation.
+  const logos = [...LOGO_SETS[logoSet], ...LOGO_SETS[logoSet]];
+
   return (
     <div
       className={classNames(
-        "col-span-12 flex flex-col items-center py-4",
+        "col-span-12 flex flex-col items-center py-8",
         "lg:col-span-12 lg:col-start-1",
         "xl:col-span-10 xl:col-start-2"
       )}
     >
-      <H3 className="w-full text-center">Trusted by 1,000+ organizations</H3>
+      <H4 className="mb-6 w-full text-center text-xs font-medium text-muted-foreground">
+        {title}
+      </H4>
 
-      <div className="mx-auto mt-8 w-full max-w-[1300px] px-2 sm:px-4">
-        <div className="grid grid-cols-2 place-items-center gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-          {LOGOS.map((logo) => (
-            <div
-              key={logo.name}
-              className="flex h-16 w-full max-w-[180px] items-center justify-center px-2 sm:h-20 sm:max-w-[200px] sm:px-3 md:h-24 md:max-w-[240px] md:px-4"
-            >
-              <Image
-                alt={logo.name}
-                src={logo.src}
-                width={160}
-                height={80}
-                className="w-full"
-              />
-            </div>
-          ))}
+      <div className="relative w-full overflow-hidden rounded-xl bg-white">
+        <div
+          className="relative mx-auto overflow-hidden"
+          onMouseEnter={() => setIsPaused(true)}
+          onMouseLeave={() => setIsPaused(false)}
+        >
+          <div
+            className={classNames("flex animate-marquee")}
+            style={{ animationPlayState: isPaused ? "paused" : "running" }}
+          >
+            {logos.map((logo, index) => (
+              <div
+                key={`${logo.name}-${index}`}
+                className="-mx-2 flex h-16 w-32 flex-shrink-0 items-center justify-center sm:mx-8 sm:h-20 sm:w-48 lg:mx-12"
+              >
+                <Image
+                  alt={logo.name}
+                  src={logo.src}
+                  width={200}
+                  height={80}
+                  className="h-auto max-h-12 w-auto object-contain sm:max-h-16 lg:max-h-20"
+                />
+              </div>
+            ))}
+          </div>
+
+          <div className="pointer-events-none absolute left-0 top-0 z-10 h-full w-16 bg-gradient-to-r from-white via-white/80 to-transparent sm:w-24 lg:w-32"></div>
+          <div className="pointer-events-none absolute right-0 top-0 z-10 h-full w-16 bg-gradient-to-l from-white via-white/80 to-transparent sm:w-24 lg:w-32"></div>
         </div>
       </div>
     </div>
