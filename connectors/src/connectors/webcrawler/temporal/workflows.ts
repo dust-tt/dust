@@ -37,10 +37,18 @@ const { crawlWebsiteByConnectorId, webCrawlerGarbageCollector } =
     },
   });
 
-const { getConnectorIdsForWebsitesToCrawl, markAsCrawled } = proxyActivities<
-  typeof activities
->({
+const {
+  getConnectorIdsForWebsitesToCrawl,
+  markAsCrawled,
+  firecrawlCrawlFailed,
+  firecrawlCrawlStarted,
+  firecrawlCrawlCompleted,
+} = proxyActivities<typeof activities>({
   startToCloseTimeout: "2 minutes",
+});
+
+const { firecrawlCrawlPage } = proxyActivities<typeof activities>({
+  startToCloseTimeout: "10 minute",
 });
 
 export async function crawlWebsiteWorkflow(
@@ -94,7 +102,7 @@ export async function firecrawlCrawlFailedWorkflow(
   connectorId: ModelId,
   crawlId: string
 ) {
-  // TODO: possibly fetch the error reason from the carwl API and update state
+  await firecrawlCrawlFailed(connectorId, crawlId);
 }
 
 export function firecrawlCrawlStartedWorkflowId(
@@ -108,7 +116,7 @@ export async function firecrawlCrawlStartedWorkflow(
   connectorId: ModelId,
   crawlId: string
 ) {
-  // TODO: likely nothing to do
+  await firecrawlCrawlStarted(connectorId, crawlId);
 }
 
 export function firecrawlCrawlCompletedWorkflowId(
@@ -122,7 +130,7 @@ export async function firecrawlCrawlCompletedWorkflow(
   connectorId: ModelId,
   crawlId: string
 ) {
-  // TODO: mark crawling as done and start garbage collect
+  await firecrawlCrawlCompleted(connectorId, crawlId);
 }
 
 export function firecrawlCrawlPageWorkflowId(
@@ -138,5 +146,5 @@ export async function firecrawlCrawlPageWorkflow(
   crawlId: string,
   scrapeId: string
 ) {
-  // TODO: update page, upsert, ...
+  await firecrawlCrawlPage(connectorId, crawlId, scrapeId);
 }

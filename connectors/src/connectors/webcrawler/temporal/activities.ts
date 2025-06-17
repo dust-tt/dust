@@ -962,3 +962,69 @@ export async function webCrawlerGarbageCollector(
 export async function getConnectorIdsForWebsitesToCrawl() {
   return WebCrawlerConfigurationResource.getConnectorIdsForWebsitesToCrawl();
 }
+
+export async function firecrawlCrawlFailed(
+  connectorId: ModelId,
+  crawlId: string
+) {
+  const localLogger = logger.child({
+    connectorId,
+    crawlId,
+  });
+
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    localLogger.error({ connectorId }, "Connector not found");
+    return;
+  }
+}
+
+export async function firecrawlCrawlStarted(
+  connectorId: ModelId,
+  crawlId: string
+) {
+  const localLogger = logger.child({
+    connectorId,
+    crawlId,
+  });
+
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    localLogger.error({ connectorId }, "Connector not found");
+    return;
+  }
+}
+
+export async function firecrawlCrawlPage(
+  connectorId: ModelId,
+  crawlId: string,
+  scrapeId: string
+) {
+  const localLogger = logger.child({
+    connectorId,
+    crawlId,
+    scrapeId,
+  });
+
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    localLogger.error({ connectorId }, "Connector not found");
+    return;
+  }
+}
+
+export async function firecrawlCrawlCompleted(
+  connectorId: ModelId,
+  crawlId: string
+) {
+  const localLogger = logger.child({
+    connectorId,
+    crawlId,
+  });
+
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    localLogger.error({ connectorId }, "Connector not found");
+    return;
+  }
+}
