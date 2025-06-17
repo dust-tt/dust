@@ -1,11 +1,13 @@
 import type { RegionType } from "@app/lib/api/regions/config";
 import { config } from "@app/lib/api/regions/config";
 import { isWorkspaceRelocationDone } from "@app/lib/api/workspace";
+import { getFeatureFlags } from "@app/lib/auth";
 import { findWorkspaceWithVerifiedDomain } from "@app/lib/iam/workspaces";
 import { Workspace } from "@app/lib/models/workspace";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type {
+  AuthLookupResponse,
   UserLookupRequestBodyType,
   UserLookupResponse,
 } from "@app/pages/api/lookup/[resource]";
@@ -111,6 +113,40 @@ async function lookupInOtherRegion(
   }
 }
 
+export async function lookupAuthInOtherRegion(
+  userLookup: UserLookup
+): Promise<Result<"auth0" | "workos", Error>> {
+  const { url } = config.getOtherRegionInfo();
+
+  const body: UserLookupRequestBodyType = {
+    user: userLookup,
+  };
+
+  try {
+    const otherRegionResponse = await fetch(`${url}/api/lookup/auth`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${config.getLookupApiSecret()}`,
+      },
+      body: JSON.stringify(body),
+    });
+
+    const data: AuthLookupResponse = await otherRegionResponse.json();
+    if (isAPIErrorResponse(data)) {
+      return new Err(new Error(data.error.message));
+    }
+
+    return new Ok(data.auth);
+  } catch (error) {
+    if (error instanceof Error) {
+      return new Err(error);
+    }
+
+    return new Err(new Error("Unknown error in lookupInOtherRegion"));
+  }
+}
+
 type RegionAffinityResult =
   | { hasAffinity: true; region: RegionType }
   | { hasAffinity: false; region?: never };
@@ -140,4 +176,23 @@ export async function checkUserRegionAffinity(
 
   // User does not have affinity to any region.
   return new Ok({ hasAffinity: false });
+}
+
+export async function lookupAuth(
+  userLookup: UserLookup
+): Promise<"auth0" | "workos"> {
+  const workspaceHasDomain = await findWorkspaceWithVerifiedDomain({
+    email: userLookup.email,
+    email_verified: true,
+  });
+  const workspace = workspaceHasDomain?.workspace;
+  if (workspace) {
+    const ff = await getFeatureFlags(renderLightWorkspaceType({ workspace }));
+    // Workspace is switched to workos: use workos
+    if (ff.includes("workos")) {
+      return "workos";
+    }
+  }
+
+  return "auth0";
 }

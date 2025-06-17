@@ -6,6 +6,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import config from "@app/lib/api/config";
 import {
   handleLookupWorkspace,
+  lookupAuth,
   lookupUserRegionByEmail,
 } from "@app/lib/api/regions/lookup";
 import { getBearerToken } from "@app/lib/auth";
@@ -23,12 +24,19 @@ export type UserLookupResponse = {
   exists: boolean;
 };
 
+export type AuthLookupResponse = {
+  auth: "auth0" | "workos";
+};
+
 const ExternalUserCodec = t.type({
   email: t.string,
   email_verified: t.boolean,
 });
 
-type LookupResponseBody = UserLookupResponse | WorkspaceLookupResponse;
+type LookupResponseBody =
+  | UserLookupResponse
+  | WorkspaceLookupResponse
+  | AuthLookupResponse;
 
 const UserLookupSchema = t.type({
   user: ExternalUserCodec,
@@ -44,7 +52,11 @@ export type WorkspaceLookupRequestBodyType = t.TypeOf<
   typeof WorkspaceLookupSchema
 >;
 
-const ResourceType = t.union([t.literal("user"), t.literal("workspace")]);
+const ResourceType = t.union([
+  t.literal("user"),
+  t.literal("workspace"),
+  t.literal("auth"),
+]);
 
 async function handler(
   req: NextApiRequest,
@@ -123,6 +135,26 @@ async function handler(
         }
         response = {
           exists: await lookupUserRegionByEmail(bodyValidation.right.user),
+        };
+      }
+      break;
+    case "auth":
+      {
+        const bodyValidation = UserLookupSchema.decode(req.body);
+        if (isLeft(bodyValidation)) {
+          const pathError = reporter.formatValidationErrors(
+            bodyValidation.left
+          );
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: `Invalid request body for auth lookup: ${pathError}`,
+            },
+          });
+        }
+        response = {
+          auth: await lookupAuth(bodyValidation.right.user),
         };
       }
       break;
