@@ -2,12 +2,13 @@ import type {
   CodedError,
   WebAPIHTTPError,
   WebAPIPlatformError,
+  WebAPIRateLimitedError,
 } from "@slack/web-api";
 import { ErrorCode, WebClient } from "@slack/web-api";
-import { Context } from "@temporalio/activity";
 
 import {
   ExternalOAuthTokenError,
+  ProviderRateLimitError,
   ProviderWorkflowError,
 } from "@connectors/lib/error";
 import { getOAuthConnectionAccessTokenWithThrow } from "@connectors/lib/oauth";
@@ -17,6 +18,44 @@ import type { ModelId } from "@connectors/types";
 
 // Timeout in ms for all network requests;
 const SLACK_NETWORK_TIMEOUT_MS = 30000;
+
+function isCodedError(error: unknown): error is CodedError {
+  return error != null && typeof error === "object" && "code" in error;
+}
+
+// Type guards for Slack errors
+// See https://github.com/slackapi/node-slack-sdk/blob/main/packages/web-api/src/errors.ts.
+function isWebAPIRateLimitedError(
+  error: unknown
+): error is WebAPIRateLimitedError {
+  return (
+    isCodedError(error) &&
+    error.code === ErrorCode.RateLimitedError &&
+    "retryAfter" in error &&
+    typeof error.retryAfter === "number"
+  );
+}
+
+function isWebAPIHTTPError(error: unknown): error is WebAPIHTTPError {
+  return (
+    isCodedError(error) &&
+    error.code === ErrorCode.HTTPError &&
+    "statusCode" in error &&
+    typeof error.statusCode === "number"
+  );
+}
+
+function isWebAPIPlatformError(error: unknown): error is WebAPIPlatformError {
+  return (
+    isCodedError(error) &&
+    error.code === ErrorCode.PlatformError &&
+    "data" in error &&
+    error.data != null &&
+    typeof error.data === "object" &&
+    "error" in error.data &&
+    typeof error.data.error === "string"
+  );
+}
 
 export async function getSlackClient(
   connectorId: ModelId,
@@ -53,75 +92,59 @@ export async function getSlackClient(
     },
   });
 
+  // Proxy to convert Slack errors to proper workflow errors.
   const handler: ProxyHandler<WebClient> = {
     get: function (target, prop, receiver) {
       const value = Reflect.get(target, prop, receiver);
       if (["function", "object"].indexOf(typeof value) > -1) {
         return new Proxy(value, handler);
       }
-
       return Reflect.get(target, prop, receiver);
     },
     apply: async function (target, thisArg, argumentsList) {
-      let remainingTries = 3;
-      while (remainingTries > 0) {
-        try {
-          // @ts-expect-error can't get typescript to be happy with this, but it works.
-          // eslint-disable-next-line @typescript-eslint/return-await
-          return await Reflect.apply(target, thisArg, argumentsList);
-        } catch (e) {
-          // If we get rate limited, we throw a known error.
-          // Note: a previous version using slackError.code === ErrorCode.RateLimitedError failed
-          // see PR #2689 for details
-          if (e instanceof Error && e.message.includes("rate limit")) {
-            try {
-              Context.current().heartbeat();
-              await Context.current().sleep("1 minute");
-              remainingTries--;
-              continue;
-            } catch (temporalError) {
-              // Not in an activity, ignore
-            }
+      try {
+        // @ts-expect-error can't get typescript to be happy with this, but it works.
+        // eslint-disable-next-line @typescript-eslint/return-await
+        return await Reflect.apply(target, thisArg, argumentsList);
+      } catch (e) {
+        // Convert Slack errors to proper workflow errors - NO RETRIES HERE.
 
-            throw new ProviderWorkflowError(
-              "slack",
-              `Rate limited: ${e.message}`,
-              "rate_limit_error",
-              e
-            );
-          }
-
-          const slackError = e as CodedError;
-          if (slackError.code === ErrorCode.HTTPError) {
-            const httpError = slackError as WebAPIHTTPError;
-            if (httpError.statusCode === 503) {
-              throw new ProviderWorkflowError(
-                "slack",
-                `Slack is down: ${httpError.message}`,
-                "transient_upstream_activity_error",
-                httpError
-              );
-            }
-          }
-          if (slackError.code === ErrorCode.PlatformError) {
-            const platformError = e as WebAPIPlatformError;
-            if (
-              ["account_inactive", "invalid_auth", "missing_scope"].includes(
-                platformError.data.error
-              )
-            ) {
-              throw new ExternalOAuthTokenError();
-            }
-          }
-          throw e;
+        // Rate limit errors.
+        if (isWebAPIRateLimitedError(e)) {
+          throw new ProviderRateLimitError(
+            `Rate limited: ${e.message} (retry after ${e.retryAfter}s)`,
+            e,
+            e.retryAfter
+          );
         }
+
+        // HTTP 503 errors (Slack is down).
+        if (isWebAPIHTTPError(e) && e.statusCode === 503) {
+          throw new ProviderWorkflowError(
+            "slack",
+            `Slack is down: ${e.statusMessage}`,
+            "transient_upstream_activity_error",
+            e
+          );
+        }
+
+        // Platform errors (auth issues).
+        if (
+          isWebAPIPlatformError(e) &&
+          ["account_inactive", "invalid_auth", "missing_scope"].includes(
+            e.data.error
+          )
+        ) {
+          throw new ExternalOAuthTokenError();
+        }
+
+        // Pass through everything else unchanged.
+        throw e;
       }
     },
   };
 
-  const proxied = new Proxy(slackClient, handler);
-
-  return proxied;
+  return new Proxy(slackClient, handler);
 }
 
 export type SlackUserInfo = {
