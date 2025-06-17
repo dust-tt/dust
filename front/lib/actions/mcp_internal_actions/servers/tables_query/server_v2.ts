@@ -3,17 +3,16 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import {
-  generateCSVFileAndSnippet,
-  generateSectionFile,
-  uploadFileToConversationDataSource,
+  generateCSVOutput,
+  generateCSVSnippet,
 } from "@app/lib/actions/action_file_helpers";
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type {
+  BlobCallToolResultBlock,
   ExecuteTablesQueryMarkerResourceType,
   GetDatabaseSchemaMarkerResourceType,
   SqlQueryOutputType,
   ThinkingOutputType,
-  ToolGeneratedFileType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
   getDatabaseExampleRowsContent,
@@ -21,13 +20,13 @@ import {
   getSchemaContent,
 } from "@app/lib/actions/mcp_internal_actions/servers/tables_query/schema";
 import {
+  generateSectionContent,
   getSectionColumnsPrefix,
   TABLES_QUERY_SECTION_FILE_MIN_COLUMN_LENGTH,
 } from "@app/lib/actions/mcp_internal_actions/servers/tables_query/server";
 import { fetchTableDataSourceConfigurations } from "@app/lib/actions/mcp_internal_actions/servers/utils";
 import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
-import type { AgentLoopContextType } from "@app/lib/actions/types";
 import config from "@app/lib/api/config";
 import type { CSVRecord } from "@app/lib/api/csv";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
@@ -40,7 +39,13 @@ import { CoreAPI } from "@app/types/core/core_api";
 type TablesQueryOutputResources =
   | ThinkingOutputType
   | SqlQueryOutputType
-  | ToolGeneratedFileType
+  | {
+      uri: string;
+      name: string;
+      mimeType: string;
+      blob: string;
+      snippet?: string;
+    }
   | GetDatabaseSchemaMarkerResourceType
   | ExecuteTablesQueryMarkerResourceType;
 
@@ -54,10 +59,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
   documentationUrl: null,
 };
 
-function createServer(
-  auth: Authenticator,
-  agentLoopContext?: AgentLoopContextType
-): McpServer {
+function createServer(auth: Authenticator): McpServer {
   const server = new McpServer(serverInfo);
 
   server.tool(
@@ -157,13 +159,6 @@ function createServer(
       auth,
       "tables_query",
       async ({ tables, query, fileName }) => {
-        // TODO(mcp): @fontanierh: we should not have a strict dependency on the agentLoopRunContext.
-        if (!agentLoopContext?.runContext) {
-          throw new Error("Unreachable: missing agentLoopContext.");
-        }
-
-        const agentLoopRunContext = agentLoopContext.runContext;
-
         // Fetch table configurations
         const tableConfigurationsRes = await fetchTableDataSourceConfigurations(
           auth,
@@ -236,10 +231,13 @@ function createServer(
           };
         }
 
-        const content: {
-          type: "resource";
-          resource: TablesQueryOutputResources;
-        }[] = [];
+        const content: (
+          | {
+              type: "resource";
+              resource: TablesQueryOutputResources;
+            }
+          | BlobCallToolResultBlock
+        )[] = [];
 
         const results: CSVRecord[] = queryResult.value.results
           .map((r) => r.value)
@@ -265,32 +263,27 @@ function createServer(
           const humanReadableDate = new Date().toISOString().split("T")[0];
           const queryTitle = `${fileName} (${humanReadableDate})`;
 
-          // Generate the CSV file.
-          const { csvFile, csvSnippet } = await generateCSVFileAndSnippet(
-            auth,
-            {
-              title: queryTitle,
-              conversationId: agentLoopRunContext.conversation.sId,
-              results,
-            }
-          );
+          // Generate CSV content
+          const {
+            csvOutput,
+            contentType,
+            fileName: csvFileName,
+          } = await generateCSVOutput(queryTitle, results);
 
-          // Upload the CSV file to the conversation data source.
-          await uploadFileToConversationDataSource({
-            auth,
-            file: csvFile,
+          const csvSnippet = generateCSVSnippet({
+            content: csvOutput,
+            totalRecords: results.length,
           });
 
-          // Append the CSV file to the output of the tool as an agent-generated file.
+          // Convert to blob resource
+          const csvBase64 = Buffer.from(csvOutput).toString("base64");
           content.push({
             type: "resource",
+            name: csvFileName,
             resource: {
-              text: `Your query results were generated successfully.`,
-              uri: csvFile.getPublicUrl(auth),
-              mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
-              fileId: csvFile.sId,
-              title: queryTitle,
-              contentType: csvFile.contentType,
+              uri: `data:${contentType};base64,transient-content`,
+              mimeType: contentType,
+              blob: csvBase64,
               snippet: csvSnippet,
             },
           });
@@ -317,31 +310,29 @@ function createServer(
             const sectionColumnsPrefix =
               getSectionColumnsPrefix(connectorProvider);
 
-            // Generate the section file.
-            const sectionFile = await generateSectionFile(auth, {
-              title: queryTitle,
-              conversationId: agentLoopRunContext.conversation.sId,
+            // Generate section content using the shared function
+            const sectionContent = generateSectionContent(
+              queryTitle,
               results,
-              sectionColumnsPrefix,
-            });
+              sectionColumnsPrefix
+            );
 
-            // Upload the section file to the conversation data source.
-            await uploadFileToConversationDataSource({
-              auth,
-              file: sectionFile,
-            });
+            // Convert to blob resource
+            const sectionBase64 =
+              Buffer.from(sectionContent).toString("base64");
+            const sectionSnippet =
+              sectionContent.length > 1000
+                ? sectionContent.substring(0, 1000) + "... (truncated)"
+                : sectionContent;
 
-            // Append the section file to the output of the tool as an agent-generated file.
             content.push({
               type: "resource",
+              name: `${queryTitle} (Rich Text)`,
               resource: {
-                text: "Your query results were generated successfully.",
-                uri: sectionFile.getPublicUrl(auth),
-                mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
-                fileId: sectionFile.sId,
-                title: `${queryTitle} (Rich Text)`,
-                contentType: sectionFile.contentType,
-                snippet: null,
+                uri: `data:application/vnd.dust.section.json;base64,section`,
+                mimeType: "application/vnd.dust.section.json",
+                blob: sectionBase64,
+                snippet: sectionSnippet,
               },
             });
           }
