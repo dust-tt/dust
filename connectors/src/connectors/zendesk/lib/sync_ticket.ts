@@ -17,7 +17,7 @@ import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ZendeskConfigurationResource } from "@connectors/resources/zendesk_resources";
 import { ZendeskTicketResource } from "@connectors/resources/zendesk_resources";
-import type { DataSourceConfig, ModelId } from "@connectors/types";
+import { DataSourceConfig, ModelId, stripNullBytes } from "@connectors/types";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
 
 const turndownService = new TurndownService();
@@ -132,13 +132,12 @@ export async function syncTicket({
 
   // Tickets can be created without a subject using the API or by email,
   // if they were never attended in the Agent Workspace, their subject is not populated.
-  ticket.subject ||= "No subject";
-
+  const ticketSubject = stripNullBytes(ticket.subject?.trim() || "No subject");
   const ticketUrl = apiUrlToDocumentUrl(ticket.url);
   if (!ticketInDb) {
     ticketInDb = await ZendeskTicketResource.makeNew({
       blob: {
-        subject: ticket.subject,
+        subject: ticketSubject,
         url: ticketUrl,
         lastUpsertedTs: new Date(currentSyncDateMs),
         ticketUpdatedAt: updatedAtDate,
@@ -150,7 +149,7 @@ export async function syncTicket({
     });
   } else {
     await ticketInDb.update({
-      subject: ticket.subject,
+      subject: ticketSubject,
       url: ticketUrl,
       lastUpsertedTs: new Date(currentSyncDateMs),
       ticketUpdatedAt: updatedAtDate,
@@ -228,7 +227,7 @@ export async function syncTicket({
 
     const documentContent = await renderDocumentTitleAndContent({
       dataSourceConfig,
-      title: ticket.subject,
+      title: ticketSubject,
       content: renderedMarkdown,
       createdAt: createdAtDate,
       updatedAt: updatedAtDate,
@@ -267,7 +266,7 @@ export async function syncTicket({
       parentId: parents[1],
       loggerArgs: { ...loggerArgs, ticketId: ticket.id },
       upsertContext: { sync_type: "batch" },
-      title: `#${ticket.id}: ${ticket.subject}`,
+      title: `#${ticket.id}: ${ticketSubject}`,
       mimeType: INTERNAL_MIME_TYPES.ZENDESK.TICKET,
       async: true,
     });
