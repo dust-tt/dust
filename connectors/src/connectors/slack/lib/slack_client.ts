@@ -114,7 +114,8 @@ export async function getSlackClient(
           throw new ProviderRateLimitError(
             `Rate limited: ${e.message} (retry after ${e.retryAfter}s)`,
             e,
-            e.retryAfter
+            // Slack returns retryAfter in seconds, but Temporal expects milliseconds.
+            e.retryAfter * 1000
           );
         }
 
