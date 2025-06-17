@@ -11,6 +11,7 @@ import type * as activities from "@connectors/connectors/webcrawler/temporal/act
 import type { ModelId } from "@connectors/types";
 
 import { WEBCRAWLER_MAX_PAGES } from "../../../types/webcrawler";
+import { last } from "lodash";
 
 // timeout for crawling a single url = timeout for upserting (5 minutes) + 2mn
 // leeway to crawl on slow websites
@@ -54,11 +55,13 @@ const { firecrawlCrawlPage } = proxyActivities<typeof activities>({
 export async function crawlWebsiteWorkflow(
   connectorId: ModelId
 ): Promise<void> {
-  const startedAtTs = Date.now();
-  await CancellationScope.cancellable(
+  const res = await CancellationScope.cancellable(
     crawlWebsiteByConnectorId.bind(null, connectorId)
   );
-  await webCrawlerGarbageCollector(connectorId, startedAtTs);
+
+  if (res?.launchGarbageCollect) {
+    await webCrawlerGarbageCollector(connectorId, res?.startedAtTs);
+  }
 }
 
 export function crawlWebsiteWorkflowId(connectorId: ModelId) {
@@ -79,7 +82,7 @@ export async function crawlWebsiteSchedulerWorkflow() {
         connectorId: [connectorId],
       },
       args: [connectorId],
-      parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_ABANDON,
+      parentClosePolicy: ParentClosePolicy.ABANDON,
       memo: workflowInfo().memo,
     });
   }
@@ -130,7 +133,12 @@ export async function firecrawlCrawlCompletedWorkflow(
   connectorId: ModelId,
   crawlId: string
 ) {
-  await firecrawlCrawlCompleted(connectorId, crawlId);
+  const res = await firecrawlCrawlCompleted(connectorId, crawlId);
+
+  // If we have a lastSyncStartTs, we start the garbage collector.
+  if (res?.lastSyncStartTs) {
+    await webCrawlerGarbageCollector(connectorId, res.lastSyncStartTs);
+  }
 }
 
 export function firecrawlCrawlPageWorkflowId(

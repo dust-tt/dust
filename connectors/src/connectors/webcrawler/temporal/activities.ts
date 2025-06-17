@@ -77,8 +77,8 @@ export async function markAsCrawled(connectorId: ModelId) {
     throw new Error(`Webcrawler configuration not found for connector.`);
   }
 
-  // Immediately marking the config as crawled to avoid having the scheduler seeing it as a candidate for crawling
-  // in case of the crawling takes too long or fails.
+  // Immediately marking the config as crawled to avoid having the scheduler seeing it as a
+  // candidate for crawling in case of the crawling takes too long or fails.
   await webCrawlerConfig.markedAsCrawled();
 }
 
@@ -111,11 +111,16 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
     connectorId: connector.id,
   });
 
-  // Immediately marking the config as crawled to avoid having the scheduler seeing it as a candidate for crawling
-  // in case of the crawling takes too long or fails.
+  // Immediately marking the config as crawled to avoid having the scheduler seeing it as a
+  // candidate for crawling in case of the crawling takes too long or fails.
   await webCrawlerConfig.markedAsCrawled();
 
-  await syncStarted(connectorId);
+  // We mark the crawler as started which will store startedat as lastSyncStartTime. This is what
+  // we'll use to run the GC
+  const startedAt = new Date();
+  const launchGarbageCollect = true;
+
+  await syncStarted(connectorId, startedAt);
 
   const customHeaders = webCrawlerConfig.getCustomHeaders();
 
@@ -896,6 +901,8 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
   );
 
   return {
+    launchGarbageCollect,
+    startedAtTs: startedAt.getTime(),
     pageCount: pageCount.valid,
     crawlingError,
   };
@@ -1010,7 +1017,8 @@ export async function firecrawlCrawlFailed(
     return;
   }
 
-  // TODO: mark the connector as failed?
+  // Mark the web crawler as failed.
+  await syncFailed(connector.id, "webcrawling_error");
 }
 
 export async function firecrawlCrawlStarted(
@@ -1028,7 +1036,8 @@ export async function firecrawlCrawlStarted(
     return;
   }
 
-  // TODO: maybe nothing?
+  // Mark the webcrawler sync as started.
+  await syncStarted(connector.id);
 }
 
 export async function firecrawlCrawlPage(
@@ -1066,6 +1075,9 @@ export async function firecrawlCrawlCompleted(
     return;
   }
 
-  // TODO: maybe nothing? update connector state, if needed. launching the GC will happen in the
-  // workflow above
+  await syncSucceeded(connector.id);
+
+  return {
+    lastSyncStartTs: connector.lastSyncStartTime?.getTime() ?? null,
+  };
 }
