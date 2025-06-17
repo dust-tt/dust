@@ -14,7 +14,7 @@ import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { useSearchMembers } from "@app/lib/swr/memberships";
 import type { LightWorkspaceType, UserType } from "@app/types";
 
-interface SearchMembersPopoverProps {
+interface SearchMembersDropdownProps {
   owner: LightWorkspaceType;
   selectedMembers: UserType[];
   onMembersUpdated: (members: UserType[]) => void;
@@ -22,11 +22,11 @@ interface SearchMembersPopoverProps {
 
 const DefaultPagination = { pageIndex: 0, pageSize: 25 };
 
-export function SearchMembersPopover({
+export function SearchMembersDropdown({
   owner,
   selectedMembers,
   onMembersUpdated,
-}: SearchMembersPopoverProps) {
+}: SearchMembersDropdownProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [pagination, setPagination] = useState(DefaultPagination);
   const [allMembers, setAllMembers] = useState<UserType[]>([]);

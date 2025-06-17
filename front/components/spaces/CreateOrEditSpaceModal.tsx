@@ -7,6 +7,7 @@ import {
   DropdownMenuTrigger,
   EmptyCTA,
   Input,
+  Label,
   MoreIcon,
   Page,
   ScrollArea,
@@ -38,7 +39,7 @@ import { ConfirmContext } from "@app/components/Confirm";
 import { GroupsList } from "@app/components/groups/GroupsList";
 import { ConfirmDeleteSpaceDialog } from "@app/components/spaces/ConfirmDeleteSpaceDialog";
 import { SearchGroupsDropdown } from "@app/components/spaces/SearchGroupsDropdown";
-import { SearchMembersPopover } from "@app/components/spaces/SearchMembersPopover";
+import { SearchMembersDropdown } from "@app/components/spaces/SearchMembersDropdown";
 import { useGroups } from "@app/lib/swr/groups";
 import {
   useCreateSpace,
@@ -468,7 +469,7 @@ export function CreateOrEditSpaceModal({
                 {isManual && selectedMembers.length === 0 && (
                   <EmptyCTA
                     action={
-                      <SearchMembersPopover
+                      <SearchMembersDropdown
                         owner={owner}
                         selectedMembers={selectedMembers}
                         onMembersUpdated={(members) => {
@@ -499,7 +500,8 @@ export function CreateOrEditSpaceModal({
                 {isManual && selectedMembers.length > 0 && (
                   <>
                     <div className="flex flex-row items-center justify-between">
-                      <SearchMembersPopover
+                      <Label className="text-lg">Members</Label>
+                      <SearchMembersDropdown
                         owner={owner}
                         selectedMembers={selectedMembers}
                         onMembersUpdated={(members) => {
@@ -510,7 +512,7 @@ export function CreateOrEditSpaceModal({
                     </div>
                     <SearchInput
                       name="search"
-                      placeholder={"Search (email)"}
+                      placeholder="Search (email)"
                       value={searchSelectedMembers}
                       onChange={(s) => {
                         setSearchSelectedMembers(s);
@@ -531,6 +533,7 @@ export function CreateOrEditSpaceModal({
                 {!isManual && selectedGroups.length > 0 && (
                   <>
                     <div className="flex flex-row items-center justify-between">
+                      <Label className="text-lg">Provisioned groups</Label>
                       <SearchGroupsDropdown
                         owner={owner}
                         selectedGroups={selectedGroups}
