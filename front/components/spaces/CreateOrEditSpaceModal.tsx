@@ -355,7 +355,7 @@ export function CreateOrEditSpaceModal({
       <SheetContent trapFocusScope={false} size="lg">
         <SheetHeader>
           <SheetTitle>
-            {space ? `Edit ${space.name}` : "Create a Space"}
+            Space Settings
           </SheetTitle>
         </SheetHeader>
         <SheetContainer>
