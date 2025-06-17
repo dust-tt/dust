@@ -27,6 +27,7 @@ const _webhookFirecrawlAPIHandler = async (
           description: string;
           sourceURL: string;
           statusCode: number;
+          scrapeId: string;
           [key: string]: unknown;
         };
       }>;
@@ -54,11 +55,16 @@ const _webhookFirecrawlAPIHandler = async (
     }
     case "crawl.page": {
       if (data && data.length > 0 && data[0]) {
-        // Note: we receive the data here and we won't be able to get back to it by API based on the
-        // documentation (to be confirmed). If not we will want to put it in redis or GCS
-        // temporarily for later processing through a workflow.
+        // We receive the crawlId and scrapeId so we should be able to retrieve the scrape through
+        // these Ids in a workflow launched from here and don't need to store the data here which is
+        // good as we really want webhooks to simply trigger workflows and nothing else.
         logger.info(
-          { id, sourceURL: data[0].metadata.sourceURL, metadata },
+          {
+            id,
+            sourceURL: data[0].metadata.sourceURL,
+            scrapeId: data[0].metadata.scrapeId,
+            metadata,
+          },
           "[Firecrawl] Page crawled"
         );
       } else {
