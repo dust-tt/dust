@@ -21,7 +21,10 @@ import {
   updateSlackChannelInCoreDb,
 } from "@connectors/connectors/slack/lib/channels";
 import { isSlackWebAPIPlatformError } from "@connectors/connectors/slack/lib/errors";
-import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
+import {
+  getSlackClient,
+  withSlackErrorHandling,
+} from "@connectors/connectors/slack/lib/slack_client";
 import { getRepliesFromThread } from "@connectors/connectors/slack/lib/thread";
 import {
   getSlackChannelSourceUrl,
@@ -112,19 +115,21 @@ async function _getTypedChannelsUncached(
   joinedOnly: boolean,
   types: "public_channel" | "private_channel"
 ): Promise<Channel[]> {
-  const client = await getSlackClient(connectorId);
+  const slackClient = await getSlackClient(connectorId);
   const allChannels = [];
   let nextCursor: string | undefined = undefined;
   let nbCalls = 0;
   do {
-    const c: ConversationsListResponse = await client.conversations.list({
-      types,
-      // despite the limit being 1000, slack may return fewer channels
-      // we observed ~50 channels per call at times see https://github.com/dust-tt/tasks/issues/1655
-      limit: 999,
-      cursor: nextCursor,
-      exclude_archived: true,
-    });
+    const c: ConversationsListResponse = await withSlackErrorHandling(() =>
+      slackClient.conversations.list({
+        types,
+        // despite the limit being 1000, slack may return fewer channels
+        // we observed ~50 channels per call at times see https://github.com/dust-tt/tasks/issues/1655
+        limit: 999,
+        cursor: nextCursor,
+        exclude_archived: true,
+      })
+    );
     nbCalls++;
 
     logger.info(
@@ -183,8 +188,10 @@ export async function getChannel(
   connectorId: ModelId,
   channelId: string
 ): Promise<Channel> {
-  const client = await getSlackClient(connectorId);
-  const res = await client.conversations.info({ channel: channelId });
+  const slackClient = await getSlackClient(connectorId);
+  const res = await withSlackErrorHandling(() =>
+    slackClient.conversations.info({ channel: channelId })
+  );
   // Despite the typing, in practice `conversations.info` can be undefined at times.
   if (!res) {
     throw new ProviderWorkflowError(
@@ -401,13 +408,15 @@ export async function getMessagesForChannel(
   limit = 100,
   nextCursor?: string
 ): Promise<ConversationsHistoryResponse> {
-  const client = await getSlackClient(connectorId);
+  const slackClient = await getSlackClient(connectorId);
 
-  const c: ConversationsHistoryResponse = await client.conversations.history({
-    channel: channelId,
-    limit: limit,
-    cursor: nextCursor,
-  });
+  const c: ConversationsHistoryResponse = await withSlackErrorHandling(() =>
+    slackClient.conversations.history({
+      channel: channelId,
+      limit: limit,
+      cursor: nextCursor,
+    })
+  );
   // Despite the typing, in practice `conversations.history` can be undefined at times.
   if (!c) {
     throw new ProviderWorkflowError(
@@ -479,7 +488,7 @@ export async function syncNonThreadedChunk({
   }
 
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
-  const client = await getSlackClient(connectorId);
+  const slackClient = await getSlackClient(connectorId);
   const messages: MessageElement[] = [];
 
   const startTsSec = Math.round(startTsMs / 1000);
@@ -493,13 +502,15 @@ export async function syncNonThreadedChunk({
     apiCallCount++;
     let c: ConversationsHistoryResponse | undefined = undefined;
     try {
-      c = await client.conversations.history({
-        channel: channelId,
-        limit: CONVERSATION_HISTORY_LIMIT,
-        oldest: `${startTsSec}`,
-        latest: `${endTsSec}`,
-        cursor: nextCursor,
-      });
+      c = await withSlackErrorHandling(() =>
+        slackClient.conversations.history({
+          channel: channelId,
+          limit: CONVERSATION_HISTORY_LIMIT,
+          oldest: `${startTsSec}`,
+          latest: `${endTsSec}`,
+          cursor: nextCursor,
+        })
+      );
     } catch (e) {
       const maybeSlackPlatformError = e as WebAPIPlatformError;
       if (
@@ -871,11 +882,13 @@ export async function syncThread(
   const now = new Date();
 
   try {
-    allMessages = await getRepliesFromThread({
-      slackClient,
-      channelId,
-      threadTs,
-    });
+    allMessages = await withSlackErrorHandling(() =>
+      getRepliesFromThread({
+        slackClient,
+        channelId,
+        threadTs,
+      })
+    );
     allMessages = allMessages.filter((m) => !!m.user);
   } catch (e) {
     const slackError = e as CodedError;
@@ -935,10 +948,12 @@ export async function syncThread(
   let sourceUrl: string | undefined = undefined;
 
   if (firstMessage && firstMessage.ts) {
-    const linkRes = await slackClient.chat.getPermalink({
-      channel: channelId,
-      message_ts: firstMessage.ts,
-    });
+    const linkRes = await withSlackErrorHandling(() =>
+      slackClient.chat.getPermalink({
+        channel: channelId,
+        message_ts: firstMessage.ts,
+      })
+    );
     if (linkRes.ok && linkRes.permalink) {
       sourceUrl = linkRes.permalink;
     } else {
@@ -1134,12 +1149,14 @@ export async function formatMessagesForUpsert({
 
 export async function fetchUsers(connectorId: ModelId) {
   let cursor: string | undefined;
-  const client = await getSlackClient(connectorId);
+  const slackClient = await getSlackClient(connectorId);
   do {
-    const res = await client.users.list({
-      cursor: cursor,
-      limit: 100,
-    });
+    const res = await withSlackErrorHandling(() =>
+      slackClient.users.list({
+        cursor: cursor,
+        limit: 100,
+      })
+    );
     if (res.error) {
       throw new Error(`Failed to fetch users: ${res.error}`);
     }
@@ -1156,11 +1173,11 @@ export async function fetchUsers(connectorId: ModelId) {
 }
 
 export async function getBotUserId(connectorId: ModelId): Promise<string> {
-  let client: WebClient | undefined = undefined;
+  let slackClient: WebClient | undefined = undefined;
 
-  client = await getSlackClient(connectorId);
+  slackClient = await getSlackClient(connectorId);
 
-  const authRes = await client.auth.test({});
+  const authRes = await withSlackErrorHandling(() => slackClient.auth.test({}));
   if (authRes.error) {
     throw new Error(`Failed to fetch auth info: ${authRes.error}`);
   }
