@@ -288,10 +288,7 @@ async function getJITServers(
       tables: null,
       childAgentId: null,
       reasoningModel: null,
-      timeFrame: {
-        duration: 1,
-        unit: "month",
-      },
+      timeFrame: null,
       jsonSchema: null,
       additionalConfiguration: {},
       mcpServerViewId: extractDataView.sId,
@@ -354,10 +351,7 @@ async function getJITServers(
       tables: null,
       childAgentId: null,
       reasoningModel: null,
-      timeFrame: {
-        duration: 1,
-        unit: "month",
-      },
+      timeFrame: null,
       jsonSchema: null,
       additionalConfiguration: {},
       mcpServerViewId: extractDataView.sId,
