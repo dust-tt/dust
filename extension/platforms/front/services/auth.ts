@@ -4,7 +4,7 @@ import {
   FRONT_EXTENSION_URL,
   getOAuthClientID,
 } from "@app/shared/lib/config";
-import { generatePKCE, normalizeError } from "@app/shared/lib/utils";
+import { generatePKCE } from "@app/shared/lib/utils";
 import type { StoredTokens } from "@app/shared/services/auth";
 import {
   AuthError,
@@ -98,8 +98,9 @@ export class FrontAuthService extends AuthService {
                 resolve({ code });
               }
             }
-          } catch (e) {
-            reject(normalizeError(e));
+          } finally {
+            // Ignore errors accessing popup location (cross-origin)
+            // This is expected if the popup has navigated to a different domain
           }
         }, 100);
       });
@@ -212,7 +213,7 @@ export class FrontAuthService extends AuthService {
     }
 
     // Wait for the popup to complete logout
-    await new Promise<void>((resolve, reject) => {
+    await new Promise<void>((resolve) => {
       const checkPopup = setInterval(() => {
         if (popup.closed) {
           clearInterval(checkPopup);
@@ -227,8 +228,9 @@ export class FrontAuthService extends AuthService {
             popup.close();
             resolve();
           }
-        } catch (e) {
-          reject(normalizeError(e));
+        } finally {
+          // Ignore errors accessing popup location (cross-origin)
+          // This is expected if the popup has navigated to a different domain
         }
       }, 100);
     });
