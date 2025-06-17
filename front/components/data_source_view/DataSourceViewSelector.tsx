@@ -370,7 +370,9 @@ export function DataSourceViewsSelector({
   const searchResultNodes = useMemo(() => {
     const processedResults = rawSearchResultNodes.flatMap((node) => {
       const { dataSourceViews, ...rest } = node;
-      // Filter to only include data source views that are in filteredDSVs
+      // Note: The workspace search API returns results from all data source views in the space.
+      // We filter here to only show results from the data source views that are currently
+      // displayed in the UI (filteredDSVs), which respects the assistant builder's filtering logic.
       const filteredViews = dataSourceViews.filter((view) =>
         filteredDSVs.some((dsv) => dsv.sId === view.sId)
       );
