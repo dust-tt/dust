@@ -107,6 +107,29 @@ async function handler(
           });
         }
 
+        // Check if this is an admin trying to change their own role and they are the sole admin
+        const currentUser = auth.user();
+        if (currentUser && currentUser.id === user.id && auth.isAdmin()) {
+          // Count active admins to prevent sole admin from changing their own role
+          const adminsCount =
+            await MembershipResource.getMembersCountForWorkspace({
+              workspace: owner,
+              activeOnly: true,
+              rolesFilter: ["admin"],
+            });
+
+          if (adminsCount < 2 && role !== "admin") {
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message:
+                  "Cannot change your role as you are the sole admin of this workspace.",
+              },
+            });
+          }
+        }
+
         const featureFlags = await getFeatureFlags(owner);
         const allowLastAdminRemoval = showDebugTools(featureFlags);
 
