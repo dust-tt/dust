@@ -16,6 +16,7 @@ import { slack } from "@connectors/connectors/slack/lib/cli";
 import { snowflake } from "@connectors/connectors/snowflake/lib/cli";
 import {
   launchCrawlWebsiteScheduler,
+  updateCrawlerCrawlFrequency,
   updateCrawlerType,
 } from "@connectors/connectors/webcrawler/temporal/client";
 import { zendesk } from "@connectors/connectors/zendesk/lib/cli";
@@ -403,6 +404,21 @@ export const webcrawler = async ({
       await throwOnError(
         updateCrawlerType(args.connectorId, args.customCrawler)
       );
+      return { success: true };
+    }
+    case "update-frequency": {
+      if (!args.connectorId) {
+        throw new Error("Missing --connectorId argument");
+      }
+
+      if (!args.crawlFrequency) {
+        throw new Error("Missing --customCrawler argument");
+      }
+
+      await throwOnError(
+        updateCrawlerCrawlFrequency(args.connectorId, args.crawlFrequency)
+      );
+
       return { success: true };
     }
   }

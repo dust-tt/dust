@@ -57,6 +57,10 @@ const whitelistedCommands = [
     majorCommand: "webcrawler",
     command: "update-crawler",
   },
+  {
+    majorCommand: "webcrawler",
+    command: "update-frequency",
+  },
 ];
 
 const _adminAPIHandler = async (
