@@ -92,6 +92,10 @@ function getSlackActivities() {
 // this is to avoid "Failed to signalWithStart Workflow: 3 INVALID_ARGUMENT: exceeded workflow execution limit for signal events"
 const MAX_DEBOUNCE_COUNT = 990;
 
+// we have a maximum of 990 debounces before we continue as new
+// this is to avoid "Failed to signalWithStart Workflow: 3 INVALID_ARGUMENT: exceeded workflow execution limit for signal events"
+const MAX_DEBOUNCE_COUNT = 990;
+
 /**
  * This workflow is in charge of synchronizing all the content of the Slack channels selected by the user.
  * The channel IDs are sent via Temporal signals.
