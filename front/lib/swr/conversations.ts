@@ -274,10 +274,14 @@ export function useConversationMessage({
   conversationId,
   workspaceId,
   messageId,
+  options,
 }: {
   conversationId: string | null;
   workspaceId: string;
   messageId: string | null;
+  options?: {
+    disabled: boolean;
+  };
 }) {
   const messageFetcher: Fetcher<FetchConversationMessageResponse> = fetcher;
 
@@ -285,7 +289,8 @@ export function useConversationMessage({
     messageId
       ? `/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages/${messageId}`
       : null,
-    messageFetcher
+    messageFetcher,
+    options
   );
 
   return {

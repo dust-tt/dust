@@ -55,6 +55,7 @@ import type {
   MessageTemporaryState,
 } from "@app/lib/assistant/state/messageReducer";
 import { messageReducer } from "@app/lib/assistant/state/messageReducer";
+import { useConversationMessage } from "@app/lib/swr/conversations";
 import type {
   LightAgentMessageType,
   UserType,
@@ -162,15 +163,23 @@ export function AgentMessage({
 
   const { showValidationDialog } = React.useContext(ActionValidationContext);
 
+  const { mutateMessage } = useConversationMessage({
+    conversationId,
+    workspaceId: owner.sId,
+    messageId: message.sId,
+    options: { disabled: true },
+  });
+
   const onEventCallback = React.useCallback(
     (eventStr: string) => {
       const eventPayload: {
         eventId: string;
         data: AgentMessageStateWithControlEvent;
       } = JSON.parse(eventStr);
+      const eventType = eventPayload.data.type;
 
       // Handle validation dialog separately.
-      if (eventPayload.data.type === "tool_approve_execution") {
+      if (eventType === "tool_approve_execution") {
         showValidationDialog({
           messageId: eventPayload.data.messageId,
           conversationId: eventPayload.data.conversationId,
@@ -188,13 +197,24 @@ export function AgentMessage({
       // This event is emitted in front/lib/api/assistant/pubsub.ts. Its purpose is to signal the
       // end of the stream to the client. The message reducer does not, and should not, handle this
       // event, so we just return.
-      if (eventPayload.data.type === "end-of-stream") {
+      if (eventType === "end-of-stream") {
         return;
+      }
+
+      const shouldRefresh = [
+        "agent_action_success",
+        "agent_error",
+        "agent_message_success",
+        "agent_generation_cancelled",
+      ].includes(eventType);
+
+      if (shouldRefresh) {
+        void mutateMessage();
       }
 
       dispatch(eventPayload.data);
     },
-    [showValidationDialog]
+    [showValidationDialog, mutateMessage]
   );
 
   useEventSource(
@@ -561,8 +581,8 @@ export function AgentMessage({
       <div className="flex flex-col gap-y-4">
         <div className="flex flex-col gap-2">
           <AgentMessageActions
-            agentMessage={agentMessage}
             conversationId={conversationId}
+            agentMessage={agentMessage}
             lastAgentStateClassification={messageStreamState.agentState}
             actionProgress={messageStreamState.actionProgress}
             owner={owner}
