@@ -7,7 +7,6 @@ import {
   DropdownMenuTrigger,
   EmptyCTA,
   Input,
-  Label,
   MoreIcon,
   Page,
   ScrollArea,
@@ -284,16 +283,17 @@ export function CreateOrEditSpaceModal({
         return;
       }
 
-      // If switching from manual to group mode with manually added members
+      // If switching from manual to group mode with manually added members.
       if (
         managementType === "manual" &&
         value === "group" &&
         selectedMembers.length > 0
       ) {
         const confirmed = await confirm({
-          title: "Switch to Group Management",
+          title: "Switch to groups",
           message:
-            "Switching to group member management will remove all manually added members",
+            "This switches from manual member to group-based access. " +
+            "Your current member list will be saved but no longer active.",
           validateLabel: "Switch to Groups",
           validateVariant: "warning",
         });
@@ -303,16 +303,17 @@ export function CreateOrEditSpaceModal({
           setIsDirty(true);
         }
       }
-      // If switching from group to manual mode with selected groups
+      // If switching from group to manual mode with selected groups.
       else if (
         managementType === "group" &&
         value === "manual" &&
         selectedGroups.length > 0
       ) {
         const confirmed = await confirm({
-          title: "Switch to Manual Management",
+          title: "Switch to members",
           message:
-            "Switching to manual member management will remove all selected groups",
+            "This switches from group-based access to manual member management. " +
+            "Your current group settings will be saved but no longer active.",
           validateLabel: "Switch to Manual",
           validateVariant: "warning",
         });
@@ -322,7 +323,7 @@ export function CreateOrEditSpaceModal({
           setIsDirty(true);
         }
       } else {
-        // For direct switches without selections, clear everything and let user start fresh
+        // For direct switches without selections, clear everything and let the user start fresh.
         setManagementType(value);
         setIsDirty(true);
       }
@@ -434,12 +435,12 @@ export function CreateOrEditSpaceModal({
                 />
               </div>
               {isRestricted ? (
-                <Label>Restricted access is active.</Label>
+                <span>Restricted access is active.</span>
               ) : (
-                <Label>
+                <span>
                   Restricted access is disabled. The space is accessible to
                   everyone in the workspace.
-                </Label>
+                </span>
               )}
             </div>
 
@@ -455,8 +456,11 @@ export function CreateOrEditSpaceModal({
                     }}
                   >
                     <TabsList>
-                      <TabsTrigger value="manual" label="Members management" />
-                      <TabsTrigger value="group" label="Group management" />
+                      <TabsTrigger value="manual" label="Manual access" />
+                      <TabsTrigger
+                        value="group"
+                        label="Provisioned group access"
+                      />
                     </TabsList>
                   </Tabs>
                 ) : null}
