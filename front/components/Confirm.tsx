@@ -89,7 +89,7 @@ export function ConfirmDialog({
           }}
           rightButtonProps={{
             label: confirmData?.validateLabel ?? "OK",
-            variant: "warning",
+            variant: confirmData?.validateVariant ?? "warning",
             onClick: async () => {
               resolveConfirm(true);
               closeDialogFn();
