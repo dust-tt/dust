@@ -83,6 +83,7 @@ async function handler(
       {
         session,
         user,
+        nullableUser,
         workspaceId: targetWorkspaceId,
         error,
       },
