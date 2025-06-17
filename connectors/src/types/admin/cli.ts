@@ -616,7 +616,11 @@ export type TemporalUnprocessedWorkflowsResponseType = t.TypeOf<
  */
 export const WebcrawlerCommandSchema = t.type({
   majorCommand: t.literal("webcrawler"),
-  command: t.union([t.literal("start-scheduler"), t.literal("update-crawler")]),
+  command: t.union([
+    t.literal("start-scheduler"),
+    t.literal("update-crawler"),
+    t.literal("update-frequency"),
+  ]),
   args: t.record(t.string, t.string),
 });
 export type WebcrawlerCommandType = t.TypeOf<typeof WebcrawlerCommandSchema>;

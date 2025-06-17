@@ -249,6 +249,10 @@ export class WebCrawlerConfigurationResource extends BaseResource<WebCrawlerConf
     return this.update({ customCrawler: crawler });
   }
 
+  async updateCrawlFrequency(crawlFrequency: CrawlingFrequency) {
+    return this.update({ crawlFrequency });
+  }
+
   async delete(transaction?: Transaction): Promise<Result<undefined, Error>> {
     await WebCrawlerPage.destroy({
       where: {

@@ -15,8 +15,12 @@ import {
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { WebCrawlerConfigurationResource } from "@connectors/resources/webcrawler_resource";
-import type { ModelId } from "@connectors/types";
-import { normalizeError, WebcrawlerCustomCrawler } from "@connectors/types";
+import type { CrawlingFrequency, ModelId } from "@connectors/types";
+import {
+  CrawlingFrequencies,
+  normalizeError,
+  WebcrawlerCustomCrawler,
+} from "@connectors/types";
 
 import { WebCrawlerQueueNames } from "./config";
 import {
@@ -185,6 +189,35 @@ export async function updateCrawlerType(
   }
 
   await webcrawlerConfig.updateCustomCrawler(customCrawler);
+  return new Ok(undefined);
+}
+
+function isCrawlFrequency(value: string): value is CrawlingFrequency {
+  return (CrawlingFrequencies as readonly string[]).includes(value);
+}
+
+export async function updateCrawlerCrawlFrequency(
+  connectorId: string,
+  crawlFrequency: string
+) {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    return new Err(new Error(`Connector ${connectorId} not found`));
+  }
+
+  const webcrawlerConfig =
+    await WebCrawlerConfigurationResource.fetchByConnectorId(connector.id);
+
+  if (!webcrawlerConfig) {
+    return new Err(new Error(`CrawlerConfig not found for ${connector.id}`));
+  }
+
+  if (!isCrawlFrequency(crawlFrequency)) {
+    return new Err(new Error(`"${crawlFrequency}" is not a valid frequency`));
+  }
+
+  await webcrawlerConfig.updateCrawlFrequency(crawlFrequency);
+
   return new Ok(undefined);
 }
 
