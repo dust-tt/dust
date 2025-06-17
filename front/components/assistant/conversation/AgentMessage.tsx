@@ -68,6 +68,7 @@ import {
   isSupportedImageContentType,
   isValidScope,
 } from "@app/types";
+import { useConversationMessage } from "@app/lib/swr/conversations";
 
 interface AgentMessageProps {
   conversationId: string;
@@ -163,6 +164,14 @@ export function AgentMessage({
 
   const { showValidationDialog } = React.useContext(ActionValidationContext);
 
+  const { mutateMessage } = useConversationMessage({
+    // Return a mutate
+    conversationId,
+    workspaceId: owner.sId,
+    messageId: message.sId,
+    options: { disabled: true },
+  });
+
   const onEventCallback = React.useCallback(
     (eventStr: string) => {
       const eventPayload: {
@@ -192,7 +201,7 @@ export function AgentMessage({
       if (eventPayload.data.type === "end-of-stream") {
         return;
       }
-
+      mutateMessage();
       dispatch(eventPayload.data);
     },
     [showValidationDialog]
@@ -564,6 +573,7 @@ export function AgentMessage({
       <div className="flex flex-col gap-y-4">
         <div className="flex flex-col gap-2">
           <AgentMessageActions
+            conversationId={conversationId}
             agentMessage={agentMessage}
             lastAgentStateClassification={messageStreamState.agentState}
             actionProgress={messageStreamState.actionProgress}

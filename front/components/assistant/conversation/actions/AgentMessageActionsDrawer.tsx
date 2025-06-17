@@ -9,10 +9,16 @@ import {
 
 import { getActionSpecification } from "@app/components/actions/types";
 import type { ActionProgressState } from "@app/lib/assistant/state/messageReducer";
-import type { AgentActionType, LightWorkspaceType } from "@app/types";
+import type {
+  AgentActionType,
+  LightAgentMessageType,
+  LightWorkspaceType,
+} from "@app/types";
+import { useConversationMessage } from "@app/lib/swr/conversations";
 
 interface AgentMessageActionsDrawerProps {
-  messageActions: AgentActionType[];
+  conversationId: string;
+  message: LightAgentMessageType;
   actionProgress: ActionProgressState;
   isOpened: boolean;
   isActing: boolean;
@@ -20,14 +26,26 @@ interface AgentMessageActionsDrawerProps {
   owner: LightWorkspaceType;
 }
 export function AgentMessageActionsDrawer({
-  messageActions,
+  conversationId,
+  message,
   actionProgress,
   isOpened,
   isActing,
   onClose,
   owner,
 }: AgentMessageActionsDrawerProps) {
-  const actions = messageActions;
+  const { message: fullAgentMessage, isMessageLoading } =
+    useConversationMessage({
+      conversationId,
+      workspaceId: owner.sId,
+      messageId: isOpened ? message.sId : null,
+      options: {
+        disabled: false,
+      },
+    });
+
+  const actions =
+    fullAgentMessage?.type === "agent_message" ? fullAgentMessage.actions : [];
 
   const groupedActionsByStep = actions
     ? actions.reduce<Record<number, AgentActionType[]>>((acc, current) => {
@@ -53,42 +71,48 @@ export function AgentMessageActionsDrawer({
           <SheetTitle>Breakdown of the tools used</SheetTitle>
         </SheetHeader>
         <SheetContainer>
-          <div className="flex flex-col gap-4">
-            {Object.entries(groupedActionsByStep).map(([step, actions]) => (
-              <div
-                className="flex flex-col gap-4 pb-4 duration-1000 animate-in fade-in"
-                key={step}
-              >
-                <p className="heading-xl text-foreground dark:text-foreground-night">
-                  Step {step}
-                </p>
-                {actions.map((action, idx) => {
-                  const actionSpecification = getActionSpecification(
-                    action.type
-                  );
-                  const lastNotification =
-                    actionProgress.get(action.id)?.progress ?? null;
-                  const ActionDetailsComponent =
-                    actionSpecification.detailsComponent;
-                  return (
-                    <div key={`action-${action.id}`}>
-                      <ActionDetailsComponent
-                        action={action}
-                        lastNotification={lastNotification}
-                        defaultOpen={idx === 0 && step === "1"}
-                        owner={owner}
-                      />
-                    </div>
-                  );
-                })}
-              </div>
-            ))}
-            {isActing && (
-              <div className="flex justify-center">
-                <Spinner variant="color" />
-              </div>
-            )}
-          </div>
+          {isMessageLoading ? (
+            <div className="flex justify-center">
+              <Spinner variant="color" />
+            </div>
+          ) : (
+            <div className="flex flex-col gap-4">
+              {Object.entries(groupedActionsByStep).map(([step, actions]) => (
+                <div
+                  className="flex flex-col gap-4 pb-4 duration-1000 animate-in fade-in"
+                  key={step}
+                >
+                  <p className="heading-xl text-foreground dark:text-foreground-night">
+                    Step {step}
+                  </p>
+                  {actions.map((action, idx) => {
+                    const actionSpecification = getActionSpecification(
+                      action.type
+                    );
+                    const lastNotification =
+                      actionProgress.get(action.id)?.progress ?? null;
+                    const ActionDetailsComponent =
+                      actionSpecification.detailsComponent;
+                    return (
+                      <div key={`action-${action.id}`}>
+                        <ActionDetailsComponent
+                          action={action}
+                          lastNotification={lastNotification}
+                          defaultOpen={idx === 0 && step === "1"}
+                          owner={owner}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
+              {isActing && (
+                <div className="flex justify-center">
+                  <Spinner variant="color" />
+                </div>
+              )}
+            </div>
+          )}
         </SheetContainer>
       </SheetContent>
     </Sheet>

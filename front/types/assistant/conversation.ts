@@ -220,7 +220,7 @@ export type LightAgentMessageType = BaseAgentMessageType & {
     canRead: boolean;
     requestedGroupIds: string[][];
   };
-  actions: AgentActionType[];
+  actions: BaseAgentActionType[];
   citations: Record<string, CitationType>;
   generatedFiles: Omit<ActionGeneratedFileType, "snippet">[];
 };

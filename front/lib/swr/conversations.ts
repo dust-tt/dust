@@ -20,6 +20,7 @@ import type {
   FetchConversationMessagesResponse,
   LightWorkspaceType,
 } from "@app/types";
+import { FetchConversationMessageResponse } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/messages/[mId]";
 
 export function useConversation({
   conversationId,
@@ -267,4 +268,35 @@ export function useVisualizationRetry({
   );
 
   return handleVisualizationRetry;
+}
+
+export function useConversationMessage({
+  conversationId,
+  workspaceId,
+  messageId,
+  options: { disabled },
+}: {
+  conversationId: string | null;
+  workspaceId: string;
+  messageId: string | null;
+  options: {
+    disabled: boolean;
+  };
+}) {
+  const messageFetcher: Fetcher<FetchConversationMessageResponse> = fetcher;
+
+  const { data, error, mutate, isLoading, isValidating } = useSWRWithDefaults(
+    messageId
+      ? `/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages/${messageId}`
+      : null,
+    messageFetcher
+  );
+
+  return {
+    message: data?.message,
+    isMessageError: error,
+    isMessageLoading: isLoading,
+    isValidating,
+    mutateMessage: mutate,
+  };
 }
