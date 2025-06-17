@@ -245,7 +245,7 @@ function hideContentForModel({
   // We want to hide the original file url from the model.
   const sid = FileResource.modelIdToSId({
     id: fileId,
-    workspaceId: workspaceId,
+    workspaceId,
   });
   let contentType;
   switch (content.type) {
