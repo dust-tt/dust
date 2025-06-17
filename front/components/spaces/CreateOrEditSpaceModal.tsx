@@ -1,9 +1,14 @@
 import {
   Button,
   DataTable,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   EmptyCTA,
   Input,
   Label,
+  MoreIcon,
   Page,
   ScrollArea,
   SearchInput,
@@ -17,6 +22,7 @@ import {
   Tabs,
   TabsList,
   TabsTrigger,
+  TrashIcon,
   useSendNotification,
   XMarkIcon,
 } from "@dust-tt/sparkle";
@@ -354,13 +360,42 @@ export function CreateOrEditSpaceModal({
     <Sheet open={isOpen} onOpenChange={handleClose}>
       <SheetContent trapFocusScope={false} size="lg">
         <SheetHeader>
-          <SheetTitle>
-            Space Settings
-          </SheetTitle>
+          <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-0">
+              <SheetTitle>Space Settings</SheetTitle>
+            </div>
+
+            {isAdmin && space && space.kind === "regular" && (
+              <>
+                <ConfirmDeleteSpaceDialog
+                  space={space}
+                  handleDelete={onDelete}
+                  isOpen={showDeleteConfirmDialog}
+                  isDeleting={isDeleting}
+                  onClose={() => setShowDeleteConfirmDialog(false)}
+                />
+                <div className="flex w-full justify-end">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button icon={MoreIcon} size="sm" variant="ghost" />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                      <DropdownMenuItem
+                        label="Delete Space"
+                        onClick={() => setShowDeleteConfirmDialog(true)}
+                        icon={TrashIcon}
+                        variant="warning"
+                      />
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              </>
+            )}
+          </div>
         </SheetHeader>
         <SheetContainer>
           <div className="flex w-full flex-col gap-y-4">
-            <div className="mb-4 flex w-full flex-col gap-y-2">
+            <div className="mb-4 flex w-full flex-col gap-y-4">
               <Page.SectionHeader title="Name" />
               {!space ? (
                 <Input
@@ -512,26 +547,6 @@ export function CreateOrEditSpaceModal({
                     </ScrollArea>
                   </>
                 )}
-              </>
-            )}
-
-            {isAdmin && space && space.kind === "regular" && (
-              <>
-                <ConfirmDeleteSpaceDialog
-                  space={space}
-                  handleDelete={onDelete}
-                  isOpen={showDeleteConfirmDialog}
-                  isDeleting={isDeleting}
-                  onClose={() => setShowDeleteConfirmDialog(false)}
-                />
-                <div className="flex w-full justify-end">
-                  <Button
-                    size="sm"
-                    label="Delete Space"
-                    variant="warning"
-                    onClick={() => setShowDeleteConfirmDialog(true)}
-                  />
-                </div>
               </>
             )}
           </div>
