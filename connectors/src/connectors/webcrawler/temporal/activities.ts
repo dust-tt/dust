@@ -141,7 +141,44 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let crawler: BasicCrawler<any>;
 
+  let rootUrl = webCrawlerConfig.url.trim();
+  if (!rootUrl.startsWith("http://") && !rootUrl.startsWith("https://")) {
+    rootUrl = `http://${rootUrl}`;
+  }
+
   if (
+    webCrawlerConfig.customCrawler ===
+    ("firecrawl-api" satisfies WebcrawlerCustomCrawler)
+  ) {
+    const crawlerResponse = await firecrawlApp.asyncCrawlUrl(rootUrl, {
+      maxDiscoveryDepth: webCrawlerConfig.depth ?? WEBCRAWLER_MAX_DEPTH,
+      limit: maxRequestsPerCrawl,
+      allowBackwardLinks: webCrawlerConfig.crawlMode === "website",
+      delay: 3,
+      scrapeOptions: {
+        onlyMainContent: true,
+        formats: ["markdown"],
+        headers: customHeaders,
+        maxAge: 43_200_000, // Use last 12h of cache
+      },
+      webhook: {
+        url: `${apiConfig.getConnectorsPublicURL()}/webhooks/${apiConfig.getDustConnectorsWebhooksSecret()}/firecrawl`,
+        metadata: {
+          connectorId: String(connectorId),
+        },
+      },
+    });
+
+    if (!crawlerResponse.success) {
+      throw new Error(crawlerResponse.error);
+    }
+
+    childLogger.info(
+      { crawlerId: crawlerResponse.id, url: rootUrl },
+      "Firecrawl crawler started"
+    );
+    return;
+  } else if (
     webCrawlerConfig.customCrawler ===
     ("firecrawl" satisfies WebcrawlerCustomCrawler)
   ) {
@@ -770,11 +807,6 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
         availableMemoryRatio: 0.1,
       })
     );
-  }
-
-  let rootUrl = webCrawlerConfig.url.trim();
-  if (!rootUrl.startsWith("http://") && !rootUrl.startsWith("https://")) {
-    rootUrl = `http://${rootUrl}`;
   }
 
   childLogger.info(
