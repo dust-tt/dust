@@ -14,6 +14,13 @@ import { setRegionForUser } from "@app/lib/api/workos/user";
 import { getSession } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
+import { isString } from "@app/types";
+
+function isValidScreenHint(
+  screenHint: string | string[] | undefined
+): screenHint is "sign-up" | "sign-in" {
+  return isString(screenHint) && ["sign-up", "sign-in"].includes(screenHint);
+}
 
 //TODO(workos): This file could be split in 3 route handlers.
 export default async function handler(
@@ -36,7 +43,7 @@ export default async function handler(
 
 async function handleLogin(req: NextApiRequest, res: NextApiResponse) {
   try {
-    const { organizationId } = req.query;
+    const { organizationId, screenHint, loginHint, returnTo } = req.query;
     let enterpriseParams: { organizationId?: string; connectionId?: string } =
       {};
     if (organizationId && typeof organizationId === "string") {
@@ -57,6 +64,11 @@ async function handleLogin(req: NextApiRequest, res: NextApiResponse) {
       redirectUri: `${config.getClientFacingUrl()}/api/workos/callback`,
       clientId: config.getWorkOSClientId(),
       ...enterpriseParams,
+      state:
+        returnTo &&
+        Buffer.from(JSON.stringify({ returnTo })).toString("base64"),
+      ...(isValidScreenHint(screenHint) ? { screenHint } : {}),
+      ...(isString(loginHint) ? { loginHint } : {}),
     });
 
     res.redirect(authorizationUrl);
@@ -170,7 +182,9 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
 
       let returnTo = "/";
       try {
-        const stateObj = JSON.parse(state as string);
+        const stateObj = JSON.parse(
+          Buffer.from(state as string, "base64").toString("utf-8")
+        );
         if (stateObj.returnTo) {
           const url = new URL(stateObj.returnTo);
           returnTo = url.pathname + url.search;
@@ -192,6 +206,15 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
       `workos_session=${sealedCookie}; Path=/; HttpOnly; Secure;SameSite=Lax`,
       `sessionType=workos; Path=/; Secure;SameSite=Lax`,
     ]);
+
+    if (isString(state)) {
+      const stateObj = JSON.parse(
+        Buffer.from(state, "base64").toString("utf-8")
+      );
+      if (isString(stateObj.returnTo)) {
+        res.redirect(stateObj.returnTo);
+      }
+    }
 
     res.redirect("/api/login");
   } catch (error) {
