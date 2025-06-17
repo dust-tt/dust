@@ -107,15 +107,17 @@ export async function renderConversationForModel(
       }
 
       // Use the contents array if available, otherwise use the rawContents array.
-      const rawContents: { step: number; content: string }[] = m.rawContents;
+      const nonEmptyRawContents = m.rawContents.filter(
+        (c) => !!c.content.trim()
+      );
       const shadowReadRawContents: { step: number; content: string }[] = [];
-      if (
-        m.rawContents.filter((c) => !!c.content).length ||
-        m.contents.length
-      ) {
+      if (nonEmptyRawContents.length || m.contents.length) {
         if (m.contents.length) {
           for (const content of m.contents) {
-            if (content.content.type === "text_content") {
+            if (
+              content.content.type === "text_content" &&
+              !!content.content.value.trim()
+            ) {
               shadowReadRawContents.push({
                 step: content.step,
                 content: content.content.value,
@@ -125,9 +127,10 @@ export async function renderConversationForModel(
 
           // Check if the shadowReadRawContents is the same as the rawContents.
           if (
-            shadowReadRawContents.length === rawContents.length &&
+            shadowReadRawContents.length === nonEmptyRawContents.length &&
             shadowReadRawContents.every(
-              (sc, i) => sc.content.trim() === rawContents[i].content.trim()
+              (sc, i) =>
+                sc.content.trim() === nonEmptyRawContents[i].content.trim()
             )
           ) {
             logger.info(
@@ -145,7 +148,7 @@ export async function renderConversationForModel(
                 conversationId: conversation.sId,
                 agentMessageId: m.sId,
                 shadowReadRawContents,
-                rawContents,
+                nonEmptyRawContents,
               },
               "[CONVERSATION RENDERING] Shadow read raw contents is different from the raw contents"
             );
@@ -162,7 +165,7 @@ export async function renderConversationForModel(
         }
       }
 
-      for (const content of rawContents) {
+      for (const content of nonEmptyRawContents) {
         stepByStepIndex[content.step] =
           stepByStepIndex[content.step] || emptyStep();
         if (content.content.trim()) {
