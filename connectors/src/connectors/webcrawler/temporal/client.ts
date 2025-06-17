@@ -23,6 +23,14 @@ import {
   crawlWebsiteSchedulerWorkflow,
   crawlWebsiteWorkflow,
   crawlWebsiteWorkflowId,
+  firecrawlCrawlCompletedWorkflow,
+  firecrawlCrawlCompletedWorkflowId,
+  firecrawlCrawlFailedWorkflow,
+  firecrawlCrawlFailedWorkflowId,
+  firecrawlCrawlPageWorkflow,
+  firecrawlCrawlPageWorkflowId,
+  firecrawlCrawlStartedWorkflow,
+  firecrawlCrawlStartedWorkflowId,
 } from "./workflows";
 
 export async function launchCrawlWebsiteWorkflow(
@@ -178,4 +186,131 @@ export async function updateCrawlerType(
 
   await webcrawlerConfig.updateCustomCrawler(customCrawler);
   return new Ok(undefined);
+}
+
+// Firecrawl related workflows
+
+export async function launchFirecrawlCrawlStartedWorkflow(
+  connectorId: ModelId,
+  crawlId: string
+): Promise<Result<string, Error>> {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    return new Err(new Error(`Connector ${connectorId} not found`));
+  }
+
+  const client = await getTemporalClient();
+  const workflowId = firecrawlCrawlStartedWorkflowId(connectorId, crawlId);
+
+  try {
+    await client.workflow.start(firecrawlCrawlStartedWorkflow, {
+      args: [connectorId, crawlId],
+      taskQueue: WebCrawlerQueueNames.FIRECRAWL,
+      workflowId: workflowId,
+      searchAttributes: {
+        connectorId: [connectorId],
+      },
+      memo: {
+        connectorId: connectorId,
+      },
+    });
+    return new Ok(workflowId);
+  } catch (e) {
+    return new Err(normalizeError(e));
+  }
+}
+
+export async function launchFirecrawlCrawlFailedWorkflow(
+  connectorId: ModelId,
+  crawlId: string
+): Promise<Result<string, Error>> {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    return new Err(new Error(`Connector ${connectorId} not found`));
+  }
+
+  const client = await getTemporalClient();
+  const workflowId = firecrawlCrawlFailedWorkflowId(connectorId, crawlId);
+
+  try {
+    await client.workflow.start(firecrawlCrawlFailedWorkflow, {
+      args: [connectorId, crawlId],
+      taskQueue: WebCrawlerQueueNames.FIRECRAWL,
+      workflowId: workflowId,
+      searchAttributes: {
+        connectorId: [connectorId],
+      },
+      memo: {
+        connectorId: connectorId,
+      },
+    });
+    return new Ok(workflowId);
+  } catch (e) {
+    return new Err(normalizeError(e));
+  }
+}
+
+export async function launchFirecrawlCrawlCompletedWorkflow(
+  connectorId: ModelId,
+  crawlId: string
+): Promise<Result<string, Error>> {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    return new Err(new Error(`Connector ${connectorId} not found`));
+  }
+
+  const client = await getTemporalClient();
+  const workflowId = firecrawlCrawlCompletedWorkflowId(connectorId, crawlId);
+
+  try {
+    await client.workflow.start(firecrawlCrawlCompletedWorkflow, {
+      args: [connectorId, crawlId],
+      taskQueue: WebCrawlerQueueNames.FIRECRAWL,
+      workflowId: workflowId,
+      searchAttributes: {
+        connectorId: [connectorId],
+      },
+      memo: {
+        connectorId: connectorId,
+      },
+    });
+    return new Ok(workflowId);
+  } catch (e) {
+    return new Err(normalizeError(e));
+  }
+}
+
+export async function launchFirecrawlCrawlPageWorkflow(
+  connectorId: ModelId,
+  crawlId: string,
+  scrapeId: string
+): Promise<Result<string, Error>> {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    return new Err(new Error(`Connector ${connectorId} not found`));
+  }
+
+  const client = await getTemporalClient();
+  const workflowId = firecrawlCrawlPageWorkflowId(
+    connectorId,
+    crawlId,
+    scrapeId
+  );
+
+  try {
+    await client.workflow.start(firecrawlCrawlPageWorkflow, {
+      args: [connectorId, crawlId, scrapeId],
+      taskQueue: WebCrawlerQueueNames.FIRECRAWL,
+      workflowId: workflowId,
+      searchAttributes: {
+        connectorId: [connectorId],
+      },
+      memo: {
+        connectorId: connectorId,
+      },
+    });
+    return new Ok(workflowId);
+  } catch (e) {
+    return new Err(normalizeError(e));
+  }
 }

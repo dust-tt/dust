@@ -80,3 +80,63 @@ export async function crawlWebsiteSchedulerWorkflow() {
 export function crawlWebsiteSchedulerWorkflowId() {
   return `webcrawler-scheduler`;
 }
+
+// Firecrawl crawl specific workflows
+
+export function firecrawlCrawlFailedWorkflowId(
+  connectorId: ModelId,
+  crawlId: string
+) {
+  return `webcrawler-${connectorId}-firecrawl-crawl-${crawlId}-failed`;
+}
+
+export async function firecrawlCrawlFailedWorkflow(
+  connectorId: ModelId,
+  crawlId: string
+) {
+  // TODO: possibly fetch the error reason from the carwl API and update state
+}
+
+export function firecrawlCrawlStartedWorkflowId(
+  connectorId: ModelId,
+  crawlId: string
+) {
+  return `webcrawler-${connectorId}-firecrawl-crawl-${crawlId}-started`;
+}
+
+export async function firecrawlCrawlStartedWorkflow(
+  connectorId: ModelId,
+  crawlId: string
+) {
+  // TODO: likely nothing to do
+}
+
+export function firecrawlCrawlCompletedWorkflowId(
+  connectorId: ModelId,
+  crawlId: string
+) {
+  return `webcrawler-${connectorId}-firecrawl-crawl-${crawlId}-completed`;
+}
+
+export async function firecrawlCrawlCompletedWorkflow(
+  connectorId: ModelId,
+  crawlId: string
+) {
+  // TODO: mark crawling as done and start garbage collect
+}
+
+export function firecrawlCrawlPageWorkflowId(
+  connectorId: ModelId,
+  crawlId: string,
+  scrapeId: string
+) {
+  return `webcrawler-${connectorId}-firecrawl-crawl-${crawlId}-page-${scrapeId}`;
+}
+
+export async function firecrawlCrawlPageWorkflow(
+  connectorId: ModelId,
+  crawlId: string,
+  scrapeId: string
+) {
+  // TODO: update page, upsert, ...
+}
