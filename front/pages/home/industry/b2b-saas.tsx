@@ -170,21 +170,21 @@ const PAIN_POINTS = [
     icon: "/static/landing/industry/d-blue.svg",
     title: "Trade busy work for strategic work",
     description:
-      "Stop wasting hours on research and admin tasks. Focus your team on high-value work that actually moves the business forward.",
+      "Stop wasting hours on research and admin tasks. Focus your team on high-value work that actually moves the business forward",
     color: "blue",
   },
   {
     icon: "/static/landing/industry/d-red.svg",
     title: "Stop losing customer intelligence",
     description:
-      "Surface knowledge trapped in customer calls, support threads, and account discussions—making critical customer insights instantly available to every team.",
+      "Surface knowledge trapped in customer calls, support threads, and account discussions—making critical customer insights instantly available to every team",
     color: "red",
   },
   {
     icon: "/static/landing/industry/d-green.svg",
     title: "Scale your best people instantly",
     description:
-      "Let AI handle routine questions so your experts can focus on solving the problems that really matter.",
+      "Let AI handle routine questions so your experts can focus on solving the problems that really matter",
     color: "green",
   },
 ];
