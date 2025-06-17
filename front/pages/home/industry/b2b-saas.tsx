@@ -495,7 +495,7 @@ const TestimonialSection = () => (
     <div className="container mx-auto px-6 md:px-8 lg:px-12">
       <div className="flex flex-col justify-center">
         <H1 className="mb-10 text-3xl !font-normal text-white sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl">
-          "Dust is the most impactful software we've adopted since building
+          "Dust is the most impactful software we’ve adopted since building
           Clay."
         </H1>
         <div className="flex flex-col gap-4 pt-8 sm:flex-row sm:items-end sm:justify-between sm:gap-8">
