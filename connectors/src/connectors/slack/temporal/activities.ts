@@ -587,11 +587,11 @@ export async function syncNonThreadedChunk({
       await processAndUpsertNonThreadedMessages({
         channelId,
         channelName,
-        client,
         connectorId,
         dataSourceConfig,
         isBatchSync,
         messages,
+        slackClient,
         weekEndTsMs,
         weekStartTsMs,
       });
@@ -626,11 +626,11 @@ export async function syncNonThreadedChunk({
     await processAndUpsertNonThreadedMessages({
       channelId,
       channelName,
-      client,
       connectorId,
       dataSourceConfig,
       isBatchSync,
       messages,
+      slackClient,
       weekEndTsMs,
       weekStartTsMs,
     });
@@ -645,21 +645,21 @@ export async function syncNonThreadedChunk({
 async function processAndUpsertNonThreadedMessages({
   channelId,
   channelName,
-  client,
   connectorId,
   dataSourceConfig,
   isBatchSync,
   messages,
+  slackClient,
   weekEndTsMs,
   weekStartTsMs,
 }: {
   channelId: string;
   channelName: string;
-  client: WebClient;
   connectorId: ModelId;
   dataSourceConfig: DataSourceConfig;
   isBatchSync: boolean;
   messages: MessageElement[];
+  slackClient: WebClient;
   weekEndTsMs: number;
   weekStartTsMs: number;
 }) {
@@ -675,7 +675,7 @@ async function processAndUpsertNonThreadedMessages({
     messages,
     isThread: false,
     connectorId,
-    slackClient: client,
+    slackClient,
   });
 
   const startDate = new Date(weekStartTsMs);
@@ -693,10 +693,14 @@ async function processAndUpsertNonThreadedMessages({
   let sourceUrl: string | undefined = undefined;
 
   if (firstMessage && firstMessage.ts) {
-    const linkRes = await client.chat.getPermalink({
-      channel: channelId,
-      message_ts: firstMessage.ts,
-    });
+    const { ts } = firstMessage;
+
+    const linkRes = await withSlackErrorHandling(() =>
+      slackClient.chat.getPermalink({
+        channel: channelId,
+        message_ts: ts,
+      })
+    );
     if (linkRes.ok && linkRes.permalink) {
       sourceUrl = linkRes.permalink;
     } else {
@@ -948,10 +952,12 @@ export async function syncThread(
   let sourceUrl: string | undefined = undefined;
 
   if (firstMessage && firstMessage.ts) {
+    const { ts } = firstMessage;
+
     const linkRes = await withSlackErrorHandling(() =>
       slackClient.chat.getPermalink({
         channel: channelId,
-        message_ts: firstMessage.ts,
+        message_ts: ts,
       })
     );
     if (linkRes.ok && linkRes.permalink) {
@@ -1222,7 +1228,9 @@ export async function getUserName(
   }
 
   try {
-    const info = await slackClient.users.info({ user: slackUserId });
+    const info = await withSlackErrorHandling(() =>
+      slackClient.users.info({ user: slackUserId })
+    );
 
     if (info && info.user) {
       const displayName = info.user.profile?.display_name;
