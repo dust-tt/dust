@@ -6,7 +6,7 @@ import {
   DropdownMenuItem,
   DropdownMenuSearchbar,
   DropdownMenuTrigger,
-  UserIcon,
+  PlusIcon,
 } from "@dust-tt/sparkle";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -56,7 +56,7 @@ export function SearchMembersPopover({
     }
   }, [members, isLoading, pagination.pageIndex]);
 
-  // effect to reset pagination when search term changes
+  // Effect to reset pagination when the search term changes.
   useEffect(() => {
     setPagination(DefaultPagination);
   }, [searchTerm]);
@@ -84,7 +84,7 @@ export function SearchMembersPopover({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button label="Add members" icon={UserIcon} size="sm" />
+        <Button label="Add members" icon={PlusIcon} size="sm" />
       </DropdownMenuTrigger>
       <DropdownMenuContent
         className="w-80"
@@ -107,7 +107,7 @@ export function SearchMembersPopover({
           />
         ))}
         {filteredMembers.length === 0 && !isLoading && (
-          <div className="py-6 text-center text-sm text-muted-foreground">
+          <div className="py-6 text-center text-sm text-muted-foreground dark:text-muted-foreground-night">
             {searchTerm ? "No members found" : "No members available"}
           </div>
         )}
@@ -116,7 +116,7 @@ export function SearchMembersPopover({
           hasMore={hasMore}
           showLoader={isLoading}
           loader={
-            <div className="py-2 text-center text-sm text-muted-foreground">
+            <div className="py-2 text-center text-sm text-muted-foreground dark:text-muted-foreground-night">
               Loading more members...
             </div>
           }
