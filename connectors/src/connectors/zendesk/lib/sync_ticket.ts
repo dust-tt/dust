@@ -17,7 +17,7 @@ import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ZendeskConfigurationResource } from "@connectors/resources/zendesk_resources";
 import { ZendeskTicketResource } from "@connectors/resources/zendesk_resources";
-import { DataSourceConfig, ModelId, stripNullBytes } from "@connectors/types";
+import type { DataSourceConfig, ModelId } from "@connectors/types";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
 
 const turndownService = new TurndownService();
@@ -200,9 +200,7 @@ export async function syncTicket({
       })
       .join("\n")}`.trim();
 
-    const ticketContentInMarkdown = turndownService.turndown(
-      stripNullBytes(ticketContent)
-    );
+    const ticketContentInMarkdown = turndownService.turndown(ticketContent);
 
     const renderedMarkdown = await renderMarkdownSection(
       dataSourceConfig,
