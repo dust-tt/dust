@@ -39,28 +39,46 @@ describe("GET /api/w/[wId]/members", () => {
     expect(data.nextPageUrl).toBeUndefined();
   });
 
-  itInTransaction("returns members list for non-admin users", async () => {
-    const { req, res, user } = await createPrivateApiMockRequest({
+  itInTransaction("returns 403 for non-admin users", async () => {
+    const { req, res } = await createPrivateApiMockRequest({
       method: "GET",
       role: "user",
     });
 
     await handler(req, res);
 
-    expect(res._getStatusCode()).toBe(200);
-    const data = res._getJSONData();
-    expect(data.total).toBe(1);
-    expect(data.members).toHaveLength(1);
-    expect(data.members[0].id).toBe(user.id);
-    expect(data.members[0].workspaces[0].role).toBe("user");
+    expect(res._getStatusCode()).toBe(403);
+    expect(res._getJSONData()).toEqual({
+      error: {
+        type: "workspace_auth_error",
+        message: "Only workspace admins can access the members list.",
+      },
+    });
+  });
+
+  itInTransaction("returns 403 for builder users", async () => {
+    const { req, res } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "builder",
+    });
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(403);
+    expect(res._getJSONData()).toEqual({
+      error: {
+        type: "workspace_auth_error",
+        message: "Only workspace admins can access the members list.",
+      },
+    });
   });
 
   itInTransaction(
-    "returns only admin members for builder with admin role query",
+    "returns only admin members for admin with admin role query",
     async () => {
       const { req, res, workspace } = await createPrivateApiMockRequest({
         method: "GET",
-        role: "builder",
+        role: "admin",
       });
 
       // Create additional members with different roles
@@ -83,8 +101,8 @@ describe("GET /api/w/[wId]/members", () => {
 
       expect(res._getStatusCode()).toBe(200);
       const data = res._getJSONData();
-      expect(data.members).toHaveLength(2); // Only admin users
-      expect(data.total).toBe(2);
+      expect(data.members).toHaveLength(3); // 2 created admin users + 1 from createPrivateApiMockRequest
+      expect(data.total).toBe(3);
       expect(data.nextPageUrl).toBeUndefined();
       data.members.forEach((member: any) => {
         expect(member.workspaces[0].role).toBe("admin");
