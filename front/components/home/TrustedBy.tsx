@@ -59,7 +59,8 @@ export default function TrustedBy({
   title = "Trusted by 1,000+ organizations",
 }: TrustedByProps) {
   const [isPaused, setIsPaused] = useState(false);
-  const logos = LOGO_SETS[logoSet];
+  // We duplicate the logos to create a seamless animation.
+  const logos = [...LOGO_SETS[logoSet], ...LOGO_SETS[logoSet]];
 
   return (
     <div
@@ -83,25 +84,9 @@ export default function TrustedBy({
             className={classNames("flex animate-marquee")}
             style={{ animationPlayState: isPaused ? "paused" : "running" }}
           >
-            {/* First set */}
             {logos.map((logo, index) => (
               <div
-                key={`first-${logo.name}-${index}`}
-                className="-mx-2 flex h-16 w-32 flex-shrink-0 items-center justify-center sm:mx-8 sm:h-20 sm:w-48 lg:mx-12"
-              >
-                <Image
-                  alt={logo.name}
-                  src={logo.src}
-                  width={200}
-                  height={80}
-                  className="h-auto max-h-12 w-auto object-contain sm:max-h-16 lg:max-h-20"
-                />
-              </div>
-            ))}
-            {/* Second set - exact duplicate */}
-            {logos.map((logo, index) => (
-              <div
-                key={`second-${logo.name}-${index}`}
+                key={`${logo.name}-${index}`}
                 className="-mx-2 flex h-16 w-32 flex-shrink-0 items-center justify-center sm:mx-8 sm:h-20 sm:w-48 lg:mx-12"
               >
                 <Image
