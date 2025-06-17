@@ -61,6 +61,15 @@ import {
 
 import { DustHttpClient } from "../lib/http";
 
+const { DUST_CONNECTORS_WEBHOOKS_SECRET, CONNECTORS_PUBLIC_URL } = process.env;
+
+if (!DUST_CONNECTORS_WEBHOOKS_SECRET) {
+  throw new Error("DUST_CONNECTORS_WEBHOOKS_SECRET is not defined");
+}
+if (!CONNECTORS_PUBLIC_URL) {
+  throw new Error("CONNECTORS_PUBLIC_URL is not defined");
+}
+
 const CONCURRENCY = 1;
 
 export async function markAsCrawled(connectorId: ModelId) {
@@ -141,7 +150,44 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let crawler: BasicCrawler<any>;
 
+  let rootUrl = webCrawlerConfig.url.trim();
+  if (!rootUrl.startsWith("http://") && !rootUrl.startsWith("https://")) {
+    rootUrl = `http://${rootUrl}`;
+  }
+
   if (
+    webCrawlerConfig.customCrawler ===
+    ("firecrawl-api" satisfies WebcrawlerCustomCrawler)
+  ) {
+    const crawlerResponse = await firecrawlApp.asyncCrawlUrl(rootUrl, {
+      maxDiscoveryDepth: webCrawlerConfig.depth ?? WEBCRAWLER_MAX_DEPTH,
+      limit: maxRequestsPerCrawl,
+      allowBackwardLinks: webCrawlerConfig.crawlMode === "website",
+      delay: 3,
+      scrapeOptions: {
+        onlyMainContent: true,
+        formats: ["markdown", "changeTracking"],
+        headers: customHeaders,
+        maxAge: 43_200_000, // Use last 12h of cache
+      },
+      webhook: {
+        url: `${CONNECTORS_PUBLIC_URL}/webhooks/${DUST_CONNECTORS_WEBHOOKS_SECRET}/firecrawl`,
+        metadata: {
+          connectorId: String(connectorId),
+        },
+      },
+    });
+
+    if (!crawlerResponse.success) {
+      throw new Error(crawlerResponse.error);
+    }
+
+    childLogger.info(
+      { crawlerId: crawlerResponse.id, url: rootUrl },
+      "Firecrawl crawler started"
+    );
+    return;
+  } else if (
     webCrawlerConfig.customCrawler ===
     ("firecrawl" satisfies WebcrawlerCustomCrawler)
   ) {
@@ -770,11 +816,6 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
         availableMemoryRatio: 0.1,
       })
     );
-  }
-
-  let rootUrl = webCrawlerConfig.url.trim();
-  if (!rootUrl.startsWith("http://") && !rootUrl.startsWith("https://")) {
-    rootUrl = `http://${rootUrl}`;
   }
 
   childLogger.info(
