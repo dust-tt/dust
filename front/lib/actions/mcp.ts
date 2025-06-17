@@ -20,6 +20,7 @@ import {
   hideInternalConfiguration,
 } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { ProgressNotificationContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { isSearchQueryResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
   isBlobResource,
   isMCPProgressNotificationType,
@@ -232,8 +233,12 @@ function hideContentForModel({
   fileId,
   content,
   workspaceId,
-}: AgentMCPActionOutputItem): CallToolResult["content"][number] {
-  // For tool-generated files, we keep the resource as is.
+}: AgentMCPActionOutputItem): CallToolResult["content"][number] | null {
+  // Hide certain types of content from the model: those are only used for display.
+  if (isSearchQueryResourceType(content)) {
+    return null;
+  }
+  // For tool-generated files and non-file content, we keep the resource as is.
   if (!fileId || isToolGeneratedFile(content)) {
     return content;
   }
@@ -1056,7 +1061,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
         executionState: status,
         id: action.id,
         isError: false,
-        output: outputItems.map(hideContentForModel),
+        output: removeNulls(outputItems.map(hideContentForModel)),
         type: "tool_action",
       }),
     };
@@ -1136,7 +1141,7 @@ export async function mcpActionTypesFromAgentMessageIds(
     return new MCPActionType({
       id: action.id,
       params: action.params,
-      output: action.outputItems.map(hideContentForModel),
+      output: removeNulls(action.outputItems.map(hideContentForModel)),
       functionCallId: action.functionCallId,
       functionCallName: action.functionCallName,
       agentMessageId: action.agentMessageId,
