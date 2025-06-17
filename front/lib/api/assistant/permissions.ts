@@ -25,7 +25,7 @@ export async function listAgentConfigurationsForGroups(
   groups: GroupResource[]
 ) {
   return AgentConfiguration.findAll({
-    attributes: ["sId", "groupIds"],
+    attributes: ["sId"],
     where: {
       workspaceId: auth.getNonNullableWorkspace().id,
       status: "active",
