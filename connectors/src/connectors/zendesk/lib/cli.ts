@@ -300,34 +300,29 @@ export const zendesk = async ({
         accessToken,
       });
 
-      // Fetch the ticket
       const ticket = await fetchZendeskTicket({
         accessToken,
         ticketId,
         brandSubdomain,
       });
-
       if (!ticket) {
         throw new Error(`Ticket ${ticketId} not found`);
       }
 
-      // Check if the ticket should be synced
       if (!shouldSyncTicket(ticket, configuration)) {
         logger.info(
           { ticketId, brandId, status: ticket.status },
-          "Ticket should not be synced based on configuration"
+          "Ticket should not be synced based on status and configuration."
         );
         return { success: true };
       }
 
-      // Fetch comments
       const comments = await listZendeskTicketComments({
         accessToken,
         brandSubdomain,
         ticketId,
       });
 
-      // Get unique user IDs from ticket and comments
       const userIds = Array.from(
         new Set(
           [
@@ -339,17 +334,14 @@ export const zendesk = async ({
         )
       );
 
-      // Fetch users
       const users = await listZendeskUsers({
         accessToken,
         brandSubdomain,
         userIds,
       });
 
-      // Get data source config
       const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
-      // Sync the ticket
       await syncTicket({
         ticket,
         connector,
@@ -357,7 +349,11 @@ export const zendesk = async ({
         brandId,
         currentSyncDateMs: Date.now(),
         dataSourceConfig,
-        loggerArgs: { ticketId, brandId },
+        loggerArgs: {
+          dataSourceId: dataSourceConfig.dataSourceId,
+          provider: "zendesk",
+          workspaceId: dataSourceConfig.workspaceId,
+        },
         forceResync: args.forceResync === "true",
         comments,
         users,
