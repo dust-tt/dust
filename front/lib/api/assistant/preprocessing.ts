@@ -144,8 +144,6 @@ export async function renderConversationForModel(
                 workspaceId: conversation.owner.sId,
                 conversationId: conversation.sId,
                 agentMessageId: m.sId,
-                shadowReadRawContents,
-                rawContents,
               },
               "[CONVERSATION RENDERING] Shadow read raw contents is different from the raw contents"
             );
