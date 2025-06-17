@@ -81,7 +81,9 @@ async function handler(
   } catch (error) {
     logger.error(
       {
-        userId: user.id,
+        session,
+        user,
+        nullableUser,
         workspaceId: targetWorkspaceId,
         error,
       },
