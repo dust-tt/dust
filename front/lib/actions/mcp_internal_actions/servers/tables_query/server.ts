@@ -74,8 +74,6 @@ function createServer(
 
       const owner = auth.getNonNullableWorkspace();
 
-      // TODO(mcp): if we stream events, here we want to inform that it has started.
-
       // Render conversation for the action.
       const supportedModel = getSupportedModelConfig(
         agentLoopRunContext.agentConfiguration.model
