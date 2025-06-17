@@ -1,4 +1,4 @@
-import { makeSlowQueueName } from "@connectors/lib/temporal_queue_routing";
+import { makeSlowQueueName } from "../../../lib/temporal_queue_routing";
 
 const WORKFLOW_VERSION = 5;
 export const QUEUE_NAME = `slack-queue-v${WORKFLOW_VERSION}`;

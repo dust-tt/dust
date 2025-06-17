@@ -27,12 +27,12 @@ const SLOW_LANE_CONNECTOR_IDS: string[] = [
   "5", // Workspace 4d76593070.
 ];
 
-// Dynamic activity creation based on connector ID
+// Dynamic activity creation based on connector ID.
 function getSlackActivities() {
   const connectorId = getConnectorIdFromWorkflow();
 
   return {
-    // Short timeout activities
+    // Short timeout activities.
     shortTimeout: getActivitiesForConnector<typeof activities>({
       baseQueue: QUEUE_NAME,
       connectorId,
@@ -40,18 +40,7 @@ function getSlackActivities() {
       activityOptions: { startToCloseTimeout: "10 minutes" },
     }),
 
-    // Long timeout activities
-    longTimeout: getActivitiesForConnector<typeof activities>({
-      baseQueue: QUEUE_NAME,
-      connectorId,
-      slowLaneConnectorIds: SLOW_LANE_CONNECTOR_IDS,
-      activityOptions: {
-        heartbeatTimeout: "15 minutes",
-        startToCloseTimeout: "90 minutes",
-      },
-    }),
-
-    // Medium timeout activities
+    // Medium timeout activities.
     mediumTimeout: getActivitiesForConnector<typeof activities>({
       baseQueue: QUEUE_NAME,
       connectorId,
@@ -59,6 +48,17 @@ function getSlackActivities() {
       activityOptions: {
         heartbeatTimeout: "5 minutes",
         startToCloseTimeout: "10 minutes",
+      },
+    }),
+
+    // Long timeout activities.
+    longTimeout: getActivitiesForConnector<typeof activities>({
+      baseQueue: QUEUE_NAME,
+      connectorId,
+      slowLaneConnectorIds: SLOW_LANE_CONNECTOR_IDS,
+      activityOptions: {
+        heartbeatTimeout: "15 minutes",
+        startToCloseTimeout: "90 minutes",
       },
     }),
   };
