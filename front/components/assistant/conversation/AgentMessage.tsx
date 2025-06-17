@@ -172,14 +172,15 @@ export function AgentMessage({
   });
 
   const onEventCallback = React.useCallback(
-    async (eventStr: string) => {
+    (eventStr: string) => {
       const eventPayload: {
         eventId: string;
         data: AgentMessageStateWithControlEvent;
       } = JSON.parse(eventStr);
+      const eventType = eventPayload.data.type;
 
       // Handle validation dialog separately.
-      if (eventPayload.data.type === "tool_approve_execution") {
+      if (eventType === "tool_approve_execution") {
         showValidationDialog({
           messageId: eventPayload.data.messageId,
           conversationId: eventPayload.data.conversationId,
@@ -197,11 +198,20 @@ export function AgentMessage({
       // This event is emitted in front/lib/api/assistant/pubsub.ts. Its purpose is to signal the
       // end of the stream to the client. The message reducer does not, and should not, handle this
       // event, so we just return.
-      if (eventPayload.data.type === "end-of-stream") {
+      if (eventType === "end-of-stream") {
         return;
       }
 
-      await mutateMessage();
+      const shouldRefresh = [
+        "agent_action_success",
+        "agent_error",
+        "agent_message_success",
+        "agent_generation_cancelled",
+      ].includes(eventType);
+
+      if (shouldRefresh) {
+        void mutateMessage();
+      }
 
       dispatch(eventPayload.data);
     },
