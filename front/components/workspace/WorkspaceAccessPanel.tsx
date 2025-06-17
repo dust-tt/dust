@@ -41,9 +41,8 @@ export default function WorkspaceAccessPanel({
 
   const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
   // Both workos and workos_user_provisioning are required to enable user provisioning.
-  const hasWorkOSUserProvisioningFeature = hasFeature(
-    "workos_user_provisioning"
-  );
+  const hasWorkOSUserProvisioningFeature =
+    hasFeature("workos") && hasFeature("workos_user_provisioning");
 
   return (
     <div className="flex flex-col gap-6">
