@@ -21,10 +21,7 @@ import type {
   ServerSideMCPServerConfigurationType,
 } from "@app/lib/actions/mcp";
 import type { TableDataSourceConfiguration } from "@app/lib/actions/tables_query";
-import type {
-  ActionConfigurationType,
-  AgentActionConfigurationType,
-} from "@app/lib/actions/types/agent";
+import type { AgentActionConfigurationType } from "@app/lib/actions/types/agent";
 import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration";
 import {
   isMultiSheetSpreadsheetContentType,
@@ -387,7 +384,6 @@ export async function getEmulatedAndJITActions(
   }
 ): Promise<{
   emulatedActions: AgentActionType[];
-  jitActions: ActionConfigurationType[];
   jitServers: MCPServerConfigurationType[];
 }> {
   const emulatedActions: AgentActionType[] = [];
@@ -412,7 +408,7 @@ export async function getEmulatedAndJITActions(
     "Emulated actions must have step -1"
   );
 
-  return { emulatedActions, jitActions: [], jitServers };
+  return { emulatedActions, jitServers };
 }
 
 async function getTablesFromMultiSheetSpreadsheet(
