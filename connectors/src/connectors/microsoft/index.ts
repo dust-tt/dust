@@ -1,4 +1,4 @@
-import type { Result } from "@dust-tt/client";
+import type { ConnectorProvider, Result } from "@dust-tt/client";
 import { assertNever, Err, Ok } from "@dust-tt/client";
 import { Client } from "@microsoft/microsoft-graph-client";
 
@@ -62,6 +62,8 @@ import type {
 import type { DataSourceConfig } from "@connectors/types";
 
 export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
+  readonly provider: ConnectorProvider = "microsoft";
+
   static async create({
     dataSourceConfig,
     connectionId,
@@ -163,7 +165,7 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
 
       // If connector was previously paused, unpause it.
       if (connector.isPaused()) {
-        await this.unpause();
+        await this.unpauseAndResume();
       }
     }
 
@@ -580,48 +582,6 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
       default:
         return new Err(new Error(`Invalid config key ${configKey}`));
     }
-  }
-
-  async pause(): Promise<Result<undefined, Error>> {
-    const connector = await ConnectorResource.fetchById(this.connectorId);
-    if (!connector) {
-      return new Err(
-        new Error(`Connector not found with id ${this.connectorId}`)
-      );
-    }
-    await connector.markAsPaused();
-    await terminateAllWorkflowsForConnectorId(this.connectorId);
-    return new Ok(undefined);
-  }
-
-  async unpause(): Promise<Result<undefined, Error>> {
-    const connector = await ConnectorResource.fetchById(this.connectorId);
-    if (!connector) {
-      return new Err(
-        new Error(`Connector not found with id ${this.connectorId}`)
-      );
-    }
-    await connector.markAsUnpaused();
-    const r = await launchMicrosoftFullSyncWorkflow(this.connectorId);
-    if (r.isErr()) {
-      return r;
-    }
-
-    const gcRes = await launchMicrosoftGarbageCollectionWorkflow(
-      this.connectorId
-    );
-
-    if (gcRes.isErr()) {
-      return gcRes;
-    }
-
-    const incrementalSync = await launchMicrosoftIncrementalSyncWorkflow(
-      this.connectorId
-    );
-    if (incrementalSync.isErr()) {
-      return incrementalSync;
-    }
-    return new Ok(undefined);
   }
 
   async garbageCollect(): Promise<Result<string, Error>> {

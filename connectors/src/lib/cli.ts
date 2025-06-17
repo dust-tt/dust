@@ -147,11 +147,11 @@ export const connectors = async ({
       return { success: true };
     }
     case "pause": {
-      await throwOnError(manager.pause());
+      await throwOnError(manager.pauseAndStop());
       return { success: true };
     }
     case "unpause": {
-      await throwOnError(manager.unpause());
+      await throwOnError(manager.unpauseAndResume());
       return { success: true };
     }
     case "resume": {
