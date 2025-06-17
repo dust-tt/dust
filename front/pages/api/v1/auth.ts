@@ -1,5 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import type { OAuthProviderType } from "@app/lib/api/config";
+import { AUTH0_PROVIDER, WORKOS_PROVIDER } from "@app/lib/api/config";
 import { config as regionsConfig } from "@app/lib/api/regions/config";
 import {
   lookupAuth,
@@ -10,7 +12,7 @@ import { apiError, withLogging } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 
 export type AuthResponseType = {
-  auth: "auth0" | "workos";
+  auth: OAuthProviderType;
   signup?: boolean;
 };
 
@@ -32,12 +34,12 @@ async function handler(
         const userRes = await fetchWorkOSUserWithEmail(email);
 
         if (userRes.isErr()) {
-          return res.status(200).json({ auth: "workos", signup: true });
+          return res.status(200).json({ auth: WORKOS_PROVIDER, signup: true });
         }
 
         const user = userRes.value;
 
-        let auth: "auth0" | "workos" | undefined = undefined;
+        let auth: OAuthProviderType | undefined = undefined;
         // Check workspace restriction - if user is in other region, check in other region
         if (user.metadata.region !== regionsConfig.getCurrentRegion()) {
           const authRes = await lookupAuthInOtherRegion({
@@ -63,12 +65,12 @@ async function handler(
         // Otherwise, if user has already signed in with WorkOS, stay on workos
         const lastLogin = user.lastSignInAt;
         if (lastLogin) {
-          return res.status(200).json({ auth: "workos", signup: false });
+          return res.status(200).json({ auth: WORKOS_PROVIDER, signup: false });
         }
       }
 
       // No email specified - default to auth0.
-      return res.status(200).json({ auth: "auth0" });
+      return res.status(200).json({ auth: AUTH0_PROVIDER });
     default:
       return apiError(req, res, {
         status_code: 405,

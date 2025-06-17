@@ -1,3 +1,5 @@
+import type { OAuthProviderType } from "@app/lib/api/config";
+import { AUTH0_PROVIDER, WORKOS_PROVIDER } from "@app/lib/api/config";
 import type { RegionType } from "@app/lib/api/regions/config";
 import { config } from "@app/lib/api/regions/config";
 import { isWorkspaceRelocationDone } from "@app/lib/api/workspace";
@@ -115,7 +117,7 @@ async function lookupInOtherRegion(
 
 export async function lookupAuthInOtherRegion(
   userLookup: UserLookup
-): Promise<Result<"auth0" | "workos" | undefined, Error>> {
+): Promise<Result<OAuthProviderType | undefined, Error>> {
   const { url } = config.getOtherRegionInfo();
 
   const body: UserLookupRequestBodyType = {
@@ -214,7 +216,7 @@ const blacklistedWorkspaceIds = [
 
 export async function lookupAuth(
   userLookup: UserLookup
-): Promise<"auth0" | "workos" | undefined> {
+): Promise<OAuthProviderType | undefined> {
   const workspaceHasDomain = await findWorkspaceWithVerifiedDomain({
     email: userLookup.email,
     email_verified: true,
@@ -225,9 +227,9 @@ export async function lookupAuth(
     const ff = await getFeatureFlags(renderLightWorkspaceType({ workspace }));
     // Workspace is switched to workos: use workos
     if (ff.includes("workos")) {
-      return "workos";
+      return WORKOS_PROVIDER;
     }
-    return "auth0";
+    return AUTH0_PROVIDER;
   }
 
   return undefined;

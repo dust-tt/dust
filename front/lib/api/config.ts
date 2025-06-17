@@ -2,6 +2,12 @@ import { EnvironmentConfig } from "@app/types";
 
 export const PRODUCTION_DUST_API = "https://dust.tt";
 
+// TODO(workos): Remove this once we can use WorkOS for everybody
+export const AUTH0_PROVIDER = "auth0";
+export const WORKOS_PROVIDER = "workos";
+
+export type OAuthProviderType = typeof AUTH0_PROVIDER | typeof WORKOS_PROVIDER;
+
 const config = {
   getClientFacingUrl: (): string => {
     // We override the NEXT_PUBLIC_DUST_CLIENT_FACING_URL in `front-internal` to ensure that the
@@ -17,10 +23,14 @@ const config = {
       "NEXT_PUBLIC_DUST_CLIENT_FACING_URL"
     );
   },
-  getOAuthProvider: (): "auth0" | "workos" => {
+  // TODO(workos): Remove this once we can use WorkOS for everybody
+  getOAuthProvider: (): OAuthProviderType => {
     const provider = EnvironmentConfig.getOptionalEnvVariable("OAUTH_PROVIDER");
-    if (!provider || (provider !== "auth0" && provider !== "workos")) {
-      return "auth0"; // Default to auth0 if not set or invalid.
+    if (
+      !provider ||
+      (provider !== AUTH0_PROVIDER && provider !== WORKOS_PROVIDER)
+    ) {
+      return AUTH0_PROVIDER; // Default to auth0 if not set or invalid.
     }
     return provider;
   },
