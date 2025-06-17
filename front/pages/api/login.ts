@@ -18,7 +18,7 @@ import { getSignUpUrl } from "@app/lib/signup";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
+import { normalizeError, type WithAPIErrorResponse } from "@app/types";
 
 async function handler(
   req: NextApiRequest,
@@ -186,7 +186,7 @@ async function handler(
       {
         userId: user.id,
         worksOSUserId: user.workOSUserId,
-        error,
+        errorMessage: normalizeError(error).message,
       },
       "Failed to record login activity for user."
     );
