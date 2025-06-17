@@ -39,7 +39,7 @@ import {
   getAgentConfigurations,
 } from "@app/lib/api/assistant/configuration";
 import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
-import { getEmulatedAndJITActions } from "@app/lib/api/assistant/jit_actions";
+import { getEmulatedActionsAndJITServers } from "@app/lib/api/assistant/jit_actions";
 import { isLegacyAgentConfiguration } from "@app/lib/api/assistant/legacy_agent";
 import { renderConversationForModel } from "@app/lib/api/assistant/preprocessing";
 import config from "@app/lib/api/config";
@@ -404,12 +404,13 @@ async function* runMultiActionsAgent(
     }
   }
 
-  const { emulatedActions, jitActions, jitServers } =
-    await getEmulatedAndJITActions(auth, {
-      agentActions,
+  const { emulatedActions, jitServers } = await getEmulatedActionsAndJITServers(
+    auth,
+    {
       agentMessage,
       conversation,
-    });
+    }
+  );
 
   // Get client-side MCP server configurations from user message context.
   const clientSideMCPActionConfigurations =
@@ -433,7 +434,6 @@ async function* runMultiActionsAgent(
   );
 
   if (!isLastGenerationIteration) {
-    availableActions.push(...jitActions);
     availableActions.push(...mcpActions.flatMap((s) => s.tools));
   }
 
