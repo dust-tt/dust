@@ -167,10 +167,12 @@ export function GenericActionDetails({
             contentChildren={
               <CodeBlock wrapLongLines>
                 {action.output
-                  // @ts-expect-error TODO(mcp): fixing typing resulting to unknown type
-                  .filter((o) => o.text || o.resource.text)
-                  // @ts-expect-error TODO(mcp): fixing typing resulting to unknown type
-                  .map((o) => o.text || o.resource.text)
+                  .filter(
+                    (o) => o.text || (o.type === "resource" && o.resource.text)
+                  )
+                  .map(
+                    (o) => o.text || (o.type === "resource" && o.resource.text)
+                  )
                   .join("\n")}
               </CodeBlock>
             }

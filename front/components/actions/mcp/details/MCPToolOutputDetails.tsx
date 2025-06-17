@@ -48,7 +48,7 @@ export function ThinkingBlock({ resource }: ThinkingBlockProps) {
     resource.text && (
       <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
         <ContentMessage
-          title="Reasoning" // TODO(mcp): to be challenged by the design team (could be "Thoughts")
+          title="Reasoning"
           variant="primary"
           icon={InformationCircleIcon}
           size="lg"
