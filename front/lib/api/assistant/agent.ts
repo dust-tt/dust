@@ -30,6 +30,7 @@ import {
 } from "@app/lib/actions/types/guards";
 import { getCitationsCount } from "@app/lib/actions/utils";
 import { createClientSideMCPServerConfigurations } from "@app/lib/api/actions/mcp_client_side";
+import { getPublicErrorMessage } from "@app/lib/api/assistant/agent_errors";
 import {
   AgentMessageContentParser,
   getDelimitersConfiguration,
@@ -624,11 +625,13 @@ async function* runMultiActionsAgent(
   );
 
   if (res.isErr()) {
+    const publicErrorMessage = getPublicErrorMessage(res.error);
     logger.error(
       {
         workspaceId: conversation.owner.sId,
         conversationId: conversation.sId,
         error: res.error,
+        publicErrorMessage,
       },
       "Error running multi-actions agent."
     );
@@ -639,7 +642,7 @@ async function* runMultiActionsAgent(
       messageId: agentMessage.sId,
       error: {
         code: "multi_actions_error",
-        message: `Error running multi-actions agent action: [${res.error.type}] ${res.error.message}`,
+        message: publicErrorMessage,
         metadata: null,
       },
     } satisfies AgentErrorEvent;

@@ -1878,16 +1878,6 @@ async function* streamRunAgentEvents(
           errorMessage: event.error.message,
           errorMetadata: event.error.metadata,
         });
-
-        logger.error(
-          {
-            error: event.error,
-            workspaceId: auth.workspace()?.sId,
-            agentMessageId: agentMessage.sId,
-          },
-          "Agent error"
-        );
-
         yield event;
         return;
 
