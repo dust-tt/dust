@@ -890,7 +890,15 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
             // Remove the data from the block to avoid storing it in the database.
             ...(block.type === "image" ? { data: "" } : {}),
             ...(isBlobResource(block)
-              ? { resource: { ...block.resource, blob: "" } }
+              ? {
+                  resource: {
+                    ...block.resource,
+                    blob: "",
+                    // For blob resources, URI can be updated now that the file
+                    // is uploaded.
+                    uri: file.getPublicUrl(auth),
+                  },
+                }
               : {}),
           },
           file,
