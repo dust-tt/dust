@@ -170,19 +170,14 @@ export function AssistantDetailsButtonBar({
 
       {agentConfiguration.scope !== "global" &&
         !isRestrictedFromAgentCreation && (
-          <Link
-            onClick={(e) => !canEditAssistant && e.preventDefault()}
-            href={`/w/${owner.sId}/builder/assistants/${
-              agentConfiguration.sId
-            }?flow=workspace_assistants`}
-          >
-            <Button
-              size="sm"
-              disabled={!canEditAssistant}
-              variant="outline"
-              icon={PencilSquareIcon}
-            />
-          </Link>
+          <Button
+            size="sm"
+            disabled={!canEditAssistant}
+            href={`/w/${owner.sId}/builder/assistants/${agentConfiguration.sId}?flow=workspace_assistants`}
+            variant="outline"
+            icon={PencilSquareIcon}
+            className={!canEditAssistant ? "pointer-events-none" : ""}
+          />
         )}
 
       {agentConfiguration.scope !== "global" && (
