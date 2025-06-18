@@ -135,7 +135,8 @@ export async function gongSyncTranscriptsActivity({
     );
   }
   if (transcriptsToSync.length === 0) {
-    return { nextPageCursor: null };
+    logger.info({ ...loggerArgs }, "[Gong] All transcripts are already in DB.");
+    return { nextPageCursor };
   }
 
   const callsMetadata = await getTranscriptsMetadata({
@@ -156,7 +157,7 @@ export async function gongSyncTranscriptsActivity({
           { ...loggerArgs, callId: transcript.callId },
           "[Gong] Transcript metadata not found."
         );
-        return { nextPageCursor: null };
+        return;
       }
 
       const { parties = [] } = transcriptMetadata;
