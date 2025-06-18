@@ -23,7 +23,14 @@ import { subNavigationAdmin } from "@app/components/navigation/config";
 import AppContentLayout from "@app/components/sparkle/AppContentLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { ChangeMemberModal } from "@app/components/workspace/ChangeMemberModal";
+import type { EnterpriseConnectionStrategyDetails } from "@app/components/workspace/SSOConnection";
 import WorkspaceAccessPanel from "@app/components/workspace/WorkspaceAccessPanel";
+import config from "@app/lib/api/config";
+import {
+  makeAudienceUri,
+  makeEnterpriseConnectionInitiateLoginUrl,
+  makeSamlAcsUrl,
+} from "@app/lib/api/enterprise_connection";
 import { checkWorkspaceSeatAvailabilityUsingAuth } from "@app/lib/api/workspace";
 import { getWorkspaceVerifiedDomains } from "@app/lib/api/workspace_domains";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
@@ -47,6 +54,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
   perSeatPricing: SubscriptionPerSeatPricing | null;
+  enterpriseConnectionStrategyDetails: EnterpriseConnectionStrategyDetails;
   plan: PlanType;
   workspaceHasAvailableSeats: boolean;
   workspaceVerifiedDomains: WorkspaceDomain[];
@@ -67,6 +75,18 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   const workspaceHasAvailableSeats =
     await checkWorkspaceSeatAvailabilityUsingAuth(auth);
 
+  const enterpriseConnectionStrategyDetails: EnterpriseConnectionStrategyDetails =
+    {
+      callbackUrl: config.getAuth0TenantUrl(),
+      initiateLoginUrl: await makeEnterpriseConnectionInitiateLoginUrl(
+        owner.sId,
+        null
+      ),
+      // SAML specific.
+      audienceUri: makeAudienceUri(owner),
+      samlAcsUrl: makeSamlAcsUrl(owner),
+    };
+
   const perSeatPricing = await subscriptionResource.getPerSeatPricing();
   const subscription = subscriptionResource.toJSON();
 
@@ -76,6 +96,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       owner,
       subscription,
       perSeatPricing,
+      enterpriseConnectionStrategyDetails,
       plan,
       workspaceHasAvailableSeats,
       workspaceVerifiedDomains,
@@ -88,6 +109,7 @@ export default function WorkspaceAdmin({
   owner,
   subscription,
   perSeatPricing,
+  enterpriseConnectionStrategyDetails,
   plan,
   workspaceHasAvailableSeats,
   workspaceVerifiedDomains,
@@ -131,6 +153,9 @@ export default function WorkspaceAdmin({
           description="Verify your domain, manage team members and their permissions."
         />
         <WorkspaceAccessPanel
+          enterpriseConnectionStrategyDetails={
+            enterpriseConnectionStrategyDetails
+          }
           workspaceVerifiedDomains={workspaceVerifiedDomains}
           owner={owner}
           plan={plan}

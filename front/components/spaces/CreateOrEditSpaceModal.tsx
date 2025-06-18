@@ -101,7 +101,7 @@ export function CreateOrEditSpaceModal({
     workspaceId: owner.sId,
   });
 
-  const isWorkOSFeatureEnabled = hasFeature("workos_user_provisioning");
+  const isWorkOSFeatureEnabled = hasFeature("workos");
 
   useEffect(() => {
     if (!isWorkOSFeatureEnabled) {
