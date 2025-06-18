@@ -58,7 +58,7 @@ export async function handleMembershipInvite(
 ): Promise<
   Result<
     {
-      flow: null;
+      flow: "joined";
       workspace: Workspace;
     },
     AuthFlowError | SSOEnforcedError
@@ -139,57 +139,22 @@ export async function handleMembershipInvite(
 
   await membershipInvite.markAsConsumed(user);
 
-  return new Ok({ flow: null, workspace });
-}
-
-function canJoinTargetWorkspace(
-  targetWorkspaceId: string | undefined,
-  workspace: Workspace | undefined,
-  activeMemberships: MembershipResource[]
-) {
-  // If there is no target workspace id, return true.
-  if (!targetWorkspaceId) {
-    return true;
-  }
-
-  if (!workspace) {
-    return false;
-  }
-
-  // Verify that the user is not already a member of the workspace.
-  const alreadyInWorkspace = activeMemberships.find(
-    (m) => m.workspaceId === workspace.id
-  );
-  if (alreadyInWorkspace) {
-    return false;
-  }
-
-  return targetWorkspaceId === workspace.sId;
+  return new Ok({ flow: "joined", workspace });
 }
 
 export async function handleEnterpriseSignUpFlow(
   user: UserResource,
   enterpriseConnectionWorkspaceId: string
 ): Promise<{
-  flow: "unauthorized" | null;
+  flow: "unauthorized" | "joined" | null;
   workspace: Workspace | null;
 }> {
   // Combine queries to optimize database calls.
-  const [{ total }, workspace] = await Promise.all([
-    MembershipResource.getActiveMemberships({
-      users: [user],
-    }),
-    Workspace.findOne({
-      where: {
-        sId: enterpriseConnectionWorkspaceId,
-      },
-    }),
-  ]);
-
-  // Early return if user is already a member of a workspace.
-  if (total !== 0) {
-    return { flow: null, workspace: null };
-  }
+  const workspace = await Workspace.findOne({
+    where: {
+      sId: enterpriseConnectionWorkspaceId,
+    },
+  });
 
   // Redirect to login error flow if workspace is not found.
   if (!workspace) {
@@ -201,6 +166,11 @@ export async function handleEnterpriseSignUpFlow(
       user,
       workspace: renderLightWorkspaceType({ workspace }),
     });
+
+  // User is already a member of the workspace.
+  if (membership && !membership.isRevoked()) {
+    return { flow: null, workspace };
+  }
 
   // Look if there is a pending membership invitation for the user at the workspace.
   const pendingMembershipInvitation =
@@ -223,7 +193,7 @@ export async function handleEnterpriseSignUpFlow(
     await pendingMembershipInvitation.markAsConsumed(user);
   }
 
-  return { flow: null, workspace };
+  return { flow: "joined", workspace };
 }
 
 // Regular flow, only if the user is a newly created user. Verify if there's an existing workspace
@@ -236,7 +206,7 @@ export async function handleRegularSignupFlow(
 ): Promise<
   Result<
     {
-      flow: "no-auto-join" | "revoked" | null;
+      flow: "no-auto-join" | "revoked" | "joined" | null;
       workspace: Workspace | null;
     },
     AuthFlowError | SSOEnforcedError
@@ -256,22 +226,34 @@ export async function handleRegularSignupFlow(
     });
   }
 
+  const targetWorkspace = targetWorkspaceId
+    ? await Workspace.findOne({
+        where: {
+          sId: targetWorkspaceId,
+        },
+      })
+    : null;
+
+  // If user is already a member of the target workspace, return early.
+  if (
+    targetWorkspace &&
+    activeMemberships.find((m) => m.workspaceId === targetWorkspace.id)
+  ) {
+    return new Ok({ flow: null, workspace: targetWorkspace });
+  }
+
   const workspaceWithVerifiedDomain = await findWorkspaceWithVerifiedDomain(
     session.user
   );
   const { workspace: existingWorkspace } = workspaceWithVerifiedDomain ?? {};
 
-  // Verify that the user is allowed to join the specified workspace.
-  const joinTargetWorkspaceAllowed = canJoinTargetWorkspace(
-    targetWorkspaceId,
-    existingWorkspace,
-    activeMemberships
-  );
-  if (
+  const joinTargetWorkspaceAllowed =
     workspaceWithVerifiedDomain &&
     existingWorkspace &&
-    joinTargetWorkspaceAllowed
-  ) {
+    (!targetWorkspace || targetWorkspace.id === existingWorkspace.id);
+
+  // Verify that the user is allowed to join the specified workspace.
+  if (joinTargetWorkspaceAllowed) {
     if (existingWorkspace.ssoEnforced) {
       return new Err(
         new SSOEnforcedError(
@@ -314,8 +296,8 @@ export async function handleRegularSignupFlow(
       });
     }
 
-    return new Ok({ flow: null, workspace: existingWorkspace });
-  } else if (!targetWorkspaceId) {
+    return new Ok({ flow: "joined", workspace: existingWorkspace });
+  } else if (!targetWorkspace) {
     const workspace = await createWorkspace(session);
     await createAndLogMembership({
       workspace,
@@ -323,17 +305,13 @@ export async function handleRegularSignupFlow(
       role: "admin",
     });
 
-    return new Ok({ flow: null, workspace });
-  } else if (targetWorkspaceId && !canJoinTargetWorkspace) {
+    return new Ok({ flow: "joined", workspace });
+  } else {
     return new Err(
       new AuthFlowError(
         "invalid_domain",
         "The domain attached to your email address is not authorized to join this workspace."
       )
     );
-  } else {
-    // Redirect the user to their existing workspace if they are not allowed to join the target
-    // workspace.
-    return new Ok({ flow: null, workspace: null });
   }
 }
