@@ -211,6 +211,12 @@ type ButtonAsButtonProps = ButtonBaseProps &
     shallow?: never;
   };
 
+export type MiniButtonAsButtonProps = ButtonAsButtonProps & {
+  size: "mini";
+  icon: React.ComponentType;
+  label?: never;
+};
+
 type ButtonAsAnchorLinkProps = ButtonBaseProps &
   Omit<LinkWrapperProps, "children"> & {
     href: string;
@@ -222,7 +228,10 @@ type ButtonAsAnchorLinkProps = ButtonBaseProps &
     tabIndex?: never;
   };
 
-export type ButtonProps = ButtonAsButtonProps | ButtonAsAnchorLinkProps;
+export type ButtonProps =
+  | ButtonAsButtonProps
+  | ButtonAsAnchorLinkProps
+  | MiniButtonAsButtonProps;
 
 function isAnchorProps(props: ButtonProps): props is ButtonAsAnchorLinkProps {
   return typeof props.href === "string" && props.href.length > 0;
