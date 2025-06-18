@@ -205,7 +205,7 @@ async function handler(
     return;
   }
 
-  res.redirect(`/w/${u.workspaces[0].sId}`);
+  res.redirect(`/w/${workspaceId ? workspaceId : u.workspaces[0].sId}`);
 
   return;
 }
