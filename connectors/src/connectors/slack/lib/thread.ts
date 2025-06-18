@@ -16,11 +16,13 @@ export async function getRepliesFromThread({
   slackClient,
   channelId,
   threadTs,
+  useCase,
 }: {
   connectorId: ModelId;
   slackClient: WebClient;
   channelId: string;
   threadTs: string;
+  useCase: "batch_sync" | "incremental_sync" | "bot";
 }) {
   let allMessages: MessageElement[] = [];
 
@@ -34,6 +36,7 @@ export async function getRepliesFromThread({
       method: "conversations.replies",
       channelId,
       limit: 200,
+      useCase,
     });
     const replies: ConversationsRepliesResponse =
       await slackClient.conversations.replies({
