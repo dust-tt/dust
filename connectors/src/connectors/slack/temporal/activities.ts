@@ -13,7 +13,10 @@ import { Context } from "@temporalio/activity";
 import PQueue from "p-queue";
 import { Op, Sequelize } from "sequelize";
 
-import { getBotUserIdMemoized } from "@connectors/connectors/slack/lib/bot_user_helpers";
+import {
+  getBotUserIdMemoized,
+  getUserCacheKey,
+} from "@connectors/connectors/slack/lib/bot_user_helpers";
 import {
   getChannelById,
   getChannels,
@@ -21,7 +24,7 @@ import {
   updateSlackChannelInConnectorsDb,
   updateSlackChannelInCoreDb,
 } from "@connectors/connectors/slack/lib/channels";
-import { isSlackWebAPIPlatformError } from "@connectors/connectors/slack/lib/errors";
+import { formatMessagesForUpsert } from "@connectors/connectors/slack/lib/messages";
 import {
   getSlackClient,
   reportSlackUsage,
@@ -38,12 +41,10 @@ import {
   slackThreadInternalIdFromSlackThreadIdentifier,
 } from "@connectors/connectors/slack/lib/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
-import { cacheGet, cacheSet } from "@connectors/lib/cache";
-import type { CoreAPIDataSourceDocumentSection } from "@connectors/lib/data_sources";
+import { cacheSet } from "@connectors/lib/cache";
 import {
   deleteDataSourceDocument,
   deleteDataSourceFolder,
-  renderDocumentTitleAndContent,
   upsertDataSourceDocument,
   upsertDataSourceFolder,
 } from "@connectors/lib/data_sources";
@@ -60,7 +61,7 @@ import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
 import type { ModelId } from "@connectors/types";
 import type { DataSourceConfig } from "@connectors/types";
-import { INTERNAL_MIME_TYPES, safeSubstring } from "@connectors/types";
+import { INTERNAL_MIME_TYPES } from "@connectors/types";
 
 const logger = mainLogger.child({ provider: "slack" });
 
@@ -556,14 +557,16 @@ async function processAndUpsertNonThreadedMessages({
 
   messages.reverse();
 
-  const content = await formatMessagesForUpsert({
-    dataSourceConfig,
-    channelName,
-    messages,
-    isThread: false,
-    connectorId,
-    slackClient,
-  });
+  const content = await withSlackErrorHandling(() =>
+    formatMessagesForUpsert({
+      dataSourceConfig,
+      channelName,
+      messages,
+      isThread: false,
+      connectorId,
+      slackClient,
+    })
+  );
 
   const startDate = new Date(weekStartTsMs);
   const endDate = new Date(weekEndTsMs);
@@ -838,14 +841,16 @@ export async function syncThread(
     return;
   }
 
-  const content = await formatMessagesForUpsert({
-    dataSourceConfig,
-    channelName,
-    messages: allMessages,
-    isThread: true,
-    connectorId,
-    slackClient,
-  });
+  const content = await withSlackErrorHandling(() =>
+    formatMessagesForUpsert({
+      dataSourceConfig,
+      channelName,
+      messages: allMessages,
+      isThread: true,
+      connectorId,
+      slackClient,
+    })
+  );
 
   const firstMessage = allMessages[0];
   let sourceUrl: string | undefined = undefined;
@@ -953,110 +958,6 @@ export async function syncThread(
   });
 }
 
-async function processMessageForMentions(
-  message: string,
-  connectorId: ModelId,
-  slackClient: WebClient
-): Promise<string> {
-  const matches = message.match(/<@[A-Z-0-9]+>/g);
-  if (!matches) {
-    return message;
-  }
-  for (const m of matches) {
-    const userId = m.replace(/<|@|>/g, "");
-    const userName = await getUserName(userId, connectorId, slackClient);
-    if (!userName) {
-      continue;
-    }
-
-    message = message.replace(m, `@${userName}`);
-
-    continue;
-  }
-
-  return message;
-}
-
-export async function formatMessagesForUpsert({
-  dataSourceConfig,
-  channelName,
-  messages,
-  isThread,
-  connectorId,
-  slackClient,
-}: {
-  dataSourceConfig: DataSourceConfig;
-  channelName: string;
-  messages: MessageElement[];
-  isThread: boolean;
-  connectorId: ModelId;
-  slackClient: WebClient;
-}): Promise<CoreAPIDataSourceDocumentSection> {
-  const data = await Promise.all(
-    messages.map(async (message) => {
-      const text = await processMessageForMentions(
-        message.text as string,
-        connectorId,
-        slackClient
-      );
-
-      const userName = await getUserName(
-        message.user as string,
-        connectorId,
-        slackClient
-      );
-      const messageDate = new Date(parseInt(message.ts as string, 10) * 1000);
-      const messageDateStr = formatDateForUpsert(messageDate);
-
-      const filesInfo = message.files
-        ? "\n" +
-          message.files
-            .map((file) => {
-              return `Attached file : ${file.name} ( ${file.mimetype} )`;
-            })
-            .join("\n")
-        : "";
-
-      return {
-        messageDate,
-        dateStr: messageDateStr,
-        userName,
-        text: text + filesInfo,
-        content: text + "\n",
-        sections: [],
-      };
-    })
-  );
-
-  const first = data.at(0);
-  const last = data.at(-1);
-  if (!last || !first) {
-    throw new Error("Cannot format empty list of messages");
-  }
-
-  const title = isThread
-    ? `Thread in #${channelName}: ${
-        safeSubstring(first.text.replace(/\s+/g, " ").trim(), 0, 128) + "..."
-      }`
-    : `Messages in #${channelName}`;
-
-  return renderDocumentTitleAndContent({
-    dataSourceConfig,
-    title,
-    createdAt: first.messageDate,
-    updatedAt: last.messageDate,
-    content: {
-      prefix: null,
-      content: null,
-      sections: data.map((d) => ({
-        prefix: `>> @${d.userName} [${d.dateStr}]:\n`,
-        content: d.text + "\n",
-        sections: [],
-      })),
-    },
-  });
-}
-
 export async function fetchUsers(connectorId: ModelId) {
   let cursor: string | undefined;
   const slackClient = await getSlackClient(connectorId, {
@@ -1117,64 +1018,6 @@ export async function getChannel(
   });
 
   return getChannelById(slackClient, connectorId, channelId);
-}
-
-export async function getUserName(
-  slackUserId: string,
-  connectorId: ModelId,
-  slackClient: WebClient
-): Promise<string | undefined> {
-  const fromCache = await cacheGet(getUserCacheKey(slackUserId, connectorId));
-  if (fromCache) {
-    return fromCache;
-  }
-
-  try {
-    reportSlackUsage({
-      connectorId,
-      method: "users.info",
-    });
-    const info = await withSlackErrorHandling(() =>
-      slackClient.users.info({ user: slackUserId })
-    );
-
-    if (info && info.user) {
-      const displayName = info.user.profile?.display_name;
-      const realName = info.user.profile?.real_name;
-      const userName = displayName || realName || info.user.name;
-
-      if (userName) {
-        await cacheSet(getUserCacheKey(slackUserId, connectorId), userName);
-        return info.user.name;
-      }
-    }
-
-    return undefined;
-  } catch (err) {
-    if (isSlackWebAPIPlatformError(err)) {
-      if (err.data.error === "user_not_found") {
-        logger.info({ connectorId, slackUserId }, "Slack user not found.");
-
-        return undefined;
-      }
-    }
-
-    throw err;
-  }
-}
-
-function getUserCacheKey(userId: string, connectorId: ModelId) {
-  return `slack-userid2name-${connectorId}-${userId}`;
-}
-
-export function formatDateForUpsert(date: Date) {
-  const year = date.getFullYear();
-  const month = (date.getMonth() + 1).toString().padStart(2, "0");
-  const day = date.getDate().toString().padStart(2, "0");
-  const hours = date.getHours().toString().padStart(2, "0");
-  const minutes = date.getMinutes().toString().padStart(2, "0");
-
-  return `${year}${month}${day} ${hours}:${minutes}`;
 }
 
 function getTagsForPage(
