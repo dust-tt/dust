@@ -1245,7 +1245,8 @@ export async function firecrawlCrawlPage(
   }
 
   if (!connector?.firstSuccessfulSyncTime) {
-    // If this is the first sync we report the progress.
+    // If this is the first sync we report the progress. This is a bit racy but that's not a big
+    // problem as this is simple reporting of initial progress.
     const pagesCount = await WebCrawlerPage.count({
       where: {
         connectorId,
