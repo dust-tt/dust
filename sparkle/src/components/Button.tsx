@@ -206,7 +206,6 @@ export type ButtonAsButtonProps = ButtonBaseProps &
   React.ButtonHTMLAttributes<HTMLButtonElement> & {
     href?: never;
     target?: never;
-    rel?: never;
     replace?: never;
     shallow?: never;
   };
