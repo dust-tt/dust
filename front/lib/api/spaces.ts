@@ -2,6 +2,9 @@ import assert from "assert";
 import { uniq } from "lodash";
 
 import { hardDeleteApp } from "@app/lib/api/apps";
+import { updateAgentRequestedGroupIds } from "@app/lib/api/assistant/configuration";
+import config from "@app/lib/api/config";
+import { getContentNodeFromCoreNode } from "@app/lib/api/content_nodes";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { AppResource } from "@app/lib/resources/app_resource";
@@ -20,7 +23,6 @@ import type { DataSourceWithAgentsUsageType, Result } from "@app/types";
 import { Err, Ok, removeNulls } from "@app/types";
 
 import { getWorkspaceAdministrationVersionLock } from "./workspace";
-import { updateAgentRequestedGroupIds } from "@app/lib/api/assistant/configuration";
 
 export async function softDeleteSpaceAndLaunchScrubWorkflow(
   auth: Authenticator,
