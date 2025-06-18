@@ -10,7 +10,7 @@ import logger from "@connectors/logger/logger";
 
 const REPO_SIZE_LIMIT = 10 * 1024 * 1024; // 10GB in KB
 
-type RepositoryInfo = Pick<
+export type RepositoryInfo = Pick<
   Awaited<ReturnType<Octokit["rest"]["repos"]["get"]>>["data"],
   "default_branch" | "size" | "owner" | "name"
 >;

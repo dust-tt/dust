@@ -9,6 +9,7 @@ import { GCSRepositoryManager } from "@connectors/connectors/github/lib/code/gcs
 import { extractGitHubTarballToGCS } from "@connectors/connectors/github/lib/code/tar_extraction";
 import { RepositoryAccessBlockedError } from "@connectors/connectors/github/lib/errors";
 import { getOctokit } from "@connectors/connectors/github/lib/github_api";
+import type { RepositoryInfo } from "@connectors/connectors/github/lib/github_code";
 import {
   getRepoInfo,
   isRepoTooLarge,
@@ -51,6 +52,7 @@ export async function githubExtractToGcsActivity({
   repoId: number;
 }): Promise<{
   gcsBasePath: string;
+  repoInfo: RepositoryInfo;
 } | null> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
@@ -146,6 +148,7 @@ export async function githubExtractToGcsActivity({
 
   return {
     gcsBasePath,
+    repoInfo,
   };
 }
 

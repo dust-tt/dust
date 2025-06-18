@@ -610,7 +610,7 @@ export async function githubCodeSyncStatelessWorkflow({
         repoName,
         directories: directoryChunk,
         dataSourceConfig,
-        defaultBranch: "main",
+        defaultBranch: extractResult.repoInfo.default_branch,
         updatedDirectoryIds: allUpdatedDirectoryIds,
       });
     }
