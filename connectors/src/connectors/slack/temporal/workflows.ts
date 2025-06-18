@@ -151,7 +151,10 @@ export async function workspaceFullSync(
   });
 
   await getSlackActivities().saveSuccessSyncActivity(connectorId);
-  console.log(`Workspace sync done for connector ${connectorId}`);
+  logger.info(
+    { connectorId, fromTs },
+    `Workspace sync done for connector ${connectorId}`
+  );
 }
 
 /**
@@ -243,7 +246,15 @@ export async function syncOneThreadDebounced(
       throw new Error(`Could not find channel name for channel ${channelId}`);
     }
 
-    console.log(`Talked to slack after debouncing ${debounceCount} time(s)`);
+    logger.info(
+      {
+        connectorId,
+        channelId,
+        threadTs,
+        debounceCount,
+      },
+      `Talked to slack after debouncing ${debounceCount} time(s)`
+    );
     await getSlackActivities().syncChannelMetadata(
       connectorId,
       channelId,
@@ -300,10 +311,26 @@ export async function syncOneMessageDebounced(
     await sleep(10000);
     if (signaled) {
       debounceCount++;
-      console.log("Debouncing, sleep 10 secs");
+      logger.info(
+        {
+          connectorId,
+          channelId,
+          threadTs,
+          debounceCount,
+        },
+        "Debouncing, sleep 10 secs"
+      );
       continue;
     }
-    console.log(`Talked to slack after debouncing ${debounceCount} time(s)`);
+    logger.info(
+      {
+        connectorId,
+        channelId,
+        threadTs,
+        debounceCount,
+      },
+      `Talked to slack after debouncing ${debounceCount} time(s)`
+    );
 
     const channel = await getSlackActivities().getChannel(
       connectorId,
