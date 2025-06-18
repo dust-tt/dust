@@ -3,7 +3,6 @@ import { assertNever, Err, Ok } from "@dust-tt/client";
 import { hash as blake3 } from "blake3";
 import { promises as fs } from "fs";
 import PQueue from "p-queue";
-import { Op } from "sequelize";
 
 import { formatCodeContentForUpsert } from "@connectors/connectors/github/lib/code/file_operations";
 import { garbageCollectCodeSync } from "@connectors/connectors/github/lib/code/garbage_collect";

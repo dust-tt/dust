@@ -86,9 +86,7 @@ export async function upsertCodeFile({
       { repoId, fileName, documentId, gcsPath, err: e },
       "[Github] Error reading file from GCS"
     );
-    if (e instanceof Error && "code" in e && e.code === "ENOENT") {
-      return { updatedDirectoryIds: new Set() };
-    }
+
     throw e;
   }
 

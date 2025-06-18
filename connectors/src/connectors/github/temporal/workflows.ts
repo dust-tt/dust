@@ -431,6 +431,7 @@ export async function githubRepoSyncWorkflow({
         {
           connectorId,
           dataSourceConfig,
+          forceResync: forceCodeResync,
           repoId,
           repoLogin,
           repoName,
@@ -520,12 +521,14 @@ export async function githubCodeSyncStatelessWorkflow({
   repoId,
   repoLogin,
   repoName,
+  forceResync = false,
 }: {
   connectorId: ModelId;
   dataSourceConfig: DataSourceConfig;
   repoId: number;
   repoLogin: string;
   repoName: string;
+  forceResync?: boolean;
 }) {
   const codeSyncStartedAtMs = Date.now();
 
@@ -580,7 +583,7 @@ export async function githubCodeSyncStatelessWorkflow({
           gcsBasePath: extractResult.gcsBasePath,
           files: fileChunk,
           dataSourceConfig,
-          forceResync: false,
+          forceResync,
           isBatchSync: true,
         })
       );
