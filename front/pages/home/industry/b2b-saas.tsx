@@ -172,7 +172,7 @@ const PainPointsSection = () => (
   <div className="py-12 md:py-16">
     <div className="container mx-auto px-6">
       <H2 className="mb-8 text-left text-3xl sm:text-4xl md:mb-12 md:text-5xl lg:text-6xl">
-        3 Pain Points Dust Solves
+        Transform how you work
       </H2>
       <div className="grid gap-6 sm:gap-8 md:grid-cols-3">
         {PAIN_POINTS.map((point, index) => (
