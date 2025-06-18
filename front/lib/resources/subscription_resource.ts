@@ -35,6 +35,7 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+import { cacheWithRedis, getRedisCacheClient } from "@app/lib/utils/cache";
 import { getWorkspaceFirstAdmin } from "@app/lib/workspace";
 import { checkWorkspaceActivity } from "@app/lib/workspace_usage";
 import logger from "@app/logger/logger";
@@ -51,8 +52,6 @@ import type {
   WorkspaceType,
 } from "@app/types";
 import { Ok, sendUserOperationMessage } from "@app/types";
-
-import { cacheWithRedis } from "../utils/cache";
 
 const DEFAULT_PLAN_WHEN_NO_SUBSCRIPTION: PlanAttributes = FREE_NO_PLAN_DATA;
 const FREE_NO_PLAN_SUBSCRIPTION_ID = -1;
@@ -94,7 +93,12 @@ export class SubscriptionResource extends BaseResource<Subscription> {
   }
 
   static async fetchActiveByWorkspaceCache(workspace: LightWorkspaceType) {
-    const res = await this.fetchActiveByWorkspacesCache([workspace]);
+    const res = await cacheWithRedis(
+      this.fetchActiveByWorkspaces,
+      () => workspace.sId,
+      3_600_000 // 1h
+    )([workspace]);
+
     return res[workspace.sId];
   }
 
@@ -171,14 +175,6 @@ export class SubscriptionResource extends BaseResource<Subscription> {
     }
 
     return subscriptionResourceByWorkspaceSid;
-  }
-
-  static async fetchActiveByWorkspacesCache(workspaces: LightWorkspaceType[]) {
-    return cacheWithRedis(
-      this.fetchActiveByWorkspaces,
-      (workspaces) => workspaces.map((w) => w.sId).join("-"),
-      3_600_000 // 1h
-    )(workspaces);
   }
 
   static async fetchByAuthenticator(
@@ -768,6 +764,12 @@ export class SubscriptionResource extends BaseResource<Subscription> {
         });
       }
     }
+
+    const redisCacheClient = await getRedisCacheClient();
+    // Invalidate fetch cache
+    await redisCacheClient.del(
+      `cacheWithRedis-fetchActiveByWorkspaces-${workspace.sId}`
+    );
 
     return activeSubscription;
   }
