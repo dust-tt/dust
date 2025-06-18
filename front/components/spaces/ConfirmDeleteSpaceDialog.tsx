@@ -12,7 +12,6 @@ import {
 
 import { getSpaceName } from "@app/lib/spaces";
 import type { SpaceType } from "@app/types";
-import { ToString } from "yargs";
 
 interface ConfirmDeleteSpaceDialogProps {
   space: SpaceType;
