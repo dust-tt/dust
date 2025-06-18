@@ -157,7 +157,7 @@ export async function gongSyncTranscriptsActivity({
           { ...loggerArgs, callId: transcript.callId },
           "[Gong] Transcript metadata not found."
         );
-        return { nextPageCursor: null };
+        return;
       }
 
       const { parties = [] } = transcriptMetadata;
