@@ -1,7 +1,6 @@
 import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
-import { useMemo } from "react";
 
 import {
   Counter,
@@ -326,19 +325,6 @@ const Button = React.forwardRef<
       </>
     );
 
-    const wrappedContent = tooltip ? (
-      <TooltipProvider>
-        <TooltipRoot>
-          <TooltipTrigger asChild>{content}</TooltipTrigger>
-          <TooltipPortal>
-            <TooltipContent>{tooltip}</TooltipContent>
-          </TooltipPortal>
-        </TooltipRoot>
-      </TooltipProvider>
-    ) : (
-      content
-    );
-
     if (isAnchorProps(props)) {
       const {
         href,
@@ -350,6 +336,25 @@ const Button = React.forwardRef<
         tabIndex,
         disabled,
       } = props;
+
+      const innerContent = (
+        <span
+          className={cn(
+            buttonVariants({ variant, size, className }),
+            isPulsing && "s-animate-pulse"
+          )}
+          tabIndex={tabIndex}
+          style={
+            {
+              "--pulse-color": "#93C5FD",
+              "--duration": "1.5s",
+            } as React.CSSProperties
+          }
+        >
+          {content}
+        </span>
+      );
+
       return (
         <LinkWrapper
           ref={ref as React.Ref<HTMLAnchorElement>}
@@ -361,31 +366,17 @@ const Button = React.forwardRef<
           prefetch={prefetch}
           disabled={disabled}
         >
-          <span
-            className={cn(
-              buttonVariants({ variant, size, className }),
-              isPulsing && "s-animate-pulse"
-            )}
-            tabIndex={tabIndex}
-            style={
-              {
-                "--pulse-color": "#93C5FD",
-                "--duration": "1.5s",
-              } as React.CSSProperties
-            }
-          >
-            {tooltip ? (
-              <ContentWithTooltip tooltip={tooltip}>
-                {content}
-              </ContentWithTooltip>
-            ) : (
-              content
-            )}
-          </span>
+          {tooltip ? (
+            <ContentWithTooltip tooltip={tooltip}>
+              {innerContent}
+            </ContentWithTooltip>
+          ) : (
+            innerContent
+          )}
         </LinkWrapper>
       );
     } else {
-      return (
+      const innerButton = (
         <MetaButton
           ref={ref as React.Ref<HTMLButtonElement>}
           size={size}
@@ -401,8 +392,14 @@ const Button = React.forwardRef<
           }
           {...props}
         >
-          {wrappedContent}
+          {content}
         </MetaButton>
+      );
+
+      return tooltip ? (
+        <ContentWithTooltip tooltip={tooltip}>{innerButton}</ContentWithTooltip>
+      ) : (
+        innerButton
       );
     }
   }

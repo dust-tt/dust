@@ -37,6 +37,8 @@ export type SparkleContextType = {
   };
 };
 
+// To mimic disabled button behavior, we disable pointer events
+// if disabled is true.
 export const aLink: SparkleContextLinkType = React.forwardRef<
   HTMLAnchorElement,
   SparkleLinkProps
@@ -61,10 +63,7 @@ export const aLink: SparkleContextLinkType = React.forwardRef<
       <a
         ref={ref}
         href={hrefAsString}
-        className={cn(
-          className,
-          disabled && "s-pointer-events-none s-cursor-not-allowed"
-        )}
+        className={cn(className, disabled && "s-pointer-events-none")}
         aria-current={ariaCurrent}
         aria-label={ariaLabel}
         onClick={onClick}

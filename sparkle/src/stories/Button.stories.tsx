@@ -147,10 +147,23 @@ const ButtonBySize = ({
 
 export const Gallery: Story = {
   render: () => (
-    <div className="s-flex s-flex-col s-gap-4">
-      <ButtonBySize size="xs" />
-      <ButtonBySize size="sm" />
-      <ButtonBySize size="md" />
+    <div className="s-flex s-flex-col s-gap-6">
+      <div className="s-flex s-flex-col s-gap-4">
+        <ButtonBySize size="xs" />
+        <ButtonBySize size="sm" />
+        <ButtonBySize size="md" />
+      </div>
+      <Separator />
+      <h3 className="s-text-primary dark:s-text-primary-50">With tooltip</h3>
+      <div className="s-flex s-gap-4">
+        <Button label="Button with tooltip" tooltip="Hello" />
+        <Button
+          label="Button as link with tooltip"
+          href="https://dust.tt"
+          target="_blank"
+          tooltip="Hello"
+        />
+      </div>
     </div>
   ),
 };
