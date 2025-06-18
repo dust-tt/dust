@@ -114,15 +114,17 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
       }
     }
 
-    const agentNames = uniq(usages.map((u) => u.agentNames).flat());
-    for (const agentName of agentNames) {
-      const res = await updateAgentRequestedGroupIds(
-        auth,
-        { agentName: agentName, newGroupIds: [] },
-        { transaction: t }
-      );
-      if (res.isErr()) {
-        throw res.error;
+    if (options?.force) {
+      const agentNames = uniq(usages.map((u) => u.agentNames).flat());
+      for (const agentName of agentNames) {
+        const res = await updateAgentRequestedGroupIds(
+          auth,
+          { agentName: agentName, newGroupIds: [] },
+          { transaction: t }
+        );
+        if (res.isErr()) {
+          throw res.error;
+        }
       }
     }
 
