@@ -1,6 +1,11 @@
 import type { Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
-import type { Channel } from "@slack/web-api/dist/response/ConversationsListResponse";
+import type { WebClient } from "@slack/web-api";
+import type {
+  Channel,
+  ConversationsListResponse,
+} from "@slack/web-api/dist/response/ConversationsListResponse";
+import { Op } from "sequelize";
 
 import { isSlackWebAPIPlatformError } from "@connectors/connectors/slack/lib/errors";
 import {
@@ -9,13 +14,14 @@ import {
 } from "@connectors/connectors/slack/lib/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
+import { ProviderWorkflowError } from "@connectors/lib/error";
 import { SlackChannel } from "@connectors/lib/models/slack";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
 import type { ConnectorPermission } from "@connectors/types";
 import type { ModelId } from "@connectors/types";
-import { INTERNAL_MIME_TYPES } from "@connectors/types";
+import { cacheWithRedis, INTERNAL_MIME_TYPES } from "@connectors/types";
 
 import { getSlackClient, reportSlackUsage } from "./slack_client";
 
@@ -243,4 +249,165 @@ export async function joinChannel(
 
     return new Err(new Error(`Can't join the channel`));
   }
+}
+
+/**
+ * Slack API rate limit TLDR:
+ * Slack has different rate limits for different endpoints.
+ * Broadly, you'll encounter limits like these, applied on a
+ * "per API method per app per workspace" basis.
+ * Tier 1: ~1 request per minute
+ * Tier 2: ~20 request per minute (conversations.history, conversation.list)
+ * Tier 3: ~50 request per minute (conversations.replies)
+ */
+
+/**
+ *  Call cached to avoid rate limits
+ *  ON RATE LIMIT ERRORS PERTAINING TO THIS FUNCTION:
+ * - the next step will be to paginate (overkill at time of writing)
+ * - see issue https://github.com/dust-tt/tasks/issues/1655
+ * - and related PR https://github.com/dust-tt/dust/pull/8709
+ * @param connectorId
+ * @param joinedOnly
+ */
+export const getChannels = cacheWithRedis(
+  _getChannelsUncached,
+  (slackClient, connectorId, joinedOnly) =>
+    `slack-channels-${connectorId}-${joinedOnly}`,
+  5 * 60 * 1000
+);
+
+async function _getChannelsUncached(
+  slackClient: WebClient,
+  connectorId: ModelId,
+  joinedOnly: boolean
+): Promise<Channel[]> {
+  return Promise.all([
+    _getTypedChannelsUncached(
+      slackClient,
+      connectorId,
+      joinedOnly,
+      "public_channel"
+    ),
+    _getTypedChannelsUncached(
+      slackClient,
+      connectorId,
+      joinedOnly,
+      "private_channel"
+    ),
+  ]).then(([publicChannels, privateChannels]) => [
+    ...publicChannels,
+    ...privateChannels,
+  ]);
+}
+
+async function _getTypedChannelsUncached(
+  slackClient: WebClient,
+  connectorId: ModelId,
+  joinedOnly: boolean,
+  types: "public_channel" | "private_channel"
+): Promise<Channel[]> {
+  const allChannels = [];
+  let nextCursor: string | undefined = undefined;
+  let nbCalls = 0;
+  do {
+    reportSlackUsage({
+      connectorId,
+      method: "conversations.list",
+      useCase: "batch_sync",
+    });
+    const c: ConversationsListResponse = await slackClient.conversations.list({
+      types,
+      // despite the limit being 1000, slack may return fewer channels
+      // we observed ~50 channels per call at times see https://github.com/dust-tt/tasks/issues/1655
+      limit: 999,
+      cursor: nextCursor,
+      exclude_archived: true,
+    });
+    nbCalls++;
+
+    logger.info(
+      {
+        connectorId,
+        returnedChannels: allChannels.length,
+        currentCursor: nextCursor,
+        nbCalls,
+      },
+      `[Slack] conversations.list called for getChannels (${nbCalls} calls)`
+    );
+
+    nextCursor = c?.response_metadata?.next_cursor;
+
+    if (c.error) {
+      throw new Error(c.error);
+    }
+    if (c.channels === undefined) {
+      throw new Error(
+        "The channels list was undefined." +
+          c?.response_metadata?.next_cursor +
+          ""
+      );
+    }
+    for (const channel of c.channels) {
+      if (channel && channel.id) {
+        if (!joinedOnly || channel.is_member) {
+          allChannels.push(channel);
+        }
+      }
+    }
+  } while (nextCursor);
+
+  return allChannels;
+}
+
+export async function getChannelsToSync(
+  slackClient: WebClient,
+  connectorId: number
+) {
+  const [remoteChannels, localChannels] = await Promise.all([
+    getChannels(slackClient, connectorId, true),
+    SlackChannel.findAll({
+      where: {
+        connectorId,
+        permission: {
+          [Op.or]: ["read", "read_write"],
+        },
+      },
+    }),
+  ]);
+  const readAllowedChannels = new Set(
+    localChannels.map((c) => c.slackChannelId)
+  );
+
+  return remoteChannels.filter((c) => c.id && readAllowedChannels.has(c.id));
+}
+
+export async function getChannel(
+  slackClient: WebClient,
+  connectorId: ModelId,
+  channelId: string
+): Promise<Channel> {
+  reportSlackUsage({
+    connectorId,
+    method: "conversations.info",
+    channelId,
+  });
+  const res = await slackClient.conversations.info({ channel: channelId });
+
+  // Despite the typing, in practice `conversations.info` can be undefined at times.
+  if (!res) {
+    throw new ProviderWorkflowError(
+      "slack",
+      "Received unexpected undefined replies from Slack API in getChannel (generally transient)",
+      "transient_upstream_activity_error"
+    );
+  }
+  if (res.error) {
+    throw new Error(res.error);
+  }
+  if (!res.channel) {
+    throw new Error(`No channel found for id ${channelId}`);
+  }
+
+  return res.channel;
 }

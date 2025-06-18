@@ -1,12 +1,13 @@
 import {
+  getChannelById,
   joinChannel,
   updateSlackChannelInConnectorsDb,
 } from "@connectors/connectors/slack/lib/channels";
+import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
 import {
   getSlackChannelSourceUrl,
   slackChannelInternalIdFromSlackChannelId,
 } from "@connectors/connectors/slack/lib/utils";
-import { getChannel } from "@connectors/connectors/slack/temporal/activities";
 import {
   launchSlackGarbageCollectWorkflow,
   launchSlackSyncOneThreadWorkflow,
@@ -303,7 +304,13 @@ export const slack = async ({
         throw new Error(`Could not find connector for workspace ${args.wId}`);
       }
 
-      const remoteChannel = await getChannel(connector.id, args.channelId);
+      const slackClient = await getSlackClient(connector.id);
+
+      const remoteChannel = await getChannelById(
+        slackClient,
+        connector.id,
+        args.channelId
+      );
       if (!remoteChannel.name) {
         throw new Error(
           `Could not find channel name for channel ${args.channelId}`
@@ -364,7 +371,13 @@ export const slack = async ({
         throw new Error(`Could not find connector for workspace ${args.wId}`);
       }
 
-      const remoteChannel = await getChannel(connector.id, args.channelId);
+      const slackClient = await getSlackClient(connector.id);
+
+      const remoteChannel = await getChannelById(
+        slackClient,
+        connector.id,
+        args.channelId
+      );
       if (!remoteChannel.name) {
         throw new Error(
           `Could not find channel name for channel ${args.channelId}`
@@ -410,7 +423,13 @@ export const slack = async ({
         throw new Error(`Could not find connector for workspace ${args.wId}`);
       }
 
-      const remoteChannel = await getChannel(connector.id, args.channelId);
+      const slackClient = await getSlackClient(connector.id);
+
+      const remoteChannel = await getChannelById(
+        slackClient,
+        connector.id,
+        args.channelId
+      );
       if (!remoteChannel.name) {
         throw new Error(
           `Could not find channel name for channel ${args.channelId}`

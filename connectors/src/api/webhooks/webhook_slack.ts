@@ -8,6 +8,7 @@ import {
   onChannelCreation,
 } from "@connectors/api/webhooks/slack/created_channel";
 import { botAnswerMessage } from "@connectors/connectors/slack/bot";
+import { getBotUserIdMemoized } from "@connectors/connectors/slack/lib/bot_user_helpers";
 import { updateSlackChannelInConnectorsDb } from "@connectors/connectors/slack/lib/channels";
 import {
   getSlackClient,
@@ -17,7 +18,6 @@ import {
   getSlackChannelSourceUrl,
   slackChannelInternalIdFromSlackChannelId,
 } from "@connectors/connectors/slack/lib/utils";
-import { getBotUserIdMemoized } from "@connectors/connectors/slack/temporal/activities";
 import {
   launchSlackGarbageCollectWorkflow,
   launchSlackSyncOneMessageWorkflow,
@@ -284,7 +284,13 @@ const _webhookSlackAPIHandler = async (
               });
             }
 
+            const slackClient = await getSlackClient(slackConfig.connectorId, {
+              // Do not reject rate limited calls in webhook handler.
+              rejectRateLimitedCalls: false,
+            });
+
             const myUserId = await getBotUserIdMemoized(
+              slackClient,
               slackConfig.connectorId
             );
             if (event.user === myUserId) {
@@ -608,17 +614,21 @@ const _webhookSlackAPIHandler = async (
               status_code: 404,
             });
           }
-          const myUserId = await getBotUserIdMemoized(slackConfig.connectorId);
-
-          // if the bot is not the one joining the channel, ignore
-          if (event.user !== myUserId) {
-            return res.status(200).send();
-          }
 
           const slackClient = await getSlackClient(slackConfig.connectorId, {
             // Do not reject rate limited calls in webhook handler.
             rejectRateLimitedCalls: false,
           });
+
+          const myUserId = await getBotUserIdMemoized(
+            slackClient,
+            slackConfig.connectorId
+          );
+
+          // if the bot is not the one joining the channel, ignore
+          if (event.user !== myUserId) {
+            return res.status(200).send();
+          }
 
           reportSlackUsage({
             connectorId: slackConfig.connectorId,
