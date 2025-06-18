@@ -2,6 +2,8 @@ import React, { ComponentType, MouseEvent, ReactNode } from "react";
 import type { UrlObject } from "url";
 import url from "url";
 
+import { cn } from "./lib/utils";
+
 type SparkleLinkProps = {
   href: string | UrlObject;
   className?: string;
@@ -22,6 +24,7 @@ type SparkleLinkProps = {
   target?: string;
   rel?: string;
   prefetch?: boolean;
+  disabled?: boolean;
 };
 
 export type SparkleContextLinkType = ComponentType<
@@ -39,7 +42,17 @@ export const aLink: SparkleContextLinkType = React.forwardRef<
   SparkleLinkProps
 >(
   (
-    { href, className, ariaCurrent, ariaLabel, onClick, children, target, rel },
+    {
+      href,
+      className,
+      ariaCurrent,
+      ariaLabel,
+      onClick,
+      children,
+      target,
+      rel,
+      disabled,
+    },
     ref
   ) => {
     const hrefAsString = typeof href !== "string" ? url.format(href) : href;
@@ -48,7 +61,10 @@ export const aLink: SparkleContextLinkType = React.forwardRef<
       <a
         ref={ref}
         href={hrefAsString}
-        className={className}
+        className={cn(
+          className,
+          disabled && "s-pointer-events-none s-cursor-not-allowed"
+        )}
         aria-current={ariaCurrent}
         aria-label={ariaLabel}
         onClick={onClick}
@@ -64,10 +80,9 @@ export const aLink: SparkleContextLinkType = React.forwardRef<
 export const noHrefLink: SparkleContextLinkType = React.forwardRef<
   HTMLAnchorElement,
   SparkleLinkProps
->(({ className, ariaCurrent, ariaLabel, onClick, children }, ref) => (
+>(({ ariaCurrent, ariaLabel, onClick, children }, ref) => (
   <a
     ref={ref}
-    className={className}
     aria-current={ariaCurrent}
     aria-label={ariaLabel}
     onClick={onClick}

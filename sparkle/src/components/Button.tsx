@@ -188,31 +188,70 @@ const COUNTER_SIZE_MAP: Record<ButtonSizeType, CounterSizeType> = {
   md: "md",
 };
 
-type CommonButtonProps = Omit<MetaButtonProps, "children"> &
-  Omit<LinkWrapperProps, "children"> & {
-    isSelect?: boolean;
-    isLoading?: boolean;
-    isPulsing?: boolean;
-    tooltip?: string;
-    isCounter?: boolean;
-    counterValue?: string;
+type ButtonBaseProps = {
+  label?: string;
+  icon?: React.ComponentType;
+  isSelect?: boolean;
+  isLoading?: boolean;
+  isPulsing?: boolean;
+  tooltip?: string;
+  isCounter?: boolean;
+  counterValue?: string;
+  variant?: ButtonVariantType;
+  size?: ButtonSizeType;
+  className?: string;
+  "aria-label"?: string;
+};
+
+type ButtonAsButtonProps = ButtonBaseProps &
+  React.ButtonHTMLAttributes<HTMLButtonElement> & {
+    href?: never;
+    target?: never;
+    rel?: never;
+    replace?: never;
+    shallow?: never;
   };
 
-export type MiniButtonProps = CommonButtonProps & {
-  size: "mini";
-  icon: React.ComponentType;
-  label?: never;
+type ButtonAsAnchorLinkProps = ButtonBaseProps &
+  Omit<LinkWrapperProps, "children"> & {
+    href: string;
+    disabled?: boolean;
+    type?: never;
+    onClick?: never;
+    form?: never;
+    autoFocus?: never;
+    tabIndex?: never;
+  };
+
+export type ButtonProps = ButtonAsButtonProps | ButtonAsAnchorLinkProps;
+
+function isAnchorProps(props: ButtonProps): props is ButtonAsAnchorLinkProps {
+  return typeof props.href === "string" && props.href.length > 0;
+}
+
+const ContentWithTooltip = ({
+  children,
+  tooltip,
+}: {
+  children: React.ReactNode;
+  tooltip: string;
+}) => {
+  return (
+    <TooltipProvider>
+      <TooltipRoot>
+        <TooltipTrigger asChild>{children}</TooltipTrigger>
+        <TooltipPortal>
+          <TooltipContent>{tooltip}</TooltipContent>
+        </TooltipPortal>
+      </TooltipRoot>
+    </TooltipProvider>
+  );
 };
 
-export type RegularButtonProps = CommonButtonProps & {
-  size?: Exclude<ButtonSizeType, "mini">;
-  icon?: React.ComponentType;
-  label?: string;
-};
-
-export type ButtonProps = MiniButtonProps | RegularButtonProps;
-
-const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
+const Button = React.forwardRef<
+  HTMLButtonElement | HTMLAnchorElement,
+  ButtonProps
+>(
   (
     {
       label,
@@ -226,11 +265,6 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       isCounter = false,
       counterValue,
       size = "sm",
-      href,
-      target,
-      rel,
-      replace,
-      shallow,
       "aria-label": ariaLabel,
       ...props
     },
@@ -238,17 +272,6 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ) => {
     const iconSize = ICON_SIZE_MAP[size];
     const counterSize = COUNTER_SIZE_MAP[size];
-
-    const renderIcon = (visual: React.ComponentType, extraClass = "") => (
-      <Icon visual={visual} size={iconSize} className={cn(extraClass)} />
-    );
-    const renderChevron = (visual: React.ComponentType, extraClass = "") => (
-      <Icon
-        visual={visual}
-        size={iconSize}
-        className={cn(variant ? chevronVariantMap[variant] : "", extraClass)}
-      />
-    );
 
     const showCounter = isCounter && counterValue != null;
     const showContainer = label || showCounter;
@@ -269,7 +292,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
             />
           </div>
         ) : (
-          icon && renderIcon(icon, "-s-mx-0.5")
+          icon && <Icon visual={icon} size={iconSize} className="-s-mx-0.5" />
         )}
 
         {showContainer && (
@@ -290,69 +313,98 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
             )}
           </div>
         )}
-        {isSelect && renderChevron(ChevronDownIcon, isLoading ? "" : "-s-mr-1")}
+        {isSelect && (
+          <Icon
+            visual={ChevronDownIcon}
+            size={iconSize}
+            className={cn(
+              variant ? chevronVariantMap[variant] : "",
+              isLoading ? "" : "-s-mr-1"
+            )}
+          />
+        )}
       </>
-    );
-
-    const pointerEventProps = useMemo(() => {
-      if (isLoading || props.disabled) {
-        return {
-          onPointerDown: (e: React.PointerEvent<HTMLButtonElement>) => {
-            e.preventDefault();
-            e.stopPropagation();
-          },
-        };
-      }
-      return {};
-    }, [isLoading, props.disabled]);
-
-    const innerButton = (
-      <MetaButton
-        ref={ref}
-        size={size}
-        variant={variant}
-        disabled={isLoading || props.disabled}
-        className={cn(isPulsing && "s-animate-pulse", className)}
-        aria-label={ariaLabel || tooltip || label}
-        style={
-          {
-            "--pulse-color": "#93C5FD",
-            "--duration": "1.5s",
-          } as React.CSSProperties
-        }
-        {...props}
-        {...pointerEventProps}
-      >
-        {content}
-      </MetaButton>
     );
 
     const wrappedContent = tooltip ? (
       <TooltipProvider>
         <TooltipRoot>
-          <TooltipTrigger asChild>{innerButton}</TooltipTrigger>
+          <TooltipTrigger asChild>{content}</TooltipTrigger>
           <TooltipPortal>
             <TooltipContent>{tooltip}</TooltipContent>
           </TooltipPortal>
         </TooltipRoot>
       </TooltipProvider>
     ) : (
-      innerButton
+      content
     );
 
-    return href ? (
-      <LinkWrapper
-        href={href}
-        target={target}
-        rel={rel}
-        replace={replace}
-        shallow={shallow}
-      >
-        {wrappedContent}
-      </LinkWrapper>
-    ) : (
-      wrappedContent
-    );
+    if (isAnchorProps(props)) {
+      const {
+        href,
+        target,
+        rel,
+        replace,
+        shallow,
+        prefetch,
+        tabIndex,
+        disabled,
+      } = props;
+      return (
+        <LinkWrapper
+          ref={ref as React.Ref<HTMLAnchorElement>}
+          href={href}
+          target={target}
+          rel={rel}
+          replace={replace}
+          shallow={shallow}
+          prefetch={prefetch}
+          disabled={disabled}
+        >
+          <span
+            className={cn(
+              buttonVariants({ variant, size, className }),
+              isPulsing && "s-animate-pulse"
+            )}
+            tabIndex={tabIndex}
+            style={
+              {
+                "--pulse-color": "#93C5FD",
+                "--duration": "1.5s",
+              } as React.CSSProperties
+            }
+          >
+            {tooltip ? (
+              <ContentWithTooltip tooltip={tooltip}>
+                {content}
+              </ContentWithTooltip>
+            ) : (
+              content
+            )}
+          </span>
+        </LinkWrapper>
+      );
+    } else {
+      return (
+        <MetaButton
+          ref={ref as React.Ref<HTMLButtonElement>}
+          size={size}
+          variant={variant}
+          disabled={isLoading || props.disabled}
+          className={cn(isPulsing && "s-animate-pulse", className)}
+          aria-label={ariaLabel || tooltip || label}
+          style={
+            {
+              "--pulse-color": "#93C5FD",
+              "--duration": "1.5s",
+            } as React.CSSProperties
+          }
+          {...props}
+        >
+          {wrappedContent}
+        </MetaButton>
+      );
+    }
   }
 );
 

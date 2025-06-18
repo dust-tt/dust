@@ -120,6 +120,13 @@ const ButtonBySize = ({
         label="Button with href"
         href="hello"
       />
+      <Button
+        size={size}
+        variant="primary"
+        label="Button with href and disabled"
+        href="hello"
+        disabled={true}
+      />
     </div>
     <div className="s-flex s-items-center s-gap-4">
       <Button size={size} label="Button" isLoading />
