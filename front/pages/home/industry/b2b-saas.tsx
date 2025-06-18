@@ -1,12 +1,9 @@
-import { Button, Chip, CompanyIcon, RocketIcon } from "@dust-tt/sparkle";
+import { Button, Chip, CompanyIcon } from "@dust-tt/sparkle";
 import Link from "next/link";
 import type { ReactElement } from "react";
 
 import { DemoVideo as BaseDemoVideo } from "@app/components/home/content/Solutions/configs/supportConfig";
-import {
-  CustomerStoriesSection,
-  defaultCustomerStories,
-} from "@app/components/home/content/Solutions/CustomerStoriesSection";
+import { CustomerStoriesSection } from "@app/components/home/content/Solutions/CustomerStoriesSection";
 import { DemoVideoSection } from "@app/components/home/content/Solutions/DemoVideoSection";
 import { Grid, H1, H2, H3, P } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
@@ -23,7 +20,8 @@ export async function getStaticProps() {
 }
 const DemoVideo = {
   ...BaseDemoVideo,
-  sectionTitle: "See Dust in action for B2B SaaS",
+  sectionTitle: "See Dust in motion",
+  videoUrl: "https://fast.wistia.net/embed/iframe/8q80neektv",
 };
 
 const GRID_SECTION_CLASSES = classNames(
@@ -110,7 +108,7 @@ const CustomHeroSection = () => (
                 </div>
                 <div className="flex sm:justify-end">
                   <img
-                    src="/static/landing/logos/color/clay-white.svg"
+                    src="/static/landing/logos/color/clay_white.png"
                     alt="Clay logo"
                     className="h-14 w-auto sm:h-16 lg:h-20"
                   />
@@ -140,25 +138,6 @@ const AIAgentsSection = () => (
           slows you down. Your teams focus on growing your business while
           leveraging everything your organization has already built.
         </P>
-        <div className="mt-4 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
-          <Link href="/home/pricing" shallow={true}>
-            <Button
-              variant="highlight"
-              size="md"
-              label="Get started"
-              icon={RocketIcon}
-              className="w-full max-w-xs sm:w-auto"
-            />
-          </Link>
-          <Link href="/home/contact" shallow={true}>
-            <Button
-              variant="outline"
-              size="md"
-              label="Talk to sales"
-              className="w-full max-w-xs sm:w-auto"
-            />
-          </Link>
-        </div>
       </div>
     </div>
   </div>
@@ -508,7 +487,7 @@ const TestimonialSection = () => (
           </div>
           <div className="flex sm:flex-shrink-0 sm:justify-end">
             <img
-              src="/static/landing/logos/color/clay-white.svg"
+              src="/static/landing/logos/color/clay_white.png"
               alt="Clay logo"
               className="h-16 w-auto sm:h-20"
             />
@@ -575,7 +554,31 @@ export default function B2BSaaS() {
         <div className={GRID_SECTION_CLASSES}>
           <CustomerStoriesSection
             title="Customer stories"
-            stories={defaultCustomerStories}
+            stories={[
+              {
+                title: "How Clay is powering 4x team growth with Dust",
+                content:
+                  "Clay uses Dust AI agents to scale their GTM team 4x while maintaining sales velocity and achieving 100% adoption across their growing team.",
+                href: "https://blog.dust.tt/clay-scaling-gtme-team/",
+                src: "https://blog.dust.tt/content/images/size/w2000/2025/06/clay_dust_agents.jpg",
+              },
+              {
+                title:
+                  "20%+ productivity gains in Sales: Insights from Alan and Payfit",
+                content:
+                  "Leading companies share how Dust agents deliver significant productivity improvements and measurable ROI in sales operations.",
+                href: "https://blog.dust.tt/generative-ai-insights-alan-payfit-leaders/",
+                src: "https://blog.dust.tt/content/images/size/w2000/2025/01/Founder.jpg",
+              },
+              {
+                title:
+                  "50% Time Savings: How Didomi Transformed Privacy Compliance with AI",
+                content:
+                  "Didomi's legal team cuts workload by 50% using Dust's AI assistants for privacy compliance and legal document management.",
+                href: "https://blog.dust.tt/how-thomas-uses-ai-assistants-to-manage-legal-and-data-privacy-at-didomi/",
+                src: "https://blog.dust.tt/content/images/size/w2000/2025/01/dust_didomi.png",
+              },
+            ]}
           />
         </div>
       </Grid>
