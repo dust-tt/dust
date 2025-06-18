@@ -6,7 +6,7 @@ import {
   DropdownMenuItem,
   DropdownMenuSearchbar,
   DropdownMenuTrigger,
-  UserIcon,
+  PlusIcon,
 } from "@dust-tt/sparkle";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -14,7 +14,7 @@ import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { useSearchMembers } from "@app/lib/swr/memberships";
 import type { LightWorkspaceType, UserType } from "@app/types";
 
-interface SearchMembersPopoverProps {
+interface SearchMembersDropdownProps {
   owner: LightWorkspaceType;
   selectedMembers: UserType[];
   onMembersUpdated: (members: UserType[]) => void;
@@ -22,11 +22,11 @@ interface SearchMembersPopoverProps {
 
 const DefaultPagination = { pageIndex: 0, pageSize: 25 };
 
-export function SearchMembersPopover({
+export function SearchMembersDropdown({
   owner,
   selectedMembers,
   onMembersUpdated,
-}: SearchMembersPopoverProps) {
+}: SearchMembersDropdownProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [pagination, setPagination] = useState(DefaultPagination);
   const [allMembers, setAllMembers] = useState<UserType[]>([]);
@@ -56,7 +56,7 @@ export function SearchMembersPopover({
     }
   }, [members, isLoading, pagination.pageIndex]);
 
-  // effect to reset pagination when search term changes
+  // Effect to reset pagination when the search term changes.
   useEffect(() => {
     setPagination(DefaultPagination);
   }, [searchTerm]);
@@ -84,7 +84,7 @@ export function SearchMembersPopover({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button label="Add members" icon={UserIcon} size="sm" />
+        <Button label="Add members" icon={PlusIcon} size="sm" />
       </DropdownMenuTrigger>
       <DropdownMenuContent
         className="w-80"
@@ -107,7 +107,7 @@ export function SearchMembersPopover({
           />
         ))}
         {filteredMembers.length === 0 && !isLoading && (
-          <div className="py-6 text-center text-sm text-muted-foreground">
+          <div className="py-6 text-center text-sm text-muted-foreground dark:text-muted-foreground-night">
             {searchTerm ? "No members found" : "No members available"}
           </div>
         )}
@@ -116,7 +116,7 @@ export function SearchMembersPopover({
           hasMore={hasMore}
           showLoader={isLoading}
           loader={
-            <div className="py-2 text-center text-sm text-muted-foreground">
+            <div className="py-2 text-center text-sm text-muted-foreground dark:text-muted-foreground-night">
               Loading more members...
             </div>
           }

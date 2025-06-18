@@ -2,7 +2,10 @@ import type { Result } from "@dust-tt/client";
 import { DustAPI, Err, Ok } from "@dust-tt/client";
 
 import { joinChannel } from "@connectors/connectors/slack/lib/channels";
-import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
+import {
+  getSlackClient,
+  reportSlackUsage,
+} from "@connectors/connectors/slack/lib/slack_client";
 import {
   getSlackChannelSourceUrl,
   slackChannelInternalIdFromSlackChannelId,
@@ -49,6 +52,12 @@ export async function autoReadChannel(
   const slackClient = await getSlackClient(connectorId, {
     // Do not reject rate limited calls in auto read channel. Mostly calls from webhooks.
     rejectRateLimitedCalls: false,
+  });
+
+  reportSlackUsage({
+    connectorId,
+    method: "conversations.info",
+    channelId: slackChannelId,
   });
   const remoteChannel = await slackClient.conversations.info({
     channel: slackChannelId,

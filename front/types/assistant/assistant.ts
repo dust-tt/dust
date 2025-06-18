@@ -575,6 +575,8 @@ export const O4_MINI_HIGH_REASONING_MODEL_CONFIG: ModelConfigurationType = {
   reasoningEffort: "high",
 };
 
+const ANTHROPIC_TOKEN_COUNT_ADJUSTMENT = 1.25;
+
 export const CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
   modelId: CLAUDE_3_OPUS_2024029_MODEL_ID,
@@ -590,7 +592,7 @@ export const CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   generationTokensCount: 4096,
   supportsVision: true,
   toolUseMetaPrompt: CHAIN_OF_THOUGHT_META_PROMPT,
-  tokenCountAdjustment: 1.15,
+  tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
 };
 
 export const CLAUDE_3_5_SONNET_20240620_DEPRECATED_MODEL_CONFIG: ModelConfigurationType =
@@ -609,7 +611,7 @@ export const CLAUDE_3_5_SONNET_20240620_DEPRECATED_MODEL_CONFIG: ModelConfigurat
     generationTokensCount: 8192,
     supportsVision: true,
     toolUseMetaPrompt: CHAIN_OF_THOUGHT_META_PROMPT,
-    tokenCountAdjustment: 1.15,
+    tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
   };
 
 export const CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
@@ -627,7 +629,7 @@ export const CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   generationTokensCount: 8192,
   supportsVision: true,
   toolUseMetaPrompt: CHAIN_OF_THOUGHT_META_PROMPT,
-  tokenCountAdjustment: 1.15,
+  tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
 };
 export const CLAUDE_3_7_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
@@ -644,7 +646,7 @@ export const CLAUDE_3_7_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   generationTokensCount: 64_000,
   supportsVision: true,
   toolUseMetaPrompt: CHAIN_OF_THOUGHT_META_PROMPT,
-  tokenCountAdjustment: 1.15,
+  tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
 };
 
 export const CLAUDE_4_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
@@ -663,7 +665,7 @@ export const CLAUDE_4_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   generationTokensCount: 32_000,
   supportsVision: true,
   toolUseMetaPrompt: CHAIN_OF_THOUGHT_META_PROMPT,
-  tokenCountAdjustment: 1.15,
+  tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
   featureFlag: "claude_4_opus_feature",
 };
 
@@ -683,7 +685,7 @@ export const CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   generationTokensCount: 64_000,
   supportsVision: true,
   toolUseMetaPrompt: CHAIN_OF_THOUGHT_META_PROMPT,
-  tokenCountAdjustment: 1.15,
+  tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
 };
 export const CLAUDE_3_7_SONNET_REASONING_MODEL_CONFIG: ModelConfigurationType =
   {
@@ -701,7 +703,7 @@ export const CLAUDE_3_7_SONNET_REASONING_MODEL_CONFIG: ModelConfigurationType =
     generationTokensCount: 64_000,
     supportsVision: true,
     toolUseMetaPrompt: CHAIN_OF_THOUGHT_META_PROMPT,
-    tokenCountAdjustment: 1.15,
+    tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
     featureFlag: "claude_3_7_reasoning",
   };
 export const CLAUDE_3_5_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
@@ -718,7 +720,7 @@ export const CLAUDE_3_5_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   isLegacy: false,
   generationTokensCount: 2048,
   supportsVision: false,
-  tokenCountAdjustment: 1.15,
+  tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
 };
 export const CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
@@ -734,7 +736,7 @@ export const CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   isLegacy: false,
   generationTokensCount: 2048,
   supportsVision: true,
-  tokenCountAdjustment: 1.15,
+  tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
 };
 export const CLAUDE_2_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",

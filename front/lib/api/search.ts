@@ -38,29 +38,52 @@ type SearchError = {
   error: APIError;
 };
 
-const BaseSearchBody = t.intersection([
-  t.type({
-    viewType: t.union([
-      t.literal("table"),
-      t.literal("document"),
-      t.literal("all"),
-    ]),
-    spaceIds: t.union([t.array(t.string), t.undefined]),
-    includeDataSources: t.boolean,
-    limit: t.number,
-  }),
-  /**
-   * Search uses the "read" permission by default so admins can't search
-   * spaces they aren't in as users. If allowAdminSpaces is true, the search
-   * will use the "admin" permission instead, allowing admins to search all
-   * spaces they can administrate.
-   *
-   * Used to allow admins to useSpaces on global
-   */
-  t.partial({
-    allowAdminSearch: t.boolean,
-  }),
-]);
+const BaseSearchBody = t.refinement(
+  t.intersection([
+    t.type({
+      viewType: t.union([
+        t.literal("table"),
+        t.literal("document"),
+        t.literal("all"),
+      ]),
+      spaceIds: t.union([t.array(t.string), t.undefined]),
+      includeDataSources: t.boolean,
+      limit: t.number,
+    }),
+    t.type({
+      viewType: t.union([
+        t.literal("table"),
+        t.literal("document"),
+        t.literal("all"),
+      ]),
+      spaceIds: t.union([t.array(t.string), t.undefined]),
+      includeDataSources: t.boolean,
+      limit: t.number,
+    }),
+    t.partial({
+      // Search can be narrowed to specific data source view ids for each space.
+      dataSourceViewIdsBySpaceId: t.record(t.string, t.array(t.string)),
+      /**
+       * Search uses the "read" permission by default so admins can't search
+       * spaces they aren't in as users. If allowAdminSpaces is true, the search
+       * will use the "admin" permission instead, allowing admins to search all
+       * spaces they can administrate.
+       *
+       * Used to allow admins to useSpaces on global
+       */
+      allowAdminSearch: t.boolean,
+    }),
+  ]),
+  ({ spaceIds, dataSourceViewIdsBySpaceId }) => {
+    if (!spaceIds || !dataSourceViewIdsBySpaceId) {
+      return true;
+    }
+    const dsvSpaceIds = Object.keys(dataSourceViewIdsBySpaceId);
+    const spaceIdsSet = new Set(spaceIds);
+
+    return dsvSpaceIds.every((sId) => spaceIdsSet.has(sId));
+  }
+);
 
 const TextSearchBody = t.intersection([
   BaseSearchBody,
@@ -101,6 +124,7 @@ export async function handleSearch(
     nodeIds,
     searchSourceUrls,
     allowAdminSearch,
+    dataSourceViewIdsBySpaceId,
   } = searchParams;
 
   const spaces = allowAdminSearch
@@ -149,11 +173,17 @@ export async function handleSearch(
     });
   }
 
+  const filteredDatasourceViews = dataSourceViewIdsBySpaceId
+    ? allDatasourceViews.filter((dsv) =>
+        dataSourceViewIdsBySpaceId[dsv.space.sId]?.includes(dsv.sId)
+      )
+    : allDatasourceViews;
+
   const excludedNodeMimeTypes =
     nodeIds || searchSourceUrls ? [] : NON_SEARCHABLE_NODES_MIME_TYPES;
 
   const searchFilterRes = getSearchFilterFromDataSourceViews(
-    allDatasourceViews,
+    filteredDatasourceViews,
     {
       excludedNodeMimeTypes,
       includeDataSources,

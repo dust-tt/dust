@@ -2,8 +2,6 @@ import assert from "assert";
 import { uniq } from "lodash";
 
 import { hardDeleteApp } from "@app/lib/api/apps";
-import config from "@app/lib/api/config";
-import { getContentNodeFromCoreNode } from "@app/lib/api/content_nodes";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { AppResource } from "@app/lib/resources/app_resource";
@@ -15,20 +13,11 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import { UserResource } from "@app/lib/resources/user_resource";
-import { getSearchFilterFromDataSourceViews } from "@app/lib/search";
 import { isPrivateSpacesLimitReached } from "@app/lib/spaces";
 import logger from "@app/logger/logger";
 import { launchScrubSpaceWorkflow } from "@app/poke/temporal/client";
-import type {
-  ContentNodesViewType,
-  CoreAPIError,
-  CoreAPISearchOptions,
-  DataSourceViewContentNode,
-  DataSourceWithAgentsUsageType,
-  Result,
-  SearchWarningCode,
-} from "@app/types";
-import { CoreAPI, Err, Ok, removeNulls } from "@app/types";
+import type { DataSourceWithAgentsUsageType, Result } from "@app/types";
+import { Err, Ok, removeNulls } from "@app/types";
 
 import { getWorkspaceAdministrationVersionLock } from "./workspace";
 
@@ -332,100 +321,4 @@ export async function createRegularSpaceAndGroup(
   });
 
   return result;
-}
-
-export async function searchContenNodesInSpace(
-  auth: Authenticator,
-  space: SpaceResource,
-  dataSourceViews: DataSourceViewResource[],
-  {
-    excludedNodeMimeTypes,
-    includeDataSources,
-    options,
-    query,
-    viewType,
-    parentId,
-  }: {
-    excludedNodeMimeTypes: readonly string[];
-    includeDataSources: boolean;
-    options: CoreAPISearchOptions;
-    query: string;
-    viewType: ContentNodesViewType;
-    parentId?: string;
-  }
-): Promise<
-  Result<
-    {
-      nodes: DataSourceViewContentNode[];
-      total: number;
-      warningCode: SearchWarningCode | null;
-      nextPageCursor: string | null;
-    },
-    DustError | CoreAPIError
-  >
-> {
-  if (!space.canReadOrAdministrate(auth)) {
-    return new Err(new DustError("unauthorized", "Unauthorized"));
-  }
-
-  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-
-  const searchFilterRes = getSearchFilterFromDataSourceViews(dataSourceViews, {
-    excludedNodeMimeTypes,
-    includeDataSources,
-    viewType,
-    parentId,
-  });
-
-  if (searchFilterRes.isErr()) {
-    return new Err(
-      new DustError(
-        "internal_error",
-        `Invalid search filter parameters: ${searchFilterRes.error.message}`
-      )
-    );
-  }
-
-  const searchFilter = searchFilterRes.value;
-
-  const searchRes = await coreAPI.searchNodes({
-    query,
-    filter: searchFilter,
-    options,
-  });
-
-  if (searchRes.isErr()) {
-    return searchRes;
-  }
-
-  const dataSourceViewById = new Map(
-    dataSourceViews.map((dsv) => [dsv.dataSource.dustAPIDataSourceId, dsv])
-  );
-
-  const nodes = searchRes.value.nodes.flatMap((node) => {
-    const dataSourceView = dataSourceViewById.get(node.data_source_id);
-    if (!dataSourceView) {
-      logger.error(
-        {
-          nodeId: node.node_id,
-          expectedDataSourceId: node.data_source_id,
-          availableDataSourceIds: Array.from(dataSourceViewById.keys()),
-        },
-        "DataSourceView lookup failed for node"
-      );
-
-      return [];
-    }
-    return {
-      ...getContentNodeFromCoreNode(node, viewType),
-      dataSourceView: dataSourceView.toJSON(),
-    };
-  });
-
-  return new Ok({
-    nodes,
-    total: searchRes.value.hit_count,
-    warningCode: searchRes.value.warning_code,
-    nextPageCursor: searchRes.value.next_page_cursor,
-  });
 }
