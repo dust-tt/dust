@@ -20,7 +20,7 @@ export async function getStaticProps() {
 }
 const DemoVideo = {
   ...BaseDemoVideo,
-  sectionTitle: "See Dust in action for B2B SaaS",
+  sectionTitle: "See Dust in motion",
   videoUrl: "https://fast.wistia.net/embed/iframe/8q80neektv",
 };
 
