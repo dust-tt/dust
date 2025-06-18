@@ -131,6 +131,7 @@
     "sqids": "^0.3.0",
     "sqlite3": "^5.1.6",
     "stripe": "^14.2.0",
+    "superjson": "^2.2.2",
     "swr": "^2.2.4",
     "tailwind-merge": "^2.2.1",
     "tailwind-scrollbar-hide": "^1.1.7",

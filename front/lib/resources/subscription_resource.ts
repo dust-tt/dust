@@ -2,6 +2,7 @@ import _ from "lodash";
 import type { Attributes, CreationAttributes, Transaction } from "sequelize";
 import { Op } from "sequelize";
 import type Stripe from "stripe";
+import SuperJSON from "superjson";
 
 import { sendProactiveTrialCancelledEmail } from "@app/lib/api/email";
 import { getWorkspaceInfos } from "@app/lib/api/workspace";
@@ -51,6 +52,8 @@ import type {
 } from "@app/types";
 import { Ok, sendUserOperationMessage } from "@app/types";
 
+import { cacheWithRedis } from "../utils/cache";
+
 const DEFAULT_PLAN_WHEN_NO_SUBSCRIPTION: PlanAttributes = FREE_NO_PLAN_DATA;
 const FREE_NO_PLAN_SUBSCRIPTION_ID = -1;
 
@@ -90,6 +93,11 @@ export class SubscriptionResource extends BaseResource<Subscription> {
     return res[workspace.sId];
   }
 
+  static async fetchActiveByWorkspaceCache(workspace: LightWorkspaceType) {
+    const res = await this.fetchActiveByWorkspacesCache([workspace]);
+    return res[workspace.sId];
+  }
+
   static async fetchActiveByWorkspaces(
     workspaces: LightWorkspaceType[],
     transaction?: Transaction
@@ -97,7 +105,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
     const workspaceModelBySid = _.keyBy(workspaces, "sId");
 
     const activeSubscriptionByWorkspaceId = _.keyBy(
-      await this.model.findAll({
+      await SubscriptionResource.model.findAll({
         attributes: [
           "endDate",
           "id",
@@ -157,12 +165,20 @@ export class SubscriptionResource extends BaseResource<Subscription> {
       subscriptionResourceByWorkspaceSid[sId] = new SubscriptionResource(
         Subscription,
         activeSubscription?.get() ||
-          this.createFreeNoPlanSubscription(workspace),
+          SubscriptionResource.createFreeNoPlanSubscription(workspace),
         renderPlanFromModel({ plan })
       );
     }
 
     return subscriptionResourceByWorkspaceSid;
+  }
+
+  static async fetchActiveByWorkspacesCache(workspaces: LightWorkspaceType[]) {
+    return cacheWithRedis(
+      this.fetchActiveByWorkspaces,
+      (workspaces) => workspaces.map((w) => w.sId).join("-"),
+      3_600_000 // 1h
+    )(workspaces);
   }
 
   static async fetchByAuthenticator(
@@ -775,3 +791,5 @@ export class SubscriptionResource extends BaseResource<Subscription> {
     );
   }
 }
+
+SuperJSON.registerClass(SubscriptionResource);

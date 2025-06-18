@@ -1,3 +1,5 @@
+import { parse, stringify } from "superjson";
+
 import { redisClient } from "@app/lib/utils/redis_client";
 
 // JSON-serializable primitive types.
@@ -36,16 +38,16 @@ type KeyResolver<Args extends unknown[]> = (...args: Args) => string;
 // if caching big objects, there is a possible race condition (mulitple calls to
 // caching), therefore, we use a lock
 export function cacheWithRedis<T, Args extends unknown[]>(
-  fn: CacheableFunction<JsonSerializable<T>, Args>,
+  fn: CacheableFunction<T, Args>,
   resolver: KeyResolver<Args>,
   ttlMs: number,
   redisUri?: string
-): (...args: Args) => Promise<JsonSerializable<T>> {
+): (...args: Args) => Promise<T> {
   if (ttlMs > 60 * 60 * 24 * 1000) {
     throw new Error("ttlMs should be less than 24 hours");
   }
 
-  return async function (...args: Args): Promise<JsonSerializable<T>> {
+  return async function (...args: Args): Promise<T> {
     if (!redisUri) {
       const REDIS_CACHE_URI = process.env.REDIS_CACHE_URI;
       if (!REDIS_CACHE_URI) {
@@ -65,7 +67,7 @@ export function cacheWithRedis<T, Args extends unknown[]>(
       });
       let cacheVal = await redisCli.get(key);
       if (cacheVal) {
-        return JSON.parse(cacheVal) as JsonSerializable<T>;
+        return parse(cacheVal) as JsonSerializable<T>;
       }
 
       // specific try-finally to ensure unlock is called only after lock
@@ -75,11 +77,11 @@ export function cacheWithRedis<T, Args extends unknown[]>(
         await lock(key);
         cacheVal = await redisCli.get(key);
         if (cacheVal) {
-          return JSON.parse(cacheVal) as JsonSerializable<T>;
+          return parse(cacheVal) as JsonSerializable<T>;
         }
 
         const result = await fn(...args);
-        await redisCli.set(key, JSON.stringify(result), {
+        await redisCli.set(key, stringify(result), {
           PX: ttlMs,
         });
         return result;
