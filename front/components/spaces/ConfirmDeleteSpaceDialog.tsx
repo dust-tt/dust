@@ -61,7 +61,11 @@ export function ConfirmDeleteSpaceDialog({
                   {dataSourceUsage.length === 1 ? (
                     <>
                       Agent{" "}
-                      <Chip size="sm" color="blue" label={dataSourceUsage[0]} />{" "}
+                      <Chip
+                        size="sm"
+                        color="primary"
+                        label={dataSourceUsage[0]}
+                      />{" "}
                       currently uses this space and will be broken.
                     </>
                   ) : (
