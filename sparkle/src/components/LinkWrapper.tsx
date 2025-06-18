@@ -4,7 +4,7 @@ import { SparkleContext } from "@sparkle/context";
 
 export interface LinkWrapperProps {
   children: React.ReactNode;
-  href: string;
+  href?: string;
   rel?: string;
   replace?: boolean;
   shallow?: boolean;
