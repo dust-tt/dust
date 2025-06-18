@@ -624,6 +624,35 @@ export const isDataSourceNodeContentType = (
   );
 };
 
+// Schema for a locate_in_tree path item.
+const LocateInTreePathItemSchema = z.object({
+  nodeId: z.string(),
+  title: z.string(),
+  nodeType: z.enum(["document", "table", "folder"]).optional(),
+  isCurrentNode: z.boolean(),
+});
+
+export const LocateInTreeResultSchema = z.object({
+  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.LOCATE_IN_TREE_RESULT),
+  uri: z.literal(""),
+  text: z.string(),
+  path: z.array(LocateInTreePathItemSchema),
+});
+
+export type LocateInTreeResultType = z.infer<typeof LocateInTreeResultSchema>;
+
+export const isLocateInTreeResultType = (
+  outputBlock: CallToolResult["content"][number]
+): outputBlock is {
+  type: "resource";
+  resource: LocateInTreeResultType;
+} => {
+  return (
+    outputBlock.type === "resource" &&
+    LocateInTreeResultSchema.safeParse(outputBlock.resource).success
+  );
+};
+
 /**
  * Notification output types.
  */
