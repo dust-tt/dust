@@ -189,14 +189,20 @@ async function* runMultiActionsAgentLoop(
     for await (const event of loopIterationStream) {
       switch (event.type) {
         case "agent_error":
+          const publicErrorMessage = getPublicErrorMessage(event.error);
+
           localLogger.error(
             {
               elapsedTime: Date.now() - now,
               error: event.error,
+              publicErrorMessage,
             },
             "Error running multi-actions agent."
           );
-          yield event;
+          yield {
+            ...event,
+            error: { ...event.error, message: publicErrorMessage },
+          };
           return;
         case "agent_actions":
           runIds.push(event.runId);
@@ -625,13 +631,11 @@ async function* runMultiActionsAgent(
   );
 
   if (res.isErr()) {
-    const publicErrorMessage = getPublicErrorMessage(res.error);
     logger.error(
       {
         workspaceId: conversation.owner.sId,
         conversationId: conversation.sId,
         error: res.error,
-        publicErrorMessage,
       },
       "Error running multi-actions agent."
     );
@@ -642,7 +646,7 @@ async function* runMultiActionsAgent(
       messageId: agentMessage.sId,
       error: {
         code: "multi_actions_error",
-        message: publicErrorMessage,
+        message: `Error running agent: [${res.error.type}] ${res.error.message}`,
         metadata: null,
       },
     } satisfies AgentErrorEvent;

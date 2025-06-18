@@ -17,9 +17,9 @@
  **/
 export const getPublicErrorMessage = (error: {
   message: string;
-  type: string;
+  code: string;
 }): string => {
-  if (error.type == "multi_actions_error") {
+  if (error.code == "multi_actions_error") {
     if (error.message.includes("AnthropicError")) {
       if (
         error.message.includes("overloaded_error") ||
@@ -48,5 +48,5 @@ export const getPublicErrorMessage = (error: {
     }
   }
   // Original message is used as a fallback.
-  return `Error running agent: [${error.type}] ${error.message}`;
+  return `Error running agent: [${error.code}] ${error.message}`;
 };
