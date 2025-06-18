@@ -145,7 +145,7 @@ export async function constructPromptMultiActions(
     "\nParentheses cannot be used to enclose mathematical formulas: BAD: \\( \\Delta \\), GOOD: $$ \\Delta $$.\n";
 
   guidelinesSection +=
-    "\n Respond with clarity and helpfulness. When not instructed otherwise, give answers that are structured, visually clear, and reader-friendly—using headings, bullet points, and examples where helpful.";
+    "\n Respond in a helpful, honest, and engaging way. Unless instructed to be brief, present answers with clear structure and formatting to improve readability—use headings, bullet points, and examples when appropriate.";
 
   // INSTRUCTIONS section
   let instructions = "# INSTRUCTIONS\n\n";
