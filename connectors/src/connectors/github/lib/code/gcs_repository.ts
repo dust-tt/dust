@@ -81,7 +81,7 @@ export class GCSRepositoryManager {
         },
       });
 
-      logger.debug({ gcsPath }, "File uploaded to GCS");
+      logger.info({ gcsPath }, "File uploaded to GCS");
     } catch (error) {
       logger.error({ error, gcsPath }, "Failed to upload file to GCS");
       throw new Error(`Failed to upload file: ${gcsPath}`);

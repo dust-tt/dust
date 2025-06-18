@@ -11,7 +11,6 @@ import PQueue from "p-queue";
 
 import type * as activities from "@connectors/connectors/github/temporal/activities";
 import type * as activitiesSyncCode from "@connectors/connectors/github/temporal/activities/sync_code";
-import { githubCleanupCodeSyncActivity } from "@connectors/connectors/github/temporal/activities/sync_code";
 import type { ModelId } from "@connectors/types";
 import type { DataSourceConfig } from "@connectors/types";
 
@@ -66,6 +65,7 @@ const { githubCodeSyncActivity } = proxyActivities<typeof activities>({
 });
 
 const {
+  githubCleanupCodeSyncActivity,
   githubEnsureCodeSyncEnabledActivity,
   githubExtractToGcsActivity,
   githubGetGcsFilesByDepthActivity,
@@ -80,7 +80,7 @@ const MAX_CONCURRENT_ISSUE_SYNC_ACTIVITIES_PER_WORKFLOW = 8;
 
 const FILE_CHUNK_SIZE = 50;
 
-const CONNECTOR_IDS_USING_GCS_CODE_SYNC: number[] = [55];
+const CONNECTOR_IDS_USING_GCS_CODE_SYNC: number[] = [15];
 
 /**
  * This workflow is used to fetch and sync all the repositories of a GitHub connector.
@@ -527,10 +527,10 @@ export async function githubCodeSyncStatelessWorkflow({
   repoLogin: string;
   repoName: string;
 }) {
-  const codeSyncStartedAt = new Date();
+  const codeSyncStartedAtMs = Date.now();
 
   const shouldSyncCode = await githubEnsureCodeSyncEnabledActivity({
-    codeSyncStartedAt,
+    codeSyncStartedAtMs,
     connectorId,
     dataSourceConfig,
     repoId,
@@ -573,7 +573,7 @@ export async function githubCodeSyncStatelessWorkflow({
       fileChunkPromises.push(
         githubProcessFileChunkActivity({
           connectorId,
-          codeSyncStartedAt,
+          codeSyncStartedAtMs,
           repoId,
           repoLogin,
           repoName,
@@ -603,7 +603,7 @@ export async function githubCodeSyncStatelessWorkflow({
       const directoryChunk = dirBatch.directories.slice(i, i + CHUNK_SIZE);
 
       await githubProcessDirectoryChunkActivity({
-        codeSyncStartedAt,
+        codeSyncStartedAtMs,
         connectorId,
         repoId,
         repoLogin,
@@ -620,9 +620,8 @@ export async function githubCodeSyncStatelessWorkflow({
     connectorId,
     repoId,
     dataSourceConfig,
-    codeSyncStartedAt,
-    repoUpdatedAt:
-      allUpdatedDirectoryIds.size > 0 ? codeSyncStartedAt : undefined,
+    codeSyncStartedAtMs,
+    repoUpdatedAt: allUpdatedDirectoryIds.size > 0 ? new Date() : undefined,
   });
 
   await githubSaveSuccessSyncActivity(dataSourceConfig);

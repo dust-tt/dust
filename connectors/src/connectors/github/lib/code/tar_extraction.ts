@@ -68,7 +68,7 @@ function shouldProcessFile(header: tar.Headers, pathParts: string[]): boolean {
   // Check extension whitelist and filename whitelist.
   const isWhitelisted = isSupportedFile(fileName);
   if (!isWhitelisted) {
-    logger.debug(
+    logger.info(
       { path: header.name, fileName },
       "File not whitelisted, skipping."
     );
@@ -162,10 +162,7 @@ export async function extractGitHubTarballToGCS(
           // Count file immediately (before upload).
           filesUploaded++;
 
-          logger.debug(
-            { gcsPath, fileName, filePath },
-            "Uploading file to GCS"
-          );
+          logger.info({ gcsPath, fileName, filePath }, "Uploading file to GCS");
 
           const uploadPromise = pipeline(
             stream,
@@ -194,7 +191,7 @@ export async function extractGitHubTarballToGCS(
         } else {
           // Skip this file - resume stream.
           filesSkipped++;
-          logger.debug(
+          logger.info(
             { fileName: header.name },
             "Skipping file (filtered out)"
           );
@@ -221,14 +218,14 @@ export async function extractGitHubTarballToGCS(
 
         if (shouldInclude && cleanPath) {
           seenDirs.add(cleanPath);
-          logger.debug({ dirPath: cleanPath }, "Found directory in tarball");
+          logger.info({ dirPath: cleanPath }, "Found directory in tarball");
         }
 
         // Resume stream (no content to process for directories).
         stream.resume();
       } else {
         // Skip other types (symlinks, etc.) - resume stream.
-        logger.debug(
+        logger.info(
           { fileName: header.name, type: header.type },
           "Skipping non-file/directory entry"
         );

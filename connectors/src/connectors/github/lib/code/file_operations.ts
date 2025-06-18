@@ -2,19 +2,13 @@ import assert from "assert";
 import { hash as blake3 } from "blake3";
 
 import { GCSRepositoryManager } from "@connectors/connectors/github/lib/code/gcs_repository";
-import {
-  getCodeFileInternalId,
-  getCodeRootInternalId,
-  getRepositoryInternalId,
-  inferParentsFromGcsPath,
-} from "@connectors/connectors/github/lib/utils";
+import { inferParentsFromGcsPath } from "@connectors/connectors/github/lib/utils";
 import type { CoreAPIDataSourceDocumentSection } from "@connectors/lib/data_sources";
 import {
   sectionLength,
   upsertDataSourceDocument,
 } from "@connectors/lib/data_sources";
 import { GithubCodeFile } from "@connectors/lib/models/github";
-import { heartbeat } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types";
@@ -73,7 +67,6 @@ export async function upsertCodeFile({
   }
 
   const gcsManager = new GCSRepositoryManager();
-  const rootInternalId = getCodeRootInternalId(repoId);
 
   // Use inferParentsFromGcsPath to get all parent information.
   const { parentInternalId, parents, fileName } = inferParentsFromGcsPath({
@@ -82,14 +75,7 @@ export async function upsertCodeFile({
     repoId,
   });
 
-  const documentId = getCodeFileInternalId(repoId, relativePath);
-  const finalParentInternalId = parentInternalId || rootInternalId;
-
-  // Extract fileParents (skip the file itself at index 0).
-  const fileParents = parents.slice(1);
-
-  // Ideally we avoid this heartbeat. Since we are not in the temporal folder.
-  await heartbeat();
+  const documentId = parents[0]!;
 
   // Read file content from GCS.
   let content;
@@ -116,15 +102,15 @@ export async function upsertCodeFile({
     where: {
       connectorId: connector.id,
       repoId: repoId.toString(),
-      documentId: documentId,
+      documentId,
     },
     defaults: {
       connectorId: connector.id,
       repoId: repoId.toString(),
-      documentId: documentId,
-      parentInternalId: finalParentInternalId,
-      fileName: fileName,
-      sourceUrl: sourceUrl,
+      documentId,
+      parentInternalId,
+      fileName,
+      sourceUrl,
       contentHash: "",
       createdAt: codeSyncStartedAt,
       updatedAt: codeSyncStartedAt,
@@ -139,9 +125,9 @@ export async function upsertCodeFile({
   // new docuemntId and the existing GithubCodeFile (with old documentId) will be cleaned up
   // at the end of the activity.
   assert(
-    finalParentInternalId === githubCodeFile.parentInternalId,
+    parentInternalId === githubCodeFile.parentInternalId,
     `File parentInternalId mismatch for ${connector.id}/${documentId}` +
-      ` (expected ${finalParentInternalId}, got ${githubCodeFile.parentInternalId})`
+      ` (expected ${parentInternalId}, got ${githubCodeFile.parentInternalId})`
   );
 
   // Check if we need to update the file based on changes to name, URL, content or force flag.
@@ -155,7 +141,7 @@ export async function upsertCodeFile({
 
   if (needsUpdate) {
     // Record the parent directories to update their updatedAt.
-    for (const parentInternalId of fileParents) {
+    for (const parentInternalId of parents) {
       updatedDirectoryIds.add(parentInternalId);
     }
 
@@ -176,13 +162,6 @@ export async function upsertCodeFile({
       `lasUpdatedAt:${codeSyncStartedAt.getTime()}`,
     ];
 
-    const parents: [...string[], string, string] = [
-      documentId,
-      ...fileParents,
-      rootInternalId,
-      getRepositoryInternalId(repoId),
-    ];
-
     // Time to upload the file to the data source.
     await upsertDataSourceDocument({
       async: true,
@@ -192,7 +171,7 @@ export async function upsertCodeFile({
       documentUrl: sourceUrl,
       loggerArgs: logger.bindings(),
       mimeType: INTERNAL_MIME_TYPES.GITHUB.CODE_FILE,
-      parentId: parents[1],
+      parentId: parentInternalId,
       parents,
       tags,
       timestampMs: codeSyncStartedAt.getTime(),

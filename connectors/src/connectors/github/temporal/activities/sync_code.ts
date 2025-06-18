@@ -122,7 +122,7 @@ export async function githubExtractToGcsActivity({
 
       await heartbeat();
 
-      // deleting the code root folder from data_source_folders (core)
+      // Deleting the code root folder from data_source_folders (core)
       await deleteDataSourceFolder({
         dataSourceConfig,
         folderId: getCodeRootInternalId(repoId),
@@ -200,7 +200,7 @@ export async function githubGetGcsFilesByDepthActivity({
 
 // Activity to process a chunk of directories with concurrency control.
 export async function githubProcessDirectoryChunkActivity({
-  codeSyncStartedAt,
+  codeSyncStartedAtMs,
   connectorId,
   dataSourceConfig,
   defaultBranch,
@@ -210,7 +210,7 @@ export async function githubProcessDirectoryChunkActivity({
   repoName,
   updatedDirectoryIds,
 }: {
-  codeSyncStartedAt: Date;
+  codeSyncStartedAtMs: number;
   connectorId: number;
   dataSourceConfig: DataSourceConfig;
   defaultBranch: string;
@@ -225,6 +225,8 @@ export async function githubProcessDirectoryChunkActivity({
   repoName: string;
   updatedDirectoryIds?: Set<string>;
 }) {
+  const codeSyncStartedAt = new Date(codeSyncStartedAtMs);
+
   const results = await concurrentExecutor(
     directories,
     async (dir) => {
@@ -249,7 +251,7 @@ export async function githubProcessDirectoryChunkActivity({
 // Activity to process a chunk of files with concurrency control.
 export async function githubProcessFileChunkActivity({
   connectorId,
-  codeSyncStartedAt,
+  codeSyncStartedAtMs,
   repoId,
   repoLogin,
   repoName,
@@ -260,7 +262,7 @@ export async function githubProcessFileChunkActivity({
   isBatchSync = false,
 }: {
   connectorId: number;
-  codeSyncStartedAt: Date;
+  codeSyncStartedAtMs: number;
   repoId: number;
   repoLogin: string;
   repoName: string;
@@ -276,6 +278,7 @@ export async function githubProcessFileChunkActivity({
   processedFiles: number;
   updatedDirectoryIds: string[];
 }> {
+  const codeSyncStartedAt = new Date(codeSyncStartedAtMs);
   const updatedDirectoryIdsSet = new Set<string>();
 
   const results = await concurrentExecutor(
@@ -312,13 +315,13 @@ export async function githubProcessFileChunkActivity({
 }
 
 export async function githubCleanupCodeSyncActivity({
-  codeSyncStartedAt,
+  codeSyncStartedAtMs,
   connectorId,
   dataSourceConfig,
   repoId,
   repoUpdatedAt,
 }: {
-  codeSyncStartedAt: Date;
+  codeSyncStartedAtMs: number;
   connectorId: number;
   dataSourceConfig: DataSourceConfig;
   repoId: number;
@@ -328,6 +331,8 @@ export async function githubCleanupCodeSyncActivity({
   if (!connector) {
     throw new Error(`Connector ${connectorId} not found`);
   }
+
+  const codeSyncStartedAt = new Date(codeSyncStartedAtMs);
 
   // Delete files and directories not seen during sync.
   await garbageCollectCodeSync(
@@ -359,20 +364,22 @@ export async function githubCleanupCodeSyncActivity({
 }
 
 export async function githubEnsureCodeSyncEnabledActivity({
-  codeSyncStartedAt,
+  codeSyncStartedAtMs,
   connectorId,
   dataSourceConfig,
   repoId,
   repoLogin,
   repoName,
 }: {
-  codeSyncStartedAt: Date;
+  codeSyncStartedAtMs: number;
   connectorId: number;
   dataSourceConfig: DataSourceConfig;
   repoId: number;
   repoLogin: string;
   repoName: string;
 }): Promise<boolean> {
+  const codeSyncStartedAt = new Date(codeSyncStartedAtMs);
+
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error(`Connector not found (connectorId: ${connectorId})`);

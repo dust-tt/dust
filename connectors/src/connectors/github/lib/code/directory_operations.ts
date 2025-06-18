@@ -3,9 +3,7 @@ import assert from "assert";
 import {
   buildDirectoryParents,
   getCodeDirInternalId,
-  getCodeRootInternalId,
   getDirectoryUrl,
-  getRepositoryInternalId,
 } from "@connectors/connectors/github/lib/utils";
 import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
 import { GithubCodeDirectory } from "@connectors/lib/models/github";
@@ -52,24 +50,16 @@ export async function upsertCodeDirectory({
   const dirName = dirPath.split("/").pop() || "";
 
   // Build complete parents array for data source.
-  const completeParents = [
-    internalId,
-    ...parents,
-    getCodeRootInternalId(repoId),
-    getRepositoryInternalId(repoId),
-  ];
+  const completeParents = [internalId, ...parents];
 
-  // The parentId for data source is the immediate parent directory or root.
-  const parentId = parentInternalId || getCodeRootInternalId(repoId);
-
-  logger.debug(
+  logger.info(
     {
       connectorId,
       repoId,
       dirPath,
       dirName,
       internalId,
-      parentId,
+      parentId: parentInternalId,
       parentsCount: completeParents.length,
     },
     "Upserting code directory"
@@ -88,7 +78,7 @@ export async function upsertCodeDirectory({
     dataSourceConfig,
     folderId: internalId,
     parents: completeParents,
-    parentId,
+    parentId: parentInternalId,
     title: dirName,
     mimeType: INTERNAL_MIME_TYPES.GITHUB.CODE_DIRECTORY,
     sourceUrl,
@@ -111,13 +101,13 @@ export async function upsertCodeDirectory({
       dirName,
       internalId,
       lastSeenAt: codeSyncStartedAt,
-      parentInternalId: parentInternalId || getCodeRootInternalId(repoId),
+      parentInternalId,
       repoId: repoId.toString(),
       sourceUrl,
       updatedAt: codeSyncStartedAt,
     });
 
-    logger.debug(
+    logger.info(
       { connectorId, repoId, dirPath, internalId },
       "Created new code directory record"
     );
@@ -144,7 +134,7 @@ export async function upsertCodeDirectory({
     githubCodeDirectory.lastSeenAt = codeSyncStartedAt;
     await githubCodeDirectory.save();
 
-    logger.debug(
+    logger.info(
       { connectorId, repoId, dirPath, internalId },
       "Updated existing code directory record"
     );
