@@ -7,7 +7,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@sparkle/components/";
-import { Button, ButtonVariantType } from "@sparkle/components/Button";
+import {
+  Button,
+  ButtonProps,
+  ButtonVariantType,
+} from "@sparkle/components/Button";
 import { Separator } from "@sparkle/components/Separator";
 import { ChevronDownIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib";
@@ -132,7 +136,7 @@ const flexSeparatorVariants: Record<ButtonVariantType, string> = {
 export interface FlexSplitButtonProps
   extends Omit<ButtonAsButtonProps, "size"> {
   containerClassName?: string;
-  splitAction: React.ReactElement<React.ComponentProps<typeof Button>>;
+  splitAction: React.ReactElement<ButtonProps>;
 }
 
 const FlexSplitButton = React.forwardRef<

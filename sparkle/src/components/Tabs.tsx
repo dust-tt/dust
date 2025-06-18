@@ -3,7 +3,7 @@ import { cva, VariantProps } from "class-variance-authority";
 import * as React from "react";
 
 import { ScrollArea, ScrollBar } from "@sparkle/components/";
-import { Button } from "@sparkle/components/Button";
+import { Button, ButtonProps } from "@sparkle/components/Button";
 import { LinkWrapperProps } from "@sparkle/components/LinkWrapper";
 import { cn } from "@sparkle/lib/utils";
 
@@ -47,7 +47,7 @@ const TabsTrigger = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof TabsPrimitive.Trigger> &
     Partial<
       Pick<
-        React.ComponentProps<typeof Button>,
+        ButtonProps,
         "label" | "tooltip" | "icon" | "isCounter" | "counterValue" | "variant"
       >
     > & {
