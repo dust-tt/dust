@@ -1,6 +1,7 @@
 import {
   continueAsNew,
   executeChild,
+  log,
   setHandler,
   sleep,
   workflowInfo,
@@ -8,7 +9,6 @@ import {
 import PQueue from "p-queue";
 
 import type * as activities from "@connectors/connectors/slack/temporal/activities";
-import logger from "@connectors/logger/logger";
 import type { ModelId } from "@connectors/types";
 
 import {
@@ -151,10 +151,10 @@ export async function workspaceFullSync(
   });
 
   await getSlackActivities().saveSuccessSyncActivity(connectorId);
-  logger.info(
-    { connectorId, fromTs },
-    `Workspace sync done for connector ${connectorId}`
-  );
+  log.info(`Workspace sync done for connector ${connectorId}`, {
+    connectorId,
+    fromTs,
+  });
 }
 
 /**
@@ -210,20 +210,23 @@ export async function syncOneThreadDebounced(
 
   setHandler(newWebhookSignal, async () => {
     receivedSignalsCount++;
-    logger.info(
-      { connectorId, channelId, threadTs, debounceCount, receivedSignalsCount },
-      "Got a new webhook signal for syncOneThreadDebounced"
-    );
+    log.info("Got a new webhook signal for syncOneThreadDebounced", {
+      connectorId,
+      channelId,
+      threadTs,
+      debounceCount,
+      receivedSignalsCount,
+    });
     if (receivedSignalsCount >= MAX_SIGNAL_RECEIVED_COUNT) {
-      logger.info(
+      log.info(
+        `Continuing as Workflow as new due to too many signals received for syncOneThreadDebounced: ${receivedSignalsCount}`,
         {
           connectorId,
           channelId,
           threadTs,
           debounceCount,
           receivedSignalsCount,
-        },
-        `Continuing as Workflow as new due to too many signals received for syncOneThreadDebounced: ${receivedSignalsCount}`
+        }
       );
       await continueAsNew(connectorId, channelId, threadTs);
       return;
@@ -246,15 +249,12 @@ export async function syncOneThreadDebounced(
       throw new Error(`Could not find channel name for channel ${channelId}`);
     }
 
-    logger.info(
-      {
-        connectorId,
-        channelId,
-        threadTs,
-        debounceCount,
-      },
-      `Talked to slack after debouncing ${debounceCount} time(s)`
-    );
+    log.info(`Talked to slack after debouncing ${debounceCount} time(s)`, {
+      connectorId,
+      channelId,
+      threadTs,
+      debounceCount,
+    });
     await getSlackActivities().syncChannelMetadata(
       connectorId,
       channelId,
@@ -285,20 +285,23 @@ export async function syncOneMessageDebounced(
 
   setHandler(newWebhookSignal, async () => {
     receivedSignalsCount++;
-    logger.info(
-      { connectorId, channelId, threadTs, debounceCount, receivedSignalsCount },
-      "Got a new webhook signal for syncOneMessageDebounced"
-    );
+    log.info("Got a new webhook signal for syncOneMessageDebounced", {
+      connectorId,
+      channelId,
+      threadTs,
+      debounceCount,
+      receivedSignalsCount,
+    });
     if (receivedSignalsCount >= MAX_SIGNAL_RECEIVED_COUNT) {
-      logger.info(
+      log.info(
+        `Continuing as Workflow as new due to too many signals received for syncOneMessageDebounced: ${receivedSignalsCount}`,
         {
           connectorId,
           channelId,
           threadTs,
           debounceCount,
           receivedSignalsCount,
-        },
-        `Continuing as Workflow as new due to too many signals received for syncOneMessageDebounced: ${receivedSignalsCount}`
+        }
       );
       await continueAsNew(connectorId, channelId, threadTs);
       return;
@@ -311,26 +314,20 @@ export async function syncOneMessageDebounced(
     await sleep(10000);
     if (signaled) {
       debounceCount++;
-      logger.info(
-        {
-          connectorId,
-          channelId,
-          threadTs,
-          debounceCount,
-        },
-        "Debouncing, sleep 10 secs"
-      );
-      continue;
-    }
-    logger.info(
-      {
+      log.info("Debouncing, sleep 10 secs", {
         connectorId,
         channelId,
         threadTs,
         debounceCount,
-      },
-      `Talked to slack after debouncing ${debounceCount} time(s)`
-    );
+      });
+      continue;
+    }
+    log.info(`Talked to slack after debouncing ${debounceCount} time(s)`, {
+      connectorId,
+      channelId,
+      threadTs,
+      debounceCount,
+    });
 
     const channel = await getSlackActivities().getChannel(
       connectorId,
