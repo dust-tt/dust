@@ -198,13 +198,15 @@ export default handleAuth({
       return res.redirect("/login-error");
     }
   },
-  logout: handleLogout((req) => {
-    return {
+  logout: async (req: NextApiRequest, res: NextApiResponse) => {
+    res.setHeader("Set-Cookie", [
+      "sessionType=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax",
+    ]);
+    return handleLogout(req, res, {
       returnTo:
         "query" in req
           ? (req.query.returnTo as string)
           : config.getClientFacingUrl(),
-      clearSession: true,
-    };
-  }),
+    });
+  },
 });
