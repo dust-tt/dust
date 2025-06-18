@@ -19,6 +19,7 @@ import {
   getSchemaContent,
 } from "@app/lib/actions/mcp_internal_actions/servers/tables_query/schema";
 import {
+  generateSectionContent,
   getSectionColumnsPrefix,
   TABLES_QUERY_SECTION_FILE_MIN_COLUMN_LENGTH,
 } from "@app/lib/actions/mcp_internal_actions/servers/tables_query/server";
@@ -31,7 +32,6 @@ import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import logger from "@app/logger/logger";
-import type { CoreAPIDataSourceDocumentSection } from "@app/types";
 import { CoreAPI } from "@app/types/core/core_api";
 
 // Types for the resources that are output by the tools of this server.
@@ -43,6 +43,7 @@ type TablesQueryOutputResources =
       name: string;
       mimeType: string;
       blob: string;
+      snippet?: string;
     }
   | GetDatabaseSchemaMarkerResourceType
   | ExecuteTablesQueryMarkerResourceType;
@@ -229,10 +230,22 @@ function createServer(auth: Authenticator): McpServer {
           };
         }
 
-        const content: {
-          type: "resource";
-          resource: TablesQueryOutputResources;
-        }[] = [];
+        const content: (
+          | {
+              type: "resource";
+              resource: TablesQueryOutputResources;
+            }
+          | {
+              type: "resource";
+              name: string;
+              resource: {
+                uri: string;
+                mimeType: string;
+                blob: string;
+                snippet?: string;
+              };
+            }
+        )[] = [];
 
         const results: CSVRecord[] = queryResult.value.results
           .map((r) => r.value)
@@ -304,40 +317,29 @@ function createServer(auth: Authenticator): McpServer {
             const sectionColumnsPrefix =
               getSectionColumnsPrefix(connectorProvider);
 
-            // Generate section content
-            const sections: Array<CoreAPIDataSourceDocumentSection> = [];
-            for (const row of results) {
-              const prefix = sectionColumnsPrefix
-                ? sectionColumnsPrefix
-                    .map((c) => row[c] ?? "")
-                    .join(" ")
-                    .trim() || null
-                : null;
-              const rowContent = JSON.stringify(row);
-              const section: CoreAPIDataSourceDocumentSection = {
-                prefix,
-                content: rowContent,
-                sections: [],
-              };
-              sections.push(section);
-            }
-            const section = {
-              prefix: queryTitle,
-              content: null,
-              sections,
-            };
-            const sectionContent = JSON.stringify(section);
+            // Generate section content using the shared function
+            const sectionContent = generateSectionContent(
+              queryTitle,
+              results,
+              sectionColumnsPrefix
+            );
 
             // Convert to blob resource
             const sectionBase64 =
               Buffer.from(sectionContent).toString("base64");
+            const sectionSnippet =
+              sectionContent.length > 1000
+                ? sectionContent.substring(0, 1000) + "... (truncated)"
+                : sectionContent;
+
             content.push({
               type: "resource",
+              name: `${queryTitle} (Rich Text)`,
               resource: {
                 uri: `data:application/vnd.dust.section.json;base64,section`,
-                name: `${queryTitle} (Rich Text)`,
                 mimeType: "application/vnd.dust.section.json",
                 blob: sectionBase64,
+                snippet: sectionSnippet,
               },
             });
           }

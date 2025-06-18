@@ -1,7 +1,6 @@
 import { getTablesQueryResultsFileTitle } from "@app/components/actions/tables_query/utils";
 import {
   generateCSVFileAndSnippet,
-  generateSectionFile,
   uploadFileToConversationDataSource,
 } from "@app/lib/actions/action_file_helpers";
 import { DEFAULT_TABLES_QUERY_ACTION_NAME } from "@app/lib/actions/constants";
@@ -20,6 +19,7 @@ import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { dustAppRunInputsToInputSchema } from "@app/lib/actions/types/agent";
 import { renderConversationForModel } from "@app/lib/api/assistant/preprocessing";
 import type { CSVRecord } from "@app/lib/api/csv";
+import { processAndStoreFile } from "@app/lib/api/files/upload";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
@@ -33,6 +33,7 @@ import { sanitizeJSONOutput } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import type {
   ConnectorProvider,
+  CoreAPIDataSourceDocumentSection,
   FunctionCallType,
   FunctionMessageTypeModel,
   ModelId,
@@ -871,4 +872,74 @@ function getSectionColumnsPrefix(
     default:
       return null;
   }
+}
+
+/**
+ * Generate a json file representing a table as a section.
+ * This type of file is used to store the results of a tool call coming up from a csv in a way that can be searched.
+ * Save it to the database and return it.
+ */
+async function generateSectionFile(
+  auth: Authenticator,
+  {
+    title,
+    conversationId,
+    results,
+    sectionColumnsPrefix,
+  }: {
+    title: string;
+    conversationId: string;
+    results: Array<CSVRecord>;
+    sectionColumnsPrefix: string[] | null;
+  }
+): Promise<FileResource> {
+  const workspace = auth.getNonNullableWorkspace();
+  const user = auth.user();
+
+  // We loop through the results to represent each row as a section.
+  // The content of the file is the JSON representation of the section.
+  const sections: Array<CoreAPIDataSourceDocumentSection> = [];
+  for (const row of results) {
+    const prefix = sectionColumnsPrefix
+      ? sectionColumnsPrefix
+          .map((c) => row[c] ?? "")
+          .join(" ")
+          .trim() || null
+      : null;
+    const rowContent = JSON.stringify(row);
+    const section: CoreAPIDataSourceDocumentSection = {
+      prefix,
+      content: rowContent,
+      sections: [],
+    };
+    sections.push(section);
+  }
+  const section = {
+    prefix: title,
+    content: null,
+    sections,
+  };
+  const content = JSON.stringify(section);
+
+  const sectionFile = await FileResource.makeNew({
+    workspaceId: workspace.id,
+    userId: user?.id ?? null,
+    contentType: "application/vnd.dust.section.json",
+    fileName: title,
+    fileSize: Buffer.byteLength(content),
+    useCase: "tool_output",
+    useCaseMetadata: {
+      conversationId,
+    },
+  });
+
+  await processAndStoreFile(auth, {
+    file: sectionFile,
+    content: {
+      type: "string",
+      value: content,
+    },
+  });
+
+  return sectionFile;
 }

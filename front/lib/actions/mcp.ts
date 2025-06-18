@@ -3,6 +3,7 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { McpError } from "@modelcontextprotocol/sdk/types.js";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 
+import { uploadFileToConversationDataSource } from "@app/lib/actions/action_file_helpers";
 import type {
   MCPToolStakeLevelType,
   MCPValidationMetadataType,
@@ -807,7 +808,8 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       base64Data: string,
       mimeType: string,
       fileName: string,
-      block: CallToolResult["content"][number]
+      block: CallToolResult["content"][number],
+      uploadToConversationDataSource = false
     ): Promise<{
       content: CallToolResult["content"][number];
       file: FileResource | null;
@@ -872,6 +874,16 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
           };
         }
 
+        const file = uploadResult.value;
+
+        // Upload the file to the conversation data source if requested
+        if (uploadToConversationDataSource) {
+          await uploadFileToConversationDataSource({
+            auth,
+            file,
+          });
+        }
+
         return {
           content: {
             ...block,
@@ -881,7 +893,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
               ? { resource: { ...block.resource, blob: "" } }
               : {}),
           },
-          file: uploadResult.value,
+          file,
         };
       } catch (error) {
         logger.error(
@@ -948,11 +960,17 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
                   ? block.name
                   : `generated-file-${Date.now()}.${extensionsForContentType(block.resource.mimeType as SupportedFileContentType)[0]}`;
 
+                // For extract_data server, we need to upload to conversation data source
+                const shouldUploadToConversationDataSource =
+                  "internalMCPServerId" in actionConfiguration &&
+                  actionConfiguration.internalMCPServerId === "extract_data";
+
                 return handleBase64Upload(
                   block.resource.blob,
                   block.resource.mimeType,
                   fileName,
-                  block
+                  block,
+                  shouldUploadToConversationDataSource
                 );
               }
 

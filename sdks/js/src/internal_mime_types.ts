@@ -232,7 +232,6 @@ const TOOL_MIME_TYPES = {
       "DATA_SOURCE_INCLUDE_QUERY",
       "DATA_SOURCE_INCLUDE_RESULT",
       "EXTRACT_QUERY",
-      "EXTRACT_RESULT",
       // Final output of the reasoning when successful with the non-CoT tokens.
       "REASONING_SUCCESS",
       // Content of a SQL query formulated by the model.

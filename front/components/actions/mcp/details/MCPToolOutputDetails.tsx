@@ -106,12 +106,10 @@ export function SqlQueryBlock({ resource }: SqlQueryBlockProps) {
   );
 }
 
+import type { ActionGeneratedFileType } from "@app/lib/actions/types";
+
 interface ToolGeneratedFileDetailsProps {
-  resource: {
-    fileId: string;
-    title: string;
-    snippet: string | null;
-  };
+  resource: ActionGeneratedFileType;
   icon: React.ComponentType<{ className?: string }>;
   owner: LightWorkspaceType;
 }

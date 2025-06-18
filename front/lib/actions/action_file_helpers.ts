@@ -6,7 +6,6 @@ import { processAndUpsertToDataSource } from "@app/lib/api/files/upsert";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
-import type { CoreAPIDataSourceDocumentSection } from "@app/types";
 
 export { generateCSVSnippet } from "@app/lib/api/csv";
 
@@ -134,76 +133,6 @@ export async function generateCSVFileAndSnippet(
 }
 
 /**
- * Generate a json file representing a table as a section.
- * This type of file is used to store the results of a tool call coming up from a csv in a way that can be searched.
- * Save it to the database and return it.
- */
-export async function generateSectionFile(
-  auth: Authenticator,
-  {
-    title,
-    conversationId,
-    results,
-    sectionColumnsPrefix,
-  }: {
-    title: string;
-    conversationId: string;
-    results: Array<CSVRecord>;
-    sectionColumnsPrefix: string[] | null;
-  }
-): Promise<FileResource> {
-  const workspace = auth.getNonNullableWorkspace();
-  const user = auth.user();
-
-  // We loop through the results to represent each row as a section.
-  // The content of the file is the JSON representation of the section.
-  const sections: Array<CoreAPIDataSourceDocumentSection> = [];
-  for (const row of results) {
-    const prefix = sectionColumnsPrefix
-      ? sectionColumnsPrefix
-          .map((c) => row[c] ?? "")
-          .join(" ")
-          .trim() || null
-      : null;
-    const rowContent = JSON.stringify(row);
-    const section: CoreAPIDataSourceDocumentSection = {
-      prefix,
-      content: rowContent,
-      sections: [],
-    };
-    sections.push(section);
-  }
-  const section = {
-    prefix: title,
-    content: null,
-    sections,
-  };
-  const content = JSON.stringify(section);
-
-  const sectionFile = await FileResource.makeNew({
-    workspaceId: workspace.id,
-    userId: user?.id ?? null,
-    contentType: "application/vnd.dust.section.json",
-    fileName: title,
-    fileSize: Buffer.byteLength(content),
-    useCase: "tool_output",
-    useCaseMetadata: {
-      conversationId,
-    },
-  });
-
-  await processAndStoreFile(auth, {
-    file: sectionFile,
-    content: {
-      type: "string",
-      value: content,
-    },
-  });
-
-  return sectionFile;
-}
-
-/**
  * Upload a file to a conversation data source.
  * If a section is provided, we will pass it to the process file function as upsertArgs.
  */
@@ -243,14 +172,9 @@ export async function uploadFileToConversationDataSource({
 }
 
 /**
- * Generate JSON output and snippet from data.
+ * Generate JSON snippet from data.
  */
-export function generateJSONOutput(data: unknown): {
-  jsonOutput: string;
-  jsonSnippet: string;
-} {
-  const jsonOutput = JSON.stringify(data, null, 2);
-
+export function generateJSONSnippet(data: unknown): string {
   let jsonSnippet = "";
   if (Array.isArray(data)) {
     const displayItems = data.slice(0, 5);
@@ -266,54 +190,7 @@ export function generateJSONOutput(data: unknown): {
     }
   }
 
-  return { jsonOutput, jsonSnippet };
-}
-
-/**
- * Generate a JSON file and a snippet of the file.
- * Save the file to the database and return the file and the snippet.
- */
-export async function generateJSONFileAndSnippet(
-  auth: Authenticator,
-  {
-    title,
-    conversationId,
-    data,
-  }: {
-    title: string;
-    conversationId: string;
-    data: unknown;
-  }
-): Promise<{
-  jsonFile: FileResource;
-  jsonSnippet: string;
-}> {
-  const workspace = auth.getNonNullableWorkspace();
-  const user = auth.user();
-
-  const { jsonOutput, jsonSnippet } = generateJSONOutput(data);
-
-  const jsonFile = await FileResource.makeNew({
-    workspaceId: workspace.id,
-    userId: user?.id ?? null,
-    contentType: "application/json",
-    fileName: title,
-    fileSize: Buffer.byteLength(jsonOutput),
-    useCase: "tool_output",
-    useCaseMetadata: {
-      conversationId,
-    },
-  });
-
-  await processAndStoreFile(auth, {
-    file: jsonFile,
-    content: {
-      type: "string",
-      value: jsonOutput,
-    },
-  });
-
-  return { jsonFile, jsonSnippet };
+  return jsonSnippet;
 }
 
 export function getJSONFileAttachment({

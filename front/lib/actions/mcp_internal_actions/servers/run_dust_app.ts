@@ -4,6 +4,18 @@ import type { TextContent } from "@modelcontextprotocol/sdk/types.js";
 import type { ZodRawShape } from "zod";
 import { z } from "zod";
 
+// Define the BlobCallToolResultBlock type
+type BlobCallToolResultBlock = {
+  type: "resource";
+  name: string;
+  resource: {
+    uri: string;
+    mimeType: string;
+    blob: string;
+    snippet?: string;
+  };
+};
+
 import { getDustAppRunResultsFileTitle } from "@app/components/actions/dust_app_run/utils";
 import {
   generateCSVOutput,
@@ -131,21 +143,23 @@ async function processDustFileOutput(
 ): Promise<
   {
     type: "resource";
+    name: string;
     resource: {
       uri: string;
-      name: string;
       mimeType: string;
       blob: string;
+      snippet?: string;
     };
   }[]
 > {
   const content: {
     type: "resource";
+    name: string;
     resource: {
       uri: string;
-      name: string;
       mimeType: string;
       blob: string;
+      snippet?: string;
     };
   }[] = [];
 
@@ -202,11 +216,12 @@ async function processDustFileOutput(
 
     content.push({
       type: "resource",
+      name: fileName,
       resource: {
         uri: `data:${contentType};base64,${csvSnippet.substring(0, 100)}...`,
-        name: fileName,
         mimeType: contentType,
         blob: base64Data,
+        snippet: csvSnippet,
       },
     });
 
@@ -219,14 +234,19 @@ async function processDustFileOutput(
 
     const textContent = sanitizedOutput.__dust_file?.content ?? "";
     const base64Data = Buffer.from(textContent).toString("base64");
+    const snippet =
+      textContent.length > 1000
+        ? textContent.substring(0, 1000) + "... (truncated)"
+        : textContent;
 
     content.push({
       type: "resource",
+      name: fileTitle,
       resource: {
         uri: `data:text/plain;base64,${textContent.substring(0, 100)}...`,
-        name: fileTitle,
         mimeType: "text/plain",
         blob: base64Data,
+        snippet,
       },
     });
 
@@ -334,18 +354,7 @@ export default async function createServer(
       app.description,
       convertDatasetSchemaToZodRawShape(schema),
       async (params) => {
-        const content: (
-          | TextContent
-          | {
-              type: "resource";
-              resource: {
-                uri: string;
-                name: string;
-                mimeType: string;
-                blob: string;
-              };
-            }
-        )[] = [];
+        const content: (TextContent | BlobCallToolResultBlock)[] = [];
 
         params = await prepareParamsWithHistory(
           params,

@@ -39,6 +39,7 @@ type TablesQueryOutputResources =
       name: string;
       mimeType: string;
       blob: string;
+      snippet?: string;
     };
 
 export // We need a model with at least 54k tokens to run tables_query.
@@ -257,10 +258,22 @@ function createServer(
         unknown
       >;
 
-      const content: {
-        type: "resource";
-        resource: TablesQueryOutputResources;
-      }[] = [];
+      const content: (
+        | {
+            type: "resource";
+            resource: TablesQueryOutputResources;
+          }
+        | {
+            type: "resource";
+            name: string;
+            resource: {
+              uri: string;
+              mimeType: string;
+              blob: string;
+              snippet?: string;
+            };
+          }
+      )[] = [];
 
       if (typeof output?.thinking === "string") {
         content.push({
@@ -315,11 +328,12 @@ function createServer(
       const csvBase64 = Buffer.from(csvOutput).toString("base64");
       content.push({
         type: "resource",
+        name: fileName,
         resource: {
           uri: `data:${contentType};base64,${csvSnippet.substring(0, 100)}...`,
-          name: fileName,
           mimeType: contentType,
           blob: csvBase64,
+          snippet: csvSnippet,
         },
       });
 
@@ -345,38 +359,27 @@ function createServer(
         const sectionColumnsPrefix = getSectionColumnsPrefix(connectorProvider);
 
         // Generate section content
-        const sections: Array<CoreAPIDataSourceDocumentSection> = [];
-        for (const row of results) {
-          const prefix = sectionColumnsPrefix
-            ? sectionColumnsPrefix
-                .map((c) => row[c] ?? "")
-                .join(" ")
-                .trim() || null
-            : null;
-          const rowContent = JSON.stringify(row);
-          const section: CoreAPIDataSourceDocumentSection = {
-            prefix,
-            content: rowContent,
-            sections: [],
-          };
-          sections.push(section);
-        }
-        const section = {
-          prefix: queryTitle,
-          content: null,
-          sections,
-        };
-        const sectionContent = JSON.stringify(section);
+        const sectionContent = generateSectionContent(
+          queryTitle,
+          results,
+          sectionColumnsPrefix
+        );
 
         // Convert to blob resource
         const sectionBase64 = Buffer.from(sectionContent).toString("base64");
+        const sectionSnippet =
+          sectionContent.length > 1000
+            ? sectionContent.substring(0, 1000) + "... (truncated)"
+            : sectionContent;
+
         content.push({
           type: "resource",
+          name: `${queryTitle} (Rich Text)`,
           resource: {
             uri: `data:application/vnd.dust.section.json;base64,section`,
-            name: `${queryTitle} (Rich Text)`,
             mimeType: "application/vnd.dust.section.json",
             blob: sectionBase64,
+            snippet: sectionSnippet,
           },
         });
       }
@@ -389,6 +392,35 @@ function createServer(
   );
 
   return server;
+}
+
+export function generateSectionContent(
+  queryTitle: string,
+  results: Array<CSVRecord>,
+  sectionColumnsPrefix: string[] | null
+): string {
+  const sections: Array<CoreAPIDataSourceDocumentSection> = [];
+  for (const row of results) {
+    const prefix = sectionColumnsPrefix
+      ? sectionColumnsPrefix
+          .map((c) => row[c] ?? "")
+          .join(" ")
+          .trim() || null
+      : null;
+    const rowContent = JSON.stringify(row);
+    const section: CoreAPIDataSourceDocumentSection = {
+      prefix,
+      content: rowContent,
+      sections: [],
+    };
+    sections.push(section);
+  }
+  const section = {
+    prefix: queryTitle,
+    content: null,
+    sections,
+  };
+  return JSON.stringify(section);
 }
 
 function getTablesQueryResultsFileTitle({

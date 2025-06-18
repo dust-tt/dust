@@ -5,7 +5,7 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import _ from "lodash";
 import { z } from "zod";
 
-import { generateJSONOutput } from "@app/lib/actions/action_file_helpers";
+import { generateJSONSnippet } from "@app/lib/actions/action_file_helpers";
 import { PROCESS_ACTION_TOP_K } from "@app/lib/actions/constants";
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import {
@@ -517,7 +517,8 @@ async function generateProcessToolOutput({
     schema: jsonSchema,
   });
 
-  const { jsonOutput, jsonSnippet } = generateJSONOutput(outputs?.data);
+  const jsonOutput = JSON.stringify(outputs?.data, null, 2);
+  const jsonSnippet = generateJSONSnippet(outputs?.data);
   const jsonBase64 = Buffer.from(jsonOutput).toString("base64");
 
   const timeFrameAsString = timeFrame
@@ -540,11 +541,12 @@ async function generateProcessToolOutput({
       },
       {
         type: "resource" as const,
+        name: fileTitle,
         resource: {
           uri: `data:application/json;base64,${jsonSnippet.substring(0, 100)}...`,
-          name: fileTitle,
           mimeType: "application/json",
           blob: jsonBase64,
+          snippet: jsonSnippet,
         },
       },
     ],
