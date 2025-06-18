@@ -1,5 +1,6 @@
 import { removeNulls } from "@dust-tt/client";
 import { JSON } from "@jsonjoy.com/util/lib/json-brand";
+import tracer from "dd-trace";
 import type { Request, Response } from "express";
 
 import {
@@ -221,7 +222,17 @@ const _webhookSlackAPIHandler = async (
     try {
       switch (event.type) {
         case "app_mention": {
-          await handleChatBot(req, res, logger);
+          const handleChatBotTraced = tracer.wrap(
+            "slack.webhook.app_mention.handleChatBot",
+            {
+              type: "webhook",
+              tags: {
+                "slack.team_id": teamId,
+              },
+            },
+            handleChatBot
+          );
+          await handleChatBotTraced(req, res, logger);
           break;
         }
         /**
