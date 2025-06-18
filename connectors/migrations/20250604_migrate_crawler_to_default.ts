@@ -56,9 +56,13 @@ makeScript(
       return;
     }
 
-    if (crawler !== null && crawler !== "firecrawl") {
+    if (
+      crawler !== null &&
+      crawler !== "firecrawl" &&
+      crawler !== "firecrawl-api"
+    ) {
       logger.error(
-        `"${crawler}" is not a valid crawler option, only null or "firecrawl" are allowed`
+        `"${crawler}" is not a valid crawler option, only null, "firecrawl" or "firecrawl-api" are allowed`
       );
       return;
     }
@@ -83,12 +87,11 @@ makeScript(
       forcedWorkspaces = res.value;
     }
 
-    // If the new crawler is null, it means the previous was firecrawl
-    const currentCrawler = crawler === null ? "firecrawl" : null;
-
     const webcrawlerConfigs = await WebCrawlerConfigurationModel.findAll({
       where: {
-        customCrawler: currentCrawler,
+        customCrawler: {
+          [Op.not]: crawler,
+        },
       },
       include: [
         {
