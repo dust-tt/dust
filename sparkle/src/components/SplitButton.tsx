@@ -1,12 +1,12 @@
 import React, { useState } from "react";
 
 import {
+  ButtonAsButtonProps,
   ButtonProps,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  RegularButtonProps,
 } from "@sparkle/components/";
 import { Button, ButtonVariantType } from "@sparkle/components/Button";
 import { Separator } from "@sparkle/components/Separator";
@@ -23,7 +23,7 @@ interface SplitButtonActionProps {
 }
 
 export interface SplitButtonProps
-  extends Omit<RegularButtonProps, "children" | "onClick"> {
+  extends Omit<ButtonAsButtonProps, "children" | "onClick"> {
   /**
    * List of possible actions, will be displayed in dropdown
    */

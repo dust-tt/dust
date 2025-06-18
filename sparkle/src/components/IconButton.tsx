@@ -96,7 +96,6 @@ const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
       ref={ref}
       size={size}
       icon={icon}
-      variant={null}
       {...props}
     />
   )
