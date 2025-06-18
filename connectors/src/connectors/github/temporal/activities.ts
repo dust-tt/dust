@@ -5,6 +5,8 @@ import { promises as fs } from "fs";
 import PQueue from "p-queue";
 import { Op } from "sequelize";
 
+import { formatCodeContentForUpsert } from "@connectors/connectors/github/lib/code/file_operations";
+import { garbageCollectCodeSync } from "@connectors/connectors/github/lib/code/garbage_collect";
 import {
   isGraphQLNotFound,
   isGraphQLRepositoryNotFound,
@@ -43,7 +45,6 @@ import { QUEUE_NAME } from "@connectors/connectors/github/temporal/config";
 import { newWebhookSignal } from "@connectors/connectors/github/temporal/signals";
 import { getCodeSyncWorkflowId } from "@connectors/connectors/github/temporal/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
-import { concurrentExecutor } from "@connectors/lib/async_utils";
 import type { CoreAPIDataSourceDocumentSection } from "@connectors/lib/data_sources";
 import {
   deleteDataSourceDocument,
@@ -863,99 +864,6 @@ function renderGithubUser(user: GithubUser | null): string {
     return `@${user.login}`;
   }
   return `@${user.id}`;
-}
-
-export function formatCodeContentForUpsert(
-  sourceUrl: string,
-  content: Buffer
-): CoreAPIDataSourceDocumentSection {
-  // For now we simply add the file name as prefix to all chunks.
-  return {
-    prefix: `SOURCE FILE: ${sourceUrl}\n\n`,
-    content: content.toString(),
-    sections: [],
-  };
-}
-
-async function garbageCollectCodeSync(
-  dataSourceConfig: DataSourceConfig,
-  connector: ConnectorResource,
-  repoId: number,
-  codeSyncStartedAt: Date,
-  logger: Logger
-) {
-  const filesToDelete = await GithubCodeFile.findAll({
-    where: {
-      connectorId: connector.id,
-      repoId: repoId.toString(),
-      lastSeenAt: {
-        [Op.lt]: codeSyncStartedAt,
-      },
-    },
-  });
-
-  if (filesToDelete.length > 0) {
-    logger.info(
-      { filesToDelete: filesToDelete.length },
-      "GarbageCollectCodeSync: deleting files"
-    );
-
-    const fq = new PQueue({ concurrency: 8 });
-    filesToDelete.forEach((f) =>
-      fq.add(async () => {
-        await heartbeat();
-        await deleteDataSourceDocument(
-          dataSourceConfig,
-          f.documentId,
-          logger.bindings()
-        );
-        // Only destroy once we succesfully removed from the data source. This is idempotent and will
-        // work as expected when retried.
-        await f.destroy();
-      })
-    );
-    await fq.onIdle();
-  }
-
-  const directoriesToDelete = await GithubCodeDirectory.findAll({
-    where: {
-      connectorId: connector.id,
-      repoId: repoId.toString(),
-      lastSeenAt: {
-        [Op.lt]: codeSyncStartedAt,
-      },
-    },
-  });
-
-  if (directoriesToDelete.length > 0) {
-    logger.info(
-      {
-        directoriesToDelete: directoriesToDelete.length,
-      },
-      "GarbageCollectCodeSync: deleting directories"
-    );
-
-    await concurrentExecutor(
-      directoriesToDelete,
-      async (d) => {
-        await deleteDataSourceFolder({
-          dataSourceConfig,
-          folderId: d.internalId,
-        });
-      },
-      { concurrency: 10 }
-    );
-
-    await GithubCodeDirectory.destroy({
-      where: {
-        connectorId: connector.id,
-        repoId: repoId.toString(),
-        lastSeenAt: {
-          [Op.lt]: codeSyncStartedAt,
-        },
-      },
-    });
-  }
 }
 
 export async function githubCodeSyncActivity({

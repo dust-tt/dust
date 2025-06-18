@@ -1,3 +1,4 @@
+import assert from "assert";
 import { hash as blake3 } from "blake3/esm/node/hash-fn";
 import { join } from "path";
 
@@ -205,4 +206,73 @@ export function getIssueLabels(
   return labels.map((label) =>
     typeof label === "string" ? label : label.name ?? ""
   );
+}
+
+/**
+ * Build parent relationships for a directory path.
+ * Shared logic used by both file and directory processing.
+ */
+export function buildDirectoryParents(
+  repoId: number,
+  dirPath: string
+): {
+  parentInternalId: string | null;
+  parents: string[];
+} {
+  // Build parents array.
+  const pathParts = dirPath.split("/");
+  const filePath = pathParts.slice(0, -1); // Parent directories.
+
+  const parents = [];
+  for (let i = filePath.length - 1; i >= 0; i--) {
+    parents.push(
+      getCodeDirInternalId(repoId, filePath.slice(0, i + 1).join("/"))
+    );
+  }
+
+  // The parentInternalId is the immediate parent directory or null for root-level directories.
+  const parentInternalId = parents[0] || null;
+
+  return {
+    parentInternalId,
+    parents,
+  };
+}
+
+// Helper function to infer parent relationships from GCS path.
+export function inferParentsFromGcsPath({
+  gcsBasePath,
+  gcsPath,
+  repoId,
+}: {
+  gcsBasePath: string;
+  gcsPath: string;
+  repoId: number;
+}): {
+  parentInternalId: string | null;
+  parents: string[];
+  fileName: string;
+  filePath: string[];
+  relativePath: string;
+} {
+  const relativePath = gcsPath.replace(`${gcsBasePath}/`, "");
+  const pathParts = relativePath.split("/");
+  const fileName = pathParts[pathParts.length - 1];
+  assert(fileName, "File name is required");
+
+  const filePath = pathParts.slice(0, -1);
+
+  // Use shared parent logic
+  const dirPath = filePath.join("/");
+  const { parentInternalId, parents } = buildDirectoryParents(repoId, dirPath);
+
+  const fileDocumentId = getCodeFileInternalId(repoId, relativePath);
+
+  return {
+    parentInternalId,
+    parents: [fileDocumentId, ...parents],
+    fileName,
+    filePath,
+    relativePath,
+  };
 }
