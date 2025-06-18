@@ -92,7 +92,7 @@ function getSlackActivities() {
 
 // we have a maximum of 990 signal received before we continue as new
 // this is to avoid "Failed to signalWithStart Workflow: 3 INVALID_ARGUMENT: exceeded workflow execution limit for signal events"
-const MAX_SIGNAL_RECEIVED_COUNT = 990;
+const MAX_SIGNAL_RECEIVED_COUNT = 100;
 
 /**
  * This workflow is in charge of synchronizing all the content of the Slack channels selected by the user.
@@ -211,23 +211,12 @@ export async function syncOneThreadDebounced(
 
   setHandler(newWebhookSignal, async () => {
     receivedSignalsCount++;
-    log.info("Got a new webhook signal for syncOneThreadDebounced", {
-      connectorId,
-      channelId,
-      threadTs,
-      debounceCount,
-      receivedSignalsCount,
-    });
+    log.info(
+      `Got a new webhook signal for syncOneThreadDebounced receivedSignalsCount:${receivedSignalsCount} connectorId:${connectorId} channelId:${channelId} threadTs:${threadTs} debounceCount:${debounceCount}`
+    );
     if (receivedSignalsCount >= MAX_SIGNAL_RECEIVED_COUNT) {
       log.info(
-        `Continuing as Workflow as new due to too many signals received for syncOneThreadDebounced: ${receivedSignalsCount}`,
-        {
-          connectorId,
-          channelId,
-          threadTs,
-          debounceCount,
-          receivedSignalsCount,
-        }
+        `Continuing as new due to too many signals received for syncOneThreadDebounced receivedSignalsCount:${receivedSignalsCount} connectorId:${connectorId} channelId:${channelId} threadTs:${threadTs} debounceCount:${debounceCount}`
       );
       await continueAsNew(connectorId, channelId, threadTs);
       return;
@@ -286,23 +275,12 @@ export async function syncOneMessageDebounced(
 
   setHandler(newWebhookSignal, async () => {
     receivedSignalsCount++;
-    log.info("Got a new webhook signal for syncOneMessageDebounced", {
-      connectorId,
-      channelId,
-      threadTs,
-      debounceCount,
-      receivedSignalsCount,
-    });
+    log.info(
+      `Got a new webhook signal for syncOneMessageDebounced receivedSignalsCount:${receivedSignalsCount} connectorId:${connectorId} channelId:${channelId} threadTs:${threadTs} debounceCount:${debounceCount}`
+    );
     if (receivedSignalsCount >= MAX_SIGNAL_RECEIVED_COUNT) {
       log.info(
-        `Continuing as Workflow as new due to too many signals received for syncOneMessageDebounced: ${receivedSignalsCount}`,
-        {
-          connectorId,
-          channelId,
-          threadTs,
-          debounceCount,
-          receivedSignalsCount,
-        }
+        `Continuing as new due to too many signals received for syncOneMessageDebounced receivedSignalsCount:${receivedSignalsCount} connectorId:${connectorId} channelId:${channelId} threadTs:${threadTs} debounceCount:${debounceCount}`
       );
       await continueAsNew(connectorId, channelId, threadTs);
       return;
