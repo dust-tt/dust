@@ -20,6 +20,7 @@ import type { DataSourceWithAgentsUsageType, Result } from "@app/types";
 import { Err, Ok, removeNulls } from "@app/types";
 
 import { getWorkspaceAdministrationVersionLock } from "./workspace";
+import { updateAgentRequestedGroupIds } from "@app/lib/api/assistant/configuration";
 
 export async function softDeleteSpaceAndLaunchScrubWorkflow(
   auth: Authenticator,
@@ -29,24 +30,6 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
   assert(auth.isAdmin(), "Only admins can delete spaces.");
   assert(space.isRegular(), "Cannot delete non regular spaces.");
 
-  if (options?.force) {
-    const dataSourceViews = await DataSourceViewResource.listBySpace(
-      auth,
-      space
-    );
-    const dataSources = await DataSourceResource.listBySpace(auth, space);
-    const apps = await AppResource.listBySpace(auth, space);
-
-    await performSpaceSoftDeletionTransaction(
-      auth,
-      space,
-      dataSourceViews,
-      dataSources,
-      apps
-    );
-
-    return new Ok(undefined);
-  }
   const usages: DataSourceWithAgentsUsageType[] = [];
 
   const dataSourceViews = await DataSourceViewResource.listBySpace(auth, space);
@@ -79,7 +62,7 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
     }
   }
 
-  if (usages.length > 0) {
+  if (!options?.force && usages.length > 0) {
     const agentNames = uniq(usages.map((u) => u.agentNames).flat());
     return new Err(
       new Error(
@@ -100,24 +83,6 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
     );
   }
 
-  await performSpaceSoftDeletionTransaction(
-    auth,
-    space,
-    dataSourceViews,
-    dataSources,
-    apps
-  );
-
-  return new Ok(undefined);
-}
-
-async function performSpaceSoftDeletionTransaction(
-  auth: Authenticator,
-  space: SpaceResource,
-  dataSourceViews: DataSourceViewResource[],
-  dataSources: DataSourceResource[],
-  apps: AppResource[]
-): Promise<void> {
   await frontSequelize.transaction(async (t) => {
     // Soft delete all data source views.
     for (const view of dataSourceViews) {
@@ -147,6 +112,18 @@ async function performSpaceSoftDeletionTransaction(
       }
     }
 
+    const agentNames = uniq(usages.map((u) => u.agentNames).flat());
+    for (const agentName of agentNames) {
+      const res = await updateAgentRequestedGroupIds(
+        auth,
+        { agentName: agentName, newGroupIds: [] },
+        { transaction: t }
+      );
+      if (res.isErr()) {
+        throw res.error;
+      }
+    }
+
     // Finally, soft delete the space.
     const res = await space.delete(auth, { hardDelete: false, transaction: t });
     if (res.isErr()) {
@@ -155,6 +132,8 @@ async function performSpaceSoftDeletionTransaction(
 
     await launchScrubSpaceWorkflow(auth, space);
   });
+
+  return new Ok(undefined);
 }
 
 // This method is invoked as part of the workflow to permanently delete a space.
