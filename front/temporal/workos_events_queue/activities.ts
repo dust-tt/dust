@@ -76,12 +76,17 @@ async function verifyWorkOSWorkspace<E extends object, R>(
 /**
  * Handle role assignment based on the name of the group.
  */
-async function handleRoleAssignmentForGroup(
-  workspace: LightWorkspaceType,
-  user: UserResource,
-  group: GroupResource,
-  action: "add" | "remove"
-) {
+async function handleRoleAssignmentForGroup({
+  workspace,
+  user,
+  group,
+  action,
+}: {
+  workspace: LightWorkspaceType;
+  user: UserResource;
+  group: GroupResource;
+  action: "add" | "remove";
+}) {
   let targetRole: MembershipRoleType | null = null;
 
   if (group.name === ADMIN_GROUP_NAME) {
@@ -473,7 +478,7 @@ async function handleUserAddedToGroup(
   }
 
   // Handle role assignment for special groups.
-  await handleRoleAssignmentForGroup(workspace, user, group, "add");
+  await handleRoleAssignmentForGroup({ workspace, user, group, action: "add" });
 }
 
 async function handleUserRemovedFromGroup(
@@ -510,7 +515,12 @@ async function handleUserRemovedFromGroup(
   }
 
   // Handle role assignment for special groups.
-  await handleRoleAssignmentForGroup(workspace, user, group, "remove");
+  await handleRoleAssignmentForGroup({
+    workspace,
+    user,
+    group,
+    action: "remove",
+  });
 }
 
 async function handleCreateOrUpdateWorkOSUser(
