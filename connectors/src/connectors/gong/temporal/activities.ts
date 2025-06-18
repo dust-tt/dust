@@ -135,11 +135,8 @@ export async function gongSyncTranscriptsActivity({
     );
   }
   if (transcriptsToSync.length === 0) {
-    logger.info(
-      { ...loggerArgs },
-      "[Gong] All transcripts are already in DB."
-    );
-    return { nextPageCursor: null };
+    logger.info({ ...loggerArgs }, "[Gong] All transcripts are already in DB.");
+    return { nextPageCursor };
   }
 
   const callsMetadata = await getTranscriptsMetadata({
