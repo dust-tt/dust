@@ -8,6 +8,7 @@ import {
 } from "@app/lib/actions/action_file_helpers";
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type {
+  BlobCallToolResultBlock,
   ExecuteTablesQueryMarkerResourceType,
   GetDatabaseSchemaMarkerResourceType,
   SqlQueryOutputType,
@@ -235,16 +236,7 @@ function createServer(auth: Authenticator): McpServer {
               type: "resource";
               resource: TablesQueryOutputResources;
             }
-          | {
-              type: "resource";
-              name: string;
-              resource: {
-                uri: string;
-                mimeType: string;
-                blob: string;
-                snippet?: string;
-              };
-            }
+          | BlobCallToolResultBlock
         )[] = [];
 
         const results: CSVRecord[] = queryResult.value.results
@@ -287,11 +279,12 @@ function createServer(auth: Authenticator): McpServer {
           const csvBase64 = Buffer.from(csvOutput).toString("base64");
           content.push({
             type: "resource",
+            name: csvFileName,
             resource: {
-              uri: `data:${contentType};base64,${csvSnippet.substring(0, 100)}...`,
-              name: csvFileName,
+              uri: `data:${contentType};base64,transient-content`,
               mimeType: contentType,
               blob: csvBase64,
+              snippet: csvSnippet,
             },
           });
 

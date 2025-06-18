@@ -13,10 +13,7 @@ import { useState } from "react";
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import type { ActionDetailsComponentBaseProps } from "@app/components/actions/types";
 import type { MCPActionType } from "@app/lib/actions/mcp";
-import {
-  isExtractQueryResourceType,
-  isExtractResultResourceType,
-} from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { isExtractQueryResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { isTimeFrame } from "@app/types/shared/utils/time_frame";
 
 interface MCPExtractActionQueryProps {
@@ -30,14 +27,12 @@ interface MCPExtractActionQueryProps {
 
 interface MCPExtractActionResultsProps {
   resultResource?: {
-    text: string;
     uri: string;
     mimeType: string;
-    fileId: string;
-    title: string;
-    contentType: string;
-    snippet: string | null;
+    blob?: string;
+    snippet?: string;
   };
+  name?: string;
 }
 
 export function MCPExtractActionDetails({
@@ -48,9 +43,22 @@ export function MCPExtractActionDetails({
     ?.filter(isExtractQueryResourceType)
     .map((o) => o.resource)?.[0];
 
-  const resultResource = action.output
-    ?.filter(isExtractResultResourceType)
-    .map((o) => o.resource)?.[0];
+  const resultResourceItem = action.output?.find(
+    (o) => o.type === "resource" && o.resource.mimeType === "application/json"
+  );
+  const resultResource =
+    resultResourceItem?.type === "resource"
+      ? (resultResourceItem.resource as {
+          uri: string;
+          mimeType: string;
+          blob?: string;
+          snippet?: string;
+        })
+      : undefined;
+  const resultName =
+    resultResourceItem && "name" in resultResourceItem
+      ? (resultResourceItem.name as string)
+      : undefined;
 
   const jsonSchema = action.params?.jsonSchema as JSONSchema | undefined;
 
@@ -103,7 +111,10 @@ export function MCPExtractActionDetails({
               </span>
             }
             contentChildren={
-              <MCPExtractActionResults resultResource={resultResource} />
+              <MCPExtractActionResults
+                resultResource={resultResource}
+                name={resultName}
+              />
             }
           />
         </div>
@@ -144,6 +155,7 @@ function MCPExtractActionQuery({
 
 function MCPExtractActionResults({
   resultResource,
+  name,
 }: MCPExtractActionResultsProps) {
   const [isDownloading, setIsDownloading] = useState(false);
 
@@ -166,6 +178,8 @@ function MCPExtractActionResults({
     }
   };
 
+  const title = name || "extract_results";
+
   return (
     <div className="flex flex-col gap-4">
       <div>
@@ -173,13 +187,13 @@ function MCPExtractActionResults({
           className="w-48 min-w-48 max-w-48"
           containerClassName="my-2"
           onClick={handleDownload}
-          tooltip={resultResource.title}
+          tooltip={title}
           isLoading={isDownloading}
         >
           <CitationIcons>
             <Icon visual={ScanIcon} />
           </CitationIcons>
-          <CitationTitle>{resultResource.title}</CitationTitle>
+          <CitationTitle>{title}</CitationTitle>
         </Citation>
       </div>
 

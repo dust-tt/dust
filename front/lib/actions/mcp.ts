@@ -960,17 +960,12 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
                   ? block.name
                   : `generated-file-${Date.now()}.${extensionsForContentType(block.resource.mimeType as SupportedFileContentType)[0]}`;
 
-                // For extract_data server, we need to upload to conversation data source
-                const shouldUploadToConversationDataSource =
-                  "internalMCPServerId" in actionConfiguration &&
-                  actionConfiguration.internalMCPServerId === "extract_data";
-
                 return handleBase64Upload(
                   block.resource.blob,
                   block.resource.mimeType,
                   fileName,
                   block,
-                  shouldUploadToConversationDataSource
+                  true // Always upload to conversation data source
                 );
               }
 

@@ -19,10 +19,12 @@ import { CONNECTOR_PROVIDERS } from "@app/types";
 
 export type BlobCallToolResultBlock = {
   type: "resource";
+  name?: string;
   resource: {
     uri: string;
     blob: string;
     mimeType?: string | undefined;
+    snippet?: string;
   };
 };
 
@@ -511,31 +513,6 @@ export const isExtractQueryResourceType = (
   return (
     outputBlock.type === "resource" &&
     ExtractQueryResourceSchema.safeParse(outputBlock.resource).success
-  );
-};
-
-export const ExtractResultResourceSchema = z.object({
-  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.EXTRACT_RESULT),
-  uri: z.string(),
-  text: z.string(),
-
-  // File metadata
-  fileId: z.string(),
-  title: z.string(),
-  contentType: z.string(),
-  snippet: z.string().nullable(),
-});
-
-export type ExtractResultResourceType = z.infer<
-  typeof ExtractResultResourceSchema
->;
-
-export const isExtractResultResourceType = (
-  outputBlock: CallToolResult["content"][number]
-): outputBlock is { type: "resource"; resource: ExtractResultResourceType } => {
-  return (
-    outputBlock.type === "resource" &&
-    ExtractResultResourceSchema.safeParse(outputBlock.resource).success
   );
 };
 

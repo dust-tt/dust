@@ -543,7 +543,7 @@ async function generateProcessToolOutput({
         type: "resource" as const,
         name: fileTitle,
         resource: {
-          uri: `data:application/json;base64,${jsonSnippet.substring(0, 100)}...`,
+          uri: `data:application/json;base64,transient-content`,
           mimeType: "application/json",
           blob: jsonBase64,
           snippet: jsonSnippet,

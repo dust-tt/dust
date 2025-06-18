@@ -330,7 +330,7 @@ function createServer(
         type: "resource",
         name: fileName,
         resource: {
-          uri: `data:${contentType};base64,${csvSnippet.substring(0, 100)}...`,
+          uri: `data:${contentType};base64,transient-content`,
           mimeType: contentType,
           blob: csvBase64,
           snippet: csvSnippet,

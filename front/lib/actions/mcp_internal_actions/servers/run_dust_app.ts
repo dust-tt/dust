@@ -4,18 +4,6 @@ import type { TextContent } from "@modelcontextprotocol/sdk/types.js";
 import type { ZodRawShape } from "zod";
 import { z } from "zod";
 
-// Define the BlobCallToolResultBlock type
-type BlobCallToolResultBlock = {
-  type: "resource";
-  name: string;
-  resource: {
-    uri: string;
-    mimeType: string;
-    blob: string;
-    snippet?: string;
-  };
-};
-
 import { getDustAppRunResultsFileTitle } from "@app/components/actions/dust_app_run/utils";
 import {
   generateCSVOutput,
@@ -26,11 +14,16 @@ import type {
   ServerSideMCPServerConfigurationType,
   ServerSideMCPToolConfigurationType,
 } from "@app/lib/actions/mcp";
+import type { BlobCallToolResultBlock } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
-import type { AgentLoopRunContextType } from "@app/lib/actions/types";
-import type { AgentLoopContextType } from "@app/lib/actions/types";
-import { isMCPConfigurationForDustAppRun } from "@app/lib/actions/types/guards";
-import { isMCPInternalDustAppRun } from "@app/lib/actions/types/guards";
+import type {
+  AgentLoopContextType,
+  AgentLoopRunContextType,
+} from "@app/lib/actions/types";
+import {
+  isMCPConfigurationForDustAppRun,
+  isMCPInternalDustAppRun,
+} from "@app/lib/actions/types/guards";
 import { renderConversationForModel } from "@app/lib/api/assistant/preprocessing";
 import config from "@app/lib/api/config";
 import { getDatasetSchema } from "@app/lib/api/datasets";
@@ -140,28 +133,8 @@ async function prepareAppContext(
 async function processDustFileOutput(
   sanitizedOutput: DustFileOutput,
   appName: string
-): Promise<
-  {
-    type: "resource";
-    name: string;
-    resource: {
-      uri: string;
-      mimeType: string;
-      blob: string;
-      snippet?: string;
-    };
-  }[]
-> {
-  const content: {
-    type: "resource";
-    name: string;
-    resource: {
-      uri: string;
-      mimeType: string;
-      blob: string;
-      snippet?: string;
-    };
-  }[] = [];
+): Promise<BlobCallToolResultBlock[]> {
+  const content: BlobCallToolResultBlock[] = [];
 
   const containsValidStructuredOutput = (
     output: DustFileOutput
@@ -218,7 +191,7 @@ async function processDustFileOutput(
       type: "resource",
       name: fileName,
       resource: {
-        uri: `data:${contentType};base64,${csvSnippet.substring(0, 100)}...`,
+        uri: `data:${contentType};base64,transient-content`,
         mimeType: contentType,
         blob: base64Data,
         snippet: csvSnippet,
