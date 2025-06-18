@@ -503,8 +503,6 @@ export const O3_MODEL_CONFIG: ModelConfigurationType = {
   generationTokensCount: 2048,
   supportsVision: true,
   supportsResponseFormat: true,
-  featureFlag: "openai_o1_feature",
-  customAssistantFeatureFlag: "openai_o1_custom_assistants_feature",
 };
 
 export const O3_MINI_MODEL_CONFIG: ModelConfigurationType = {
