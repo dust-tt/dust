@@ -382,7 +382,7 @@ export async function getChannelsToSync(
   return remoteChannels.filter((c) => c.id && readAllowedChannels.has(c.id));
 }
 
-export async function getChannel(
+export async function getChannelById(
   slackClient: WebClient,
   connectorId: ModelId,
   channelId: string
