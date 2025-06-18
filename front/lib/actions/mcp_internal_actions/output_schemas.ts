@@ -17,16 +17,18 @@ import {
 } from "@app/lib/actions/mcp_icons";
 import { CONNECTOR_PROVIDERS } from "@app/types";
 
-export function isBlobResource(
-  outputBlock: CallToolResult["content"][number]
-): outputBlock is {
+export type BlobCallToolResultBlock = {
   type: "resource";
   resource: {
     uri: string;
     blob: string;
-    mimeType?: string;
+    mimeType?: string | undefined;
   };
-} {
+};
+
+export function isBlobResource(
+  outputBlock: CallToolResult["content"][number]
+): outputBlock is BlobCallToolResultBlock {
   return outputBlock.type === "resource" && "blob" in outputBlock.resource;
 }
 
