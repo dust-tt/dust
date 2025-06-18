@@ -12,9 +12,11 @@ import {
   BaseConnectorManager,
   ConnectorManagerError,
 } from "@connectors/connectors/interface";
-import { getChannels } from "@connectors/connectors/slack//temporal/activities";
 import { getBotEnabled } from "@connectors/connectors/slack/bot";
-import { joinChannel } from "@connectors/connectors/slack/lib/channels";
+import {
+  getChannels,
+  joinChannel,
+} from "@connectors/connectors/slack/lib/channels";
 import {
   getSlackAccessToken,
   getSlackClient,
@@ -367,8 +369,13 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
           }))
         );
       } else {
+        const slackClient = await getSlackClient(c.id, {
+          // Do not reject rate limited calls in update connector. Called from the API.
+          rejectRateLimitedCalls: false,
+        });
+
         const [remoteChannels, localChannels] = await Promise.all([
-          getChannels(c.id, false),
+          getChannels(slackClient, c.id, false),
           SlackChannel.findAll({
             where: {
               connectorId: this.connectorId,

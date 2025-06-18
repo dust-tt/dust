@@ -27,10 +27,15 @@ import {
 import { streamConversationToSlack } from "@connectors/connectors/slack/chat/stream_conversation_handler";
 import { makeConversationUrl } from "@connectors/connectors/slack/chat/utils";
 import {
+  getBotUserIdMemoized,
+  getUserName,
+} from "@connectors/connectors/slack/lib/bot_user_helpers";
+import {
   isSlackWebAPIPlatformError,
   SlackExternalUserError,
   SlackMessageError,
 } from "@connectors/connectors/slack/lib/errors";
+import { formatMessagesForUpsert } from "@connectors/connectors/slack/lib/messages";
 import type { SlackUserInfo } from "@connectors/connectors/slack/lib/slack_client";
 import {
   getSlackBotInfo,
@@ -60,12 +65,6 @@ import {
   getHeaderFromGroupIds,
   getHeaderFromUserEmail,
 } from "@connectors/types";
-
-import {
-  formatMessagesForUpsert,
-  getBotUserIdMemoized,
-  getUserName,
-} from "./temporal/activities";
 
 const MAX_FILE_SIZE_TO_UPLOAD = 10 * 1024 * 1024; // 10 MB
 
@@ -622,7 +621,7 @@ async function answerMessage(
   // becomes: What is the command to upgrade a workspace in production (cc @julien) ?
   const matches = message.match(/<@[A-Z-0-9]+>/g);
   if (matches) {
-    const mySlackUser = await getBotUserIdMemoized(connector.id);
+    const mySlackUser = await getBotUserIdMemoized(slackClient, connector.id);
     for (const m of matches) {
       const userId = m.replace(/<|@|>/g, "");
       if (userId === mySlackUser) {
@@ -1106,7 +1105,7 @@ async function makeContentFragments(
     }
   }
 
-  const botUserId = await getBotUserIdMemoized(connector.id);
+  const botUserId = await getBotUserIdMemoized(slackClient, connector.id);
   allMessages = allMessages.filter(
     (m) =>
       // If this message is from the bot, we don't send it as a content fragment.
