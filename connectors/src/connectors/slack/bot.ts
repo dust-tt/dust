@@ -36,6 +36,7 @@ import {
   getSlackBotInfo,
   getSlackClient,
   getSlackUserInfo,
+  reportSlackUsage,
 } from "@connectors/connectors/slack/lib/slack_client";
 import { getRepliesFromThread } from "@connectors/connectors/slack/lib/thread";
 import {
@@ -140,6 +141,11 @@ export async function botAnswerMessage(
       rejectRateLimitedCalls: false,
     });
     try {
+      reportSlackUsage({
+        connectorId: connector.id,
+        method: "chat.postMessage",
+        channelId: slackChannel,
+      });
       await slackClient.chat.postMessage({
         channel: slackChannel,
         text: "An unexpected error occurred. Our team has been notified",
@@ -202,6 +208,11 @@ export async function botReplaceMention(
     const slackClient = await getSlackClient(connector.id, {
       // Do not reject rate limited calls in bot replace mention.
       rejectRateLimitedCalls: false,
+    });
+    reportSlackUsage({
+      connectorId: connector.id,
+      method: "chat.postMessage",
+      channelId: slackChannel,
     });
     await slackClient.chat.postMessage({
       channel: slackChannel,
@@ -294,6 +305,12 @@ export async function botValidateToolExecution(
       // Do not reject rate limited calls in bot validate tool execution.
       rejectRateLimitedCalls: false,
     });
+
+    reportSlackUsage({
+      connectorId: connector.id,
+      method: "chat.postEphemeral",
+      channelId: slackChannel,
+    });
     await slackClient.chat.postEphemeral({
       channel: slackChannel,
       user: slackChatBotMessage.slackUserId,
@@ -314,6 +331,12 @@ export async function botValidateToolExecution(
     const slackClient = await getSlackClient(connector.id, {
       // Do not reject rate limited calls in bot validate tool execution.
       rejectRateLimitedCalls: false,
+    });
+
+    reportSlackUsage({
+      connectorId: connector.id,
+      method: "chat.postMessage",
+      channelId: slackChannel,
     });
     await slackClient.chat.postMessage({
       channel: slackChannel,
@@ -367,6 +390,11 @@ async function processErrorResult(
       errorMessage
     );
     if (mainMessage && mainMessage.ts) {
+      reportSlackUsage({
+        connectorId: connector.id,
+        method: "chat.update",
+        channelId: slackChannel,
+      });
       await slackClient.chat.update({
         ...errorPost,
         channel: slackChannel,
@@ -374,6 +402,11 @@ async function processErrorResult(
         ts: mainMessage.ts,
       });
     } else {
+      reportSlackUsage({
+        connectorId: connector.id,
+        method: "chat.postMessage",
+        channelId: slackChannel,
+      });
       await slackClient.chat.postMessage({
         ...errorPost,
         channel: slackChannel,
@@ -429,10 +462,18 @@ async function answerMessage(
   // The order is important here because we want to prioritize the user id over the bot id.
   // When a bot sends a message "as a user", we want to honor the user and not the bot.
   if (slackUserId) {
-    slackUserInfo = await getSlackUserInfo(slackClient, slackUserId);
+    slackUserInfo = await getSlackUserInfo(
+      connector.id,
+      slackClient,
+      slackUserId
+    );
   } else if (slackBotId) {
     try {
-      slackUserInfo = await getSlackBotInfo(slackClient, slackBotId);
+      slackUserInfo = await getSlackBotInfo(
+        connector.id,
+        slackClient,
+        slackBotId
+      );
     } catch (e) {
       if (isSlackWebAPIPlatformError(e)) {
         if (e.data.error === "bot_not_found") {
@@ -964,6 +1005,7 @@ async function makeContentFragments(
     },
   });
   const replies = await getRepliesFromThread({
+    connectorId: connector.id,
     slackClient,
     channelId,
     threadTs,
@@ -1068,6 +1110,11 @@ async function makeContentFragments(
 
   let channelName: string | null = null;
   try {
+    reportSlackUsage({
+      connectorId: connector.id,
+      method: "conversations.info",
+      channelId: channelId,
+    });
     const channel = await slackClient.conversations.info({
       channel: channelId,
     });
@@ -1103,6 +1150,11 @@ async function makeContentFragments(
   let document: CoreAPIDataSourceDocumentSection | null = null;
   let url: string | null = null;
   if (allMessages.length === 0) {
+    reportSlackUsage({
+      connectorId: connector.id,
+      method: "chat.getPermalink",
+      channelId: channelId,
+    });
     const permalinkRes = await slackClient.chat.getPermalink({
       channel: channelId,
       message_ts: threadTs,
@@ -1122,6 +1174,11 @@ async function makeContentFragments(
     });
 
     if (allMessages[0]?.ts) {
+      reportSlackUsage({
+        connectorId: connector.id,
+        method: "chat.getPermalink",
+        channelId: channelId,
+      });
       const permalinkRes = await slackClient.chat.getPermalink({
         channel: channelId,
         message_ts: allMessages[0].ts,
