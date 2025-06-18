@@ -91,6 +91,20 @@ export function crawlWebsiteSchedulerWorkflowId() {
   return `webcrawler-scheduler`;
 }
 
+export async function garbageCollectWebsiteWorkflow(
+  connectorId: ModelId,
+  lastSyncStartTs: number
+): Promise<void> {
+  await webCrawlerGarbageCollector(connectorId, lastSyncStartTs);
+}
+
+export function garbageCollectWebsiteWorkflowId(
+  connectorId: ModelId,
+  lastSyncStartTs: number
+): string {
+  return `webcrawler-${connectorId}-garbage-collector-${lastSyncStartTs}`;
+}
+
 // Firecrawl crawl specific workflows
 
 export function firecrawlCrawlFailedWorkflowId(
@@ -134,9 +148,23 @@ export async function firecrawlCrawlCompletedWorkflow(
 ) {
   const res = await firecrawlCrawlCompleted(connectorId, crawlId);
 
-  // If we have a lastSyncStartTs, we start the garbage collector.
+  // If we have a lastSyncStartTs, we start the garbage collector workflow.
   if (res?.lastSyncStartTs) {
-    await webCrawlerGarbageCollector(connectorId, res.lastSyncStartTs);
+    // sleep for 120s
+    await new Promise((resolve) => setTimeout(resolve, 120_000));
+
+    await startChild(garbageCollectWebsiteWorkflow, {
+      workflowId: garbageCollectWebsiteWorkflowId(
+        connectorId,
+        res.lastSyncStartTs
+      ),
+      searchAttributes: {
+        connectorId: [connectorId],
+      },
+      args: [connectorId, res.lastSyncStartTs],
+      parentClosePolicy: ParentClosePolicy.ABANDON,
+      memo: workflowInfo().memo,
+    });
   }
 }
 
