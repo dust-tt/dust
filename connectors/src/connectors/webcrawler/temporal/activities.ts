@@ -1289,14 +1289,18 @@ export async function firecrawlCrawlCompleted(
   }
 
   if (crawlStatus.completed <= 0) {
-    // No content found, checking if it's blocked by user.
+    // No content found, checking if it's blocked for robots.
     const crawlErrors = await getFirecrawl().checkCrawlErrors(crawlId);
     // Typing issue from Firecrawl, 'success = true' is not in the CrawlErrorsResponse
     if ("success" in crawlErrors) {
-      localLogger.error({ connectorId, crawlId }, "Couldn't fetch crawl error");
+      localLogger.error(
+        { connectorId, crawlId },
+        `Couldn't fetch crawl error: ${crawlErrors.error}`
+      );
       return;
     }
 
+    // Check if the rootUrl is blocked for robots
     if (crawlErrors.robotsBlocked.includes(webConfig.url)) {
       await syncFailed(connectorId, "webcrawling_error_blocked");
     } else {
