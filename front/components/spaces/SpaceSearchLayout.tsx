@@ -250,6 +250,12 @@ function BackendSearch({
     // Required by search API to allow admins to search the system space
     allowAdminSearch: true,
     disabled: !debouncedSearch,
+    dataSourceViewIdsBySpaceId:
+      targetDataSourceViews.length > 0
+        ? {
+            [space.sId]: targetDataSourceViews.map((dsv) => dsv.sId),
+          }
+        : undefined,
   };
 
   // Use the spaces search hook for backend search with URL/node support
