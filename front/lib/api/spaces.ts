@@ -28,48 +28,46 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
   assert(auth.isAdmin(), "Only admins can delete spaces.");
   assert(space.isRegular(), "Cannot delete non regular spaces.");
 
-  const usages: DataSourceWithAgentsUsageType[] = [];
+  // const usages: DataSourceWithAgentsUsageType[] = [];
 
   const dataSourceViews = await DataSourceViewResource.listBySpace(auth, space);
-  for (const view of dataSourceViews) {
-    const usage = await view.getUsagesByAgents(auth);
-    if (usage.isErr()) {
-      throw usage.error;
-    } else if (usage.value.count > 0) {
-      usages.push(usage.value);
-    }
-  }
+  // for (const view of dataSourceViews) {
+  //   const usage = await view.getUsagesByAgents(auth);
+  //   if (usage.isErr()) {
+  //     throw usage.error;
+  //   } else if (usage.value.count > 0) {
+  //     usages.push(usage.value);
+  //   }
+  // }
 
   const dataSources = await DataSourceResource.listBySpace(auth, space);
-  for (const ds of dataSources) {
-    const usage = await ds.getUsagesByAgents(auth);
-    if (usage.isErr()) {
-      throw usage.error;
-    } else if (usage.value.count > 0) {
-      usages.push(usage.value);
-    }
-  }
+  // for (const ds of dataSources) {
+  //   const usage = await ds.getUsagesByAgents(auth);
+  //   if (usage.isErr()) {
+  //     throw usage.error;
+  //   } else if (usage.value.count > 0) {
+  //     usages.push(usage.value);
+  //   }
+  // }
 
   const apps = await AppResource.listBySpace(auth, space);
-  for (const app of apps) {
-    const usage = await app.getUsagesByAgents(auth);
-    if (usage.isErr()) {
-      throw usage.error;
-    } else if (usage.value.count > 0) {
-      usages.push(usage.value);
-    }
-  }
+  // for (const app of apps) {
+  //   const usage = await app.getUsagesByAgents(auth);
+  //   if (usage.isErr()) {
+  //     throw usage.error;
+  //   } else if (usage.value.count > 0) {
+  //     usages.push(usage.value);
+  //   }
+  // }
 
-  if (usages.length > 0) {
-    const agentNames = uniq(
-      usages.flatMap((u) => u.agents).map((agent) => agent.name)
-    );
-    return new Err(
-      new Error(
-        `Cannot delete space with data source or app in use by agent(s): ${agentNames.join(", ")}.`
-      )
-    );
-  }
+  // if (usages.length > 0) {
+  //   const agentNames = uniq(usages.map((u) => u.agentNames).flat());
+  //   return new Err(
+  //     new Error(
+  //       `Cannot delete space with data source or app in use by agent(s): ${agentNames.join(", ")}. If you'd like to continue set the force query parameter to true.`
+  //     )
+  //   );
+  // }
 
   const groupHasKeys = await KeyResource.countActiveForGroups(
     auth,
