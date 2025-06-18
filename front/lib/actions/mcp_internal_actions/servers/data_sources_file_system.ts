@@ -288,7 +288,7 @@ const createServer = (
 
       const dataSourceNodeId = rootNodeId
         ? extractDataSourceIdFromNodeId(rootNodeId)
-        : undefined;
+        : null;
 
       // If rootNodeId is provided and is a data source node ID, search only in
       // the data source. If rootNodeId is provided and is a regular node ID,
@@ -671,6 +671,24 @@ const createServer = (
           };
         }
       );
+
+      const searchNodeIds = searchResults.value.documents.map(
+        ({ document_id }) => document_id
+      );
+
+      const searchResult = await coreAPI.searchNodes({
+        filter: {
+          node_ids: searchNodeIds,
+          data_source_views: coreSearchArgs.map((args) => ({
+            data_source_id: args.dataSourceId,
+            view_filter: args.filter.parents?.in ?? [],
+          })),
+        },
+      });
+
+      if (searchResult.isErr()) {
+        return makeMCPToolTextError("Failed to search content");
+      }
 
       return {
         isError: false,
