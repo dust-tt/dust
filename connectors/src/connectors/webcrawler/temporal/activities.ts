@@ -1288,6 +1288,21 @@ export async function firecrawlCrawlCompleted(
     return;
   }
 
+  if (crawlStatus.completed <= 0) {
+    // No content found, checking if it's blocked by user.
+    const crawlErrors = await getFirecrawl().checkCrawlErrors(crawlId);
+    // Typing issue from Firecrawl, 'success = true' is not in the CrawlErrorsResponse
+    if ("success" in crawlErrors) {
+      localLogger.error({ connectorId, crawlId }, "Couldn't fetch crawl error");
+      return;
+    }
+
+    if (crawlErrors.robotsBlocked.includes(webConfig.url)) {
+      await syncFailed(connectorId, "webcrawling_error_blocked");
+      return;
+    }
+  }
+
   if (crawlStatus.completed >= webConfig.maxPageToCrawl) {
     await syncFailed(connectorId, "webcrawling_synchronization_limit_reached");
   } else {
