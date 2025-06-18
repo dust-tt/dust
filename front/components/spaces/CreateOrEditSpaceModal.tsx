@@ -384,6 +384,7 @@ export function CreateOrEditSpaceModal({
             {isAdmin && space && space.kind === "regular" && (
               <>
                 <ConfirmDeleteSpaceDialog
+                  dataSourceUsage={uniqueAgentNames.length}
                   space={space}
                   handleDelete={onDelete}
                   isOpen={showDeleteConfirmDialog}

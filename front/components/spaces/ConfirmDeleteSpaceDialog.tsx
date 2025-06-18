@@ -12,11 +12,12 @@ import {
 
 import { getSpaceName } from "@app/lib/spaces";
 import type { SpaceType } from "@app/types";
+import { ToString } from "yargs";
 
 interface ConfirmDeleteSpaceDialogProps {
   space: SpaceType;
   handleDelete: () => void;
-  dataSourceUsage?: string[];
+  dataSourceUsage: number;
   isOpen: boolean;
   isDeleting: boolean;
   onClose: () => void;
@@ -31,7 +32,7 @@ export function ConfirmDeleteSpaceDialog({
   onClose,
 }: ConfirmDeleteSpaceDialogProps) {
   const spaceName = `"${getSpaceName(space)}"`;
-  const hasAgents = dataSourceUsage && dataSourceUsage.length > 0;
+  const hasAgents = dataSourceUsage > 0;
 
   return (
     <Dialog
@@ -56,35 +57,12 @@ export function ConfirmDeleteSpaceDialog({
               {hasAgents && (
                 <ContentMessage
                   variant="warning"
-                  title="This will break existing agents"
-                >
-                  {dataSourceUsage.length === 1 ? (
-                    <>
-                      Agent{" "}
-                      <Chip
-                        size="xs"
-                        color="primary"
-                        label={dataSourceUsage[0]}
-                      />{" "}
-                      currently uses this space and will be broken.
-                    </>
-                  ) : (
-                    <>
-                      The following agents will be broken:{" "}
-                      {dataSourceUsage.map((agent, index) => (
-                        <span key={agent}>
-                          <Chip size="xs" color="primary" label={agent} />
-                          {index < dataSourceUsage.length - 1 && ", "}
-                        </span>
-                      ))}
-                    </>
-                  )}
-                </ContentMessage>
+                  title={`This will break ${dataSourceUsage} existing agent(s)`}
+                />
               )}
-
               <div>
                 <p className="text-sm text-muted-foreground">
-                  Are you sure you want to permanently delete space{" "}
+                  Are you sure you want to permanently delete space{}
                   <Chip size="xs" color="primary" label={spaceName} />?
                   {hasAgents && " This action cannot be undone."}
                 </p>
