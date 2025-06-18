@@ -100,6 +100,7 @@ export async function gongSyncTranscriptsActivity({
   const configuration = await fetchGongConfiguration(connector);
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
   const loggerArgs = {
+    connectorId: connector.id,
     dataSourceId: dataSourceConfig.dataSourceId,
     provider: "gong",
     startTimestamp: configuration.lastSyncTimestamp,
