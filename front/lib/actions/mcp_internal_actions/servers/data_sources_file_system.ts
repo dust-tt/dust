@@ -17,7 +17,6 @@ import {
   renderRelativeTimeFrameForToolOutput,
 } from "@app/lib/actions/mcp_internal_actions/servers/utils";
 import {
-  makeMCPToolJSONSuccess,
   makeMCPToolRecoverableErrorSuccess,
   makeMCPToolTextError,
 } from "@app/lib/actions/mcp_internal_actions/utils";
@@ -771,18 +770,26 @@ const createServer = (
           );
         }
 
-        return makeMCPToolJSONSuccess({
-          message: "Node is the data source root.",
-          result: {
-            path: [
-              {
-                nodeId: nodeId,
-                title: dataSourceConfig.dataSource.name,
-                isCurrentNode: true,
+        return {
+          isError: false,
+          content: [
+            {
+              type: "resource" as const,
+              resource: {
+                mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.LOCATE_IN_TREE_RESULT,
+                uri: "",
+                text: "Node is the data source root.",
+                path: [
+                  {
+                    nodeId: nodeId,
+                    title: dataSourceConfig.dataSource.name,
+                    isCurrentNode: true,
+                  },
+                ],
               },
-            ],
-          },
-        });
+            },
+          ],
+        };
       }
 
       // Search for the target node.
@@ -871,12 +878,20 @@ const createServer = (
         },
       ]);
 
-      return makeMCPToolJSONSuccess({
-        message: "Path located successfully.",
-        result: {
-          path: pathItems,
-        },
-      });
+      return {
+        isError: false,
+        content: [
+          {
+            type: "resource" as const,
+            resource: {
+              mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.LOCATE_IN_TREE_RESULT,
+              uri: "",
+              text: "Path located successfully.",
+              path: pathItems,
+            },
+          },
+        ],
+      };
     }
   );
 
