@@ -108,7 +108,7 @@ const CustomHeroSection = () => (
                 </div>
                 <div className="flex sm:justify-end">
                   <img
-                    src="/static/landing/logos/color/clay-white.svg"
+                    src="/static/landing/logos/color/clay_white.png"
                     alt="Clay logo"
                     className="h-14 w-auto sm:h-16 lg:h-20"
                   />
@@ -487,7 +487,7 @@ const TestimonialSection = () => (
           </div>
           <div className="flex sm:flex-shrink-0 sm:justify-end">
             <img
-              src="/static/landing/logos/color/clay-white.svg"
+              src="/static/landing/logos/color/clay_white.png"
               alt="Clay logo"
               className="h-16 w-auto sm:h-20"
             />
