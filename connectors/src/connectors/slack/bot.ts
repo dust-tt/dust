@@ -145,6 +145,7 @@ export async function botAnswerMessage(
         connectorId: connector.id,
         method: "chat.postMessage",
         channelId: slackChannel,
+        useCase: "bot",
       });
       await slackClient.chat.postMessage({
         channel: slackChannel,
@@ -213,6 +214,7 @@ export async function botReplaceMention(
       connectorId: connector.id,
       method: "chat.postMessage",
       channelId: slackChannel,
+      useCase: "bot",
     });
     await slackClient.chat.postMessage({
       channel: slackChannel,
@@ -310,6 +312,7 @@ export async function botValidateToolExecution(
       connectorId: connector.id,
       method: "chat.postEphemeral",
       channelId: slackChannel,
+      useCase: "bot",
     });
     await slackClient.chat.postEphemeral({
       channel: slackChannel,
@@ -337,6 +340,7 @@ export async function botValidateToolExecution(
       connectorId: connector.id,
       method: "chat.postMessage",
       channelId: slackChannel,
+      useCase: "bot",
     });
     await slackClient.chat.postMessage({
       channel: slackChannel,
@@ -394,6 +398,7 @@ async function processErrorResult(
         connectorId: connector.id,
         method: "chat.update",
         channelId: slackChannel,
+        useCase: "bot",
       });
       await slackClient.chat.update({
         ...errorPost,
@@ -406,6 +411,7 @@ async function processErrorResult(
         connectorId: connector.id,
         method: "chat.postMessage",
         channelId: slackChannel,
+        useCase: "bot",
       });
       await slackClient.chat.postMessage({
         ...errorPost,
@@ -1009,6 +1015,7 @@ async function makeContentFragments(
     slackClient,
     channelId,
     threadTs,
+    useCase: "bot",
   });
   let shouldTake = false;
   for (const reply of replies) {
@@ -1114,6 +1121,7 @@ async function makeContentFragments(
       connectorId: connector.id,
       method: "conversations.info",
       channelId: channelId,
+      useCase: "bot",
     });
     const channel = await slackClient.conversations.info({
       channel: channelId,
@@ -1154,6 +1162,7 @@ async function makeContentFragments(
       connectorId: connector.id,
       method: "chat.getPermalink",
       channelId: channelId,
+      useCase: "bot",
     });
     const permalinkRes = await slackClient.chat.getPermalink({
       channel: channelId,
@@ -1178,6 +1187,7 @@ async function makeContentFragments(
         connectorId: connector.id,
         method: "chat.getPermalink",
         channelId: channelId,
+        useCase: "bot",
       });
       const permalinkRes = await slackClient.chat.getPermalink({
         channel: channelId,

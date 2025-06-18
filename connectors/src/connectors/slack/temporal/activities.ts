@@ -124,6 +124,7 @@ async function _getTypedChannelsUncached(
     reportSlackUsage({
       connectorId,
       method: "conversations.list",
+      useCase: "batch_sync",
     });
     const c: ConversationsListResponse = await withSlackErrorHandling(() =>
       slackClient.conversations.list({
@@ -524,6 +525,7 @@ export async function syncNonThreadedChunk({
         method: "conversations.history",
         channelId,
         limit: CONVERSATION_HISTORY_LIMIT,
+        useCase: isBatchSync ? "batch_sync" : "incremental_sync",
       });
       c = await withSlackErrorHandling(() =>
         slackClient.conversations.history({
@@ -920,6 +922,7 @@ export async function syncThread(
         slackClient,
         channelId,
         threadTs,
+        useCase: isBatchSync ? "batch_sync" : "incremental_sync",
       })
     );
     allMessages = allMessages.filter((m) => !!m.user);

@@ -29,17 +29,23 @@ export function reportSlackUsage({
   method,
   channelId,
   limit,
+  useCase,
 }: {
   connectorId: ModelId;
   method: string;
   channelId?: string;
   limit?: number;
+  useCase?: "batch_sync" | "incremental_sync" | "bot";
 }) {
-  logger.info({ connectorId, method, channelId, limit }, "Slack API call");
-  statsDClient.increment("slack_api_call.count", 1, [
-    `connector:${connectorId}`,
-    `method:${method}`,
-  ]);
+  logger.info(
+    { connectorId, method, channelId, limit, useCase },
+    "Slack API call"
+  );
+  const tags = [`connector:${connectorId}`, `method:${method}`];
+  if (useCase) {
+    tags.push(`use_case:${useCase}`);
+  }
+  statsDClient.increment("slack_api_call.count", 1, tags);
 }
 
 // Type guards for Slack errors
