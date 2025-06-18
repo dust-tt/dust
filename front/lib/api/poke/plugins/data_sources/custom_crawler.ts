@@ -16,6 +16,7 @@ export const customCrawlerPlugin = createPlugin({
         description: "Select a crawler",
         values: [
           { label: "Firecrawl", value: "firecrawl" },
+          { label: "Firecrawl API", value: "firecrawl-api" },
           { label: "Default", value: "default" },
         ],
       },
