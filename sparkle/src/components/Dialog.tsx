@@ -3,7 +3,12 @@ import { FocusScope } from "@radix-ui/react-focus-scope";
 import { cva } from "class-variance-authority";
 import * as React from "react";
 
-import { Button, ButtonProps, ScrollArea } from "@sparkle/components";
+import {
+  Button,
+  ButtonAsButtonProps,
+  ButtonProps,
+  ScrollArea,
+} from "@sparkle/components";
 import { XMarkIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 
@@ -137,8 +142,8 @@ const DialogContainer = ({
 DialogContainer.displayName = "DialogContainer";
 
 interface DialogFooterProps extends React.HTMLAttributes<HTMLDivElement> {
-  leftButtonProps?: React.ComponentProps<typeof Button>;
-  rightButtonProps?: React.ComponentProps<typeof Button>;
+  leftButtonProps?: ButtonAsButtonProps;
+  rightButtonProps?: ButtonAsButtonProps;
   dialogCloseClassName?: string;
 }
 

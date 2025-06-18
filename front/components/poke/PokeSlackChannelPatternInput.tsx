@@ -174,7 +174,7 @@ export function SlackChannelPatternInput({
         <Button
           onClick={handleAdd}
           disabled={!newPattern.pattern || !newPattern.spaceId}
-          variant="secondary"
+          variant="ghost-secondary"
           label="Add Pattern"
         />
       </div>
