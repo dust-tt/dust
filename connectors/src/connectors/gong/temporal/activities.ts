@@ -135,6 +135,10 @@ export async function gongSyncTranscriptsActivity({
     );
   }
   if (transcriptsToSync.length === 0) {
+    logger.warn(
+      { ...loggerArgs },
+      "[Gong] All transcripts are already in DB."
+    );
     return { nextPageCursor: null };
   }
 
