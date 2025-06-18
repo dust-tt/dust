@@ -1,5 +1,5 @@
 import type { FirecrawlDocument } from "@mendable/firecrawl-js";
-import FirecrawlApp, { FirecrawlError } from "@mendable/firecrawl-js";
+import { FirecrawlError } from "@mendable/firecrawl-js";
 import { Context } from "@temporalio/activity";
 import { isCancellation } from "@temporalio/workflow";
 import { BasicCrawler, CheerioCrawler, Configuration, LogLevel } from "crawlee";
@@ -37,6 +37,7 @@ import {
   upsertDataSourceDocument,
   upsertDataSourceFolder,
 } from "@connectors/lib/data_sources";
+import { getFirecrawl } from "@connectors/lib/firecrawl";
 import {
   WebCrawlerFolder,
   WebCrawlerPage,
@@ -104,9 +105,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
     throw new Error(`Webcrawler configuration not found for connector.`);
   }
 
-  const firecrawlApp = new FirecrawlApp({
-    apiKey: apiConfig.getFirecrawlAPIConfig().apiKey,
-  });
+  const firecrawlApp = getFirecrawl();
 
   const childLogger = logger.child({
     connectorId: connector.id,
@@ -1273,7 +1272,27 @@ export async function firecrawlCrawlCompleted(
     return;
   }
 
-  await syncSucceeded(connector.id);
+  const webConfig =
+    await WebCrawlerConfigurationResource.fetchByConnectorId(connectorId);
+  if (webConfig === null) {
+    localLogger.error({ connectorId }, "WebCrawlerConfiguration not found");
+    return;
+  }
+
+  const crawlStatus = await getFirecrawl().checkCrawlStatus(crawlId);
+  if (!crawlStatus.success) {
+    localLogger.error(
+      { connectorId, crawlId },
+      `Couldn't fetch crawl status: ${crawlStatus.error}`
+    );
+    return;
+  }
+
+  if (crawlStatus.completed >= webConfig.maxPageToCrawl) {
+    await syncFailed(connectorId, "webcrawling_synchronization_limit_reached");
+  } else {
+    await syncSucceeded(connector.id);
+  }
 
   return {
     lastSyncStartTs: connector.lastSyncStartTime?.getTime() ?? null,
