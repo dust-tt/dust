@@ -1,4 +1,6 @@
 import {
+  Chip,
+  ContentMessage,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -14,7 +16,7 @@ import type { SpaceType } from "@app/types";
 interface ConfirmDeleteSpaceDialogProps {
   space: SpaceType;
   handleDelete: () => void;
-  dataSourceUsage?: number;
+  dataSourceUsage?: string[];
   isOpen: boolean;
   isDeleting: boolean;
   onClose: () => void;
@@ -28,12 +30,8 @@ export function ConfirmDeleteSpaceDialog({
   isDeleting,
   onClose,
 }: ConfirmDeleteSpaceDialogProps) {
-  const message =
-    dataSourceUsage === undefined
-      ? `Are you sure you want to permanently delete space ${getSpaceName(space)}?`
-      : dataSourceUsage > 0
-        ? `${dataSourceUsage} agents currently use space ${getSpaceName(space)}. Are you sure you want to delete?`
-        : `No agents are using this ${getSpaceName(space)}. Confirm permanent deletion?`;
+  const spaceName = `"${getSpaceName(space)}"`;
+  const hasAgents = dataSourceUsage && dataSourceUsage.length > 0;
 
   return (
     <Dialog
@@ -54,7 +52,40 @@ export function ConfirmDeleteSpaceDialog({
           </div>
         ) : (
           <>
-            <DialogContainer>{message}</DialogContainer>
+            <DialogContainer className="space-y-4">
+              {hasAgents && (
+                <ContentMessage
+                  variant="warning"
+                  title="This will break existing agents"
+                >
+                  {dataSourceUsage.length === 1 ? (
+                    <>
+                      Agent{" "}
+                      <Chip size="sm" color="blue" label={dataSourceUsage[0]} />{" "}
+                      currently uses this space and will be broken.
+                    </>
+                  ) : (
+                    <>
+                      The following agents will be broken:{" "}
+                      {dataSourceUsage.map((agent, index) => (
+                        <span key={agent}>
+                          <Chip size="xs" color="primary" label={agent} />
+                          {index < dataSourceUsage.length - 1 && ", "}
+                        </span>
+                      ))}
+                    </>
+                  )}
+                </ContentMessage>
+              )}
+
+              <div>
+                <p className="text-sm text-muted-foreground">
+                  Are you sure you want to permanently delete space{" "}
+                  <Chip size="xs" color="primary" label={spaceName} />?
+                  {hasAgents && " This action cannot be undone."}
+                </p>
+              </div>
+            </DialogContainer>
             <DialogFooter
               leftButtonProps={{
                 label: "Cancel",
