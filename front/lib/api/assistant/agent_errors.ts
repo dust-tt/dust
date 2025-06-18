@@ -30,13 +30,13 @@ export const getPublicErrorMessage = (error: {
         error.message.includes("at least one message is required") ||
         error.message.includes("exceed context limit")
       ) {
-        return "Your conversation content is too big and has exceeded the context window of the model. Try to reduce the amount of data you are sending or start a new conversation.";
+        return "Context window (the amount of data the agent can process) exceeded. This can happen if your first message was very long or if the agent retrieved a lot of data while helping you. Try breaking your request into smaller parts or updating your agent configuration to output less data.";
       } else if (error.message.includes("Internal server error")) {
         return "Anthropic (provider of Claude) encountered an internal server error. Please try again.";
       }
     } else if (error.message.includes("OpenAIError")) {
       if (error.message.includes("maximum context length")) {
-        return "Your conversation content is too big and has exceeded the context window of the model. Try to reduce the amount of data you are sending or start a new conversation.";
+        return "Context window (the amount of data the agent can process) exceeded. This can happen if your first message was very long or if the agent retrieved a lot of data while helping you. Try breaking your request into smaller parts or updating your agent configuration to output less data.";
       } else if (error.message.includes("Invalid schema for response_format")) {
         const contextPart = error.message.split("In context=")[1];
         return `Your agent is configured to return a response in a format that is not supported by the model: ${contextPart}. Please update your agent configuration in Instructions > Advanced Settings > Structured Response Format.`;
