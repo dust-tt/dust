@@ -119,6 +119,18 @@ export function CreateOrEditSpaceModal({
     spaceId: space?.sId ?? null,
   });
 
+  let agentUsage = spaceInfo?.categories;
+
+  const uniqueAgentNames = useMemo(() => {
+    if (!agentUsage) return [];
+
+    const allAgentNames = Object.values(agentUsage)
+      .flatMap((category) => category.usage.agentNames)
+      .filter((name) => name && name.length > 0);
+
+    return [...new Set(allAgentNames)];
+  }, [agentUsage]);
+
   const { groups } = useGroups({
     owner,
     kinds: ["provisioned"],
