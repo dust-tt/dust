@@ -28,14 +28,18 @@ const LOGO_SETS = {
   ],
   b2bSaas: [
     { name: "clay", src: "/static/landing/logos/gray/clay.svg" },
-    {
-      name: "contentsquare",
-      src: "/static/landing/logos/gray/contentsquare.svg",
-    },
+    { name: "contentsquare", src: "/static/landing/logos/gray/contentsquare.svg" },
     { name: "payfit", src: "/static/landing/logos/gray/payfit.svg" },
     { name: "spendesk", src: "/static/landing/logos/gray/spendesk.svg" },
     { name: "gitguardian", src: "/static/landing/logos/gray/gitguardian.svg" },
     { name: "watershed", src: "/static/landing/logos/gray/watershed.svg" },
+  ],
+  marketplaces: [
+    { name: "blueground", src: "/static/landing/logos/gray/blueground.svg" },
+    { name: "doctolib", src: "/static/landing/logos/gray/doctolib.svg" },
+    { name: "ornikar", src: "/static/landing/logos/gray/ornikar.svg" },
+    { name: "malt", src: "/static/landing/logos/gray/malt.svg" },
+    { name: "wttj", src: "/static/landing/logos/gray/wttj.svg" }
   ],
 } as const;
 
