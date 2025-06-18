@@ -144,6 +144,9 @@ export async function constructPromptMultiActions(
     "\nEvery latex formula should be inside double dollars $$ blocks." +
     "\nParentheses cannot be used to enclose mathematical formulas: BAD: \\( \\Delta \\), GOOD: $$ \\Delta $$.\n";
 
+  guidelinesSection +=
+    "\n Respond with clarity and helpfulness. When not instructed otherwise, give answers that are structured, visually clear, and reader-friendly—using headings, bullet points, and examples where helpful.";
+
   // INSTRUCTIONS section
   let instructions = "# INSTRUCTIONS\n\n";
 
