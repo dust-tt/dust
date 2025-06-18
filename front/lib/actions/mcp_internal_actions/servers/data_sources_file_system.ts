@@ -606,15 +606,9 @@ const createServer = (
       );
 
       if (coreSearchArgs.length === 0) {
-        return {
-          isError: true,
-          content: [
-            {
-              type: "text",
-              text: "Search action must have at least one data source configured.",
-            },
-          ],
-        };
+        return makeMCPToolTextError(
+          "Search action must have at least one data source configured."
+        );
       }
 
       const searchResults = await coreAPI.searchDataSources(
@@ -643,27 +637,15 @@ const createServer = (
       );
 
       if (searchResults.isErr()) {
-        return {
-          isError: true,
-          content: [
-            {
-              type: "text",
-              text: searchResults.error.message,
-            },
-          ],
-        };
+        return makeMCPToolTextError(
+          `Failed to search content: ${searchResults.error.message}`
+        );
       }
 
       if (refsOffset + topK > getRefs().length) {
-        return {
-          isError: true,
-          content: [
-            {
-              type: "text",
-              text: "The search exhausted the total number of references available for citations",
-            },
-          ],
-        };
+        return makeMCPToolTextError(
+          "The search exhausted the total number of references available for citations"
+        );
       }
 
       const refs = getRefs().slice(refsOffset, refsOffset + topK);
