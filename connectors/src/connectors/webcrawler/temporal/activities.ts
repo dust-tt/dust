@@ -1299,8 +1299,10 @@ export async function firecrawlCrawlCompleted(
 
     if (crawlErrors.robotsBlocked.includes(webConfig.url)) {
       await syncFailed(connectorId, "webcrawling_error_blocked");
-      return;
+    } else {
+      await syncFailed(connectorId, "webcrawling_error_empty_content");
     }
+    return;
   }
 
   if (crawlStatus.completed >= webConfig.maxPageToCrawl) {
