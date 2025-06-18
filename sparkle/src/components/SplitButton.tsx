@@ -2,7 +2,6 @@ import React, { useState } from "react";
 
 import {
   ButtonAsButtonProps,
-  ButtonProps,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -130,7 +129,8 @@ const flexSeparatorVariants: Record<ButtonVariantType, string> = {
   "ghost-secondary": "s-bg-separator dark:s-bg-separator-night",
 };
 
-export interface FlexSplitButtonProps extends Omit<ButtonProps, "size"> {
+export interface FlexSplitButtonProps
+  extends Omit<ButtonAsButtonProps, "size"> {
   containerClassName?: string;
   splitAction: React.ReactElement<React.ComponentProps<typeof Button>>;
 }
