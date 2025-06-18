@@ -13,6 +13,7 @@ import { MCPBrowseActionDetails } from "@app/components/actions/mcp/details/MCPB
 import { DataSourceNodeContentDetails } from "@app/components/actions/mcp/details/MCPDataSourcesFileSystemActionDetails";
 import { MCPExtractActionDetails } from "@app/components/actions/mcp/details/MCPExtractActionDetails";
 import { MCPGetDatabaseSchemaActionDetails } from "@app/components/actions/mcp/details/MCPGetDatabaseSchemaActionDetails";
+import { MCPLocateInTreeActionDetails } from "@app/components/actions/mcp/details/MCPLocateInTreeActionDetails";
 import { MCPReasoningActionDetails } from "@app/components/actions/mcp/details/MCPReasoningActionDetails";
 import { MCPRunAgentActionDetails } from "@app/components/actions/mcp/details/MCPRunAgentActionDetails";
 import { MCPTablesQueryActionDetails } from "@app/components/actions/mcp/details/MCPTablesQueryActionDetails";
@@ -27,6 +28,7 @@ import {
   isExtractResultResourceType,
   isGetDatabaseSchemaMarkerResourceType,
   isIncludeResultResourceType,
+  isLocateInTreeResultType,
   isReasoningSuccessOutput,
   isRunAgentProgressOutput,
   isRunAgentResultResourceType,
@@ -64,6 +66,7 @@ export function MCPActionDetails(
   );
 
   const isCat = props.action.output?.some(isDataSourceNodeContentType);
+  const isLocateInTree = props.action.output?.some(isLocateInTreeResultType);
 
   if (isSearch) {
     return (
@@ -111,6 +114,8 @@ export function MCPActionDetails(
     );
   } else if (isCat) {
     return <DataSourceNodeContentDetails {...props} />;
+  } else if (isLocateInTree) {
+    return <MCPLocateInTreeActionDetails {...props} />;
   } else if (isExtract) {
     return <MCPExtractActionDetails {...props} />;
   } else if (isRunAgent) {
