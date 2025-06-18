@@ -36,7 +36,6 @@ const LOGO_SETS = {
     { name: "spendesk", src: "/static/landing/logos/gray/spendesk.svg" },
     { name: "gitguardian", src: "/static/landing/logos/gray/gitguardian.svg" },
     { name: "watershed", src: "/static/landing/logos/gray/watershed.svg" },
-    { name: "doctolib", src: "/static/landing/logos/gray/doctolib.svg" },
   ],
 } as const;
 
