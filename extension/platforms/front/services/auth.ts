@@ -2,7 +2,6 @@ import {
   DUST_API_AUDIENCE,
   DUST_US_URL,
   FRONT_EXTENSION_URL,
-  getOAuthClientID,
 } from "@app/shared/lib/config";
 import { generatePKCE } from "@app/shared/lib/utils";
 import type { StoredTokens } from "@app/shared/services/auth";
@@ -256,7 +255,6 @@ export class FrontAuthService extends AuthService {
     try {
       const tokenParams: Record<string, string> = {
         grant_type: "refresh_token",
-        client_id: getOAuthClientID("workos"),
         refresh_token: (await this.getStoredTokens())?.refreshToken || "",
       };
 
