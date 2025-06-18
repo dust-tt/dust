@@ -23,51 +23,70 @@ import { getWorkspaceAdministrationVersionLock } from "./workspace";
 
 export async function softDeleteSpaceAndLaunchScrubWorkflow(
   auth: Authenticator,
-  space: SpaceResource
+  space: SpaceResource,
+  options?: { force: boolean }
 ) {
   assert(auth.isAdmin(), "Only admins can delete spaces.");
   assert(space.isRegular(), "Cannot delete non regular spaces.");
 
-  // const usages: DataSourceWithAgentsUsageType[] = [];
+  if (options?.force) {
+    const dataSourceViews = await DataSourceViewResource.listBySpace(
+      auth,
+      space
+    );
+    const dataSources = await DataSourceResource.listBySpace(auth, space);
+    const apps = await AppResource.listBySpace(auth, space);
+
+    await performSpaceSoftDeletionTransaction(
+      auth,
+      space,
+      dataSourceViews,
+      dataSources,
+      apps
+    );
+
+    return new Ok(undefined);
+  }
+  const usages: DataSourceWithAgentsUsageType[] = [];
 
   const dataSourceViews = await DataSourceViewResource.listBySpace(auth, space);
-  // for (const view of dataSourceViews) {
-  //   const usage = await view.getUsagesByAgents(auth);
-  //   if (usage.isErr()) {
-  //     throw usage.error;
-  //   } else if (usage.value.count > 0) {
-  //     usages.push(usage.value);
-  //   }
-  // }
+  for (const view of dataSourceViews) {
+    const usage = await view.getUsagesByAgents(auth);
+    if (usage.isErr()) {
+      throw usage.error;
+    } else if (usage.value.count > 0) {
+      usages.push(usage.value);
+    }
+  }
 
   const dataSources = await DataSourceResource.listBySpace(auth, space);
-  // for (const ds of dataSources) {
-  //   const usage = await ds.getUsagesByAgents(auth);
-  //   if (usage.isErr()) {
-  //     throw usage.error;
-  //   } else if (usage.value.count > 0) {
-  //     usages.push(usage.value);
-  //   }
-  // }
+  for (const ds of dataSources) {
+    const usage = await ds.getUsagesByAgents(auth);
+    if (usage.isErr()) {
+      throw usage.error;
+    } else if (usage.value.count > 0) {
+      usages.push(usage.value);
+    }
+  }
 
   const apps = await AppResource.listBySpace(auth, space);
-  // for (const app of apps) {
-  //   const usage = await app.getUsagesByAgents(auth);
-  //   if (usage.isErr()) {
-  //     throw usage.error;
-  //   } else if (usage.value.count > 0) {
-  //     usages.push(usage.value);
-  //   }
-  // }
+  for (const app of apps) {
+    const usage = await app.getUsagesByAgents(auth);
+    if (usage.isErr()) {
+      throw usage.error;
+    } else if (usage.value.count > 0) {
+      usages.push(usage.value);
+    }
+  }
 
-  // if (usages.length > 0) {
-  //   const agentNames = uniq(usages.map((u) => u.agentNames).flat());
-  //   return new Err(
-  //     new Error(
-  //       `Cannot delete space with data source or app in use by agent(s): ${agentNames.join(", ")}. If you'd like to continue set the force query parameter to true.`
-  //     )
-  //   );
-  // }
+  if (usages.length > 0) {
+    const agentNames = uniq(usages.map((u) => u.agentNames).flat());
+    return new Err(
+      new Error(
+        `Cannot delete space with data source or app in use by agent(s): ${agentNames.join(", ")}. If you'd like to continue set the force query parameter to true.`
+      )
+    );
+  }
 
   const groupHasKeys = await KeyResource.countActiveForGroups(
     auth,
@@ -81,6 +100,24 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
     );
   }
 
+  await performSpaceSoftDeletionTransaction(
+    auth,
+    space,
+    dataSourceViews,
+    dataSources,
+    apps
+  );
+
+  return new Ok(undefined);
+}
+
+async function performSpaceSoftDeletionTransaction(
+  auth: Authenticator,
+  space: SpaceResource,
+  dataSourceViews: DataSourceViewResource[],
+  dataSources: DataSourceResource[],
+  apps: AppResource[]
+): Promise<void> {
   await frontSequelize.transaction(async (t) => {
     // Soft delete all data source views.
     for (const view of dataSourceViews) {
@@ -118,8 +155,6 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
 
     await launchScrubSpaceWorkflow(auth, space);
   });
-
-  return new Ok(undefined);
 }
 
 // This method is invoked as part of the workflow to permanently delete a space.

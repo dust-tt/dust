@@ -225,10 +225,14 @@ async function handler(
         });
       }
 
+      const force = req.query.force === "true";
+      const options = { force };
+
       try {
         const deleteRes = await softDeleteSpaceAndLaunchScrubWorkflow(
           auth,
-          space
+          space,
+          options
         );
         if (deleteRes.isErr()) {
           return apiError(req, res, {
