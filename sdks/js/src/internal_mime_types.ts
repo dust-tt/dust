@@ -251,7 +251,8 @@ const TOOL_MIME_TYPES = {
       "WEBSEARCH_RESULT",
       "RUN_AGENT_RESULT",
       "RUN_AGENT_QUERY",
-      "WARNING",
+      "WARNING", 
+      "LOCATE_IN_TREE_RESULT",
     ],
   }),
 };
