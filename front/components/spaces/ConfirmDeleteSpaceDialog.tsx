@@ -62,7 +62,7 @@ export function ConfirmDeleteSpaceDialog({
                     <>
                       Agent{" "}
                       <Chip
-                        size="sm"
+                        size="xs"
                         color="primary"
                         label={dataSourceUsage[0]}
                       />{" "}
