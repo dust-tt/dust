@@ -695,6 +695,9 @@ const createServer = (
             view_filter: args.filter.parents?.in ?? [],
           })),
         },
+        options: {
+          limit: searchNodeIds.length,
+        },
       });
 
       if (searchResult.isErr()) {
