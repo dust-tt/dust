@@ -1,3 +1,4 @@
+import type { FirecrawlDocument } from "@mendable/firecrawl-js";
 import FirecrawlApp, { FirecrawlError } from "@mendable/firecrawl-js";
 import { Context } from "@temporalio/activity";
 import { isCancellation } from "@temporalio/workflow";
@@ -77,8 +78,8 @@ export async function markAsCrawled(connectorId: ModelId) {
     throw new Error(`Webcrawler configuration not found for connector.`);
   }
 
-  // Immediately marking the config as crawled to avoid having the scheduler seeing it as a candidate for crawling
-  // in case of the crawling takes too long or fails.
+  // Immediately marking the config as crawled to avoid having the scheduler seeing it as a
+  // candidate for crawling in case of the crawling takes too long or fails.
   await webCrawlerConfig.markedAsCrawled();
 }
 
@@ -111,11 +112,14 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
     connectorId: connector.id,
   });
 
-  // Immediately marking the config as crawled to avoid having the scheduler seeing it as a candidate for crawling
-  // in case of the crawling takes too long or fails.
+  // Immediately marking the config as crawled to avoid having the scheduler seeing it as a
+  // candidate for crawling in case of the crawling takes too long or fails.
   await webCrawlerConfig.markedAsCrawled();
 
-  await syncStarted(connectorId);
+  // We mark the crawler as started which will store startedat as lastSyncStartTime. This is what
+  // we'll use to run the GC
+  const startedAt = new Date();
+  await syncStarted(connectorId, startedAt);
 
   const customHeaders = webCrawlerConfig.getCustomHeaders();
 
@@ -177,7 +181,10 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
       { crawlerId: crawlerResponse.id, url: rootUrl },
       "Firecrawl crawler started"
     );
-    return;
+    return {
+      launchGarbageCollect: false,
+      startedAtTs: startedAt.getTime(),
+    };
   } else if (
     webCrawlerConfig.customCrawler ===
     ("firecrawl" satisfies WebcrawlerCustomCrawler)
@@ -896,6 +903,8 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
   );
 
   return {
+    launchGarbageCollect: true,
+    startedAtTs: startedAt.getTime(),
     pageCount: pageCount.valid,
     crawlingError,
   };
@@ -1010,7 +1019,8 @@ export async function firecrawlCrawlFailed(
     return;
   }
 
-  // TODO: mark the connector as failed?
+  // Mark the web crawler as failed.
+  await syncFailed(connector.id, "webcrawling_error");
 }
 
 export async function firecrawlCrawlStarted(
@@ -1028,7 +1038,8 @@ export async function firecrawlCrawlStarted(
     return;
   }
 
-  // TODO: maybe nothing?
+  // Mark the webcrawler sync as started.
+  await syncStarted(connector.id);
 }
 
 export async function firecrawlCrawlPage(
@@ -1043,12 +1054,209 @@ export async function firecrawlCrawlPage(
   });
 
   const connector = await ConnectorResource.fetchById(connectorId);
-  if (!connector) {
-    localLogger.error({ connectorId }, "Connector not found");
+  const webCrawlerConfig =
+    await WebCrawlerConfigurationResource.fetchByConnectorId(connectorId);
+
+  if (!connector || !webCrawlerConfig) {
+    localLogger.error(
+      { connectorId },
+      "Connector or WebcrawlerConfig not found"
+    );
     return;
   }
 
-  // TODO: retrieve scrape, upsert, update page lastSeenAt.
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+
+  // Scrape GET request is non documented.
+  const res = await fetch(`https://api.firecrawl.dev/v1/scrape/${scrapeId}`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiConfig.getFirecrawlAPIConfig().apiKey}`,
+    },
+  });
+
+  if (res.status !== 200) {
+    localLogger.error(
+      { status: res.status, scrapeId },
+      "Failed to fetch Firecrawl scrape details"
+    );
+    return;
+  }
+
+  const r = (await res.json()) as {
+    success: boolean;
+    data: FirecrawlDocument<undefined>;
+    error: unknown;
+  };
+
+  if (!r.success) {
+    localLogger.error({ scrapeId, error: r.error }, "Firecrawl scrape failed");
+    return;
+  }
+
+  const extracted = r.data.markdown ?? "[NO CONTENT]";
+
+  const pageTitle = r.data.metadata?.title ?? randomUUID();
+  const sourceUrl = r.data.metadata?.sourceURL;
+  if (!sourceUrl) {
+    localLogger.error(
+      { scrapeId },
+      "No source URL found in Firecrawl document"
+    );
+    return;
+  }
+
+  // Note that parentFolderUrls.length === parentFolderIds.length -1 since parentFolderIds includes
+  // the page as first element and parentFolderUrls does not.
+  const parentFolderUrls = getAllFoldersForUrl(sourceUrl);
+  const parentFolderIds = getParentsForPage(sourceUrl, false);
+
+  for (const [index, folder] of parentFolderUrls.entries()) {
+    const logicalParent = isTopFolder(sourceUrl)
+      ? null
+      : getFolderForUrl(folder);
+    const [webCrawlerFolder] = await WebCrawlerFolder.upsert({
+      url: folder,
+      parentUrl: logicalParent,
+      connectorId: connector.id,
+      webcrawlerConfigurationId: webCrawlerConfig.id,
+      internalId: stableIdForUrl({
+        url: folder,
+        ressourceType: "folder",
+      }),
+      lastSeenAt: new Date(),
+    });
+
+    // Parent folder ids of the page are in hierarchy order from the page to the root so for the
+    // current folder, its parents start at index+1 (including itself as first parent) and end at
+    // the root.
+    const parents = parentFolderIds.slice(index + 1);
+    await upsertDataSourceFolder({
+      dataSourceConfig,
+      folderId: webCrawlerFolder.internalId,
+      timestampMs: webCrawlerFolder.updatedAt.getTime(),
+      parents,
+      parentId: parents[1] || null,
+      title: getDisplayNameForFolder(webCrawlerFolder),
+      mimeType: INTERNAL_MIME_TYPES.WEBCRAWLER.FOLDER,
+      sourceUrl: webCrawlerFolder.url,
+    });
+  }
+  const documentId = stableIdForUrl({
+    url: sourceUrl,
+    ressourceType: "document",
+  });
+
+  await WebCrawlerPage.upsert({
+    url: sourceUrl,
+    parentUrl: isTopFolder(sourceUrl) ? null : getFolderForUrl(sourceUrl),
+    connectorId: connector.id,
+    webcrawlerConfigurationId: webCrawlerConfig.id,
+    documentId: documentId,
+    title: pageTitle,
+    depth: 0,
+    lastSeenAt: new Date(),
+  });
+
+  localLogger.info(
+    {
+      documentId,
+      configId: webCrawlerConfig.id,
+      documentLen: extracted.length,
+      url: sourceUrl,
+    },
+    "Successfully processed crawl page"
+  );
+
+  statsDClient.increment("connectors_webcrawler_crawls.count", 1);
+  statsDClient.increment(
+    "connectors_webcrawler_crawls_bytes.count",
+    extracted.length
+  );
+
+  Context.current().heartbeat({
+    type: "upserting",
+    url: sourceUrl,
+  });
+
+  try {
+    if (
+      extracted.length > 0 &&
+      extracted.length <= MAX_SMALL_DOCUMENT_TXT_LEN
+    ) {
+      const validatedUrl = validateUrl(sourceUrl);
+      if (!validatedUrl.valid || !validatedUrl.standardized) {
+        localLogger.info(
+          {
+            documentId,
+            configId: webCrawlerConfig.id,
+            url: sourceUrl,
+          },
+          `Invalid document or URL. Skipping`
+        );
+        return;
+      }
+
+      const formattedDocumentContent = formatDocumentContent({
+        title: pageTitle,
+        content: extracted,
+        url: validatedUrl.standardized,
+      });
+
+      await upsertDataSourceDocument({
+        dataSourceConfig,
+        documentId: documentId,
+        documentContent: formattedDocumentContent,
+        documentUrl: validatedUrl.standardized,
+        timestampMs: new Date().getTime(),
+        tags: [`title:${stripNullBytes(pageTitle)}`],
+        parents: parentFolderIds,
+        parentId: parentFolderIds[1] || null,
+        upsertContext: {
+          sync_type: "batch",
+        },
+        title: stripNullBytes(pageTitle),
+        mimeType: "text/html",
+        async: true,
+      });
+    } else {
+      localLogger.info(
+        {
+          documentId,
+          configId: webCrawlerConfig.id,
+          documentLen: extracted.length,
+          title: pageTitle,
+          url: sourceUrl,
+        },
+        `Document is empty or too big to be upserted. Skipping`
+      );
+      return;
+    }
+  } catch (e) {
+    localLogger.error(
+      {
+        error: e,
+        configId: webCrawlerConfig.id,
+        url: sourceUrl,
+      },
+      "Webcrawler error while upserting document"
+    );
+  }
+
+  // TODO: we have a bit of a race condition here as the completed event can come before we get here
+  // so we want to tweak the method to not override lastSyncSuccessfulTime.
+
+  // if (!connector?.lastSyncSuccessfulTime) {
+  //   // If this is the first sync we report the initial sync progress.
+  //   const pagesCount = await WebCrawlerPage.count({
+  //     where: {
+  //       connectorId,
+  //       webcrawlerConfigurationId: webCrawlerConfig.id,
+  //     },
+  //   });
+  //   await reportInitialSyncProgress(connector.id, `${pagesCount} pages`);
+  // }
 }
 
 export async function firecrawlCrawlCompleted(
@@ -1066,6 +1274,9 @@ export async function firecrawlCrawlCompleted(
     return;
   }
 
-  // TODO: maybe nothing? update connector state, if needed. launching the GC will happen in the
-  // workflow above
+  await syncSucceeded(connector.id);
+
+  return {
+    lastSyncStartTs: connector.lastSyncStartTime?.getTime() ?? null,
+  };
 }

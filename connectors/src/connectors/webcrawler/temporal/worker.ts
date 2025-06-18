@@ -46,6 +46,21 @@ export async function runWebCrawlerWorker() {
         ],
       },
     }),
+    Worker.create({
+      workflowsPath: require.resolve("./workflows"),
+      activities,
+      taskQueue: WebCrawlerQueueNames.FIRECRAWL,
+      connection,
+      reuseV8Context: true,
+      namespace,
+      maxConcurrentActivityTaskExecutions: 3,
+      maxCachedWorkflows: TEMPORAL_MAXED_CACHED_WORKFLOWS,
+      interceptors: {
+        activityInbound: [
+          (ctx: Context) => new ActivityInboundLogInterceptor(ctx, logger),
+        ],
+      },
+    }),
   ]);
   await Promise.all(workers.map((worker) => worker.run()));
 }
