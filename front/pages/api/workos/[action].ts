@@ -109,13 +109,13 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
     const decodedPayload = JSON.parse(
       Buffer.from(accessToken.split(".")[1], "base64").toString()
     );
-    const workspaceId = decodedPayload["https://dust.tt/workspaceId"];
+
     const sessionCookie: SessionCookie = {
       sessionData: sealedSession,
       organizationId,
       authenticationMethod,
       region: decodedPayload["https://dust.tt/region"],
-      workspaceId,
+      workspaceId: decodedPayload["https://dust.tt/workspaceId"],
     };
 
     const sealedCookie = await sealData(sessionCookie, {
