@@ -8,6 +8,7 @@ import {
 import PQueue from "p-queue";
 
 import type * as activities from "@connectors/connectors/slack/temporal/activities";
+import logger from "@connectors/logger/logger";
 import type { ModelId } from "@connectors/types";
 
 import {
@@ -88,13 +89,9 @@ function getSlackActivities() {
   };
 }
 
-// we have a maximum of 990 debounces before we continue as new
+// we have a maximum of 990 signal received before we continue as new
 // this is to avoid "Failed to signalWithStart Workflow: 3 INVALID_ARGUMENT: exceeded workflow execution limit for signal events"
-const MAX_DEBOUNCE_COUNT = 990;
-
-// we have a maximum of 990 debounces before we continue as new
-// this is to avoid "Failed to signalWithStart Workflow: 3 INVALID_ARGUMENT: exceeded workflow execution limit for signal events"
-const MAX_DEBOUNCE_COUNT = 990;
+const MAX_SIGNAL_RECEIVED_COUNT = 990;
 
 /**
  * This workflow is in charge of synchronizing all the content of the Slack channels selected by the user.
@@ -206,9 +203,28 @@ export async function syncOneThreadDebounced(
 ) {
   let signaled = false;
   let debounceCount = 0;
+  let receivedSignalsCount = 0;
 
-  setHandler(newWebhookSignal, () => {
-    console.log("Got a new webhook ");
+  setHandler(newWebhookSignal, async () => {
+    receivedSignalsCount++;
+    logger.info(
+      { connectorId, channelId, threadTs, debounceCount, receivedSignalsCount },
+      "Got a new webhook signal for syncOneThreadDebounced"
+    );
+    if (receivedSignalsCount >= MAX_SIGNAL_RECEIVED_COUNT) {
+      logger.info(
+        {
+          connectorId,
+          channelId,
+          threadTs,
+          debounceCount,
+          receivedSignalsCount,
+        },
+        `Continuing as Workflow as new due to too many signals received for syncOneThreadDebounced: ${receivedSignalsCount}`
+      );
+      await continueAsNew(connectorId, channelId, threadTs);
+      return;
+    }
     signaled = true;
   });
 
@@ -217,13 +233,6 @@ export async function syncOneThreadDebounced(
     await sleep(10000);
     if (signaled) {
       debounceCount++;
-      if (debounceCount >= MAX_DEBOUNCE_COUNT) {
-        console.log(
-          `Continuing as new due to too many debounces: ${debounceCount}`
-        );
-        await continueAsNew(connectorId, channelId, threadTs);
-        return;
-      }
       continue;
     }
     const channel = await getSlackActivities().getChannel(
@@ -261,9 +270,28 @@ export async function syncOneMessageDebounced(
 ) {
   let signaled = false;
   let debounceCount = 0;
+  let receivedSignalsCount = 0;
 
-  setHandler(newWebhookSignal, () => {
-    console.log("Got a new webhook ");
+  setHandler(newWebhookSignal, async () => {
+    receivedSignalsCount++;
+    logger.info(
+      { connectorId, channelId, threadTs, debounceCount, receivedSignalsCount },
+      "Got a new webhook signal for syncOneMessageDebounced"
+    );
+    if (receivedSignalsCount >= MAX_SIGNAL_RECEIVED_COUNT) {
+      logger.info(
+        {
+          connectorId,
+          channelId,
+          threadTs,
+          debounceCount,
+          receivedSignalsCount,
+        },
+        `Continuing as Workflow as new due to too many signals received for syncOneMessageDebounced: ${receivedSignalsCount}`
+      );
+      await continueAsNew(connectorId, channelId, threadTs);
+      return;
+    }
     signaled = true;
   });
 
@@ -272,13 +300,6 @@ export async function syncOneMessageDebounced(
     await sleep(10000);
     if (signaled) {
       debounceCount++;
-      if (debounceCount >= MAX_DEBOUNCE_COUNT) {
-        console.log(
-          `Continuing as new due to too many debounces: ${debounceCount}`
-        );
-        await continueAsNew(connectorId, channelId, threadTs);
-        return;
-      }
       console.log("Debouncing, sleep 10 secs");
       continue;
     }
