@@ -24,6 +24,7 @@ import {
   isDataSourceNodeContentType,
   isDataSourceNodeListType,
   isExecuteTablesQueryMarkerResourceType,
+  isExtractQueryResourceType,
   isGetDatabaseSchemaMarkerResourceType,
   isIncludeResultResourceType,
   isReasoningSuccessOutput,
@@ -50,9 +51,8 @@ export function MCPActionDetails(
     isGetDatabaseSchemaMarkerResourceType
   );
 
-  const isExtract = props.action.output?.some(
-    (o) => o.type === "resource" && o.resource.mimeType === "application/json"
-  );
+  const isExtract = props.action.output?.some(isExtractQueryResourceType);
+
   const isRunAgent =
     props.action.output?.some(isRunAgentResultResourceType) ||
     isRunAgentProgressOutput(props.lastNotification?.data.output);

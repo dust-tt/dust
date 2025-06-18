@@ -13,7 +13,11 @@ import { useState } from "react";
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import type { ActionDetailsComponentBaseProps } from "@app/components/actions/types";
 import type { MCPActionType } from "@app/lib/actions/mcp";
-import { isExtractQueryResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import {
+  BlobCallToolResultBlock,
+  isBlobResource,
+  isExtractQueryResourceType,
+} from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { isTimeFrame } from "@app/types/shared/utils/time_frame";
 
 interface MCPExtractActionQueryProps {
@@ -25,16 +29,6 @@ interface MCPExtractActionQueryProps {
   };
 }
 
-interface MCPExtractActionResultsProps {
-  resultResource?: {
-    uri: string;
-    mimeType: string;
-    blob?: string;
-    snippet?: string;
-  };
-  name?: string;
-}
-
 export function MCPExtractActionDetails({
   action,
   defaultOpen,
@@ -43,22 +37,7 @@ export function MCPExtractActionDetails({
     ?.filter(isExtractQueryResourceType)
     .map((o) => o.resource)?.[0];
 
-  const resultResourceItem = action.output?.find(
-    (o) => o.type === "resource" && o.resource.mimeType === "application/json"
-  );
-  const resultResource =
-    resultResourceItem?.type === "resource"
-      ? (resultResourceItem.resource as {
-          uri: string;
-          mimeType: string;
-          blob?: string;
-          snippet?: string;
-        })
-      : undefined;
-  const resultName =
-    resultResourceItem && "name" in resultResourceItem
-      ? (resultResourceItem.name as string)
-      : undefined;
+  const resultResource = action.output?.find((o) => isBlobResource(o));
 
   const jsonSchema = action.params?.jsonSchema as JSONSchema | undefined;
 
@@ -112,8 +91,8 @@ export function MCPExtractActionDetails({
             }
             contentChildren={
               <MCPExtractActionResults
-                resultResource={resultResource}
-                name={resultName}
+                resource={resultResource?.resource}
+                name={resultResource?.name}
               />
             }
           />
@@ -154,12 +133,15 @@ function MCPExtractActionQuery({
 }
 
 function MCPExtractActionResults({
-  resultResource,
+  resource,
   name,
-}: MCPExtractActionResultsProps) {
+}: {
+  resource: BlobCallToolResultBlock["resource"] | undefined;
+  name?: string;
+}) {
   const [isDownloading, setIsDownloading] = useState(false);
 
-  if (!resultResource) {
+  if (!resource) {
     return (
       <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
         No data was extracted.
@@ -170,7 +152,7 @@ function MCPExtractActionResults({
   const handleDownload = async () => {
     setIsDownloading(true);
     try {
-      window.open(resultResource.uri, "_blank");
+      window.open(resource.uri, "_blank");
     } catch (error) {
       console.error("Download failed:", error);
     } finally {
@@ -197,7 +179,7 @@ function MCPExtractActionResults({
         </Citation>
       </div>
 
-      {resultResource.snippet && (
+      {resource.snippet && (
         <CollapsibleComponent
           rootProps={{ defaultOpen: false }}
           triggerChildren={
@@ -211,7 +193,7 @@ function MCPExtractActionResults({
                 className="language-json max-h-60 overflow-y-auto"
                 wrapLongLines={true}
               >
-                {resultResource.snippet}
+                {resource.snippet}
               </CodeBlock>
             </div>
           }
