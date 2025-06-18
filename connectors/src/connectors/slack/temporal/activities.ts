@@ -12,6 +12,7 @@ import type {
   Channel,
   ConversationsListResponse,
 } from "@slack/web-api/dist/response/ConversationsListResponse";
+import { Context } from "@temporalio/activity";
 import PQueue from "p-queue";
 import { Op, Sequelize } from "sequelize";
 
@@ -53,6 +54,7 @@ import {
   syncSucceeded,
 } from "@connectors/lib/sync_status";
 import { heartbeat } from "@connectors/lib/temporal";
+import { isSlowLaneQueue } from "@connectors/lib/temporal_queue_routing";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
@@ -116,7 +118,10 @@ async function _getTypedChannelsUncached(
   joinedOnly: boolean,
   types: "public_channel" | "private_channel"
 ): Promise<Channel[]> {
-  const slackClient = await getSlackClient(connectorId);
+  const slackClient = await getSlackClient(connectorId, {
+    // Let the Slack client handle rate limited calls in the slow lane.
+    rejectRateLimitedCalls: !isSlowLaneQueue(Context.current().info.taskQueue),
+  });
   const allChannels = [];
   let nextCursor: string | undefined = undefined;
   let nbCalls = 0;
@@ -194,7 +199,10 @@ export async function getChannel(
   connectorId: ModelId,
   channelId: string
 ): Promise<Channel> {
-  const slackClient = await getSlackClient(connectorId);
+  const slackClient = await getSlackClient(connectorId, {
+    // Let the Slack client handle rate limited calls in the slow lane.
+    rejectRateLimitedCalls: !isSlowLaneQueue(Context.current().info.taskQueue),
+  });
 
   reportSlackUsage({
     connectorId,
@@ -420,7 +428,10 @@ export async function getMessagesForChannel(
   limit = 100,
   nextCursor?: string
 ): Promise<ConversationsHistoryResponse> {
-  const slackClient = await getSlackClient(connectorId);
+  const slackClient = await getSlackClient(connectorId, {
+    // Let the Slack client handle rate limited calls in the slow lane.
+    rejectRateLimitedCalls: !isSlowLaneQueue(Context.current().info.taskQueue),
+  });
 
   reportSlackUsage({
     connectorId,
@@ -506,7 +517,10 @@ export async function syncNonThreadedChunk({
   }
 
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
-  const slackClient = await getSlackClient(connectorId);
+  const slackClient = await getSlackClient(connectorId, {
+    // Let the Slack client handle rate limited calls in the slow lane.
+    rejectRateLimitedCalls: !isSlowLaneQueue(Context.current().info.taskQueue),
+  });
   const messages: MessageElement[] = [];
 
   const startTsSec = Math.round(startTsMs / 1000);
@@ -899,7 +913,10 @@ export async function syncThread(
     throw new Error(`Connector ${connectorId} not found`);
   }
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
-  const slackClient = await getSlackClient(connectorId);
+  const slackClient = await getSlackClient(connectorId, {
+    // Let the Slack client handle rate limited calls in the slow lane.
+    rejectRateLimitedCalls: !isSlowLaneQueue(Context.current().info.taskQueue),
+  });
 
   let allMessages: MessageElement[] = [];
 
@@ -1192,7 +1209,10 @@ export async function formatMessagesForUpsert({
 
 export async function fetchUsers(connectorId: ModelId) {
   let cursor: string | undefined;
-  const slackClient = await getSlackClient(connectorId);
+  const slackClient = await getSlackClient(connectorId, {
+    // Let the Slack client handle rate limited calls in the slow lane.
+    rejectRateLimitedCalls: !isSlowLaneQueue(Context.current().info.taskQueue),
+  });
   do {
     reportSlackUsage({
       connectorId,
@@ -1223,7 +1243,10 @@ export async function fetchUsers(connectorId: ModelId) {
 export async function getBotUserId(connectorId: ModelId): Promise<string> {
   let slackClient: WebClient | undefined = undefined;
 
-  slackClient = await getSlackClient(connectorId);
+  slackClient = await getSlackClient(connectorId, {
+    // Let the Slack client handle rate limited calls in the slow lane.
+    rejectRateLimitedCalls: !isSlowLaneQueue(Context.current().info.taskQueue),
+  });
 
   reportSlackUsage({
     connectorId,
