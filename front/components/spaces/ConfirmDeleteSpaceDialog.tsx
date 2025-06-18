@@ -92,7 +92,7 @@ export function ConfirmDeleteSpaceDialog({
                 variant: "outline",
               }}
               rightButtonProps={{
-                label: "Delete",
+                label: "Force Delete",
                 variant: "warning",
                 onClick: async () => {
                   void handleDelete();

@@ -555,7 +555,13 @@ export function useUpdateSpace({ owner }: { owner: LightWorkspaceType }) {
   return doUpdate;
 }
 
-export function useDeleteSpace({ owner }: { owner: LightWorkspaceType }) {
+export function useDeleteSpace({
+  owner,
+  force = false,
+}: {
+  owner: LightWorkspaceType;
+  force?: boolean;
+}) {
   const sendNotification = useSendNotification();
   const { mutate: mutateSpaces } = useSpaces({
     workspaceId: owner.sId,
@@ -570,7 +576,7 @@ export function useDeleteSpace({ owner }: { owner: LightWorkspaceType }) {
     if (!space) {
       return false;
     }
-    const url = `/api/w/${owner.sId}/spaces/${space.sId}`;
+    const url = `/api/w/${owner.sId}/spaces/${space.sId}?force=${force}`;
     const res = await fetch(url, {
       method: "DELETE",
     });
