@@ -9,15 +9,7 @@ import type {
 } from "@app/platforms/chrome/messages";
 import type { PendingUpdate } from "@app/platforms/chrome/services/core_platform";
 import { ChromeCorePlatformService } from "@app/platforms/chrome/services/core_platform";
-import {
-  AUTH0_CLIENT_ID,
-  DEFAULT_DUST_API_DOMAIN,
-  DUST_API_AUDIENCE,
-  getAuthorizeURL,
-  getLogoutURL,
-  getOAuthClientID,
-  getTokenURL,
-} from "@app/shared/lib/config";
+import { DUST_API_AUDIENCE, DUST_US_URL } from "@app/shared/lib/config";
 import { extractPage } from "@app/shared/lib/extraction";
 import { generatePKCE } from "@app/shared/lib/utils";
 import type { OAuthAuthorizeResponse } from "@app/shared/services/auth";
@@ -35,29 +27,10 @@ const state: {
     auth: OAuthAuthorizeResponse | AuthBackgroundResponse
   ) => void)[];
   lastHandler: (() => void) | undefined;
-  authPlatform: "auth0" | "workos";
 } = {
   refreshingToken: false,
   refreshRequests: [],
   lastHandler: undefined,
-  authPlatform: "auth0",
-};
-
-/**
- * Fetch the auth platform from the API
- */
-const fetchAuthPlatform = async () => {
-  try {
-    const response = await fetch(`${DEFAULT_DUST_API_DOMAIN}/api/v1/auth`);
-    if (!response.ok) {
-      throw new Error("Failed to fetch auth platform");
-    }
-    const data = await response.json();
-    state.authPlatform = data.auth;
-  } catch (error) {
-    log("Error fetching auth platform:", error);
-    state.authPlatform = "auth0"; // Default to auth0 if there's an error
-  }
 };
 
 /**
@@ -154,9 +127,6 @@ chrome.runtime.onConnect.addListener(async (port) => {
       state.lastHandler = undefined;
     });
   }
-
-  // Fetch and store the auth platform
-  void fetchAuthPlatform();
 });
 
 const getActionHandler = (menuItemId: string | number) => {
@@ -506,28 +476,21 @@ const authenticate = async (
   const { codeVerifier, codeChallenge } = await generatePKCE();
 
   const options: Record<string, string> = {
-    client_id: getOAuthClientID(state.authPlatform),
     response_type: "code",
     redirect_uri: redirectUrl,
     code_challenge_method: "S256",
     code_challenge: codeChallenge,
   };
 
-  if (state.authPlatform === "auth0") {
-    options.audience = DUST_API_AUDIENCE;
-    options.scope =
-      "offline_access read:user_profile read:conversation create:conversation update:conversation read:agent read:file create:file delete:file";
-    options.prompt = isForceLogin ? "login" : "";
-  } else if (state.authPlatform === "workos") {
-    options.scope = "openid profile email";
-    if (connection) {
-      options.organization_id = connection;
-    }
-    options.provider = "authkit";
-  }
+  // AUTH0 SPECIFICS
+  options.audience = DUST_API_AUDIENCE;
+  options.prompt = isForceLogin ? "login" : "";
+  // WORKOS SPECIFICS
+  options.organization_id = connection ?? "";
+  options.provider = "authkit";
 
   const queryString = new URLSearchParams(options).toString();
-  const authUrl = getAuthorizeURL({ auth: state.authPlatform, queryString });
+  const authUrl = `${DUST_US_URL}/api/v1/auth/authorize?${queryString}`;
 
   chrome.identity.launchWebAuthFlow(
     { url: authUrl, interactive: true },
@@ -581,15 +544,28 @@ const refreshToken = async (
     try {
       const tokenParams: Record<string, string> = {
         grant_type: "refresh_token",
-        client_id: getOAuthClientID(state.authPlatform),
         refresh_token: refreshToken,
       };
 
-      const response = await fetch(getTokenURL(state.authPlatform), {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams(tokenParams),
-      });
+      const user = await platform.auth.getStoredUser();
+      if (!user) {
+        log("No user found for token refresh.");
+        const handlers = state.refreshRequests;
+        state.refreshRequests = [];
+        handlers.forEach((sendResponse) => {
+          sendResponse({ success: false });
+        });
+        return;
+      }
+
+      const response = await fetch(
+        `${user.dustDomain}/api/v1/auth/authenticate`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams(tokenParams),
+        }
+      );
 
       if (!response.ok) {
         const data = await response.json();
@@ -631,14 +607,12 @@ const exchangeCodeForTokens = async (
   try {
     const tokenParams: Record<string, string> = {
       grant_type: "authorization_code",
-      client_id: getOAuthClientID(state.authPlatform),
       code_verifier: codeVerifier,
       code,
       redirect_uri: chrome.identity.getRedirectURL(),
     };
 
-    const tokenURL = getTokenURL(state.authPlatform);
-    const response = await fetch(tokenURL, {
+    const response = await fetch(`${DUST_US_URL}/api/v1/auth/authenticate`, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams(tokenParams),
@@ -675,27 +649,27 @@ const logout = async (
   const queryParams: Record<string, string> = {
     returnTo: redirectUri,
   };
-
-  if (state.authPlatform === "auth0") {
-    queryParams.client_id = AUTH0_CLIENT_ID;
-  } else if (state.authPlatform === "workos") {
-    // We need to get the session to log out the user from WorkOS.
-    const accessToken = await platform.auth.getAccessToken();
-    if (accessToken) {
-      const decodedPayload = jwtDecode<Record<string, string>>(accessToken);
-      if (decodedPayload) {
-        queryParams.session_id = decodedPayload.sid || "";
-      }
-    } else {
-      log("No access token found for WorkOS logout.");
-      sendResponse({ success: false });
-      return;
+  // We need to get the session to log out the user from WorkOS.
+  const accessToken = await platform.auth.getAccessToken();
+  if (accessToken) {
+    const decodedPayload = jwtDecode<Record<string, string>>(accessToken);
+    if (decodedPayload) {
+      queryParams.session_id = decodedPayload.sid || "";
     }
+  } else {
+    log("No access token found for WorkOS logout.");
+    sendResponse({ success: false });
+    return;
   }
-  const logoutUrl = getLogoutURL({
-    auth: state.authPlatform,
-    queryString: new URLSearchParams(queryParams).toString(),
-  });
+
+  const user = await platform.auth.getStoredUser();
+  if (!user) {
+    return true;
+  }
+
+  const logoutUrl = `${user.dustDomain}/api/v1/auth/logout?${new URLSearchParams(
+    queryParams
+  )}`;
 
   chrome.identity.launchWebAuthFlow(
     { url: logoutUrl, interactive: true },
