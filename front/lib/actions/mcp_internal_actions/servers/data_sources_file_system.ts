@@ -569,39 +569,36 @@ const createServer = (
       );
 
       const regularNodeIds =
-        nodeIds?.filter(
-          (nodeId) =>
-            !dataSourceIds.has(extractDataSourceIdFromNodeId(nodeId) ?? "")
-        ) ?? [];
+        nodeIds?.filter((nodeId) => !isDataSourceNodeId(nodeId)) ?? [];
 
       const coreSearchArgs = removeNulls(
-        coreSearchArgsResults
-          .map((res) => (res.isOk() ? res.value : null))
-          .map((coreSearchArgs) => {
-            if (coreSearchArgs === null) {
-              return null;
-            }
+        coreSearchArgsResults.map((res) => {
+          if (!res.isOk() || res.value === null) {
+            return null;
+          }
+          const coreSearchArgs = res.value;
 
-            if (!nodeIds || dataSourceIds.has(coreSearchArgs.dataSourceId)) {
-              // If the agent doesn't provide nodeIds, or if it provides the node id
-              // of this data source, we keep the default filter.
-              return coreSearchArgs;
-            }
+          if (!nodeIds || dataSourceIds.has(coreSearchArgs.dataSourceId)) {
+            // If the agent doesn't provide nodeIds, or if it provides the node id
+            // of this data source, we keep the default filter.
+            return coreSearchArgs;
+          }
 
-            // If there are only data source nodeIds, that are not this one, then
-            // this data source can be excluded from the search.
-            if (regularNodeIds.length === 0) {
-              return null;
-            }
+          // If there are no regular nodes, then we searched for data sources other than the
+          // current one; so we don't search this data source.
+          if (regularNodeIds.length === 0) {
+            return null;
+          }
 
-            return {
-              ...coreSearchArgs,
-              filter: {
-                ...coreSearchArgs.filter,
-                parents: { in: regularNodeIds, not: [] },
-              },
-            };
-          })
+          // If there are regular nodes, we filter to search within these nodes.
+          return {
+            ...coreSearchArgs,
+            filter: {
+              ...coreSearchArgs.filter,
+              parents: { in: regularNodeIds, not: [] },
+            },
+          };
+        })
       );
 
       if (coreSearchArgs.length === 0) {
