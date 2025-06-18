@@ -119,10 +119,12 @@ export function CreateOrEditSpaceModal({
     spaceId: space?.sId ?? null,
   });
 
-  let agentUsage = spaceInfo?.categories;
+  const agentUsage = spaceInfo?.categories;
 
   const uniqueAgentNames = useMemo(() => {
-    if (!agentUsage) return [];
+    if (!agentUsage) {
+      return [];
+    }
 
     const allAgentNames = Object.values(agentUsage)
       .flatMap((category) => category.usage.agentNames)
