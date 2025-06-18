@@ -687,21 +687,28 @@ const createServer = (
         ({ document_id }) => document_id
       );
 
-      const searchResult = await coreAPI.searchNodes({
-        filter: {
-          node_ids: searchNodeIds,
-          data_source_views: coreSearchArgs.map((args) => ({
-            data_source_id: args.dataSourceId,
-            view_filter: args.filter.parents?.in ?? [],
-          })),
-        },
-        options: {
-          limit: searchNodeIds.length,
-        },
-      });
+      let renderedNodes;
+      if (searchNodeIds.length > 0) {
+        const searchResult = await coreAPI.searchNodes({
+          filter: {
+            node_ids: searchNodeIds,
+            data_source_views: coreSearchArgs.map((args) => ({
+              data_source_id: args.dataSourceId,
+              view_filter: args.filter.parents?.in ?? [],
+            })),
+          },
+          options: {
+            limit: searchNodeIds.length,
+          },
+        });
 
-      if (searchResult.isErr()) {
-        return makeMCPToolTextError("Failed to search content");
+        if (searchResult.isErr()) {
+          return makeMCPToolTextError("Failed to search content");
+        }
+        renderedNodes = renderSearchResults(
+          searchResult.value,
+          agentDataSourceConfigurations
+        );
       }
 
       return {
@@ -711,13 +718,9 @@ const createServer = (
             type: "resource" as const,
             resource: makeQueryResource(query, timeFrame),
           },
-          {
-            type: "resource" as const,
-            resource: renderSearchResults(
-              searchResult.value,
-              agentDataSourceConfigurations
-            ),
-          },
+          ...(renderedNodes
+            ? [{ type: "resource" as const, resource: renderedNodes }]
+            : []),
           ...results.map((result) => ({
             type: "resource" as const,
             resource: result,
