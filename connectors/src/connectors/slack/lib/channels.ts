@@ -17,7 +17,7 @@ import type { ConnectorPermission } from "@connectors/types";
 import type { ModelId } from "@connectors/types";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
 
-import { getSlackClient } from "./slack_client";
+import { getSlackClient, reportSlackUsage } from "./slack_client";
 
 export type SlackChannelType = {
   id: number;
@@ -158,6 +158,11 @@ export async function joinChannel(
     rejectRateLimitedCalls: false,
   });
   try {
+    reportSlackUsage({
+      connectorId,
+      method: "conversations.info",
+      channelId,
+    });
     const channelInfo = await client.conversations.info({ channel: channelId });
     if (!channelInfo.ok || !channelInfo.channel?.name) {
       return new Err(new Error("Could not get the Slack channel information."));
@@ -171,6 +176,12 @@ export async function joinChannel(
     if (channelInfo.channel?.is_archived) {
       return new Ok({ result: "is_archived", channel: channelInfo.channel });
     }
+
+    reportSlackUsage({
+      connectorId,
+      method: "conversations.join",
+      channelId,
+    });
     const joinRes = await client.conversations.join({ channel: channelId });
     if (joinRes.ok) {
       return new Ok({ result: "ok", channel: channelInfo.channel });

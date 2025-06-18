@@ -18,6 +18,7 @@ import { joinChannel } from "@connectors/connectors/slack/lib/channels";
 import {
   getSlackAccessToken,
   getSlackClient,
+  reportSlackUsage,
 } from "@connectors/connectors/slack/lib/slack_client";
 import {
   slackChannelIdFromInternalId,
@@ -132,6 +133,11 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
       const slackClient = await getSlackClient(accessToken, {
         // Do not reject rate limited calls in update connector. Called from the API.
         rejectRateLimitedCalls: false,
+      });
+
+      reportSlackUsage({
+        connectorId: c.id,
+        method: "team.info",
       });
       const teamInfoRes = await slackClient.team.info();
       if (!teamInfoRes.ok || !teamInfoRes.team?.id) {
@@ -741,7 +747,15 @@ export async function uninstallSlack(connectionId: string) {
       // Do not reject rate limited calls in uninstall slack. Called from the API.
       rejectRateLimitedCalls: false,
     });
+    reportSlackUsage({
+      connectorId: Number(connectionId),
+      method: "auth.test",
+    });
     await slackClient.auth.test();
+    reportSlackUsage({
+      connectorId: Number(connectionId),
+      method: "apps.uninstall",
+    });
     const deleteRes = await slackClient.apps.uninstall({
       client_id: SLACK_CLIENT_ID,
       client_secret: SLACK_CLIENT_SECRET,

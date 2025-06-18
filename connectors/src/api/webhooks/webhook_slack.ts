@@ -8,7 +8,10 @@ import {
 } from "@connectors/api/webhooks/slack/created_channel";
 import { botAnswerMessage } from "@connectors/connectors/slack/bot";
 import { updateSlackChannelInConnectorsDb } from "@connectors/connectors/slack/lib/channels";
-import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
+import {
+  getSlackClient,
+  reportSlackUsage,
+} from "@connectors/connectors/slack/lib/slack_client";
 import {
   getSlackChannelSourceUrl,
   slackChannelInternalIdFromSlackChannelId,
@@ -606,11 +609,21 @@ const _webhookSlackAPIHandler = async (
             rejectRateLimitedCalls: false,
           });
 
+          reportSlackUsage({
+            connectorId: slackConfig.connectorId,
+            method: "conversations.info",
+            channelId: event.channel,
+          });
           const channelInfo = await slackClient.conversations.info({
             channel: event.channel,
           });
 
           if (channelInfo?.channel?.is_private) {
+            reportSlackUsage({
+              connectorId: slackConfig.connectorId,
+              method: "chat.postMessage",
+              channelId: event.channel,
+            });
             await slackClient.chat.postMessage({
               channel: event.channel,
               text: "You can now talk to Dust in this channel. ⚠️ If private channel synchronization has been allowed on your Dust workspace, admins will now be able to synchronize data from this channel.",
