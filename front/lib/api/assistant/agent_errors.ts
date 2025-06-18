@@ -25,18 +25,21 @@ export const getPublicErrorMessage = (error: {
         error.message.includes("overloaded_error") ||
         error.message.includes("503 Service Unavailable")
       ) {
-        return "Anthropic (provider of Sonnet) is currently overloaded. Please try again later.";
-      } else if (error.message.includes("at least one message is required")) {
-        return "Your conversation content is too big and has exceeded the context window of the model. Try to reduce the amount of data you are sending.";
+        return "Anthropic (provider of Claude) is currently overloaded. Please try again later.";
+      } else if (
+        error.message.includes("at least one message is required") ||
+        error.message.includes("exceed context limit")
+      ) {
+        return "Your conversation content is too big and has exceeded the context window of the model. Try to reduce the amount of data you are sending or start a new conversation.";
       } else if (error.message.includes("Internal server error")) {
-        return "Anthropic (provider of Sonnet) encountered an internal server error. Please try again.";
+        return "Anthropic (provider of Claude) encountered an internal server error. Please try again.";
       }
     } else if (error.message.includes("OpenAIError")) {
       if (error.message.includes("maximum context length")) {
-        return "Your conversation content is too big and has exceeded the context window of the model. Try to reduce the amount of data you are sending.";
+        return "Your conversation content is too big and has exceeded the context window of the model. Try to reduce the amount of data you are sending or start a new conversation.";
       } else if (error.message.includes("Invalid schema for response_format")) {
         const contextPart = error.message.split("In context=")[1];
-        return `Your agent is configured to return a response in a format that is not supported by the model: ${contextPart}. Please update your agent configuration.`;
+        return `Your agent is configured to return a response in a format that is not supported by the model: ${contextPart}. Please update your agent configuration in Instructions > Advanced Settings > Structured Response Format.`;
       } else if (error.message.includes("server_error")) {
         return "OpenAI (provider of GPT) encountered an internal server error. Please try again.";
       }
