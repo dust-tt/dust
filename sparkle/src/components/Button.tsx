@@ -202,7 +202,7 @@ type ButtonBaseProps = {
   "aria-label"?: string;
 };
 
-type ButtonAsButtonProps = ButtonBaseProps &
+export type ButtonAsButtonProps = ButtonBaseProps &
   React.ButtonHTMLAttributes<HTMLButtonElement> & {
     href?: never;
     target?: never;

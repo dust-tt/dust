@@ -11,9 +11,9 @@ export { BarHeader } from "./BarHeader";
 export type { BreadcrumbItem } from "./Breadcrumbs";
 export { Breadcrumbs } from "./Breadcrumbs";
 export type {
+  ButtonAsButtonProps,
   ButtonProps,
-  MiniButtonProps,
-  RegularButtonProps,
+  MiniButtonAsButtonProps,
 } from "./Button";
 export { Button } from "./Button";
 export type { CardProps } from "./Card";

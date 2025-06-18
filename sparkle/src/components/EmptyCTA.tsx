@@ -1,6 +1,6 @@
 import * as React from "react";
 
-import { Button, RegularButtonProps } from "@sparkle/components/";
+import { Button, ButtonAsButtonProps } from "@sparkle/components/";
 import { cn } from "@sparkle/lib/utils";
 
 interface EmptyCTAProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -35,7 +35,7 @@ const EmptyCTA = React.forwardRef<HTMLDivElement, EmptyCTAProps>(
 
 EmptyCTA.displayName = "EmptyCTA";
 
-interface EmptyCTAButtonProps extends RegularButtonProps {
+interface EmptyCTAButtonProps extends ButtonAsButtonProps {
   icon: React.ComponentType;
   label: string;
 }
