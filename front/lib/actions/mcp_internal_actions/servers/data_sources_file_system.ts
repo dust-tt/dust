@@ -554,6 +554,17 @@ const createServer = (
         refsOffset: agentLoopContext.runContext.citationsRefsOffset,
       });
 
+      const agentDataSourceConfigurationsResult =
+        await getAgentDataSourceConfigurations(auth, dataSources);
+
+      if (agentDataSourceConfigurationsResult.isErr()) {
+        return makeMCPToolTextError(
+          agentDataSourceConfigurationsResult.error.message
+        );
+      }
+      const agentDataSourceConfigurations =
+        agentDataSourceConfigurationsResult.value;
+
       const coreSearchArgsResults = await concurrentExecutor(
         dataSources,
         async (dataSourceConfiguration) =>
@@ -696,6 +707,13 @@ const createServer = (
           {
             type: "resource" as const,
             resource: makeQueryResource(query, timeFrame),
+          },
+          {
+            type: "resource" as const,
+            resource: renderSearchResults(
+              searchResult.value,
+              agentDataSourceConfigurations
+            ),
           },
           ...results.map((result) => ({
             type: "resource" as const,
@@ -1090,11 +1108,10 @@ function renderSearchResults(
     string,
     ConnectorProvider | null
   >();
-  for (const config of agentDataSourceConfigurations) {
-    dataSourceIdToConnectorMap.set(
-      config.dataSource.dustAPIDataSourceId,
-      config.dataSource.connectorProvider
-    );
+  for (const {
+    dataSource: { dustAPIDataSourceId, connectorProvider },
+  } of agentDataSourceConfigurations) {
+    dataSourceIdToConnectorMap.set(dustAPIDataSourceId, connectorProvider);
   }
 
   return {
