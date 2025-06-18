@@ -23,6 +23,7 @@ import type {
 } from "@app/types";
 import {
   DATA_SOURCE_VIEW_CATEGORIES,
+  isString,
   PatchSpaceRequestBodySchema,
 } from "@app/types";
 
@@ -225,8 +226,9 @@ async function handler(
         });
       }
 
-      const force = req.query.force === "true";
-      const options = { force };
+      const { force } = req.query;
+      const shouldForce = isString(force) && force === "true";
+      const options = { force: shouldForce };
 
       try {
         const deleteRes = await softDeleteSpaceAndLaunchScrubWorkflow(
