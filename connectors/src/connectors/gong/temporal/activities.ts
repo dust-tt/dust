@@ -119,7 +119,7 @@ export async function gongSyncTranscriptsActivity({
       { ...loggerArgs, pageCursor },
       "[Gong] No more transcripts found."
     );
-    return { nextPageCursor: null };
+    return { nextPageCursor };
   }
 
   const transcriptsInDb = await GongTranscriptResource.fetchByCallIds(
