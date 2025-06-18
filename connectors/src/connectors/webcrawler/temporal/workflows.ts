@@ -150,7 +150,9 @@ export async function firecrawlCrawlCompletedWorkflow(
 
   // If we have a lastSyncStartTs, we start the garbage collector workflow.
   if (res?.lastSyncStartTs) {
-    // sleep for 120s
+    // Sleep for 120s to provide a buffer for all firecrawl page scrape webhooks to arrive and be
+    // processed. If some arrive after that means we may have a race on garbage collecting (deleting
+    // and upserting a page) which may lead to dropping a few pages which is not catastrophic.
     await new Promise((resolve) => setTimeout(resolve, 120_000));
 
     await startChild(garbageCollectWebsiteWorkflow, {

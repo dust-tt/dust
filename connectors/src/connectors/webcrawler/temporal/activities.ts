@@ -1244,19 +1244,18 @@ export async function firecrawlCrawlPage(
     );
   }
 
-  // TODO: we have a bit of a race condition here as the completed event can come before we get here
-  // so we want to tweak the method to not override lastSyncSuccessfulTime.
+  if (!connector?.firstSuccessfulSyncTime) {
+    // If this is the first sync we report the progress. This is a bit racy but that's not a big
+    // problem as this is simple reporting of initial progress.
+    const pagesCount = await WebCrawlerPage.count({
+      where: {
+        connectorId,
+        webcrawlerConfigurationId: webCrawlerConfig.id,
+      },
+    });
 
-  // if (!connector?.lastSyncSuccessfulTime) {
-  //   // If this is the first sync we report the initial sync progress.
-  //   const pagesCount = await WebCrawlerPage.count({
-  //     where: {
-  //       connectorId,
-  //       webcrawlerConfigurationId: webCrawlerConfig.id,
-  //     },
-  //   });
-  //   await reportInitialSyncProgress(connector.id, `${pagesCount} pages`);
-  // }
+    await reportInitialSyncProgress(connector.id, `${pagesCount} pages`);
+  }
 }
 
 export async function firecrawlCrawlCompleted(
