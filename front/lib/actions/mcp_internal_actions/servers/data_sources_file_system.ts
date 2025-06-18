@@ -288,7 +288,7 @@ const createServer = (
 
       const dataSourceNodeId = rootNodeId
         ? extractDataSourceIdFromNodeId(rootNodeId)
-        : undefined;
+        : null;
 
       // If rootNodeId is provided and is a data source node ID, search only in
       // the data source. If rootNodeId is provided and is a regular node ID,
@@ -521,7 +521,6 @@ const createServer = (
           "The query to search for. This is a natural language query. It doesn't support any " +
             "specific filter syntax."
         ),
-
       relativeTimeFrame: z
         .string()
         .regex(/^(all|\d+[hdwmy])$/)
@@ -555,6 +554,17 @@ const createServer = (
         refsOffset: agentLoopContext.runContext.citationsRefsOffset,
       });
 
+      const agentDataSourceConfigurationsResult =
+        await getAgentDataSourceConfigurations(auth, dataSources);
+
+      if (agentDataSourceConfigurationsResult.isErr()) {
+        return makeMCPToolTextError(
+          agentDataSourceConfigurationsResult.error.message
+        );
+      }
+      const agentDataSourceConfigurations =
+        agentDataSourceConfigurationsResult.value;
+
       const coreSearchArgsResults = await concurrentExecutor(
         dataSources,
         async (dataSourceConfiguration) =>
@@ -570,51 +580,42 @@ const createServer = (
       );
 
       const regularNodeIds =
-        nodeIds?.filter(
-          (nodeId) =>
-            !dataSourceIds.has(extractDataSourceIdFromNodeId(nodeId) ?? "")
-        ) ?? [];
+        nodeIds?.filter((nodeId) => !isDataSourceNodeId(nodeId)) ?? [];
 
       const coreSearchArgs = removeNulls(
-        coreSearchArgsResults
-          .map((res) => (res.isOk() ? res.value : null))
-          .map((coreSearchArgs) => {
-            if (coreSearchArgs === null) {
-              return null;
-            }
+        coreSearchArgsResults.map((res) => {
+          if (!res.isOk() || res.value === null) {
+            return null;
+          }
+          const coreSearchArgs = res.value;
 
-            if (!nodeIds || dataSourceIds.has(coreSearchArgs.dataSourceId)) {
-              // If the agent doesn't provide nodeIds, or if it provides the node id
-              // of this data source, we keep the default filter.
-              return coreSearchArgs;
-            }
+          if (!nodeIds || dataSourceIds.has(coreSearchArgs.dataSourceId)) {
+            // If the agent doesn't provide nodeIds, or if it provides the node id
+            // of this data source, we keep the default filter.
+            return coreSearchArgs;
+          }
 
-            // If there are only data source nodeIds, that are not this one, then
-            // this data source can be excluded from the search.
-            if (regularNodeIds.length === 0) {
-              return null;
-            }
+          // If there are no regular nodes, then we searched for data sources other than the
+          // current one; so we don't search this data source.
+          if (regularNodeIds.length === 0) {
+            return null;
+          }
 
-            return {
-              ...coreSearchArgs,
-              filter: {
-                ...coreSearchArgs.filter,
-                parents: { in: regularNodeIds, not: [] },
-              },
-            };
-          })
+          // If there are regular nodes, we filter to search within these nodes.
+          return {
+            ...coreSearchArgs,
+            filter: {
+              ...coreSearchArgs.filter,
+              parents: { in: regularNodeIds, not: [] },
+            },
+          };
+        })
       );
 
       if (coreSearchArgs.length === 0) {
-        return {
-          isError: true,
-          content: [
-            {
-              type: "text",
-              text: "Search action must have at least one data source configured.",
-            },
-          ],
-        };
+        return makeMCPToolTextError(
+          "Search action must have at least one data source configured."
+        );
       }
 
       const searchResults = await coreAPI.searchDataSources(
@@ -622,48 +623,34 @@ const createServer = (
         topK,
         credentials,
         false,
-        coreSearchArgs.map((args) => {
-          return {
-            projectId: args.projectId,
-            dataSourceId: args.dataSourceId,
-            filter: {
-              ...args.filter,
-              tags: {
-                in: null,
-                not: null,
-              },
-              timestamp: {
-                gt: timeFrame ? timeFrameFromNow(timeFrame) : null,
-                lt: null,
-              },
+        coreSearchArgs.map((args) => ({
+          projectId: args.projectId,
+          dataSourceId: args.dataSourceId,
+          filter: {
+            ...args.filter,
+            tags: {
+              in: null,
+              not: null,
             },
-            view_filter: args.view_filter,
-          };
-        })
+            timestamp: {
+              gt: timeFrame ? timeFrameFromNow(timeFrame) : null,
+              lt: null,
+            },
+          },
+          view_filter: args.view_filter,
+        }))
       );
 
       if (searchResults.isErr()) {
-        return {
-          isError: true,
-          content: [
-            {
-              type: "text",
-              text: searchResults.error.message,
-            },
-          ],
-        };
+        return makeMCPToolTextError(
+          `Failed to search content: ${searchResults.error.message}`
+        );
       }
 
       if (refsOffset + topK > getRefs().length) {
-        return {
-          isError: true,
-          content: [
-            {
-              type: "text",
-              text: "The search exhausted the total number of references available for citations",
-            },
-          ],
-        };
+        return makeMCPToolTextError(
+          "The search exhausted the total number of references available for citations"
+        );
       }
 
       const refs = getRefs().slice(refsOffset, refsOffset + topK);
@@ -696,6 +683,34 @@ const createServer = (
         }
       );
 
+      const searchNodeIds = searchResults.value.documents.map(
+        ({ document_id }) => document_id
+      );
+
+      let renderedNodes;
+      if (searchNodeIds.length > 0) {
+        const searchResult = await coreAPI.searchNodes({
+          filter: {
+            node_ids: searchNodeIds,
+            data_source_views: coreSearchArgs.map((args) => ({
+              data_source_id: args.dataSourceId,
+              view_filter: args.filter.parents?.in ?? [],
+            })),
+          },
+          options: {
+            limit: searchNodeIds.length,
+          },
+        });
+
+        if (searchResult.isErr()) {
+          return makeMCPToolTextError("Failed to search content");
+        }
+        renderedNodes = renderSearchResults(
+          searchResult.value,
+          agentDataSourceConfigurations
+        );
+      }
+
       return {
         isError: false,
         content: [
@@ -703,6 +718,9 @@ const createServer = (
             type: "resource" as const,
             resource: makeQueryResource(query, timeFrame),
           },
+          ...(renderedNodes
+            ? [{ type: "resource" as const, resource: renderedNodes }]
+            : []),
           ...results.map((result) => ({
             type: "resource" as const,
             resource: result,
@@ -1096,11 +1114,10 @@ function renderSearchResults(
     string,
     ConnectorProvider | null
   >();
-  for (const config of agentDataSourceConfigurations) {
-    dataSourceIdToConnectorMap.set(
-      config.dataSource.dustAPIDataSourceId,
-      config.dataSource.connectorProvider
-    );
+  for (const {
+    dataSource: { dustAPIDataSourceId, connectorProvider },
+  } of agentDataSourceConfigurations) {
+    dataSourceIdToConnectorMap.set(dustAPIDataSourceId, connectorProvider);
   }
 
   return {
