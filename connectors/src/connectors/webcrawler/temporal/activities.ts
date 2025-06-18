@@ -1053,7 +1053,7 @@ export async function firecrawlCrawlPage(
     scrapeId,
   });
 
-  let connector = await ConnectorResource.fetchById(connectorId);
+  const connector = await ConnectorResource.fetchById(connectorId);
   const webCrawlerConfig =
     await WebCrawlerConfigurationResource.fetchByConnectorId(connectorId);
 
