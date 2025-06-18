@@ -135,7 +135,7 @@ export async function gongSyncTranscriptsActivity({
     );
   }
   if (transcriptsToSync.length === 0) {
-    logger.warn(
+    logger.info(
       { ...loggerArgs },
       "[Gong] All transcripts are already in DB."
     );
