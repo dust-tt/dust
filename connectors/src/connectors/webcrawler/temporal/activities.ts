@@ -1272,6 +1272,13 @@ export async function firecrawlCrawlCompleted(
     return;
   }
 
+  const webConfig =
+    await WebCrawlerConfigurationResource.fetchByConnectorId(connectorId);
+  if (webConfig === null) {
+    localLogger.error({ connectorId }, "WebCrawlerConfiguration not found");
+    return;
+  }
+
   const crawlStatus = await getFirecrawl().checkCrawlStatus(crawlId);
   if (!crawlStatus.success) {
     localLogger.error(
@@ -1281,7 +1288,7 @@ export async function firecrawlCrawlCompleted(
     return;
   }
 
-  if (crawlStatus.completed >= crawlStatus.total) {
+  if (crawlStatus.completed >= webConfig.maxPageToCrawl) {
     await syncFailed(connectorId, "webcrawling_synchronization_limit_reached");
   } else {
     await syncSucceeded(connector.id);
