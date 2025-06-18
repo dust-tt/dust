@@ -521,7 +521,6 @@ const createServer = (
           "The query to search for. This is a natural language query. It doesn't support any " +
             "specific filter syntax."
         ),
-
       relativeTimeFrame: z
         .string()
         .regex(/^(all|\d+[hdwmy])$/)
@@ -616,24 +615,22 @@ const createServer = (
         topK,
         credentials,
         false,
-        coreSearchArgs.map((args) => {
-          return {
-            projectId: args.projectId,
-            dataSourceId: args.dataSourceId,
-            filter: {
-              ...args.filter,
-              tags: {
-                in: null,
-                not: null,
-              },
-              timestamp: {
-                gt: timeFrame ? timeFrameFromNow(timeFrame) : null,
-                lt: null,
-              },
+        coreSearchArgs.map((args) => ({
+          projectId: args.projectId,
+          dataSourceId: args.dataSourceId,
+          filter: {
+            ...args.filter,
+            tags: {
+              in: null,
+              not: null,
             },
-            view_filter: args.view_filter,
-          };
-        })
+            timestamp: {
+              gt: timeFrame ? timeFrameFromNow(timeFrame) : null,
+              lt: null,
+            },
+          },
+          view_filter: args.view_filter,
+        }))
       );
 
       if (searchResults.isErr()) {
