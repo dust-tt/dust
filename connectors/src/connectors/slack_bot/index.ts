@@ -1,6 +1,5 @@
 import type { ConnectorProvider, Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
-import { WebClient } from "@slack/web-api";
 
 import type {
   CreateConnectorErrorCode,
