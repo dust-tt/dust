@@ -7,6 +7,7 @@ import { fetchWorkOSUserWithEmail } from "@app/lib/api/workos/user";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
+import { normalizeError } from "@app/types";
 
 interface CsvRecord {
   email: string;
@@ -95,7 +96,7 @@ const sendPasswordResetEmail = async (
     }
   } catch (error) {
     childLogger.error({ error }, "Error processing password reset for user");
-    return { success: false, error: String(error) };
+    return { success: false, error: normalizeError(error).message };
   }
 };
 
