@@ -862,6 +862,7 @@ function getSectionColumnsPrefix(
     case "intercom":
     case "notion":
     case "slack":
+    case "slack_bot":
     case "microsoft":
     case "webcrawler":
     case "snowflake":
