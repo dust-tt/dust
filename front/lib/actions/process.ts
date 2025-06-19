@@ -1,7 +1,7 @@
 import _, { isObject } from "lodash";
 
 import {
-  generateJSONFileAndSnippet,
+  generateJSONSnippet,
   getJSONFileAttachment,
   uploadFileToConversationDataSource,
 } from "@app/lib/actions/action_file_helpers";
@@ -29,6 +29,7 @@ import {
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { dustAppRunInputsToInputSchema } from "@app/lib/actions/types/agent";
 import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
+import { processAndStoreFile } from "@app/lib/api/files/upload";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentProcessAction } from "@app/lib/models/assistant/actions/process";
@@ -529,10 +530,31 @@ export class ProcessConfigurationServerRunner extends BaseActionConfigurationSer
       const fileTitle = getExtractFileTitle({
         schema: actionConfiguration.jsonSchema,
       });
-      const { jsonFile, jsonSnippet } = await generateJSONFileAndSnippet(auth, {
-        title: fileTitle,
-        conversationId: conversation.sId,
-        data: outputs.data,
+      // Inline generateJSONFileAndSnippet functionality
+      const workspace = auth.getNonNullableWorkspace();
+      const user = auth.user();
+
+      const jsonOutput = JSON.stringify(outputs.data, null, 2);
+      const jsonSnippet = generateJSONSnippet(outputs.data);
+
+      const jsonFile = await FileResource.makeNew({
+        workspaceId: workspace.id,
+        userId: user?.id ?? null,
+        contentType: "application/json",
+        fileName: fileTitle,
+        fileSize: Buffer.byteLength(jsonOutput),
+        useCase: "tool_output",
+        useCaseMetadata: {
+          conversationId: conversation.sId,
+        },
+      });
+
+      await processAndStoreFile(auth, {
+        file: jsonFile,
+        content: {
+          type: "string",
+          value: jsonOutput,
+        },
       });
 
       // Upload the file to the conversation data source.
