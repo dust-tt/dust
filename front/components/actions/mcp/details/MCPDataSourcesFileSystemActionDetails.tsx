@@ -10,8 +10,6 @@ import {
   ActionDocumentTextIcon,
   Breadcrumbs,
   DocumentIcon,
-  FolderIcon,
-  TableIcon,
 } from "@dust-tt/sparkle";
 import React from "react";
 
@@ -21,6 +19,7 @@ import type { ActionDetailsComponentBaseProps } from "@app/components/actions/ty
 import type { MCPActionType } from "@app/lib/actions/mcp";
 import { isDataSourceNodeContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { isFilesystemPathType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { getVisualForContentNodeType } from "@app/lib/content_nodes";
 import { formatDataSourceDisplayName } from "@app/types";
 
 export function DataSourceNodeContentDetails({
@@ -70,18 +69,6 @@ export function DataSourceNodeContentDetails({
   );
 }
 
-function getNodeIcon(nodeType?: string) {
-  switch (nodeType) {
-    case "folder":
-      return FolderIcon;
-    case "table":
-      return TableIcon;
-    case "document":
-    default:
-      return DocumentIcon;
-  }
-}
-
 export function FilesystemPathDetails({
   action,
   defaultOpen,
@@ -96,16 +83,28 @@ export function FilesystemPathDetails({
 
   const { path } = filesystemPath;
 
-  const breadcrumbItems: BreadcrumbItem[] = path.map((item) => ({
-    icon: getNodeIcon(item.nodeType),
-    label: item.title,
-    isCurrent: item.isCurrentNode,
-    // For the UI, we don't provide hrefs as these are just display paths
-  }));
+  const breadcrumbItems: BreadcrumbItem[] = path.map((item) =>
+    item.sourceUrl
+      ? {
+          icon: getVisualForContentNodeType(item.nodeType),
+          label: item.title,
+          isCurrent: item.isCurrentNode,
+          href: item.sourceUrl,
+        }
+      : {
+          icon: getVisualForContentNodeType(item.nodeType),
+          label: item.title,
+          isCurrent: item.isCurrentNode,
+        }
+  );
 
-  // Reformatting the label for the first item, which is the data source.
+  // Reformat the label for the first item, which is the data source.
   breadcrumbItems[0].label = formatDataSourceDisplayName(
     breadcrumbItems[0].label
+  );
+  // Add the provider icon for the data source (best effort, does not work on all providers).
+  breadcrumbItems[0].icon = getDocumentIcon(
+    breadcrumbItems[0].label.toLowerCase()
   );
 
   return (
