@@ -5,7 +5,7 @@ import type { ConversationsRepliesResponse } from "@slack/web-api/dist/response/
 import mainLogger from "@connectors/logger/logger";
 import type { ModelId } from "@connectors/types";
 
-import { reportSlackUsage } from "./slack_client";
+import { reportSlackUsage, withSlackErrorHandling } from "./slack_client";
 
 const logger = mainLogger.child({ provider: "slack" });
 
@@ -38,13 +38,16 @@ export async function getRepliesFromThread({
       limit: 200,
       useCase,
     });
-    const replies: ConversationsRepliesResponse =
-      await slackClient.conversations.replies({
-        channel: channelId,
-        ts: threadTs,
-        cursor: next_cursor,
-        limit: 200,
-      });
+
+    const replies: ConversationsRepliesResponse = await withSlackErrorHandling(
+      () =>
+        slackClient.conversations.replies({
+          channel: channelId,
+          ts: threadTs,
+          cursor: next_cursor,
+          limit: 200,
+        })
+    );
 
     if (replies.error) {
       throw new Error(replies.error);

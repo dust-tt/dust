@@ -22,6 +22,7 @@ import jaroWinkler from "talisman/metrics/jaro-winkler";
 
 import {
   makeErrorBlock,
+  makeMarkdownBlock,
   makeMessageUpdateBlocksAndText,
 } from "@connectors/connectors/slack/chat/blocks";
 import { streamConversationToSlack } from "@connectors/connectors/slack/chat/stream_conversation_handler";
@@ -52,6 +53,7 @@ import { apiConfig } from "@connectors/lib/api/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import type { CoreAPIDataSourceDocumentSection } from "@connectors/lib/data_sources";
 import { sectionFullText } from "@connectors/lib/data_sources";
+import { ProviderRateLimitError } from "@connectors/lib/error";
 import {
   SlackChannel,
   SlackChatBotMessage,
@@ -65,6 +67,10 @@ import {
   getHeaderFromGroupIds,
   getHeaderFromUserEmail,
 } from "@connectors/types";
+
+const SLACK_RATE_LIMIT_ERROR_MESSAGE =
+  "Slack has blocked the agent from continuing the conversation, due to new restrictive" +
+  " rate limits. You can retry the conversation later.";
 
 const MAX_FILE_SIZE_TO_UPLOAD = 10 * 1024 * 1024; // 10 MB
 
@@ -146,11 +152,19 @@ export async function botAnswerMessage(
         channelId: slackChannel,
         useCase: "bot",
       });
-      await slackClient.chat.postMessage({
-        channel: slackChannel,
-        text: "An unexpected error occurred. Our team has been notified",
-        thread_ts: slackMessageTs,
-      });
+      if (e instanceof ProviderRateLimitError) {
+        await slackClient.chat.postMessage({
+          channel: slackChannel,
+          blocks: makeMarkdownBlock(SLACK_RATE_LIMIT_ERROR_MESSAGE),
+          thread_ts: slackMessageTs,
+        });
+      } else {
+        await slackClient.chat.postMessage({
+          channel: slackChannel,
+          text: "An unexpected error occurred. Our team has been notified",
+          thread_ts: slackMessageTs,
+        });
+      }
     } catch (e) {
       logger.error(
         {
@@ -215,12 +229,19 @@ export async function botReplaceMention(
       channelId: slackChannel,
       useCase: "bot",
     });
-    await slackClient.chat.postMessage({
-      channel: slackChannel,
-      text: "An unexpected error occurred. Our team has been notified.",
-      thread_ts: slackMessageTs,
-    });
-
+    if (e instanceof ProviderRateLimitError) {
+      await slackClient.chat.postMessage({
+        channel: slackChannel,
+        blocks: makeMarkdownBlock(SLACK_RATE_LIMIT_ERROR_MESSAGE),
+        thread_ts: slackMessageTs,
+      });
+    } else {
+      await slackClient.chat.postMessage({
+        channel: slackChannel,
+        text: "An unexpected error occurred. Our team has been notified.",
+        thread_ts: slackMessageTs,
+      });
+    }
     return new Err(new Error("An unexpected error occurred"));
   }
 }
@@ -1009,6 +1030,7 @@ async function makeContentFragments(
       threadTs: threadTs,
     },
   });
+
   const replies = await getRepliesFromThread({
     connectorId: connector.id,
     slackClient,
@@ -1016,6 +1038,7 @@ async function makeContentFragments(
     threadTs,
     useCase: "bot",
   });
+
   let shouldTake = false;
   for (const reply of replies) {
     if (reply.ts === startingAtTs) {

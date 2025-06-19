@@ -28,7 +28,7 @@ function makeDividerBlock() {
   };
 }
 
-function makeMarkdownBlock(text?: string) {
+export function makeMarkdownBlock(text?: string) {
   return text
     ? [
         {
