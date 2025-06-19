@@ -416,11 +416,9 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
           }
         >
           {tooltip ? (
-            <ContentWithTooltip tooltip={tooltip}>
-              {innerContent}
-            </ContentWithTooltip>
+            <ContentWithTooltip tooltip={tooltip}>{content}</ContentWithTooltip>
           ) : (
-            innerContent
+            content
           )}
         </LinkWrapper>
       );

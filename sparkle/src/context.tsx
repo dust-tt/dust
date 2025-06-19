@@ -25,6 +25,7 @@ type SparkleLinkProps = {
   rel?: string;
   prefetch?: boolean;
   disabled?: boolean;
+  style?: React.CSSProperties;
 };
 
 export type SparkleContextLinkType = ComponentType<

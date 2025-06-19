@@ -11,6 +11,7 @@ export interface LinkWrapperProps {
   target?: string;
   prefetch?: boolean;
   className?: string;
+  style?: React.CSSProperties;
 }
 
 export const LinkWrapper = React.forwardRef<
@@ -18,7 +19,17 @@ export const LinkWrapper = React.forwardRef<
   LinkWrapperProps
 >(
   (
-    { children, href, rel, replace, shallow, target, prefetch, className },
+    {
+      children,
+      href,
+      rel,
+      replace,
+      shallow,
+      target,
+      prefetch,
+      className,
+      style,
+    },
     ref
   ) => {
     const { components } = React.useContext(SparkleContext);
@@ -34,6 +45,7 @@ export const LinkWrapper = React.forwardRef<
           shallow={shallow}
           prefetch={prefetch}
           className={className}
+          style={style}
         >
           {children}
         </components.link>
