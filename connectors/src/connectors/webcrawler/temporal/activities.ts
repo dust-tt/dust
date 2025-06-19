@@ -176,6 +176,16 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
       throw new Error(crawlerResponse.error);
     }
 
+    if (crawlerResponse.id) {
+      await webCrawlerConfig.updateCrawlId(crawlerResponse.id);
+    } else {
+      // Shouldn't happen, but based on the types, let's make sure
+      childLogger.warn(
+        { webCrawlerConfigId: webCrawlerConfig.id, url: rootUrl },
+        "No ID found when creating a Firecrawl crawler"
+      );
+    }
+
     childLogger.info(
       { crawlerId: crawlerResponse.id, url: rootUrl },
       "Firecrawl crawler started"
@@ -1018,6 +1028,15 @@ export async function firecrawlCrawlFailed(
     return;
   }
 
+  const webConfig =
+    await WebCrawlerConfigurationResource.fetchByConnectorId(connectorId);
+  if (!webConfig) {
+    localLogger.error({ connectorId }, "WebCrawlerConfiguration not found");
+    return;
+  }
+
+  await webConfig.updateCrawlId(null);
+
   // Mark the web crawler as failed.
   await syncFailed(connector.id, "webcrawling_error");
 }
@@ -1278,6 +1297,9 @@ export async function firecrawlCrawlCompleted(
     localLogger.error({ connectorId }, "WebCrawlerConfiguration not found");
     return;
   }
+
+  // Clean the crawlId
+  await webConfig.updateCrawlId(null);
 
   const crawlStatus = await getFirecrawl().checkCrawlStatus(crawlId);
   if (!crawlStatus.success) {
