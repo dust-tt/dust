@@ -38,18 +38,18 @@ const sendPasswordResetEmail = async (
 ): Promise<{ success: boolean; error?: string }> => {
   const childLogger = logger.child({ email });
 
-  try {
-    // First, check if the user exists in WorkOS.
-    const userResult = await fetchWorkOSUserWithEmail(email);
-    if (userResult.isErr()) {
-      childLogger.warn("User not found in WorkOS");
-      return { success: false, error: "User not found in WorkOS" };
-    }
+  // First, check if the user exists in WorkOS.
+  const userResult = await fetchWorkOSUserWithEmail(email);
+  if (userResult.isErr()) {
+    childLogger.warn("User not found in WorkOS");
+    return { success: false, error: "User not found in WorkOS" };
+  }
 
-    const user = userResult.value;
-    childLogger.info({ workOSUserId: user.id }, "Found user in WorkOS");
+  const user = userResult.value;
+  childLogger.info({ workOSUserId: user.id }, "Found user in WorkOS");
 
-    if (execute) {
+  if (execute) {
+    try {
       // Send password reset email via WorkOS.
       await getWorkOS().userManagement.createPasswordReset({
         email: user.email,
@@ -76,26 +76,16 @@ const sendPasswordResetEmail = async (
         <p>Thank you for your understanding and for being a valued Dust user.</p>`,
       });
 
-      if (emailResult.isErr()) {
-        childLogger.error(
-          { error: emailResult.error },
-          "Failed to send notification email"
-        );
-        // Don't fail the operation if our notification email fails.
-      } else {
-        childLogger.info("Successfully sent notification email");
-      }
-
       return { success: true };
-    } else {
-      childLogger.info(
-        "Would send password reset email via WorkOS and notification email"
-      );
-      return { success: true };
+    } catch (error) {
+      childLogger.error({ error }, "Error processing password reset for user");
+      return { success: false, error: normalizeError(error).message };
     }
-  } catch (error) {
-    childLogger.error({ error }, "Error processing password reset for user");
-    return { success: false, error: normalizeError(error).message };
+  } else {
+    childLogger.info(
+      "Would send password reset email via WorkOS and notification email"
+    );
+    return { success: true };
   }
 };
 
