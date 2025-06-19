@@ -1033,7 +1033,9 @@ async function makeContentFragments(
         blocks: makeMarkdownBlock(SLACK_RATE_LIMIT_ERROR_MESSAGE),
         thread_ts: threadTs,
       });
+      return new Ok(null);
     }
+    throw e;
   }
   let shouldTake = false;
   for (const reply of replies) {
