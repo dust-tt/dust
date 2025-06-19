@@ -10,10 +10,12 @@ import {
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import { MCPBrowseActionDetails } from "@app/components/actions/mcp/details/MCPBrowseActionDetails";
-import { DataSourceNodeContentDetails } from "@app/components/actions/mcp/details/MCPDataSourcesFileSystemActionDetails";
+import {
+  DataSourceNodeContentDetails,
+  FilesystemPathDetails,
+} from "@app/components/actions/mcp/details/MCPDataSourcesFileSystemActionDetails";
 import { MCPExtractActionDetails } from "@app/components/actions/mcp/details/MCPExtractActionDetails";
 import { MCPGetDatabaseSchemaActionDetails } from "@app/components/actions/mcp/details/MCPGetDatabaseSchemaActionDetails";
-import { FilesystemPathDetails } from "@app/components/actions/mcp/details/FilesystemPathDetails";
 import { MCPReasoningActionDetails } from "@app/components/actions/mcp/details/MCPReasoningActionDetails";
 import { MCPRunAgentActionDetails } from "@app/components/actions/mcp/details/MCPRunAgentActionDetails";
 import { MCPTablesQueryActionDetails } from "@app/components/actions/mcp/details/MCPTablesQueryActionDetails";
@@ -26,9 +28,9 @@ import {
   isDataSourceNodeListType,
   isExecuteTablesQueryMarkerResourceType,
   isExtractResultResourceType,
+  isFilesystemPathType,
   isGetDatabaseSchemaMarkerResourceType,
   isIncludeResultResourceType,
-  isFilesystemPathType,
   isReasoningSuccessOutput,
   isRunAgentProgressOutput,
   isRunAgentResultResourceType,
