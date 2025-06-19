@@ -641,7 +641,7 @@ export const FilesystemPathSchema = z.object({
 
 export type FilesystemPathType = z.infer<typeof FilesystemPathSchema>;
 
-export const isLocateInTreeResultType = (
+export const isFilesystemPathType = (
   outputBlock: CallToolResult["content"][number]
 ): outputBlock is {
   type: "resource";

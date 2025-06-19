@@ -12,7 +12,7 @@ import React from "react";
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import type { ActionDetailsComponentBaseProps } from "@app/components/actions/types";
 import type { MCPActionType } from "@app/lib/actions/mcp";
-import { isLocateInTreeResultType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { isFilesystemPathType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 
 function getNodeIcon(nodeType?: string) {
   switch (nodeType) {
@@ -26,19 +26,19 @@ function getNodeIcon(nodeType?: string) {
   }
 }
 
-export function MCPLocateInTreeActionDetails({
+export function FilesystemPathDetails({
   action,
   defaultOpen,
 }: ActionDetailsComponentBaseProps<MCPActionType>) {
-  const locateInTreeResult = action.output
-    ?.filter(isLocateInTreeResultType)
+  const filesystemPath = action.output
+    ?.filter(isFilesystemPathType)
     .map((o) => o.resource)?.[0];
 
-  if (!locateInTreeResult) {
+  if (!filesystemPath) {
     return null;
   }
 
-  const { path, text } = locateInTreeResult;
+  const { path, text } = filesystemPath;
 
   const breadcrumbItems: BreadcrumbItem[] = path.map((item) => ({
     icon: getNodeIcon(item.nodeType),
@@ -49,7 +49,7 @@ export function MCPLocateInTreeActionDetails({
 
   return (
     <ActionDetailsWrapper
-      actionName="Locate in tree"
+      actionName="Locate item in hierarchy"
       defaultOpen={defaultOpen}
       visual={ActionDocumentTextIcon}
     >
@@ -82,7 +82,7 @@ export function MCPLocateInTreeActionDetails({
                 key={item.nodeId}
                 className={`flex items-center gap-2 ${
                   item.isCurrentNode
-                    ? "font-semibold text-action-500 dark:text-action-400"
+                    ? "text-action-500 dark:text-action-400 font-semibold"
                     : "text-muted-foreground dark:text-muted-foreground-night"
                 }`}
                 style={{ paddingLeft: `${index * 16}px` }}
