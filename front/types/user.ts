@@ -97,6 +97,10 @@ export type UserType = {
   lastLoginAt: number | null;
 };
 
+export type UserTypeWithWorkspace = UserType & {
+  workspace: WorkspaceType;
+};
+
 export type UserTypeWithWorkspaces = UserType & {
   workspaces: WorkspaceType[];
 };
