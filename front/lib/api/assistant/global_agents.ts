@@ -58,8 +58,14 @@ import {
 
 const readFileAsync = promisify(fs.readFile);
 
-const globalAgentGuidelines =
-  "Respond in a helpful, honest, and engaging way. Unless instructed to be brief, present answers with clear structure and formatting to improve readability: use emojis, headings, bullet points, and examples when appropriate.";
+const globalAgentGuidelines = `
+  Respond in a helpful, honest, and engaging way. 
+  Unless instructed to be brief, present answers with clear structure and formatting to improve readability: use emojis, headings, bullet points, and examples when appropriate.
+  The agent always respects the mardown format and generates spaces to nest content.
+
+  Only use visualization if it is strictly necessary to visualize data or if it was explicitly requested by the user.
+  Do not use visualization if markdown is sufficient.
+  `;
 
 // Used when returning an agent with status 'disabled_by_admin'
 const dummyModelConfiguration = {
@@ -300,7 +306,7 @@ function _getHelperGlobalAgent({
     versionAuthorId: null,
     name: "help",
     description: "Help on how to use Dust",
-    instructions: prompt,
+    instructions: prompt + globalAgentGuidelines,
     pictureUrl: "https://dust.tt/static/systemavatar/helper_avatar_full.png",
     status: status,
     userFavorite: false,
@@ -791,10 +797,7 @@ function _getClaude3GlobalAgent({
     versionAuthorId: null,
     name: "claude-3.5",
     description: CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG.description,
-    instructions:
-      "Only use visualization if it is strictly necessary to visualize " +
-      "data or if it was explicitly requested by the user. " +
-      "Do not use visualization if markdown is sufficient.",
+    instructions: globalAgentGuidelines,
     pictureUrl: "https://dust.tt/static/systemavatar/claude_avatar_full.png",
     status,
     scope: "global",
@@ -835,11 +838,7 @@ function _getClaude4SonnetGlobalAgent({
     versionAuthorId: null,
     name: "claude-4-sonnet",
     description: CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG.description,
-    instructions:
-      globalAgentGuidelines +
-      "Only use visualization if it is strictly necessary to visualize " +
-      "data or if it was explicitly requested by the user. " +
-      "Do not use visualization if markdown is sufficient.",
+    instructions: globalAgentGuidelines,
     pictureUrl: "https://dust.tt/static/systemavatar/claude_avatar_full.png",
     status,
     scope: "global",
@@ -880,11 +879,7 @@ function _getClaude3_7GlobalAgent({
     versionAuthorId: null,
     name: "claude-3.7",
     description: CLAUDE_3_7_SONNET_DEFAULT_MODEL_CONFIG.description,
-    instructions:
-      globalAgentGuidelines +
-      "Only use visualization if it is strictly necessary to visualize " +
-      "data or if it was explicitly requested by the user. " +
-      "Do not use visualization if markdown is sufficient.",
+    instructions: globalAgentGuidelines,
     pictureUrl: "https://dust.tt/static/systemavatar/claude_avatar_full.png",
     status,
     scope: "global",
@@ -1433,9 +1428,8 @@ function _getDustGlobalAgent(
       }
     : dummyModelConfiguration;
 
-  const instructions = `The agent answers with precision and brevity. It produces short and straight to the point answers.
+  const instructions = `${globalAgentGuidelines}
 The agent should not provide additional information or content that the user did not ask for.
-When possible, the agent should answer using a single sentence.
 
 # When the user asks a questions to the agent, the agent should analyze the situation as follows:
 
@@ -1457,9 +1451,7 @@ When possible, the agent should answer using a single sentence.
    and the public internet before answering the user's question.
 
 4. If the user's query require neither internal company data or recent public knowledge,
-   the agent is allowed to answer without using any tool.
-
-The agent always respects the mardown format and generates spaces to nest content.`;
+   the agent is allowed to answer without using any tool.`;
 
   const dustAgent = {
     id: -1,
