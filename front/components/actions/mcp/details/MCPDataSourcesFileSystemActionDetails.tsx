@@ -22,6 +22,7 @@ import type { ActionDetailsComponentBaseProps } from "@app/components/actions/ty
 import type { MCPActionType } from "@app/lib/actions/mcp";
 import { isDataSourceNodeContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { isFilesystemPathType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { formatDataSourceDisplayName } from "@app/types";
 
 export function DataSourceNodeContentDetails({
   action,
@@ -102,6 +103,11 @@ export function FilesystemPathDetails({
     isCurrent: item.isCurrentNode,
     // For the UI, we don't provide hrefs as these are just display paths
   }));
+
+  // Reformatting the label for the first item, which is the data source.
+  breadcrumbItems[0].label = formatDataSourceDisplayName(
+    breadcrumbItems[0].label
+  );
 
   return (
     <ActionDetailsWrapper
