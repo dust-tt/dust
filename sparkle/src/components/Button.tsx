@@ -421,7 +421,6 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
           replace={replace}
           shallow={shallow}
           prefetch={prefetch}
-          disabled={disabled}
         >
           {tooltip ? (
             <ContentWithTooltip tooltip={tooltip}>
