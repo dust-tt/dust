@@ -7,6 +7,7 @@ import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_inte
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type {
   DataSourceNodeListType,
+  FilesystemPathType,
   SearchQueryResourceType,
   SearchResultResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
@@ -848,7 +849,7 @@ const createServer = (
       }
 
       // Build the path array.
-      const pathItems = removeNulls([
+      const pathItems: FilesystemPathType["path"] = removeNulls([
         // Data source root node
         {
           nodeId: dataSourceRootId,
