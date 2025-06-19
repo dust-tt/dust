@@ -335,6 +335,18 @@ const _webhookSlackAPIHandler = async (
                   return null;
                 }
 
+                if (slackChannel.skipReason) {
+                  logger.info(
+                    {
+                      connectorId: c.connectorId,
+                      slackChannelId: channel,
+                      skipReason: slackChannel.skipReason,
+                    },
+                    `Ignoring message because channel is skipped: ${slackChannel.skipReason}`
+                  );
+                  return null;
+                }
+
                 if (!["read", "read_write"].includes(slackChannel.permission)) {
                   logger.info(
                     {
