@@ -105,7 +105,7 @@ export function FilesystemPathDetails({
 
   return (
     <ActionDetailsWrapper
-      actionName="Locate item in hierarchy"
+      actionName="Locate item"
       defaultOpen={defaultOpen}
       visual={ActionPinDistanceIcon}
     >
