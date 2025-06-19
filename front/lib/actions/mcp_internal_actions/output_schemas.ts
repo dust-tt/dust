@@ -624,6 +624,36 @@ export const isDataSourceNodeContentType = (
   );
 };
 
+// Schema for a locate_in_tree path item.
+const FilesystemPathItemSchema = z.object({
+  nodeId: z.string(),
+  title: z.string(),
+  nodeType: z.enum(["document", "table", "folder"]),
+  sourceUrl: z.string().nullable(),
+  isCurrentNode: z.boolean(),
+});
+
+export const FilesystemPathSchema = z.object({
+  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILESYSTEM_PATH),
+  uri: z.literal(""),
+  text: z.string(),
+  path: z.array(FilesystemPathItemSchema),
+});
+
+export type FilesystemPathType = z.infer<typeof FilesystemPathSchema>;
+
+export const isFilesystemPathType = (
+  outputBlock: CallToolResult["content"][number]
+): outputBlock is {
+  type: "resource";
+  resource: FilesystemPathType;
+} => {
+  return (
+    outputBlock.type === "resource" &&
+    FilesystemPathSchema.safeParse(outputBlock.resource).success
+  );
+};
+
 /**
  * Notification output types.
  */

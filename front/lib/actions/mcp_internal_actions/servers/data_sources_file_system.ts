@@ -7,6 +7,7 @@ import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_inte
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type {
   DataSourceNodeListType,
+  FilesystemPathType,
   SearchQueryResourceType,
   SearchResultResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
@@ -17,7 +18,6 @@ import {
   renderRelativeTimeFrameForToolOutput,
 } from "@app/lib/actions/mcp_internal_actions/servers/utils";
 import {
-  makeMCPToolJSONSuccess,
   makeMCPToolRecoverableErrorSuccess,
   makeMCPToolTextError,
 } from "@app/lib/actions/mcp_internal_actions/utils";
@@ -771,18 +771,26 @@ const createServer = (
           );
         }
 
-        return makeMCPToolJSONSuccess({
-          message: "Node is the data source root.",
-          result: {
-            path: [
-              {
-                nodeId: nodeId,
-                title: dataSourceConfig.dataSource.name,
-                isCurrentNode: true,
+        return {
+          isError: false,
+          content: [
+            {
+              type: "resource" as const,
+              resource: {
+                mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILESYSTEM_PATH,
+                uri: "",
+                text: "Node is the data source root.",
+                path: [
+                  {
+                    nodeId: nodeId,
+                    title: dataSourceConfig.dataSource.name,
+                    isCurrentNode: true,
+                  },
+                ],
               },
-            ],
-          },
-        });
+            },
+          ],
+        };
       }
 
       // Search for the target node.
@@ -841,12 +849,13 @@ const createServer = (
       }
 
       // Build the path array.
-      const pathItems = removeNulls([
+      const pathItems: FilesystemPathType["path"] = removeNulls([
         // Data source root node
         {
           nodeId: dataSourceRootId,
           title: dataSourceConfig.dataSource.name,
           nodeType: "folder" as ContentNodeType,
+          sourceUrl: null,
           isCurrentNode: false,
         },
         // Parent nodes
@@ -859,6 +868,7 @@ const createServer = (
             nodeId: parentId,
             title: node.title,
             nodeType: node.node_type,
+            sourceUrl: node.source_url,
             isCurrentNode: false,
           };
         }),
@@ -867,16 +877,25 @@ const createServer = (
           nodeId: nodeId,
           title: targetNode.title,
           nodeType: targetNode.node_type,
+          sourceUrl: targetNode.source_url,
           isCurrentNode: true,
         },
       ]);
 
-      return makeMCPToolJSONSuccess({
-        message: "Path located successfully.",
-        result: {
-          path: pathItems,
-        },
-      });
+      return {
+        isError: false,
+        content: [
+          {
+            type: "resource" as const,
+            resource: {
+              mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILESYSTEM_PATH,
+              uri: "",
+              text: "Path located successfully.",
+              path: pathItems,
+            },
+          },
+        ],
+      };
     }
   );
 
