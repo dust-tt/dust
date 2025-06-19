@@ -306,6 +306,8 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       return {};
     }, [isLoading, props.disabled]);
 
+    const innerContent = href ? <span>{content}</span> : content;
+
     const innerButton = (
       <MetaButton
         ref={ref}
@@ -320,10 +322,11 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
             "--duration": "1.5s",
           } as React.CSSProperties
         }
+        asChild={!!href}
         {...props}
         {...pointerEventProps}
       >
-        {content}
+        {innerContent}
       </MetaButton>
     );
 
