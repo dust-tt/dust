@@ -12,7 +12,8 @@ import {
 } from "@app/lib/api/email";
 import { getMembers } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
-import { Plan, Subscription } from "@app/lib/models/plan";
+import { Plan } from "@app/lib/models/plan";
+import { renderPlanFromModel } from "@app/lib/plans/renderers";
 import {
   assertStripeSubscriptionIsValid,
   createCustomerPortalSession,
@@ -174,16 +175,11 @@ async function handler(
             }
 
             await frontSequelize.transaction(async (t) => {
-              const activeSubscription = await Subscription.findOne({
-                where: { workspaceId: workspace.id, status: "active" },
-                include: [
-                  {
-                    model: Plan,
-                    as: "plan",
-                  },
-                ],
-                transaction: t,
-              });
+              const activeSubscription =
+                await SubscriptionResource.fetchActiveByWorkspace(
+                  renderLightWorkspaceType({ workspace }),
+                  t
+                );
 
               // We block a double subscription for a workspace on the same plan
               if (activeSubscription && activeSubscription.planId === plan.id) {
@@ -227,18 +223,12 @@ async function handler(
               }
 
               if (activeSubscription) {
-                await activeSubscription.update(
-                  {
-                    status: "ended",
-                    endDate: now,
-                  },
-                  { transaction: t }
-                );
+                await activeSubscription.updateStatus("ended", now, t);
               }
               const stripeSubscription =
                 await stripe.subscriptions.retrieve(stripeSubscriptionId);
 
-              await Subscription.create(
+              await SubscriptionResource.makeNew(
                 {
                   sId: generateRandomModelSId(),
                   workspaceId: workspace.id,
@@ -248,7 +238,8 @@ async function handler(
                   startDate: now,
                   stripeSubscriptionId: stripeSubscriptionId,
                 },
-                { transaction: t }
+                renderPlanFromModel({ plan }),
+                t
               );
             });
             if (userId) {
@@ -309,10 +300,9 @@ async function handler(
             );
           }
           // Setting subscription payment status to succeeded
-          subscription = await Subscription.findOne({
-            where: { stripeSubscriptionId: invoice.subscription },
-            include: [WorkspaceModel],
-          });
+          subscription = await SubscriptionResource.fetchByStripeId(
+            invoice.subscription
+          );
           if (!subscription) {
             logger.warn(
               {
@@ -325,7 +315,7 @@ async function handler(
             // the warnings and create an alert if this log appears in all regions
             return res.status(200).json({ success: true });
           }
-          await subscription.update({ paymentFailingSince: null });
+          await subscription.updatePaymentFailingSince(null);
           break;
         case "invoice.payment_failed":
           // Occurs when payment failed or the user does not have a valid payment method.
@@ -352,10 +342,9 @@ async function handler(
           }
 
           // Logging that we have a failed payment
-          subscription = await Subscription.findOne({
-            where: { stripeSubscriptionId: invoice.subscription },
-            include: [WorkspaceModel],
-          });
+          subscription = await SubscriptionResource.fetchByStripeId(
+            invoice.subscription
+          );
           if (!subscription) {
             logger.warn(
               {
@@ -377,12 +366,23 @@ async function handler(
           }
 
           if (subscription.paymentFailingSince === null) {
-            await subscription.update({ paymentFailingSince: now });
+            await subscription.updatePaymentFailingSince(now);
+          }
+
+          const workspace = await WorkspaceModel.findByPk(
+            subscription.workspaceId
+          );
+          if (!workspace) {
+            logger.warn(
+              { event, stripeSubscriptionId: invoice.subscription },
+              "[Stripe Webhook] Associated workspace not found"
+            );
+            return res.status(200).json({ success: true });
           }
 
           // Send email to admins + customer email who subscribed in Stripe
           const auth = await Authenticator.internalAdminForWorkspace(
-            subscription.workspace.sId
+            workspace.sId
           );
           const owner = auth.workspace();
           const subscriptionType = auth.subscription();
@@ -464,10 +464,9 @@ async function handler(
               stripeSubscription.cancel_at
             ) {
               const endDate = new Date(stripeSubscription.cancel_at * 1000);
-              const subscription = await Subscription.findOne({
-                where: { stripeSubscriptionId: stripeSubscription.id },
-                include: [WorkspaceModel],
-              });
+              const subscription = await SubscriptionResource.fetchByStripeId(
+                stripeSubscription.id
+              );
               if (!subscription) {
                 logger.warn(
                   {
@@ -480,7 +479,7 @@ async function handler(
                 // the warnings and create an alert if this log appears in all regions.
                 return res.status(200).json({ success: true });
               }
-              await subscription.update({
+              await subscription.updateCancellation({
                 endDate,
                 // If the subscription is canceled, we set the requestCancelAt date to now.
                 // If the subscription is reactivated, we unset the requestCancelAt date.
@@ -501,10 +500,9 @@ async function handler(
               : null;
 
             // get subscription
-            const subscription = await Subscription.findOne({
-              where: { stripeSubscriptionId: stripeSubscription.id },
-              include: [WorkspaceModel],
-            });
+            const subscription = await SubscriptionResource.fetchByStripeId(
+              stripeSubscription.id
+            );
             if (!subscription) {
               logger.warn(
                 {
@@ -517,14 +515,26 @@ async function handler(
               // the warnings and create an alert if this log appears in all regions
               return res.status(200).json({ success: true });
             }
-            await subscription.update({
+            await subscription.updateCancellation({
               endDate,
               // If the subscription is canceled, we set the requestCancelAt date to now.
               // If the subscription is reactivated, we unset the requestCancelAt date.
               requestCancelAt: endDate ? now : null,
             });
+
+            const workspace = await WorkspaceModel.findByPk(
+              subscription.workspaceId
+            );
+            if (!workspace) {
+              logger.warn(
+                { event, stripeSubscriptionId: stripeSubscription.id },
+                "[Stripe Webhook] Associated workspace not found"
+              );
+              return res.status(200).json({ success: true });
+            }
+
             const auth = await Authenticator.internalAdminForWorkspace(
-              subscription.workspace.sId
+              workspace.sId
             );
             if (!endDate) {
               // Subscription is re-activated, so we need to unpause the connectors in case they were paused.
@@ -532,13 +542,13 @@ async function handler(
 
               ServerSideTracking.trackSubscriptionReactivated({
                 workspace: renderLightWorkspaceType({
-                  workspace: subscription.workspace,
+                  workspace,
                 }),
               }).catch((e) => {
                 logger.error(
                   {
                     error: e,
-                    workspaceId: subscription.workspace.sId,
+                    workspaceId: workspace.sId,
                     stripeError: true,
                   },
                   "Error tracking subscription reactivated."
@@ -547,14 +557,14 @@ async function handler(
             } else {
               ServerSideTracking.trackSubscriptionRequestCancel({
                 workspace: renderLightWorkspaceType({
-                  workspace: subscription.workspace,
+                  workspace,
                 }),
                 requestCancelAt: now,
               }).catch((e) => {
                 logger.error(
                   {
                     error: e,
-                    workspaceId: subscription.workspace.sId,
+                    workspaceId: workspace.sId,
                     stripeError: true,
                   },
                   "Error tracking subscription request cancel."
@@ -583,7 +593,7 @@ async function handler(
               if (endDate) {
                 await sendCancelSubscriptionEmail(
                   adminEmail,
-                  subscription.workspace.sId,
+                  workspace.sId,
                   endDate
                 );
               } else {
@@ -591,9 +601,9 @@ async function handler(
               }
             }
           } else if (stripeSubscription.status === "active") {
-            const subscription = await Subscription.findOne({
-              where: { stripeSubscriptionId: stripeSubscription.id },
-            });
+            const subscription = await SubscriptionResource.fetchByStripeId(
+              stripeSubscription.id
+            );
             if (!subscription) {
               logger.warn(
                 {
@@ -607,7 +617,7 @@ async function handler(
               return res.status(200).json({ success: true });
             }
             if (subscription.trialing) {
-              await subscription.update({ status: "active", trialing: false });
+              await subscription.setActive(false);
             }
           }
 
@@ -645,10 +655,8 @@ async function handler(
             });
           }
 
-          const matchingSubscription = await Subscription.findOne({
-            where: { stripeSubscriptionId: stripeSubscription.id },
-            include: [WorkspaceModel],
-          });
+          const matchingSubscription =
+            await SubscriptionResource.fetchByStripeId(stripeSubscription.id);
 
           if (!matchingSubscription) {
             logger.warn(
@@ -679,24 +687,30 @@ async function handler(
                 { event },
                 "[Stripe Webhook] Received customer.subscription.deleted event with the subscription status = ended_backend_only. Ending the subscription without deleting any data"
               );
-              await matchingSubscription.update({
-                status: "ended",
-                endDate: new Date(),
-              });
+              await matchingSubscription.setEnded(new Date());
               break;
             case "active":
               logger.info(
                 { event },
                 "[Stripe Webhook] Received customer.subscription.deleted event with the subscription status = active. Ending the subscription and deleting some workspace data"
               );
-              await matchingSubscription.update({
-                status: "ended",
-                endDate: new Date(),
-              });
+
+              const workspace = await WorkspaceModel.findByPk(
+                matchingSubscription.workspaceId
+              );
+              if (!workspace) {
+                logger.warn(
+                  { event, stripeSubscriptionId: stripeSubscription.id },
+                  "[Stripe Webhook] Associated workspace not found"
+                );
+                return res.status(200).json({ success: true });
+              }
+
+              await matchingSubscription.setEnded(new Date());
 
               const scheduleScrubRes =
                 await launchScheduleWorkspaceScrubWorkflow({
-                  workspaceId: matchingSubscription.workspace.sId,
+                  workspaceId: workspace.sId,
                 });
               if (scheduleScrubRes.isErr()) {
                 logger.error(
@@ -718,17 +732,15 @@ async function handler(
 
           break;
 
-        case "customer.subscription.trial_will_end":
+        case "customer.subscription.trial_will_end": {
           logger.info(
             { event },
             "[Stripe Webhook] Received customer.subscription.trial_will_end."
           );
           stripeSubscription = event.data.object as Stripe.Subscription;
 
-          const trialingSubscription = await Subscription.findOne({
-            where: { stripeSubscriptionId: stripeSubscription.id },
-            include: [WorkspaceModel],
-          });
+          const trialingSubscription =
+            await SubscriptionResource.fetchByStripeId(stripeSubscription.id);
 
           if (!trialingSubscription) {
             logger.warn(
@@ -743,15 +755,24 @@ async function handler(
             return res.status(200).json({ success: true });
           }
 
+          const workspace = await WorkspaceModel.findByPk(
+            trialingSubscription.workspaceId
+          );
+          if (!workspace) {
+            logger.warn(
+              { event, stripeSubscriptionId: stripeSubscription.id },
+              "[Stripe Webhook] Associated workspace not found"
+            );
+            return res.status(200).json({ success: true });
+          }
+
           await SubscriptionResource.maybeCancelInactiveTrials(
-            await Authenticator.internalAdminForWorkspace(
-              trialingSubscription.workspace.sId
-            ),
+            await Authenticator.internalAdminForWorkspace(workspace.sId),
             stripeSubscription
           );
 
           break;
-
+        }
         default:
         // Unhandled event type
       }
