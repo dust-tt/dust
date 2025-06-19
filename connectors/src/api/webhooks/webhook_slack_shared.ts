@@ -1,5 +1,5 @@
-import type { Request, Response } from "express";
 import tracer from "dd-trace";
+import type { Request, Response } from "express";
 
 import { botAnswerMessage } from "@connectors/connectors/slack/bot";
 import type { Logger } from "@connectors/logger/logger";

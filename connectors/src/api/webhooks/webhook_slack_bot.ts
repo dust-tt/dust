@@ -4,11 +4,13 @@ import {
   isChannelCreatedEvent,
   onChannelCreation,
 } from "@connectors/api/webhooks/slack/created_channel";
+import type {
+  SlackWebhookReqBody,
+  SlackWebhookResBody,
+} from "@connectors/api/webhooks/webhook_slack_shared";
 import {
   handleChatBotWithTrace,
   isSlackWebhookEventReqBody,
-  SlackWebhookReqBody,
-  SlackWebhookResBody,
 } from "@connectors/api/webhooks/webhook_slack_shared";
 import { getBotUserIdMemoized } from "@connectors/connectors/slack/lib/bot_user_helpers";
 import {
@@ -174,8 +176,8 @@ const _webhookSlackBotAPIHandler = async (
               "slack.team_id": teamId,
               "slack.app": "slack_bot",
             })(req, res, logger);
-            break;
           }
+          break;
         }
         case "channel_created": {
           if (isChannelCreatedEvent(event)) {

@@ -1,17 +1,18 @@
 import { removeNulls } from "@dust-tt/client";
 import { JSON } from "@jsonjoy.com/util/lib/json-brand";
-import tracer from "dd-trace";
 import type { Request, Response } from "express";
 
 import {
   isChannelCreatedEvent,
   onChannelCreation,
 } from "@connectors/api/webhooks/slack/created_channel";
+import type {
+  SlackWebhookReqBody,
+  SlackWebhookResBody,
+} from "@connectors/api/webhooks/webhook_slack_shared";
 import {
   handleChatBotWithTrace,
   isSlackWebhookEventReqBody,
-  SlackWebhookReqBody,
-  SlackWebhookResBody,
 } from "@connectors/api/webhooks/webhook_slack_shared";
 import { getBotUserIdMemoized } from "@connectors/connectors/slack/lib/bot_user_helpers";
 import { updateSlackChannelInConnectorsDb } from "@connectors/connectors/slack/lib/channels";
