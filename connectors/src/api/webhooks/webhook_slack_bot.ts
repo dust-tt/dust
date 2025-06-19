@@ -82,7 +82,7 @@ const _webhookSlackBotAPIHandler = async (
     }
 
     const logger = mainLogger.child({
-      connectorType: "slackbot",
+      connectorType: "slack_bot",
       slackTeamId: teamId,
     });
 
@@ -115,7 +115,7 @@ const _webhookSlackBotAPIHandler = async (
         case "app_mention": {
           await handleChatBotWithTrace({
             "slack.team_id": teamId,
-            "slack.app": "slackbot",
+            "slack.app": "slack_bot",
           })(req, res, logger);
           break;
         }
@@ -172,7 +172,7 @@ const _webhookSlackBotAPIHandler = async (
             // Message from an actual user (a human)
             await handleChatBotWithTrace({
               "slack.team_id": teamId,
-              "slack.app": "slackbot",
+              "slack.app": "slack_bot",
             })(req, res, logger);
             break;
           }
