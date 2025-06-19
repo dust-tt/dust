@@ -427,7 +427,11 @@ export async function mergeUserIdentities({
   // Migrate authorship of keys from the secondary user to the primary user.
   await KeyModel.update(userIdValues, userIdOptions);
 
-  if (secondaryUser.workOSUserId && !primaryUser.workOSUserId) {
+  if (
+    primaryUser.email === secondaryUser.email &&
+    secondaryUser.workOSUserId &&
+    !primaryUser.workOSUserId
+  ) {
     const workOSUserId = secondaryUser.workOSUserId;
     await UserModel.update(
       {
