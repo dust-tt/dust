@@ -79,7 +79,7 @@ export async function getDataSourceViewsUsageByCategory({
       assertNever(category);
   }
 
-  var agentConfigurationInclude = {
+  const agentConfigurationInclude = {
     model: AgentConfiguration,
     as: "agent_configuration",
     attributes: [],
