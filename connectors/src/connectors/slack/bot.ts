@@ -22,6 +22,7 @@ import jaroWinkler from "talisman/metrics/jaro-winkler";
 
 import {
   makeErrorBlock,
+  makeMarkdownBlock,
   makeMessageUpdateBlocksAndText,
 } from "@connectors/connectors/slack/chat/blocks";
 import { streamConversationToSlack } from "@connectors/connectors/slack/chat/stream_conversation_handler";
@@ -70,7 +71,7 @@ import { ProviderRateLimitError } from "@connectors/lib/error";
 const SLACK_RATE_LIMIT_ERROR_MESSAGE =
   "Slack has blocked the agent from continuing the conversation, due to new restrictive" +
   " rate limits. You can retry the conversation later. You can learn more about slack's new " +
-  "rate limits here: TODO";
+  "rate limits [here](https://docs.dust.tt/docs/slack#rate-limits)";
 
 const MAX_FILE_SIZE_TO_UPLOAD = 10 * 1024 * 1024; // 10 MB
 
@@ -1029,7 +1030,7 @@ async function makeContentFragments(
     if (e instanceof ProviderRateLimitError) {
       slackClient.chat.postMessage({
         channel: channelId,
-        text: SLACK_RATE_LIMIT_ERROR_MESSAGE,
+        blocks: makeMarkdownBlock(SLACK_RATE_LIMIT_ERROR_MESSAGE),
         thread_ts: threadTs,
       });
     }
