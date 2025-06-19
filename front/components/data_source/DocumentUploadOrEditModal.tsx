@@ -560,7 +560,7 @@ export const DocumentUploadOrEditModal = ({
           }}
           rightButtonProps={{
             label: isUpsertingDocument ? "Saving..." : "Save",
-            onClick: async (event: MouseEvent) => {
+            onClick: async (event: React.MouseEvent<HTMLButtonElement>) => {
               event.preventDefault();
               await onSave();
             },

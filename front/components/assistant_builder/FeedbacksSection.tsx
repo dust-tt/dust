@@ -280,7 +280,7 @@ function FeedbackCard({ owner, feedback, className }: FeedbackCardProps) {
           <CardActionButton
             size="mini"
             icon={ExternalLinkIcon}
-            href={conversationUrl ?? ""}
+            href={conversationUrl}
             disabled={!conversationUrl}
             tooltip="View conversation"
             target="_blank"

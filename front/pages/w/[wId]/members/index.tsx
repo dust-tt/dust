@@ -103,7 +103,7 @@ export default function WorkspaceAdmin({
   );
 
   const onInviteClick = useCallback(
-    (event: MouseEvent) => {
+    (event: React.MouseEvent<HTMLButtonElement>) => {
       if (!isUpgraded(plan)) {
         setInviteBlockedPopupReason("cant_invite_free_plan");
         event.preventDefault();
