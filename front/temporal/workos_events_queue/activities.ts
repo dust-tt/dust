@@ -114,7 +114,7 @@ async function handleRoleAssignmentForGroup({
   }
 
   if (action === "add") {
-    // Assign the target role if user doesn't already have it or a higher role
+    // Assign the target role if user doesn't already have it or a higher role.
     const shouldAssignRole =
       (targetRole === "admin" && currentMembership.role !== "admin") ||
       (targetRole === "builder" && currentMembership.role === "user");
@@ -209,25 +209,25 @@ async function shouldDowngradeUserRole(
   user: UserResource,
   roleBeingRemoved: MembershipRoleType
 ): Promise<boolean> {
-  // Get all groups the user is a member of
+  // Get all groups the user is a member of.
   const userGroups = await GroupResource.listUserGroupsInWorkspace({
     user,
     workspace,
   });
 
-  // Check if user is still in any groups that grant the same or higher role
+  // Check if user is still in any groups that grant the same or higher role.
   for (const group of userGroups) {
     if (
       (group.name === ADMIN_GROUP_NAME &&
         (roleBeingRemoved === "admin" || roleBeingRemoved === "builder")) ||
       (group.name === BUILDER_GROUP_NAME && roleBeingRemoved === "builder")
     ) {
-      // User is still in a group that grants this role or higher
+      // User is still in a group that grants this role or higher.
       return false;
     }
   }
 
-  // User is not in any other groups that grant this role
+  // User is not in any other groups that grant this role.
   return true;
 }
 
