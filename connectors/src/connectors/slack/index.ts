@@ -358,6 +358,7 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
           where: {
             connectorId: this.connectorId,
             permission: permissionToFilter,
+            skipReason: null, // We hide skipped channels from the UI.
           },
         });
         slackChannels.push(
@@ -379,6 +380,7 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
           SlackChannel.findAll({
             where: {
               connectorId: this.connectorId,
+              // Here we do not filter out channels with skipReason because we need to know the ones that are skipped.
             },
           }),
         ]);
@@ -396,8 +398,15 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
             continue;
           }
 
+          const localChannel = localChannelsById[remoteChannel.id];
+
+          // Skip channels with skipReason
+          if (localChannel?.skipReason) {
+            continue;
+          }
+
           const permissions =
-            localChannelsById[remoteChannel.id]?.permission ||
+            localChannel?.permission ||
             (remoteChannel.is_member ? "write" : "none");
 
           if (
