@@ -45,6 +45,7 @@ import type {
   PlanType,
   Result,
   SubscriptionPerSeatPricing,
+  SubscriptionStatusType,
   SubscriptionType,
   UserType,
   WorkspaceType,
@@ -74,8 +75,15 @@ export class SubscriptionResource extends BaseResource<Subscription> {
     this.plan = plan;
   }
 
-  static async makeNew(blob: CreationAttributes<Subscription>, plan: PlanType) {
-    const subscription = await Subscription.create({ ...blob });
+  static async makeNew(
+    blob: CreationAttributes<Subscription>,
+    plan: PlanType,
+    transaction?: Transaction
+  ) {
+    const subscription = await Subscription.create(
+      { ...blob },
+      { transaction }
+    );
     return new SubscriptionResource(Subscription, subscription.get(), plan);
   }
 
@@ -634,6 +642,50 @@ export class SubscriptionResource extends BaseResource<Subscription> {
       billingPeriod: recurring.interval === "year" ? "yearly" : "monthly",
       quantity: item.quantity,
     };
+  }
+
+  async updateStatus(
+    status: SubscriptionStatusType,
+    date: Date,
+    transaction?: Transaction
+  ) {
+    return this.update(
+      {
+        status,
+        endDate: date,
+      },
+      transaction
+    );
+  }
+
+  async setActive(trialing: boolean) {
+    return this.update({
+      status: "active",
+      trialing,
+    });
+  }
+
+  async setEnded(endDate: Date, transaction?: Transaction) {
+    return this.update(
+      {
+        status: "ended",
+        endDate,
+      },
+      transaction
+    );
+  }
+
+  async updatePaymentFailingSince(date: Date | null) {
+    return this.update({
+      paymentFailingSince: date,
+    });
+  }
+
+  async updateCancellation(blob: {
+    endDate: Date | null;
+    requestCancelAt: Date | null;
+  }) {
+    return this.update(blob);
   }
 
   getPlan(): PlanType {
