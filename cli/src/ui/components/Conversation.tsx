@@ -203,12 +203,13 @@ const StaticConversationItem: FC<StaticConversationItemProps> = ({
           <Box borderStyle="round" borderColor="gray" padding={1}>
             <Box flexDirection="column">
               <Text color="gray" bold>
-                📎 {item.attachments.length} attachment{item.attachments.length > 1 ? 's' : ''}
+                📎 {item.attachments.length} attachment
+                {item.attachments.length > 1 ? "s" : ""}
               </Text>
               {item.attachments.map((file, index) => {
                 const isImage = isImageFile(file.fileName);
                 return (
-                  <Box key={index} marginTop={index > 0 ? 1 : 0}>
+                  <Box key={index}>
                     <Text color={isImage ? "yellow" : "cyan"}>
                       {isImage ? "🖼️  " : "📄 "} {file.fileName}
                     </Text>

@@ -17,7 +17,8 @@ interface FileItem {
 }
 
 interface FileSelectorProps {
-  onSelect: (filePath: string) => void;
+  // Accepts a single file path or an array of file paths for multi-select
+  onSelect: (filePath: string | string[]) => void;
   onCancel: () => void;
   initialPath?: string;
 }
@@ -32,6 +33,7 @@ export const FileSelector: FC<FileSelectorProps> = ({
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
 
   const loadDirectory = async (path: string) => {
     setIsLoading(true);
@@ -117,17 +119,54 @@ export const FileSelector: FC<FileSelectorProps> = ({
       return;
     }
 
+    if (key.leftArrow) {
+      // Go up one directory
+      if (currentPath !== "/") {
+        setCurrentPath(dirname(currentPath));
+      }
+      return;
+    }
+
+    if (key.rightArrow) {
+      const selectedItem = items[selectedIndex];
+      if (selectedItem && selectedItem.isDirectory) {
+        setCurrentPath(selectedItem.path);
+      }
+      return;
+    }
+
     if (key.return) {
+      if (selectedFiles.size > 0) {
+        // Return all selected files
+        onSelect(Array.from(selectedFiles));
+        return;
+      }
       const selectedItem = items[selectedIndex];
       if (!selectedItem) {
         return;
       }
-
       if (selectedItem.isDirectory) {
         setCurrentPath(selectedItem.path);
       } else if (selectedItem.isSupported) {
         onSelect(selectedItem.path);
       }
+      return;
+    }
+
+    if (key.shift) {
+      const selectedItem = items[selectedIndex];
+      if (!selectedItem || selectedItem.isDirectory) {
+        return;
+      }
+      setSelectedFiles((prev) => {
+        const newSet = new Set(prev);
+        if (newSet.has(selectedItem.path)) {
+          newSet.delete(selectedItem.path);
+        } else {
+          newSet.add(selectedItem.path);
+        }
+        return newSet;
+      });
       return;
     }
 
@@ -167,6 +206,7 @@ export const FileSelector: FC<FileSelectorProps> = ({
         <Box flexDirection="column" marginTop={1}>
           {items.slice(0, 15).map((item, index) => {
             const isSelected = index === selectedIndex;
+            const isChecked = !item.isDirectory && selectedFiles.has(item.path);
             let icon = "📄";
             let color = "white";
 
@@ -198,6 +238,7 @@ export const FileSelector: FC<FileSelectorProps> = ({
                   bold={isSelected}
                 >
                   {isSelected ? "→ " : "  "}
+                  {isChecked ? "✔ " : "  "}
                   {icon} {item.name}
                   {!item.isDirectory && !item.isSupported
                     ? " (unsupported)"
@@ -215,7 +256,8 @@ export const FileSelector: FC<FileSelectorProps> = ({
 
       <Box marginTop={1}>
         <Text color="gray">
-          ↑↓ navigate • Enter to select • ESC to cancel • Type to jump
+          ↑↓ navigate • ← up dir • → enter dir • Space select • Enter confirm •
+          ESC cancel • Type to jump
         </Text>
       </Box>
     </Box>

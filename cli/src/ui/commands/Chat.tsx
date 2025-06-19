@@ -12,8 +12,8 @@ import { getDustClient } from "../../utils/dustClient.js";
 import { normalizeError } from "../../utils/errors.js";
 import type { FileInfo } from "../../utils/fileHandling.js";
 import {
-  looksLikeFilePath,
-  parseFilePaths,
+  formatFileSize,
+  isImageFile,
   validateAndGetFileInfo,
 } from "../../utils/fileHandling.js";
 import { useMe } from "../../utils/hooks/use_me.js";
@@ -102,8 +102,11 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
   }, []);
 
   // Helper to create a conversation for file uploads if none exists
+  // Only useful for uploading files to the first message
   const createConversationForFiles = useCallback(async () => {
-    if (!selectedAgent || !me || meError || isMeLoading) return null;
+    if (!selectedAgent || !me || meError || isMeLoading) {
+      return null;
+    }
 
     const dustClient = await getDustClient();
     if (!dustClient) {
@@ -127,18 +130,37 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
   }, [selectedAgent, me, meError, isMeLoading]);
 
   const handleFileSelected = useCallback(
-    async (filePath: string) => {
+    async (filePathOrPaths: string | string[]) => {
       setShowFileSelector(false);
       try {
-        const fileInfo = await validateAndGetFileInfo(filePath);
-        if (!conversationId) {
-          const newConvId = await createConversationForFiles();
-          if (!newConvId) return; // error already handled
-          setPendingFiles([fileInfo]);
-          setIsUploadingFiles(true);
+        if (Array.isArray(filePathOrPaths)) {
+          const fileInfos = await Promise.all(
+            filePathOrPaths.map((p) => validateAndGetFileInfo(p))
+          );
+          if (!conversationId) {
+            const newConvId = await createConversationForFiles();
+            if (!newConvId) {
+              return;
+            } // error already handled
+            setPendingFiles(fileInfos);
+            setIsUploadingFiles(true);
+          } else {
+            setPendingFiles(fileInfos);
+            setIsUploadingFiles(true);
+          }
         } else {
-          setPendingFiles([fileInfo]);
-          setIsUploadingFiles(true);
+          const fileInfo = await validateAndGetFileInfo(filePathOrPaths);
+          if (!conversationId) {
+            const newConvId = await createConversationForFiles();
+            if (!newConvId) {
+              return;
+            } // error already handled
+            setPendingFiles([fileInfo]);
+            setIsUploadingFiles(true);
+          } else {
+            setPendingFiles([fileInfo]);
+            setIsUploadingFiles(true);
+          }
         }
       } catch (error) {
         setError(`File error: ${normalizeError(error).message}`);
@@ -994,14 +1016,27 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
           <Box borderStyle="round" borderColor="green" padding={1}>
             <Box flexDirection="column">
               <Text color="green" bold>
-                ✅ {uploadedFiles.length} file
-                {uploadedFiles.length > 1 ? "s" : ""} ready to send
+                📁 {uploadedFiles.length} file
+                {uploadedFiles.length > 1 ? "s" : ""}
               </Text>
-              {uploadedFiles.map((file, index) => (
-                <Box key={index} marginTop={index > 0 ? 1 : 0}>
-                  <Text color="cyan">📄 {file.fileName}</Text>
-                </Box>
-              ))}
+
+              {uploadedFiles.map((file) => {
+                const isImage = isImageFile(file.contentType);
+
+                return (
+                  <Box key={file.path} flexDirection="column" marginTop={1}>
+                    <Box>
+                      <Text color={isImage ? "yellow" : "cyan"}>
+                        {isImage ? "🖼️  " : "📄 "} {file.fileName}
+                      </Text>
+                      <Text color="gray">
+                        {" "}
+                        ({formatFileSize(file.fileSize)})
+                      </Text>
+                    </Box>
+                  </Box>
+                );
+              })}
             </Box>
           </Box>
         </Box>
