@@ -82,22 +82,22 @@ export async function getDataSourceViewsUsageByCategory({
   const agentWhereClauseAdmin = {
     status: "active",
     workspaceId: owner.id,
-  }
+  };
 
   const agentWhereClauseNonAdmin = {
     status: "active",
     workspaceId: owner.id,
     // If the user is non-admin, only include their own agents
-    authorId: auth.user()?.id
-  }
-  
+    authorId: auth.user()?.id,
+  };
+
   const agentConfigurationInclude = {
     model: AgentConfiguration,
     as: "agent_configuration",
     attributes: [],
     required: true,
     where: auth.isAdmin() ? agentWhereClauseAdmin : agentWhereClauseNonAdmin,
-  }
+  };
 
   const res = (await Promise.all([
     AgentDataSourceConfiguration.findAll({
@@ -141,9 +141,7 @@ export async function getDataSourceViewsUsageByCategory({
           as: "agent_retrieval_configuration",
           attributes: [],
           required: true,
-          include: [
-            agentConfigurationInclude,
-          ],
+          include: [agentConfigurationInclude],
         },
       ],
     }),
@@ -188,9 +186,7 @@ export async function getDataSourceViewsUsageByCategory({
           as: "agent_process_configuration",
           attributes: [],
           required: true,
-          include: [
-            agentConfigurationInclude,
-          ],
+          include: [agentConfigurationInclude],
         },
       ],
     }),
@@ -235,9 +231,7 @@ export async function getDataSourceViewsUsageByCategory({
           as: "agent_mcp_server_configuration",
           attributes: [],
           required: true,
-          include: [
-            agentConfigurationInclude,
-          ],
+          include: [agentConfigurationInclude],
         },
       ],
     }),
