@@ -255,5 +255,22 @@ describe("JSON Schema Utilities", () => {
       );
       expect(Object.keys(r)).toStrictEqual(["optionalTimeFrame"]);
     });
+
+    it("should handle arrays of any", () => {
+      // Schema we get with the zod schema z.object({ query: z.array(z.any()) }).
+      const mainSchema: JSONSchema = {
+        type: "object",
+        properties: {
+          query: {
+            type: "array",
+          },
+        },
+      };
+
+      for (const mimeType of Object.values(INTERNAL_MIME_TYPES.TOOL_INPUT)) {
+        const result = findMatchingSubSchemas(mainSchema, mimeType);
+        expect(Object.keys(result)).toStrictEqual([]);
+      }
+    });
   });
 });
