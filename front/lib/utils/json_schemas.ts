@@ -40,9 +40,12 @@ export function areSchemasEqual(
   // Checking for arrays with a single schema for all items.
   if (
     schemaA.type === "array" &&
-    isJSONSchemaObject(schemaA.items) &&
-    isJSONSchemaObject(schemaB.items) &&
-    !areSchemasEqual(schemaA.items, schemaB.items)
+    // If one is an object and not the other, then they are not equal.
+    (isJSONSchemaObject(schemaA.items) !== isJSONSchemaObject(schemaB.items) ||
+      // If both are objects, we compare the schemas recursively.
+      (isJSONSchemaObject(schemaA.items) &&
+        isJSONSchemaObject(schemaB.items) &&
+        !areSchemasEqual(schemaA.items, schemaB.items)))
   ) {
     return false;
   }
