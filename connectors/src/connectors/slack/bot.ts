@@ -65,6 +65,12 @@ import {
   getHeaderFromGroupIds,
   getHeaderFromUserEmail,
 } from "@connectors/types";
+import { ProviderRateLimitError } from "@connectors/lib/error";
+
+const SLACK_RATE_LIMIT_ERROR_MESSAGE =
+  "Slack has blocked the agent from continuing the conversation, due to new restrictive" +
+  " rate limits. You can retry the conversation later. You can learn more about slack's new " +
+  "rate limits here: TODO";
 
 const MAX_FILE_SIZE_TO_UPLOAD = 10 * 1024 * 1024; // 10 MB
 
@@ -1009,13 +1015,25 @@ async function makeContentFragments(
       threadTs: threadTs,
     },
   });
-  const replies = await getRepliesFromThread({
-    connectorId: connector.id,
-    slackClient,
-    channelId,
-    threadTs,
-    useCase: "bot",
-  });
+
+  let replies: MessageElement[] = [];
+  try {
+    replies = await getRepliesFromThread({
+      connectorId: connector.id,
+      slackClient,
+      channelId,
+      threadTs,
+      useCase: "bot",
+    });
+  } catch (e) {
+    if (e instanceof ProviderRateLimitError) {
+      slackClient.chat.postMessage({
+        channel: channelId,
+        text: SLACK_RATE_LIMIT_ERROR_MESSAGE,
+        thread_ts: threadTs,
+      });
+    }
+  }
   let shouldTake = false;
   for (const reply of replies) {
     if (reply.ts === startingAtTs) {
