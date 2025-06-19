@@ -9,7 +9,6 @@ import {
 import {
   ActionDocumentTextIcon,
   Breadcrumbs,
-  ChevronRightIcon,
   DocumentIcon,
   FolderIcon,
   TableIcon,
