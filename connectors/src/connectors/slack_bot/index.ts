@@ -11,6 +11,11 @@ import {
   BaseConnectorManager,
   ConnectorManagerError,
 } from "@connectors/connectors/interface";
+import {
+  getAutoReadChannelPatterns,
+  getRestrictedSpaceAgentsEnabled,
+  uninstallSlack,
+} from "@connectors/connectors/slack";
 import { getBotEnabled } from "@connectors/connectors/slack/bot";
 import {
   getSlackAccessToken,
@@ -23,12 +28,6 @@ import { SlackConfigurationResource } from "@connectors/resources/slack_configur
 import type { ContentNode, SlackConfigurationType } from "@connectors/types";
 import type { DataSourceConfig } from "@connectors/types";
 import { isSlackAutoReadPatterns, safeParseJSON } from "@connectors/types";
-
-import {
-  getAutoReadChannelPatterns,
-  getRestrictedSpaceAgentsEnabled,
-  uninstallSlack,
-} from "../slack";
 
 const { SLACK_BOT_CLIENT_ID, SLACK_BOT_CLIENT_SECRET } = process.env;
 
@@ -44,10 +43,13 @@ export class SlackBotConnectorManager extends BaseConnectorManager<SlackConfigur
     connectionId: string;
     configuration: SlackConfigurationType;
   }): Promise<Result<string, ConnectorManagerError<CreateConnectorErrorCode>>> {
-    const slackAccessToken = await getSlackAccessToken(connectionId);
-    const client = new WebClient(slackAccessToken);
+    const accessToken = await getSlackAccessToken(connectionId);
+    const slackClient = await getSlackClient(accessToken, {
+      // Do not reject rate limited calls in update connector. Called from the API.
+      rejectRateLimitedCalls: false,
+    });
 
-    const teamInfo = await client.team.info();
+    const teamInfo = await slackClient.team.info();
     if (teamInfo.ok !== true) {
       throw new Error(
         `Could not get slack team info. Error message: ${
@@ -178,11 +180,6 @@ export class SlackBotConnectorManager extends BaseConnectorManager<SlackConfigur
     }
 
     await c.update(updateParams);
-
-    // If connector was previously paused, unpause it.
-    if (c.isPaused()) {
-      await this.unpauseAndResume();
-    }
 
     return new Ok(c.id.toString());
   }
