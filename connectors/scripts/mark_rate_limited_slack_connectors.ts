@@ -16,6 +16,9 @@ import { makeScript } from "./helpers";
 // running 10 calls in parallel should be enough to trigger the rate limit.
 const TEST_CALLS_COUNT = 10;
 
+// Slack quotas changed on 2025-05-29 for all new installations.
+const SLACK_RATE_LIMIT_CUTOFF_DATE = new Date("2025-05-29");
+
 const SLACK_CONNECTOR_TYPE = "slack";
 
 async function handleRateLimit(
@@ -31,17 +34,18 @@ async function handleRateLimit(
     `Rate limit detected ${context} - marking connector as rate limited`
   );
 
+  const args = {
+    connectorId: connector.id,
+    createdAt: connector.createdAt,
+    updatedAt: connector.updatedAt,
+    workspaceId: connector.workspaceId,
+  };
+
   if (execute) {
     await connector.markAsRateLimited();
-    logger.info(
-      { connectorId: connector.id },
-      "Connector marked as rate limited"
-    );
+    logger.info(args, "Connector marked as rate limited");
   } else {
-    logger.info(
-      { connectorId: connector.id },
-      "DRY RUN: Would mark connector as rate limited"
-    );
+    logger.info(args, "DRY RUN: Would mark connector as rate limited");
   }
 }
 
@@ -81,7 +85,7 @@ makeScript(
         let channels;
         try {
           channels = await withSlackErrorHandling(async () =>
-            getChannels(slackClient, connector.id, false)
+            getChannels(slackClient, connector.id, true)
           );
         } catch (error: unknown) {
           if (error instanceof ProviderRateLimitError) {
@@ -159,7 +163,10 @@ makeScript(
         );
 
         const rateLimitDetected = results.some((r) => r);
-        if (rateLimitDetected) {
+        if (
+          rateLimitDetected ||
+          connector.createdAt > SLACK_RATE_LIMIT_CUTOFF_DATE
+        ) {
           await handleRateLimit(connector, {
             context: "during API calls",
             execute,
