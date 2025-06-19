@@ -201,6 +201,7 @@ export function Markdown({
       hr: () => (
         <div className="s-my-6 s-border-b s-border-primary-150 dark:s-border-primary-150-night" />
       ),
+      img: ({ src, alt }) => null,
       code: CodeBlockWithExtendedSupport,
       ...additionalMarkdownComponents,
     };
