@@ -269,6 +269,7 @@ describe("JSON Schema Utilities", () => {
 
       for (const mimeType of Object.values(INTERNAL_MIME_TYPES.TOOL_INPUT)) {
         const result = findMatchingSubSchemas(mainSchema, mimeType);
+        // It should not match any existing type.
         expect(Object.keys(result)).toStrictEqual([]);
       }
     });
