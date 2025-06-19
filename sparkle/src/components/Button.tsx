@@ -334,6 +334,64 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       </>
     );
 
+    // TODO (yuka: 2025-06-19): Remove this once we finish refactoring the button component.
+    // You should not have both href and onClick, but we have some places in our codebase to use both.
+    // We will keep wrapping button tag with LinkWrapper for backward compatibility.
+    if (href && props.onClick) {
+      const pointerEventProps = React.useMemo(() => {
+        if (isLoading || disabled) {
+          return {
+            onPointerDown: (e: React.PointerEvent<HTMLButtonElement>) => {
+              e.preventDefault();
+              e.stopPropagation();
+            },
+          };
+        }
+        return {};
+      }, [isLoading, disabled]);
+
+      const innerButton = (
+        <MetaButton
+          ref={ref}
+          size={size}
+          variant={variant}
+          disabled={isLoading || disabled}
+          className={cn(isPulsing && "s-animate-pulse", className)}
+          aria-label={ariaLabel || tooltip || label}
+          style={
+            {
+              "--pulse-color": "#93C5FD",
+              "--duration": "1.5s",
+            } as React.CSSProperties
+          }
+          {...props}
+          {...pointerEventProps}
+        >
+          {content}
+        </MetaButton>
+      );
+
+      const wrappedContent = tooltip ? (
+        <ContentWithTooltip tooltip={tooltip}>{innerButton}</ContentWithTooltip>
+      ) : (
+        innerButton
+      );
+
+      return href ? (
+        <LinkWrapper
+          href={href}
+          target={target}
+          rel={rel}
+          replace={replace}
+          shallow={shallow}
+        >
+          {wrappedContent}
+        </LinkWrapper>
+      ) : (
+        wrappedContent
+      );
+    }
+
     if (href) {
       const innerContent = (
         <span
