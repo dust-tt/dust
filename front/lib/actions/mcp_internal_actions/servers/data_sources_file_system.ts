@@ -776,7 +776,7 @@ const createServer = (
             {
               type: "resource" as const,
               resource: {
-                mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.LOCATE_IN_TREE_RESULT,
+                mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILESYSTEM_PATH,
                 uri: "",
                 text: "Node is the data source root.",
                 path: [
@@ -884,7 +884,7 @@ const createServer = (
           {
             type: "resource" as const,
             resource: {
-              mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.LOCATE_IN_TREE_RESULT,
+              mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILESYSTEM_PATH,
               uri: "",
               text: "Path located successfully.",
               path: pathItems,

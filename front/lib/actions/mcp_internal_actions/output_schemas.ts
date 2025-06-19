@@ -625,31 +625,31 @@ export const isDataSourceNodeContentType = (
 };
 
 // Schema for a locate_in_tree path item.
-const LocateInTreePathItemSchema = z.object({
+const FilesystemPathItemSchema = z.object({
   nodeId: z.string(),
   title: z.string(),
   nodeType: z.enum(["document", "table", "folder"]).optional(),
   isCurrentNode: z.boolean(),
 });
 
-export const LocateInTreeResultSchema = z.object({
-  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.LOCATE_IN_TREE_RESULT),
+export const FilesystemPathSchema = z.object({
+  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILESYSTEM_PATH),
   uri: z.literal(""),
   text: z.string(),
-  path: z.array(LocateInTreePathItemSchema),
+  path: z.array(FilesystemPathItemSchema),
 });
 
-export type LocateInTreeResultType = z.infer<typeof LocateInTreeResultSchema>;
+export type FilesystemPathType = z.infer<typeof FilesystemPathSchema>;
 
 export const isLocateInTreeResultType = (
   outputBlock: CallToolResult["content"][number]
 ): outputBlock is {
   type: "resource";
-  resource: LocateInTreeResultType;
+  resource: FilesystemPathType;
 } => {
   return (
     outputBlock.type === "resource" &&
-    LocateInTreeResultSchema.safeParse(outputBlock.resource).success
+    FilesystemPathSchema.safeParse(outputBlock.resource).success
   );
 };
 
