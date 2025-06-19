@@ -39,7 +39,7 @@ const sendPasswordResetEmail = async (
   const childLogger = logger.child({ email });
 
   try {
-    // First, check if user exists in WorkOS
+    // First, check if the user exists in WorkOS.
     const userResult = await fetchWorkOSUserWithEmail(email);
     if (userResult.isErr()) {
       childLogger.warn("User not found in WorkOS");
@@ -53,12 +53,11 @@ const sendPasswordResetEmail = async (
       // Send password reset email via WorkOS
       await getWorkOS().userManagement.sendPasswordResetEmail({
         email: user.email,
-        passwordResetUrl: `https://dust.tt/reset-password?email=${encodeURIComponent(user.email)}`,
       });
 
       childLogger.info("WorkOS password reset email sent");
 
-      // Also send our custom email with explanation
+      // Also send our custom email with an explanation.
       const emailResult = await sendEmailWithTemplate({
         to: email,
         from: {
@@ -82,7 +81,7 @@ const sendPasswordResetEmail = async (
           { error: emailResult.error },
           "Failed to send notification email"
         );
-        // Don't fail the operation if our notification email fails
+        // Don't fail the operation if our notification email fails.
       } else {
         childLogger.info("Successfully sent notification email");
       }
@@ -118,7 +117,7 @@ makeScript(
   async ({ csvPath, concurrency, execute }, logger) => {
     logger.info({ csvPath, execute }, "Starting password reset email script");
 
-    // Read CSV file
+    // Read the CSV file.
     let records: CsvRecord[];
     try {
       records = await readCsvFile(csvPath);
@@ -128,7 +127,7 @@ makeScript(
       throw error;
     }
 
-    // Validate CSV structure
+    // Validate the structure of the CSV file.
     if (records.length === 0) {
       throw new Error("CSV file is empty");
     }
@@ -138,7 +137,7 @@ makeScript(
       throw new Error("CSV file must have an 'email' column");
     }
 
-    // Filter out invalid emails
+    // Filter out invalid emails.
     const validRecords = records.filter((record) => {
       if (!record.email || typeof record.email !== "string") {
         logger.warn({ record }, "Skipping record with invalid email");
@@ -149,7 +148,6 @@ makeScript(
 
     logger.info(`Processing ${validRecords.length} valid email records`);
 
-    // Process users with concurrency control
     const results = await concurrentExecutor(
       validRecords,
       async (record) => {
@@ -163,7 +161,7 @@ makeScript(
       { concurrency }
     );
 
-    // Summary
+    // Summary.
     const successful = results.filter((r) => r.success).length;
     const failed = results.filter((r) => !r.success).length;
 
@@ -177,7 +175,7 @@ makeScript(
       "Password reset email script completed"
     );
 
-    // Log failures
+    // Log failures.
     const failures = results.filter((r) => !r.success);
     if (failures.length > 0) {
       logger.warn({ failures }, "Some operations failed");
