@@ -342,17 +342,14 @@ export default function WorkspaceAssistants({
                     owner={owner}
                   />
                   {!isRestrictedFromAgentCreation && (
-                    <Link
+                    <Button
+                      variant="primary"
+                      icon={PlusIcon}
                       href={`/w/${owner.sId}/builder/assistants/create?flow=workspace_assistants`}
-                    >
-                      <Button
-                        variant="primary"
-                        icon={PlusIcon}
-                        label="Create an agent"
-                        data-gtm-label="assistantCreationButton"
-                        data-gtm-location="assistantsWorkspace"
-                      />
-                    </Link>
+                      label="Create an agent"
+                      data-gtm-label="assistantCreationButton"
+                      data-gtm-location="assistantsWorkspace"
+                    />
                   )}
                 </div>
               )}
