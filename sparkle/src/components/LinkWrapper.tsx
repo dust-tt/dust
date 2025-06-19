@@ -18,7 +18,7 @@ export const LinkWrapper = React.forwardRef<
 >(({ children, href, rel, replace, shallow, target, prefetch }, ref) => {
   const { components } = React.useContext(SparkleContext);
 
-  if (href) {
+  if (components && href) {
     return (
       <components.link
         ref={ref}
