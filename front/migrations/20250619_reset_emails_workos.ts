@@ -4,9 +4,9 @@ import * as fs from "fs";
 import { sendEmailWithTemplate } from "@app/lib/api/email";
 import { getWorkOS } from "@app/lib/api/workos/client";
 import { fetchWorkOSUserWithEmail } from "@app/lib/api/workos/user";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
 
 interface CsvRecord {
   email: string;
@@ -30,7 +30,7 @@ const readCsvFile = async (filePath: string): Promise<CsvRecord[]> => {
   return records;
 };
 
-const createPasswordResetAndSendEmail = async (
+const sendPasswordResetEmail = async (
   email: string,
   execute: boolean,
   logger: Logger
@@ -49,17 +49,15 @@ const createPasswordResetAndSendEmail = async (
     childLogger.info({ workOSUserId: user.id }, "Found user in WorkOS");
 
     if (execute) {
-      const passwordReset =
-        await getWorkOS().userManagement.createPasswordResetChallenge({
-          email: user.email,
-        });
+      // Send password reset email via WorkOS
+      await getWorkOS().userManagement.sendPasswordResetEmail({
+        email: user.email,
+        passwordResetUrl: `https://dust.tt/reset-password?email=${encodeURIComponent(user.email)}`,
+      });
 
-      childLogger.info(
-        { passwordResetId: passwordReset.id },
-        "Created password reset challenge"
-      );
+      childLogger.info("WorkOS password reset email sent");
 
-      // Send email to user
+      // Also send our custom email with explanation
       const emailResult = await sendEmailWithTemplate({
         to: email,
         from: {
@@ -71,12 +69,9 @@ const createPasswordResetAndSendEmail = async (
         
         <p>As part of our ongoing migration to improve security and user experience, we need you to reset your password.</p>
         
-        <p>Please click the link below to reset your password:</p>
-        <p><a href="${passwordReset.challengeUrl}">Reset Your Password</a></p>
+        <p>You should have received a password reset email from WorkOS. Please check your inbox and follow the instructions to reset your password.</p>
         
-        <p>This link will expire in 24 hours for security reasons.</p>
-        
-        <p>If you have any questions or need assistance, please don't hesitate to reach out to our support team.</p>
+        <p>If you don't see the reset email, please check your spam folder or contact our support team.</p>
         
         <p>Thank you for your understanding and for being a valued Dust user.</p>`,
       });
@@ -84,15 +79,18 @@ const createPasswordResetAndSendEmail = async (
       if (emailResult.isErr()) {
         childLogger.error(
           { error: emailResult.error },
-          "Failed to send password reset email"
+          "Failed to send notification email"
         );
-        return { success: false, error: "Failed to send email" };
+        // Don't fail the operation if our notification email fails
+      } else {
+        childLogger.info("Successfully sent notification email");
       }
 
-      childLogger.info("Successfully sent password reset email");
       return { success: true };
     } else {
-      childLogger.info("Would create password reset challenge and send email");
+      childLogger.info(
+        "Would send password reset email via WorkOS and notification email"
+      );
       return { success: true };
     }
   } catch (error) {
@@ -154,7 +152,7 @@ makeScript(
     const results = await concurrentExecutor(
       validRecords,
       async (record) => {
-        const result = await createPasswordResetAndSendEmail(
+        const result = await sendPasswordResetEmail(
           record.email.trim().toLowerCase(),
           execute,
           logger
