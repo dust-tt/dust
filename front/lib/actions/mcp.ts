@@ -364,7 +364,9 @@ export class MCPActionType extends BaseAction {
       name: this.functionCallName,
       function_call_id: this.functionCallId,
       content: this.output
-        ? JSON.stringify(this.output)
+        ? JSON.stringify(
+            this.output.filter((o) => !shouldHideContentForModel(o))
+          )
         : "Successfully executed action, no output.",
     };
   }
@@ -1144,9 +1146,7 @@ export async function mcpActionTypesFromAgentMessageIds(
     return new MCPActionType({
       id: action.id,
       params: action.params,
-      output: removeNulls(
-        action.outputItems.map(hideFileFromActionOutput)
-      ).filter(shouldHideContentForModel),
+      output: removeNulls(action.outputItems.map(hideFileFromActionOutput)),
       functionCallId: action.functionCallId,
       functionCallName: action.functionCallName,
       agentMessageId: action.agentMessageId,
