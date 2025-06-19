@@ -70,8 +70,7 @@ import {
 
 const SLACK_RATE_LIMIT_ERROR_MESSAGE =
   "Slack has blocked the agent from continuing the conversation, due to new restrictive" +
-  " rate limits. You can retry the conversation later. You can learn more about slack's new " +
-  "rate limits [here](https://www.notion.so/dust-tt/Slack-API-Changes-Impact-and-Response-Plan-21728599d94180f3b2b4e892e6d20af6)";
+  " rate limits. You can retry the conversation later.";
 
 const MAX_FILE_SIZE_TO_UPLOAD = 10 * 1024 * 1024; // 10 MB
 
