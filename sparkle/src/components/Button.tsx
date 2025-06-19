@@ -338,10 +338,11 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       const innerContent = (
         <span
           className={cn(
+            // This cannot apply disabled styles for links, since it's using :disabled pseudo-class to apply styles.
+            // We will manually add disabled styles for links (getDisabledClasses).
             buttonVariants({ variant, size, className }),
             isPulsing && "s-animate-pulse",
-            // Apply disabled styling when disabled
-            (isLoading || disabled) && getDisabledClasses(variant)
+            (isLoading || disabled) && getDisabledClasses(variant || "primary")
           )}
           style={
             {
