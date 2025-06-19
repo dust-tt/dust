@@ -17,7 +17,6 @@ import {
   useHashParam,
 } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
-import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { AgentEditBar } from "@app/components/assistant/AgentEditBar";
