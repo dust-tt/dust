@@ -97,7 +97,8 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
     setIsUploadingFiles(false);
   }, []);
 
-  const showAttachDialog = useCallback(() => {
+  const showAttachDialog = useCallback(async () => {
+    await clearTerminal();
     setShowFileSelector(true);
   }, []);
 

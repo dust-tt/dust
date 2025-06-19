@@ -144,23 +144,17 @@ export const FileUpload: FC<FileUploadProps> = ({
                     {isImage ? "🖼️  " : "📄 "} {file.name}
                   </Text>
                   <Text color="gray"> ({formatFileSize(file.size)})</Text>
-                </Box>
-
-                <Box marginLeft={2}>
-                  <Text color="gray">
-                    {status}
-                    {progress > 0 && progress < 100 && ` (${progress}%)`}
-                  </Text>
-                </Box>
-
-                {progress > 0 && progress < 100 && (
-                  <Box marginLeft={2}>
+                  <Text color="gray"> {status} </Text>
+                  {progress > 0 && progress < 100 && (
                     <Text>
                       {"█".repeat(Math.floor(progress / 5))}
                       {"░".repeat(20 - Math.floor(progress / 5))}
                     </Text>
-                  </Box>
-                )}
+                  )}
+                  <Text color="gray">
+                    {progress > 0 && progress < 100 && ` (${progress}%)`}
+                  </Text>
+                </Box>
               </Box>
             );
           })}
