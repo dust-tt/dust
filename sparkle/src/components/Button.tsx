@@ -392,8 +392,15 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     }
 
     if (href) {
-      const innerContent = (
-        <span
+      return (
+        <LinkWrapper
+          ref={ref as React.Ref<HTMLAnchorElement>}
+          href={href}
+          target={target}
+          rel={rel}
+          replace={replace}
+          shallow={shallow}
+          prefetch={prefetch}
           className={cn(
             // This cannot apply disabled styles for links, since it's using :disabled pseudo-class to apply styles.
             // We will manually add disabled styles for links (getDisabledClasses).
@@ -407,20 +414,6 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
               "--duration": "1.5s",
             } as React.CSSProperties
           }
-        >
-          {content}
-        </span>
-      );
-
-      return (
-        <LinkWrapper
-          ref={ref as React.Ref<HTMLAnchorElement>}
-          href={href}
-          target={target}
-          rel={rel}
-          replace={replace}
-          shallow={shallow}
-          prefetch={prefetch}
         >
           {tooltip ? (
             <ContentWithTooltip tooltip={tooltip}>
