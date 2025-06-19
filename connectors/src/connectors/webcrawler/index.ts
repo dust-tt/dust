@@ -16,6 +16,7 @@ import {
   normalizeFolderUrl,
   stableIdForUrl,
 } from "@connectors/connectors/webcrawler/lib/utils";
+import { getFirecrawl } from "@connectors/lib/firecrawl";
 import {
   WebCrawlerFolder,
   WebCrawlerPage,
@@ -118,15 +119,45 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
   }
 
   async stop(): Promise<Result<undefined, Error>> {
-    const res = await stopCrawlWebsiteWorkflow(this.connectorId);
-    if (res.isErr()) {
-      return res;
+    const webConfig = await WebCrawlerConfigurationResource.fetchByConnectorId(
+      this.connectorId
+    );
+    if (!webConfig) {
+      return new Err(
+        new Error("Couldn't find associated WebCrawlerConfiguration")
+      );
+    }
+
+    // If it's not firecrawl-api, it's a long running activity
+    if (webConfig.customCrawler !== "firecrawl-api") {
+      const res = await stopCrawlWebsiteWorkflow(this.connectorId);
+      if (res.isErr()) {
+        return res;
+      }
+    } else if (webConfig.crawlId !== null) {
+      // If not, there is not really workflows to stop
+      await getFirecrawl().cancelCrawl(webConfig.crawlId);
     }
 
     return new Ok(undefined);
   }
 
   async sync(): Promise<Result<string, Error>> {
+    const webConfig = await WebCrawlerConfigurationResource.fetchByConnectorId(
+      this.connectorId
+    );
+    if (!webConfig) {
+      return new Err(
+        new Error("Couldn't find associated WebCrawlerConfiguration")
+      );
+    }
+
+    // Before launching again, cancel on Firecrawl side and reset the crawlId
+    if (webConfig.customCrawler === "firecrawl-api" && webConfig.crawlId) {
+      await getFirecrawl().cancelCrawl(webConfig.crawlId);
+      await webConfig.updateCrawlId(null);
+    }
+
     return launchCrawlWebsiteWorkflow(this.connectorId);
   }
 
