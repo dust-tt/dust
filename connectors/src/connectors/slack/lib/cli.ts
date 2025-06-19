@@ -552,10 +552,9 @@ export const slack = async ({
       const previousSkipReason = channel.skipReason;
 
       if (!previousSkipReason) {
-        logger.info(
-          `Channel ${args.channelId} (${channel.slackChannelName}) was not skipped, doing nothing.`
+        throw new Error(
+          `Channel ${args.channelId} (${channel.slackChannelName}) is not skipped`
         );
-        return { success: true };
       }
 
       await channel.update({
