@@ -258,6 +258,14 @@ export async function mergeUserIdentities({
     );
   }
 
+  if (primaryUser.createdAt > secondaryUser.createdAt) {
+    return new Err(
+      new Error(
+        "Primary user cannot be newer than secondary user. Use the 'old' user as primary user so that the user keeps connecting the same way."
+      )
+    );
+  }
+
   const workspaceId = auth.getNonNullableWorkspace().id;
 
   // Ensure that primary user has a membership in the workspace.
