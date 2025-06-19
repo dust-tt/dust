@@ -1,4 +1,4 @@
-import { createContext, useContext, useRef } from "react";
+import { createContext, useContext, useMemo, useRef } from "react";
 
 type WelcomeTourGuideContextType = {
   startConversationRef: React.RefObject<HTMLDivElement>;
@@ -18,14 +18,16 @@ export function WelcomeTourGuideProvider({
   const spaceMenuButtonRef = useRef<HTMLDivElement>(null);
   const createAgentButtonRef = useRef<HTMLDivElement>(null);
 
+  const value = useMemo(() => {
+    return {
+      startConversationRef,
+      spaceMenuButtonRef,
+      createAgentButtonRef,
+    };
+  }, [startConversationRef, spaceMenuButtonRef, createAgentButtonRef]);
+
   return (
-    <WelcomeTourGuideContext.Provider
-      value={{
-        startConversationRef,
-        spaceMenuButtonRef,
-        createAgentButtonRef,
-      }}
-    >
+    <WelcomeTourGuideContext.Provider value={value}>
       {children}
     </WelcomeTourGuideContext.Provider>
   );
