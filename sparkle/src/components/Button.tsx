@@ -306,7 +306,11 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       return {};
     }, [isLoading, props.disabled]);
 
-    const innerContent = href ? <span>{content}</span> : content;
+    // We cannot skip a button tag when it's disabled. We need
+    // to disabled class manually for links + disable pointer events.
+    const shouldUseSlot = !!href && !props.disabled;
+
+    const innerContent = shouldUseSlot ? <span>{content}</span> : content;
 
     const innerButton = (
       <MetaButton
@@ -322,7 +326,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
             "--duration": "1.5s",
           } as React.CSSProperties
         }
-        asChild={!!href}
+        asChild={shouldUseSlot}
         {...props}
         {...pointerEventProps}
       >
