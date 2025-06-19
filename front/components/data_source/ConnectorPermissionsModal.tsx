@@ -22,6 +22,7 @@ import {
   SheetHeader,
   SheetTitle,
   Spinner,
+  Tooltip,
   TrashIcon,
   useSendNotification,
 } from "@dust-tt/sparkle";
@@ -77,6 +78,7 @@ import type {
   WorkspaceType,
 } from "@app/types";
 import { assertNever, isOAuthProvider } from "@app/types";
+import ReactMarkdown from "react-markdown";
 
 const getUseResourceHook =
   (owner: LightWorkspaceType, dataSource: DataSourceType) =>
@@ -360,8 +362,18 @@ function UpdateConnectionOAuthModal({
                 disabled={
                   !isExtraConfigValid || permissionsConfigurable.blocked
                 }
-                tooltip={permissionsConfigurable.placeholder}
               />
+              {permissionsConfigurable.blocked && (
+                <ContentMessage
+                  title="Editing permissions is temporarily disabled"
+                  variant="info"
+                  icon={InformationCircleIcon}
+                >
+                  <ReactMarkdown>
+                    {permissionsConfigurable.placeholder ?? ""}
+                  </ReactMarkdown>
+                </ContentMessage>
+              )}
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
@@ -790,7 +802,6 @@ export function ConnectorPermissionsModal({
                         setModalToShow("edition");
                       }}
                       disabled={permissionsConfigurable.blocked}
-                      tooltip={permissionsConfigurable.placeholder}
                     />
                   )}
                   {isDeletable && (
@@ -808,6 +819,17 @@ export function ConnectorPermissionsModal({
 
               <SheetContainer>
                 <div className="flex w-full flex-col gap-4">
+                  {permissionsConfigurable.blocked && (
+                    <ContentMessage
+                      title="Editing permissions is temporarily disabled"
+                      variant="info"
+                      icon={InformationCircleIcon}
+                    >
+                      <ReactMarkdown>
+                        {permissionsConfigurable.placeholder ?? ""}
+                      </ReactMarkdown>
+                    </ContentMessage>
+                  )}
                   {OptionsComponent && plan && (
                     <>
                       <div className="heading-xl p-1">Connector options</div>

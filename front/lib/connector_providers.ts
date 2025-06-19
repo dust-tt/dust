@@ -205,8 +205,8 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     // TODO(slack 2025-06-19): Prevent users from editing permissions.
     isPermissionsConfigurableBlocked: true,
     permissionsDisabledPlaceholder:
-      "Slack permissions are currently being updated with a new integration. " +
-      "Editing permissions is temporarily disabled.",
+      "Slack permissions are currently being updated with a new integration, due to new restrictive rate limits from Slack." +
+      "Editing permissions is temporarily disabled. Learn more by clicking [here](https://dust-tt.notion.site/Slack-API-Changes-Impact-and-Response-Plan-21728599d94180f3b2b4e892e6d20af6)",
     description:
       "Authorize granular access to your Slack workspace on a channel-by-channel basis.",
     limitations: "External files and content behind links are not indexed.",
