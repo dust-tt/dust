@@ -334,9 +334,8 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       </>
     );
 
-    // TODO (yuka: 2025-06-19): Remove this once we finish refactoring the button component.
-    // You should not have both href and onClick, but we have some places in our codebase to use both.
-    // We will keep wrapping button tag with LinkWrapper for backward compatibility.
+    // TODO (yuka: 2025-06-19): Fix this properly. I'm not sure what the HTML should look like
+    // when there are both href and onClick, so keep as it is for now.
     if (href && props.onClick) {
       const pointerEventProps = React.useMemo(() => {
         if (isLoading || disabled) {
@@ -433,33 +432,33 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
           )}
         </LinkWrapper>
       );
-    } else {
-      const innerButton = (
-        <MetaButton
-          ref={ref}
-          size={size}
-          variant={variant}
-          disabled={isLoading || disabled}
-          className={cn(isPulsing && "s-animate-pulse", className)}
-          aria-label={ariaLabel || tooltip || label}
-          style={
-            {
-              "--pulse-color": "#93C5FD",
-              "--duration": "1.5s",
-            } as React.CSSProperties
-          }
-          {...props}
-        >
-          {content}
-        </MetaButton>
-      );
-
-      return tooltip ? (
-        <ContentWithTooltip tooltip={tooltip}>{innerButton}</ContentWithTooltip>
-      ) : (
-        innerButton
-      );
     }
+
+    const innerButton = (
+      <MetaButton
+        ref={ref}
+        size={size}
+        variant={variant}
+        disabled={isLoading || disabled}
+        className={cn(isPulsing && "s-animate-pulse", className)}
+        aria-label={ariaLabel || tooltip || label}
+        style={
+          {
+            "--pulse-color": "#93C5FD",
+            "--duration": "1.5s",
+          } as React.CSSProperties
+        }
+        {...props}
+      >
+        {content}
+      </MetaButton>
+    );
+
+    return tooltip ? (
+      <ContentWithTooltip tooltip={tooltip}>{innerButton}</ContentWithTooltip>
+    ) : (
+      innerButton
+    );
   }
 );
 

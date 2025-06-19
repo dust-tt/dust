@@ -1,6 +1,7 @@
 import React from "react";
 
 import { SparkleContext } from "@sparkle/context";
+import { cn } from "@sparkle/lib";
 
 export interface LinkWrapperProps {
   children: React.ReactNode;
@@ -33,7 +34,7 @@ export const LinkWrapper = React.forwardRef<
           replace={replace}
           shallow={shallow}
           prefetch={prefetch}
-          disabled={disabled}
+          className={cn(disabled && "s-pointer-events-none")}
         >
           {children}
         </components.link>
