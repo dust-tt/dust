@@ -81,7 +81,7 @@ export class FrontAuthService extends AuthService {
 
     const result = await openAndWaitForPopup<{ code: string }>(
       authUrl,
-      "WorkOS Auth",
+      "Authentication",
       (popup) => {
         const popupUrl = popup.location.href;
         if (popupUrl?.includes("code=")) {
@@ -174,7 +174,7 @@ export class FrontAuthService extends AuthService {
       const tokens = await this.saveTokens({
         accessToken: data.access_token,
         refreshToken: data.refresh_token || "",
-        expiresIn: DEFAULT_TOKEN_EXPIRY,
+        expiresIn: data.expires_in || DEFAULT_TOKEN_EXPIRY,
       });
 
       const claims = jwtDecode<Record<string, string>>(data.access_token);
@@ -291,7 +291,7 @@ export class FrontAuthService extends AuthService {
       const storedTokens = await this.saveTokens({
         accessToken: data.access_token,
         refreshToken: data.refresh_token || "",
-        expiresIn: DEFAULT_TOKEN_EXPIRY,
+        expiresIn: data.expires_in || DEFAULT_TOKEN_EXPIRY,
       });
       return new Ok(storedTokens);
     } catch (error) {
