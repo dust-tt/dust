@@ -53,6 +53,7 @@ import { apiConfig } from "@connectors/lib/api/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import type { CoreAPIDataSourceDocumentSection } from "@connectors/lib/data_sources";
 import { sectionFullText } from "@connectors/lib/data_sources";
+import { ProviderRateLimitError } from "@connectors/lib/error";
 import {
   SlackChannel,
   SlackChatBotMessage,
@@ -66,7 +67,6 @@ import {
   getHeaderFromGroupIds,
   getHeaderFromUserEmail,
 } from "@connectors/types";
-import { ProviderRateLimitError } from "@connectors/lib/error";
 
 const SLACK_RATE_LIMIT_ERROR_MESSAGE =
   "Slack has blocked the agent from continuing the conversation, due to new restrictive" +
