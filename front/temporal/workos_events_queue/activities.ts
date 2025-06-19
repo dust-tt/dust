@@ -464,17 +464,17 @@ async function handleUserAddedToGroup(
       `Group not found for workOSId "${event.group.id}" in workspace "${workspace.sId}"`
     );
   }
+
   const isMember = await group.isMember(user);
-  if (isMember) {
+  if (!isMember) {
+    const res = await group.addMember(auth, user.toJSON());
+    if (res.isErr()) {
+      throw new Error(res.error.message);
+    }
+  } else {
     logger.info(
       `User "${user.sId}" is already member of group "${group.sId}", skipping`
     );
-    return;
-  }
-
-  const res = await group.addMember(auth, user.toJSON());
-  if (res.isErr()) {
-    throw new Error(res.error.message);
   }
 
   // Handle role assignment for special groups.
