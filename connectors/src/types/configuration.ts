@@ -2,7 +2,6 @@ import * as t from "io-ts";
 
 import type { SlackConfigurationType } from "./slack";
 import { SlackConfigurationTypeSchema } from "./slack";
-import type { SlackBotConfigurationType } from "./slack_bot";
 import type { WebCrawlerConfigurationType } from "./webcrawler";
 import { WebCrawlerConfigurationTypeSchema } from "./webcrawler";
 
@@ -23,7 +22,6 @@ export type UpdateConnectorConfigurationType = t.TypeOf<
 export type ConnectorConfiguration =
   | WebCrawlerConfigurationType
   | SlackConfigurationType
-  | SlackBotConfigurationType
   | null;
 
 export function isWebCrawlerConfiguration(
@@ -45,7 +43,7 @@ export type ConnectorConfigurations = {
   webcrawler: WebCrawlerConfigurationType;
   notion: null;
   slack: SlackConfigurationType;
-  slack_bot: SlackBotConfigurationType;
+  slack_bot: SlackConfigurationType;
   google_drive: null;
   github: null;
   confluence: null;
