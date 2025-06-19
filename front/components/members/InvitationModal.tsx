@@ -66,7 +66,7 @@ export function InviteEmailModal({
   owner: WorkspaceType;
   prefillText: string;
   perSeatPricing: SubscriptionPerSeatPricing | null;
-  onInviteClick: (event: MouseEvent) => void;
+  onInviteClick: (event: React.MouseEvent<HTMLButtonElement>) => void;
 }) {
   const [inviteEmails, setInviteEmails] = useState<string>("");
   const { inviteEmailsList, emailError } =
@@ -249,7 +249,7 @@ export function InviteEmailModal({
           }}
           rightButtonProps={{
             label: "Send Invite",
-            onClick: async (event: MouseEvent) => {
+            onClick: async (event: React.MouseEvent<HTMLButtonElement>) => {
               event.preventDefault();
               if (!inviteEmailsList) {
                 return;

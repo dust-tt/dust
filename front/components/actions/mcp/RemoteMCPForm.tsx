@@ -296,7 +296,7 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
             variant="highlight"
             label={form.formState.isSubmitting ? "Saving..." : "Save"}
             disabled={form.formState.isSubmitting}
-            onClick={async (event: Event) => {
+            onClick={async (event: React.MouseEvent<HTMLButtonElement>) => {
               event.preventDefault();
               void form.handleSubmit(onSubmit)();
             }}

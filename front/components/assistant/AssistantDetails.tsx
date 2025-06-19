@@ -283,7 +283,7 @@ export function AssistantDetails({
                 onClick={() => {
                   setShowRestoreModal(true);
                 }}
-                classname="mt-2"
+                className="mt-2"
                 icon={ArrowPathIcon}
               />
             </div>

@@ -156,7 +156,7 @@ export default function Browser({
                       ? "Setup Browserless API"
                       : "Browserless API not available"
                   }
-                  readOnly={!isAdmin}
+                  disabled={!isAdmin}
                   size="xs"
                 />
               </div>

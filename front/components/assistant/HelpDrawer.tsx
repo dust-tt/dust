@@ -80,14 +80,24 @@ function LinksList({
       )}
       {linksList.map((link, index) => (
         <div key={index}>
-          <Button
-            icon={link.icon}
-            variant="ghost"
-            label={link.title}
-            link={link.href ? { href: link.href, target: "_blank" } : undefined}
-            onClick={link.onClick}
-            description={link.description}
-          />
+          {link.href ? (
+            <Button
+              icon={link.icon}
+              variant="ghost"
+              label={link.title}
+              href={link.href}
+              target="_blank"
+              tooltip={link.description}
+            />
+          ) : (
+            <Button
+              icon={link.icon}
+              variant="ghost"
+              label={link.title}
+              onClick={link.onClick}
+              tooltip={link.description}
+            />
+          )}
         </div>
       ))}
     </div>

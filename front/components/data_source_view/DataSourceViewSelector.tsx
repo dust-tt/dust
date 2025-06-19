@@ -855,7 +855,7 @@ export function DataSourceViewSelector({
               className="mr-4 text-xs"
               label={hasActiveSelection ? "Unselect All" : "Select All"}
               icon={ListCheckIcon}
-              onClick={(e: Event) => {
+              onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                 e.stopPropagation();
                 handleSelectAll();
               }}

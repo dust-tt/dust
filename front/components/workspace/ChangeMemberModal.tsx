@@ -174,7 +174,7 @@ export function ChangeMemberModal({
                 onClick: handleSave,
                 disabled:
                   selectedRole === member.workspaces[0].role || isSaving,
-                loading: isSaving,
+                isLoading: isSaving,
               }}
             />
           </>
