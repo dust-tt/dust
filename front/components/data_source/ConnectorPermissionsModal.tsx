@@ -936,6 +936,8 @@ export function ConnectorPermissionsModal({
                 }}
               />
             );
+          case "slack_bot":
+            return null;
           default:
             assertNever(c.type);
         }

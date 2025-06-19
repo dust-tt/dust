@@ -423,6 +423,7 @@ export const AddConnectionMenu = ({
                   }}
                 />
               );
+            case "slack_bot":
             case undefined:
               return null;
             default:

@@ -1,6 +1,5 @@
 import * as t from "io-ts";
 
-import type { LightWorkspaceType } from "@app/types";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export const OAUTH_USE_CASES = [
@@ -30,6 +29,7 @@ export const OAUTH_PROVIDERS = [
   "intercom",
   "notion",
   "slack",
+  "slack_bot",
   "gong",
   "microsoft",
   "zendesk",
@@ -46,6 +46,7 @@ export const OAUTH_PROVIDER_NAMES: Record<OAuthProvider, string> = {
   intercom: "Intercom",
   notion: "Notion",
   slack: "Slack",
+  slack_bot: "Slack (Bot)",
   gong: "Gong",
   microsoft: "Microsoft",
   zendesk: "Zendesk",
@@ -145,6 +146,7 @@ export const getProviderRequiredOAuthCredentialInputs = async ({
     case "hubspot":
     case "zendesk":
     case "slack":
+    case "slack_bot":
     case "gong":
     case "microsoft":
     case "notion":

@@ -225,6 +225,31 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     },
     isDeletable: false,
   },
+  slack_bot: {
+    name: "Slack (Bot)",
+    connectorProvider: "slack_bot",
+    status: "built",
+    // Hidden from connections since used as bot integration only. Strings below are therefore all
+    // set to N/A
+    hide: true,
+    isPermissionsConfigurableBlocked: true,
+    permissionsDisabledPlaceholder: "N/A",
+    description: "N/A",
+    limitations: "N/A",
+    mismatchError: "N/A",
+    guideLink: "https://docs.dust.tt/docs/slack-connection",
+    selectLabel: "N/A",
+    getLogoComponent: () => {
+      return SlackLogo;
+    },
+    isNested: false,
+    isTitleFilterEnabled: true,
+    permissions: {
+      selected: "read_write",
+      unselected: "write",
+    },
+    isDeletable: false,
+  },
   github: {
     name: "GitHub",
     connectorProvider: "github",
@@ -462,6 +487,7 @@ export const isConnectorProviderAllowedForPlan = (
     case "confluence":
       return plan.limits.connections.isConfluenceAllowed;
     case "slack":
+    case "slack_bot":
       return plan.limits.connections.isSlackAllowed;
     case "notion":
       return plan.limits.connections.isNotionAllowed;
@@ -510,6 +536,7 @@ export const isConnectorProviderAssistantDefaultSelected = (
     // As of today (07/02/2025), the default selected provider are going to be used for semantic search
     // Remote database connectors are not available for semantic search so it makes no sense to select them by default
     case "bigquery":
+    case "slack_bot":
     case "salesforce":
     case "snowflake":
     case "webcrawler":
@@ -563,6 +590,7 @@ export function isConnectorTypeTrackable(
     case "gong":
       return true;
     case "slack":
+    case "slack_bot":
       return false;
     default:
       assertNever(connectorType);
