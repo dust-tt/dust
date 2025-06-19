@@ -138,6 +138,12 @@ export function withSessionAuthenticationForWorkspace<T>(
         });
       }
 
+      // Set permanent cookie with current workspace ID
+      res.setHeader(
+        "Set-Cookie",
+        `lastWorkspaceId=${wId}; Path=/; SameSite=Lax; Max-Age=31536000`
+      );
+
       const auth = await Authenticator.fromSession(session, wId);
       req.addResourceToLog?.(auth.getNonNullableUser());
 
