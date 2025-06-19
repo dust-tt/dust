@@ -72,7 +72,7 @@ const _webhookSlackBotAPIHandler = async (
     }
 
     const logger = mainLogger.child({
-      connectorType: "slack",
+      connectorType: "slackbot",
       slackTeamId: teamId,
     });
 
