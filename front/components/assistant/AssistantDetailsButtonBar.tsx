@@ -13,7 +13,6 @@ import {
   StarStrokeIcon,
   TrashIcon,
 } from "@dust-tt/sparkle";
-import Link from "next/link";
 import { useRouter } from "next/router";
 import { useState } from "react";
 
