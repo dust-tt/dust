@@ -144,6 +144,7 @@ pub mod oauth {
         pub mod notion;
         pub mod salesforce;
         pub mod slack;
+        pub mod slack_bot;
         pub mod utils;
         pub mod zendesk;
     }

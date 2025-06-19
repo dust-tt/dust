@@ -16,6 +16,8 @@ export class SlackBotOAuthProvider implements BaseOAuthStrategyProvider {
     connection: OAuthConnectionType;
     useCase: OAuthUseCase;
   }) {
+    // Slack bot requires different scopes than the regular Slack connector
+    // These scopes are focused on bot functionality
     const scopes = [
       "app_mentions:read",
       "channels:history",
@@ -30,9 +32,6 @@ export class SlackBotOAuthProvider implements BaseOAuthStrategyProvider {
       "mpim:read",
       "team:read",
       "im:read",
-      // "metadata.message:read",
-      // "users:read",
-      // "users:read.email",
     ];
     return (
       `https://slack.com/oauth/v2/authorize?` +
