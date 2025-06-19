@@ -223,6 +223,26 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
     });
   }
 
+  // Metadata.
+
+  async markAsRateLimited() {
+    return this.update({
+      metadata: {
+        ...this.metadata,
+        rateLimited: { at: new Date() },
+      },
+    });
+  }
+
+  async markAsNotRateLimited() {
+    return this.update({
+      metadata: {
+        ...this.metadata,
+        rateLimited: null,
+      },
+    });
+  }
+
   get isAuthTokenRevoked() {
     return this.errorType === "oauth_token_revoked";
   }
