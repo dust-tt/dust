@@ -141,15 +141,6 @@ const _webhookSlackAPIHandler = async (
          * `message` handler.
          */
         case "message": {
-          if (!teamId) {
-            return apiError(req, res, {
-              api_error: {
-                type: "invalid_request_error",
-                message: "Missing team_id in request body for message event",
-              },
-              status_code: 400,
-            });
-          }
           if (event.channel_type === "im") {
             // Got a private message
             if (

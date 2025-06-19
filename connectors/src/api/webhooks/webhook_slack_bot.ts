@@ -1,14 +1,24 @@
 import type { Request, Response } from "express";
 
 import {
+  isChannelCreatedEvent,
+  onChannelCreation,
+} from "@connectors/api/webhooks/slack/created_channel";
+import {
   handleChatBotWithTrace,
   isSlackWebhookEventReqBody,
   SlackWebhookReqBody,
   SlackWebhookResBody,
 } from "@connectors/api/webhooks/webhook_slack_shared";
+import { getBotUserIdMemoized } from "@connectors/connectors/slack/lib/bot_user_helpers";
+import {
+  getSlackClient,
+  reportSlackUsage,
+} from "@connectors/connectors/slack/lib/slack_client";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import mainLogger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
 
 type SlackWebhookEventSubtype =
@@ -108,6 +118,161 @@ const _webhookSlackBotAPIHandler = async (
             "slack.app": "slackbot",
           })(req, res, logger);
           break;
+        }
+        /**
+         * `message` handler.
+         */
+        case "message": {
+          if (event.channel_type === "im") {
+            // Got a private message
+            if (
+              event.subtype === "message_changed" ||
+              event.subtype === "message_deleted"
+            ) {
+              // Ignore message_changed and message_deleted events in private messages
+              return res.status(200).send();
+            }
+            const slackConfig =
+              await SlackConfigurationResource.fetchByActiveBot(teamId);
+            if (!slackConfig) {
+              return apiError(req, res, {
+                api_error: {
+                  type: "connector_configuration_not_found",
+                  message: `Slack configuration not found for teamId ${teamId}. Are you sure the bot is not enabled?`,
+                },
+                status_code: 404,
+              });
+            }
+            const connector = await ConnectorResource.fetchById(
+              slackConfig.connectorId
+            );
+            if (!connector) {
+              return apiError(req, res, {
+                api_error: {
+                  type: "connector_not_found",
+                  message: `Connector ${slackConfig.connectorId} not found`,
+                },
+                status_code: 404,
+              });
+            }
+
+            const slackClient = await getSlackClient(slackConfig.connectorId, {
+              // Do not reject rate limited calls in webhook handler.
+              rejectRateLimitedCalls: false,
+            });
+
+            const myUserId = await getBotUserIdMemoized(
+              slackClient,
+              slackConfig.connectorId
+            );
+            if (event.user === myUserId) {
+              // Message sent from the bot itself.
+              return res.status(200).send();
+            }
+            // Message from an actual user (a human)
+            await handleChatBotWithTrace({
+              "slack.team_id": teamId,
+              "slack.app": "slackbot",
+            })(req, res, logger);
+            break;
+          }
+        }
+        case "channel_created": {
+          if (isChannelCreatedEvent(event)) {
+            const onChannelCreationRes = await onChannelCreation({
+              event,
+              logger,
+            });
+            if (onChannelCreationRes.isErr()) {
+              return apiError(req, res, {
+                api_error: {
+                  type: "internal_server_error",
+                  message: onChannelCreationRes.error.message,
+                },
+                status_code: 500,
+              });
+            } else {
+              return res.status(200).send();
+            }
+          } else {
+            logger.error(
+              {
+                eventChannel: event.channel,
+              },
+              "Invalid channel object"
+            );
+            return apiError(req, res, {
+              api_error: {
+                type: "unexpected_response_format",
+                message: `Invalid channel object: ${event.channel} `,
+              },
+              status_code: 400,
+            });
+          }
+        }
+        // message on private channels to draw attention on data sensitivity
+        case "member_joined_channel": {
+          if (!event.channel) {
+            return apiError(req, res, {
+              api_error: {
+                type: "invalid_request_error",
+                message:
+                  "Missing channel in request body for channel_joined event",
+              },
+              status_code: 400,
+            });
+          }
+
+          const slackConfig =
+            await SlackConfigurationResource.fetchByActiveBot(teamId);
+
+          if (!slackConfig) {
+            return apiError(req, res, {
+              api_error: {
+                type: "connector_configuration_not_found",
+                message: `Slack configuration not found for teamId ${teamId}. Are you sure the bot is not enabled?`,
+              },
+              status_code: 404,
+            });
+          }
+
+          const slackClient = await getSlackClient(slackConfig.connectorId, {
+            // Do not reject rate limited calls in webhook handler.
+            rejectRateLimitedCalls: false,
+          });
+
+          const myUserId = await getBotUserIdMemoized(
+            slackClient,
+            slackConfig.connectorId
+          );
+
+          // if the bot is not the one joining the channel, ignore
+          if (event.user !== myUserId) {
+            return res.status(200).send();
+          }
+
+          reportSlackUsage({
+            connectorId: slackConfig.connectorId,
+            method: "conversations.info",
+            channelId: event.channel,
+          });
+          const channelInfo = await slackClient.conversations.info({
+            channel: event.channel,
+          });
+
+          if (channelInfo?.channel?.is_private) {
+            reportSlackUsage({
+              connectorId: slackConfig.connectorId,
+              method: "chat.postMessage",
+              channelId: event.channel,
+            });
+            await slackClient.chat.postMessage({
+              channel: event.channel,
+              text: "You can now talk to Dust in this channel. ⚠️ If private channel synchronization has been allowed on your Dust workspace, admins will now be able to synchronize data from this channel.",
+            });
+          }
+
+          return res.status(200).send();
         }
         default: {
           logger.info(
