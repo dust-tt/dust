@@ -380,7 +380,7 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
           SlackChannel.findAll({
             where: {
               connectorId: this.connectorId,
-              // Here we do not filter out channels with skipReason because we need to know the one who are skipped.
+              // Here we do not filter out channels with skipReason because we need to know the ones that are skipped.
             },
           }),
         ]);
