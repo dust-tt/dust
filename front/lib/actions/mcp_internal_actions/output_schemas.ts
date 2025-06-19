@@ -628,7 +628,8 @@ export const isDataSourceNodeContentType = (
 const FilesystemPathItemSchema = z.object({
   nodeId: z.string(),
   title: z.string(),
-  nodeType: z.enum(["document", "table", "folder"]).optional(),
+  nodeType: z.enum(["document", "table", "folder"]),
+  sourceUrl: z.string().nullable(),
   isCurrentNode: z.boolean(),
 });
 

@@ -854,6 +854,7 @@ const createServer = (
           nodeId: dataSourceRootId,
           title: dataSourceConfig.dataSource.name,
           nodeType: "folder" as ContentNodeType,
+          sourceUrl: null,
           isCurrentNode: false,
         },
         // Parent nodes
@@ -866,6 +867,7 @@ const createServer = (
             nodeId: parentId,
             title: node.title,
             nodeType: node.node_type,
+            sourceUrl: node.source_url,
             isCurrentNode: false,
           };
         }),
@@ -874,6 +876,7 @@ const createServer = (
           nodeId: nodeId,
           title: targetNode.title,
           nodeType: targetNode.node_type,
+          sourceUrl: targetNode.source_url,
           isCurrentNode: true,
         },
       ]);
