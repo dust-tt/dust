@@ -84,7 +84,7 @@ async function handler(
           a.toJSON().name.localeCompare(b.toJSON().name)
         );
       } catch (error) {
-        // we had transient issue that occurred between Jun 18, 3:06 pm – Jun 19, 12:29 am for 2 users in prod
+        // We had transient issue that occurred between Jun 18, 3:06 pm – Jun 19, 12:29 am for 2 users in prod
         logger.warn("Sorting MCP servers failed", {
           error,
           servers: servers.map((s) => s.toJSON()),
