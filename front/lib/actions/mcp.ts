@@ -229,7 +229,7 @@ type ActionBaseParams = Omit<
   "id" | "type" | "executionState" | "output" | "isError"
 >;
 
-function hideFileResourceForModel({
+function hideFileFromActionOutput({
   fileId,
   content,
   workspaceId,
@@ -1064,7 +1064,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
         executionState: status,
         id: action.id,
         isError: false,
-        output: removeNulls(outputItems.map(hideFileResourceForModel)),
+        output: removeNulls(outputItems.map(hideFileFromActionOutput)),
         type: "tool_action",
       }),
     };
@@ -1145,7 +1145,7 @@ export async function mcpActionTypesFromAgentMessageIds(
       id: action.id,
       params: action.params,
       output: removeNulls(
-        action.outputItems.map(hideFileResourceForModel)
+        action.outputItems.map(hideFileFromActionOutput)
       ).filter(shouldHideContentForModel),
       functionCallId: action.functionCallId,
       functionCallName: action.functionCallName,
