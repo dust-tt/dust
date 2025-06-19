@@ -30,7 +30,7 @@ export function ConfirmDeleteSpaceDialog({
   isDeleting,
   onClose,
 }: ConfirmDeleteSpaceDialogProps) {
-  const spaceName = `"${getSpaceName(space)}"`;
+  const spaceName = `${getSpaceName(space)}`;
   const hasAgents = dataSourceUsage > 0;
 
   return (
