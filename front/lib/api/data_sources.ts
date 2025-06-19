@@ -629,6 +629,12 @@ export interface UpsertTableArgs {
   allowEmptySchema?: boolean;
 }
 
+export function isUpsertDocumentArgs(
+  args: UpsertTableArgs | UpsertDocumentArgs | undefined
+): args is UpsertDocumentArgs {
+  return args !== undefined && "document_id" in args;
+}
+
 export function isUpsertTableArgs(
   args: UpsertTableArgs | UpsertDocumentArgs | undefined
 ): args is UpsertTableArgs {
