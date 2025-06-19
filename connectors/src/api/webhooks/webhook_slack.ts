@@ -133,6 +133,7 @@ const _webhookSlackAPIHandler = async (
         case "app_mention": {
           await handleChatBotWithTrace({
             "slack.team_id": teamId,
+            "slack.app": "slack",
           })(req, res, logger);
           break;
         }
@@ -198,6 +199,7 @@ const _webhookSlackAPIHandler = async (
             // Message from an actual user (a human)
             await handleChatBotWithTrace({
               "slack.team_id": teamId,
+              "slack.app": "slack",
             })(req, res, logger);
             break;
           } else if (event.channel_type === "channel") {

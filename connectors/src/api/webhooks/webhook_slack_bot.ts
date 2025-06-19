@@ -105,6 +105,7 @@ const _webhookSlackBotAPIHandler = async (
         case "app_mention": {
           await handleChatBotWithTrace({
             "slack.team_id": teamId,
+            "slack.app": "slackbot",
           })(req, res, logger);
           break;
         }
