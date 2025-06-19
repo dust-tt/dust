@@ -79,20 +79,24 @@ export async function getDataSourceViewsUsageByCategory({
       assertNever(category);
   }
 
+  const whereClauseAdmin = {
+    status: "active",
+    workspaceId: owner.id,
+  }
+
+  const whereClauseNonAdmin = {
+    status: "active",
+    workspaceId: owner.id,
+    // If the user is non-admin, only include their own agents
+    authorId: auth.user()?.id
+  }
+  
   const agentConfigurationInclude = {
     model: AgentConfiguration,
     as: "agent_configuration",
     attributes: [],
     required: true,
-    where: {
-      status: "active",
-      workspaceId: owner.id,
-    } as { [key: string]: any },
-  }
-
-  if (!auth.isAdmin()) {
-    // If the user is not admin, only include their own agents
-    agentConfigurationInclude.where.authorId = auth.user()?.id;
+    where: auth.isAdmin() ? whereClauseAdmin : whereClauseNonAdmin,
   }
 
   const res = (await Promise.all([
