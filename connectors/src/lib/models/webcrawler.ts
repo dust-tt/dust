@@ -62,7 +62,7 @@ WebCrawlerConfigurationModel.init(
       defaultValue: null,
     },
     crawlId: {
-      type: DataTypes.STRING(48),
+      type: DataTypes.STRING(36),
       allowNull: true,
       defaultValue: null,
     },
