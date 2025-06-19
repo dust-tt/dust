@@ -22,7 +22,6 @@ import {
   SheetHeader,
   SheetTitle,
   Spinner,
-  Tooltip,
   TrashIcon,
   useSendNotification,
 } from "@dust-tt/sparkle";
@@ -34,6 +33,7 @@ import React, {
   useMemo,
   useState,
 } from "react";
+import ReactMarkdown from "react-markdown";
 import { useSWRConfig } from "swr";
 
 import type { ConfirmDataType } from "@app/components/Confirm";
@@ -78,7 +78,6 @@ import type {
   WorkspaceType,
 } from "@app/types";
 import { assertNever, isOAuthProvider } from "@app/types";
-import ReactMarkdown from "react-markdown";
 
 const getUseResourceHook =
   (owner: LightWorkspaceType, dataSource: DataSourceType) =>
