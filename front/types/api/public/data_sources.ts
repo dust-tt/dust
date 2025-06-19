@@ -50,21 +50,36 @@ export type PostDataSourceDocumentRequestBody = t.TypeOf<
 export type PatchDataSourceDocumentRequestBody = t.TypeOf<
   typeof PostDataSourceDocumentRequestBodySchema
 >;
-
-export const PatchDataSourceTableRequestBodySchema = t.type({
-  name: t.string,
-  description: t.string,
-  timestamp: t.union([t.number, t.undefined, t.null]),
-  tags: t.union([t.array(t.string), t.undefined, t.null]),
-  parentId: t.union([t.string, t.undefined, t.null]),
-  parents: t.union([t.array(t.string), t.undefined, t.null]),
-  truncate: t.boolean,
-  async: t.union([t.boolean, t.undefined]),
-  fileId: t.union([t.string, t.undefined]),
-  title: t.string,
-  mimeType: t.string,
-  sourceUrl: t.union([t.string, t.undefined, t.null]),
-});
+export const PatchDataSourceTableRequestBodySchema = t.union([
+  t.type({
+    name: t.string,
+    description: t.string,
+    timestamp: t.union([t.number, t.undefined, t.null]),
+    tags: t.union([t.array(t.string), t.undefined, t.null]),
+    parentId: t.union([t.string, t.undefined, t.null]),
+    parents: t.union([t.array(t.string), t.undefined, t.null]),
+    truncate: t.literal(true),
+    fileId: t.string,
+    async: t.union([t.boolean, t.undefined]),
+    title: t.string,
+    mimeType: t.string,
+    sourceUrl: t.union([t.string, t.undefined, t.null]),
+  }),
+  t.type({
+    name: t.string,
+    description: t.string,
+    timestamp: t.union([t.number, t.undefined, t.null]),
+    tags: t.union([t.array(t.string), t.undefined, t.null]),
+    parentId: t.union([t.string, t.undefined, t.null]),
+    parents: t.union([t.array(t.string), t.undefined, t.null]),
+    truncate: t.literal(false),
+    fileId: t.undefined,
+    async: t.union([t.boolean, t.undefined]),
+    title: t.string,
+    mimeType: t.string,
+    sourceUrl: t.union([t.string, t.undefined, t.null]),
+  }),
+]);
 
 export type PatchDataSourceTableRequestBody = t.TypeOf<
   typeof PatchDataSourceTableRequestBodySchema
