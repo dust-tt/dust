@@ -74,7 +74,7 @@ export const AgentGrid = ({
           onClick={() => handleAssistantClick(agent)}
           action={
             <AssistantCardMore
-              onClick={(e: Event) => {
+              onClick={(e: MouseEventHandler) => {
                 e.stopPropagation();
                 handleMoreClick(agent);
               }}
@@ -274,7 +274,7 @@ export function AssistantBrowser({
                       variant="ghost"
                       size="xs"
                       icon={MoreIcon}
-                      onClick={(e: Event) => {
+                      onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                         e.stopPropagation();
                         setQueryParam(router, "assistantDetails", agent.sId);
                       }}

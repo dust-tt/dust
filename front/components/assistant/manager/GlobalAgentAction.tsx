@@ -43,7 +43,7 @@ export function GlobalAgentAction({
         icon={Cog6ToothIcon}
         size="xs"
         disabled={!isBuilder(owner)}
-        onClick={(e: Event) => {
+        onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
           e.stopPropagation();
           void router.push(`/w/${owner.sId}/builder/assistants/dust`);
         }}
