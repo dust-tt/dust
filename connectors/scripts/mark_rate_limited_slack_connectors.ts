@@ -12,6 +12,8 @@ import { concurrentExecutor } from "@connectors/types";
 
 import { makeScript } from "./helpers";
 
+// Stress test for rate limiting. New Slack quotas are 1 call/minute for Tier 3 endpoints,
+// running 10 calls in parallel should be enough to trigger the rate limit.
 const TEST_CALLS_COUNT = 10;
 
 const SLACK_CONNECTOR_TYPE = "slack";
