@@ -95,7 +95,7 @@ export function FilesystemPathDetails({
     return null;
   }
 
-  const { path, text } = filesystemPath;
+  const { path } = filesystemPath;
 
   const breadcrumbItems: BreadcrumbItem[] = path.map((item) => ({
     icon: getNodeIcon(item.nodeType),
@@ -116,57 +116,10 @@ export function FilesystemPathDetails({
       visual={ActionDocumentTextIcon}
     >
       <div className="flex flex-col gap-4 pl-6 pt-4">
-        <div className="flex flex-col gap-2">
-          <span className="text-sm font-bold text-foreground dark:text-foreground-night">
-            Path
-          </span>
-          <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
-            {text}
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-2">
-          <span className="text-sm font-bold text-foreground dark:text-foreground-night">
-            Location
-          </span>
-          <div className="bg-structure-50 dark:bg-structure-800 rounded-lg p-3">
-            <Breadcrumbs items={breadcrumbItems} />
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-2">
-          <span className="text-sm font-bold text-foreground dark:text-foreground-night">
-            Hierarchy
-          </span>
-          <div className="flex flex-col gap-1 text-sm">
-            {path.map((item, index) => (
-              <div
-                key={item.nodeId}
-                className={`flex items-center gap-2 ${
-                  item.isCurrentNode
-                    ? "text-action-500 dark:text-action-400 font-semibold"
-                    : "text-muted-foreground dark:text-muted-foreground-night"
-                }`}
-                style={{ paddingLeft: `${index * 16}px` }}
-              >
-                {index > 0 && (
-                  <ChevronRightIcon className="h-3 w-3 text-muted-foreground dark:text-muted-foreground-night" />
-                )}
-                <span className="flex items-center gap-1">
-                  {React.createElement(getNodeIcon(item.nodeType), {
-                    className: "h-3 w-3",
-                  })}
-                  {item.title}
-                  {item.isCurrentNode && (
-                    <span className="ml-1 text-xs text-muted-foreground dark:text-muted-foreground-night">
-                      (current)
-                    </span>
-                  )}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
+        <span className="text-sm font-bold text-foreground dark:text-foreground-night">
+          Location
+        </span>
+        <Breadcrumbs className="pl-2" items={breadcrumbItems} />
       </div>
     </ActionDetailsWrapper>
   );
