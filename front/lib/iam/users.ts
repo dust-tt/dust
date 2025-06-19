@@ -427,6 +427,30 @@ export async function mergeUserIdentities({
   // Migrate authorship of keys from the secondary user to the primary user.
   await KeyModel.update(userIdValues, userIdOptions);
 
+  if (secondaryUser.workOSUserId && !primaryUser.workOSUserId) {
+    const workOSUserId = secondaryUser.workOSUserId;
+    await UserModel.update(
+      {
+        workOSUserId: undefined,
+      },
+      {
+        where: {
+          id: secondaryUser.id,
+        },
+      }
+    );
+    await UserModel.update(
+      {
+        workOSUserId,
+      },
+      {
+        where: {
+          id: primaryUser.id,
+        },
+      }
+    );
+  }
+
   if (revokeSecondaryUser) {
     await revokeAndTrackMembership(
       auth.getNonNullableWorkspace(),
