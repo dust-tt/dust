@@ -56,6 +56,15 @@ export interface ConnectorOauthExtraConfigProps {
   setIsExtraConfigValid: (valid: boolean) => void;
 }
 
+type ConnectorPermissionsConfigurable =
+  | {
+      isPermissionsConfigurableBlocked: true;
+      permissionsDisabledPlaceholder: string;
+    }
+  | {
+      isPermissionsConfigurableBlocked?: never;
+    };
+
 export type ConnectorProviderConfiguration = {
   name: string;
   connectorProvider: ConnectorProvider;
@@ -82,7 +91,28 @@ export type ConnectorProviderConfiguration = {
     unselected: ConnectorPermission;
   };
   isDeletable: boolean;
-};
+} & ConnectorPermissionsConfigurable;
+
+// TODO(slack 2025-06-19): Remove this function once the new app is published.
+export function getConnectorPermissionsConfigurableBlocked(
+  provider?: ConnectorProvider | null
+): { blocked: boolean; placeholder?: string } {
+  if (!provider) {
+    return { blocked: false };
+  }
+
+  const connectorConfig = CONNECTOR_CONFIGURATIONS[provider];
+  const isBlocked = connectorConfig.isPermissionsConfigurableBlocked;
+
+  if (!isBlocked) {
+    return { blocked: false };
+  }
+
+  return {
+    blocked: true,
+    placeholder: connectorConfig.permissionsDisabledPlaceholder,
+  };
+}
 
 export const isConnectorPermissionsEditable = (
   provider?: ConnectorProvider | null
@@ -90,6 +120,7 @@ export const isConnectorPermissionsEditable = (
   if (!provider) {
     return false;
   }
+
   return (
     CONNECTOR_CONFIGURATIONS[provider].permissions.selected !== "none" ||
     CONNECTOR_CONFIGURATIONS[provider].permissions.unselected !== "none"
@@ -169,7 +200,13 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     name: "Slack",
     connectorProvider: "slack",
     status: "built",
-    hide: false,
+    // TODO(slack 2025-06-19): Hide the Slack connector until we publish the new app.
+    hide: true,
+    // TODO(slack 2025-06-19): Prevent users from editing permissions.
+    isPermissionsConfigurableBlocked: true,
+    permissionsDisabledPlaceholder:
+      "Slack permissions are currently being updated with a new integration. " +
+      "Editing permissions is temporarily disabled.",
     description:
       "Authorize granular access to your Slack workspace on a channel-by-channel basis.",
     limitations: "External files and content behind links are not indexed.",
