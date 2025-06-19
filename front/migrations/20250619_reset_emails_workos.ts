@@ -50,8 +50,8 @@ const sendPasswordResetEmail = async (
     childLogger.info({ workOSUserId: user.id }, "Found user in WorkOS");
 
     if (execute) {
-      // Send password reset email via WorkOS
-      await getWorkOS().userManagement.sendPasswordResetEmail({
+      // Send password reset email via WorkOS.
+      await getWorkOS().userManagement.createPasswordReset({
         email: user.email,
       });
 
