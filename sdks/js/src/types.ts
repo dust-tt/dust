@@ -316,6 +316,7 @@ const ConnectorProvidersSchema = FlexibleEnumSchema<
   | "intercom"
   | "notion"
   | "slack"
+  | "slack_bot"
   | "microsoft"
   | "webcrawler"
   | "snowflake"
