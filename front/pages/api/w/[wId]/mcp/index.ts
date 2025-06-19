@@ -78,9 +78,18 @@ async function handler(
       const internalMCPs =
         await InternalMCPServerInMemoryResource.listByWorkspace(auth);
 
-      const servers = [...remoteMCPs, ...internalMCPs].sort((a, b) =>
-        a.toJSON().name.localeCompare(b.toJSON().name)
-      );
+      let servers = [...remoteMCPs, ...internalMCPs];
+      try {
+        servers = servers.sort((a, b) =>
+          a.toJSON().name.localeCompare(b.toJSON().name)
+        );
+      } catch (error) {
+        // we had transient issue that occurred between Jun 18, 3:06 pm – Jun 19, 12:29 am for 2 users in prod
+        logger.warn("Sorting MCP servers failed", {
+          error,
+          servers: servers.map((s) => s.toJSON()),
+        });
+      }
 
       return res.status(200).json({
         success: true,
