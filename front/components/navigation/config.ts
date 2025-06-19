@@ -1,4 +1,5 @@
 import {
+  BarChartIcon,
   BookOpenIcon,
   BracesIcon,
   ChatBubbleLeftRightIcon,
@@ -48,6 +49,7 @@ export type SubNavigationAdminId =
   | "providers"
   | "api_keys"
   | "dev_secrets"
+  | "analytics"
   | "actions";
 
 export type SubNavigationAppId =
@@ -179,12 +181,12 @@ export const subNavigationAdmin = ({
   if (isAdmin(owner)) {
     nav.push({
       id: "workspace",
-      label: "Workspace Settings",
+      label: "Workspace Management",
       variant: "primary",
       menus: [
         {
           id: "members",
-          label: "Domain & Members",
+          label: "People & Security",
           icon: UserIcon,
           href: `/w/${owner.sId}/members`,
           current: current === "members",
@@ -193,7 +195,7 @@ export const subNavigationAdmin = ({
         },
         {
           id: "workspace",
-          label: "Workspace",
+          label: "Workspace Settings",
           icon: CompanyIcon,
           href: `/w/${owner.sId}/workspace`,
           current: current === "workspace",
@@ -201,20 +203,20 @@ export const subNavigationAdmin = ({
           subMenu: current === "workspace" ? subMenu : undefined,
         },
         {
-          id: "subscription",
-          label: "Subscription",
-          icon: ShapesIcon,
-          href: `/w/${owner.sId}/subscription`,
-          current: current === "subscription",
-          subMenuLabel: current === "subscription" ? subMenuLabel : undefined,
-          subMenu: current === "subscription" ? subMenu : undefined,
+          id: "analytics",
+          label: "Analytics",
+          icon: BarChartIcon,
+          href: `/w/${owner.sId}/analytics`,
+          current: current === "analytics",
+          subMenuLabel: current === "analytics" ? subMenuLabel : undefined,
+          subMenu: current === "analytics" ? subMenu : undefined,
         },
       ],
     });
 
     nav.push({
       id: "developers",
-      label: "Developers",
+      label: "Builder Tools Management",
       variant: "primary",
       menus: [
         {

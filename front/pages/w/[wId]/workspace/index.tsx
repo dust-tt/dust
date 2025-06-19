@@ -1,15 +1,19 @@
-import { Button, CompanyIcon, Input, Page } from "@dust-tt/sparkle";
+import {
+  Avatar,
+  Button,
+  CompanyIcon,
+  Input,
+  Page,
+  SliderToggle,
+} from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 import { useCallback, useEffect, useState } from "react";
 
 import { subNavigationAdmin } from "@app/components/navigation/config";
 import AppContentLayout from "@app/components/sparkle/AppContentLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
-import { ActivityReport } from "@app/components/workspace/ActivityReport";
-import { QuickInsights } from "@app/components/workspace/Analytics";
 import { ProviderManagementModal } from "@app/components/workspace/ProviderManagementModal";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import { useWorkspaceSubscriptions } from "@app/lib/swr/workspaces";
 import type { SubscriptionType, WorkspaceType } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
@@ -42,11 +46,7 @@ export default function WorkspaceAdmin({
   const [workspaceName, setWorkspaceName] = useState(owner.name);
   const [workspaceNameError, setWorkspaceNameError] = useState<string>("");
 
-  const [isDownloadingData, setIsDownloadingData] = useState(false);
-
-  const { subscriptions } = useWorkspaceSubscriptions({
-    owner,
-  });
+  const [slackBotEnabled, setSlackBotEnabled] = useState(false);
 
   const formValidation = useCallback(() => {
     if (workspaceName === owner.name) {
@@ -94,102 +94,6 @@ export default function WorkspaceAdmin({
     }
   };
 
-  const handleDownload = async (selectedMonth: string | null) => {
-    if (!selectedMonth) {
-      return;
-    }
-
-    const queryString = `mode=month&start=${selectedMonth}&table=all`;
-
-    setIsDownloadingData(true);
-    try {
-      const response = await fetch(
-        `/api/w/${owner.sId}/workspace-usage?${queryString}`
-      );
-
-      if (!response.ok) {
-        throw new Error(`Error: ${response.status}`);
-      }
-
-      const contentType = response.headers.get("Content-Type");
-      const isZip = contentType === "application/zip";
-
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-
-      const [year, month] = selectedMonth.split("-");
-
-      const getMonthName = (monthIndex: number) => {
-        const months = [
-          "jan",
-          "feb",
-          "mar",
-          "apr",
-          "may",
-          "jun",
-          "jul",
-          "aug",
-          "sep",
-          "oct",
-          "nov",
-          "dec",
-        ];
-        return months[monthIndex - 1];
-      };
-
-      const monthName = getMonthName(Number(month));
-
-      const fileExtension = isZip ? "zip" : "csv";
-      const filename = `dust_${owner.name}_activity_${year}_${monthName}.${fileExtension}`;
-
-      const link = document.createElement("a");
-      link.href = url;
-      link.setAttribute("download", filename);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    } catch (error) {
-      alert("Failed to download activity data.");
-    } finally {
-      setIsDownloadingData(false);
-    }
-  };
-
-  const monthOptions: string[] = [];
-
-  if (subscriptions.length > 0) {
-    const oldestStartDate = subscriptions.reduce(
-      (oldest, current) => {
-        if (!current.startDate) {
-          return oldest;
-        }
-        if (!oldest) {
-          return new Date(current.startDate);
-        }
-        return new Date(current.startDate) < oldest
-          ? new Date(current.startDate)
-          : oldest;
-      },
-      null as Date | null
-    );
-
-    if (oldestStartDate) {
-      const startDateYear = oldestStartDate.getFullYear();
-      const startDateMonth = oldestStartDate.getMonth();
-
-      const currentYear = new Date().getFullYear();
-      const currentMonth = new Date().getMonth();
-
-      for (let year = currentYear; year >= startDateYear; year--) {
-        const startMonth = year === startDateYear ? startDateMonth : 0;
-        const endMonth = year === currentYear ? currentMonth : 11;
-        for (let month = endMonth; month >= startMonth; month--) {
-          monthOptions.push(`${year}-${String(month + 1).padStart(2, "0")}`);
-        }
-      }
-    }
-  }
-
   return (
     <>
       <AppContentLayout
@@ -198,59 +102,97 @@ export default function WorkspaceAdmin({
         subNavigation={subNavigationAdmin({ owner, current: "workspace" })}
       >
         <Page.Vertical align="stretch" gap="xl">
-          <Page.Header
-            title="Workspace"
-            icon={CompanyIcon}
-            description="Manage your workspace"
-          />
+          <Page.Header title="Workspace Settings" icon={CompanyIcon} />
           <Page.Vertical align="stretch" gap="md">
-            <Page.H variant="h4">Analytics</Page.H>
-            <div className="grid w-full grid-cols-1 gap-4 md:grid-cols-2">
-              <QuickInsights owner={owner} />
-              <ActivityReport
-                isDownloading={isDownloadingData}
-                monthOptions={monthOptions}
-                handleDownload={handleDownload}
+            <Page.H variant="h4">Workspace Name</Page.H>
+            <Page.P variant="secondary">{owner.name}</Page.P>
+            <div className="flex flex-row gap-2">
+              <Input
+                name="name"
+                placeholder="Workspace name"
+                value={workspaceName}
+                onChange={(e) => setWorkspaceName(e.target.value)}
+                message={workspaceNameError}
+                messageStatus="error"
+              />
+              {!disable && (
+                <Button
+                  variant="primary"
+                  disabled={disable || updating}
+                  onClick={handleUpdateWorkspace}
+                  label={updating ? "Saving..." : "Save"}
+                  className="grow-0"
+                />
+              )}
+            </div>
+          </Page.Vertical>
+          <Page.Vertical align="stretch" gap="md">
+            <Page.H variant="h4">Model Selection</Page.H>
+            <Page.P variant="secondary">
+              Select the models you want available to your workspace.
+            </Page.P>
+            <div>
+              <ProviderManagementModal owner={owner} />
+            </div>
+          </Page.Vertical>
+          <Page.Vertical align="stretch" gap="md">
+            <Page.H variant="h4">Integrations</Page.H>
+            <div className="flex items-center justify-between rounded-lg border border-gray-200 p-4">
+              <div className="flex items-center gap-4">
+                <Avatar
+                  size="md"
+                  visual="https://dust.tt/static/systemavatar/slack_avatar_full.png"
+                />
+                <div>
+                  <Page.H variant="h6">Slack Bot</Page.H>
+                  <Page.P variant="secondary">
+                    Use Dust Agents in Slack with the Dust Slack app
+                  </Page.P>
+                </div>
+              </div>
+              <SliderToggle
+                selected={slackBotEnabled}
+                onClick={() => {
+                  setSlackBotEnabled(!slackBotEnabled);
+                }}
               />
             </div>
           </Page.Vertical>
           <Page.Vertical align="stretch" gap="md">
-            <Page.H variant="h4">Settings</Page.H>
-            <div className="grid grid-cols-2 gap-2">
-              <Page.H variant="h6">Workspace name</Page.H>
-              <Page.H variant="h6">Model Selection</Page.H>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <Page.P variant="secondary">
-                Think GitHub repository names, short and memorable.
-              </Page.P>
-              <Page.P variant="secondary">
-                Select the models you want available to your workspace for the
-                creation of AI Agents.
-              </Page.P>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div className="flex flex-row gap-2">
-                <Input
-                  name="name"
-                  placeholder="Workspace name"
-                  value={workspaceName}
-                  onChange={(e) => setWorkspaceName(e.target.value)}
-                  message={workspaceNameError}
-                  messageStatus="error"
-                />
-                {!disable && (
+            <Page.H variant="h4">Subscriptions</Page.H>
+            <div className="flex items-center justify-between">
+              <div>
+                <Page.H variant="h6">Your plan</Page.H>
+                <div className="flex items-center gap-2">
+                  <span className="rounded-full bg-blue-100 px-3 py-1 text-sm font-medium text-blue-900">
+                    {subscription.plan.name}
+                  </span>
                   <Button
-                    variant="primary"
-                    disabled={disable || updating}
-                    onClick={handleUpdateWorkspace}
-                    label={updating ? "Saving..." : "Save"}
-                    className="grow-0"
+                    variant="tertiary"
+                    label="..."
+                    size="xs"
+                    onClick={() => {}}
                   />
-                )}
+                </div>
               </div>
               <div>
-                <ProviderManagementModal owner={owner} />
+                <Page.H variant="h6">Payment, invoicing & billing</Page.H>
+                <Page.P variant="secondary">
+                  Estimated monthly billing: $
+                  {subscription.plan.limits.users.maxUsers
+                    ? subscription.plan.limits.users.maxUsers * 29
+                    : 0}{" "}
+                  ({subscription.plan.limits.users.maxUsers || 0} members, $29
+                  per member)
+                </Page.P>
+                <Button
+                  variant="secondary"
+                  label="Dust's dashboard on Stripe"
+                  icon={CompanyIcon}
+                  onClick={() =>
+                    window.open(`/w/${owner.sId}/subscription/manage`, "_blank")
+                  }
+                />
               </div>
             </div>
           </Page.Vertical>
