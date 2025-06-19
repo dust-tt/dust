@@ -48,6 +48,7 @@ import { ConnectorDataUpdatedModal } from "@app/components/spaces/ConnectorDataU
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import {
   CONNECTOR_CONFIGURATIONS,
+  getConnectorPermissionsConfigurableBlocked,
   isConnectorPermissionsEditable,
 } from "@app/lib/connector_providers";
 import {
@@ -247,6 +248,8 @@ function UpdateConnectionOAuthModal({
 
   const isDataSourceOwner = editedByUser?.userId === user.sId;
 
+  const permissionsConfigurable =
+    getConnectorPermissionsConfigurableBlocked(connectorProvider);
   return (
     <DataSourceManagementModal isOpen={isOpen} onClose={onClose}>
       <>
@@ -354,7 +357,10 @@ function UpdateConnectionOAuthModal({
                 label="Edit Permissions"
                 icon={LockIcon}
                 variant="warning"
-                disabled={!isExtraConfigValid}
+                disabled={
+                  !isExtraConfigValid || permissionsConfigurable.blocked
+                }
+                tooltip={permissionsConfigurable.placeholder}
               />
             </DialogTrigger>
             <DialogContent>
@@ -735,6 +741,10 @@ export function ConnectorPermissionsModal({
 
   const OptionsComponent = connectorConfiguration.optionsComponent;
 
+  const permissionsConfigurable = getConnectorPermissionsConfigurableBlocked(
+    connector.type
+  );
+
   return (
     <>
       {onManageButtonClick && (
@@ -779,6 +789,8 @@ export function ConnectorPermissionsModal({
                       onClick={() => {
                         setModalToShow("edition");
                       }}
+                      disabled={permissionsConfigurable.blocked}
+                      tooltip={permissionsConfigurable.placeholder}
                     />
                   )}
                   {isDeletable && (
