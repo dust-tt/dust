@@ -2,6 +2,7 @@ import moment from "moment-timezone";
 
 import type { ServerToolsAndInstructions } from "@app/lib/actions/mcp_actions";
 import {
+  isMCPConfigurationForInternalSlack,
   isMCPConfigurationForInternalWebsearch,
   isMCPConfigurationWithDataSource,
   isWebsearchConfiguration,
@@ -127,7 +128,8 @@ export async function constructPromptMultiActions(
       isRetrievalConfiguration(action) ||
       isWebsearchConfiguration(action) ||
       isMCPConfigurationWithDataSource(action) ||
-      isMCPConfigurationForInternalWebsearch(action)
+      isMCPConfigurationForInternalWebsearch(action) ||
+      isMCPConfigurationForInternalSlack(action)
   );
 
   if (canRetrieveDocuments) {

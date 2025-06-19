@@ -42,6 +42,7 @@
     "@radix-ui/react-slot": "^1.0.2",
     "@radix-ui/react-visually-hidden": "^1.1.2",
     "@sendgrid/mail": "^8.0.0",
+    "@slack/web-api": "^6.13.0",
     "@tailwindcss/container-queries": "^0.1.1",
     "@tailwindcss/forms": "^0.5.3",
     "@tanstack/react-table": "^8.13.0",
