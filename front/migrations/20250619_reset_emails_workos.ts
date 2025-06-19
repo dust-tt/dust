@@ -76,6 +76,16 @@ const sendPasswordResetEmail = async (
         <p>Thank you for your understanding and for being a valued Dust user.</p>`,
       });
 
+      if (emailResult.isErr()) {
+        childLogger.error(
+          { error: emailResult.error },
+          "Failed to send notification email"
+        );
+        // Don't fail the operation if our notification email fails.
+      } else {
+        childLogger.info("Successfully sent notification email");
+      }
+
       return { success: true };
     } catch (error) {
       childLogger.error({ error }, "Error processing password reset for user");
