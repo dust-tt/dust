@@ -79,6 +79,22 @@ export async function getDataSourceViewsUsageByCategory({
       assertNever(category);
   }
 
+  var agentConfigurationInclude = {
+    model: AgentConfiguration,
+    as: "agent_configuration",
+    attributes: [],
+    required: true,
+    where: {
+      status: "active",
+      workspaceId: owner.id,
+    } as { [key: string]: any },
+  }
+
+  if (!auth.isAdmin()) {
+    // If the user is not admin, only include their own agents
+    agentConfigurationInclude.where.authorId = auth.user()?.id;
+  }
+
   const res = (await Promise.all([
     AgentDataSourceConfiguration.findAll({
       raw: true,
@@ -122,16 +138,7 @@ export async function getDataSourceViewsUsageByCategory({
           attributes: [],
           required: true,
           include: [
-            {
-              model: AgentConfiguration,
-              as: "agent_configuration",
-              attributes: [],
-              required: true,
-              where: {
-                status: "active",
-                workspaceId: owner.id,
-              },
-            },
+            agentConfigurationInclude,
           ],
         },
       ],
@@ -178,16 +185,7 @@ export async function getDataSourceViewsUsageByCategory({
           attributes: [],
           required: true,
           include: [
-            {
-              model: AgentConfiguration,
-              as: "agent_configuration",
-              attributes: [],
-              required: true,
-              where: {
-                status: "active",
-                workspaceId: owner.id,
-              },
-            },
+            agentConfigurationInclude,
           ],
         },
       ],
@@ -234,16 +232,7 @@ export async function getDataSourceViewsUsageByCategory({
           attributes: [],
           required: true,
           include: [
-            {
-              model: AgentConfiguration,
-              as: "agent_configuration",
-              attributes: [],
-              required: true,
-              where: {
-                status: "active",
-                workspaceId: owner.id,
-              },
-            },
+            agentConfigurationInclude,
           ],
         },
       ],
