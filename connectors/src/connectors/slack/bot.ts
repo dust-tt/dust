@@ -153,11 +153,19 @@ export async function botAnswerMessage(
         channelId: slackChannel,
         useCase: "bot",
       });
-      await slackClient.chat.postMessage({
-        channel: slackChannel,
-        text: "An unexpected error occurred. Our team has been notified",
-        thread_ts: slackMessageTs,
-      });
+      if (e instanceof ProviderRateLimitError) {
+        await slackClient.chat.postMessage({
+          channel: slackChannel,
+          blocks: makeMarkdownBlock(SLACK_RATE_LIMIT_ERROR_MESSAGE),
+          thread_ts: slackMessageTs,
+        });
+      } else {
+        await slackClient.chat.postMessage({
+          channel: slackChannel,
+          text: "An unexpected error occurred. Our team has been notified",
+          thread_ts: slackMessageTs,
+        });
+      }
     } catch (e) {
       logger.error(
         {
@@ -222,12 +230,19 @@ export async function botReplaceMention(
       channelId: slackChannel,
       useCase: "bot",
     });
-    await slackClient.chat.postMessage({
-      channel: slackChannel,
-      text: "An unexpected error occurred. Our team has been notified.",
-      thread_ts: slackMessageTs,
-    });
-
+    if (e instanceof ProviderRateLimitError) {
+      await slackClient.chat.postMessage({
+        channel: slackChannel,
+        blocks: makeMarkdownBlock(SLACK_RATE_LIMIT_ERROR_MESSAGE),
+        thread_ts: slackMessageTs,
+      });
+    } else {
+      await slackClient.chat.postMessage({
+        channel: slackChannel,
+        text: "An unexpected error occurred. Our team has been notified.",
+        thread_ts: slackMessageTs,
+      });
+    }
     return new Err(new Error("An unexpected error occurred"));
   }
 }
@@ -1017,26 +1032,14 @@ async function makeContentFragments(
     },
   });
 
-  let replies: MessageElement[] = [];
-  try {
-    replies = await getRepliesFromThread({
-      connectorId: connector.id,
-      slackClient,
-      channelId,
-      threadTs,
-      useCase: "bot",
-    });
-  } catch (e) {
-    if (e instanceof ProviderRateLimitError) {
-      slackClient.chat.postMessage({
-        channel: channelId,
-        blocks: makeMarkdownBlock(SLACK_RATE_LIMIT_ERROR_MESSAGE),
-        thread_ts: threadTs,
-      });
-      return new Err(new Error(SLACK_RATE_LIMIT_ERROR_MESSAGE));
-    }
-    throw e;
-  }
+  const replies = await getRepliesFromThread({
+    connectorId: connector.id,
+    slackClient,
+    channelId,
+    threadTs,
+    useCase: "bot",
+  });
+
   let shouldTake = false;
   for (const reply of replies) {
     if (reply.ts === startingAtTs) {
