@@ -155,6 +155,10 @@ export function contentFragmentToAttachmentCitation(
 
   if (contentFragment.contentNodeData) {
     const { provider, nodeType } = contentFragment.contentNodeData;
+    if (provider === "slack_bot") {
+      // TODO(spolu): clean-up once slack_bot is added to providers
+      throw new Error("`slack_bot` provider not yet supported");
+    }
     const logo = getConnectorProviderLogoWithFallback({ provider });
 
     const visual =
