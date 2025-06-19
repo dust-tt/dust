@@ -509,6 +509,8 @@ export const SlackCommandSchema = t.type({
     t.literal("sync-channel"),
     t.literal("sync-thread"),
     t.literal("skip-thread"),
+    t.literal("skip-channel"),
+    t.literal("unskip-channel"),
     t.literal("uninstall-for-unknown-team-ids"),
     t.literal("whitelist-domains"),
     t.literal("whitelist-bot"),
