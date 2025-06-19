@@ -1,4 +1,5 @@
 import type { BreadcrumbItem } from "@dust-tt/sparkle";
+import { ActionPinDistanceIcon } from "@dust-tt/sparkle";
 import {
   Citation,
   CitationIcons,
@@ -6,12 +7,7 @@ import {
   Icon,
   Markdown,
 } from "@dust-tt/sparkle";
-import {
-  ActionDocumentTextIcon,
-  Breadcrumbs,
-  DocumentIcon,
-} from "@dust-tt/sparkle";
-import React from "react";
+import { Breadcrumbs, DocumentIcon } from "@dust-tt/sparkle";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import { getDocumentIcon } from "@app/components/actions/retrieval/utils";
@@ -111,7 +107,7 @@ export function FilesystemPathDetails({
     <ActionDetailsWrapper
       actionName="Locate item in hierarchy"
       defaultOpen={defaultOpen}
-      visual={ActionDocumentTextIcon}
+      visual={ActionPinDistanceIcon}
     >
       <div className="flex flex-col gap-4 pl-6 pt-4">
         <span className="text-sm font-bold text-foreground dark:text-foreground-night">
