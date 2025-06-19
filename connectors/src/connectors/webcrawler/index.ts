@@ -152,7 +152,7 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
       );
     }
 
-    // Before launching again, cancel on the firecrawl side and reset the crawlId
+    // Before launching again, cancel on Firecrawl side and reset the crawlId
     if (webConfig.customCrawler === "firecrawl-api" && webConfig.crawlId) {
       await getFirecrawl().cancelCrawl(webConfig.crawlId);
       await webConfig.updateCrawlId(null);
