@@ -3,6 +3,7 @@ import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { WebClient } from "@slack/web-api";
 import type { Member } from "@slack/web-api/dist/response/UsersListResponse";
+import slackifyMarkdown from "slackify-markdown";
 import { z } from "zod";
 
 import { makeQueryResource } from "@app/lib/actions/mcp_internal_actions/servers/search/utils";
@@ -56,7 +57,13 @@ const createServer = (
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
 ): McpServer => {
-  const server = new McpServer(serverInfo);
+  const server = new McpServer(serverInfo, {
+    instructions:
+      "When posting a message on slack, you MUST use slack-flavored markdown to format the message." +
+      "IMPORTANT: if you want to mention a user, you must use <@USER_ID> where USER_ID is the id of the user you want to mention.\n" +
+      "If you want to reference a channel, you must use <#CHANNEL_ID> where CHANNEL_ID is the id of the channel you want to reference.\n" +
+      "NEVER use the channel name or the user name directly in a message as it will not be parsed correctly and appear as plain text.",
+  });
 
   server.tool(
     "search_messages",
@@ -228,10 +235,7 @@ const createServer = (
       message: z
         .string()
         .describe(
-          "The message to post. You can use slack-flavored markdown to format the message. " +
-            "IMPORTANT: if you want to mention a user, you must use <@USER_ID> where USER_ID is the id of the user you want to mention. " +
-            "If you want to reference a channel, you must use <#CHANNEL_ID> where CHANNEL_ID is the id of the channel you want to reference. " +
-            "NEVER use the channel name or the user name directly in a message as it will not be parsed correctly and appear as plain text."
+          "The message to post, must follow the Slack message formatting rules."
         ),
       threadTs: z
         .string()
@@ -251,7 +255,7 @@ const createServer = (
       }
 
       const agentUrl = `${config.getClientFacingUrl()}/w/${auth.getNonNullableWorkspace().sId}/assistant/new?assistantDetails=${agentLoopContext.runContext.agentConfiguration.sId}`;
-      message = `${originalMessage}\n_Sent via <${agentUrl}|${agentLoopContext.runContext.agentConfiguration.name} Agent> on Dust_`;
+      message = `${slackifyMarkdown(originalMessage)}\n_Sent via <${agentUrl}|${agentLoopContext.runContext.agentConfiguration.name} Agent> on Dust_`;
 
       const response = await slackClient.chat.postMessage({
         channel: to,
@@ -295,7 +299,9 @@ const createServer = (
         if (!response.ok) {
           return makeMCPToolTextError(`Error listing users: ${response.error}`);
         }
-        users.push(...(response.members ?? []));
+        users.push(
+          ...(response.members ?? []).filter((member) => !member.is_bot)
+        );
         cursor = response.response_metadata?.next_cursor;
 
         if (nameFilter) {
