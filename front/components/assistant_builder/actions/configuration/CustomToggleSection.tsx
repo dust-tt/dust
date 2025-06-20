@@ -1,5 +1,6 @@
 import { SliderToggle } from "@dust-tt/sparkle";
 
+import { ConfigurationSectionContainer } from "@app/components/assistant_builder/actions/configuration/ConfigurationSectionContainer";
 import type { AssistantBuilderMCPServerConfiguration } from "@app/components/assistant_builder/types";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
@@ -42,32 +43,31 @@ export function CustomToggleSection({
     actionConfiguration.additionalConfiguration[configurationKey] === true;
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <div className="flex flex-col gap-2">
-          <h3 className="heading-base font-semibold text-foreground dark:text-foreground-night">
-            {title}
-          </h3>
-          {description && (
-            <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-              {description}
-            </p>
-          )}
+    <ConfigurationSectionContainer title={title}>
+      <div className="flex flex-col items-center justify-between gap-4">
+        <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-2">
+            {description && (
+              <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                {description}
+              </p>
+            )}
+          </div>
+          <SliderToggle
+            size="sm"
+            selected={isEnabled}
+            onClick={() =>
+              handleConfigUpdate((old) => ({
+                ...old,
+                additionalConfiguration: {
+                  ...old.additionalConfiguration,
+                  [configurationKey]: !isEnabled,
+                },
+              }))
+            }
+          />
         </div>
-        <SliderToggle
-          size="sm"
-          selected={isEnabled}
-          onClick={() =>
-            handleConfigUpdate((old) => ({
-              ...old,
-              additionalConfiguration: {
-                ...old.additionalConfiguration,
-                [configurationKey]: !isEnabled,
-              },
-            }))
-          }
-        />
       </div>
-    </div>
+    </ConfigurationSectionContainer>
   );
 }
