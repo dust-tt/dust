@@ -32,10 +32,7 @@ function validateMemoryFile(
     throw new Error("Memory file not found");
   }
 
-  const metadata = fileResource.useCaseMetadata as {
-    type?: string;
-    conversationId?: string;
-  };
+  const metadata = fileResource.useCaseMetadata;
 
   if (
     metadata?.type !== "memory_file" ||
@@ -306,7 +303,7 @@ function createServer(
 
         const fileList = memoryFiles
           .map((file) => {
-            const metadata = file.useCaseMetadata as { description?: string };
+            const metadata = file.useCaseMetadata;
             const description = metadata?.description || "No description";
             const createdAt = new Date(file.createdAt).toISOString();
             return `- ${file.fileName} (ID: ${file.sId}) - ${description} - Created: ${createdAt}`;
