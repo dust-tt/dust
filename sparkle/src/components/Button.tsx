@@ -353,8 +353,10 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
             buttonVariants({ variant, size, className }),
             "s-inline-block",
             isPulsing && "s-animate-pulse",
-            (isLoading || props.disabled) &&
-              getDisabledClasses(variant || "primary")
+            (isLoading || props.disabled) && [
+              getDisabledClasses(variant || "primary"),
+              "s-pointer-events-none",
+            ]
           )}
           style={
             {
