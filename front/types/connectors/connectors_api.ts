@@ -577,6 +577,43 @@ export class ConnectorsAPI {
     return this._resultFromResponse(res);
   }
 
+  async getNotionUrlStatus({
+    connectorId,
+    url,
+  }: {
+    connectorId: string;
+    url: string;
+  }): Promise<
+    ConnectorsAPIResponse<{
+      notion: {
+        exists: boolean;
+        type?: "page" | "database";
+      };
+      dust: {
+        synced: boolean;
+        lastSync?: string;
+        breadcrumbs?: Array<{
+          id: string;
+          title: string;
+          type: "page" | "database" | "workspace";
+        }>;
+      };
+      summary: string;
+    }>
+  > {
+    const res = await this._fetchWithError(
+      `${this._url}/notion/url/status?connector_id=${encodeURIComponent(
+        connectorId
+      )}&url=${encodeURIComponent(url)}`,
+      {
+        method: "GET",
+        headers: this.getDefaultHeaders(),
+      }
+    );
+
+    return this._resultFromResponse(res);
+  }
+
   getDefaultHeaders() {
     return {
       "Content-Type": "application/json",

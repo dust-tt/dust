@@ -1,12 +1,17 @@
-import type { SearchResultResourceType } from "@dust-tt/client";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { WebClient } from "@slack/web-api";
+import type { Match } from "@slack/web-api/dist/response/SearchMessagesResponse";
 import type { Member } from "@slack/web-api/dist/response/UsersListResponse";
+import { uniqBy } from "lodash";
 import slackifyMarkdown from "slackify-markdown";
 import { z } from "zod";
 
-import { makeQueryResource } from "@app/lib/actions/mcp_internal_actions/servers/search/utils";
+import type {
+  SearchQueryResourceType,
+  SearchResultResourceType,
+} from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { renderRelativeTimeFrameForToolOutput } from "@app/lib/actions/mcp_internal_actions/servers/utils";
 import {
   makeMCPToolJSONSuccess,
   makeMCPToolTextError,
@@ -21,6 +26,8 @@ import config from "@app/lib/api/config";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { removeDiacritics } from "@app/lib/utils";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import type { TimeFrame } from "@app/types";
 import { parseTimeFrame, stripNullBytes, timeFrameFromNow } from "@app/types";
 
 const serverInfo: InternalMCPServerDefinitionType = {
@@ -53,6 +60,40 @@ const getSlackClient = async (accessToken?: string) => {
   });
 };
 
+function makeQueryResource(
+  keywords: string[],
+  relativeTimeFrame: TimeFrame | null,
+  channels?: string[],
+  usersFrom?: string[],
+  usersTo?: string[],
+  usersMentioned?: string[]
+): SearchQueryResourceType {
+  const timeFrameAsString =
+    renderRelativeTimeFrameForToolOutput(relativeTimeFrame);
+  let text = `Searching ${timeFrameAsString}`;
+  if (keywords.length > 0) {
+    text += ` with keywords: ${keywords.join(", ")}`;
+  }
+  if (channels && channels.length > 0) {
+    text += ` in channels: ${channels.join(", ")}`;
+  }
+  if (usersFrom && usersFrom.length > 0) {
+    text += ` from users: ${usersFrom.join(", ")}`;
+  }
+  if (usersTo && usersTo.length > 0) {
+    text += ` to users: ${usersTo.join(", ")}`;
+  }
+  if (usersMentioned && usersMentioned.length > 0) {
+    text += ` mentioning users: ${usersMentioned.join(", ")}`;
+  }
+
+  return {
+    mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_QUERY,
+    text,
+    uri: "",
+  };
+}
+
 const createServer = (
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
@@ -69,12 +110,13 @@ const createServer = (
     "search_messages",
     "Search messages accross all channels and dms for the current user",
     {
-      query: z
+      keywords: z
         .string()
+        .array()
+        .min(1)
         .describe(
-          "The string used to retrieve relevant messages using keyword based search" +
-            " based on the user request and conversation context. It can use the query modifiers from the Slack search syntax." +
-            " Shorter queries are generally better."
+          "Between 1 and 3 keywords to retrieve relevant messages " +
+            "based on the user request and conversation context."
         ),
       channels: z
         .string()
@@ -114,7 +156,7 @@ const createServer = (
     },
     async (
       {
-        query,
+        keywords,
         usersFrom,
         usersTo,
         usersMentioned,
@@ -123,102 +165,167 @@ const createServer = (
       },
       { authInfo }
     ) => {
-      const accessToken = authInfo?.token;
-      const slackClient = await getSlackClient(accessToken);
-
-      const timeFrame = parseTimeFrame(relativeTimeFrame);
-      const originalQuery = query;
-
-      if (timeFrame) {
-        const timestampInMs = timeFrameFromNow(timeFrame);
-        const date = new Date(timestampInMs);
-        query = `${query} after:${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()}`;
-      }
-
-      if (channels && channels.length > 0) {
-        query = `${query} ${channels
-          .map((channel) =>
-            channel.charAt(0) === "#" ? `in:${channel}` : `in:#${channel}`
-          )
-          .join(" ")}`;
-      }
-
-      if (usersFrom && usersFrom.length > 0) {
-        query = `${query} ${usersFrom.map((user) => `from:${user}`).join(" ")}`;
-      }
-
-      if (usersTo && usersTo.length > 0) {
-        query = `${query} ${usersTo.map((user) => `to:${user}`).join(" ")}`;
-      }
-
-      if (usersMentioned && usersMentioned.length > 0) {
-        query = `${query} ${usersMentioned.map((user) => `${user}`).join(" ")}`;
-      }
-
       if (!agentLoopContext?.runContext) {
         throw new Error("Unreachable: missing agentLoopRunContext.");
       }
 
-      const refsOffset = actionRefsOffset({
-        agentConfiguration: agentLoopContext.runContext.agentConfiguration,
-        stepActionIndex: agentLoopContext.runContext.stepActionIndex,
-        stepActions: agentLoopContext.runContext.stepActions,
-        refsOffset: agentLoopContext.runContext.citationsRefsOffset,
-      });
-
-      const messages = await slackClient.search.messages({
-        query,
-        sort: "score",
-        sort_dir: "desc",
-        highlight: false,
-        count: SLACK_SEARCH_ACTION_NUM_RESULTS,
-        page: 1,
-      });
-
-      if (!messages.ok) {
+      if (keywords.length > 5) {
         return makeMCPToolTextError(
-          `Error searching messages: ${messages.error}`
+          "The search query is too broad. Please reduce the number of keywords to 5 or less."
         );
       }
-      const refs = getRefs().slice(
-        refsOffset,
-        refsOffset + SLACK_SEARCH_ACTION_NUM_RESULTS
-      );
 
-      const results: SearchResultResourceType[] = (
-        messages.messages?.matches ?? []
-      )
-        .filter((match) => !!match.text)
-        .map((match) => {
-          return {
-            mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_RESULT,
-            uri: match.permalink ?? "",
-            text: `#${match.channel?.name ?? "Unknown"}, ${match.text ?? ""}`,
+      const accessToken = authInfo?.token;
+      const slackClient = await getSlackClient(accessToken);
 
-            id: match.ts ?? "",
-            source: {
-              provider: "slack",
-              name: "Slack",
-            },
-            tags: [],
-            ref: refs.shift() as string,
-            chunks: [stripNullBytes(match.text ?? "")],
-          };
-        });
+      const timeFrame = parseTimeFrame(relativeTimeFrame);
 
-      return {
-        isError: false,
-        content: [
-          ...results.map((result) => ({
-            type: "resource" as const,
-            resource: result,
-          })),
-          {
-            type: "resource" as const,
-            resource: makeQueryResource(originalQuery, timeFrame),
+      try {
+        // Search in slack only support AND queries which can easily return 0 hits.
+        // To avoid this, we'll simulate an OR query by searching for each keyword separately.
+        // Then we will aggregate the results.
+        const results: Match[][] = await concurrentExecutor(
+          keywords,
+          async (keyword) => {
+            let query = keyword;
+
+            if (timeFrame) {
+              const timestampInMs = timeFrameFromNow(timeFrame);
+              const date = new Date(timestampInMs);
+              query = `${query} after:${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()}`;
+            }
+
+            if (channels && channels.length > 0) {
+              query = `${query} ${channels
+                .map((channel) =>
+                  channel.charAt(0) === "#" ? `in:${channel}` : `in:#${channel}`
+                )
+                .join(" ")}`;
+            }
+
+            if (usersFrom && usersFrom.length > 0) {
+              query = `${query} ${usersFrom.map((user) => `from:${user}`).join(" ")}`;
+            }
+
+            if (usersTo && usersTo.length > 0) {
+              query = `${query} ${usersTo.map((user) => `to:${user}`).join(" ")}`;
+            }
+
+            if (usersMentioned && usersMentioned.length > 0) {
+              query = `${query} ${usersMentioned.map((user) => `${user}`).join(" ")}`;
+            }
+
+            const messages = await slackClient.search.messages({
+              query,
+              sort: "score",
+              sort_dir: "desc",
+              highlight: false,
+              count: SLACK_SEARCH_ACTION_NUM_RESULTS,
+              page: 1,
+            });
+
+            if (!messages.ok) {
+              throw new Error(messages.error);
+            }
+
+            return messages.messages?.matches ?? [];
           },
-        ],
-      };
+          { concurrency: 3 }
+        );
+
+        // Flatten the results, order by score descending.
+        const rawMatches = results
+          .flat()
+          .sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+
+        // Filter out matches that don't have a text.
+        const matchesWithText = rawMatches.filter((match) => !!match.text);
+
+        // Deduplicate matches by their iid.
+        const deduplicatedMatches = uniqBy(matchesWithText, "iid");
+
+        // Keep only the top SLACK_SEARCH_ACTION_NUM_RESULTS matches.
+        const matches = deduplicatedMatches.slice(
+          0,
+          SLACK_SEARCH_ACTION_NUM_RESULTS
+        );
+
+        if (matches.length === 0) {
+          return {
+            isError: false,
+            content: [
+              {
+                type: "text" as const,
+                text: `No messages found.`,
+              },
+              {
+                type: "resource" as const,
+                resource: makeQueryResource(
+                  keywords,
+                  timeFrame,
+                  channels,
+                  usersFrom,
+                  usersTo,
+                  usersMentioned
+                ),
+              },
+            ],
+          };
+        } else {
+          const refsOffset = actionRefsOffset({
+            agentConfiguration: agentLoopContext.runContext.agentConfiguration,
+            stepActionIndex: agentLoopContext.runContext.stepActionIndex,
+            stepActions: agentLoopContext.runContext.stepActions,
+            refsOffset: agentLoopContext.runContext.citationsRefsOffset,
+          });
+
+          const refs = getRefs().slice(
+            refsOffset,
+            refsOffset + SLACK_SEARCH_ACTION_NUM_RESULTS
+          );
+
+          const results: SearchResultResourceType[] = matches.map((match) => {
+            return {
+              mimeType:
+                INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_RESULT,
+              uri: match.permalink ?? "",
+              text: `#${match.channel?.name ?? "Unknown"}, ${match.text ?? ""}`,
+
+              id: match.ts ?? "",
+              source: {
+                provider: "slack",
+                name: "Slack",
+              },
+              tags: [],
+              ref: refs.shift() as string,
+              chunks: [stripNullBytes(match.text ?? "")],
+            };
+          });
+
+          return {
+            isError: false,
+            content: [
+              ...results.map((result) => ({
+                type: "resource" as const,
+                resource: result,
+              })),
+              {
+                type: "resource" as const,
+                resource: makeQueryResource(
+                  keywords,
+                  timeFrame,
+                  channels,
+                  usersFrom,
+                  usersTo,
+                  usersMentioned
+                ),
+              },
+            ],
+          };
+        }
+      } catch (error) {
+        return makeMCPToolTextError(`Error searching messages: ${error}`);
+      }
     }
   );
 

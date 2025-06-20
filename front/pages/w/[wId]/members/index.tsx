@@ -37,7 +37,7 @@ import type {
   SubscriptionPerSeatPricing,
   SubscriptionType,
   UserType,
-  UserTypeWithWorkspaces,
+  UserTypeWithWorkspace,
   WorkspaceDomain,
   WorkspaceType,
 } from "@app/types";
@@ -255,7 +255,7 @@ function WorkspaceMembersList({
   });
 
   const [selectedMember, setSelectedMember] =
-    useState<UserTypeWithWorkspaces | null>(null);
+    useState<UserTypeWithWorkspace | null>(null);
 
   const membersData = useSearchMembers({
     workspaceId: owner.sId,

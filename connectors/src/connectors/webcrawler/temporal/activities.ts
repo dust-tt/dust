@@ -55,6 +55,7 @@ import { WebCrawlerConfigurationResource } from "@connectors/resources/webcrawle
 import type { ModelId, WebcrawlerCustomCrawler } from "@connectors/types";
 import {
   INTERNAL_MIME_TYPES,
+  normalizeError,
   stripNullBytes,
   validateUrl,
   WEBCRAWLER_MAX_DEPTH,
@@ -1311,24 +1312,37 @@ export async function firecrawlCrawlCompleted(
   }
 
   if (crawlStatus.completed <= 0) {
-    // No content found, checking if it's blocked for robots.
-    const crawlErrors = await getFirecrawl().checkCrawlErrors(crawlId);
-    // Typing issue from Firecrawl, 'success = true' is not in the CrawlErrorsResponse
-    if ("success" in crawlErrors) {
-      localLogger.error(
-        { connectorId, crawlId },
-        `Couldn't fetch crawl error: ${crawlErrors.error}`
-      );
-      return;
-    }
+    try {
+      // No content found, checking if it's blocked for robots.
+      const crawlErrors = await getFirecrawl().checkCrawlErrors(crawlId);
+      // Typing issue from Firecrawl, 'success = true' is not in the CrawlErrorsResponse
+      if ("success" in crawlErrors) {
+        localLogger.error(
+          { connectorId, crawlId },
+          `Couldn't fetch crawl error: ${crawlErrors.error}`
+        );
+        return;
+      }
 
-    // Check if the rootUrl is blocked for robots
-    if (crawlErrors.robotsBlocked.includes(webConfig.url)) {
-      await syncFailed(connectorId, "webcrawling_error_blocked");
-    } else {
+      // Check if the rootUrl is blocked for robots
+      if (crawlErrors.robotsBlocked.includes(webConfig.url)) {
+        await syncFailed(connectorId, "webcrawling_error_blocked");
+      } else {
+        await syncFailed(connectorId, "webcrawling_error_empty_content");
+      }
+      return {
+        lastSyncStartTs: connector.lastSyncStartTime?.getTime() ?? null,
+      };
+    } catch (err) {
+      localLogger.warn(
+        { connectorId, crawlId },
+        `Couldn't check crawl errors: ${normalizeError(err)}`
+      );
       await syncFailed(connectorId, "webcrawling_error_empty_content");
+      return {
+        lastSyncStartTs: connector.lastSyncStartTime?.getTime() ?? null,
+      };
     }
-    return;
   }
 
   if (crawlStatus.completed >= webConfig.maxPageToCrawl) {
