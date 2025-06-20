@@ -12,6 +12,7 @@ import {
   StarIcon,
   StarStrokeIcon,
   TrashIcon,
+  XCircleIcon,
 } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
 import { useState } from "react";
@@ -39,6 +40,7 @@ export function AssistantDetailsButtonBar({
   owner,
 }: AssistantDetailsButtonBarProps) {
   const { user } = useUser();
+  const [hasClickedEditAssistant, setHasClickedEditAssistant] = useState(false);
 
   const [showDeletionModal, setShowDeletionModal] = useState(false);
   const { onOpenChange: onOpenChangeAssistantModal } =
@@ -173,9 +175,21 @@ export function AssistantDetailsButtonBar({
                 ? `/w/${owner.sId}/builder/assistants/${agentConfiguration.sId}?flow=workspace_assistants`
                 : undefined
             }
+            isLoading={hasClickedEditAssistant}
             disabled={!canEditAssistant}
             variant="outline"
-            icon={PencilSquareIcon}
+            style={
+              canEditAssistant
+                ? {}
+                : {
+                    color: "red",
+                  }
+            }
+            onClick={(e: Event) => {
+              console.log("Clicked edit assistant button");
+              setHasClickedEditAssistant(true);
+            }}
+            icon={canEditAssistant ? PencilSquareIcon : XCircleIcon}
           />
         )}
 
