@@ -56,6 +56,7 @@ export function ConfirmDeleteSpaceDialog({
               {hasAgents && (
                 <ContentMessage
                   variant="warning"
+                  // TODO: change to show names of public agents and then number of unpublished agents
                   title={`This will break ${dataSourceUsage} existing agent(s)`}
                 />
               )}
