@@ -240,8 +240,8 @@ const ContentWithTooltip = ({
   return (
     <TooltipProvider>
       <TooltipRoot>
-        <TooltipTrigger asChild={typeof children === "string" ? false : true}>
-          {children}
+        <TooltipTrigger asChild>
+          <span>{children}</span>
         </TooltipTrigger>
         <TooltipPortal>
           <TooltipContent>{tooltip}</TooltipContent>
@@ -282,8 +282,8 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     const resolvedVariant = variant || "primary";
     const resolvedSize = size || "sm";
 
-    const iconSize = ICON_SIZE_MAP[size];
-    const counterSize = COUNTER_SIZE_MAP[size];
+    const iconSize = ICON_SIZE_MAP[resolvedSize];
+    const counterSize = COUNTER_SIZE_MAP[resolvedSize];
 
     const renderIcon = (visual: React.ComponentType, extraClass = "") => (
       <Icon visual={visual} size={iconSize} className={cn(extraClass)} />
@@ -292,7 +292,10 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       <Icon
         visual={visual}
         size={iconSize}
-        className={cn(variant ? chevronVariantMap[variant] : "", extraClass)}
+        className={cn(
+          resolvedVariant ? chevronVariantMap[resolvedVariant] : "",
+          extraClass
+        )}
       />
     );
 
@@ -305,13 +308,17 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
           <div
             className={cn(
               "-s-mx-0.5",
-              size === "mini" && "s-w-5 s-px-0.5",
-              size === "xmini" && "s-w-5 s-px-0.5"
+              resolvedSize === "mini" && "s-w-5 s-px-0.5",
+              resolvedSize === "xmini" && "s-w-5 s-px-0.5"
             )}
           >
             <Spinner
-              size={size === "mini" || size === "xmini" ? "xs" : iconSize}
-              variant={(variant && spinnerVariantsMap[variant]) || "gray400"}
+              size={
+                resolvedSize === "mini" || resolvedSize === "xmini"
+                  ? "xs"
+                  : iconSize
+              }
+              variant={spinnerVariantsMap[resolvedVariant] || "gray400"}
             />
           </div>
         ) : (
@@ -322,7 +329,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
           <div
             className={cn(
               "s-flex s-items-center s-gap-2",
-              labelVariants({ size })
+              labelVariants({ size: resolvedSize })
             )}
           >
             {label}
@@ -385,7 +392,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     const innerButton = (
       <MetaButton
         ref={ref}
-        size={size}
+        size={resolvedSize}
         variant={resolvedVariant}
         disabled={isLoading || props.disabled}
         className={cn(isPulsing && "s-animate-pulse", className)}
