@@ -2,7 +2,6 @@ const path = require("path");
 
 const showReactScan =
   process.env.NODE_ENV === "development" && process.env.REACT_SCAN === "true";
-console.log(`show react scan: ${showReactScan}`);
 
 const CONTENT_SECURITY_POLICIES = [
   "default-src 'none';",
