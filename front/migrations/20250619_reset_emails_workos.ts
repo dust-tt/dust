@@ -51,6 +51,7 @@ const sendPasswordResetEmail = async (
   if (execute) {
     try {
       // Create a password reset token via WorkOS. The token is included in the URL.
+      // Note that this call also sends an email.
       const { passwordResetUrl, userId, email } =
         await getWorkOS().userManagement.createPasswordReset({
           email: user.email,
