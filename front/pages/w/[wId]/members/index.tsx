@@ -293,7 +293,11 @@ function WorkspaceMembersList({
         currentUser={currentUser}
         membersData={membersData}
         onRowClick={setSelectedMember}
-        showColumns={["name", "email", "role", "status", "groups"]}
+        showColumns={
+          isProvisioningEnabled
+            ? ["name", "email", "role", "status", "groups"]
+            : ["name", "email", "role"]
+        }
         pagination={pagination}
         setPagination={setPagination}
       />
