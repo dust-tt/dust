@@ -19,7 +19,7 @@ import { config as multiRegionsConfig } from "@app/lib/api/regions/config";
 import { getWorkOS } from "@app/lib/api/workos/client";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import logger from "@app/logger/logger";
-import type { Result } from "@app/types";
+import type { LightWorkspaceType, Result } from "@app/types";
 import { Err, Ok } from "@app/types";
 
 export type SessionCookie = {
@@ -158,9 +158,18 @@ export async function fetchUserFromWorkOS(
   return new Ok(workOSUser);
 }
 
-export async function fetchOrCreateWorkOSUserWithEmail(
-  workOSUser: WorkOSDirectoryUser
-): Promise<Result<WorkOSUser, Error>> {
+export async function fetchOrCreateWorkOSUserWithEmail({
+  workOSUser,
+  workspace,
+}: {
+  workspace: LightWorkspaceType;
+  workOSUser: WorkOSDirectoryUser;
+}): Promise<Result<WorkOSUser, Error>> {
+  const localLogger = logger.child({
+    directoryUserId: workOSUser.id,
+    workspaceId: workspace.sId,
+  });
+
   if (workOSUser.email == null) {
     return new Err(new Error("Missing email"));
   }
@@ -179,17 +188,34 @@ export async function fetchOrCreateWorkOSUserWithEmail(
         region: multiRegionsConfig.getCurrentRegion(),
       },
     });
-    logger.info(
-      { workOSUser, createdUser: existingUser, email: workOSUser.email },
-      "Created WorkOS user for webhook event"
+    localLogger.info(
+      { workOSUserId: createdUser.id },
+      "Created WorkOS user for webhook event."
     );
+    // Add the user to the organization.
+    if (workspace.workOSOrganizationId) {
+      await getWorkOS().userManagement.createOrganizationMembership({
+        organizationId: workspace.workOSOrganizationId,
+        userId: createdUser.id,
+      });
+      localLogger.warn(
+        {
+          workOSUserId: createdUser.id,
+          organizationId: workspace.workOSOrganizationId,
+        },
+        "Added user to the organization."
+      );
+    } else {
+      localLogger.warn(
+        { workOSUserId: createdUser.id },
+        "Created a user but no organization is associated to the workspace."
+      );
+    }
 
     return new Ok(createdUser);
   }
-  logger.info(
-    { workOSUser, createdUser: existingUser, email: workOSUser.email },
-    "Found WorkOS user for webhook event"
-  );
+
+  localLogger.info("Found WorkOS user for webhook event.");
 
   return new Ok(existingUser);
 }
