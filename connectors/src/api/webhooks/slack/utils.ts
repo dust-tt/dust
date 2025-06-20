@@ -96,7 +96,7 @@ export function isSlackWebhookEventReqBody(
 }
 
 export const withTrace =
-  <T extends Function>(tags: tracer.SpanOptions["tags"]) =>
+  <T = typeof handleChatBot>(tags: tracer.SpanOptions["tags"]) =>
   (fn: T) =>
     tracer.wrap(
       "slack.webhook.app_mention.handleChatBot",
