@@ -169,9 +169,9 @@ export async function fetchOrCreateWorkOSUserWithEmail(
     email: workOSUser.email,
   });
 
-  let [createdUser] = workOSUserResponse.data;
-  if (!createdUser) {
-    createdUser = await getWorkOS().userManagement.createUser({
+  const [existingUser] = workOSUserResponse.data;
+  if (!existingUser) {
+    const createdUser = await getWorkOS().userManagement.createUser({
       email: workOSUser.email,
       firstName: workOSUser.firstName ?? undefined,
       lastName: workOSUser.lastName ?? undefined,
@@ -180,15 +180,16 @@ export async function fetchOrCreateWorkOSUserWithEmail(
       },
     });
     logger.info(
-      { workOSUser, createdUser, email: workOSUser.email },
+      { workOSUser, createdUser: existingUser, email: workOSUser.email },
       "Created WorkOS user for webhook event"
     );
-  } else {
-    logger.info(
-      { workOSUser, createdUser, email: workOSUser.email },
-      "Found WorkOS user for webhook event"
-    );
-  }
 
-  return new Ok(createdUser);
+    return new Ok(createdUser);
+  }
+  logger.info(
+    { workOSUser, createdUser: existingUser, email: workOSUser.email },
+    "Found WorkOS user for webhook event"
+  );
+
+  return new Ok(existingUser);
 }
