@@ -67,54 +67,69 @@ const sendPasswordResetEmail = async (
           email: "support@dust.help",
         },
         subject: "[Dust] Password Reset Required - Important Update",
-        body: `<p>We're writing to inform you about an important update to your Dust account authentication.</p>
-        <p>As part of our ongoing migration to improve security and user experience, we need you to reset your password.</p>
-        <p>Please click the button below to reset your password:</p>
-        <div style="text-align: center; margin: 40px 0;">
-          <table cellpadding="0" cellspacing="0" border="0" style="margin: 0 auto;">
-            <tr>
-              <td style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                         border-radius: 8px;
-                         box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
-                         transition: all 0.3s ease;">
-                <a href="${passwordResetUrl}"
-                   style="display: inline-block;
-                          padding: 16px 32px;
-                          color: #ffffff;
-                          text-decoration: none;
-                          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-                          font-size: 16px;
-                          font-weight: 600;
-                          letter-spacing: 0.5px;
-                          border-radius: 8px;
-                          text-align: center;
-                          min-width: 200px;">
-                  🔐 Reset Your Password
-                </a>
-              </td>
-            </tr>
-          </table>
-        </div>
+        body: `<p>Dear Dust User,</p>
 
-        <p style="color: #666; font-size: 14px; margin-top: 30px;">If the button doesn't work, you can also copy and paste this link into your browser:</p>
-        <div style="background-color: #f8f9fa;
-                    border: 1px solid #e9ecef;
-                    border-radius: 6px;
-                    padding: 12px;
-                    margin: 10px 0;
-                    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;">
-          <p style="word-break: break-all;
-                    color: #495057;
-                    font-size: 13px;
-                    margin: 0;
-                    line-height: 1.4;">
-            ${passwordResetUrl}
-          </p>
-        </div>
-
-        <p>If you don't see this email or have any issues, please check your spam folder or contact our support team at support@dust.tt.</p>
-
-        <p>Thank you for your understanding and for being a valued Dust user.</p>`,
+    <p>We're writing to inform you about an important update to our authentication system.</p>
+    <p>This action is only required if you sign in to Dust using email and password. If you use Google, GitHub, or SSO to access your account, no action is needed.</p>
+    <p>As part of our security infrastructure upgrade, we need you to reset their passwords. This change will help us provide better security and an improved user experience.</p>
+    
+    <p>Please click the button below to reset your password:</p>
+    
+    <div style="text-align: center; margin: 40px 0;">
+      <table cellpadding="0" cellspacing="0" border="0" style="margin: 0 auto;">
+        <tr>
+          <td style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                     border-radius: 8px;
+                     box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+                     transition: all 0.3s ease;">
+            <a href="${passwordResetUrl}"
+               style="display: inline-flex;
+                      align-items: center;
+                      justify-content: center;
+                      white-space: nowrap;
+                      transition: background-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+                      background-color: #3b82f6;
+                      color: #f1f5f9;
+                      text-decoration: none;
+                      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+                      font-size: 14px;
+                      font-weight: 500;
+                      line-height: 1.25;
+                      height: 36px;
+                      padding: 0 12px;
+                      border-radius: 12px;
+                      gap: 8px;
+                      flex-shrink: 0;
+                      min-width: 200px;
+                      outline: none;
+                      border: none;">
+              🔐 Reset Your Password
+            </a>
+          </td>
+        </tr>
+      </table>
+    </div>
+    
+    <p style="color: #666; font-size: 14px; margin-top: 30px;">If the button doesn't work, you can also copy and paste this link into your browser:</p>
+    <div style="background-color: #f8f9fa;
+                border: 1px solid #e9ecef;
+                border-radius: 6px;
+                padding: 12px;
+                margin: 10px 0;
+                font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;">
+      <p style="word-break: break-all;
+                color: #495057;
+                font-size: 13px;
+                margin: 0;
+                line-height: 1.4;">
+        ${passwordResetUrl}
+      </p>
+    </div>
+            
+    <p>If you have any questions or concerns, please don't hesitate to contact our support team.</p>
+    
+    <p>Thank you for your cooperation,</p>
+    <p>The Dust Team</p>`,
       });
 
       if (emailResult.isErr()) {
