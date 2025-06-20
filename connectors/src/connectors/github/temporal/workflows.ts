@@ -54,8 +54,8 @@ const { githubCodeSyncActivity } = proxyActivities<typeof activities>({
   // to just relying on startToCloseTimeout (which has to be large enough to allow the full initial
   // sync, which can only be done in one activity since it is stateful (download of tar file to
   // local temp storage)). Basically In case of a deploy or crash of the worker node we will retry
-  // the activity after 15mn and not 240 as defined by the startToCloseTimeout.
-  heartbeatTimeout: "15 minute",
+  // the activity after 30mn and not 240 as defined by the startToCloseTimeout.
+  heartbeatTimeout: "30 minute",
 });
 
 const MAX_CONCURRENT_REPO_SYNC_WORKFLOWS = 3;
