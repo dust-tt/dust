@@ -213,6 +213,16 @@ export function AssistantDetailsButtonBar({
               });
               setHasClickedEditAssistant(true);
             }}
+            onMouseDown={(e: Event) => {
+              console.log("⬇️ Edit Assistant mouse down event", {
+                agentId: agentConfiguration.sId,
+                targetHref: `/w/${owner.sId}/builder/assistants/${agentConfiguration.sId}?flow=workspace_assistants`,
+                canEdit: canEditAssistant,
+                timestamp: new Date().toISOString(),
+                event: e,
+              });
+              setHasClickedEditAssistant(true);
+            }}
             icon={canEditAssistant ? PencilSquareIcon : XCircleIcon}
           />
         )}
