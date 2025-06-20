@@ -9,18 +9,22 @@ import { useConversationsNavigation } from "@app/components/assistant/conversati
 import { CONVERSATION_PARENT_SCROLL_DIV_ID } from "@app/components/assistant/conversation/lib";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import config from "@app/lib/api/config";
+import { AuthenticatorProvider } from "@app/lib/context/authenticator";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
+import type { PlanType } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<
   ConversationLayoutProps & {
     // Here, override conversationId.
     conversationId: string | null;
+    plan: PlanType | null;
   }
 >(async (context, auth) => {
   const owner = auth.workspace();
   const user = auth.user()?.toJSON();
   const subscription = auth.subscription();
   const isAdmin = auth.isAdmin();
+  const plan = auth.plan();
 
   if (!owner || !user || !auth.isUser() || !subscription) {
     const { cId } = context.query;
@@ -49,6 +53,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
       user,
       owner,
       isAdmin,
+      plan,
       subscription,
       baseUrl: config.getClientFacingUrl(),
       conversationId: getValidConversationId(cId),
@@ -58,9 +63,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
 
 export default function AssistantConversation({
   conversationId: initialConversationId,
-  owner,
-  subscription,
-  user,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [conversationKey, setConversationKey] = useState<string | null>(null);
   const [agentIdToMention, setAgentIdToMention] = useState<string | null>(null);
@@ -109,9 +111,6 @@ export default function AssistantConversation({
     <ConversationContainer
       // Key ensures the component re-renders when conversation changes except for shallow browse.
       key={conversationKey}
-      owner={owner}
-      subscription={subscription}
-      user={user}
       agentIdToMention={agentIdToMention}
     />
   );
@@ -119,11 +118,13 @@ export default function AssistantConversation({
 
 AssistantConversation.getLayout = (
   page: React.ReactElement,
-  pageProps: any
+  pageProps: InferGetServerSidePropsType<typeof getServerSideProps>
 ) => {
   return (
     <AppRootLayout>
-      <ConversationLayout pageProps={pageProps}>{page}</ConversationLayout>
+      <AuthenticatorProvider value={pageProps}>
+        <ConversationLayout pageProps={pageProps}>{page}</ConversationLayout>
+      </AuthenticatorProvider>
     </AppRootLayout>
   );
 };
