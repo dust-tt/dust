@@ -134,35 +134,27 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
     async (filePathOrPaths: string | string[]) => {
       setShowFileSelector(false);
       try {
-        if (Array.isArray(filePathOrPaths)) {
-          const fileInfos = await Promise.all(
-            filePathOrPaths.map((p) => validateAndGetFileInfo(p))
-          );
-          if (!conversationId) {
-            const newConvId = await createConversationForFiles();
-            if (!newConvId) {
-              return;
-            } // error already handled
-            setPendingFiles(fileInfos);
-            setIsUploadingFiles(true);
-          } else {
-            setPendingFiles(fileInfos);
-            setIsUploadingFiles(true);
-          }
-        } else {
-          const fileInfo = await validateAndGetFileInfo(filePathOrPaths);
-          if (!conversationId) {
-            const newConvId = await createConversationForFiles();
-            if (!newConvId) {
-              return;
-            } // error already handled
-            setPendingFiles([fileInfo]);
-            setIsUploadingFiles(true);
-          } else {
-            setPendingFiles([fileInfo]);
-            setIsUploadingFiles(true);
+        // Normalize to array for unified handling
+        const paths = Array.isArray(filePathOrPaths)
+          ? filePathOrPaths
+          : [filePathOrPaths];
+
+        const fileInfos = await Promise.all(
+          paths.map((p) => validateAndGetFileInfo(p))
+        );
+
+        // If no conversation, try to create one
+        let convId = conversationId;
+        if (!convId) {
+          convId = await createConversationForFiles();
+          if (!convId) {
+            // error already handled in createConversationForFiles
+            return;
           }
         }
+
+        setPendingFiles(fileInfos);
+        setIsUploadingFiles(true);
       } catch (error) {
         setError(`File error: ${normalizeError(error).message}`);
       }
@@ -285,7 +277,6 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
             });
           }
         }
-        // --- PATCH END ---
 
         if (!conversationId) {
           // For new conversation, pass contentFragments (from uploaded files)
@@ -333,7 +324,6 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
             throw new Error("No workspace selected");
           }
 
-          // Use createdContentFragments for this message
           const messageRes = await dustClient.postUserMessage({
             conversationId: conversationId,
             message: {

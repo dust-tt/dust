@@ -34,6 +34,8 @@ export const FileSelector: FC<FileSelectorProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
+  const [viewStart, setViewStart] = useState(0);
+  const viewSize = 15;
 
   const loadDirectory = async (path: string) => {
     setIsLoading(true);
@@ -88,6 +90,7 @@ export const FileSelector: FC<FileSelectorProps> = ({
         ...files,
       ]);
       setSelectedIndex(0);
+      setViewStart(0);
     } catch (err) {
       setError(
         `Cannot read directory: ${
@@ -110,12 +113,20 @@ export const FileSelector: FC<FileSelectorProps> = ({
     }
 
     if (key.upArrow) {
-      setSelectedIndex((prev) => Math.max(0, prev - 1));
+      setSelectedIndex((prev) => {
+        const next = Math.max(0, prev - 1);
+        setViewStart((start) => (next < start ? next : start));
+        return next;
+      });
       return;
     }
 
     if (key.downArrow) {
-      setSelectedIndex((prev) => Math.min(items.length - 1, prev + 1));
+      setSelectedIndex((prev) => {
+        const next = Math.min(items.length - 1, prev + 1);
+        setViewStart((start) => (next >= start + viewSize ? start + 1 : start));
+        return next;
+      });
       return;
     }
 
@@ -204,8 +215,9 @@ export const FileSelector: FC<FileSelectorProps> = ({
         <Text color="yellow">Loading...</Text>
       ) : (
         <Box flexDirection="column" marginTop={1}>
-          {items.slice(0, 15).map((item, index) => {
-            const isSelected = index === selectedIndex;
+          {items.slice(viewStart, viewStart + viewSize).map((item, index) => {
+            const actualIndex = viewStart + index;
+            const isSelected = actualIndex === selectedIndex;
             const isChecked = !item.isDirectory && selectedFiles.has(item.path);
             let icon = "📄";
             let color = "white";
@@ -248,8 +260,12 @@ export const FileSelector: FC<FileSelectorProps> = ({
             );
           })}
 
-          {items.length > 15 && (
-            <Text color="gray">... and {items.length - 15} more items</Text>
+          {items.length > viewSize && (
+            <Text color="gray">
+              Showing {viewStart + 1}-
+              {Math.min(viewStart + viewSize, items.length)} of {items.length}{" "}
+              items
+            </Text>
           )}
         </Box>
       )}

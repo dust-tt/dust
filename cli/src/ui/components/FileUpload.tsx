@@ -61,11 +61,13 @@ export const FileUpload: FC<FileUploadProps> = ({
           const fileContent = await readFile(file.path);
 
           setUploadStatus((prev) => ({ ...prev, [file.path]: "Uploading..." }));
-          setUploadProgress((prev) => ({ ...prev, [file.path]: 50 }));
+          setUploadProgress((prev) => ({ ...prev, [file.path]: 30 }));
 
           const fileObject = new File([fileContent], file.name, {
             type: file.type,
           });
+
+          setUploadProgress((prev) => ({ ...prev, [file.path]: 50 }));
 
           const uploadResult = await dustClient.uploadFile({
             fileObject,
