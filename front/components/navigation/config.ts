@@ -1,13 +1,14 @@
 import {
+  BarChartIcon,
   BookOpenIcon,
   BracesIcon,
   ChatBubbleLeftRightIcon,
   Cog6ToothIcon,
   CommandLineIcon,
-  CompanyIcon,
   DocumentTextIcon,
   FolderOpenIcon,
   LockIcon,
+  PlanetIcon,
   ShapesIcon,
   UserIcon,
 } from "@dust-tt/sparkle";
@@ -48,6 +49,7 @@ export type SubNavigationAdminId =
   | "providers"
   | "api_keys"
   | "dev_secrets"
+  | "analytics"
   | "actions";
 
 export type SubNavigationAppId =
@@ -147,6 +149,7 @@ export const getTopNavigationTabs = (
           "/w/[wId]/members",
           "/w/[wId]/workspace",
           "/w/[wId]/subscription",
+          "/w/[wId]/analytics",
           "/w/[wId]/actions",
           "/w/[wId]/developers/providers",
           "/w/[wId]/developers/api-keys",
@@ -179,12 +182,12 @@ export const subNavigationAdmin = ({
   if (isAdmin(owner)) {
     nav.push({
       id: "workspace",
-      label: "Workspace Settings",
+      label: "Workspace Management",
       variant: "primary",
       menus: [
         {
           id: "members",
-          label: "Domain & Members",
+          label: "People & Security",
           icon: UserIcon,
           href: `/w/${owner.sId}/members`,
           current: current === "members",
@@ -193,12 +196,21 @@ export const subNavigationAdmin = ({
         },
         {
           id: "workspace",
-          label: "Workspace",
-          icon: CompanyIcon,
+          label: "Workspace Settings",
+          icon: PlanetIcon,
           href: `/w/${owner.sId}/workspace`,
           current: current === "workspace",
           subMenuLabel: current === "workspace" ? subMenuLabel : undefined,
           subMenu: current === "workspace" ? subMenu : undefined,
+        },
+        {
+          id: "analytics",
+          label: "Analytics",
+          icon: BarChartIcon,
+          href: `/w/${owner.sId}/analytics`,
+          current: current === "analytics",
+          subMenuLabel: current === "analytics" ? subMenuLabel : undefined,
+          subMenu: current === "analytics" ? subMenu : undefined,
         },
         {
           id: "subscription",
@@ -214,7 +226,7 @@ export const subNavigationAdmin = ({
 
     nav.push({
       id: "developers",
-      label: "Developers",
+      label: "Builder Tools Management",
       variant: "primary",
       menus: [
         {

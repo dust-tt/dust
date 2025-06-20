@@ -1,20 +1,49 @@
-import { Button, CompanyIcon, Input, Page } from "@dust-tt/sparkle";
+import {
+  Button,
+  ContextItem,
+  Input,
+  Page,
+  PencilSquareIcon,
+  PlanetIcon,
+  Sheet,
+  SheetContainer,
+  SheetContent,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+  SlackLogo,
+  SliderToggle,
+  useSendNotification,
+} from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 import { useCallback, useEffect, useState } from "react";
 
 import { subNavigationAdmin } from "@app/components/navigation/config";
+import { setupConnection } from "@app/components/spaces/AddConnectionMenu";
 import AppContentLayout from "@app/components/sparkle/AppContentLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
-import { ActivityReport } from "@app/components/workspace/ActivityReport";
-import { QuickInsights } from "@app/components/workspace/Analytics";
 import { ProviderManagementModal } from "@app/components/workspace/ProviderManagementModal";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import { useWorkspaceSubscriptions } from "@app/lib/swr/workspaces";
-import type { SubscriptionType, WorkspaceType } from "@app/types";
+import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
+import {
+  useConnectorConfig,
+  useToggleSlackChatBot,
+} from "@app/lib/swr/connectors";
+import type { PostDataSourceRequestBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources";
+import type {
+  DataSourceType,
+  SpaceType,
+  SubscriptionType,
+  WorkspaceType,
+} from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
+  slackBotDataSource: DataSourceType | null;
+  systemSpace: SpaceType;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const subscription = auth.subscription();
@@ -24,10 +53,18 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
+  const slackBotDataSource =
+    (await DataSourceResource.listByConnectorProvider(auth, "slack_bot"))[0] ??
+    null;
+
+  const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
+
   return {
     props: {
       owner,
       subscription,
+      slackBotDataSource: slackBotDataSource?.toJSON() ?? null,
+      systemSpace: systemSpace.toJSON(),
     },
   };
 });
@@ -35,6 +72,8 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 export default function WorkspaceAdmin({
   owner,
   subscription,
+  slackBotDataSource,
+  systemSpace,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [disable, setDisabled] = useState(true);
   const [updating, setUpdating] = useState(false);
@@ -42,11 +81,7 @@ export default function WorkspaceAdmin({
   const [workspaceName, setWorkspaceName] = useState(owner.name);
   const [workspaceNameError, setWorkspaceNameError] = useState<string>("");
 
-  const [isDownloadingData, setIsDownloadingData] = useState(false);
-
-  const { subscriptions } = useWorkspaceSubscriptions({
-    owner,
-  });
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
 
   const formValidation = useCallback(() => {
     if (workspaceName === owner.name) {
@@ -88,107 +123,18 @@ export default function WorkspaceAdmin({
       window.alert("Failed to update workspace.");
       setUpdating(false);
     } else {
+      setIsSheetOpen(false);
       // We perform a full refresh so that the Workspace name updates and we get a fresh owner
       // object so that the formValidation logic keeps working.
       window.location.reload();
     }
   };
 
-  const handleDownload = async (selectedMonth: string | null) => {
-    if (!selectedMonth) {
-      return;
-    }
-
-    const queryString = `mode=month&start=${selectedMonth}&table=all`;
-
-    setIsDownloadingData(true);
-    try {
-      const response = await fetch(
-        `/api/w/${owner.sId}/workspace-usage?${queryString}`
-      );
-
-      if (!response.ok) {
-        throw new Error(`Error: ${response.status}`);
-      }
-
-      const contentType = response.headers.get("Content-Type");
-      const isZip = contentType === "application/zip";
-
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-
-      const [year, month] = selectedMonth.split("-");
-
-      const getMonthName = (monthIndex: number) => {
-        const months = [
-          "jan",
-          "feb",
-          "mar",
-          "apr",
-          "may",
-          "jun",
-          "jul",
-          "aug",
-          "sep",
-          "oct",
-          "nov",
-          "dec",
-        ];
-        return months[monthIndex - 1];
-      };
-
-      const monthName = getMonthName(Number(month));
-
-      const fileExtension = isZip ? "zip" : "csv";
-      const filename = `dust_${owner.name}_activity_${year}_${monthName}.${fileExtension}`;
-
-      const link = document.createElement("a");
-      link.href = url;
-      link.setAttribute("download", filename);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    } catch (error) {
-      alert("Failed to download activity data.");
-    } finally {
-      setIsDownloadingData(false);
-    }
+  const handleCancel = () => {
+    setWorkspaceName(owner.name);
+    setWorkspaceNameError("");
+    setIsSheetOpen(false);
   };
-
-  const monthOptions: string[] = [];
-
-  if (subscriptions.length > 0) {
-    const oldestStartDate = subscriptions.reduce(
-      (oldest, current) => {
-        if (!current.startDate) {
-          return oldest;
-        }
-        if (!oldest) {
-          return new Date(current.startDate);
-        }
-        return new Date(current.startDate) < oldest
-          ? new Date(current.startDate)
-          : oldest;
-      },
-      null as Date | null
-    );
-
-    if (oldestStartDate) {
-      const startDateYear = oldestStartDate.getFullYear();
-      const startDateMonth = oldestStartDate.getMonth();
-
-      const currentYear = new Date().getFullYear();
-      const currentMonth = new Date().getMonth();
-
-      for (let year = currentYear; year >= startDateYear; year--) {
-        const startMonth = year === startDateYear ? startDateMonth : 0;
-        const endMonth = year === currentYear ? currentMonth : 11;
-        for (let month = endMonth; month >= startMonth; month--) {
-          monthOptions.push(`${year}-${String(month + 1).padStart(2, "0")}`);
-        }
-      }
-    }
-  }
 
   return (
     <>
@@ -198,65 +144,187 @@ export default function WorkspaceAdmin({
         subNavigation={subNavigationAdmin({ owner, current: "workspace" })}
       >
         <Page.Vertical align="stretch" gap="xl">
-          <Page.Header
-            title="Workspace"
-            icon={CompanyIcon}
-            description="Manage your workspace"
-          />
+          <Page.Header title="Workspace Settings" icon={PlanetIcon} />
           <Page.Vertical align="stretch" gap="md">
-            <Page.H variant="h4">Analytics</Page.H>
-            <div className="grid w-full grid-cols-1 gap-4 md:grid-cols-2">
-              <QuickInsights owner={owner} />
-              <ActivityReport
-                isDownloading={isDownloadingData}
-                monthOptions={monthOptions}
-                handleDownload={handleDownload}
-              />
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <Page.H variant="h4">Workspace Name</Page.H>
+                <Page.P variant="secondary">{owner.name}</Page.P>
+              </div>
+              <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+                <SheetTrigger asChild>
+                  <Button
+                    variant="outline"
+                    label="Edit"
+                    icon={PencilSquareIcon}
+                  />
+                </SheetTrigger>
+                <SheetContent>
+                  <SheetHeader>
+                    <SheetTitle>Edit Workspace Name</SheetTitle>
+                  </SheetHeader>
+                  <SheetContainer>
+                    <div className="mt-6 flex flex-col gap-4">
+                      <Page.P>
+                        Think GitHub repository names, short and memorable.
+                      </Page.P>
+                      <Input
+                        name="name"
+                        placeholder="Workspace name"
+                        value={workspaceName}
+                        onChange={(e) => setWorkspaceName(e.target.value)}
+                        message={workspaceNameError}
+                        messageStatus="error"
+                      />
+                    </div>
+                  </SheetContainer>
+                  <SheetFooter>
+                    <Button
+                      variant="tertiary"
+                      label="Cancel"
+                      onClick={handleCancel}
+                    />
+                    <Button
+                      variant="primary"
+                      label={updating ? "Saving..." : "Save"}
+                      disabled={disable || updating}
+                      onClick={handleUpdateWorkspace}
+                    />
+                  </SheetFooter>
+                </SheetContent>
+              </Sheet>
             </div>
           </Page.Vertical>
           <Page.Vertical align="stretch" gap="md">
-            <Page.H variant="h4">Settings</Page.H>
-            <div className="grid grid-cols-2 gap-2">
-              <Page.H variant="h6">Workspace name</Page.H>
-              <Page.H variant="h6">Model Selection</Page.H>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <Page.P variant="secondary">
-                Think GitHub repository names, short and memorable.
-              </Page.P>
-              <Page.P variant="secondary">
-                Select the models you want available to your workspace for the
-                creation of AI Agents.
-              </Page.P>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div className="flex flex-row gap-2">
-                <Input
-                  name="name"
-                  placeholder="Workspace name"
-                  value={workspaceName}
-                  onChange={(e) => setWorkspaceName(e.target.value)}
-                  message={workspaceNameError}
-                  messageStatus="error"
-                />
-                {!disable && (
-                  <Button
-                    variant="primary"
-                    disabled={disable || updating}
-                    onClick={handleUpdateWorkspace}
-                    label={updating ? "Saving..." : "Save"}
-                    className="grow-0"
-                  />
-                )}
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <Page.H variant="h4">Model Selection</Page.H>
+                <Page.P variant="secondary">
+                  Select the models you want available to your workspace.
+                </Page.P>
               </div>
-              <div>
-                <ProviderManagementModal owner={owner} />
-              </div>
+              <ProviderManagementModal owner={owner} />
             </div>
+          </Page.Vertical>
+          <Page.Vertical align="stretch" gap="md">
+            <Page.H variant="h4">Integrations</Page.H>
+            <SlackBotToggle
+              owner={owner}
+              slackBotDataSource={slackBotDataSource}
+              systemSpace={systemSpace}
+            />
           </Page.Vertical>
         </Page.Vertical>
       </AppContentLayout>
     </>
+  );
+}
+
+function SlackBotToggle({
+  owner,
+  slackBotDataSource,
+  systemSpace,
+}: {
+  owner: WorkspaceType;
+  slackBotDataSource: DataSourceType | null;
+  systemSpace: SpaceType;
+}) {
+  const { configValue } = useConnectorConfig({
+    configKey: "botEnabled",
+    dataSource: slackBotDataSource ?? null,
+    owner,
+  });
+  const isSlackBotEnabled = configValue === "true";
+
+  const toggleSlackBotOnExistingDataSource = useToggleSlackChatBot({
+    dataSource: slackBotDataSource ?? null,
+    owner,
+  });
+
+  const [isChangingSlackBot, setIsChangingSlackBot] = useState(false);
+  const sendNotification = useSendNotification();
+
+  const createSlackBotConnectionAndDataSource = async () => {
+    try {
+      const connectionIdRes = await setupConnection({
+        owner,
+        provider: "slack_bot",
+        extraConfig: {},
+      });
+      if (connectionIdRes.isErr()) {
+        throw connectionIdRes.error;
+      }
+
+      const res = await fetch(
+        `/api/w/${owner.sId}/spaces/${systemSpace.sId}/data_sources`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            provider: "slack_bot",
+            connectionId: connectionIdRes.value,
+            name: undefined,
+            configuration: null,
+          } satisfies PostDataSourceRequestBody),
+        }
+      );
+
+      if (res.ok) {
+        return await res.json();
+      } else {
+        return null;
+      }
+    } catch (e) {
+      return null;
+    }
+  };
+
+  const toggleSlackBot = async () => {
+    setIsChangingSlackBot(true);
+    if (slackBotDataSource) {
+      await toggleSlackBotOnExistingDataSource(!isSlackBotEnabled);
+    } else {
+      const createRes = await createSlackBotConnectionAndDataSource();
+      if (createRes) {
+        // No need to toggle since default config already enabled the bot.
+        // await toggleSlackBotOnExistingDataSource(true);
+        // TODO: likely better to still make the call (but tricky since data source is not yet created).
+        window.location.reload();
+      } else {
+        sendNotification({
+          type: "error",
+          title: `Failed to enable Slack Bot.`,
+          description: `Could not create a new Slack Bot data source.`,
+        });
+      }
+    }
+    setIsChangingSlackBot(false);
+  };
+
+  return (
+    <ContextItem.List>
+      <div className="h-full border-b border-border dark:border-border-night" />
+      <ContextItem
+        title="Slack Bot"
+        subElement="Use Dust Agents in Slack with the Dust Slack app"
+        visual={<SlackLogo className="h-6 w-6" />}
+        hasSeparatorIfLast={true}
+        action={
+          <SliderToggle
+            selected={
+              // When changing and initially enabled, show disabled, and vice versa.
+              isSlackBotEnabled !== isChangingSlackBot
+            }
+            disabled={isChangingSlackBot}
+            onClick={() => {
+              void toggleSlackBot();
+            }}
+          />
+        }
+      />
+    </ContextItem.List>
   );
 }
 

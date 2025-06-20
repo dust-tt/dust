@@ -96,7 +96,8 @@ export function EditSpaceManagedDataSourcesViews({
         (dsv) =>
           isManaged(dsv.dataSource) &&
           (!dataSourceView ||
-            dsv.dataSource.sId === dataSourceView.dataSource.sId)
+            dsv.dataSource.sId === dataSourceView.dataSource.sId) &&
+          dsv.dataSource.connectorProvider !== "slack_bot"
       ),
     [systemSpaceDataSourceViews, dataSourceView]
   );
