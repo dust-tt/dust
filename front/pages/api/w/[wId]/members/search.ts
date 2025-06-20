@@ -9,9 +9,21 @@ import { searchMembers } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { MAX_SEARCH_EMAILS } from "@app/lib/memberships";
 import { apiError } from "@app/logger/withlogging";
-import type { UserTypeWithWorkspace, WithAPIErrorResponse } from "@app/types";
+import type {
+  GroupKind,
+  UserTypeWithWorkspace,
+  WithAPIErrorResponse,
+} from "@app/types";
+
+import { GroupKindCodec } from "../groups";
 
 const DEFAULT_PAGE_LIMIT = 25;
+
+const GroupKindWithoutSystemCodec = t.refinement(
+  GroupKindCodec,
+  (kind): kind is Exclude<GroupKind, "system"> => kind !== "system",
+  "GroupKindWithoutSystem"
+);
 
 const SearchMembersQueryCodec = t.type({
   orderColumn: withFallback(t.literal("name"), "name"),
@@ -30,6 +42,7 @@ const SearchMembersQueryCodec = t.type({
   ),
   searchTerm: t.union([t.string, t.undefined]),
   searchEmails: t.union([t.string, t.undefined]),
+  groupKind: t.union([GroupKindWithoutSystemCodec, t.undefined]),
 });
 
 export type SearchMembersResponseBody = {
@@ -75,6 +88,7 @@ async function handler(
         {
           searchTerm: query.searchTerm,
           searchEmails: emails,
+          groupKind: query.groupKind,
         },
         query
       );

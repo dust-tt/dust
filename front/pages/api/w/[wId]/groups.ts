@@ -13,7 +13,7 @@ export type GetGroupsResponseBody = {
   groups: GroupType[];
 };
 
-const GroupKindCodec = t.keyof({
+export const GroupKindCodec = t.keyof({
   global: null,
   regular: null,
   agent_editors: null,
