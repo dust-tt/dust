@@ -1,7 +1,5 @@
 import Document, { Head, Html, Main, NextScript } from "next/document";
 
-const { ENABLE_BOT_CRAWLING } = process.env;
-
 class MyDocument extends Document {
   render() {
     return (
@@ -14,7 +12,7 @@ class MyDocument extends Document {
             href="https://fonts.gstatic.com"
             crossOrigin="anonymous"
           />
-          {ENABLE_BOT_CRAWLING !== "true" && (
+          {process.env.NEXT_PUBLIC_ENABLE_BOT_CRAWLING !== "true" && (
             <meta name="robots" content="noindex" />
           )}
         </Head>
