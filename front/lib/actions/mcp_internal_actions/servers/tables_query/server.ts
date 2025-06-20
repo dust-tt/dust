@@ -94,6 +94,7 @@ function createServer(
         conversation: agentLoopRunContext.conversation,
         model: supportedModel,
         prompt: agentLoopRunContext.agentConfiguration.instructions ?? "",
+        tools: "",
         allowedTokenCount,
         excludeImages: true,
       });
