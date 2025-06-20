@@ -10,7 +10,8 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import { ConnectorsAPI } from "@app/types";
 
-export type GetNotionUrlStatusResponseBody = WithAPIErrorResponse<{
+// Post because of the request body.
+export type PostNotionUrlStatusResponseBody = WithAPIErrorResponse<{
   notion: {
     exists: boolean;
     type?: "page" | "database";
@@ -29,7 +30,7 @@ export type GetNotionUrlStatusResponseBody = WithAPIErrorResponse<{
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<GetNotionUrlStatusResponseBody>,
+  res: NextApiResponse<PostNotionUrlStatusResponseBody>,
   auth: Authenticator
 ): Promise<void> {
   if (!auth.isAdmin()) {
