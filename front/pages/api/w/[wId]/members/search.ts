@@ -14,8 +14,7 @@ import type {
   UserTypeWithWorkspace,
   WithAPIErrorResponse,
 } from "@app/types";
-
-import { GroupKindCodec } from "../groups";
+import { GroupKindCodec } from "@app/types";
 
 const DEFAULT_PAGE_LIMIT = 25;
 
