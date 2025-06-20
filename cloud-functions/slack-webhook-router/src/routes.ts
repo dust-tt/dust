@@ -40,6 +40,8 @@ export function createRoutes(
   });
 
   router.post("/:webhookSecret/interactions", async (req, res) => {
+    // Slack interactions are sent as application/x-www-form-urlencoded
+    // with JSON payload in a 'payload' field - forwarded as-is to connectors
     await handleWebhook(
       req,
       res,
