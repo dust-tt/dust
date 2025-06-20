@@ -95,17 +95,23 @@ export function isSlackWebhookEventReqBody(
   );
 }
 
-export const handleChatBotWithTrace = (tags: { [key: string]: string }) =>
-  tracer.wrap(
-    "slack.webhook.app_mention.handleChatBot",
-    {
-      type: "webhook",
-      tags,
-    },
-    handleChatBot
-  );
+export const withTrace =
+  <T extends Function>(tags: tracer.SpanOptions["tags"]) =>
+  (fn: T) =>
+    tracer.wrap(
+      "slack.webhook.app_mention.handleChatBot",
+      {
+        type: "webhook",
+        tags,
+      },
+      fn
+    );
 
-async function handleChatBot(req: Request, res: Response, logger: Logger) {
+export async function handleChatBot(
+  req: Request,
+  res: Response,
+  logger: Logger
+) {
   const { event } = req.body;
 
   const slackMessage = event.text;

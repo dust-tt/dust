@@ -11,8 +11,9 @@ import type {
   SlackWebhookResBody,
 } from "@connectors/api/webhooks/webhook_slack_shared";
 import {
-  handleChatBotWithTrace,
+  handleChatBot,
   isSlackWebhookEventReqBody,
+  withTrace,
 } from "@connectors/api/webhooks/webhook_slack_shared";
 import { getBotUserIdMemoized } from "@connectors/connectors/slack/lib/bot_user_helpers";
 import { updateSlackChannelInConnectorsDb } from "@connectors/connectors/slack/lib/channels";
@@ -108,10 +109,10 @@ const _webhookSlackAPIHandler = async (
     try {
       switch (event.type) {
         case "app_mention": {
-          await handleChatBotWithTrace({
+          await withTrace({
             "slack.team_id": teamId,
             "slack.app": "slack",
-          })(req, res, logger);
+          })(handleChatBot)(req, res, logger);
           break;
         }
         /**
@@ -165,10 +166,10 @@ const _webhookSlackAPIHandler = async (
               return res.status(200).send();
             }
             // Message from an actual user (a human)
-            await handleChatBotWithTrace({
+            await withTrace({
               "slack.team_id": teamId,
               "slack.app": "slack",
-            })(req, res, logger);
+            })(handleChatBot)(req, res, logger);
             break;
           } else if (event.channel_type === "channel") {
             if (!event.channel) {

@@ -9,8 +9,9 @@ import type {
   SlackWebhookResBody,
 } from "@connectors/api/webhooks/webhook_slack_shared";
 import {
-  handleChatBotWithTrace,
+  handleChatBot,
   isSlackWebhookEventReqBody,
+  withTrace,
 } from "@connectors/api/webhooks/webhook_slack_shared";
 import { getBotUserIdMemoized } from "@connectors/connectors/slack/lib/bot_user_helpers";
 import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
@@ -88,10 +89,10 @@ const _webhookSlackBotAPIHandler = async (
     try {
       switch (event.type) {
         case "app_mention": {
-          await handleChatBotWithTrace({
+          await withTrace({
             "slack.team_id": teamId,
             "slack.app": "slack_bot",
-          })(req, res, logger);
+          })(handleChatBot)(req, res, logger);
           break;
         }
         /**
@@ -145,10 +146,10 @@ const _webhookSlackBotAPIHandler = async (
               return res.status(200).send();
             }
             // Message from an actual user (a human)
-            await handleChatBotWithTrace({
+            await withTrace({
               "slack.team_id": teamId,
               "slack.app": "slack_bot",
-            })(req, res, logger);
+            })(handleChatBot)(req, res, logger);
           }
           break;
         }
