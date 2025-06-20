@@ -63,7 +63,7 @@ const sendPasswordResetEmail = async (
         to: email,
         from: {
           name: "Dust team",
-          email: "team@dust.tt",
+          email: "support@dust.help",
         },
         subject: "[Dust] Password Reset Required - Important Update",
         body: `<p>We're writing to inform you about an important update to your Dust account authentication.</p>
