@@ -111,24 +111,34 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
     rootUrl = `http://${rootUrl}`;
   }
 
-  const crawlerResponse = await firecrawlApp.asyncCrawlUrl(rootUrl, {
-    maxDiscoveryDepth: webCrawlerConfig.depth ?? WEBCRAWLER_MAX_DEPTH,
-    limit: maxRequestsPerCrawl,
-    allowBackwardLinks: webCrawlerConfig.crawlMode === "website",
-    delay: 3,
-    scrapeOptions: {
-      onlyMainContent: true,
-      formats: ["markdown"],
-      headers: customHeaders,
-      maxAge: 43_200_000, // Use last 12h of cache
-    },
-    webhook: {
-      url: `${apiConfig.getConnectorsPublicURL()}/webhooks/${apiConfig.getDustConnectorsWebhooksSecret()}/firecrawl`,
-      metadata: {
-        connectorId: String(connectorId),
+  let crawlerResponse;
+  try {
+    crawlerResponse = await firecrawlApp.asyncCrawlUrl(rootUrl, {
+      maxDiscoveryDepth: webCrawlerConfig.depth ?? WEBCRAWLER_MAX_DEPTH,
+      limit: maxRequestsPerCrawl,
+      allowBackwardLinks: webCrawlerConfig.crawlMode === "website",
+      delay: 3,
+      scrapeOptions: {
+        onlyMainContent: true,
+        formats: ["markdown"],
+        headers: customHeaders,
+        maxAge: 43_200_000, // Use last 12h of cache
       },
-    },
-  });
+      webhook: {
+        url: `${apiConfig.getConnectorsPublicURL()}/webhooks/${apiConfig.getDustConnectorsWebhooksSecret()}/firecrawl`,
+        metadata: {
+          connectorId: String(connectorId),
+        },
+      },
+    });
+  } catch (error) {
+    // Handle thrown errors from Firecrawl API
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    crawlerResponse = {
+      success: false,
+      error: errorMessage,
+    };
+  }
 
   if (!crawlerResponse.success) {
     const errorMessage = crawlerResponse.error || "Unknown error";
