@@ -106,9 +106,6 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
   const maxRequestsPerCrawl =
     webCrawlerConfig.maxPageToCrawl || WEBCRAWLER_MAX_PAGES;
 
-  // temporay solution to have both crawler while we test them
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-
   let rootUrl = webCrawlerConfig.url.trim();
   if (!rootUrl.startsWith("http://") && !rootUrl.startsWith("https://")) {
     rootUrl = `http://${rootUrl}`;
