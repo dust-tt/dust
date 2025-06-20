@@ -91,12 +91,12 @@ export async function getDataSourceViewsUsageByCategory({
       )
     ).map((g) => g.agentConfigurationId);
 
-  const agentWhereClauseAdmin = {
+  const getAgentWhereClauseAdmin = () => ({
     status: "active",
     workspaceId: owner.id,
-  };
+  });
 
-  const agentWhereClauseNonAdmin = {
+  const getAgentWhereClauseNonAdmin = async () => ({
     status: "active",
     workspaceId: owner.id,
     // If user is non-admin, only include agents that either they have access to or are published
@@ -110,14 +110,16 @@ export async function getDataSourceViewsUsageByCategory({
         },
       },
     ],
-  };
+  });
 
   const agentConfigurationInclude = {
     model: AgentConfiguration,
     as: "agent_configuration",
     attributes: [],
     required: true,
-    where: auth.isAdmin() ? agentWhereClauseAdmin : agentWhereClauseNonAdmin,
+    where: auth.isAdmin()
+      ? getAgentWhereClauseAdmin()
+      : await getAgentWhereClauseNonAdmin(),
   };
 
   const res = (await Promise.all([
