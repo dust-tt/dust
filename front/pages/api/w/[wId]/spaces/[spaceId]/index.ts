@@ -228,13 +228,12 @@ async function handler(
 
       const { force } = req.query;
       const shouldForce = isString(force) && force === "true";
-      const options = { force: shouldForce };
 
       try {
         const deleteRes = await softDeleteSpaceAndLaunchScrubWorkflow(
           auth,
           space,
-          options
+          shouldForce
         );
         if (deleteRes.isErr()) {
           return apiError(req, res, {
