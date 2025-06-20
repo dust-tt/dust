@@ -35,11 +35,13 @@ export function isChannelCreatedEvent(
 export interface OnChannelCreationInterface {
   event: ChannelCreatedEvent;
   logger: Logger;
+  context?: "slack_bot" | "slack";
 }
 
 export async function onChannelCreation({
   event,
   logger,
+  context = "slack",
 }: OnChannelCreationInterface): Promise<Result<void, Error>> {
   const { channel } = event;
   if (!channel) {
@@ -50,7 +52,8 @@ export async function onChannelCreation({
   const autoReadRes = await autoReadChannel(
     channel.context_team_id,
     logger,
-    channel.id
+    channel.id,
+    context
   );
   if (autoReadRes.isErr()) {
     return new Err(

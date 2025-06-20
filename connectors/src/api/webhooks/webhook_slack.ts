@@ -467,6 +467,7 @@ const _webhookSlackAPIHandler = async (
             const onChannelCreationRes = await onChannelCreation({
               event,
               logger,
+              context: "slack",
             });
             if (onChannelCreationRes.isErr()) {
               return apiError(req, res, {
