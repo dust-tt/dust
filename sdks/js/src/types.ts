@@ -806,6 +806,7 @@ type TablesQueryActionPublicType = z.infer<typeof TablesQueryActionTypeSchema>;
 
 const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "advanced_notion_management"
+  | "advanced_search"
   | "agent_builder_v2"
   | "agent_discovery"
   | "claude_3_7_reasoning"
@@ -824,6 +825,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "google_ai_studio_experimental_models_feature"
   | "google_calendar_tool"
   | "index_private_slack_channel"
+  | "labs_mcp_actions_dashboard"
   | "labs_salesforce_personal_connections"
   | "labs_trackers"
   | "labs_transcripts"
@@ -842,10 +844,9 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "slack_tool"
   | "snowflake_connector_feature"
   | "usage_data_api"
-  | "workos_user_provisioning"
   | "workos"
+  | "workos_user_provisioning"
   | "xai_feature"
-  | "labs_mcp_actions_dashboard"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
