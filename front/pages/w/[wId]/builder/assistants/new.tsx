@@ -20,6 +20,7 @@ import config from "@app/lib/api/config";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { isRestrictedFromAgentCreation } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { useAssistantTemplate } from "@app/lib/swr/assistants";
 import type {
   AgentConfigurationType,
@@ -31,7 +32,6 @@ import type {
   TemplateAgentConfigurationType,
   WorkspaceType,
 } from "@app/types";
-import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 
 function getDuplicateAndTemplateIdFromQuery(query: ParsedUrlQuery) {
   const { duplicate, templateId } = query;
