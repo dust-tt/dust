@@ -1,11 +1,15 @@
+import type { OAuthProviderType } from "@app/lib/api/config";
+import { AUTH0_PROVIDER, WORKOS_PROVIDER } from "@app/lib/api/config";
 import type { RegionType } from "@app/lib/api/regions/config";
 import { config } from "@app/lib/api/regions/config";
 import { isWorkspaceRelocationDone } from "@app/lib/api/workspace";
+import { getFeatureFlags } from "@app/lib/auth";
 import { findWorkspaceWithVerifiedDomain } from "@app/lib/iam/workspaces";
 import { Workspace } from "@app/lib/models/workspace";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type {
+  AuthLookupResponse,
   UserLookupRequestBodyType,
   UserLookupResponse,
 } from "@app/pages/api/lookup/[resource]";
@@ -111,6 +115,40 @@ async function lookupInOtherRegion(
   }
 }
 
+export async function lookupAuthInOtherRegion(
+  userLookup: UserLookup
+): Promise<Result<OAuthProviderType | undefined, Error>> {
+  const { url } = config.getOtherRegionInfo();
+
+  const body: UserLookupRequestBodyType = {
+    user: userLookup,
+  };
+
+  try {
+    const otherRegionResponse = await fetch(`${url}/api/lookup/auth`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${config.getLookupApiSecret()}`,
+      },
+      body: JSON.stringify(body),
+    });
+
+    const data: AuthLookupResponse = await otherRegionResponse.json();
+    if (isAPIErrorResponse(data)) {
+      return new Err(new Error(data.error.message));
+    }
+
+    return new Ok(data.auth);
+  } catch (error) {
+    if (error instanceof Error) {
+      return new Err(error);
+    }
+
+    return new Err(new Error("Unknown error in lookupInOtherRegion"));
+  }
+}
+
 type RegionAffinityResult =
   | { hasAffinity: true; region: RegionType }
   | { hasAffinity: false; region?: never };
@@ -140,4 +178,59 @@ export async function checkUserRegionAffinity(
 
   // User does not have affinity to any region.
   return new Ok({ hasAffinity: false });
+}
+
+// TODO(workos): Temporary list of configuration ids.
+const blacklistedWorkspaceIds = [
+  "109a6a027a",
+  "14bba9443a",
+  "2WJ4Akk9tx",
+  "47aae7df59",
+  "49f9ef0520",
+  "5494230b3c",
+  "5b5f30b499",
+  "5sV32qY0CX",
+  "CZMLkRTiAy",
+  "ee616a51bc",
+  "jaeLj27yy8",
+  "KasY4WHFNf",
+  "PtjoV2S5nS",
+  "qKNiPCOITw",
+  "QPGtsLvpcZ",
+  "sqYRp9mFBN",
+  "T6h6dqbS2C",
+  "WUuX9VBqwF",
+  "x4HNFfZpnq",
+  "Xk3jvKCLjU",
+  "ba367d3014",
+  "ed3dc1294e",
+  "ef6fba0c62",
+  "GaH4W8m6q3",
+  "jM9Th6kS0J",
+  "nMirSWe3CL",
+  "qCZ9IFeZoC",
+  "VALNLBpCNq",
+  "SB0HhCoUEW",
+  "VzmXb9Egzu",
+];
+
+export async function lookupAuth(
+  userLookup: UserLookup
+): Promise<OAuthProviderType | undefined> {
+  const workspaceHasDomain = await findWorkspaceWithVerifiedDomain({
+    email: userLookup.email,
+    email_verified: true,
+  });
+  const workspace = workspaceHasDomain?.workspace;
+
+  if (workspace && blacklistedWorkspaceIds.includes(workspace?.sId)) {
+    const ff = await getFeatureFlags(renderLightWorkspaceType({ workspace }));
+    // Workspace is switched to workos: use workos
+    if (ff.includes("workos")) {
+      return WORKOS_PROVIDER;
+    }
+    return AUTH0_PROVIDER;
+  }
+
+  return undefined;
 }
