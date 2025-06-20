@@ -1,5 +1,6 @@
 import {
   Button,
+  Cog6ToothIcon,
   ContextItem,
   DropdownMenu,
   DropdownMenuContent,
@@ -149,7 +150,7 @@ export function ProviderManagementModal({
   return (
     <Sheet>
       <SheetTrigger asChild>
-        <Button variant="primary" label="Manage Models" className="grow-0" />
+        <Button variant="outline" label="Manage Models" icon={Cog6ToothIcon} />
       </SheetTrigger>
       <SheetContent size="lg">
         <SheetHeader hideButton>

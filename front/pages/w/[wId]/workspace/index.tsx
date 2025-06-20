@@ -129,7 +129,7 @@ export default function WorkspaceAdmin({
               <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
                 <SheetTrigger asChild>
                   <Button
-                    variant="secondary"
+                    variant="outline"
                     label="Edit"
                     icon={PencilSquareIcon}
                   />
