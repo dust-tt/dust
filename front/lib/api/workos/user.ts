@@ -2,9 +2,9 @@ import type {
   AuthenticateWithSessionCookieFailedResponse,
   AuthenticateWithSessionCookieSuccessResponse,
   AuthenticationResponse as WorkOSAuthenticationResponse,
+  DirectoryUser as WorkOSDirectoryUser,
   RefreshSessionResponse,
   User as WorkOSUser,
-  DirectoryUser as WorkOSDirectoryUser,
 } from "@workos-inc/node";
 import { sealData, unsealData } from "iron-session";
 import type {
