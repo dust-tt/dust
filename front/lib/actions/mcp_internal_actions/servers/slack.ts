@@ -114,7 +114,6 @@ const createServer = (
         .string()
         .array()
         .min(1)
-        .max(3)
         .describe(
           "Between 1 and 3 keywords to retrieve relevant messages " +
             "based on the user request and conversation context."
@@ -168,6 +167,12 @@ const createServer = (
     ) => {
       if (!agentLoopContext?.runContext) {
         throw new Error("Unreachable: missing agentLoopRunContext.");
+      }
+
+      if (keywords.length > 5) {
+        return makeMCPToolTextError(
+          "The search query is too broad. Please reduce the number of keywords to 5 or less."
+        );
       }
 
       const accessToken = authInfo?.token;
