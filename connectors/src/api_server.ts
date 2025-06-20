@@ -30,6 +30,8 @@ import {
   webhookIntercomUninstallAPIHandler,
 } from "@connectors/api/webhooks/webhook_intercom";
 import { webhookSlackAPIHandler } from "@connectors/api/webhooks/webhook_slack";
+import { webhookSlackBotAPIHandler } from "@connectors/api/webhooks/webhook_slack_bot";
+import { webhookSlackBotInteractionsAPIHandler } from "@connectors/api/webhooks/webhook_slack_bot_interaction";
 import { webhookSlackInteractionsAPIHandler } from "@connectors/api/webhooks/webhook_slack_interaction";
 import logger from "@connectors/logger/logger";
 import { authMiddleware } from "@connectors/middleware/auth";
@@ -133,6 +135,11 @@ export function startServer(port: number) {
   app.post(
     "/webhooks/:webhook_secret/slack_interaction",
     webhookSlackInteractionsAPIHandler
+  );
+  app.post("/webhooks/:webhook_secret/slack_bot", webhookSlackBotAPIHandler);
+  app.post(
+    "/webhooks/:webhook_secret/slack_bot_interaction",
+    webhookSlackBotInteractionsAPIHandler
   );
   app.post(
     "/webhooks/:webhooks_secret/github",
