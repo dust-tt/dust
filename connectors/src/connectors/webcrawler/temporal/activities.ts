@@ -1,4 +1,5 @@
 import type { FirecrawlDocument } from "@mendable/firecrawl-js";
+import { FirecrawlError } from "@mendable/firecrawl-js";
 import { Context } from "@temporalio/activity";
 import { randomUUID } from "crypto";
 import path from "path";
@@ -111,67 +112,71 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
     rootUrl = `http://${rootUrl}`;
   }
 
-  const crawlerResponse = await firecrawlApp.asyncCrawlUrl(rootUrl, {
-    maxDiscoveryDepth: webCrawlerConfig.depth ?? WEBCRAWLER_MAX_DEPTH,
-    limit: maxRequestsPerCrawl,
-    allowBackwardLinks: webCrawlerConfig.crawlMode === "website",
-    delay: 3,
-    scrapeOptions: {
-      onlyMainContent: true,
-      formats: ["markdown"],
-      headers: customHeaders,
-      maxAge: 43_200_000, // Use last 12h of cache
-    },
-    webhook: {
-      url: `${apiConfig.getConnectorsPublicURL()}/webhooks/${apiConfig.getDustConnectorsWebhooksSecret()}/firecrawl`,
-      metadata: {
-        connectorId: String(connectorId),
+  try {
+    const crawlerResponse = await firecrawlApp.asyncCrawlUrl(rootUrl, {
+      maxDiscoveryDepth: webCrawlerConfig.depth ?? WEBCRAWLER_MAX_DEPTH,
+      limit: maxRequestsPerCrawl,
+      allowBackwardLinks: webCrawlerConfig.crawlMode === "website",
+      delay: 3,
+      scrapeOptions: {
+        onlyMainContent: true,
+        formats: ["markdown"],
+        headers: customHeaders,
+        maxAge: 43_200_000, // Use last 12h of cache
       },
-    },
-  });
+      webhook: {
+        url: `${apiConfig.getConnectorsPublicURL()}/webhooks/${apiConfig.getDustConnectorsWebhooksSecret()}/firecrawl`,
+        metadata: {
+          connectorId: String(connectorId),
+        },
+      },
+    });
 
-  if (!crawlerResponse.success) {
-    const errorMessage = crawlerResponse.error || "Unknown error";
-    childLogger.error(
-      {
-        error: errorMessage,
-        url: rootUrl,
-        connectorId,
-      },
-      "Firecrawl crawl failed"
+    if (!crawlerResponse.success) {
+      const errorMessage = crawlerResponse.error || "Unknown error";
+      childLogger.error(
+        {
+          error: errorMessage,
+          url: rootUrl,
+          connectorId,
+        },
+        "Firecrawl crawl failed"
+      );
+
+      // Return gracefully instead of throwing to prevent workflow from getting stuck.
+      return {
+        launchGarbageCollect: false,
+        startedAtTs: startedAt.getTime(),
+      };
+    }
+
+    if (crawlerResponse.id) {
+      await webCrawlerConfig.updateCrawlId(crawlerResponse.id);
+    } else {
+      // Shouldn't happen, but based on the types, let's make sure
+      childLogger.warn(
+        { webCrawlerConfigId: webCrawlerConfig.id, url: rootUrl },
+        "No ID found when creating a Firecrawl crawler"
+      );
+    }
+
+    childLogger.info(
+      { crawlerId: crawlerResponse.id, url: rootUrl },
+      "Firecrawl crawler started"
     );
-
-    // Check if it's a 403 error for unsupported websites.
-    if (
-      errorMessage.includes("status code 403") ||
-      errorMessage.includes("no longer supported")
-    ) {
-      await syncFailed(connectorId, "webcrawling_error_blocked");
+  } catch (err) {
+    if (err instanceof FirecrawlError) {
+      // Website not longer supported
+      if (err.statusCode === 403) {
+        await syncFailed(connectorId, "webcrawling_error_blocked");
+      } else {
+        await syncFailed(connectorId, "webcrawling_error");
+      }
     } else {
       await syncFailed(connectorId, "webcrawling_error");
     }
-
-    // Return gracefully instead of throwing to prevent workflow from getting stuck.
-    return {
-      launchGarbageCollect: false,
-      startedAtTs: startedAt.getTime(),
-    };
   }
 
-  if (crawlerResponse.id) {
-    await webCrawlerConfig.updateCrawlId(crawlerResponse.id);
-  } else {
-    // Shouldn't happen, but based on the types, let's make sure
-    childLogger.warn(
-      { webCrawlerConfigId: webCrawlerConfig.id, url: rootUrl },
-      "No ID found when creating a Firecrawl crawler"
-    );
-  }
-
-  childLogger.info(
-    { crawlerId: crawlerResponse.id, url: rootUrl },
-    "Firecrawl crawler started"
-  );
   return {
     launchGarbageCollect: false,
     startedAtTs: startedAt.getTime(),
