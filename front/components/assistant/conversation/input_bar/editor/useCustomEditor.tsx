@@ -7,6 +7,7 @@ import type { SuggestionKeyDownProps } from "@tiptap/suggestion";
 import { useEffect, useMemo } from "react";
 
 import { DataSourceLinkExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/DataSourceLinkExtension";
+import { HardBreakExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/HardBreakExtension";
 import { MarkdownStyleExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/MarkdownStyleExtension";
 import { MentionStorageExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/MentionStorageExtension";
 import { MentionWithPasteExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/MentionWithPasteExtension";
@@ -238,7 +239,12 @@ const useCustomEditor = ({
         "first:before:text-gray-400 first:before:float-left first:before:content-[attr(data-placeholder)] first:before:pointer-events-none first:before:h-0",
     }),
     MarkdownStyleExtension,
-    ParagraphExtension,
+    HardBreakExtension,
+    ParagraphExtension.configure({
+      HTMLAttributes: {
+        class: "pb-4 whitespace-pre-wrap",
+      },
+    }),
     URLStorageExtension,
   ];
   if (onUrlDetected) {
