@@ -29,10 +29,7 @@ import config from "@app/lib/api/config";
 import { ROOT_PARENT_ID } from "@app/lib/api/data_source_view";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
-import {
-  getDataSourceNameFromView,
-  getDisplayNameForDocument,
-} from "@app/lib/data_sources";
+import { getDisplayNameForDocument } from "@app/lib/data_sources";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
@@ -674,7 +671,6 @@ const createServer = (
             source: {
               provider:
                 dataSourceView.dataSource.connectorProvider ?? undefined,
-              name: getDataSourceNameFromView(dataSourceView),
             },
             tags: doc.tags,
             ref: refs.shift() as string,

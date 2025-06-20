@@ -20,6 +20,7 @@ import type { ActionConfigurationType } from "@app/lib/actions/types/agent";
 import {
   isMCPInternalDataSourceFileSystem,
   isMCPInternalInclude,
+  isMCPInternalNotion,
   isMCPInternalSearch,
   isMCPInternalSlack,
   isMCPInternalWebsearch,
@@ -34,6 +35,7 @@ import { assertNever } from "@app/types";
 
 export const WEBSEARCH_ACTION_NUM_RESULTS = 16;
 export const SLACK_SEARCH_ACTION_NUM_RESULTS = 16;
+export const NOTION_SEARCH_ACTION_NUM_RESULTS = 16;
 
 export const ACTION_SPECIFICATIONS: Record<
   AssistantBuilderActionConfiguration["type"],
@@ -254,6 +256,9 @@ export function getCitationsCount({
       }
       if (isMCPInternalSlack(action)) {
         return SLACK_SEARCH_ACTION_NUM_RESULTS;
+      }
+      if (isMCPInternalNotion(action)) {
+        return NOTION_SEARCH_ACTION_NUM_RESULTS;
       }
       return getRetrievalTopK({
         agentConfiguration,

@@ -70,7 +70,7 @@ function makeQueryResource(
 ): SearchQueryResourceType {
   const timeFrameAsString =
     renderRelativeTimeFrameForToolOutput(relativeTimeFrame);
-  let text = `Searching ${timeFrameAsString}`;
+  let text = `Searching Slack ${timeFrameAsString}`;
   if (keywords.length > 0) {
     text += ` with keywords: ${keywords.join(", ")}`;
   }
@@ -284,23 +284,24 @@ const createServer = (
             refsOffset + SLACK_SEARCH_ACTION_NUM_RESULTS
           );
 
-          const results: SearchResultResourceType[] = matches.map((match) => {
-            return {
-              mimeType:
-                INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_RESULT,
-              uri: match.permalink ?? "",
-              text: `#${match.channel?.name ?? "Unknown"}, ${match.text ?? ""}`,
+          const results: SearchResultResourceType[] = matches.map(
+            (match): SearchResultResourceType => {
+              return {
+                mimeType:
+                  INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_RESULT,
+                uri: match.permalink ?? "",
+                text: `#${match.channel?.name ?? "Unknown"}, ${match.text ?? ""}`,
 
-              id: match.ts ?? "",
-              source: {
-                provider: "slack",
-                name: "Slack",
-              },
-              tags: [],
-              ref: refs.shift() as string,
-              chunks: [stripNullBytes(match.text ?? "")],
-            };
-          });
+                id: match.ts ?? "",
+                source: {
+                  provider: "slack",
+                },
+                tags: [],
+                ref: refs.shift() as string,
+                chunks: [stripNullBytes(match.text ?? "")],
+              };
+            }
+          );
 
           return {
             isError: false,
