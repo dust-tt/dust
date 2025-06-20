@@ -26,6 +26,7 @@ import {
 } from "@sparkle/components/markdown/TableBlock";
 import { sanitizeContent } from "@sparkle/components/markdown/utils";
 import { cn } from "@sparkle/lib/utils";
+import { Img } from "@sparkle/components/markdown/Image";
 
 const sizes = {
   p: "s-copy-sm @sm:s-text-base @sm:s-leading-7",
@@ -201,7 +202,7 @@ export function Markdown({
       hr: () => (
         <div className="s-my-6 s-border-b s-border-primary-150 dark:s-border-primary-150-night" />
       ),
-      img: ({ src, alt }) => null,
+      img: Img,
       code: CodeBlockWithExtendedSupport,
       ...additionalMarkdownComponents,
     };
