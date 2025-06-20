@@ -11,7 +11,6 @@ export interface LinkWrapperProps {
   shallow?: boolean;
   target?: string;
   prefetch?: boolean;
-  disabled?: boolean;
   ariaLabel?: string;
   ariaCurrent?: string;
   className?: string;
@@ -31,7 +30,6 @@ export const LinkWrapper = React.forwardRef<
       shallow,
       target,
       prefetch,
-      disabled,
       ariaLabel,
       ariaCurrent,
       className,
@@ -51,7 +49,7 @@ export const LinkWrapper = React.forwardRef<
           replace={replace}
           shallow={shallow}
           prefetch={prefetch}
-          className={cn(className, disabled && "s-pointer-events-none")}
+          className={className}
           aria-label={ariaLabel}
           aria-current={ariaCurrent}
           style={style}
