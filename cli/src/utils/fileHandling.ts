@@ -1,12 +1,13 @@
-import { stat } from "fs/promises";
-import { basename, extname } from "path";
+import type {
+  SupportedFileContentType} from "@dust-tt/client";
 import {
+  isSupportedFileContentType,
+  supportedFileExtensions,
   supportedImageFileFormats,
   supportedOtherFileFormats,
-  supportedFileExtensions,
-  SupportedFileContentType,
-  isSupportedFileContentType,
 } from "@dust-tt/client";
+import { stat } from "fs/promises";
+import { basename, extname } from "path";
 
 export interface FileInfo {
   path: string;
