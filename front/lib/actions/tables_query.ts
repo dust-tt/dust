@@ -485,6 +485,7 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
       conversation,
       model: supportedModel,
       prompt: agentConfiguration.instructions ?? "",
+      tools: "",
       allowedTokenCount,
       excludeImages: true,
     });

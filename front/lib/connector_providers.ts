@@ -487,7 +487,6 @@ export const isConnectorProviderAllowedForPlan = (
     case "confluence":
       return plan.limits.connections.isConfluenceAllowed;
     case "slack":
-    case "slack_bot":
       return plan.limits.connections.isSlackAllowed;
     case "notion":
       return plan.limits.connections.isNotionAllowed;
@@ -509,6 +508,7 @@ export const isConnectorProviderAllowedForPlan = (
       );
 
     case "microsoft":
+    case "slack_bot":
     case "snowflake":
     case "zendesk":
     case "bigquery":

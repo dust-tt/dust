@@ -128,15 +128,15 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
       );
     }
 
-    // If it's not firecrawl-api, it's a long running activity
-    if (webConfig.customCrawler !== "firecrawl-api") {
+    // If it's firecrawl-api
+    if (webConfig.crawlId !== null) {
+      // If not, there is not really workflows to stop
+      await getFirecrawl().cancelCrawl(webConfig.crawlId);
+    } else {
       const res = await stopCrawlWebsiteWorkflow(this.connectorId);
       if (res.isErr()) {
         return res;
       }
-    } else if (webConfig.crawlId !== null) {
-      // If not, there is not really workflows to stop
-      await getFirecrawl().cancelCrawl(webConfig.crawlId);
     }
 
     return new Ok(undefined);
@@ -153,7 +153,7 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
     }
 
     // Before launching again, cancel on Firecrawl side and reset the crawlId
-    if (webConfig.customCrawler === "firecrawl-api" && webConfig.crawlId) {
+    if (webConfig.crawlId) {
       await getFirecrawl().cancelCrawl(webConfig.crawlId);
       await webConfig.updateCrawlId(null);
     }
