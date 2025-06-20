@@ -36,6 +36,10 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import { assertNever } from "@app/types";
 
+/**
+ * Check if we are in advanced search mode,
+ * relying on a magic value stored in the additionalConfiguration.
+ */
 function isAdvancedSearchMode(agentLoopContext?: AgentLoopContextType) {
   return (
     (agentLoopContext?.runContext &&
