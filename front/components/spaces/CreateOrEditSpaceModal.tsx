@@ -111,7 +111,7 @@ export function CreateOrEditSpaceModal({
 
   const doCreate = useCreateSpace({ owner });
   const doUpdate = useUpdateSpace({ owner });
-  const doDelete = useDeleteSpace({ owner });
+  const doDelete = useDeleteSpace({ owner, force: true });
 
   const router = useRouter();
 
@@ -119,6 +119,20 @@ export function CreateOrEditSpaceModal({
     workspaceId: owner.sId,
     spaceId: space?.sId ?? null,
   });
+
+  const agentUsage = spaceInfo?.categories;
+
+  const uniqueAgentNames = useMemo(() => {
+    if (!agentUsage) {
+      return [];
+    }
+
+    const allAgentNames = Object.values(agentUsage)
+      .flatMap((category) => category.usage.agentNames)
+      .filter((name) => name && name.length > 0);
+
+    return [...new Set(allAgentNames)];
+  }, [agentUsage]);
 
   const { groups } = useGroups({
     owner,
@@ -370,6 +384,7 @@ export function CreateOrEditSpaceModal({
             {isAdmin && space && space.kind === "regular" && (
               <>
                 <ConfirmDeleteSpaceDialog
+                  dataSourceUsage={uniqueAgentNames.length}
                   space={space}
                   handleDelete={onDelete}
                   isOpen={showDeleteConfirmDialog}
