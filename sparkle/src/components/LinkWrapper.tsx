@@ -1,7 +1,6 @@
 import React from "react";
 
 import { SparkleContext } from "@sparkle/context";
-import { cn } from "@sparkle/lib";
 
 export interface LinkWrapperProps {
   children: React.ReactNode;
