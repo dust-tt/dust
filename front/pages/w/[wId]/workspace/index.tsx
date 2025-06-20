@@ -208,7 +208,6 @@ export default function WorkspaceAdmin({
           </Page.Vertical>
           <Page.Vertical align="stretch" gap="md">
             <Page.H variant="h4">Integrations</Page.H>
-            <div className="h-full border-b border-border dark:border-border-night" />
             <SlackBotToggle
               owner={owner}
               slackBotDataSource={slackBotDataSource}
@@ -306,6 +305,7 @@ function SlackBotToggle({
 
   return (
     <ContextItem.List>
+      <div className="h-full border-b border-border dark:border-border-night" />
       <ContextItem
         title="Slack Bot"
         subElement="Use Dust Agents in Slack with the Dust Slack app"
