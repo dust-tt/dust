@@ -240,7 +240,9 @@ const ContentWithTooltip = ({
   return (
     <TooltipProvider>
       <TooltipRoot>
-        <TooltipTrigger asChild>{children}</TooltipTrigger>
+        <TooltipTrigger asChild={typeof children === "string" ? false : true}>
+          {children}
+        </TooltipTrigger>
         <TooltipPortal>
           <TooltipContent>{tooltip}</TooltipContent>
         </TooltipPortal>
@@ -334,7 +336,8 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       </>
     );
 
-    if (href) {
+    // TODO (yuka: 2025-06-20): I don't know what to do when there are both href and onClick.
+    if (href && !props.onClick) {
       return (
         <LinkWrapper
           ref={ref as React.Ref<HTMLAnchorElement>}
@@ -348,6 +351,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
             // This cannot apply disabled styles for links, since it's using :disabled pseudo-class to apply styles.
             // We will manually add disabled styles for links (getDisabledClasses).
             buttonVariants({ variant, size, className }),
+            "s-inline-block",
             isPulsing && "s-animate-pulse",
             (isLoading || props.disabled) &&
               getDisabledClasses(variant || "primary")
@@ -361,9 +365,9 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
           disabled={props.disabled}
         >
           {tooltip ? (
-            <ContentWithTooltip tooltip={tooltip}>{content}</ContentWithTooltip>
+            <ContentWithTooltip tooltip={tooltip}>{label}</ContentWithTooltip>
           ) : (
-            content
+            label
           )}
         </LinkWrapper>
       );
