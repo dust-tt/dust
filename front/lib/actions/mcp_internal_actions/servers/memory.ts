@@ -6,6 +6,7 @@ import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { normalizeError } from "@app/types";
 
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "memory",
@@ -321,14 +322,14 @@ function createServer(
         };
       } catch (error) {
         return makeMCPToolTextError(
-          `Failed to list memory files: ${error instanceof Error ? error.message : String(error)}`
+          `Failed to list memory files: ${normalizeError(error).message}`
         );
       }
     }
   );
 
   server.tool(
-    "delete_memory_file",
+    "clear_memory_file",
     "Delete a memory file by its ID",
     {
       fileId: z.string().describe("ID of the memory file to delete"),
@@ -363,7 +364,7 @@ function createServer(
         };
       } catch (error) {
         return makeMCPToolTextError(
-          `Failed to delete memory file: ${error instanceof Error ? error.message : String(error)}`
+          `Failed to delete memory file: ${normalizeError(error).message}`
         );
       }
     }
