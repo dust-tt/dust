@@ -251,6 +251,25 @@ const ContentWithTooltip = ({
   );
 };
 
+const renderIcon = (
+  visual: React.ComponentType,
+  iconSize: IconSizeType,
+  extraClass = ""
+) => <Icon visual={visual} size={iconSize} className={cn(extraClass)} />;
+
+const renderChevron = (
+  visual: React.ComponentType,
+  iconSize: IconSizeType,
+  variant: ButtonVariantType,
+  extraClass = ""
+) => (
+  <Icon
+    visual={visual}
+    size={iconSize}
+    className={cn(variant ? chevronVariantMap[variant] : "", extraClass)}
+  />
+);
+
 export type ButtonProps = MiniButtonProps | RegularButtonProps;
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
@@ -285,20 +304,6 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     const iconSize = ICON_SIZE_MAP[resolvedSize];
     const counterSize = COUNTER_SIZE_MAP[resolvedSize];
 
-    const renderIcon = (visual: React.ComponentType, extraClass = "") => (
-      <Icon visual={visual} size={iconSize} className={cn(extraClass)} />
-    );
-    const renderChevron = (visual: React.ComponentType, extraClass = "") => (
-      <Icon
-        visual={visual}
-        size={iconSize}
-        className={cn(
-          resolvedVariant ? chevronVariantMap[resolvedVariant] : "",
-          extraClass
-        )}
-      />
-    );
-
     const showCounter = isCounter && counterValue != null;
     const showContainer = showCounter;
 
@@ -322,7 +327,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
             />
           </div>
         ) : (
-          icon && renderIcon(icon, "-s-mx-0.5")
+          icon && renderIcon(icon, iconSize, "-s-mx-0.5")
         )}
         {!showContainer && label && <>{label}</>}
         {showContainer && (
@@ -343,7 +348,13 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
             )}
           </div>
         )}
-        {isSelect && renderChevron(ChevronDownIcon, isLoading ? "" : "-s-mr-1")}
+        {isSelect &&
+          renderChevron(
+            ChevronDownIcon,
+            iconSize,
+            resolvedVariant,
+            isLoading ? "" : "-s-mr-1"
+          )}
       </>
     );
 
