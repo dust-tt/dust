@@ -14,8 +14,8 @@ import {
   SheetHeader,
   SheetTitle,
   SheetTrigger,
-  SliderToggle,
   SlackLogo,
+  SliderToggle,
 } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 import { useCallback, useEffect, useState } from "react";
@@ -26,7 +26,7 @@ import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { ProviderManagementModal } from "@app/components/workspace/ProviderManagementModal";
 import { getPriceAsString } from "@app/lib/client/subscription";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import { useWorkspaceActiveUsers } from "@app/lib/swr/workspaces";
+import { useMembersCount } from "@app/lib/swr/memberships";
 import type { SubscriptionType, WorkspaceType } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
@@ -62,8 +62,7 @@ export default function WorkspaceAdmin({
   const [slackBotEnabled, setSlackBotEnabled] = useState(false);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
 
-  const { activeUsers } = useWorkspaceActiveUsers({ workspaceId: owner.sId });
-  const workspaceSeats = activeUsers ? activeUsers.length : 0;
+  const workspaceSeats = useMembersCount(owner);
 
   const formValidation = useCallback(() => {
     if (workspaceName === owner.name) {
