@@ -364,7 +364,6 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
               "--duration": "1.5s",
             } as React.CSSProperties
           }
-          disabled={props.disabled}
         >
           {tooltip ? (
             <ContentWithTooltip tooltip={tooltip}>{label}</ContentWithTooltip>
