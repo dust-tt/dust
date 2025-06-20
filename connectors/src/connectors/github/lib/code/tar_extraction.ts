@@ -269,17 +269,9 @@ export async function extractGitHubTarballToGCS(
   }
 
   // Create directory placeholder files to preserve GitHub hierarchy.
-  const directoryPromises = Array.from(seenDirs).map(async (dirPath) => {
-    try {
-      await gcsManager.createDirectoryPlaceholder(gcsBasePath, dirPath);
-    } catch (error) {
-      logger.error(
-        { error, dirPath, repoId, connectorId },
-        "Failed to create directory placeholder in GCS"
-      );
-      throw error;
-    }
-  });
+  const directoryPromises = Array.from(seenDirs).map(async (dirPath) =>
+    gcsManager.createDirectoryPlaceholder(gcsBasePath, dirPath)
+  );
 
   await Promise.all(directoryPromises);
 

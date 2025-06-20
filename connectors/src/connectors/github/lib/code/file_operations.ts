@@ -2,7 +2,10 @@ import assert from "assert";
 import { hash as blake3 } from "blake3";
 
 import { GCSRepositoryManager } from "@connectors/connectors/github/lib/code/gcs_repository";
-import { inferParentsFromGcsPath } from "@connectors/connectors/github/lib/utils";
+import {
+  getRepoUrl,
+  inferParentsFromGcsPath,
+} from "@connectors/connectors/github/lib/utils";
 import type { CoreAPIDataSourceDocumentSection } from "@connectors/lib/data_sources";
 import {
   sectionLength,
@@ -11,8 +14,7 @@ import {
 import { GithubCodeFile } from "@connectors/lib/models/github";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import type { ModelId } from "@connectors/types";
-import type { DataSourceConfig } from "@connectors/types";
+import type { DataSourceConfig, ModelId } from "@connectors/types";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
 
 // Only allow documents up to 5mb to be processed.
@@ -38,6 +40,7 @@ export async function upsertCodeFile({
   codeSyncStartedAt,
   connectorId,
   dataSourceConfig,
+  defaultBranch,
   gcsBasePath,
   gcsPath,
   repoId,
@@ -50,6 +53,7 @@ export async function upsertCodeFile({
   codeSyncStartedAt: Date;
   connectorId: ModelId;
   dataSourceConfig: DataSourceConfig;
+  defaultBranch: string;
   gcsBasePath: string;
   gcsPath: string;
   repoId: number;
@@ -78,22 +82,12 @@ export async function upsertCodeFile({
   const documentId = parents[0]!;
 
   // Read file content from GCS.
-  let content;
-  try {
-    content = await gcsManager.downloadFile(gcsPath);
-  } catch (e) {
-    logger.warn(
-      { repoId, fileName, documentId, gcsPath, err: e },
-      "[Github] Error reading file from GCS"
-    );
-
-    throw e;
-  }
+  const content = await gcsManager.downloadFile(gcsPath);
 
   const contentHash = blake3(content).toString("hex");
 
   // Construct source URL.
-  const sourceUrl = `https://github.com/${repoLogin}/${repoName}/blob/main/${relativePath}`;
+  const sourceUrl = `${getRepoUrl(repoLogin, repoName)}/blob/${defaultBranch}/${relativePath}`;
 
   // Find file or create it with an empty contentHash.
   const [githubCodeFile] = await GithubCodeFile.findOrCreate({
