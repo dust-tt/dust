@@ -39,7 +39,6 @@ import type {
   AgentConfigurationType,
   UserType,
   UserTypeWithWorkspace,
-  UserTypeWithWorkspaces,
   WorkspaceType,
 } from "@app/types";
 import { GLOBAL_AGENTS_SID, isAdmin } from "@app/types";
