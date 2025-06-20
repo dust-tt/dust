@@ -1,0 +1,37 @@
+# Node.js
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# TypeScript
+src/
+*.ts
+!dist/
+
+# Development files
+.git/
+.gitignore
+README.md
+tsconfig.json
+tsup.config.ts
+
+# ESLint
+eslint.config.js
+.eslintrc.*
+
+# Logs
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Development scripts
+.env.local
+.env.development

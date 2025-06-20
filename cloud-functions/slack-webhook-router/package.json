@@ -1,0 +1,36 @@
+{
+  "name": "slack-webhook-router",
+  "version": "1.0.0",
+  "description": "Slack webhook router for multi-region deployment.",
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "npm run build && PORT=8081 node dist/index.js",
+    "lint": "eslint src/**/*.ts",
+    "lint:fix": "eslint src/**/*.ts --fix",
+    "deploy": "gcloud run deploy slack-webhook-router --source . --region us-central1 --project $GCP_US_PROJECT_ID --allow-unauthenticated"
+  },
+  "author": "Dust",
+  "license": "ISC",
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "dependencies": {
+    "express": "^5.1.0"
+  },
+  "devDependencies": {
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3",
+    "@types/node": "^20.0.0",
+    "@types/express": "^5.0.0",
+    "@eslint/js": "^9.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "eslint": "^9.0.0",
+    "eslint-plugin-import": "^2.29.0",
+    "eslint-plugin-simple-import-sort": "^12.0.0",
+    "globals": "^15.0.0"
+  }
+}
