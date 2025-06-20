@@ -1,8 +1,4 @@
-import {
-  ContentMessage,
-  InformationCircleIcon,
-  SliderToggle,
-} from "@dust-tt/sparkle";
+import { ContentMessage, InformationCircleIcon } from "@dust-tt/sparkle";
 import { useCallback, useContext, useMemo, useState } from "react";
 
 import { ToolsList } from "@app/components/actions/mcp/ToolsList";
@@ -10,6 +6,7 @@ import { AdditionalConfigurationSection } from "@app/components/assistant_builde
 import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/actions/configuration/AssistantBuilderDataSourceModal";
 import { ChildAgentConfigurationSection } from "@app/components/assistant_builder/actions/configuration/ChildAgentConfigurationSection";
 import { ConfigurationSectionContainer } from "@app/components/assistant_builder/actions/configuration/ConfigurationSectionContainer";
+import { CustomToggleSection } from "@app/components/assistant_builder/actions/configuration/CustomToggleSection";
 import DataSourceSelectionSection from "@app/components/assistant_builder/actions/configuration/DataSourceSelectionSection";
 import { DustAppConfigurationSection } from "@app/components/assistant_builder/actions/configuration/DustAppConfigurationSection";
 import { JsonSchemaConfigurationSection } from "@app/components/assistant_builder/actions/configuration/JsonSchemaConfigurationSection";
@@ -25,17 +22,13 @@ import type {
 } from "@app/components/assistant_builder/types";
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import type { MCPServerAvailability } from "@app/lib/actions/mcp_internal_actions/constants";
-import {
-  ADVANCED_SEARCH_SWITCH,
-  isInternalMCPServerName,
-} from "@app/lib/actions/mcp_internal_actions/constants";
+import { ADVANCED_SEARCH_SWITCH } from "@app/lib/actions/mcp_internal_actions/constants";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import { validateConfiguredJsonSchema } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { isDustAppRunConfiguration } from "@app/lib/actions/types/guards";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { LightWorkspaceType, SpaceType, TimeFrame } from "@app/types";
 import { asDisplayName, assertNever } from "@app/types";
-import { CustomToggleSection } from "@app/components/assistant_builder/actions/configuration/CustomToggleSection";
 
 interface NoActionAvailableProps {
   owner: LightWorkspaceType;
@@ -174,13 +167,6 @@ export function MCPAction({
   // We don't show the "Available Tools" section if there is only one tool.
   // Because it's redundant with the tool description.
   const hasOnlyOneTool = selectedMCPServerView?.server.tools.length === 1;
-
-  // Flagging the search server specifically to display a custom UI element for it.
-  const isSearchServer =
-    selectedMCPServerView?.serverType === "internal" &&
-    // This check is technically not needed but prevents a super weak check right after.
-    isInternalMCPServerName(selectedMCPServerView.server.name) &&
-    selectedMCPServerView.server.name === "search";
 
   const spaceName = allowedSpaces.find(
     (space) => space.sId === selectedMCPServerView?.spaceId
@@ -361,15 +347,15 @@ export function MCPAction({
         </ConfigurationSectionContainer>
       )}
 
-      {/* Add a custom toggle for the search server that enabled the advanced search mode. */}
-      {isSearchServer && (
-        <CustomToggleSection
-          title="Toggle Advanced Search"
-          configurationKey={ADVANCED_SEARCH_SWITCH}
-          actionConfiguration={actionConfiguration}
-          handleConfigUpdate={handleConfigUpdate}
-        />
-      )}
+      {/* Add a custom toggle for the search server that enables the advanced search mode. */}
+      <CustomToggleSection
+        title="Toggle Advanced Search"
+        targetMCPServerName="search"
+        selectedMCPServerView={selectedMCPServerView}
+        configurationKey={ADVANCED_SEARCH_SWITCH}
+        actionConfiguration={actionConfiguration}
+        handleConfigUpdate={handleConfigUpdate}
+      />
     </>
   );
 }
