@@ -44,28 +44,28 @@ export function CustomToggleSection({
 
   return (
     <ConfigurationSectionContainer title={title}>
-      <div className="flex flex-col items-center justify-between gap-4">
+      <div className="mr-2 flex flex-col items-center justify-between">
         <div className="flex items-center justify-between">
-          <div className="flex flex-col gap-2">
-            {description && (
-              <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                {description}
-              </p>
-            )}
+          {description && (
+            <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+              {description}
+            </p>
+          )}
+          <div className="relative">
+            <SliderToggle
+              size="xs"
+              selected={isEnabled}
+              onClick={() =>
+                handleConfigUpdate((old) => ({
+                  ...old,
+                  additionalConfiguration: {
+                    ...old.additionalConfiguration,
+                    [configurationKey]: !isEnabled,
+                  },
+                }))
+              }
+            />
           </div>
-          <SliderToggle
-            size="sm"
-            selected={isEnabled}
-            onClick={() =>
-              handleConfigUpdate((old) => ({
-                ...old,
-                additionalConfiguration: {
-                  ...old.additionalConfiguration,
-                  [configurationKey]: !isEnabled,
-                },
-              }))
-            }
-          />
         </div>
       </div>
     </ConfigurationSectionContainer>
