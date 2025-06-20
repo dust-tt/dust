@@ -17,10 +17,7 @@ import { actionRefsOffset, getRetrievalTopK } from "@app/lib/actions/utils";
 import { getRefs } from "@app/lib/api/assistant/citations";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
-import {
-  getDataSourceNameFromView,
-  getDisplayNameForDocument,
-} from "@app/lib/data_sources";
+import { getDisplayNameForDocument } from "@app/lib/data_sources";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { TimeFrame } from "@app/types";
@@ -170,7 +167,7 @@ export async function searchFunction({
   const refs = getRefs().slice(refsOffset, refsOffset + topK);
 
   const results: SearchResultResourceType[] = searchResults.value.documents.map(
-    (doc) => {
+    (doc): SearchResultResourceType => {
       const dataSourceView = coreSearchArgs.find(
         (args) =>
           args.dataSourceView.dataSource.dustAPIDataSourceId ===
@@ -187,7 +184,6 @@ export async function searchFunction({
         id: doc.document_id,
         source: {
           provider: dataSourceView.dataSource.connectorProvider ?? undefined,
-          name: getDataSourceNameFromView(dataSourceView),
         },
         tags: doc.tags,
         ref: refs.shift() as string,
