@@ -100,7 +100,7 @@ export async function getDataSourceViewsUsageByCategory({
   const agentWhereClauseNonAdmin = {
     status: "active",
     workspaceId: owner.id,
-    // If user is non-admin, only include agents that are either they have access to or are published
+    // If user is non-admin, only include agents that either they have access to or are published
     [Op.or]: [
       {
         scope: "visible",
