@@ -12,7 +12,6 @@ import { AssistantPicker } from "@app/components/assistant/AssistantPicker";
 import { ConfigurationSectionContainer } from "@app/components/assistant_builder/actions/configuration/ConfigurationSectionContainer";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import type { LightWorkspaceType } from "@app/types";
-import { isGlobalAgentId } from "@app/types";
 
 interface ChildAgentSelectorProps {
   owner: LightWorkspaceType;
