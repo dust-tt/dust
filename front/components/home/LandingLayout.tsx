@@ -75,7 +75,7 @@ export default function LandingLayout({
           <div className="flex flex-grow justify-end gap-4">
             <Button
               href="/home/contact"
-              className="hidden xs:block"
+              className="hidden xs:inline-flex"
               variant="outline"
               size="sm"
               label="Request a demo"
