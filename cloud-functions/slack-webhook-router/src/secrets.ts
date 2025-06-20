@@ -13,8 +13,8 @@ export class SecretManager {
   private initPromise: Promise<Secrets> | null = null;
 
   dispose(): void {
-    // Clean up the client connection
-    this.client.close();
+    // Clean up the client connection.
+    void this.client.close();
   }
 
   async getSecrets(): Promise<Secrets> {

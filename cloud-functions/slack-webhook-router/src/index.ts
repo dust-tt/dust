@@ -1,8 +1,8 @@
 import express from "express";
 import { CONFIG } from "./config.js";
+import { createRoutes } from "./routes.js";
 import { SecretManager } from "./secrets.js";
 import { GracefulServer } from "./server.js";
-import { createRoutes } from "./routes.js";
 
 async function main(): Promise<void> {
   try {

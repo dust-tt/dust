@@ -1,6 +1,6 @@
 import express from "express";
-import type { SecretManager } from "./secrets.js";
 import { WebhookForwarder } from "./forwarder.js";
+import type { SecretManager } from "./secrets.js";
 import type { GracefulServer } from "./server.js";
 
 export function createRoutes(
@@ -8,7 +8,6 @@ export function createRoutes(
   gracefulServer: GracefulServer
 ) {
   const router = express.Router();
-  let webhookForwarder: WebhookForwarder | null = null;
 
   // Health endpoints.
   router.get("/health", (req, res) => {
@@ -24,6 +23,11 @@ export function createRoutes(
       await secretManager.getSecrets();
       res.status(200).json({ status: "ready" });
     } catch (error) {
+      console.error("Failed to load secrets", {
+        component: "routes",
+        error: error instanceof Error ? error.message : String(error),
+      });
+
       res
         .status(503)
         .json({ status: "not ready", error: "Failed to load secrets" });

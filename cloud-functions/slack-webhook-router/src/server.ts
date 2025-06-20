@@ -24,7 +24,10 @@ export class GracefulServer {
       });
       this.gracefulShutdown("uncaughtException");
     };
-    const unhandledRejectionHandler = (reason: unknown, promise: Promise<unknown>) => {
+    const unhandledRejectionHandler = (
+      reason: unknown,
+      promise: Promise<unknown>
+    ) => {
       console.error("Unhandled promise rejection", {
         component: "server",
         reason: String(reason),
