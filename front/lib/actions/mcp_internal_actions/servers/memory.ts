@@ -12,7 +12,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
   version: "1.0.0",
   description:
     "Agent memory management and file operations for persistent data storage",
-  icon: "ActionDocumentTextIcon",
+  icon: "ActionBrainIcon",
   authorization: null,
   documentationUrl: null,
 };
