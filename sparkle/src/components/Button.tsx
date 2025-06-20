@@ -33,6 +33,20 @@ export type ButtonVariantType = (typeof BUTTON_VARIANTS)[number];
 export const BUTTON_SIZES = ["xmini", "mini", "xs", "sm", "md"] as const;
 export type ButtonSizeType = (typeof BUTTON_SIZES)[number];
 
+const disabledStyles = {
+  primary:
+    "disabled:s-bg-primary-muted disabled:s-text-highlight-50/60 dark:disabled:s-bg-primary-muted-night",
+  highlight:
+    "disabled:s-bg-highlight-muted disabled:s-text-highlight-50/60 dark:disabled:s-bg-highlight-muted-night",
+  warning:
+    "disabled:s-bg-warning-muted disabled:s-text-highlight-50/60 dark:disabled:s-bg-warning-muted-night",
+  outline:
+    "disabled:s-text-primary-muted dark:disabled:s-text-primary-muted-night disabled:s-border-primary-100 dark:disabled:s-border-primary-100-night",
+  ghost: "disabled:s-text-primary-400 dark:disabled:s-text-primary-400-night",
+  "ghost-secondary":
+    "disabled:s-text-primary-400 dark:disabled:s-text-primary-400-night",
+} as const;
+
 // Define button styling with cva
 const buttonVariants = cva(
   cn(
@@ -48,21 +62,21 @@ const buttonVariants = cva(
           "s-text-primary-50 dark:s-text-primary-50-night",
           "hover:s-bg-primary-light dark:hover:s-bg-primary-dark-night",
           "active:s-bg-primary-dark dark:active:s-bg-primary-light-night",
-          "disabled:s-bg-primary-muted disabled:s-text-highlight-50/60 dark:disabled:s-bg-primary-muted-night"
+          disabledStyles.primary
         ),
         highlight: cn(
           "s-bg-highlight",
           "s-text-highlight-50",
           "hover:s-bg-highlight-light",
           "active:s-bg-highlight-dark",
-          "disabled:s-bg-highlight-muted disabled:s-text-highlight-50/60 dark:disabled:s-bg-highlight-muted-night"
+          disabledStyles.highlight
         ),
         warning: cn(
           "s-bg-warning",
           "s-text-warning-50",
           "hover:s-bg-warning-light",
           "active:s-bg-warning-dark",
-          "disabled:s-bg-warning-muted disabled:s-text-highlight-50/60 dark:disabled:s-bg-warning-muted-night"
+          disabledStyles.warning
         ),
         outline: cn(
           "s-border",
@@ -73,8 +87,7 @@ const buttonVariants = cva(
           "hover:s-bg-primary-100 dark:hover:s-bg-primary-900",
           "hover:s-border-primary-150 dark:hover:s-border-border-night",
           "active:s-bg-primary-300 dark:active:s-bg-primary-900",
-          "disabled:s-text-primary-muted dark:disabled:s-text-primary-muted-night",
-          "disabled:s-border-primary-100 dark:disabled:s-border-primary-100-night"
+          disabledStyles.outline
         ),
         ghost: cn(
           "s-border",
@@ -84,7 +97,7 @@ const buttonVariants = cva(
           "hover:s-text-primary-900 dark:hover:s-text-white",
           "hover:s-border-border-dark dark:hover:s-border-border-night",
           "active:s-bg-primary-300 dark:active:s-bg-primary-900",
-          "disabled:s-text-primary-400 dark:disabled:s-text-primary-400-night"
+          disabledStyles.ghost
         ),
         "ghost-secondary": cn(
           "s-border",
@@ -94,7 +107,7 @@ const buttonVariants = cva(
           "hover:s-text-primary-900 dark:hover:s-text-primary-900-night",
           "hover:s-border-border-dark dark:hover:s-border-border-night",
           "active:s-bg-primary-300 dark:active:s-bg-primary-900",
-          "disabled:s-text-primary-400 dark:disabled:s-text-primary-400-night"
+          disabledStyles["ghost-secondary"]
         ),
       },
       size: {
@@ -111,6 +124,14 @@ const buttonVariants = cva(
     },
   }
 );
+
+const getDisabledClasses = (variant: ButtonVariantType) => {
+  const disabledStyle = disabledStyles[variant] || "";
+  // Remove the "disabled:" prefix since this will be used for <a> tag and not <button>.
+  return disabledStyle
+    .replace(/disabled:/g, "")
+    .replace(/dark:disabled:/g, "dark:");
+};
 
 const labelVariants = cva("", {
   variants: {
@@ -210,6 +231,25 @@ export type RegularButtonProps = CommonButtonProps & {
   label?: string;
 };
 
+const ContentWithTooltip = ({
+  children,
+  tooltip,
+}: {
+  children: React.ReactNode;
+  tooltip: string;
+}) => {
+  return (
+    <TooltipProvider>
+      <TooltipRoot>
+        <TooltipTrigger asChild>{children}</TooltipTrigger>
+        <TooltipPortal>
+          <TooltipContent>{tooltip}</TooltipContent>
+        </TooltipPortal>
+      </TooltipRoot>
+    </TooltipProvider>
+  );
+};
+
 export type ButtonProps = MiniButtonProps | RegularButtonProps;
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
@@ -231,6 +271,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       rel,
       replace,
       shallow,
+      prefetch,
       "aria-label": ariaLabel,
       ...props
     },
@@ -294,24 +335,40 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       </>
     );
 
-    const pointerEventProps = useMemo(() => {
-      if (isLoading || props.disabled) {
-        return {
-          onPointerDown: (e: React.PointerEvent<HTMLButtonElement>) => {
-            e.preventDefault();
-            e.stopPropagation();
-          },
-        };
-      }
-      return {};
-    }, [isLoading, props.disabled]);
-
-    // We cannot skip a button tag when it's disabled. We need
-    // to apply disabled class manually (currently it has :disabled pseudo-class, which won't work if it's not a button)
-    // and disable pointer events.
-    const shouldUseSlot = !!href && !props.disabled;
-
-    const innerContent = shouldUseSlot ? <span>{content}</span> : content;
+    if (href) {
+      return (
+        <LinkWrapper
+          ref={ref as React.Ref<HTMLAnchorElement>}
+          href={href}
+          target={target}
+          rel={rel}
+          replace={replace}
+          shallow={shallow}
+          prefetch={prefetch}
+          className={cn(
+            // This cannot apply disabled styles for links, since it's using :disabled pseudo-class to apply styles.
+            // We will manually add disabled styles for links (getDisabledClasses).
+            buttonVariants({ variant, size, className }),
+            isPulsing && "s-animate-pulse",
+            (isLoading || props.disabled) &&
+              getDisabledClasses(variant || "primary")
+          )}
+          style={
+            {
+              "--pulse-color": "#93C5FD",
+              "--duration": "1.5s",
+            } as React.CSSProperties
+          }
+          disabled={props.disabled}
+        >
+          {tooltip ? (
+            <ContentWithTooltip tooltip={tooltip}>{content}</ContentWithTooltip>
+          ) : (
+            content
+          )}
+        </LinkWrapper>
+      );
+    }
 
     const innerButton = (
       <MetaButton
@@ -327,39 +384,16 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
             "--duration": "1.5s",
           } as React.CSSProperties
         }
-        asChild={shouldUseSlot}
         {...props}
-        {...pointerEventProps}
       >
-        {innerContent}
+        {content}
       </MetaButton>
     );
 
-    const wrappedContent = tooltip ? (
-      <TooltipProvider>
-        <TooltipRoot>
-          <TooltipTrigger asChild>{innerButton}</TooltipTrigger>
-          <TooltipPortal>
-            <TooltipContent>{tooltip}</TooltipContent>
-          </TooltipPortal>
-        </TooltipRoot>
-      </TooltipProvider>
+    return tooltip ? (
+      <ContentWithTooltip tooltip={tooltip}>{innerButton}</ContentWithTooltip>
     ) : (
       innerButton
-    );
-
-    return href ? (
-      <LinkWrapper
-        href={href}
-        target={target}
-        rel={rel}
-        replace={replace}
-        shallow={shallow}
-      >
-        {wrappedContent}
-      </LinkWrapper>
-    ) : (
-      wrappedContent
     );
   }
 );

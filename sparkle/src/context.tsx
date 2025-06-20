@@ -2,7 +2,7 @@ import React, { ComponentType, MouseEvent, ReactNode } from "react";
 import type { UrlObject } from "url";
 import url from "url";
 
-type SparkleLinkProps = {
+export type SparkleLinkProps = {
   href: string | UrlObject;
   className?: string;
   children: ReactNode;
@@ -22,6 +22,7 @@ type SparkleLinkProps = {
   target?: string;
   rel?: string;
   prefetch?: boolean;
+  style?: React.CSSProperties;
 };
 
 export type SparkleContextLinkType = ComponentType<
@@ -39,7 +40,17 @@ export const aLink: SparkleContextLinkType = React.forwardRef<
   SparkleLinkProps
 >(
   (
-    { href, className, ariaCurrent, ariaLabel, onClick, children, target, rel },
+    {
+      href,
+      className,
+      ariaCurrent,
+      ariaLabel,
+      onClick,
+      children,
+      target,
+      rel,
+      style,
+    },
     ref
   ) => {
     const hrefAsString = typeof href !== "string" ? url.format(href) : href;
@@ -54,6 +65,7 @@ export const aLink: SparkleContextLinkType = React.forwardRef<
         onClick={onClick}
         target={target}
         rel={rel}
+        style={style}
       >
         {children}
       </a>
