@@ -19,21 +19,7 @@ npm run build
 
 echo "🔧 Setting up service account..."
 
-# # Create service account if it doesn't exist
 SA_EMAIL="slack-webhook-router-sa@${GCP_GLOBAL_PROJECT_ID}.iam.gserviceaccount.com"
-# if ! gcloud iam service-accounts describe "$SA_EMAIL" --project="$GCP_GLOBAL_PROJECT_ID" >/dev/null 2>&1; then
-#   echo "  → Creating service account..."
-#   gcloud iam service-accounts create slack-webhook-router \
-#     --display-name="Slack Webhook Router" \
-#     --project="$GCP_GLOBAL_PROJECT_ID"
-
-#   echo "  → Granting Cloud Run invoker role..."
-#   gcloud projects add-iam-policy-binding "$GCP_GLOBAL_PROJECT_ID" \
-#     --member="serviceAccount:$SA_EMAIL" \
-#     --role="roles/run.invoker"
-# else
-#   echo "  → Service account already exists"
-# fi
 
 echo "🚀 Deploying slack-webhook-router to us-central1 region..."
 
@@ -44,7 +30,9 @@ gcloud run deploy slack-webhook-router \
   --source . \
   --region us-central1 \
   --project "$GCP_GLOBAL_PROJECT_ID" \
-  --allow-unauthenticated
+  --allow-unauthenticated \
+  --startup-probe httpGet.path=/ready,initialDelaySeconds=0,failureThreshold=3,timeoutSeconds=4,periodSeconds=10 \
+  --liveness-probe httpGet.path=/health,initialDelaySeconds=30,failureThreshold=3,timeoutSeconds=4,periodSeconds=30
 
 echo "✅ Deployment complete!"
 echo "🌍 Webhook router available at: https://slack-webhook-router-<hash>-uc.a.run.app"
