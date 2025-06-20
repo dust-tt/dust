@@ -14,7 +14,7 @@ import {
   Label,
   Spinner,
 } from "@dust-tt/sparkle";
-import { createContext, useEffect, useState } from "react";
+import { createContext, useCallback, useState } from "react";
 
 import { useNavigationLock } from "@app/components/assistant_builder/useNavigationLock";
 import type { MCPValidationOutputType } from "@app/lib/actions/constants";
@@ -42,29 +42,31 @@ function useValidationQueue() {
   const [currentValidation, setCurrentValidation] =
     useState<MCPActionValidationRequest | null>(null);
 
-  // Queue stores the pending validation requests
-  // The current validation request is the one being processed
-  // The queue does not stores the current validation request
-  const addToQueue = (validationRequest: MCPActionValidationRequest) => {
-    setCurrentValidation((current) => {
-      if (current === null) {
-        return validationRequest;
-      }
+  // The current validation request is the one being processed.
+  // The queue does not stores the current validation request.
+  // It's memoized since it's used as a dependency of the hook.
+  const handleValidationRequest = useCallback(
+    (validationRequest: MCPActionValidationRequest) => {
+      setCurrentValidation((current) => {
+        if (current === null) {
+          return validationRequest;
+        }
 
-      setValidationQueue((prevQueue) => [...prevQueue, validationRequest]);
-      return current;
-    });
-  };
+        setValidationQueue((prevQueue) => [...prevQueue, validationRequest]);
+        return current;
+      });
+    },
+    []
+  );
 
+  // We don't update the current validation here to avoid content flickering.
   const takeNextFromQueue = () => {
     if (validationQueue.length > 0) {
       const nextValidation = validationQueue[0];
       const newQueue = validationQueue.slice(1);
       setValidationQueue(newQueue);
-      setCurrentValidation(nextValidation);
       return nextValidation;
     } else {
-      setCurrentValidation(null);
       return null;
     }
   };
@@ -72,8 +74,9 @@ function useValidationQueue() {
   return {
     validationQueue,
     currentValidation,
-    addToQueue,
+    handleValidationRequest,
     takeNextFromQueue,
+    setCurrentValidation,
   };
 }
 
@@ -86,8 +89,13 @@ export function ActionValidationProvider({
   owner,
   children,
 }: ActionValidationProviderProps) {
-  const { validationQueue, currentValidation, addToQueue, takeNextFromQueue } =
-    useValidationQueue();
+  const {
+    validationQueue,
+    currentValidation,
+    setCurrentValidation,
+    handleValidationRequest,
+    takeNextFromQueue,
+  } = useValidationQueue();
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -124,6 +132,8 @@ export function ActionValidationProvider({
       }
     );
 
+    setIsProcessing(false);
+
     if (!response.ok) {
       setErrorMessage("Failed to assess action approval. Please try again.");
       return;
@@ -134,25 +144,36 @@ export function ActionValidationProvider({
 
   const handleSubmit = (approved: MCPValidationOutputType) => {
     void sendCurrentValidation(approved);
-    setIsProcessing(false);
+
     const foundItem = takeNextFromQueue();
-    if (!foundItem) {
+    if (foundItem) {
+      setCurrentValidation(foundItem);
+    } else {
+      // To avoid content flickering, we will clear out the current validation in onDialogAnimationEnd.
       setIsDialogOpen(false);
     }
   };
 
-  useEffect(() => {
-    if (currentValidation) {
-      setIsDialogOpen(true);
+  // To avoid content flickering, we will clear out the current validation when closing animation ends.
+  const onDialogAnimationEnd = () => {
+    // This is safe to check because the dialog closing animation is triggered after isDialogOpen is set to false.
+    if (!isDialogOpen) {
+      setCurrentValidation(null);
+      setErrorMessage(null);
     }
-  }, [currentValidation]);
-
-  const showValidationDialog = (
-    validationRequest: MCPActionValidationRequest
-  ) => {
-    addToQueue(validationRequest);
-    setErrorMessage(null);
   };
+
+  // This will be used as a dependency of the hook down the line so we need to use useCallback.
+  const showValidationDialog = useCallback(
+    (validationRequest: MCPActionValidationRequest) => {
+      if (!isDialogOpen) {
+        setIsDialogOpen(true);
+      }
+
+      handleValidationRequest(validationRequest);
+    },
+    [handleValidationRequest, isDialogOpen]
+  );
 
   return (
     <ActionValidationContext.Provider value={{ showValidationDialog }}>
@@ -168,7 +189,7 @@ export function ActionValidationProvider({
           }
         }}
       >
-        <DialogContent isAlertDialog>
+        <DialogContent isAlertDialog onAnimationEnd={onDialogAnimationEnd}>
           <DialogHeader>
             <DialogTitle
               visual={
@@ -220,7 +241,7 @@ export function ActionValidationProvider({
               {validationQueue.length > 0 && (
                 <div className="mt-2 text-sm font-medium text-info-900 dark:text-info-900-night">
                   {validationQueue.length} more request
-                  {validationQueue.length > 1 ? "s" : ""} in queue
+                  {validationQueue.length > 1 ? "s" : ""} in the queue
                 </div>
               )}
 
