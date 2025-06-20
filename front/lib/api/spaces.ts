@@ -15,6 +15,7 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { isPrivateSpacesLimitReached } from "@app/lib/spaces";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { launchScrubSpaceWorkflow } from "@app/poke/temporal/client";
 import type { DataSourceWithAgentsUsageType, Result } from "@app/types";
@@ -85,45 +86,67 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
 
   await frontSequelize.transaction(async (t) => {
     // Soft delete all data source views.
-    for (const view of dataSourceViews) {
-      // Soft delete view, they will be hard deleted when the data source scrubbing job runs.
-      const res = await view.delete(auth, {
-        transaction: t,
-        hardDelete: false,
-      });
-      if (res.isErr()) {
-        throw res.error;
-      }
-    }
-
-    // Soft delete data sources they will be hard deleted in the scrubbing job.
-    for (const ds of dataSources) {
-      const res = await ds.delete(auth, { hardDelete: false, transaction: t });
-      if (res.isErr()) {
-        throw res.error;
-      }
-    }
-
-    // Soft delete the apps, which will be hard deleted in the scrubbing job.
-    for (const app of apps) {
-      const res = await app.delete(auth, { hardDelete: false, transaction: t });
-      if (res.isErr()) {
-        throw res.error;
-      }
-    }
-
-    if (options?.force) {
-      const agentNames = uniq(usages.map((u) => u.agentNames).flat());
-      for (const agentName of agentNames) {
-        const res = await updateAgentRequestedGroupIds(
-          auth,
-          { agentName: agentName, newGroupIds: [] },
-          { transaction: t }
-        );
+    await concurrentExecutor(
+      dataSourceViews,
+      async (view) => {
+        // Soft delete view, they will be hard deleted when the data source scrubbing job runs.
+        const res = await view.delete(auth, {
+          transaction: t,
+          hardDelete: false,
+        });
         if (res.isErr()) {
           throw res.error;
         }
-      }
+      },
+      { concurrency: 8 }
+    );
+
+    // Soft delete data sources they will be hard deleted in the scrubbing job.
+    await concurrentExecutor(
+      dataSources,
+      async (ds) => {
+        const res = await ds.delete(auth, {
+          hardDelete: false,
+          transaction: t,
+        });
+        if (res.isErr()) {
+          throw res.error;
+        }
+      },
+      { concurrency: 8 }
+    );
+
+    // Soft delete the apps, which will be hard deleted in the scrubbing job.
+    await concurrentExecutor(
+      apps,
+      async (app) => {
+        const res = await app.delete(auth, {
+          hardDelete: false,
+          transaction: t,
+        });
+        if (res.isErr()) {
+          throw res.error;
+        }
+      },
+      { concurrency: 8 }
+    );
+
+    if (options?.force) {
+      const agentNames = uniq(usages.map((u) => u.agentNames).flat());
+      await concurrentExecutor(
+        agentNames,
+        async (agentName) => {
+          const res = await updateAgentRequestedGroupIds(
+            auth,
+            { agentName: agentName, newGroupIds: [] },
+            { transaction: t }
+          );
+          if (res.isErr()) {
+            throw res.error;
+          }
+        },
+        { concurrency: 8 }
+      );
     }
 
     // Finally, soft delete the space.
