@@ -79,10 +79,6 @@ async function handleLogin(req: NextApiRequest, res: NextApiResponse) {
           );
           return;
         }
-
-        if (workspace.workOSOrganizationId) {
-          organizationIdToUse = workspace.workOSOrganizationId;
-        }
       }
     }
 
