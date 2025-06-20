@@ -12,6 +12,7 @@ import {
   getConnectorsAPIHandler,
 } from "@connectors/api/get_connector";
 import { getConnectorPermissionsAPIHandler } from "@connectors/api/get_connector_permissions";
+import { getNotionUrlStatusHandler } from "@connectors/api/notion_url_status";
 import { pauseConnectorAPIHandler } from "@connectors/api/pause_connector";
 import { resumeConnectorAPIHandler } from "@connectors/api/resume_connector";
 import { setConnectorPermissionsAPIHandler } from "@connectors/api/set_connector_permissions";
@@ -125,6 +126,8 @@ export function startServer(port: number) {
     "/slack/channels/linked_with_agent",
     getSlackChannelsLinkedWithAgentHandler
   );
+
+  app.get("/notion/url/status", getNotionUrlStatusHandler);
 
   app.post("/webhooks/:webhook_secret/slack", webhookSlackAPIHandler);
   app.post(
