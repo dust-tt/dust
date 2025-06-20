@@ -1,13 +1,10 @@
-// Attributes are marked as read-only to reflect the stateless nature of our Resource.
-// This design will be moved up to BaseResource once we transition away from Sequelize.
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
-import {
+import type {
   Attributes,
   CreationAttributes,
-  Op,
   Transaction,
   WhereOptions,
 } from "sequelize";
+import { Op } from "sequelize";
 import type { Readable, Writable } from "stream";
 
 import config from "@app/lib/api/config";
@@ -36,6 +33,9 @@ import type { ModelStaticWorkspaceAware } from "./storage/wrappers/workspace_mod
 
 export type FileVersion = "processed" | "original" | "public";
 
+// Attributes are marked as read-only to reflect the stateless nature of our Resource.
+// This design will be moved up to BaseResource once we transition away from Sequelize.
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface FileResource extends ReadonlyAttributesType<FileModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
