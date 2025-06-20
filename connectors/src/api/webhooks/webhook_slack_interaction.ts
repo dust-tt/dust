@@ -3,7 +3,7 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 
-import type { SlackWebhookResBody } from "@connectors/api/webhooks/webhook_slack_shared";
+import type { SlackWebhookResBody } from "@connectors/api/webhooks/slack/utils";
 import {
   botReplaceMention,
   botValidateToolExecution,

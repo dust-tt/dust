@@ -35,7 +35,7 @@ export async function autoReadChannel(
   teamId: string,
   logger: Logger,
   slackChannelId: string,
-  context: "slack_bot" | "slack" = "slack"
+  provider: "slack_bot" | "slack" = "slack"
 ): Promise<Result<undefined, Error>> {
   const slackConfiguration =
     await SlackConfigurationResource.fetchByTeamId(teamId);
@@ -108,7 +108,7 @@ export async function autoReadChannel(
     }
 
     // For slack_bot context, only do the basic channel setup without data source operations
-    if (context === "slack_bot") {
+    if (provider === "slack_bot") {
       return new Ok(undefined);
     }
 

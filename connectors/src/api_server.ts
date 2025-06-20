@@ -136,9 +136,9 @@ export function startServer(port: number) {
     "/webhooks/:webhook_secret/slack_interaction",
     webhookSlackInteractionsAPIHandler
   );
-  app.post("/webhooks/:webhook_secret/slackbot", webhookSlackBotAPIHandler);
+  app.post("/webhooks/:webhook_secret/slack_bot", webhookSlackBotAPIHandler);
   app.post(
-    "/webhooks/:webhook_secret/slackbot_interaction",
+    "/webhooks/:webhook_secret/slack_bot_interaction",
     webhookSlackBotInteractionsAPIHandler
   );
   app.post(

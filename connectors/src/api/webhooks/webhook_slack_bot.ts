@@ -7,12 +7,12 @@ import {
 import type {
   SlackWebhookReqBody,
   SlackWebhookResBody,
-} from "@connectors/api/webhooks/webhook_slack_shared";
+} from "@connectors/api/webhooks/slack/utils";
 import {
   handleChatBot,
   isSlackWebhookEventReqBody,
   withTrace,
-} from "@connectors/api/webhooks/webhook_slack_shared";
+} from "@connectors/api/webhooks/slack/utils";
 import { getBotUserIdMemoized } from "@connectors/connectors/slack/lib/bot_user_helpers";
 import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
@@ -158,7 +158,7 @@ const _webhookSlackBotAPIHandler = async (
             const onChannelCreationRes = await onChannelCreation({
               event,
               logger,
-              context: "slack_bot",
+              provider: "slack_bot",
             });
             if (onChannelCreationRes.isErr()) {
               return apiError(req, res, {

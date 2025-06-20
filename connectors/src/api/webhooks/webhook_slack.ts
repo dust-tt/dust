@@ -9,12 +9,12 @@ import {
 import type {
   SlackWebhookReqBody,
   SlackWebhookResBody,
-} from "@connectors/api/webhooks/webhook_slack_shared";
+} from "@connectors/api/webhooks/slack/utils";
 import {
   handleChatBot,
   isSlackWebhookEventReqBody,
   withTrace,
-} from "@connectors/api/webhooks/webhook_slack_shared";
+} from "@connectors/api/webhooks/slack/utils";
 import { getBotUserIdMemoized } from "@connectors/connectors/slack/lib/bot_user_helpers";
 import { updateSlackChannelInConnectorsDb } from "@connectors/connectors/slack/lib/channels";
 import {
@@ -444,7 +444,7 @@ const _webhookSlackAPIHandler = async (
             const onChannelCreationRes = await onChannelCreation({
               event,
               logger,
-              context: "slack",
+              provider: "slack",
             });
             if (onChannelCreationRes.isErr()) {
               return apiError(req, res, {
