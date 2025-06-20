@@ -15,6 +15,7 @@ import {
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import type {
@@ -79,6 +80,18 @@ export async function getDataSourceViewsUsageByCategory({
       assertNever(category);
   }
 
+  const getAgentsForUser = async () => {
+    return (
+      await GroupResource.findAgentIdsForGroups(
+        auth,
+        auth
+          .groups()
+          .filter((g) => g.kind === "agent_editors")
+          .map((g) => g.id)
+      )
+    ).map((g) => g.agentConfigurationId);
+  };
+
   const agentWhereClauseAdmin = {
     status: "active",
     workspaceId: owner.id,
@@ -87,8 +100,17 @@ export async function getDataSourceViewsUsageByCategory({
   const agentWhereClauseNonAdmin = {
     status: "active",
     workspaceId: owner.id,
-    // If the user is non-admin, only include their own agents
-    authorId: auth.user()?.id,
+    // If user is non-admin, only include agents that are either they have access to or are published
+    [Op.or]: [
+      {
+        scope: "visible",
+      },
+      {
+        id: {
+          [Op.in]: await getAgentsForUser(),
+        },
+      },
+    ],
   };
 
   const agentConfigurationInclude = {
