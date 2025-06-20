@@ -39,6 +39,7 @@ export async function renderConversationForModel(
     conversation,
     model,
     prompt,
+    tools,
     allowedTokenCount,
     excludeActions,
     excludeImages,
@@ -46,6 +47,7 @@ export async function renderConversationForModel(
     conversation: ConversationType;
     model: ModelConfigurationType;
     prompt: string;
+    tools: string;
     allowedTokenCount: number;
     excludeActions?: boolean;
     excludeImages?: boolean;
@@ -292,19 +294,25 @@ export async function renderConversationForModel(
 
   // Compute in parallel the token count for each message and the prompt.
   const res = await tokenCountForTexts(
-    [prompt, ...getTextRepresentationFromMessages(messages)],
+    [prompt, tools, ...getTextRepresentationFromMessages(messages)],
     model
   );
   if (res.isErr()) {
     return new Err(res.error);
   }
 
-  const [promptCount, ...messagesCount] = res.value;
+  const [promptCount, toolsCount, ...messagesCount] = res.value;
+
+  // Models turns the json schema into an internal representation that is more efficient to tokenize.
+  const toolsCountAdjustmentFactor = 0.7;
 
   // We initialize `tokensUsed` to the prompt tokens + a bit of buffer for message rendering
   // approximations.
   const tokensMargin = 1024;
-  let tokensUsed = promptCount + tokensMargin;
+  let tokensUsed =
+    promptCount +
+    Math.floor(toolsCount * toolsCountAdjustmentFactor) +
+    tokensMargin;
 
   // Go backward and accumulate as much as we can within allowedTokenCount.
   const selected: ModelMessageTypeMultiActions[] = [];
