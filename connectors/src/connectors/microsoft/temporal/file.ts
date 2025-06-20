@@ -172,7 +172,12 @@ export async function syncOneFile({
   } catch (error) {
     if (axios.isAxiosError(error) && error.response?.status === 403) {
       localLogger.info(
-        { status: 403, fileName: file.name },
+        {
+          status: 403,
+          fileName: file.name,
+          internalId: documentId,
+          webUrl: file.webUrl,
+        },
         "Access forbidden to file, marking as skipped"
       );
 
