@@ -10,7 +10,7 @@ import { Err, Ok } from "@app/types";
 
 export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   // Note:
-  // Names should reflect the purpose of the server, but not directly the tools it contains.
+  // Names should reflect the purpose of the server but not directly the tools it contains.
   // We'll prefix all tools with the server name to avoid conflicts.
   // It's okay to change the name of the server as we don't refer to it directly.
   "agent_router",
@@ -54,10 +54,10 @@ export const INTERNAL_MCP_SERVERS: Record<
   {
     id: number;
     availability: MCPServerAvailability;
-    isRestricted?: (
-      plan: PlanType,
-      featureFlags: WhitelistableFeature[]
-    ) => boolean;
+    isRestricted?: (params: {
+      plan: PlanType;
+      featureFlags: WhitelistableFeature[];
+    }) => boolean;
     tools_stakes?: Record<string, MCPToolStakeLevelType>;
     timeoutMs?: number;
   }
@@ -96,7 +96,7 @@ export const INTERNAL_MCP_SERVERS: Record<
   think: {
     id: 6,
     availability: "auto",
-    isRestricted: (plan, featureFlags) => {
+    isRestricted: ({ featureFlags }) => {
       return featureFlags.includes("dev_mcp_actions");
     },
   },
@@ -185,7 +185,7 @@ export const INTERNAL_MCP_SERVERS: Record<
   salesforce: {
     id: 14,
     availability: "manual",
-    isRestricted: (plan, featureFlags) => {
+    isRestricted: ({ featureFlags }) => {
       // When we are ready to release the feature, the condition will be:
       // return featureFlags.includes("salesforce_tool") || plan.limits.connections.isSalesforceAllowed;
       return featureFlags.includes("salesforce_tool");
@@ -199,7 +199,7 @@ export const INTERNAL_MCP_SERVERS: Record<
   gmail: {
     id: 15,
     availability: "manual",
-    isRestricted: (plan, featureFlags) => {
+    isRestricted: ({ featureFlags }) => {
       return featureFlags.includes("gmail_tool");
     },
     tools_stakes: {
@@ -210,7 +210,7 @@ export const INTERNAL_MCP_SERVERS: Record<
   google_calendar: {
     id: 16,
     availability: "manual",
-    isRestricted: (plan, featureFlags) => {
+    isRestricted: ({ featureFlags }) => {
       return featureFlags.includes("google_calendar_tool");
     },
     tools_stakes: {
@@ -230,7 +230,7 @@ export const INTERNAL_MCP_SERVERS: Record<
   slack: {
     id: 18,
     availability: "manual",
-    isRestricted: (plan, featureFlags) => {
+    isRestricted: ({ featureFlags }) => {
       return featureFlags.includes("slack_tool");
     },
     tools_stakes: {
@@ -253,7 +253,7 @@ export const INTERNAL_MCP_SERVERS: Record<
   primitive_types_debugger: {
     id: 1004,
     availability: "manual",
-    isRestricted: (plan, featureFlags) => {
+    isRestricted: ({ featureFlags }) => {
       return featureFlags.includes("dev_mcp_actions");
     },
   },
@@ -265,21 +265,21 @@ export const INTERNAL_MCP_SERVERS: Record<
     id: 1009,
     availability: "auto",
     // We'll eventually switch everyone to this new tables query toolset.
-    isRestricted: (plan, featureFlags) => {
+    isRestricted: ({ featureFlags }) => {
       return featureFlags.includes("exploded_tables_query");
     },
   },
   data_sources_file_system: {
     id: 1010,
     availability: "auto",
-    isRestricted: (plan, featureFlags) => {
+    isRestricted: ({ featureFlags }) => {
       return featureFlags.includes("dev_mcp_actions");
     },
   },
   memory: {
     id: 1011,
     availability: "auto",
-    isRestricted: (plan, featureFlags) => {
+    isRestricted: ({ featureFlags }) => {
       return featureFlags.includes("dev_mcp_actions");
     },
   },
