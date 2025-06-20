@@ -186,7 +186,13 @@ export function AssistantDetailsButtonBar({
                   }
             }
             onClick={(e: Event) => {
-              console.log("Clicked edit assistant button");
+              console.log("🔘 Edit Assistant button clicked", {
+                agentId: agentConfiguration.sId,
+                targetHref: `/w/${owner.sId}/builder/assistants/${agentConfiguration.sId}?flow=workspace_assistants`,
+                canEdit: canEditAssistant,
+                timestamp: new Date().toISOString(),
+                event: e,
+              });
               setHasClickedEditAssistant(true);
             }}
             icon={canEditAssistant ? PencilSquareIcon : XCircleIcon}

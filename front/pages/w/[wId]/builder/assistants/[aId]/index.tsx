@@ -1,5 +1,7 @@
 import tracer from "dd-trace";
 import type { InferGetServerSidePropsType } from "next";
+import { useRouter } from "next/router";
+import { useEffect } from "react";
 
 import AssistantBuilder from "@app/components/assistant_builder/AssistantBuilder";
 import { AssistantBuilderProvider } from "@app/components/assistant_builder/AssistantBuilderContext";
@@ -125,6 +127,18 @@ export default function EditAssistant({
   plan,
   subscription,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
+  const router = useRouter();
+  
+  useEffect(() => {
+    console.log("📄 Target page rendered: AssistantBuilder", {
+      url: router.asPath,
+      agentId: agentConfiguration?.sId,
+      timestamp: new Date().toISOString(),
+      flow,
+      owner: owner.sId
+    });
+  }, []);
+
   if (agentConfiguration.scope === "global") {
     throw new Error("Cannot edit global agent");
   }
