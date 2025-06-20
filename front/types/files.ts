@@ -26,6 +26,9 @@ export type FileUseCaseMetadata = {
   conversationId?: string;
   spaceId?: string;
   generatedTables?: string[];
+  agentMessageId?: string;
+  type?: string;
+  description?: string;
 };
 
 export interface FileType {
