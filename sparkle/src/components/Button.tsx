@@ -278,8 +278,24 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     },
     ref
   ) => {
+    const debugInfo = {
+      href,
+      onClick: !!props.onClick,
+      variant,
+      size,
+      isServer: typeof window === "undefined",
+    };
+
+    // This will show in server logs
+    if (typeof window === "undefined") {
+      console.error("SERVER RENDER:", debugInfo);
+    } else {
+      console.log("CLIENT RENDER:", debugInfo);
+    }
+
     // Add explicit fallback for SSR
     const resolvedVariant = variant || "primary";
+    const resolvedSize = size || "sm";
 
     const iconSize = ICON_SIZE_MAP[size];
     const counterSize = COUNTER_SIZE_MAP[size];
@@ -353,7 +369,11 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
           className={cn(
             // This cannot apply disabled styles for links, since it's using :disabled pseudo-class to apply styles.
             // We will manually add disabled styles for links (getDisabledClasses).
-            buttonVariants({ variant: resolvedVariant, size, className }),
+            buttonVariants({
+              variant: resolvedVariant,
+              size: resolvedSize,
+              className,
+            }),
             "s-inline-block",
             isPulsing && "s-animate-pulse",
             (isLoading || props.disabled) && [
