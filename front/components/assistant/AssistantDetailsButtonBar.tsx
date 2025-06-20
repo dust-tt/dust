@@ -133,9 +133,27 @@ export function AssistantDetailsButtonBar({
   const isFavoriteDisabled =
     isAgentConfigurationValidating || isUpdatingFavorite;
 
+  console.log("📈 AssistantDetailsButtonBar rendered", {
+    agentConfiguration,
+    isAgentConfigurationValidating,
+    owner,
+    featureFlags,
+    timestamp: new Date().toISOString(),
+  });
+
   return (
     <div className="flex flex-row items-center gap-2 px-1.5">
-      <div className="group">
+      <div
+        className="group"
+        onClick={(e) => {
+          console.log("🎁 Group div clicked", {
+            agentId: agentConfiguration.sId,
+            canEdit: canEditAssistant,
+            timestamp: new Date().toISOString(),
+            event: e,
+          });
+        }}
+      >
         <Button
           icon={
             agentConfiguration.userFavorite || isFavoriteDisabled
