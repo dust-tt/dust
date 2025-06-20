@@ -131,6 +131,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
   });
 
   if (!crawlerResponse.success) {
+    await syncFailed(connectorId, "webcrawling_error");
     throw new Error(crawlerResponse.error);
   }
 
