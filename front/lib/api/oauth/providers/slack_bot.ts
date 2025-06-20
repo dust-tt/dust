@@ -33,6 +33,7 @@ export class SlackBotOAuthProvider implements BaseOAuthStrategyProvider {
       "team:read",
       "im:read",
       "users:read",
+      "users:read.email",
     ];
     return (
       `https://slack.com/oauth/v2/authorize?` +
