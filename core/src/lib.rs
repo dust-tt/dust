@@ -70,7 +70,12 @@ pub mod providers {
     pub mod sentencepiece {
         pub mod sentencepiece;
     }
-    pub mod anthropic;
+    pub mod anthropic {
+        pub mod anthropic;
+        pub mod image_helpers;
+        pub mod streaming;
+        pub mod types;
+    }
     pub mod deepseek;
     pub mod fireworks;
     pub mod google_ai_studio;
