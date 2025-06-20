@@ -3,16 +3,10 @@ node_modules/
 npm-debug.log
 yarn-error.log
 
-# TypeScript
-src/
-*.ts
-!dist/
-
 # Development files
 .git/
 .gitignore
 README.md
-tsconfig.json
 tsup.config.ts
 
 # ESLint
@@ -33,5 +27,6 @@ eslint.config.js
 Thumbs.db
 
 # Development scripts
+.env*
 .env.local
 .env.development

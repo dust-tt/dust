@@ -1,85 +1,65 @@
 import express from "express";
+import { CONFIG } from "./config.js";
+import { SecretManager } from "./secrets.js";
+import { GracefulServer } from "./server.js";
+import { createRoutes } from "./routes.js";
 
-const app = express();
-app.use(express.json());
+async function main(): Promise<void> {
+  try {
+    // Initialize dependencies.
+    const secretManager = new SecretManager();
 
-async function forwardToRegions(
-  webhookSecret: string,
-  endpoint: string,
-  method: string,
-  body: unknown
-) {
-  const targetPath = `/webhooks/${webhookSecret}/${endpoint}`;
+    // Create Express app.
+    const app = express();
+    app.use(express.json({ limit: CONFIG.REQUEST_SIZE_LIMIT }));
 
-  const requests = [
-    fetch(`https://connectors.dust.tt${targetPath}`, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    }),
-    fetch(`https://eu.connectors.dust.tt${targetPath}`, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    }),
-  ];
+    // Start server.
+    const server = app.listen(CONFIG.PORT, async () => {
+      try {
+        // Ensure secrets are loaded before accepting traffic.
+        await secretManager.getSecrets();
+        console.log("Slack webhook router ready", {
+          component: "main",
+          port: CONFIG.PORT,
+        });
+      } catch (error) {
+        console.error("Failed to start server", {
+          component: "main",
+          error: error instanceof Error ? error.message : String(error),
+        });
+        process.exit(1);
+      }
+    });
 
-  const results = await Promise.allSettled(requests);
-  console.log(
-    `Forwarded ${endpoint} to regions:`,
-    results.map((r) => r.status)
-  );
+    // Setup graceful shutdown.
+    const gracefulServer = new GracefulServer(server);
+
+    // Cleanup on exit.
+    process.on("exit", () => {
+      secretManager.dispose();
+      gracefulServer.dispose();
+    });
+
+    // Setup routes.
+    const routes = createRoutes(secretManager, gracefulServer);
+    app.use(routes);
+
+    console.log("Server initialized successfully", { component: "main" });
+  } catch (error) {
+    console.error("Failed to initialize server", {
+      component: "main",
+      error: error instanceof Error ? error.message : String(error),
+    });
+
+    process.exit(1);
+  }
 }
 
-app.post("/:webhookSecret/events", async (req, res) => {
-  const { webhookSecret } = req.params;
+main().catch((error) => {
+  console.error("Unhandled error in main", {
+    component: "main",
+    error: error instanceof Error ? error.message : String(error),
+  });
 
-  try {
-    // Handle Slack URL verification challenge.
-    if (req.body.type === "url_verification" && req.body.challenge) {
-      console.log("Handling URL verification challenge for events");
-      res.status(200).json({ challenge: req.body.challenge });
-
-      return;
-    }
-
-    // Respond 200 immediately to Slack.
-    res.status(200).send();
-
-    // Forward to both regions asynchronously.
-    await forwardToRegions(webhookSecret, "slack", req.method, req.body);
-  } catch (error) {
-    console.error("Events router error:", error);
-    if (!res.headersSent) {
-      res.status(200).send();
-    }
-  }
-});
-
-app.post("/:webhookSecret/interactions", async (req, res) => {
-  const { webhookSecret } = req.params;
-
-  try {
-    // Respond 200 immediately to Slack.
-    res.status(200).send();
-
-    // Forward to both regions asynchronously.
-    await forwardToRegions(
-      webhookSecret,
-      "slack_interaction",
-      req.method,
-      req.body
-    );
-  } catch (error) {
-    console.error("Interactions router error:", error);
-    if (!res.headersSent) {
-      res.status(200).send();
-    }
-  }
-});
-
-const PORT = process.env.PORT || 8080;
-
-app.listen(PORT, () => {
-  console.log(`Slack webhook router listening on port ${PORT}`);
+  process.exit(1);
 });
