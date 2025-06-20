@@ -278,21 +278,6 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     },
     ref
   ) => {
-    const debugInfo = {
-      href,
-      onClick: !!props.onClick,
-      variant,
-      size,
-      isServer: typeof window === "undefined",
-    };
-
-    // This will show in server logs
-    if (typeof window === "undefined") {
-      console.error("SERVER RENDER:", debugInfo);
-    } else {
-      console.log("CLIENT RENDER:", debugInfo);
-    }
-
     // Add explicit fallback for SSR
     const resolvedVariant = variant || "primary";
     const resolvedSize = size || "sm";
@@ -312,7 +297,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     );
 
     const showCounter = isCounter && counterValue != null;
-    const showContainer = label || showCounter;
+    const showContainer = showCounter;
 
     const content = (
       <>
@@ -332,7 +317,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         ) : (
           icon && renderIcon(icon, "-s-mx-0.5")
         )}
-
+        {!showContainer && label && <>{label}</>}
         {showContainer && (
           <div
             className={cn(
@@ -389,9 +374,9 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
           }
         >
           {tooltip ? (
-            <ContentWithTooltip tooltip={tooltip}>{label}</ContentWithTooltip>
+            <ContentWithTooltip tooltip={tooltip}>{content}</ContentWithTooltip>
           ) : (
-            label
+            <>{content}</>
           )}
         </LinkWrapper>
       );
