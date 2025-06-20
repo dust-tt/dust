@@ -55,6 +55,7 @@ import { WebCrawlerConfigurationResource } from "@connectors/resources/webcrawle
 import type { ModelId, WebcrawlerCustomCrawler } from "@connectors/types";
 import {
   INTERNAL_MIME_TYPES,
+  normalizeError,
   stripNullBytes,
   validateUrl,
   WEBCRAWLER_MAX_DEPTH,
@@ -1331,7 +1332,10 @@ export async function firecrawlCrawlCompleted(
       }
       return;
     } catch (err) {
-      localLogger.warn({ connectorId, crawlId }, "Couldn't check crawl errors");
+      localLogger.warn(
+        { connectorId, crawlId },
+        `Couldn't check crawl errors: ${normalizeError(err)}`
+      );
       await syncFailed(connectorId, "webcrawling_error_empty_content");
     }
   }
