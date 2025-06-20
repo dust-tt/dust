@@ -311,62 +311,67 @@ export const SpaceResourcesList = ({
       return [];
     }
 
-    return spaceDataSourceViews.map((dataSourceView) => {
-      const provider = dataSourceView.dataSource.connectorProvider;
+    return spaceDataSourceViews
+      .filter(
+        (dataSourceView) =>
+          dataSourceView.dataSource.connectorProvider !== "slack_bot"
+      )
+      .map((dataSourceView) => {
+        const provider = dataSourceView.dataSource.connectorProvider;
 
-      const menuItems: MenuItem[] = [];
-      if (isWebsiteOrFolder && canWriteInSpace) {
-        menuItems.push({
-          label: "Edit",
-          kind: "item",
-          icon: PencilSquareIcon,
-          onClick: (e) => {
-            e.stopPropagation();
-            setSelectedDataSourceView(dataSourceView);
-            setShowFolderOrWebsiteModal(true);
-          },
-        });
-        if (isFolder) {
+        const menuItems: MenuItem[] = [];
+        if (isWebsiteOrFolder && canWriteInSpace) {
           menuItems.push({
-            label: "Use from API",
+            label: "Edit",
             kind: "item",
-            icon: CubeIcon,
+            icon: PencilSquareIcon,
             onClick: (e) => {
               e.stopPropagation();
               setSelectedDataSourceView(dataSourceView);
-              setShowViewFolderAPIModal(true);
+              setShowFolderOrWebsiteModal(true);
+            },
+          });
+          if (isFolder) {
+            menuItems.push({
+              label: "Use from API",
+              kind: "item",
+              icon: CubeIcon,
+              onClick: (e) => {
+                e.stopPropagation();
+                setSelectedDataSourceView(dataSourceView);
+                setShowViewFolderAPIModal(true);
+              },
+            });
+          }
+          menuItems.push({
+            label: "Delete",
+            icon: TrashIcon,
+            kind: "item",
+            variant: "warning",
+            onClick: (e) => {
+              e.stopPropagation();
+              setSelectedDataSourceView(dataSourceView);
+              setShowDeleteConfirmDialog(true);
             },
           });
         }
-        menuItems.push({
-          label: "Delete",
-          icon: TrashIcon,
-          kind: "item",
-          variant: "warning",
-          onClick: (e) => {
+
+        return {
+          dataSourceView,
+          label: getDataSourceNameFromView(dataSourceView),
+          icon: getConnectorProviderLogoWithFallback({ provider, isDark }),
+          workspaceId: owner.sId,
+          isAdmin,
+          isLoading: provider ? isLoadingByProvider[provider] : false,
+          menuItems,
+          buttonOnClick: (e) => {
             e.stopPropagation();
             setSelectedDataSourceView(dataSourceView);
-            setShowDeleteConfirmDialog(true);
+            setShowConnectorPermissionsModal(true);
           },
-        });
-      }
-
-      return {
-        dataSourceView,
-        label: getDataSourceNameFromView(dataSourceView),
-        icon: getConnectorProviderLogoWithFallback({ provider, isDark }),
-        workspaceId: owner.sId,
-        isAdmin,
-        isLoading: provider ? isLoadingByProvider[provider] : false,
-        menuItems,
-        buttonOnClick: (e) => {
-          e.stopPropagation();
-          setSelectedDataSourceView(dataSourceView);
-          setShowConnectorPermissionsModal(true);
-        },
-        onClick: () => onSelect(dataSourceView.sId),
-      };
-    });
+          onClick: () => onSelect(dataSourceView.sId),
+        };
+      });
   }, [
     spaceDataSourceViews,
     owner.sId,
