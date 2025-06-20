@@ -11,6 +11,7 @@ import { default as calendarServer } from "@app/lib/actions/mcp_internal_actions
 import { default as hubspotServer } from "@app/lib/actions/mcp_internal_actions/servers/hubspot/server";
 import { default as imageGenerationDallEServer } from "@app/lib/actions/mcp_internal_actions/servers/image_generation";
 import { default as includeDataServer } from "@app/lib/actions/mcp_internal_actions/servers/include";
+import { default as memoryServer } from "@app/lib/actions/mcp_internal_actions/servers/memory";
 import { default as missingActionCatcherServer } from "@app/lib/actions/mcp_internal_actions/servers/missing_action_catcher";
 import { default as notionServer } from "@app/lib/actions/mcp_internal_actions/servers/notion";
 import { default as primitiveTypesDebuggerServer } from "@app/lib/actions/mcp_internal_actions/servers/primitive_types_debugger";
@@ -85,6 +86,8 @@ export async function getInternalMCPServer(
       return dataSourcesFileSystemServer(auth, agentLoopContext);
     case "conversation_files":
       return conversationFilesServer(auth, agentLoopContext);
+    case "memory":
+      return memoryServer(auth, agentLoopContext);
     case "slack":
       return slackServer(auth, agentLoopContext);
     default:

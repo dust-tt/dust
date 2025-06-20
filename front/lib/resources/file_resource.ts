@@ -1,7 +1,13 @@
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
-import type { Attributes, CreationAttributes, Transaction } from "sequelize";
+import {
+  Attributes,
+  CreationAttributes,
+  Op,
+  Transaction,
+  WhereOptions,
+} from "sequelize";
 import type { Readable, Writable } from "stream";
 
 import config from "@app/lib/api/config";
@@ -107,6 +113,31 @@ export class FileResource extends BaseResource<FileModel> {
     });
 
     return file ? new this(this.model, file.get()) : null;
+  }
+
+  static async fetchMemoryFilesByConversationId(
+    auth: Authenticator,
+    conversationId: string
+  ): Promise<FileResource[]> {
+    const owner = auth.getNonNullableWorkspace();
+
+    const where: WhereOptions<FileModel> = {
+      workspaceId: owner.id,
+      useCase: "conversation",
+      useCaseMetadata: {
+        [Op.contains]: {
+          conversationId,
+          type: "memory_file",
+        },
+      } as Record<symbol, unknown>,
+    };
+
+    const blobs = await this.model.findAll({
+      where,
+      order: [["createdAt", "ASC"]],
+    });
+
+    return blobs.map((blob) => new this(this.model, blob.get()));
   }
 
   static async deleteAllForWorkspace(
@@ -325,7 +356,9 @@ export class FileResource extends BaseResource<FileModel> {
     return this.update({ snippet });
   }
 
-  // Serialization logic.
+  setFileSize(fileSize: number) {
+    return this.update({ fileSize });
+  }
 
   toJSON(auth: Authenticator): FileType {
     const blob: FileType = {

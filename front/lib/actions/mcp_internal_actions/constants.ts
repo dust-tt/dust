@@ -23,6 +23,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "hubspot",
   "image_generation",
   "include_data",
+  "memory",
   "missing_action_catcher",
   "notion",
   "primitive_types_debugger",
@@ -270,6 +271,13 @@ export const INTERNAL_MCP_SERVERS: Record<
   },
   data_sources_file_system: {
     id: 1010,
+    availability: "auto",
+    isRestricted: (plan, featureFlags) => {
+      return featureFlags.includes("dev_mcp_actions");
+    },
+  },
+  memory: {
+    id: 1011,
     availability: "auto",
     isRestricted: (plan, featureFlags) => {
       return featureFlags.includes("dev_mcp_actions");
