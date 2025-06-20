@@ -1,4 +1,8 @@
-import { ContentMessage, InformationCircleIcon } from "@dust-tt/sparkle";
+import {
+  ContentMessage,
+  InformationCircleIcon,
+  SliderToggle,
+} from "@dust-tt/sparkle";
 import { useCallback, useContext, useMemo, useState } from "react";
 
 import { ToolsList } from "@app/components/actions/mcp/ToolsList";
@@ -21,6 +25,10 @@ import type {
 } from "@app/components/assistant_builder/types";
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import type { MCPServerAvailability } from "@app/lib/actions/mcp_internal_actions/constants";
+import {
+  ADVANCED_SEARCH_SWITCH,
+  isInternalMCPServerName,
+} from "@app/lib/actions/mcp_internal_actions/constants";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import { validateConfiguredJsonSchema } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { isDustAppRunConfiguration } from "@app/lib/actions/types/guards";
@@ -165,6 +173,13 @@ export function MCPAction({
   // We don't show the "Available Tools" section if there is only one tool.
   // Because it's redundant with the tool description.
   const hasOnlyOneTool = selectedMCPServerView?.server.tools.length === 1;
+
+  // Flagging the search server specifically to display a custom UI element for it.
+  const isSearchServer =
+    selectedMCPServerView?.serverType === "internal" &&
+    // This check is technically not needed but prevents a super weak check right after.
+    isInternalMCPServerName(selectedMCPServerView.server.name) &&
+    selectedMCPServerView.server.name === "search";
 
   const spaceName = allowedSpaces.find(
     (space) => space.sId === selectedMCPServerView?.spaceId
@@ -341,6 +356,29 @@ export function MCPAction({
             }
             serverId={selectedMCPServerView.server.sId}
             canUpdate={false}
+          />
+        </ConfigurationSectionContainer>
+      )}
+
+      {isSearchServer && (
+        <ConfigurationSectionContainer title="Toggle Advanced Search">
+          <SliderToggle
+            selected={
+              actionConfiguration.additionalConfiguration[
+                ADVANCED_SEARCH_SWITCH
+              ] === true
+            }
+            onClick={() =>
+              handleConfigUpdate((old) => ({
+                ...old,
+                additionalConfiguration: {
+                  ...old.additionalConfiguration,
+                  [ADVANCED_SEARCH_SWITCH]:
+                    old.additionalConfiguration[ADVANCED_SEARCH_SWITCH] !==
+                    true,
+                },
+              }))
+            }
           />
         </ConfigurationSectionContainer>
       )}
