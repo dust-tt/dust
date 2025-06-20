@@ -1103,11 +1103,12 @@ export async function microsoftGarbageCollectionActivity({
         const driveOrItem = res.status === 200 ? res.body : null;
         switch (node.nodeType) {
           case "drive":
-            if (!driveOrItem || !rootNodeIds.includes(node.internalId)) {
+            if (!driveOrItem) {
               await deleteFolder({
                 connectorId,
                 dataSourceConfig,
                 internalId: node.internalId,
+                deleteRootNode: true,
               });
             }
             break;
