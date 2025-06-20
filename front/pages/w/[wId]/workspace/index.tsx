@@ -203,9 +203,11 @@ export default function WorkspaceAdmin({
     if (slackBotDataSource) {
       await toggleSlackBotOnExistingDataSource(!isSlackBotEnabled);
     } else {
-      const dataSource = await createSlackBotConnectionAndDataSource();
-      if (dataSource) {
-        await toggleSlackBotOnExistingDataSource(true);
+      const createRes = await createSlackBotConnectionAndDataSource();
+      if (createRes) {
+        // No need to toggle since default config already enabled the bot.
+        // await toggleSlackBotOnExistingDataSource(true);
+        // TODO: likely better to still make the call (but tricky since data source is not yet created).
         window.location.reload();
       } else {
         sendNotification({
