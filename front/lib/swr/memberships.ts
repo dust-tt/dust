@@ -6,11 +6,8 @@ import { debounce } from "@app/lib/utils/debounce";
 import type { GetWorkspaceInvitationsResponseBody } from "@app/pages/api/w/[wId]/invitations";
 import type { GetMembersResponseBody } from "@app/pages/api/w/[wId]/members";
 import type { SearchMembersResponseBody } from "@app/pages/api/w/[wId]/members/search";
-import {
-  isGroupKind,
-  type GroupKind,
-  type LightWorkspaceType,
-} from "@app/types";
+import type { GroupKind, LightWorkspaceType } from "@app/types";
+import { isGroupKind } from "@app/types";
 
 type PaginationParams = {
   orderColumn: "createdAt";
