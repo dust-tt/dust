@@ -2,6 +2,7 @@ import type {
   AuthenticateWithSessionCookieFailedResponse,
   AuthenticateWithSessionCookieSuccessResponse,
   AuthenticationResponse as WorkOSAuthenticationResponse,
+  DirectoryUser as WorkOSDirectoryUser,
   RefreshSessionResponse,
   User as WorkOSUser,
 } from "@workos-inc/node";
@@ -14,6 +15,7 @@ import type {
 
 import config from "@app/lib/api/config";
 import type { RegionType } from "@app/lib/api/regions/config";
+import { config as multiRegionsConfig } from "@app/lib/api/regions/config";
 import { getWorkOS } from "@app/lib/api/workos/client";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import logger from "@app/logger/logger";
@@ -141,13 +143,9 @@ export async function updateUserFromAuth0(
   }
 }
 
-export async function fetchWorkOSUserWithEmail(
-  email?: string | null
+export async function fetchUserFromWorkOS(
+  email: string
 ): Promise<Result<WorkOSUser, Error>> {
-  if (email == null) {
-    return new Err(new Error("Missing email"));
-  }
-
   const workOSUserResponse = await getWorkOS().userManagement.listUsers({
     email,
   });
@@ -157,7 +155,41 @@ export async function fetchWorkOSUserWithEmail(
     return new Err(new Error(`User not found with email "${email}"`));
   }
 
-  logger.info({ workOSUser, email }, "Found workOS user for webhook event");
-
   return new Ok(workOSUser);
+}
+
+export async function fetchOrCreateWorkOSUserWithEmail(
+  workOSUser: WorkOSDirectoryUser
+): Promise<Result<WorkOSUser, Error>> {
+  if (workOSUser.email == null) {
+    return new Err(new Error("Missing email"));
+  }
+
+  const workOSUserResponse = await getWorkOS().userManagement.listUsers({
+    email: workOSUser.email,
+  });
+
+  const [existingUser] = workOSUserResponse.data;
+  if (!existingUser) {
+    const createdUser = await getWorkOS().userManagement.createUser({
+      email: workOSUser.email,
+      firstName: workOSUser.firstName ?? undefined,
+      lastName: workOSUser.lastName ?? undefined,
+      metadata: {
+        region: multiRegionsConfig.getCurrentRegion(),
+      },
+    });
+    logger.info(
+      { workOSUser, createdUser: existingUser, email: workOSUser.email },
+      "Created WorkOS user for webhook event"
+    );
+
+    return new Ok(createdUser);
+  }
+  logger.info(
+    { workOSUser, createdUser: existingUser, email: workOSUser.email },
+    "Found WorkOS user for webhook event"
+  );
+
+  return new Ok(existingUser);
 }

@@ -3,7 +3,7 @@ import * as fs from "fs";
 
 import { sendEmailWithTemplate } from "@app/lib/api/email";
 import { getWorkOS } from "@app/lib/api/workos/client";
-import { fetchWorkOSUserWithEmail } from "@app/lib/api/workos/user";
+import { fetchUserFromWorkOS } from "@app/lib/api/workos/user";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
@@ -39,7 +39,7 @@ const sendPasswordResetEmail = async (
   const childLogger = logger.child({ email });
 
   // First, check if the user exists in WorkOS.
-  const userResult = await fetchWorkOSUserWithEmail(email);
+  const userResult = await fetchUserFromWorkOS(email);
   if (userResult.isErr()) {
     childLogger.warn("User not found in WorkOS");
     return { success: false, error: "User not found in WorkOS" };
