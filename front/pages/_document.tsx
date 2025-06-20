@@ -1,9 +1,25 @@
+import type { DocumentContext, DocumentInitialProps } from "next/document";
 import Document, { Head, Html, Main, NextScript } from "next/document";
 
-const { ENABLE_BOT_CRAWLING } = process.env;
+interface MyDocumentProps extends DocumentInitialProps {
+  enableBotCrawling: boolean;
+}
 
-class MyDocument extends Document {
+class MyDocument extends Document<MyDocumentProps> {
+  static async getInitialProps(ctx: DocumentContext): Promise<MyDocumentProps> {
+    const initialProps = await Document.getInitialProps(ctx);
+
+    const { ENABLE_BOT_CRAWLING } = process.env;
+
+    return {
+      ...initialProps,
+      enableBotCrawling: ENABLE_BOT_CRAWLING === "true",
+    };
+  }
+
   render() {
+    const { enableBotCrawling } = this.props;
+
     return (
       <Html>
         <Head>
@@ -14,9 +30,7 @@ class MyDocument extends Document {
             href="https://fonts.gstatic.com"
             crossOrigin="anonymous"
           />
-          {ENABLE_BOT_CRAWLING !== "true" && (
-            <meta name="robots" content="noindex" />
-          )}
+          {!enableBotCrawling && <meta name="robots" content="noindex" />}
         </Head>
         <body>
           <noscript>
