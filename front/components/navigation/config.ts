@@ -212,6 +212,15 @@ export const subNavigationAdmin = ({
           subMenuLabel: current === "analytics" ? subMenuLabel : undefined,
           subMenu: current === "analytics" ? subMenu : undefined,
         },
+        {
+          id: "subscription",
+          label: "Subscription",
+          icon: ShapesIcon,
+          href: `/w/${owner.sId}/subscription`,
+          current: current === "subscription",
+          subMenuLabel: current === "subscription" ? subMenuLabel : undefined,
+          subMenu: current === "subscription" ? subMenu : undefined,
+        },
       ],
     });
 

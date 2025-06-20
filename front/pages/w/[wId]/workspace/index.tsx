@@ -1,7 +1,5 @@
 import {
   Button,
-  CardIcon,
-  Chip,
   ContextItem,
   Input,
   Page,
@@ -26,7 +24,6 @@ import { setupConnection } from "@app/components/spaces/AddConnectionMenu";
 import AppContentLayout from "@app/components/sparkle/AppContentLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { ProviderManagementModal } from "@app/components/workspace/ProviderManagementModal";
-import { getPriceAsString } from "@app/lib/client/subscription";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -34,7 +31,6 @@ import {
   useConnectorConfig,
   useToggleSlackChatBot,
 } from "@app/lib/swr/connectors";
-import { useMembersCount } from "@app/lib/swr/memberships";
 import type { PostDataSourceRequestBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources";
 import type {
   DataSourceType,
@@ -81,20 +77,11 @@ export default function WorkspaceAdmin({
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [disable, setDisabled] = useState(true);
   const [updating, setUpdating] = useState(false);
-  const sendNotification = useSendNotification();
 
   const [workspaceName, setWorkspaceName] = useState(owner.name);
   const [workspaceNameError, setWorkspaceNameError] = useState<string>("");
-  const [isChangingSlackBot, setIsChangingSlackBot] = useState(false);
-
-  const toggleSlackBotOnExistingDataSource = useToggleSlackChatBot({
-    dataSource: slackBotDataSource ?? null,
-    owner,
-  });
 
   const [isSheetOpen, setIsSheetOpen] = useState(false);
-
-  const workspaceSeats = useMembersCount(owner);
 
   const formValidation = useCallback(() => {
     if (workspaceName === owner.name) {
@@ -116,14 +103,6 @@ export default function WorkspaceAdmin({
     }
     return valid;
   }, [owner.name, workspaceName]);
-
-  const { configValue } = useConnectorConfig({
-    configKey: "botEnabled",
-    dataSource: slackBotDataSource ?? null,
-    owner,
-  });
-
-  const isSlackBotEnabled = configValue === "true";
 
   useEffect(() => {
     setDisabled(!formValidation());
@@ -155,69 +134,6 @@ export default function WorkspaceAdmin({
     setWorkspaceName(owner.name);
     setWorkspaceNameError("");
     setIsSheetOpen(false);
-  };
-
-  const handleGoToStripePortal = async () => {
-    window.open(`/w/${owner.sId}/subscription/manage`, "_blank");
-  };
-
-  const createSlackBotConnectionAndDataSource = async () => {
-    try {
-      const connectionIdRes = await setupConnection({
-        owner,
-        provider: "slack_bot",
-        extraConfig: {},
-      });
-      if (connectionIdRes.isErr()) {
-        throw connectionIdRes.error;
-      }
-
-      const res = await fetch(
-        `/api/w/${owner.sId}/spaces/${systemSpace.sId}/data_sources`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            provider: "slack_bot",
-            connectionId: connectionIdRes.value,
-            name: undefined,
-            configuration: null,
-          } satisfies PostDataSourceRequestBody),
-        }
-      );
-
-      if (res.ok) {
-        return await res.json();
-      } else {
-        return null;
-      }
-    } catch (e) {
-      return null;
-    }
-  };
-
-  const toggleSlackBot = async () => {
-    setIsChangingSlackBot(true);
-    if (slackBotDataSource) {
-      await toggleSlackBotOnExistingDataSource(!isSlackBotEnabled);
-    } else {
-      const createRes = await createSlackBotConnectionAndDataSource();
-      if (createRes) {
-        // No need to toggle since default config already enabled the bot.
-        // await toggleSlackBotOnExistingDataSource(true);
-        // TODO: likely better to still make the call (but tricky since data source is not yet created).
-        window.location.reload();
-      } else {
-        sendNotification({
-          type: "error",
-          title: `Failed to enable Slack Bot.`,
-          description: `Could not create a new Slack Bot data source.`,
-        });
-      }
-    }
-    setIsChangingSlackBot(false);
   };
 
   return (
@@ -293,95 +209,122 @@ export default function WorkspaceAdmin({
           <Page.Vertical align="stretch" gap="md">
             <Page.H variant="h4">Integrations</Page.H>
             <div className="h-full border-b border-border dark:border-border-night" />
-            <ContextItem.List>
-              <ContextItem
-                title="Slack Bot"
-                subElement="Use Dust Agents in Slack with the Dust Slack app"
-                visual={<SlackLogo className="h-6 w-6" />}
-                hasSeparatorIfLast={true}
-                action={
-                  <SliderToggle
-                    selected={
-                      // When changing and initially enabled, show disabled, and vice versa.
-                      isSlackBotEnabled !== isChangingSlackBot
-                    }
-                    disabled={isChangingSlackBot}
-                    onClick={() => {
-                      void toggleSlackBot();
-                    }}
-                  />
-                }
-              />
-            </ContextItem.List>
-          </Page.Vertical>
-          <Page.Vertical align="stretch" gap="md">
-            <Page.H variant="h4">Subscriptions</Page.H>
-            <Page.Vertical align="stretch" gap="sm">
-              <Page.H variant="h5">Your plan</Page.H>
-              <div>
-                <Page.Horizontal gap="sm">
-                  <Chip size="sm" color="blue" label={subscription.plan.name} />
-                  {subscription.stripeSubscriptionId && (
-                    <Button
-                      label="Manage my subscription"
-                      onClick={handleGoToStripePortal}
-                      variant="outline"
-                    />
-                  )}
-                </Page.Horizontal>
-              </div>
-              {subscription.stripeSubscriptionId && (
-                <>
-                  <div className="h-4" />
-                  <Page.Vertical gap="sm">
-                    <Page.H variant="h5">Billing</Page.H>
-                    <Page.P>
-                      Estimated monthly billing:{" "}
-                      <span className="font-bold">
-                        {getPriceAsString({
-                          currency: "usd",
-                          priceInCents: 2900 * workspaceSeats,
-                        })}
-                      </span>{" "}
-                      (excluding taxes).
-                    </Page.P>
-                    <Page.P>
-                      {workspaceSeats === 1 ? (
-                        <>
-                          {workspaceSeats} member,{" "}
-                          {getPriceAsString({
-                            currency: "usd",
-                            priceInCents: 2900,
-                          })}{" "}
-                          per member.
-                        </>
-                      ) : (
-                        <>
-                          {workspaceSeats} members,{" "}
-                          {getPriceAsString({
-                            currency: "usd",
-                            priceInCents: 2900,
-                          })}{" "}
-                          per member.
-                        </>
-                      )}
-                    </Page.P>
-                    <div className="my-5">
-                      <Button
-                        icon={CardIcon}
-                        label="Your billing dashboard on Stripe"
-                        variant="outline"
-                        onClick={handleGoToStripePortal}
-                      />
-                    </div>
-                  </Page.Vertical>
-                </>
-              )}
-            </Page.Vertical>
+            <SlackBotToggle
+              owner={owner}
+              slackBotDataSource={slackBotDataSource}
+              systemSpace={systemSpace}
+            />
           </Page.Vertical>
         </Page.Vertical>
       </AppContentLayout>
     </>
+  );
+}
+
+function SlackBotToggle({
+  owner,
+  slackBotDataSource,
+  systemSpace,
+}: {
+  owner: WorkspaceType;
+  slackBotDataSource: DataSourceType | null;
+  systemSpace: SpaceType;
+}) {
+  const { configValue } = useConnectorConfig({
+    configKey: "botEnabled",
+    dataSource: slackBotDataSource ?? null,
+    owner,
+  });
+  const isSlackBotEnabled = configValue === "true";
+
+  const toggleSlackBotOnExistingDataSource = useToggleSlackChatBot({
+    dataSource: slackBotDataSource ?? null,
+    owner,
+  });
+
+  const [isChangingSlackBot, setIsChangingSlackBot] = useState(false);
+  const sendNotification = useSendNotification();
+
+  const createSlackBotConnectionAndDataSource = async () => {
+    try {
+      const connectionIdRes = await setupConnection({
+        owner,
+        provider: "slack_bot",
+        extraConfig: {},
+      });
+      if (connectionIdRes.isErr()) {
+        throw connectionIdRes.error;
+      }
+
+      const res = await fetch(
+        `/api/w/${owner.sId}/spaces/${systemSpace.sId}/data_sources`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            provider: "slack_bot",
+            connectionId: connectionIdRes.value,
+            name: undefined,
+            configuration: null,
+          } satisfies PostDataSourceRequestBody),
+        }
+      );
+
+      if (res.ok) {
+        return await res.json();
+      } else {
+        return null;
+      }
+    } catch (e) {
+      return null;
+    }
+  };
+
+  const toggleSlackBot = async () => {
+    setIsChangingSlackBot(true);
+    if (slackBotDataSource) {
+      await toggleSlackBotOnExistingDataSource(!isSlackBotEnabled);
+    } else {
+      const createRes = await createSlackBotConnectionAndDataSource();
+      if (createRes) {
+        // No need to toggle since default config already enabled the bot.
+        // await toggleSlackBotOnExistingDataSource(true);
+        // TODO: likely better to still make the call (but tricky since data source is not yet created).
+        window.location.reload();
+      } else {
+        sendNotification({
+          type: "error",
+          title: `Failed to enable Slack Bot.`,
+          description: `Could not create a new Slack Bot data source.`,
+        });
+      }
+    }
+    setIsChangingSlackBot(false);
+  };
+
+  return (
+    <ContextItem.List>
+      <ContextItem
+        title="Slack Bot"
+        subElement="Use Dust Agents in Slack with the Dust Slack app"
+        visual={<SlackLogo className="h-6 w-6" />}
+        hasSeparatorIfLast={true}
+        action={
+          <SliderToggle
+            selected={
+              // When changing and initially enabled, show disabled, and vice versa.
+              isSlackBotEnabled !== isChangingSlackBot
+            }
+            disabled={isChangingSlackBot}
+            onClick={() => {
+              void toggleSlackBot();
+            }}
+          />
+        }
+      />
+    </ContextItem.List>
   );
 }
 
