@@ -26,7 +26,7 @@ import { getWorkspaceAdministrationVersionLock } from "./workspace";
 export async function softDeleteSpaceAndLaunchScrubWorkflow(
   auth: Authenticator,
   space: SpaceResource,
-  options?: { force: boolean }
+  force?: boolean
 ) {
   assert(auth.isAdmin(), "Only admins can delete spaces.");
   assert(space.isRegular(), "Cannot delete non regular spaces.");
@@ -63,7 +63,7 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
     }
   }
 
-  if (!options?.force && usages.length > 0) {
+  if (!force && usages.length > 0) {
     const agentNames = uniq(usages.map((u) => u.agentNames).flat());
     return new Err(
       new Error(
@@ -131,7 +131,7 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
       { concurrency: 8 }
     );
 
-    if (options?.force) {
+    if (force) {
       const agentNames = uniq(usages.map((u) => u.agentNames).flat());
       await concurrentExecutor(
         agentNames,
