@@ -31,6 +31,7 @@ import type {
   TemplateAgentConfigurationType,
   WorkspaceType,
 } from "@app/types";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 
 function getDuplicateAndTemplateIdFromQuery(query: ParsedUrlQuery) {
   const { duplicate, templateId } = query;
@@ -73,6 +74,8 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       notFound: true,
     };
   }
+
+  await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
 
   const { spaces, dataSourceViews, dustApps, mcpServerViews } =
     await getAccessibleSourcesAndApps(auth);
