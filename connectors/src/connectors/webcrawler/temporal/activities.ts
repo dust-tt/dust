@@ -166,6 +166,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
     );
   } catch (err) {
     if (err instanceof FirecrawlError) {
+      childLogger.error({ connectorId }, err.message);
       // Website not longer supported
       if (err.statusCode === 403) {
         await syncFailed(connectorId, "webcrawling_error_blocked");
@@ -174,6 +175,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
       }
     } else {
       await syncFailed(connectorId, "webcrawling_error");
+      childLogger.error({ connectorId }, normalizeError(err).message);
     }
   }
 
