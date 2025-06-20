@@ -2,6 +2,7 @@ import {
   Avatar,
   Button,
   CompanyIcon,
+  PlanetIcon,
   Dialog,
   Input,
   Page,
@@ -49,7 +50,8 @@ export default function WorkspaceAdmin({
   const [workspaceNameError, setWorkspaceNameError] = useState<string>("");
 
   const [slackBotEnabled, setSlackBotEnabled] = useState(false);
-  const [showEditWorkspaceNameModal, setShowEditWorkspaceNameModal] = useState(false);
+  const [showEditWorkspaceNameModal, setShowEditWorkspaceNameModal] =
+    useState(false);
 
   const formValidation = useCallback(() => {
     if (workspaceName === owner.name) {
@@ -133,14 +135,12 @@ export default function WorkspaceAdmin({
         subNavigation={subNavigationAdmin({ owner, current: "workspace" })}
       >
         <Page.Vertical align="stretch" gap="xl">
-          <Page.Header title="Workspace Settings" icon={CompanyIcon} />
+          <Page.Header title="Workspace Settings" icon={PlanetIcon} />
           <Page.Vertical align="stretch" gap="md">
             <div className="flex items-center justify-between">
               <div className="flex-1">
                 <Page.H variant="h4">Workspace Name</Page.H>
-                <Page.P variant="secondary" className="mt-1">
-                  {owner.name}
-                </Page.P>
+                <Page.P variant="secondary">{owner.name}</Page.P>
               </div>
               <Button
                 variant="secondary"
@@ -154,7 +154,7 @@ export default function WorkspaceAdmin({
             <div className="flex items-center justify-between">
               <div className="flex-1">
                 <Page.H variant="h4">Model Selection</Page.H>
-                <Page.P variant="secondary" className="mt-1">
+                <Page.P variant="secondary">
                   Select the models you want available to your workspace.
                 </Page.P>
               </div>
@@ -203,8 +203,13 @@ export default function WorkspaceAdmin({
               </div>
               <div>
                 <Page.H variant="h6">Payment, invoicing & billing</Page.H>
-                <Page.P variant="secondary" className="mt-1">
-                  Estimated monthly billing: ${subscription.plan.limits.users.maxUsers ? subscription.plan.limits.users.maxUsers * 29 : 0} ({subscription.plan.limits.users.maxUsers || 0} members, $29 per member)
+                <Page.P variant="secondary">
+                  Estimated monthly billing: $
+                  {subscription.plan.limits.users.maxUsers
+                    ? subscription.plan.limits.users.maxUsers * 29
+                    : 0}{" "}
+                  ({subscription.plan.limits.users.maxUsers || 0} members, $29
+                  per member)
                 </Page.P>
                 <Button
                   variant="secondary"

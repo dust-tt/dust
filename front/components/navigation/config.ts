@@ -5,10 +5,10 @@ import {
   ChatBubbleLeftRightIcon,
   Cog6ToothIcon,
   CommandLineIcon,
-  CompanyIcon,
   DocumentTextIcon,
   FolderOpenIcon,
   LockIcon,
+  PlanetIcon,
   ShapesIcon,
   UserIcon,
 } from "@dust-tt/sparkle";
@@ -197,7 +197,7 @@ export const subNavigationAdmin = ({
         {
           id: "workspace",
           label: "Workspace Settings",
-          icon: CompanyIcon,
+          icon: PlanetIcon,
           href: `/w/${owner.sId}/workspace`,
           current: current === "workspace",
           subMenuLabel: current === "workspace" ? subMenuLabel : undefined,
