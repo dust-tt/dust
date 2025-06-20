@@ -14,7 +14,6 @@ export interface LinkWrapperProps {
   disabled?: boolean;
   ariaLabel?: string;
   ariaCurrent?: string;
-  onClick?: (event: React.MouseEvent<HTMLAnchorElement>) => void;
   className?: string;
   style?: React.CSSProperties;
 }
@@ -35,7 +34,6 @@ export const LinkWrapper = React.forwardRef<
       disabled,
       ariaLabel,
       ariaCurrent,
-      onClick,
       className,
       style,
     },
@@ -56,7 +54,6 @@ export const LinkWrapper = React.forwardRef<
           className={cn(className, disabled && "s-pointer-events-none")}
           aria-label={ariaLabel}
           aria-current={ariaCurrent}
-          onClick={onClick}
           style={style}
         >
           {children}
