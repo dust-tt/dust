@@ -1110,6 +1110,12 @@ export async function microsoftGarbageCollectionActivity({
                 internalId: node.internalId,
                 deleteRootNode: true,
               });
+            } else if (!rootNodeIds.includes(node.internalId)) {
+              await deleteFolder({
+                connectorId,
+                dataSourceConfig,
+                internalId: node.internalId,
+              });
             }
             break;
           case "folder": {
