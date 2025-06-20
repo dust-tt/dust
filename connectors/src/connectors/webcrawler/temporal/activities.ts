@@ -1330,13 +1330,18 @@ export async function firecrawlCrawlCompleted(
       } else {
         await syncFailed(connectorId, "webcrawling_error_empty_content");
       }
-      return;
+      return {
+        lastSyncStartTs: connector.lastSyncStartTime?.getTime() ?? null,
+      };
     } catch (err) {
       localLogger.warn(
         { connectorId, crawlId },
         `Couldn't check crawl errors: ${normalizeError(err)}`
       );
       await syncFailed(connectorId, "webcrawling_error_empty_content");
+      return {
+        lastSyncStartTs: connector.lastSyncStartTime?.getTime() ?? null,
+      };
     }
   }
 
