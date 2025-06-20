@@ -246,6 +246,10 @@ export function ProviderManagementModal({
         <SheetFooter
           leftButtonProps={{
             label: "Cancel",
+            onClick: () => {
+              setProviderStates(initialProviderStates);
+              setDefaultEmbeddingProvider(owner.defaultEmbeddingProvider);
+            },
             variant: "outline",
           }}
           rightButtonProps={{
