@@ -184,7 +184,7 @@ export class Authenticator {
             user,
             workspace: renderLightWorkspaceType({ workspace }),
           }),
-          SubscriptionResource.fetchActiveByWorkspace(
+          SubscriptionResource.fetchActiveByWorkspaceCache(
             renderLightWorkspaceType({ workspace })
           ),
         ]);

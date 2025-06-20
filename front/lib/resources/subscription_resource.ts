@@ -2,6 +2,7 @@ import _ from "lodash";
 import type { Attributes, CreationAttributes, Transaction } from "sequelize";
 import { Op } from "sequelize";
 import type Stripe from "stripe";
+import SuperJSON from "superjson";
 
 import { sendProactiveTrialCancelledEmail } from "@app/lib/api/email";
 import { getWorkspaceInfos } from "@app/lib/api/workspace";
@@ -34,6 +35,7 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+import { cacheWithRedis, getRedisCacheClient } from "@app/lib/utils/cache";
 import { getWorkspaceFirstAdmin } from "@app/lib/workspace";
 import { checkWorkspaceActivity } from "@app/lib/workspace_usage";
 import logger from "@app/logger/logger";
@@ -90,6 +92,16 @@ export class SubscriptionResource extends BaseResource<Subscription> {
     return res[workspace.sId];
   }
 
+  static async fetchActiveByWorkspaceCache(workspace: LightWorkspaceType) {
+    const res = await cacheWithRedis(
+      this.fetchActiveByWorkspaces,
+      () => workspace.sId,
+      3_600_000 // 1h
+    )([workspace]);
+
+    return res[workspace.sId];
+  }
+
   static async fetchActiveByWorkspaces(
     workspaces: LightWorkspaceType[],
     transaction?: Transaction
@@ -97,7 +109,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
     const workspaceModelBySid = _.keyBy(workspaces, "sId");
 
     const activeSubscriptionByWorkspaceId = _.keyBy(
-      await this.model.findAll({
+      await SubscriptionResource.model.findAll({
         attributes: [
           "endDate",
           "id",
@@ -157,7 +169,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
       subscriptionResourceByWorkspaceSid[sId] = new SubscriptionResource(
         Subscription,
         activeSubscription?.get() ||
-          this.createFreeNoPlanSubscription(workspace),
+          SubscriptionResource.createFreeNoPlanSubscription(workspace),
         renderPlanFromModel({ plan })
       );
     }
@@ -753,6 +765,12 @@ export class SubscriptionResource extends BaseResource<Subscription> {
       }
     }
 
+    const redisCacheClient = await getRedisCacheClient();
+    // Invalidate fetch cache
+    await redisCacheClient.del(
+      `cacheWithRedis-fetchActiveByWorkspaces-${workspace.sId}`
+    );
+
     return activeSubscription;
   }
 
@@ -775,3 +793,5 @@ export class SubscriptionResource extends BaseResource<Subscription> {
     );
   }
 }
+
+SuperJSON.registerClass(SubscriptionResource);
