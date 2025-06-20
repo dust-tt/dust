@@ -149,7 +149,7 @@ export function ProviderManagementModal({
   return (
     <Sheet>
       <SheetTrigger asChild>
-        <Button variant="primary" label="Manage providers" className="grow-0" />
+        <Button variant="primary" label="Manage Models" className="grow-0" />
       </SheetTrigger>
       <SheetContent size="lg">
         <SheetHeader hideButton>

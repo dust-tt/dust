@@ -2,8 +2,10 @@ import {
   Avatar,
   Button,
   CompanyIcon,
+  Dialog,
   Input,
   Page,
+  PencilSquareIcon,
   SliderToggle,
 } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
@@ -47,6 +49,7 @@ export default function WorkspaceAdmin({
   const [workspaceNameError, setWorkspaceNameError] = useState<string>("");
 
   const [slackBotEnabled, setSlackBotEnabled] = useState(false);
+  const [showEditWorkspaceNameModal, setShowEditWorkspaceNameModal] = useState(false);
 
   const formValidation = useCallback(() => {
     if (workspaceName === owner.name) {
@@ -96,6 +99,34 @@ export default function WorkspaceAdmin({
 
   return (
     <>
+      <Dialog
+        isOpen={showEditWorkspaceNameModal}
+        onClose={() => {
+          setShowEditWorkspaceNameModal(false);
+          setWorkspaceName(owner.name);
+          setWorkspaceNameError("");
+        }}
+        title="Edit Workspace Name"
+        onValidate={async () => {
+          await handleUpdateWorkspace();
+          setShowEditWorkspaceNameModal(false);
+        }}
+        validateLabel="Save"
+        isValidating={updating}
+        disabled={disable}
+      >
+        <div className="flex flex-col gap-4">
+          <Page.P>Think GitHub repository names, short and memorable.</Page.P>
+          <Input
+            name="name"
+            placeholder="Workspace name"
+            value={workspaceName}
+            onChange={(e) => setWorkspaceName(e.target.value)}
+            message={workspaceNameError}
+            messageStatus="error"
+          />
+        </div>
+      </Dialog>
       <AppContentLayout
         subscription={subscription}
         owner={owner}
@@ -104,34 +135,29 @@ export default function WorkspaceAdmin({
         <Page.Vertical align="stretch" gap="xl">
           <Page.Header title="Workspace Settings" icon={CompanyIcon} />
           <Page.Vertical align="stretch" gap="md">
-            <Page.H variant="h4">Workspace Name</Page.H>
-            <Page.P variant="secondary">{owner.name}</Page.P>
-            <div className="flex flex-row gap-2">
-              <Input
-                name="name"
-                placeholder="Workspace name"
-                value={workspaceName}
-                onChange={(e) => setWorkspaceName(e.target.value)}
-                message={workspaceNameError}
-                messageStatus="error"
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <Page.H variant="h4">Workspace Name</Page.H>
+                <Page.P variant="secondary" className="mt-1">
+                  {owner.name}
+                </Page.P>
+              </div>
+              <Button
+                variant="secondary"
+                label="Edit"
+                icon={PencilSquareIcon}
+                onClick={() => setShowEditWorkspaceNameModal(true)}
               />
-              {!disable && (
-                <Button
-                  variant="primary"
-                  disabled={disable || updating}
-                  onClick={handleUpdateWorkspace}
-                  label={updating ? "Saving..." : "Save"}
-                  className="grow-0"
-                />
-              )}
             </div>
           </Page.Vertical>
           <Page.Vertical align="stretch" gap="md">
-            <Page.H variant="h4">Model Selection</Page.H>
-            <Page.P variant="secondary">
-              Select the models you want available to your workspace.
-            </Page.P>
-            <div>
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <Page.H variant="h4">Model Selection</Page.H>
+                <Page.P variant="secondary" className="mt-1">
+                  Select the models you want available to your workspace.
+                </Page.P>
+              </div>
               <ProviderManagementModal owner={owner} />
             </div>
           </Page.Vertical>
@@ -160,16 +186,16 @@ export default function WorkspaceAdmin({
           </Page.Vertical>
           <Page.Vertical align="stretch" gap="md">
             <Page.H variant="h4">Subscriptions</Page.H>
-            <div className="flex items-center justify-between">
+            <div className="space-y-6">
               <div>
                 <Page.H variant="h6">Your plan</Page.H>
-                <div className="flex items-center gap-2">
-                  <span className="rounded-full bg-blue-100 px-3 py-1 text-sm font-medium text-blue-900">
+                <div className="mt-2 flex items-center gap-2">
+                  <span className="rounded-md bg-blue-100 px-3 py-1 text-sm font-medium text-blue-900">
                     {subscription.plan.name}
                   </span>
                   <Button
                     variant="tertiary"
-                    label="..."
+                    label="•••"
                     size="xs"
                     onClick={() => {}}
                   />
@@ -177,18 +203,14 @@ export default function WorkspaceAdmin({
               </div>
               <div>
                 <Page.H variant="h6">Payment, invoicing & billing</Page.H>
-                <Page.P variant="secondary">
-                  Estimated monthly billing: $
-                  {subscription.plan.limits.users.maxUsers
-                    ? subscription.plan.limits.users.maxUsers * 29
-                    : 0}{" "}
-                  ({subscription.plan.limits.users.maxUsers || 0} members, $29
-                  per member)
+                <Page.P variant="secondary" className="mt-1">
+                  Estimated monthly billing: ${subscription.plan.limits.users.maxUsers ? subscription.plan.limits.users.maxUsers * 29 : 0} ({subscription.plan.limits.users.maxUsers || 0} members, $29 per member)
                 </Page.P>
                 <Button
                   variant="secondary"
                   label="Dust's dashboard on Stripe"
                   icon={CompanyIcon}
+                  className="mt-3"
                   onClick={() =>
                     window.open(`/w/${owner.sId}/subscription/manage`, "_blank")
                   }
