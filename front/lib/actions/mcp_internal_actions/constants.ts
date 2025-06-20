@@ -20,6 +20,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "file_generation",
   "github",
   "gmail",
+  "google_calendar",
   "hubspot",
   "image_generation",
   "include_data",
@@ -34,10 +35,9 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "run_dust_app",
   "salesforce",
   "search",
+  "slack",
   "think",
   "web_search_&_browse",
-  "google_calendar",
-  "slack",
 ] as const;
 
 // Whether the server is available by default in the global space.
