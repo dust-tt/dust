@@ -46,7 +46,7 @@ import {
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
-  slackBotDataSource: DataSourceResource | null;
+  slackBotDataSource: DataSourceType | null;
   systemSpace: SpaceType;
 }>(async (context, auth) => {
   const owner = auth.workspace();
@@ -67,7 +67,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     props: {
       owner,
       subscription,
-      slackBotDataSource,
+      slackBotDataSource: slackBotDataSource?.toJSON() ?? null,
       systemSpace: systemSpace.toJSON(),
     },
   };
@@ -88,7 +88,7 @@ export default function WorkspaceAdmin({
   const [isChangingSlackBot, setIsChangingSlackBot] = useState(false);
 
   const toggleSlackBotOnExistingDataSource = useToggleSlackChatBot({
-    dataSource: slackBotDataSource?.toJSON() ?? null,
+    dataSource: slackBotDataSource ?? null,
     owner,
   });
 
@@ -119,7 +119,7 @@ export default function WorkspaceAdmin({
 
   const { configValue } = useConnectorConfig({
     configKey: "botEnabled",
-    dataSource: slackBotDataSource?.toJSON() ?? null,
+    dataSource: slackBotDataSource ?? null,
     owner,
   });
 
