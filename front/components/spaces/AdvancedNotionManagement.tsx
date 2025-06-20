@@ -9,6 +9,7 @@ import {
   CheckCircleIcon,
   DataTable,
   Icon,
+  Input,
   TextArea,
   Tooltip,
   TrashIcon,
@@ -45,6 +46,21 @@ export function AdvancedNotionManagement({
   const [urls, setUrls] = useState<string[]>([]);
   const [error, setError] = useState<string | undefined>(undefined);
   const [syncing, setSyncing] = useState(false);
+  const [statusUrl, setStatusUrl] = useState<string>("");
+  const [checkingStatus, setCheckingStatus] = useState(false);
+  const [urlStatus, setUrlStatus] = useState<{
+    notion: { exists: boolean; type?: "page" | "database" };
+    dust: { 
+      synced: boolean; 
+      lastSync?: string;
+      breadcrumbs?: Array<{
+        id: string;
+        title: string;
+        type: "page" | "database" | "workspace";
+      }>;
+    };
+    summary: string;
+  } | null>(null);
 
   const { lastSyncedUrls, isLoading, mutate } = useNotionLastSyncedUrls({
     owner,
@@ -162,6 +178,60 @@ export function AdvancedNotionManagement({
     },
   ];
 
+  async function checkUrlStatus() {
+    if (!statusUrl.trim()) {
+      sendNotification({
+        type: "error",
+        title: "Invalid URL",
+        description: "Please enter a URL to check",
+      });
+      return;
+    }
+
+    if (!statusUrl.includes("notion.so") || !URL.canParse(statusUrl)) {
+      sendNotification({
+        type: "error",
+        title: "Invalid URL",
+        description: "Please enter a valid Notion URL",
+      });
+      return;
+    }
+
+    setCheckingStatus(true);
+    setUrlStatus(null);
+
+    try {
+      const response = await fetch(
+        `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/notion_url_status`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ url: statusUrl }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to check URL status");
+      }
+
+      const data = await response.json();
+      setUrlStatus({
+        notion: data.notion,
+        dust: data.dust,
+        summary: data.summary,
+      });
+    } catch (e) {
+      sendNotification({
+        type: "error",
+        title: "Error checking URL status",
+        description: "An unexpected error occurred while checking the URL status",
+      });
+    }
+    setCheckingStatus(false);
+  }
+
   async function syncURLs(method: "sync" | "delete") {
     setSyncing(true);
     // Remove empty strings and duplicates
@@ -234,9 +304,90 @@ export function AdvancedNotionManagement({
   return (
     <>
       <div className="heading-xl p-1">
-        Advanced Notion Management - Manual URL sync
+        Advanced Notion Management
       </div>
 
+      {/* URL Status Check Section */}
+      <div className="mb-8 border-b pb-6">
+        <div className="heading-md p-1">Check Notion URL Status</div>
+        <div className="p-1 text-sm text-element-700">
+          Check if a URL exists in Notion and whether it's synced to Dust
+        </div>
+        
+        <div className="p-1">
+          <Input
+            placeholder="https://www.notion.so/..."
+            value={statusUrl}
+            onChange={(e) => setStatusUrl(e.target.value)}
+            className="w-full"
+          />
+          <div className="mt-2">
+            <Button
+              label="Check Status"
+              variant="primary"
+              onClick={checkUrlStatus}
+              disabled={checkingStatus}
+            />
+          </div>
+        </div>
+
+        {urlStatus && (
+          <div className="mt-4 p-4 rounded-lg bg-structure-50">
+            <div className="mb-2 font-medium">{urlStatus.summary}</div>
+            <div className="space-y-1 text-sm">
+              <div>
+                <span className="font-medium">Notion:</span>{" "}
+                {urlStatus.notion.exists ? (
+                  <>
+                    <Icon visual={CheckCircleIcon} size="xs" className="inline text-success-500" />
+                    {" "}Exists ({urlStatus.notion.type})
+                  </>
+                ) : (
+                  <>
+                    <Icon visual={XCircleIcon} size="xs" className="inline text-warning-500" />
+                    {" "}Not found
+                  </>
+                )}
+              </div>
+              <div>
+                <span className="font-medium">Dust:</span>{" "}
+                {urlStatus.dust.synced ? (
+                  <>
+                    <Icon visual={CheckCircleIcon} size="xs" className="inline text-success-500" />
+                    {" "}Synced
+                    {urlStatus.dust.lastSync && (
+                      <span className="text-element-600">
+                        {" "}(last sync: {new Date(urlStatus.dust.lastSync).toLocaleString()})
+                      </span>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <Icon visual={XCircleIcon} size="xs" className="inline text-warning-500" />
+                    {" "}Not synced
+                  </>
+                )}
+              </div>
+              {urlStatus.dust.synced && urlStatus.dust.breadcrumbs && urlStatus.dust.breadcrumbs.length > 0 && (
+                <div className="mt-2">
+                  <span className="font-medium">Location:</span>{" "}
+                  <span className="text-element-600">
+                    {urlStatus.dust.breadcrumbs.map((crumb, index) => (
+                      <span key={crumb.id}>
+                        {index > 0 && " › "}
+                        {crumb.title}
+                      </span>
+                    ))}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Manual URL Sync Section */}
+      <div className="heading-md p-1">Manual URL Sync</div>
       <div className="p-1">
         Enter up to 10 Notion URLs to sync (one per line)
       </div>
