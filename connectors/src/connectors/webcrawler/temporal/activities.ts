@@ -133,7 +133,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
     });
   } catch (error) {
     // Handle thrown errors from Firecrawl API
-    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorMessage = normalizeError(error).message;
     crawlerResponse = {
       success: false,
       error: errorMessage,
