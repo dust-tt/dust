@@ -52,6 +52,15 @@ export function createRoutes(
   return router;
 }
 
+function isUrlVerification(req: express.Request): boolean {
+  return (
+    req.body &&
+    "type" in req.body &&
+    req.body.type === "url_verification" &&
+    "challenge" in req.body
+  );
+}
+
 async function handleWebhook(
   req: express.Request,
   res: express.Response,
@@ -80,7 +89,7 @@ async function handleWebhook(
     }
 
     // Handle Slack URL verification challenge.
-    if (req.body.type === "url_verification" && req.body.challenge) {
+    if (isUrlVerification(req)) {
       console.log("Handling URL verification challenge", {
         component: "routes",
         endpoint,
