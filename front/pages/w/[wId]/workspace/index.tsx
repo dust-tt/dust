@@ -3,10 +3,16 @@ import {
   Button,
   CompanyIcon,
   PlanetIcon,
-  Dialog,
   Input,
   Page,
   PencilSquareIcon,
+  Sheet,
+  SheetContainer,
+  SheetContent,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
   SliderToggle,
 } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
@@ -50,8 +56,7 @@ export default function WorkspaceAdmin({
   const [workspaceNameError, setWorkspaceNameError] = useState<string>("");
 
   const [slackBotEnabled, setSlackBotEnabled] = useState(false);
-  const [showEditWorkspaceNameModal, setShowEditWorkspaceNameModal] =
-    useState(false);
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
 
   const formValidation = useCallback(() => {
     if (workspaceName === owner.name) {
@@ -93,42 +98,21 @@ export default function WorkspaceAdmin({
       window.alert("Failed to update workspace.");
       setUpdating(false);
     } else {
+      setIsSheetOpen(false);
       // We perform a full refresh so that the Workspace name updates and we get a fresh owner
       // object so that the formValidation logic keeps working.
       window.location.reload();
     }
   };
 
+  const handleCancel = () => {
+    setWorkspaceName(owner.name);
+    setWorkspaceNameError("");
+    setIsSheetOpen(false);
+  };
+
   return (
     <>
-      <Dialog
-        isOpen={showEditWorkspaceNameModal}
-        onClose={() => {
-          setShowEditWorkspaceNameModal(false);
-          setWorkspaceName(owner.name);
-          setWorkspaceNameError("");
-        }}
-        title="Edit Workspace Name"
-        onValidate={async () => {
-          await handleUpdateWorkspace();
-          setShowEditWorkspaceNameModal(false);
-        }}
-        validateLabel="Save"
-        isValidating={updating}
-        disabled={disable}
-      >
-        <div className="flex flex-col gap-4">
-          <Page.P>Think GitHub repository names, short and memorable.</Page.P>
-          <Input
-            name="name"
-            placeholder="Workspace name"
-            value={workspaceName}
-            onChange={(e) => setWorkspaceName(e.target.value)}
-            message={workspaceNameError}
-            messageStatus="error"
-          />
-        </div>
-      </Dialog>
       <AppContentLayout
         subscription={subscription}
         owner={owner}
@@ -142,12 +126,48 @@ export default function WorkspaceAdmin({
                 <Page.H variant="h4">Workspace Name</Page.H>
                 <Page.P variant="secondary">{owner.name}</Page.P>
               </div>
-              <Button
-                variant="secondary"
-                label="Edit"
-                icon={PencilSquareIcon}
-                onClick={() => setShowEditWorkspaceNameModal(true)}
-              />
+              <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+                <SheetTrigger asChild>
+                  <Button
+                    variant="secondary"
+                    label="Edit"
+                    icon={PencilSquareIcon}
+                  />
+                </SheetTrigger>
+                <SheetContent>
+                  <SheetHeader>
+                    <SheetTitle>Edit Workspace Name</SheetTitle>
+                  </SheetHeader>
+                  <SheetContainer>
+                    <div className="mt-6 flex flex-col gap-4">
+                      <Page.P>
+                        Think GitHub repository names, short and memorable.
+                      </Page.P>
+                      <Input
+                        name="name"
+                        placeholder="Workspace name"
+                        value={workspaceName}
+                        onChange={(e) => setWorkspaceName(e.target.value)}
+                        message={workspaceNameError}
+                        messageStatus="error"
+                      />
+                    </div>
+                  </SheetContainer>
+                  <SheetFooter>
+                    <Button
+                      variant="tertiary"
+                      label="Cancel"
+                      onClick={handleCancel}
+                    />
+                    <Button
+                      variant="primary"
+                      label={updating ? "Saving..." : "Save"}
+                      disabled={disable || updating}
+                      onClick={handleUpdateWorkspace}
+                    />
+                  </SheetFooter>
+                </SheetContent>
+              </Sheet>
             </div>
           </Page.Vertical>
           <Page.Vertical align="stretch" gap="md">
