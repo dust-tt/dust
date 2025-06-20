@@ -11,7 +11,7 @@ import {
 import { UsersIcon } from "@heroicons/react/20/solid";
 import type { PaginationState } from "@tanstack/react-table";
 import type { InferGetServerSidePropsType } from "next";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import type { WorkspaceLimit } from "@app/components/app/ReachedLimitPopup";
 import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
@@ -242,6 +242,7 @@ function WorkspaceMembersGroupsList({
             currentUser={currentUser}
             owner={owner}
             searchTerm={searchTerm}
+            isProvisioningEnabled={isProvisioningEnabled}
           />
         </>
       )}
