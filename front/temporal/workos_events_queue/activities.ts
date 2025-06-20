@@ -12,7 +12,7 @@ import assert from "assert";
 import { createAndLogMembership } from "@app/lib/api/signup";
 import { getOrCreateWorkOSOrganization } from "@app/lib/api/workos/organization";
 import {
-  fetchWorkOSUserWithEmail,
+  fetchOrCreateWorkOSUserWithEmail,
   getUserNicknameFromEmail,
 } from "@app/lib/api/workos/user";
 import {
@@ -446,7 +446,7 @@ async function handleUserAddedToGroup(
     return;
   }
 
-  const workOSUserRes = await fetchWorkOSUserWithEmail(event.user.email);
+  const workOSUserRes = await fetchOrCreateWorkOSUserWithEmail(event.user);
   if (workOSUserRes.isErr()) {
     throw workOSUserRes.error;
   }
@@ -490,7 +490,7 @@ async function handleUserRemovedFromGroup(
     return;
   }
 
-  const workOSUserRes = await fetchWorkOSUserWithEmail(event.user.email);
+  const workOSUserRes = await fetchOrCreateWorkOSUserWithEmail(event.user);
   if (workOSUserRes.isErr()) {
     throw workOSUserRes.error;
   }
@@ -527,7 +527,7 @@ async function handleCreateOrUpdateWorkOSUser(
   workspace: LightWorkspaceType,
   event: DirectoryUser
 ) {
-  const workOSUserRes = await fetchWorkOSUserWithEmail(event.email);
+  const workOSUserRes = await fetchOrCreateWorkOSUserWithEmail(event);
   if (workOSUserRes.isErr()) {
     throw workOSUserRes.error;
   }
@@ -572,7 +572,7 @@ async function handleDeleteWorkOSUser(
   workspace: LightWorkspaceType,
   event: DirectoryUser
 ) {
-  const workOSUserRes = await fetchWorkOSUserWithEmail(event.email);
+  const workOSUserRes = await fetchOrCreateWorkOSUserWithEmail(event);
   if (workOSUserRes.isErr()) {
     throw workOSUserRes.error;
   }
