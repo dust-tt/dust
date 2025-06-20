@@ -11,7 +11,7 @@ import {
 import { UsersIcon } from "@heroicons/react/20/solid";
 import type { PaginationState } from "@tanstack/react-table";
 import type { InferGetServerSidePropsType } from "next";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import type { WorkspaceLimit } from "@app/components/app/ReachedLimitPopup";
 import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
@@ -279,6 +279,10 @@ function WorkspaceMembersList({
     groupKind: isProvisioningEnabled ? "provisioned" : undefined,
   });
 
+  useEffect(() => {
+    setPagination({ pageIndex: 0, pageSize: DEFAULT_PAGE_SIZE });
+  }, [setPagination]);
+
   const resetSelectedMember = useCallback(() => {
     setSelectedMember(null);
   }, [setSelectedMember]);
@@ -318,6 +322,10 @@ function WorkspaceGroupsList({
     owner,
     kinds: ["provisioned"],
   });
+
+  useEffect(() => {
+    setPagination({ pageIndex: 0, pageSize: DEFAULT_PAGE_SIZE });
+  }, [setPagination]);
 
   return (
     <GroupsList
