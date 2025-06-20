@@ -26,6 +26,7 @@ import type {
   Result,
   RoleType,
   SubscriptionType,
+  UserTypeWithWorkspace,
   UserTypeWithWorkspaces,
   WorkspaceSegmentationType,
   WorkspaceType,
@@ -202,7 +203,7 @@ export async function searchMembers(
     searchEmails?: string[];
   },
   paginationParams: SearchMembersPaginationParams
-): Promise<{ members: UserTypeWithWorkspaces[]; total: number }> {
+): Promise<{ members: UserTypeWithWorkspace[]; total: number }> {
   const owner = auth.workspace();
   if (!owner) {
     return { members: [], total: 0 };
@@ -234,7 +235,7 @@ export async function searchMembers(
     total = results.total;
   }
 
-  const usersWithWorkspaces = users.map((u) => {
+  const usersWithWorkspace = users.map((u) => {
     const [m] = u.memberships ?? [];
     let role: RoleType = "none";
 
@@ -253,11 +254,11 @@ export async function searchMembers(
 
     return {
       ...u.toJSON(),
-      workspaces: [{ ...owner, role, flags: null }],
+      workspace: { ...owner, role, flags: null },
     };
   });
 
-  return { members: usersWithWorkspaces, total };
+  return { members: usersWithWorkspace, total };
 }
 
 export async function getMembersCount(

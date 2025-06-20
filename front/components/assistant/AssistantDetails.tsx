@@ -38,7 +38,7 @@ import type {
   AgentConfigurationScope,
   AgentConfigurationType,
   UserType,
-  UserTypeWithWorkspaces,
+  UserTypeWithWorkspace,
   WorkspaceType,
 } from "@app/types";
 import { GLOBAL_AGENTS_SID, isAdmin } from "@app/types";
@@ -175,7 +175,7 @@ function AssistantDetailsEditors({
   const isCurrentUserEditor =
     editors.findIndex((u) => u.sId === user.sId) !== -1;
 
-  const onRemoveMember = async (user: UserTypeWithWorkspaces) => {
+  const onRemoveMember = async (user: UserTypeWithWorkspace) => {
     if (isCurrentUserEditor) {
       await updateEditors({ removeEditorIds: [user.sId], addEditorIds: [] });
     }
@@ -194,7 +194,7 @@ function AssistantDetailsEditors({
         membersData={{
           members: editors.map((user) => ({
             ...user,
-            workspaces: [owner],
+            workspace: owner,
           })),
           isLoading: isEditorsLoading,
           totalMembersCount: editors.length,

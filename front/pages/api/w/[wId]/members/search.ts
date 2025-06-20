@@ -9,7 +9,7 @@ import { searchMembers } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { MAX_SEARCH_EMAILS } from "@app/lib/memberships";
 import { apiError } from "@app/logger/withlogging";
-import type { UserTypeWithWorkspaces, WithAPIErrorResponse } from "@app/types";
+import type { UserTypeWithWorkspace, WithAPIErrorResponse } from "@app/types";
 
 const DEFAULT_PAGE_LIMIT = 25;
 
@@ -33,7 +33,7 @@ const SearchMembersQueryCodec = t.type({
 });
 
 export type SearchMembersResponseBody = {
-  members: UserTypeWithWorkspaces[];
+  members: UserTypeWithWorkspace[];
   total: number;
 };
 
