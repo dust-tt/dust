@@ -1,4 +1,3 @@
-import { reachabilityResponseFromProto } from "@temporalio/client";
 import { sealData } from "iron-session";
 import type { NextApiRequest, NextApiResponse } from "next";
 
