@@ -50,8 +50,8 @@ export function AdvancedNotionManagement({
   const [checkingStatus, setCheckingStatus] = useState(false);
   const [urlStatus, setUrlStatus] = useState<{
     notion: { exists: boolean; type?: "page" | "database" };
-    dust: { 
-      synced: boolean; 
+    dust: {
+      synced: boolean;
       lastSync?: string;
       breadcrumbs?: Array<{
         id: string;
@@ -226,7 +226,8 @@ export function AdvancedNotionManagement({
       sendNotification({
         type: "error",
         title: "Error checking URL status",
-        description: "An unexpected error occurred while checking the URL status",
+        description:
+          "An unexpected error occurred while checking the URL status",
       });
     }
     setCheckingStatus(false);
@@ -303,17 +304,15 @@ export function AdvancedNotionManagement({
 
   return (
     <>
-      <div className="heading-xl p-1">
-        Advanced Notion Management
-      </div>
+      <div className="heading-xl p-1">Advanced Notion Management</div>
 
       {/* URL Status Check Section */}
       <div className="mb-8 border-b pb-6">
         <div className="heading-md p-1">Check Notion URL Status</div>
-        <div className="p-1 text-sm text-element-700">
+        <div className="text-element-700 p-1 text-sm">
           Check if a URL exists in Notion and whether it's synced to Dust
         </div>
-        
+
         <div className="p-1">
           <Input
             placeholder="https://www.notion.so/..."
@@ -332,20 +331,28 @@ export function AdvancedNotionManagement({
         </div>
 
         {urlStatus && (
-          <div className="mt-4 p-4 rounded-lg bg-structure-50">
+          <div className="bg-structure-50 mt-4 rounded-lg p-4">
             <div className="mb-2 font-medium">{urlStatus.summary}</div>
             <div className="space-y-1 text-sm">
               <div>
                 <span className="font-medium">Notion:</span>{" "}
                 {urlStatus.notion.exists ? (
                   <>
-                    <Icon visual={CheckCircleIcon} size="xs" className="inline text-success-500" />
-                    {" "}Exists ({urlStatus.notion.type})
+                    <Icon
+                      visual={CheckCircleIcon}
+                      size="xs"
+                      className="inline text-success-500"
+                    />{" "}
+                    Exists ({urlStatus.notion.type})
                   </>
                 ) : (
                   <>
-                    <Icon visual={XCircleIcon} size="xs" className="inline text-warning-500" />
-                    {" "}Not found
+                    <Icon
+                      visual={XCircleIcon}
+                      size="xs"
+                      className="inline text-warning-500"
+                    />{" "}
+                    Not found
                   </>
                 )}
               </div>
@@ -353,34 +360,46 @@ export function AdvancedNotionManagement({
                 <span className="font-medium">Dust:</span>{" "}
                 {urlStatus.dust.synced ? (
                   <>
-                    <Icon visual={CheckCircleIcon} size="xs" className="inline text-success-500" />
-                    {" "}Synced
+                    <Icon
+                      visual={CheckCircleIcon}
+                      size="xs"
+                      className="inline text-success-500"
+                    />{" "}
+                    Synced
                     {urlStatus.dust.lastSync && (
                       <span className="text-element-600">
-                        {" "}(last sync: {new Date(urlStatus.dust.lastSync).toLocaleString()})
+                        {" "}
+                        (last sync:{" "}
+                        {new Date(urlStatus.dust.lastSync).toLocaleString()})
                       </span>
                     )}
                   </>
                 ) : (
                   <>
-                    <Icon visual={XCircleIcon} size="xs" className="inline text-warning-500" />
-                    {" "}Not synced
+                    <Icon
+                      visual={XCircleIcon}
+                      size="xs"
+                      className="inline text-warning-500"
+                    />{" "}
+                    Not synced
                   </>
                 )}
               </div>
-              {urlStatus.dust.synced && urlStatus.dust.breadcrumbs && urlStatus.dust.breadcrumbs.length > 0 && (
-                <div className="mt-2">
-                  <span className="font-medium">Location:</span>{" "}
-                  <span className="text-element-600">
-                    {urlStatus.dust.breadcrumbs.map((crumb, index) => (
-                      <span key={crumb.id}>
-                        {index > 0 && " › "}
-                        {crumb.title}
-                      </span>
-                    ))}
-                  </span>
-                </div>
-              )}
+              {urlStatus.dust.synced &&
+                urlStatus.dust.breadcrumbs &&
+                urlStatus.dust.breadcrumbs.length > 0 && (
+                  <div className="mt-2">
+                    <span className="font-medium">Location:</span>{" "}
+                    <span className="text-element-600">
+                      {urlStatus.dust.breadcrumbs.map((crumb, index) => (
+                        <span key={crumb.id}>
+                          {index > 0 && " › "}
+                          {crumb.title}
+                        </span>
+                      ))}
+                    </span>
+                  </div>
+                )}
             </div>
           </div>
         )}
