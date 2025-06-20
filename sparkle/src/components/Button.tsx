@@ -278,6 +278,9 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     },
     ref
   ) => {
+    // Add explicit fallback for SSR
+    const resolvedVariant = variant || "primary";
+
     const iconSize = ICON_SIZE_MAP[size];
     const counterSize = COUNTER_SIZE_MAP[size];
 
@@ -325,7 +328,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
             {showCounter && (
               <Counter
                 value={Number(counterValue)}
-                variant={variant || "primary"}
+                variant={resolvedVariant}
                 size={counterSize}
                 isInButton={true}
               />
@@ -350,11 +353,11 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
           className={cn(
             // This cannot apply disabled styles for links, since it's using :disabled pseudo-class to apply styles.
             // We will manually add disabled styles for links (getDisabledClasses).
-            buttonVariants({ variant, size, className }),
+            buttonVariants({ variant: resolvedVariant, size, className }),
             "s-inline-block",
             isPulsing && "s-animate-pulse",
             (isLoading || props.disabled) && [
-              getDisabledClasses(variant || "primary"),
+              getDisabledClasses(resolvedVariant),
               "s-pointer-events-none",
             ]
           )}
@@ -378,7 +381,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       <MetaButton
         ref={ref}
         size={size}
-        variant={variant}
+        variant={resolvedVariant}
         disabled={isLoading || props.disabled}
         className={cn(isPulsing && "s-animate-pulse", className)}
         aria-label={ariaLabel || tooltip || label}
