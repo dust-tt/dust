@@ -80,8 +80,8 @@ export async function getDataSourceViewsUsageByCategory({
       assertNever(category);
   }
 
-  const getAgentsForUser = async () => {
-    return (
+  const getAgentsForUser = async () =>
+    (
       await GroupResource.findAgentIdsForGroups(
         auth,
         auth
@@ -90,7 +90,6 @@ export async function getDataSourceViewsUsageByCategory({
           .map((g) => g.id)
       )
     ).map((g) => g.agentConfigurationId);
-  };
 
   const agentWhereClauseAdmin = {
     status: "active",
