@@ -35,6 +35,7 @@ import { isDustAppRunConfiguration } from "@app/lib/actions/types/guards";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { LightWorkspaceType, SpaceType, TimeFrame } from "@app/types";
 import { asDisplayName, assertNever } from "@app/types";
+import { CustomToggleSection } from "@app/components/assistant_builder/actions/configuration/CustomToggleSection";
 
 interface NoActionAvailableProps {
   owner: LightWorkspaceType;
@@ -360,27 +361,14 @@ export function MCPAction({
         </ConfigurationSectionContainer>
       )}
 
+      {/* Add a custom toggle for the search server that enabled the advanced search mode. */}
       {isSearchServer && (
-        <ConfigurationSectionContainer title="Toggle Advanced Search">
-          <SliderToggle
-            selected={
-              actionConfiguration.additionalConfiguration[
-                ADVANCED_SEARCH_SWITCH
-              ] === true
-            }
-            onClick={() =>
-              handleConfigUpdate((old) => ({
-                ...old,
-                additionalConfiguration: {
-                  ...old.additionalConfiguration,
-                  [ADVANCED_SEARCH_SWITCH]:
-                    old.additionalConfiguration[ADVANCED_SEARCH_SWITCH] !==
-                    true,
-                },
-              }))
-            }
-          />
-        </ConfigurationSectionContainer>
+        <CustomToggleSection
+          title="Toggle Advanced Search"
+          configurationKey={ADVANCED_SEARCH_SWITCH}
+          actionConfiguration={actionConfiguration}
+          handleConfigUpdate={handleConfigUpdate}
+        />
       )}
     </>
   );
