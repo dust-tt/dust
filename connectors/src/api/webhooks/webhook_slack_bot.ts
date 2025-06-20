@@ -23,30 +23,6 @@ import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
 
-type SlackWebhookEventSubtype =
-  | "message_changed"
-  | "message_deleted"
-  | "channel_name";
-
-export interface SlackWebhookEvent<T = string> {
-  bot_id?: string;
-  channel?: T;
-  subtype?: SlackWebhookEventSubtype;
-  hidden?: boolean; // added for message_deleted
-  deleted_ts?: string; // added for message_deleted - timestamp of deleted message
-  user?: string;
-  ts?: string; // slack message id
-  thread_ts?: string; // slack thread id
-  type?: string; // event type (eg: message)
-  channel_type?: "channel" | "im" | "mpim";
-  text: string; // content of the message
-  old_name?: string; // when renaming channel: old channel name
-  name?: string; // when renaming channel: new channel name
-  message?: {
-    bot_id?: string;
-  };
-}
-
 const _webhookSlackBotAPIHandler = async (
   req: Request<
     Record<string, string>,

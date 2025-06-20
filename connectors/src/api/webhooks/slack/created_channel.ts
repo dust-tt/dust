@@ -1,7 +1,7 @@
 import type { Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
 
-import type { SlackWebhookEvent } from "@connectors/api/webhooks/webhook_slack";
+import type { SlackWebhookEvent } from "@connectors/api/webhooks/webhook_slack_shared";
 import { autoReadChannel } from "@connectors/connectors/slack/auto_read_channel";
 import type { Logger } from "@connectors/logger/logger";
 
