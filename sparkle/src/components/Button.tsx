@@ -305,7 +305,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     const counterSize = COUNTER_SIZE_MAP[resolvedSize];
 
     const showCounter = isCounter && counterValue != null;
-    const showContainer = showCounter;
+    const showContainer = label || showCounter;
 
     const content = (
       <>
@@ -329,7 +329,6 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         ) : (
           icon && renderIcon(icon, iconSize, "-s-mx-0.5")
         )}
-        {!showContainer && label && <>{label}</>}
         {showContainer && (
           <div
             className={cn(
