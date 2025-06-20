@@ -100,7 +100,7 @@ export function useConnectorConfig({
   const url = `/api/w/${owner.sId}/data_sources/${dataSource?.sId}/managed/config/${configKey}`;
 
   const { data, error, mutate } = useSWRWithDefaults(url, configFetcher, {
-    disabled: disabled || !!dataSource,
+    disabled: disabled || !dataSource,
   });
 
   return {

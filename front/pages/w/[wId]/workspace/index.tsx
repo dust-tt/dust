@@ -30,6 +30,7 @@ import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useMembersCount } from "@app/lib/swr/memberships";
 import type {
   DataSourceType,
+  SpaceType,
   SubscriptionType,
   WorkspaceType,
 } from "@app/types";
@@ -46,7 +47,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
   slackBotDataSource: DataSourceResource | null;
-  systemSpace: SpaceResource;
+  systemSpace: SpaceType;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const subscription = auth.subscription();
@@ -67,7 +68,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       owner,
       subscription,
       slackBotDataSource,
-      systemSpace,
+      systemSpace: systemSpace.toJSON(),
     },
   };
 });
@@ -116,12 +117,11 @@ export default function WorkspaceAdmin({
     return valid;
   }, [owner.name, workspaceName]);
 
-  const { configValue, mutateConfig: mutateSlackBotEnabled } =
-    useConnectorConfig({
-      configKey: "botEnabled",
-      dataSource: slackBotDataSource?.toJSON() ?? null,
-      owner,
-    });
+  const { configValue } = useConnectorConfig({
+    configKey: "botEnabled",
+    dataSource: slackBotDataSource?.toJSON() ?? null,
+    owner,
+  });
 
   const isSlackBotEnabled = configValue === "true";
 
@@ -202,9 +202,6 @@ export default function WorkspaceAdmin({
     setIsChangingSlackBot(true);
     if (slackBotDataSource) {
       await toggleSlackBotOnExistingDataSource(!isSlackBotEnabled);
-      await mutateSlackBotEnabled(
-        isSlackBotEnabled ? { configValue: "false" } : { configValue: "true" }
-      );
     } else {
       const dataSource = await createSlackBotConnectionAndDataSource();
       if (dataSource) {
