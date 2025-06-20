@@ -4,13 +4,15 @@ import {
   supportedImageFileFormats,
   supportedOtherFileFormats,
   supportedFileExtensions,
+  SupportedFileContentType,
+  isSupportedFileContentType,
 } from "@dust-tt/client";
 
 export interface FileInfo {
   path: string;
   name: string;
   size: number;
-  type: string;
+  type: SupportedFileContentType;
   extension: string;
 }
 
@@ -37,7 +39,7 @@ export function isImageFile(extension: string): boolean {
 /**
  * Get MIME type from file extension
  */
-export function getMimeType(extension: string): string {
+export function getMimeType(extension: string): SupportedFileContentType {
   const ext = extension.toLowerCase();
   for (const [mime, exts] of Object.entries({
     ...supportedOtherFileFormats,
@@ -47,7 +49,8 @@ export function getMimeType(extension: string): string {
       !exts ||
       !Array.isArray(exts) ||
       exts.length === 0 ||
-      mime.includes("dust")
+      mime.includes("dust") ||
+      !isSupportedFileContentType(mime)
     ) {
       continue;
     }

@@ -73,7 +73,7 @@ export const FileUpload: FC<FileUploadProps> = ({
             fileObject,
             fileName: file.name,
             fileSize: file.size,
-            contentType: file.type as any,
+            contentType: file.type,
             useCase: "conversation",
             useCaseMetadata: {
               conversationId,
