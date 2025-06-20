@@ -245,7 +245,7 @@ export default function UserProvisioning({
 
   return (
     <Page.Vertical gap="lg">
-      <Page.H variant="h4">User provisionning</Page.H>
+      <Page.H variant="h4">User provisioning</Page.H>
       <div className="flex w-full flex-row items-center gap-2">
         <div className="flex-1">
           <DirectorySyncStatus
