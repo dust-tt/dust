@@ -131,8 +131,31 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
   });
 
   if (!crawlerResponse.success) {
-    await syncFailed(connectorId, "webcrawling_error");
-    throw new Error(crawlerResponse.error);
+    const errorMessage = crawlerResponse.error || "Unknown error";
+    childLogger.error(
+      {
+        error: errorMessage,
+        url: rootUrl,
+        connectorId,
+      },
+      "Firecrawl crawl failed"
+    );
+
+    // Check if it's a 403 error for unsupported websites.
+    if (
+      errorMessage.includes("status code 403") ||
+      errorMessage.includes("no longer supported")
+    ) {
+      await syncFailed(connectorId, "webcrawling_error_blocked");
+    } else {
+      await syncFailed(connectorId, "webcrawling_error");
+    }
+
+    // Return gracefully instead of throwing to prevent workflow from getting stuck.
+    return {
+      launchGarbageCollect: false,
+      startedAtTs: startedAt.getTime(),
+    };
   }
 
   if (crawlerResponse.id) {
