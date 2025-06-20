@@ -12,6 +12,7 @@ async function main(): Promise<void> {
     // Create Express app.
     const app = express();
     app.use(express.json({ limit: CONFIG.REQUEST_SIZE_LIMIT }));
+    app.use(express.urlencoded({ extended: true, limit: CONFIG.REQUEST_SIZE_LIMIT }));
 
     // Start server.
     const server = app.listen(CONFIG.PORT, async () => {

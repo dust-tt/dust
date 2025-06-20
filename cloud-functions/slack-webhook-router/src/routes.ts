@@ -40,6 +40,8 @@ export function createRoutes(
   });
 
   router.post("/:webhookSecret/interactions", async (req, res) => {
+    // Slack interactions are sent as application/x-www-form-urlencoded
+    // with JSON payload in a 'payload' field - forwarded as-is to connectors
     await handleWebhook(
       req,
       res,
@@ -50,6 +52,15 @@ export function createRoutes(
   });
 
   return router;
+}
+
+function isUrlVerification(req: express.Request): boolean {
+  return (
+    req.body &&
+    "type" in req.body &&
+    req.body.type === "url_verification" &&
+    "challenge" in req.body
+  );
 }
 
 async function handleWebhook(
@@ -80,7 +91,7 @@ async function handleWebhook(
     }
 
     // Handle Slack URL verification challenge.
-    if (req.body.type === "url_verification" && req.body.challenge) {
+    if (isUrlVerification(req)) {
       console.log("Handling URL verification challenge", {
         component: "routes",
         endpoint,
