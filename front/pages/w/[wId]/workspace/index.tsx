@@ -16,6 +16,7 @@ import {
   SheetTrigger,
   SlackLogo,
   SliderToggle,
+  useSendNotification,
 } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 import { useCallback, useEffect, useState } from "react";
@@ -27,11 +28,25 @@ import { ProviderManagementModal } from "@app/components/workspace/ProviderManag
 import { getPriceAsString } from "@app/lib/client/subscription";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useMembersCount } from "@app/lib/swr/memberships";
-import type { SubscriptionType, WorkspaceType } from "@app/types";
+import type {
+  DataSourceType,
+  SubscriptionType,
+  WorkspaceType,
+} from "@app/types";
+import { SpaceResource } from "@app/lib/resources/space_resource";
+import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { setupConnection } from "@app/components/spaces/AddConnectionMenu";
+import { PostDataSourceRequestBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources";
+import {
+  useConnectorConfig,
+  useToggleSlackChatBot,
+} from "@app/lib/swr/connectors";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
+  slackBotDataSource: DataSourceResource | null;
+  systemSpace: SpaceResource;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const subscription = auth.subscription();
@@ -41,10 +56,18 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
+  const slackBotDataSource =
+    (await DataSourceResource.listByConnectorProvider(auth, "slack_bot"))[0] ??
+    null;
+
+  const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
+
   return {
     props: {
       owner,
       subscription,
+      slackBotDataSource,
+      systemSpace,
     },
   };
 });
@@ -52,14 +75,22 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 export default function WorkspaceAdmin({
   owner,
   subscription,
+  slackBotDataSource,
+  systemSpace,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [disable, setDisabled] = useState(true);
   const [updating, setUpdating] = useState(false);
+  const sendNotification = useSendNotification();
 
   const [workspaceName, setWorkspaceName] = useState(owner.name);
   const [workspaceNameError, setWorkspaceNameError] = useState<string>("");
+  const [isChangingSlackBot, setIsChangingSlackBot] = useState(false);
 
-  const [slackBotEnabled, setSlackBotEnabled] = useState(false);
+  const toggleSlackBotOnExistingDataSource = useToggleSlackChatBot({
+    dataSource: slackBotDataSource?.toJSON() ?? null,
+    owner,
+  });
+
   const [isSheetOpen, setIsSheetOpen] = useState(false);
 
   const workspaceSeats = useMembersCount(owner);
@@ -84,6 +115,15 @@ export default function WorkspaceAdmin({
     }
     return valid;
   }, [owner.name, workspaceName]);
+
+  const { configValue, mutateConfig: mutateSlackBotEnabled } =
+    useConnectorConfig({
+      configKey: "botEnabled",
+      dataSource: slackBotDataSource?.toJSON() ?? null,
+      owner,
+    });
+
+  const isSlackBotEnabled = configValue === "true";
 
   useEffect(() => {
     setDisabled(!formValidation());
@@ -119,6 +159,66 @@ export default function WorkspaceAdmin({
 
   const handleGoToStripePortal = async () => {
     window.open(`/w/${owner.sId}/subscription/manage`, "_blank");
+  };
+
+  const createSlackBotConnectionAndDataSource = async () => {
+    try {
+      const connectionIdRes = await setupConnection({
+        owner,
+        provider: "slack_bot",
+        extraConfig: {},
+      });
+      if (connectionIdRes.isErr()) {
+        throw connectionIdRes.error;
+      }
+
+      const res = await fetch(
+        `/api/w/${owner.sId}/spaces/${systemSpace.sId}/data_sources`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            provider: "slack_bot",
+            connectionId: connectionIdRes.value,
+            name: undefined,
+            configuration: null,
+          } satisfies PostDataSourceRequestBody),
+        }
+      );
+
+      if (res.ok) {
+        return await res.json();
+      } else {
+        return null;
+      }
+    } catch (e) {
+      return null;
+    }
+  };
+
+  const toggleSlackBot = async () => {
+    setIsChangingSlackBot(true);
+    if (slackBotDataSource) {
+      await toggleSlackBotOnExistingDataSource(!isSlackBotEnabled);
+      await mutateSlackBotEnabled(
+        isSlackBotEnabled ? { configValue: "false" } : { configValue: "true" }
+      );
+    } else {
+      const dataSource = await createSlackBotConnectionAndDataSource();
+      if (dataSource) {
+        await toggleSlackBotOnExistingDataSource(true);
+        window.location.reload();
+      } else {
+        sendNotification({
+          type: "error",
+          title: `Failed to enable Slack Bot.`,
+          description: `Could not create a new Slack Bot data source.`,
+        });
+      }
+    }
+    setIsChangingSlackBot(false);
   };
 
   return (
@@ -193,16 +293,23 @@ export default function WorkspaceAdmin({
           </Page.Vertical>
           <Page.Vertical align="stretch" gap="md">
             <Page.H variant="h4">Integrations</Page.H>
+            <div className="h-full border-b border-border dark:border-border-night" />
             <ContextItem.List>
               <ContextItem
                 title="Slack Bot"
                 subElement="Use Dust Agents in Slack with the Dust Slack app"
                 visual={<SlackLogo className="h-6 w-6" />}
+                hasSeparatorIfLast={true}
                 action={
                   <SliderToggle
-                    selected={slackBotEnabled}
+                    selected={
+                      // When changing and initially enabled, show disabled, and vice versa.
+                      isSlackBotEnabled !== isChangingSlackBot
+                    }
+                    disabled={isChangingSlackBot}
                     onClick={() => {
-                      setSlackBotEnabled(!slackBotEnabled);
+                      toggleSlackBot();
+                      setIsChangingSlackBot(false);
                     }}
                   />
                 }

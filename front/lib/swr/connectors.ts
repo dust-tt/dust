@@ -90,17 +90,17 @@ export function useConnectorConfig({
   owner,
 }: {
   configKey: string;
-  dataSource: DataSourceType;
+  dataSource: DataSourceType | null;
   disabled?: boolean;
   owner: LightWorkspaceType;
 }) {
   const configFetcher: Fetcher<GetOrPostManagedDataSourceConfigResponseBody> =
     fetcher;
 
-  const url = `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/config/${configKey}`;
+  const url = `/api/w/${owner.sId}/data_sources/${dataSource?.sId}/managed/config/${configKey}`;
 
   const { data, error, mutate } = useSWRWithDefaults(url, configFetcher, {
-    disabled,
+    disabled: disabled || !!dataSource,
   });
 
   return {
@@ -160,7 +160,7 @@ export function useToggleSlackChatBot({
   dataSource,
   owner,
 }: {
-  dataSource: DataSourceType;
+  dataSource: DataSourceType | null;
   owner: LightWorkspaceType;
 }) {
   const sendNotification = useSendNotification();
@@ -171,6 +171,16 @@ export function useToggleSlackChatBot({
     configKey: "botEnabled",
     disabled: true, // Needed just to mutate
   });
+
+  if (!dataSource) {
+    return () => {
+      sendNotification({
+        type: "error",
+        title: "Failed to Enable Slack Bot",
+        description: "Tried to enable Slack Bot, but no data source was found.",
+      });
+    };
+  }
 
   const doToggle = async (botEnabled: boolean) => {
     const res = await fetch(
