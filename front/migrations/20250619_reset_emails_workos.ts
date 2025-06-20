@@ -83,17 +83,26 @@ const sendPasswordResetEmail = async (
                      box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
                      transition: all 0.3s ease;">
             <a href="${passwordResetUrl}"
-               style="display: inline-block;
-                      padding: 16px 32px;
-                      color: #ffffff;
+               style="display: inline-flex;
+                      align-items: center;
+                      justify-content: center;
+                      white-space: nowrap;
+                      transition: background-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+                      background-color: #3b82f6;
+                      color: #f1f5f9;
                       text-decoration: none;
                       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-                      font-size: 16px;
-                      font-weight: 600;
-                      letter-spacing: 0.5px;
-                      border-radius: 8px;
-                      text-align: center;
-                      min-width: 200px;">
+                      font-size: 14px;
+                      font-weight: 500;
+                      line-height: 1.25;
+                      height: 36px;
+                      padding: 0 12px;
+                      border-radius: 12px;
+                      gap: 8px;
+                      flex-shrink: 0;
+                      min-width: 200px;
+                      outline: none;
+                      border: none;">
               🔐 Reset Your Password
             </a>
           </td>
