@@ -1,11 +1,12 @@
 import {
-  Avatar,
   Button,
-  CompanyIcon,
-  PlanetIcon,
+  CardIcon,
+  Chip,
+  ContextItem,
   Input,
   Page,
   PencilSquareIcon,
+  PlanetIcon,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -14,6 +15,7 @@ import {
   SheetTitle,
   SheetTrigger,
   SliderToggle,
+  SlackLogo,
 } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 import { useCallback, useEffect, useState } from "react";
@@ -22,7 +24,9 @@ import { subNavigationAdmin } from "@app/components/navigation/config";
 import AppContentLayout from "@app/components/sparkle/AppContentLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { ProviderManagementModal } from "@app/components/workspace/ProviderManagementModal";
+import { getPriceAsString } from "@app/lib/client/subscription";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
+import { useWorkspaceActiveUsers } from "@app/lib/swr/workspaces";
 import type { SubscriptionType, WorkspaceType } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
@@ -57,6 +61,9 @@ export default function WorkspaceAdmin({
 
   const [slackBotEnabled, setSlackBotEnabled] = useState(false);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
+
+  const { activeUsers } = useWorkspaceActiveUsers({ workspaceId: owner.sId });
+  const workspaceSeats = activeUsers ? activeUsers.length : 0;
 
   const formValidation = useCallback(() => {
     if (workspaceName === owner.name) {
@@ -109,6 +116,10 @@ export default function WorkspaceAdmin({
     setWorkspaceName(owner.name);
     setWorkspaceNameError("");
     setIsSheetOpen(false);
+  };
+
+  const handleGoToStripePortal = async () => {
+    window.open(`/w/${owner.sId}/subscription/manage`, "_blank");
   };
 
   return (
@@ -183,65 +194,86 @@ export default function WorkspaceAdmin({
           </Page.Vertical>
           <Page.Vertical align="stretch" gap="md">
             <Page.H variant="h4">Integrations</Page.H>
-            <div className="flex items-center justify-between rounded-lg border border-gray-200 p-4">
-              <div className="flex items-center gap-4">
-                <Avatar
-                  size="md"
-                  visual="https://dust.tt/static/systemavatar/slack_avatar_full.png"
-                />
-                <div>
-                  <Page.H variant="h6">Slack Bot</Page.H>
-                  <Page.P variant="secondary">
-                    Use Dust Agents in Slack with the Dust Slack app
-                  </Page.P>
-                </div>
-              </div>
-              <SliderToggle
-                selected={slackBotEnabled}
-                onClick={() => {
-                  setSlackBotEnabled(!slackBotEnabled);
-                }}
+            <ContextItem.List>
+              <ContextItem
+                title="Slack Bot"
+                subElement="Use Dust Agents in Slack with the Dust Slack app"
+                visual={<SlackLogo className="h-6 w-6" />}
+                action={
+                  <SliderToggle
+                    selected={slackBotEnabled}
+                    onClick={() => {
+                      setSlackBotEnabled(!slackBotEnabled);
+                    }}
+                  />
+                }
               />
-            </div>
+            </ContextItem.List>
           </Page.Vertical>
           <Page.Vertical align="stretch" gap="md">
             <Page.H variant="h4">Subscriptions</Page.H>
-            <div className="space-y-6">
+            <Page.Vertical align="stretch" gap="sm">
+              <Page.H variant="h5">Your plan</Page.H>
               <div>
-                <Page.H variant="h6">Your plan</Page.H>
-                <div className="mt-2 flex items-center gap-2">
-                  <span className="rounded-md bg-blue-100 px-3 py-1 text-sm font-medium text-blue-900">
-                    {subscription.plan.name}
-                  </span>
-                  <Button
-                    variant="tertiary"
-                    label="•••"
-                    size="xs"
-                    onClick={() => {}}
-                  />
-                </div>
+                <Page.Horizontal gap="sm">
+                  <Chip size="sm" color="blue" label={subscription.plan.name} />
+                  {subscription.stripeSubscriptionId && (
+                    <Button
+                      label="Manage my subscription"
+                      onClick={handleGoToStripePortal}
+                      variant="outline"
+                    />
+                  )}
+                </Page.Horizontal>
               </div>
-              <div>
-                <Page.H variant="h6">Payment, invoicing & billing</Page.H>
-                <Page.P variant="secondary">
-                  Estimated monthly billing: $
-                  {subscription.plan.limits.users.maxUsers
-                    ? subscription.plan.limits.users.maxUsers * 29
-                    : 0}{" "}
-                  ({subscription.plan.limits.users.maxUsers || 0} members, $29
-                  per member)
-                </Page.P>
-                <Button
-                  variant="secondary"
-                  label="Dust's dashboard on Stripe"
-                  icon={CompanyIcon}
-                  className="mt-3"
-                  onClick={() =>
-                    window.open(`/w/${owner.sId}/subscription/manage`, "_blank")
-                  }
-                />
-              </div>
-            </div>
+              {subscription.stripeSubscriptionId && (
+                <>
+                  <div className="h-4" />
+                  <Page.Vertical gap="sm">
+                    <Page.H variant="h5">Billing</Page.H>
+                    <Page.P>
+                      Estimated monthly billing:{" "}
+                      <span className="font-bold">
+                        {getPriceAsString({
+                          currency: "usd",
+                          priceInCents: 2900 * workspaceSeats,
+                        })}
+                      </span>{" "}
+                      (excluding taxes).
+                    </Page.P>
+                    <Page.P>
+                      {workspaceSeats === 1 ? (
+                        <>
+                          {workspaceSeats} member,{" "}
+                          {getPriceAsString({
+                            currency: "usd",
+                            priceInCents: 2900,
+                          })}{" "}
+                          per member.
+                        </>
+                      ) : (
+                        <>
+                          {workspaceSeats} members,{" "}
+                          {getPriceAsString({
+                            currency: "usd",
+                            priceInCents: 2900,
+                          })}{" "}
+                          per member.
+                        </>
+                      )}
+                    </Page.P>
+                    <div className="my-5">
+                      <Button
+                        icon={CardIcon}
+                        label="Your billing dashboard on Stripe"
+                        variant="outline"
+                        onClick={handleGoToStripePortal}
+                      />
+                    </div>
+                  </Page.Vertical>
+                </>
+              )}
+            </Page.Vertical>
           </Page.Vertical>
         </Page.Vertical>
       </AppContentLayout>
