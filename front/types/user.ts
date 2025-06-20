@@ -64,6 +64,7 @@ export type LightWorkspaceType = {
     [key: string]: string | number | boolean | object | undefined;
   } | null;
   workOSOrganizationId?: string | null;
+  groups?: string[];
 };
 
 export type WorkspaceType = LightWorkspaceType & {
