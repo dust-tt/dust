@@ -22,26 +22,26 @@ import type { InferGetServerSidePropsType } from "next";
 import { useCallback, useEffect, useState } from "react";
 
 import { subNavigationAdmin } from "@app/components/navigation/config";
+import { setupConnection } from "@app/components/spaces/AddConnectionMenu";
 import AppContentLayout from "@app/components/sparkle/AppContentLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { ProviderManagementModal } from "@app/components/workspace/ProviderManagementModal";
 import { getPriceAsString } from "@app/lib/client/subscription";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
+import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
+import {
+  useConnectorConfig,
+  useToggleSlackChatBot,
+} from "@app/lib/swr/connectors";
 import { useMembersCount } from "@app/lib/swr/memberships";
+import type { PostDataSourceRequestBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources";
 import type {
   DataSourceType,
   SpaceType,
   SubscriptionType,
   WorkspaceType,
 } from "@app/types";
-import { SpaceResource } from "@app/lib/resources/space_resource";
-import { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import { setupConnection } from "@app/components/spaces/AddConnectionMenu";
-import { PostDataSourceRequestBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources";
-import {
-  useConnectorConfig,
-  useToggleSlackChatBot,
-} from "@app/lib/swr/connectors";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
@@ -307,8 +307,7 @@ export default function WorkspaceAdmin({
                     }
                     disabled={isChangingSlackBot}
                     onClick={() => {
-                      toggleSlackBot();
-                      setIsChangingSlackBot(false);
+                      void toggleSlackBot();
                     }}
                   />
                 }
