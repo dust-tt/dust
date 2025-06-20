@@ -349,7 +349,8 @@ export function MCPAction({
 
       {/* Add a custom toggle for the search server that enables the advanced search mode. */}
       <CustomToggleSection
-        title="Toggle Advanced Search"
+        title="Advanced Search Mode"
+        description="Enable advanced search capabilities with enhanced discovery and filtering options for more precise results."
         targetMCPServerName="search"
         selectedMCPServerView={selectedMCPServerView}
         configurationKey={ADVANCED_SEARCH_SWITCH}

@@ -1,12 +1,12 @@
 import { SliderToggle } from "@dust-tt/sparkle";
 
-import { ConfigurationSectionContainer } from "@app/components/assistant_builder/actions/configuration/ConfigurationSectionContainer";
 import type { AssistantBuilderMCPServerConfiguration } from "@app/components/assistant_builder/types";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 
 interface CustomToggleSectionProps {
   title: string;
+  description: string;
   configurationKey: string;
   selectedMCPServerView?: MCPServerViewType;
   targetMCPServerName: InternalMCPServerNameType;
@@ -23,6 +23,7 @@ interface CustomToggleSectionProps {
  */
 export function CustomToggleSection({
   title,
+  description,
   selectedMCPServerView,
   targetMCPServerName,
   configurationKey,
@@ -37,23 +38,36 @@ export function CustomToggleSection({
     return null;
   }
 
+  const isEnabled =
+    actionConfiguration.additionalConfiguration[configurationKey] === true;
+
   return (
-    <ConfigurationSectionContainer title={title}>
-      <SliderToggle
-        selected={
-          actionConfiguration.additionalConfiguration[configurationKey] === true
-        }
-        onClick={() =>
-          handleConfigUpdate((old) => ({
-            ...old,
-            additionalConfiguration: {
-              ...old.additionalConfiguration,
-              [configurationKey]:
-                old.additionalConfiguration[configurationKey] !== true,
-            },
-          }))
-        }
-      />
-    </ConfigurationSectionContainer>
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-2">
+          <h3 className="heading-base font-semibold text-foreground dark:text-foreground-night">
+            {title}
+          </h3>
+          {description && (
+            <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+              {description}
+            </p>
+          )}
+        </div>
+        <SliderToggle
+          size="sm"
+          selected={isEnabled}
+          onClick={() =>
+            handleConfigUpdate((old) => ({
+              ...old,
+              additionalConfiguration: {
+                ...old.additionalConfiguration,
+                [configurationKey]: !isEnabled,
+              },
+            }))
+          }
+        />
+      </div>
+    </div>
   );
 }
