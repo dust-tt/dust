@@ -1,0 +1,23 @@
+{
+  "name": "jira-mcp-server-standalone",
+  "version": "1.0.0",
+  "description": "Standalone JIRA MCP server equivalent to the internal MCP server",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "zod": "^3.22.0"
+  },
+  "keywords": [
+    "mcp",
+    "jira",
+    "model-context-protocol",
+    "api"
+  ],
+  "author": "",
+  "license": "MIT"
+}
