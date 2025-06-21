@@ -62,9 +62,10 @@ async function getJiraBaseUrl(accessToken: string): Promise<string | null> {
 
     const resources = await response.json();
     
-    // Get the first accessible resource (primary workspace)
+    // Get the first accessible resource (primary workspace) and use its CloudID
     if (resources && resources.length > 0) {
-      return resources[0].url;
+      const cloudId = resources[0].id;
+      return `https://api.atlassian.com/ex/jira/${cloudId}`;
     }
 
     return null;
