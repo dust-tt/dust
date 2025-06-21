@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { isMCPServerAvailability } from "@app/lib/actions/mcp_internal_actions/constants";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
@@ -24,7 +25,12 @@ async function handler(
   switch (method) {
     case "GET": {
       const spaceIds = req.query.spaceIds;
-      if (!spaceIds || typeof spaceIds !== "string") {
+      const availabilitiesParam = req.query.availabilities;
+      if (
+        !spaceIds ||
+        typeof spaceIds !== "string" ||
+        typeof availabilitiesParam === "object"
+      ) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -47,10 +53,26 @@ async function handler(
         { concurrency: 10 }
       );
 
+      const availabilities = availabilitiesParam
+        ? availabilitiesParam.split(",")
+        : ["manual"];
+
+      for (const availability of availabilities) {
+        if (!isMCPServerAvailability(availability)) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: "Invalid availability",
+            },
+          });
+        }
+      }
+
       const flattenedServerViews = serverViews
         .flat()
         .filter((v): v is MCPServerViewType => v !== null)
-        .filter((v) => v.server.availability === "manual");
+        .filter((v) => availabilities.includes(v.server.availability));
 
       return res.status(200).json({
         success: true,

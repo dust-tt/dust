@@ -125,7 +125,7 @@ export default function AssistantBuilder({
   defaultIsEdited,
   baseUrl,
   defaultTemplate,
-  isAgentDuplication = false,
+  duplicateAgentId,
 }: AssistantBuilderLightProps) {
   const router = useRouter();
   const sendNotification = useSendNotification();
@@ -163,7 +163,7 @@ export default function AssistantBuilder({
 
   const { actions, isActionsLoading, error } = useAssistantConfigurationActions(
     owner.sId,
-    agentConfiguration?.sId ?? null
+    duplicateAgentId ?? agentConfiguration?.sId ?? null
   );
 
   useEffect(() => {
@@ -177,23 +177,19 @@ export default function AssistantBuilder({
       return;
     }
 
-    // In case of duplicating an agent, we set initial action state from the original agent.
-    // We should not override it with the actions we fetched from the client side (= empty actions).
-    if (!isAgentDuplication) {
-      setBuilderState((prevState) => ({
-        ...prevState,
-        actions: [
-          ...actions.map((action) => ({
-            id: uniqueId(),
-            ...action,
-          })),
-          ...(prevState.visualizationEnabled
-            ? [getDataVisualizationActionConfiguration()]
-            : []),
-        ],
-      }));
-    }
-  }, [actions, error, sendNotification, isAgentDuplication]);
+    setBuilderState((prevState) => ({
+      ...prevState,
+      actions: [
+        ...actions.map((action) => ({
+          id: uniqueId(),
+          ...action,
+        })),
+        ...(prevState.visualizationEnabled
+          ? [getDataVisualizationActionConfiguration()]
+          : []),
+      ],
+    }));
+  }, [actions, error, sendNotification]);
 
   const [builderState, setBuilderState] = useState<AssistantBuilderState>(() =>
     getDefaultBuilderState(initialBuilderState, defaultScope, plan)

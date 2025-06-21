@@ -8,6 +8,7 @@ import {
   getMcpServerDisplayName,
   mcpServersSortingFn,
 } from "@app/lib/actions/mcp_helper";
+import type { MCPServerAvailability } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { MCPServerType, MCPServerViewType } from "@app/lib/api/mcp";
 import type { MCPServerTypeWithViews } from "@app/lib/api/mcp";
 import type {
@@ -939,10 +940,11 @@ export function useRemoveMCPServerViewFromSpace(owner: LightWorkspaceType) {
 // this is a post request to get the mcp server views from the spaces
 export function useMCPServerViewsFromSpaces(
   owner: LightWorkspaceType,
-  spaces: SpaceType[]
+  spaces: SpaceType[],
+  availabilities?: MCPServerAvailability[]
 ) {
   const configFetcher: Fetcher<GetMCPServerViewsListResponseBody> = fetcher;
-  const url = `/api/w/${owner.sId}/mcp/views?spaceIds=${spaces.map((s) => s.sId).join(",")}`;
+  const url = `/api/w/${owner.sId}/mcp/views?spaceIds=${spaces.map((s) => s.sId).join(",")}${availabilities ? `&availabilities=${availabilities.join(",")}` : ""}`;
   const { data, error, mutate } = useSWRWithDefaults(url, configFetcher, {
     disabled: !spaces.length,
   });
