@@ -3,7 +3,15 @@ import { useEffect } from "react";
 
 import { mcpServerViewSortingFn } from "@app/lib/actions/mcp_helper";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import type { AppType, DataSourceViewType, SpaceType } from "@app/types";
+import { useDataSourceViews } from "@app/lib/swr/data_source_views";
+import { useMCPServerViewsFromSpaces } from "@app/lib/swr/mcp_servers";
+import { useSpaces } from "@app/lib/swr/spaces";
+import type {
+  AppType,
+  DataSourceViewType,
+  LightWorkspaceType,
+  SpaceType,
+} from "@app/types";
 
 type AssistantBuilderContextType = {
   dustApps: AppType[];
@@ -12,28 +20,35 @@ type AssistantBuilderContextType = {
   mcpServerViews: MCPServerViewType[];
   isPreviewPanelOpen: boolean;
   setIsPreviewPanelOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  isSpacesLoading: boolean;
+  isDataSourceViewsLoading: boolean;
+  isMCPServerViewsLoading: boolean;
+  isSpacesError: boolean;
+  isDataSourceViewsError: boolean;
+  isMCPServerViewsError: boolean;
 };
 
 export const AssistantBuilderContext =
   createContext<AssistantBuilderContextType>({
-    dustApps: [],
+    dustApps: [], // TODO: cleanup and remove
     dataSourceViews: [],
     spaces: [],
     mcpServerViews: [],
     isPreviewPanelOpen: true,
     setIsPreviewPanelOpen: () => {},
+    isSpacesLoading: false,
+    isDataSourceViewsLoading: false,
+    isMCPServerViewsLoading: false,
+    isSpacesError: false,
+    isDataSourceViewsError: false,
+    isMCPServerViewsError: false,
   });
 
 export function AssistantBuilderProvider({
-  dustApps,
-  dataSourceViews,
-  spaces,
-  mcpServerViews,
+  owner,
   children,
-}: Omit<
-  AssistantBuilderContextType,
-  "isPreviewPanelOpen" | "setIsPreviewPanelOpen"
-> & {
+}: {
+  owner: LightWorkspaceType;
   children: React.ReactNode;
 }) {
   const [isPreviewPanelOpen, setIsPreviewPanelOpen] = useState(() => {
@@ -42,6 +57,19 @@ export function AssistantBuilderProvider({
     }
     return window.innerWidth >= 1024;
   });
+
+  const { spaces, isSpacesLoading, isSpacesError } = useSpaces({
+    workspaceId: owner.sId,
+  });
+
+  const {
+    serverViews: mcpServerViews,
+    isLoading: isMCPServerViewsLoading,
+    isError: isMCPServerViewsError,
+  } = useMCPServerViewsFromSpaces(owner, spaces, ["manual", "auto"]);
+
+  const { dataSourceViews, isDataSourceViewsLoading, isDataSourceViewsError } =
+    useDataSourceViews(owner);
 
   useEffect(() => {
     const mediaQuery = window.matchMedia("(min-width: 1024px)");
@@ -54,15 +82,22 @@ export function AssistantBuilderProvider({
       mediaQuery.removeEventListener("change", handleMediaChange);
     };
   }, []);
+
   return (
     <AssistantBuilderContext.Provider
       value={{
-        dustApps,
+        dustApps: [],
         dataSourceViews,
         spaces,
-        mcpServerViews: mcpServerViews.sort(mcpServerViewSortingFn),
+        mcpServerViews: mcpServerViews?.sort(mcpServerViewSortingFn) || [],
         isPreviewPanelOpen,
         setIsPreviewPanelOpen,
+        isSpacesLoading,
+        isDataSourceViewsLoading,
+        isMCPServerViewsLoading,
+        isSpacesError,
+        isDataSourceViewsError,
+        isMCPServerViewsError,
       }}
     >
       {children}

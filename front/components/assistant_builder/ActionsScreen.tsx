@@ -223,6 +223,8 @@ export default function ActionsScreen({
   pendingAction,
   isFetchingActions = false,
 }: ActionScreenProps) {
+  const { isMCPServerViewsLoading } = useContext(AssistantBuilderContext);
+
   const { hasFeature } = useFeatureFlags({
     workspaceId: owner.sId,
   });
@@ -298,6 +300,8 @@ export default function ActionsScreen({
     },
     [setBuilderState, setEdited]
   );
+
+  const showSpinner = isFetchingActions || isMCPServerViewsLoading;
 
   return (
     <>
@@ -408,6 +412,7 @@ export default function ActionsScreen({
                 hasFeature={hasFeature}
                 setAction={setAction}
                 mcpServerViewsWithKnowledge={mcpServerViewsWithKnowledge}
+                isLoading={isMCPServerViewsLoading}
               />
               <AddToolsDropdown
                 setBuilderState={setBuilderState}
@@ -417,6 +422,7 @@ export default function ActionsScreen({
                 defaultMCPServerViews={selectableDefaultMCPServerViews}
                 nonDefaultMCPServerViews={selectableNonDefaultMCPServerViews}
                 reasoningModels={reasoningModels}
+                isLoading={isMCPServerViewsLoading}
               />
 
               <div className="flex-grow" />
@@ -444,12 +450,12 @@ export default function ActionsScreen({
           </div>
         )}
         <div className="flex h-full min-h-40 flex-col gap-4">
-          {isFetchingActions && (
+          {showSpinner && (
             <div className="flex h-36 w-full items-center justify-center rounded-xl">
               <Spinner />
             </div>
           )}
-          {!isFetchingActions &&
+          {!showSpinner &&
             (!isLegacyConfig && builderState.actions.length === 0 ? (
               <div className="flex h-36 w-full items-center justify-center rounded-xl bg-muted-background dark:bg-muted-background-night">
                 <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
@@ -699,7 +705,9 @@ function ActionCard({
   removeAction: () => void;
   isLegacyConfig: boolean;
 }) {
-  const { mcpServerViews } = useContext(AssistantBuilderContext);
+  const { mcpServerViews, isMCPServerViewsLoading } = useContext(
+    AssistantBuilderContext
+  );
   const spec =
     action.type === "DATA_VISUALIZATION"
       ? DATA_VISUALIZATION_SPECIFICATION
@@ -711,14 +719,17 @@ function ActionCard({
   }
 
   const mcpServerView =
-    action.type === "MCP"
+    action.type === "MCP" && !isMCPServerViewsLoading
       ? mcpServerViews.find(
           (mcpServerView) =>
             mcpServerView.sId === action.configuration.mcpServerViewId
         ) ?? null
       : null;
 
-  const actionError = hasActionError(action, mcpServerViews);
+  const actionError = !isMCPServerViewsLoading
+    ? hasActionError(action, mcpServerViews)
+    : false;
+
   return (
     <Card
       variant="primary"
@@ -1179,12 +1190,14 @@ interface AddKnowledgeDropdownProps {
   hasFeature: (feature: WhitelistableFeature | null | undefined) => boolean;
   mcpServerViewsWithKnowledge: (MCPServerViewType & { label: string })[];
   setAction: (action: AssistantBuilderSetActionType) => void;
+  isLoading: boolean;
 }
 
 function AddKnowledgeDropdown({
   hasFeature,
   setAction,
   mcpServerViewsWithKnowledge,
+  isLoading,
 }: AddKnowledgeDropdownProps) {
   const hideAction = useCallback(
     (key: (typeof DATA_SOURCES_ACTION_CATEGORIES)[number]) => {
@@ -1230,52 +1243,55 @@ function AddKnowledgeDropdown({
         className="w-[20rem] md:w-[22rem]"
         collisionPadding={10}
       >
-        {DATA_SOURCES_ACTION_CATEGORIES.map((key) => {
-          const spec = ACTION_SPECIFICATIONS[key];
-          if (hideAction(key)) {
-            return null;
-          }
-          const action = getDefaultActionConfiguration(key);
-          if (!action) {
-            return null;
-          }
+        {isLoading && <Spinner />}
+        {!isLoading &&
+          DATA_SOURCES_ACTION_CATEGORIES.map((key) => {
+            const spec = ACTION_SPECIFICATIONS[key];
+            if (hideAction(key)) {
+              return null;
+            }
+            const action = getDefaultActionConfiguration(key);
+            if (!action) {
+              return null;
+            }
 
-          return (
-            <DropdownMenuItem
-              truncateText
-              key={key}
-              onClick={() => {
-                setAction({
-                  type: action.noConfigurationRequired ? "insert" : "pending",
-                  action,
-                });
-              }}
-              icon={<Avatar icon={spec.dropDownIcon} size="sm" />}
-              label={spec.label}
-              description={spec.description}
-            />
-          );
-        })}
-        {mcpServerViewsWithKnowledge.map((view) => {
-          const action = getDefaultMCPServerActionConfiguration(view);
-          assert(action);
+            return (
+              <DropdownMenuItem
+                truncateText
+                key={key}
+                onClick={() => {
+                  setAction({
+                    type: action.noConfigurationRequired ? "insert" : "pending",
+                    action,
+                  });
+                }}
+                icon={<Avatar icon={spec.dropDownIcon} size="sm" />}
+                label={spec.label}
+                description={spec.description}
+              />
+            );
+          })}
+        {!isLoading &&
+          mcpServerViewsWithKnowledge.map((view) => {
+            const action = getDefaultMCPServerActionConfiguration(view);
+            assert(action);
 
-          return (
-            <DropdownMenuItem
-              truncateText
-              key={view.id}
-              onClick={() => {
-                setAction({
-                  type: "pending",
-                  action: { id: uniqueId(), ...action },
-                });
-              }}
-              icon={getAvatar(view.server)}
-              label={view.label}
-              description={view.server.description}
-            />
-          );
-        })}
+            return (
+              <DropdownMenuItem
+                truncateText
+                key={view.id}
+                onClick={() => {
+                  setAction({
+                    type: "pending",
+                    action: { id: uniqueId(), ...action },
+                  });
+                }}
+                icon={getAvatar(view.server)}
+                label={view.label}
+                description={view.server.description}
+              />
+            );
+          })}
       </DropdownMenuContent>
     </DropdownMenu>
   );
