@@ -3,6 +3,7 @@
 .DS_Store
 .idea
 test.ts
+.env
 .env.local
 qdrant_storage
 .*.swp

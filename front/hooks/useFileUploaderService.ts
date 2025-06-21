@@ -21,6 +21,7 @@ import {
   isSupportedImageContentType,
   MAX_FILE_SIZES,
   Ok,
+  validateFileSize
 } from "@app/types";
 
 export interface FileBlob {
@@ -79,6 +80,28 @@ export function useFileUploaderService({
 
   const handleFilesUpload = async (files: File[]) => {
     setIsProcessingFiles(true);
+
+    for (const file of files) {
+      const contentType = file.type || DEFAULT_FILE_CONTENT_TYPE;
+
+      if (isSupportedFileContentType(contentType)) {
+        const sizeValidation = validateFileSize(contentType, file.size);
+
+        if (!sizeValidation.isValid && sizeValidation.error) {
+          const { actualSize, maxAllowed, suggestions } = sizeValidation.error;
+
+          sendNotification({
+            type: "error",
+            title: "File is too large",
+            description: `File size: ${actualSize}. Maximum allowed: ${maxAllowed}. ${suggestions.join(" or ")}.`,
+          });
+
+          setIsProcessingFiles(false);
+
+          return;
+        }
+      }
+    }
 
     const categoryToSize: Map<FileFormatCategory, number> = new Map();
 
