@@ -223,9 +223,7 @@ export default function ActionsScreen({
   pendingAction,
   isFetchingActions = false,
 }: ActionScreenProps) {
-  const { isMCPServerViewsLoading } = useContext(
-    AssistantBuilderContext
-  );
+  const { isMCPServerViewsLoading } = useContext(AssistantBuilderContext);
 
   const { hasFeature } = useFeatureFlags({
     workspaceId: owner.sId,
@@ -707,7 +705,9 @@ function ActionCard({
   removeAction: () => void;
   isLegacyConfig: boolean;
 }) {
-  const { mcpServerViews } = useContext(AssistantBuilderContext);
+  const { mcpServerViews, isMCPServerViewsLoading } = useContext(
+    AssistantBuilderContext
+  );
   const spec =
     action.type === "DATA_VISUALIZATION"
       ? DATA_VISUALIZATION_SPECIFICATION
@@ -719,14 +719,17 @@ function ActionCard({
   }
 
   const mcpServerView =
-    action.type === "MCP"
+    action.type === "MCP" && !isMCPServerViewsLoading
       ? mcpServerViews.find(
           (mcpServerView) =>
             mcpServerView.sId === action.configuration.mcpServerViewId
         ) ?? null
       : null;
 
-  const actionError = hasActionError(action, mcpServerViews);
+  const actionError = !isMCPServerViewsLoading
+    ? hasActionError(action, mcpServerViews)
+    : false;
+
   return (
     <Card
       variant="primary"

@@ -59,14 +59,14 @@ export function AssistantBuilderProvider({
     workspaceId: owner.sId,
   });
 
-  const { dataSourceViews, isDataSourceViewsLoading, isDataSourceViewsError } =
-    useDataSourceViews(owner);
-
   const {
     serverViews: mcpServerViews,
     isLoading: isMCPServerViewsLoading,
     isError: isMCPServerViewsError,
   } = useMCPServerViewsFromSpaces(owner, spaces, ["manual", "auto"]);
+
+  const { dataSourceViews, isDataSourceViewsLoading, isDataSourceViewsError } =
+    useDataSourceViews(owner);
 
   useEffect(() => {
     const mediaQuery = window.matchMedia("(min-width: 1024px)");
