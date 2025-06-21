@@ -1,5 +1,6 @@
 export const WHITELISTABLE_FEATURES = [
   "advanced_notion_management",
+  "advanced_search",
   "agent_builder_v2",
   "agent_discovery",
   "claude_3_7_reasoning",
@@ -37,8 +38,8 @@ export const WHITELISTABLE_FEATURES = [
   "slack_tool",
   "snowflake_connector_feature",
   "usage_data_api",
-  "workos_user_provisioning",
   "workos",
+  "workos_user_provisioning",
   "xai_feature",
 ] as const;
 export type WhitelistableFeature = (typeof WHITELISTABLE_FEATURES)[number];

@@ -358,6 +358,7 @@ export default function ActionsScreen({
         updateAction={updateAction}
         owner={owner}
         setEdited={setEdited}
+        hasFeature={hasFeature}
       />
 
       <div className="flex flex-col gap-8 text-sm text-muted-foreground dark:text-muted-foreground-night">
@@ -498,6 +499,7 @@ type NewActionModalProps = {
   }) => void;
   owner: WorkspaceType;
   setEdited: (edited: boolean) => void;
+  hasFeature: (feature: WhitelistableFeature | null | undefined) => boolean;
 };
 
 function NewActionModal({
@@ -510,6 +512,7 @@ function NewActionModal({
   owner,
   setEdited,
   builderState,
+  hasFeature,
 }: NewActionModalProps) {
   const [newActionConfig, setNewActionConfig] =
     useState<AssistantBuilderActionState | null>(null);
@@ -668,6 +671,7 @@ function NewActionModal({
                 showInvalidActionError={showInvalidActionError}
                 setShowInvalidActionNameError={setShowInvalidActionNameError}
                 setShowInvalidActionDescError={setShowInvalidActionDescError}
+                hasFeature={hasFeature}
               />
             )}
           </div>
@@ -785,6 +789,7 @@ interface ActionConfigEditorProps {
     showInvalidActionDescError: string | null
   ) => void;
   showInvalidActionDescError: string | null;
+  hasFeature: (feature: WhitelistableFeature | null | undefined) => boolean;
 }
 
 function ActionConfigEditor({
@@ -799,6 +804,7 @@ function ActionConfigEditor({
   onDescriptionChange,
   setShowInvalidActionDescError,
   showInvalidActionDescError,
+  hasFeature,
 }: ActionConfigEditorProps) {
   const { spaces } = useContext(AssistantBuilderContext);
 
@@ -886,6 +892,7 @@ function ActionConfigEditor({
           setEdited={setEdited}
           setShowInvalidActionDescError={setShowInvalidActionDescError}
           showInvalidActionDescError={showInvalidActionDescError}
+          hasFeature={hasFeature}
         />
       );
 
@@ -961,6 +968,7 @@ interface ActionEditorProps {
   owner: WorkspaceType;
   setEdited: (edited: boolean) => void;
   builderState: AssistantBuilderState;
+  hasFeature: (feature: WhitelistableFeature | null | undefined) => boolean;
 }
 
 function ActionEditor({
@@ -976,6 +984,7 @@ function ActionEditor({
   owner,
   setEdited,
   builderState,
+  hasFeature,
 }: ActionEditorProps) {
   const { mcpServerViews } = useContext(AssistantBuilderContext);
 
@@ -1109,6 +1118,7 @@ function ActionEditor({
             });
             setShowInvalidActionDescError(null);
           }}
+          hasFeature={hasFeature}
         />
         {showInvalidActionError && (
           <div className="text-sm text-warning-500">

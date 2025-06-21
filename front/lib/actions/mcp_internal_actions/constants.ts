@@ -8,6 +8,8 @@ import type {
 } from "@app/types";
 import { Err, Ok } from "@app/types";
 
+export const ADVANCED_SEARCH_SWITCH = "advanced_search";
+
 export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   // Note:
   // Names should reflect the purpose of the server, but not directly the tools it contains.
@@ -271,9 +273,7 @@ export const INTERNAL_MCP_SERVERS: Record<
   data_sources_file_system: {
     id: 1010,
     availability: "auto",
-    isRestricted: (plan, featureFlags) => {
-      return featureFlags.includes("dev_mcp_actions");
-    },
+    isRestricted: () => false,
   },
 };
 
