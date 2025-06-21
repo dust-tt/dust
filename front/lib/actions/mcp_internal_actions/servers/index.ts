@@ -40,7 +40,7 @@ export async function getInternalMCPServer(
 ): Promise<McpServer> {
   switch (internalMCPServerName) {
     case "github":
-      return githubServer();
+      return githubServer(auth);
     case "hubspot":
       return hubspotServer();
     case "image_generation":
