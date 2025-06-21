@@ -1,8 +1,7 @@
 import { groupBy } from "lodash";
-import { useContext, useMemo } from "react";
+import { useMemo } from "react";
 import { useCallback } from "react";
 
-import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
 import type {
   ActionSpecificationWithType,
   AssistantBuilderActionConfiguration,
@@ -20,6 +19,8 @@ import {
 } from "@app/lib/actions/utils";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { ModelConfigurationType, SpaceType } from "@app/types";
+import { useMCPServerViewsContext } from "@app/components/assistant_builder/contexts/MCPServerViewsContext";
+import { useSpacesContext } from "@app/components/assistant_builder/contexts/SpacesContext";
 
 const DEFAULT_TOOLS_WITH_CONFIGURATION = [
   "DUST_APP_RUN",
@@ -129,7 +130,8 @@ interface UseToolsProps {
 }
 
 export const useTools = ({ actions, reasoningModels }: UseToolsProps) => {
-  const { mcpServerViews, spaces } = useContext(AssistantBuilderContext);
+  const { spaces } = useSpacesContext();
+  const { mcpServerViews } = useMCPServerViewsContext();
 
   const hideAction = useCallback(
     (key: ActionSpecificationWithType) => {

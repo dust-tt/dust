@@ -18,7 +18,6 @@ import React, { useCallback, useContext, useEffect, useState } from "react";
 import ActionsScreen, {
   hasActionError,
 } from "@app/components/assistant_builder/ActionsScreen";
-import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
 import AssistantBuilderRightPanel from "@app/components/assistant_builder/AssistantBuilderPreviewDrawer";
 import { BuilderLayout } from "@app/components/assistant_builder/BuilderLayout";
 import {
@@ -68,6 +67,8 @@ import {
   isBuilder,
   SUPPORTED_MODEL_CONFIGS,
 } from "@app/types";
+import { usePreviewPanelContext } from "./contexts/PreviewPanelContext";
+import { useMCPServerViewsContext } from "./contexts/MCPServerViewsContext";
 
 function isValidTab(tab: string): tab is BuilderScreen {
   return BUILDER_SCREENS.includes(tab as BuilderScreen);
@@ -224,8 +225,9 @@ export default function AssistantBuilder({
     agentConfigurationId: agentConfiguration?.sId ?? null,
   });
   useNavigationLock(edited && !disableUnsavedChangesPrompt);
-  const { mcpServerViews, isPreviewPanelOpen, setIsPreviewPanelOpen } =
-    useContext(AssistantBuilderContext);
+  const { mcpServerViews } = useMCPServerViewsContext();
+  const { isPreviewPanelOpen, setIsPreviewPanelOpen } =
+    usePreviewPanelContext();
 
   const checkUsernameTimeout = React.useRef<NodeJS.Timeout | null>(null);
 

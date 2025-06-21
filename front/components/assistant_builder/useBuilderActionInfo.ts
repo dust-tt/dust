@@ -1,6 +1,5 @@
-import { useCallback, useContext, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 
-import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
 import type {
   AssistantBuilderActionConfiguration,
   AssistantBuilderActionState,
@@ -10,6 +9,8 @@ import { getDefaultActionConfiguration } from "@app/components/assistant_builder
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { assertNever } from "@app/types";
+import { useSpacesContext } from "@app/components/assistant_builder/contexts/SpacesContext";
+import { useMCPServerViewsContext } from "@app/components/assistant_builder/contexts/MCPServerViewsContext";
 
 // Actions in this list are not configurable via the "add tool" menu.
 // Instead, they should be handled in the `Capabilities` component.
@@ -55,7 +56,8 @@ export const isUsableInKnowledge = (
 };
 
 export const useBuilderActionInfo = (builderState: AssistantBuilderState) => {
-  const { spaces, mcpServerViews } = useContext(AssistantBuilderContext);
+  const { spaces } = useSpacesContext();
+  const { mcpServerViews } = useMCPServerViewsContext();
 
   const isCapabilityAction = useCallback(
     (action: AssistantBuilderActionState) => {

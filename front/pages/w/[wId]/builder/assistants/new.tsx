@@ -23,6 +23,7 @@ import type {
   TemplateAgentConfigurationType,
   WorkspaceType,
 } from "@app/types";
+import { AssistantBuilderProviders } from "@app/components/assistant_builder/contexts/AssistantBuilderContexts";
 
 function getDuplicateAndTemplateIdFromQuery(query: ParsedUrlQuery) {
   const { duplicate, templateId } = query;
@@ -136,7 +137,7 @@ export default function CreateAssistant({
   }
 
   return (
-    <AssistantBuilderProvider owner={owner}>
+    <AssistantBuilderProviders owner={owner}>
       <AssistantBuilder
         owner={owner}
         subscription={subscription}
@@ -184,7 +185,7 @@ export default function CreateAssistant({
         baseUrl={baseUrl}
         defaultTemplate={assistantTemplate}
       />
-    </AssistantBuilderProvider>
+    </AssistantBuilderProviders>
   );
 }
 

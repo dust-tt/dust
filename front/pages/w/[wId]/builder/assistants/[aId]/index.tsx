@@ -2,7 +2,6 @@ import tracer from "dd-trace";
 import type { InferGetServerSidePropsType } from "next";
 
 import AssistantBuilder from "@app/components/assistant_builder/AssistantBuilder";
-import { AssistantBuilderProvider } from "@app/components/assistant_builder/AssistantBuilderContext";
 import type { BuilderFlow } from "@app/components/assistant_builder/types";
 import { BUILDER_FLOWS } from "@app/components/assistant_builder/types";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
@@ -18,6 +17,7 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types";
+import { AssistantBuilderProviders } from "@app/components/assistant_builder/contexts/AssistantBuilderContexts";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   agentConfiguration: LightAgentConfigurationType;
@@ -111,7 +111,7 @@ export default function EditAssistant({
   }
 
   return (
-    <AssistantBuilderProvider owner={owner}>
+    <AssistantBuilderProviders owner={owner}>
       <AssistantBuilder
         owner={owner}
         subscription={subscription}
@@ -144,7 +144,7 @@ export default function EditAssistant({
         defaultTemplate={null}
         duplicateAgentId={null}
       />
-    </AssistantBuilderProvider>
+    </AssistantBuilderProviders>
   );
 }
 

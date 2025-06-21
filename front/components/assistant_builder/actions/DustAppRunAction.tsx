@@ -10,15 +10,15 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import { sortBy } from "lodash";
-import React, { useContext, useMemo } from "react";
+import React, { useMemo } from "react";
 
-import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
 import { SpaceSelector } from "@app/components/assistant_builder/spaces/SpaceSelector";
 import type { AssistantBuilderActionConfiguration } from "@app/components/assistant_builder/types";
 import { useSpaces } from "@app/lib/swr/spaces";
 import { classNames } from "@app/lib/utils";
 import type { LightWorkspaceType, SpaceType } from "@app/types";
 import { assertNever, slugify } from "@app/types";
+import { useDustAppsContext } from "@app/components/assistant_builder/contexts/DustAppsContext";
 
 export function isActionDustAppRunValid(
   action: AssistantBuilderActionConfiguration
@@ -49,7 +49,7 @@ export function ActionDustAppRun({
   setEdited,
   updateAction,
 }: ActionDustAppRunProps) {
-  const { dustApps } = useContext(AssistantBuilderContext);
+  const { dustApps } = useDustAppsContext();
 
   const { spaces, isSpacesLoading } = useSpaces({ workspaceId: owner.sId });
   const filteredSpaces = useMemo(

@@ -69,7 +69,6 @@ import {
   hasErrorActionWebNavigation,
 } from "@app/components/assistant_builder/actions/WebNavigationAction";
 import { AddToolsDropdown } from "@app/components/assistant_builder/AddToolsDropdown";
-import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
 import { isLegacyAssistantBuilderConfiguration } from "@app/components/assistant_builder/legacy_agent";
 import type {
   AssistantBuilderActionAndDataVisualizationConfiguration,
@@ -117,6 +116,8 @@ import {
 } from "@app/types";
 
 import { DataDescription } from "./actions/DataDescription";
+import { useMCPServerViewsContext } from "@app/components/assistant_builder/contexts/MCPServerViewsContext";
+import { useSpacesContext } from "@app/components/assistant_builder/contexts/SpacesContext";
 
 const DATA_SOURCES_ACTION_CATEGORIES = [
   "RETRIEVAL_SEARCH",
@@ -223,7 +224,7 @@ export default function ActionsScreen({
   pendingAction,
   isFetchingActions = false,
 }: ActionScreenProps) {
-  const { isMCPServerViewsLoading } = useContext(AssistantBuilderContext);
+  const { isMCPServerViewsLoading } = useMCPServerViewsContext();
 
   const { hasFeature } = useFeatureFlags({
     workspaceId: owner.sId,
@@ -530,7 +531,7 @@ function NewActionModal({
     string | null
   >(null);
 
-  const { mcpServerViews } = useContext(AssistantBuilderContext);
+  const { mcpServerViews } = useMCPServerViewsContext();
 
   useEffect(() => {
     if (initialAction && !newActionConfig) {
@@ -705,9 +706,8 @@ function ActionCard({
   removeAction: () => void;
   isLegacyConfig: boolean;
 }) {
-  const { mcpServerViews, isMCPServerViewsLoading } = useContext(
-    AssistantBuilderContext
-  );
+  const { mcpServerViews, isMCPServerViewsLoading } =
+    useMCPServerViewsContext();
   const spec =
     action.type === "DATA_VISUALIZATION"
       ? DATA_VISUALIZATION_SPECIFICATION
@@ -811,7 +811,7 @@ function ActionConfigEditor({
   setShowInvalidActionDescError,
   showInvalidActionDescError,
 }: ActionConfigEditorProps) {
-  const { spaces } = useContext(AssistantBuilderContext);
+  const { spaces } = useSpacesContext();
 
   // Only allow one space across all actions.
   const allowedSpaces = useMemo(() => {
@@ -988,7 +988,7 @@ function ActionEditor({
   setEdited,
   builderState,
 }: ActionEditorProps) {
-  const { mcpServerViews } = useContext(AssistantBuilderContext);
+  const { mcpServerViews } = useMCPServerViewsContext();
 
   const selectedMCPServerView =
     action.type === "MCP"

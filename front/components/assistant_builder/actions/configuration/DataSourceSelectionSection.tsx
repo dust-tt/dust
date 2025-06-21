@@ -6,10 +6,10 @@ import {
   Tree,
 } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
-import { useContext, useState } from "react";
+import { useState } from "react";
 
 import { ConfigurationSectionContainer } from "@app/components/assistant_builder/actions/configuration/ConfigurationSectionContainer";
-import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
+import { useDataSourceViewsContext } from "@app/components/assistant_builder/contexts/DataSourceViewsContext";
 import { DataSourceViewTagsFilterDropdown } from "@app/components/assistant_builder/tags/DataSourceViewTagsFilterDropdown";
 import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
 import { DataSourceViewPermissionTree } from "@app/components/DataSourceViewPermissionTree";
@@ -60,7 +60,7 @@ export default function DataSourceSelectionSection({
 }: DataSourceSelectionSectionProps) {
   const router = useRouter();
   const { isDark } = useTheme();
-  const { dataSourceViews } = useContext(AssistantBuilderContext);
+  const { dataSourceViews } = useDataSourceViewsContext();
   const [dataSourceViewToDisplay, setDataSourceViewToDisplay] =
     useState<DataSourceViewType | null>(null);
 
