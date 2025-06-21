@@ -51,7 +51,6 @@ export const ACTION_MODES = [
   "GENERIC",
   "RETRIEVAL_SEARCH",
   "RETRIEVAL_EXHAUSTIVE",
-  "DUST_APP_RUN",
   "TABLES_QUERY",
   "PROCESS",
 ] as const;
@@ -66,10 +65,6 @@ export function isDefaultActionName(
       return action.name.includes(DEFAULT_RETRIEVAL_ACTION_NAME);
     case "RETRIEVAL_EXHAUSTIVE":
       return action.name.includes(DEFAULT_RETRIEVAL_NO_QUERY_ACTION_NAME);
-    case "DUST_APP_RUN":
-      return action.name.includes(
-        ASSISTANT_BUILDER_DUST_APP_RUN_ACTION_CONFIGURATION_DEFAULT_NAME
-      );
     case "TABLES_QUERY":
       return action.name.includes(DEFAULT_TABLES_QUERY_ACTION_NAME);
     case "PROCESS":
@@ -161,10 +156,6 @@ export type AssistantBuilderActionConfiguration = (
   | {
       type: "RETRIEVAL_EXHAUSTIVE";
       configuration: AssistantBuilderRetrievalExhaustiveConfiguration;
-    }
-  | {
-      type: "DUST_APP_RUN";
-      configuration: AssistantBuilderDustAppConfiguration;
     }
   | {
       type: "TABLES_QUERY";
@@ -363,18 +354,6 @@ export const ASSISTANT_BUILDER_DUST_APP_RUN_ACTION_CONFIGURATION_DEFAULT_NAME =
 export const ASSISTANT_BUILDER_DUST_APP_RUN_ACTION_CONFIGURATION_DEFAULT_DESCRIPTION =
   "Run a Dust app.";
 
-export function getDefaultDustAppRunActionConfiguration() {
-  return {
-    type: "DUST_APP_RUN",
-    configuration: {
-      app: null,
-    } as AssistantBuilderDustAppConfiguration,
-    name: ASSISTANT_BUILDER_DUST_APP_RUN_ACTION_CONFIGURATION_DEFAULT_NAME,
-    description:
-      ASSISTANT_BUILDER_DUST_APP_RUN_ACTION_CONFIGURATION_DEFAULT_DESCRIPTION,
-  } satisfies AssistantBuilderActionConfiguration;
-}
-
 export function getDefaultTablesQueryActionConfiguration() {
   return {
     type: "TABLES_QUERY",
@@ -476,8 +455,6 @@ export function getDefaultActionConfiguration(
         return getDefaultRetrievalSearchActionConfiguration();
       case "RETRIEVAL_EXHAUSTIVE":
         return getDefaultRetrievalExhaustiveActionConfiguration();
-      case "DUST_APP_RUN":
-        return getDefaultDustAppRunActionConfiguration();
       case "TABLES_QUERY":
         return getDefaultTablesQueryActionConfiguration();
       case "PROCESS":

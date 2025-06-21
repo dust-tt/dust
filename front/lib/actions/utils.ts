@@ -60,13 +60,6 @@ export const ACTION_SPECIFICATIONS: Record<
     dropDownIcon: ScanIcon,
     flag: null,
   },
-  DUST_APP_RUN: {
-    label: "Run a Dust App",
-    description: "Run a Dust app, then reply",
-    cardIcon: CommandLineIcon,
-    dropDownIcon: CommandLineIcon,
-    flag: null,
-  },
   TABLES_QUERY: {
     label: "Query Tables",
     description: "Tables, Spreadsheets, Notion DBs (quantitative)",

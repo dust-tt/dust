@@ -21,10 +21,6 @@ import {
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { ModelConfigurationType, SpaceType } from "@app/types";
 
-const DEFAULT_TOOLS_WITH_CONFIGURATION = [
-  "DUST_APP_RUN",
-] as const satisfies Array<AssistantBuilderActionConfiguration["type"]>;
-
 const DEFAULT_TOOLS_WITHOUT_CONFIGURATION = [
   "DATA_VISUALIZATION",
 ] as const satisfies Array<
@@ -50,10 +46,7 @@ function getDefaultConfigurationSpecification(
 
 function getAvailableNonMCPActions() {
   // We should not show the option if it's already selected.
-  const list = [
-    ...DEFAULT_TOOLS_WITHOUT_CONFIGURATION,
-    ...DEFAULT_TOOLS_WITH_CONFIGURATION,
-  ];
+  const list = DEFAULT_TOOLS_WITHOUT_CONFIGURATION;
 
   return list.map((item) => getDefaultConfigurationSpecification(item));
 }
@@ -131,30 +124,6 @@ interface UseToolsProps {
 export const useTools = ({ actions, reasoningModels }: UseToolsProps) => {
   const { mcpServerViews, spaces } = useContext(AssistantBuilderContext);
 
-  const hideAction = useCallback(
-    (key: ActionSpecificationWithType) => {
-      switch (key.type) {
-        case "DUST_APP_RUN":
-          return mcpServerViews.some((v) => {
-            const r = getInternalMCPServerNameAndWorkspaceId(v.server.sId);
-            return (
-              r.isOk() &&
-              r.value.name ===
-                ASSISTANT_BUILDER_DUST_APP_RUN_ACTION_CONFIGURATION_DEFAULT_NAME
-            );
-          });
-        default:
-          return false;
-      }
-    },
-    [mcpServerViews]
-  );
-
-  const nonDefaultMCPActions = useMemo(
-    () => getAvailableNonMCPActions().filter((a) => !hideAction(a)),
-    [hideAction]
-  );
-
   const {
     mcpServerViewsWithKnowledge,
     defaultMCPServerViews,
@@ -162,23 +131,6 @@ export const useTools = ({ actions, reasoningModels }: UseToolsProps) => {
   } = useMemo(() => {
     return getGroupedMCPServerViews({ mcpServerViews, spaces });
   }, [mcpServerViews, spaces]);
-
-  const selectableNonMCPActions = useMemo(
-    () =>
-      nonDefaultMCPActions.filter((tool) => {
-        const isConfigurable = DEFAULT_TOOLS_WITH_CONFIGURATION.find(
-          (defaultTool) => defaultTool === tool.type
-        );
-
-        // If it's not configurable, we need to remove it from the list
-        if (!isConfigurable) {
-          return !actions.some((action) => action.type === tool.type);
-        }
-
-        return true;
-      }),
-    [nonDefaultMCPActions, actions]
-  );
 
   const hasReasoningModel = reasoningModels.length > 0;
 
@@ -223,7 +175,6 @@ export const useTools = ({ actions, reasoningModels }: UseToolsProps) => {
 
   return {
     mcpServerViewsWithKnowledge, // All of them require configuration so no need to filter out the selected ones.
-    selectableNonMCPActions,
     selectableDefaultMCPServerViews,
     selectableNonDefaultMCPServerViews,
   };

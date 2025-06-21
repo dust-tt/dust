@@ -41,7 +41,6 @@ interface AddToolsDropdownProps {
   setBuilderState: (
     stateFn: (state: AssistantBuilderState) => AssistantBuilderState
   ) => void;
-  nonDefaultMCPActions: ActionSpecificationWithType[];
   defaultMCPServerViews: MCPServerViewTypeWithLabel[];
   nonDefaultMCPServerViews: MCPServerViewTypeWithLabel[];
   reasoningModels: ModelConfigurationType[];
@@ -53,29 +52,25 @@ export function AddToolsDropdown({
   setEdited,
   setAction,
   setBuilderState,
-  nonDefaultMCPActions,
   defaultMCPServerViews,
   nonDefaultMCPServerViews,
   reasoningModels,
 }: AddToolsDropdownProps) {
   const [searchText, setSearchText] = useState("");
-  const [filteredNonMCPActions, setFilteredNonMCPActions] =
-    useState(nonDefaultMCPActions);
+
   const [filteredMCPServerViews, setFilteredMCPServerViews] = useState([
     ...defaultMCPServerViews,
     ...nonDefaultMCPServerViews,
   ]);
   const sendNotification = useSendNotification();
 
-  const noFilteredTools =
-    filteredNonMCPActions.length === 0 && filteredMCPServerViews.length === 0;
+  const noFilteredTools = filteredMCPServerViews.length === 0;
 
   function onOpenChange(open: boolean) {
     if (!open) {
       // Delay slightly to avoid flickering when the dropdown is closed.
       setTimeout(() => {
         setSearchText("");
-        setFilteredNonMCPActions([]);
         setFilteredMCPServerViews([]);
       }, 200);
     }
@@ -83,11 +78,7 @@ export function AddToolsDropdown({
 
   function onChangeSearchText(text: string) {
     setSearchText(text);
-    setFilteredNonMCPActions(
-      nonDefaultMCPActions.filter((tool) =>
-        tool.label.toLowerCase().includes(text.toLowerCase())
-      )
-    );
+
     setFilteredMCPServerViews(
       [...defaultMCPServerViews, ...nonDefaultMCPServerViews].filter((view) =>
         view.label.toLowerCase().includes(text.toLowerCase())
@@ -213,13 +204,6 @@ export function AddToolsDropdown({
           ) : (
             <>
               <DropdownMenuLabel label="Search results" />
-              {filteredNonMCPActions.map((tool) => (
-                <DefaultToolDropdownMenuItem
-                  key={tool.label}
-                  tool={tool}
-                  onClick={(tool) => onClickDefaultTool(tool.type)}
-                />
-              ))}
               {filteredMCPServerViews.map((view) => (
                 <MCPDropdownMenuItem
                   key={view.id}
@@ -233,13 +217,6 @@ export function AddToolsDropdown({
         {searchText.length === 0 && (
           <>
             <DropdownMenuLabel label="Top tools" />
-            {nonDefaultMCPActions.map((tool) => (
-              <DefaultToolDropdownMenuItem
-                key={tool.label}
-                tool={tool}
-                onClick={() => onClickDefaultTool(tool.type)}
-              />
-            ))}
             {defaultMCPServerViews.map((view) => (
               <MCPDropdownMenuItem
                 key={`${view.id}-${view.label}`} // There can be multiple views with the same id.
