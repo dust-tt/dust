@@ -1,6 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
+import type { CreateIssueRequest } from "@app/lib/actions/mcp_internal_actions/servers/jira/jira_api_helper";
 import {
   addComment,
   createIssue,
@@ -9,7 +10,6 @@ import {
   searchTickets,
   transitionIssue,
   updateIssue,
-  type CreateIssueRequest,
 } from "@app/lib/actions/mcp_internal_actions/servers/jira/jira_api_helper";
 import {
   ERROR_MESSAGES,
@@ -108,13 +108,38 @@ const createServer = (): McpServer => {
     {
       projectKey: z.string().describe("The JIRA project key (e.g., 'PROJ')"),
       summary: z.string().describe("Brief summary of the issue"),
-      description: z.string().optional().describe("Detailed description of the issue"),
-      issueType: z.string().describe("Issue type (e.g., 'Bug', 'Task', 'Story')"),
-      priority: z.string().optional().describe("Priority (e.g., 'High', 'Medium', 'Low')"),
-      assigneeAccountId: z.string().optional().describe("Account ID of the assignee"),
-      labels: z.array(z.string()).optional().describe("Array of labels to add to the issue"),
+      description: z
+        .string()
+        .optional()
+        .describe("Detailed description of the issue"),
+      issueType: z
+        .string()
+        .describe("Issue type (e.g., 'Bug', 'Task', 'Story')"),
+      priority: z
+        .string()
+        .optional()
+        .describe("Priority (e.g., 'High', 'Medium', 'Low')"),
+      assigneeAccountId: z
+        .string()
+        .optional()
+        .describe("Account ID of the assignee"),
+      labels: z
+        .array(z.string())
+        .optional()
+        .describe("Array of labels to add to the issue"),
     },
-    async ({ projectKey, summary, description, issueType, priority, assigneeAccountId, labels }, { authInfo }) => {
+    async (
+      {
+        projectKey,
+        summary,
+        description,
+        issueType,
+        priority,
+        assigneeAccountId,
+        labels,
+      },
+      { authInfo }
+    ) => {
       return withAuth({
         action: async (baseUrl, accessToken) => {
           const issueData: CreateIssueRequest = {
@@ -154,12 +179,27 @@ const createServer = (): McpServer => {
     {
       ticketKey: z.string().describe("The JIRA ticket key (e.g., 'PROJ-123')"),
       summary: z.string().optional().describe("Updated summary of the issue"),
-      description: z.string().optional().describe("Updated description of the issue"),
-      priority: z.string().optional().describe("Updated priority (e.g., 'High', 'Medium', 'Low')"),
-      assigneeAccountId: z.string().optional().describe("Account ID of the new assignee"),
-      labels: z.array(z.string()).optional().describe("Updated array of labels"),
+      description: z
+        .string()
+        .optional()
+        .describe("Updated description of the issue"),
+      priority: z
+        .string()
+        .optional()
+        .describe("Updated priority (e.g., 'High', 'Medium', 'Low')"),
+      assigneeAccountId: z
+        .string()
+        .optional()
+        .describe("Account ID of the new assignee"),
+      labels: z
+        .array(z.string())
+        .optional()
+        .describe("Updated array of labels"),
     },
-    async ({ ticketKey, summary, description, priority, assigneeAccountId, labels }, { authInfo }) => {
+    async (
+      { ticketKey, summary, description, priority, assigneeAccountId, labels },
+      { authInfo }
+    ) => {
       return withAuth({
         action: async (baseUrl, accessToken) => {
           const updateData: Partial<CreateIssueRequest> = {};
@@ -198,17 +238,33 @@ const createServer = (): McpServer => {
     {
       ticketKey: z.string().describe("The JIRA ticket key (e.g., 'PROJ-123')"),
       comment: z.string().describe("The comment text to add"),
-      visibilityType: z.enum(["group", "role"]).optional().describe("Visibility restriction type"),
-      visibilityValue: z.string().optional().describe("Group or role name for visibility restriction"),
+      visibilityType: z
+        .enum(["group", "role"])
+        .optional()
+        .describe("Visibility restriction type"),
+      visibilityValue: z
+        .string()
+        .optional()
+        .describe("Group or role name for visibility restriction"),
     },
-    async ({ ticketKey, comment, visibilityType, visibilityValue }, { authInfo }) => {
+    async (
+      { ticketKey, comment, visibilityType, visibilityValue },
+      { authInfo }
+    ) => {
       return withAuth({
         action: async (baseUrl, accessToken) => {
-          const visibility = visibilityType && visibilityValue 
-            ? { type: visibilityType, value: visibilityValue }
-            : undefined;
+          const visibility =
+            visibilityType && visibilityValue
+              ? { type: visibilityType, value: visibilityValue }
+              : undefined;
 
-          const result = await addComment(baseUrl, accessToken, ticketKey, comment, visibility);
+          const result = await addComment(
+            baseUrl,
+            accessToken,
+            ticketKey,
+            comment,
+            visibility
+          );
           return makeMCPToolJSONSuccess({
             message: "Comment added successfully",
             result,
@@ -226,18 +282,27 @@ const createServer = (): McpServer => {
     {
       ticketKey: z.string().describe("The JIRA ticket key (e.g., 'PROJ-123')"),
       transitionId: z.string().describe("The ID of the transition to perform"),
-      comment: z.string().optional().describe("Optional comment to add during transition"),
+      comment: z
+        .string()
+        .optional()
+        .describe("Optional comment to add during transition"),
     },
     async ({ ticketKey, transitionId, comment }, { authInfo }) => {
       return withAuth({
         action: async (baseUrl, accessToken) => {
-          await transitionIssue(baseUrl, accessToken, ticketKey, transitionId, comment);
+          await transitionIssue(
+            baseUrl,
+            accessToken,
+            ticketKey,
+            transitionId,
+            comment
+          );
           return makeMCPToolJSONSuccess({
             message: "Issue transitioned successfully",
-            result: { 
-              ticketKey, 
+            result: {
+              ticketKey,
               transitionId,
-              ...(comment && { comment })
+              ...(comment && { comment }),
             },
           });
         },
