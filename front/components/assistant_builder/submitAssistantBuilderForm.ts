@@ -155,22 +155,6 @@ export async function submitAssistantBuilderForm({
           },
         ];
 
-      case "DUST_APP_RUN":
-        if (!a.configuration.app) {
-          return [];
-        }
-        return [
-          {
-            type: "dust_app_run_configuration",
-            appWorkspaceId: owner.sId,
-            appId: a.configuration.app.sId,
-            // These fields are required by the API (`name` and `description`)
-            // but will be overridden with the app name and description.
-            name: a.configuration.app.name,
-            description: a.configuration.app.description,
-          },
-        ];
-
       case "TABLES_QUERY":
         return [
           {

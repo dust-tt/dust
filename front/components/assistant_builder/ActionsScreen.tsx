@@ -42,10 +42,6 @@ import React, {
 import { MCPActionHeader } from "@app/components/actions/MCPActionHeader";
 import { DataVisualization } from "@app/components/assistant_builder/actions/DataVisualization";
 import {
-  ActionDustAppRun,
-  isActionDustAppRunValid as hasErrorActionDustAppRun,
-} from "@app/components/assistant_builder/actions/DustAppRunAction";
-import {
   hasErrorActionMCP,
   MCPAction,
 } from "@app/components/assistant_builder/actions/MCPAction";
@@ -148,8 +144,6 @@ export function hasActionError(
       return hasErrorActionMCP(action, mcpServerViews);
     case "PROCESS":
       return hasErrorActionProcess(action);
-    case "DUST_APP_RUN":
-      return hasErrorActionDustAppRun(action);
     case "TABLES_QUERY":
       return hasErrorActionTablesQuery(action);
     case "WEB_NAVIGATION":
@@ -234,7 +228,6 @@ export default function ActionsScreen({
 
   const {
     mcpServerViewsWithKnowledge,
-    selectableNonMCPActions,
     selectableDefaultMCPServerViews,
     selectableNonDefaultMCPServerViews,
   } = useTools({
@@ -413,7 +406,6 @@ export default function ActionsScreen({
                 setBuilderState={setBuilderState}
                 setEdited={setEdited}
                 setAction={setAction}
-                nonDefaultMCPActions={selectableNonMCPActions}
                 defaultMCPServerViews={selectableDefaultMCPServerViews}
                 nonDefaultMCPServerViews={selectableNonDefaultMCPServerViews}
                 reasoningModels={reasoningModels}
@@ -824,17 +816,6 @@ function ActionConfigEditor({
   }, [action, spaces, spacesUsedInActions]);
 
   switch (action.type) {
-    case "DUST_APP_RUN":
-      return (
-        <ActionDustAppRun
-          allowedSpaces={allowedSpaces}
-          owner={owner}
-          action={action}
-          updateAction={updateAction}
-          setEdited={setEdited}
-        />
-      );
-
     case "RETRIEVAL_SEARCH":
       return (
         <ActionRetrievalSearch
@@ -1005,7 +986,6 @@ function ActionEditor({
   const isDefaultActionWithDataSource = useMemo(() => {
     const actionType = action.type;
     switch (actionType) {
-      case "DUST_APP_RUN":
       case "PROCESS":
       case "REASONING":
       case "WEB_NAVIGATION":
@@ -1022,8 +1002,6 @@ function ActionEditor({
         assertNever(actionType);
     }
   }, [action.type]);
-
-  const shouldDisplayAdvancedSettings = !["DUST_APP_RUN"].includes(action.type);
 
   return (
     <div className="flex flex-col gap-4 px-1">
@@ -1052,7 +1030,7 @@ function ActionEditor({
             </div>
           )}
 
-          {shouldDisplayAdvancedSettings && !action.noConfigurationRequired && (
+          {!action.noConfigurationRequired && (
             <Popover
               trigger={<Button icon={MoreIcon} size="sm" variant="ghost" />}
               popoverTriggerAsChild
