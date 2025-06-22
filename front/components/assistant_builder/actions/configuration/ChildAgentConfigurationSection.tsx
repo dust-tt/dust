@@ -122,7 +122,6 @@ export function ChildAgentConfigurationSection({
                   />
                 }
                 showFooterButtons={false}
-                mountPortal={false}
               />
             </div>
           </div>
@@ -146,7 +145,6 @@ export function ChildAgentConfigurationSection({
                 />
               }
               showFooterButtons={false}
-              mountPortal={false}
             />
           </div>
         </Card>
