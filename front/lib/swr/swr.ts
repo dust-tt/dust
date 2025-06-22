@@ -34,7 +34,15 @@ export function useSWRWithDefaults<TKey extends Key, TData>(
   const mergedConfig = { ...DEFAULT_SWR_CONFIG, ...config };
   const disabled = !!mergedConfig.disabled;
 
-  const result = useSWR(disabled ? null : key, fetcher, mergedConfig);
+  // IMPORTANT: Explicitly destructure only the SWR properties we want to expose.
+  // DO NOT use spreading (...result) as it would leak internal SWR properties
+  // that could cause unexpected behavior or conflicts with our custom properties.
+  // This approach ensures we have complete control over the hook's API surface.
+  const { data, error, isLoading, isValidating, mutate } = useSWR(
+    disabled ? null : key,
+    fetcher,
+    mergedConfig
+  );
 
   // If the key looks like an url, we need to remove the query params
   // to make sure we don't cache different pages together
@@ -81,29 +89,31 @@ export function useSWRWithDefaults<TKey extends Key, TData>(
     return globalMutate(key);
   }, [key, mutateKeysWithSameUrl, globalMutate]);
 
-  const myMutateRegardlessOfQueryParams: typeof result.mutate = useCallback(
+  const myMutateRegardlessOfQueryParams: typeof mutate = useCallback(
     (...args) => {
       mutateKeysWithSameUrl(key);
-      return result.mutate(...args);
+      return mutate(...args);
     },
-    [key, mutateKeysWithSameUrl, result]
+    [key, mutateKeysWithSameUrl, mutate]
   );
 
-  if (disabled) {
+  // IMPORTANT: Return only the specific properties we want to expose.
+  // This explicit approach prevents accidentally exposing SWR internals and
+  // ensures our hook has a stable, controlled API surface.
+  // If you need to add more SWR properties, add them explicitly here AND
+  // to the destructuring above - never use spreading.
+  return {
+    data,
+    error,
+    isLoading,
+    isValidating,
     // When disabled, as the key is null, the mutate function is not working
     // so we need to provide a custom mutate function that will work
-    return {
-      ...result,
-      mutate: myMutateWhenDisabled,
-      mutateRegardlessOfQueryParams:
-        myMutateWhenDisabledRegardlessOfQueryParams,
-    };
-  } else {
-    return {
-      ...result,
-      mutateRegardlessOfQueryParams: myMutateRegardlessOfQueryParams,
-    };
-  }
+    mutate: disabled ? myMutateWhenDisabled : mutate,
+    mutateRegardlessOfQueryParams: disabled
+      ? myMutateWhenDisabledRegardlessOfQueryParams
+      : myMutateRegardlessOfQueryParams,
+  };
 }
 
 export function useSWRInfiniteWithDefaults<TKey extends Key, TData>(

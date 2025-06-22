@@ -27,9 +27,6 @@ import { isAdmin, isBuilder } from "@app/types";
 interface AssistantDetailsButtonBarProps {
   agentConfiguration: LightAgentConfigurationType;
   owner: WorkspaceType;
-  canDelete?: boolean;
-  isMoreInfoVisible?: boolean;
-  showAddRemoveToFavorite?: boolean;
   isAgentConfigurationValidating: boolean;
 }
 
@@ -39,6 +36,8 @@ export function AssistantDetailsButtonBar({
   owner,
 }: AssistantDetailsButtonBarProps) {
   const { user } = useUser();
+
+  const [isLoadingEditAssistant, setIsLoadingEditAssistant] = useState(false);
 
   const [showDeletionModal, setShowDeletionModal] = useState(false);
   const { onOpenChange: onOpenChangeAssistantModal } =
@@ -131,6 +130,10 @@ export function AssistantDetailsButtonBar({
   const isFavoriteDisabled =
     isAgentConfigurationValidating || isUpdatingFavorite;
 
+  console.log("📈 AssistantDetailsButtonBar rendered", {
+    timestamp: new Date().toISOString(),
+  });
+
   return (
     <div className="flex flex-row items-center gap-2 px-1.5">
       <div className="group">
@@ -173,8 +176,22 @@ export function AssistantDetailsButtonBar({
                 ? `/w/${owner.sId}/builder/assistants/${agentConfiguration.sId}?flow=workspace_assistants`
                 : undefined
             }
+            isLoading={isLoadingEditAssistant}
             disabled={!canEditAssistant}
             variant="outline"
+            onClick={(e: Event) => {
+              console.log("🔘 Edit Assistant button clicked", {
+                timestamp: new Date().toISOString(),
+                event: e,
+              });
+              setIsLoadingEditAssistant(true);
+            }}
+            onMouseDown={(e: Event) => {
+              console.log("⬇️ Edit Assistant mouse down event", {
+                timestamp: new Date().toISOString(),
+                event: e,
+              });
+            }}
             icon={PencilSquareIcon}
           />
         )}
