@@ -90,6 +90,13 @@ export function ensureFileSize(
   return false;
 }
 
+export function ensureFileSizeByFormatCategory(
+  category: FileFormatCategory,
+  fileSize: number
+): boolean {
+  return fileSize <= MAX_FILE_SIZES[category];
+}
+
 type FileFormat = {
   cat: FileFormatCategory;
   exts: string[];

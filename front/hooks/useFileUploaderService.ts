@@ -14,6 +14,7 @@ import type {
 } from "@app/types";
 import {
   DEFAULT_FILE_CONTENT_TYPE,
+  ensureFileSizeByFormatCategory,
   Err,
   getFileFormatCategory,
   isAPIErrorResponse,
@@ -95,8 +96,7 @@ export function useFileUploaderService({
     }
 
     const oversizedCategories = [...categoryToSize].filter(([cat, size]) => {
-      const multiplier = cat === "image" ? 5 : 2;
-      return size > MAX_FILE_SIZES[cat] * multiplier;
+      return !ensureFileSizeByFormatCategory(cat, size);
     });
 
     for (const cat of oversizedCategories) {
@@ -107,7 +107,7 @@ export function useFileUploaderService({
       });
     }
 
-    if (oversizedCategories.length > 1) {
+    if (oversizedCategories.length > 0) {
       return;
     }
     const previewResults = processSelectedFiles(files);
