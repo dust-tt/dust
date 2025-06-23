@@ -15,9 +15,9 @@ import {
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { getFrontReplicaDbConnection } from "@app/lib/resources/storage";
-import { UserModel } from "@app/lib/resources/storage/models/user";
-import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
+import { GroupModel } from "@app/lib/resources/storage/models/groups";
+import { UserModel } from "@app/lib/resources/storage/models/user";
 import type {
   LightAgentConfigurationType,
   ModelId,
