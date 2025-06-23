@@ -17,7 +17,6 @@ import { snowflake } from "@connectors/connectors/snowflake/lib/cli";
 import {
   launchCrawlWebsiteScheduler,
   updateCrawlerCrawlFrequency,
-  updateCrawlerType,
 } from "@connectors/connectors/webcrawler/temporal/client";
 import { zendesk } from "@connectors/connectors/zendesk/lib/cli";
 import { getTemporalClient } from "@connectors/lib/temporal";
@@ -392,27 +391,13 @@ export const webcrawler = async ({
       await throwOnError(launchCrawlWebsiteScheduler());
       return { success: true };
     }
-    case "update-crawler": {
-      if (!args.connectorId) {
-        throw new Error("Missing --connectorId argument");
-      }
-
-      if (!args.customCrawler) {
-        throw new Error("Missing --customCrawler argument");
-      }
-
-      await throwOnError(
-        updateCrawlerType(args.connectorId, args.customCrawler)
-      );
-      return { success: true };
-    }
     case "update-frequency": {
       if (!args.connectorId) {
         throw new Error("Missing --connectorId argument");
       }
 
       if (!args.crawlFrequency) {
-        throw new Error("Missing --customCrawler argument");
+        throw new Error("Missing --crawlFrequency argument");
       }
 
       await throwOnError(
