@@ -8,11 +8,6 @@ import type {
 } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
-import {
-  CACHE_WITH_REDIS_KEY,
-  getRedisCacheClient,
-} from "@app/lib/utils/cache";
-import logger from "@app/logger/logger";
 import type { ModelId, Result } from "@app/types";
 
 interface BaseResourceConstructor<
@@ -93,13 +88,6 @@ export abstract class BaseResource<M extends Model & ResourceWithId> {
 
     // Update the current instance with the new values to avoid stale data.
     Object.assign(this, affectedRows[0].get());
-
-    try {
-      const redisCacheClient = await getRedisCacheClient();
-      await redisCacheClient.del(`${CACHE_WITH_REDIS_KEY}-${this.className()}`);
-    } catch (err) {
-      logger.error(err);
-    }
 
     return [affectedCount];
   }
