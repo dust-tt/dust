@@ -67,15 +67,12 @@ const sendPasswordResetEmail = async (
           email: "support@dust.help",
         },
         subject: "[Dust] Password Reset Required - Important Update",
-        body: `<p>Dear Dust User,</p>
-
-    <p>We're writing to inform you about an important update to our authentication system.</p>
-    <p>This action is only required if you sign in to Dust using email and password. If you use Google, GitHub, or SSO to access your account, no action is needed.</p>
-    <p>As part of our security infrastructure upgrade, we need you to reset their passwords. This change will help us provide better security and an improved user experience.</p>
-    
-    <p>Please click the button below to reset your password:</p>
-    
-    <div style="text-align: center; margin: 40px 0;">
+        body: `<p>Hi there</p>,
+<p>We're writing to inform you about an important update to our authentication system.</p>
+<p>We're upgrading a security infrastructure component on Dust to improve user login experience. As part of this migration, you need to reset your password on Dust.</p>
+<p>This action is only required if you sign in to Dust using email and password. If you only log in on Dust using Google, GitHub, or SSO, no action is needed.</p>
+<p>Please click the button below to reset your password:</p>
+<div style="text-align: center; margin: 40px 0;">
       <table cellpadding="0" cellspacing="0" border="0" style="margin: 0 auto;">
         <tr>
           <td style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -125,11 +122,8 @@ const sendPasswordResetEmail = async (
         ${passwordResetUrl}
       </p>
     </div>
-            
-    <p>If you have any questions or concerns, please don't hesitate to contact our support team.</p>
-    
-    <p>Thank you for your cooperation,</p>
-    <p>The Dust Team</p>`,
+<p>If you have any questions or concerns, please don't hesitate to contact our support team.</p>
+<p>The Dust Team</p>`,
       });
 
       if (emailResult.isErr()) {
