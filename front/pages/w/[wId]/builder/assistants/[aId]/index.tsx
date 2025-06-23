@@ -22,6 +22,7 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   agentConfiguration: LightAgentConfigurationType;
@@ -50,6 +51,8 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
         notFound: true,
       };
     }
+
+    await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
 
     const [{ spaces, dataSourceViews, dustApps }, configuration] =
       await Promise.all([
