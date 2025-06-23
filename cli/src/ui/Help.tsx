@@ -38,7 +38,7 @@ const Help: FC = () => {
       </Box>
       <Box marginLeft={2}>
         <Text>
-          <Text bold>cache [stats|clear]</Text> Manage agent cache (stats or clear)
+          <Text bold>cache:clear</Text> Clear agents cache
         </Text>
       </Box>
       <Box marginTop={1}>
