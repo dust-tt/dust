@@ -198,7 +198,7 @@ export async function fetchOrCreateWorkOSUserWithEmail({
         organizationId: workspace.workOSOrganizationId,
         userId: createdUser.id,
       });
-      localLogger.error(
+      localLogger.info(
         {
           workOSUserId: createdUser.id,
           organizationId: workspace.workOSOrganizationId,
@@ -206,7 +206,7 @@ export async function fetchOrCreateWorkOSUserWithEmail({
         "Added user to the organization."
       );
     } else {
-      localLogger.warn(
+      localLogger.error(
         { workOSUserId: createdUser.id },
         "Created a user but no organization is associated to the workspace."
       );
