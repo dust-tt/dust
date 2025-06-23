@@ -116,7 +116,8 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
     crawlerResponse = await firecrawlApp.asyncCrawlUrl(rootUrl, {
       maxDiscoveryDepth: webCrawlerConfig.depth ?? WEBCRAWLER_MAX_DEPTH,
       limit: maxRequestsPerCrawl,
-      allowBackwardLinks: webCrawlerConfig.crawlMode === "website",
+      crawlEntireDomain: webCrawlerConfig.crawlMode === "website",
+      maxConcurrency: 4,
       delay: 3,
       scrapeOptions: {
         onlyMainContent: true,
