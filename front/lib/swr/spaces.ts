@@ -375,18 +375,19 @@ export function useDeleteFolderOrWebsite({
 type DoCreateOrUpdateAllowedParams =
   | {
       name: string | null;
-      isRestricted: false;
+      isRestricted: boolean;
+      managementMode?: never;
     }
   | {
       name: string | null;
       memberIds: string[];
-      groupIds: undefined;
+      groupIds?: never;
       isRestricted: true;
       managementMode: "manual";
     }
   | {
       name: string | null;
-      memberIds: undefined;
+      memberIds?: never;
       groupIds: string[];
       isRestricted: true;
       managementMode: "group";
@@ -404,7 +405,7 @@ export function useCreateSpace({ owner }: { owner: LightWorkspaceType }) {
   });
 
   const doCreate = async (params: DoCreateOrUpdateAllowedParams) => {
-    const { name, isRestricted } = params;
+    const { name, managementMode, isRestricted } = params;
     if (!name) {
       return null;
     }
@@ -412,8 +413,8 @@ export function useCreateSpace({ owner }: { owner: LightWorkspaceType }) {
     const url = `/api/w/${owner.sId}/spaces`;
     let res;
 
-    if (isRestricted) {
-      const { managementMode, memberIds, groupIds } = params;
+    if (managementMode) {
+      const { memberIds, groupIds } = params;
 
       // Must have either memberIds or groupIds for restricted spaces
       if (
@@ -491,7 +492,7 @@ export function useUpdateSpace({ owner }: { owner: LightWorkspaceType }) {
     space: SpaceType,
     params: DoCreateOrUpdateAllowedParams
   ) => {
-    const { name: newName, isRestricted } = params;
+    const { name: newName, managementMode } = params;
 
     const updatePromises: Promise<Response>[] = [];
 
@@ -513,8 +514,8 @@ export function useUpdateSpace({ owner }: { owner: LightWorkspaceType }) {
 
     // Prepare space members update request if provided.
     const spaceMembersUrl = `/api/w/${owner.sId}/spaces/${space.sId}/members`;
-    if (isRestricted) {
-      const { managementMode, memberIds, groupIds } = params;
+    if (managementMode) {
+      const { memberIds, groupIds, isRestricted } = params;
 
       updatePromises.push(
         fetch(spaceMembersUrl, {
