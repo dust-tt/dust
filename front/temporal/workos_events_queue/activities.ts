@@ -593,7 +593,7 @@ async function handleDeleteWorkOSUser(
   const user = await UserResource.fetchByWorkOSUserId(workOSUser.id);
   if (!user) {
     throw new Error(
-      `Didn't found user to delete for workOSUserId "${workOSUser.id}" in workspace "${workspace.sId}"`
+      `Did not find user to delete for workOSUserId "${workOSUser.id}" in workspace "${workspace.sId}"`
     );
   }
 
