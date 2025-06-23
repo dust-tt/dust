@@ -302,8 +302,12 @@ export async function mergeUserIdentities({
       (u) => u.user_id === secondaryUser.auth0Sub
     );
 
-    // No auth0 sub for the primary or secondary user, nothing to merge on that side.
-    if (primaryUserAuth0Sub && secondaryUserAuth0Sub) {
+    if (!primaryUserAuth0Sub) {
+      return new Err(new Error("Primary user not found in Auth0."));
+    }
+
+    // No auth0 sub for the secondary user, nothing to merge on that side.
+    if (secondaryUserAuth0Sub) {
       const [identityToMerge] = secondaryUserAuth0Sub.identities;
 
       // Retrieve the connection id for the identity to merge.
