@@ -16,6 +16,8 @@ import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_f
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { getFrontReplicaDbConnection } from "@app/lib/resources/storage";
 import { UserModel } from "@app/lib/resources/storage/models/user";
+import { GroupModel } from "@app/lib/resources/storage/models/groups";
+import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import type {
   LightAgentConfigurationType,
   ModelId,
@@ -58,6 +60,7 @@ type UserUsageQueryResult = {
   messageCount: number;
   lastMessageSent: string;
   activeDaysCount: number;
+  groups: string;
 };
 
 type BuilderUsageQueryResult = {
@@ -92,6 +95,15 @@ interface FeedbackQueryResult {
   content: string | null;
   conversationUrl: string | null;
 }
+
+type GroupMembershipQueryResult = {
+  userId: string;
+  groups: string;
+};
+
+type GroupMembershipWithGroup = GroupMembershipModel & {
+  group: GroupModel;
+};
 
 export async function unsafeGetUsageData(
   startDate: Date,
@@ -251,6 +263,76 @@ export async function getMessageUsageData(
   return generateCsvFromQueryResult(results);
 }
 
+export async function getGroupMembershipsData(
+  startDate: Date,
+  endDate: Date,
+  workspace: WorkspaceType
+): Promise<string> {
+  const wId = workspace.id;
+  const userGroupsMap = await getUserGroupMemberships(wId, startDate, endDate);
+
+  const groupMembershipsData: GroupMembershipQueryResult[] = Object.entries(
+    userGroupsMap
+  ).map(([userId, groups]) => ({
+    userId,
+    groups,
+  }));
+
+  if (!groupMembershipsData.length) {
+    return "No group memberships data available.";
+  }
+  return generateCsvFromQueryResult(groupMembershipsData);
+}
+
+export async function getUserGroupMemberships(
+  workspaceId: number,
+  startDate: Date,
+  endDate: Date
+): Promise<Record<string, string>> {
+  const groupMemberships = await getFrontReplicaDbConnection().transaction(
+    async (t) => {
+      const whereClause = {
+        workspaceId,
+        [Op.and]: [
+          { startAt: { [Op.lte]: endDate } },
+          {
+            [Op.or]: [{ endAt: null }, { endAt: { [Op.gte]: startDate } }],
+          },
+        ],
+      };
+
+      return GroupMembershipModel.findAll({
+        where: whereClause,
+        include: [
+          {
+            model: GroupModel,
+            as: "group",
+            attributes: ["name"],
+            required: true,
+            where: {
+              kind: {
+                [Op.in]: ["provisioned"],
+              },
+            },
+          },
+        ],
+        transaction: t,
+      }) as Promise<GroupMembershipWithGroup[]>;
+    }
+  );
+
+  const result: Record<string, string> = {};
+  groupMemberships.forEach((membership) => {
+    const userId = membership.userId.toString();
+    const groupName = membership.group.name;
+    result[userId] = result[userId]
+      ? `${result[userId]}, ${groupName}`
+      : groupName;
+  });
+
+  return result;
+}
+
 export async function getUserUsageData(
   startDate: Date,
   endDate: Date,
@@ -324,9 +406,13 @@ export async function getUserUsageData(
       });
     }
   );
+
+  const userGroupsMap = await getUserGroupMemberships(wId, startDate, endDate);
+
   const userUsage: UserUsageQueryResult[] = userMessages.map((result) => {
+    const userId = String((result as unknown as { userId: number }).userId);
     return {
-      userId: (result as unknown as { userId: string }).userId,
+      userId,
       userName: (result as unknown as { userContextFullName: string })
         .userContextFullName,
       userEmail: (result as unknown as { userContextEmail: string })
@@ -336,6 +422,7 @@ export async function getUserUsageData(
         .lastMessageSent,
       activeDaysCount: (result as unknown as { activeDaysCount: number })
         .activeDaysCount,
+      groups: userGroupsMap[userId] || "",
     };
   });
   if (!userUsage.length) {
@@ -584,6 +671,7 @@ function generateCsvFromQueryResult(
     | MessageUsageQueryResult[]
     | BuilderUsageQueryResult[]
     | FeedbackQueryResult[]
+    | GroupMembershipQueryResult[]
 ) {
   if (rows.length === 0) {
     return "";
