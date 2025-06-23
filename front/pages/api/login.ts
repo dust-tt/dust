@@ -19,7 +19,6 @@ import { ServerSideTracking } from "@app/lib/tracking/server";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-import { normalizeError } from "@app/types";
 
 async function handler(
   req: NextApiRequest,
