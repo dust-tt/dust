@@ -245,6 +245,14 @@ const config = {
       "UNTRUSTED_EGRESS_PROXY_PORT"
     );
   },
+
+  // Redis
+  getRedisURI: (): string => {
+    return EnvironmentConfig.getEnvVariable("REDIS_URI");
+  },
+  getRedisCacheURI: (): string => {
+    return EnvironmentConfig.getEnvVariable("REDIS_CACHE_URI");
+  },
 };
 
 export default config;

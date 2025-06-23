@@ -1,4 +1,4 @@
-import { redisClient } from "@app/lib/utils/redis_client";
+import { getRedisClient } from "@app/lib/api/redis";
 
 // JSON-serializable primitive types.
 type JsonPrimitive = string | number | boolean | null;
@@ -47,24 +47,22 @@ export function cacheWithRedis<T, Args extends unknown[]>(
   }
 
   return async function (...args: Args): Promise<JsonSerializable<T>> {
-    if (!redisUri) {
-      const REDIS_CACHE_URI = process.env.REDIS_CACHE_URI;
-      if (!REDIS_CACHE_URI) {
-        throw new Error("REDIS_CACHE_URI is not set");
-      }
-      redisUri = REDIS_CACHE_URI;
-    }
-    let redisCli: Awaited<ReturnType<typeof redisClient>> | undefined =
-      undefined;
-
     const key = `cacheWithRedis-${fn.name}-${resolver(...args)}`;
 
+    const redisCli = await getRedisClient({
+      origin: "cache_with_redis",
+    });
+    let cacheVal = await redisCli.get(key);
+    if (cacheVal) {
+      return JSON.parse(cacheVal) as JsonSerializable<T>;
+    }
+
+    // specific try-finally to ensure unlock is called only after lock
     try {
-      redisCli = await redisClient({
-        origin: "cache_with_redis",
-        redisUri,
-      });
-      let cacheVal = await redisCli.get(key);
+      // if value not found, lock, recheck and set
+      // we avoid locking for the first read to allow parallel calls to redis if the value is set
+      await lock(key);
+      cacheVal = await redisCli.get(key);
       if (cacheVal) {
         return JSON.parse(cacheVal) as JsonSerializable<T>;
       }
@@ -112,9 +110,7 @@ export function cacheWithRedis<T, Args extends unknown[]>(
         }
       }
     } finally {
-      if (redisCli) {
-        await redisCli.quit();
-      }
+      unlock(key);
     }
   };
 }

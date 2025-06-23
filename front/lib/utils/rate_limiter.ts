@@ -1,36 +1,11 @@
 import { v4 as uuidv4 } from "uuid";
 
-import type { RedisUsageTagsType } from "@app/lib/utils/redis_client";
-import { redisClient } from "@app/lib/utils/redis_client";
+import { getRedisClient } from "@app/lib/api/redis";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import type { LoggerInterface, Result } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
 
 export class RateLimitError extends Error {}
-
-let rateLimiterRedisClient: Awaited<ReturnType<typeof redisClient>> | undefined;
-
-async function getRedisClient({
-  origin,
-  redisUri,
-}: {
-  origin: RedisUsageTagsType;
-  redisUri?: string;
-}) {
-  const REDIS_URI = redisUri || process.env.REDIS_URI;
-  if (!REDIS_URI) {
-    throw new Error("REDIS_URI is not defined");
-  }
-
-  if (!rateLimiterRedisClient) {
-    rateLimiterRedisClient = await redisClient({
-      origin,
-      redisUri: REDIS_URI,
-    });
-  }
-
-  return rateLimiterRedisClient;
-}
 
 export const RATE_LIMITER_PREFIX = "rate_limiter";
 
@@ -38,7 +13,6 @@ const makeRateLimiterKey = (key: string) => `${RATE_LIMITER_PREFIX}:${key}`;
 
 interface RateLimiterOptionsBase {
   key: string;
-  redisUri?: string;
 }
 
 export async function rateLimiter({
@@ -46,7 +20,6 @@ export async function rateLimiter({
   maxPerTimeframe,
   timeframeSeconds,
   logger,
-  redisUri,
 }: {
   logger: LoggerInterface;
   maxPerTimeframe: number;
@@ -58,9 +31,8 @@ export async function rateLimiter({
   const redisKey = makeRateLimiterKey(key);
   const tags: string[] = [];
 
-  let redis: undefined | Awaited<ReturnType<typeof redisClient>> = undefined;
   try {
-    redis = await getRedisClient({ origin: "rate_limiter", redisUri });
+    const redis = await getRedisClient({ origin: "rate_limiter" });
 
     const zcountRes = await redis.zCount(
       redisKey,
@@ -105,12 +77,9 @@ export async function rateLimiter({
 
 export async function expireRateLimiterKey({
   key,
-  redisUri,
 }: RateLimiterOptionsBase): Promise<Result<boolean, Error>> {
-  let redis: undefined | Awaited<ReturnType<typeof redisClient>> = undefined;
-
   try {
-    redis = await getRedisClient({ origin: "rate_limiter", redisUri });
+    const redis = await getRedisClient({ origin: "rate_limiter" });
     const redisKey = makeRateLimiterKey(key);
 
     const isExpired = await redis.expire(redisKey, 0);
