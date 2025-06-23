@@ -67,8 +67,7 @@ const sendPasswordResetEmail = async (
           email: "support@dust.help",
         },
         subject: "[Dust] Password Reset Required - Important Update",
-        body: `<p>Hi there</p>,
-<p>We're writing to inform you about an important update to our authentication system.</p>
+        body: `<p>We're writing to inform you about an important update to our authentication system.</p>
 <p>We're upgrading a security infrastructure component on Dust to improve user login experience. As part of this migration, you need to reset your password on Dust.</p>
 <p>This action is only required if you sign in to Dust using email and password. If you only log in on Dust using Google, GitHub, or SSO, no action is needed.</p>
 <p>Please click the button below to reset your password:</p>
@@ -85,22 +84,20 @@ const sendPasswordResetEmail = async (
                       justify-content: center;
                       white-space: nowrap;
                       transition: background-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
-                      background-color: #3b82f6;
+                      background-color: #1C91FF;
                       color: #f1f5f9;
                       text-decoration: none;
                       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
                       font-size: 14px;
                       font-weight: 500;
                       line-height: 1.25;
-                      height: 36px;
-                      padding: 0 12px;
+                      padding: 12px;
                       border-radius: 12px;
                       gap: 8px;
                       flex-shrink: 0;
-                      min-width: 200px;
                       outline: none;
                       border: none;">
-              🔐 Reset Your Password
+              Reset Your Password
             </a>
           </td>
         </tr>
@@ -122,8 +119,7 @@ const sendPasswordResetEmail = async (
         ${passwordResetUrl}
       </p>
     </div>
-<p>If you have any questions or concerns, please don't hesitate to contact our support team.</p>
-<p>The Dust Team</p>`,
+<p>If you have any questions or concerns, please don't hesitate to contact our support team.</p>`,
       });
 
       if (emailResult.isErr()) {
