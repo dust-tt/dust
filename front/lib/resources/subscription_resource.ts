@@ -97,8 +97,8 @@ export class SubscriptionResource extends BaseResource<Subscription> {
       this.fetchActiveByWorkspaces,
       () => workspace.sId,
       {
-        ttlMs: 3_600_000, // 1h
-        prefix: SubscriptionResource.prototype.className(),
+        ttlMs: 120_000, // 2min
+        prefix: `${SubscriptionResource.prototype.className()}:w:${workspace.sId}`,
       }
     )([workspace]);
 
