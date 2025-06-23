@@ -397,7 +397,7 @@ export function CreateOrEditSpaceModal({
                   onClose={() => setShowDeleteConfirmDialog(false)}
                 />
                 <EditSpaceNameDialog
-                  space={space}
+                  spaceInfo={spaceInfo}
                   handleEditName={onEditName}
                   isOpen={showEditNameDialog}
                   isSaving={isSaving}

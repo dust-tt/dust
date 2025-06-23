@@ -13,7 +13,7 @@ import { useState } from "react";
 import type { SpaceType } from "@app/types";
 
 interface EditSpaceNameDialogProps {
-  space: SpaceType;
+  spaceInfo: SpaceType | null;
   handleEditName: (newName: string) => void;
   isOpen: boolean;
   isSaving: boolean;
@@ -21,17 +21,19 @@ interface EditSpaceNameDialogProps {
 }
 
 export function EditSpaceNameDialog({
-  space,
+  spaceInfo,
   handleEditName,
   isOpen,
   isSaving,
   onClose,
 }: EditSpaceNameDialogProps) {
-  const [editingSpaceName, setEditingSpaceName] = useState<string>(space.name);
+  const [editingSpaceName, setEditingSpaceName] = useState<string>(
+    spaceInfo?.name ?? ""
+  );
 
   const handleClose = () => {
     // Reset the space name.
-    setEditingSpaceName(space.name);
+    setEditingSpaceName(spaceInfo?.name ?? "");
     onClose();
   };
 
@@ -41,10 +43,10 @@ export function EditSpaceNameDialog({
     }
   };
 
-  // Initialize the editing name when dialog opens.
+  // Initialize the editing name when the dialog opens.
   const handleOpenChange = (open: boolean) => {
     if (open) {
-      setEditingSpaceName(space.name);
+      setEditingSpaceName(spaceInfo?.name ?? "");
     } else {
       handleClose();
     }
