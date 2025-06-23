@@ -1140,13 +1140,16 @@ export async function restoreAgentConfiguration(
 export async function createAgentActionConfiguration(
   auth: Authenticator,
   action: UnsavedAgentActionConfigurationType,
-  agentConfiguration: LightAgentConfigurationType
+  agentConfiguration: LightAgentConfigurationType,
+  transaction?: Transaction
 ): Promise<Result<AgentActionConfigurationType, Error>> {
   const owner = auth.getNonNullableWorkspace();
 
-  switch (action.type) {
-    case "retrieval_configuration": {
-      return frontSequelize.transaction(async (t) => {
+  const performWithTransaction = async (
+    t: Transaction
+  ): Promise<Result<AgentActionConfigurationType, Error>> => {
+    switch (action.type) {
+      case "retrieval_configuration": {
         const retrievalConfig = await AgentRetrievalConfiguration.create(
           {
             sId: generateRandomModelSId(),
@@ -1187,29 +1190,27 @@ export async function createAgentActionConfiguration(
           name: action.name || DEFAULT_RETRIEVAL_ACTION_NAME,
           description: action.description,
         });
-      });
-    }
-    case "dust_app_run_configuration": {
-      const dustAppRunConfig = await AgentDustAppRunConfiguration.create({
-        sId: generateRandomModelSId(),
-        appWorkspaceId: action.appWorkspaceId,
-        appId: action.appId,
-        agentConfigurationId: agentConfiguration.id,
-        workspaceId: owner.id,
-      });
+      }
+      case "dust_app_run_configuration": {
+        const dustAppRunConfig = await AgentDustAppRunConfiguration.create({
+          sId: generateRandomModelSId(),
+          appWorkspaceId: action.appWorkspaceId,
+          appId: action.appId,
+          agentConfigurationId: agentConfiguration.id,
+          workspaceId: owner.id,
+        });
 
-      return new Ok({
-        id: dustAppRunConfig.id,
-        sId: dustAppRunConfig.sId,
-        type: "dust_app_run_configuration",
-        appWorkspaceId: action.appWorkspaceId,
-        appId: action.appId,
-        name: action.name,
-        description: action.description,
-      });
-    }
-    case "tables_query_configuration": {
-      return frontSequelize.transaction(async (t) => {
+        return new Ok({
+          id: dustAppRunConfig.id,
+          sId: dustAppRunConfig.sId,
+          type: "dust_app_run_configuration",
+          appWorkspaceId: action.appWorkspaceId,
+          appId: action.appId,
+          name: action.name,
+          description: action.description,
+        });
+      }
+      case "tables_query_configuration": {
         const tablesQueryConfig = await AgentTablesQueryConfiguration.create(
           {
             sId: generateRandomModelSId(),
@@ -1235,10 +1236,8 @@ export async function createAgentActionConfiguration(
           name: action.name || DEFAULT_TABLES_QUERY_ACTION_NAME,
           description: action.description,
         });
-      });
-    }
-    case "process_configuration": {
-      return frontSequelize.transaction(async (t) => {
+      }
+      case "process_configuration": {
         const processConfig = await AgentProcessConfiguration.create(
           {
             sId: generateRandomModelSId(),
@@ -1276,72 +1275,70 @@ export async function createAgentActionConfiguration(
           name: action.name || DEFAULT_PROCESS_ACTION_NAME,
           description: action.description,
         });
-      });
-    }
-    case "websearch_configuration": {
-      const websearchConfig = await AgentWebsearchConfiguration.create({
-        sId: generateRandomModelSId(),
-        agentConfigurationId: agentConfiguration.id,
-        name: action.name,
-        description: action.description,
-        workspaceId: owner.id,
-      });
+      }
+      case "websearch_configuration": {
+        const websearchConfig = await AgentWebsearchConfiguration.create({
+          sId: generateRandomModelSId(),
+          agentConfigurationId: agentConfiguration.id,
+          name: action.name,
+          description: action.description,
+          workspaceId: owner.id,
+        });
 
-      return new Ok({
-        id: websearchConfig.id,
-        sId: websearchConfig.sId,
-        type: "websearch_configuration",
-        name: action.name || DEFAULT_WEBSEARCH_ACTION_NAME,
-        description: action.description,
-      });
-    }
-    case "browse_configuration": {
-      const browseConfig = await AgentBrowseConfiguration.create({
-        sId: generateRandomModelSId(),
-        agentConfigurationId: agentConfiguration.id,
-        name: action.name,
-        description: action.description,
-        workspaceId: owner.id,
-      });
+        return new Ok({
+          id: websearchConfig.id,
+          sId: websearchConfig.sId,
+          type: "websearch_configuration",
+          name: action.name || DEFAULT_WEBSEARCH_ACTION_NAME,
+          description: action.description,
+        });
+      }
+      case "browse_configuration": {
+        const browseConfig = await AgentBrowseConfiguration.create({
+          sId: generateRandomModelSId(),
+          agentConfigurationId: agentConfiguration.id,
+          name: action.name,
+          description: action.description,
+          workspaceId: owner.id,
+        });
 
-      return new Ok({
-        id: browseConfig.id,
-        sId: browseConfig.sId,
-        type: "browse_configuration",
-        name: action.name || DEFAULT_BROWSE_ACTION_NAME,
-        description: action.description,
-      });
-    }
-    case "reasoning_configuration": {
-      const reasoningConfig = await AgentReasoningConfiguration.create({
-        sId: generateRandomModelSId(),
-        agentConfigurationId: agentConfiguration.id,
-        mcpServerConfigurationId: null,
-        name: action.name,
-        description: action.description,
-        providerId: action.providerId,
-        modelId: action.modelId,
-        temperature: action.temperature,
-        reasoningEffort: action.reasoningEffort,
-        workspaceId: owner.id,
-      });
+        return new Ok({
+          id: browseConfig.id,
+          sId: browseConfig.sId,
+          type: "browse_configuration",
+          name: action.name || DEFAULT_BROWSE_ACTION_NAME,
+          description: action.description,
+        });
+      }
+      case "reasoning_configuration": {
+        const reasoningConfig = await AgentReasoningConfiguration.create({
+          sId: generateRandomModelSId(),
+          agentConfigurationId: agentConfiguration.id,
+          mcpServerConfigurationId: null,
+          name: action.name,
+          description: action.description,
+          providerId: action.providerId,
+          modelId: action.modelId,
+          temperature: action.temperature,
+          reasoningEffort: action.reasoningEffort,
+          workspaceId: owner.id,
+        });
 
-      return new Ok({
-        id: reasoningConfig.id,
-        sId: reasoningConfig.sId,
-        type: "reasoning_configuration",
-        providerId: action.providerId,
-        modelId: action.modelId,
-        temperature: action.temperature,
-        reasoningEffort: action.reasoningEffort,
-        name: action.name || DEFAULT_REASONING_ACTION_NAME,
-        description: action.description,
-      });
-    }
-    case "mcp_server_configuration": {
-      assert(isServerSideMCPServerConfiguration(action));
+        return new Ok({
+          id: reasoningConfig.id,
+          sId: reasoningConfig.sId,
+          type: "reasoning_configuration",
+          providerId: action.providerId,
+          modelId: action.modelId,
+          temperature: action.temperature,
+          reasoningEffort: action.reasoningEffort,
+          name: action.name || DEFAULT_REASONING_ACTION_NAME,
+          description: action.description,
+        });
+      }
+      case "mcp_server_configuration": {
+        assert(isServerSideMCPServerConfiguration(action));
 
-      return frontSequelize.transaction(async (t) => {
         const mcpServerView = await MCPServerViewResource.fetchById(
           auth,
           action.mcpServerViewId
@@ -1424,11 +1421,15 @@ export async function createAgentActionConfiguration(
           dustAppConfiguration: action.dustAppConfiguration,
           jsonSchema: action.jsonSchema,
         });
-      });
+      }
+      default:
+        assertNever(action);
     }
-    default:
-      assertNever(action);
-  }
+  };
+
+  return transaction
+    ? performWithTransaction(transaction)
+    : frontSequelize.transaction(performWithTransaction);
 }
 
 /**
