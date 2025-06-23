@@ -188,6 +188,7 @@ pub async fn handle_streaming_response(
 
     let mut final_response: Option<StreamChatResponse> = None;
     let mut request_id: Option<String> = None;
+    let mut tokens_sent = false;
 
     'stream: loop {
         match stream.try_next().await {
@@ -253,6 +254,7 @@ pub async fn handle_streaming_response(
                                                         }
 
                                                     }));
+                                                    tokens_sent = true;
                                                 }
                                             }
                                             StreamContent::AnthropicStreamToolUse(tool_use) => {
@@ -313,6 +315,7 @@ pub async fn handle_streaming_response(
                                                         }
 
                                                     }));
+                                                    tokens_sent = true;
                                                 }
                                             }
 
@@ -426,7 +429,14 @@ pub async fn handle_streaming_response(
                         let error: Result<AnthropicError, _> = serde_json::from_slice(&b);
                         match error {
                             Ok(error) => {
-                                match error.retryable_streamed(status) {
+                                // If tokens have been sent, we should not retry
+                                let should_retry = if tokens_sent {
+                                    false
+                                } else {
+                                    error.retryable_streamed(status)
+                                };
+
+                                match should_retry {
                                     true => Err(ModelError {
                                         request_id,
                                         message: error.message(),
