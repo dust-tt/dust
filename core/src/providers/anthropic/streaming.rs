@@ -31,8 +31,35 @@ impl TryFrom<StreamChatResponse> for ChatResponse {
         let content = cr
             .content
             .into_iter()
-            .map(AnthropicResponseContent::try_from)
-            .collect::<Result<Vec<AnthropicResponseContent>, anyhow::Error>>()?;
+            .map(|content| match content {
+                StreamContent::AnthropicStreamContent(content) => {
+                    Ok(Some(AnthropicResponseContent::Text { text: content.text }))
+                }
+                StreamContent::AnthropicStreamToolUse(tool_use) => {
+                    let input_json = match tool_use.input {
+                        Value::String(ref json_string) => {
+                            serde_json::from_str(match json_string.as_str() {
+                                "" => "{}",
+                                _ => json_string,
+                            })?
+                        }
+                        input => input,
+                    };
+
+                    Ok(Some(AnthropicResponseContent::ToolUse(ToolUse {
+                        id: tool_use.id,
+                        name: tool_use.name,
+                        input: input_json,
+                    })))
+                }
+                // Ignore thinking-related content.
+                StreamContent::AnthropicStreamThinking(_)
+                | StreamContent::AnthropicStreamRedactedThinking(_) => Ok(None),
+            })
+            .collect::<Result<Vec<Option<AnthropicResponseContent>>, anyhow::Error>>()?
+            .into_iter()
+            .filter_map(|c| c)
+            .collect::<Vec<AnthropicResponseContent>>();
 
         Ok(ChatResponse {
             id: cr.id,
@@ -90,49 +117,6 @@ enum StreamContent {
     AnthropicStreamToolUse(AnthropicStreamToolUse),
     AnthropicStreamThinking(AnthropicStreamThinking),
     AnthropicStreamRedactedThinking(AnthropicStreamRedactedThinking),
-}
-
-impl TryFrom<StreamContent> for AnthropicResponseContent {
-    type Error = anyhow::Error;
-
-    fn try_from(value: StreamContent) -> Result<Self, Self::Error> {
-        match value {
-            StreamContent::AnthropicStreamContent(content) => {
-                Ok(AnthropicResponseContent::Text { text: content.text })
-            }
-            StreamContent::AnthropicStreamThinking(content) => Ok(AnthropicResponseContent::Text {
-                text: content.thinking,
-            }),
-            StreamContent::AnthropicStreamRedactedThinking(_) => {
-                // We exclude these from the response as they are not human-readable and don't have anything useful for subsequent messages.
-                Ok(AnthropicResponseContent::Text { text: "".into() })
-            }
-            StreamContent::AnthropicStreamToolUse(tool_use) => {
-                // Attempt to parse the input as JSON if it's a string.
-                let input_json = if let Value::String(ref json_string) = tool_use.input {
-                    serde_json::from_str(match json_string.as_str() {
-                        "" => "{}",
-                        _ => json_string,
-                    })
-                    .map_err(|e| {
-                        anyhow::anyhow!(
-                            "Failed to parse Anthropic tool inputs JSON ({}): {}",
-                            json_string,
-                            e
-                        )
-                    })?
-                } else {
-                    tool_use.input.clone()
-                };
-
-                Ok(AnthropicResponseContent::ToolUse(ToolUse {
-                    id: tool_use.id,
-                    name: tool_use.name,
-                    input: input_json,
-                }))
-            }
-        }
-    }
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
@@ -215,9 +199,6 @@ pub async fn handle_streaming_response(
                             None => None,
                         };
                     }
-                    Some(es::SSE::Comment(comment)) => {
-                        println!("UNEXPECTED COMMENT {}", comment);
-                    }
                     Some(es::SSE::Event(event)) => {
                         match event.event_type.as_str() {
                             "message_start" => {
@@ -233,7 +214,7 @@ pub async fn handle_streaming_response(
                                             break 'stream;
                                         }
                                     };
-                                final_response = Some(event.message.clone());
+                                final_response = Some(event.message);
                             }
                             "content_block_start" => {
                                 let event: StreamContentBlockStart =
@@ -282,24 +263,9 @@ pub async fn handle_streaming_response(
                                                     },
                                                 }));
                                             }
-                                            StreamContent::AnthropicStreamThinking(thinking) => {
-                                                // Send <thinking> tag at the start of a thinking block
-                                                let _ = event_sender.send(json!({
-                                                    "type": "tokens",
-                                                    "content": {
-                                                        "text": "<thinking>",
-                                                    },
-                                                }));
-                                                // Then send the actual thinking content
-                                                let _ = event_sender.send(json!({
-                                                    "type": "tokens",
-                                                    "content": {
-                                                        "text": thinking.thinking,
-                                                    },
-                                                }));
-                                            }
-                                            StreamContent::AnthropicStreamRedactedThinking(_) => {
-                                                // We skip these as these do not contain anything human-readable.
+                                            StreamContent::AnthropicStreamThinking(_)
+                                            | StreamContent::AnthropicStreamRedactedThinking(_) => {
+                                                // Ignore thinking and redacted thinking events.
                                             }
                                         }
                                     }
@@ -349,29 +315,15 @@ pub async fn handle_streaming_response(
                                                     }));
                                                 }
                                             }
-                                            (StreamContentDelta::AnthropicStreamThinkingDelta(delta),
-                                                StreamContent::AnthropicStreamThinking(content)) => {
-                                                content.thinking.push_str(delta.thinking.as_str());
-                                                if delta.thinking.len() > 0 {
-                                                    let _ = event_sender.send(json!({
-                                                        "type": "tokens",
-                                                        "content": {
-                                                            "text": delta.thinking,
-                                                        }
 
-                                                    }));
-                                                }
+                                            (StreamContentDelta::AnthropicStreamThinkingDelta(_),
+                                                StreamContent::AnthropicStreamThinking(_)) | (StreamContentDelta::AnthropicStreamRedactedThinkingDelta(_),
+                                                StreamContent::AnthropicStreamRedactedThinking(_)) | (StreamContentDelta::AnthropicStreamSignatureDelta(_),
+                                                StreamContent::AnthropicStreamThinking(_)) => {
+                                                // Ignore thinking-related events.
                                             }
-                                            (StreamContentDelta::AnthropicStreamRedactedThinkingDelta(delta),
-                                                StreamContent::AnthropicStreamRedactedThinking(content)) => {
-                                                content.data.push_str(delta.data.as_str());
-                                                // We don't send an event, the redacted thinking data is not human-readable.
-                                            }
-                                            (StreamContentDelta::AnthropicStreamSignatureDelta(delta),
-                                                StreamContent::AnthropicStreamThinking(content)) => {
-                                                // We just add to the signature and don't push any event.
-                                                content.signature.push_str(delta.signature.as_str());
-                                            }
+
+
                                             (StreamContentDelta::AnthropicStreamToolInputDelta(
                                                 input_json_delta,
                                             ), StreamContent::AnthropicStreamToolUse(tool_use)) => {
@@ -392,42 +344,6 @@ pub async fn handle_streaming_response(
                                             }
                                         },
                                     },
-                                }
-                            }
-                            "content_block_stop" => {
-                                let stop_event: StreamContentBlockStop =
-                                    match serde_json::from_str(event.data.as_str()) {
-                                        Ok(event) => event,
-                                        Err(error) => {
-                                            Err(anyhow!(
-                                                "Error parsing response from Anthropic: {:?} {:?}",
-                                                error,
-                                                event.data
-                                            ))?;
-                                            break 'stream;
-                                        }
-                                    };
-
-                                // Check if the stopping block is a thinking block
-                                match final_response.as_ref() {
-                                    Some(response) => {
-                                        if let Some(content) =
-                                            response.content.get(stop_event.index as usize)
-                                        {
-                                            if let StreamContent::AnthropicStreamThinking(_) =
-                                                content
-                                            {
-                                                // Send </thinking> tag at the end of a thinking block
-                                                let _ = event_sender.send(json!({
-                                                    "type": "tokens",
-                                                    "content": {
-                                                        "text": "</thinking>",
-                                                    },
-                                                }));
-                                            }
-                                        }
-                                    }
-                                    None => {}
                                 }
                             }
                             "message_delta" => {
@@ -486,6 +402,9 @@ pub async fn handle_streaming_response(
                             }
                             _ => (),
                         }
+                    }
+                    Some(es::SSE::Comment(comment)) => {
+                        println!("UNEXPECTED COMMENT {}", comment);
                     }
                     None => {
                         println!("UNEXPECTED NONE");

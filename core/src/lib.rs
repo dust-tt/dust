@@ -72,7 +72,7 @@ pub mod providers {
     }
     pub mod anthropic {
         pub mod anthropic;
-        pub mod image_helpers;
+        pub mod helpers;
         pub mod streaming;
         pub mod types;
     }
