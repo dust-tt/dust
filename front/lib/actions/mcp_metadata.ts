@@ -130,7 +130,7 @@ function createMCPDispatcher(auth: Authenticator): ProxyAgent | undefined {
   let proxyPort = config.getUntrustedEgressProxyPort();
 
   if (isWorkspaceUsingStaticIP(auth.getNonNullableWorkspace())) {
-    proxyHost = `http://${EnvironmentConfig.getEnvVariable(
+    proxyHost = `${EnvironmentConfig.getEnvVariable(
       "PROXY_USER_NAME"
     )}:${EnvironmentConfig.getEnvVariable(
       "PROXY_USER_PASSWORD"
