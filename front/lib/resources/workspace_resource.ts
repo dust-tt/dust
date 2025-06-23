@@ -57,8 +57,8 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
         >
       >
   ): Promise<WorkspaceResource> {
-    const user = await WorkspaceModel.create(blob);
-    return new this(WorkspaceModel, user.get());
+    const workspace = await WorkspaceModel.create(blob);
+    return new this(WorkspaceModel, workspace.get());
   }
 
   async delete(
