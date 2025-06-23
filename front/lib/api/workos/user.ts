@@ -198,7 +198,7 @@ export async function fetchOrCreateWorkOSUserWithEmail({
         organizationId: workspace.workOSOrganizationId,
         userId: createdUser.id,
       });
-      localLogger.warn(
+      localLogger.error(
         {
           workOSUserId: createdUser.id,
           organizationId: workspace.workOSOrganizationId,
