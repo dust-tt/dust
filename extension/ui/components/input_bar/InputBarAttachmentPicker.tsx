@@ -119,7 +119,6 @@ export const InputBarAttachmentsPicker = ({
       open={isOpen}
       onOpenChange={(open) => {
         if (open) {
-          setIsOpen(true);
           setSearch("");
         }
       }}
