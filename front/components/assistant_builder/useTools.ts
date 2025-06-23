@@ -3,6 +3,7 @@ import { useContext, useMemo } from "react";
 import { useCallback } from "react";
 
 import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
+import { useMCPServerViewsContext } from "@app/components/assistant_builder/contexts/MCPServerViewsContext";
 import type {
   ActionSpecificationWithType,
   AssistantBuilderActionConfiguration,
@@ -129,7 +130,8 @@ interface UseToolsProps {
 }
 
 export const useTools = ({ actions, reasoningModels }: UseToolsProps) => {
-  const { mcpServerViews, spaces } = useContext(AssistantBuilderContext);
+  const { spaces } = useContext(AssistantBuilderContext);
+  const { mcpServerViews } = useMCPServerViewsContext();
 
   const hideAction = useCallback(
     (key: ActionSpecificationWithType) => {

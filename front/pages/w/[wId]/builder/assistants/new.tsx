@@ -170,6 +170,7 @@ export default function CreateAssistant({
 
   return (
     <AssistantBuilderProvider
+      owner={owner}
       spaces={spaces}
       dustApps={dustApps}
       dataSourceViews={dataSourceViews}

@@ -12,7 +12,6 @@ import config from "@app/lib/api/config";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { GroupResource } from "@app/lib/resources/group_resource";
-import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type {
   AppType,
   DataSourceViewType,
@@ -30,7 +29,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   baseUrl: string;
   dataSourceViews: DataSourceViewType[];
   dustApps: AppType[];
-  mcpServerViews: MCPServerViewType[];
   flow: BuilderFlow;
   owner: WorkspaceType;
   plan: PlanType;
@@ -53,14 +51,11 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       };
     }
 
-    const [
-      { spaces, dataSourceViews, dustApps, mcpServerViews },
-      configuration,
-    ] = await Promise.all([
-      getAccessibleSourcesAndApps(auth),
-      getAgentConfiguration(auth, context.params?.aId as string, "light"),
-      MCPServerViewResource.ensureAllAutoToolsAreCreated(auth),
-    ]);
+    const [{ spaces, dataSourceViews, dustApps }, configuration] =
+      await Promise.all([
+        getAccessibleSourcesAndApps(auth),
+        getAgentConfiguration(auth, context.params?.aId as string, "light"),
+      ]);
 
     if (!configuration) {
       return {
@@ -79,8 +74,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     )
       ? (context.query.flow as BuilderFlow)
       : "personal_assistants";
-
-    const mcpServerViewsJSON = mcpServerViews.map((v) => v.toJSON());
 
     const editorGroupRes = await GroupResource.findEditorGroupForAgent(
       auth,
@@ -101,7 +94,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
         baseUrl: config.getClientFacingUrl(),
         dataSourceViews: dataSourceViews.map((v) => v.toJSON()),
         dustApps: dustApps.map((a) => a.toJSON()),
-        mcpServerViews: mcpServerViewsJSON,
         flow,
         owner,
         plan,
@@ -119,7 +111,6 @@ export default function EditAssistant({
   spaces,
   dataSourceViews,
   dustApps,
-  mcpServerViews,
   flow,
   owner,
   plan,
@@ -138,7 +129,7 @@ export default function EditAssistant({
       spaces={spaces}
       dustApps={dustApps}
       dataSourceViews={dataSourceViews}
-      mcpServerViews={mcpServerViews}
+      owner={owner}
     >
       <AssistantBuilder
         owner={owner}
