@@ -201,7 +201,7 @@ makeScript(
       validRecords,
       async (record) => {
         const result = await sendPasswordResetEmail(
-          record.email.trim().toLowerCase(),
+          record.email.trim().replace('"', "").toLowerCase(),
           execute,
           logger
         );
