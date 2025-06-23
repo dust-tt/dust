@@ -6,10 +6,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   EmptyCTA,
-  Input,
   Label,
   MoreIcon,
   Page,
+  PencilSquareIcon,
   ScrollArea,
   SearchInput,
   Sheet,
@@ -38,6 +38,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { ConfirmContext } from "@app/components/Confirm";
 import { GroupsList } from "@app/components/groups/GroupsList";
 import { ConfirmDeleteSpaceDialog } from "@app/components/spaces/ConfirmDeleteSpaceDialog";
+import { EditSpaceNameDialog } from "@app/components/spaces/EditSpaceNameDialog";
 import { SearchGroupsDropdown } from "@app/components/spaces/SearchGroupsDropdown";
 import { SearchMembersDropdown } from "@app/components/spaces/SearchMembersDropdown";
 import { useGroups } from "@app/lib/swr/groups";
@@ -89,6 +90,7 @@ export function CreateOrEditSpaceModal({
 
   const [isSaving, setIsSaving] = useState(false);
   const [showDeleteConfirmDialog, setShowDeleteConfirmDialog] = useState(false);
+  const [showEditNameDialog, setShowEditNameDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isRestricted, setIsRestricted] = useState(false);
   const [searchSelectedMembers, setSearchSelectedMembers] =
@@ -178,6 +180,7 @@ export function CreateOrEditSpaceModal({
       setSelectedGroups([]);
       setManagementType("manual");
       setShowDeleteConfirmDialog(false);
+      setShowEditNameDialog(false);
       setIsDeleting(false);
       setIsSaving(false);
     }, 500);
@@ -278,6 +281,17 @@ export function CreateOrEditSpaceModal({
     }
   }, [doDelete, handleClose, owner.sId, router, space]);
 
+  const onEditName = async (newName: string) => {
+    if (!space || !newName.trim()) {
+      setShowEditNameDialog(false);
+      return;
+    }
+
+    setSpaceName(newName.trim());
+    setIsDirty(false);
+    setShowEditNameDialog(false);
+  };
+
   const handleManagementTypeChange = useCallback(
     async (value: string) => {
       if (!isMembersManagementType(value) || !isWorkOSFeatureEnabled) {
@@ -376,12 +390,24 @@ export function CreateOrEditSpaceModal({
                   isDeleting={isDeleting}
                   onClose={() => setShowDeleteConfirmDialog(false)}
                 />
+                <EditSpaceNameDialog
+                  space={space}
+                  onEditName={onEditName}
+                  isOpen={showEditNameDialog}
+                  isSaving={isSaving}
+                  onClose={() => setShowEditNameDialog(false)}
+                />
                 <div className="flex w-full justify-end">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button icon={MoreIcon} size="sm" variant="ghost" />
                     </DropdownMenuTrigger>
                     <DropdownMenuContent>
+                      <DropdownMenuItem
+                        label="Rename space"
+                        onClick={() => setShowEditNameDialog(true)}
+                        icon={PencilSquareIcon}
+                      />
                       <DropdownMenuItem
                         label="Delete Space"
                         onClick={() => setShowDeleteConfirmDialog(true)}
@@ -397,53 +423,24 @@ export function CreateOrEditSpaceModal({
         </SheetHeader>
         <SheetContainer>
           <div className="flex w-full flex-col gap-y-4">
-            <div className="mb-4 flex w-full flex-col gap-y-4">
-              <Page.SectionHeader title="Name" />
-              {!space ? (
-                <Input
-                  placeholder="Space's name"
-                  value={spaceName}
-                  name="spaceName"
-                  message="Space name must be unique"
-                  messageStatus="info"
-                  onChange={(e) => {
-                    setSpaceName(e.target.value);
-                    setIsDirty(true);
-                  }}
-                />
-              ) : (
-                <Input
-                  placeholder="Space's name"
-                  value={spaceName}
-                  name="spaceName"
-                  onChange={(e) => {
-                    setSpaceName(e.target.value);
-                    setIsDirty(true);
-                  }}
-                />
-              )}
+            <div className="flex w-full items-center justify-between overflow-visible">
+              <Page.SectionHeader title="Restricted Access" />
+              <SliderToggle
+                selected={isRestricted}
+                onClick={() => {
+                  setIsRestricted(!isRestricted);
+                  setIsDirty(true);
+                }}
+              />
             </div>
-
-            <div className="flex w-full flex-col gap-y-2 border-t pt-2">
-              <div className="flex w-full items-center justify-between overflow-visible">
-                <Page.SectionHeader title="Restricted Access" />
-                <SliderToggle
-                  selected={isRestricted}
-                  onClick={() => {
-                    setIsRestricted(!isRestricted);
-                    setIsDirty(true);
-                  }}
-                />
-              </div>
-              {isRestricted ? (
-                <span>Restricted access is active.</span>
-              ) : (
-                <span>
-                  Restricted access is disabled. The space is accessible to
-                  everyone in the workspace.
-                </span>
-              )}
-            </div>
+            {isRestricted ? (
+              <span>Restricted access is active.</span>
+            ) : (
+              <span>
+                Restricted access is disabled. The space is accessible to
+                everyone in the workspace.
+              </span>
+            )}
 
             {isRestricted && (
               <>
