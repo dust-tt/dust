@@ -25,9 +25,9 @@ const groupColumns = [
   {
     id: "name" as const,
     accessorKey: "name",
-    header: "Directory name",
+    header: "Group name",
     cell: (info: GroupInfo) => (
-      <DataTable.CellContent icon={UserGroupIcon}>
+      <DataTable.CellContent icon={UserGroupIcon} className="capitalize">
         {info.row.original.name}
       </DataTable.CellContent>
     ),

@@ -57,7 +57,7 @@ const useGetEmailsListAndError = (
   }, [inviteEmails]);
 };
 
-export function InviteEmailModal({
+export function InviteEmailButtonWithModal({
   owner,
   prefillText,
   perSeatPricing,
@@ -109,19 +109,18 @@ export function InviteEmailModal({
 
     const invitesByCase = {
       activeSameRole: existingMembers.filter(
-        (m) => m && m.workspaces[0].role === invitationRole
+        (m) => m && m.workspaces.role === invitationRole
       ),
       activeDifferentRole: existingMembers.filter(
         (m) =>
           m &&
-          m.workspaces[0].role !== invitationRole &&
-          m.workspaces[0].role !== "none"
+          m.workspaces.role !== invitationRole &&
+          m.workspaces.role !== "none"
       ),
       notInWorkspace: inviteEmailsList.filter(
         (m) =>
           !existingMembers.find((x) => x.email === m) ||
-          existingMembers.find((x) => x.email === m)?.workspaces[0].role ===
-            "none"
+          existingMembers.find((x) => x.email === m)?.workspaces.role === "none"
       ),
     };
 
@@ -140,7 +139,7 @@ export function InviteEmailModal({
               {activeDifferentRole.map((user) => (
                 <div key={user.email}>{`- ${
                   user.fullName
-                } (current role: ${displayRole(user.workspaces[0].role)})`}</div>
+                } (current role: ${displayRole(user.workspace.role)})`}</div>
               ))}
             </div>
           </div>

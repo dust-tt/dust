@@ -36,6 +36,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "think",
   "web_search_&_browse",
   "google_calendar",
+  "slack",
 ] as const;
 
 // Whether the server is available by default in the global space.
@@ -229,6 +230,23 @@ export const INTERNAL_MCP_SERVERS: Record<
       check_availability: "never_ask",
     },
   },
+  conversation_files: {
+    id: 17,
+    availability: "auto_hidden_builder",
+  },
+  slack: {
+    id: 18,
+    availability: "manual",
+    isRestricted: (plan, featureFlags) => {
+      return featureFlags.includes("slack_tool");
+    },
+    tools_stakes: {
+      search_messages: "never_ask",
+      list_users: "never_ask",
+      list_public_channels: "never_ask",
+      post_message: "low",
+    },
+  },
   search: {
     id: 1006,
     availability: "auto",
@@ -237,10 +255,6 @@ export const INTERNAL_MCP_SERVERS: Record<
     id: 1008,
     availability: "auto",
     timeoutMs: 5 * 60 * 1000, // 5 minutes
-  },
-  conversation_files: {
-    id: 17,
-    availability: "auto_hidden_builder",
   },
 
   primitive_types_debugger: {

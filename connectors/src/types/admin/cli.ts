@@ -509,6 +509,8 @@ export const SlackCommandSchema = t.type({
     t.literal("sync-channel"),
     t.literal("sync-thread"),
     t.literal("skip-thread"),
+    t.literal("skip-channel"),
+    t.literal("unskip-channel"),
     t.literal("uninstall-for-unknown-team-ids"),
     t.literal("whitelist-domains"),
     t.literal("whitelist-bot"),
@@ -618,7 +620,6 @@ export const WebcrawlerCommandSchema = t.type({
   majorCommand: t.literal("webcrawler"),
   command: t.union([
     t.literal("start-scheduler"),
-    t.literal("update-crawler"),
     t.literal("update-frequency"),
   ]),
   args: t.record(t.string, t.string),

@@ -242,7 +242,7 @@ export function AgentMessage({
   })();
 
   const references = Object.entries(
-    agentMessageToRender?.citations ?? {}
+    agentMessageToRender.citations ?? {}
   ).reduce<Record<string, MarkdownCitation>>((acc, [key, citation]) => {
     if (citation) {
       const IconComponent = getCitationIcon(citation.provider, isDark);

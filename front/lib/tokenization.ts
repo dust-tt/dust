@@ -2,7 +2,13 @@ import _ from "lodash";
 
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
-import { CoreAPI, Err, Ok, safeSubstring } from "@app/types";
+import {
+  CoreAPI,
+  DEFAULT_TOKEN_COUNT_ADJUSTMENT,
+  Err,
+  Ok,
+  safeSubstring,
+} from "@app/types";
 
 import config from "./api/config";
 
@@ -33,7 +39,10 @@ export async function tokenCountForTexts(
       }
       for (const tokens of res.value.tokens) {
         counts.push(
-          Math.round(tokens.length * (model.tokenCountAdjustment ?? 1))
+          Math.round(
+            tokens.length *
+              (model.tokenCountAdjustment ?? DEFAULT_TOKEN_COUNT_ADJUSTMENT)
+          )
         );
       }
     }

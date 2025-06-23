@@ -375,6 +375,7 @@ export async function generateConversationTitle(
     conversation,
     model,
     prompt: "", // There is no prompt for title generation.
+    tools: "",
     allowedTokenCount: model.contextSize - MIN_GENERATION_TOKENS,
     excludeActions: true,
     excludeImages: true,

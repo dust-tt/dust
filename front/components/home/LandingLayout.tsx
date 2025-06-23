@@ -75,7 +75,7 @@ export default function LandingLayout({
           <div className="flex flex-grow justify-end gap-4">
             <Button
               href="/home/contact"
-              className="hidden xs:block"
+              className="hidden xs:inline-flex"
               variant="outline"
               size="sm"
               label="Request a demo"
@@ -86,7 +86,9 @@ export default function LandingLayout({
               label="Sign in"
               icon={LoginIcon}
               onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
-                if (e.shiftKey) {
+                if (e.metaKey) {
+                  window.location.href = `/api/workos/login?returnTo=${postLoginReturnToUrl}`;
+                } else if (e.shiftKey) {
                   window.location.href = `/api/auth/login?prompt=login&returnTo=${postLoginReturnToUrl}`;
                 } else {
                   window.location.href = `/api/auth/login?returnTo=${postLoginReturnToUrl}`;
