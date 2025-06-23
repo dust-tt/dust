@@ -21,7 +21,7 @@ import type { MCPValidationOutputType } from "@app/lib/actions/constants";
 import type { MCPApproveExecutionEvent } from "@app/lib/actions/mcp";
 import { getAvatarFromIcon } from "@app/lib/actions/mcp_icons";
 import type { LightWorkspaceType } from "@app/types";
-import { asDisplayName } from "@app/types";
+import { asDisplayName, pluralize } from "@app/types";
 
 type MCPActionValidationRequest = Omit<
   MCPApproveExecutionEvent,
@@ -241,7 +241,7 @@ export function ActionValidationProvider({
               {validationQueue.length > 0 && (
                 <div className="mt-2 text-sm font-medium text-info-900 dark:text-info-900-night">
                   {validationQueue.length} more request
-                  {validationQueue.length > 1 ? "s" : ""} in the queue
+                  {pluralize(validationQueue.length)} in the queue
                 </div>
               )}
 
