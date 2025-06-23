@@ -184,4 +184,4 @@ impl Provider for JiraConnectionProvider {
             }
         }
     }
-} 
+}
