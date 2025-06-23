@@ -454,6 +454,7 @@ const transcripts = async (command: string, args: parseArgs.ParsedArgs) => {
         },
         "Transcript retrieval workflow started."
       );
+      return;
     }
     case "pause-all": {
       const execute = !!args.execute;
