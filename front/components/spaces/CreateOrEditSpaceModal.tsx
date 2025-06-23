@@ -6,6 +6,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   EmptyCTA,
+  Input,
   MoreIcon,
   Page,
   PencilSquareIcon,
@@ -283,8 +284,15 @@ export function CreateOrEditSpaceModal({
       return;
     }
 
+    if (spaceInfo) {
+      await doUpdate(space, {
+        name: newName.trim(),
+        isRestricted: spaceInfo.isRestricted,
+      });
+      await mutateSpaceInfo();
+    }
+
     setSpaceName(newName.trim());
-    setIsDirty(false);
     setShowEditNameDialog(false);
   };
 
@@ -374,7 +382,9 @@ export function CreateOrEditSpaceModal({
         <SheetHeader>
           <div className="flex flex-col gap-2">
             <div className="flex flex-col gap-0">
-              <SheetTitle>Space Settings - {spaceName}</SheetTitle>
+              <SheetTitle>
+                Space Settings{space ? `- ${spaceName}` : ""}
+              </SheetTitle>
             </div>
 
             {isAdmin && space && space.kind === "regular" && (
@@ -419,6 +429,23 @@ export function CreateOrEditSpaceModal({
         </SheetHeader>
         <SheetContainer>
           <div className="flex w-full flex-col gap-y-4">
+            {!space && (
+              <>
+                <Page.SectionHeader title="Name" />
+                <Input
+                  placeholder="Space's name"
+                  value={spaceName}
+                  name="spaceName"
+                  message="Space name must be unique"
+                  messageStatus="info"
+                  onChange={(e) => {
+                    setSpaceName(e.target.value);
+                    setIsDirty(true);
+                  }}
+                />
+              </>
+            )}
+
             <div className="flex w-full items-center justify-between overflow-visible">
               <Page.SectionHeader title="Restricted Access" />
               <SliderToggle
