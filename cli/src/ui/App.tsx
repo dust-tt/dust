@@ -61,8 +61,8 @@ const App: FC<AppProps> = ({ cli }) => {
       return <AgentsMCP port={flags.port} sId={flags.sId} />;
     case "chat":
       return <Chat sId={flags.sId?.[0]} />;
-    case "cache":
-      return <Cache action={input[1] as "clear" | "stats" | undefined} />;
+    case "cache:clear":
+      return <Cache />;
     case "help":
       return <Help />;
     default:

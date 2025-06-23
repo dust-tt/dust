@@ -40,7 +40,7 @@ export function useAgents() {
         setAllAgents(cachedAgents);
         setIsLoading(false);
         // Start background refresh
-        void refreshAgentsInBackground(workspaceId);
+        void fetchAndCacheAgents(workspaceId);
         return;
       }
 
@@ -65,38 +65,16 @@ export function useAgents() {
       }
 
       const agents = agentsRes.value;
-      setAllAgents(agents);
+      setAllAgents((currentAgents) => {
+        if (JSON.stringify(agents) !== JSON.stringify(currentAgents)) {
+          return agents;
+        }
+        return currentAgents;
+      });
       setIsLoading(false);
 
       // Cache the results
       await agentCache.set(workspaceId, agents);
-    }
-
-    async function refreshAgentsInBackground(workspaceId: string) {
-      try {
-        const dustClient = await getDustClient();
-        if (!dustClient) {
-          return;
-        }
-
-        const agentsRes = await dustClient.getAgentConfigurations({});
-        if (agentsRes.isErr()) {
-          return;
-        }
-
-        const agents = agentsRes.value;
-        await agentCache.set(workspaceId, agents);
-        
-        // Update state if the data has changed
-        setAllAgents((currentAgents) => {
-          if (JSON.stringify(agents) !== JSON.stringify(currentAgents)) {
-            return agents;
-          }
-          return currentAgents;
-        });
-      } catch {
-        // Ignore background refresh errors
-      }
     }
 
     void fetchAgents();

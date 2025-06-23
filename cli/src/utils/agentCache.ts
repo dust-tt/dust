@@ -41,31 +41,33 @@ export class AgentCache {
   }
 
   async get(workspaceId: string): Promise<AgentConfiguration[] | null> {
+    let cached: CachedAgentData | null = null;
     try {
       const data = await fs.readFile(this.cacheFilePath, "utf-8");
-      const cached: CachedAgentData = JSON.parse(data);
-
-      if (cached.workspaceId !== workspaceId) {
-        return null;
-      }
-
-      const now = Date.now();
-      const isExpired = now - cached.timestamp > cached.ttl;
-
-      if (isExpired) {
-        return null;
-      }
-
-      return cached.agents;
+      cached = JSON.parse(data);
     } catch {
       return null;
     }
+
+    if (!cached) {
+      return null;
+    }
+
+    if (cached.workspaceId !== workspaceId) {
+      return null;
+    }
+
+    const now = Date.now();
+    const isExpired = now - cached.timestamp > cached.ttl;
+
+    if (isExpired) {
+      return null;
+    }
+
+    return cached.agents;
   }
 
-  async set(
-    workspaceId: string,
-    agents: AgentConfiguration[]
-  ): Promise<void> {
+  async set(workspaceId: string, agents: AgentConfiguration[]): Promise<void> {
     await this.ensureCacheDir();
 
     const cachedData: CachedAgentData = {
@@ -87,37 +89,6 @@ export class AgentCache {
       await fs.unlink(this.cacheFilePath);
     } catch {
       // Ignore if file doesn't exist
-    }
-  }
-
-  async isValid(workspaceId: string): Promise<boolean> {
-    const cached = await this.get(workspaceId);
-    return cached !== null;
-  }
-
-  async getStats(): Promise<{
-    exists: boolean;
-    workspaceId?: string;
-    agentCount?: number;
-    age?: number;
-    isExpired?: boolean;
-  }> {
-    try {
-      const data = await fs.readFile(this.cacheFilePath, "utf-8");
-      const cached: CachedAgentData = JSON.parse(data);
-      const now = Date.now();
-      const age = now - cached.timestamp;
-      const isExpired = age > cached.ttl;
-
-      return {
-        exists: true,
-        workspaceId: cached.workspaceId,
-        agentCount: cached.agents.length,
-        age,
-        isExpired,
-      };
-    } catch {
-      return { exists: false };
     }
   }
 }
