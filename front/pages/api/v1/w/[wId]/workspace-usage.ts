@@ -16,7 +16,6 @@ import {
   getAssistantsUsageData,
   getBuildersUsageData,
   getFeedbacksUsageData,
-  getGroupMembershipsData,
   getMessageUsageData,
   getUserUsageData,
 } from "@app/lib/workspace_usage";
@@ -275,8 +274,6 @@ async function fetchUsageData({
       return {
         feedbacks: await getFeedbacksUsageData(start, end, workspace),
       };
-    case "groups":
-      return { groups: await getGroupMembershipsData(start, end, workspace) };
     case "all":
       const [
         users,
@@ -291,7 +288,6 @@ async function fetchUsageData({
         getBuildersUsageData(start, end, workspace),
         getAssistantsUsageData(start, end, workspace),
         getFeedbacksUsageData(start, end, workspace),
-        getGroupMembershipsData(start, end, workspace),
       ]);
       return {
         users,

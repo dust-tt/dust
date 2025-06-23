@@ -11,7 +11,6 @@ import {
   getAssistantsUsageData,
   getBuildersUsageData,
   getFeedbacksUsageData,
-  getGroupMembershipsData,
   getMessageUsageData,
   getUserUsageData,
 } from "@app/lib/workspace_usage";
@@ -31,7 +30,6 @@ const usageTables = [
   "builders",
   "assistants",
   "feedbacks",
-  "groups",
   "all",
 ];
 type usageTableType = (typeof usageTables)[number];
@@ -198,8 +196,6 @@ async function fetchUsageData({
       return {
         assistants: await getAssistantsUsageData(start, end, workspace),
       };
-    case "groups":
-      return { groups: await getGroupMembershipsData(start, end, workspace) };
     case "all":
       const [users, assistant_messages, builders, assistants, feedbacks] =
         await Promise.all([
