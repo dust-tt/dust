@@ -13,7 +13,6 @@ import {
   isExecuteTablesQueryErrorResourceType,
   isSqlQueryOutput,
   isThinkingOutput,
-  isToolGeneratedFile,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 
 export function MCPTablesQueryActionDetails({
@@ -25,8 +24,7 @@ export function MCPTablesQueryActionDetails({
     action.output?.filter(isThinkingOutput).map((o) => o.resource) ?? [];
   const sqlQueryBlocks =
     action.output?.filter(isSqlQueryOutput).map((o) => o.resource) ?? [];
-  const generatedFiles =
-    action.output?.filter(isToolGeneratedFile).map((o) => o.resource) ?? [];
+  const generatedFiles = action.generatedFiles ?? [];
   const errorBlocks =
     action.output
       ?.filter(isExecuteTablesQueryErrorResourceType)
