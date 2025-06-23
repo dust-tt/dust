@@ -225,7 +225,7 @@ export async function fetchOrCreateWorkOSUserWithEmail({
     } else {
       localLogger.error(
         { workOSUserId: createdUser.id },
-        `Created a user but could add it to the organization: ${addUserToOrganizationResult.error.message}.`
+        `Created a user but could not add it to the organization: ${addUserToOrganizationResult.error.message}.`
       );
     }
 
