@@ -977,7 +977,6 @@ export async function getSession(
   req: NextApiRequest | GetServerSidePropsContext["req"],
   res: NextApiResponse | GetServerSidePropsContext["res"]
 ): Promise<SessionWithUser | null> {
-  // Get Auth0 session first - in case of legacy SSO connection, we'll have 2 sessions and Auth0 will contains the SSO session
   const workOsSession = await getWorkOSSession(req, res);
   const auth0Session = await getAuth0Session(req, res);
 
