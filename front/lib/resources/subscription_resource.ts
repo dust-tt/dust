@@ -35,7 +35,7 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
-import { cacheWithRedis, getRedisCacheClient } from "@app/lib/utils/cache";
+import { cacheWithRedis } from "@app/lib/utils/cache";
 import { getWorkspaceFirstAdmin } from "@app/lib/workspace";
 import { checkWorkspaceActivity } from "@app/lib/workspace_usage";
 import logger from "@app/logger/logger";
@@ -96,7 +96,10 @@ export class SubscriptionResource extends BaseResource<Subscription> {
     const res = await cacheWithRedis(
       this.fetchActiveByWorkspaces,
       () => workspace.sId,
-      3_600_000 // 1h
+      {
+        ttlMs: 3_600_000, // 1h
+        prefix: SubscriptionResource.prototype.className(),
+      }
     )([workspace]);
 
     return res[workspace.sId];
@@ -469,6 +472,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
           },
         }
       );
+      // WARN: probably invalidate all cache keys here in case
       return;
     }
 
@@ -733,13 +737,12 @@ export class SubscriptionResource extends BaseResource<Subscription> {
    */
   private static async endActiveSubscription(
     workspace: LightWorkspaceType
-  ): Promise<Subscription | null> {
+  ): Promise<SubscriptionResource | null> {
     const now = new Date();
 
     // Find active subscription
-    const activeSubscription = await Subscription.findOne({
-      where: { workspaceId: workspace.id, status: "active" },
-    });
+    const activeSubscription =
+      await SubscriptionResource.fetchActiveByWorkspace(workspace);
 
     if (activeSubscription) {
       await frontSequelize.transaction(async (t) => {
@@ -753,7 +756,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
             status: endedStatus,
             endDate: now,
           },
-          { transaction: t }
+          t
         );
       });
 
@@ -764,12 +767,6 @@ export class SubscriptionResource extends BaseResource<Subscription> {
         });
       }
     }
-
-    const redisCacheClient = await getRedisCacheClient();
-    // Invalidate fetch cache
-    await redisCacheClient.del(
-      `cacheWithRedis-fetchActiveByWorkspaces-${workspace.sId}`
-    );
 
     return activeSubscription;
   }

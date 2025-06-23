@@ -26,5 +26,7 @@ export const countActiveSeatsInWorkspaceCached = cacheWithRedis(
   (workspaceId) => {
     return `count-active-seats-in-workspace:${workspaceId}`;
   },
-  60 * 10 * 1000 // 10 minutes
+  {
+    ttlMs: 60 * 10 * 1000, // 10 minutes
+  }
 );

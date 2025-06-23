@@ -44,6 +44,14 @@ export const getRedisCacheClient = async () => {
   return redisCli;
 };
 
+export type CacheWithRedisOptions = {
+  ttlMs: number;
+  redisUri?: string;
+  prefix?: string;
+};
+
+export const CACHE_WITH_REDIS_KEY = "cacheWithRedis";
+
 // Wrapper function to cache the result of a function with Redis.
 // Usage:
 // const cachedFn = cacheWithRedis(fn, (fnArg1, fnArg2, ...) => `${fnArg1}-${fnArg2}`, 60 * 10 * 1000);
@@ -54,8 +62,7 @@ export const getRedisCacheClient = async () => {
 export function cacheWithRedis<T, Args extends unknown[]>(
   fn: CacheableFunction<T, Args>,
   resolver: KeyResolver<Args>,
-  ttlMs: number,
-  redisUri?: string
+  { ttlMs, redisUri, prefix }: CacheWithRedisOptions
 ): (...args: Args) => Promise<T> {
   if (ttlMs > 60 * 60 * 24 * 1000) {
     throw new Error("ttlMs should be less than 24 hours");
@@ -72,7 +79,7 @@ export function cacheWithRedis<T, Args extends unknown[]>(
     let redisCli: Awaited<ReturnType<typeof redisClient>> | undefined =
       undefined;
 
-    const key = `cacheWithRedis-${fn.name}-${resolver(...args)}`;
+    const key = `${CACHE_WITH_REDIS_KEY}-${prefix ? `${prefix}-` : ""}${fn.name}-${resolver(...args)}`;
 
     try {
       redisCli = await redisClient({
@@ -81,7 +88,7 @@ export function cacheWithRedis<T, Args extends unknown[]>(
       });
       let cacheVal = await redisCli.get(key);
       if (cacheVal) {
-        return parse(cacheVal) as JsonSerializable<T>;
+        return parse<JsonSerializable<T>>(cacheVal);
       }
 
       // specific try-finally to ensure unlock is called only after lock
@@ -91,7 +98,7 @@ export function cacheWithRedis<T, Args extends unknown[]>(
         await lock(key);
         cacheVal = await redisCli.get(key);
         if (cacheVal) {
-          return parse(cacheVal) as JsonSerializable<T>;
+          return parse<JsonSerializable<T>>(cacheVal);
         }
 
         const result = await fn(...args);

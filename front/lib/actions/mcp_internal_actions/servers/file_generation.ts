@@ -59,7 +59,9 @@ const createServer = (auth: Authenticator): McpServer => {
           return formats;
         },
         () => `get_source_format_to_convert_to_${output_format}`,
-        60 * 60 * 24 * 1000
+        {
+          ttlMs: 60 * 60 * 24 * 1000,
+        }
       )();
 
       return {
