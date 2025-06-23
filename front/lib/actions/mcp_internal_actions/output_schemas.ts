@@ -302,7 +302,6 @@ export const SearchResultResourceSchema = z.object({
   ref: z.string(),
   chunks: z.array(z.string()),
   source: z.object({
-    name: z.string(),
     provider: z.string().optional(),
   }),
 });
@@ -572,9 +571,9 @@ const RenderedNodeSchema = z.object({
   nodeId: z.string(),
   title: z.string(),
   path: z.string(),
-  parentTitle: z.string().nullable().optional(),
+  parentTitle: z.string().nullable(),
   lastUpdatedAt: z.string(),
-  sourceUrl: z.string().nullable().optional(),
+  sourceUrl: z.string().nullable(),
   mimeType: z.string(),
   hasChildren: z.boolean(),
   connectorProvider: z.enum(CONNECTOR_PROVIDERS).nullable(),
@@ -621,6 +620,36 @@ export const isDataSourceNodeContentType = (
   return (
     outputBlock.type === "resource" &&
     DataSourceNodeContentSchema.safeParse(outputBlock.resource).success
+  );
+};
+
+// Schema for a locate_in_tree path item.
+const FilesystemPathItemSchema = z.object({
+  nodeId: z.string(),
+  title: z.string(),
+  nodeType: z.enum(["document", "table", "folder"]),
+  sourceUrl: z.string().nullable(),
+  isCurrentNode: z.boolean(),
+});
+
+export const FilesystemPathSchema = z.object({
+  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILESYSTEM_PATH),
+  uri: z.literal(""),
+  text: z.string(),
+  path: z.array(FilesystemPathItemSchema),
+});
+
+export type FilesystemPathType = z.infer<typeof FilesystemPathSchema>;
+
+export const isFilesystemPathType = (
+  outputBlock: CallToolResult["content"][number]
+): outputBlock is {
+  type: "resource";
+  resource: FilesystemPathType;
+} => {
+  return (
+    outputBlock.type === "resource" &&
+    FilesystemPathSchema.safeParse(outputBlock.resource).success
   );
 };
 

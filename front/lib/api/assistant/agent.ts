@@ -30,6 +30,7 @@ import {
 } from "@app/lib/actions/types/guards";
 import { getCitationsCount } from "@app/lib/actions/utils";
 import { createClientSideMCPServerConfigurations } from "@app/lib/api/actions/mcp_client_side";
+import { getPublicErrorMessage } from "@app/lib/api/assistant/agent_errors";
 import {
   AgentMessageContentParser,
   getDelimitersConfiguration,
@@ -39,7 +40,7 @@ import {
   getAgentConfigurations,
 } from "@app/lib/api/assistant/configuration";
 import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
-import { getEmulatedAndJITActions } from "@app/lib/api/assistant/jit_actions";
+import { getEmulatedActionsAndJITServers } from "@app/lib/api/assistant/jit_actions";
 import { isLegacyAgentConfiguration } from "@app/lib/api/assistant/legacy_agent";
 import { renderConversationForModel } from "@app/lib/api/assistant/preprocessing";
 import config from "@app/lib/api/config";
@@ -188,14 +189,20 @@ async function* runMultiActionsAgentLoop(
     for await (const event of loopIterationStream) {
       switch (event.type) {
         case "agent_error":
+          const publicErrorMessage = getPublicErrorMessage(event.error);
+
           localLogger.error(
             {
               elapsedTime: Date.now() - now,
               error: event.error,
+              publicErrorMessage,
             },
             "Error running multi-actions agent."
           );
-          yield event;
+          yield {
+            ...event,
+            error: { ...event.error, message: publicErrorMessage },
+          };
           return;
         case "agent_actions":
           runIds.push(event.runId);
@@ -404,12 +411,13 @@ async function* runMultiActionsAgent(
     }
   }
 
-  const { emulatedActions, jitActions, jitServers } =
-    await getEmulatedAndJITActions(auth, {
-      agentActions,
+  const { emulatedActions, jitServers } = await getEmulatedActionsAndJITServers(
+    auth,
+    {
       agentMessage,
       conversation,
-    });
+    }
+  );
 
   // Get client-side MCP server configurations from user message context.
   const clientSideMCPActionConfigurations =
@@ -433,7 +441,6 @@ async function* runMultiActionsAgent(
   );
 
   if (!isLastGenerationIteration) {
-    availableActions.push(...jitActions);
     availableActions.push(...mcpActions.flatMap((s) => s.tools));
   }
 
@@ -469,49 +476,6 @@ async function* runMultiActionsAgent(
     conversationId: conversation.sId,
     serverToolsAndInstructions: mcpActions,
   });
-
-  const MIN_GENERATION_TOKENS = model.generationTokensCount;
-
-  // Prepend emulated actions to the current agent message before rendering the conversation for the
-  // model.
-  agentMessage.actions = emulatedActions.concat(agentMessage.actions);
-
-  // Turn the conversation into a digest that can be presented to the model.
-  const modelConversationRes = await renderConversationForModel(auth, {
-    conversation,
-    model,
-    prompt,
-    allowedTokenCount: model.contextSize - MIN_GENERATION_TOKENS,
-  });
-
-  // Scrub emulated actions from the agent message after rendering.
-  agentMessage.actions = agentMessage.actions.filter(
-    (a) => !emulatedActions.includes(a)
-  );
-
-  if (modelConversationRes.isErr()) {
-    logger.error(
-      {
-        workspaceId: conversation.owner.sId,
-        conversationId: conversation.sId,
-        error: modelConversationRes.error,
-      },
-      "Error rendering conversation for model."
-    );
-    yield {
-      type: "agent_error",
-      created: Date.now(),
-      configurationId: agentConfiguration.sId,
-      messageId: agentMessage.sId,
-      error: {
-        code: "conversation_render_error",
-        message: `Error rendering conversation for model: ${modelConversationRes.error.message}`,
-        metadata: null,
-      },
-    } satisfies AgentErrorEvent;
-
-    return;
-  }
 
   const specifications: AgentActionSpecification[] = [];
   for (const a of availableActions) {
@@ -553,7 +517,57 @@ async function* runMultiActionsAgent(
     specifications.push(specRes.value);
   }
 
-  // If we have attachments, inject a fake LS action to handle them.
+  // Count the number of tokens used by the functions presented to the model.
+  // This is a rough estimate of the number of tokens.
+  const tools = JSON.stringify(
+    specifications.map((s) => ({
+      name: s.name,
+      description: s.description,
+      inputSchema: s.inputSchema,
+    }))
+  );
+
+  // Prepend emulated actions to the current agent message before rendering the conversation for the
+  // model.
+  agentMessage.actions = emulatedActions.concat(agentMessage.actions);
+
+  // Turn the conversation into a digest that can be presented to the model.
+  const modelConversationRes = await renderConversationForModel(auth, {
+    conversation,
+    model,
+    prompt,
+    tools,
+    allowedTokenCount: model.contextSize - model.generationTokensCount,
+  });
+
+  // Scrub emulated actions from the agent message after rendering.
+  agentMessage.actions = agentMessage.actions.filter(
+    (a) => !emulatedActions.includes(a)
+  );
+
+  if (modelConversationRes.isErr()) {
+    logger.error(
+      {
+        workspaceId: conversation.owner.sId,
+        conversationId: conversation.sId,
+        error: modelConversationRes.error,
+      },
+      "Error rendering conversation for model."
+    );
+    yield {
+      type: "agent_error",
+      created: Date.now(),
+      configurationId: agentConfiguration.sId,
+      messageId: agentMessage.sId,
+      error: {
+        code: "conversation_render_error",
+        message: `Error rendering conversation for model: ${modelConversationRes.error.message}`,
+        metadata: null,
+      },
+    } satisfies AgentErrorEvent;
+
+    return;
+  }
 
   // Check that specifications[].name are unique. This can happen if the user overrides two actions
   // names with the same name (advanced settings). We return an actionable error if that's the case
@@ -639,7 +653,7 @@ async function* runMultiActionsAgent(
       messageId: agentMessage.sId,
       error: {
         code: "multi_actions_error",
-        message: `Error running multi-actions agent action: [${res.error.type}] ${res.error.message}`,
+        message: `Error running agent: [${res.error.type}] ${res.error.message}`,
         metadata: null,
       },
     } satisfies AgentErrorEvent;
@@ -648,7 +662,7 @@ async function* runMultiActionsAgent(
   }
 
   const { eventStream, dustRunId } = res.value;
-  const output: {
+  let output: {
     actions: Array<{
       functionCallId: string | null;
       name: string | null;
@@ -658,11 +672,7 @@ async function* runMultiActionsAgent(
     contents: Array<
       TextContentType | FunctionCallContentType | ReasoningContentType
     >;
-  } = {
-    actions: [],
-    generation: null,
-    contents: [],
-  };
+  } | null = null;
 
   let shouldYieldCancel = false;
   let lastCheckCancellation = Date.now();
@@ -674,8 +684,6 @@ async function* runMultiActionsAgent(
     agentMessage.sId,
     getDelimitersConfiguration({ agentConfiguration })
   );
-
-  let rawContent = "";
 
   const _checkCancellation = async () => {
     try {
@@ -698,6 +706,7 @@ async function* runMultiActionsAgent(
     }
   };
 
+  let rawContent = "";
   for await (const event of eventStream) {
     if (event.type === "function_call") {
       isGeneration = false;
@@ -776,8 +785,25 @@ async function* runMultiActionsAgent(
             },
             "Received unparsable MODEL block."
           );
-          break;
+          yield {
+            type: "agent_error",
+            created: Date.now(),
+            configurationId: agentConfiguration.sId,
+            messageId: agentMessage.sId,
+            error: {
+              code: "multi_actions_error",
+              message: "Received unparsable MODEL block.",
+              metadata: null,
+            },
+          } satisfies AgentErrorEvent;
+          return;
         }
+
+        output = {
+          actions: [],
+          generation: null,
+          contents: block.message.contents ?? [],
+        };
 
         if (block.message.function_calls?.length) {
           for (const fc of block.message.function_calls) {
@@ -814,14 +840,26 @@ async function* runMultiActionsAgent(
         } else {
           output.generation = block.message.content ?? null;
         }
-
-        output.contents = block.message.contents ?? [];
-        break;
       }
     }
   }
 
   yield* contentParser.flushTokens();
+
+  if (!output) {
+    yield {
+      type: "agent_error",
+      created: Date.now(),
+      configurationId: agentConfiguration.sId,
+      messageId: agentMessage.sId,
+      error: {
+        code: "multi_actions_error",
+        message: "Agent execution didn't complete.",
+        metadata: null,
+      },
+    } satisfies AgentErrorEvent;
+    return;
+  }
 
   for (const [i, content] of output.contents.entries()) {
     yield {

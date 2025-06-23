@@ -1,4 +1,4 @@
-import type { Result } from "@dust-tt/client";
+import type { ConnectorProvider, Result } from "@dust-tt/client";
 import { assertNever, Err, Ok } from "@dust-tt/client";
 
 import type {
@@ -55,6 +55,8 @@ function handleTestConnectionError(
 }
 
 export class SnowflakeConnectorManager extends BaseConnectorManager<null> {
+  readonly provider: ConnectorProvider = "snowflake";
+
   static async create({
     dataSourceConfig,
     connectionId,
@@ -352,44 +354,6 @@ export class SnowflakeConnectorManager extends BaseConnectorManager<null> {
     const launchRes = await launchSnowflakeSyncWorkflow(this.connectorId);
     if (launchRes.isErr()) {
       return launchRes;
-    }
-
-    return new Ok(undefined);
-  }
-
-  async pause(): Promise<Result<undefined, Error>> {
-    const connector = await ConnectorResource.fetchById(this.connectorId);
-    if (!connector) {
-      logger.error(
-        { connectorId: this.connectorId },
-        "Snowflake connector not found."
-      );
-      return new Err(new Error("Connector not found"));
-    }
-
-    await connector.markAsPaused();
-    const stopRes = await this.stop();
-    if (stopRes.isErr()) {
-      return stopRes;
-    }
-
-    return new Ok(undefined);
-  }
-
-  async unpause(): Promise<Result<undefined, Error>> {
-    const connector = await ConnectorResource.fetchById(this.connectorId);
-    if (!connector) {
-      logger.error(
-        { connectorId: this.connectorId },
-        "Snowflake connector not found."
-      );
-      return new Err(new Error("Connector not found"));
-    }
-
-    await connector.markAsUnpaused();
-    const r = await launchSnowflakeSyncWorkflow(this.connectorId);
-    if (r.isErr()) {
-      return r;
     }
 
     return new Ok(undefined);

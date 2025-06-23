@@ -59,6 +59,7 @@ export function getContentNodeInternalIdFromTableId(
     case "confluence":
     case "github":
     case "slack":
+    case "slack_bot":
     case "zendesk":
     case "webcrawler":
     case "gong":

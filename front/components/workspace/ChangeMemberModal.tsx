@@ -25,7 +25,7 @@ import { ROLES_DATA } from "@app/components/members/Roles";
 import { RoleDropDown } from "@app/components/members/RolesDropDown";
 import { handleMembersRoleChange } from "@app/lib/client/members";
 import type { SearchMembersResponseBody } from "@app/pages/api/w/[wId]/members/search";
-import type { ActiveRoleType, UserTypeWithWorkspaces } from "@app/types";
+import type { ActiveRoleType, UserTypeWithWorkspace } from "@app/types";
 import { isActiveRoleType } from "@app/types";
 
 export function ChangeMemberModal({
@@ -34,10 +34,10 @@ export function ChangeMemberModal({
   mutateMembers,
 }: {
   onClose: () => void;
-  member: UserTypeWithWorkspaces | null;
+  member: UserTypeWithWorkspace | null;
   mutateMembers: KeyedMutator<SearchMembersResponseBody>;
 }) {
-  const { role = null } = member?.workspaces[0] ?? {};
+  const { role = null } = member?.workspace ?? {};
 
   const sendNotification = useSendNotification();
   const [selectedRole, setSelectedRole] = useState<ActiveRoleType | null>(
@@ -172,8 +172,7 @@ export function ChangeMemberModal({
               rightButtonProps={{
                 label: "Update role",
                 onClick: handleSave,
-                disabled:
-                  selectedRole === member.workspaces[0].role || isSaving,
+                disabled: selectedRole === member.workspace.role || isSaving,
                 loading: isSaving,
               }}
             />

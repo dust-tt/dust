@@ -31,4 +31,10 @@ export const apiConfig = {
       "UNTRUSTED_EGRESS_PROXY_PORT"
     );
   },
+  getDustConnectorsWebhooksSecret: (): string => {
+    return EnvironmentConfig.getEnvVariable("DUST_CONNECTORS_WEBHOOKS_SECRET");
+  },
+  getConnectorsPublicURL: (): string => {
+    return EnvironmentConfig.getEnvVariable("CONNECTORS_PUBLIC_URL");
+  },
 };

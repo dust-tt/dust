@@ -2,6 +2,7 @@ import { sealData } from "iron-session";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import config from "@app/lib/api/config";
+import { makeEnterpriseConnectionName } from "@app/lib/api/enterprise_connection";
 import type { RegionType } from "@app/lib/api/regions/config";
 import {
   config as multiRegionsConfig,
@@ -11,9 +12,18 @@ import { checkUserRegionAffinity } from "@app/lib/api/regions/lookup";
 import { getWorkOS } from "@app/lib/api/workos/client";
 import type { SessionCookie } from "@app/lib/api/workos/user";
 import { setRegionForUser } from "@app/lib/api/workos/user";
-import { getSession } from "@app/lib/auth";
+import { getFeatureFlags, getSession } from "@app/lib/auth";
+import { Workspace } from "@app/lib/models/workspace";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
+import { isString } from "@app/types";
+
+function isValidScreenHint(
+  screenHint: string | string[] | undefined
+): screenHint is "sign-up" | "sign-in" {
+  return isString(screenHint) && ["sign-up", "sign-in"].includes(screenHint);
+}
 
 //TODO(workos): This file could be split in 3 route handlers.
 export default async function handler(
@@ -36,16 +46,50 @@ export default async function handler(
 
 async function handleLogin(req: NextApiRequest, res: NextApiResponse) {
   try {
-    const { organizationId } = req.query;
+    const { organizationId, screenHint, loginHint, returnTo } = req.query;
+
+    let organizationIdToUse;
+
+    if (organizationId && typeof organizationId === "string") {
+      organizationIdToUse = organizationId;
+    }
+
+    // Get the last workspace ID from cookie if available
+    const lastWorkspaceId = req.cookies.lastWorkspaceId;
+
+    if (lastWorkspaceId) {
+      const workspace = await Workspace.findOne({
+        where: {
+          sId: lastWorkspaceId,
+        },
+      });
+      if (workspace) {
+        const lightWorkspace = renderLightWorkspaceType({ workspace });
+        const featureFlags = await getFeatureFlags(lightWorkspace);
+        if (
+          featureFlags.includes("okta_enterprise_connection") &&
+          !featureFlags.includes("workos")
+        ) {
+          // Redirect to legacy enterprise login
+          res.redirect(
+            `/api/auth/login?connection=${makeEnterpriseConnectionName(
+              workspace.sId
+            )}`
+          );
+          return;
+        }
+      }
+    }
+
     let enterpriseParams: { organizationId?: string; connectionId?: string } =
       {};
-    if (organizationId && typeof organizationId === "string") {
+    if (organizationIdToUse) {
       // TODO(workos): We will want to cache this data
       const connections = await getWorkOS().sso.listConnections({
-        organizationId,
+        organizationId: organizationIdToUse,
       });
       enterpriseParams = {
-        organizationId,
+        organizationId: organizationIdToUse,
         connectionId:
           connections.data.length > 0 ? connections.data[0]?.id : undefined,
       };
@@ -57,6 +101,11 @@ async function handleLogin(req: NextApiRequest, res: NextApiResponse) {
       redirectUri: `${config.getClientFacingUrl()}/api/workos/callback`,
       clientId: config.getWorkOSClientId(),
       ...enterpriseParams,
+      state:
+        returnTo &&
+        Buffer.from(JSON.stringify({ returnTo })).toString("base64"),
+      ...(isValidScreenHint(screenHint) ? { screenHint } : {}),
+      ...(isString(loginHint) ? { loginHint } : {}),
     });
 
     res.redirect(authorizationUrl);
@@ -170,7 +219,9 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
 
       let returnTo = "/";
       try {
-        const stateObj = JSON.parse(state as string);
+        const stateObj = JSON.parse(
+          Buffer.from(state as string, "base64").toString("utf-8")
+        );
         if (stateObj.returnTo) {
           const url = new URL(stateObj.returnTo);
           returnTo = url.pathname + url.search;
@@ -192,6 +243,15 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
       `workos_session=${sealedCookie}; Path=/; HttpOnly; Secure;SameSite=Lax`,
       `sessionType=workos; Path=/; Secure;SameSite=Lax`,
     ]);
+
+    if (isString(state)) {
+      const stateObj = JSON.parse(
+        Buffer.from(state, "base64").toString("utf-8")
+      );
+      if (isString(stateObj.returnTo)) {
+        res.redirect(stateObj.returnTo);
+      }
+    }
 
     res.redirect("/api/login");
   } catch (error) {
@@ -217,10 +277,11 @@ async function handleLogout(req: NextApiRequest, res: NextApiResponse) {
     }
   }
 
-  res.setHeader(
-    "Set-Cookie",
-    "workos_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=Lax"
-  );
+  res.setHeader("Set-Cookie", [
+    "workos_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=Lax",
+    "appSession=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=Lax",
+    "sessionType=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax",
+  ]);
 
   res.redirect(returnTo as string);
 }

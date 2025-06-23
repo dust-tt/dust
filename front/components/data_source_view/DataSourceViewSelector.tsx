@@ -23,7 +23,13 @@ import { ContentNodeTree } from "@app/components/ContentNodeTree";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useDebounce } from "@app/hooks/useDebounce";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
-import { orderDatasourceViewByImportance } from "@app/lib/connectors";
+import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
+import {
+  isNodeCandidate,
+  isUrlCandidate,
+  nodeCandidateFromUrl,
+  orderDatasourceViewByImportance,
+} from "@app/lib/connectors";
 import {
   getLocationForDataSourceViewContentNode,
   getVisualForDataSourceViewContentNode,
@@ -37,7 +43,7 @@ import {
   isWebsite,
 } from "@app/lib/data_sources";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
-import { useSpaceSearch } from "@app/lib/swr/spaces";
+import { useSpacesSearch } from "@app/lib/swr/spaces";
 import type {
   ContentNode,
   ContentNodesViewType,
@@ -248,6 +254,7 @@ interface DataSourceViewsSelectorProps {
   isRootSelectable: boolean;
   space: SpaceType;
   selectionMode?: "checkbox" | "radio";
+  allowAdminSearch?: boolean;
 }
 
 export function DataSourceViewsSelector({
@@ -260,6 +267,7 @@ export function DataSourceViewsSelector({
   isRootSelectable,
   space,
   selectionMode = "checkbox",
+  allowAdminSearch = false,
 }: DataSourceViewsSelectorProps) {
   const [searchResult, setSearchResult] = useState<
     DataSourceViewContentNode | undefined
@@ -273,6 +281,9 @@ export function DataSourceViewsSelector({
     delay: 300,
     minLength: MIN_SEARCH_QUERY_SIZE,
   });
+  const [nodeOrUrlCandidate, setNodeOrUrlCandidate] = useState<
+    UrlCandidate | NodeCandidate | null
+  >(null);
 
   const filteredDSVs = useMemo(() => {
     const includesConnectorIDs: string[] = [];
@@ -321,14 +332,72 @@ export function DataSourceViewsSelector({
     [filteredDSVs]
   );
 
-  const { searchResultNodes, isSearchLoading, warningCode } = useSpaceSearch({
-    dataSourceViews: filteredDSVs, // Use filtered DSVs on the search too.
-    includeDataSources: true,
+  // Check if the search term is a URL
+  useEffect(() => {
+    if (debouncedSearch.length >= MIN_SEARCH_QUERY_SIZE) {
+      const candidate = nodeCandidateFromUrl(debouncedSearch.trim());
+      setNodeOrUrlCandidate(candidate);
+    } else {
+      setNodeOrUrlCandidate(null);
+    }
+  }, [debouncedSearch]);
+
+  const commonSearchParams = {
     owner,
-    search: debouncedSearch,
     viewType,
-    space,
-  });
+    spaceIds: [space.sId],
+    disabled: !debouncedSearch,
+    dataSourceViewIdsBySpaceId:
+      filteredDSVs.length > 0
+        ? {
+            [space.sId]: filteredDSVs.map((dsv) => dsv.sId),
+          }
+        : undefined,
+    allowAdminSearch,
+  };
+
+  const {
+    searchResultNodes: rawSearchResultNodes,
+    isSearchLoading,
+    warningCode,
+  } = useSpacesSearch(
+    isNodeCandidate(nodeOrUrlCandidate) && nodeOrUrlCandidate.node
+      ? {
+          ...commonSearchParams,
+          nodeIds: [nodeOrUrlCandidate.node],
+          includeDataSources: false,
+        }
+      : {
+          ...commonSearchParams,
+          search: debouncedSearch,
+          searchSourceUrls: isUrlCandidate(nodeOrUrlCandidate),
+          includeDataSources: true,
+        }
+  );
+
+  // Process search results to convert them to DataSourceViewContentNode format
+  const searchResultNodes = useMemo(() => {
+    const processedResults = rawSearchResultNodes.flatMap((node) => {
+      const { dataSourceViews, ...rest } = node;
+      // Note: The workspace search API returns results from all data source views in the space.
+      // We filter here to only show results from the data source views that are currently
+      // displayed in the UI (filteredDSVs), which respects the assistant builder's filtering logic.
+      const filteredViews = dataSourceViews.filter((view) =>
+        filteredDSVs.some((dsv) => dsv.sId === view.sId)
+      );
+      return filteredViews.map((view) => ({
+        ...rest,
+        dataSourceView: view,
+      }));
+    });
+
+    // Filter results based on URL match if we have a URL candidate
+    return nodeOrUrlCandidate && !isNodeCandidate(nodeOrUrlCandidate)
+      ? processedResults.filter(
+          (node) => node.sourceUrl === nodeOrUrlCandidate.url
+        )
+      : processedResults;
+  }, [rawSearchResultNodes, filteredDSVs, nodeOrUrlCandidate]);
 
   useEffect(() => {
     if (searchResult) {
@@ -767,6 +836,7 @@ export function DataSourceViewSelector({
               ...v.node,
               dataSourceView: dataSourceView,
               parentInternalIds: v.parents,
+              parentTitle: null, // The parentTitle is not known here, but it also not necessary.
             })),
           isSelectAll: false,
         };

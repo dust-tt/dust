@@ -19,6 +19,7 @@ import { ServerSideTracking } from "@app/lib/tracking/server";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
+import { normalizeError } from "@app/types";
 
 async function handler(
   req: NextApiRequest,
@@ -75,8 +76,6 @@ async function handler(
     user: nullableUser,
     externalUser: session.user,
   });
-
-  await user.recordLoginActivity();
 
   // TODO(workos): Remove after switch to workos. Update user information when user is created with auth0.
   if (userCreated && session.type === "auth0" && session.user.workOSUserId) {
@@ -179,6 +178,19 @@ async function handler(
   if (!u || u.workspaces.length === 0) {
     res.redirect("/no-workspace?flow=revoked");
     return;
+  }
+
+  try {
+    await user.recordLoginActivity();
+  } catch (error) {
+    logger.error(
+      {
+        userId: user.id,
+        worksOSUserId: user.workOSUserId,
+        errorMessage: normalizeError(error).message,
+      },
+      "Failed to record login activity for user."
+    );
   }
 
   if (targetWorkspace) {

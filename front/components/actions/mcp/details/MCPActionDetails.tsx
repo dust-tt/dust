@@ -10,7 +10,10 @@ import {
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import { MCPBrowseActionDetails } from "@app/components/actions/mcp/details/MCPBrowseActionDetails";
-import { DataSourceNodeContentDetails } from "@app/components/actions/mcp/details/MCPDataSourcesFileSystemActionDetails";
+import {
+  DataSourceNodeContentDetails,
+  FilesystemPathDetails,
+} from "@app/components/actions/mcp/details/MCPDataSourcesFileSystemActionDetails";
 import { MCPExtractActionDetails } from "@app/components/actions/mcp/details/MCPExtractActionDetails";
 import { MCPGetDatabaseSchemaActionDetails } from "@app/components/actions/mcp/details/MCPGetDatabaseSchemaActionDetails";
 import { MCPReasoningActionDetails } from "@app/components/actions/mcp/details/MCPReasoningActionDetails";
@@ -25,6 +28,7 @@ import {
   isDataSourceNodeListType,
   isExecuteTablesQueryMarkerResourceType,
   isExtractResultResourceType,
+  isFilesystemPathType,
   isGetDatabaseSchemaMarkerResourceType,
   isIncludeResultResourceType,
   isReasoningSuccessOutput,
@@ -64,6 +68,7 @@ export function MCPActionDetails(
   );
 
   const isCat = props.action.output?.some(isDataSourceNodeContentType);
+  const isFilesystemPath = props.action.output?.some(isFilesystemPathType);
 
   if (isSearch) {
     return (
@@ -111,6 +116,8 @@ export function MCPActionDetails(
     );
   } else if (isCat) {
     return <DataSourceNodeContentDetails {...props} />;
+  } else if (isFilesystemPath) {
+    return <FilesystemPathDetails {...props} />;
   } else if (isExtract) {
     return <MCPExtractActionDetails {...props} />;
   } else if (isRunAgent) {
@@ -167,10 +174,12 @@ export function GenericActionDetails({
             contentChildren={
               <CodeBlock wrapLongLines>
                 {action.output
-                  // @ts-expect-error TODO(mcp): fixing typing resulting to unknown type
-                  .filter((o) => o.text || o.resource.text)
-                  // @ts-expect-error TODO(mcp): fixing typing resulting to unknown type
-                  .map((o) => o.text || o.resource.text)
+                  .filter(
+                    (o) => o.text || (o.type === "resource" && o.resource.text)
+                  )
+                  .map(
+                    (o) => o.text || (o.type === "resource" && o.resource.text)
+                  )
                   .join("\n")}
               </CodeBlock>
             }

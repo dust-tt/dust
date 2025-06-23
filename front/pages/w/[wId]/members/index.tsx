@@ -16,21 +16,14 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { WorkspaceLimit } from "@app/components/app/ReachedLimitPopup";
 import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
 import { GroupsList } from "@app/components/groups/GroupsList";
-import { InviteEmailModal } from "@app/components/members/InvitationModal";
 import { InvitationsList } from "@app/components/members/InvitationsList";
+import { InviteEmailButtonWithModal } from "@app/components/members/InviteEmailButtonWithModal";
 import { MembersList } from "@app/components/members/MembersList";
 import { subNavigationAdmin } from "@app/components/navigation/config";
 import AppContentLayout from "@app/components/sparkle/AppContentLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { ChangeMemberModal } from "@app/components/workspace/ChangeMemberModal";
-import type { EnterpriseConnectionStrategyDetails } from "@app/components/workspace/SSOConnection";
 import WorkspaceAccessPanel from "@app/components/workspace/WorkspaceAccessPanel";
-import config from "@app/lib/api/config";
-import {
-  makeAudienceUri,
-  makeEnterpriseConnectionInitiateLoginUrl,
-  makeSamlAcsUrl,
-} from "@app/lib/api/enterprise_connection";
 import { checkWorkspaceSeatAvailabilityUsingAuth } from "@app/lib/api/workspace";
 import { getWorkspaceVerifiedDomains } from "@app/lib/api/workspace_domains";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
@@ -44,7 +37,7 @@ import type {
   SubscriptionPerSeatPricing,
   SubscriptionType,
   UserType,
-  UserTypeWithWorkspaces,
+  UserTypeWithWorkspace,
   WorkspaceDomain,
   WorkspaceType,
 } from "@app/types";
@@ -54,7 +47,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
   perSeatPricing: SubscriptionPerSeatPricing | null;
-  enterpriseConnectionStrategyDetails: EnterpriseConnectionStrategyDetails;
   plan: PlanType;
   workspaceHasAvailableSeats: boolean;
   workspaceVerifiedDomains: WorkspaceDomain[];
@@ -75,18 +67,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   const workspaceHasAvailableSeats =
     await checkWorkspaceSeatAvailabilityUsingAuth(auth);
 
-  const enterpriseConnectionStrategyDetails: EnterpriseConnectionStrategyDetails =
-    {
-      callbackUrl: config.getAuth0TenantUrl(),
-      initiateLoginUrl: await makeEnterpriseConnectionInitiateLoginUrl(
-        owner.sId,
-        null
-      ),
-      // SAML specific.
-      audienceUri: makeAudienceUri(owner),
-      samlAcsUrl: makeSamlAcsUrl(owner),
-    };
-
   const perSeatPricing = await subscriptionResource.getPerSeatPricing();
   const subscription = subscriptionResource.toJSON();
 
@@ -96,7 +76,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       owner,
       subscription,
       perSeatPricing,
-      enterpriseConnectionStrategyDetails,
       plan,
       workspaceHasAvailableSeats,
       workspaceVerifiedDomains,
@@ -109,7 +88,6 @@ export default function WorkspaceAdmin({
   owner,
   subscription,
   perSeatPricing,
-  enterpriseConnectionStrategyDetails,
   plan,
   workspaceHasAvailableSeats,
   workspaceVerifiedDomains,
@@ -119,10 +97,15 @@ export default function WorkspaceAdmin({
     useState<WorkspaceLimit | null>(null);
 
   const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
-  const hasWorkOSProvisioning = useMemo(
+
+  const hasVerifiedDomains = workspaceVerifiedDomains.length > 0;
+
+  const hasWorkOSProvisioningFlag = useMemo(
     () => featureFlags.includes("workos_user_provisioning"),
     [featureFlags]
   );
+
+  const isProvisioningEnabled = hasWorkOSProvisioningFlag && hasVerifiedDomains;
 
   const onInviteClick = useCallback(
     (event: MouseEvent) => {
@@ -153,9 +136,6 @@ export default function WorkspaceAdmin({
           description="Verify your domain, manage team members and their permissions."
         />
         <WorkspaceAccessPanel
-          enterpriseConnectionStrategyDetails={
-            enterpriseConnectionStrategyDetails
-          }
           workspaceVerifiedDomains={workspaceVerifiedDomains}
           owner={owner}
           plan={plan}
@@ -163,18 +143,18 @@ export default function WorkspaceAdmin({
         <Separator />
         <div className="flex flex-col gap-2">
           <Page.H variant="h4">
-            {hasWorkOSProvisioning ? "Members and directories" : "Member list"}
+            {isProvisioningEnabled ? "Members and groups" : "Member list"}
           </Page.H>
           <div className="flex flex-row gap-2">
             <SearchInput
               placeholder={
-                hasWorkOSProvisioning ? "Search" : "Search members (email)"
+                isProvisioningEnabled ? "Search" : "Search members (email)"
               }
               value={searchTerm}
               name="search"
               onChange={setSearchTerm}
             />
-            <InviteEmailModal
+            <InviteEmailButtonWithModal
               owner={owner}
               prefillText=""
               perSeatPricing={perSeatPricing}
@@ -186,6 +166,7 @@ export default function WorkspaceAdmin({
             currentUser={user}
             owner={owner}
             searchTerm={searchTerm}
+            isProvisioningEnabled={isProvisioningEnabled}
           />
         </div>
         {inviteBlockedPopupReason && (
@@ -208,12 +189,14 @@ interface WorkspaceMembersListProps {
   currentUser: UserType | null;
   owner: WorkspaceType;
   searchTerm: string;
+  isProvisioningEnabled: boolean;
 }
 
 function WorkspaceMembersGroupsList({
   currentUser,
   owner,
   searchTerm,
+  isProvisioningEnabled,
 }: WorkspaceMembersListProps) {
   const { hasFeature, isFeatureFlagsLoading } = useFeatureFlags({
     workspaceId: owner.sId,
@@ -236,8 +219,8 @@ function WorkspaceMembersGroupsList({
           <TabsList className="mb-4">
             <TabsTrigger value="members" label="Members" />
             <TabsTrigger
-              value="directories"
-              label={`Directories${ssoStatus?.connection ? ` (${ssoStatus.connection.type})` : ""}`}
+              value="groups"
+              label={`Groups${ssoStatus?.connection ? ` (${ssoStatus.connection.type})` : ""}`}
             />
           </TabsList>
           <TabsContent value="members">
@@ -245,9 +228,10 @@ function WorkspaceMembersGroupsList({
               currentUser={currentUser}
               owner={owner}
               searchTerm={searchTerm}
+              isProvisioningEnabled={isProvisioningEnabled}
             />
           </TabsContent>
-          <TabsContent value="directories">
+          <TabsContent value="groups">
             <WorkspaceGroupsList owner={owner} searchTerm={searchTerm} />
           </TabsContent>
         </Tabs>
@@ -258,6 +242,7 @@ function WorkspaceMembersGroupsList({
             currentUser={currentUser}
             owner={owner}
             searchTerm={searchTerm}
+            isProvisioningEnabled={isProvisioningEnabled}
           />
         </>
       )}
@@ -265,28 +250,33 @@ function WorkspaceMembersGroupsList({
   );
 }
 
+interface WorkspaceMembersListProps {
+  currentUser: UserType | null;
+  owner: WorkspaceType;
+  searchTerm: string;
+  isProvisioningEnabled: boolean;
+}
+
 function WorkspaceMembersList({
   currentUser,
   owner,
   searchTerm,
-}: {
-  currentUser: UserType | null;
-  owner: WorkspaceType;
-  searchTerm: string;
-}) {
+  isProvisioningEnabled,
+}: WorkspaceMembersListProps) {
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
     pageSize: DEFAULT_PAGE_SIZE,
   });
 
   const [selectedMember, setSelectedMember] =
-    useState<UserTypeWithWorkspaces | null>(null);
+    useState<UserTypeWithWorkspace | null>(null);
 
   const membersData = useSearchMembers({
     workspaceId: owner.sId,
     searchTerm,
     pageIndex: pagination.pageIndex,
     pageSize: DEFAULT_PAGE_SIZE,
+    groupKind: isProvisioningEnabled ? "provisioned" : undefined,
   });
 
   useEffect(() => {
@@ -303,7 +293,11 @@ function WorkspaceMembersList({
         currentUser={currentUser}
         membersData={membersData}
         onRowClick={setSelectedMember}
-        showColumns={["name", "email", "role"]}
+        showColumns={
+          isProvisioningEnabled
+            ? ["name", "email", "role", "status", "groups"]
+            : ["name", "email", "role"]
+        }
         pagination={pagination}
         setPagination={setPagination}
       />

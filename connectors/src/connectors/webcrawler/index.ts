@@ -1,4 +1,4 @@
-import type { Result } from "@dust-tt/client";
+import type { ConnectorProvider, Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
 
 import type {
@@ -16,6 +16,7 @@ import {
   normalizeFolderUrl,
   stableIdForUrl,
 } from "@connectors/connectors/webcrawler/lib/utils";
+import { getFirecrawl } from "@connectors/lib/firecrawl";
 import {
   WebCrawlerFolder,
   WebCrawlerPage,
@@ -44,6 +45,8 @@ import {
 } from "./temporal/client";
 
 export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerConfigurationType> {
+  readonly provider: ConnectorProvider = "webcrawler";
+
   static async create({
     dataSourceConfig,
     configuration,
@@ -116,15 +119,45 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
   }
 
   async stop(): Promise<Result<undefined, Error>> {
-    const res = await stopCrawlWebsiteWorkflow(this.connectorId);
-    if (res.isErr()) {
-      return res;
+    const webConfig = await WebCrawlerConfigurationResource.fetchByConnectorId(
+      this.connectorId
+    );
+    if (!webConfig) {
+      return new Err(
+        new Error("Couldn't find associated WebCrawlerConfiguration")
+      );
+    }
+
+    // If it's firecrawl-api
+    if (webConfig.crawlId !== null) {
+      // If not, there is not really workflows to stop
+      await getFirecrawl().cancelCrawl(webConfig.crawlId);
+    } else {
+      const res = await stopCrawlWebsiteWorkflow(this.connectorId);
+      if (res.isErr()) {
+        return res;
+      }
     }
 
     return new Ok(undefined);
   }
 
   async sync(): Promise<Result<string, Error>> {
+    const webConfig = await WebCrawlerConfigurationResource.fetchByConnectorId(
+      this.connectorId
+    );
+    if (!webConfig) {
+      return new Err(
+        new Error("Couldn't find associated WebCrawlerConfiguration")
+      );
+    }
+
+    // Before launching again, cancel on Firecrawl side and reset the crawlId
+    if (webConfig.crawlId) {
+      await getFirecrawl().cancelCrawl(webConfig.crawlId);
+      await webConfig.updateCrawlId(null);
+    }
+
     return launchCrawlWebsiteWorkflow(this.connectorId);
   }
 
@@ -257,34 +290,6 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
   }): Promise<Result<string[], Error>> {
     // This isn't used for webcrawler.
     return new Ok([internalId]);
-  }
-
-  async pause(): Promise<Result<undefined, Error>> {
-    const connector = await ConnectorResource.fetchById(this.connectorId);
-    if (!connector) {
-      throw new Error("Connector not found.");
-    }
-    await connector.markAsPaused();
-    const stopRes = await stopCrawlWebsiteWorkflow(this.connectorId);
-    if (stopRes.isErr()) {
-      return stopRes;
-    }
-    return new Ok(undefined);
-  }
-
-  async unpause(): Promise<Result<undefined, Error>> {
-    const connector = await ConnectorResource.fetchById(this.connectorId);
-    if (!connector) {
-      throw new Error("Connector not found.");
-    }
-    await connector.markAsUnpaused();
-
-    const r = await this.resume();
-    if (r.isErr()) {
-      return r;
-    }
-
-    return new Ok(undefined);
   }
 
   async configure({

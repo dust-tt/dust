@@ -2,6 +2,7 @@ import {
   Button,
   Chip,
   DataTable,
+  EmptyCTA,
   IconButton,
   Page,
   PlusIcon,
@@ -16,7 +17,6 @@ import React from "react";
 import { ConfirmContext } from "@app/components/Confirm";
 import UserProvisioning from "@app/components/workspace/DirectorySync";
 import { AutoJoinToggle } from "@app/components/workspace/sso/AutoJoinToggle";
-import type { EnterpriseConnectionStrategyDetails } from "@app/components/workspace/SSOConnection";
 import SSOConnection from "@app/components/workspace/SSOConnection";
 import {
   useRemoveWorkspaceDomain,
@@ -26,14 +26,12 @@ import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { LightWorkspaceType, PlanType, WorkspaceDomain } from "@app/types";
 
 interface WorkspaceAccessPanelProps {
-  enterpriseConnectionStrategyDetails: EnterpriseConnectionStrategyDetails;
   workspaceVerifiedDomains: WorkspaceDomain[];
   owner: LightWorkspaceType;
   plan: PlanType;
 }
 
 export default function WorkspaceAccessPanel({
-  enterpriseConnectionStrategyDetails,
   workspaceVerifiedDomains,
   owner,
   plan,
@@ -57,12 +55,7 @@ export default function WorkspaceAccessPanel({
         owner={owner}
       />
       <Separator />
-      <SSOConnection
-        domains={domains}
-        plan={plan}
-        strategyDetails={enterpriseConnectionStrategyDetails}
-        owner={owner}
-      />
+      <SSOConnection domains={domains} plan={plan} owner={owner} />
       <AutoJoinToggle
         domains={domains}
         workspaceVerifiedDomains={workspaceVerifiedDomains}
@@ -100,18 +93,31 @@ function DomainVerification({
         and allow team members to automatically join your workspace when they
         sign up with their work email address.
       </Page.P>
-      {isDomainsLoading ? (
+      {isDomainsLoading && (
         <div className="flex justify-center">
           <Spinner size="lg" />
         </div>
-      ) : (
-        <DomainVerificationTable
-          addDomainLink={addDomainLink}
-          domains={domains}
-          workspaceVerifiedDomains={workspaceVerifiedDomains}
-          owner={owner}
-        />
       )}
+      {!isDomainsLoading &&
+        (domains.length === 0 ? (
+          <EmptyCTA
+            action={
+              <Button
+                label="Add Domain"
+                variant="primary"
+                icon={PlusIcon}
+                href={addDomainLink}
+              />
+            }
+          />
+        ) : (
+          <DomainVerificationTable
+            addDomainLink={addDomainLink}
+            domains={domains}
+            workspaceVerifiedDomains={workspaceVerifiedDomains}
+            owner={owner}
+          />
+        ))}
     </div>
   );
 }

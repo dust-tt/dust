@@ -9,17 +9,17 @@ export const ROLES_DATA: Record<
   { description: string; color: "rose" | "golden" | "green" | "primary" }
 > = {
   admin: {
-    description: "Admins can manage members, in addition to builders' rights.",
+    description:
+      "Can use and create agents, manage settings, members, spaces, connections, and tools.",
     color: "rose",
   },
   builder: {
     description:
-      "Builders can create custom agents and use advanced dev tools.",
+      "Can use, create agents and manage folders, websites and dust apps in the company space.",
     color: "golden",
   },
   user: {
-    description:
-      "Members can use agents provided by Dust as well as custom agents created by their company.",
+    description: "Can use and create agents in conversations.",
     color: "green",
   },
 };

@@ -7,6 +7,7 @@ import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_inte
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type {
   DataSourceNodeListType,
+  FilesystemPathType,
   SearchQueryResourceType,
   SearchResultResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
@@ -17,7 +18,6 @@ import {
   renderRelativeTimeFrameForToolOutput,
 } from "@app/lib/actions/mcp_internal_actions/servers/utils";
 import {
-  makeMCPToolJSONSuccess,
   makeMCPToolRecoverableErrorSuccess,
   makeMCPToolTextError,
 } from "@app/lib/actions/mcp_internal_actions/utils";
@@ -29,10 +29,7 @@ import config from "@app/lib/api/config";
 import { ROOT_PARENT_ID } from "@app/lib/api/data_source_view";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
-import {
-  getDataSourceNameFromView,
-  getDisplayNameForDocument,
-} from "@app/lib/data_sources";
+import { getDisplayNameForDocument } from "@app/lib/data_sources";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
@@ -106,7 +103,8 @@ const createServer = (
 
   server.tool(
     "cat",
-    "Read the contents of a document, referred to by its nodeId (named after the 'cat' unix tool). The nodeId can be obtained using the 'find_by_title', 'find' or 'search' tools.",
+    "Read the contents of a document, referred to by its nodeId (named after the 'cat' unix tool). " +
+      "The nodeId can be obtained using the 'find', 'list' or 'search' tools.",
     {
       dataSources:
         ConfigurableToolInputSchemas[
@@ -117,7 +115,8 @@ const createServer = (
         .number()
         .optional()
         .describe(
-          "The character position to start reading from (0-based). If not provided, starts from the beginning."
+          "The character position to start reading from (0-based). If not provided, starts from " +
+            "the beginning."
         ),
       limit: z
         .number()
@@ -129,7 +128,8 @@ const createServer = (
         .string()
         .optional()
         .describe(
-          "A regular expression to filter lines. Applied after offset/limit slicing. Only lines matching this pattern will be returned."
+          "A regular expression to filter lines. Applied after offset/limit slicing. Only lines " +
+            "matching this pattern will be returned."
         ),
     },
     async ({ dataSources, nodeId, offset, limit, grep }) => {
@@ -285,7 +285,7 @@ const createServer = (
 
       const dataSourceNodeId = rootNodeId
         ? extractDataSourceIdFromNodeId(rootNodeId)
-        : undefined;
+        : null;
 
       // If rootNodeId is provided and is a data source node ID, search only in
       // the data source. If rootNodeId is provided and is a regular node ID,
@@ -518,7 +518,6 @@ const createServer = (
           "The query to search for. This is a natural language query. It doesn't support any " +
             "specific filter syntax."
         ),
-
       relativeTimeFrame: z
         .string()
         .regex(/^(all|\d+[hdwmy])$/)
@@ -552,6 +551,17 @@ const createServer = (
         refsOffset: agentLoopContext.runContext.citationsRefsOffset,
       });
 
+      const agentDataSourceConfigurationsResult =
+        await getAgentDataSourceConfigurations(auth, dataSources);
+
+      if (agentDataSourceConfigurationsResult.isErr()) {
+        return makeMCPToolTextError(
+          agentDataSourceConfigurationsResult.error.message
+        );
+      }
+      const agentDataSourceConfigurations =
+        agentDataSourceConfigurationsResult.value;
+
       const coreSearchArgsResults = await concurrentExecutor(
         dataSources,
         async (dataSourceConfiguration) =>
@@ -567,51 +577,42 @@ const createServer = (
       );
 
       const regularNodeIds =
-        nodeIds?.filter(
-          (nodeId) =>
-            !dataSourceIds.has(extractDataSourceIdFromNodeId(nodeId) ?? "")
-        ) ?? [];
+        nodeIds?.filter((nodeId) => !isDataSourceNodeId(nodeId)) ?? [];
 
       const coreSearchArgs = removeNulls(
-        coreSearchArgsResults
-          .map((res) => (res.isOk() ? res.value : null))
-          .map((coreSearchArgs) => {
-            if (coreSearchArgs === null) {
-              return null;
-            }
+        coreSearchArgsResults.map((res) => {
+          if (!res.isOk() || res.value === null) {
+            return null;
+          }
+          const coreSearchArgs = res.value;
 
-            if (!nodeIds || dataSourceIds.has(coreSearchArgs.dataSourceId)) {
-              // If the agent doesn't provide nodeIds, or if it provides the node id
-              // of this data source, we keep the default filter.
-              return coreSearchArgs;
-            }
+          if (!nodeIds || dataSourceIds.has(coreSearchArgs.dataSourceId)) {
+            // If the agent doesn't provide nodeIds, or if it provides the node id
+            // of this data source, we keep the default filter.
+            return coreSearchArgs;
+          }
 
-            // If there are only data source nodeIds, that are not this one, then
-            // this data source can be excluded from the search.
-            if (regularNodeIds.length === 0) {
-              return null;
-            }
+          // If there are no regular nodes, then we searched for data sources other than the
+          // current one; so we don't search this data source.
+          if (regularNodeIds.length === 0) {
+            return null;
+          }
 
-            return {
-              ...coreSearchArgs,
-              filter: {
-                ...coreSearchArgs.filter,
-                parents: { in: regularNodeIds, not: [] },
-              },
-            };
-          })
+          // If there are regular nodes, we filter to search within these nodes.
+          return {
+            ...coreSearchArgs,
+            filter: {
+              ...coreSearchArgs.filter,
+              parents: { in: regularNodeIds, not: [] },
+            },
+          };
+        })
       );
 
       if (coreSearchArgs.length === 0) {
-        return {
-          isError: true,
-          content: [
-            {
-              type: "text",
-              text: "Search action must have at least one data source configured.",
-            },
-          ],
-        };
+        return makeMCPToolTextError(
+          "Search action must have at least one data source configured."
+        );
       }
 
       const searchResults = await coreAPI.searchDataSources(
@@ -619,48 +620,34 @@ const createServer = (
         topK,
         credentials,
         false,
-        coreSearchArgs.map((args) => {
-          return {
-            projectId: args.projectId,
-            dataSourceId: args.dataSourceId,
-            filter: {
-              ...args.filter,
-              tags: {
-                in: null,
-                not: null,
-              },
-              timestamp: {
-                gt: timeFrame ? timeFrameFromNow(timeFrame) : null,
-                lt: null,
-              },
+        coreSearchArgs.map((args) => ({
+          projectId: args.projectId,
+          dataSourceId: args.dataSourceId,
+          filter: {
+            ...args.filter,
+            tags: {
+              in: null,
+              not: null,
             },
-            view_filter: args.view_filter,
-          };
-        })
+            timestamp: {
+              gt: timeFrame ? timeFrameFromNow(timeFrame) : null,
+              lt: null,
+            },
+          },
+          view_filter: args.view_filter,
+        }))
       );
 
       if (searchResults.isErr()) {
-        return {
-          isError: true,
-          content: [
-            {
-              type: "text",
-              text: searchResults.error.message,
-            },
-          ],
-        };
+        return makeMCPToolTextError(
+          `Failed to search content: ${searchResults.error.message}`
+        );
       }
 
       if (refsOffset + topK > getRefs().length) {
-        return {
-          isError: true,
-          content: [
-            {
-              type: "text",
-              text: "The search exhausted the total number of references available for citations",
-            },
-          ],
-        };
+        return makeMCPToolTextError(
+          "The search exhausted the total number of references available for citations"
+        );
       }
 
       const refs = getRefs().slice(refsOffset, refsOffset + topK);
@@ -684,7 +671,6 @@ const createServer = (
             source: {
               provider:
                 dataSourceView.dataSource.connectorProvider ?? undefined,
-              name: getDataSourceNameFromView(dataSourceView),
             },
             tags: doc.tags,
             ref: refs.shift() as string,
@@ -693,6 +679,34 @@ const createServer = (
         }
       );
 
+      const searchNodeIds = searchResults.value.documents.map(
+        ({ document_id }) => document_id
+      );
+
+      let renderedNodes;
+      if (searchNodeIds.length > 0) {
+        const searchResult = await coreAPI.searchNodes({
+          filter: {
+            node_ids: searchNodeIds,
+            data_source_views: coreSearchArgs.map((args) => ({
+              data_source_id: args.dataSourceId,
+              view_filter: args.filter.parents?.in ?? [],
+            })),
+          },
+          options: {
+            limit: searchNodeIds.length,
+          },
+        });
+
+        if (searchResult.isErr()) {
+          return makeMCPToolTextError("Failed to search content");
+        }
+        renderedNodes = renderSearchResults(
+          searchResult.value,
+          agentDataSourceConfigurations
+        );
+      }
+
       return {
         isError: false,
         content: [
@@ -700,6 +714,9 @@ const createServer = (
             type: "resource" as const,
             resource: makeQueryResource(query, timeFrame),
           },
+          ...(renderedNodes
+            ? [{ type: "resource" as const, resource: renderedNodes }]
+            : []),
           ...results.map((result) => ({
             type: "resource" as const,
             resource: result,
@@ -713,7 +730,8 @@ const createServer = (
     "locate_in_tree",
     "Show the complete path from a node to the data source root, displaying the hierarchy of parent nodes. " +
       "This is useful for understanding where a specific node is located within the data source structure. " +
-      "The path is returned as a list of nodes, with the first node being the data source root and the last node being the target node.",
+      "The path is returned as a list of nodes, with the first node being the data source root and " +
+      "the last node being the target node.",
     {
       nodeId: z.string().describe("The ID of the node to locate in the tree."),
       dataSources:
@@ -749,18 +767,26 @@ const createServer = (
           );
         }
 
-        return makeMCPToolJSONSuccess({
-          message: "Node is the data source root.",
-          result: {
-            path: [
-              {
-                nodeId: nodeId,
-                title: dataSourceConfig.dataSource.name,
-                isCurrentNode: true,
+        return {
+          isError: false,
+          content: [
+            {
+              type: "resource" as const,
+              resource: {
+                mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILESYSTEM_PATH,
+                uri: "",
+                text: "Node is the data source root.",
+                path: [
+                  {
+                    nodeId: nodeId,
+                    title: dataSourceConfig.dataSource.name,
+                    isCurrentNode: true,
+                  },
+                ],
               },
-            ],
-          },
-        });
+            },
+          ],
+        };
       }
 
       // Search for the target node.
@@ -819,12 +845,13 @@ const createServer = (
       }
 
       // Build the path array.
-      const pathItems = removeNulls([
+      const pathItems: FilesystemPathType["path"] = removeNulls([
         // Data source root node
         {
           nodeId: dataSourceRootId,
           title: dataSourceConfig.dataSource.name,
           nodeType: "folder" as ContentNodeType,
+          sourceUrl: null,
           isCurrentNode: false,
         },
         // Parent nodes
@@ -837,6 +864,7 @@ const createServer = (
             nodeId: parentId,
             title: node.title,
             nodeType: node.node_type,
+            sourceUrl: node.source_url,
             isCurrentNode: false,
           };
         }),
@@ -845,16 +873,25 @@ const createServer = (
           nodeId: nodeId,
           title: targetNode.title,
           nodeType: targetNode.node_type,
+          sourceUrl: targetNode.source_url,
           isCurrentNode: true,
         },
       ]);
 
-      return makeMCPToolJSONSuccess({
-        message: "Path located successfully.",
-        result: {
-          path: pathItems,
-        },
-      });
+      return {
+        isError: false,
+        content: [
+          {
+            type: "resource" as const,
+            resource: {
+              mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILESYSTEM_PATH,
+              uri: "",
+              text: "Path located successfully.",
+              path: pathItems,
+            },
+          },
+        ],
+      };
     }
   );
 
@@ -939,7 +976,8 @@ async function getAgentDataSourceConfigurations(
           ) {
             return new Err(
               new Error(
-                `Workspace mismatch: configuration workspace ${configInfo.configuration.workspaceId} does not match authenticated workspace`
+                "Workspace mismatch: configuration workspace " +
+                  `${configInfo.configuration.workspaceId} does not match authenticated workspace.`
               )
             );
           }
@@ -1072,7 +1110,6 @@ function renderNode(
     parentTitle: node.parent_title,
     lastUpdatedAt: formatTimestamp(node.timestamp),
     sourceUrl: node.source_url,
-    // TODO(2025-06-02 aubin): see if we want a translation on these.
     mimeType: node.mime_type,
     hasChildren: node.children_count > 0,
     connectorProvider:
@@ -1092,11 +1129,10 @@ function renderSearchResults(
     string,
     ConnectorProvider | null
   >();
-  for (const config of agentDataSourceConfigurations) {
-    dataSourceIdToConnectorMap.set(
-      config.dataSource.dustAPIDataSourceId,
-      config.dataSource.connectorProvider
-    );
+  for (const {
+    dataSource: { dustAPIDataSourceId, connectorProvider },
+  } of agentDataSourceConfigurations) {
+    dataSourceIdToConnectorMap.set(dustAPIDataSourceId, connectorProvider);
   }
 
   return {

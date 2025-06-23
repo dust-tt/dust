@@ -74,8 +74,6 @@ function createServer(
 
       const owner = auth.getNonNullableWorkspace();
 
-      // TODO(mcp): if we stream events, here we want to inform that it has started.
-
       // Render conversation for the action.
       const supportedModel = getSupportedModelConfig(
         agentLoopRunContext.agentConfiguration.model
@@ -96,6 +94,7 @@ function createServer(
         conversation: agentLoopRunContext.conversation,
         model: supportedModel,
         prompt: agentLoopRunContext.agentConfiguration.instructions ?? "",
+        tools: "",
         allowedTokenCount,
         excludeImages: true,
       });
@@ -298,7 +297,6 @@ function createServer(
         output: sanitizedOutput,
       });
 
-      // TODO(mcp): return the CSV file itself as a MCP resource and let the other side handle it
       // Generate the CSV file.
       const { csvFile, csvSnippet } = await generateCSVFileAndSnippet(auth, {
         title: queryTitle,
@@ -326,7 +324,6 @@ function createServer(
         },
       });
 
-      // TODO(mcp) probably do the same for the section file
       // Check if we should generate a section JSON file.
       const shouldGenerateSectionFile = results.some((result) =>
         Object.values(result).some(
@@ -428,6 +425,7 @@ export function getSectionColumnsPrefix(
     case "google_drive":
     case "intercom":
     case "notion":
+    case "slack_bot":
     case "slack":
     case "microsoft":
     case "webcrawler":

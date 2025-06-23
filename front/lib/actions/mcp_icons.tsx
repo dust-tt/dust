@@ -23,6 +23,7 @@ import {
   JiraLogo,
   NotionLogo,
   SalesforceLogo,
+  SlackLogo,
 } from "@dust-tt/sparkle";
 import type React from "react";
 import type { ComponentProps } from "react";
@@ -56,6 +57,7 @@ export const InternalActionIcons = {
   SalesforceLogo,
   GmailLogo,
   GcalLogo,
+  SlackLogo,
 };
 
 export const INTERNAL_ALLOWED_ICONS = Object.keys(InternalActionIcons);

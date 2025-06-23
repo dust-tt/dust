@@ -4,6 +4,7 @@ import {
   BarChartIcon,
   Button,
   Chip,
+  Cog6ToothIcon,
   ContentMessage,
   DustIcon,
   InformationCircleIcon,
@@ -37,7 +38,7 @@ import type {
   AgentConfigurationScope,
   AgentConfigurationType,
   UserType,
-  UserTypeWithWorkspaces,
+  UserTypeWithWorkspace,
   WorkspaceType,
 } from "@app/types";
 import { GLOBAL_AGENTS_SID, isAdmin } from "@app/types";
@@ -101,27 +102,47 @@ function AssistantDetailsInfo({
       )}
 
       <div className="text-sm text-foreground dark:text-foreground-night">
-        {agentConfiguration?.description}
+        {agentConfiguration.description}
       </div>
       {agentConfiguration && (
         <AssistantEditedSection agentConfiguration={agentConfiguration} />
       )}
+      {agentConfiguration.sId === "dust" && (
+        <div className="text-sm text-foreground dark:text-foreground-night">
+          {isAdmin(owner) ? (
+            <Button
+              label="Manage Dust Agent's Knowledge"
+              icon={Cog6ToothIcon}
+              href={`/w/${owner.sId}/builder/assistants/dust`}
+            />
+          ) : (
+            <Chip
+              color="blue"
+              label="Your admin(s) can manage Dust Agent's Knowledge."
+            />
+          )}
+        </div>
+      )}
       <Page.Separator />
 
-      <AssistantKnowledgeSection
-        agentConfiguration={agentConfiguration}
-        owner={owner}
-      />
+      {agentConfiguration.scope !== "global" && (
+        <>
+          <AssistantKnowledgeSection
+            agentConfiguration={agentConfiguration}
+            owner={owner}
+          />
 
-      {agentConfiguration?.instructions ? (
-        <div className="flex flex-col gap-5">
-          <div className="heading-lg text-foreground dark:text-foreground-night">
-            Instructions
-          </div>
-          <ReadOnlyTextArea content={agentConfiguration.instructions} />
-        </div>
-      ) : (
-        "This agent has no instructions."
+          {agentConfiguration?.instructions ? (
+            <div className="flex flex-col gap-5">
+              <div className="heading-lg text-foreground dark:text-foreground-night">
+                Instructions
+              </div>
+              <ReadOnlyTextArea content={agentConfiguration.instructions} />
+            </div>
+          ) : (
+            "This agent has no instructions."
+          )}
+        </>
       )}
       <AssistantToolsSection
         agentConfiguration={agentConfiguration}
@@ -154,7 +175,7 @@ function AssistantDetailsEditors({
   const isCurrentUserEditor =
     editors.findIndex((u) => u.sId === user.sId) !== -1;
 
-  const onRemoveMember = async (user: UserTypeWithWorkspaces) => {
+  const onRemoveMember = async (user: UserTypeWithWorkspace) => {
     if (isCurrentUserEditor) {
       await updateEditors({ removeEditorIds: [user.sId], addEditorIds: [] });
     }
@@ -173,7 +194,7 @@ function AssistantDetailsEditors({
         membersData={{
           members: editors.map((user) => ({
             ...user,
-            workspaces: [owner],
+            workspace: owner,
           })),
           isLoading: isEditorsLoading,
           totalMembersCount: editors.length,

@@ -1,4 +1,4 @@
-import type { Result } from "@dust-tt/client";
+import type { ConnectorProvider, Result } from "@dust-tt/client";
 import { assertNever, Err, Ok } from "@dust-tt/client";
 
 import type {
@@ -60,6 +60,8 @@ const SYNC_UNRESOLVED_TICKETS_CONFIG_KEY =
 const HIDE_CUSTOMER_DETAILS_CONFIG_KEY = "zendeskHideCustomerDetails";
 
 export class ZendeskConnectorManager extends BaseConnectorManager<null> {
+  readonly provider: ConnectorProvider = "zendesk";
+
   static async create({
     dataSourceConfig,
     connectionId,
@@ -179,7 +181,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
 
       // if the connector was previously paused, unpause it.
       if (connector.isPaused()) {
-        await this.unpause();
+        await this.unpauseAndResume();
       }
     }
     return new Ok(connector.id.toString());
@@ -606,36 +608,6 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       default:
         return new Err(new Error(`Invalid config key ${configKey}`));
     }
-  }
-
-  /**
-   * Marks the connector as paused in db and stops all workflows.
-   */
-  async pause(): Promise<Result<undefined, Error>> {
-    const { connectorId } = this;
-    const connector = await ConnectorResource.fetchById(connectorId);
-    if (!connector) {
-      logger.error({ connectorId }, "[Zendesk] Connector not found.");
-      throw new Error("[Zendesk] Connector not found.");
-    }
-    await connector.markAsPaused();
-    return this.stop();
-  }
-
-  /**
-   * Marks the connector as unpaused in db and restarts the workflows.
-   * Does not trigger full syncs, only restart the incremental and gc workflows.
-   */
-  async unpause(): Promise<Result<undefined, Error>> {
-    const { connectorId } = this;
-    const connector = await ConnectorResource.fetchById(connectorId);
-    if (!connector) {
-      logger.error({ connectorId }, "[Zendesk] Connector not found.");
-      throw new Error("[Zendesk] Connector not found.");
-    }
-    await connector.markAsUnpaused();
-    // launch a gc and an incremental workflow (sync workflow without signals).
-    return this.resume();
   }
 
   async garbageCollect(): Promise<Result<string, Error>> {

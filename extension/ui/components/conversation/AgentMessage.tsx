@@ -154,6 +154,10 @@ interface AgentMessageProps {
   user: StoredUser;
 }
 
+type AgentMessageStateWithControlEvent =
+  | AgentMessageStateEvent
+  | { type: "end-of-stream" };
+
 function makeInitialMessageStreamState(
   message: AgentMessagePublicType
 ): MessageTemporaryState {
@@ -249,11 +253,12 @@ export function AgentMessage({
     (eventStr: string) => {
       const eventPayload: {
         eventId: string;
-        data: AgentMessageStateEvent;
+        data: AgentMessageStateWithControlEvent;
       } = JSON.parse(eventStr);
+      const eventType = eventPayload.data.type;
 
       // Handle validation dialog separately.
-      if (eventPayload.data.type === "tool_approve_execution") {
+      if (eventType === "tool_approve_execution") {
         showValidationDialog({
           actionId: eventPayload.data.actionId,
           conversationId: conversationId,
@@ -264,6 +269,13 @@ export function AgentMessage({
           workspaceId: owner.sId,
         });
 
+        return;
+      }
+
+      // This event is emitted in front/lib/api/assistant/pubsub.ts. Its purpose is to signal the
+      // end of the stream to the client. The message reducer does not, and should not, handle this
+      // event, so we just return.
+      if (eventType === "end-of-stream") {
         return;
       }
 

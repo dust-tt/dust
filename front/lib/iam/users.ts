@@ -68,13 +68,6 @@ function mapAuth0ProviderToLegacy(auth0Sub: string): LegacyProviderInfo {
 export async function fetchUserFromSession(session: SessionWithUser) {
   const { workOSUserId, auth0Sub } = session.user;
 
-  if (session.type === "workos" && workOSUserId) {
-    const userWithWorkOS = await UserResource.fetchByWorkOSUserId(workOSUserId);
-    if (userWithWorkOS) {
-      return userWithWorkOS;
-    }
-  }
-
   //TODO(workos): Remove auth0 user lookup.
   if (session.type === "auth0" && auth0Sub) {
     const userWithAuth0 = await UserResource.fetchByAuth0Sub(auth0Sub);
@@ -83,7 +76,21 @@ export async function fetchUserFromSession(session: SessionWithUser) {
     }
 
     const legacyProviderInfo = mapAuth0ProviderToLegacy(auth0Sub);
-    return fetchUserWithLegacyProvider(legacyProviderInfo, auth0Sub);
+    const legacyUser = await fetchUserWithLegacyProvider(
+      legacyProviderInfo,
+      auth0Sub
+    );
+
+    if (legacyUser) {
+      return legacyUser;
+    }
+  }
+
+  if (workOSUserId) {
+    const userWithWorkOS = await UserResource.fetchByWorkOSUserId(workOSUserId);
+    if (userWithWorkOS) {
+      return userWithWorkOS;
+    }
   }
 
   return null;
@@ -419,6 +426,34 @@ export async function mergeUserIdentities({
 
   // Migrate authorship of keys from the secondary user to the primary user.
   await KeyModel.update(userIdValues, userIdOptions);
+
+  if (
+    primaryUser.email === secondaryUser.email &&
+    secondaryUser.workOSUserId &&
+    !primaryUser.workOSUserId
+  ) {
+    const workOSUserId = secondaryUser.workOSUserId;
+    await UserModel.update(
+      {
+        workOSUserId: undefined,
+      },
+      {
+        where: {
+          id: secondaryUser.id,
+        },
+      }
+    );
+    await UserModel.update(
+      {
+        workOSUserId,
+      },
+      {
+        where: {
+          id: primaryUser.id,
+        },
+      }
+    );
+  }
 
   if (revokeSecondaryUser) {
     await revokeAndTrackMembership(

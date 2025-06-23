@@ -1,7 +1,7 @@
 import { updateAllWorkspaceUsersRegionMetadata } from "@app/admin/relocate_users";
 import {
   pauseAllManagedDataSources,
-  resumeAllManagedDataSources,
+  unpauseAllManagedDataSources,
 } from "@app/lib/api/data_sources";
 import { pauseAllLabsWorkflows } from "@app/lib/api/labs";
 import type { RegionType } from "@app/lib/api/regions/config";
@@ -188,14 +188,14 @@ makeScript(
             return;
           }
 
-          // 2) Resume all webcrawler connectors in the destination region.
-          const resumeDestConnectorsRes = await resumeAllManagedDataSources(
+          // 2) Unpause all webcrawler connectors in the destination region.
+          const unpauseDestConnectorsRes = await unpauseAllManagedDataSources(
             auth,
             ["webcrawler"]
           );
-          if (resumeDestConnectorsRes.isErr()) {
+          if (unpauseDestConnectorsRes.isErr()) {
             logger.error(
-              `Failed to resume connectors: ${resumeDestConnectorsRes.error.message}`
+              `Failed to unpause connectors: ${unpauseDestConnectorsRes.error.message}`
             );
             return;
           }
@@ -215,12 +215,12 @@ makeScript(
             return;
           }
 
-          // 2) Resume all connectors in the source region.
-          const resumeSrcConnectorsRes =
-            await resumeAllManagedDataSources(auth);
-          if (resumeSrcConnectorsRes.isErr()) {
+          // 2) Unpause all connectors in the source region.
+          const unpauseSrcConnectorsRes =
+            await unpauseAllManagedDataSources(auth);
+          if (unpauseSrcConnectorsRes.isErr()) {
             logger.error(
-              `Failed to resume connectors: ${resumeSrcConnectorsRes.error.message}`
+              `Failed to unpause connectors: ${unpauseSrcConnectorsRes.error.message}`
             );
             return;
           }

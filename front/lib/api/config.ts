@@ -17,6 +17,13 @@ const config = {
       "NEXT_PUBLIC_DUST_CLIENT_FACING_URL"
     );
   },
+  getOAuthProvider: (): "auth0" | "workos" => {
+    const provider = EnvironmentConfig.getOptionalEnvVariable("OAUTH_PROVIDER");
+    if (!provider || (provider !== "auth0" && provider !== "workos")) {
+      return "auth0"; // Default to auth0 if not set or invalid.
+    }
+    return provider;
+  },
   getAuth0TenantUrl: (): string => {
     return EnvironmentConfig.getEnvVariable("AUTH0_TENANT_DOMAIN_URL");
   },
@@ -157,6 +164,9 @@ const config = {
   },
   getOAuthSlackClientId: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_SLACK_CLIENT_ID");
+  },
+  getOAuthSlackBotClientId: (): string => {
+    return EnvironmentConfig.getEnvVariable("OAUTH_SLACK_BOT_CLIENT_ID");
   },
   getOAuthIntercomClientId: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_INTERCOM_CLIENT_ID");

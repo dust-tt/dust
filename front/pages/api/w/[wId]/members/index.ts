@@ -65,6 +65,16 @@ async function handler(
 ): Promise<void> {
   switch (req.method) {
     case "GET":
+      if (!auth.isAdmin()) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "workspace_auth_error",
+            message: "Only workspace admins can access the members list.",
+          },
+        });
+      }
+
       const paginationRes = MembersPaginationCodec.decode(req.query);
       if (isLeft(paginationRes)) {
         return apiError(req, res, {
@@ -78,7 +88,7 @@ async function handler(
 
       const paginationParams = paginationRes.right;
 
-      if (auth.isBuilder() && req.query.role && req.query.role === "admin") {
+      if (req.query.role && req.query.role === "admin") {
         const { members, total, nextPageParams } = await getMembers(
           auth,
           {

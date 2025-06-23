@@ -129,7 +129,7 @@ export interface ContentNode {
   parentInternalId: string | null;
   permission: ConnectorPermission;
   preventSelection?: boolean;
-  providerVisibility?: ProviderVisibility;
+  providerVisibility: ProviderVisibility | null;
   sourceUrl: string | null;
   title: string;
   type: ContentNodeType;
@@ -137,7 +137,7 @@ export interface ContentNode {
 
 export interface ContentNodeWithParent extends ContentNode {
   parentInternalIds: string[] | null;
-  parentTitle?: string;
+  parentTitle: string | null;
 }
 
 export type GoogleDriveFolderType = {
@@ -573,6 +573,43 @@ export class ConnectorsAPI {
       headers: this.getDefaultHeaders(),
       body: JSON.stringify(adminCommand),
     });
+
+    return this._resultFromResponse(res);
+  }
+
+  async getNotionUrlStatus({
+    connectorId,
+    url,
+  }: {
+    connectorId: string;
+    url: string;
+  }): Promise<
+    ConnectorsAPIResponse<{
+      notion: {
+        exists: boolean;
+        type?: "page" | "database";
+      };
+      dust: {
+        synced: boolean;
+        lastSync?: string;
+        breadcrumbs?: Array<{
+          id: string;
+          title: string;
+          type: "page" | "database" | "workspace";
+        }>;
+      };
+      summary: string;
+    }>
+  > {
+    const res = await this._fetchWithError(
+      `${this._url}/notion/url/status?connector_id=${encodeURIComponent(
+        connectorId
+      )}&url=${encodeURIComponent(url)}`,
+      {
+        method: "GET",
+        headers: this.getDefaultHeaders(),
+      }
+    );
 
     return this._resultFromResponse(res);
   }

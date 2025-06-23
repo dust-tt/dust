@@ -629,6 +629,12 @@ export interface UpsertTableArgs {
   allowEmptySchema?: boolean;
 }
 
+export function isUpsertDocumentArgs(
+  args: UpsertTableArgs | UpsertDocumentArgs | undefined
+): args is UpsertDocumentArgs {
+  return args !== undefined && "document_id" in args;
+}
+
 export function isUpsertTableArgs(
   args: UpsertTableArgs | UpsertDocumentArgs | undefined
 ): args is UpsertTableArgs {
@@ -1223,7 +1229,7 @@ export async function pauseAllManagedDataSources(
   return new Ok(res);
 }
 
-export async function resumeAllManagedDataSources(
+export async function unpauseAllManagedDataSources(
   auth: Authenticator,
   providers?: ConnectorProvider[]
 ) {
@@ -1247,36 +1253,19 @@ export async function resumeAllManagedDataSources(
     async (ds) => {
       assert(ds.connectorId, "Connector ID is required");
 
-      const { connectorId } = ds;
-
-      const setErrorCommand: AdminCommandType = {
-        majorCommand: "connectors",
-        command: "clear-error",
-        args: {
-          connectorId,
-          wId: auth.getNonNullableWorkspace().sId,
-          dsId: ds.sId,
-        },
-      };
-
-      const setErrorRes = await connectorsAPI.admin(setErrorCommand);
-      if (setErrorRes.isErr()) {
-        return new Err(new Error(setErrorRes.error.message));
+      const unpauseRes = await connectorsAPI.unpauseConnector(ds.connectorId);
+      if (unpauseRes.isErr()) {
+        return new Err(new Error(unpauseRes.error.message));
       }
 
-      const resumeRes = await connectorsAPI.resumeConnector(ds.connectorId);
-      if (resumeRes.isErr()) {
-        return new Err(new Error(resumeRes.error.message));
-      }
-
-      return new Ok(resumeRes.value);
+      return new Ok(unpauseRes.value);
     },
     { concurrency: 5 }
   );
 
   const failed = res.filter((r) => r.isErr());
   if (failed.length > 0) {
-    return new Err(new Error(`Failed to resume ${failed.length} connectors.`));
+    return new Err(new Error(`Failed to unpause ${failed.length} connectors.`));
   }
 
   return new Ok(res);

@@ -375,6 +375,7 @@ export async function generateConversationTitle(
     conversation,
     model,
     prompt: "", // There is no prompt for title generation.
+    tools: "",
     allowedTokenCount: model.contextSize - MIN_GENERATION_TOKENS,
     excludeActions: true,
     excludeImages: true,
@@ -1878,16 +1879,6 @@ async function* streamRunAgentEvents(
           errorMessage: event.error.message,
           errorMetadata: event.error.metadata,
         });
-
-        logger.error(
-          {
-            error: event.error,
-            workspaceId: auth.workspace()?.sId,
-            agentMessageId: agentMessage.sId,
-          },
-          "Agent error"
-        );
-
         yield event;
         return;
 

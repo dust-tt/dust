@@ -15,6 +15,7 @@ import { MicrosoftOAuthProvider } from "@app/lib/api/oauth/providers/microsoft";
 import { NotionOAuthProvider } from "@app/lib/api/oauth/providers/notion";
 import { SalesforceOAuthProvider } from "@app/lib/api/oauth/providers/salesforce";
 import { SlackOAuthProvider } from "@app/lib/api/oauth/providers/slack";
+import { SlackBotOAuthProvider } from "@app/lib/api/oauth/providers/slack_bot";
 import { ZendeskOAuthProvider } from "@app/lib/api/oauth/providers/zendesk";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
@@ -56,6 +57,7 @@ const _PROVIDER_STRATEGIES: Record<OAuthProvider, BaseOAuthStrategyProvider> = {
   notion: new NotionOAuthProvider(),
   salesforce: new SalesforceOAuthProvider(),
   slack: new SlackOAuthProvider(),
+  slack_bot: new SlackBotOAuthProvider(),
   zendesk: new ZendeskOAuthProvider(),
 };
 

@@ -138,11 +138,15 @@ export function SpaceWebsiteForm({
             </DropdownMenuTrigger>
             <DropdownMenuContent>
               <DropdownMenuRadioGroup>
-                {CrawlingFrequencies.map((frequency) => (
+                {CrawlingFrequencies.filter(
+                  (freq) =>
+                    state.crawlFrequency === "daily" ? true : freq !== "daily" // Only display the 'daily' option if the crawler has it
+                ).map((frequency) => (
                   <DropdownMenuRadioItem
                     key={frequency}
                     value={frequency}
                     label={FREQUENCY_DISPLAY_TEXT[frequency]}
+                    disabled={frequency === "daily"}
                     onClick={() =>
                       dispatch({
                         type: "SET_FIELD",

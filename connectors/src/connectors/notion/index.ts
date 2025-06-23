@@ -1,4 +1,4 @@
-import type { Result } from "@dust-tt/client";
+import type { ConnectorProvider, Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
 import _ from "lodash";
 
@@ -78,6 +78,8 @@ export async function workspaceIdFromConnectionId(connectionId: string) {
 }
 
 export class NotionConnectorManager extends BaseConnectorManager<null> {
+  readonly provider: ConnectorProvider = "notion";
+
   static async create({
     dataSourceConfig,
     connectionId,
@@ -216,7 +218,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
 
       // If connector was previously paused, unpause it.
       if (c.isPaused()) {
-        await this.unpause();
+        await this.unpauseAndResume();
       }
 
       const dataSourceConfig = dataSourceConfigFromConnector(c);
@@ -323,52 +325,6 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
         "Error cleaning up Notion connector."
       );
       return res;
-    }
-
-    return new Ok(undefined);
-  }
-
-  async pause(): Promise<Result<undefined, Error>> {
-    const connector = await ConnectorResource.fetchById(this.connectorId);
-
-    if (!connector) {
-      logger.error(
-        {
-          connectorId: this.connectorId,
-        },
-        "Notion connector not found."
-      );
-
-      return new Err(new Error("Connector not found"));
-    }
-
-    await connector.markAsPaused();
-    const stopRes = await this.stop();
-    if (stopRes.isErr()) {
-      return stopRes;
-    }
-
-    return new Ok(undefined);
-  }
-
-  async unpause(): Promise<Result<undefined, Error>> {
-    const connector = await ConnectorResource.fetchById(this.connectorId);
-
-    if (!connector) {
-      logger.error(
-        {
-          connectorId: this.connectorId,
-        },
-        "Notion connector not found."
-      );
-
-      return new Err(new Error("Connector not found"));
-    }
-
-    await connector.markAsUnpaused();
-    const r = await this.resume();
-    if (r.isErr()) {
-      return r;
     }
 
     return new Ok(undefined);

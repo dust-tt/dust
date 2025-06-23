@@ -157,6 +157,10 @@ export async function getContentFragmentBlob(
         parents: [],
         children_count: 1,
         timestamp: dsView.dataSource.createdAt.getTime(),
+        provider_visibility: null,
+        parent_id: null,
+        source_url: null,
+        parent_title: null,
       };
     } else {
       const searchFilterRes = getSearchFilterFromDataSourceViews([dsView], {

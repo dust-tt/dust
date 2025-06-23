@@ -1,4 +1,4 @@
-import type { Result } from "@dust-tt/client";
+import type { ConnectorProvider, Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
 
 import type {
@@ -42,6 +42,8 @@ const logger = mainLogger.child({
 });
 
 export class SalesforceConnectorManager extends BaseConnectorManager<null> {
+  readonly provider: ConnectorProvider = "salesforce";
+
   static async create({
     dataSourceConfig,
     connectionId,
@@ -312,51 +314,6 @@ export class SalesforceConnectorManager extends BaseConnectorManager<null> {
     const launchRes = await launchSalesforceSyncWorkflow(this.connectorId);
     if (launchRes.isErr()) {
       return launchRes;
-    }
-
-    return new Ok(undefined);
-  }
-
-  async pause(): Promise<Result<undefined, Error>> {
-    const connector = await ConnectorResource.fetchById(this.connectorId);
-
-    if (!connector) {
-      logger.error(
-        {
-          connectorId: this.connectorId,
-        },
-        "Notion connector not found."
-      );
-
-      return new Err(new Error("Connector not found"));
-    }
-
-    await connector.markAsPaused();
-    const stopRes = await this.stop();
-    if (stopRes.isErr()) {
-      return stopRes;
-    }
-
-    return new Ok(undefined);
-  }
-
-  async unpause(): Promise<Result<undefined, Error>> {
-    const connector = await ConnectorResource.fetchById(this.connectorId);
-
-    if (!connector) {
-      logger.error(
-        {
-          connectorId: this.connectorId,
-        },
-        "Notion connector not found."
-      );
-
-      return new Err(new Error("Connector not found"));
-    }
-    await connector.markAsUnpaused();
-    const r = await this.resume();
-    if (r.isErr()) {
-      return r;
     }
 
     return new Ok(undefined);

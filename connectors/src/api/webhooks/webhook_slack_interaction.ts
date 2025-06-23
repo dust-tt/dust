@@ -3,6 +3,7 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 
+import type { SlackWebhookResBody } from "@connectors/api/webhooks/slack/utils";
 import {
   botReplaceMention,
   botValidateToolExecution,
@@ -73,8 +74,6 @@ export const SlackInteractionPayloadSchema = t.type({
   ),
   response_url: t.string,
 });
-
-type SlackWebhookResBody = { challenge: string } | null;
 
 const _webhookSlackInteractionsAPIHandler = async (
   req: Request<

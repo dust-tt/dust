@@ -337,7 +337,7 @@ async function renderDataSourcesConfigurations(
 
       const serializedDataSourceView = dataSourceView.toJSON();
 
-      if (!dataSourceView.dataSource.connectorId || !sr.resources) {
+      if (!sr.resources) {
         return {
           dataSourceView: serializedDataSourceView,
           selectedResources: [],

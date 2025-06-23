@@ -141,37 +141,34 @@ export async function processSyncedQueryPage(
   connectorId: ModelId,
   {
     queryId,
-    lastModifiedDateCursor,
+    lastModifiedDateCursorTs,
     limit,
-    lastSeenModifiedDate,
-    upToLastModifiedDate,
+    lastSeenModifiedDateTs,
+    upToLastModifiedDateTs,
   }: {
     queryId: ModelId;
-    lastModifiedDateCursor: Date | null;
+    lastModifiedDateCursorTs: number | null;
     limit: number;
-    lastSeenModifiedDate: Date | null;
-    upToLastModifiedDate: Date | null;
+    lastSeenModifiedDateTs: number | null;
+    upToLastModifiedDateTs: number | null;
   }
 ): Promise<{
   // The most recent lastModifiedDate seen
-  lastSeenModifiedDate: Date | null;
+  lastSeenModifiedDateTs: number | null;
   // The older lastModifiedDate seen in this page to use for pagination
-  lastModifiedDateCursor: Date | null;
+  lastModifiedDateCursorTs: number | null;
   hasMore: boolean;
   count: number;
 }> {
-  // This is terrible but temporal serializes Dates to string across workflow/activity boundary.
-  // Having the bype Date is convenient here but this ensures that we turn back serialized strings
-  // into Dates.
-  if (typeof lastSeenModifiedDate === "string") {
-    lastSeenModifiedDate = new Date(lastSeenModifiedDate);
-  }
-  if (typeof lastModifiedDateCursor === "string") {
-    lastModifiedDateCursor = new Date(lastModifiedDateCursor);
-  }
-  if (typeof upToLastModifiedDate === "string") {
-    upToLastModifiedDate = new Date(upToLastModifiedDate);
-  }
+  let lastSeenModifiedDate = lastSeenModifiedDateTs
+    ? new Date(lastSeenModifiedDateTs)
+    : null;
+  let lastModifiedDateCursor = lastModifiedDateCursorTs
+    ? new Date(lastModifiedDateCursorTs)
+    : null;
+  const upToLastModifiedDate = upToLastModifiedDateTs
+    ? new Date(upToLastModifiedDateTs)
+    : null;
 
   const connAndCredsRes = await getConnectorAndCredentials(connectorId);
   if (connAndCredsRes.isErr()) {
@@ -322,9 +319,16 @@ export async function processSyncedQueryPage(
     { concurrency: 8 }
   );
 
+  if (lastSeenModifiedDate) {
+    lastSeenModifiedDateTs = lastSeenModifiedDate.getTime();
+  }
+  if (lastModifiedDateCursor) {
+    lastModifiedDateCursorTs = lastModifiedDateCursor.getTime();
+  }
+
   return {
-    lastSeenModifiedDate,
-    lastModifiedDateCursor,
+    lastSeenModifiedDateTs,
+    lastModifiedDateCursorTs,
     hasMore: processedCount > 0,
     count: processedCount,
   };
