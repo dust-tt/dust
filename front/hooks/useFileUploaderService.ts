@@ -94,17 +94,16 @@ export function useFileUploaderService({
       );
     }
 
-    const isTooBig = [...categoryToSize].some(([cat, size]) => {
+    const oversizedCategories = [...categoryToSize].filter(([cat, size]) => {
       const multiplier = cat === "image" ? 5 : 2;
       return size > MAX_FILE_SIZES[cat] * multiplier;
     });
 
-    if (isTooBig) {
+    for (const cat of oversizedCategories) {
       sendNotification({
         type: "error",
         title: "Files too large.",
-        description:
-          "Combined file sizes exceed the limits. Please upload smaller files.",
+        description: `Combined ${cat[0]} file sizes exceed the limit of ${MAX_FILE_SIZES[cat[0]] / 1024 / 1024}MB. Please upload smaller files.`,
       });
       setIsProcessingFiles(false);
       return;
