@@ -69,7 +69,9 @@ const sendPasswordResetEmail = async (
         subject: "[Dust] Password Reset Required - Important Update",
         body: `<p>We're writing to inform you about an important update to our authentication system.</p>
 <p>We're upgrading a security infrastructure component on Dust to improve user login experience. As part of this migration, you need to reset your password on Dust.</p>
+
 <p>This action is only required if you sign in to Dust using email and password. If you only log in on Dust using Google, GitHub, or SSO, no action is needed.</p>
+
 <p>Please click the button below to reset your password:</p>
 <div style="text-align: center; margin: 40px 0;">
       <table cellpadding="0" cellspacing="0" border="0" style="margin: 0 auto;">
