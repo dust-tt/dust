@@ -91,6 +91,14 @@ export async function getWorkOSSession(
       }
 
       console.log("[WORKOS SESSION]", JSON.stringify(r, null, 2));
+      console.log(
+        "[WORKOS COOKIE]",
+        sessionData,
+        organizationId,
+        workspaceId,
+        region,
+        authenticationMethod
+      );
 
       return {
         type: "workos" as const,
