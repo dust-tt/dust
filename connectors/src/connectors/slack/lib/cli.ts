@@ -248,7 +248,7 @@ export const slack = async ({
     }
 
     case "whitelist-bot": {
-      const { wId, botName, groupId, whitelistType } = args;
+      const { wId, botName, groupId, whitelistType, providerType } = args;
       if (!wId) {
         throw new Error("Missing --wId argument");
       }
@@ -260,6 +260,16 @@ export const slack = async ({
         throw new Error("Missing --groupId argument");
       }
 
+      if (!providerType) {
+        throw new Error("Missing --providerType argument");
+      }
+
+      if (!["slack", "slack_bot"].includes(providerType)) {
+        throw new Error(
+          "--providerType argument must be set to 'slack' or 'slack_bot'"
+        );
+      }
+
       if (!whitelistType || !isSlackbotWhitelistType(whitelistType)) {
         throw new Error(
           "--whitelistType argument must be set to 'summon_agent' or 'index_messages'"
@@ -269,7 +279,7 @@ export const slack = async ({
       const connector = await ConnectorModel.findOne({
         where: {
           workspaceId: `${args.wId}`,
-          type: "slack",
+          type: providerType,
         },
       });
 
