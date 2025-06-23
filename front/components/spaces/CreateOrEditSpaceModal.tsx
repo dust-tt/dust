@@ -430,7 +430,7 @@ export function CreateOrEditSpaceModal({
         <SheetContainer>
           <div className="flex w-full flex-col gap-y-4">
             {!space && (
-              <>
+              <div className="mb-4 flex w-full flex-col gap-y-4">
                 <Page.SectionHeader title="Name" />
                 <Input
                   placeholder="Space's name"
@@ -443,7 +443,7 @@ export function CreateOrEditSpaceModal({
                     setIsDirty(true);
                   }}
                 />
-              </>
+              </div>
             )}
 
             <div className="flex w-full items-center justify-between overflow-visible">
