@@ -188,6 +188,15 @@ export function isTemplateAgentConfiguration(
 export type AssistantConfigurationInput =
   PostOrPatchAgentConfigurationRequestBody["assistant"];
 
+export const DEFAULT_MAX_STEPS_USE_PER_RUN = 8;
+export const MAX_STEPS_USE_PER_RUN_LIMIT = 24;
+export const EXTENDED_MAX_STEPS_USE_PER_RUN_LIMIT = 128;
+
+/**
+ * Agent events
+ */
+
+// Event sent when an agent error occured before we have a agent message in the database.
 export type AgentMessageErrorEvent = {
   type: "agent_message_error";
   created: number;
