@@ -6,6 +6,7 @@ import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
+import type { ConversationType} from "@app/types";
 import { normalizeError } from "@app/types";
 
 const serverInfo: InternalMCPServerDefinitionType = {
@@ -18,31 +19,8 @@ const serverInfo: InternalMCPServerDefinitionType = {
   documentationUrl: null,
 };
 
-function validateContext(agentLoopContext?: AgentLoopContextType) {
-  if (!agentLoopContext?.runContext) {
-    throw new Error("No conversation context available");
-  }
-  return agentLoopContext.runContext;
-}
-
-function validateMemoryFile(
-  fileResource: FileResource | null,
-  conversationId: string
-): FileResource {
-  if (!fileResource) {
-    throw new Error("Memory file not found");
-  }
-
-  const metadata = fileResource.useCaseMetadata;
-
-  if (
-    metadata?.type !== "memory_file" ||
-    metadata?.conversationId !== conversationId
-  ) {
-    throw new Error("File is not a memory file for this conversation");
-  }
-
-  return fileResource;
+function getMemoryFileName(conversation: ConversationType) {
+  return `memories_${conversation.sId}`;
 }
 
 async function writeFileContent(
@@ -92,68 +70,60 @@ function createServer(
   const server = new McpServer(serverInfo);
 
   server.tool(
-    "create_memory_file",
-    "Create a new memory file with specified content",
+    "initialize",
+    "Create new memories with specified content.",
     {
-      fileName: z.string().describe("Name of the memory file"),
-      content: z.string().describe("Initial content to store"),
-      description: z.string().optional().describe("Optional description"),
+      content: z.string().describe("Initial content to store."),
     },
-    async ({ fileName, content, description }) => {
+    async ({ content }) => {
+      if (!agentLoopContext?.runContext) {
+        throw new Error("Unreachable: missing agentLoopRunContext.");
+      }
+
+      const owner = auth.getNonNullableWorkspace();
+
+      const fileName = getMemoryFileName(
+        agentLoopContext.runContext.conversation
+      );
+      const file = await FileResource.makeNew({
+        workspaceId: owner.id,
+        contentType: "text/plain",
+        fileName,
+        fileSize: Buffer.byteLength(content, "utf8"),
+        useCase: "conversation",
+        useCaseMetadata: {
+          conversationId: agentLoopContext.runContext.conversation.sId,
+        },
+      });
+
       try {
-        const runContext = validateContext(agentLoopContext);
-        const owner = auth.getNonNullableWorkspace();
-
-        const fileResource = await FileResource.makeNew({
-          workspaceId: owner.id,
-          contentType: "text/plain",
-          fileName,
-          fileSize: Buffer.byteLength(content, "utf8"),
-          useCase: "conversation",
-          useCaseMetadata: {
-            conversationId: runContext.conversation.sId,
-            agentMessageId: runContext.agentMessage.sId,
-            type: "memory_file",
-            description: description || `Memory file: ${fileName}`,
-          },
-        });
-
-        await writeFileContent(fileResource, auth, content);
-        await fileResource.markAsReady();
-
-        return {
-          isError: false,
-          content: [
-            {
-              type: "text",
-              text: `Memory file '${fileName}' created successfully with ID: ${fileResource.sId}`,
-            },
-          ],
-        };
+        await writeFileContent(file, auth, content);
       } catch (error) {
         return makeMCPToolTextError(
-          `Failed to create memory file: ${error instanceof Error ? error.message : String(error)}`
+          `Failed to create memory file: ${normalizeError(error).message}`
         );
       }
+      await file.markAsReady();
+
+      return {
+        isError: false,
+        content: [
+          {
+            type: "text",
+            text: "Successfully put the input content in the conversation memories.",
+          },
+        ],
+      };
     }
   );
 
   server.tool(
-    "read_memory_file",
+    "read",
     "Read the contents of an existing memory file by ID or name",
     {
-      fileId: z.string().optional().describe("ID of the memory file"),
-      fileName: z.string().optional().describe("Name of the memory file"),
     },
-    async ({ fileId, fileName }) => {
+    async () => {
       try {
-        const runContext = validateContext(agentLoopContext);
-
-        if (!fileId && !fileName) {
-          return makeMCPToolTextError(
-            "Either fileId or fileName must be provided"
-          );
-        }
 
         let fileResource: FileResource | null = null;
 
@@ -279,65 +249,19 @@ function createServer(
   );
 
   server.tool(
-    "list_memory_files",
-    "List all memory files in the current conversation",
+    "clear_memories",
+    "Delete the memory file for the current conversation.",
     {},
     async () => {
-      try {
-        const runContext = validateContext(agentLoopContext);
-        const memoryFiles = await FileResource.fetchMemoryFilesByConversationId(
-          auth,
-          runContext.conversation.sId
-        );
-
-        if (memoryFiles.length === 0) {
-          return {
-            isError: false,
-            content: [
-              {
-                type: "text",
-                text: "No memory files found in this conversation.",
-              },
-            ],
-          };
-        }
-
-        const fileList = memoryFiles
-          .map((file) => {
-            const metadata = file.useCaseMetadata;
-            const description = metadata?.description || "No description";
-            const createdAt = new Date(file.createdAt).toISOString();
-            return `- ${file.fileName} (ID: ${file.sId}) - ${description} - Created: ${createdAt}`;
-          })
-          .join("\n");
-
-        return {
-          isError: false,
-          content: [
-            {
-              type: "text",
-              text: `Memory files in this conversation:\n${fileList}`,
-            },
-          ],
-        };
-      } catch (error) {
-        return makeMCPToolTextError(
-          `Failed to list memory files: ${normalizeError(error).message}`
-        );
+      if (!agentLoopContext?.runContext) {
+        throw new Error("Unreachable: missing agentLoopRunContext.");
       }
-    }
-  );
 
-  server.tool(
-    "clear_memory_file",
-    "Delete a memory file by its ID",
-    {
-      fileId: z.string().describe("ID of the memory file to delete"),
-    },
-    async ({ fileId }) => {
       try {
-        const runContext = validateContext(agentLoopContext);
-        const fileResource = await FileResource.fetchById(auth, fileId);
+        const fileResource = await FileResource.fetchById(
+          auth,
+          agentLoopContext.runContext.conversation.sId
+        );
 
         const validatedFile = validateMemoryFile(
           fileResource,
