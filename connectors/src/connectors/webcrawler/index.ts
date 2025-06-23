@@ -74,7 +74,6 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
       crawlFrequency: configuration.crawlFrequency,
       lastCrawledAt: null,
       headers: configuration.headers,
-      customCrawler: configuration.customCrawler,
     };
 
     const connector = await ConnectorResource.makeNew(
@@ -128,7 +127,6 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
       );
     }
 
-    // If it's firecrawl-api
     if (webConfig.crawlId !== null) {
       // If not, there is not really workflows to stop
       await getFirecrawl().cancelCrawl(webConfig.crawlId);
