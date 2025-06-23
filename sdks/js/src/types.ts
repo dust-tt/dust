@@ -2520,6 +2520,7 @@ const SupportedUsageTablesSchema = FlexibleEnumSchema<
   | "builders"
   | "assistants"
   | "feedbacks"
+  | "groups"
   | "all"
 >();
 
