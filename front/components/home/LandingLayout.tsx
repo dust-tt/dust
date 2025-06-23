@@ -87,11 +87,11 @@ export default function LandingLayout({
               icon={LoginIcon}
               onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                 if (e.metaKey) {
-                  window.location.href = `/api/workos/login?returnTo=${postLoginReturnToUrl}`;
+                  window.location.href = `/api/auth/login?returnTo=${postLoginReturnToUrl}`;
                 } else if (e.shiftKey) {
                   window.location.href = `/api/auth/login?prompt=login&returnTo=${postLoginReturnToUrl}`;
                 } else {
-                  window.location.href = `/api/auth/login?returnTo=${postLoginReturnToUrl}`;
+                  window.location.href = `/api/workos/login?returnTo=${postLoginReturnToUrl}`;
                 }
               }}
             />
