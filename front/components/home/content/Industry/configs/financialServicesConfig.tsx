@@ -29,10 +29,10 @@ export const financialServicesConfig: IndustryPageConfig = {
     },
     testimonialCard: {
       quote:
-        "Dust is more than just a tool, it's a catalyst for innovation in financial services.",
+        "Dust helped us transform Kyriba's operations and foster a culture of continuous innovation.",
       author: {
-        name: "David Anderson",
-        title: "Head of Operations",
+        name: "Boris Lipiainen",
+        title: "Chief Technology Officer",
       },
       company: {
         logo: "/static/landing/logos/color/kyriba.png",
@@ -197,67 +197,66 @@ export const financialServicesConfig: IndustryPageConfig = {
         description: "in compliance reporting time with automated workflows",
       },
       {
-        value: "90",
+        value: "80",
         unit: "%",
-        type: "Accuracy",
-        description: "in regulatory compliance monitoring and risk assessment",
+        type: "Adoption",
+        description: "weekly users at top financial leaders",
       },
       {
-        value: "50",
-        unit: "%",
-        type: "Faster",
-        description: "client onboarding and KYC processing",
+        value: "3",
+        unit: "h",
+        type: "Savings",
+        description: "weekly hours reported by half of Kyriba",
       },
     ],
   },
   demoVideo: {
-    sectionTitle: "See Dust transform financial services",
-    videoUrl: "https://fast.wistia.net/embed/iframe/8q80neektv",
+    sectionTitle: "See Dust in motion",
+    videoUrl: "https://fast.wistia.net/embed/iframe/zzbhe95pvz",
   },
   trustedBySecond: {
     title: "Trusted by financial leaders",
-    logoSet: "default",
+    logoSet: "finance",
   },
   testimonial: {
     quote:
-      "Dust is the most impactful software we've adopted since building Clay.",
+      "Dust helped us transform Kyriba's operations and foster a culture of continuous innovation.",
     author: {
-      name: "Everett Berry",
-      title: "Head of GTM Engineering at Clay",
+      name: "Boris Lipiainen",
+      title: "Chief Technology Officer",
     },
     company: {
-      logo: "/static/landing/logos/color/clay_white.png",
-      alt: "Clay logo",
+      logo: "/static/landing/logos/color/kyriba.png",
+      alt: "Kyriba logo",
     },
-    bgColor: "bg-green-600",
+    bgColor: "bg-golden-600",
     textColor: "text-white",
   },
   customerStories: {
     title: "Customer stories",
     stories: [
       {
-        title: "How Clay is powering 4x team growth with Dust",
+        title:
+          "50,000 Hours Saved: How Qonto Revolutionized Compliance and Risk Assessment with AI",
         content:
-          "Clay uses Dust AI agents to scale their GTM team 4x while maintaining sales velocity and achieving 100% adoption across their growing team.",
-        href: "https://blog.dust.tt/clay-scaling-gtme-team/",
-        src: "https://blog.dust.tt/content/images/size/w2000/2025/06/clay_dust_agents.jpg",
+          "Germi, Qonto’s AI assistant, analyzes German industry codes and screens prohibited activities, automating compliance checks across European markets.",
+        href: "https://blog.dust.tt/qonto-dust-ai-partnership/",
+        src: "https://blog.dust.tt/content/images/size/w2000/2025/01/dust_qonto.png",
       },
       {
-        title:
-          "20%+ productivity gains in Sales: Insights from Alan and Payfit",
+        title: "Kyriba’s adoption of Dust across all functions",
         content:
-          "Leading companies share how Dust agents deliver significant productivity improvements and measurable ROI in sales operations.",
-        href: "https://blog.dust.tt/generative-ai-insights-alan-payfit-leaders/",
-        src: "https://blog.dust.tt/content/images/size/w2000/2025/01/Founder.jpg",
+          "43% of Kyriba employees save more than 3 hours weekly leveraging Dust for RFPs.",
+        href: "https://blog.dust.tt/kyriba-accelerating-innovation-with-dust/",
+        src: "https://blog.dust.tt/content/images/size/w2000/2024/10/kyriba_dust.jpg",
       },
       {
-        title:
-          "50% Time Savings: How Didomi Transformed Privacy Compliance with AI",
+        title: "Pennylane’s journey to deploy Dust for Customer Care teams",
         content:
-          "Didomi's legal team cuts workload by 50% using Dust's AI assistants for privacy compliance and legal document management.",
-        href: "https://blog.dust.tt/how-thomas-uses-ai-assistants-to-manage-legal-and-data-privacy-at-didomi/",
-        src: "https://blog.dust.tt/content/images/size/w2000/2025/01/dust_didomi.png",
-      },
+          "Dust evolved from a simple support tool into an integral part of Pennylane's operations.",
+        href: "https://blog.dust.tt/pennylane-dust-customer-support-journey/",
+        src: "https://blog.dust.tt/content/images/size/w2000/2024/12/pennylane_dust_customer_story.png",
+      },  
     ],
   },
   justUseDust: {

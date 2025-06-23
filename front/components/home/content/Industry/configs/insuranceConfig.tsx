@@ -29,14 +29,14 @@ export const insuranceConfig: IndustryPageConfig = {
     },
     testimonialCard: {
       quote:
-        "Dust is the most powerful software we've integrated to revolutionize our insurance operations.",
+        "Dust isn't just about saving time—it's about making better, more informed decisions.",
       author: {
-        name: "Michael Rodriguez",
-        title: "Head of Operations",
+        name: "Etienne Debost",
+        title: "Head of Architecture",
       },
       company: {
-        logo: "/static/landing/logos/color/placeholder.png",
-        alt: "Insurance Company logo",
+        logo: "/static/landing/logos/color/wakam.png",
+        alt: "Wakam",
       },
       bgColor: "bg-blue-600",
       textColor: "text-white",
@@ -55,7 +55,7 @@ export const insuranceConfig: IndustryPageConfig = {
   },
   trustedBy: {
     title: "Trusted by insurance leaders",
-    logoSet: "default",
+    logoSet: "insurance",
   },
   painPoints: {
     title: "Transform how you work",
@@ -192,27 +192,27 @@ export const insuranceConfig: IndustryPageConfig = {
     bgColor: "bg-blue-50",
     metrics: [
       {
-        value: "85",
+        value: "50",
         unit: "%",
         type: "Reduction",
-        description: "in manual claims processing time",
+        description: "in legal contract processing time",
       },
       {
-        value: "60",
+        value: "90",
         unit: "%",
-        type: "Improvement",
-        description: "in customer response time and satisfaction",
+        type: "Faster",
+        description: "partner 360 analysis",
       },
       {
-        value: "40",
+        value: "80%",
         unit: "%",
-        type: "Acceleration",
-        description: "in underwriting and policy processing speed",
+        type: "adoption",
+        description: "weekly active users",
       },
     ],
   },
   demoVideo: {
-    sectionTitle: "See Dust transform insurance operations",
+    sectionTitle: "See Dust in motion",
     videoUrl: "https://fast.wistia.net/embed/iframe/8q80neektv",
   },
   trustedBySecond: {
@@ -221,28 +221,21 @@ export const insuranceConfig: IndustryPageConfig = {
   },
   testimonial: {
     quote:
-      "Dust is the most impactful software we've adopted since building Clay.",
-    author: {
-      name: "Everett Berry",
-      title: "Head of GTM Engineering at Clay",
-    },
-    company: {
-      logo: "/static/landing/logos/color/clay_white.png",
-      alt: "Clay logo",
-    },
-    bgColor: "bg-green-600",
-    textColor: "text-white",
+        "Dust isn't just about saving time—it's about making better, more informed decisions.",
+      author: {
+        name: "Etienne Debost",
+        title: "Head of Architecture",
+      },
+      company: {
+        logo: "/static/landing/logos/color/wakam.png",
+        alt: "Wakam",
+      },
+      bgColor: "bg-blue-600",
+      textColor: "text-white",
   },
   customerStories: {
     title: "Customer stories",
     stories: [
-      {
-        title: "How Clay is powering 4x team growth with Dust",
-        content:
-          "Clay uses Dust AI agents to scale their GTM team 4x while maintaining sales velocity and achieving 100% adoption across their growing team.",
-        href: "https://blog.dust.tt/clay-scaling-gtme-team/",
-        src: "https://blog.dust.tt/content/images/size/w2000/2025/06/clay_dust_agents.jpg",
-      },
       {
         title:
           "20%+ productivity gains in Sales: Insights from Alan and Payfit",
@@ -251,11 +244,18 @@ export const insuranceConfig: IndustryPageConfig = {
         href: "https://blog.dust.tt/generative-ai-insights-alan-payfit-leaders/",
         src: "https://blog.dust.tt/content/images/size/w2000/2025/01/Founder.jpg",
       },
+      // {
+      //   title: "How Wakam Achieved 70% Company-Wide AI Adoption with 100+ Custom Agents",
+      //   content:
+      //     "Wakam transforms European insurance operations with AI, achieving 70% employee adoption and 90% productivity gains across 136 deployed agents.",
+      //   href: "TO BE ADDED",
+      //   src: "TO BE ADDED",
+      // },
       {
         title:
-          "50% Time Savings: How Didomi Transformed Privacy Compliance with AI",
+          "Wakam transforms legal workflows: 50% faster contract analysis with Dust",
         content:
-          "Didomi's legal team cuts workload by 50% using Dust's AI assistants for privacy compliance and legal document management.",
+          "Wakam slashes legal contract analysis time 50% using AI agents for document processing, compliance verification, and multilingual translation.",
         href: "https://blog.dust.tt/how-thomas-uses-ai-assistants-to-manage-legal-and-data-privacy-at-didomi/",
         src: "https://blog.dust.tt/content/images/size/w2000/2025/01/dust_didomi.png",
       },

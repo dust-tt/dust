@@ -29,14 +29,14 @@ export const retailEcommerceConfig: IndustryPageConfig = {
     },
     testimonialCard: {
       quote:
-        "Dust is the most impactful software we've adopted since building Clay.",
+        "Curiosity turned into necessity: I couldn't do half my job without Dust.",
       author: {
-        name: "Maria Garcia",
-        title: "Head of Operations",
+        name: "Valentine Chelius",
+        title: "Head of Marketing",
       },
       company: {
-        logo: "/static/landing/logos/color/placeholder.png",
-        alt: "Retail Company logo",
+        logo: "/static/landing/logos/color/fleet.png",
+        alt: "Fleet Logo",
       },
       bgColor: "bg-green-600",
       textColor: "text-white",
@@ -236,53 +236,52 @@ export const retailEcommerceConfig: IndustryPageConfig = {
     ],
   },
   demoVideo: {
-    sectionTitle: "See Dust transform retail operations",
+    sectionTitle: "See Dust in motion",
     videoUrl: "https://fast.wistia.net/embed/iframe/8q80neektv",
   },
   trustedBySecond: {
     title: "Trusted by retail leaders",
-    logoSet: "default",
+    logoSet: "retail",
   },
   testimonial: {
-    quote:
-      "Dust is the most impactful software we've adopted since building Clay.",
+    quote: "Curiosity turned into necessity: I couldn't do half my job without Dust.",
     author: {
-      name: "Everett Berry",
-      title: "Head of GTM Engineering at Clay",
+      name: "Valentine Chelius",
+      title: "Head of Marketing",
     },
     company: {
-      logo: "/static/landing/logos/color/clay_white.png",
-      alt: "Clay logo",
+      logo: "/static/landing/logos/color/fleet.png",
+      alt: "Fleet Logo",
     },
-    bgColor: "bg-green-600",
-    textColor: "text-white",
-  },
+  bgColor: "bg-green-600",
+  textColor: "text-white",
+},
   customerStories: {
     title: "Customer stories",
     stories: [
       {
-        title: "How Clay is powering 4x team growth with Dust",
+        title: "Building a Marketing Engine from Scratch at Fleet",
         content:
-          "Clay uses Dust AI agents to scale their GTM team 4x while maintaining sales velocity and achieving 100% adoption across their growing team.",
-        href: "https://blog.dust.tt/clay-scaling-gtme-team/",
-        src: "https://blog.dust.tt/content/images/size/w2000/2025/06/clay_dust_agents.jpg",
+          "With just two interns, Valentine created a scalable marketing operation using Dust’s AI capabilities for content and brand management.",
+        href: "https://blog.dust.tt/how-valentine-head-of-marketing-at-fleet-uses-dust/",
+        src: "https://blog.dust.tt/content/images/size/w2000/2025/01/dust_fleet.png",
       },
-      {
-        title:
-          "20%+ productivity gains in Sales: Insights from Alan and Payfit",
-        content:
-          "Leading companies share how Dust agents deliver significant productivity improvements and measurable ROI in sales operations.",
-        href: "https://blog.dust.tt/generative-ai-insights-alan-payfit-leaders/",
-        src: "https://blog.dust.tt/content/images/size/w2000/2025/01/Founder.jpg",
-      },
-      {
-        title:
-          "50% Time Savings: How Didomi Transformed Privacy Compliance with AI",
-        content:
-          "Didomi's legal team cuts workload by 50% using Dust's AI assistants for privacy compliance and legal document management.",
-        href: "https://blog.dust.tt/how-thomas-uses-ai-assistants-to-manage-legal-and-data-privacy-at-didomi/",
-        src: "https://blog.dust.tt/content/images/size/w2000/2025/01/dust_didomi.png",
-      },
+      // {
+      //   title:
+      //     "20%+ productivity gains in Sales: Insights from Alan and Payfit",
+      //   content:
+      //     "Leading companies share how Dust agents deliver significant productivity improvements and measurable ROI in sales operations.",
+      //   href: "https://blog.dust.tt/generative-ai-insights-alan-payfit-leaders/",
+      //   src: "https://blog.dust.tt/content/images/size/w2000/2025/01/Founder.jpg",
+      // },
+      // {
+      //   title:
+      //     "50% Time Savings: How Didomi Transformed Privacy Compliance with AI",
+      //   content:
+      //     "Didomi's legal team cuts workload by 50% using Dust's AI assistants for privacy compliance and legal document management.",
+      //   href: "https://blog.dust.tt/how-thomas-uses-ai-assistants-to-manage-legal-and-data-privacy-at-didomi/",
+      //   src: "https://blog.dust.tt/content/images/size/w2000/2025/01/dust_didomi.png",
+      // },
     ],
   },
   justUseDust: {

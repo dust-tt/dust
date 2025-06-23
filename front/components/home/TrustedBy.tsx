@@ -37,6 +37,30 @@ const LOGO_SETS = {
     { name: "gitguardian", src: "/static/landing/logos/gray/gitguardian.svg" },
     { name: "watershed", src: "/static/landing/logos/gray/watershed.svg" },
   ],
+  marketplace: [
+    { name: "doctolib", src: "/static/landing/logos/gray/doctolib.svg" },
+    { name: "blueground", src: "/static/landing/logos/gray/blueground.svg" },
+    { name: "malt", src: "/static/landing/logos/gray/malt.svg" },
+    { name: "ornikar", src: "/static/landing/logos/gray/ornikar.svg" },
+    { name: "wttj", src: "/static/landing/logos/gray/wttj.svg" },
+  ],
+  finance: [
+    { name: "pennylane", src: "/static/landing/logos/gray/pennylane.svg" },
+    { name: "qonto", src: "/static/landing/logos/gray/qonto.svg" },
+    { name: "kyriba", src: "/static/landing/logos/gray/kyriba.svg" },
+    { name: "keobiz", src: "/static/landing/logos/gray/keobiz.svg" },
+  ],
+  insurance: [
+    { name: "alan", src: "/static/landing/logos/gray/alan.svg" },
+    { name: "wakam", src: "/static/landing/logos/gray/wakam.svg" },
+  ],
+  retail: [
+    { name: "mirakl", src: "/static/landing/logos/gray/mirakl.svg" },
+    { name: "ankorstore", src: "/static/landing/logos/gray/ankorstore.svg" },
+    { name: "fleet", src: "/static/landing/logos/gray/fleet.svg" },
+    { name: "alma", src: "/static/landing/logos/gray/alma.svg" },
+    { name: "jumia", src: "/static/landing/logos/gray/jumia.svg" },
+  ],
 } as const;
 
 type LogoSetKey = keyof typeof LOGO_SETS;

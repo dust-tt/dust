@@ -12,11 +12,11 @@ export const marketplaceConfig: IndustryPageConfig = {
     title: (
       <>
         Dust for
-        <br /> B2B Marketplaces
+        <br /> Marketplaces
       </>
     ),
     description:
-      "Empower Your Marketplace Teams to Focus on Growth, Not Grunt Work. Automate operations, enhance seller success, and scale efficiently with AI.",
+      "The AI Solution Powering Marketplace Success. Streamline supplier acquisition, eliminate content bottlenecks, and scale support effortlessly.",
     ctaButtons: {
       primary: {
         label: "Get started",
@@ -35,10 +35,10 @@ export const marketplaceConfig: IndustryPageConfig = {
         title: "Chief People Officer at Doctolib",
       },
       company: {
-        logo: "/static/landing/logos/color/doctolib.png",
+        logo: "/static/landing/logos/color/doctolib_white.png",
         alt: "Doctolib logo",
       },
-      bgColor: "bg-blue-600",
+      bgColor: "bg-green-600",
       textColor: "text-white",
     },
     decorativeShapes: {
@@ -47,37 +47,37 @@ export const marketplaceConfig: IndustryPageConfig = {
     },
   },
   aiAgents: {
-    title: "Transform how you work",
+    title: "What if your teams focused on growth?",
     description:
-      "Deploy AI agents that automate marketplace operations, enhance seller onboarding, and provide intelligent insights—freeing your team to focus on strategic growth and innovation.",
+      "Deploy agents that research information, share insights across teams, and automate routine tasks—handling all the time-consuming work that slows you down. Your teams focus on growing your business while leveraging everything your organization has already built.",
     bgColor: "bg-gray-50",
   },
   trustedBy: {
-    title: "Trusted by marketplace leaders",
-    logoSet: "default",
+    title: "Trusted by Marketplace Leaders",
+    logoSet: "marketplaces",
   },
   painPoints: {
-    title: "Transform how you work",
+    title: "The 3 marketplace bottlenecks Dust solves",
     painPoints: [
       {
         icon: "/static/landing/industry/d-blue.svg",
-        title: "Scale Operations",
+        title: "Accelerate quality provider acquisition",
         description:
-          "Automate repetitive marketplace operations and seller management tasks to scale efficiently without proportional headcount growth.",
+          "Transform prospecting and qualification with automated workflows. Sign the best suppliers faster while efficiently answering all provider questions.",
         color: "blue",
       },
       {
         icon: "/static/landing/industry/d-red.svg",
-        title: "Enhance Seller Success",
+        title: "Scale content creation effortlessly",
         description:
-          "Provide personalized onboarding, automated support, and intelligent insights to help sellers succeed on your platform.",
+          "Generate targeted, high-quality content at scale to keep supplier and customer communities engaged across all your markets.",
         color: "red",
       },
       {
         icon: "/static/landing/industry/d-green.svg",
-        title: "Optimize Performance",
+        title: "Scale your best support expertise instantly",
         description:
-          "Leverage AI-powered analytics and automation to optimize marketplace operations and drive sustainable growth.",
+          "Let AI handle tier 1 & 2 support so your experts can focus on complex cases that drive real marketplace value.",
         color: "green",
       },
     ],
@@ -86,102 +86,120 @@ export const marketplaceConfig: IndustryPageConfig = {
     title: "Dust in Action",
     useCases: [
       {
-        title: "Supply Growth",
-        image: "/static/landing/industry/features/GTM_Ops.svg",
-        bgColor: "bg-orange-100",
+        title: "Supply Growth & Provider Acquisition",
+        image: "/static/landing/industry/features/supply_growth.svg",
+        bgColor: "bg-blue-100",
         features: [
           {
             icon: "bg-blue-500",
-            title: "Automated Seller Outreach",
+            title: "Prospection & Lead Enrichment",
             description:
-              "AI-powered prospecting and outreach to identify and engage high-quality sellers",
+              "Automatically aggregate and enrich provider data from public and marketplace insights.",
           },
           {
-            icon: "bg-orange-400 rounded-tr-full",
-            title: "Onboarding Optimization",
+            icon: "bg-yellow-400 rounded-tr-full",
+            title: "Account 360° View",
             description:
-              "Streamlined seller onboarding with automated workflows and personalized guidance",
+              "Get comprehensive provider overviews combining platform activity, performance, and history.",
           },
           {
-            icon: "bg-green-500 rounded-bl-full",
-            title: "Quality Assessment",
+            icon: "bg-green-500",
+            title: "Sales Enablement",
             description:
-              "Intelligent seller vetting and quality scoring to maintain marketplace standards",
+              "Auto-draft responses to provider inquiries using your latest policies and product info.",
+          },
+          {
+            icon: "bg-pink-400 rounded-tl-full",
+            title: "Sales Insights",
+            description:
+              "Extract winning narratives from calls and coach teams on pitch delivery.",
           },
         ],
       },
       {
         title: "Support & Success Automation",
-        image: "/static/landing/industry/features/supportExpert.svg",
-        bgColor: "bg-yellow-100",
+        image: "/static/landing/industry/features/support_success.svg",
+        bgColor: "bg-green-100",
         features: [
           {
-            icon: "bg-purple-500",
-            title: "Automated Support",
+            icon: "bg-sky-400 rounded-br-full",
+            title: "Smart Request Routing",
             description:
-              "AI-powered customer and seller support with intelligent ticket routing and responses",
+              "Route issues to the right team instantly, based on urgency and type.",
           },
           {
-            icon: "bg-blue-500 rounded-tl-full",
-            title: "Success Metrics",
+            icon: "bg-red-500",
+            title: "Technical Troubleshooting",
             description:
-              "Track and optimize seller performance with AI-driven insights and recommendations",
+              "Accelerate resolution with deep troubleshooting and suggested paths.",
           },
           {
-            icon: "bg-yellow-400 rounded-br-full",
-            title: "Proactive Intervention",
+            icon: "bg-yellow-400 rounded-tr-full",
+            title: "Customer Communication",
             description:
-              "Identify at-risk sellers early and implement automated retention strategies",
+              "Craft clear, professional support communication at scale.",
+          },
+          {
+            icon: "bg-green-500",
+            title: "Support Insights",
+            description:
+              "Analyze interactions and feedback to improve marketplace experience.",
           },
         ],
       },
       {
         title: "Community Operations",
-        image: "/static/landing/industry/features/KYC.svg",
-        bgColor: "bg-blue-100",
+        image: "/static/landing/industry/features/community_ops.svg",
+        bgColor: "bg-rose-100",
         features: [
           {
-            icon: "bg-green-500",
-            title: "Content Moderation",
+            icon: "bg-blue-500",
+            title: "Automated KYC & Verification",
             description:
-              "Automated content review and moderation to maintain community standards",
+              "Extract and validate provider documents, flagging issues for compliance.",
           },
           {
-            icon: "bg-blue-500 rounded-tl-full",
-            title: "Engagement Analytics",
+            icon: "bg-pink-400 rounded-tl-full",
+            title: "Community Engagement",
             description:
-              "AI-powered community insights and engagement optimization strategies",
+              "Generate targeted content to keep your provider community engaged.",
           },
           {
-            icon: "bg-purple-400 rounded-br-full",
-            title: "Event Coordination",
+            icon: "bg-red-500",
+            title: "Community Education",
             description:
-              "Streamlined community event planning and automated member communications",
+              "Deliver updates and education to keep your providers active and successful.",
           },
         ],
       },
       {
         title: "Marketing & Marketplace Intelligence",
-        image: "/static/landing/industry/features/marketing_operations.svg",
-        bgColor: "bg-green-100",
+        image: "/static/landing/industry/features/marketplace_analytics.svg",
+        bgColor: "bg-yellow-100",
         features: [
           {
-            icon: "bg-orange-500",
-            title: "Market Analysis",
+            icon: "bg-yellow-400 rounded-tr-full",
+            title: "Content Creation & Localization",
             description:
-              "AI-driven competitive analysis and market trend identification",
+              "SEO-optimized communications across multiple languages and markets.",
           },
           {
-            icon: "bg-green-500 rounded-tl-full",
-            title: "Campaign Optimization",
+            icon: "bg-blue-500",
+            title: "Industry & Competitive Intelligence",
             description:
-              "Automated marketing campaign management and performance optimization",
+              "Monitor competitive activity and pricing trends for platform strategy.",
           },
           {
-            icon: "bg-blue-400 rounded-br-full",
-            title: "Growth Insights",
+            icon: "bg-green-500",
+            title: "Customer Insights",
             description:
-              "Intelligent recommendations for marketplace growth and expansion strategies",
+              "Summarize feedback to identify improvement areas.",
+          },
+          {
+            icon: "bg-pink-400 rounded-tl-full",
+            title: "Marketplace Analytics",
+            description:
+              "Retrieve analytics for internal and stakeholder reporting.",
           },
         ],
       },
@@ -191,43 +209,37 @@ export const marketplaceConfig: IndustryPageConfig = {
     bgColor: "bg-blue-50",
     metrics: [
       {
-        value: "85",
+        value: "80",
         unit: "%",
-        type: "Reduction",
-        description: "in manual seller onboarding and support tasks",
+        type: "Adoption",
+        description: "weekly active users",
       },
       {
-        value: "60",
+        value: "50",
         unit: "%",
         type: "Faster",
-        description: "seller acquisition and activation process",
-      },
-      {
-        value: "3x",
-        unit: "",
-        type: "Faster",
-        description: "quality provider onboarding while maintaining standards",
+        description: "support ticket resolution through smart routing",
       },
     ],
   },
   demoVideo: {
-    sectionTitle: "See Dust transform marketplace operations",
-    videoUrl: "https://fast.wistia.net/embed/iframe/8q80neektv",
+    sectionTitle: "See Dust in motion",
+    videoUrl: "https://fast.wistia.net/embed/iframe/r0dwaexoez",
   },
   trustedBySecond: {
-    title: "Trusted by marketplace leaders",
-    logoSet: "default",
+    title: "Trusted by Marketplace Leaders",
+    logoSet: "marketplace",
   },
   testimonial: {
     quote:
-      "Dust is the most impactful software we've adopted since building Clay.",
+      "Dust has empowered our employees to work smarter, innovate, and push boundaries.",
     author: {
-      name: "Everett Berry",
-      title: "Head of GTM Engineering at Clay",
+      name: "Matthieu Birach",
+      title: "Chief People Officer at Doctolib",
     },
     company: {
-      logo: "/static/landing/logos/color/clay_white.png",
-      alt: "Clay logo",
+      logo: "/static/landing/logos/color/doctolib_white.png",
+      alt: "Doctolib logo",
     },
     bgColor: "bg-green-600",
     textColor: "text-white",
@@ -236,27 +248,18 @@ export const marketplaceConfig: IndustryPageConfig = {
     title: "Customer stories",
     stories: [
       {
-        title: "How Clay is powering 4x team growth with Dust",
+        title: "Malt cuts support ticket closing time by 50% with Dust",
         content:
-          "Clay uses Dust AI agents to scale their GTM team 4x while maintaining sales velocity and achieving 100% adoption across their growing team.",
-        href: "https://blog.dust.tt/clay-scaling-gtme-team/",
-        src: "https://blog.dust.tt/content/images/size/w2000/2025/06/clay_dust_agents.jpg",
+          "Malt streamlines customer support using Dust's AI platform for rapid, consistent multilingual responses.",
+        href: "https://blog.dust.tt/malt-customer-support/",
+        src: "https://blog.dust.tt/content/images/size/w2000/2024/12/Malt_Customer_Story_Dust_Support.jpg",
       },
       {
-        title:
-          "20%+ productivity gains in Sales: Insights from Alan and Payfit",
+        title: "Blueground accelerates customer support resolution time with Dust",
         content:
-          "Leading companies share how Dust agents deliver significant productivity improvements and measurable ROI in sales operations.",
-        href: "https://blog.dust.tt/generative-ai-insights-alan-payfit-leaders/",
-        src: "https://blog.dust.tt/content/images/size/w2000/2025/01/Founder.jpg",
-      },
-      {
-        title:
-          "50% Time Savings: How Didomi Transformed Privacy Compliance with AI",
-        content:
-          "Didomi's legal team cuts workload by 50% using Dust's AI assistants for privacy compliance and legal document management.",
-        href: "https://blog.dust.tt/how-thomas-uses-ai-assistants-to-manage-legal-and-data-privacy-at-didomi/",
-        src: "https://blog.dust.tt/content/images/size/w2000/2025/01/dust_didomi.png",
+          "Discover how Blueground boosted satisfaction and cut resolution time using Dust agents.",
+        href: "https://blog.dust.tt/customer-support-blueground/",
+        src: "https://blog.dust.tt/content/images/size/w2000/2025/06/Blueground_dust.jpg",
       },
     ],
   },
