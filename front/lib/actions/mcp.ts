@@ -885,6 +885,11 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
 
         const file = uploadResult.value;
 
+        // Set the snippet on the file if it's a blob resource with a snippet
+        if (isBlobResource(block) && block.resource.snippet) {
+          await file.setSnippet(block.resource.snippet);
+        }
+
         // Upload the file to the conversation data source if requested
         if (uploadToConversationDataSource) {
           await uploadFileToConversationDataSource({
