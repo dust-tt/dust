@@ -617,13 +617,13 @@ export async function firecrawlCrawlCompleted(
       };
     }
 
-    if (crawlStatus.completed >= webConfig.maxPageToCrawl) {
+    if (crawlStatus.completed < webConfig.maxPageToCrawl) {
+      await syncSucceeded(connectorId);
+    } else {
       await syncFailed(
         connectorId,
         "webcrawling_synchronization_limit_reached"
       );
-    } else {
-      await syncSucceeded(connector.id);
     }
   } catch (error) {
     if (error instanceof FirecrawlError) {
