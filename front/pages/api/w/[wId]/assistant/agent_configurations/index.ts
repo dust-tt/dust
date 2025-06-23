@@ -5,10 +5,10 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getAgentsUsage } from "@app/lib/api/assistant/agent_usage";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
+import { createOrUpgradeAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { getAgentsRecentAuthors } from "@app/lib/api/assistant/recent_authors";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { runOnRedis } from "@app/lib/api/redis";
-import { createOrUpgradeAgentConfiguration } from "@app/lib/assistant/configuration_service";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
