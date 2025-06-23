@@ -52,12 +52,11 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       };
     }
 
-    await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
-
     const [{ spaces, dataSourceViews, dustApps }, configuration] =
       await Promise.all([
         getAccessibleSourcesAndApps(auth),
         getAgentConfiguration(auth, context.params?.aId as string, "light"),
+        MCPServerViewResource.ensureAllAutoToolsAreCreated(auth),
       ]);
 
     if (!configuration) {
