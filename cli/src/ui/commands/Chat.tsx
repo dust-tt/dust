@@ -1,6 +1,7 @@
-import type {
-  CreateConversationResponseType,
-  GetAgentConfigurationsResponseType,
+import {
+  type AgentActionSpecificEvent,
+  type CreateConversationResponseType,
+  type GetAgentConfigurationsResponseType,
 } from "@dust-tt/client";
 import { Box, Text, useInput, useStdout } from "ink";
 import open from "open";
@@ -16,6 +17,7 @@ import AgentSelector from "../components/AgentSelector.js";
 import type { ConversationItem } from "../components/Conversation.js";
 import Conversation from "../components/Conversation.js";
 import { createCommands } from "./types.js";
+import assert from "assert";
 
 type AgentConfiguration =
   GetAgentConfigurationsResponseType["agentConfigurations"][number];
@@ -56,6 +58,11 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
   const [selectedCommandIndex, setSelectedCommandIndex] = useState(0);
   const [commandCursorPosition, setCommandCursorPosition] = useState(0);
   const [isSelectingNewAgent, setIsSelectingNewAgent] = useState(false);
+  const [pendingApproval, setPendingApproval] =
+    useState<AgentActionSpecificEvent | null>(null);
+  const [approvalResolver, setApprovalResolver] = useState<
+    ((approved: boolean) => void) | null
+  >(null);
 
   const updateIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const contentRef = useRef<string>("");
@@ -77,6 +84,38 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
     await clearTerminal();
     setIsSelectingNewAgent(true);
   }, []);
+
+  const handleApprovalRequest = useCallback(
+    async (event: AgentActionSpecificEvent): Promise<boolean> => {
+      if (event.type !== "tool_approve_execution") {
+        assert(event, "Unexpected event type for approval request");
+        return false;
+      }
+      // Auto-approve if stake is never_ask
+      if (event.stake === "never_ask") {
+        return true;
+      }
+
+      // For low/high stake, prompt user for approval
+      // TODO(adrien): Once cache is merged, allow to never_ask_again the low stake tools
+      return new Promise<boolean>((resolve) => {
+        setPendingApproval(event);
+        setApprovalResolver(() => resolve);
+      });
+    },
+    []
+  );
+
+  const handleApproval = useCallback(
+    (approved: boolean) => {
+      if (approvalResolver) {
+        approvalResolver(approved);
+        setPendingApproval(null);
+        setApprovalResolver(null);
+      }
+    },
+    [approvalResolver]
+  );
 
   const commands = createCommands({ triggerAgentSwitch });
 
@@ -357,6 +396,14 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
             chainOfThoughtRef.current = "";
             contentRef.current = "";
             break;
+          } else if (event.type === "tool_approve_execution") {
+            const approved = await handleApprovalRequest(event);
+            dustClient.validateAction({
+              conversationId: event.conversationId,
+              messageId: event.messageId,
+              actionId: event.actionId,
+              approved: approved ? "approved" : "rejected",
+            });
           }
         }
       } catch (error) {
@@ -403,6 +450,18 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
 
   // Handle keyboard events.
   useInput((input, key) => {
+    if (pendingApproval) {
+      if (input === "y" || input === "Y") {
+        handleApproval(true);
+        return;
+      }
+      if (input === "n" || input === "N") {
+        handleApproval(false);
+        return;
+      }
+      return;
+    }
+
     // Skip all input handling when selecting a new agent
     if (!selectedAgent || isSelectingNewAgent) {
       return;
@@ -819,6 +878,77 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
   }
 
   const mentionPrefix = selectedAgent ? `@${selectedAgent.name} ` : "";
+
+  // Show approval prompt if pending
+  if (pendingApproval) {
+    if (pendingApproval.type !== "tool_approve_execution") {
+      setError(`Unexpected pending approval type: ${pendingApproval.type}`);
+      return null; // Exit early if we encounter an unexpected type
+    }
+    const formatInputs = (inputs: any) => {
+      if (!inputs || Object.keys(inputs).length === 0) {
+        return "No inputs";
+      }
+
+      const entries = Object.entries(inputs);
+      if (entries.length === 1) {
+        const [key, value] = entries[0];
+        if (typeof value === "string" && value.length < 100) {
+          return `${key}: ${value}`;
+        }
+      }
+
+      return JSON.stringify(inputs, null, 2);
+    };
+
+    return (
+      <Box flexDirection="column">
+        <Box
+          flexDirection="column"
+          borderStyle="round"
+          borderColor="blue"
+          paddingX={1}
+        >
+          <Text color="blue" bold>
+            Tool Execution Approval Required
+          </Text>
+
+          <Box marginBottom={1}>
+            <Text>
+              Agent {pendingApproval.metadata.agentName} wants to use tool{" "}
+              {pendingApproval.metadata.toolName} from server{" "}
+              {pendingApproval.metadata.mcpServerName}
+            </Text>
+          </Box>
+
+          <Box>
+            <Text>
+              <Text bold color="blue">
+                Inputs:
+              </Text>
+            </Text>
+            <Box marginLeft={2} marginTop={1}>
+              <Text color="grey">{formatInputs(pendingApproval.inputs)}</Text>
+            </Box>
+          </Box>
+        </Box>
+        <Box
+          borderStyle="single"
+          borderColor="gray"
+          flexDirection="column"
+          paddingX={1}
+        >
+          <Text bold>Do you want to approve this tool execution?</Text>
+          <Text color="green" bold>
+            [Y]es
+          </Text>
+          <Text color="red" bold>
+            [N]o
+          </Text>
+        </Box>
+      </Box>
+    );
+  }
 
   // Main chat UI
   return (
