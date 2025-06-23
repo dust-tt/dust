@@ -23,6 +23,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "hubspot",
   "image_generation",
   "include_data",
+  "memory",
   "missing_action_catcher",
   "notion",
   "primitive_types_debugger",
@@ -238,6 +239,10 @@ export const INTERNAL_MCP_SERVERS: Record<
       list_public_channels: "never_ask",
       post_message: "low",
     },
+  },
+  memory: {
+    id: 1011,
+    availability: "auto",
   },
   search: {
     id: 1006,
