@@ -13,11 +13,12 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { DataSourceViewsSelector } from "@app/components/data_source_view/DataSourceViewSelector";
 import { useMultipleDataSourceViewsContentNodes } from "@app/lib/swr/data_source_views";
 import { emptyArray } from "@app/lib/swr/swr";
-import type {
-  DataSourceViewSelectionConfigurations,
-  DataSourceViewType,
-  SpaceType,
-  WorkspaceType,
+import {
+  isAdmin,
+  type DataSourceViewSelectionConfigurations,
+  type DataSourceViewType,
+  type SpaceType,
+  type WorkspaceType,
 } from "@app/types";
 
 // We need to stabilize the initial state of the selection configurations,
@@ -172,6 +173,7 @@ export default function SpaceManagedDataSourcesViewsModal({
                 viewType="all"
                 isRootSelectable={true}
                 space={systemSpace}
+                allowAdminSearch={isAdmin(owner)}
               />
             )}
           </div>
