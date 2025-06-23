@@ -180,18 +180,7 @@ async function handler(
     return;
   }
 
-  try {
-    await user.recordLoginActivity();
-  } catch (error) {
-    logger.error(
-      {
-        userId: user.id,
-        worksOSUserId: user.workOSUserId,
-        errorMessage: normalizeError(error).message,
-      },
-      "Failed to record login activity for user."
-    );
-  }
+  await user.recordLoginActivity();
 
   if (targetWorkspace) {
     // For users joining a workspace from trying to access a conversation, we redirect to this
