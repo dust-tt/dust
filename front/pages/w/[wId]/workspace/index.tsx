@@ -329,14 +329,14 @@ function SlackBotToggle({
                   if (connectionIdRes.isErr()) {
                     sendNotification({
                       type: "error",
-                      title: `Failed to reconnect Slack Bot.`,
-                      description: `Could not reconnect the Dust Slack Bot.`,
+                      title: "Failed to reconnect Slack Bot.",
+                      description: "Could not reconnect the Dust Slack Bot.",
                     });
                   } else {
                     sendNotification({
                       type: "success",
-                      title: `Slack Bot reconnected.`,
-                      description: `The Dust Slack Bot has been reconnected.`,
+                      title: "Slack Bot reconnected.",
+                      description: "The Dust Slack Bot has been reconnected.",
                     });
                   }
                 }}
