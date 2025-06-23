@@ -104,7 +104,7 @@ export async function getWorkOSSession(
         // TODO(workos): Should we resolve the workspaceId and remove organizationId from here?
         organizationId,
         workspaceId,
-        isSSO: authenticationMethod?.toLowerCase() === "sso",
+        isSSO: authenticationMethod === "SSO",
         authenticationMethod,
       };
     } catch (error) {

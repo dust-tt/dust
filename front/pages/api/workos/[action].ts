@@ -250,7 +250,6 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
       );
       if (isString(stateObj.returnTo)) {
         res.redirect(stateObj.returnTo);
-        return;
       }
     }
 
