@@ -584,17 +584,17 @@ export async function firecrawlCrawlCompleted(
   // Clean the crawlId
   await webConfig.updateCrawlId(null);
 
-  const crawlStatus = await getFirecrawl().checkCrawlStatus(crawlId);
-  if (!crawlStatus.success) {
-    localLogger.error(
-      { connectorId, crawlId },
-      `Couldn't fetch crawl status: ${crawlStatus.error}`
-    );
-    return;
-  }
+  try {
+    const crawlStatus = await getFirecrawl().checkCrawlStatus(crawlId);
+    if (!crawlStatus.success) {
+      localLogger.error(
+        { connectorId, crawlId },
+        `Couldn't fetch crawl status: ${crawlStatus.error}`
+      );
+      return;
+    }
 
-  if (crawlStatus.completed <= 0) {
-    try {
+    if (crawlStatus.completed <= 0) {
       // No content found, checking if it's blocked for robots.
       const crawlErrors = await getFirecrawl().checkCrawlErrors(crawlId);
       // Typing issue from Firecrawl, 'success = true' is not in the CrawlErrorsResponse
@@ -615,22 +615,58 @@ export async function firecrawlCrawlCompleted(
       return {
         lastSyncStartTs: connector.lastSyncStartTime?.getTime() ?? null,
       };
-    } catch (err) {
-      localLogger.warn(
-        { connectorId, crawlId },
-        `Couldn't check crawl errors: ${normalizeError(err)}`
+    }
+
+    if (crawlStatus.completed < webConfig.maxPageToCrawl) {
+      await syncSucceeded(connectorId);
+    } else {
+      await syncFailed(
+        connectorId,
+        "webcrawling_synchronization_limit_reached"
       );
-      await syncFailed(connectorId, "webcrawling_error_empty_content");
+    }
+  } catch (error) {
+    if (error instanceof FirecrawlError) {
+      /*
+       * Putting the connector in succeed as we did get a `completed` event from Firecrawl.
+       * But we couldn't check the correct status or errors of it.
+       * Those expire after 24h, so we might just be late to the party.
+       */
+      await syncSucceeded(connectorId);
+
+      if (error.statusCode === 404 && error.message === "Job expired") {
+        localLogger.warn(
+          {
+            connectorId,
+            crawlId,
+            firecrawlError: {
+              statusCode: error.statusCode,
+              name: error.name,
+            },
+          },
+          "Firecrawl job expired. They expired 24h after the crawl finish. Moving the connector to succeed."
+        );
+      } else {
+        localLogger.error(
+          {
+            connectorId,
+            crawlId,
+            firecrawlError: {
+              statusCode: error.statusCode,
+              name: error.name,
+            },
+          },
+          `Error feching crawl status or error: ${error.message}`
+        );
+      }
+
       return {
         lastSyncStartTs: connector.lastSyncStartTime?.getTime() ?? null,
       };
     }
-  }
 
-  if (crawlStatus.completed >= webConfig.maxPageToCrawl) {
-    await syncFailed(connectorId, "webcrawling_synchronization_limit_reached");
-  } else {
-    await syncSucceeded(connector.id);
+    // If we didn't get a handled FirecrawlError, we can bubble up the error.
+    throw error;
   }
 
   return {
