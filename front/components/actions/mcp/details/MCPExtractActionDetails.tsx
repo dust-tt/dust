@@ -13,8 +13,8 @@ import { useState } from "react";
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import type { ActionDetailsComponentBaseProps } from "@app/components/actions/types";
 import type { MCPActionType } from "@app/lib/actions/mcp";
+import type { BlobCallToolResultBlock } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
-  BlobCallToolResultBlock,
   isBlobResource,
   isExtractQueryResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
@@ -37,7 +37,9 @@ export function MCPExtractActionDetails({
     ?.filter(isExtractQueryResourceType)
     .map((o) => o.resource)?.[0];
 
-  const resultResource = action.output?.find((o) => isBlobResource(o));
+  const resultResource = action.output?.find((o) => isBlobResource(o)) as
+    | BlobCallToolResultBlock
+    | undefined;
 
   const jsonSchema = action.params?.jsonSchema as JSONSchema | undefined;
 

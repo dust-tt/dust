@@ -4,7 +4,6 @@ import { INTERNAL_MIME_TYPES } from "./internal_mime_types";
 import { NotificationSchema } from "./raw_mcp_types";
 import type { CallToolResult, Notification } from "./raw_mcp_types.ts";
 
-
 // Thinking tokens generated during the tool execution.
 
 const ThinkingOutputSchema = z.object({
@@ -408,31 +407,6 @@ export const isExtractQueryResourceType = (
   return (
     outputBlock.type === "resource" &&
     ExtractQueryResourceSchema.safeParse(outputBlock.resource).success
-  );
-};
-
-export const ExtractResultResourceSchema = z.object({
-  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.EXTRACT_RESULT),
-  uri: z.string(),
-  text: z.string(),
-
-  // File metadata
-  fileId: z.string(),
-  title: z.string(),
-  contentType: z.string(),
-  snippet: z.string().nullable(),
-});
-
-export type ExtractResultResourceType = z.infer<
-  typeof ExtractResultResourceSchema
->;
-
-export const isExtractResultResourceType = (
-  outputBlock: CallToolResult["content"][number]
-): outputBlock is { type: "resource"; resource: ExtractResultResourceType } => {
-  return (
-    outputBlock.type === "resource" &&
-    ExtractResultResourceSchema.safeParse(outputBlock.resource).success
   );
 };
 
