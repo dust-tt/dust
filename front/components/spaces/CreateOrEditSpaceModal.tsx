@@ -6,7 +6,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   EmptyCTA,
-  Label,
   MoreIcon,
   Page,
   PencilSquareIcon,
@@ -474,6 +473,26 @@ export function CreateOrEditSpaceModal({
                         />
                       </DropdownMenuContent>
                     </DropdownMenu>
+                    {isManual && selectedMembers.length > 0 && (
+                      <SearchMembersDropdown
+                        owner={owner}
+                        selectedMembers={selectedMembers}
+                        onMembersUpdated={(members) => {
+                          setSelectedMembers(members);
+                          setIsDirty(true);
+                        }}
+                      />
+                    )}
+                    {!isManual && selectedGroups.length > 0 && (
+                      <SearchGroupsDropdown
+                        owner={owner}
+                        selectedGroups={selectedGroups}
+                        onGroupsUpdated={(groups) => {
+                          setSelectedGroups(groups);
+                          setIsDirty(true);
+                        }}
+                      />
+                    )}
                   </div>
                 ) : null}
 
@@ -510,17 +529,6 @@ export function CreateOrEditSpaceModal({
 
                 {isManual && selectedMembers.length > 0 && (
                   <>
-                    <div className="flex flex-row items-center justify-between">
-                      <Label className="text-lg">Members</Label>
-                      <SearchMembersDropdown
-                        owner={owner}
-                        selectedMembers={selectedMembers}
-                        onMembersUpdated={(members) => {
-                          setSelectedMembers(members);
-                          setIsDirty(true);
-                        }}
-                      />
-                    </div>
                     <SearchInput
                       name="search"
                       placeholder="Search (email)"
@@ -543,17 +551,6 @@ export function CreateOrEditSpaceModal({
                 )}
                 {!isManual && selectedGroups.length > 0 && (
                   <>
-                    <div className="flex flex-row items-center justify-between">
-                      <Label className="text-lg">Provisioned groups</Label>
-                      <SearchGroupsDropdown
-                        owner={owner}
-                        selectedGroups={selectedGroups}
-                        onGroupsUpdated={(groups) => {
-                          setSelectedGroups(groups);
-                          setIsDirty(true);
-                        }}
-                      />
-                    </div>
                     <SearchInput
                       name="search"
                       placeholder={"Search groups"}
