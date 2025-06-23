@@ -315,7 +315,7 @@ export default function AssistantBuilder({
 
     // Check if there are any errors in the actions
     const anyActionError =
-      !isMCPServerViewsLoading &&
+      mcpServerViews.length > 0 &&
       builderState.actions.some((action) =>
         hasActionError(action, mcpServerViews)
       );

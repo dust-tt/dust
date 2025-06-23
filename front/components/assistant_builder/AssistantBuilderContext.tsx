@@ -1,8 +1,6 @@
 import { createContext, useState } from "react";
 import { useEffect } from "react";
 
-import { mcpServerViewSortingFn } from "@app/lib/actions/mcp_helper";
-import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type {
   AppType,
   DataSourceViewType,
