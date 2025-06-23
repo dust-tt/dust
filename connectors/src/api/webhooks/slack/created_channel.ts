@@ -1,4 +1,4 @@
-import type { Result } from "@dust-tt/client";
+import type { ConnectorProvider, Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
 
 import type { SlackWebhookEvent } from "@connectors/api/webhooks/slack/utils";
@@ -35,7 +35,7 @@ export function isChannelCreatedEvent(
 export interface OnChannelCreationInterface {
   event: ChannelCreatedEvent;
   logger: Logger;
-  provider?: "slack_bot" | "slack";
+  provider?: Extract<ConnectorProvider, "slack_bot" | "slack">;
 }
 
 export async function onChannelCreation({
