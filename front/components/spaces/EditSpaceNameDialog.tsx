@@ -14,7 +14,7 @@ import type { SpaceType } from "@app/types";
 
 interface EditSpaceNameDialogProps {
   space: SpaceType;
-  onEditName: (newName: string) => void;
+  handleEditName: (newName: string) => void;
   isOpen: boolean;
   isSaving: boolean;
   onClose: () => void;
@@ -22,7 +22,7 @@ interface EditSpaceNameDialogProps {
 
 export function EditSpaceNameDialog({
   space,
-  onEditName,
+  handleEditName,
   isOpen,
   isSaving,
   onClose,
@@ -37,7 +37,7 @@ export function EditSpaceNameDialog({
 
   const handleSave = () => {
     if (editingSpaceName.trim()) {
-      onEditName(editingSpaceName.trim());
+      handleEditName(editingSpaceName.trim());
     }
   };
 

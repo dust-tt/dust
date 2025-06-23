@@ -388,7 +388,7 @@ export function CreateOrEditSpaceModal({
                 />
                 <EditSpaceNameDialog
                   space={space}
-                  onEditName={onEditName}
+                  handleEditName={onEditName}
                   isOpen={showEditNameDialog}
                   isSaving={isSaving}
                   onClose={() => setShowEditNameDialog(false)}
