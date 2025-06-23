@@ -26,7 +26,10 @@ import {
 } from "@app/lib/content_nodes";
 import { isFolder, isWebsite } from "@app/lib/data_sources";
 import { getSpaceAccessPriority } from "@app/lib/spaces";
-import { useSpaces, useSpacesSearchWithInfiniteScroll } from "@app/lib/swr/spaces";
+import {
+  useSpaces,
+  useSpacesSearchWithInfiniteScroll,
+} from "@app/lib/swr/spaces";
 import type { DataSourceViewContentNode, LightWorkspaceType } from "@app/types";
 import { MIN_SEARCH_QUERY_SIZE } from "@app/types";
 
@@ -184,22 +187,9 @@ export const InputBarAttachmentsPicker = ({
             {pickedSpaceNodes.map((item, index) => (
               <DropdownMenuCheckboxItem
                 key={index}
-                checked={attachedNodes.some(
-                  (attachedNode) =>
-                    attachedNode.internalId === item.internalId &&
-                    attachedNode.dataSourceView.dataSource.sId ===
-                      item.dataSourceView.dataSource.sId
-                )}
-                onCheckedChange={(checked) => {
-                  if (checked) {
-                    onNodeSelect(item);
-                  } else {
-                    onNodeUnselect(item);
-                  }
-                }}
-              >
-                <div className="flex items-center gap-2">
-                  {isWebsite(item.dataSourceView.dataSource) ||
+                label={item.title}
+                icon={
+                  isWebsite(item.dataSourceView.dataSource) ||
                   isFolder(item.dataSourceView.dataSource) ? (
                     <Icon
                       visual={getVisualForDataSourceViewContentNode(item)}
@@ -214,15 +204,24 @@ export const InputBarAttachmentsPicker = ({
                           item.dataSourceView.dataSource.connectorProvider,
                       })}
                     />
-                  )}
-                  <div className="flex flex-col">
-                    <span className="truncate">{item.title}</span>
-                    <span className="truncate text-xs text-muted-foreground">
-                      {getLocationForDataSourceViewContentNode(item)}
-                    </span>
-                  </div>
-                </div>
-              </DropdownMenuCheckboxItem>
+                  )
+                }
+                description={getLocationForDataSourceViewContentNode(item)}
+                checked={attachedNodes.some(
+                  (attachedNode) =>
+                    attachedNode.internalId === item.internalId &&
+                    attachedNode.dataSourceView.dataSource.sId ===
+                      item.dataSourceView.dataSource.sId
+                )}
+                onCheckedChange={(checked) => {
+                  if (checked) {
+                    onNodeSelect(item);
+                  } else {
+                    onNodeUnselect(item);
+                  }
+                }}
+                truncateText
+              />
             ))}
             {pickedSpaceNodes.length === 0 && !showLoader && (
               <div className="flex items-center justify-center py-4 text-sm text-muted-foreground dark:text-muted-foreground-night">
