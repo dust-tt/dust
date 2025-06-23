@@ -104,31 +104,34 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
 
   // Helper to create a conversation for file uploads if none exists
   // Only useful for uploading files to the first message
-  const createConversationForFiles = useCallback(async () => {
-    if (!selectedAgent || !me || meError || isMeLoading) {
-      return null;
-    }
+  const createConversationForFiles = useCallback(
+    async (title: string) => {
+      if (!selectedAgent || !me || meError || isMeLoading) {
+        return null;
+      }
 
-    const dustClient = await getDustClient();
-    if (!dustClient) {
-      setError("Authentication required. Run `dust login` first.");
-      return null;
-    }
+      const dustClient = await getDustClient();
+      if (!dustClient) {
+        setError("Authentication required. Run `dust login` first.");
+        return null;
+      }
 
-    const convRes = await dustClient.createConversation({
-      title: "File Upload",
-      visibility: "unlisted",
-      contentFragments: [],
-    });
+      const convRes = await dustClient.createConversation({
+        title,
+        visibility: "unlisted",
+        contentFragments: [],
+      });
 
-    if (convRes.isErr()) {
-      setError(`Failed to create conversation: ${convRes.error.message}`);
-      return null;
-    }
+      if (convRes.isErr()) {
+        setError(`Failed to create conversation: ${convRes.error.message}`);
+        return null;
+      }
 
-    setConversationId(convRes.value.conversation.sId);
-    return convRes.value.conversation.sId;
-  }, [selectedAgent, me, meError, isMeLoading]);
+      setConversationId(convRes.value.conversation.sId);
+      return convRes.value.conversation.sId;
+    },
+    [selectedAgent, me, meError, isMeLoading]
+  );
 
   const handleFileSelected = useCallback(
     async (filePathOrPaths: string | string[]) => {
@@ -143,10 +146,14 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
           paths.map((p) => validateAndGetFileInfo(p))
         );
 
-        // If no conversation, try to create one
         let convId = conversationId;
         if (!convId) {
-          convId = await createConversationForFiles();
+          convId = await createConversationForFiles(
+            `File Upload: ${fileInfos.map((f) => f.name).join(", ")}`.slice(
+              0,
+              50
+            )
+          );
           if (!convId) {
             // error already handled in createConversationForFiles
             return;
