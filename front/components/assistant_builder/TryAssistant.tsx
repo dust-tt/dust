@@ -65,6 +65,7 @@ export function usePreviewAssistant({
         },
         agentConfigurationId: null,
         slackData: {
+          provider: "slack_bot",
           selectedSlackChannels: [],
           slackChannelsLinkedWithAgent: [],
         },

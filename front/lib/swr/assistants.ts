@@ -7,6 +7,7 @@ import type {
   AgentMessageFeedbackType,
   AgentMessageFeedbackWithMetadataType,
 } from "@app/lib/api/assistant/feedback";
+import type { GetSlackChannelsLinkedWithAgentResponseBody } from "@app/lib/api/slack_channels_helpers";
 import {
   emptyArray,
   fetcher,
@@ -19,7 +20,6 @@ import type { FetchAssistantTemplateResponse } from "@app/pages/api/templates/[t
 import type { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
 import type { GetAgentConfigurationAnalyticsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/analytics";
 import type { GetAgentUsageResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/usage";
-import type { GetSlackChannelsLinkedWithAgentResponseBody } from "@app/pages/api/w/[wId]/assistant/builder/slack/channels_linked_with_agent";
 import type { PostAgentUserFavoriteRequestBody } from "@app/pages/api/w/[wId]/members/me/agent_favorite";
 import type {
   AgentConfigurationType,
