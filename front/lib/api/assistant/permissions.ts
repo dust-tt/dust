@@ -85,7 +85,7 @@ export function getDataSourceViewIdsFromActions(
   );
 }
 
-function groupsFromRequestedPermissions(
+export function groupsFromRequestedPermissions(
   requestedPermissions: CombinedResourcePermissions[]
 ) {
   return (
@@ -98,7 +98,8 @@ function groupsFromRequestedPermissions(
 
 export async function getAgentConfigurationGroupIdsFromActions(
   auth: Authenticator,
-  actions: UnsavedAgentActionConfigurationType[]
+  actions: UnsavedAgentActionConfigurationType[],
+  ignoreSpaceIds?: Set<string>
 ): Promise<ModelId[][]> {
   const dsViews = await DataSourceViewResource.fetchByIds(
     auth,
@@ -117,6 +118,10 @@ export async function getAgentConfigurationGroupIdsFromActions(
   // Collect DataSourceView permissions by space.
   for (const view of dsViews) {
     const { sId: spaceId } = view.space;
+    if (ignoreSpaceIds?.has(spaceId)) {
+      continue;
+    }
+
     if (!spacePermissions.has(spaceId)) {
       spacePermissions.set(spaceId, new Set());
     }
@@ -127,6 +132,10 @@ export async function getAgentConfigurationGroupIdsFromActions(
   // Collect DustApp permissions by space.
   for (const app of dustApps) {
     const { sId: spaceId } = app.space;
+    if (ignoreSpaceIds?.has(spaceId)) {
+      continue;
+    }
+
     if (!spacePermissions.has(spaceId)) {
       spacePermissions.set(spaceId, new Set());
     }
@@ -147,6 +156,9 @@ export async function getAgentConfigurationGroupIdsFromActions(
 
   for (const view of mcpServerViews) {
     const { sId: spaceId } = view.space;
+    if (ignoreSpaceIds?.has(spaceId)) {
+      continue;
+    }
     if (!spacePermissions.has(spaceId)) {
       spacePermissions.set(spaceId, new Set());
     }
