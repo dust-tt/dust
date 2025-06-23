@@ -233,8 +233,7 @@ export default function AssistantBuilder({
     AssistantBuilderContext
   );
 
-  const { mcpServerViews, isMCPServerViewsLoading } =
-    useMCPServerViewsContext();
+  const { mcpServerViews } = useMCPServerViewsContext();
 
   const checkUsernameTimeout = React.useRef<NodeJS.Timeout | null>(null);
 
