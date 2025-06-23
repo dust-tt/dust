@@ -1,3 +1,5 @@
+import type { Transaction } from "sequelize";
+
 import { DEFAULT_MCP_ACTION_DESCRIPTION } from "@app/lib/actions/constants";
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { AgentActionConfigurationType } from "@app/lib/actions/types/agent";
@@ -28,10 +30,12 @@ export async function createOrUpgradeAgentConfiguration({
   auth,
   assistant,
   agentConfigurationId,
+  transaction,
 }: {
   auth: Authenticator;
   assistant: PostOrPatchAgentConfigurationRequestBody["assistant"];
   agentConfigurationId?: string;
+  transaction?: Transaction;
 }): Promise<Result<AgentConfigurationType, Error>> {
   const { actions } = assistant;
 
@@ -77,25 +81,29 @@ export async function createOrUpgradeAgentConfiguration({
     await UserResource.fetchByIds(assistant.editors.map((e) => e.sId))
   ).map((e) => e.toJSON());
 
-  const agentConfigurationRes = await createAgentConfiguration(auth, {
-    name: assistant.name,
-    description: assistant.description,
-    instructions: assistant.instructions ?? null,
-    maxStepsPerRun,
-    visualizationEnabled: assistant.visualizationEnabled,
-    pictureUrl: assistant.pictureUrl,
-    status: assistant.status,
-    scope: assistant.scope,
-    model: assistant.model,
-    agentConfigurationId,
-    templateId: assistant.templateId ?? null,
-    requestedGroupIds: await getAgentConfigurationGroupIdsFromActions(
-      auth,
-      actions
-    ),
-    tags: assistant.tags,
-    editors,
-  });
+  const agentConfigurationRes = await createAgentConfiguration(
+    auth,
+    {
+      name: assistant.name,
+      description: assistant.description,
+      instructions: assistant.instructions ?? null,
+      maxStepsPerRun,
+      visualizationEnabled: assistant.visualizationEnabled,
+      pictureUrl: assistant.pictureUrl,
+      status: assistant.status,
+      scope: assistant.scope,
+      model: assistant.model,
+      agentConfigurationId,
+      templateId: assistant.templateId ?? null,
+      requestedGroupIds: await getAgentConfigurationGroupIdsFromActions(
+        auth,
+        actions
+      ),
+      tags: assistant.tags,
+      editors,
+    },
+    transaction
+  );
 
   if (agentConfigurationRes.isErr()) {
     return agentConfigurationRes;
