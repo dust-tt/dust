@@ -106,6 +106,7 @@ export function useFileUploaderService({
         description:
           "Combined file sizes exceed the limits. Please upload smaller files.",
       });
+      setIsProcessingFiles(false);
       return;
     }
 
