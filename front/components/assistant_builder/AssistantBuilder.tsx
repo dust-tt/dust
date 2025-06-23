@@ -226,6 +226,22 @@ export default function AssistantBuilder({
     isBuilder: isBuilder(owner),
     isEdited: edited,
     agentConfigurationId: agentConfiguration?.sId ?? null,
+    connectorProvider: "slack",
+  });
+  const {
+    slackDataSource: slackBotDataSource,
+    selectedSlackChannels: selectedSlackBotChannels,
+    slackChannelsLinkedWithAgent: slackBotChannelsLinkedWithAgent,
+    setSelectedSlackChannels: setSelectedSlackBotChannels,
+    mutateSlackChannels: mutateSlackBotChannels,
+  } = useSlackChannel({
+    initialChannels: [],
+    workspaceId: owner.sId,
+    isPrivateAssistant: builderState.scope === "hidden",
+    isBuilder: isBuilder(owner),
+    isEdited: edited,
+    agentConfigurationId: agentConfiguration?.sId ?? null,
+    connectorProvider: "slack_bot",
   });
   useNavigationLock(edited && !disableUnsavedChangesPrompt);
   const { mcpServerViews, isPreviewPanelOpen, setIsPreviewPanelOpen } =
@@ -381,10 +397,17 @@ export default function AssistantBuilder({
         owner,
         builderState,
         agentConfigurationId: agentConfiguration?.sId ?? null,
-        slackData: {
-          selectedSlackChannels: selectedSlackChannels || [],
-          slackChannelsLinkedWithAgent,
-        },
+        slackData: slackBotDataSource
+          ? {
+              provider: "slack_bot",
+              selectedSlackChannels: selectedSlackBotChannels || [],
+              slackChannelsLinkedWithAgent: slackBotChannelsLinkedWithAgent,
+            }
+          : {
+              provider: "slack",
+              selectedSlackChannels: selectedSlackChannels || [],
+              slackChannelsLinkedWithAgent,
+            },
         reasoningModels,
       });
 
@@ -396,7 +419,9 @@ export default function AssistantBuilder({
           type: "error",
         });
       } else {
-        if (slackDataSource) {
+        if (slackBotDataSource) {
+          await mutateSlackBotChannels();
+        } else if (slackDataSource) {
           await mutateSlackChannels();
         }
 
@@ -548,9 +573,21 @@ export default function AssistantBuilder({
                             setEdited={setEdited}
                             assistantHandleError={assistantHandleError}
                             descriptionError={descriptionError}
-                            slackChannelSelected={selectedSlackChannels || []}
-                            slackDataSource={slackDataSource}
-                            setSelectedSlackChannels={setSelectedSlackChannels}
+                            {...(slackBotDataSource
+                              ? {
+                                  slackChannelSelected:
+                                    selectedSlackBotChannels || [],
+                                  slackDataSource: slackBotDataSource,
+                                  setSelectedSlackChannels:
+                                    setSelectedSlackBotChannels,
+                                }
+                              : {
+                                  slackChannelSelected:
+                                    selectedSlackChannels || [],
+                                  slackDataSource: slackDataSource,
+                                  setSelectedSlackChannels:
+                                    setSelectedSlackChannels,
+                                })}
                             currentUser={user}
                           />
                         );
