@@ -396,6 +396,11 @@ export async function firecrawlCrawlPage(
     return;
   }
 
+  if (!r.data) {
+    localLogger.error({ scrapeId }, "No data found in Firecrawl document");
+    return;
+  }
+
   const extracted = r.data.markdown ?? "[NO CONTENT]";
 
   const pageTitle = r.data.metadata?.title ?? randomUUID();
