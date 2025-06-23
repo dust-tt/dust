@@ -26,7 +26,6 @@ import { newWebhookSignal, syncChannelSignal } from "./signals";
 // Configuration for slow lane routing.
 const SLOW_LANE_CONNECTOR_IDS: string[] = [
   // Add connector IDs that should be routed to slow lane.
-  "1444",
   "20542",
   "20640",
   "23791",
