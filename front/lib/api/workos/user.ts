@@ -90,6 +90,8 @@ export async function getWorkOSSession(
         }
       }
 
+      console.log("[WORKOS SESSION]", JSON.stringify(r, null, 2));
+
       return {
         type: "workos" as const,
         sessionId: r.sessionId,
