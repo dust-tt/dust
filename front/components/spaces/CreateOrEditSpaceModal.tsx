@@ -19,9 +19,6 @@ import {
   SheetHeader,
   SheetTitle,
   SliderToggle,
-  Tabs,
-  TabsList,
-  TabsTrigger,
   TrashIcon,
   useSendNotification,
   XMarkIcon,
@@ -445,22 +442,39 @@ export function CreateOrEditSpaceModal({
             {isRestricted && (
               <>
                 {isWorkOSFeatureEnabled ? (
-                  <Tabs
-                    value={managementType}
-                    onValueChange={(tabId) => {
-                      if (isMembersManagementType(tabId)) {
-                        void handleManagementTypeChange(tabId);
-                      }
-                    }}
-                  >
-                    <TabsList>
-                      <TabsTrigger value="manual" label="Manual access" />
-                      <TabsTrigger
-                        value="group"
-                        label="Provisioned group access"
-                      />
-                    </TabsList>
-                  </Tabs>
+                  <div className="flex flex-row items-center justify-between">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="outline"
+                          isSelect
+                          label={
+                            managementType === "manual"
+                              ? "Manual access"
+                              : "Provisioned group access"
+                          }
+                        />
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent>
+                        <DropdownMenuItem
+                          label="Manual access"
+                          onClick={() => {
+                            if (isMembersManagementType("manual")) {
+                              void handleManagementTypeChange("manual");
+                            }
+                          }}
+                        />
+                        <DropdownMenuItem
+                          label="Provisioned group access"
+                          onClick={() => {
+                            if (isMembersManagementType("group")) {
+                              void handleManagementTypeChange("group");
+                            }
+                          }}
+                        />
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
                 ) : null}
 
                 {isManual && selectedMembers.length === 0 && (
