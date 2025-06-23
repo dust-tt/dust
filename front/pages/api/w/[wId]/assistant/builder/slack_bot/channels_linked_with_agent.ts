@@ -15,7 +15,7 @@ async function handler(
   >,
   auth: Authenticator
 ): Promise<void> {
-  return handleSlackChannelsLinkedWithAgent(req, res, auth, "slack");
+  return handleSlackChannelsLinkedWithAgent(req, res, auth, "slack_bot");
 }
 
 export default withSessionAuthenticationForWorkspace(handler);
