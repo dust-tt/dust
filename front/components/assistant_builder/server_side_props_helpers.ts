@@ -57,19 +57,17 @@ export const getAccessibleSourcesAndApps = async (auth: Authenticator) => {
       await SpaceResource.listWorkspaceSpaces(auth)
     ).filter((space) => !space.isSystem() && space.canRead(auth));
 
-    const [dsViews, allDustApps, allMCPServerViews] = await Promise.all([
+    const [dsViews, allDustApps] = await Promise.all([
       DataSourceViewResource.listBySpaces(auth, accessibleSpaces, {
         includeEditedBy: true,
       }),
       AppResource.listByWorkspace(auth),
-      MCPServerViewResource.listBySpaces(auth, accessibleSpaces),
     ]);
 
     return {
       spaces: accessibleSpaces,
       dataSourceViews: dsViews,
       dustApps: allDustApps,
-      mcpServerViews: allMCPServerViews,
     };
   });
 };
