@@ -19,7 +19,6 @@ async function extendWorkspaceTrial(
   const childLogger = logger.child({ workspaceId });
 
   try {
-    // Find workspace
     const workspace = await Workspace.findOne({
       where: { sId: workspaceId },
     });
@@ -33,7 +32,6 @@ async function extendWorkspaceTrial(
       };
     }
 
-    // Get active subscription
     const subscription = await Subscription.findOne({
       where: {
         workspaceId: workspace.id,
@@ -69,7 +67,7 @@ async function extendWorkspaceTrial(
     }
 
     if (execute) {
-      // Extend trial by 14 days (2 weeks) to reach 1 month total
+      // Extend the trial by 14 days (2 weeks) to reach 1 month total.
       const result = await extendStripeSubscriptionTrial(
         subscription.stripeSubscriptionId,
         { days: 14 }
