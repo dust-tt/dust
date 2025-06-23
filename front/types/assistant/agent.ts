@@ -14,6 +14,7 @@ import type { UserType } from "@app/types/user";
 import type { ModelId } from "../shared/model_id";
 import type { ModelIdType, ModelProviderIdType } from "./assistant";
 import type { AgentActionType, AgentMessageType } from "./conversation";
+import { PostOrPatchAgentConfigurationRequestBody } from "@app/types";
 
 /**
  * Agent configuration
@@ -184,15 +185,9 @@ export function isTemplateAgentConfiguration(
   );
 }
 
-export const DEFAULT_MAX_STEPS_USE_PER_RUN = 8;
-export const MAX_STEPS_USE_PER_RUN_LIMIT = 24;
-export const EXTENDED_MAX_STEPS_USE_PER_RUN_LIMIT = 128;
+export type AssistantConfigurationInput =
+  PostOrPatchAgentConfigurationRequestBody["assistant"];
 
-/**
- * Agent events
- */
-
-// Event sent when an agent error occured before we have a agent message in the database.
 export type AgentMessageErrorEvent = {
   type: "agent_message_error";
   created: number;

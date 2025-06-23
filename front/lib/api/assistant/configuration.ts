@@ -81,9 +81,9 @@ import type {
   AgentModelConfigurationType,
   AgentsGetViewType,
   AgentStatus,
+  AssistantConfigurationInput,
   LightAgentConfigurationType,
   ModelId,
-  PostOrPatchAgentConfigurationRequestBody,
   Result,
   TagsFilter,
   UserType,
@@ -806,7 +806,7 @@ export async function createOrUpgradeAgentConfiguration({
   transaction,
 }: {
   auth: Authenticator;
-  assistant: PostOrPatchAgentConfigurationRequestBody["assistant"];
+  assistant: AssistantConfigurationInput;
   agentConfigurationId?: string;
   transaction?: Transaction;
 }): Promise<Result<AgentConfigurationType, Error>> {
