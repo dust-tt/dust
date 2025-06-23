@@ -1,10 +1,14 @@
 import type { RedisClientType } from "redis";
 import { createClient } from "redis";
 
+import config from "@app/lib/api/config";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
 
-let client: RedisClientType;
+const clients: Record<"cache" | "standard", RedisClientType | null> = {
+  cache: null,
+  standard: null,
+};
 
 export type RedisUsageTagsType =
   | "action_validation"
@@ -23,21 +27,33 @@ export type RedisUsageTagsType =
   | "reasoning_generation"
   | "retry_agent_message"
   | "update_authors"
-  | "user_message_events";
+  | "user_message_events"
+  | "cache_with_redis"
+  | "rate_limiter";
+
+const getRedisURIAndKeyForUsage = (
+  usage: RedisUsageTagsType
+): { key: keyof typeof clients; uri: string } => {
+  switch (usage) {
+    case "cache_with_redis":
+      return { key: "cache", uri: config.getRedisCacheURI() };
+    default:
+      return { key: "standard", uri: config.getRedisURI() };
+  }
+};
 
 export async function getRedisClient({
   origin,
 }: {
   origin: RedisUsageTagsType;
 }): Promise<RedisClientType> {
-  if (!client) {
-    const { REDIS_URI } = process.env;
-    if (!REDIS_URI) {
-      throw new Error("REDIS_URI is not defined");
-    }
+  const { key, uri } = getRedisURIAndKeyForUsage(origin);
 
+  let client = clients[key];
+
+  if (client === null) {
     client = createClient({
-      url: REDIS_URI,
+      url: uri,
       isolationPoolOptions: {
         acquireTimeoutMillis: 10000, // Max time to wait for a connection: 10 seconds.
         min: 1,
@@ -46,6 +62,7 @@ export async function getRedisClient({
         idleTimeoutMillis: 30000, // Connections idle for more than 30 seconds will be eligible for eviction.
       },
     });
+
     client.on("error", (err) => logger.info({ err }, "Redis Client Error"));
     client.on("ready", () => logger.info({}, "Redis Client Ready"));
     client.on("connect", () => {
@@ -58,6 +75,8 @@ export async function getRedisClient({
     });
 
     await client.connect();
+    clients[key] = client;
+    return client;
   }
 
   return client;
