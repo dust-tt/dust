@@ -76,9 +76,7 @@ const sendPasswordResetEmail = async (
 <div style="text-align: center; margin: 40px 0;">
       <table cellpadding="0" cellspacing="0" border="0" style="margin: 0 auto;">
         <tr>
-          <td style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                     border-radius: 8px;
-                     box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+          <td style="border-radius: 8px;
                      transition: all 0.3s ease;">
             <a href="${passwordResetUrl}"
                style="display: inline-flex;
