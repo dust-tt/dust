@@ -3,10 +3,10 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
+import { createOrUpgradeAgentConfiguration } from "@app/lib/assistant/configuration_service";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { apiError } from "@app/logger/withlogging";
-import { createOrUpgradeAgentConfiguration } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
 import type { AgentConfigurationType, WithAPIErrorResponse } from "@app/types";
 import { PostOrPatchAgentConfigurationRequestBodySchema } from "@app/types";
 

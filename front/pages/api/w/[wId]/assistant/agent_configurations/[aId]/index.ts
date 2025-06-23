@@ -8,10 +8,10 @@ import {
 } from "@app/lib/api/assistant/configuration";
 import { getAgentRecentAuthors } from "@app/lib/api/assistant/recent_authors";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import { createOrUpgradeAgentConfiguration } from "@app/lib/assistant/configuration_service";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { apiError } from "@app/logger/withlogging";
-import { createOrUpgradeAgentConfiguration } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
 import type { AgentConfigurationType, WithAPIErrorResponse } from "@app/types";
 import { PostOrPatchAgentConfigurationRequestBodySchema } from "@app/types";
 
