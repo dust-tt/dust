@@ -8,7 +8,6 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import {
   generateWorkOSAdminPortalUrl,
   getOrCreateWorkOSOrganization,
-  getWorkOSOrganization,
   removeWorkOSOrganizationDomain,
 } from "@app/lib/api/workos/organization";
 import type { Authenticator } from "@app/lib/auth";
