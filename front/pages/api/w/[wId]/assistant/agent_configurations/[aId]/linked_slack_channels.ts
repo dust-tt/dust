@@ -39,9 +39,21 @@ async function handler(
     });
   }
 
+  const provider = (req.query.provider as string) || "slack";
+
+  if (provider !== "slack" && provider !== "slack_bot") {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Provider parameter must be either 'slack' or 'slack_bot'",
+      },
+    });
+  }
+
   const slackDataSources = await DataSourceResource.listByConnectorProvider(
     auth,
-    "slack",
+    provider,
     { limit: 1 }
   );
   const slackDataSource = slackDataSources[0];
