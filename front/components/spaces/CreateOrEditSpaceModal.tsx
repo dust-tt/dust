@@ -374,7 +374,7 @@ export function CreateOrEditSpaceModal({
         <SheetHeader>
           <div className="flex flex-col gap-2">
             <div className="flex flex-col gap-0">
-              <SheetTitle>`Space Settings - ${spaceName}`</SheetTitle>
+              <SheetTitle>Space Settings - {spaceName}</SheetTitle>
             </div>
 
             {isAdmin && space && space.kind === "regular" && (
