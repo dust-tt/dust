@@ -105,10 +105,11 @@ export function useFileUploaderService({
         title: "Files too large.",
         description: `Combined ${cat[0]} file sizes exceed the limit of ${MAX_FILE_SIZES[cat[0]] / 1024 / 1024}MB. Please upload smaller files.`,
       });
-      setIsProcessingFiles(false);
-      return;
     }
 
+    if (oversizedCategories.length > 1) {
+      return;
+    }
     const previewResults = processSelectedFiles(files);
     const newFileBlobs = processResults(previewResults);
 
