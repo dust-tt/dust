@@ -22,7 +22,7 @@ export const isEnabledForWorkspace = async (
   if (mcpServer.isRestricted) {
     const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
     const plan = auth.getNonNullablePlan();
-    return mcpServer.isRestricted({ plan, featureFlags });
+    return !mcpServer.isRestricted({ plan, featureFlags });
   }
 
   // If the server has no restriction, it is available by default.

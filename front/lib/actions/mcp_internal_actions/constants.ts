@@ -98,7 +98,7 @@ export const INTERNAL_MCP_SERVERS: Record<
     id: 6,
     availability: "auto",
     isRestricted: ({ featureFlags }) => {
-      return featureFlags.includes("dev_mcp_actions");
+      return !featureFlags.includes("dev_mcp_actions");
     },
   },
   hubspot: {
@@ -188,8 +188,8 @@ export const INTERNAL_MCP_SERVERS: Record<
     availability: "manual",
     isRestricted: ({ featureFlags }) => {
       // When we are ready to release the feature, the condition will be:
-      // return featureFlags.includes("salesforce_tool") || plan.limits.connections.isSalesforceAllowed;
-      return featureFlags.includes("salesforce_tool");
+      // return !featureFlags.includes("salesforce_tool") && !plan.limits.connections.isSalesforceAllowed;
+      return !featureFlags.includes("salesforce_tool");
     },
     tools_stakes: {
       execute_read_query: "low",
@@ -201,7 +201,7 @@ export const INTERNAL_MCP_SERVERS: Record<
     id: 15,
     availability: "manual",
     isRestricted: ({ featureFlags }) => {
-      return featureFlags.includes("gmail_tool");
+      return !featureFlags.includes("gmail_tool");
     },
     tools_stakes: {
       get_drafts: "never_ask",
@@ -212,7 +212,7 @@ export const INTERNAL_MCP_SERVERS: Record<
     id: 16,
     availability: "manual",
     isRestricted: ({ featureFlags }) => {
-      return featureFlags.includes("google_calendar_tool");
+      return !featureFlags.includes("google_calendar_tool");
     },
     tools_stakes: {
       list_calendars: "never_ask",
@@ -232,7 +232,7 @@ export const INTERNAL_MCP_SERVERS: Record<
     id: 18,
     availability: "manual",
     isRestricted: ({ featureFlags }) => {
-      return featureFlags.includes("slack_tool");
+      return !featureFlags.includes("slack_tool");
     },
     tools_stakes: {
       search_messages: "never_ask",
@@ -255,7 +255,7 @@ export const INTERNAL_MCP_SERVERS: Record<
     id: 1004,
     availability: "manual",
     isRestricted: ({ featureFlags }) => {
-      return featureFlags.includes("dev_mcp_actions");
+      return !featureFlags.includes("dev_mcp_actions");
     },
   },
   reasoning: {
@@ -267,7 +267,7 @@ export const INTERNAL_MCP_SERVERS: Record<
     availability: "auto",
     // We'll eventually switch everyone to this new tables query toolset.
     isRestricted: ({ featureFlags }) => {
-      return featureFlags.includes("exploded_tables_query");
+      return !featureFlags.includes("exploded_tables_query");
     },
   },
   data_sources_file_system: {
