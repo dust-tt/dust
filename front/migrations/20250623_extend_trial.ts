@@ -125,15 +125,9 @@ makeScript(
     workspaceIds: {
       type: "string",
       description: "Comma-separated list of workspace IDs to extend trials for",
-      required: true,
-    },
-    concurrency: {
-      type: "number",
-      description: "Number of workspaces to process concurrently",
-      default: 5,
     },
   },
-  async ({ workspaceIds, concurrency, execute }, logger) => {
+  async ({ workspaceIds, execute }, logger) => {
     if (!workspaceIds) {
       throw new Error("workspaceIds parameter is required");
     }
@@ -161,7 +155,7 @@ makeScript(
       async (workspaceId) => {
         return extendWorkspaceTrial(workspaceId, execute, logger);
       },
-      { concurrency }
+      { concurrency: 1 }
     );
 
     const successful = results.filter((r) => r.success);
