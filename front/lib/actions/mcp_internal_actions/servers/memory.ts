@@ -1,4 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import fs from "fs";
+import path from "path";
 import { z } from "zod";
 
 const serverInfo = {
@@ -10,9 +12,17 @@ const serverInfo = {
   documentationUrl: null,
 };
 
-console.log("Creating memory server...");
-const memoryStorage: { type: "text"; text: string }[] = []; // Static array to store memories
+const memoryFilePath = path.resolve(
+  process.env.HOME || process.env.USERPROFILE || ".",
+  "memoryStorage.txt"
+);
 
+// Ensure the memory file exists
+if (!fs.existsSync(memoryFilePath)) {
+  fs.writeFileSync(memoryFilePath, "[]", "utf-8");
+}
+
+console.log("Creating memory server...");
 const createServer = (): McpServer => {
   const server = new McpServer(serverInfo);
 
@@ -31,7 +41,11 @@ const createServer = (): McpServer => {
     },
     async ({ memory }) => {
       console.log("Saving memory:", memory);
+      const memoryStorage = JSON.parse(
+        fs.readFileSync(memoryFilePath, "utf-8")
+      );
       memoryStorage.push({ type: "text", text: memory });
+      fs.writeFileSync(memoryFilePath, JSON.stringify(memoryStorage), "utf-8");
       return {
         isError: false,
         content: [],
@@ -44,6 +58,9 @@ const createServer = (): McpServer => {
     "Retrieve all saved memories. This should be called at the beginning of each conversation to provide context",
     {},
     async () => {
+      const memoryStorage = JSON.parse(
+        fs.readFileSync(memoryFilePath, "utf-8")
+      );
       console.log("Retrieving memories:", memoryStorage);
       return {
         isError: false,
@@ -58,7 +75,7 @@ const createServer = (): McpServer => {
     {},
     async () => {
       console.log("Forgetting all memories");
-      memoryStorage.length = 0; // Clear the memory storage
+      fs.writeFileSync(memoryFilePath, "[]", "utf-8");
       return {
         isError: false,
         content: [],
