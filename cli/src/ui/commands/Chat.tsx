@@ -1,8 +1,9 @@
-import {
-  type AgentActionSpecificEvent,
-  type CreateConversationResponseType,
-  type GetAgentConfigurationsResponseType,
+import type {
+  AgentActionSpecificEvent,
+  CreateConversationResponseType,
+  GetAgentConfigurationsResponseType,
 } from "@dust-tt/client";
+import assert from "assert";
 import { Box, Text, useInput, useStdout } from "ink";
 import open from "open";
 import type { FC } from "react";
@@ -17,7 +18,6 @@ import AgentSelector from "../components/AgentSelector.js";
 import type { ConversationItem } from "../components/Conversation.js";
 import Conversation from "../components/Conversation.js";
 import { createCommands } from "./types.js";
-import assert from "assert";
 
 type AgentConfiguration =
   GetAgentConfigurationsResponseType["agentConfigurations"][number];
@@ -398,7 +398,7 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
             break;
           } else if (event.type === "tool_approve_execution") {
             const approved = await handleApprovalRequest(event);
-            dustClient.validateAction({
+            await dustClient.validateAction({
               conversationId: event.conversationId,
               messageId: event.messageId,
               actionId: event.actionId,
