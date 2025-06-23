@@ -4,8 +4,8 @@ import {
   CloudArrowUpIcon,
   DoubleIcon,
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuSearchbar,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
@@ -26,10 +26,7 @@ import {
 } from "@app/lib/content_nodes";
 import { isFolder, isWebsite } from "@app/lib/data_sources";
 import { getSpaceAccessPriority } from "@app/lib/spaces";
-import {
-  useSpaces,
-  useSpacesSearchWithInfiniteScroll,
-} from "@app/lib/swr/spaces";
+import { useSpaces, useSpacesSearchWithInfiniteScroll } from "@app/lib/swr/spaces";
 import type { DataSourceViewContentNode, LightWorkspaceType } from "@app/types";
 import { MIN_SEARCH_QUERY_SIZE } from "@app/types";
 
@@ -37,6 +34,7 @@ interface InputBarAttachmentsPickerProps {
   owner: LightWorkspaceType;
   fileUploaderService: FileUploaderService;
   onNodeSelect: (node: DataSourceViewContentNode) => void;
+  onNodeUnselect: (node: DataSourceViewContentNode) => void;
   isLoading?: boolean;
   attachedNodes: DataSourceViewContentNode[];
 }
@@ -47,6 +45,7 @@ export const InputBarAttachmentsPicker = ({
   owner,
   fileUploaderService,
   onNodeSelect,
+  onNodeUnselect,
   attachedNodes,
   isLoading = false,
 }: InputBarAttachmentsPickerProps) => {
@@ -115,8 +114,8 @@ export const InputBarAttachmentsPicker = ({
     <DropdownMenu
       open={isOpen}
       onOpenChange={(open) => {
-        setIsOpen(open);
         if (open) {
+          setIsOpen(true);
           setSearch("");
         }
       }}
@@ -135,6 +134,7 @@ export const InputBarAttachmentsPicker = ({
         collisionPadding={15}
         align="end"
         onInteractOutside={() => setIsOpen(false)}
+        onEscapeKeyDown={() => setIsOpen(false)}
         dropdownHeaders={
           <>
             <Input
@@ -182,11 +182,24 @@ export const InputBarAttachmentsPicker = ({
         {searchQuery ? (
           <div ref={itemsContainerRef}>
             {pickedSpaceNodes.map((item, index) => (
-              <DropdownMenuItem
+              <DropdownMenuCheckboxItem
                 key={index}
-                label={item.title}
-                icon={
-                  isWebsite(item.dataSourceView.dataSource) ||
+                checked={attachedNodes.some(
+                  (attachedNode) =>
+                    attachedNode.internalId === item.internalId &&
+                    attachedNode.dataSourceView.dataSource.sId ===
+                      item.dataSourceView.dataSource.sId
+                )}
+                onCheckedChange={(checked) => {
+                  if (checked) {
+                    onNodeSelect(item);
+                  } else {
+                    onNodeUnselect(item);
+                  }
+                }}
+              >
+                <div className="flex items-center gap-2">
+                  {isWebsite(item.dataSourceView.dataSource) ||
                   isFolder(item.dataSourceView.dataSource) ? (
                     <Icon
                       visual={getVisualForDataSourceViewContentNode(item)}
@@ -201,22 +214,15 @@ export const InputBarAttachmentsPicker = ({
                           item.dataSourceView.dataSource.connectorProvider,
                       })}
                     />
-                  )
-                }
-                disabled={attachedNodes.some(
-                  (attachedNode) =>
-                    attachedNode.internalId === item.internalId &&
-                    attachedNode.dataSourceView.dataSource.sId ===
-                      item.dataSourceView.dataSource.sId
-                )}
-                description={`${getLocationForDataSourceViewContentNode(item)}`}
-                onClick={() => {
-                  setSearch("");
-                  onNodeSelect(item);
-                  setIsOpen(false);
-                }}
-                truncateText
-              />
+                  )}
+                  <div className="flex flex-col">
+                    <span className="truncate">{item.title}</span>
+                    <span className="truncate text-xs text-muted-foreground">
+                      {getLocationForDataSourceViewContentNode(item)}
+                    </span>
+                  </div>
+                </div>
+              </DropdownMenuCheckboxItem>
             ))}
             {pickedSpaceNodes.length === 0 && !showLoader && (
               <div className="flex items-center justify-center py-4 text-sm text-muted-foreground dark:text-muted-foreground-night">
