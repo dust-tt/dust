@@ -30,20 +30,6 @@ type CacheableFunction<T, Args extends unknown[]> = (
 
 type KeyResolver<Args extends unknown[]> = (...args: Args) => string;
 
-export const getRedisCacheClient = async () => {
-  const REDIS_CACHE_URI = process.env.REDIS_CACHE_URI;
-  if (!REDIS_CACHE_URI) {
-    throw new Error("REDIS_CACHE_URI is not set");
-  }
-
-  const redisCli = await redisClient({
-    origin: "cache_with_redis",
-    redisUri: REDIS_CACHE_URI,
-  });
-
-  return redisCli;
-};
-
 export const CACHE_WITH_REDIS_KEY = "cacheWithRedis";
 export const CACHE_WITH_REDIS_MAX_TTL = 60 * 60 * 24 * 1000;
 
