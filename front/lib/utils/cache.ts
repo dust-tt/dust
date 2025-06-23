@@ -44,13 +44,14 @@ export const getRedisCacheClient = async () => {
   return redisCli;
 };
 
+export const CACHE_WITH_REDIS_KEY = "cacheWithRedis";
+export const CACHE_WITH_REDIS_MAX_TTL = 60 * 60 * 24 * 1000;
+
 export type CacheWithRedisOptions = {
   ttlMs: number;
   redisUri?: string;
   prefix?: string;
 };
-
-export const CACHE_WITH_REDIS_KEY = "cacheWithRedis";
 
 // Wrapper function to cache the result of a function with Redis.
 // Usage:
@@ -64,7 +65,7 @@ export function cacheWithRedis<T, Args extends unknown[]>(
   resolver: KeyResolver<Args>,
   { ttlMs, redisUri, prefix }: CacheWithRedisOptions
 ): (...args: Args) => Promise<T> {
-  if (ttlMs > 60 * 60 * 24 * 1000) {
+  if (ttlMs > CACHE_WITH_REDIS_MAX_TTL) {
     throw new Error("ttlMs should be less than 24 hours");
   }
 

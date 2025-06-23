@@ -9,7 +9,7 @@ import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { getResourceNameAndIdFromSId } from "@app/lib/resources/string_ids";
-import { cacheWithRedis } from "@app/lib/utils/cache";
+import { CACHE_WITH_REDIS_MAX_TTL, cacheWithRedis } from "@app/lib/utils/cache";
 import type { SupportedFileContentType } from "@app/types";
 import { assertNever, normalizeError, validateUrl } from "@app/types";
 
@@ -60,7 +60,7 @@ const createServer = (auth: Authenticator): McpServer => {
         },
         () => `get_source_format_to_convert_to_${output_format}`,
         {
-          ttlMs: 60 * 60 * 24 * 1000,
+          ttlMs: CACHE_WITH_REDIS_MAX_TTL,
         }
       )();
 
