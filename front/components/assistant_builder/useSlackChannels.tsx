@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 
 import type { SlackChannel } from "@app/components/assistant_builder/SlackIntegration";
 import { useSlackChannelsLinkedWithAgent } from "@app/lib/swr/assistants";
-import { ConnectorProvider } from "@dust-tt/client";
+import type { ConnectorProvider } from "@dust-tt/client";
 
 interface useSlackChannelProps {
   agentConfigurationId: string | null;
