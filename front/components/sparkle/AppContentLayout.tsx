@@ -22,6 +22,22 @@ export const appLayoutBack = async (
   if (window.history.length < 3) {
     await router.push(`/w/${owner.sId}/assistant/new`);
   } else {
+    // Set up beforePopState to intercept the back navigation and clean query params
+    router.beforePopState(({ as }) => {
+      // Parse the destination URL that router.back() would navigate to
+      const urlObj = new URL(as, window.location.origin);
+      // Remove assistantDetails query parameter from the destination URL
+      urlObj.searchParams.delete("assistantDetails");
+
+      // Reconstruct the cleaned URL
+      const cleanedUrl = urlObj.pathname + urlObj.search;
+
+      // Navigate to the cleaned URL instead of the original back destination
+      void router.push(cleanedUrl);
+      return false; // Prevent the default back navigation to allow our custom navigation
+    });
+
+    // Trigger the back navigation, which will be intercepted by beforePopState
     router.back();
   }
 };
