@@ -514,7 +514,9 @@ const DataSourcePage = ({
               </>
             )}
           </div>
-          {dataSource.connectorProvider === "slack" && (
+          {["slack", "slack_bot"].includes(
+            dataSource.connectorProvider ?? ""
+          ) && (
             <div className="border-material-200 mb-4 flex flex-grow flex-col rounded-lg border p-4">
               <SlackChannelPatternInput
                 initialValues={features.autoReadChannelPatterns || ""}
