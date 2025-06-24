@@ -12,21 +12,31 @@ import { AssistantSidebarMenu } from "@app/components/assistant/conversation/Sid
 import AppContentLayout from "@app/components/sparkle/AppContentLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { getFeatureFlags } from "@app/lib/auth";
+import { AuthenticatorProvider } from "@app/lib/context/authenticator";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import {
   useLabsCreateSalesforcePersonalConnection,
   useLabsDeleteSalesforcePersonalConnection,
   useLabsSalesforceDataSourcesWithPersonalConnection,
 } from "@app/lib/swr/labs";
-import type { SubscriptionType, WorkspaceType } from "@app/types";
+import type {
+  PlanType,
+  SubscriptionType,
+  UserType,
+  WorkspaceType,
+} from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
+  user: UserType;
   owner: WorkspaceType;
   subscription: SubscriptionType;
+  plan: PlanType | null;
+  isAdmin: boolean;
 }>(async (_context, auth) => {
   const owner = auth.workspace();
   const subscription = auth.subscription();
-  const user = auth.getNonNullableUser();
+  const user = auth.user();
+  const plan = auth.plan();
 
   if (!owner || !subscription || !user) {
     return {
@@ -43,8 +53,11 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 
   return {
     props: {
+      user: user.toJSON(),
       owner,
       subscription,
+      plan,
+      isAdmin: auth.isAdmin(),
     },
   };
 });
@@ -132,6 +145,13 @@ export default function PersonalConnections({
   );
 }
 
-PersonalConnections.getLayout = (page: React.ReactElement) => {
-  return <AppRootLayout>{page}</AppRootLayout>;
+PersonalConnections.getLayout = (
+  page: React.ReactElement,
+  pageProps: InferGetServerSidePropsType<typeof getServerSideProps>
+) => {
+  return (
+    <AppRootLayout>
+      <AuthenticatorProvider value={pageProps}>{page}</AuthenticatorProvider>
+    </AppRootLayout>
+  );
 };
