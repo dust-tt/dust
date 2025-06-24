@@ -7,7 +7,7 @@ import {
 } from "@dust-tt/sparkle";
 import { LightbulbIcon } from "@dust-tt/sparkle";
 import { Button } from "@dust-tt/sparkle";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import React from "react";
 
 import type {
@@ -40,43 +40,42 @@ export function InstructionTipsPopover({
   const [error, setError] = useState<APIError | null>(null);
   const [isOpen, setIsOpen] = useState(false);
 
-  useEffect(() => {
-    if (!isOpen || !instructions.trim()) {
+  const fetchTips = async () => {
+    setStatus("loading");
+    setError(null);
+
+    const result = await getRankedSuggestions({
+      owner,
+      currentInstructions: instructions,
+      formerSuggestions: [],
+    });
+
+    if (result.isErr()) {
+      setError(result.error);
+      setStatus("error");
       return;
     }
 
-    const fetchTips = async () => {
-      setStatus("loading");
-      setError(null);
+    if (result.value.status === "ok" && result.value.suggestions?.length) {
+      // Take first 3 suggestions
+      setTips(result.value.suggestions.slice(0, 3));
+    } else {
+      // Fallback to static tips
+      setTips(STATIC_TIPS);
+    }
 
-      const result = await getRankedSuggestions({
-        owner,
-        currentInstructions: instructions,
-        formerSuggestions: [],
-      });
+    setStatus("loaded");
+  };
 
-      if (result.isErr()) {
-        setError(result.error);
-        setStatus("error");
-        return;
-      }
-
-      if (result.value.status === "ok" && result.value.suggestions?.length) {
-        // Take first 3 suggestions
-        setTips(result.value.suggestions.slice(0, 3));
-      } else {
-        // Fallback to static tips
-        setTips(STATIC_TIPS);
-      }
-
-      setStatus("loaded");
-    };
-
-    void fetchTips();
-  }, [isOpen, instructions, owner]);
+  function onOpenChange(isOpen: boolean) {
+    if (isOpen) {
+      void fetchTips();
+    }
+    setIsOpen(isOpen);
+  }
 
   return (
-    <PopoverRoot open={isOpen} onOpenChange={setIsOpen}>
+    <PopoverRoot open={isOpen} onOpenChange={onOpenChange}>
       <PopoverTrigger asChild>
         <Button
           variant="outline"
