@@ -1,5 +1,5 @@
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
-import { Workspace } from "@app/lib/models/workspace";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { makeScript } from "@app/scripts/helpers";
 import type { ModelId, SupportedModel } from "@app/types";
 import { isSupportedModel, SUPPORTED_MODEL_CONFIGS } from "@app/types";
@@ -57,7 +57,7 @@ makeScript(
   },
   async ({ fromModel, toModel, workspaceIds, execute }) => {
     const whereClause = workspaceIds.length > 0 ? { sId: workspaceIds } : {};
-    const workspaces = await Workspace.findAll({
+    const workspaces = await WorkspaceModel.findAll({
       attributes: ["id", "name", "sId"],
       where: whereClause,
     });

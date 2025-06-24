@@ -1,4 +1,5 @@
 import {
+  ArrowPathIcon,
   Button,
   ContextItem,
   Input,
@@ -312,16 +313,46 @@ function SlackBotToggle({
         visual={<SlackLogo className="h-6 w-6" />}
         hasSeparatorIfLast={true}
         action={
-          <SliderToggle
-            selected={
-              // When changing and initially enabled, show disabled, and vice versa.
-              isSlackBotEnabled !== isChangingSlackBot
-            }
-            disabled={isChangingSlackBot}
-            onClick={() => {
-              void toggleSlackBot();
-            }}
-          />
+          <div className="flex flex-row items-center gap-2">
+            {isSlackBotEnabled && (
+              <Button
+                variant="outline"
+                label="Reconnect"
+                size="xs"
+                icon={ArrowPathIcon}
+                onClick={async () => {
+                  const connectionIdRes = await setupConnection({
+                    owner,
+                    provider: "slack_bot",
+                    extraConfig: {},
+                  });
+                  if (connectionIdRes.isErr()) {
+                    sendNotification({
+                      type: "error",
+                      title: "Failed to reconnect Slack Bot.",
+                      description: "Could not reconnect the Dust Slack Bot.",
+                    });
+                  } else {
+                    sendNotification({
+                      type: "success",
+                      title: "Slack Bot reconnected.",
+                      description: "The Dust Slack Bot has been reconnected.",
+                    });
+                  }
+                }}
+              />
+            )}
+            <SliderToggle
+              selected={
+                // When changing and initially enabled, show disabled, and vice versa.
+                isSlackBotEnabled !== isChangingSlackBot
+              }
+              disabled={isChangingSlackBot}
+              onClick={() => {
+                void toggleSlackBot();
+              }}
+            />
+          </div>
         }
       />
     </ContextItem.List>

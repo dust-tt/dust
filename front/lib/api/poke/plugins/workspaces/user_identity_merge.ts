@@ -37,6 +37,12 @@ export const userIdentityMergePlugin = createPlugin({
           "If true, the secondary user will be revoked from the workspace after the merge.",
         default: false,
       },
+      skipAuth0: {
+        type: "boolean",
+        label: "Skip Auth0",
+        description: "If true, the Auth0 merge will be skipped.",
+        default: false,
+      },
     },
   },
   execute: async (auth, _, args) => {
@@ -53,6 +59,7 @@ export const userIdentityMergePlugin = createPlugin({
       secondaryUserId,
       enforceEmailMatch: !args.ignoreEmailMatch,
       revokeSecondaryUser: args.revokeSecondaryUser,
+      skipAuth0: args.skipAuth0,
     });
 
     if (mergeResult.isErr()) {

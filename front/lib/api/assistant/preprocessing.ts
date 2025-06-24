@@ -113,7 +113,10 @@ export async function renderConversationForModel(
         (c) => !!c.content.trim()
       );
       const shadowReadRawContents: { step: number; content: string }[] = [];
-      if (nonEmptyRawContents.length || m.contents.length) {
+      if (
+        m.status === "succeeded" &&
+        (nonEmptyRawContents.length || m.contents.length)
+      ) {
         if (m.contents.length) {
           for (const content of m.contents) {
             if (

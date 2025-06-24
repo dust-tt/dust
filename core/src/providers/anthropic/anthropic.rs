@@ -1,8 +1,8 @@
-use crate::providers::anthropic::image_helpers::fetch_and_encode_images;
+use crate::providers::anthropic::helpers::get_anthropic_chat_messages;
 use crate::providers::anthropic::streaming::handle_streaming_response;
 use crate::providers::anthropic::types::{
     AnthropicChatMessage, AnthropicError, AnthropicTool, AnthropicToolChoice,
-    AnthropicToolChoiceType, ChatMessageConversionInput, ChatResponse,
+    AnthropicToolChoiceType, ChatResponse,
 };
 use crate::providers::chat_messages::{AssistantChatMessage, ChatMessage};
 use crate::providers::embedder::{Embedder, EmbedderVector};
@@ -413,52 +413,27 @@ impl LLM for AnthropicLLM {
             }
         }
 
-        let system = match messages.get(0) {
+        // If the first message is a system message, we use that as system prompt,
+        // and we remove it from the messages vector.
+        let (system, slice_from) = match messages.get(0) {
             Some(cm) => match cm {
-                ChatMessage::System(system_msg) => Some(system_msg.content.clone()),
-                _ => None,
+                ChatMessage::System(system_msg) => (Some(system_msg.content.clone()), 1),
+                _ => (None, 0),
             },
-            None => None,
+            None => (None, 0),
         };
 
-        let base64_map = fetch_and_encode_images(messages.clone()).await?;
-        let mut messages = messages
-            .iter()
-            .skip(match system.as_ref() {
-                Some(_) => 1,
-                None => 0,
-            })
-            .map(|cm| {
-                let conversion_input = ChatMessageConversionInput {
-                    chat_message: &cm,
-                    base64_map: &base64_map,
-                };
-
-                AnthropicChatMessage::try_from(&conversion_input)
-            })
-            .collect::<Result<Vec<AnthropicChatMessage>>>()?;
-
-        // Group consecutive messages with the same role by appending their content. This is
-        // needed to group all the `tool_results` within one content vector.
-        messages = messages.iter().fold(
-            vec![],
-            |mut acc: Vec<AnthropicChatMessage>, cm: &AnthropicChatMessage| {
-                match acc.last_mut() {
-                    Some(last) if last.role == cm.role => {
-                        last.content.extend(cm.content.clone());
-                    }
-                    _ => {
-                        acc.push(cm.clone());
-                    }
-                };
-                acc
-            },
-        );
+        let anthropic_messages =
+            get_anthropic_chat_messages(messages[slice_from..].to_vec()).await?;
 
         let tools = functions
             .iter()
-            .map(AnthropicTool::try_from)
-            .collect::<Result<Vec<AnthropicTool>, _>>()?;
+            .map(|f| AnthropicTool {
+                name: f.name.clone(),
+                description: f.description.clone(),
+                input_schema: f.parameters.clone(),
+            })
+            .collect::<Vec<AnthropicTool>>();
 
         let tool_choice = match function_call.as_ref() {
             Some(fc) => Some(AnthropicToolChoice::from_str(fc)?),
@@ -519,7 +494,7 @@ impl LLM for AnthropicLLM {
             Some(es) => {
                 self.streamed_chat_completion(
                     system,
-                    &messages,
+                    &anthropic_messages,
                     tools,
                     tool_choice,
                     temperature,
@@ -541,7 +516,7 @@ impl LLM for AnthropicLLM {
             None => {
                 self.chat_completion(
                     system,
-                    &messages,
+                    &anthropic_messages,
                     tools,
                     tool_choice,
                     temperature,

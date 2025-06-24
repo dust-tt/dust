@@ -5,7 +5,9 @@ use crate::{
     oauth::{client::OauthClient, credential::CredentialProvider},
 };
 
-use super::{bigquery::get_bigquery_remote_database, snowflake::SnowflakeRemoteDatabase};
+use super::{
+    bigquery::get_bigquery_remote_database, snowflake::snowflake::SnowflakeRemoteDatabase,
+};
 
 pub async fn get_remote_database(
     credential_id: &str,

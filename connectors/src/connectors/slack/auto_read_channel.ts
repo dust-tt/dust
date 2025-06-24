@@ -1,4 +1,4 @@
-import type { Result } from "@dust-tt/client";
+import type { ConnectorProvider, Result } from "@dust-tt/client";
 import { DustAPI, Err, Ok } from "@dust-tt/client";
 
 import { joinChannel } from "@connectors/connectors/slack/lib/channels";
@@ -35,7 +35,7 @@ export async function autoReadChannel(
   teamId: string,
   logger: Logger,
   slackChannelId: string,
-  provider: "slack_bot" | "slack" = "slack"
+  provider: Extract<ConnectorProvider, "slack_bot" | "slack"> = "slack"
 ): Promise<Result<undefined, Error>> {
   const slackConfiguration =
     await SlackConfigurationResource.fetchByTeamId(teamId);

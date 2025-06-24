@@ -2,8 +2,8 @@ import type { RegionType } from "@app/lib/api/regions/config";
 import { config } from "@app/lib/api/regions/config";
 import { isWorkspaceRelocationDone } from "@app/lib/api/workspace";
 import { findWorkspaceWithVerifiedDomain } from "@app/lib/iam/workspaces";
-import { Workspace } from "@app/lib/models/workspace";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type {
   UserLookupRequestBodyType,
@@ -58,7 +58,7 @@ export async function lookupUserRegionByEmail(
 export async function handleLookupWorkspace(workspaceLookup: {
   workspace: string;
 }) {
-  const workspace = await Workspace.findOne({
+  const workspace = await WorkspaceModel.findOne({
     where: { sId: workspaceLookup.workspace },
   });
 

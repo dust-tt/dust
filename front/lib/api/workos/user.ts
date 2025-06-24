@@ -104,7 +104,7 @@ export async function getWorkOSSession(
         // TODO(workos): Should we resolve the workspaceId and remove organizationId from here?
         organizationId,
         workspaceId,
-        isSSO: authenticationMethod === "SSO",
+        isSSO: authenticationMethod?.toLowerCase() === "sso",
         authenticationMethod,
       };
     } catch (error) {
@@ -158,6 +158,22 @@ export async function fetchUserFromWorkOS(
   return new Ok(workOSUser);
 }
 
+export async function addUserToWorkOSOrganization(
+  workspace: LightWorkspaceType,
+  workOSUser: WorkOSUser
+): Promise<Result<undefined, Error>> {
+  if (workspace.workOSOrganizationId) {
+    await getWorkOS().userManagement.createOrganizationMembership({
+      organizationId: workspace.workOSOrganizationId,
+      userId: workOSUser.id,
+    });
+    return new Ok(undefined);
+  }
+  return new Err(
+    new Error("No WorkOS organization associated with this workspace")
+  );
+}
+
 export async function fetchOrCreateWorkOSUserWithEmail({
   workOSUser,
   workspace,
@@ -192,12 +208,13 @@ export async function fetchOrCreateWorkOSUserWithEmail({
       { workOSUserId: createdUser.id },
       "Created WorkOS user for webhook event."
     );
-    // Add the user to the organization.
-    if (workspace.workOSOrganizationId) {
-      await getWorkOS().userManagement.createOrganizationMembership({
-        organizationId: workspace.workOSOrganizationId,
-        userId: createdUser.id,
-      });
+
+    const addUserToOrganizationResult = await addUserToWorkOSOrganization(
+      workspace,
+      createdUser
+    );
+
+    if (addUserToOrganizationResult.isOk()) {
       localLogger.info(
         {
           workOSUserId: createdUser.id,
@@ -208,7 +225,7 @@ export async function fetchOrCreateWorkOSUserWithEmail({
     } else {
       localLogger.error(
         { workOSUserId: createdUser.id },
-        "Created a user but no organization is associated to the workspace."
+        `Created a user but could not add it to the organization: ${addUserToOrganizationResult.error.message}.`
       );
     }
 

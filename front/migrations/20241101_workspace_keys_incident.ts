@@ -5,8 +5,8 @@ import { exit } from "process";
 import { sendEmailWithTemplate } from "@app/lib/api/email";
 import { getMembers } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
-import { Workspace } from "@app/lib/models/workspace";
 import { getStripeClient } from "@app/lib/plans/stripe";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 
@@ -30,7 +30,7 @@ const sendIncidentEmailToAdmins = async (
       <p>Please reply to this email if you have any questions.</p>`,
   };
 
-  const workspace = await Workspace.findByPk(workspaceId);
+  const workspace = await WorkspaceModel.findByPk(workspaceId);
   if (!workspace) {
     // Should not happen but just in case
     logger.error(`Workspace ${workspaceId} not found. Skipping email.`);
