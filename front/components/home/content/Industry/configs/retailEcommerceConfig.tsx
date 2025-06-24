@@ -54,7 +54,7 @@ export const retailEcommerceConfig: IndustryPageConfig = {
   },
   trustedBy: {
     title: "Trusted by retail leaders",
-    logoSet: "default",
+    logoSet: "retail",
   },
   painPoints: {
     title: "Transform how you work",
@@ -238,10 +238,6 @@ export const retailEcommerceConfig: IndustryPageConfig = {
   demoVideo: {
     sectionTitle: "See Dust in motion",
     videoUrl: "https://fast.wistia.net/embed/iframe/8q80neektv",
-  },
-  trustedBySecond: {
-    title: "Trusted by retail leaders",
-    logoSet: "retail",
   },
   testimonial: {
     quote: "Curiosity turned into necessity: I couldn't do half my job without Dust.",

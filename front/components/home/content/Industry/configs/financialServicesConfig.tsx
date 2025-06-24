@@ -38,7 +38,7 @@ export const financialServicesConfig: IndustryPageConfig = {
         logo: "/static/landing/logos/color/kyriba.png",
         alt: "Kyriba logo",
       },
-      bgColor: "bg-golden-600",
+      bgColor: "bg-violet-200",
       textColor: "text-white",
     },
     decorativeShapes: {
@@ -49,35 +49,35 @@ export const financialServicesConfig: IndustryPageConfig = {
   aiAgents: {
     title: "AI Agents for Compliance, Support, and Growth",
     description:
-      "Deploy specialized AI agents that handle complex financial workflows, ensure regulatory compliance, and enhance customer experiences—while maintaining the security and precision your industry demands.",
+      "Augment your compliance, support, and revenue teams with AI agents built for modern financial institutions. Dust connects your people, automates workflows, and delivers insights—so you can focus on growth, risk management, and exceptional client experience.",
     bgColor: "bg-gray-50",
   },
   trustedBy: {
     title: "Trusted by financial leaders",
-    logoSet: "default",
+    logoSet: "finance",
   },
   painPoints: {
     title: "Transform how you work",
     painPoints: [
       {
         icon: "/static/landing/industry/d-blue.svg",
-        title: "Scale Due Diligence and Operations for Financial Operations",
+        title: "Slash the Cost and Risk of Compliance Operations",
         description:
-          "Automate complex financial workflows, regulatory reporting, and compliance monitoring to scale operations efficiently without compromising accuracy.",
+          "Automate KYC/KYB and onboarding. AI agents verify documents, flag risks, and answer compliance questions instantly—cutting manual work to minutes.",
         color: "blue",
       },
       {
         icon: "/static/landing/industry/d-red.svg",
-        title: "Enhance Support, Ensure Security & Compliant Answers",
+        title: "Transform Support Complexity into Fast, Confident Answers",
         description:
-          "Provide instant, accurate responses to client inquiries while maintaining strict compliance with financial regulations and security protocols.",
+          "Resolve  routine queries, route tough cases, and give support teams instant access to solutions—turning every ticket into searchable knowledge.",
         color: "red",
       },
       {
         icon: "/static/landing/industry/d-green.svg",
-        title: "Optimize Processes and Enable Market Engagement",
+        title: "Achieve Instant, Precise, and Relevant Market Engagement",
         description:
-          "Leverage AI-powered insights to optimize investment strategies, risk assessment, and client relationship management for sustainable growth.",
+          "Equip your teams to deliver fast, accurate, and jargon-perfect answers—always aligned with the latest trends, regulations, and client expectations.",
         color: "green",
       },
     ],
@@ -91,22 +91,28 @@ export const financialServicesConfig: IndustryPageConfig = {
         bgColor: "bg-blue-100",
         features: [
           {
-            icon: "bg-blue-500",
-            title: "Regulatory Monitoring",
+            icon: "bg-red-500 rounded-tr-full",
+            title: "KYB & Document Review",
             description:
-              "Automated tracking of regulatory changes and impact assessment on operations",
+              "Instantly analyze and flag onboarding, KYC, and AML documents—extract key data and risks so compliance can focus on complex cases.",
           },
           {
-            icon: "bg-red-500 rounded-tr-full",
-            title: "Risk & Compliance Reporting",
+            icon: "bg-yellow-400 rounded-bl-full",
+            title: "Automated Document Analysis",
             description:
-              "Generate comprehensive compliance reports and risk assessments automatically",
+              "Quickly process contracts and forms, detecting inconsistencies and non-compliance to reduce risk and speed reviews",
           },
           {
             icon: "bg-green-500 rounded-bl-full",
-            title: "Audit Trail Management",
+            title: "Compliance Knowledge Assistant",
             description:
-              "Maintain detailed audit trails and documentation for regulatory compliance",
+              "Provide instant, reliable regulatory answers—always aligned with current global and local frameworks",
+          },
+          {
+            icon: "bg-blue-400 rounded-tr-full",
+            title: "Tax & Regulation Expertise",
+            description:
+              "Resolve tax, accounting, and regulatory questions for teams or clients in seconds, ensuring accurate, compliant decisions",
           },
         ],
       },
@@ -116,22 +122,28 @@ export const financialServicesConfig: IndustryPageConfig = {
         bgColor: "bg-purple-100",
         features: [
           {
-            icon: "bg-purple-500",
-            title: "Advanced Account Analysis",
+            icon: "bg-pink-400",
+            title: "Prospect Account Insights",
             description:
-              "Deep financial analysis and risk profiling of potential clients and investments",
+              "Enrich prospect profiles with financial and usage data for smarter qualification and engagement",
           },
           {
-            icon: "bg-blue-500 rounded-tl-full",
-            title: "Market Intelligence",
+            icon: "bg-red-500 rounded-tr-full",
+            title: "Enterprise RFPs & Solution Proposals",
             description:
-              "Real-time market data analysis and investment opportunity identification",
+              "Draft tailored proposals using proven templates and real product configurations for faster turnaround",
           },
           {
-            icon: "bg-golden-400 rounded-br-full",
-            title: "Client & Portfolio Screening",
+            icon: "bg-yellow-400 rounded-bl-full",
+            title: "Revenue Intelligence",
             description:
-              "Automated KYC, AML screening, and portfolio optimization recommendations",
+              "Extract winning playbooks and coach sales teams in real time using insights from actual interactions",
+          },
+          {
+            icon: "bg-blue-400 rounded-tr-full",
+            title: "Market & Solution Research",
+            description:
+              "Compile market intelligence and track competitor, technology, and partnership opportunities",
           },
         ],
       },
@@ -142,21 +154,27 @@ export const financialServicesConfig: IndustryPageConfig = {
         features: [
           {
             icon: "bg-green-500",
-            title: "Intelligent Client Support",
+            title: "AI Ticket Deflection & Smart Routing",
             description:
-              "AI-powered client service with instant access to account information and compliance-checked responses",
+              "Launch campaigns globally, keeping brand and technical consistency",
           },
           {
             icon: "bg-blue-500 rounded-tl-full",
-            title: "Automated Documentation",
+            title: "Accelerated Resolution",
             description:
-              "Generate client communications, reports, and documentation automatically",
+              "Instantly find relevant docs, cases, and history so agents resolve issues faster and more accurately",
           },
           {
             icon: "bg-red-400 rounded-br-full",
+            title: "Augmented Knowledge Base",
+            description:
+              "Turn support interactions into searchable, compliant knowledge for faster, consistent answers",
+          },
+          {
+            icon: "bg-yellow-400",
             title: "Support Analytics",
             description:
-              "Track client satisfaction, identify trends, and optimize service delivery",
+              "Gain actionable insights from support data to improve digital journeys and boost customer satisfaction",
           },
         ],
       },
@@ -167,21 +185,27 @@ export const financialServicesConfig: IndustryPageConfig = {
         features: [
           {
             icon: "bg-golden-500",
-            title: "Compliant Content Creation",
+            title: "Content Creation & Localization",
             description:
-              "Generate marketing materials and client communications that meet regulatory requirements",
+              "Instantly adapt content for multiple languages and regulations, ensuring accuracy and relevance",
           },
           {
             icon: "bg-blue-500 rounded-tl-full",
-            title: "Market Research & Analysis",
+            title: "Content Optimization",
             description:
-              "Automated market research, competitor analysis, and investment insights",
+              "Turn drafts and technical docs into polished, SEO-ready, compliant assets",
           },
           {
             icon: "bg-purple-400 rounded-br-full",
-            title: "Client Communication",
+            title: "Financial Social Media",
             description:
-              "Personalized client updates, market commentary, and investment recommendations",
+              "Generate compelling, insight-driven posts tailored for financial audiences",
+          },
+          {
+            icon: "bg-red-400",
+            title: "Market Intelligence",
+            description:
+              "Track regulatory changes, competitors, and market trends in real time",
           },
         ],
       },
@@ -191,10 +215,10 @@ export const financialServicesConfig: IndustryPageConfig = {
     bgColor: "bg-golden-50",
     metrics: [
       {
-        value: "75",
+        value: "70",
         unit: "%",
         type: "Reduction",
-        description: "in compliance reporting time with automated workflows",
+        description: "in content localization",
       },
       {
         value: "80",
@@ -206,17 +230,13 @@ export const financialServicesConfig: IndustryPageConfig = {
         value: "3",
         unit: "h",
         type: "Savings",
-        description: "weekly hours reported by half of Kyriba",
+        description: "weekly hours saved overall",
       },
     ],
   },
   demoVideo: {
     sectionTitle: "See Dust in motion",
     videoUrl: "https://fast.wistia.net/embed/iframe/zzbhe95pvz",
-  },
-  trustedBySecond: {
-    title: "Trusted by financial leaders",
-    logoSet: "finance",
   },
   testimonial: {
     quote:

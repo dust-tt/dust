@@ -38,7 +38,7 @@ export const marketplaceConfig: IndustryPageConfig = {
         logo: "/static/landing/logos/color/doctolib_white.png",
         alt: "Doctolib logo",
       },
-      bgColor: "bg-green-600",
+      bgColor: "bg-blue-800",
       textColor: "text-white",
     },
     decorativeShapes: {
@@ -47,14 +47,14 @@ export const marketplaceConfig: IndustryPageConfig = {
     },
   },
   aiAgents: {
-    title: "What if your teams focused on growth?",
+    title: "Empower Your Marketplace Teams to Focus on Growth, Not Grunt Work",
     description:
-      "Deploy agents that research information, share insights across teams, and automate routine tasks—handling all the time-consuming work that slows you down. Your teams focus on growing your business while leveraging everything your organization has already built.",
+      "Dust connects your teams, automates operational complexity, and unlocks critical insights from your data—across Supply Acquisition, Community Engagement, Support Operations, and Market Intelligence.",
     bgColor: "bg-gray-50",
   },
   trustedBy: {
     title: "Trusted by Marketplace Leaders",
-    logoSet: "marketplaces",
+    logoSet: "marketplace",
   },
   painPoints: {
     title: "The 3 marketplace bottlenecks Dust solves",
@@ -86,7 +86,7 @@ export const marketplaceConfig: IndustryPageConfig = {
     title: "Dust in Action",
     useCases: [
       {
-        title: "Supply Growth & Provider Acquisition",
+        title: "Supply Growth",
         image: "/static/landing/industry/features/supply_growth.svg",
         bgColor: "bg-blue-100",
         features: [
@@ -94,25 +94,25 @@ export const marketplaceConfig: IndustryPageConfig = {
             icon: "bg-blue-500",
             title: "Prospection & Lead Enrichment",
             description:
-              "Automatically aggregate and enrich provider data from public and marketplace insights.",
+              "Automatically aggregate and enrich service provider information using public data and marketplace insights.",
           },
           {
             icon: "bg-yellow-400 rounded-tr-full",
             title: "Account 360° View",
             description:
-              "Get comprehensive provider overviews combining platform activity, performance, and history.",
+              "Generate comprehensive provider overviews combining platform activity, performance data, and engagement history.",
           },
           {
             icon: "bg-green-500",
             title: "Sales Enablement",
             description:
-              "Auto-draft responses to provider inquiries using your latest policies and product info.",
+              "Auto-draft responses to provider applications and inquiries using current marketplace policies and product information.",
           },
           {
             icon: "bg-pink-400 rounded-tl-full",
             title: "Sales Insights",
             description:
-              "Extract winning narratives from calls and coach teams on pitch delivery.",
+              "Extract winning narratives from calls and coach teams on pitch delivery and objection response.",
           },
         ],
       },
@@ -131,7 +131,7 @@ export const marketplaceConfig: IndustryPageConfig = {
             icon: "bg-red-500",
             title: "Technical Troubleshooting",
             description:
-              "Accelerate resolution with deep troubleshooting and suggested paths.",
+              "Accelerate resolution with deep troubleshooting and suggested resolution paths.",
           },
           {
             icon: "bg-yellow-400 rounded-tr-full",
@@ -145,6 +145,12 @@ export const marketplaceConfig: IndustryPageConfig = {
             description:
               "Analyze interactions and feedback to improve marketplace experience.",
           },
+          {
+            icon: "bg-pink-400",
+            title: "Knowledge Hub Building",
+            description:
+              "Transform resolved cases into searchable resources for providers, customers, and support teams.",
+          },
         ],
       },
       {
@@ -156,7 +162,7 @@ export const marketplaceConfig: IndustryPageConfig = {
             icon: "bg-blue-500",
             title: "Automated KYC & Verification",
             description:
-              "Extract and validate provider documents, flagging issues for compliance.",
+              "Extract and validate information from provider documents, flagging issues for KYC and compliance checks.",
           },
           {
             icon: "bg-pink-400 rounded-tl-full",
@@ -181,19 +187,19 @@ export const marketplaceConfig: IndustryPageConfig = {
             icon: "bg-yellow-400 rounded-tr-full",
             title: "Content Creation & Localization",
             description:
-              "SEO-optimized communications across multiple languages and markets.",
+              "Turn raw notes into SEO-optimized communications across multiple languages.",
           },
           {
             icon: "bg-blue-500",
             title: "Industry & Competitive Intelligence",
             description:
-              "Monitor competitive activity and pricing trends for platform strategy.",
+              "Monitor competitive activity, pricing trends and analyze reports to inform platform strategy.",
           },
           {
             icon: "bg-green-500",
             title: "Customer Insights",
             description:
-              "Summarize feedback to identify improvement areas.",
+              "Summarize feedback from internal support and review platforms to identify areas for improvement.",
           },
           {
             icon: "bg-pink-400 rounded-tl-full",
@@ -226,10 +232,6 @@ export const marketplaceConfig: IndustryPageConfig = {
     sectionTitle: "See Dust in motion",
     videoUrl: "https://fast.wistia.net/embed/iframe/r0dwaexoez",
   },
-  trustedBySecond: {
-    title: "Trusted by Marketplace Leaders",
-    logoSet: "marketplace",
-  },
   testimonial: {
     quote:
       "Dust has empowered our employees to work smarter, innovate, and push boundaries.",
@@ -241,7 +243,7 @@ export const marketplaceConfig: IndustryPageConfig = {
       logo: "/static/landing/logos/color/doctolib_white.png",
       alt: "Doctolib logo",
     },
-    bgColor: "bg-green-600",
+    bgColor: "bg-blue-800",
     textColor: "text-white",
   },
   customerStories: {

@@ -463,10 +463,10 @@ export default function IndustryTemplate({ config }: IndustryTemplateProps) {
           <DemoVideoSection demoVideo={demoVideo} />
         </div>
       </Grid>
-      {config.trustedBySecond && (
+      {config.trustedBy && (
         <TrustedBy
-          title={config.trustedBySecond.title}
-          logoSet={config.trustedBySecond.logoSet as any}
+          title={config.trustedBy.title}
+          logoSet={config.trustedBy.logoSet as any}
         />
       )}
       <TestimonialSection config={config.testimonial} />

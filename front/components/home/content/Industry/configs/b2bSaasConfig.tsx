@@ -207,44 +207,40 @@ export const b2bSaasConfig: IndustryPageConfig = {
     bgColor: "bg-blue-50",
     metrics: [
       {
-        value: "80",
-        unit: "%",
-        type: "Reduction",
-        description: "in prospection time with automated lead enrichment",
-        bgColor: "bg-blue-300",
-        badgeColor: "bg-pink-300",
-        badgeTextColor: "text-gray-900",
-        borderRadius: "rounded-t-full",
-      },
-      {
-        value: "60",
+        value: "20",
         unit: "%",
         type: "Increase",
-        description: "in lead qualification speed with intelligent scoring",
+        description: "in productivity gains for Sales teams",
         bgColor: "bg-pink-300",
         badgeColor: "bg-red-500",
         badgeTextColor: "text-white",
         borderRadius: "rounded-l-full",
       },
       {
-        value: "40",
+        value: "50",
         unit: "%",
         type: "Faster",
-        description: "customer support resolution with AI-powered insights",
+        description: "customer support resolution time",
         bgColor: "bg-lime-300",
         badgeColor: "bg-green-600",
         badgeTextColor: "text-white",
         borderRadius: "rounded-r-full",
+      },
+      {
+        value: "90",
+        unit: "%",
+        type: "Reduction",
+        description: "in content localization time",
+        bgColor: "bg-blue-300",
+        badgeColor: "bg-pink-300",
+        badgeTextColor: "text-gray-900",
+        borderRadius: "rounded-t-full",
       },
     ],
   },
   demoVideo: {
     sectionTitle: "See Dust in motion",
     videoUrl: "https://fast.wistia.net/embed/iframe/8q80neektv",
-  },
-  trustedBySecond: {
-    title: "Trusted by SaaS leaders",
-    logoSet: "b2bSaas",
   },
   testimonial: {
     quote:
@@ -285,6 +281,21 @@ export const b2bSaasConfig: IndustryPageConfig = {
           "Didomi's legal team cuts workload by 50% using Dust's AI assistants for privacy compliance and legal document management.",
         href: "https://blog.dust.tt/how-thomas-uses-ai-assistants-to-manage-legal-and-data-privacy-at-didomi/",
         src: "https://blog.dust.tt/content/images/size/w2000/2025/01/dust_didomi.png",
+      },
+      {
+        title:
+          "50,000 Hours Saved: How Qonto Revolutionized Compliance and Risk Assessment with AI",
+        content:
+          "Germi, Qonto’s AI assistant, analyzes German industry codes and screens prohibited activities, automating compliance checks across European markets.",
+        href: "https://blog.dust.tt/qonto-dust-ai-partnership/",
+        src: "https://blog.dust.tt/content/images/size/w2000/2025/01/dust_qonto.png",
+      },
+      {
+        title: "Kyriba’s adoption of Dust across all functions",
+        content:
+          "43% of Kyriba employees save more than 3 hours weekly leveraging Dust for RFPs.",
+        href: "https://blog.dust.tt/kyriba-accelerating-innovation-with-dust/",
+        src: "https://blog.dust.tt/content/images/size/w2000/2024/10/kyriba_dust.jpg",
       },
     ],
   },

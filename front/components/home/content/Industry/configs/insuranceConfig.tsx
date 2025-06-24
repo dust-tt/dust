@@ -62,23 +62,23 @@ export const insuranceConfig: IndustryPageConfig = {
     painPoints: [
       {
         icon: "/static/landing/industry/d-blue.svg",
-        title: "Automate Manual Insurance Operations",
+        title: "Remove Manual Process Bottlenecks",
         description:
-          "Streamline claims processing, policy management, and underwriting workflows to reduce manual effort and improve operational efficiency across all departments.",
+          "Eliminate departmental silos and reduce manual work in claims, underwriting, and support to accelerate service delivery and decision-making.",
         color: "blue",
       },
       {
         icon: "/static/landing/industry/d-red.svg",
-        title: "Enhance Member Experience & Support",
+        title: "Free Up Specialized Personnel",
         description:
-          "Provide instant, accurate responses to member inquiries while maintaining compliance with insurance regulations and improving customer satisfaction scores.",
+          "Free adjusters, underwriters, and legal experts from repetitive tasks, enabling focus on complex cases, risk assessment, and high-value interactions.",
         color: "red",
       },
       {
         icon: "/static/landing/industry/d-green.svg",
-        title: "Optimize Risk Assessment & Analytics",
+        title: "Unlock Data Intelligence",
         description:
-          "Leverage AI-powered insights for better risk assessment, fraud detection, and data-driven decision making to improve profitability and member outcomes.",
+          "Leverage customer interactions, claims histories, and regulatory data to optimize pricing, enhance products, mitigate risks, and ensure compliance.",
         color: "green",
       },
     ],
@@ -92,22 +92,28 @@ export const insuranceConfig: IndustryPageConfig = {
         bgColor: "bg-orange-100",
         features: [
           {
-            icon: "bg-blue-500",
-            title: "AI-Powered Member Support",
+            icon: "bg-golden-500",
+            title: "Smart Claims Handling",
             description:
-              "Instantly resolve member queries with AI assistants trained on policy information and procedures",
+              "Automate insurance processing – document verification, risk assessment, coverage validation – accelerating settlements.",
           },
           {
-            icon: "bg-orange-400 rounded-tr-full",
-            title: "Claims Status & Updates",
+            icon: "bg-blue-500 rounded-tl-full",
+            title: "Support Resolution",
             description:
-              "Provide real-time claims status updates and automated member communications",
+              "Enable help desk teams to instantly resolve customer inquiries about policy details, account status, and troubleshooting without escalation.",
           },
           {
-            icon: "bg-green-500 rounded-bl-full",
-            title: "Policy Information Access",
+            icon: "bg-purple-400 rounded-br-full",
+            title: "Insurance Expert",
             description:
-              "Enable instant access to policy details, coverage information, and member history",
+              "Answer colleague questions about insurance products, coverage, and insurer agreements on behalf of experts.",
+          },
+          {
+            icon: "bg-red-400",
+            title: "Documentation Generation",
+            description:
+              "Produce compliant and relevant documentation on your insurance products, in all languages, to deflect basic questions",
           },
         ],
       },
@@ -117,22 +123,28 @@ export const insuranceConfig: IndustryPageConfig = {
         bgColor: "bg-blue-100",
         features: [
           {
-            icon: "bg-purple-500",
-            title: "Lead Qualification & Scoring",
+            icon: "bg-golden-500",
+            title: "Client & Partner 360",
             description:
-              "AI-driven prospect analysis and risk assessment for more effective sales targeting",
+              "Create comprehensive client and partner summaries by consolidating past interactions, internal data, and relevant external information",
           },
           {
             icon: "bg-blue-500 rounded-tl-full",
-            title: "Quote Generation & Processing",
+            title: "RFP Automation",
             description:
-              "Automated quote generation based on risk profiles and competitive analysis",
+              "Generate detailed RFP responses and business offerings using past proposals and internal documentation",
           },
           {
-            icon: "bg-green-400 rounded-br-full",
-            title: "Market Intelligence",
+            icon: "bg-purple-400 rounded-br-full",
+            title: "Content Generation",
             description:
-              "Competitive analysis and market trend identification for strategic business growth",
+              "Create and validate content, insurance comparisons, and website materials in all languages while ensuring accuracy and compliance",
+          },
+          {
+            icon: "bg-red-400",
+            title: "Sales Intelligence",
+            description:
+              "Analyze customer interactions and policy data to generate actionable insights for sales teams and optimize insurance product positioning",
           },
         ],
       },
@@ -142,22 +154,22 @@ export const insuranceConfig: IndustryPageConfig = {
         bgColor: "bg-blue-100",
         features: [
           {
-            icon: "bg-red-500",
-            title: "Regulatory Monitoring",
+            icon: "bg-golden-500",
+            title: "Partner & Customer Due Diligence",
             description:
-              "Automated tracking of regulatory changes and compliance requirements across jurisdictions",
+              "Evaluate new business applications and potential partnerships to identify and assess potential risks and concerns",
           },
           {
             icon: "bg-blue-500 rounded-tl-full",
-            title: "Document Review & Analysis",
+            title: "Contracts & Policy Documentation",
             description:
-              "AI-powered contract review, policy analysis, and legal document processing",
+              "Review program documentation, policy wordings, and contractual agreements for accuracy, compliance, and key provisions",
           },
           {
             icon: "bg-purple-400 rounded-br-full",
-            title: "Audit Trail Management",
+            title: "Regulatory Guidance",
             description:
-              "Comprehensive audit trail generation and compliance reporting automation",
+              "Address regulatory inquiries and support the implementation and monitoring of compliance processes",
           },
         ],
       },
@@ -167,22 +179,28 @@ export const insuranceConfig: IndustryPageConfig = {
         bgColor: "bg-green-100",
         features: [
           {
-            icon: "bg-green-500",
-            title: "Fraud Detection & Prevention",
+            icon: "bg-golden-500",
+            title: "Market & Competitor Updates",
             description:
-              "Advanced AI algorithms to identify suspicious patterns and prevent fraudulent claims",
+              "Track and analyze industry developments and competitor activities",
           },
           {
             icon: "bg-blue-500 rounded-tl-full",
-            title: "Risk Analytics & Modeling",
+            title: "Regulatory Monitoring",
             description:
-              "Predictive risk modeling and analytics for better underwriting decisions",
+              "Monitor the evolving regulatory landscape and disseminate updates to ensure organizational awareness",
           },
           {
-            icon: "bg-orange-400 rounded-br-full",
-            title: "Performance Intelligence",
+            icon: "bg-purple-400 rounded-br-full",
+            title: "Offer Benchmarking",
             description:
-              "Business intelligence dashboards and automated reporting for strategic insights",
+              "Evaluate internal program structures and operational performance against relevant market standards and best practices",
+          },
+          {
+            icon: "bg-red-400",
+            title: "Claims Insights",
+            description:
+              "Analyze claims performance, financial settlements, and profitability across different broker partnerships or distribution channels",
           },
         ],
       },
@@ -204,20 +222,16 @@ export const insuranceConfig: IndustryPageConfig = {
         description: "partner 360 analysis",
       },
       {
-        value: "80%",
+        value: "80",
         unit: "%",
-        type: "adoption",
+        type: "Adoption",
         description: "weekly active users",
       },
     ],
   },
   demoVideo: {
     sectionTitle: "See Dust in motion",
-    videoUrl: "https://fast.wistia.net/embed/iframe/8q80neektv",
-  },
-  trustedBySecond: {
-    title: "Trusted by insurance leaders",
-    logoSet: "default",
+    videoUrl: "https://fast.wistia.net/embed/iframe/zzbhe95pvz",
   },
   testimonial: {
     quote:
@@ -251,14 +265,14 @@ export const insuranceConfig: IndustryPageConfig = {
       //   href: "TO BE ADDED",
       //   src: "TO BE ADDED",
       // },
-      {
-        title:
-          "Wakam transforms legal workflows: 50% faster contract analysis with Dust",
-        content:
-          "Wakam slashes legal contract analysis time 50% using AI agents for document processing, compliance verification, and multilingual translation.",
-        href: "https://blog.dust.tt/how-thomas-uses-ai-assistants-to-manage-legal-and-data-privacy-at-didomi/",
-        src: "https://blog.dust.tt/content/images/size/w2000/2025/01/dust_didomi.png",
-      },
+      // {
+      //   title:
+      //     "Wakam transforms legal workflows: 50% faster contract analysis with Dust",
+      //   content:
+      //     "Wakam slashes legal contract analysis time 50% using AI agents for document processing, compliance verification, and multilingual translation.",
+      //   href: "https://blog.dust.tt/how-thomas-uses-ai-assistants-to-manage-legal-and-data-privacy-at-didomi/",
+      //   src: "https://blog.dust.tt/content/images/size/w2000/2025/01/dust_didomi.png",
+      // },
     ],
   },
   justUseDust: {
