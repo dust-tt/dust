@@ -22,6 +22,7 @@ import { launchDeleteWorkspaceWorkflow } from "@app/poke/temporal/client";
 import type {
   LightWorkspaceType,
   MembershipRoleType,
+  ModelId,
   PublicAPILimitsType,
   Result,
   RoleType,
@@ -318,6 +319,10 @@ export async function unsafeGetWorkspacesByModelId(
       },
     })
   ).map((w) => renderLightWorkspaceType({ workspace: w }));
+}
+
+export async function unsafeGetWorkspaceByModelId(modelId: ModelId) {
+  return Workspace.findByPk(modelId);
 }
 
 export async function areAllSubscriptionsCanceled(

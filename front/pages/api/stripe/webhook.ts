@@ -10,7 +10,10 @@ import {
   sendCancelSubscriptionEmail,
   sendReactivateSubscriptionEmail,
 } from "@app/lib/api/email";
-import { getMembers } from "@app/lib/api/workspace";
+import {
+  getMembers,
+  unsafeGetWorkspaceByModelId,
+} from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
 import { Plan } from "@app/lib/models/plan";
 import { Workspace } from "@app/lib/models/workspace";
@@ -369,7 +372,9 @@ async function handler(
             await subscription.updatePaymentFailingSince(now);
           }
 
-          const workspace = await Workspace.findByPk(subscription.workspaceId);
+          const workspace = await unsafeGetWorkspaceByModelId(
+            subscription.workspaceId
+          );
           if (!workspace) {
             logger.warn(
               { event, stripeSubscriptionId: invoice.subscription },
@@ -521,7 +526,7 @@ async function handler(
               requestCancelAt: endDate ? now : null,
             });
 
-            const workspace = await Workspace.findByPk(
+            const workspace = await unsafeGetWorkspaceByModelId(
               subscription.workspaceId
             );
             if (!workspace) {
@@ -698,7 +703,7 @@ async function handler(
                 "[Stripe Webhook] Received customer.subscription.deleted event with the subscription status = active. Ending the subscription and deleting some workspace data"
               );
 
-              const workspace = await Workspace.findByPk(
+              const workspace = await unsafeGetWorkspaceByModelId(
                 matchingSubscription.workspaceId
               );
               if (!workspace) {
@@ -758,7 +763,7 @@ async function handler(
             return res.status(200).json({ success: true });
           }
 
-          const workspace = await Workspace.findByPk(
+          const workspace = await unsafeGetWorkspaceByModelId(
             trialingSubscription.workspaceId
           );
           if (!workspace) {
