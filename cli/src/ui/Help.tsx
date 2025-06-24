@@ -36,6 +36,11 @@ const Help: FC = () => {
           server
         </Text>
       </Box>
+      <Box marginLeft={2}>
+        <Text>
+          <Text bold>cache:clear</Text> Clear agents cache
+        </Text>
+      </Box>
       <Box marginTop={1}>
         <Text>Options:</Text>
       </Box>
