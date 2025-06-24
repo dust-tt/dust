@@ -5,5 +5,6 @@ export * from "./notion_unstuck_syncing_nodes";
 export * from "./notion_update_orphaned_resources_parents";
 export * from "./notion_url_sync";
 export * from "./operations";
+export * from "./slack_whitelist_bot";
 export * from "./toggle_restricted_space_agent_slack_access";
 export * from "./webcrawler_frequency";
