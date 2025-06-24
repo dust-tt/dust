@@ -102,7 +102,7 @@ const createServer = (
     instructions:
       "When posting a message on slack, you MUST use slack-flavored markdown to format the message." +
       "IMPORTANT: if you want to mention a user, you must use <@USER_ID> where USER_ID is the id of the user you want to mention.\n" +
-      "If you want to reference a channel, you must use <#CHANNEL_ID> where CHANNEL_ID is the id of the channel you want to reference.\n" +
+      "If you want to reference a channel, you must use #CHANNEL where CHANNEL is the name of the channel you want to reference.\n" +
       "NEVER use the channel name or the user name directly in a message as it will not be parsed correctly and appear as plain text.",
   });
 
@@ -192,7 +192,7 @@ const createServer = (
             if (timeFrame) {
               const timestampInMs = timeFrameFromNow(timeFrame);
               const date = new Date(timestampInMs);
-              query = `${query} after:${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()}`;
+              query = `${query} after:${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
             }
 
             if (channels && channels.length > 0) {
@@ -326,6 +326,138 @@ const createServer = (
         }
       } catch (error) {
         return makeMCPToolTextError(`Error searching messages: ${error}`);
+      }
+    }
+  );
+
+  server.tool(
+    "list_threads",
+    "List threads for a given channel",
+    {
+      channel: z.string().describe("The channel name to list threads for."),
+      relativeTimeFrame: z
+        .string()
+        .regex(/^(all|\d+[hdwmy])$/)
+        .describe(
+          "The time frame (relative to LOCAL_TIME) to restrict the search based" +
+            " on the user request and past conversation context." +
+            " Possible values are: `all`, `{k}h`, `{k}d`, `{k}w`, `{k}m`, `{k}y`" +
+            " where {k} is a number. Be strict, do not invent invalid values."
+        ),
+    },
+    async ({ channel, relativeTimeFrame }, { authInfo }) => {
+      if (!agentLoopContext?.runContext) {
+        throw new Error("Unreachable: missing agentLoopRunContext.");
+      }
+
+      const accessToken = authInfo?.token;
+      const slackClient = await getSlackClient(accessToken);
+
+      const timeFrame = parseTimeFrame(relativeTimeFrame);
+
+      try {
+        let query = `-threads:replies in:${channel.charAt(0) === "#" ? channel : `#${channel}`}`;
+
+        if (timeFrame) {
+          const timestampInMs = timeFrameFromNow(timeFrame);
+          const date = new Date(timestampInMs);
+          query = `${query} after:${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
+        }
+
+        const r = await slackClient.search.messages({
+          query,
+          sort: "timestamp",
+          sort_dir: "desc",
+          highlight: false,
+          count: SLACK_SEARCH_ACTION_NUM_RESULTS,
+          page: 1,
+        });
+
+        if (!r.ok) {
+          throw new Error(r.error);
+        }
+
+        const rawMatches = r.messages?.matches ?? [];
+
+        // Keep only the top SLACK_SEARCH_ACTION_NUM_RESULTS matches.
+        const matches = rawMatches.slice(0, SLACK_SEARCH_ACTION_NUM_RESULTS);
+
+        if (matches.length === 0) {
+          return {
+            isError: false,
+            content: [
+              {
+                type: "text" as const,
+                text: `No threads found.`,
+              },
+              {
+                type: "resource" as const,
+                resource: makeQueryResource(
+                  [],
+                  timeFrame,
+                  [channel],
+                  [],
+                  [],
+                  []
+                ),
+              },
+            ],
+          };
+        } else {
+          const refsOffset = actionRefsOffset({
+            agentConfiguration: agentLoopContext.runContext.agentConfiguration,
+            stepActionIndex: agentLoopContext.runContext.stepActionIndex,
+            stepActions: agentLoopContext.runContext.stepActions,
+            refsOffset: agentLoopContext.runContext.citationsRefsOffset,
+          });
+
+          const refs = getRefs().slice(
+            refsOffset,
+            refsOffset + SLACK_SEARCH_ACTION_NUM_RESULTS
+          );
+
+          const results: SearchResultResourceType[] = matches.map(
+            (match): SearchResultResourceType => {
+              return {
+                mimeType:
+                  INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_RESULT,
+                uri: match.permalink ?? "",
+                text: `#${match.channel?.name ?? "Unknown"}, ${match.text ?? ""}`,
+
+                id: match.ts ?? "",
+                source: {
+                  provider: "slack",
+                },
+                tags: [],
+                ref: refs.shift() as string,
+                chunks: [stripNullBytes(match.text ?? "")],
+              };
+            }
+          );
+
+          return {
+            isError: false,
+            content: [
+              ...results.map((result) => ({
+                type: "resource" as const,
+                resource: result,
+              })),
+              {
+                type: "resource" as const,
+                resource: makeQueryResource(
+                  [],
+                  timeFrame,
+                  [channel],
+                  [],
+                  [],
+                  []
+                ),
+              },
+            ],
+          };
+        }
+      } catch (error) {
+        return makeMCPToolTextError(`Error listing threads: ${error}`);
       }
     }
   );

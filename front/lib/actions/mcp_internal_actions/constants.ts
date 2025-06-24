@@ -238,6 +238,7 @@ export const INTERNAL_MCP_SERVERS: Record<
       search_messages: "never_ask",
       list_users: "never_ask",
       list_public_channels: "never_ask",
+      list_threads: "never_ask",
       post_message: "low",
     },
   },
