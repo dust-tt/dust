@@ -42,7 +42,7 @@ export const MCPServerViewsProvider = memo(
     } = useMCPServerViewsFromSpaces(owner, spaces, ["manual", "auto"]);
 
     const value: MCPServerViewsContextType = {
-      mcpServerViews: mcpServerViews?.sort(mcpServerViewSortingFn) || [],
+      mcpServerViews: mcpServerViews.sort(mcpServerViewSortingFn),
       isMCPServerViewsLoading,
       isMCPServerViewsError,
     };

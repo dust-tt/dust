@@ -950,7 +950,7 @@ export function useMCPServerViewsFromSpaces(
   });
 
   return {
-    serverViews: data?.serverViews,
+    serverViews: data?.serverViews ?? emptyArray(),
     isLoading: !error && !data,
     isError: error,
     mutateServerViews: mutate,
