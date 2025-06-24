@@ -87,7 +87,7 @@ export function useFileUploaderService(
     updateBlobs?: boolean;
     kind: UploadedFileKind;
   }): Promise<FileBlob[] | undefined> => {
-    setNumFilesProcessing((prev: number) => prev + files.length)
+    setNumFilesProcessing((prev: number) => prev + files.length);
 
     const { totalTextualSize, totalImageSize } = [
       ...fileBlobs,
