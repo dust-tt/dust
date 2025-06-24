@@ -44,7 +44,8 @@ async function searchPokeWorkspaces(
   }
 
   if (searchTerm.startsWith("org_")) {
-    const workspaceByOrgId = await findWorkspaceByWorkOSOrganizationId(searchTerm);
+    const workspaceByOrgId =
+      await findWorkspaceByWorkOSOrganizationId(searchTerm);
     if (workspaceByOrgId) {
       return [
         {
