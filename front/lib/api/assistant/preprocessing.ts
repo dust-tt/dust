@@ -64,24 +64,12 @@ export async function renderConversationForModel(
   const now = Date.now();
   const messages: ModelMessageTypeMultiActions[] = [];
 
-  let lastAgentMessageIndex = conversation.content.length - 1;
-  while (
-    lastAgentMessageIndex >= 0 &&
-    !isAgentMessageType(
-      conversation.content[lastAgentMessageIndex][
-        conversation.content[lastAgentMessageIndex].length - 1
-      ]
-    )
-  ) {
-    lastAgentMessageIndex--;
-  }
-
   // Render loop: render all messages and all actions.
-  for (const [i, versions] of conversation.content.entries()) {
-    const isLastAgentMessage =
-      !lastAgentMessageIndex || i === lastAgentMessageIndex;
-
+  for (const versions of conversation.content) {
     const m = versions[versions.length - 1];
+
+    // Whether the agent message is in the last 5 minutes.
+    const isRecent = m.created > Date.now() - 5 * 60 * 1000;
 
     if (isAgentMessageType(m)) {
       const actions = removeNulls(m.actions);
@@ -130,7 +118,7 @@ export async function renderConversationForModel(
       const shadowReadRawContents: { step: number; content: string }[] = [];
       if (
         m.status === "succeeded" &&
-        isLastAgentMessage &&
+        isRecent &&
         (nonEmptyRawContents.length || m.contents.length)
       ) {
         if (m.contents.length) {
