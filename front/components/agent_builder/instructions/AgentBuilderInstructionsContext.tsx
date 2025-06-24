@@ -11,6 +11,8 @@ interface AgentBuilderInstructionsContextType {
   generationSettings: GenerationSettingsType;
   setGenerationSettings: (settings: GenerationSettingsType) => void;
   models: ModelConfigurationType[];
+  instructions: string;
+  setInstructions: (instructions: string) => void;
 }
 
 const AgentBuilderInstructionsContext = createContext<
@@ -36,6 +38,8 @@ export function AgentBuilderInstructionsProvider({
       temperature: 0.7,
     });
 
+  const [instructions, setInstructions] = useState<string>("");
+
   const handleSetGenerationSettings = useCallback(
     (settings: GenerationSettingsType) => {
       const processedSettings = {
@@ -56,8 +60,10 @@ export function AgentBuilderInstructionsProvider({
       generationSettings,
       setGenerationSettings: handleSetGenerationSettings,
       models,
+      instructions,
+      setInstructions,
     }),
-    [generationSettings, handleSetGenerationSettings, models]
+    [generationSettings, handleSetGenerationSettings, models, instructions]
   );
 
   return (
