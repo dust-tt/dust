@@ -4,7 +4,7 @@ import { History } from "@tiptap/extension-history";
 import Text from "@tiptap/extension-text";
 import { EditorContent, useEditor } from "@tiptap/react";
 import { cva } from "class-variance-authority";
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect } from "react";
 
 import { useAgentBuilderInstructionsContext } from "@app/components/agent_builder/instructions/AgentBuilderInstructionsContext";
 import { ParagraphExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/ParagraphExtension";
@@ -15,6 +15,16 @@ import {
 import { classNames } from "@app/lib/utils";
 
 export const INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT = 120_000;
+
+const extensions = [
+  Document,
+  Text,
+  ParagraphExtension,
+  History,
+  CharacterCount.configure({
+    limit: INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT,
+  }),
+];
 
 const editorVariants = cva(
   [
@@ -48,19 +58,6 @@ const editorVariants = cva(
 export function AgentBuilderInstructionsEditor() {
   const { instructions, setInstructions } =
     useAgentBuilderInstructionsContext();
-
-  const extensions = useMemo(
-    () => [
-      Document,
-      Text,
-      ParagraphExtension,
-      History,
-      CharacterCount.configure({
-        limit: INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT,
-      }),
-    ],
-    []
-  );
 
   const editor = useEditor({
     extensions,
