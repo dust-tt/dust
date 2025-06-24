@@ -274,7 +274,9 @@ export const INTERNAL_MCP_SERVERS: Record<
   data_sources_file_system: {
     id: 1010,
     availability: "auto",
-    isRestricted: () => true,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("dev_mcp_actions");
+    },
   },
 };
 
