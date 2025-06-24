@@ -61,6 +61,32 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     return new this(WorkspaceModel, workspace.get());
   }
 
+  static async fetchById(
+    workspaceId: number
+  ): Promise<WorkspaceResource | null> {
+    const workspace = await WorkspaceModel.findByPk(workspaceId);
+    return workspace ? new this(WorkspaceModel, workspace.get()) : null;
+  }
+
+  static async fetchByNameAndSId(
+    name: string,
+    sId: string
+  ): Promise<WorkspaceResource | null> {
+    const workspace = await WorkspaceModel.findOne({
+      where: { name, sId },
+    });
+    return workspace ? new this(WorkspaceModel, workspace.get()) : null;
+  }
+
+  static async findAllByIds(ids: number[]): Promise<WorkspaceResource[]> {
+    const workspaces = await WorkspaceModel.findAll({
+      where: { id: ids },
+    });
+    return workspaces.map(
+      (workspace) => new this(WorkspaceModel, workspace.get())
+    );
+  }
+
   async delete(
     auth: Authenticator,
     { transaction }: { transaction?: Transaction }
