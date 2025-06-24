@@ -54,6 +54,8 @@ export class AgentConfiguration extends WorkspaceAwareModel<AgentConfiguration> 
 
   declare browseConfigurations: NonAttribute<AgentBrowseConfiguration[]>;
   declare websearchConfigurations: NonAttribute<AgentWebsearchConfiguration[]>;
+
+  declare conversationsRetentionDays: number | null;
 }
 
 AgentConfiguration.init(
@@ -152,6 +154,10 @@ AgentConfiguration.init(
       type: DataTypes.ARRAY(DataTypes.ARRAY(DataTypes.BIGINT)),
       allowNull: false,
       defaultValue: [],
+    },
+    conversationsRetentionDays: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
     },
   },
   {

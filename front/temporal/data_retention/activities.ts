@@ -2,6 +2,7 @@ import { Op } from "sequelize";
 
 import { destroyConversation } from "@app/lib/api/assistant/conversation/destroy";
 import { Authenticator } from "@app/lib/auth";
+import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { Workspace } from "@app/lib/models/workspace";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -89,6 +90,103 @@ export async function purgeConversationsBatchActivity({
     res.push({
       workspaceModelId: workspace.id,
       workspaceId: workspace.sId,
+      nbConversationsDeleted: conversations.length,
+    });
+  }
+
+  return res;
+}
+
+function hasRetentionDays(
+  agent: AgentConfiguration
+): agent is AgentConfiguration & { conversationsRetentionDays: number } {
+  return agent.conversationsRetentionDays !== null;
+}
+
+/**
+ * Get agent configurations with conversations retention policy.
+ */
+export async function getAgentConfigurationsWithConversationsRetentionActivity(): Promise<
+  { agentConfigurationId: string; workspaceId: number; retentionDays: number }[]
+> {
+  const agentConfigurations = await AgentConfiguration.findAll({
+    attributes: ["sId", "workspaceId", "conversationsRetentionDays"],
+    where: {
+      conversationsRetentionDays: {
+        [Op.not]: null,
+      },
+      status: "active",
+    },
+  });
+
+  return agentConfigurations.filter(hasRetentionDays).map((a) => ({
+    agentConfigurationId: a.sId,
+    workspaceId: a.workspaceId,
+    retentionDays: a.conversationsRetentionDays,
+  }));
+}
+
+/**
+ * Purge conversations for agents with retention policy.
+ * Uses createdAt instead of updatedAt for agent-specific retention.
+ */
+export async function purgeAgentConversationsBatchActivity({
+  agentConfigs,
+}: {
+  agentConfigs: {
+    agentConfigurationId: string;
+    workspaceId: number;
+    retentionDays: number;
+  }[];
+}): Promise<
+  { agentConfigurationId: string; nbConversationsDeleted: number }[]
+> {
+  const res: {
+    agentConfigurationId: string;
+    nbConversationsDeleted: number;
+  }[] = [];
+
+  for (const config of agentConfigs) {
+    const workspace = await Workspace.findByPk(config.workspaceId);
+    if (!workspace) {
+      logger.error(
+        { workspaceId: config.workspaceId },
+        "Workspace not found for agent retention."
+      );
+      continue;
+    }
+
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - config.retentionDays);
+
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+    // Find conversations with this agent created before cutoff.
+    const conversations =
+      await ConversationResource.listAgentConversationsBeforeCreatedDate({
+        auth,
+        agentConfigurationId: config.agentConfigurationId,
+        cutoffDate,
+      });
+
+    logger.info(
+      {
+        agentConfigurationId: config.agentConfigurationId,
+        retentionDays: config.retentionDays,
+        cutoffDate,
+        nbConversations: conversations.length,
+      },
+      "Purging conversations for agent."
+    );
+
+    await concurrentExecutor(
+      conversations,
+      async (c) => destroyConversation(auth, { conversationId: c.sId }),
+      { concurrency: 4 }
+    );
+
+    res.push({
+      agentConfigurationId: config.agentConfigurationId,
       nbConversationsDeleted: conversations.length,
     });
   }

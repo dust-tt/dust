@@ -229,6 +229,44 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return results;
   }
 
+  static async listAgentConversationsBeforeCreatedDate({
+    auth,
+    agentConfigurationId,
+    cutoffDate,
+  }: {
+    auth: Authenticator;
+    agentConfigurationId: string;
+    cutoffDate: Date;
+  }): Promise<ConversationResource[]> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
+    // It doesn't matter if the message with the mention is older than cutoff date or not.
+    // We only need to check if the conversation is created before cutoff date.
+    const agentConversations = await ConversationModel.findAll({
+      where: {
+        workspaceId,
+        createdAt: { [Op.lt]: cutoffDate },
+      },
+      include: [
+        {
+          model: Message,
+          required: true,
+          include: [
+            {
+              model: Mention,
+              required: true,
+              where: {
+                agentConfigurationId,
+              },
+            },
+          ],
+        },
+      ],
+    });
+
+    return agentConversations.map((c) => new this(this.model, c.get()));
+  }
+
   static canAccessConversation(
     auth: Authenticator,
     conversation:
