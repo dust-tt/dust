@@ -361,17 +361,16 @@ export async function getCoreSearchArgs(
   }
 }
 
+function hasTagAutoMode(dataSourceConfigurations: DataSourceConfiguration[]) {
+  return dataSourceConfigurations.some(
+    (dataSourceConfiguration) =>
+      dataSourceConfiguration.filter.tags?.mode === "auto"
+  );
+}
+
 export function shouldAutoGenerateTags(
   agentLoopContext: AgentLoopContextType
 ): boolean {
-  const hasTagAutoMode = (
-    dataSourceConfigurations: DataSourceConfiguration[]
-  ) =>
-    dataSourceConfigurations.some(
-      (dataSourceConfiguration) =>
-        dataSourceConfiguration.filter.tags?.mode === "auto"
-    );
-
   if (
     !!agentLoopContext.listToolsContext?.agentActionConfiguration &&
     isServerSideMCPServerConfiguration(

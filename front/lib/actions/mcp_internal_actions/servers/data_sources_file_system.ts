@@ -520,11 +520,11 @@ const createServer = (
   );
 
   // Check if tags are dynamic before creating the search tool.
-  const areTagsDynamic = agentLoopContext
+  const tagsAreDynamic = agentLoopContext
     ? shouldAutoGenerateTags(agentLoopContext)
     : false;
 
-  const tagsInputSchema = areTagsDynamic
+  const tagsInputSchema = tagsAreDynamic
     ? {
         tagsIn: z
           .array(z.string())
@@ -969,7 +969,7 @@ const createServer = (
   );
 
   // Add the find_tags tool if tags are dynamic.
-  if (areTagsDynamic) {
+  if (tagsAreDynamic) {
     server.tool(
       "find_tags",
       makeFindTagsDescription(SEARCH_TOOL_NAME),
