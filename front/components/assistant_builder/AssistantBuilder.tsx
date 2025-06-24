@@ -387,7 +387,6 @@ export default function AssistantBuilder({
           selectedSlackChannels: selectedSlackChannels || [],
           slackChannelsLinkedWithAgent,
         },
-        reasoningModels,
       });
 
       if (res.isErr()) {

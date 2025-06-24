@@ -1,7 +1,10 @@
 import assert from "assert";
 import { tracer } from "dd-trace";
 
-import type { AssistantBuilderActionConfiguration } from "@app/components/assistant_builder/types";
+import type {
+  AssistantBuilderActionConfiguration,
+  AssistantBuilderMCPConfiguration,
+} from "@app/components/assistant_builder/types";
 import {
   getDefaultDustAppRunActionConfiguration,
   getDefaultMCPServerActionConfiguration,
@@ -84,8 +87,8 @@ export async function buildInitialActions({
   dustApps: AppResource[];
   configuration: AgentConfigurationType | TemplateAgentConfigurationType;
   mcpServerViews?: MCPServerViewType[];
-}): Promise<AssistantBuilderActionConfiguration[]> {
-  const builderActions: AssistantBuilderActionConfiguration[] = [];
+}): Promise<AssistantBuilderMCPConfiguration[]> {
+  const builderActions: AssistantBuilderMCPConfiguration[] = [];
 
   for (const action of configuration.actions) {
     const mcpServerView = mcpServerViews.find(
@@ -99,6 +102,14 @@ export async function buildInitialActions({
     );
 
     if (builderAction) {
+      // TODO(durable agents, 2025-06-24): remove this once we have a proper
+      // type for the builder action. Namely, initializeBuilderAction return
+      // type should be AssistantBuilderMCPConfiguration.
+      assert(
+        builderAction.type === "MCP",
+        "Builder action is not a MCP server configuration"
+      );
+
       if (action.name) {
         builderAction.name = action.name;
       }

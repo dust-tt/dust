@@ -1,6 +1,3 @@
-import { Op } from "sequelize";
-
-import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { AgentBrowseConfiguration } from "@app/lib/models/assistant/actions/browse";
 import { AgentDustAppRunConfiguration } from "@app/lib/models/assistant/actions/dust_app_run";
 import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
@@ -8,7 +5,8 @@ import { AgentProcessConfiguration } from "@app/lib/models/assistant/actions/pro
 import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
 import { AgentTablesQueryConfiguration } from "@app/lib/models/assistant/actions/tables_query";
 import { AgentWebsearchConfiguration } from "@app/lib/models/assistant/actions/websearch";
-import { Workspace } from "@app/lib/models/workspace";
+import { AgentConfiguration } from "@app/lib/models/assistant/agent";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 
@@ -50,7 +48,7 @@ makeScript({}, async () => {
     console.log(`\n${type.toUpperCase()} CONFIGURATIONS:`);
     console.log("=".repeat(50));
 
-    const configs = await model.findAll({
+    const configs = await (model as any).findAll({
       include: [
         {
           model: AgentConfiguration,
@@ -60,7 +58,7 @@ makeScript({}, async () => {
           },
           include: [
             {
-              model: Workspace,
+              model: WorkspaceModel,
               required: true,
               attributes: ["sId", "name"],
             },
@@ -68,7 +66,14 @@ makeScript({}, async () => {
         },
       ],
       attributes: ["id", "agentConfigurationId"],
-      order: [[{ model: AgentConfiguration }, { model: Workspace }, "name", "ASC"]],
+      order: [
+        [
+          { model: AgentConfiguration },
+          { model: WorkspaceModel },
+          "name",
+          "ASC",
+        ],
+      ],
     });
 
     const workspaceCount = new Set(
@@ -78,10 +83,12 @@ makeScript({}, async () => {
     if (configs.length === 0) {
       console.log("  No active agent configurations found for this type.");
     } else {
-      console.log(`  Found ${configs.length} configuration(s) across ${workspaceCount} workspace(s):\n`);
+      console.log(
+        `  Found ${configs.length} configuration(s) across ${workspaceCount} workspace(s):\n`
+      );
 
       const workspaceGroups: Record<string, number> = {};
-      
+
       configs.forEach((config: any) => {
         const workspace = config.AgentConfiguration.Workspace;
         const wsKey = `${workspace.sId} (${workspace.name})`;
@@ -100,7 +107,7 @@ makeScript({}, async () => {
   console.log("=".repeat(50));
 
   for (const { type, model } of actionConfigurations) {
-    const count = await model.count({
+    const count = await (model as any).count({
       include: [
         {
           model: AgentConfiguration,
@@ -112,7 +119,7 @@ makeScript({}, async () => {
       ],
     });
 
-    const workspaceCount = await model.count({
+    const workspaceCount = await (model as any).count({
       distinct: true,
       col: "workspaceId",
       include: [
@@ -126,6 +133,8 @@ makeScript({}, async () => {
       ],
     });
 
-    console.log(`${type}: ${workspaceCount} workspaces, ${count} configurations`);
+    console.log(
+      `${type}: ${workspaceCount} workspaces, ${count} configurations`
+    );
   }
 });

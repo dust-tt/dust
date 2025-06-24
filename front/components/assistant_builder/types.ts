@@ -251,7 +251,7 @@ export type AssistantBuilderSetActionType =
       type: "insert" | "edit" | "pending";
     }
   | {
-      action: AssistantBuilderActionConfigurationWithId;
+      action: AssistantBuilderMCPConfigurationWithId;
       type: "pending";
     }
   | {
@@ -451,7 +451,7 @@ export function getDataVisualizationConfiguration(): AssistantBuilderDataVisuali
 
 export function getDefaultMCPServerActionConfiguration(
   mcpServerView?: MCPServerViewType
-): AssistantBuilderActionConfiguration {
+): AssistantBuilderMCPConfiguration {
   const requirements = getMCPServerRequirements(mcpServerView);
 
   return {
