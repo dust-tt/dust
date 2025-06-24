@@ -462,7 +462,7 @@ async function getFilteredChannels(
   });
 
   const [remoteChannels, localChannels] = await Promise.all([
-    getChannels(slackClient, connectorId, false),
+    getChannels(slackClient, connectorId, true),
     SlackChannel.findAll({
       where: {
         connectorId,
