@@ -1,8 +1,8 @@
 import type { CreationOptional, ForeignKey } from "sequelize";
 import { DataTypes } from "sequelize";
 
-import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
 import type { SupportedResourceType } from "@app/types";
 
@@ -22,7 +22,7 @@ export class PluginRunModel extends BaseModel<PluginRunModel> {
   declare resourceType: SupportedResourceType;
   declare resourceId: string | null;
 
-  declare workspaceId: ForeignKey<Workspace["id"]> | null;
+  declare workspaceId: ForeignKey<WorkspaceModel["id"]> | null;
 }
 
 PluginRunModel.init(
@@ -82,10 +82,10 @@ PluginRunModel.init(
 
 // Sole exception to the rule: plugin runs are not required
 // to be associated with a workspace.
-Workspace.hasMany(PluginRunModel, {
+WorkspaceModel.hasMany(PluginRunModel, {
   foreignKey: { allowNull: true },
   onDelete: "RESTRICT",
 });
-PluginRunModel.belongsTo(Workspace, {
+PluginRunModel.belongsTo(WorkspaceModel, {
   foreignKey: { allowNull: true },
 });

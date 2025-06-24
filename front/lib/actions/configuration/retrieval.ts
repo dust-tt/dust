@@ -10,8 +10,8 @@ import type { RetrievalConfigurationType } from "@app/lib/actions/retrieval";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
-import { Workspace } from "@app/lib/models/workspace";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import type { AgentFetchVariant, ModelId } from "@app/types";
 
 export async function fetchAgentRetrievalActionConfigurations(
@@ -55,7 +55,7 @@ export async function fetchAgentRetrievalActionConfigurations(
           as: "dataSourceView",
           include: [
             {
-              model: Workspace,
+              model: WorkspaceModel,
               as: "workspace",
             },
           ],
