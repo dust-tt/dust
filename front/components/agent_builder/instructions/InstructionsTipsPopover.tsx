@@ -19,7 +19,7 @@ import type {
 import { Err, Ok } from "@app/types";
 
 const STATIC_TIPS = [
-  "Break down your instructions into steps to leverage the model's reasoning capabilities.",
+  "Break down your instructions into steps to leverage the model’s reasoning capabilities.",
   "Give context on how you’d like the agent to act, e.g. 'Act like a senior analyst'.",
   "Add instructions on the format of the answer: tone of voice, answer in bullet points, in code blocks, etc...",
 ];
