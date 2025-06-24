@@ -57,6 +57,11 @@ export type ReasoningConfigurationType = {
   type: "reasoning_configuration";
 };
 
+export type UnsavedReasoningConfigurationType = Omit<
+  ReasoningConfigurationType,
+  "description" | "id" | "name" | "sId" | "temperature" | "type"
+>;
+
 export type ReasoningModelConfiguration = Pick<
   ReasoningConfigurationType,
   "modelId" | "providerId" | "reasoningEffort" | "temperature"

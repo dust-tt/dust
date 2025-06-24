@@ -7,7 +7,10 @@ import type {
   MCPToolStakeLevelType,
   MCPValidationMetadataType,
 } from "@app/lib/actions/constants";
-import type { DustAppRunConfigurationType } from "@app/lib/actions/dust_app_run";
+import type {
+  DustAppRunConfigurationType,
+  UnsavedDustAppRunConfigurationType,
+} from "@app/lib/actions/dust_app_run";
 import { tryCallMCPTool } from "@app/lib/actions/mcp_actions";
 import { MCPServerPersonalAuthenticationRequiredError } from "@app/lib/actions/mcp_authentication";
 import type {
@@ -29,7 +32,10 @@ import {
   isToolGeneratedFile,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { getMCPEvents } from "@app/lib/actions/pubsub";
-import type { ReasoningModelConfiguration } from "@app/lib/actions/reasoning";
+import type {
+  ReasoningModelConfiguration,
+  UnsavedReasoningConfigurationType,
+} from "@app/lib/actions/reasoning";
 import type { TableDataSourceConfiguration } from "@app/lib/actions/tables_query";
 import type {
   AgentLoopRunContextType,
@@ -116,6 +122,18 @@ export type ServerSideMCPServerConfigurationType =
     // Out of convenience, we hold the sId of the internal server if it is an internal server.
     internalMCPServerId: string | null;
   };
+
+export type UnsavedServerSideMCPServerConfigurationType = Omit<
+  ServerSideMCPServerConfigurationType,
+  | "reasoningModel"
+  | "dustAppConfiguration"
+  | "additionalConfiguration"
+  | "internalMCPServerId"
+> & {
+  reasoningModel: UnsavedReasoningConfigurationType | null;
+  dustAppConfiguration: UnsavedDustAppRunConfigurationType | null;
+  additionalConfiguration: Record<string, boolean | number | string | null>;
+};
 
 export type ClientSideMCPServerConfigurationType =
   BaseMCPServerConfigurationType & {

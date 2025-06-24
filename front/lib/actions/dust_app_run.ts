@@ -63,6 +63,11 @@ export type DustAppRunConfigurationType = {
   description: string | null;
 };
 
+export type UnsavedDustAppRunConfigurationType = Omit<
+  DustAppRunConfigurationType,
+  "id" | "sId" | "name" | "description"
+>;
+
 export type DustAppParameters = {
   [key: string]: string | number | boolean;
 };
