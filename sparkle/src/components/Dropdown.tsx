@@ -297,7 +297,7 @@ const DropdownMenuContent = React.forwardRef<
     React.useEffect(() => {
       if (mountPortal && !container) {
         const dialogElements = document.querySelectorAll(
-          ".s-sheet[role=dialog][data-state=open]"
+          ".s-sheet[role=dialog][data-state=open]:not([aria-hidden='true'])"
         );
         const defaultContainer = dialogElements[dialogElements.length - 1];
         setContainer(defaultContainer);
