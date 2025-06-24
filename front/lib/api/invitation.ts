@@ -348,7 +348,7 @@ export async function handleMembershipInvitations(
     subscription: SubscriptionType;
     user: UserType;
     invitationRequests: MembershipInvitationBlob[];
-    force: boolean;
+    force?: boolean;
   }
 ): Promise<Result<HandleMembershipInvitationResult[], APIErrorWithStatusCode>> {
   const { maxUsers } = subscription.plan.limits.users;
