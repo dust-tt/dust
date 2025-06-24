@@ -9,7 +9,7 @@ import {
 } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
-import { useCallback, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import { AgentTemplateGrid } from "@app/components/agent_builder/AgentTemplateGrid";
 import { AgentTemplateModal } from "@app/components/agent_builder/AgentTemplateModal";
@@ -119,19 +119,16 @@ export default function CreateAgent({
     return { filteredTemplates: filtered, availableTags: tags };
   }, [assistantTemplates, selectedTags, searchTerm]);
 
-  const openTemplateModal = useCallback(
-    async (templateId: string) => {
-      setSelectedTemplateId(templateId);
-      await router.replace(
-        { pathname: router.pathname, query: { wId: owner.sId, templateId } },
-        undefined,
-        { shallow: true }
-      );
-    },
-    [owner.sId, router]
-  );
+  const openTemplateModal = async (templateId: string) => {
+    setSelectedTemplateId(templateId);
+    await router.replace(
+      { pathname: router.pathname, query: { wId: owner.sId, templateId } },
+      undefined,
+      { shallow: true }
+    );
+  };
 
-  const closeTemplateModal = useCallback(async () => {
+  const closeTemplateModal = async () => {
     setSelectedTemplateId(null);
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { templateId, ...queryWithoutTemplate } = router.query;
@@ -140,7 +137,7 @@ export default function CreateAgent({
       undefined,
       { shallow: true }
     );
-  }, [router]);
+  };
 
   const handleTagClick = (tagName: TemplateTagCodeType) => {
     setSelectedTags((prevTags) =>
