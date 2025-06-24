@@ -7,13 +7,11 @@ import {
   getStringFromQuery,
 } from "@app/lib/api/oauth/utils";
 import type { Authenticator } from "@app/lib/auth";
-import { isManaged } from "@app/lib/data_sources";
-import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import { getPKCEConfig } from "@app/lib/utils/pkce";
 import logger from "@app/logger/logger";
 import type { ExtraConfigType } from "@app/pages/w/[wId]/oauth/[provider]/setup";
-import { ConnectorsAPI, isValidSalesforceDomain, OAuthAPI } from "@app/types";
+import { isValidSalesforceDomain, OAuthAPI } from "@app/types";
 import type { OAuthConnectionType, OAuthUseCase } from "@app/types/oauth/lib";
 
 export class SalesforceOAuthProvider implements BaseOAuthStrategyProvider {
@@ -66,10 +64,6 @@ export class SalesforceOAuthProvider implements BaseOAuthStrategyProvider {
       }
     }
 
-    if (useCase === "salesforce_personal") {
-      return true;
-    }
-
     if (!extraConfig.instance_url || !extraConfig.client_id) {
       return false;
     }
@@ -89,59 +83,6 @@ export class SalesforceOAuthProvider implements BaseOAuthStrategyProvider {
     };
     cleanedConfig: ExtraConfigType;
   } | null> {
-    // SALESFORCE CONNECTION TO BE DEPRECATED.
-    if (useCase === "salesforce_personal") {
-      // For personal connection, we reuse the existing connection credential id
-      // from the existing data source, if it exists.
-      const dataSources = await DataSourceResource.listByConnectorProvider(
-        auth,
-        "salesforce"
-      );
-      if (dataSources.length !== 1) {
-        return null;
-      }
-      const dataSource = dataSources[0].toJSON();
-      if (!isManaged(dataSource)) {
-        return null;
-      }
-
-      const connectorsAPI = new ConnectorsAPI(
-        config.getConnectorsAPIConfig(),
-        logger
-      );
-      const connectorRes =
-        await connectorsAPI.getConnectorFromDataSource(dataSource);
-      if (connectorRes.isErr()) {
-        return null;
-      }
-
-      const connector = connectorRes.value;
-
-      const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);
-      const connectionRes = await oauthApi.getAccessToken({
-        connectionId: connector.connectionId,
-      });
-      if (connectionRes.isErr()) {
-        return null;
-      }
-      const connection = connectionRes.value.connection;
-      const connectionId = connection.connection_id;
-
-      return {
-        credential: {
-          content: {
-            from_connection_id: connectionId,
-          },
-          metadata: { workspace_id: workspaceId, user_id: userId },
-        },
-        cleanedConfig: {
-          client_id: connection.metadata.client_id,
-          instance_url: connection.metadata.instance_url,
-          ...extraConfig,
-        },
-      };
-    }
-
     if (useCase === "personal_actions") {
       // For personal actions we reuse the existing connection credential id from the existing
       // workspace connection (setup by admin) if we have it, otherwise we fallback to assuming
