@@ -13,9 +13,9 @@ import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 import config from "@app/lib/api/config";
 import { sendEmailWithTemplate } from "@app/lib/api/email";
 import { Authenticator } from "@app/lib/auth";
-import { Workspace } from "@app/lib/models/workspace";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { UserResource } from "@app/lib/resources/user_resource";
 import mainLogger from "@app/logger/logger";
 import { stopRetrieveTranscriptsWorkflow } from "@app/temporal/labs/transcripts/client";
@@ -61,7 +61,7 @@ export async function retrieveNewTranscriptsActivity(
     return [];
   }
 
-  const workspace = await Workspace.findOne({
+  const workspace = await WorkspaceModel.findOne({
     where: {
       id: transcriptsConfiguration.workspaceId,
     },
@@ -208,7 +208,7 @@ export async function processTranscriptActivity(
     );
   }
 
-  const workspace = await Workspace.findOne({
+  const workspace = await WorkspaceModel.findOne({
     where: {
       id: transcriptsConfiguration.workspaceId,
     },

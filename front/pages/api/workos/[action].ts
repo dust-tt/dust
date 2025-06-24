@@ -13,7 +13,7 @@ import { getWorkOS } from "@app/lib/api/workos/client";
 import type { SessionCookie } from "@app/lib/api/workos/user";
 import { setRegionForUser } from "@app/lib/api/workos/user";
 import { getFeatureFlags, getSession } from "@app/lib/auth";
-import { Workspace } from "@app/lib/models/workspace";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
@@ -58,7 +58,7 @@ async function handleLogin(req: NextApiRequest, res: NextApiResponse) {
     const lastWorkspaceId = req.cookies.lastWorkspaceId;
 
     if (lastWorkspaceId) {
-      const workspace = await Workspace.findOne({
+      const workspace = await WorkspaceModel.findOne({
         where: {
           sId: lastWorkspaceId,
         },
