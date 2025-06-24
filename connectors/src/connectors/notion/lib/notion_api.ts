@@ -430,8 +430,6 @@ export async function isAccessibleAndUnarchived(
   const loggerToUse = localLogger || logger;
 
   try {
-    loggerToUse.info("Checking if page is accessible and unarchived.");
-
     if (objectType === "page") {
       const page = await retryWithBackoff(
         () =>
