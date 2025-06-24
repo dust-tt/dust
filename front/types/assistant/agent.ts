@@ -2,6 +2,7 @@ import type {
   ActionConfigurationType,
   AgentActionConfigurationType,
   AgentActionSpecification,
+  UnsavedServerSideAgentActionConfigurationType,
 } from "@app/lib/actions/types/agent";
 import type {
   ReasoningContentType,
@@ -9,7 +10,7 @@ import type {
 } from "@app/types/assistant/agent_message_content";
 import type { FunctionCallContentType } from "@app/types/assistant/agent_message_content";
 import type { TagType } from "@app/types/tag";
-import type { UserType } from "@app/types/user";
+import type { Editor, UserType } from "@app/types/user";
 
 import type { ModelId } from "../shared/model_id";
 import type { ModelIdType, ModelProviderIdType } from "./assistant";
@@ -183,6 +184,22 @@ export function isTemplateAgentConfiguration(
     agentConfiguration.isTemplate === true
   );
 }
+
+export type UnsavedAgentConfigurationType = {
+  name: string;
+  description: string;
+  instructions: string | null;
+  pictureUrl: string;
+  status: AgentStatus;
+  scope: Exclude<AgentConfigurationScope, "global">;
+  model: AgentModelConfigurationType;
+  actions: UnsavedServerSideAgentActionConfigurationType[];
+  templateId?: string | null;
+  maxStepsPerRun?: number;
+  visualizationEnabled: boolean;
+  tags: TagType[];
+  editors: Editor[];
+};
 
 export const DEFAULT_MAX_STEPS_USE_PER_RUN = 8;
 export const MAX_STEPS_USE_PER_RUN_LIMIT = 24;

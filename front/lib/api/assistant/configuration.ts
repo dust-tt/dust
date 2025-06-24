@@ -32,7 +32,6 @@ import type { TableDataSourceConfiguration } from "@app/lib/actions/tables_query
 import type {
   AgentActionConfigurationType,
   UnsavedAgentActionConfigurationType,
-  UnsavedAgentConfigurationType,
 } from "@app/lib/actions/types/agent";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import { getFavoriteStates } from "@app/lib/api/assistant/get_favorite_states";
@@ -86,6 +85,7 @@ import type {
   ModelId,
   Result,
   TagsFilter,
+  UnsavedAgentConfigurationType,
   UserType,
   WorkspaceType,
 } from "@app/types";
