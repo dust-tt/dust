@@ -49,9 +49,6 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
   const handleDeleteToolMetadata = useCallback(
     async (mcpServerId: string) => {
       try {
-        console.log(
-          `Deleting tool approbation history for MCP server ID: toolsValidations:${mcpServerId}`
-        );
         await deleteMetadata(`toolsValidations:${mcpServerId}`);
         sendNotification({
           title: "Success!",
