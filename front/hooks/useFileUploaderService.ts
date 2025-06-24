@@ -14,6 +14,7 @@ import type {
 } from "@app/types";
 import {
   DEFAULT_FILE_CONTENT_TYPE,
+  ensureFileSizeByFormatCategory,
   Err,
   getFileFormatCategory,
   isAPIErrorResponse,
@@ -59,7 +60,9 @@ export function useFileUploaderService({
   useCaseMetadata?: FileUseCaseMetadata;
 }) {
   const [fileBlobs, setFileBlobs] = useState<FileBlob[]>([]);
-  const [isProcessingFiles, setIsProcessingFiles] = useState(false);
+  const [numFilesProcessing, setNumFilesProcessing] = useState(0);
+
+  const isProcessingFiles = numFilesProcessing > 0;
 
   const sendNotification = useSendNotification();
 
@@ -78,7 +81,7 @@ export function useFileUploaderService({
   };
 
   const handleFilesUpload = async (files: File[]) => {
-    setIsProcessingFiles(true);
+    setNumFilesProcessing((prev) => prev + files.length);
 
     const categoryToSize: Map<FileFormatCategory, number> = new Map();
 
@@ -94,29 +97,29 @@ export function useFileUploaderService({
       );
     }
 
-    const isTooBig = [...categoryToSize].some(([cat, size]) => {
-      const multiplier = cat === "image" ? 5 : 2;
-      return size > MAX_FILE_SIZES[cat] * multiplier;
+    const oversizedCategories = [...categoryToSize].filter(([cat, size]) => {
+      return !ensureFileSizeByFormatCategory(cat, size);
     });
 
-    if (isTooBig) {
+    for (const cat of oversizedCategories) {
       sendNotification({
         type: "error",
         title: "Files too large.",
-        description:
-          "Combined file sizes exceed the limits. Please upload smaller files.",
+        description: `Combined ${cat[0]} file sizes exceed the limit of ${MAX_FILE_SIZES[cat[0]] / 1024 / 1024}MB. Please upload smaller files.`,
       });
-      setIsProcessingFiles(false);
-      return;
     }
 
+    if (oversizedCategories.length > 0) {
+      setNumFilesProcessing((prev) => prev - files.length);
+      return;
+    }
     const previewResults = processSelectedFiles(files);
     const newFileBlobs = processResults(previewResults);
 
     const uploadResults = await uploadFiles(newFileBlobs);
     const finalFileBlobs = processResults(uploadResults);
 
-    setIsProcessingFiles(false);
+    setNumFilesProcessing((prev) => prev - files.length);
 
     return finalFileBlobs;
   };
@@ -332,7 +335,7 @@ export function useFileUploaderService({
 
       const allFilesReady = fileBlobs.every((f) => f.isUploading === false);
       if (allFilesReady && isProcessingFiles) {
-        setIsProcessingFiles(false);
+        setNumFilesProcessing(0);
       }
     }
   };
