@@ -105,6 +105,241 @@ const OPTION_PARAMETERS = {
     ),
 };
 
+const SearchToolInputSchema = z.object({
+  nodeIds: z
+    .array(z.string())
+    .describe(
+      "Array of exact content node IDs to search within. These are the 'nodeId' values from " +
+        "previous search results, which can be folders or files. All children of the designated " +
+        "nodes will be searched. If not provided, all available files and folders will be searched."
+    )
+    .optional(),
+  dataSources:
+    ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE],
+  query: z
+    .string()
+    .describe(
+      "The query to search for. This is a natural language query. It doesn't support any " +
+        "specific filter syntax."
+    ),
+  relativeTimeFrame: z
+    .string()
+    .regex(/^(all|\d+[hdwmy])$/)
+    .describe(
+      "The time frame (relative to LOCAL_TIME) to restrict the search based on the file updated " +
+        "time." +
+        " Possible values are: `all`, `{k}h`, `{k}d`, `{k}w`, `{k}m`, `{k}y`" +
+        " where {k} is a number. Be strict, do not invent invalid values."
+    ),
+});
+
+async function searchCallback(
+  auth: Authenticator,
+  agentLoopContext: AgentLoopContextType | undefined,
+  {
+    nodeIds,
+    dataSources,
+    query,
+    relativeTimeFrame,
+  }: z.infer<typeof SearchToolInputSchema>,
+  { tagsIn, tagsNot }: { tagsIn?: string[]; tagsNot?: string[] } = {}
+) {
+  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+  const credentials = dustManagedCredentials();
+  const timeFrame = parseTimeFrame(relativeTimeFrame);
+
+  if (!agentLoopContext?.runContext) {
+    throw new Error(
+      "agentLoopRunContext is required where the tool is called."
+    );
+  }
+
+  // Compute the topK and refsOffset for the search.
+  const topK = getRetrievalTopK({
+    agentConfiguration: agentLoopContext.runContext.agentConfiguration,
+    stepActions: agentLoopContext.runContext.stepActions,
+  });
+  const refsOffset = actionRefsOffset({
+    agentConfiguration: agentLoopContext.runContext.agentConfiguration,
+    stepActionIndex: agentLoopContext.runContext.stepActionIndex,
+    stepActions: agentLoopContext.runContext.stepActions,
+    refsOffset: agentLoopContext.runContext.citationsRefsOffset,
+  });
+
+  const agentDataSourceConfigurationsResult =
+    await getAgentDataSourceConfigurations(auth, dataSources);
+
+  if (agentDataSourceConfigurationsResult.isErr()) {
+    return makeMCPToolTextError(
+      agentDataSourceConfigurationsResult.error.message
+    );
+  }
+  const agentDataSourceConfigurations =
+    agentDataSourceConfigurationsResult.value;
+
+  const coreSearchArgsResults = await concurrentExecutor(
+    dataSources,
+    async (dataSourceConfiguration: DataSourcesToolConfigurationType[number]) =>
+      getCoreSearchArgs(auth, dataSourceConfiguration),
+    { concurrency: 10 }
+  );
+
+  // Set to avoid O(n^2) complexity below.
+  const dataSourceIds = new Set<string>(
+    removeNulls(
+      nodeIds?.map((nodeId: string) => extractDataSourceIdFromNodeId(nodeId)) ??
+        []
+    )
+  );
+
+  const regularNodeIds =
+    nodeIds?.filter((nodeId: string) => !isDataSourceNodeId(nodeId)) ?? [];
+
+  const coreSearchArgs = removeNulls(
+    coreSearchArgsResults.map((res) => {
+      if (!res.isOk() || res.value === null) {
+        return null;
+      }
+      const coreSearchArgs = res.value;
+
+      if (!nodeIds || dataSourceIds.has(coreSearchArgs.dataSourceId)) {
+        // If the agent doesn't provide nodeIds, or if it provides the node id
+        // of this data source, we keep the default filter.
+        return coreSearchArgs;
+      }
+
+      // If there are no regular nodes, then we searched for data sources other than the
+      // current one; so we don't search this data source.
+      if (regularNodeIds.length === 0) {
+        return null;
+      }
+
+      // If there are regular nodes, we filter to search within these nodes.
+      return {
+        ...coreSearchArgs,
+        filter: {
+          ...coreSearchArgs.filter,
+          parents: { in: regularNodeIds, not: [] },
+        },
+      };
+    })
+  );
+
+  if (coreSearchArgs.length === 0) {
+    return makeMCPToolTextError(
+      "Search action must have at least one data source configured."
+    );
+  }
+
+  const searchResults = await coreAPI.searchDataSources(
+    query,
+    topK,
+    credentials,
+    false,
+    coreSearchArgs.map((args) => ({
+      projectId: args.projectId,
+      dataSourceId: args.dataSourceId,
+      filter: {
+        ...args.filter,
+        tags: {
+          in: tagsIn ?? null,
+          not: tagsNot ?? null,
+        },
+        timestamp: {
+          gt: timeFrame ? timeFrameFromNow(timeFrame) : null,
+          lt: null,
+        },
+      },
+      view_filter: args.view_filter,
+    }))
+  );
+
+  if (searchResults.isErr()) {
+    return makeMCPToolTextError(
+      `Failed to search content: ${searchResults.error.message}`
+    );
+  }
+
+  if (refsOffset + topK > getRefs().length) {
+    return makeMCPToolTextError(
+      "The search exhausted the total number of references available for citations"
+    );
+  }
+
+  const refs = getRefs().slice(refsOffset, refsOffset + topK);
+
+  const results = searchResults.value.documents.map(
+    (doc): SearchResultResourceType => {
+      const dataSourceView = coreSearchArgs.find(
+        (args) =>
+          args.dataSourceView.dataSource.dustAPIDataSourceId ===
+          doc.data_source_id
+      )?.dataSourceView;
+
+      assert(dataSourceView, "DataSource view not found");
+
+      return {
+        mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_RESULT,
+        uri: doc.source_url ?? "",
+        text: `"${getDisplayNameForDocument(doc)}" (${doc.chunks.length} chunks)`,
+
+        id: doc.document_id,
+        source: {
+          provider: dataSourceView.dataSource.connectorProvider ?? undefined,
+        },
+        tags: doc.tags,
+        ref: refs.shift() as string,
+        chunks: doc.chunks.map((chunk) => stripNullBytes(chunk.text)),
+      };
+    }
+  );
+
+  const searchNodeIds = searchResults.value.documents.map(
+    ({ document_id }) => document_id
+  );
+
+  let renderedNodes;
+  if (searchNodeIds.length > 0) {
+    const searchResult = await coreAPI.searchNodes({
+      filter: {
+        node_ids: searchNodeIds,
+        data_source_views: coreSearchArgs.map((args) => ({
+          data_source_id: args.dataSourceId,
+          view_filter: args.filter.parents?.in ?? [],
+        })),
+      },
+      options: {
+        limit: searchNodeIds.length,
+      },
+    });
+
+    if (searchResult.isErr()) {
+      return makeMCPToolTextError("Failed to search content");
+    }
+    renderedNodes = renderSearchResults(
+      searchResult.value,
+      agentDataSourceConfigurations
+    );
+  }
+
+  return {
+    isError: false,
+    content: [
+      {
+        type: "resource" as const,
+        resource: makeQueryResource(query, timeFrame),
+      },
+      ...(renderedNodes
+        ? [{ type: "resource" as const, resource: renderedNodes }]
+        : []),
+      ...results.map((result) => ({
+        type: "resource" as const,
+        resource: result,
+      })),
+    ],
+  };
+}
+
 const createServer = (
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
@@ -524,8 +759,23 @@ const createServer = (
     ? shouldAutoGenerateTags(agentLoopContext)
     : false;
 
-  const tagsInputSchema = tagsAreDynamic
-    ? {
+  if (tagsAreDynamic) {
+    server.tool(
+      "search",
+      "Perform a semantic search within the folders and files designated by `nodeIds`. All children " +
+        "of the designated nodes will be searched.",
+      SearchToolInputSchema.shape,
+      withToolLogging(auth, SEARCH_TOOL_NAME, async (params) =>
+        searchCallback(auth, agentLoopContext, params)
+      )
+    );
+  } else {
+    server.tool(
+      "search",
+      "Perform a semantic search within the folders and files designated by `nodeIds`. All children " +
+        "of the designated nodes will be searched.",
+      {
+        ...SearchToolInputSchema.shape,
         tagsIn: z
           .array(z.string())
           .optional()
@@ -542,256 +792,15 @@ const createServer = (
             "A list of labels (also called tags) to exclude from the search based on the user request and past conversation context." +
               "Any document having one of these labels will be excluded from the search."
           ),
-      }
-    : {};
-
-  server.tool(
-    "search",
-    "Perform a semantic search within the folders and files designated by `nodeIds`. All children " +
-      "of the designated nodes will be searched.",
-    {
-      nodeIds: z
-        .array(z.string())
-        .describe(
-          "Array of exact content node IDs to search within. These are the 'nodeId' values from " +
-            "previous search results, which can be folders or files. All children of the designated " +
-            "nodes will be searched. If not provided, all available files and folders will be searched."
-        )
-        .optional(),
-      dataSources:
-        ConfigurableToolInputSchemas[
-          INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
-        ],
-      query: z
-        .string()
-        .describe(
-          "The query to search for. This is a natural language query. It doesn't support any " +
-            "specific filter syntax."
-        ),
-      relativeTimeFrame: z
-        .string()
-        .regex(/^(all|\d+[hdwmy])$/)
-        .describe(
-          "The time frame (relative to LOCAL_TIME) to restrict the search based on the file updated " +
-            "time." +
-            " Possible values are: `all`, `{k}h`, `{k}d`, `{k}w`, `{k}m`, `{k}y`" +
-            " where {k} is a number. Be strict, do not invent invalid values."
-        ),
-      ...tagsInputSchema,
-    },
-    withToolLogging(
-      auth,
-      SEARCH_TOOL_NAME,
-      async ({
-        nodeIds,
-        dataSources,
-        query,
-        relativeTimeFrame,
-        tagsIn,
-        tagsNot,
-      }) => {
-        const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-        const credentials = dustManagedCredentials();
-        const timeFrame = parseTimeFrame(relativeTimeFrame);
-
-        if (!agentLoopContext?.runContext) {
-          throw new Error(
-            "agentLoopRunContext is required where the tool is called."
-          );
-        }
-
-        // Compute the topK and refsOffset for the search.
-        const topK = getRetrievalTopK({
-          agentConfiguration: agentLoopContext.runContext.agentConfiguration,
-          stepActions: agentLoopContext.runContext.stepActions,
-        });
-        const refsOffset = actionRefsOffset({
-          agentConfiguration: agentLoopContext.runContext.agentConfiguration,
-          stepActionIndex: agentLoopContext.runContext.stepActionIndex,
-          stepActions: agentLoopContext.runContext.stepActions,
-          refsOffset: agentLoopContext.runContext.citationsRefsOffset,
-        });
-
-        const agentDataSourceConfigurationsResult =
-          await getAgentDataSourceConfigurations(auth, dataSources);
-
-        if (agentDataSourceConfigurationsResult.isErr()) {
-          return makeMCPToolTextError(
-            agentDataSourceConfigurationsResult.error.message
-          );
-        }
-        const agentDataSourceConfigurations =
-          agentDataSourceConfigurationsResult.value;
-
-        const coreSearchArgsResults = await concurrentExecutor(
-          dataSources,
-          async (
-            dataSourceConfiguration: DataSourcesToolConfigurationType[number]
-          ) => getCoreSearchArgs(auth, dataSourceConfiguration),
-          { concurrency: 10 }
-        );
-
-        // Set to avoid O(n^2) complexity below.
-        const dataSourceIds = new Set<string>(
-          removeNulls(
-            nodeIds?.map((nodeId: string) =>
-              extractDataSourceIdFromNodeId(nodeId)
-            ) ?? []
-          )
-        );
-
-        const regularNodeIds =
-          nodeIds?.filter((nodeId: string) => !isDataSourceNodeId(nodeId)) ??
-          [];
-
-        const coreSearchArgs = removeNulls(
-          coreSearchArgsResults.map((res) => {
-            if (!res.isOk() || res.value === null) {
-              return null;
-            }
-            const coreSearchArgs = res.value;
-
-            if (!nodeIds || dataSourceIds.has(coreSearchArgs.dataSourceId)) {
-              // If the agent doesn't provide nodeIds, or if it provides the node id
-              // of this data source, we keep the default filter.
-              return coreSearchArgs;
-            }
-
-            // If there are no regular nodes, then we searched for data sources other than the
-            // current one; so we don't search this data source.
-            if (regularNodeIds.length === 0) {
-              return null;
-            }
-
-            // If there are regular nodes, we filter to search within these nodes.
-            return {
-              ...coreSearchArgs,
-              filter: {
-                ...coreSearchArgs.filter,
-                parents: { in: regularNodeIds, not: [] },
-              },
-            };
-          })
-        );
-
-        if (coreSearchArgs.length === 0) {
-          return makeMCPToolTextError(
-            "Search action must have at least one data source configured."
-          );
-        }
-
-        const searchResults = await coreAPI.searchDataSources(
-          query,
-          topK,
-          credentials,
-          false,
-          coreSearchArgs.map((args) => ({
-            projectId: args.projectId,
-            dataSourceId: args.dataSourceId,
-            filter: {
-              ...args.filter,
-              tags: {
-                in: tagsIn ?? null,
-                not: tagsNot ?? null,
-              },
-              timestamp: {
-                gt: timeFrame ? timeFrameFromNow(timeFrame) : null,
-                lt: null,
-              },
-            },
-            view_filter: args.view_filter,
-          }))
-        );
-
-        if (searchResults.isErr()) {
-          return makeMCPToolTextError(
-            `Failed to search content: ${searchResults.error.message}`
-          );
-        }
-
-        if (refsOffset + topK > getRefs().length) {
-          return makeMCPToolTextError(
-            "The search exhausted the total number of references available for citations"
-          );
-        }
-
-        const refs = getRefs().slice(refsOffset, refsOffset + topK);
-
-        const results = searchResults.value.documents.map(
-          (doc): SearchResultResourceType => {
-            const dataSourceView = coreSearchArgs.find(
-              (args) =>
-                args.dataSourceView.dataSource.dustAPIDataSourceId ===
-                doc.data_source_id
-            )?.dataSourceView;
-
-            assert(dataSourceView, "DataSource view not found");
-
-            return {
-              mimeType:
-                INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_RESULT,
-              uri: doc.source_url ?? "",
-              text: `"${getDisplayNameForDocument(doc)}" (${doc.chunks.length} chunks)`,
-
-              id: doc.document_id,
-              source: {
-                provider:
-                  dataSourceView.dataSource.connectorProvider ?? undefined,
-              },
-              tags: doc.tags,
-              ref: refs.shift() as string,
-              chunks: doc.chunks.map((chunk) => stripNullBytes(chunk.text)),
-            };
-          }
-        );
-
-        const searchNodeIds = searchResults.value.documents.map(
-          ({ document_id }) => document_id
-        );
-
-        let renderedNodes;
-        if (searchNodeIds.length > 0) {
-          const searchResult = await coreAPI.searchNodes({
-            filter: {
-              node_ids: searchNodeIds,
-              data_source_views: coreSearchArgs.map((args) => ({
-                data_source_id: args.dataSourceId,
-                view_filter: args.filter.parents?.in ?? [],
-              })),
-            },
-            options: {
-              limit: searchNodeIds.length,
-            },
-          });
-
-          if (searchResult.isErr()) {
-            return makeMCPToolTextError("Failed to search content");
-          }
-          renderedNodes = renderSearchResults(
-            searchResult.value,
-            agentDataSourceConfigurations
-          );
-        }
-
-        return {
-          isError: false,
-          content: [
-            {
-              type: "resource" as const,
-              resource: makeQueryResource(query, timeFrame),
-            },
-            ...(renderedNodes
-              ? [{ type: "resource" as const, resource: renderedNodes }]
-              : []),
-            ...results.map((result) => ({
-              type: "resource" as const,
-              resource: result,
-            })),
-          ],
-        };
-      }
-    )
-  );
+      },
+      withToolLogging(auth, SEARCH_TOOL_NAME, async (params) =>
+        searchCallback(auth, agentLoopContext, params, {
+          tagsIn: params.tagsIn,
+          tagsNot: params.tagsNot,
+        })
+      )
+    );
+  }
 
   server.tool(
     "locate_in_tree",
