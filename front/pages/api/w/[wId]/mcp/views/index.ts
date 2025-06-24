@@ -79,18 +79,6 @@ async function handler(
         { concurrency: 10 }
       );
 
-      for (const availability of availabilities) {
-        if (!isMCPServerAvailability(availability)) {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message: "Invalid availability",
-            },
-          });
-        }
-      }
-
       const flattenedServerViews = serverViews
         .flat()
         .filter((v): v is MCPServerViewType => v !== null)
