@@ -104,10 +104,6 @@ export const useBuilderActionInfo = (builderState: AssistantBuilderState) => {
           );
           break;
 
-        case "DUST_APP_RUN":
-          addActionToSpace(action.configuration.app?.space.sId);
-          break;
-
         case "MCP":
           if (action.configuration.dataSourceConfigurations) {
             Object.values(
