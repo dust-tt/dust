@@ -301,9 +301,8 @@ const PEOPLE: Record<
   edouard: {
     name: "Edouard Villette",
     title: "Senior Account Executive",
-    image:
-      "https://media.licdn.com/dms/image/v2/C4D03AQFKwHoQPQI1pQ/profile-displayphoto-shrink_800_800/profile-displayphoto-shrink_800_800/0/1618998380348?e=1756339200&v=beta&t=MzeINWCKzqgNr_LoPXqgHO-pTLg_EDmU7g1ePwkKpRc",
-    github: "",
+    image: "https://avatars.githubusercontent.com/u/215458058?v=4",
+    github: "https://github.com/TrismoEd",
     linkedIn: "https://www.linkedin.com/in/edouard-villette",
   },
 };
