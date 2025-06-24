@@ -9,6 +9,7 @@ import {
 import { DEFAULT_TABLES_QUERY_ACTION_NAME } from "@app/lib/actions/constants";
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type {
+  ExecuteTablesQueryErrorResourceType,
   SqlQueryOutputType,
   ThinkingOutputType,
   ToolGeneratedFileType,
@@ -35,6 +36,7 @@ import { assertNever } from "@app/types";
 type TablesQueryOutputResources =
   | ThinkingOutputType
   | SqlQueryOutputType
+  | ExecuteTablesQueryErrorResourceType
   | ToolGeneratedFileType;
 
 export // We need a model with at least 54k tokens to run tables_query.
@@ -94,6 +96,7 @@ function createServer(
         conversation: agentLoopRunContext.conversation,
         model: supportedModel,
         prompt: agentLoopRunContext.agentConfiguration.instructions ?? "",
+        tools: "",
         allowedTokenCount,
         excludeImages: true,
       });
@@ -292,85 +295,98 @@ function createServer(
           )
         : [];
 
-      const queryTitle = getTablesQueryResultsFileTitle({
-        output: sanitizedOutput,
-      });
-
-      // Generate the CSV file.
-      const { csvFile, csvSnippet } = await generateCSVFileAndSnippet(auth, {
-        title: queryTitle,
-        conversationId: agentLoopRunContext.conversation.sId,
-        results,
-      });
-
-      // Upload the CSV file to the conversation data source.
-      await uploadFileToConversationDataSource({
-        auth,
-        file: csvFile,
-      });
-
-      // Append the CSV file to the output of the tool as an agent-generated file.
-      content.push({
-        type: "resource",
-        resource: {
-          text: `Your query results were generated successfully.`,
-          uri: csvFile.getPublicUrl(auth),
-          mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
-          fileId: csvFile.sId,
-          title: queryTitle,
-          contentType: csvFile.contentType,
-          snippet: csvSnippet,
-        },
-      });
-
-      // Check if we should generate a section JSON file.
-      const shouldGenerateSectionFile = results.some((result) =>
-        Object.values(result).some(
-          (value) =>
-            typeof value === "string" &&
-            value.length > TABLES_QUERY_SECTION_FILE_MIN_COLUMN_LENGTH
-        )
-      );
-
-      if (shouldGenerateSectionFile) {
-        // First, we fetch the connector provider for the data source, cause the chunking
-        // strategy of the section file depends on it: Since all tables are from the same
-        // data source, we can just take the first table's data source view id.
-        const dataSourceView = await DataSourceViewResource.fetchById(
-          auth,
-          tableConfigurations[0].dataSourceViewId
-        );
-        const connectorProvider =
-          dataSourceView?.dataSource?.connectorProvider ?? null;
-        const sectionColumnsPrefix = getSectionColumnsPrefix(connectorProvider);
-
-        // Generate the section file.
-        const sectionFile = await generateSectionFile(auth, {
-          title: queryTitle,
-          conversationId: agentLoopRunContext.conversation.sId,
-          results,
-          sectionColumnsPrefix,
-        });
-
-        // Upload the section file to the conversation data source.
-        await uploadFileToConversationDataSource({
-          auth,
-          file: sectionFile,
-        });
-
-        // Append the section file to the output of the tool as an agent-generated file.
+      if (sanitizedOutput.error && typeof sanitizedOutput.error === "string") {
         content.push({
           type: "resource",
           resource: {
-            text: "Your query results were generated successfully.",
-            uri: sectionFile.getPublicUrl(auth),
-            mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
-            fileId: sectionFile.sId,
-            title: `${queryTitle} (Rich Text)`,
-            contentType: sectionFile.contentType,
-            snippet: null,
+            text: sanitizedOutput.error as string,
+            mimeType:
+              INTERNAL_MIME_TYPES.TOOL_OUTPUT.EXECUTE_TABLES_QUERY_ERROR,
+            uri: "",
           },
         });
+      } else {
+        const queryTitle = getTablesQueryResultsFileTitle({
+          output: sanitizedOutput,
+        });
+
+        // Generate the CSV file.
+        const { csvFile, csvSnippet } = await generateCSVFileAndSnippet(auth, {
+          title: queryTitle,
+          conversationId: agentLoopRunContext.conversation.sId,
+          results,
+        });
+
+        // Upload the CSV file to the conversation data source.
+        await uploadFileToConversationDataSource({
+          auth,
+          file: csvFile,
+        });
+
+        // Append the CSV file to the output of the tool as an agent-generated file.
+        content.push({
+          type: "resource",
+          resource: {
+            text: `Your query results were generated successfully.`,
+            uri: csvFile.getPublicUrl(auth),
+            mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
+            fileId: csvFile.sId,
+            title: queryTitle,
+            contentType: csvFile.contentType,
+            snippet: csvSnippet,
+          },
+        });
+
+        // Check if we should generate a section JSON file.
+        const shouldGenerateSectionFile = results.some((result) =>
+          Object.values(result).some(
+            (value) =>
+              typeof value === "string" &&
+              value.length > TABLES_QUERY_SECTION_FILE_MIN_COLUMN_LENGTH
+          )
+        );
+
+        if (shouldGenerateSectionFile) {
+          // First, we fetch the connector provider for the data source, cause the chunking
+          // strategy of the section file depends on it: Since all tables are from the same
+          // data source, we can just take the first table's data source view id.
+          const dataSourceView = await DataSourceViewResource.fetchById(
+            auth,
+            tableConfigurations[0].dataSourceViewId
+          );
+          const connectorProvider =
+            dataSourceView?.dataSource?.connectorProvider ?? null;
+          const sectionColumnsPrefix =
+            getSectionColumnsPrefix(connectorProvider);
+
+          // Generate the section file.
+          const sectionFile = await generateSectionFile(auth, {
+            title: queryTitle,
+            conversationId: agentLoopRunContext.conversation.sId,
+            results,
+            sectionColumnsPrefix,
+          });
+
+          // Upload the section file to the conversation data source.
+          await uploadFileToConversationDataSource({
+            auth,
+            file: sectionFile,
+          });
+
+          // Append the section file to the output of the tool as an agent-generated file.
+          content.push({
+            type: "resource",
+            resource: {
+              text: "Your query results were generated successfully.",
+              uri: sectionFile.getPublicUrl(auth),
+              mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
+              fileId: sectionFile.sId,
+              title: `${queryTitle} (Rich Text)`,
+              contentType: sectionFile.contentType,
+              snippet: null,
+            },
+          });
+        }
       }
 
       return {

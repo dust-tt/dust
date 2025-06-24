@@ -3,8 +3,8 @@ import { Op } from "sequelize";
 import { destroyConversation } from "@app/lib/api/assistant/conversation/destroy";
 import { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
-import { Workspace } from "@app/lib/models/workspace";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 
@@ -14,7 +14,7 @@ import logger from "@app/logger/logger";
 export async function getWorkspacesWithConversationsRetentionActivity(): Promise<
   number[]
 > {
-  const workspaces = await Workspace.findAll({
+  const workspaces = await WorkspaceModel.findAll({
     attributes: ["id"],
     where: {
       conversationsRetentionDays: {
@@ -43,7 +43,7 @@ export async function purgeConversationsBatchActivity({
   const res: PurgeConversationsBatchActivityReturnType[] = [];
 
   for (const workspaceId of workspaceIds) {
-    const workspace = await Workspace.findByPk(workspaceId);
+    const workspace = await WorkspaceModel.findByPk(workspaceId);
     if (!workspace) {
       logger.error(
         { workspaceId },

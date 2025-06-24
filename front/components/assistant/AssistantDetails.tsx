@@ -328,6 +328,9 @@ export function AssistantDetails({
   return (
     <Sheet open={!!assistantId} onOpenChange={onClose}>
       <SheetContent size="lg">
+        <VisuallyHidden>
+          <SheetTitle />
+        </VisuallyHidden>
         {isAgentConfigurationLoading ? (
           <div className="flex h-full w-full items-center justify-center">
             <Spinner size="lg" />
@@ -335,9 +338,6 @@ export function AssistantDetails({
         ) : (
           <>
             <SheetHeader className="flex flex-col gap-5 pb-0 text-sm text-foreground dark:text-foreground-night">
-              <VisuallyHidden>
-                <SheetTitle />
-              </VisuallyHidden>
               <DescriptionSection />
               {showEditorsTabs || showPerformanceTabs ? (
                 <Tabs value={selectedTab}>

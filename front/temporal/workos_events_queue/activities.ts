@@ -12,7 +12,7 @@ import assert from "assert";
 import { createAndLogMembership } from "@app/lib/api/signup";
 import { getOrCreateWorkOSOrganization } from "@app/lib/api/workos/organization";
 import {
-  fetchWorkOSUserWithEmail,
+  fetchOrCreateWorkOSUserWithEmail,
   getUserNicknameFromEmail,
 } from "@app/lib/api/workos/user";
 import {
@@ -446,7 +446,10 @@ async function handleUserAddedToGroup(
     return;
   }
 
-  const workOSUserRes = await fetchWorkOSUserWithEmail(event.user.email);
+  const workOSUserRes = await fetchOrCreateWorkOSUserWithEmail({
+    workspace,
+    workOSUser: event.user,
+  });
   if (workOSUserRes.isErr()) {
     throw workOSUserRes.error;
   }
@@ -490,7 +493,10 @@ async function handleUserRemovedFromGroup(
     return;
   }
 
-  const workOSUserRes = await fetchWorkOSUserWithEmail(event.user.email);
+  const workOSUserRes = await fetchOrCreateWorkOSUserWithEmail({
+    workspace,
+    workOSUser: event.user,
+  });
   if (workOSUserRes.isErr()) {
     throw workOSUserRes.error;
   }
@@ -527,7 +533,10 @@ async function handleCreateOrUpdateWorkOSUser(
   workspace: LightWorkspaceType,
   event: DirectoryUser
 ) {
-  const workOSUserRes = await fetchWorkOSUserWithEmail(event.email);
+  const workOSUserRes = await fetchOrCreateWorkOSUserWithEmail({
+    workspace,
+    workOSUser: event,
+  });
   if (workOSUserRes.isErr()) {
     throw workOSUserRes.error;
   }
@@ -572,7 +581,10 @@ async function handleDeleteWorkOSUser(
   workspace: LightWorkspaceType,
   event: DirectoryUser
 ) {
-  const workOSUserRes = await fetchWorkOSUserWithEmail(event.email);
+  const workOSUserRes = await fetchOrCreateWorkOSUserWithEmail({
+    workspace,
+    workOSUser: event,
+  });
   if (workOSUserRes.isErr()) {
     throw workOSUserRes.error;
   }
@@ -581,7 +593,7 @@ async function handleDeleteWorkOSUser(
   const user = await UserResource.fetchByWorkOSUserId(workOSUser.id);
   if (!user) {
     throw new Error(
-      `Didn't found user to delete for workOSUserId "${workOSUser.id}" in workspace "${workspace.sId}"`
+      `Did not find user to delete for workOSUserId "${workOSUser.id}" in workspace "${workspace.sId}"`
     );
   }
 

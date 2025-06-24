@@ -254,6 +254,7 @@ interface DataSourceViewsSelectorProps {
   isRootSelectable: boolean;
   space: SpaceType;
   selectionMode?: "checkbox" | "radio";
+  allowAdminSearch?: boolean;
 }
 
 export function DataSourceViewsSelector({
@@ -266,6 +267,7 @@ export function DataSourceViewsSelector({
   isRootSelectable,
   space,
   selectionMode = "checkbox",
+  allowAdminSearch = false,
 }: DataSourceViewsSelectorProps) {
   const [searchResult, setSearchResult] = useState<
     DataSourceViewContentNode | undefined
@@ -351,6 +353,7 @@ export function DataSourceViewsSelector({
             [space.sId]: filteredDSVs.map((dsv) => dsv.sId),
           }
         : undefined,
+    allowAdminSearch,
   };
 
   const {

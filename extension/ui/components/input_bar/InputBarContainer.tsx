@@ -40,7 +40,8 @@ export interface InputBarContainerProps {
   isTabIncluded: boolean;
   setIncludeTab: (includeTab: boolean) => void;
   fileUploaderService: FileUploaderService;
-  onNodeSelect?: (node: DataSourceViewContentNodeType) => void;
+  onNodeSelect: (node: DataSourceViewContentNodeType) => void;
+  onNodeUnselect: (node: DataSourceViewContentNodeType) => void;
   attachedNodes: DataSourceViewContentNodeType[];
   isSubmitting: boolean;
 }
@@ -57,6 +58,7 @@ export const InputBarContainer = ({
   setIncludeTab,
   fileUploaderService,
   onNodeSelect,
+  onNodeUnselect,
   attachedNodes,
   isSubmitting,
 }: InputBarContainerProps) => {
@@ -245,9 +247,8 @@ export const InputBarContainer = ({
             fileUploaderService={fileUploaderService}
             owner={owner}
             isLoading={false}
-            onNodeSelect={
-              onNodeSelect || ((node) => console.log(`Selected ${node.title}`))
-            }
+            onNodeSelect={onNodeSelect}
+            onNodeUnselect={onNodeUnselect}
             attachedNodes={attachedNodes}
           />
           <AssistantPicker

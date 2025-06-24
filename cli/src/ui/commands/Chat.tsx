@@ -5,11 +5,12 @@ import type {
 import { Box, Text, useInput, useStdout } from "ink";
 import open from "open";
 import type { FC } from "react";
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 
 import AuthService from "../../utils/authService.js";
 import { getDustClient } from "../../utils/dustClient.js";
 import { normalizeError } from "../../utils/errors.js";
+import { useAgents } from "../../utils/hooks/use_agents.js";
 import { useMe } from "../../utils/hooks/use_me.js";
 import { clearTerminal } from "../../utils/terminal.js";
 import AgentSelector from "../components/AgentSelector.js";
@@ -22,6 +23,7 @@ type AgentConfiguration =
 
 interface CliChatProps {
   sId?: string;
+  agentSearch?: string;
 }
 
 function getLastConversationItem<T extends ConversationItem>(
@@ -37,7 +39,7 @@ function getLastConversationItem<T extends ConversationItem>(
   return null;
 }
 
-const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
+const CliChat: FC<CliChatProps> = ({ sId: requestedSId, agentSearch }) => {
   const [error, setError] = useState<string | null>(null);
   const [selectedAgent, setSelectedAgent] = useState<AgentConfiguration | null>(
     null
@@ -64,6 +66,13 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
   const { stdout } = useStdout();
 
   const { me, isLoading: isMeLoading, error: meError } = useMe();
+  
+  // Import useAgents hook for agent search functionality
+  const {
+    allAgents,
+    error: agentsError,
+    isLoading: agentsIsLoading,
+  } = useAgents();
 
   const triggerAgentSwitch = useCallback(async () => {
     // Clear all input states before switching.
@@ -79,6 +88,38 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
   }, []);
 
   const commands = createCommands({ triggerAgentSwitch });
+  
+  // Handle agent search when component mounts
+  useEffect(() => {
+    if (!agentSearch || !allAgents || allAgents.length === 0 || selectedAgent) {
+      return;
+    }
+    
+    // Search for agents matching the search string (case-insensitive)
+    const searchLower = agentSearch.toLowerCase();
+    const matchingAgents = allAgents.filter(agent => 
+      agent.name.toLowerCase().startsWith(searchLower)
+    );
+    
+    if (matchingAgents.length === 0) {
+      setError(`No agent found starting with "${agentSearch}"`);
+      return;
+    }
+    
+    // Select the first matching agent (same as SelectWithSearch behavior)
+    const agentToSelect = matchingAgents[0];
+    
+    // Set the selected agent and initial conversation items
+    setSelectedAgent(agentToSelect);
+    setConversationItems([
+      {
+        key: "welcome_header",
+        type: "welcome_header",
+        agentName: agentToSelect.name,
+        agentId: agentToSelect.sId,
+      },
+    ]);
+  }, [agentSearch, allAgents, selectedAgent]);
 
   const canSubmit =
     me &&
@@ -759,14 +800,23 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
     }
   });
 
+  // Show loading state while searching for agent
+  if (agentSearch && agentsIsLoading) {
+    return (
+      <Box flexDirection="column">
+        <Text color="green">Searching for agent matching "{agentSearch}"...</Text>
+      </Box>
+    );
+  }
+  
   // Render error state
-  if (error) {
+  if (error || agentsError) {
     return (
       <Box flexDirection="column" height="100%">
         <Box flexDirection="column" flexGrow={1}>
           <Box marginY={1}>
             <Box borderStyle="round" borderColor="red" padding={1}>
-              <Text>{error}</Text>
+              <Text>{error || agentsError}</Text>
             </Box>
           </Box>
         </Box>
@@ -780,7 +830,7 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
     );
   }
 
-  if (!selectedAgent || isSelectingNewAgent) {
+  if ((!selectedAgent || isSelectingNewAgent) && !agentSearch) {
     const isInitialSelection = !selectedAgent;
 
     return (

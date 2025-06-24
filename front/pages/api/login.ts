@@ -12,14 +12,13 @@ import { AuthFlowError } from "@app/lib/iam/errors";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { getUserFromSession } from "@app/lib/iam/session";
 import { createOrUpdateUser, fetchUserFromSession } from "@app/lib/iam/users";
-import type { Workspace } from "@app/lib/models/workspace";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
+import type { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { getSignUpUrl } from "@app/lib/signup";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-import { normalizeError } from "@app/types";
 
 async function handler(
   req: NextApiRequest,
@@ -47,7 +46,7 @@ async function handler(
 
   const { isSSO, workspaceId } = session;
 
-  let targetWorkspace: Workspace | null = null;
+  let targetWorkspace: WorkspaceModel | null = null;
   // `membershipInvite` is set to a `MembeshipInvitation` if the query includes an `inviteToken`,
   // meaning the user is going through the invite by email flow.
   const membershipInviteRes =
@@ -110,7 +109,9 @@ async function handler(
     );
     if (flow) {
       // Only happen if the workspace associated with workOSOrganizationId is not found.
-      res.redirect(`/api/auth/logout?returnTo=/login-error?reason=${flow}`);
+      res.redirect(
+        `/api/auth/logout?returnTo=/login-error${encodeURIComponent(`?type=sso-login&reason=${flow}`)}`
+      );
       return;
     }
 
@@ -149,7 +150,7 @@ async function handler(
           "Error during login flow."
         );
         res.redirect(
-          `/api/auth/logout?returnTo=/login-error?reason=${error.code}`
+          `/api/auth/logout?returnTo=/login-error${encodeURIComponent(`?type=login&reason=${error.code}`)}`
         );
         return;
       }
@@ -180,18 +181,7 @@ async function handler(
     return;
   }
 
-  try {
-    await user.recordLoginActivity();
-  } catch (error) {
-    logger.error(
-      {
-        userId: user.id,
-        worksOSUserId: user.workOSUserId,
-        errorMessage: normalizeError(error).message,
-      },
-      "Failed to record login activity for user."
-    );
-  }
+  await user.recordLoginActivity();
 
   if (targetWorkspace) {
     // For users joining a workspace from trying to access a conversation, we redirect to this

@@ -6,7 +6,8 @@ import { debounce } from "@app/lib/utils/debounce";
 import type { GetWorkspaceInvitationsResponseBody } from "@app/pages/api/w/[wId]/invitations";
 import type { GetMembersResponseBody } from "@app/pages/api/w/[wId]/members";
 import type { SearchMembersResponseBody } from "@app/pages/api/w/[wId]/members/search";
-import type { LightWorkspaceType } from "@app/types";
+import type { GroupKind, LightWorkspaceType } from "@app/types";
+import { isGroupKind } from "@app/types";
 
 type PaginationParams = {
   orderColumn: "createdAt";
@@ -151,12 +152,14 @@ export function useSearchMembers({
   searchTerm,
   pageIndex,
   pageSize,
+  groupKind,
   disabled,
 }: {
   workspaceId: string;
   searchTerm: string;
   pageIndex: number;
   pageSize: number;
+  groupKind?: Omit<GroupKind, "system">;
   disabled?: boolean;
 }) {
   const searchMembersFetcher: Fetcher<SearchMembersResponseBody> = fetcher;
@@ -178,6 +181,10 @@ export function useSearchMembers({
     offset: (pageIndex * pageSize).toString(),
     limit: pageSize.toString(),
   });
+
+  if (groupKind && isGroupKind(groupKind)) {
+    searchParams.set("groupKind", groupKind);
+  }
 
   const { data, error, mutate, mutateRegardlessOfQueryParams } =
     useSWRWithDefaults(

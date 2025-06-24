@@ -8,12 +8,12 @@ import type {
 import { Model } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
-import type { Workspace } from "@app/lib/models/workspace";
 import type { ResourceWithId } from "@app/lib/resources/base_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
+import type { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import type {
   ModelStaticSoftDeletable,
   SoftDeletableWorkspaceAwareModel,
@@ -26,7 +26,7 @@ import type { Result } from "@app/types";
 
 // Interface to enforce workspaceId and vaultId.
 interface ModelWithSpace extends ResourceWithId {
-  workspaceId: ForeignKey<Workspace["id"]>;
+  workspaceId: ForeignKey<WorkspaceModel["id"]>;
   vaultId: ForeignKey<SpaceModel["id"]>;
   space: NonAttribute<SpaceModel>;
 }

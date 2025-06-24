@@ -20,7 +20,11 @@ import { getConnectorProviderStrategy } from "@connectors/resources/connector/st
 import { sequelizeConnection } from "@connectors/resources/storage";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 import type { ReadonlyAttributesType } from "@connectors/resources/storage/types";
-import type { ConnectorType, ModelId } from "@connectors/types";
+import type {
+  ConnectorErrorType,
+  ConnectorType,
+  ModelId,
+} from "@connectors/types";
 import { normalizeError } from "@connectors/types";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
@@ -220,6 +224,12 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
     return this.update({
       errorType: null,
       pausedAt: null,
+    });
+  }
+
+  async markAsError(errorType: ConnectorErrorType) {
+    return this.update({
+      errorType,
     });
   }
 

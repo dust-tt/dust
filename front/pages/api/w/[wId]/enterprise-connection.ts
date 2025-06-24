@@ -10,8 +10,8 @@ import {
   getEnterpriseConnectionForWorkspace,
 } from "@app/lib/api/enterprise_connection";
 import type { Authenticator } from "@app/lib/auth";
-import { Workspace } from "@app/lib/models/workspace";
-import { WorkspaceHasDomainModel } from "@app/lib/models/workspace_has_domain";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
+import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type {
@@ -76,7 +76,7 @@ async function handler(
 
   const owner = auth.getNonNullableWorkspace();
 
-  const workspace = await Workspace.findOne({
+  const workspace = await WorkspaceModel.findOne({
     where: { id: owner.id },
   });
   if (!workspace) {

@@ -168,6 +168,14 @@ export function isMCPConfigurationForInternalSlack(
   );
 }
 
+export function isMCPConfigurationForInternalNotion(
+  arg: AgentActionConfigurationType
+): arg is ServerSideMCPServerConfigurationType {
+  return (
+    isServerSideMCPServerConfiguration(arg) &&
+    isInternalMCPServerOfName(arg.internalMCPServerId, "notion")
+  );
+}
 export function isMCPConfigurationForDustAppRun(
   arg: AgentActionConfigurationType
 ): arg is ServerSideMCPServerConfigurationType {
@@ -235,6 +243,15 @@ export function isMCPInternalSlack(
   return (
     isServerSideMCPToolConfiguration(arg) &&
     isInternalMCPServerOfName(arg.internalMCPServerId, "slack")
+  );
+}
+
+export function isMCPInternalNotion(
+  arg: ActionConfigurationType
+): arg is ServerSideMCPToolConfigurationType {
+  return (
+    isServerSideMCPToolConfiguration(arg) &&
+    isInternalMCPServerOfName(arg.internalMCPServerId, "notion")
   );
 }
 

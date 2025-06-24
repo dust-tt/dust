@@ -21,6 +21,8 @@ type RowData = {
   userId: string;
   email: string;
   role: RoleType;
+  status: "Active" | "Unregistered";
+  groups: string[];
   isCurrentUser: boolean;
   onClick: () => void;
   onRemoveMemberClick?: () => void;
@@ -45,6 +47,8 @@ function getTableRows({
     userId: user.sId,
     email: user.email ?? "",
     role: user.workspace.role,
+    status: user.lastLoginAt === null ? "Unregistered" : "Active",
+    groups: user.workspace.groups ?? [],
     isCurrentUser: user.sId === currentUserId,
     onClick: () => onClick(user),
     onRemoveMemberClick: () => onRemoveMemberClick?.(user),
@@ -121,6 +125,26 @@ const memberColumns = [
       className: "w-12",
     },
   },
+  {
+    id: "status" as const,
+    header: "Status",
+    cell: (info: Info) => {
+      return (
+        <DataTable.CellContent>
+          {info.row.original.status}
+        </DataTable.CellContent>
+      );
+    },
+  },
+  {
+    id: "groups" as const,
+    header: "Groups",
+    cell: (info: Info) => (
+      <DataTable.CellContent className="max-w-40 truncate capitalize">
+        {info.row.original.groups.join(", ")}
+      </DataTable.CellContent>
+    ),
+  },
 ];
 
 export function MembersList({
@@ -136,7 +160,7 @@ export function MembersList({
   membersData: MembersData;
   onRowClick: (user: UserTypeWithWorkspace) => void;
   onRemoveMemberClick?: (user: UserTypeWithWorkspace) => void;
-  showColumns: ("name" | "email" | "role" | "remove")[];
+  showColumns: ("name" | "email" | "role" | "remove" | "status" | "groups")[];
   pagination?: PaginationState;
   setPagination?: (pagination: PaginationState) => void;
 }) {

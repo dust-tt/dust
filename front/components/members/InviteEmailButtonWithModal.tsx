@@ -57,7 +57,7 @@ const useGetEmailsListAndError = (
   }, [inviteEmails]);
 };
 
-export function InviteEmailModal({
+export function InviteEmailButtonWithModal({
   owner,
   prefillText,
   perSeatPricing,
