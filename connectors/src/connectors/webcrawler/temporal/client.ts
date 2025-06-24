@@ -3,6 +3,7 @@ import { Err, Ok } from "@dust-tt/client";
 import type { WorkflowHandle } from "@temporalio/client";
 import {
   ScheduleOverlapPolicy,
+  WorkflowExecutionAlreadyStartedError,
   WorkflowNotFoundError,
 } from "@temporalio/client";
 
@@ -213,6 +214,13 @@ export async function launchFirecrawlCrawlStartedWorkflow(
     });
     return new Ok(workflowId);
   } catch (e) {
+    if (e instanceof WorkflowExecutionAlreadyStartedError) {
+      logger.warn(
+        { workflowId, connectorId, crawlId },
+        "Workflow already started"
+      );
+      return new Ok(workflowId);
+    }
     return new Err(normalizeError(e));
   }
 }
@@ -243,6 +251,13 @@ export async function launchFirecrawlCrawlFailedWorkflow(
     });
     return new Ok(workflowId);
   } catch (e) {
+    if (e instanceof WorkflowExecutionAlreadyStartedError) {
+      logger.warn(
+        { workflowId, connectorId, crawlId },
+        "Workflow already started"
+      );
+      return new Ok(workflowId);
+    }
     return new Err(normalizeError(e));
   }
 }
@@ -273,6 +288,13 @@ export async function launchFirecrawlCrawlCompletedWorkflow(
     });
     return new Ok(workflowId);
   } catch (e) {
+    if (e instanceof WorkflowExecutionAlreadyStartedError) {
+      logger.warn(
+        { workflowId, connectorId, crawlId },
+        "Workflow already started"
+      );
+      return new Ok(workflowId);
+    }
     return new Err(normalizeError(e));
   }
 }
@@ -308,6 +330,13 @@ export async function launchFirecrawlCrawlPageWorkflow(
     });
     return new Ok(workflowId);
   } catch (e) {
+    if (e instanceof WorkflowExecutionAlreadyStartedError) {
+      logger.warn(
+        { workflowId, connectorId, crawlId },
+        "Workflow already started"
+      );
+      return new Ok(workflowId);
+    }
     return new Err(normalizeError(e));
   }
 }
