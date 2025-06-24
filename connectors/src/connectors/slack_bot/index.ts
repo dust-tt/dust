@@ -16,16 +16,23 @@ import {
   uninstallSlack,
 } from "@connectors/connectors/slack";
 import { getBotEnabled } from "@connectors/connectors/slack/bot";
+import { getChannels } from "@connectors/connectors/slack/lib/channels";
+import { retrievePermissions } from "@connectors/connectors/slack/lib/retrieve_permissions";
 import {
   getSlackAccessToken,
   getSlackClient,
   reportSlackUsage,
 } from "@connectors/connectors/slack/lib/slack_client";
+import { SlackChannel } from "@connectors/lib/models/slack";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
-import type { ContentNode, SlackConfigurationType } from "@connectors/types";
-import type { DataSourceConfig } from "@connectors/types";
+import type {
+  ConnectorPermission,
+  ContentNode,
+  DataSourceConfig,
+  SlackConfigurationType,
+} from "@connectors/types";
 import { isSlackAutoReadPatterns, safeParseJSON } from "@connectors/types";
 
 const { SLACK_BOT_CLIENT_ID, SLACK_BOT_CLIENT_SECRET } = process.env;
@@ -271,10 +278,19 @@ export class SlackBotConnectorManager extends BaseConnectorManager<SlackConfigur
     return new Ok("slack-bot-no-sync");
   }
 
-  async retrievePermissions(): Promise<
+  async retrievePermissions({
+    parentInternalId,
+  }: {
+    parentInternalId: string | null;
+  }): Promise<
     Result<ContentNode[], ConnectorManagerError<RetrievePermissionsErrorCode>>
   > {
-    return new Ok([]);
+    return retrievePermissions({
+      connectorId: this.connectorId,
+      parentInternalId,
+      filterPermission: null, // No filter permission, we want all channels.
+      getFilteredChannels,
+    });
   }
 
   async retrieveContentNodeParents({
@@ -417,4 +433,56 @@ export class SlackBotConnectorManager extends BaseConnectorManager<SlackConfigur
   async configure(): Promise<Result<void, Error>> {
     throw new Error("Method not implemented.");
   }
+}
+
+async function getFilteredChannels(connectorId: number) {
+  const slackClient = await getSlackClient(connectorId, {
+    // Do not reject rate limited calls in update connector. Called from the API.
+    rejectRateLimitedCalls: false,
+  });
+
+  const [remoteChannels, localChannels] = await Promise.all([
+    getChannels(slackClient, connectorId, false),
+    SlackChannel.findAll({
+      where: {
+        connectorId,
+        // Here we do not filter out channels with skipReason because we need to know the ones that are skipped.
+      },
+    }),
+  ]);
+
+  const localChannelsById = localChannels.reduce(
+    (acc: Record<string, SlackChannel>, ch: SlackChannel) => {
+      acc[ch.slackChannelId] = ch;
+      return acc;
+    },
+    {} as Record<string, SlackChannel>
+  );
+
+  const slackChannels: {
+    slackChannelId: string;
+    slackChannelName: string;
+    permission: ConnectorPermission;
+    private: boolean;
+  }[] = [];
+  for (const remoteChannel of remoteChannels) {
+    if (!remoteChannel.id || !remoteChannel.name) {
+      continue;
+    }
+
+    const localChannel = localChannelsById[remoteChannel.id];
+
+    // Skip channels with skipReason
+    if (localChannel?.skipReason) {
+      continue;
+    }
+
+    slackChannels.push({
+      slackChannelId: remoteChannel.id,
+      slackChannelName: remoteChannel.name,
+      permission: "write",
+      private: !!remoteChannel.is_private,
+    });
+  }
+  return slackChannels;
 }
