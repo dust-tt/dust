@@ -453,12 +453,10 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
     if (pendingApproval) {
       if (input === "y" || input === "Y") {
         handleApproval(true);
-        return;
-      }
-      if (input === "n" || input === "N") {
+      } else if (input === "n" || input === "N") {
         handleApproval(false);
-        return;
       }
+      clearTerminal();
       return;
     }
 
