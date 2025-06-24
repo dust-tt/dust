@@ -119,7 +119,7 @@ export const insuranceConfig: IndustryPageConfig = {
       },
       {
         title: "Business Development",
-        image: "/static/landing/industry/features/KYC.svg",
+        image: "/static/landing/industry/features/Compliance_verification.svg",
         bgColor: "bg-blue-100",
         features: [
           {
@@ -150,7 +150,7 @@ export const insuranceConfig: IndustryPageConfig = {
       },
       {
         title: "Legal & Compliance Support",
-        image: "/static/landing/industry/features/legalReview3.svg",
+        image: "/static/landing/industry/features/Legal_review_2.svg",
         bgColor: "bg-blue-100",
         features: [
           {
@@ -175,8 +175,8 @@ export const insuranceConfig: IndustryPageConfig = {
       },
       {
         title: "Intelligence",
-        image: "/static/landing/industry/features/Radar.svg",
-        bgColor: "bg-green-100",
+        image: "/static/landing/industry/features/Radar_AIDigest.svg",
+        bgColor: "bg-gray-950",
         features: [
           {
             icon: "bg-golden-500",
@@ -235,17 +235,17 @@ export const insuranceConfig: IndustryPageConfig = {
   },
   testimonial: {
     quote:
-        "Dust isn't just about saving time—it's about making better, more informed decisions.",
-      author: {
-        name: "Etienne Debost",
-        title: "Head of Architecture",
-      },
-      company: {
-        logo: "/static/landing/logos/color/wakam.png",
-        alt: "Wakam",
-      },
-      bgColor: "bg-blue-600",
-      textColor: "text-white",
+      "Dust isn't just about saving time—it's about making better, more informed decisions.",
+    author: {
+      name: "Etienne Debost",
+      title: "Head of Architecture",
+    },
+    company: {
+      logo: "/static/landing/logos/color/wakam.png",
+      alt: "Wakam",
+    },
+    bgColor: "bg-blue-600",
+    textColor: "text-white",
   },
   customerStories: {
     title: "Customer stories",

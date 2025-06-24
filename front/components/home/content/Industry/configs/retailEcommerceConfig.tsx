@@ -87,7 +87,7 @@ export const retailEcommerceConfig: IndustryPageConfig = {
     useCases: [
       {
         title: "Customer Service",
-        image: "/static/landing/industry/features/uxWriter2.svg",
+        image: "/static/landing/industry/features/uxWriter_2.svg",
         bgColor: "bg-pink-100",
         features: [
           {
@@ -118,7 +118,7 @@ export const retailEcommerceConfig: IndustryPageConfig = {
       },
       {
         title: "Business Intelligence & Analytics",
-        image: "/static/landing/industry/features/analyst_snowflake.svg",
+        image: "/static/landing/industry/features/Data_graph.svg",
         bgColor: "bg-green-100",
         features: [
           {
@@ -148,9 +148,15 @@ export const retailEcommerceConfig: IndustryPageConfig = {
         ],
       },
       {
+<<<<<<< HEAD
         title: "Marketing",
         image: "/static/landing/industry/features/Radar.svg",
         bgColor: "bg-gray-100",
+=======
+        title: "Marketing & Intelligence",
+        image: "/static/landing/industry/features/Radar_AIDigest.svg",
+        bgColor: "bg-gray-950",
+>>>>>>> 5777cc25881e0dffc9390770a0cee4b88d0fcb1e
         features: [
           {
             icon: "bg-pink-400",
@@ -180,7 +186,7 @@ export const retailEcommerceConfig: IndustryPageConfig = {
       },
       {
         title: "Product & Catalog Operations",
-        image: "/static/landing/industry/features/Performance.svg",
+        image: "/static/landing/industry/features/Catalog.svg",
         bgColor: "bg-blue-100",
         features: [
           {
@@ -211,7 +217,7 @@ export const retailEcommerceConfig: IndustryPageConfig = {
       },
       {
         title: "Merchant Management",
-        image: "/static/landing/industry/features/merchant_management.svg",
+        image: "/static/landing/industry/features/Provider_list.svg",
         bgColor: "bg-orange-100",
         features: [
           {
@@ -270,7 +276,8 @@ export const retailEcommerceConfig: IndustryPageConfig = {
     videoUrl: "https://fast.wistia.net/embed/iframe/9u1uft5pg7",
   },
   testimonial: {
-    quote: "Curiosity turned into necessity: I couldn't do half my job without Dust.",
+    quote:
+      "Curiosity turned into necessity: I couldn't do half my job without Dust.",
     author: {
       name: "Valentine Chelius",
       title: "Head of Marketing",
@@ -279,9 +286,9 @@ export const retailEcommerceConfig: IndustryPageConfig = {
       logo: "/static/landing/logos/color/fleet.png",
       alt: "Fleet Logo",
     },
-  bgColor: "bg-green-600",
-  textColor: "text-white",
-},
+    bgColor: "bg-green-600",
+    textColor: "text-white",
+  },
   customerStories: {
     title: "Customer stories",
     stories: [

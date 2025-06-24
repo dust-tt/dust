@@ -87,7 +87,7 @@ export const b2bSaasConfig: IndustryPageConfig = {
     useCases: [
       {
         title: "GTM Operations & Sales Enablement",
-        image: "/static/landing/industry/features/GTM_Ops.svg",
+        image: "/static/landing/industry/features/Sales_agent.svg",
         bgColor: "bg-blue-100",
         features: [
           {
@@ -118,7 +118,7 @@ export const b2bSaasConfig: IndustryPageConfig = {
       },
       {
         title: "Marketing Operations",
-        image: "/static/landing/industry/features/marketing_operations.svg",
+        image: "/static/landing/industry/features/Content_localization.svg",
         bgColor: "bg-rose-100",
         features: [
           {
@@ -142,7 +142,7 @@ export const b2bSaasConfig: IndustryPageConfig = {
       },
       {
         title: "Customer Experience",
-        image: "/static/landing/industry/features/customer_experience.svg",
+        image: "/static/landing/industry/features/Connection_management.svg",
         bgColor: "bg-green-100",
         features: [
           {
@@ -173,7 +173,7 @@ export const b2bSaasConfig: IndustryPageConfig = {
       },
       {
         title: "Engineering Operations",
-        image: "/static/landing/industry/features/engineering_ops.svg",
+        image: "/static/landing/industry/features/Eng_debug.svg",
         bgColor: "bg-gray-100",
         features: [
           {

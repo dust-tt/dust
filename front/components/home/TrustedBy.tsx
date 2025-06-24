@@ -55,7 +55,7 @@ const LOGO_SETS = {
     { name: "wakam", src: "/static/landing/logos/gray/wakam.svg" },
   ],
   retail: [
-    { name: "mirakl", src: "/static/landing/logos/gray/mirakl.svg" },
+    { name: "mirakl", src: "/static/landing/logos/gray/mirakle.svg" },
     { name: "ankorstore", src: "/static/landing/logos/gray/ankorstore.svg" },
     { name: "fleet", src: "/static/landing/logos/gray/fleet.svg" },
     { name: "alma", src: "/static/landing/logos/gray/alma.svg" },
