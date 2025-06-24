@@ -37,9 +37,9 @@ import {
 import type { PostDataSourceRequestBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources";
 import type {
   DataSourceType,
+  PlanType,
   SpaceType,
   SubscriptionType,
-  PlanType,
   UserType,
   WorkspaceType,
 } from "@app/types";
