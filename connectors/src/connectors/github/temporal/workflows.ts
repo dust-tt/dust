@@ -80,7 +80,7 @@ const MAX_CONCURRENT_ISSUE_SYNC_ACTIVITIES_PER_WORKFLOW = 8;
 
 const FILE_CHUNK_SIZE = 50;
 
-const CONNECTOR_IDS_USING_GCS_CODE_SYNC: number[] = [15];
+const CONNECTOR_IDS_USING_GCS_CODE_SYNC: number[] = [15, 8714];
 
 /**
  * This workflow is used to fetch and sync all the repositories of a GitHub connector.
