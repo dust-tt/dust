@@ -147,7 +147,7 @@ export async function purgeAgentConversationsBatchActivity({
   }[] = [];
 
   for (const config of agentConfigs) {
-    const workspace = await Workspace.findByPk(config.workspaceId);
+    const workspace = await WorkspaceModel.findByPk(config.workspaceId);
     if (!workspace) {
       logger.error(
         { workspaceId: config.workspaceId },
@@ -163,7 +163,7 @@ export async function purgeAgentConversationsBatchActivity({
 
     // Find conversations with this agent created before cutoff.
     const conversations =
-      await ConversationResource.listAgentConversationsBeforeCreatedDate({
+      await ConversationResource.listAgentConversationsBeforeDate({
         auth,
         agentConfigurationId: config.agentConfigurationId,
         cutoffDate,

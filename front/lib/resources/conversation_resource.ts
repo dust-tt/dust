@@ -229,7 +229,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return results;
   }
 
-  static async listAgentConversationsBeforeCreatedDate({
+  static async listAgentConversationsBeforeDate({
     auth,
     agentConfigurationId,
     cutoffDate,
