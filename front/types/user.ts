@@ -123,6 +123,10 @@ export type EditedByUser = {
   userId: string | null;
 };
 
+export type Editor = {
+  sId: string;
+};
+
 export function formatUserFullName(user?: {
   firstName?: string;
   lastName?: string | null;
