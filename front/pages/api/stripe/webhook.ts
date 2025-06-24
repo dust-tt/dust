@@ -300,10 +300,6 @@ async function handler(
             );
           }
           // Setting subscription payment status to succeeded
-          // subscription = await Subscription.findOne({
-          //   where: { stripeSubscriptionId: invoice.subscription },
-          //   include: [Workspace],
-          // });
           subscription = await SubscriptionResource.fetchByStripeId(
             invoice.subscription
           );
@@ -346,10 +342,6 @@ async function handler(
           }
 
           // Logging that we have a failed payment
-          // subscription = await Subscription.findOne({
-          //   where: { stripeSubscriptionId: invoice.subscription },
-          //   include: [Workspace],
-          // });
           subscription = await SubscriptionResource.fetchByStripeId(
             invoice.subscription
           );
@@ -473,10 +465,7 @@ async function handler(
               const subscription = await SubscriptionResource.fetchByStripeId(
                 stripeSubscription.id
               );
-              // const subscription = await Subscription.findOne({
-              //   where: { stripeSubscriptionId: stripeSubscription.id },
-              //   include: [Workspace],
-              // });
+
               if (!subscription) {
                 logger.warn(
                   {
@@ -513,10 +502,6 @@ async function handler(
             const subscription = await SubscriptionResource.fetchByStripeId(
               stripeSubscription.id
             );
-            // const subscription = await Subscription.findOne({
-            //   where: { stripeSubscriptionId: stripeSubscription.id },
-            //   include: [Workspace],
-            // });
             if (!subscription) {
               logger.warn(
                 {
