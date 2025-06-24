@@ -2,6 +2,7 @@ import { groupBy } from "lodash";
 import { useMemo } from "react";
 import { useCallback } from "react";
 
+import { useMCPServerViewsContext } from "@app/components/assistant_builder/contexts/MCPServerViewsContext";
 import type {
   ActionSpecificationWithType,
   AssistantBuilderActionConfiguration,
@@ -19,7 +20,6 @@ import {
 } from "@app/lib/actions/utils";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { ModelConfigurationType, SpaceType } from "@app/types";
-import { useMCPServerViewsContext } from "@app/components/assistant_builder/contexts/MCPServerViewsContext";
 import { useSpacesContext } from "@app/components/assistant_builder/contexts/SpacesContext";
 
 const DEFAULT_TOOLS_WITH_CONFIGURATION = [

@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from "react";
 
+import { useMCPServerViewsContext } from "@app/components/assistant_builder/contexts/MCPServerViewsContext";
 import type {
   AssistantBuilderActionConfiguration,
   AssistantBuilderActionState,
@@ -10,7 +11,6 @@ import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { assertNever } from "@app/types";
 import { useSpacesContext } from "@app/components/assistant_builder/contexts/SpacesContext";
-import { useMCPServerViewsContext } from "@app/components/assistant_builder/contexts/MCPServerViewsContext";
 
 // Actions in this list are not configurable via the "add tool" menu.
 // Instead, they should be handled in the `Capabilities` component.

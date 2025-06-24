@@ -210,7 +210,11 @@ export function AddToolsDropdown({
           />
         }
       >
-        {isLoading && <Spinner />}
+        {isLoading && (
+          <div className="flex h-full w-full items-center justify-center rounded-xl">
+            <Spinner />
+          </div>
+        )}
         {!isLoading &&
           searchText.length > 0 &&
           (noFilteredTools ? (

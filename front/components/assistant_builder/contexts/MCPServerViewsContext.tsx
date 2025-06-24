@@ -1,4 +1,5 @@
-import React, { createContext, memo, useContext, type ReactNode } from "react";
+import type { ReactNode } from "react";
+import React, { createContext, memo, useContext } from "react";
 
 import { mcpServerViewSortingFn } from "@app/lib/actions/mcp_helper";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
@@ -42,10 +43,10 @@ export const MCPServerViewsProvider = memo(
       serverViews: mcpServerViews,
       isLoading: isMCPServerViewsLoading,
       isError: isMCPServerViewsError,
-    } = useMCPServerViewsFromSpaces(owner, spaces, ["manual", "auto"]);
+    } = useMCPServerViewsFromSpaces(owner, spaces);
 
     const value: MCPServerViewsContextType = {
-      mcpServerViews: mcpServerViews?.sort(mcpServerViewSortingFn) || [],
+      mcpServerViews: mcpServerViews.sort(mcpServerViewSortingFn),
       isMCPServerViewsLoading,
       isMCPServerViewsError,
     };

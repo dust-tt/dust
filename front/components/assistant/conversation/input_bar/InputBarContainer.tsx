@@ -60,7 +60,8 @@ export interface InputBarContainerProps {
   disableAutoFocus: boolean;
   disableSendButton: boolean;
   fileUploaderService: FileUploaderService;
-  onNodeSelect?: (node: DataSourceViewContentNode) => void;
+  onNodeSelect: (node: DataSourceViewContentNode) => void;
+  onNodeUnselect: (node: DataSourceViewContentNode) => void;
   attachedNodes: DataSourceViewContentNode[];
 }
 
@@ -76,6 +77,7 @@ const InputBarContainer = ({
   disableSendButton,
   fileUploaderService,
   onNodeSelect,
+  onNodeUnselect,
   attachedNodes,
 }: InputBarContainerProps) => {
   const suggestions = useAssistantSuggestions(agentConfigurations, owner);
@@ -281,10 +283,8 @@ const InputBarContainer = ({
                 fileUploaderService={fileUploaderService}
                 owner={owner}
                 isLoading={false}
-                onNodeSelect={
-                  onNodeSelect ||
-                  ((node) => console.log(`Selected ${node.title}`))
-                }
+                onNodeSelect={onNodeSelect}
+                onNodeUnselect={onNodeUnselect}
                 attachedNodes={attachedNodes}
               />
             </>

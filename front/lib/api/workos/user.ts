@@ -2,6 +2,7 @@ import type {
   AuthenticateWithSessionCookieFailedResponse,
   AuthenticateWithSessionCookieSuccessResponse,
   AuthenticationResponse as WorkOSAuthenticationResponse,
+  DirectoryUser as WorkOSDirectoryUser,
   RefreshSessionResponse,
   User as WorkOSUser,
 } from "@workos-inc/node";
@@ -14,10 +15,11 @@ import type {
 
 import config from "@app/lib/api/config";
 import type { RegionType } from "@app/lib/api/regions/config";
+import { config as multiRegionsConfig } from "@app/lib/api/regions/config";
 import { getWorkOS } from "@app/lib/api/workos/client";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import logger from "@app/logger/logger";
-import type { Result } from "@app/types";
+import type { LightWorkspaceType, Result } from "@app/types";
 import { Err, Ok } from "@app/types";
 
 export type SessionCookie = {
@@ -141,13 +143,9 @@ export async function updateUserFromAuth0(
   }
 }
 
-export async function fetchWorkOSUserWithEmail(
-  email?: string | null
+export async function fetchUserFromWorkOS(
+  email: string
 ): Promise<Result<WorkOSUser, Error>> {
-  if (email == null) {
-    return new Err(new Error("Missing email"));
-  }
-
   const workOSUserResponse = await getWorkOS().userManagement.listUsers({
     email,
   });
@@ -157,7 +155,84 @@ export async function fetchWorkOSUserWithEmail(
     return new Err(new Error(`User not found with email "${email}"`));
   }
 
-  logger.info({ workOSUser, email }, "Found workOS user for webhook event");
-
   return new Ok(workOSUser);
+}
+
+export async function addUserToWorkOSOrganization(
+  workspace: LightWorkspaceType,
+  workOSUser: WorkOSUser
+): Promise<Result<undefined, Error>> {
+  if (workspace.workOSOrganizationId) {
+    await getWorkOS().userManagement.createOrganizationMembership({
+      organizationId: workspace.workOSOrganizationId,
+      userId: workOSUser.id,
+    });
+    return new Ok(undefined);
+  }
+  return new Err(
+    new Error("No WorkOS organization associated with this workspace")
+  );
+}
+
+export async function fetchOrCreateWorkOSUserWithEmail({
+  workOSUser,
+  workspace,
+}: {
+  workspace: LightWorkspaceType;
+  workOSUser: WorkOSDirectoryUser;
+}): Promise<Result<WorkOSUser, Error>> {
+  const localLogger = logger.child({
+    directoryUserId: workOSUser.id,
+    workspaceId: workspace.sId,
+  });
+
+  if (workOSUser.email == null) {
+    return new Err(new Error("Missing email"));
+  }
+
+  const workOSUserResponse = await getWorkOS().userManagement.listUsers({
+    email: workOSUser.email,
+  });
+
+  const [existingUser] = workOSUserResponse.data;
+  if (!existingUser) {
+    const createdUser = await getWorkOS().userManagement.createUser({
+      email: workOSUser.email,
+      firstName: workOSUser.firstName ?? undefined,
+      lastName: workOSUser.lastName ?? undefined,
+      metadata: {
+        region: multiRegionsConfig.getCurrentRegion(),
+      },
+    });
+    localLogger.info(
+      { workOSUserId: createdUser.id },
+      "Created WorkOS user for webhook event."
+    );
+
+    const addUserToOrganizationResult = await addUserToWorkOSOrganization(
+      workspace,
+      createdUser
+    );
+
+    if (addUserToOrganizationResult.isOk()) {
+      localLogger.info(
+        {
+          workOSUserId: createdUser.id,
+          organizationId: workspace.workOSOrganizationId,
+        },
+        "Added user to the organization."
+      );
+    } else {
+      localLogger.error(
+        { workOSUserId: createdUser.id },
+        `Created a user but could not add it to the organization: ${addUserToOrganizationResult.error.message}.`
+      );
+    }
+
+    return new Ok(createdUser);
+  }
+
+  localLogger.info("Found WorkOS user for webhook event.");
+
+  return new Ok(existingUser);
 }

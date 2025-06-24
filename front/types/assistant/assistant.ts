@@ -573,7 +573,8 @@ export const O4_MINI_HIGH_REASONING_MODEL_CONFIG: ModelConfigurationType = {
   reasoningEffort: "high",
 };
 
-const ANTHROPIC_TOKEN_COUNT_ADJUSTMENT = 1.25;
+export const DEFAULT_TOKEN_COUNT_ADJUSTMENT = 1.15;
+const ANTHROPIC_TOKEN_COUNT_ADJUSTMENT = 1.3;
 
 export const CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",

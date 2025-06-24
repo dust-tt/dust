@@ -392,28 +392,48 @@ const DropdownMenuItem = React.forwardRef<
 );
 DropdownMenuItem.displayName = DropdownMenuPrimitive.Item.displayName;
 
+export type DropdownMenuCheckboxItemProps = React.ComponentPropsWithoutRef<
+  typeof DropdownMenuPrimitive.CheckboxItem
+> & {
+  label?: React.ComponentProps<typeof DropdownMenuItem>["label"];
+  icon?: React.ComponentProps<typeof DropdownMenuItem>["icon"];
+  description?: React.ComponentProps<typeof DropdownMenuItem>["description"];
+  truncateText?: React.ComponentProps<typeof DropdownMenuItem>["truncateText"];
+};
+
 const DropdownMenuCheckboxItem = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.CheckboxItem>,
-  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.CheckboxItem>
->(({ className, children, checked, ...props }, ref) => (
-  <DropdownMenuPrimitive.CheckboxItem
-    ref={ref}
-    className={cn(
-      menuStyleClasses.item({ variant: "default" }),
-      menuStyleClasses.inset,
-      className
-    )}
-    checked={checked}
-    {...props}
-  >
-    <span className={menuStyleClasses.subTrigger.span}>
-      <DropdownMenuPrimitive.ItemIndicator>
-        <Icon size="xs" visual={CheckIcon} />
-      </DropdownMenuPrimitive.ItemIndicator>
-    </span>
-    {children}
-  </DropdownMenuPrimitive.CheckboxItem>
-));
+  DropdownMenuCheckboxItemProps
+>(
+  (
+    { className, children, description, label, icon, truncateText, ...props },
+    ref
+  ) => (
+    <DropdownMenuPrimitive.CheckboxItem
+      ref={ref}
+      className={cn(
+        menuStyleClasses.item({ variant: "default" }),
+        menuStyleClasses.inset,
+        className
+      )}
+      {...props}
+    >
+      <span className={menuStyleClasses.subTrigger.span}>
+        <DropdownMenuPrimitive.ItemIndicator>
+          <Icon size="xs" visual={CheckIcon} />
+        </DropdownMenuPrimitive.ItemIndicator>
+      </span>
+      <ItemWithLabelIconAndDescription
+        label={label}
+        icon={icon}
+        description={description}
+        truncate={truncateText}
+      >
+        {children}
+      </ItemWithLabelIconAndDescription>
+    </DropdownMenuPrimitive.CheckboxItem>
+  )
+);
 DropdownMenuCheckboxItem.displayName =
   DropdownMenuPrimitive.CheckboxItem.displayName;
 

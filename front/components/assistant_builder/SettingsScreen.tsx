@@ -787,8 +787,7 @@ function EditorsMembersList({
   );
 
   const members = useMemo(
-    () =>
-      builderState.editors?.map((m) => ({ ...m, workspaces: [owner] })) ?? [],
+    () => builderState.editors?.map((m) => ({ ...m, workspace: owner })) ?? [],
     [builderState, owner]
   );
 

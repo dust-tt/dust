@@ -316,6 +316,7 @@ const ConnectorProvidersSchema = FlexibleEnumSchema<
   | "intercom"
   | "notion"
   | "slack"
+  | "slack_bot"
   | "microsoft"
   | "webcrawler"
   | "snowflake"
@@ -838,6 +839,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "salesforce_tool"
   | "search_knowledge_builder"
   | "show_debug_tools"
+  | "slack_tool"
   | "snowflake_connector_feature"
   | "usage_data_api"
   | "workos_user_provisioning"
@@ -3034,6 +3036,18 @@ const MCP_VALIDATION_OUTPUTS = [
 ] as const;
 export type MCPValidationOutputPublicType =
   (typeof MCP_VALIDATION_OUTPUTS)[number];
+
+const MCPViewsRequestAvailabilitySchema = z.enum(["manual", "auto"]);
+export type MCPViewsRequestAvailabilityType = z.infer<
+  typeof MCPViewsRequestAvailabilitySchema
+>;
+
+export const GetMCPViewsRequestSchema = z.object({
+  spaceIds: z.array(z.string()),
+  availabilities: z.array(MCPViewsRequestAvailabilitySchema),
+});
+
+export type GetMCPViewsRequestType = z.infer<typeof GetMCPViewsRequestSchema>;
 
 export const PostSpaceMembersRequestBodySchema = z.object({
   userIds: z.array(z.string()),

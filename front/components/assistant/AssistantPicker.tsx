@@ -34,7 +34,6 @@ export function AssistantPicker({
   showFooterButtons = true,
   size = "md",
   isLoading = false,
-  mountPortal = true,
 }: AssistantPickerProps) {
   const [searchText, setSearchText] = useState("");
   const [isOpen, setIsOpen] = useState(false);
@@ -68,7 +67,6 @@ export function AssistantPicker({
       <DropdownMenuContent
         className="h-96 w-96"
         align="end"
-        mountPortal={mountPortal}
         dropdownHeaders={
           <>
             <DropdownMenuSearchbar

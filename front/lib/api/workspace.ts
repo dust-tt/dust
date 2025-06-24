@@ -20,12 +20,14 @@ import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { launchDeleteWorkspaceWorkflow } from "@app/poke/temporal/client";
 import type {
+  GroupKind,
   LightWorkspaceType,
   MembershipRoleType,
   PublicAPILimitsType,
   Result,
   RoleType,
   SubscriptionType,
+  UserTypeWithWorkspace,
   UserTypeWithWorkspaces,
   WorkspaceSegmentationType,
   WorkspaceType,
@@ -39,6 +41,7 @@ import {
   removeNulls,
 } from "@app/types";
 
+import { GroupResource } from "../resources/group_resource";
 import { frontSequelize } from "../resources/storage";
 
 export async function getWorkspaceInfos(
@@ -200,9 +203,10 @@ export async function searchMembers(
   options: {
     searchTerm?: string;
     searchEmails?: string[];
+    groupKind?: Omit<GroupKind, "system">;
   },
   paginationParams: SearchMembersPaginationParams
-): Promise<{ members: UserTypeWithWorkspaces[]; total: number }> {
+): Promise<{ members: UserTypeWithWorkspace[]; total: number }> {
   const owner = auth.workspace();
   if (!owner) {
     return { members: [], total: 0 };
@@ -234,30 +238,43 @@ export async function searchMembers(
     total = results.total;
   }
 
-  const usersWithWorkspaces = users.map((u) => {
-    const [m] = u.memberships ?? [];
-    let role: RoleType = "none";
+  const usersWithWorkspace = await Promise.all(
+    users.map(async (u) => {
+      const [m] = u.memberships ?? [];
+      let role: RoleType = "none";
+      let groups: string[] | undefined;
 
-    if (m) {
-      const membership = new MembershipResource(
-        MembershipResource.model,
-        m.get()
-      );
+      if (m) {
+        const membership = new MembershipResource(
+          MembershipResource.model,
+          m.get()
+        );
 
-      role = !membership.isRevoked()
-        ? ACTIVE_ROLES.includes(membership.role)
-          ? membership.role
-          : "none"
-        : "none";
-    }
+        role = !membership.isRevoked()
+          ? ACTIVE_ROLES.includes(membership.role)
+            ? membership.role
+            : "none"
+          : "none";
+      }
 
-    return {
-      ...u.toJSON(),
-      workspaces: [{ ...owner, role, flags: null }],
-    };
-  });
+      if (options.groupKind) {
+        const groupsResult = await GroupResource.listUserGroupsInWorkspace({
+          user: u,
+          workspace: owner,
+          groupKinds: [options.groupKind],
+        });
 
-  return { members: usersWithWorkspaces, total };
+        groups = groupsResult.map((g) => g.toJSON()).map((g) => g.name);
+      }
+
+      return {
+        ...u.toJSON(),
+        workspace: { ...owner, role, groups, flags: null },
+      };
+    })
+  );
+
+  return { members: usersWithWorkspace, total };
 }
 
 export async function getMembersCount(

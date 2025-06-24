@@ -70,7 +70,12 @@ pub mod providers {
     pub mod sentencepiece {
         pub mod sentencepiece;
     }
-    pub mod anthropic;
+    pub mod anthropic {
+        pub mod anthropic;
+        pub mod helpers;
+        pub mod streaming;
+        pub mod types;
+    }
     pub mod deepseek;
     pub mod fireworks;
     pub mod google_ai_studio;
@@ -144,6 +149,7 @@ pub mod oauth {
         pub mod notion;
         pub mod salesforce;
         pub mod slack;
+        pub mod slack_bot;
         pub mod utils;
         pub mod zendesk;
     }

@@ -13,6 +13,7 @@ import { ReasoningModelConfigurationSection } from "@app/components/assistant_bu
 import { TimeFrameConfigurationSection } from "@app/components/assistant_builder/actions/configuration/TimeFrameConfigurationSection";
 import { DataDescription } from "@app/components/assistant_builder/actions/DataDescription";
 import { generateSchema } from "@app/components/assistant_builder/actions/ProcessAction";
+import { useMCPServerViewsContext } from "@app/components/assistant_builder/contexts/MCPServerViewsContext";
 import type {
   AssistantBuilderActionConfiguration,
   AssistantBuilderActionState,

@@ -937,22 +937,46 @@ export function useRemoveMCPServerViewFromSpace(owner: LightWorkspaceType) {
   return { removeFromSpace: deleteView };
 }
 
-// this is a post request to get the mcp server views from the spaces
-export function useMCPServerViewsFromSpaces(
+function useMCPServerViewsFromSpacesBase(
   owner: LightWorkspaceType,
   spaces: SpaceType[],
-  availabilities?: MCPServerAvailability[]
+  availabilities: MCPServerAvailability[]
 ) {
   const configFetcher: Fetcher<GetMCPServerViewsListResponseBody> = fetcher;
-  const url = `/api/w/${owner.sId}/mcp/views?spaceIds=${spaces.map((s) => s.sId).join(",")}${availabilities ? `&availabilities=${availabilities.join(",")}` : ""}`;
+
+  const spaceIds = spaces.map(s => s.sId).join(",");
+  const availabilitiesParam = availabilities.join(",");
+
+  const url = `/api/w/${owner.sId}/mcp/views?spaceIds=${spaceIds}&availabilities=${availabilitiesParam}`;
   const { data, error, mutate } = useSWRWithDefaults(url, configFetcher, {
     disabled: !spaces.length,
   });
 
   return {
-    serverViews: data?.serverViews,
+    serverViews: data?.serverViews ?? emptyArray(),
     isLoading: !error && !data,
     isError: error,
     mutateServerViews: mutate,
   };
+}
+
+export function useMCPServerViewsFromSpaces(
+  owner: LightWorkspaceType,
+  spaces: SpaceType[]
+) {
+  return useMCPServerViewsFromSpacesBase(owner, spaces, ["manual", "auto"]);
+}
+
+export function useRemoteMCPServerViewsFromSpaces(
+  owner: LightWorkspaceType,
+  spaces: SpaceType[]
+) {
+  return useMCPServerViewsFromSpacesBase(owner, spaces, ["manual"]);
+}
+
+export function useInternalMCPServerViewsFromSpaces(
+  owner: LightWorkspaceType,
+  spaces: SpaceType[]
+) {
+  return useMCPServerViewsFromSpacesBase(owner, spaces, ["auto"]);
 }

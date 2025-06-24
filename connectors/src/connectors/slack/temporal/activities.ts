@@ -117,6 +117,27 @@ export async function syncChannel(
     );
   }
 
+  // Check if channel has a skipReason
+  const slackChannel = await SlackChannel.findOne({
+    where: {
+      connectorId,
+      slackChannelId: channelId,
+    },
+  });
+
+  if (slackChannel?.skipReason) {
+    logger.info(
+      {
+        connectorId,
+        channelId,
+        channelName: remoteChannel.name,
+        skipReason: slackChannel.skipReason,
+      },
+      `Skipping channel sync: ${slackChannel.skipReason}`
+    );
+    return;
+  }
+
   if (!["read", "read_write"].includes(channel.permission)) {
     logger.info(
       {
@@ -725,6 +746,19 @@ export async function syncThreads(
         );
       }
 
+      if (channel.skipReason) {
+        logger.info(
+          {
+            connectorId,
+            channelId,
+            channelName,
+            skipReason: channel.skipReason,
+          },
+          `Skipping thread sync: ${channel.skipReason}`
+        );
+        return;
+      }
+
       if (!["read", "read_write"].includes(channel.permission)) {
         logger.info(
           {
@@ -1072,7 +1106,11 @@ export async function getChannelsToGarbageCollect(
   });
   const channelIdsWithoutReadPermission = new Set(
     channelsInConnectorsDb
-      .filter((c) => !["read", "read_write"].includes(c.permission))
+      .filter(
+        (c) =>
+          !["read", "read_write"].includes(c.permission) ||
+          c.skipReason !== null
+      )
       .map((c) => c.slackChannelId)
   );
 

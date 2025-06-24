@@ -12,7 +12,7 @@ import assert from "assert";
 import { createAndLogMembership } from "@app/lib/api/signup";
 import { getOrCreateWorkOSOrganization } from "@app/lib/api/workos/organization";
 import {
-  fetchWorkOSUserWithEmail,
+  fetchOrCreateWorkOSUserWithEmail,
   getUserNicknameFromEmail,
 } from "@app/lib/api/workos/user";
 import {
@@ -32,7 +32,11 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import mainLogger from "@app/logger/logger";
-import type { LightWorkspaceType, Result } from "@app/types";
+import type {
+  LightWorkspaceType,
+  MembershipRoleType,
+  Result,
+} from "@app/types";
 
 const logger = mainLogger.child(
   {},
@@ -40,6 +44,9 @@ const logger = mainLogger.child(
     msgPrefix: "[WorkOS Event] ",
   }
 );
+
+const ADMIN_GROUP_NAME = "dust-admins";
+const BUILDER_GROUP_NAME = "dust-builders";
 
 /**
  * Verify if workspace exist, if it does will call the callback with the found workspace.
@@ -64,6 +71,164 @@ async function verifyWorkOSWorkspace<E extends object, R>(
   }
 
   return handler(workspace, event);
+}
+
+/**
+ * Handle role assignment based on the name of the group.
+ */
+async function handleRoleAssignmentForGroup({
+  workspace,
+  user,
+  group,
+  action,
+}: {
+  workspace: LightWorkspaceType;
+  user: UserResource;
+  group: GroupResource;
+  action: "add" | "remove";
+}) {
+  let targetRole: MembershipRoleType | null = null;
+
+  if (group.name === ADMIN_GROUP_NAME) {
+    targetRole = "admin";
+  } else if (group.name === BUILDER_GROUP_NAME) {
+    targetRole = "builder";
+  }
+
+  if (!targetRole) {
+    // Not a special group, no role assignment needed.
+    return;
+  }
+
+  const currentMembership =
+    await MembershipResource.getActiveMembershipOfUserInWorkspace({
+      user,
+      workspace,
+    });
+
+  if (!currentMembership) {
+    logger.warn(
+      `User ${user.sId} has no active membership in workspace ${workspace.sId}, cannot assign role.`
+    );
+    return;
+  }
+
+  if (action === "add") {
+    // Assign the target role if user doesn't already have it or a higher role.
+    const shouldAssignRole =
+      (targetRole === "admin" && currentMembership.role !== "admin") ||
+      (targetRole === "builder" && currentMembership.role === "user");
+
+    if (shouldAssignRole) {
+      const updateResult = await MembershipResource.updateMembershipRole({
+        user,
+        workspace,
+        newRole: targetRole,
+      });
+
+      if (updateResult.isErr()) {
+        logger.error(
+          { error: updateResult.error, userId: user.sId, role: targetRole },
+          `Failed to assign ${targetRole} role to user`
+        );
+        throw new Error(
+          `Failed to assign ${targetRole} role to user ${user.sId}: ${updateResult.error.type}`
+        );
+      }
+
+      logger.info(
+        {
+          userId: user.sId,
+          oldRole: currentMembership.role,
+          newRole: targetRole,
+          groupName: group.name,
+        },
+        `Assigned ${targetRole} role to user based on group membership`
+      );
+
+      void ServerSideTracking.trackUpdateMembershipRole({
+        user: user.toJSON(),
+        workspace,
+        previousRole: currentMembership.role,
+        role: targetRole,
+      });
+    }
+  } else if (action === "remove") {
+    // Check if the user should lose their role when removed from the group.
+    // We need to check if they're still in other groups that grant the same or higher role.
+    const shouldDowngradeRole = await shouldDowngradeUserRole(
+      workspace,
+      user,
+      targetRole
+    );
+
+    if (shouldDowngradeRole) {
+      const newRole = targetRole === "admin" ? "builder" : "user";
+
+      const updateResult = await MembershipResource.updateMembershipRole({
+        user,
+        workspace,
+        newRole,
+      });
+
+      if (updateResult.isErr()) {
+        logger.error(
+          { error: updateResult.error, userId: user.sId, role: newRole },
+          "Failed to downgrade user role."
+        );
+        throw new Error(
+          `Failed to downgrade user role for ${user.sId}: ${updateResult.error.type}`
+        );
+      }
+
+      logger.info(
+        {
+          userId: user.sId,
+          oldRole: currentMembership.role,
+          newRole,
+          groupName: group.name,
+        },
+        "Downgraded user role after group removal"
+      );
+
+      void ServerSideTracking.trackUpdateMembershipRole({
+        user: user.toJSON(),
+        workspace,
+        previousRole: currentMembership.role,
+        role: newRole,
+      });
+    }
+  }
+}
+
+/**
+ * Check if the user should be downgraded when removed from a role-granting group.
+ */
+async function shouldDowngradeUserRole(
+  workspace: LightWorkspaceType,
+  user: UserResource,
+  roleBeingRemoved: MembershipRoleType
+): Promise<boolean> {
+  // Get all groups the user is a member of.
+  const userGroups = await GroupResource.listUserGroupsInWorkspace({
+    user,
+    workspace,
+  });
+
+  // Check if user is still in any groups that grant the same or higher role.
+  for (const group of userGroups) {
+    if (
+      (group.name === ADMIN_GROUP_NAME &&
+        (roleBeingRemoved === "admin" || roleBeingRemoved === "builder")) ||
+      (group.name === BUILDER_GROUP_NAME && roleBeingRemoved === "builder")
+    ) {
+      // User is still in a group that grants this role or higher.
+      return false;
+    }
+  }
+
+  // User is not in any other groups that grant this role.
+  return true;
 }
 
 // WorkOS webhooks do not guarantee event ordering. Events can arrive out of sequence.
@@ -281,7 +446,10 @@ async function handleUserAddedToGroup(
     return;
   }
 
-  const workOSUserRes = await fetchWorkOSUserWithEmail(event.user.email);
+  const workOSUserRes = await fetchOrCreateWorkOSUserWithEmail({
+    workspace,
+    workOSUser: event.user,
+  });
   if (workOSUserRes.isErr()) {
     throw workOSUserRes.error;
   }
@@ -299,18 +467,21 @@ async function handleUserAddedToGroup(
       `Group not found for workOSId "${event.group.id}" in workspace "${workspace.sId}"`
     );
   }
+
   const isMember = await group.isMember(user);
-  if (isMember) {
+  if (!isMember) {
+    const res = await group.addMember(auth, user.toJSON());
+    if (res.isErr()) {
+      throw new Error(res.error.message);
+    }
+  } else {
     logger.info(
       `User "${user.sId}" is already member of group "${group.sId}", skipping`
     );
-    return;
   }
 
-  const res = await group.addMember(auth, user.toJSON());
-  if (res.isErr()) {
-    throw new Error(res.error.message);
-  }
+  // Handle role assignment for special groups.
+  await handleRoleAssignmentForGroup({ workspace, user, group, action: "add" });
 }
 
 async function handleUserRemovedFromGroup(
@@ -322,7 +493,10 @@ async function handleUserRemovedFromGroup(
     return;
   }
 
-  const workOSUserRes = await fetchWorkOSUserWithEmail(event.user.email);
+  const workOSUserRes = await fetchOrCreateWorkOSUserWithEmail({
+    workspace,
+    workOSUser: event.user,
+  });
   if (workOSUserRes.isErr()) {
     throw workOSUserRes.error;
   }
@@ -345,13 +519,24 @@ async function handleUserRemovedFromGroup(
   if (res.isErr()) {
     throw new Error(res.error.message);
   }
+
+  // Handle role assignment for special groups.
+  await handleRoleAssignmentForGroup({
+    workspace,
+    user,
+    group,
+    action: "remove",
+  });
 }
 
 async function handleCreateOrUpdateWorkOSUser(
   workspace: LightWorkspaceType,
   event: DirectoryUser
 ) {
-  const workOSUserRes = await fetchWorkOSUserWithEmail(event.email);
+  const workOSUserRes = await fetchOrCreateWorkOSUserWithEmail({
+    workspace,
+    workOSUser: event,
+  });
   if (workOSUserRes.isErr()) {
     throw workOSUserRes.error;
   }
@@ -396,7 +581,10 @@ async function handleDeleteWorkOSUser(
   workspace: LightWorkspaceType,
   event: DirectoryUser
 ) {
-  const workOSUserRes = await fetchWorkOSUserWithEmail(event.email);
+  const workOSUserRes = await fetchOrCreateWorkOSUserWithEmail({
+    workspace,
+    workOSUser: event,
+  });
   if (workOSUserRes.isErr()) {
     throw workOSUserRes.error;
   }
@@ -405,7 +593,7 @@ async function handleDeleteWorkOSUser(
   const user = await UserResource.fetchByWorkOSUserId(workOSUser.id);
   if (!user) {
     throw new Error(
-      `Didn't found user to delete for workOSUserId "${workOSUser.id}" in workspace "${workspace.sId}"`
+      `Did not find user to delete for workOSUserId "${workOSUser.id}" in workspace "${workspace.sId}"`
     );
   }
 

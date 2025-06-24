@@ -94,6 +94,7 @@ function createServer(
         conversation: agentLoopRunContext.conversation,
         model: supportedModel,
         prompt: agentLoopRunContext.agentConfiguration.instructions ?? "",
+        tools: "",
         allowedTokenCount,
         excludeImages: true,
       });
@@ -424,6 +425,7 @@ export function getSectionColumnsPrefix(
     case "google_drive":
     case "intercom":
     case "notion":
+    case "slack_bot":
     case "slack":
     case "microsoft":
     case "webcrawler":

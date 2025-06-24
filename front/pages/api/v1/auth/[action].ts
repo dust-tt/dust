@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import config from "@app/lib/api/config";
+import logger from "@app/logger/logger";
 
 type Provider = {
   authorizeUri: string;
@@ -82,7 +83,7 @@ async function handleAuthenticate(req: NextApiRequest, res: NextApiResponse) {
     const data = await response.json();
     res.status(response.status).json(data);
   } catch (error) {
-    console.error("Error in authenticate proxy:", error);
+    logger.error({ error }, "Error in authenticate proxy");
     res.status(500).json({ error: "Internal server error" });
   }
 }
@@ -93,10 +94,6 @@ async function handleLogout(req: NextApiRequest, res: NextApiResponse) {
     ...query,
     client_id: getProvider().clientId,
   }).toString();
-  console.log(
-    "Redirecting to logout URL:",
-    `https://${getProvider().logoutUri}?${params}`
-  );
   const authorizeUrl = `https://${getProvider().logoutUri}?${params}`;
   res.redirect(authorizeUrl);
 }

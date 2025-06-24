@@ -15,6 +15,7 @@ import { MicrosoftConnectorManager } from "@connectors/connectors/microsoft";
 import { NotionConnectorManager } from "@connectors/connectors/notion";
 import { SalesforceConnectorManager } from "@connectors/connectors/salesforce";
 import { SlackConnectorManager } from "@connectors/connectors/slack";
+import { SlackBotConnectorManager } from "@connectors/connectors/slack_bot";
 import { SnowflakeConnectorManager } from "@connectors/connectors/snowflake";
 import { WebcrawlerConnectorManager } from "@connectors/connectors/webcrawler";
 import { ZendeskConnectorManager } from "@connectors/connectors/zendesk";
@@ -58,6 +59,8 @@ export function getConnectorManager({
       return new NotionConnectorManager(connectorId);
     case "slack":
       return new SlackConnectorManager(connectorId);
+    case "slack_bot":
+      return new SlackBotConnectorManager(connectorId);
     case "webcrawler":
       return new WebcrawlerConnectorManager(connectorId);
     case "snowflake":
@@ -80,7 +83,10 @@ export function createConnector({
   params,
 }:
   | {
-      connectorProvider: Exclude<ConnectorProvider, "webcrawler" | "slack">;
+      connectorProvider: Exclude<
+        ConnectorProvider,
+        "webcrawler" | "slack" | "slack_bot"
+      >;
       params: {
         dataSourceConfig: DataSourceConfig;
         connectionId: string;
@@ -96,7 +102,7 @@ export function createConnector({
       };
     }
   | {
-      connectorProvider: "slack";
+      connectorProvider: "slack" | "slack_bot";
       params: {
         dataSourceConfig: DataSourceConfig;
         connectionId: string;
@@ -120,6 +126,8 @@ export function createConnector({
       return NotionConnectorManager.create(params);
     case "slack":
       return SlackConnectorManager.create(params);
+    case "slack_bot":
+      return SlackBotConnectorManager.create(params);
     case "webcrawler":
       return WebcrawlerConnectorManager.create(params);
     case "snowflake":

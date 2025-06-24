@@ -20,6 +20,7 @@ import ActionsScreen, {
 } from "@app/components/assistant_builder/ActionsScreen";
 import AssistantBuilderRightPanel from "@app/components/assistant_builder/AssistantBuilderPreviewDrawer";
 import { BuilderLayout } from "@app/components/assistant_builder/BuilderLayout";
+import { useMCPServerViewsContext } from "@app/components/assistant_builder/contexts/MCPServerViewsContext";
 import {
   INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT,
   InstructionScreen,
@@ -68,7 +69,6 @@ import {
   SUPPORTED_MODEL_CONFIGS,
 } from "@app/types";
 import { usePreviewPanelContext } from "./contexts/PreviewPanelContext";
-import { useMCPServerViewsContext } from "./contexts/MCPServerViewsContext";
 
 function isValidTab(tab: string): tab is BuilderScreen {
   return BUILDER_SCREENS.includes(tab as BuilderScreen);
@@ -307,9 +307,11 @@ export default function AssistantBuilder({
     }
 
     // Check if there are any errors in the actions
-    const anyActionError = builderState.actions.some((action) =>
-      hasActionError(action, mcpServerViews)
-    );
+    const anyActionError =
+      mcpServerViews.length > 0 &&
+      builderState.actions.some((action) =>
+        hasActionError(action, mcpServerViews)
+      );
 
     setHasAnyActionsError(anyActionError);
   }, [

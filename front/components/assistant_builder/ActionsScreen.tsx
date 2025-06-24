@@ -69,6 +69,7 @@ import {
   hasErrorActionWebNavigation,
 } from "@app/components/assistant_builder/actions/WebNavigationAction";
 import { AddToolsDropdown } from "@app/components/assistant_builder/AddToolsDropdown";
+import { useMCPServerViewsContext } from "@app/components/assistant_builder/contexts/MCPServerViewsContext";
 import { isLegacyAssistantBuilderConfiguration } from "@app/components/assistant_builder/legacy_agent";
 import type {
   AssistantBuilderActionAndDataVisualizationConfiguration,
@@ -708,6 +709,7 @@ function ActionCard({
 }) {
   const { mcpServerViews, isMCPServerViewsLoading } =
     useMCPServerViewsContext();
+    
   const spec =
     action.type === "DATA_VISUALIZATION"
       ? DATA_VISUALIZATION_SPECIFICATION
@@ -1243,7 +1245,11 @@ function AddKnowledgeDropdown({
         className="w-[20rem] md:w-[22rem]"
         collisionPadding={10}
       >
-        {isLoading && <Spinner />}
+        {isLoading && (
+          <div className="flex h-56 w-full items-center justify-center rounded-xl">
+            <Spinner />
+          </div>
+        )}
         {!isLoading &&
           DATA_SOURCES_ACTION_CATEGORIES.map((key) => {
             const spec = ACTION_SPECIFICATIONS[key];

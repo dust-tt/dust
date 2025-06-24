@@ -17,6 +17,7 @@ import {
   getChannels,
   joinChannel,
 } from "@connectors/connectors/slack/lib/channels";
+import { slackConfig } from "@connectors/connectors/slack/lib/config";
 import {
   getSlackAccessToken,
   getSlackClient,
@@ -50,8 +51,6 @@ import {
   normalizeError,
   safeParseJSON,
 } from "@connectors/types";
-
-const { SLACK_CLIENT_ID, SLACK_CLIENT_SECRET } = process.env;
 
 export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurationType> {
   readonly provider: ConnectorProvider = "slack";
@@ -161,7 +160,11 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
             },
             `Attempting Slack app deactivation [updateSlackConnector/team_id_mismatch]`
           );
-          const uninstallRes = await uninstallSlack(connectionId);
+          const uninstallRes = await uninstallSlack(
+            connectionId,
+            slackConfig.getRequiredSlackClientId(),
+            slackConfig.getRequiredSlackClientSecret()
+          );
 
           if (uninstallRes.isErr()) {
             throw new Error("Failed to deactivate the mismatching Slack app");
@@ -244,7 +247,11 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
       );
 
       try {
-        const uninstallRes = await uninstallSlack(connector.connectionId);
+        const uninstallRes = await uninstallSlack(
+          connector.connectionId,
+          slackConfig.getRequiredSlackClientId(),
+          slackConfig.getRequiredSlackClientSecret()
+        );
 
         if (uninstallRes.isErr() && !force) {
           return uninstallRes;
@@ -358,6 +365,7 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
           where: {
             connectorId: this.connectorId,
             permission: permissionToFilter,
+            skipReason: null, // We hide skipped channels from the UI.
           },
         });
         slackChannels.push(
@@ -379,6 +387,7 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
           SlackChannel.findAll({
             where: {
               connectorId: this.connectorId,
+              // Here we do not filter out channels with skipReason because we need to know the ones that are skipped.
             },
           }),
         ]);
@@ -396,8 +405,15 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
             continue;
           }
 
+          const localChannel = localChannelsById[remoteChannel.id];
+
+          // Skip channels with skipReason
+          if (localChannel?.skipReason) {
+            continue;
+          }
+
           const permissions =
-            localChannelsById[remoteChannel.id]?.permission ||
+            localChannel?.permission ||
             (remoteChannel.is_member ? "write" : "none");
 
           if (
@@ -740,11 +756,15 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
   }
 }
 
-export async function uninstallSlack(connectionId: string) {
-  if (!SLACK_CLIENT_ID) {
+export async function uninstallSlack(
+  connectionId: string,
+  slackClientId: string | undefined,
+  slackClientSecret: string | undefined
+) {
+  if (!slackClientId) {
     throw new Error("SLACK_CLIENT_ID is not defined");
   }
-  if (!SLACK_CLIENT_SECRET) {
+  if (!slackClientSecret) {
     throw new Error("SLACK_CLIENT_SECRET is not defined");
   }
 
@@ -764,8 +784,8 @@ export async function uninstallSlack(connectionId: string) {
       method: "apps.uninstall",
     });
     const deleteRes = await slackClient.apps.uninstall({
-      client_id: SLACK_CLIENT_ID,
-      client_secret: SLACK_CLIENT_SECRET,
+      client_id: slackClientId,
+      client_secret: slackClientSecret,
     });
     if (deleteRes && !deleteRes.ok) {
       return new Err(

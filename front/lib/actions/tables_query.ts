@@ -485,6 +485,7 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
       conversation,
       model: supportedModel,
       prompt: agentConfiguration.instructions ?? "",
+      tools: "",
       allowedTokenCount,
       excludeImages: true,
     });
@@ -862,6 +863,7 @@ function getSectionColumnsPrefix(
     case "intercom":
     case "notion":
     case "slack":
+    case "slack_bot":
     case "microsoft":
     case "webcrawler":
     case "snowflake":

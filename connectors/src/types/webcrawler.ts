@@ -24,9 +24,6 @@ export function isDepthOption(value: unknown): value is DepthOption {
   return DepthOptions.includes(value as DepthOption);
 }
 
-export const WebcrawlerCustomCrawler = ["firecrawl", "firecrawl-api"] as const;
-export type WebcrawlerCustomCrawler = (typeof WebcrawlerCustomCrawler)[number];
-
 export const WebCrawlerConfigurationTypeSchema = t.type({
   url: t.string,
   depth: t.union([
@@ -46,11 +43,6 @@ export const WebCrawlerConfigurationTypeSchema = t.type({
     t.literal("monthly"),
   ]),
   headers: t.record(t.string, t.string),
-  customCrawler: t.union([
-    t.null,
-    t.literal("firecrawl"),
-    t.literal("firecrawl-api"),
-  ]),
 });
 
 export type WebCrawlerConfiguration = t.TypeOf<
@@ -66,5 +58,4 @@ export const WEBCRAWLER_DEFAULT_CONFIGURATION: WebCrawlerConfigurationType = {
   crawlMode: "website",
   crawlFrequency: "monthly",
   headers: {},
-  customCrawler: "firecrawl-api",
 };
