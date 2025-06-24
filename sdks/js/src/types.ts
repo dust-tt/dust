@@ -3037,6 +3037,18 @@ const MCP_VALIDATION_OUTPUTS = [
 export type MCPValidationOutputPublicType =
   (typeof MCP_VALIDATION_OUTPUTS)[number];
 
+const MCPViewsRequestAvailabilitySchema = z.enum(["manual", "auto"]);
+export type MCPViewsRequestAvailabilityType = z.infer<
+  typeof MCPViewsRequestAvailabilitySchema
+>;
+
+export const GetMCPViewsRequestSchema = z.object({
+  spaceIds: z.array(z.string()),
+  availabilities: z.array(MCPViewsRequestAvailabilitySchema),
+});
+
+export type GetMCPViewsRequestType = z.infer<typeof GetMCPViewsRequestSchema>;
+
 export const PostSpaceMembersRequestBodySchema = z.object({
   userIds: z.array(z.string()),
 });

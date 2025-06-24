@@ -1,6 +1,8 @@
+import type { MCPViewsRequestAvailabilityType } from "@dust-tt/client";
+import { GetMCPViewsRequestSchema } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { fromError } from "zod-validation-error";
 
-import { isMCPServerAvailability } from "@app/lib/actions/mcp_internal_actions/constants";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
@@ -15,6 +17,13 @@ export type GetMCPServerViewsListResponseBody = {
   serverViews: MCPServerViewType[];
 };
 
+// We don't allow to fetch "auto_hidden_builder".
+const isAllowedAvailability = (
+  availability: string
+): availability is MCPViewsRequestAvailabilityType => {
+  return availability === "manual" || availability === "auto";
+};
+
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<GetMCPServerViewsListResponseBody>>,
@@ -24,12 +33,9 @@ async function handler(
 
   switch (method) {
     case "GET": {
-      const spaceIds = req.query.spaceIds;
-      const availabilitiesParam = req.query.availabilities;
       if (
-        !spaceIds ||
-        typeof spaceIds !== "string" ||
-        typeof availabilitiesParam === "object"
+        typeof req.query.spaceIds !== "string" ||
+        typeof req.query.availabilities !== "string"
       ) {
         return apiError(req, res, {
           status_code: 400,
@@ -40,8 +46,27 @@ async function handler(
         });
       }
 
+      const normalizedQuery = {
+        ...req.query,
+        spaceIds: req.query.spaceIds.split(","),
+        availabilities: req.query.availabilities.split(",")
+      };
+      
+      const r = GetMCPViewsRequestSchema.safeParse(normalizedQuery);
+      if (r.error) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: fromError(r.error).toString(),
+          },
+        });
+      }
+
+      const query = r.data;
+
       const serverViews = await concurrentExecutor(
-        spaceIds.split(","),
+        query.spaceIds,
         async (spaceId) => {
           const space = await SpaceResource.fetchById(auth, spaceId);
           if (!space) {
@@ -53,26 +78,14 @@ async function handler(
         { concurrency: 10 }
       );
 
-      const availabilities = availabilitiesParam
-        ? availabilitiesParam.split(",")
-        : ["manual"];
-
-      for (const availability of availabilities) {
-        if (!isMCPServerAvailability(availability)) {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message: "Invalid availability",
-            },
-          });
-        }
-      }
-
       const flattenedServerViews = serverViews
         .flat()
         .filter((v): v is MCPServerViewType => v !== null)
-        .filter((v) => availabilities.includes(v.server.availability));
+        .filter(
+          (v) =>
+            isAllowedAvailability(v.server.availability) &&
+            query.availabilities.includes(v.server.availability)
+        );
 
       return res.status(200).json({
         success: true,
