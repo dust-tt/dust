@@ -145,7 +145,10 @@ export async function createOrUpdateUser({
       }
     }
 
-    if (externalUser.workOSUserId) {
+    if (
+      externalUser.workOSUserId &&
+      externalUser.workOSUserId !== user.workOSUserId
+    ) {
       const existingWorkOSUser = externalUser.workOSUserId
         ? await UserResource.fetchByWorkOSUserId(externalUser.workOSUserId)
         : null;
