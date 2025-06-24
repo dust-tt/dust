@@ -106,20 +106,8 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId, agentSearch }) => {
       return;
     }
     
-    // Determine which agent to select
-    let agentToSelect: AgentConfiguration;
-    
-    if (matchingAgents.length === 1) {
-      // Single match found
-      agentToSelect = matchingAgents[0];
-    } else {
-      // Multiple matches - prefer exact matches
-      const exactMatches = matchingAgents.filter(agent => 
-        agent.name.toLowerCase() === searchLower
-      );
-      
-      agentToSelect = exactMatches.length === 1 ? exactMatches[0] : matchingAgents[0];
-    }
+    // Select the first matching agent (same as SelectWithSearch behavior)
+    const agentToSelect = matchingAgents[0];
     
     // Set the selected agent and initial conversation items
     setSelectedAgent(agentToSelect);
