@@ -4,6 +4,7 @@ import { Storage } from "@google-cloud/storage";
 import { connectorsConfig } from "@connectors/connectors/shared/config";
 import logger from "@connectors/logger/logger";
 import type { ModelId } from "@connectors/types";
+import { isDevelopment } from "@connectors/types";
 
 export const DIRECTORY_PLACEHOLDER_FILE = ".gitkeep";
 export const DIRECTORY_PLACEHOLDER_METADATA = "isDirectoryPlaceholder";
@@ -18,7 +19,9 @@ export class GCSRepositoryManager {
 
   constructor() {
     this.storage = new Storage({
-      keyFilename: connectorsConfig.getServiceAccount(),
+      keyFilename: isDevelopment()
+        ? connectorsConfig.getServiceAccount()
+        : undefined,
     });
     this.bucket = this.storage.bucket(
       connectorsConfig.getDustTmpSyncBucketName()
