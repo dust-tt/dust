@@ -1,5 +1,7 @@
 import type { ConnectorProvider, Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
+import type { CreationAttributes } from "sequelize";
+import { Op } from "sequelize";
 
 import type {
   CreateConnectorErrorCode,
@@ -87,6 +89,45 @@ export class SlackBotConnectorManager extends BaseConnectorManager<SlackConfigur
           configuration.restrictedSpaceAgentsEnabled ?? true,
       }
     );
+
+    const legacyConnector = await ConnectorResource.model.findOne({
+      where: {
+        workspaceId: connector.workspaceId,
+        type: "slack",
+      },
+    });
+    if (legacyConnector) {
+      const slackBotChannelsCount = await SlackChannel.count({
+        where: {
+          connectorId: connector.id,
+        },
+      });
+      if (
+        slackBotChannelsCount === 0 // Ensure slack_bot connector has no channels
+      ) {
+        // Migrate channels from legacy slack connector to keep default bot per Slack channel functionality
+        const slackChannels = await SlackChannel.findAll({
+          where: {
+            connectorId: legacyConnector.id,
+            agentConfigurationId: { [Op.ne]: null }, // Only migrate channels with agent configuration
+          },
+        });
+        const creationRecords = slackChannels.map(
+          (channel): CreationAttributes<SlackChannel> => ({
+            connectorId: connector.id, // Update to slack_bot connector ID
+            createdAt: channel.createdAt, // Keep the original createdAt field
+            updatedAt: channel.updatedAt, // Keep the original updatedAt field
+            slackChannelId: channel.slackChannelId,
+            slackChannelName: channel.slackChannelName,
+            skipReason: channel.skipReason,
+            private: channel.private,
+            permission: "write", // Set permission to write
+            agentConfigurationId: channel.agentConfigurationId,
+          })
+        );
+        await SlackChannel.bulkCreate(creationRecords);
+      }
+    }
 
     return new Ok(connector.id.toString());
   }
