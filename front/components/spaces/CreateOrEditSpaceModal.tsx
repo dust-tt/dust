@@ -521,7 +521,21 @@ export function CreateOrEditSpaceModal({
                       />
                     )}
                   </div>
-                ) : null}
+                ) : (
+                  isManual &&
+                  selectedMembers.length > 0 && (
+                    <div className="flex w-full justify-end">
+                      <SearchMembersDropdown
+                        owner={owner}
+                        selectedMembers={selectedMembers}
+                        onMembersUpdated={(members) => {
+                          setSelectedMembers(members);
+                          setIsDirty(true);
+                        }}
+                      />
+                    </div>
+                  )
+                )}
 
                 {isManual && selectedMembers.length === 0 && (
                   <EmptyCTA
