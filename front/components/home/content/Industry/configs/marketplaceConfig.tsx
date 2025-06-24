@@ -86,8 +86,8 @@ export const marketplaceConfig: IndustryPageConfig = {
     title: "Dust in Action",
     useCases: [
       {
-        title: "Supply Growth",
-        image: "/static/landing/industry/features/supply_growth.svg",
+        title: "Supply Growth & Provider Acquisition",
+        image: "/static/landing/industry/features/Sales_agent.svg",
         bgColor: "bg-blue-100",
         features: [
           {
@@ -118,7 +118,7 @@ export const marketplaceConfig: IndustryPageConfig = {
       },
       {
         title: "Support & Success Automation",
-        image: "/static/landing/industry/features/support_success.svg",
+        image: "/static/landing/industry/features/UxWriter_2.svg",
         bgColor: "bg-green-100",
         features: [
           {
@@ -155,7 +155,7 @@ export const marketplaceConfig: IndustryPageConfig = {
       },
       {
         title: "Community Operations",
-        image: "/static/landing/industry/features/community_ops.svg",
+        image: "/static/landing/industry/features/Compliance_verification.svg",
         bgColor: "bg-rose-100",
         features: [
           {
@@ -180,7 +180,7 @@ export const marketplaceConfig: IndustryPageConfig = {
       },
       {
         title: "Marketing & Marketplace Intelligence",
-        image: "/static/landing/industry/features/marketplace_analytics.svg",
+        image: "/static/landing/industry/features/Content_localization.svg",
         bgColor: "bg-yellow-100",
         features: [
           {
@@ -198,8 +198,7 @@ export const marketplaceConfig: IndustryPageConfig = {
           {
             icon: "bg-green-500",
             title: "Customer Insights",
-            description:
-              "Summarize feedback from internal support and review platforms to identify areas for improvement.",
+            description: "Summarize feedback to identify improvement areas.",
           },
           {
             icon: "bg-pink-400 rounded-tl-full",
@@ -257,7 +256,8 @@ export const marketplaceConfig: IndustryPageConfig = {
         src: "https://blog.dust.tt/content/images/size/w2000/2024/12/Malt_Customer_Story_Dust_Support.jpg",
       },
       {
-        title: "Blueground accelerates customer support resolution time with Dust",
+        title:
+          "Blueground accelerates customer support resolution time with Dust",
         content:
           "Discover how Blueground boosted satisfaction and cut resolution time using Dust agents.",
         href: "https://blog.dust.tt/customer-support-blueground/",

@@ -308,19 +308,26 @@ const ImpactMetricsSection = ({
     className={classNames("rounded-xl py-20", config.bgColor || "bg-blue-50")}
   >
     <div className="container mx-auto max-w-7xl px-4 sm:px-6 md:px-8">
-      <div className="grid grid-cols-1 gap-8 md:grid-cols-3 md:gap-12">
+      <div
+        className={`flex flex-wrap items-start justify-center ${
+          config.metrics.length === 2 ? "gap-16 md:gap-24" : "gap-8 md:gap-12"
+        }`}
+      >
         {config.metrics.map((metric, index) => (
-          <div key={index} className="flex flex-col text-left">
-            <div className="mb-4 md:mb-8">
-              <span className="text-5xl font-bold text-gray-900 md:text-8xl">
+          <div
+            key={index}
+            className="flex min-w-[200px] max-w-[300px] flex-1 flex-col items-center justify-center"
+          >
+            <div className="mb-4 text-left md:mb-8">
+              <div className="text-5xl font-bold text-gray-900 md:text-8xl">
                 {metric.value}
                 {metric.unit}
-              </span>
+              </div>
+              <H3 className="mb-2 text-xl md:text-2xl">{metric.type}</H3>
+              <P className="text-sm text-muted-foreground md:text-base">
+                {metric.description}
+              </P>
             </div>
-            <H3 className="mb-2 text-xl md:text-2xl">{metric.type}</H3>
-            <P className="text-sm text-muted-foreground md:text-base">
-              {metric.description}
-            </P>
           </div>
         ))}
       </div>

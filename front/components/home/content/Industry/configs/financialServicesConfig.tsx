@@ -87,7 +87,7 @@ export const financialServicesConfig: IndustryPageConfig = {
     useCases: [
       {
         title: "Compliance Operations",
-        image: "/static/landing/industry/features/KYC.svg",
+        image: "/static/landing/industry/features/Compliance_verification.svg",
         bgColor: "bg-blue-100",
         features: [
           {
@@ -118,7 +118,7 @@ export const financialServicesConfig: IndustryPageConfig = {
       },
       {
         title: "Prospect Account Insights",
-        image: "/static/landing/industry/features/SalesAnalyst.svg",
+        image: "/static/landing/industry/features/Sales_agent_2.svg",
         bgColor: "bg-purple-100",
         features: [
           {
@@ -149,7 +149,7 @@ export const financialServicesConfig: IndustryPageConfig = {
       },
       {
         title: "Support Operations",
-        image: "/static/landing/industry/features/incidentCopilot.svg",
+        image: "/static/landing/industry/features/Incident_copilot_slack.svg",
         bgColor: "bg-green-100",
         features: [
           {
@@ -180,7 +180,7 @@ export const financialServicesConfig: IndustryPageConfig = {
       },
       {
         title: "Marketing & Content Generation",
-        image: "/static/landing/industry/features/marketing_operations.svg",
+        image: "/static/landing/industry/features/Content_localization.svg",
         bgColor: "bg-golden-100",
         features: [
           {
@@ -276,7 +276,7 @@ export const financialServicesConfig: IndustryPageConfig = {
           "Dust evolved from a simple support tool into an integral part of Pennylane's operations.",
         href: "https://blog.dust.tt/pennylane-dust-customer-support-journey/",
         src: "https://blog.dust.tt/content/images/size/w2000/2024/12/pennylane_dust_customer_story.png",
-      },  
+      },
     ],
   },
   justUseDust: {
