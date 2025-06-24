@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::time::Duration;
 use tokio::sync::mpsc::UnboundedSender;
+use tracing::error;
 
 use super::types::{
     AnthropicChatMessageRole, AnthropicError, AnthropicResponseContent, ChatResponse, StopReason,
@@ -190,6 +191,13 @@ pub async fn handle_streaming_response(
     let mut request_id: Option<String> = None;
     let mut tokens_sent = false;
 
+    let mut send_event = |event: Value| {
+        tokens_sent = true;
+        if let Err(e) = event_sender.send(event) {
+            error!("Error sending event: {:?}", e);
+        }
+    };
+
     'stream: loop {
         match stream.try_next().await {
             Ok(stream_next) => {
@@ -238,18 +246,16 @@ pub async fn handle_streaming_response(
                                                 content_block,
                                             ) => {
                                                 if content_block.text.len() > 0 {
-                                                    let _ = event_sender.send(json!({
+                                                    send_event(json!({
                                                         "type": "tokens",
                                                         "content": {
                                                           "text": content_block.text,
                                                         }
-
                                                     }));
-                                                    tokens_sent = true;
                                                 }
                                             }
                                             StreamContent::AnthropicStreamToolUse(tool_use) => {
-                                                let _ = event_sender.send(json!({
+                                                send_event(json!({
                                                     "type": "function_call",
                                                     "content": {
                                                         "name": tool_use.name,
@@ -293,14 +299,13 @@ pub async fn handle_streaming_response(
                                              StreamContent::AnthropicStreamContent(content)) => {
                                                 content.text.push_str(delta.text.as_str());
                                                 if delta.text.len() > 0 {
-                                                    let _ = event_sender.send(json!({
+                                                    send_event(json!({
                                                         "type": "tokens",
                                                         "content": {
                                                             "text": delta.text,
                                                         }
 
                                                     }));
-                                                    tokens_sent = true;
                                                 }
                                             }
 
