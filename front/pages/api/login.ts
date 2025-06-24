@@ -12,8 +12,8 @@ import { AuthFlowError } from "@app/lib/iam/errors";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { getUserFromSession } from "@app/lib/iam/session";
 import { createOrUpdateUser, fetchUserFromSession } from "@app/lib/iam/users";
-import type { Workspace } from "@app/lib/models/workspace";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
+import type { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { getSignUpUrl } from "@app/lib/signup";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import logger from "@app/logger/logger";
@@ -46,7 +46,7 @@ async function handler(
 
   const { isSSO, workspaceId } = session;
 
-  let targetWorkspace: Workspace | null = null;
+  let targetWorkspace: WorkspaceModel | null = null;
   // `membershipInvite` is set to a `MembeshipInvitation` if the query includes an `inviteToken`,
   // meaning the user is going through the invite by email flow.
   const membershipInviteRes =

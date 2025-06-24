@@ -9,7 +9,6 @@ import { default as config } from "@app/lib/api/config";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { garbageCollectGoogleDriveDocument } from "@app/lib/api/poke/plugins/data_sources/garbage_collect_google_drive_document";
 import { Authenticator } from "@app/lib/auth";
-import { Workspace } from "@app/lib/models/workspace";
 import { FREE_UPGRADED_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { getDustProdActionRegistry } from "@app/lib/registry";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
@@ -18,6 +17,7 @@ import { KeyResource } from "@app/lib/resources/key_resource";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -45,7 +45,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
         throw new Error("Missing --name argument");
       }
 
-      const w = await Workspace.create({
+      const w = await WorkspaceModel.create({
         sId: generateRandomModelSId(),
         name: args.name,
       });
@@ -72,7 +72,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
         throw new Error("Missing --wId argument");
       }
 
-      const w = await Workspace.findOne({
+      const w = await WorkspaceModel.findOne({
         where: {
           sId: `${args.wId}`,
         },
@@ -95,7 +95,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
         throw new Error("Missing --wId argument");
       }
 
-      const w = await Workspace.findOne({
+      const w = await WorkspaceModel.findOne({
         where: {
           sId: `${args.wId}`,
         },
@@ -122,7 +122,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
 
       for (const wId of wIds) {
         console.log(`Pausing connectors for workspace: wId=${wId}`);
-        const w = await Workspace.findOne({
+        const w = await WorkspaceModel.findOne({
           where: {
             sId: `${wId}`,
           },
@@ -161,7 +161,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
       const wIds: string[] = args.wIds ? args.wIds.split(",") : [args.wId];
 
       for (const wId of wIds) {
-        const w = await Workspace.findOne({
+        const w = await WorkspaceModel.findOne({
           where: {
             sId: `${wId}`,
           },
@@ -235,7 +235,7 @@ const user = async (command: string, args: parseArgs.ParsedArgs) => {
         users: [u],
       });
 
-      const workspaces = await Workspace.findAll({
+      const workspaces = await WorkspaceModel.findAll({
         where: {
           id: memberships.map((m) => m.workspaceId),
         },
@@ -462,7 +462,7 @@ const transcripts = async (command: string, args: parseArgs.ParsedArgs) => {
       logger.info(
         `Pausing all LabsTranscripts workflows and recording active ones... (activeIdsFile: ${activeIdsFile})`
       );
-      const allWorkspaces = await Workspace.findAll();
+      const allWorkspaces = await WorkspaceModel.findAll();
       const activeConfigSIds: string[] = [];
       for (const ws of allWorkspaces) {
         const configs =

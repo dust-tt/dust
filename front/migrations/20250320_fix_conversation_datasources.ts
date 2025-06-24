@@ -4,11 +4,11 @@ import { hardDeleteDataSource } from "@app/lib/api/data_sources";
 import { processAndUpsertToDataSource } from "@app/lib/api/files/upsert";
 import { Authenticator } from "@app/lib/auth";
 import { ConversationModel } from "@app/lib/models/assistant/conversation";
-import { Workspace } from "@app/lib/models/workspace";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { FileModel } from "@app/lib/resources/storage/models/files";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 
@@ -68,7 +68,7 @@ HAVING
       execute ? "Processing conversation" : "Would process conversation"
     );
 
-    const workspace = await Workspace.findByPk(workspaceId);
+    const workspace = await WorkspaceModel.findByPk(workspaceId);
     if (!workspace) {
       logger.error({ workspaceId }, "Could not find workspace");
       continue;

@@ -4,7 +4,7 @@ import { getAuth0ManagemementClient } from "@app/lib/api/auth0";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
-import { Workspace } from "@app/lib/models/workspace";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type {
   IdpSpecificConnectionTypeDetails,
@@ -21,7 +21,7 @@ export async function makeEnterpriseConnectionInitiateLoginUrl(
   workspaceId: string,
   returnTo: string | null
 ) {
-  const workspace = await Workspace.findOne({
+  const workspace = await WorkspaceModel.findOne({
     where: {
       sId: workspaceId,
     },
