@@ -47,9 +47,9 @@ export const investmentFirmsConfig: IndustryPageConfig = {
     },
   },
   aiAgents: {
-    title: "3 Pain points Dust solves",
+    title: "Build AI-powered investment workflows",
     description:
-      "Deploy specialized AI agents that transform investment workflows, from target identification to portfolio management, helping firms make data-driven investment decisions with greater efficiency.",
+      "Deploy specialized AI agents that transform investment workflows, from deal sourcing to portfolio management, helping firms unlock institutional intelligence and make data-driven investment decisions with greater speed and precision.",
     bgColor: "bg-gray-50",
   },
   trustedBy: {
@@ -57,27 +57,27 @@ export const investmentFirmsConfig: IndustryPageConfig = {
     logoSet: "default",
   },
   painPoints: {
-    title: "3 Pain points Dust solves",
+    title: "Transform how you work",
     painPoints: [
       {
         icon: "/static/landing/industry/d-blue.svg",
-        title: "Operational Costs: Inefficient Knowledge Transfer",
+        title: "Unlock Your Investment Intelligence",
         description:
-          "Repeated errors and rework plague distributed teams due to siloed expertise. Critical institutional knowledge disappears with staff turnover, while inconsistent processes slow project execution, inflating operational costs across development and maintenance cycles.",
+          "Transform years of deal data, pitch decks, and market research into conversational intelligence. Access comprehensive investment history, relationship networks, and market insights through natural language queries, turning your data goldmine into instant competitive advantage.",
         color: "blue",
       },
       {
         icon: "/static/landing/industry/d-red.svg",
-        title: "Customer Retention: Fragmented Information Access",
+        title: "Accelerate Market Research & Due Diligence",
         description:
-          "Frontline teams waste critical time hunting across disconnected systems rather than resolving issues. Delays in diagnosing infrastructure problems and inconsistent service resolution threaten customer trust.",
+          "Automate comprehensive market analysis and competitive intelligence gathering. Generate bespoke market insights, identify similar companies from historical data, and produce detailed due diligence reports in minutes instead of days, enabling faster, more informed investment decisions.",
         color: "red",
       },
       {
         icon: "/static/landing/industry/d-green.svg",
-        title: "Revenue Leakage: Manual Compliance Workflows",
+        title: "Streamline Investment Documentation",
         description:
-          "Manual review of contracts, permits, and regulatory documents delays project starts. Legal bottlenecks and reactive compliance monitoring extend time-to-revenue for new projects.",
+          "Automate investment memo creation, portfolio updates, and LP reporting with AI-powered document generation. Combine template structures with deal data and market analysis to produce consistent, comprehensive documentation, freeing partners to focus on high-value investment activities.",
         color: "green",
       },
     ],

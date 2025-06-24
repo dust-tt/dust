@@ -16,7 +16,7 @@ export const energyUtilitiesConfig: IndustryPageConfig = {
       </>
     ),
     description:
-      "Transform energy and utilities operations with AI-powered solutions that optimize infrastructure, enhance customer service, and streamline field operations for sustainable growth.",
+      "The AI Solution Trusted by Energy & Utilities Leaders—Say goodbye to scattered data, manual workflows, and buried insights.",
     ctaButtons: {
       primary: {
         label: "Get started",
@@ -47,7 +47,7 @@ export const energyUtilitiesConfig: IndustryPageConfig = {
     },
   },
   aiAgents: {
-    title: "3 Pain points Dust solves",
+    title: "AI agents for energy operations",
     description:
       "Deploy specialized AI agents that transform energy and utilities workflows, from commercial operations to field management, helping companies optimize efficiency and customer service.",
     bgColor: "bg-gray-50",
@@ -61,23 +61,23 @@ export const energyUtilitiesConfig: IndustryPageConfig = {
     painPoints: [
       {
         icon: "/static/landing/industry/d-blue.svg",
-        title: "Operational Costs: Optimize & Streamline Workflows",
+        title: "Operational Costs: Inefficient Knowledge Transfer",
         description:
-          "Reduce operational overhead through automated workflow management, predictive maintenance, and intelligent resource allocation across energy infrastructure.",
+          "Critical institutional knowledge vanishes with staff turnover. Distributed teams repeat errors and rework due to siloed expertise, inflating operational costs across development and maintenance cycles.",
         color: "blue",
       },
       {
         icon: "/static/landing/industry/d-red.svg",
-        title: "Customer Operations: Enhanced Service Access",
+        title: "Customer Retention: Fragmented Information Access",
         description:
-          "Improve customer experience with AI-powered service support, automated billing management, and proactive outage communications.",
+          "Frontline teams waste time hunting across disconnected systems rather than resolving issues. Delays in diagnosing infrastructure problems and inconsistent service resolution threaten customer trust.",
         color: "red",
       },
       {
         icon: "/static/landing/industry/d-green.svg",
-        title: "Strategic Linkages: Data-Driven Decision Workflows",
+        title: "Revenue Leakage: Manual Compliance Workflows",
         description:
-          "Leverage AI insights for strategic planning, grid optimization, and sustainable energy management through intelligent data analysis.",
+          "Manual review of contracts, permits, and regulatory documents creates bottlenecks. Legal delays and reactive compliance monitoring extend time-to-revenue for new projects.",
         color: "green",
       },
     ],
@@ -244,10 +244,6 @@ export const energyUtilitiesConfig: IndustryPageConfig = {
   demoVideo: {
     sectionTitle: "See Dust transform energy operations",
     videoUrl: "https://fast.wistia.net/embed/iframe/8q80neektv",
-  },
-  trustedBySecond: {
-    title: "Trusted by energy leaders",
-    logoSet: "default",
   },
   testimonial: {
     quote:

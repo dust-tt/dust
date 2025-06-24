@@ -16,7 +16,7 @@ export const mediaConfig: IndustryPageConfig = {
       </>
     ),
     description:
-      "Transform media operations with AI-powered solutions that streamline editorial workflows, enhance audience engagement, and optimize content strategy across all platforms.",
+      "The AI Solution Trusted by Leading SaaS Innovators—Say goodbye to scattered info, manual busywork, and buried insights.",
     ctaButtons: {
       primary: {
         label: "Get started",
@@ -47,7 +47,7 @@ export const mediaConfig: IndustryPageConfig = {
     },
   },
   aiAgents: {
-    title: "3 Pain points Dust solves",
+    title: "AI agents for media operations",
     description:
       "Deploy specialized AI agents that transform media workflows, from editorial production to audience engagement, helping media companies stay competitive in the digital landscape.",
     bgColor: "bg-gray-50",
@@ -61,23 +61,23 @@ export const mediaConfig: IndustryPageConfig = {
     painPoints: [
       {
         icon: "/static/landing/industry/d-blue.svg",
-        title: "Editorial & Content Production Process",
+        title: "Editorial & Content Production Pressure",
         description:
-          "Streamline editorial workflows, content creation, and newsroom operations to produce high-quality content faster while maintaining editorial standards and accuracy.",
+          "Newsrooms face relentless deadlines with limited staff. Journalists waste time on routine information gathering rather than reporting and analysis.",
         color: "blue",
       },
       {
         icon: "/static/landing/industry/d-red.svg",
-        title: "Audience Management & Knowledge Retrieval",
+        title: "Archive Management & Knowledge Retrieval",
         description:
-          "Leverage AI to understand audience preferences, retrieve relevant information quickly, and manage content distribution across multiple platforms effectively.",
+          "Decades of articles and institutional knowledge are trapped in legacy systems. Finding relevant background information takes too long.",
         color: "red",
       },
       {
         icon: "/static/landing/industry/d-green.svg",
         title: "Audience Engagement & Revenue Optimization",
         description:
-          "Optimize content strategy, enhance audience engagement, and maximize revenue through data-driven insights and personalized content recommendations.",
+          "Media companies struggle to understand what content resonates, optimize for engagement, and make data-driven decisions about strategy.",
         color: "green",
       },
     ],
@@ -92,39 +92,33 @@ export const mediaConfig: IndustryPageConfig = {
         features: [
           {
             icon: "bg-blue-500",
-            title: "Content Creation and Newsroom Efficiency",
+            title: "Content creation and newsroom efficiency",
             description:
-              "AI-powered content generation, fact-checking, and editorial workflow automation",
+              "Compile background information and relevant context from archives for breaking news and investigative pieces.",
           },
           {
             icon: "bg-green-500 rounded-tr-full",
-            title: "Story Research & Briefings",
+            title: "Guest research & briefings",
             description:
-              "Automated research compilation and comprehensive story briefings for journalists",
+              "Compile comprehensive guest profiles, talking points, and background information for hosts and producers.",
           },
           {
             icon: "bg-orange-400 rounded-bl-full",
-            title: "Real-time News Updates & Summary",
+            title: "Interview transcription & summary",
             description:
-              "Instant news summarization and real-time updates across multiple sources",
+              "Convert recorded interviews into searchable transcripts and generate key quote summaries for journalists.",
           },
           {
             icon: "bg-purple-400 rounded-br-full",
-            title: "Fact Checking Operations",
+            title: "Fact-checking support",
             description:
-              "Automated fact verification and source validation for editorial accuracy",
+              "Cross-reference claims against reliable sources and previous reporting to accelerate verification processes.",
           },
           {
             icon: "bg-red-500",
-            title: "Breaking News Response",
+            title: "Press release processing",
             description:
-              "Rapid response systems for breaking news coverage and distribution",
-          },
-          {
-            icon: "bg-cyan-400",
-            title: "Content Formatting & Distribution",
-            description:
-              "Automated content formatting and multi-platform distribution workflows",
+              "Intelligent filtering and summarization of press releases, flagging newsworthy items and story angles.",
           },
         ],
       },
@@ -137,25 +131,25 @@ export const mediaConfig: IndustryPageConfig = {
             icon: "bg-red-500",
             title: "Content optimization and reader development",
             description:
-              "AI-driven content optimization and strategic reader engagement programs",
+              "Generate headline variations and analyze performance data to optimize click-through rates and engagement.",
           },
           {
             icon: "bg-yellow-400 rounded-tr-full",
-            title: "Audience Segmentation Analytics",
+            title: "Content performance analytics",
             description:
-              "Advanced audience analytics and behavioral segmentation for targeted content",
+              "Track reader engagement patterns and content performance to inform editorial strategy decisions.",
           },
           {
             icon: "bg-blue-500 rounded-bl-full",
-            title: "Social Media Content Distribution",
+            title: "Social media content adaptation",
             description:
-              "Automated social media posting and cross-platform content distribution",
+              "Transform long-form articles into social media posts and platform-specific content for distribution.",
           },
           {
             icon: "bg-green-400 rounded-br-full",
-            title: "Newsletter and Email Marketing",
+            title: "Newsletter generation",
             description:
-              "Personalized newsletter creation and automated email marketing campaigns",
+              "Compile daily/weekly newsletters by selecting top stories and formatting for different subscriber segments.",
           },
         ],
       },
@@ -166,27 +160,27 @@ export const mediaConfig: IndustryPageConfig = {
         features: [
           {
             icon: "bg-blue-500",
-            title: "Competitive Coverage Analysis",
+            title: "Competitive coverage analysis",
             description:
-              "Monitor competitor strategies, analyze market trends, and track industry coverage",
+              "Monitor competitor coverage, identify story gaps, and track market positioning across media outlets.",
           },
           {
             icon: "bg-red-500 rounded-tl-full",
-            title: "Opportunity Trend Identification",
+            title: "Community trend identification",
             description:
-              "Identify emerging trends and content opportunities through data analysis",
+              "Analyze local government records and community data to identify emerging story opportunities.",
           },
           {
             icon: "bg-green-400 rounded-br-full",
-            title: "Reader Feedback Synthesis",
+            title: "Reader feedback synthesis",
             description:
-              "Aggregate and analyze reader feedback to inform editorial strategy and content planning",
+              "Compile and analyze reader comments and feedback to understand audience concerns and interests.",
           },
           {
             icon: "bg-purple-400",
-            title: "Predictive Trend Monitoring",
+            title: "Industry trend monitoring",
             description:
-              "AI-powered trend prediction and content performance forecasting",
+              "Track journalism industry developments and business model innovations affecting the media sector.",
           },
         ],
       },
@@ -199,19 +193,19 @@ export const mediaConfig: IndustryPageConfig = {
             icon: "bg-orange-500",
             title: "Rights management and compliance",
             description:
-              "Automated rights management, licensing compliance, and legal document processing",
+              "Track complex rights agreements, territorial restrictions, and licensing terms across content libraries.",
           },
           {
             icon: "bg-blue-500 rounded-tl-full",
-            title: "Contract Review and Management",
+            title: "Contract analysis",
             description:
-              "AI-powered contract analysis and vendor management for media operations",
+              "Compare terms across talent agreements and distribution deals to identify standard clauses.",
           },
           {
             icon: "bg-red-400 rounded-br-full",
-            title: "Compliance Documentation",
+            title: "Compliance documentation",
             description:
-              "Automated compliance reporting and regulatory documentation for media standards",
+              "Generate regulatory filings, content ratings documentation, and territorial compliance reports.",
           },
         ],
       },
