@@ -1,125 +1,131 @@
-import { QueryTypes } from "sequelize";
+import { Op } from "sequelize";
 
-import { frontSequelize } from "@app/lib/resources/storage";
+import { AgentConfiguration } from "@app/lib/models/assistant/agent";
+import { AgentBrowseConfiguration } from "@app/lib/models/assistant/actions/browse";
+import { AgentDustAppRunConfiguration } from "@app/lib/models/assistant/actions/dust_app_run";
+import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
+import { AgentProcessConfiguration } from "@app/lib/models/assistant/actions/process";
+import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
+import { AgentTablesQueryConfiguration } from "@app/lib/models/assistant/actions/tables_query";
+import { AgentWebsearchConfiguration } from "@app/lib/models/assistant/actions/websearch";
+import { Workspace } from "@app/lib/models/workspace";
 import logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 
-interface AgentInfo {
-  agent_id: number;
-  agent_sid: string;
-  agent_name: string;
-  workspaceId: number;
-  workspace_sid: string;
-  workspace_name: string;
-}
-
-interface ActionConfig {
-  agentConfigurationId: number;
-  workspaceId: number;
-}
-
-interface SummaryResult {
-  workspace_count: number;
-  total_configs: number;
-}
-
-const actionTypes = [
-  { type: "retrieval", table: "agent_retrieval_configurations" },
-  { type: "websearch", table: "agent_websearch_configurations" },
-  { type: "browse", table: "agent_browse_configurations" },
-  { type: "mcp_server", table: "agent_mcp_server_configurations" },
-  { type: "dust_app_run", table: "agent_dust_app_run_configurations" },
-  { type: "tables_query", table: "agent_tables_query_configurations" },
-  { type: "process", table: "agent_process_configurations" },
+const actionConfigurations = [
+  {
+    type: "retrieval",
+    model: AgentRetrievalConfiguration,
+  },
+  {
+    type: "websearch",
+    model: AgentWebsearchConfiguration,
+  },
+  {
+    type: "browse",
+    model: AgentBrowseConfiguration,
+  },
+  {
+    type: "mcp_server",
+    model: AgentMCPServerConfiguration,
+  },
+  {
+    type: "dust_app_run",
+    model: AgentDustAppRunConfiguration,
+  },
+  {
+    type: "tables_query",
+    model: AgentTablesQueryConfiguration,
+  },
+  {
+    type: "process",
+    model: AgentProcessConfiguration,
+  },
 ] as const;
 
 makeScript({}, async () => {
   logger.info("Analyzing action configurations by type and workspace...");
-  
-  const activeAgents = await frontSequelize.query<AgentInfo>(`
-    SELECT 
-      ac.id as agent_id,
-      ac."sId" as agent_sid,
-      ac.name as agent_name,
-      ac."workspaceId",
-      w."sId" as workspace_sid,
-      w.name as workspace_name
-    FROM agent_configurations ac
-    JOIN workspaces w ON ac."workspaceId" = w.id
-    WHERE ac.status = 'active'
-  `, { type: QueryTypes.SELECT });
 
-  const agentMap: Record<number, AgentInfo> = {};
-  activeAgents.forEach(agent => {
-    agentMap[agent.agent_id] = agent;
-  });
-
-  for (const actionType of actionTypes) {
-    console.log(`\n${actionType.type.toUpperCase()} CONFIGURATIONS:`);
+  for (const { type, model } of actionConfigurations) {
+    console.log(`\n${type.toUpperCase()} CONFIGURATIONS:`);
     console.log("=".repeat(50));
-    
-    const query = `
-      SELECT 
-        act."agentConfigurationId",
-        act."workspaceId"
-      FROM ${actionType.table} act
-      WHERE act."agentConfigurationId" IN (
-        SELECT id FROM agent_configurations WHERE status = 'active'
-      )
-    `;
-    
-    const actionConfigs = await frontSequelize.query<ActionConfig>(query, { 
-      type: QueryTypes.SELECT 
+
+    const configs = await model.findAll({
+      include: [
+        {
+          model: AgentConfiguration,
+          required: true,
+          where: {
+            status: "active",
+          },
+          include: [
+            {
+              model: Workspace,
+              required: true,
+              attributes: ["sId", "name"],
+            },
+          ],
+        },
+      ],
+      attributes: ["id", "agentConfigurationId"],
+      order: [[{ model: AgentConfiguration }, { model: Workspace }, "name", "ASC"]],
     });
 
-    const workspaceAgents: Record<string, Set<string>> = {};
-    actionConfigs.forEach(config => {
-      const agent = agentMap[config.agentConfigurationId];
-      if (agent) {
-        const wsKey = `${agent.workspace_sid} (${agent.workspace_name})`;
-        if (!workspaceAgents[wsKey]) {
-          workspaceAgents[wsKey] = new Set();
-        }
-        workspaceAgents[wsKey].add(`${agent.agent_sid} (${agent.agent_name})`);
-      }
-    });
+    const workspaceCount = new Set(
+      configs.map((c: any) => c.AgentConfiguration.Workspace.id)
+    ).size;
 
-    const workspaceCount = Object.keys(workspaceAgents).length;
-    if (workspaceCount === 0) {
+    if (configs.length === 0) {
       console.log("  No active agent configurations found for this type.");
     } else {
-      console.log(`  Found in ${workspaceCount} workspace(s):\n`);
+      console.log(`  Found ${configs.length} configuration(s) across ${workspaceCount} workspace(s):\n`);
+
+      const workspaceGroups: Record<string, number> = {};
       
-      Object.entries(workspaceAgents)
+      configs.forEach((config: any) => {
+        const workspace = config.AgentConfiguration.Workspace;
+        const wsKey = `${workspace.sId} (${workspace.name})`;
+        workspaceGroups[wsKey] = (workspaceGroups[wsKey] || 0) + 1;
+      });
+
+      Object.entries(workspaceGroups)
         .sort(([a], [b]) => a.localeCompare(b))
-        .forEach(([workspace, agents]) => {
-          console.log(`  Workspace: ${workspace}`);
-          console.log(`    Agents (${agents.size}):`);
-          Array.from(agents).sort().forEach(agent => {
-            console.log(`      - ${agent}`);
-          });
-          console.log();
+        .forEach(([workspace, count]) => {
+          console.log(`  ${workspace}: ${count} configuration(s)`);
         });
     }
   }
 
   console.log("\nSUMMARY:");
   console.log("=".repeat(50));
-  
-  for (const actionType of actionTypes) {
-    const countQuery = `
-      SELECT COUNT(DISTINCT act."workspaceId") as workspace_count,
-             COUNT(*) as total_configs
-      FROM ${actionType.table} act
-      WHERE act."agentConfigurationId" IN (
-        SELECT id FROM agent_configurations WHERE status = 'active'
-      )
-    `;
-    
-    const [result] = await frontSequelize.query<SummaryResult>(countQuery, { 
-      type: QueryTypes.SELECT 
+
+  for (const { type, model } of actionConfigurations) {
+    const count = await model.count({
+      include: [
+        {
+          model: AgentConfiguration,
+          required: true,
+          where: {
+            status: "active",
+          },
+        },
+      ],
     });
-    
-    console.log(`${actionType.type}: ${result.workspace_count} workspaces, ${result.total_configs} configurations`);
+
+    const workspaceCount = await model.count({
+      distinct: true,
+      col: "workspaceId",
+      include: [
+        {
+          model: AgentConfiguration,
+          required: true,
+          where: {
+            status: "active",
+          },
+        },
+      ],
+    });
+
+    console.log(`${type}: ${workspaceCount} workspaces, ${count} configurations`);
   }
 });
