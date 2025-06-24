@@ -253,30 +253,32 @@ export async function githubProcessDirectoryChunkActivity({
 
 // Activity to process a chunk of files with concurrency control.
 export async function githubProcessFileChunkActivity({
-  connectorId,
   codeSyncStartedAtMs,
+  connectorId,
+  dataSourceConfig,
+  defaultBranch,
+  files,
+  forceResync = false,
+  gcsBasePath,
+  isBatchSync = false,
   repoId,
   repoLogin,
   repoName,
-  gcsBasePath,
-  files,
-  dataSourceConfig,
-  forceResync = false,
-  isBatchSync = false,
 }: {
-  connectorId: number;
   codeSyncStartedAtMs: number;
-  repoId: number;
-  repoLogin: string;
-  repoName: string;
-  gcsBasePath: string;
+  connectorId: number;
+  dataSourceConfig: DataSourceConfig;
+  defaultBranch: string;
   files: Array<{
     gcsPath: string;
     relativePath: string;
   }>;
-  dataSourceConfig: DataSourceConfig;
   forceResync?: boolean;
+  gcsBasePath: string;
   isBatchSync?: boolean;
+  repoId: number;
+  repoLogin: string;
+  repoName: string;
 }): Promise<{
   processedFiles: number;
   updatedDirectoryIds: string[];
@@ -291,6 +293,7 @@ export async function githubProcessFileChunkActivity({
         codeSyncStartedAt,
         connectorId,
         dataSourceConfig,
+        defaultBranch,
         gcsBasePath,
         gcsPath: file.gcsPath,
         repoId,

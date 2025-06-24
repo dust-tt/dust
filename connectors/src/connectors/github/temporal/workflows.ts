@@ -575,16 +575,17 @@ export async function githubCodeSyncStatelessWorkflow({
     for (const fileChunk of chunks) {
       fileChunkPromises.push(
         githubProcessFileChunkActivity({
-          connectorId,
           codeSyncStartedAtMs,
+          connectorId,
+          dataSourceConfig,
+          defaultBranch: extractResult.repoInfo.default_branch,
+          files: fileChunk,
+          forceResync,
+          gcsBasePath: extractResult.gcsBasePath,
+          isBatchSync: true,
           repoId,
           repoLogin,
           repoName,
-          gcsBasePath: extractResult.gcsBasePath,
-          files: fileChunk,
-          dataSourceConfig,
-          forceResync,
-          isBatchSync: true,
         })
       );
     }
@@ -608,12 +609,12 @@ export async function githubCodeSyncStatelessWorkflow({
       await githubProcessDirectoryChunkActivity({
         codeSyncStartedAtMs,
         connectorId,
+        dataSourceConfig,
+        defaultBranch: extractResult.repoInfo.default_branch,
+        directories: directoryChunk,
         repoId,
         repoLogin,
         repoName,
-        directories: directoryChunk,
-        dataSourceConfig,
-        defaultBranch: extractResult.repoInfo.default_branch,
         updatedDirectoryIds: allUpdatedDirectoryIds,
       });
     }
