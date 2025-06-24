@@ -188,7 +188,7 @@ export function AssistantInputBar({
     resetEditorText,
     setLoading
   ) => {
-    if (isEmpty || fileUploaderService.isProcessingFiles) {
+    if (isEmpty || fileUploaderService.numFilesProcessing > 0) {
       return;
     }
 
@@ -368,7 +368,8 @@ export function AssistantInputBar({
                 stickyMentions={stickyMentions}
                 fileUploaderService={fileUploaderService}
                 disableSendButton={
-                  disableSendButton || fileUploaderService.isProcessingFiles
+                  disableSendButton ||
+                  fileUploaderService.numFilesProcessing > 0
                 }
                 onNodeSelect={handleNodesAttachmentSelect}
                 onNodeUnselect={handleNodesAttachmentRemove}

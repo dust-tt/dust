@@ -60,7 +60,7 @@ export function useFileUploaderService({
   useCaseMetadata?: FileUseCaseMetadata;
 }) {
   const [fileBlobs, setFileBlobs] = useState<FileBlob[]>([]);
-  const [isProcessingFiles, setIsProcessingFiles] = useState(false);
+  const [numFilesProcessing, setNumFilesProcessing] = useState(0);
 
   const sendNotification = useSendNotification();
 
@@ -79,7 +79,7 @@ export function useFileUploaderService({
   };
 
   const handleFilesUpload = async (files: File[]) => {
-    setIsProcessingFiles(true);
+    setNumFilesProcessing((prev) => prev + files.length);
 
     const categoryToSize: Map<FileFormatCategory, number> = new Map();
 
@@ -108,6 +108,7 @@ export function useFileUploaderService({
     }
 
     if (oversizedCategories.length > 0) {
+      setNumFilesProcessing((prev) => prev - files.length);
       return;
     }
     const previewResults = processSelectedFiles(files);
@@ -116,7 +117,7 @@ export function useFileUploaderService({
     const uploadResults = await uploadFiles(newFileBlobs);
     const finalFileBlobs = processResults(uploadResults);
 
-    setIsProcessingFiles(false);
+    setNumFilesProcessing((prev) => prev - files.length);
 
     return finalFileBlobs;
   };
@@ -331,8 +332,8 @@ export function useFileUploaderService({
       });
 
       const allFilesReady = fileBlobs.every((f) => f.isUploading === false);
-      if (allFilesReady && isProcessingFiles) {
-        setIsProcessingFiles(false);
+      if (allFilesReady && numFilesProcessing > 0) {
+        setNumFilesProcessing(0); // TODO: Check logic on this
       }
     }
   };
@@ -356,7 +357,7 @@ export function useFileUploaderService({
     getFileBlobs,
     handleFileChange,
     handleFilesUpload,
-    isProcessingFiles,
+    numFilesProcessing,
     removeFile,
     resetUpload,
   };
