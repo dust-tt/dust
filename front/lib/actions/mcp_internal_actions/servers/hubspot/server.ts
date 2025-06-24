@@ -877,16 +877,16 @@ const createServer = (): McpServer => {
   );
 
   server.tool(
-    "hubspot-get-user-details",
-    "Gets the current user's details including email, portal ID, and UI domain from the HubSpot access token",
+    "hubspot-get-portal-id",
+    "Gets the current user's portal ID",
     {},
     async (_, { authInfo }) => {
       return withAuth({
         action: async (accessToken) => {
           const result = await getUserDetails(accessToken);
           return makeMCPToolJSONSuccess({
-            message: "User details retrieved successfully.",
-            result,
+            message: "Portal ID retrieved successfully.",
+            result: result.hub_id,
           });
         },
         authInfo,
