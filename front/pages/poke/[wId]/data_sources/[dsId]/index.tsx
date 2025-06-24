@@ -159,6 +159,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   );
   if (dataSource.connectorId) {
     switch (dataSource.connectorProvider) {
+      case "slack_bot":
       case "slack":
         const botEnabledRes = await connectorsAPI.getConnectorConfig(
           dataSource.connectorId,
@@ -420,16 +421,6 @@ const DataSourcePage = ({
               label="Search Data"
               icon={LockIcon}
             />
-            {dataSource.connectorProvider === "slack" && (
-              <ConfigToggle
-                title="Slackbot enabled?"
-                owner={owner}
-                features={features}
-                dataSource={dataSource}
-                configKey="botEnabled"
-                featureKey="slackBotEnabled"
-              />
-            )}
             {dataSource.connectorProvider === "notion" && (
               <NotionUrlCheckOrFind owner={owner} dsId={dataSource.sId} />
             )}
