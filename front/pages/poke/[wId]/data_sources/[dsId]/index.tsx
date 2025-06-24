@@ -3,11 +3,6 @@ import {
   Chip,
   ContextItem,
   DocumentTextIcon,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuTrigger,
   EyeIcon,
   Input,
   LockIcon,
@@ -19,7 +14,6 @@ import {
 } from "@dust-tt/sparkle";
 import { JsonViewer } from "@textea/json-viewer";
 import type { InferGetServerSidePropsType } from "next";
-import Link from "next/link";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import type { ReactElement } from "react-markdown/lib/react-markdown";
@@ -31,12 +25,10 @@ import PokeLayout from "@app/components/poke/PokeLayout";
 import { SlackChannelPatternInput } from "@app/components/poke/PokeSlackChannelPatternInput";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import config from "@app/lib/api/config";
-import { Authenticator } from "@app/lib/auth";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { getDisplayNameForDocument } from "@app/lib/data_sources";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import { GroupResource } from "@app/lib/resources/group_resource";
 import { getTemporalConnectorsNamespaceConnection } from "@app/lib/temporal";
 import { timeAgoFrom } from "@app/lib/utils";
 import logger from "@app/logger/logger";
@@ -45,11 +37,9 @@ import type {
   ConnectorType,
   CoreAPIDataSource,
   DataSourceType,
-  GroupType,
   NotionCheckUrlResponseType,
   NotionFindUrlResponseType,
   SlackAutoReadPattern,
-  SlackbotWhitelistType,
   WorkspaceType,
   ZendeskFetchTicketResponseType,
 } from "@app/types";
@@ -87,7 +77,6 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
     runId: string;
     status: string;
   }[];
-  groupsForSlackBot: GroupType[];
 }>(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
 
@@ -299,14 +288,6 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
     }
   }
 
-  // Getting groups that a Slack bot/workflow can be assigned to
-  const authForSlackBot = await Authenticator.internalAdminForWorkspace(
-    owner.sId
-  );
-  const groupsForSlackBot = (
-    await GroupResource.listAllWorkspaceGroups(authForSlackBot)
-  ).map((g) => g.toJSON());
-
   return {
     props: {
       owner,
@@ -316,7 +297,6 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
       features,
       temporalWorkspace: TEMPORAL_CONNECTORS_NAMESPACE,
       temporalRunningWorkflows: workflowInfos,
-      groupsForSlackBot,
     },
   };
 });
@@ -329,7 +309,6 @@ const DataSourcePage = ({
   temporalWorkspace,
   temporalRunningWorkflows,
   features,
-  groupsForSlackBot,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) => {
   const [limit] = useState(10);
   const [offsetDocument, setOffsetDocument] = useState(0);
@@ -797,7 +776,6 @@ async function handleCheckZendeskTicket(
   return res.json();
 }
 
-
 function NotionUrlCheckOrFind({
   owner,
   dsId,
@@ -1178,6 +1156,5 @@ const ConfigToggle = ({
     </div>
   );
 };
-
 
 export default DataSourcePage;
