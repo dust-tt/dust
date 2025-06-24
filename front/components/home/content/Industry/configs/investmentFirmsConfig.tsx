@@ -29,19 +29,19 @@ export const investmentFirmsConfig: IndustryPageConfig = {
     },
     testimonialCard: {
       quote:
-        "Dust is the most impactful software we've adopted since building Clay.",
+        "Dust's Flamel API integration and multi-model flexibility was crucial. Not everything is in Notion or Drive - connecting to our databases was key.",
       author: {
-        name: "Alexandra Thompson",
-        title: "Managing Partner",
+        name: "Stanislas Lot",
+        title: "Partner",
       },
       company: {
-        logo: "/static/landing/logos/color/placeholder.png",
-        alt: "Investment Firm logo",
+        logo: "/static/landing/logos/color/daphni.png",
+        alt: "Daphni",
       },
       bgColor: "bg-blue-600",
       textColor: "text-white",
     },
-    decorativeShapes: {
+      decorativeShapes: {
       topRight: "/static/landing/industry/shapes/rounded-rectangle.svg",
       bottomLeft: "/static/landing/industry/shapes/diamond.svg",
     },
@@ -61,23 +61,23 @@ export const investmentFirmsConfig: IndustryPageConfig = {
     painPoints: [
       {
         icon: "/static/landing/industry/d-blue.svg",
-        title: "Operational Costs: Optimize & Streamline Transfer",
+        title: "Operational Costs: Inefficient Knowledge Transfer",
         description:
-          "Reduce operational overhead through automated workflow management, streamlined due diligence processes, and intelligent resource allocation across investment operations.",
+          "Repeated errors and rework plague distributed teams due to siloed expertise. Critical institutional knowledge disappears with staff turnover, while inconsistent processes slow project execution, inflating operational costs across development and maintenance cycles.",
         color: "blue",
       },
       {
         icon: "/static/landing/industry/d-red.svg",
-        title: "Customer Retention: Enhanced Information Access",
+        title: "Customer Retention: Fragmented Information Access",
         description:
-          "Improve client relationships with AI-powered investment insights, automated reporting, and enhanced communication of portfolio performance and market analysis.",
+          "Frontline teams waste critical time hunting across disconnected systems rather than resolving issues. Delays in diagnosing infrastructure problems and inconsistent service resolution threaten customer trust.",
         color: "red",
       },
       {
         icon: "/static/landing/industry/d-green.svg",
-        title: "Revenue Linkage: Data-Driven Decision Workflows",
+        title: "Revenue Leakage: Manual Compliance Workflows",
         description:
-          "Leverage AI insights for strategic investment decisions, market analysis, and portfolio optimization through intelligent data synthesis and predictive analytics.",
+          "Manual review of contracts, permits, and regulatory documents delays project starts. Legal bottlenecks and reactive compliance monitoring extend time-to-revenue for new projects.",
         color: "green",
       },
     ],
@@ -94,25 +94,25 @@ export const investmentFirmsConfig: IndustryPageConfig = {
             icon: "bg-blue-500",
             title: "Sector Research",
             description:
-              "Comprehensive market analysis and sector-specific research with AI-powered data synthesis",
+              "Research companies operating in specific sectors, including recent funding activity and market positioning",
           },
           {
             icon: "bg-red-500 rounded-tr-full",
             title: "Target Intelligence",
             description:
-              "AI-driven target company analysis and competitive intelligence gathering",
+              "Get snapshots of recent discussions and interactions with potential targets",
           },
           {
             icon: "bg-green-500 rounded-bl-full",
-            title: "Market Evaluation",
+            title: "Meeting Preparation",
             description:
-              "Automated market assessment and opportunity identification for investment targets",
+              "Prepare notes for initial meetings with targets, analyzing past context and interactions",
           },
           {
             icon: "bg-purple-400 rounded-br-full",
-            title: "Financial Metrics",
+            title: "Industry News",
             description:
-              "Intelligent financial analysis and key performance indicators extraction",
+              "Monitor industry trends and developments by pulling insights from newsletters, reports, and market intelligence",
           },
         ],
       },
@@ -123,21 +123,21 @@ export const investmentFirmsConfig: IndustryPageConfig = {
         features: [
           {
             icon: "bg-red-500",
-            title: "Document Status Briefing",
+            title: "Investment Memo Writing",
             description:
-              "Automated document review and comprehensive status reporting for due diligence processes",
+              "Write comprehensive investment memos summarizing findings, risks, and opportunities",
           },
           {
             icon: "bg-golden-400 rounded-tr-full",
-            title: "Risk Assessment",
+            title: "Deal Assessment",
             description:
-              "AI-powered risk analysis and mitigation strategy development for investment decisions",
+              "Screen dealflow, evaluate pitch decks, and filter startups matching your investment thesis",
           },
           {
             icon: "bg-blue-500 rounded-bl-full",
-            title: "Financial Analysis",
+            title: "Document Analysis",
             description:
-              "Comprehensive financial modeling and analysis with automated insights generation",
+              "Summarize legal documents and extract key insights from due diligence materials",
           },
         ],
       },
@@ -150,25 +150,25 @@ export const investmentFirmsConfig: IndustryPageConfig = {
             icon: "bg-blue-500",
             title: "Board Preparation",
             description:
-              "Automated board meeting preparation with comprehensive portfolio insights and performance analysis",
+              "Prepare materials and briefings for board meetings",
           },
           {
             icon: "bg-red-500 rounded-tr-full",
-            title: "Performance Monitoring",
+            title: "Network Intelligence",
             description:
-              "Real-time portfolio monitoring with automated alerts and performance tracking systems",
+              "Identify key contacts from your network who can provide expertise to portfolio companies",
           },
           {
             icon: "bg-green-400 rounded-bl-full",
-            title: "Strategic Advisory",
+            title: "Portfolio Monitoring",
             description:
-              "AI-driven strategic recommendations and advisory support for portfolio companies",
+              "Track news and developments related to your portfolio companies",
           },
           {
             icon: "bg-purple-400 rounded-br-full",
-            title: "Value Creation",
+            title: "Board Minutes",
             description:
-              "Intelligent value creation strategies and operational improvement recommendations",
+              "Create meeting minutes from transcripts with key decisions and action points",
           },
         ],
       },
@@ -179,21 +179,21 @@ export const investmentFirmsConfig: IndustryPageConfig = {
         features: [
           {
             icon: "bg-red-500",
-            title: "LP Portfolio Operations",
+            title: "LP Communications",
             description:
-              "Automated limited partner reporting and portfolio performance communications",
+              "Generate reports for Limited Partners",
           },
           {
             icon: "bg-golden-400 rounded-tr-full",
             title: "Marketing & Social",
             description:
-              "AI-powered marketing content creation and social media management for investment firms",
+              "Generate content for public audiences including case studies, LinkedIn posts, and thought leadership pieces",
           },
           {
             icon: "bg-green-500 rounded-bl-full",
             title: "Compliance Support",
             description:
-              "Automated compliance monitoring and regulatory reporting for investment operations",
+              "Handle ESG questionnaires and ensure regulatory compliance across reporting",
           },
         ],
       },
@@ -226,10 +226,6 @@ export const investmentFirmsConfig: IndustryPageConfig = {
     sectionTitle: "See Dust transform investment operations",
     videoUrl: "https://fast.wistia.net/embed/iframe/8q80neektv",
   },
-  trustedBySecond: {
-    title: "Trusted by investment leaders",
-    logoSet: "default",
-  },
   testimonial: {
     quote:
       "Dust is the most impactful software we've adopted since building Clay.",
@@ -248,28 +244,28 @@ export const investmentFirmsConfig: IndustryPageConfig = {
     title: "Customer stories",
     stories: [
       {
-        title: "How Clay is powering 4x team growth with Dust",
+        title: "How Daphni Unlocks 9 Years of VC Intelligence with AI",
         content:
-          "Clay uses Dust AI agents to scale their GTM team 4x while maintaining sales velocity and achieving 100% adoption across their growing team.",
-        href: "https://blog.dust.tt/clay-scaling-gtme-team/",
-        src: "https://blog.dust.tt/content/images/size/w2000/2025/06/clay_dust_agents.jpg",
+          "European VC firm Daphni transformed their 12 million data points across 85,000 companies into instant, actionable intelligence by adding Dust AI agents to their proprietary Flamel platform, revolutionizing deal sourcing and investment decision-making.",
+        href: "TO INSERT",
+        src: "TO INSERT",
       },
-      {
-        title:
-          "20%+ productivity gains in Sales: Insights from Alan and Payfit",
-        content:
-          "Leading companies share how Dust agents deliver significant productivity improvements and measurable ROI in sales operations.",
-        href: "https://blog.dust.tt/generative-ai-insights-alan-payfit-leaders/",
-        src: "https://blog.dust.tt/content/images/size/w2000/2025/01/Founder.jpg",
-      },
-      {
-        title:
-          "50% Time Savings: How Didomi Transformed Privacy Compliance with AI",
-        content:
-          "Didomi's legal team cuts workload by 50% using Dust's AI assistants for privacy compliance and legal document management.",
-        href: "https://blog.dust.tt/how-thomas-uses-ai-assistants-to-manage-legal-and-data-privacy-at-didomi/",
-        src: "https://blog.dust.tt/content/images/size/w2000/2025/01/dust_didomi.png",
-      },
+      // {
+      //   title:
+      //     "20%+ productivity gains in Sales: Insights from Alan and Payfit",
+      //   content:
+      //     "Leading companies share how Dust agents deliver significant productivity improvements and measurable ROI in sales operations.",
+      //   href: "https://blog.dust.tt/generative-ai-insights-alan-payfit-leaders/",
+      //   src: "https://blog.dust.tt/content/images/size/w2000/2025/01/Founder.jpg",
+      // },
+      // {
+      //   title:
+      //     "50% Time Savings: How Didomi Transformed Privacy Compliance with AI",
+      //   content:
+      //     "Didomi's legal team cuts workload by 50% using Dust's AI assistants for privacy compliance and legal document management.",
+      //   href: "https://blog.dust.tt/how-thomas-uses-ai-assistants-to-manage-legal-and-data-privacy-at-didomi/",
+      //   src: "https://blog.dust.tt/content/images/size/w2000/2025/01/dust_didomi.png",
+      // },
     ],
   },
   justUseDust: {
