@@ -17,6 +17,7 @@ import {
   getChannels,
   joinChannel,
 } from "@connectors/connectors/slack/lib/channels";
+import { slackConfig } from "@connectors/connectors/slack/lib/config";
 import {
   getSlackAccessToken,
   getSlackClient,
@@ -50,8 +51,6 @@ import {
   normalizeError,
   safeParseJSON,
 } from "@connectors/types";
-
-const { SLACK_CLIENT_ID, SLACK_CLIENT_SECRET } = process.env;
 
 export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurationType> {
   readonly provider: ConnectorProvider = "slack";
@@ -163,8 +162,8 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
           );
           const uninstallRes = await uninstallSlack(
             connectionId,
-            SLACK_CLIENT_ID,
-            SLACK_CLIENT_SECRET
+            slackConfig.getRequiredSlackClientId(),
+            slackConfig.getRequiredSlackClientSecret()
           );
 
           if (uninstallRes.isErr()) {
@@ -250,8 +249,8 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
       try {
         const uninstallRes = await uninstallSlack(
           connector.connectionId,
-          SLACK_CLIENT_ID,
-          SLACK_CLIENT_SECRET
+          slackConfig.getRequiredSlackClientId(),
+          slackConfig.getRequiredSlackClientSecret()
         );
 
         if (uninstallRes.isErr() && !force) {

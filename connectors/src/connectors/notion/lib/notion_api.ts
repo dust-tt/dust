@@ -576,6 +576,13 @@ export async function getParsedDatabase(
       localLogger.info("Database not found.");
       return null;
     }
+    localLogger.error(
+      {
+        databaseId,
+        error: e,
+      },
+      "Error when getting parsed database."
+    );
     throw e;
   }
 
@@ -678,6 +685,14 @@ export async function retrievePage({
       );
       return null;
     }
+    localLogger.error(
+      {
+        pageId,
+        error: e,
+      },
+      "Error when retrieving page."
+    );
+
     throw e;
   }
 
@@ -746,6 +761,13 @@ export async function retrieveBlockChildrenResultPage({
       );
       return null;
     } else {
+      localLogger.error(
+        {
+          blockOrPageId,
+          error: e,
+        },
+        "Error when list chilfdren block or page."
+      );
       throw e;
     }
   }
@@ -996,6 +1018,13 @@ export async function retrieveDatabaseChildrenResultPage({
       );
       return null;
     } else {
+      localLogger.error(
+        {
+          databaseId,
+          error: e,
+        },
+        "Error when retrieving database children."
+      );
       throw e;
     }
   }
@@ -1142,6 +1171,13 @@ export async function getUserName(
       pageLogger.info({ user_id: userId }, "Couln't find user.");
       return null;
     }
+    pageLogger.error(
+      {
+        userId,
+        error: e,
+      },
+      "Error when retrieving user name."
+    );
     throw e;
   }
 }

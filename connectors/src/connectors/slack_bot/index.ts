@@ -73,7 +73,7 @@ export class SlackBotConnectorManager extends BaseConnectorManager<SlackConfigur
       },
       {
         autoReadChannelPatterns: configuration.autoReadChannelPatterns,
-        botEnabled: true,
+        botEnabled: configuration.botEnabled,
         slackTeamId: teamInfo.team.id,
         whitelistedDomains: configuration.whitelistedDomains,
         restrictedSpaceAgentsEnabled:
@@ -319,9 +319,7 @@ export class SlackBotConnectorManager extends BaseConnectorManager<SlackConfigur
         if (configValue === "true") {
           return slackConfig.enableBot();
         } else {
-          return new Err(
-            new Error("SlackBot configuration assumes slack bot is enabled")
-          );
+          return slackConfig.disableBot();
         }
       }
 

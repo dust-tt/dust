@@ -26,6 +26,8 @@ import { newWebhookSignal, syncChannelSignal } from "./signals";
 // Configuration for slow lane routing.
 const SLOW_LANE_CONNECTOR_IDS: string[] = [
   // Add connector IDs that should be routed to slow lane.
+  "20542",
+  "20640",
   "23791",
   "24659",
   "23840",
@@ -89,6 +91,7 @@ const SLOW_LANE_CONNECTOR_IDS: string[] = [
   "274877908541",
   "274877908701",
   "274877908661",
+  "274877907284",
 ];
 
 // Dynamic activity creation with fresh routing evaluation (enables retry queue switching).
@@ -130,7 +133,7 @@ function getSlackActivities() {
       slowLaneConnectorIds: SLOW_LANE_CONNECTOR_IDS,
       activityOptions: {
         heartbeatTimeout: "5 minutes",
-        startToCloseTimeout: "10 minutes",
+        startToCloseTimeout: "20 minutes",
       },
     }
   );

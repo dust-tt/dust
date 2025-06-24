@@ -34,7 +34,18 @@ pub mod databases {
         pub mod get_remote_database;
         pub mod remote_database;
 
-        pub mod snowflake;
+        pub mod snowflake {
+            pub mod api {
+                pub mod auth;
+                pub mod chunk;
+                pub mod client;
+                pub mod error;
+                pub mod query;
+                pub mod row;
+                pub mod session;
+            }
+            pub mod snowflake;
+        }
 
         pub mod salesforce {
             pub mod process_json_query;
@@ -72,7 +83,7 @@ pub mod providers {
     }
     pub mod anthropic {
         pub mod anthropic;
-        pub mod image_helpers;
+        pub mod helpers;
         pub mod streaming;
         pub mod types;
     }

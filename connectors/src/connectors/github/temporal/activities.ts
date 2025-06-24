@@ -1210,6 +1210,23 @@ export async function githubCodeSyncActivity({
           },
         });
 
+        // Skip processing if the file has a skipReason.
+        if (githubCodeFile.skipReason) {
+          logger.info(
+            {
+              repoId,
+              fileName: f.fileName,
+              documentId: f.documentId,
+              skipReason: githubCodeFile.skipReason,
+            },
+            "Skipping file due to skipReason"
+          );
+          // Update lastSeenAt to prevent garbage collection.
+          githubCodeFile.lastSeenAt = codeSyncStartedAt;
+          await githubCodeFile.save();
+          return;
+        }
+
         // If the parents have updated then the documentId gets updated as well so we should never
         // have an udpate to parentInternalId. We check that this is always the case. If the file
         // is moved (the parents change) then it will trigger the creation of a new file with a

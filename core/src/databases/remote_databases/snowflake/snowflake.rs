@@ -5,16 +5,18 @@ use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use futures::future::try_join_all;
 use serde::Deserialize;
-use snowflake_connector_rs::{
-    SnowflakeAuthMethod, SnowflakeClient, SnowflakeClientConfig, SnowflakeDecode, SnowflakeRow,
-    SnowflakeSession,
-};
 
 use crate::databases::{
     database::{QueryDatabaseError, QueryResult, SqlDialect},
     remote_databases::remote_database::RemoteDatabase,
     table::Table,
     table_schema::{TableSchema, TableSchemaColumn, TableSchemaFieldType},
+};
+
+use super::api::{
+    client::{SnowflakeAuthMethod, SnowflakeClient, SnowflakeClientConfig},
+    row::{SnowflakeDecode, SnowflakeRow},
+    session::SnowflakeSession,
 };
 
 pub struct SnowflakeRemoteDatabase {
@@ -216,11 +218,10 @@ impl SnowflakeRemoteDatabase {
                 warehouse,
             } => {
                 let auth = SnowflakeAuthMethod::KeyPair {
-                    encrypted_pem: private_key.clone(),
+                    pem: private_key.clone(),
                     password: private_key_passphrase
                         .as_ref()
-                        .map(|p| p.as_bytes().to_vec())
-                        .unwrap_or_default(),
+                        .map(|p| p.as_bytes().to_vec()),
                 };
                 (
                     username.clone(),
@@ -313,12 +314,10 @@ impl SnowflakeRemoteDatabase {
     ) -> Result<(Vec<QueryResult>, TableSchema, String), QueryDatabaseError> {
         let executor = match session.execute(query).await {
             Ok(executor) => Ok(executor),
-            Err(snowflake_connector_rs::Error::TimedOut) => {
-                Err(QueryDatabaseError::ExecutionError(
-                    "Query execution timed out".to_string(),
-                    Some(query.to_string()),
-                ))
-            }
+            Err(super::api::error::Error::TimedOut) => Err(QueryDatabaseError::ExecutionError(
+                "Query execution timed out".to_string(),
+                Some(query.to_string()),
+            )),
             Err(e) => Err(QueryDatabaseError::ExecutionError(
                 format!("Error executing query: {}", e),
                 Some(query.to_string()),

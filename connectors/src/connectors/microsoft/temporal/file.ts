@@ -164,9 +164,48 @@ export async function syncOneFile({
     ? MAX_LARGE_DOCUMENT_TXT_LEN
     : MAX_DOCUMENT_TXT_LEN;
 
-  const downloadRes = await axios.get(`${url}`, {
-    responseType: "arraybuffer",
-  });
+  let downloadRes;
+  try {
+    downloadRes = await axios.get(`${url}`, {
+      responseType: "arraybuffer",
+    });
+  } catch (error) {
+    if (axios.isAxiosError(error) && error.response?.status === 403) {
+      localLogger.info(
+        {
+          status: 403,
+          fileName: file.name,
+          internalId: documentId,
+          webUrl: file.webUrl,
+        },
+        "Access forbidden to file, marking as skipped"
+      );
+
+      // Save the skipReason to the database
+      const resourceBlob: WithCreationAttributes<MicrosoftNodeModel> = {
+        internalId: documentId,
+        connectorId,
+        lastSeenTs: new Date(),
+        nodeType: "file",
+        name: file.name ?? "",
+        parentInternalId,
+        mimeType: file.file.mimeType ?? "",
+        webUrl: file.webUrl ?? null,
+        skipReason: "access_forbidden",
+      };
+
+      if (fileResource) {
+        await fileResource.update(resourceBlob);
+      } else {
+        await MicrosoftNodeResource.makeNew(resourceBlob);
+      }
+
+      return false;
+    }
+
+    // Re-throw other errors
+    throw error;
+  }
 
   if (downloadRes.status !== 200) {
     localLogger.error(

@@ -375,19 +375,22 @@ export function useDeleteFolderOrWebsite({
 type DoCreateOrUpdateAllowedParams =
   | {
       name: string | null;
-      isRestricted: false;
+      isRestricted: boolean;
+      managementMode?: never;
     }
   | {
       name: string | null;
       memberIds: string[];
+      groupIds?: never;
       isRestricted: true;
-      managementMode?: "manual";
+      managementMode: "manual";
     }
   | {
       name: string | null;
+      memberIds?: never;
       groupIds: string[];
       isRestricted: true;
-      managementMode?: "group";
+      managementMode: "group";
     };
 
 export function useCreateSpace({ owner }: { owner: LightWorkspaceType }) {
@@ -402,14 +405,16 @@ export function useCreateSpace({ owner }: { owner: LightWorkspaceType }) {
   });
 
   const doCreate = async (params: DoCreateOrUpdateAllowedParams) => {
-    const { name, isRestricted } = params;
+    const { name, managementMode, isRestricted } = params;
     if (!name) {
       return null;
     }
 
-    if (isRestricted) {
-      const memberIds = "memberIds" in params ? params.memberIds : undefined;
-      const groupIds = "groupIds" in params ? params.groupIds : undefined;
+    const url = `/api/w/${owner.sId}/spaces`;
+    let res;
+
+    if (managementMode) {
+      const { memberIds, groupIds } = params;
 
       // Must have either memberIds or groupIds for restricted spaces
       if (
@@ -418,24 +423,32 @@ export function useCreateSpace({ owner }: { owner: LightWorkspaceType }) {
       ) {
         return null;
       }
-    }
 
-    const url = `/api/w/${owner.sId}/spaces`;
-    const res = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        name,
-        ...("memberIds" in params && { memberIds: params.memberIds }),
-        ...("groupIds" in params && { groupIds: params.groupIds }),
-        ...("managementMode" in params && {
-          managementMode: params.managementMode,
+      res = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name,
+          memberIds,
+          groupIds,
+          managementMode,
+          isRestricted,
         }),
-        isRestricted,
-      }),
-    });
+      });
+    } else {
+      res = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name,
+          isRestricted,
+        }),
+      });
+    }
 
     if (!res.ok) {
       const errorData = await getErrorFromResponse(res);
@@ -479,11 +492,7 @@ export function useUpdateSpace({ owner }: { owner: LightWorkspaceType }) {
     space: SpaceType,
     params: DoCreateOrUpdateAllowedParams
   ) => {
-    const { name: newName, isRestricted } = params;
-    const memberIds = "memberIds" in params ? params.memberIds : undefined;
-    const groupIds = "groupIds" in params ? params.groupIds : undefined;
-    const managementMode =
-      "managementMode" in params ? params.managementMode : undefined;
+    const { name: newName, managementMode } = params;
 
     const updatePromises: Promise<Response>[] = [];
 
@@ -505,22 +514,24 @@ export function useUpdateSpace({ owner }: { owner: LightWorkspaceType }) {
 
     // Prepare space members update request if provided.
     const spaceMembersUrl = `/api/w/${owner.sId}/spaces/${space.sId}/members`;
-    updatePromises.push(
-      fetch(spaceMembersUrl, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          ...(memberIds !== undefined && { memberIds }),
-          ...(groupIds !== undefined && { groupIds }),
-          ...(managementMode !== undefined && {
+    if (managementMode) {
+      const { memberIds, groupIds, isRestricted } = params;
+
+      updatePromises.push(
+        fetch(spaceMembersUrl, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            memberIds,
+            groupIds,
             managementMode,
+            isRestricted,
           }),
-          isRestricted,
-        }),
-      })
-    );
+        })
+      );
+    }
 
     if (updatePromises.length === 0) {
       return null;

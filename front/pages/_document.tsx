@@ -1,28 +1,16 @@
-import type { DocumentContext, DocumentInitialProps } from "next/document";
 import Document, { Head, Html, Main, NextScript } from "next/document";
 
-interface MyDocumentProps extends DocumentInitialProps {
-  enableBotCrawling: boolean;
-}
+const { NODE_ENV, REACT_SCAN } = process.env;
 
-class MyDocument extends Document<MyDocumentProps> {
-  static async getInitialProps(ctx: DocumentContext): Promise<MyDocumentProps> {
-    const initialProps = await Document.getInitialProps(ctx);
-
-    const { ENABLE_BOT_CRAWLING } = process.env;
-
-    return {
-      ...initialProps,
-      enableBotCrawling: ENABLE_BOT_CRAWLING === "true",
-    };
-  }
-
+class MyDocument extends Document {
   render() {
-    const { enableBotCrawling } = this.props;
-
     return (
       <Html>
         <Head>
+          {NODE_ENV === "development" && REACT_SCAN === "true" && (
+            // eslint-disable-next-line @next/next/no-sync-scripts
+            <script src="https://unpkg.com/react-scan/dist/auto.global.js" />
+          )}
           <base href={process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL} />
           <link rel="preconnect" href="https://fonts.googleapis.com" />
           <link
@@ -30,7 +18,9 @@ class MyDocument extends Document<MyDocumentProps> {
             href="https://fonts.gstatic.com"
             crossOrigin="anonymous"
           />
-          {!enableBotCrawling && <meta name="robots" content="noindex" />}
+          {process.env.NEXT_PUBLIC_ENABLE_BOT_CRAWLING !== "true" && (
+            <meta name="robots" content="noindex" />
+          )}
         </Head>
         <body>
           <noscript>

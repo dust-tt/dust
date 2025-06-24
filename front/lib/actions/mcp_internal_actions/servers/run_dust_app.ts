@@ -252,6 +252,7 @@ async function prepareParamsWithHistory(
         conversation: agentLoopRunContext.conversation,
         model,
         prompt: "",
+        tools: "",
         allowedTokenCount,
         excludeImages: true,
       });

@@ -17,7 +17,7 @@ import type {
 } from "sequelize";
 import { DataTypes, Op } from "sequelize";
 
-import { Workspace } from "@app/lib/models/workspace";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
 import logger from "@app/logger/logger";
 
@@ -83,8 +83,8 @@ function isWorkspaceIsolationBypassEnabled<T>(
 }
 
 export class WorkspaceAwareModel<M extends Model = any> extends BaseModel<M> {
-  declare workspaceId: ForeignKey<Workspace["id"]>;
-  declare workspace: NonAttribute<Workspace>;
+  declare workspaceId: ForeignKey<WorkspaceModel["id"]>;
+  declare workspace: NonAttribute<WorkspaceModel>;
 
   static override init<MS extends ModelStatic<Model>>(
     this: MS,
@@ -100,7 +100,7 @@ export class WorkspaceAwareModel<M extends Model = any> extends BaseModel<M> {
         type: DataTypes.BIGINT,
         allowNull: false,
         references: {
-          model: Workspace.tableName,
+          model: WorkspaceModel.tableName,
           key: "id",
         },
       },
@@ -157,18 +157,18 @@ export class WorkspaceAwareModel<M extends Model = any> extends BaseModel<M> {
     });
 
     if (relationship === "hasOne") {
-      Workspace.hasOne(model, {
+      WorkspaceModel.hasOne(model, {
         foreignKey: { allowNull: false },
         onDelete: "RESTRICT",
       });
     } else {
-      Workspace.hasMany(model, {
+      WorkspaceModel.hasMany(model, {
         foreignKey: { allowNull: false },
         onDelete: "RESTRICT",
       });
     }
 
-    model.belongsTo(Workspace, {
+    model.belongsTo(WorkspaceModel, {
       foreignKey: { allowNull: false },
     });
 

@@ -580,7 +580,7 @@ export async function tryListMCPTools(
         );
         return new Err(
           new Error(
-            `An error occured while listing the available tools for ${action.name}. ` +
+            `An error occurred while listing the available tools for ${action.name}. ` +
               "Tools from this server are not available for this message. " +
               "Inform the user of this issue."
           )
