@@ -662,7 +662,7 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId, agentSearch }) => {
       } else if (input === "n" || input === "N") {
         handleApproval(false);
       }
-      clearTerminal();
+      void clearTerminal();
       return;
     }
 
