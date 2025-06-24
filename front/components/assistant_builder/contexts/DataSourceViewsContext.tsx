@@ -1,4 +1,6 @@
-import React, { createContext, memo, useContext, type ReactNode } from "react";
+import React, { createContext, memo, useContext, useEffect, type ReactNode } from "react";
+
+import { useSendNotification } from "@dust-tt/sparkle";
 
 import { useDataSourceViews } from "@app/lib/swr/data_source_views";
 import type { DataSourceViewType, LightWorkspaceType } from "@app/types";
@@ -32,11 +34,22 @@ interface DataSourceViewsProviderProps {
 
 export const DataSourceViewsProvider = memo(
   ({ owner, children }: DataSourceViewsProviderProps) => {
+    const sendNotification = useSendNotification();
     const {
       dataSourceViews,
       isDataSourceViewsLoading,
       isDataSourceViewsError,
     } = useDataSourceViews(owner);
+
+    useEffect(() => {
+      if (isDataSourceViewsError) {
+        sendNotification({
+          type: "error",
+          title: "Failed to load data sources",
+          description: "Unable to fetch data source views. Please try again.",
+        });
+      }
+    }, [isDataSourceViewsError, sendNotification]);
 
     const value: DataSourceViewsContextType = {
       dataSourceViews,

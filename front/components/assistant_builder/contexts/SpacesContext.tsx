@@ -1,4 +1,6 @@
-import React, { createContext, memo, useContext, type ReactNode } from "react";
+import React, { createContext, memo, useContext, useEffect, type ReactNode } from "react";
+
+import { useSendNotification } from "@dust-tt/sparkle";
 
 import { useSpaces } from "@app/lib/swr/spaces";
 import type { LightWorkspaceType, SpaceType } from "@app/types";
@@ -30,9 +32,20 @@ interface SpacesProviderProps {
 
 export const SpacesProvider = memo(
   ({ owner, children }: SpacesProviderProps) => {
+    const sendNotification = useSendNotification();
     const { spaces, isSpacesLoading, isSpacesError } = useSpaces({
       workspaceId: owner.sId,
     });
+
+    useEffect(() => {
+      if (isSpacesError) {
+        sendNotification({
+          type: "error",
+          title: "Failed to load spaces",
+          description: "Unable to fetch workspace spaces. Please try again.",
+        });
+      }
+    }, [isSpacesError, sendNotification]);
 
     const value: SpacesContextType = {
       spaces,
