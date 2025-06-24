@@ -280,15 +280,17 @@ export class SlackBotConnectorManager extends BaseConnectorManager<SlackConfigur
 
   async retrievePermissions({
     parentInternalId,
+    filterPermission,
   }: {
     parentInternalId: string | null;
+    filterPermission: ConnectorPermission | null;
   }): Promise<
     Result<ContentNode[], ConnectorManagerError<RetrievePermissionsErrorCode>>
   > {
     return retrievePermissions({
       connectorId: this.connectorId,
       parentInternalId,
-      filterPermission: null, // No filter permission, we want all channels.
+      filterPermission,
       getFilteredChannels,
     });
   }
@@ -435,7 +437,25 @@ export class SlackBotConnectorManager extends BaseConnectorManager<SlackConfigur
   }
 }
 
-async function getFilteredChannels(connectorId: number) {
+async function getFilteredChannels(
+  connectorId: number,
+  filterPermission: ConnectorPermission | null
+) {
+  const slackChannels: {
+    slackChannelId: string;
+    slackChannelName: string;
+    permission: ConnectorPermission;
+    private: boolean;
+  }[] = [];
+
+  if (
+    filterPermission &&
+    (filterPermission === "read" || filterPermission === "read_write")
+  ) {
+    // When requesting only read or read_write permissions, return empty array
+    return slackChannels;
+  }
+
   const slackClient = await getSlackClient(connectorId, {
     // Do not reject rate limited calls in update connector. Called from the API.
     rejectRateLimitedCalls: false,
@@ -459,12 +479,6 @@ async function getFilteredChannels(connectorId: number) {
     {} as Record<string, SlackChannel>
   );
 
-  const slackChannels: {
-    slackChannelId: string;
-    slackChannelName: string;
-    permission: ConnectorPermission;
-    private: boolean;
-  }[] = [];
   for (const remoteChannel of remoteChannels) {
     if (!remoteChannel.id || !remoteChannel.name) {
       continue;
