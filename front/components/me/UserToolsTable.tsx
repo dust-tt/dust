@@ -44,12 +44,15 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
     owner,
     connectionType: "personal",
   });
-  const { deleteMetadata } = useDeleteMetadata("toolsValidations");
+  const { deleteMetadata } = useDeleteMetadata();
 
   const handleDeleteToolMetadata = useCallback(
     async (mcpServerId: string) => {
       try {
-        await deleteMetadata(`:${mcpServerId}`);
+        console.log(
+          `Deleting tool approbation history for MCP server ID: toolsValidations:${mcpServerId}`
+        );
+        await deleteMetadata(`toolsValidations:${mcpServerId}`);
         sendNotification({
           title: "Success!",
           description: "Tool approbation history deleted.",
@@ -147,7 +150,8 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
             menuItems={[
               {
                 label: "Delete confirmation preferences",
-                onClick: () => handleDeleteToolMetadata(row.original.id),
+                onClick: () =>
+                  handleDeleteToolMetadata(row.original.serverView.server.sId),
                 kind: "item",
               },
               ...(row.original.connection
