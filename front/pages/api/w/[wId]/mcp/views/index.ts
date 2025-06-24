@@ -10,7 +10,7 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
+import { isString, type WithAPIErrorResponse } from "@app/types";
 
 export type GetMCPServerViewsListResponseBody = {
   success: boolean;
@@ -33,10 +33,10 @@ async function handler(
 
   switch (method) {
     case "GET": {
-      if (
-        typeof req.query.spaceIds !== "string" ||
-        typeof req.query.availabilities !== "string"
-      ) {
+    const spaceIds = req.query.spaceIds;
+    const availabilities = req.query.availabilities;
+    
+    if (!isString(spaceIds) || !isString(availabilities)) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -48,8 +48,8 @@ async function handler(
 
       const normalizedQuery = {
         ...req.query,
-        spaceIds: req.query.spaceIds.split(","),
-        availabilities: req.query.availabilities.split(",")
+        spaceIds: spaceIds.split(","),
+        availabilities: availabilities.split(",")
       };
       
       const r = GetMCPViewsRequestSchema.safeParse(normalizedQuery);
