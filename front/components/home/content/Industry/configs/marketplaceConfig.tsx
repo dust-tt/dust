@@ -16,7 +16,7 @@ export const marketplaceConfig: IndustryPageConfig = {
       </>
     ),
     description:
-      "The AI Solution Powering Marketplace Success. Streamline supplier acquisition, eliminate content bottlenecks, and scale support effortlessly.",
+      "The AI solution powering Marketplace success. Streamline supplier acquisition, eliminate content bottlenecks, and scale support effortlessly.",
     ctaButtons: {
       primary: {
         label: "Get started",
@@ -35,7 +35,7 @@ export const marketplaceConfig: IndustryPageConfig = {
         title: "Chief People Officer at Doctolib",
       },
       company: {
-        logo: "/static/landing/logos/color/doctolib_white.png",
+        logo: "/static/landing/logos/white/doctolib.svg",
         alt: "Doctolib logo",
       },
       bgColor: "bg-blue-800",
@@ -47,13 +47,13 @@ export const marketplaceConfig: IndustryPageConfig = {
     },
   },
   aiAgents: {
-    title: "Empower Your Marketplace Teams to Focus on Growth, Not Grunt Work",
+    title: "Empower your marketplace teams to focus on growth, not grunt work",
     description:
-      "Dust connects your teams, automates operational complexity, and unlocks critical insights from your data—across Supply Acquisition, Community Engagement, Support Operations, and Market Intelligence.",
+      "Dust connects your teams, automates operational complexity, and unlocks critical insights from your data—across supply acquisition, community engagement, support operations, and market intelligence.",
     bgColor: "bg-gray-50",
   },
   trustedBy: {
-    title: "Trusted by Marketplace Leaders",
+    title: "Trusted by marketplace leaders",
     logoSet: "marketplace",
   },
   painPoints: {
@@ -86,123 +86,123 @@ export const marketplaceConfig: IndustryPageConfig = {
     title: "Dust in Action",
     useCases: [
       {
-        title: "Supply Growth & Provider Acquisition",
+        title: "Supply growth & provider acquisition",
         image: "/static/landing/industry/features/Sales_agent.svg",
         bgColor: "bg-blue-100",
         features: [
           {
             icon: "bg-blue-500",
-            title: "Prospection & Lead Enrichment",
+            title: "Prospection & lead enrichment",
             description:
               "Automatically aggregate and enrich service provider information using public data and marketplace insights.",
           },
           {
             icon: "bg-yellow-400 rounded-tr-full",
-            title: "Account 360° View",
+            title: "Account 360° view",
             description:
               "Generate comprehensive provider overviews combining platform activity, performance data, and engagement history.",
           },
           {
             icon: "bg-green-500",
-            title: "Sales Enablement",
+            title: "Sales enablement",
             description:
               "Auto-draft responses to provider applications and inquiries using current marketplace policies and product information.",
           },
           {
             icon: "bg-pink-400 rounded-tl-full",
-            title: "Sales Insights",
+            title: "Sales insights",
             description:
               "Extract winning narratives from calls and coach teams on pitch delivery and objection response.",
           },
         ],
       },
       {
-        title: "Support & Success Automation",
+        title: "Support & success automation",
         image: "/static/landing/industry/features/UxWriter_2.svg",
         bgColor: "bg-green-100",
         features: [
           {
             icon: "bg-sky-400 rounded-br-full",
-            title: "Smart Request Routing",
+            title: "Smart request routing",
             description:
               "Route issues to the right team instantly, based on urgency and type.",
           },
           {
             icon: "bg-red-500",
-            title: "Technical Troubleshooting",
+            title: "Technical troubleshooting",
             description:
               "Accelerate resolution with deep troubleshooting and suggested resolution paths.",
           },
           {
             icon: "bg-yellow-400 rounded-tr-full",
-            title: "Customer Communication",
+            title: "Customer communication",
             description:
               "Craft clear, professional support communication at scale.",
           },
           {
             icon: "bg-green-500",
-            title: "Support Insights",
+            title: "Support insights",
             description:
               "Analyze interactions and feedback to improve marketplace experience.",
           },
           {
             icon: "bg-pink-400",
-            title: "Knowledge Hub Building",
+            title: "Knowledge hub building",
             description:
               "Transform resolved cases into searchable resources for providers, customers, and support teams.",
           },
         ],
       },
       {
-        title: "Community Operations",
+        title: "Community operations",
         image: "/static/landing/industry/features/Compliance_verification.svg",
         bgColor: "bg-rose-100",
         features: [
           {
             icon: "bg-blue-500",
-            title: "Automated KYC & Verification",
+            title: "Automated KYC & verification",
             description:
               "Extract and validate information from provider documents, flagging issues for KYC and compliance checks.",
           },
           {
             icon: "bg-pink-400 rounded-tl-full",
-            title: "Community Engagement",
+            title: "Community engagement",
             description:
               "Generate targeted content to keep your provider community engaged.",
           },
           {
             icon: "bg-red-500",
-            title: "Community Education",
+            title: "Community education",
             description:
               "Deliver updates and education to keep your providers active and successful.",
           },
         ],
       },
       {
-        title: "Marketing & Marketplace Intelligence",
+        title: "Marketing & marketplace intelligence",
         image: "/static/landing/industry/features/Content_localization.svg",
         bgColor: "bg-yellow-100",
         features: [
           {
             icon: "bg-yellow-400 rounded-tr-full",
-            title: "Content Creation & Localization",
+            title: "Content creation & localization",
             description:
               "Turn raw notes into SEO-optimized communications across multiple languages.",
           },
           {
             icon: "bg-blue-500",
-            title: "Industry & Competitive Intelligence",
+            title: "Industry & competitive intelligence",
             description:
               "Monitor competitive activity, pricing trends and analyze reports to inform platform strategy.",
           },
           {
             icon: "bg-green-500",
-            title: "Customer Insights",
+            title: "Customer insights",
             description: "Summarize feedback to identify improvement areas.",
           },
           {
             icon: "bg-pink-400 rounded-tl-full",
-            title: "Marketplace Analytics",
+            title: "Marketplace analytics",
             description:
               "Retrieve analytics for internal and stakeholder reporting.",
           },
@@ -239,7 +239,7 @@ export const marketplaceConfig: IndustryPageConfig = {
       title: "Chief People Officer at Doctolib",
     },
     company: {
-      logo: "/static/landing/logos/color/doctolib_white.png",
+      logo: "/static/landing/logos/white/doctolib.svg",
       alt: "Doctolib logo",
     },
     bgColor: "bg-blue-800",

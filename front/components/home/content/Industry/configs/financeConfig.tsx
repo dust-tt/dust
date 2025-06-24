@@ -163,7 +163,7 @@ export const financeConfig: IndustryPageConfig = {
     ],
   },
   impactMetrics: {
-    bgColor: "bg-golden-50",
+    bgColor: "bg-blue-50",
     metrics: [
       {
         value: "20",

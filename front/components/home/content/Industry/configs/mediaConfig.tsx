@@ -86,7 +86,7 @@ export const mediaConfig: IndustryPageConfig = {
     title: "Dust in Action",
     useCases: [
       {
-        title: "Editorial & Newsroom Operations",
+        title: "Editorial & newsroom operations",
         image: "/static/landing/industry/features/editorial_newsroom.svg",
         bgColor: "bg-blue-100",
         features: [
@@ -123,7 +123,7 @@ export const mediaConfig: IndustryPageConfig = {
         ],
       },
       {
-        title: "Audience & Engagement",
+        title: "Audience & engagement",
         image: "/static/landing/industry/features/audience_engagement.svg",
         bgColor: "bg-gray-100",
         features: [
@@ -154,7 +154,7 @@ export const mediaConfig: IndustryPageConfig = {
         ],
       },
       {
-        title: "Strategic Intelligence",
+        title: "Strategic intelligence",
         image: "/static/landing/industry/features/strategic_intelligence.svg",
         bgColor: "bg-gray-100",
         features: [
@@ -185,7 +185,7 @@ export const mediaConfig: IndustryPageConfig = {
         ],
       },
       {
-        title: "Legal & Business Affairs",
+        title: "Legal & business affairs",
         image: "/static/landing/industry/features/legal_business.svg",
         bgColor: "bg-orange-100",
         features: [

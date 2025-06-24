@@ -16,7 +16,7 @@ export const insuranceConfig: IndustryPageConfig = {
       </>
     ),
     description:
-      "The AI Solution to Streamline Operations & Enhance Member Experience. Transform insurance workflows with intelligent automation while ensuring compliance and improving customer satisfaction.",
+      "The AI Solution to streamline operations & enhance member experience. Transform insurance workflows with intelligent automation while ensuring compliance and improving customer satisfaction.",
     ctaButtons: {
       primary: {
         label: "Get started",
@@ -35,7 +35,7 @@ export const insuranceConfig: IndustryPageConfig = {
         title: "Head of Architecture",
       },
       company: {
-        logo: "/static/landing/logos/color/wakam.png",
+        logo: "/static/landing/logos/white/wakam.svg",
         alt: "Wakam",
       },
       bgColor: "bg-blue-600",
@@ -48,7 +48,7 @@ export const insuranceConfig: IndustryPageConfig = {
   },
   aiAgents: {
     title:
-      "The AI Solution to Streamline Operations & Enhance Member Experience",
+      "The AI Solution to streamline operations & enhance member experience",
     description:
       "Deploy specialized AI agents that automate insurance workflows, enhance member service, and ensure regulatory compliance—transforming how your organization operates while improving customer satisfaction and operational efficiency.",
     bgColor: "bg-gray-50",
@@ -62,21 +62,21 @@ export const insuranceConfig: IndustryPageConfig = {
     painPoints: [
       {
         icon: "/static/landing/industry/d-blue.svg",
-        title: "Remove Manual Process Bottlenecks",
+        title: "Remove manual process bottlenecks",
         description:
           "Eliminate departmental silos and reduce manual work in claims, underwriting, and support to accelerate service delivery and decision-making.",
         color: "blue",
       },
       {
         icon: "/static/landing/industry/d-red.svg",
-        title: "Free Up Specialized Personnel",
+        title: "Free up specialized personnel",
         description:
           "Free adjusters, underwriters, and legal experts from repetitive tasks, enabling focus on complex cases, risk assessment, and high-value interactions.",
         color: "red",
       },
       {
         icon: "/static/landing/industry/d-green.svg",
-        title: "Unlock Data Intelligence",
+        title: "Unlock data intelligence",
         description:
           "Leverage customer interactions, claims histories, and regulatory data to optimize pricing, enhance products, mitigate risks, and ensure compliance.",
         color: "green",
@@ -87,38 +87,38 @@ export const insuranceConfig: IndustryPageConfig = {
     title: "Dust in Action",
     useCases: [
       {
-        title: "Customer Service",
+        title: "Customer service",
         image: "/static/landing/industry/features/uxWriter.svg",
         bgColor: "bg-orange-100",
         features: [
           {
             icon: "bg-golden-500",
-            title: "Smart Claims Handling",
+            title: "Smart claims handling",
             description:
               "Automate insurance processing – document verification, risk assessment, coverage validation – accelerating settlements.",
           },
           {
             icon: "bg-blue-500 rounded-tl-full",
-            title: "Support Resolution",
+            title: "Support resolution",
             description:
               "Enable help desk teams to instantly resolve customer inquiries about policy details, account status, and troubleshooting without escalation.",
           },
           {
             icon: "bg-purple-400 rounded-br-full",
-            title: "Insurance Expert",
+            title: "Insurance expert",
             description:
               "Answer colleague questions about insurance products, coverage, and insurer agreements on behalf of experts.",
           },
           {
             icon: "bg-red-400",
-            title: "Documentation Generation",
+            title: "Documentation generation",
             description:
               "Produce compliant and relevant documentation on your insurance products, in all languages, to deflect basic questions",
           },
         ],
       },
       {
-        title: "Business Development",
+        title: "Business development",
         image: "/static/landing/industry/features/Compliance_verification.svg",
         bgColor: "bg-blue-100",
         features: [
@@ -130,44 +130,44 @@ export const insuranceConfig: IndustryPageConfig = {
           },
           {
             icon: "bg-blue-500 rounded-tl-full",
-            title: "RFP Automation",
+            title: "RFP automation",
             description:
               "Generate detailed RFP responses and business offerings using past proposals and internal documentation",
           },
           {
             icon: "bg-purple-400 rounded-br-full",
-            title: "Content Generation",
+            title: "Content generation",
             description:
               "Create and validate content, insurance comparisons, and website materials in all languages while ensuring accuracy and compliance",
           },
           {
             icon: "bg-red-400",
-            title: "Sales Intelligence",
+            title: "Sales intelligence",
             description:
               "Analyze customer interactions and policy data to generate actionable insights for sales teams and optimize insurance product positioning",
           },
         ],
       },
       {
-        title: "Legal & Compliance Support",
+        title: "Legal & compliance support",
         image: "/static/landing/industry/features/Legal_review_2.svg",
         bgColor: "bg-blue-100",
         features: [
           {
             icon: "bg-golden-500",
-            title: "Partner & Customer Due Diligence",
+            title: "Partner & customer due diligence",
             description:
               "Evaluate new business applications and potential partnerships to identify and assess potential risks and concerns",
           },
           {
             icon: "bg-blue-500 rounded-tl-full",
-            title: "Contracts & Policy Documentation",
+            title: "Contracts & policy documentation",
             description:
               "Review program documentation, policy wordings, and contractual agreements for accuracy, compliance, and key provisions",
           },
           {
             icon: "bg-purple-400 rounded-br-full",
-            title: "Regulatory Guidance",
+            title: "Regulatory guidance",
             description:
               "Address regulatory inquiries and support the implementation and monitoring of compliance processes",
           },
@@ -180,25 +180,25 @@ export const insuranceConfig: IndustryPageConfig = {
         features: [
           {
             icon: "bg-golden-500",
-            title: "Market & Competitor Updates",
+            title: "Market & competitor updates",
             description:
               "Track and analyze industry developments and competitor activities",
           },
           {
             icon: "bg-blue-500 rounded-tl-full",
-            title: "Regulatory Monitoring",
+            title: "Regulatory monitoring",
             description:
               "Monitor the evolving regulatory landscape and disseminate updates to ensure organizational awareness",
           },
           {
             icon: "bg-purple-400 rounded-br-full",
-            title: "Offer Benchmarking",
+            title: "Offer benchmarking",
             description:
               "Evaluate internal program structures and operational performance against relevant market standards and best practices",
           },
           {
             icon: "bg-red-400",
-            title: "Claims Insights",
+            title: "Claims insights",
             description:
               "Analyze claims performance, financial settlements, and profitability across different broker partnerships or distribution channels",
           },
@@ -241,7 +241,7 @@ export const insuranceConfig: IndustryPageConfig = {
       title: "Head of Architecture",
     },
     company: {
-      logo: "/static/landing/logos/color/wakam.png",
+      logo: "/static/landing/logos/white/wakam.svg",
       alt: "Wakam",
     },
     bgColor: "bg-blue-600",

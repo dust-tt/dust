@@ -16,7 +16,7 @@ export const b2bSaasConfig: IndustryPageConfig = {
       </>
     ),
     description:
-      "The AI Solution Trusted by Leading SaaS Innovators. Say goodbye to scattered info, manual busywork, and buried insights.",
+      "The AI solution trusted by leading SaaS innovators. Say goodbye to scattered info, manual busywork, and buried insights.",
     ctaButtons: {
       primary: {
         label: "Get started",
@@ -86,116 +86,116 @@ export const b2bSaasConfig: IndustryPageConfig = {
     title: "Dust in Action",
     useCases: [
       {
-        title: "GTM Operations & Sales Enablement",
+        title: "GTM operations & sales enablement",
         image: "/static/landing/industry/features/Sales_agent.svg",
         bgColor: "bg-blue-100",
         features: [
           {
             icon: "bg-red-500",
-            title: "360° Account Intelligence",
+            title: "360° account intelligence",
             description:
               "Merge engagement, CRM, and market signals for every account",
           },
           {
             icon: "bg-yellow-400 rounded-tr-full",
-            title: "Automated Follow-Ups",
+            title: "Automated follow-ups",
             description:
               "Automate customer follow-ups and update your CRM using meeting transcripts and notes",
           },
           {
             icon: "bg-blue-500 rounded-bl-full",
-            title: "Prospect Questions",
+            title: "Prospect questions",
             description:
               "Automate RFP responses and prospect answers using your internal knowledge base",
           },
           {
             icon: "bg-sky-400 rounded-br-full",
-            title: "Revenue Intelligence",
+            title: "Revenue intelligence",
             description:
               "Extract actionable insights from customer-facing interactions",
           },
         ],
       },
       {
-        title: "Marketing Operations",
+        title: "Marketing operations",
         image: "/static/landing/industry/features/Content_localization.svg",
         bgColor: "bg-rose-100",
         features: [
           {
             icon: "bg-pink-400 rounded-tl-full",
-            title: "Content Localization at Scale",
+            title: "Content localization at scale",
             description:
               "Launch campaigns globally, keeping brand and technical consistency",
           },
           {
             icon: "bg-red-500",
-            title: "Market Intelligence",
+            title: "Market intelligence",
             description:
               "Monitor trends and competitors to equip GTM and sales teams",
           },
           {
             icon: "bg-yellow-400 rounded-tr-full",
-            title: "Content Optimization",
+            title: "Content optimization",
             description: "Turn drafts into high-conversion assets",
           },
         ],
       },
       {
-        title: "Customer Experience",
+        title: "Customer experience",
         image: "/static/landing/industry/features/Connection_management.svg",
         bgColor: "bg-green-100",
         features: [
           {
             icon: "bg-pink-400 rounded-tl-full",
-            title: "AI Ticket Deflection & Routing",
+            title: "AI ticket deflection & routing",
             description:
               "Rapidly resolve L1 cases, route complex issues, and ensure SLA compliance",
           },
           {
             icon: "bg-red-500",
-            title: "Accelerated Case Resolution",
+            title: "Accelerated case resolution",
             description:
               "Suggest docs, similar tickets, and pre-draft responses for agents",
           },
           {
             icon: "bg-yellow-400 rounded-tr-full",
-            title: "Knowledge Base Automation",
+            title: "Knowledge base automation",
             description:
               "Turn support resolutions into always-fresh, searchable documentation",
           },
           {
             icon: "bg-green-500",
-            title: "Support Analytics",
+            title: "Support analytics",
             description:
               "Analyze customer interactions to surface insights, optimize documentation, and improve CSAT",
           },
         ],
       },
       {
-        title: "Engineering Operations",
+        title: "Engineering operations",
         image: "/static/landing/industry/features/Eng_debug.svg",
         bgColor: "bg-gray-100",
         features: [
           {
             icon: "bg-pink-400 rounded-tl-full",
-            title: "AI-Powered Code Debugging",
+            title: "AI-Powered code debugging",
             description:
               "Surface relevant context, docs, and historical issues inside your IDE",
           },
           {
             icon: "bg-red-500",
-            title: "Automated Code Reviews",
+            title: "Automated code reviews",
             description: "Maintain standards and compliance at scale",
           },
           {
             icon: "bg-yellow-400 rounded-tr-full",
-            title: "Incident Response",
+            title: "incident response",
             description:
               "Execute automated runbooks, integrate communications, and enable rapid root cause analysis",
           },
           {
             icon: "bg-green-500",
-            title: "Continuous Doc Generation",
+            title: "Continuous doc generation",
             description:
               "Keep user and API docs up-to-date from code changes automatically",
           },

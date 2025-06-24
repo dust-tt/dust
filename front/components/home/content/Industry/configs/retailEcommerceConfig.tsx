@@ -16,7 +16,7 @@ export const retailEcommerceConfig: IndustryPageConfig = {
       </>
     ),
     description:
-      "The AI Solution Trusted by Leading Retail Brands — say goodbye to scattered product data, operational bottlenecks, and missed market intelligence.",
+      "The AI Solution trusted by leading retail brands — say goodbye to scattered product data, operational bottlenecks, and missed market intelligence.",
     ctaButtons: {
       primary: {
         label: "Get started",
@@ -35,7 +35,7 @@ export const retailEcommerceConfig: IndustryPageConfig = {
         title: "Head of Marketing",
       },
       company: {
-        logo: "/static/landing/logos/color/fleet.png",
+        logo: "/static/landing/logos/white/fleet.svg",
         alt: "Fleet Logo",
       },
       bgColor: "bg-green-600",
@@ -47,7 +47,7 @@ export const retailEcommerceConfig: IndustryPageConfig = {
     },
   },
   aiAgents: {
-    title: "AI Agents That Drive Commerce Forward",
+    title: "AI agents that drive commerce forward",
     description:
       "Accelerate retail & e-commerce growth with AI agents built for modern commerce. Dust automates customer support, operations, and competitive intelligence—freeing your teams to focus on strategic growth decisions.",
     bgColor: "bg-gray-50",
@@ -61,21 +61,21 @@ export const retailEcommerceConfig: IndustryPageConfig = {
     painPoints: [
       {
         icon: "/static/landing/industry/d-blue.svg",
-        title: "Turn Customer Chaos Into Service Excellence",
+        title: "Turn customer chaos into service excellence",
         description:
           "Auto-route tickets and resolve inquiries. Teams handle complex issues while customer satisfaction stays high.",
         color: "blue",
       },
       {
         icon: "/static/landing/industry/d-red.svg",
-        title: "Automate Manual Operations",
+        title: "Automate manual operations",
         description:
           "Extract specs, generate content, automate workflows. Teams shift from repetitive tasks to strategic decisions.",
         color: "red",
       },
       {
         icon: "/static/landing/industry/d-green.svg",
-        title: "Transform Scattered Data Into Intelligence",
+        title: "Transform scattered data into intelligence",
         description:
           "Monitor competition and analyze market trends. Teams get actionable intelligence for smarter pricing and positioning.",
         color: "green",
@@ -86,161 +86,155 @@ export const retailEcommerceConfig: IndustryPageConfig = {
     title: "Dust in Action",
     useCases: [
       {
-        title: "Customer Service",
+        title: "Customer service",
         image: "/static/landing/industry/features/uxWriter_2.svg",
         bgColor: "bg-pink-100",
         features: [
           {
             icon: "bg-red-500",
-            title: "Ticket Triaging",
+            title: "Ticket triaging",
             description:
               "Automatically classify support tickets, route to appropriate teams, suggest solutions, and optimize workflows for service efficiency.",
           },
           {
             icon: "bg-yellow-400 rounded-tr-full",
-            title: "Enhanced Consumer Support",
+            title: "Enhanced consumer support",
             description:
               "Deliver automated responses for orders, returns, refunds, and policy inquiries; provide expert assistance across all retail channels.",
           },
           {
             icon: "bg-green-600 rounded-bl-full",
-            title: "Support Insights",
+            title: "Support insights",
             description:
               "Analyze ticket patterns to identify optimization opportunities and improve customer service efficiency.",
           },
           {
             icon: "bg-blue-400",
-            title: "Seller Knowledge",
+            title: "Seller knowledge",
             description:
               "Provide sellers with updated information about new product lines, promotional campaigns, etc",
           },
         ],
       },
       {
-        title: "Business Intelligence & Analytics",
+        title: "Business intelligence & analytics",
         image: "/static/landing/industry/features/Data_graph.svg",
         bgColor: "bg-green-100",
         features: [
           {
             icon: "bg-pink-400",
-            title: "Data Co-Pilot",
+            title: "Data co-pilot",
             description:
               "Create Excel formulas and SQL queries, guide A/B test design. Empower anyone to accelerate complex data work.",
           },
           {
             icon: "bg-red-500 rounded-tr-full",
-            title: "Self-Service Retail Analytics",
+            title: "Self-service retail analytics",
             description:
               "Empower teams with a self-service engine which can deliver actionable analytics and visualizations on trends and activity.",
           },
           {
             icon: "bg-yellow-400 rounded-bl-full",
-            title: "Consumer Feedback Analysis",
+            title: "Consumer feedback analysis",
             description:
               "Systematically categorize customer reviews and feedback to uncover quality issues and improvement opportunities.",
           },
           {
             icon: "bg-blue-400",
-            title: "News Monitoring",
+            title: "News monitoring",
             description:
               "Track real-time industry news, competitor announcements, and market developments impacting your business decisions.",
           },
         ],
       },
       {
-<<<<<<< HEAD
-        title: "Marketing",
-        image: "/static/landing/industry/features/Radar.svg",
-        bgColor: "bg-gray-100",
-=======
-        title: "Marketing & Intelligence",
+        title: "Marketing & intelligence",
         image: "/static/landing/industry/features/Radar_AIDigest.svg",
         bgColor: "bg-gray-950",
->>>>>>> 5777cc25881e0dffc9390770a0cee4b88d0fcb1e
         features: [
           {
             icon: "bg-pink-400",
-            title: "Content Creation",
+            title: "Content creation",
             description:
               "Generate multilingual customer engagement across email, reviews, social media, and feedback platforms consistently.",
           },
           {
             icon: "bg-red-500 rounded-tr-full",
-            title: "Brand Compliance Review",
+            title: "Brand compliance review",
             description:
               "Automatically check content against brand guidelines and regulatory requirements to ensure consistent messaging and compliance.",
           },
           {
             icon: "bg-yellow-400 rounded-bl-full",
-            title: "Reputation Monitoring",
+            title: "Reputation monitoring",
             description:
               "Track real-time news mentions, online reputation, and brand sentiment across digital channels with alerts.",
           },
           {
             icon: "bg-green-600",
-            title: "Industry & Competitive Research",
+            title: "Industry & competitive research",
             description:
               "Conduct competitive analysis and market intelligence. Generate reports on competitors, trends, and positioning opportunities.",
           },
         ],
       },
       {
-        title: "Product & Catalog Operations",
+        title: "Product & catalog operations",
         image: "/static/landing/industry/features/Catalog.svg",
         bgColor: "bg-blue-100",
         features: [
           {
             icon: "bg-pink-400",
-            title: "Product Information Management (PIM)",
+            title: "Product information management (PIM)",
             description:
               "Automatically extract and standardize product specifications from supplier catalogs into consistent, channel-optimized content.",
           },
           {
             icon: "bg-red-500 rounded-tr-full",
-            title: "Multi-Channel Content Adaptation",
+            title: "Multi-channel content adaptation",
             description:
               "Transform single product data into optimized content for different platforms and regulatory submissions.",
           },
           {
             icon: "bg-yellow-400 rounded-bl-full",
-            title: "Intelligent Product Categorization",
+            title: "Intelligent product categorization",
             description:
               "Automatically classify new products into appropriate categories based on specifications and performance data.",
           },
           {
             icon: "bg-blue-400",
-            title: "Product Performance Insights",
+            title: "Product performance insights",
             description:
               "Analyze which products drive revenue, margins, and customer loyalty for optimized catalog decisions.",
           },
         ],
       },
       {
-        title: "Merchant Management",
+        title: "Merchant management",
         image: "/static/landing/industry/features/Provider_list.svg",
         bgColor: "bg-orange-100",
         features: [
           {
             icon: "bg-pink-400",
-            title: "Merchant/Supplier Validation & Risk Assessment",
+            title: "Merchant/Supplier validation & risk assessment",
             description:
               "Instantly assess potential partners using comprehensive due diligence, financial screening, and online presence verification.",
           },
           {
             icon: "bg-red-500 rounded-tr-full",
-            title: "RFP Response Automation",
+            title: "RFP response automation",
             description:
               "Automatically generate comprehensive, tailored responses based on company capabilities, past proposals, and supplier requirements.",
           },
           {
             icon: "bg-yellow-400 rounded-bl-full",
-            title: "Contract Intelligence",
+            title: "Contract intelligence",
             description:
               "Analyze vendor agreements and partnership terms to identify risk factors and streamline negotiations.",
           },
           {
             icon: "bg-green-600",
-            title: "Partnership Proposals & Communications",
+            title: "Partnership proposals & communications",
             description:
               "Craft professional supplier communications, partnership proposals, and vendor relationship management emails.",
           },
@@ -249,7 +243,7 @@ export const retailEcommerceConfig: IndustryPageConfig = {
     ],
   },
   impactMetrics: {
-    bgColor: "bg-green-50",
+    bgColor: "bg-blue-50",
     metrics: [
       {
         value: "50",
@@ -283,7 +277,7 @@ export const retailEcommerceConfig: IndustryPageConfig = {
       title: "Head of Marketing",
     },
     company: {
-      logo: "/static/landing/logos/color/fleet.png",
+      logo: "/static/landing/logos/white/fleet.svg",
       alt: "Fleet Logo",
     },
     bgColor: "bg-green-600",
@@ -319,7 +313,7 @@ export const retailEcommerceConfig: IndustryPageConfig = {
   },
   justUseDust: {
     title: "Just use Dust",
-    titleColor: "text-green-600",
+    titleColor: "text-blue-600",
     ctaButtons: {
       primary: {
         label: "Start Free Trial",
@@ -330,7 +324,7 @@ export const retailEcommerceConfig: IndustryPageConfig = {
         href: "/home/contact",
       },
     },
-    bgColor: "bg-green-50",
+    bgColor: "bg-blue-50",
     decorativeShapes: true,
   },
 };
