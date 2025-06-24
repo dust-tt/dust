@@ -334,7 +334,7 @@ export function useFileUploaderService({
       });
 
       const allFilesReady = fileBlobs.every((f) => f.isUploading === false);
-      if (allFilesReady && numFilesProcessing > 0) {
+      if (allFilesReady && isProcessingFiles) {
         setNumFilesProcessing(0);
       }
     }
