@@ -484,6 +484,11 @@ async function getFilteredChannels(
       continue;
     }
 
+    if (remoteChannel.is_private) {
+      // Skip private channels backend-side (displayed frontend-side if FF index_private_slack_channel is toggled)
+      continue;
+    }
+
     const localChannel = localChannelsById[remoteChannel.id];
 
     // Skip channels with skipReason
