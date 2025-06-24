@@ -16,7 +16,7 @@ export const retailEcommerceConfig: IndustryPageConfig = {
       </>
     ),
     description:
-      "AI Agents for Compliance, Support, and Growth. Transform retail operations with intelligent automation that enhances customer experience, streamlines operations, and drives sustainable growth.",
+      "The AI Solution Trusted by Leading Retail Brands — say goodbye to scattered product data, operational bottlenecks, and missed market intelligence.",
     ctaButtons: {
       primary: {
         label: "Get started",
@@ -47,9 +47,9 @@ export const retailEcommerceConfig: IndustryPageConfig = {
     },
   },
   aiAgents: {
-    title: "AI Agents for Compliance, Support, and Growth",
+    title: "AI Agents That Drive Commerce Forward",
     description:
-      "Deploy specialized AI agents that automate retail workflows, enhance customer service, and ensure regulatory compliance—transforming how your retail business operates while improving customer satisfaction and driving growth.",
+      "Accelerate retail & e-commerce growth with AI agents built for modern commerce. Dust automates customer support, operations, and competitive intelligence—freeing your teams to focus on strategic growth decisions.",
     bgColor: "bg-gray-50",
   },
   trustedBy: {
@@ -61,23 +61,23 @@ export const retailEcommerceConfig: IndustryPageConfig = {
     painPoints: [
       {
         icon: "/static/landing/industry/d-blue.svg",
-        title: "Scale Customer Chain and Online Experience",
+        title: "Turn Customer Chaos Into Service Excellence",
         description:
-          "Automate customer service, order management, and inventory operations to scale efficiently while maintaining exceptional customer experience across all channels.",
+          "Auto-route tickets and resolve inquiries. Teams handle complex issues while customer satisfaction stays high.",
         color: "blue",
       },
       {
         icon: "/static/landing/industry/d-red.svg",
-        title: "Automate Manual Operations & Support",
+        title: "Automate Manual Operations",
         description:
-          "Streamline manual processes from inventory management to customer support, reducing operational overhead and improving response times.",
+          "Extract specs, generate content, automate workflows. Teams shift from repetitive tasks to strategic decisions.",
         color: "red",
       },
       {
         icon: "/static/landing/industry/d-green.svg",
-        title: "Enhance Supplier Relationships & Analytics",
+        title: "Transform Scattered Data Into Intelligence",
         description:
-          "Leverage AI-powered insights for better supplier management, demand forecasting, and data-driven decision making to optimize your supply chain.",
+          "Monitor competition and analyze market trends. Teams get actionable intelligence for smarter pricing and positioning.",
         color: "green",
       },
     ],
@@ -91,22 +91,28 @@ export const retailEcommerceConfig: IndustryPageConfig = {
         bgColor: "bg-pink-100",
         features: [
           {
-            icon: "bg-pink-500",
-            title: "AI-Powered Customer Support",
+            icon: "bg-red-500",
+            title: "Ticket Triaging",
             description:
-              "Instantly resolve customer queries about orders, returns, and product information with AI assistants",
+              "Automatically classify support tickets, route to appropriate teams, suggest solutions, and optimize workflows for service efficiency.",
           },
           {
-            icon: "bg-blue-500 rounded-tr-full",
-            title: "Order Tracking & Updates",
+            icon: "bg-yellow-400 rounded-tr-full",
+            title: "Enhanced Consumer Support",
             description:
-              "Provide real-time order status updates and automated customer communications",
+              "Deliver automated responses for orders, returns, refunds, and policy inquiries; provide expert assistance across all retail channels.",
           },
           {
-            icon: "bg-green-500 rounded-bl-full",
-            title: "Product Recommendations",
+            icon: "bg-green-600 rounded-bl-full",
+            title: "Support Insights",
             description:
-              "AI-driven personalized product recommendations and cross-selling opportunities",
+              "Analyze ticket patterns to identify optimization opportunities and improve customer service efficiency.",
+          },
+          {
+            icon: "bg-blue-400",
+            title: "Seller Knowledge",
+            description:
+              "Provide sellers with updated information about new product lines, promotional campaigns, etc",
           },
         ],
       },
@@ -116,47 +122,59 @@ export const retailEcommerceConfig: IndustryPageConfig = {
         bgColor: "bg-green-100",
         features: [
           {
-            icon: "bg-green-500",
-            title: "Sales Performance Analytics",
+            icon: "bg-pink-400",
+            title: "Data Co-Pilot",
             description:
-              "Advanced analytics on sales trends, customer behavior, and product performance",
+              "Create Excel formulas and SQL queries, guide A/B test design. Empower anyone to accelerate complex data work.",
           },
           {
-            icon: "bg-blue-500 rounded-tl-full",
-            title: "Inventory Optimization",
+            icon: "bg-red-500 rounded-tr-full",
+            title: "Self-Service Retail Analytics",
             description:
-              "AI-powered demand forecasting and inventory management optimization",
+              "Empower teams with a self-service engine which can deliver actionable analytics and visualizations on trends and activity.",
           },
           {
-            icon: "bg-purple-400 rounded-br-full",
-            title: "Customer Insights & Segmentation",
+            icon: "bg-yellow-400 rounded-bl-full",
+            title: "Consumer Feedback Analysis",
             description:
-              "Deep customer analytics and behavioral segmentation for targeted marketing",
+              "Systematically categorize customer reviews and feedback to uncover quality issues and improvement opportunities.",
+          },
+          {
+            icon: "bg-blue-400",
+            title: "News Monitoring",
+            description:
+              "Track real-time industry news, competitor announcements, and market developments impacting your business decisions.",
           },
         ],
       },
       {
-        title: "Marketing & Intelligence",
+        title: "Marketing",
         image: "/static/landing/industry/features/Radar.svg",
         bgColor: "bg-gray-100",
         features: [
           {
-            icon: "bg-gray-500",
-            title: "Campaign Optimization",
+            icon: "bg-pink-400",
+            title: "Content Creation",
             description:
-              "AI-driven marketing campaign optimization and performance analysis",
+              "Generate multilingual customer engagement across email, reviews, social media, and feedback platforms consistently.",
           },
           {
-            icon: "bg-green-500 rounded-tl-full",
-            title: "Content Generation",
+            icon: "bg-red-500 rounded-tr-full",
+            title: "Brand Compliance Review",
             description:
-              "Automated product descriptions, marketing copy, and promotional content creation",
+              "Automatically check content against brand guidelines and regulatory requirements to ensure consistent messaging and compliance.",
           },
           {
-            icon: "bg-blue-400 rounded-br-full",
-            title: "Market Intelligence",
+            icon: "bg-yellow-400 rounded-bl-full",
+            title: "Reputation Monitoring",
             description:
-              "Competitive analysis and market trend identification for strategic planning",
+              "Track real-time news mentions, online reputation, and brand sentiment across digital channels with alerts.",
+          },
+          {
+            icon: "bg-green-600",
+            title: "Industry & Competitive Research",
+            description:
+              "Conduct competitive analysis and market intelligence. Generate reports on competitors, trends, and positioning opportunities.",
           },
         ],
       },
@@ -166,22 +184,28 @@ export const retailEcommerceConfig: IndustryPageConfig = {
         bgColor: "bg-blue-100",
         features: [
           {
-            icon: "bg-blue-500",
-            title: "Product Information Management",
+            icon: "bg-pink-400",
+            title: "Product Information Management (PIM)",
             description:
-              "Automated product data management and catalog optimization",
+              "Automatically extract and standardize product specifications from supplier catalogs into consistent, channel-optimized content.",
           },
           {
-            icon: "bg-green-500 rounded-tl-full",
-            title: "Pricing Strategy Optimization",
+            icon: "bg-red-500 rounded-tr-full",
+            title: "Multi-Channel Content Adaptation",
             description:
-              "AI-powered dynamic pricing and competitive pricing analysis",
+              "Transform single product data into optimized content for different platforms and regulatory submissions.",
           },
           {
-            icon: "bg-orange-400 rounded-br-full",
-            title: "Quality Control & Reviews",
+            icon: "bg-yellow-400 rounded-bl-full",
+            title: "Intelligent Product Categorization",
             description:
-              "Automated quality checks and review analysis for product improvements",
+              "Automatically classify new products into appropriate categories based on specifications and performance data.",
+          },
+          {
+            icon: "bg-blue-400",
+            title: "Product Performance Insights",
+            description:
+              "Analyze which products drive revenue, margins, and customer loyalty for optimized catalog decisions.",
           },
         ],
       },
@@ -191,22 +215,28 @@ export const retailEcommerceConfig: IndustryPageConfig = {
         bgColor: "bg-orange-100",
         features: [
           {
-            icon: "bg-orange-500",
-            title: "Supplier Relationship Management",
+            icon: "bg-pink-400",
+            title: "Merchant/Supplier Validation & Risk Assessment",
             description:
-              "Automated supplier communications and performance tracking",
+              "Instantly assess potential partners using comprehensive due diligence, financial screening, and online presence verification.",
           },
           {
-            icon: "bg-blue-500 rounded-tl-full",
-            title: "Vendor Onboarding",
+            icon: "bg-red-500 rounded-tr-full",
+            title: "RFP Response Automation",
             description:
-              "Streamlined vendor onboarding process with automated workflows",
+              "Automatically generate comprehensive, tailored responses based on company capabilities, past proposals, and supplier requirements.",
           },
           {
-            icon: "bg-green-400 rounded-br-full",
-            title: "Contract & Compliance Management",
+            icon: "bg-yellow-400 rounded-bl-full",
+            title: "Contract Intelligence",
             description:
-              "Automated contract management and compliance monitoring for suppliers",
+              "Analyze vendor agreements and partnership terms to identify risk factors and streamline negotiations.",
+          },
+          {
+            icon: "bg-green-600",
+            title: "Partnership Proposals & Communications",
+            description:
+              "Craft professional supplier communications, partnership proposals, and vendor relationship management emails.",
           },
         ],
       },
@@ -216,28 +246,28 @@ export const retailEcommerceConfig: IndustryPageConfig = {
     bgColor: "bg-green-50",
     metrics: [
       {
-        value: "70",
+        value: "50",
         unit: "%",
         type: "Reduction",
-        description: "in customer service response time",
+        description: "in customer support resolution time",
       },
       {
-        value: "55",
+        value: "70",
         unit: "%",
-        type: "Improvement",
-        description: "in inventory management efficiency",
+        type: "Faster",
+        description: "content creation in all languages",
       },
       {
-        value: "45",
+        value: "80",
         unit: "%",
-        type: "Increase",
-        description: "in customer satisfaction scores",
+        type: "Adoption",
+        description: "weekly active users",
       },
     ],
   },
   demoVideo: {
     sectionTitle: "See Dust in motion",
-    videoUrl: "https://fast.wistia.net/embed/iframe/8q80neektv",
+    videoUrl: "https://fast.wistia.net/embed/iframe/9u1uft5pg7",
   },
   testimonial: {
     quote: "Curiosity turned into necessity: I couldn't do half my job without Dust.",
