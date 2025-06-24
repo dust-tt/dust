@@ -52,12 +52,26 @@ import {
   Ok,
   WHITELISTABLE_FEATURES,
 } from "@app/types";
+import type { AuthenticatorType } from "@app/types/auth";
 
 const { ACTIVATE_ALL_FEATURES_DEV = false } = process.env;
 
 const DUST_INTERNAL_EMAIL_REGEXP = /^[^@]+@dust\.tt$/;
 
 export type PublicAPIAuthMethod = "api_key" | "access_token";
+
+export class AuthToJSONError extends Error {
+  missingValue: "user" | "workspace" | "subscription";
+
+  constructor(
+    message: string,
+    missingValue: "user" | "workspace" | "subscription"
+  ) {
+    super(message);
+    this.message = message;
+    this.missingValue = missingValue;
+  }
+}
 
 export const getAuthType = (token: string): PublicAPIAuthMethod => {
   return token.startsWith(SECRET_KEY_PREFIX) ? "api_key" : "access_token";
@@ -981,6 +995,33 @@ export class Authenticator {
 
   key(): KeyAuthType | null {
     return this._key ?? null;
+  }
+
+  toJSON(): Result<AuthenticatorType, AuthToJSONError> {
+    const user = this.user();
+    if (!user) {
+      return new Err(new AuthToJSONError("Missing user", "user"));
+    }
+
+    const owner = this.workspace();
+    if (!owner) {
+      return new Err(new AuthToJSONError("Missing workspace", "workspace"));
+    }
+
+    const subscription = this.subscriptionResource();
+    if (!subscription) {
+      return new Err(
+        new AuthToJSONError("Missing subscription", "subscription")
+      );
+    }
+
+    return new Ok({
+      user: user.toJSON(),
+      owner: renderLightWorkspaceType({ workspace: owner }),
+      subscription: subscription.toJSON(),
+      plan: this.plan(),
+      isAdmin: this.isAdmin(),
+    });
   }
 }
 
