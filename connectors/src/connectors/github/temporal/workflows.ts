@@ -79,7 +79,6 @@ const MAX_CONCURRENT_REPO_SYNC_WORKFLOWS = 3;
 const MAX_CONCURRENT_ISSUE_SYNC_ACTIVITIES_PER_WORKFLOW = 8;
 
 const FILE_CHUNK_SIZE = 50;
-const DIRECTORY_CHUNK_SIZE = 20;
 
 const CONNECTOR_IDS_USING_GCS_CODE_SYNC: number[] = [15];
 
@@ -600,24 +599,24 @@ export async function githubCodeSyncStatelessWorkflow({
     }
   }
 
-  // 2. Process directories.
-  const directoryChunkPromises = [];
+  // 2. Process directories depth-first (parents before children) with updated directory info.
   for (const dirBatch of directoryBatches) {
-    const chunks = chunk(dirBatch.directories, DIRECTORY_CHUNK_SIZE);
-    for (const directoryChunk of chunks) {
-      directoryChunkPromises.push(
-        githubProcessDirectoryChunkActivity({
-          codeSyncStartedAtMs,
-          connectorId,
-          dataSourceConfig,
-          defaultBranch: extractResult.repoInfo.default_branch,
-          directories: directoryChunk,
-          repoId,
-          repoLogin,
-          repoName,
-          updatedDirectoryIds: allUpdatedDirectoryIds,
-        })
-      );
+    const CHUNK_SIZE = 20;
+
+    for (let i = 0; i < dirBatch.directories.length; i += CHUNK_SIZE) {
+      const directoryChunk = dirBatch.directories.slice(i, i + CHUNK_SIZE);
+
+      await githubProcessDirectoryChunkActivity({
+        codeSyncStartedAtMs,
+        connectorId,
+        dataSourceConfig,
+        defaultBranch: extractResult.repoInfo.default_branch,
+        directories: directoryChunk,
+        repoId,
+        repoLogin,
+        repoName,
+        updatedDirectoryIds: allUpdatedDirectoryIds,
+      });
     }
   }
 
