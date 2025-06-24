@@ -1,4 +1,4 @@
-import type { Attributes, ModelStatic } from "sequelize";
+import type { Attributes, CreationAttributes, ModelStatic } from "sequelize";
 import type { Transaction } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
@@ -6,10 +6,11 @@ import type { ResourceLogJSON } from "@app/lib/resources/base_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
-import type { Result } from "@app/types";
+import type { ModelId, Result } from "@app/types";
 import { Err, Ok } from "@app/types";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
+// This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
 export interface WorkspaceResource
   extends ReadonlyAttributesType<WorkspaceModel> {}
@@ -29,40 +30,15 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
   }
 
   static async makeNew(
-    blob: Omit<
-      Attributes<WorkspaceModel>,
-      | "id"
-      | "createdAt"
-      | "updatedAt"
-      | "description"
-      | "segmentation"
-      | "ssoEnforced"
-      | "workOSOrganizationId"
-      | "whiteListedProviders"
-      | "defaultEmbeddingProvider"
-      | "metadata"
-      | "conversationsRetentionDays"
-    > &
-      Partial<
-        Pick<
-          Attributes<WorkspaceModel>,
-          | "description"
-          | "segmentation"
-          | "ssoEnforced"
-          | "workOSOrganizationId"
-          | "whiteListedProviders"
-          | "defaultEmbeddingProvider"
-          | "metadata"
-          | "conversationsRetentionDays"
-        >
-      >
+    blob: CreationAttributes<WorkspaceModel>
   ): Promise<WorkspaceResource> {
     const workspace = await WorkspaceModel.create(blob);
+
     return new this(WorkspaceModel, workspace.get());
   }
 
   static async fetchById(
-    workspaceId: number
+    workspaceId: ModelId
   ): Promise<WorkspaceResource | null> {
     const workspace = await WorkspaceModel.findByPk(workspaceId);
     return workspace ? new this(WorkspaceModel, workspace.get()) : null;
@@ -78,7 +54,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     return workspace ? new this(WorkspaceModel, workspace.get()) : null;
   }
 
-  static async findAllByIds(ids: number[]): Promise<WorkspaceResource[]> {
+  static async findAllByIds(ids: ModelId[]): Promise<WorkspaceResource[]> {
     const workspaces = await WorkspaceModel.findAll({
       where: { id: ids },
     });
