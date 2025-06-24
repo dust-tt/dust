@@ -31,37 +31,38 @@ export type RedisUsageTagsType =
   | "cache_with_redis"
   | "rate_limiter";
 
-const getRedisURIAndKeyForUsage = (
-  usage: RedisUsageTagsType
-): { key: keyof typeof clients; uri: string } => {
-  switch (usage) {
-    case "cache_with_redis":
-      return { key: "cache", uri: config.getRedisCacheURI() };
-    default:
-      return { key: "standard", uri: config.getRedisURI() };
-  }
+export type GetRedisClientOptions = {
+  origin: RedisUsageTagsType;
+  /** Type of redis client being created
+   * standard: has an isolationPoolOptions
+   * cache: does not
+   */
+  type?: "standard" | "cache";
 };
 
 export async function getRedisClient({
   origin,
-}: {
-  origin: RedisUsageTagsType;
-}): Promise<RedisClientType> {
-  const { key, uri } = getRedisURIAndKeyForUsage(origin);
-
-  let client = clients[key];
+  type = "standard",
+}: GetRedisClientOptions): Promise<RedisClientType> {
+  let client = clients[type];
 
   if (client === null) {
-    client = createClient({
-      url: uri,
-      isolationPoolOptions: {
-        acquireTimeoutMillis: 10000, // Max time to wait for a connection: 10 seconds.
-        min: 1,
-        max: 800, // Maximum number of concurrent connections for streaming.
-        evictionRunIntervalMillis: 15000, // Check for idle connections every 15 seconds.
-        idleTimeoutMillis: 30000, // Connections idle for more than 30 seconds will be eligible for eviction.
-      },
-    });
+    if (type === "cache") {
+      client = createClient({
+        url: config.getRedisCacheURI(),
+      });
+    } else {
+      client = createClient({
+        url: config.getRedisURI(),
+        isolationPoolOptions: {
+          acquireTimeoutMillis: 10000, // Max time to wait for a connection: 10 seconds.
+          min: 1,
+          max: 800, // Maximum number of concurrent connections for streaming.
+          evictionRunIntervalMillis: 15000, // Check for idle connections every 15 seconds.
+          idleTimeoutMillis: 30000, // Connections idle for more than 30 seconds will be eligible for eviction.
+        },
+      });
+    }
 
     client.on("error", (err) => logger.info({ err }, "Redis Client Error"));
     client.on("ready", () => logger.info({}, "Redis Client Ready"));
@@ -75,7 +76,7 @@ export async function getRedisClient({
     });
 
     await client.connect();
-    clients[key] = client;
+    clients[type] = client;
     return client;
   }
 
@@ -83,7 +84,7 @@ export async function getRedisClient({
 }
 
 export async function runOnRedis<T>(
-  opts: { origin: RedisUsageTagsType },
+  opts: GetRedisClientOptions,
   fn: (client: RedisClientType) => PromiseLike<T>
 ): Promise<T> {
   const client = await getRedisClient(opts);
