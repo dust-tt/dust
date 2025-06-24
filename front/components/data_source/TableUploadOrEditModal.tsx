@@ -402,14 +402,13 @@ export const TableUploadOrEditModal = ({
                       title="CSV File"
                       description={`Select the CSV file for data extraction. The maximum file size allowed is ${maxFileSizeToHumanReadable(MAX_FILE_SIZES.delimited)}.`}
                       action={{
-                        label:
-                          fileUploaderService.numFilesProcessing > 0
-                            ? "Uploading..."
-                            : tableState.file
-                              ? tableState.file.name
-                              : initialId
-                                ? "Replace file"
-                                : "Upload file",
+                        label: fileUploaderService.isProcessingFiles
+                          ? "Uploading..."
+                          : tableState.file
+                            ? tableState.file.name
+                            : initialId
+                              ? "Replace file"
+                              : "Upload file",
                         variant: "primary",
                         icon: DocumentPlusIcon,
                         onClick: () => fileInputRef.current?.click(),

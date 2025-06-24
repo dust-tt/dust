@@ -428,7 +428,7 @@ export const DocumentUploadOrEditModal = ({
                       } MB of raw text.`}
                       action={{
                         label:
-                          fileUploaderService.numFilesProcessing > 0 ||
+                          fileUploaderService.isProcessingFiles ||
                           isContentLoading
                             ? "Uploading..."
                             : "Upload file",
@@ -436,7 +436,7 @@ export const DocumentUploadOrEditModal = ({
                         icon: DocumentPlusIcon,
                         onClick: () => fileInputRef.current?.click(),
                         isLoading:
-                          fileUploaderService.numFilesProcessing > 0 ||
+                          fileUploaderService.isProcessingFiles ||
                           isContentLoading,
                       }}
                     />
@@ -451,7 +451,7 @@ export const DocumentUploadOrEditModal = ({
                       minRows={10}
                       disabled={
                         isContentLoading ||
-                        fileUploaderService.numFilesProcessing > 0
+                        fileUploaderService.isProcessingFiles
                       }
                       placeholder="Your document content..."
                       value={documentState.text}

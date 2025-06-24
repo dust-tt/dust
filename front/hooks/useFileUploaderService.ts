@@ -62,6 +62,8 @@ export function useFileUploaderService({
   const [fileBlobs, setFileBlobs] = useState<FileBlob[]>([]);
   const [numFilesProcessing, setNumFilesProcessing] = useState(0);
 
+  const isProcessingFiles = numFilesProcessing > 0;
+
   const sendNotification = useSendNotification();
 
   const findAvailableTitle = (
@@ -357,7 +359,7 @@ export function useFileUploaderService({
     getFileBlobs,
     handleFileChange,
     handleFilesUpload,
-    numFilesProcessing,
+    isProcessingFiles,
     removeFile,
     resetUpload,
   };
