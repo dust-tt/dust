@@ -23,6 +23,7 @@ import {
   getMeeting,
   getObjectByEmail,
   getObjectProperties,
+  getUserDetails,
   MAX_COUNT_LIMIT,
   MAX_LIMIT,
   searchCrmObjects,
@@ -31,10 +32,13 @@ import {
   updateContact,
   updateDeal,
 } from "@app/lib/actions/mcp_internal_actions/servers/hubspot/hubspot_api_helper";
+import { HUBSPOT_ID_TO_OBJECT_TYPE } from "@app/lib/actions/mcp_internal_actions/servers/hubspot/hubspot_utils";
 import {
   ERROR_MESSAGES,
+  generateUrls,
+  validateRequests,
   withAuth,
-} from "@app/lib/actions/mcp_internal_actions/servers/hubspot/hupspot_utils";
+} from "@app/lib/actions/mcp_internal_actions/servers/hubspot/hubspot_utils";
 import {
   makeMCPToolJSONSuccess,
   makeMCPToolTextError,
@@ -821,6 +825,67 @@ const createServer = (): McpServer => {
           }
           return makeMCPToolJSONSuccess({
             message: "CRM objects searched successfully.",
+            result,
+          });
+        },
+        authInfo,
+      });
+    }
+  );
+
+  server.tool(
+    "hubspot-get-link",
+    "Generates HubSpot UI links for different pages based on object types and IDs",
+    {
+      portalId: z.string().describe("The HubSpot portal/account ID"),
+      uiDomain: z.string().describe("The HubSpot UI domain"),
+      pageRequests: z.array(
+        z.object({
+          pagetype: z.enum(["record", "index"]),
+          objectTypeId: z.string(),
+          objectId: z.string().optional(),
+        })
+      ),
+    },
+    async ({ portalId, uiDomain, pageRequests }) => {
+      const validationResult = validateRequests(pageRequests);
+
+      if (validationResult.errors.length > 0) {
+        const errorResponse = {
+          errors: validationResult.errors,
+        };
+
+        // Add valid object type IDs only once if there were invalid IDs
+        if (validationResult.invalidObjectTypeIds.length > 0) {
+          errorResponse.errors.push(
+            `Valid object type IDs: ${Object.keys(
+              HUBSPOT_ID_TO_OBJECT_TYPE
+            ).join(", ")}`
+          );
+        }
+
+        return makeMCPToolTextError(JSON.stringify(errorResponse, null, 2));
+      }
+
+      const urlResults = generateUrls(portalId, uiDomain, pageRequests);
+
+      return makeMCPToolJSONSuccess({
+        message: "HubSpot links generated successfully.",
+        result: urlResults,
+      });
+    }
+  );
+
+  server.tool(
+    "hubspot-get-user-details",
+    "Gets the current user's details including email, portal ID, and UI domain from the HubSpot access token",
+    {},
+    async (_, { authInfo }) => {
+      return withAuth({
+        action: async (accessToken) => {
+          const result = await getUserDetails(accessToken);
+          return makeMCPToolJSONSuccess({
+            message: "User details retrieved successfully.",
             result,
           });
         },

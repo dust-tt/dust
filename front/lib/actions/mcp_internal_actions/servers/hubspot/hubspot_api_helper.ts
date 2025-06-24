@@ -1229,3 +1229,34 @@ export const updateDeal = async ({
     throw normalizeError(error);
   }
 };
+
+export const getUserDetails = async (accessToken: string) => {
+  try {
+    const response = await fetch(
+      `https://api.hubapi.com/oauth/v1/access-tokens/${accessToken}`,
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    // Only return the specified fields
+    return {
+      user_id: data.user_id,
+      user: data.user,
+      hub_id: data.hub_id,
+    };
+  } catch (error) {
+    console.error("Error getting user details:", error);
+    throw normalizeError(error);
+  }
+};
