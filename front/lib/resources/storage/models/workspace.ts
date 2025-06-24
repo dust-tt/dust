@@ -13,7 +13,7 @@ import { MODEL_PROVIDER_IDS } from "@app/types";
 const modelProviders = [...MODEL_PROVIDER_IDS] as string[];
 export type ModelProviderIdType = (typeof MODEL_PROVIDER_IDS)[number];
 
-export class Workspace extends BaseModel<Workspace> {
+export class WorkspaceModel extends BaseModel<WorkspaceModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -29,7 +29,7 @@ export class Workspace extends BaseModel<Workspace> {
   declare metadata: Record<string, string | number | boolean | object> | null;
   declare conversationsRetentionDays: number | null;
 }
-Workspace.init(
+WorkspaceModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,

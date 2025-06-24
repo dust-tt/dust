@@ -1,6 +1,6 @@
 import { AgentUserRelation } from "@app/lib/models/assistant/agent";
-import { Workspace } from "@app/lib/models/workspace";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { makeScript } from "@app/scripts/helpers";
 import { GLOBAL_AGENTS_SID } from "@app/types";
@@ -21,7 +21,7 @@ makeScript(
   },
   async ({ wId, agentConfigurationSIDs, execute }, logger) => {
     // Find the workspace
-    const workspace = await Workspace.findOne({
+    const workspace = await WorkspaceModel.findOne({
       where: {
         sId: wId,
       },

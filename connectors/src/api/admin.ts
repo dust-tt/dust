@@ -55,10 +55,6 @@ const whitelistedCommands = [
   },
   {
     majorCommand: "webcrawler",
-    command: "update-crawler",
-  },
-  {
-    majorCommand: "webcrawler",
     command: "update-frequency",
   },
 ];

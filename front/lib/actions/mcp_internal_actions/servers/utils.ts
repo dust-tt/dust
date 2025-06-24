@@ -17,10 +17,10 @@ import type { DataSourceConfiguration } from "@app/lib/api/assistant/configurati
 import type { Authenticator } from "@app/lib/auth";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
-import { Workspace } from "@app/lib/models/workspace";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { getResourceNameAndIdFromSId } from "@app/lib/resources/string_ids";
 import type {
   CoreAPISearchFilter,
@@ -60,7 +60,7 @@ export async function fetchAgentDataSourceConfiguration(
           model: DataSourceViewModel,
           as: "dataSourceView",
           required: true,
-          include: [{ model: Workspace, as: "workspace", required: true }],
+          include: [{ model: WorkspaceModel, as: "workspace", required: true }],
         },
       ],
     });

@@ -1,20 +1,36 @@
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import { Client } from "@notionhq/client";
+import { Client, isFullDatabase, isFullPage } from "@notionhq/client";
 import type {
   BlockObjectRequest,
   CreateCommentParameters,
   QueryDatabaseParameters,
+  RichTextItemResponse,
 } from "@notionhq/client/build/src/api-endpoints";
+import { parseISO } from "date-fns";
 import { z } from "zod";
 
+import type {
+  SearchQueryResourceType,
+  SearchResultResourceType,
+} from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { renderRelativeTimeFrameForToolOutput } from "@app/lib/actions/mcp_internal_actions/servers/utils";
 import {
   makeMCPToolJSONSuccess,
   makeMCPToolTextError,
 } from "@app/lib/actions/mcp_internal_actions/utils";
+import type { AgentLoopContextType } from "@app/lib/actions/types";
+import {
+  actionRefsOffset,
+  NOTION_SEARCH_ACTION_NUM_RESULTS,
+} from "@app/lib/actions/utils";
+import { getRefs } from "@app/lib/api/assistant/citations";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
-import { normalizeError } from "@app/types";
+import type { Authenticator } from "@app/lib/auth";
+import type { TimeFrame } from "@app/types";
+import { normalizeError, parseTimeFrame, timeFrameFromNow } from "@app/types";
 
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "notion",
@@ -88,24 +104,6 @@ const propertiesSchema = z
   .default({})
   .describe(
     "Properties for the new page or database. Keys are property names, values are property value objects as per Notion API. See https://developers.notion.com/reference/page#property-value-types for details."
-  );
-
-const searchFilterSchema = z
-  .object({
-    property: z.literal("object"),
-    value: z.enum(["page", "database"]),
-  })
-  .describe(
-    "A set of criteria, value and property keys, that limits the results to either only pages or only databases. Only property: 'object' and value: 'page' or 'database' are allowed."
-  );
-
-const searchSortSchema = z
-  .object({
-    direction: z.enum(["ascending", "descending"]),
-    timestamp: z.literal("last_edited_time"),
-  })
-  .describe(
-    "A set of criteria, direction and timestamp keys, that orders the results. Only timestamp: 'last_edited_time' is allowed."
   );
 
 const dbFilterSchema = z
@@ -256,7 +254,26 @@ export const NotionBlockSchema: z.ZodType = z.union([
   FallbackBlock,
 ]);
 
-const createServer = (): McpServer => {
+function makeQueryResource(
+  query: string,
+  type: "page" | "database",
+  relativeTimeFrame: TimeFrame | null
+): SearchQueryResourceType {
+  const timeFrameAsString =
+    renderRelativeTimeFrameForToolOutput(relativeTimeFrame);
+
+  const text = `Searching Notion ${type}s ${timeFrameAsString} containing: ${query}`;
+  return {
+    mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_QUERY,
+    text,
+    uri: "",
+  };
+}
+
+const createServer = (
+  auth: Authenticator,
+  agentLoopContext?: AgentLoopContextType
+): McpServer => {
   const server = new McpServer(serverInfo);
 
   // Consolidated wrapper for Notion client creation and error handling
@@ -283,30 +300,178 @@ const createServer = (): McpServer => {
 
   server.tool(
     "search",
-    "Search for pages, databases, or blocks in Notion.",
+    "Search for pages or databases in Notion.",
     {
-      query: z.string().optional().describe("Search query string."),
-      filter: searchFilterSchema.optional(),
-      sort: searchSortSchema.optional(),
-      start_cursor: z
+      query: z.string().describe("Search query string."),
+      relativeTimeFrame: z
         .string()
-        .optional()
+        .regex(/^(all|\d+[hdwmy])$/)
         .describe(
-          "A cursor value returned in a previous response that limits the response to results starting after the cursor."
+          "The time frame (relative to LOCAL_TIME) to restrict the search based" +
+            " on the user request and past conversation context." +
+            " Possible values are: `all`, `{k}h`, `{k}d`, `{k}w`, `{k}m`, `{k}y`" +
+            " where {k} is a number. Be strict, do not invent invalid values."
         ),
-      page_size: z
-        .number()
-        .optional()
-        .describe(
-          "The number of items from the full list to include in the response. Maximum: 100."
-        ),
+      type: z
+        .enum(["page", "database"])
+        .describe("What type of notion objects to search."),
     },
-    async ({ query, filter, sort, start_cursor, page_size }, { authInfo }) =>
-      withNotionClient(
-        (notion) =>
-          notion.search({ query, filter, sort, start_cursor, page_size }),
-        authInfo
-      )
+    async ({ query, type, relativeTimeFrame }, { authInfo }) => {
+      if (!agentLoopContext?.runContext) {
+        throw new Error("Agent loop run context is required");
+      }
+
+      const accessToken = authInfo?.token;
+      if (!accessToken) {
+        throw new Error("No access token found");
+      }
+      const notion = new Client({ auth: accessToken });
+
+      const rawResults = await notion.search({
+        query,
+        filter: {
+          property: "object",
+          value: type,
+        },
+        page_size: NOTION_SEARCH_ACTION_NUM_RESULTS,
+      });
+
+      const timeFrame = parseTimeFrame(relativeTimeFrame);
+      const queryResource = makeQueryResource(query, type, timeFrame);
+
+      let results = rawResults.results;
+
+      // Notion search does not support time frame filtering, so we need to filter the results after the search.
+      if (timeFrame) {
+        const timestampInMs = timeFrameFromNow(timeFrame);
+        const date = new Date(timestampInMs);
+        results = rawResults.results.filter((result) => {
+          if (isFullPage(result) || isFullDatabase(result)) {
+            const lastEditedTime = parseISO(result.last_edited_time);
+            return lastEditedTime > date;
+          }
+          return true;
+        });
+      }
+
+      if (results.length === 0) {
+        return {
+          isError: false,
+          content: [
+            {
+              type: "resource" as const,
+              resource: queryResource,
+            },
+            {
+              type: "text" as const,
+              text: "No results found.",
+            },
+          ],
+        };
+      } else {
+        const refsOffset = actionRefsOffset({
+          agentConfiguration: agentLoopContext.runContext.agentConfiguration,
+          stepActionIndex: agentLoopContext.runContext.stepActionIndex,
+          stepActions: agentLoopContext.runContext.stepActions,
+          refsOffset: agentLoopContext.runContext.citationsRefsOffset,
+        });
+
+        const refs = getRefs().slice(
+          refsOffset,
+          refsOffset + NOTION_SEARCH_ACTION_NUM_RESULTS
+        );
+
+        const resultResources = results.map((result) => {
+          if (isFullPage(result)) {
+            const title =
+              (
+                Object.values(result.properties).find(
+                  (p) => p.type === "title"
+                ) as { title: RichTextItemResponse[] }
+              )?.title[0].plain_text ?? "Untitled Page";
+
+            const description = Object.entries(result.properties)
+              .filter(
+                ([, value]) =>
+                  value.type === "rich_text" && value.rich_text.length > 0
+              )
+              .map(([name, value]): [string, RichTextItemResponse[]] => [
+                name,
+                value.type === "rich_text" ? value.rich_text : [],
+              ])
+              .map(([name, richText]): string => {
+                return `${name}: ${richText
+                  .filter((t) => !!t.plain_text)
+                  .map((t) => t.plain_text)
+                  .join(" ")}`;
+              })
+              .join("\n");
+
+            return {
+              mimeType:
+                INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_RESULT,
+              uri: result.url,
+              text: title,
+              id: result.id,
+              tags: [
+                `created: ${result.created_time}`,
+                `lastEdited: ${result.last_edited_time}`,
+              ],
+              ref: refs.shift() as string,
+              chunks: description ? [description] : [],
+              source: {
+                provider: "notion",
+              },
+            } satisfies SearchResultResourceType;
+          } else if (isFullDatabase(result)) {
+            const title = result.title[0].plain_text ?? "Untitled Database";
+            const description = result.description
+              ?.map((d) => d.plain_text)
+              .join(" ");
+
+            return {
+              mimeType:
+                INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_RESULT,
+              uri: result.url,
+              text: title,
+              id: result.id,
+              tags: [
+                `created: ${result.created_time}`,
+                `lastEdited: ${result.last_edited_time}`,
+              ],
+              ref: refs.shift() as string,
+              chunks: description ? [description] : [],
+              source: {
+                provider: "notion",
+              },
+            } satisfies SearchResultResourceType;
+          } else {
+            return JSON.stringify(result.object);
+          }
+        });
+
+        return {
+          isError: false,
+          content: [
+            {
+              type: "resource" as const,
+              resource: queryResource,
+            },
+            ...resultResources.map((result) =>
+              typeof result === "string"
+                ? {
+                    type: "text" as const,
+                    text: result,
+                  }
+                : {
+                    type: "resource" as const,
+                    resource: result,
+                  }
+            ),
+          ],
+        };
+      }
+    }
   );
 
   server.tool(

@@ -1,6 +1,7 @@
 import type { GetAgentConfigurationsResponseType } from "@dust-tt/client";
 import { useEffect, useState } from "react";
 
+import { agentCache } from "../agentCache.js";
 import AuthService from "../authService.js";
 import { getDustClient } from "../dustClient.js";
 type AgentConfiguration =
@@ -33,6 +34,21 @@ export function useAgents() {
       }
       setCurrentWorkspaceId(workspaceId);
 
+      // Try to get cached agents first
+      const cachedAgents = await agentCache.get(workspaceId);
+      if (cachedAgents) {
+        setAllAgents(cachedAgents);
+        setIsLoading(false);
+        // Start background refresh
+        void fetchAndCacheAgents(workspaceId);
+        return;
+      }
+
+      // If no cache, fetch from API
+      await fetchAndCacheAgents(workspaceId);
+    }
+
+    async function fetchAndCacheAgents(workspaceId: string) {
       const dustClient = await getDustClient();
       if (!dustClient) {
         setError("Authentication required. Run `dust login` first.");
@@ -48,8 +64,17 @@ export function useAgents() {
         return;
       }
 
-      setAllAgents(agentsRes.value);
+      const agents = agentsRes.value;
+      setAllAgents((currentAgents) => {
+        if (JSON.stringify(agents) !== JSON.stringify(currentAgents)) {
+          return agents;
+        }
+        return currentAgents;
+      });
       setIsLoading(false);
+
+      // Cache the results
+      await agentCache.set(workspaceId, agents);
     }
 
     void fetchAgents();

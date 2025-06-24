@@ -4,9 +4,12 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import { Op } from "sequelize";
 
-import { joinChannel } from "@connectors/connectors/slack/lib/channels";
+import {
+  getChannels,
+  joinChannel,
+} from "@connectors/connectors/slack/lib/channels";
+import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
 import { slackChannelIdFromInternalId } from "@connectors/connectors/slack/lib/utils";
-import { getChannels } from "@connectors/connectors/slack/temporal/activities";
 import { SlackChannel } from "@connectors/lib/models/slack";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { sequelizeConnection } from "@connectors/resources/storage";
@@ -73,10 +76,12 @@ const _patchSlackChannelsLinkedWithAgentHandler = async (
     new Set(slackChannelIds.filter((id) => !foundSlackChannelIds.has(id)))
   );
 
+  const slackClient = await getSlackClient(parseInt(connectorId));
+
   await sequelizeConnection.transaction(async (t) => {
     if (missingSlackChannelIds.length) {
       const remoteChannels = (
-        await getChannels(parseInt(connectorId), false)
+        await getChannels(slackClient, parseInt(connectorId), false)
       ).flatMap((c) =>
         c.id && c.name
           ? [{ id: c.id, name: c.name, private: !!c.is_private }]

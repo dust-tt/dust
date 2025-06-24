@@ -33,6 +33,7 @@ import React, {
   useMemo,
   useState,
 } from "react";
+import ReactMarkdown from "react-markdown";
 import { useSWRConfig } from "swr";
 
 import type { ConfirmDataType } from "@app/components/Confirm";
@@ -48,6 +49,7 @@ import { ConnectorDataUpdatedModal } from "@app/components/spaces/ConnectorDataU
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import {
   CONNECTOR_CONFIGURATIONS,
+  getConnectorPermissionsConfigurableBlocked,
   isConnectorPermissionsEditable,
 } from "@app/lib/connector_providers";
 import {
@@ -247,6 +249,8 @@ function UpdateConnectionOAuthModal({
 
   const isDataSourceOwner = editedByUser?.userId === user.sId;
 
+  const permissionsConfigurable =
+    getConnectorPermissionsConfigurableBlocked(connectorProvider);
   return (
     <DataSourceManagementModal isOpen={isOpen} onClose={onClose}>
       <>
@@ -354,8 +358,21 @@ function UpdateConnectionOAuthModal({
                 label="Edit Permissions"
                 icon={LockIcon}
                 variant="warning"
-                disabled={!isExtraConfigValid}
+                disabled={
+                  !isExtraConfigValid || permissionsConfigurable.blocked
+                }
               />
+              {permissionsConfigurable.blocked && (
+                <ContentMessage
+                  title="Editing permissions is temporarily disabled"
+                  variant="info"
+                  icon={InformationCircleIcon}
+                >
+                  <ReactMarkdown>
+                    {permissionsConfigurable.placeholder ?? ""}
+                  </ReactMarkdown>
+                </ContentMessage>
+              )}
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
@@ -735,6 +752,10 @@ export function ConnectorPermissionsModal({
 
   const OptionsComponent = connectorConfiguration.optionsComponent;
 
+  const permissionsConfigurable = getConnectorPermissionsConfigurableBlocked(
+    connector.type
+  );
+
   return (
     <>
       {onManageButtonClick && (
@@ -779,6 +800,7 @@ export function ConnectorPermissionsModal({
                       onClick={() => {
                         setModalToShow("edition");
                       }}
+                      disabled={permissionsConfigurable.blocked}
                     />
                   )}
                   {isDeletable && (
@@ -796,6 +818,17 @@ export function ConnectorPermissionsModal({
 
               <SheetContainer>
                 <div className="flex w-full flex-col gap-4">
+                  {permissionsConfigurable.blocked && (
+                    <ContentMessage
+                      title="Editing permissions is temporarily disabled"
+                      variant="info"
+                      icon={InformationCircleIcon}
+                    >
+                      <ReactMarkdown>
+                        {permissionsConfigurable.placeholder ?? ""}
+                      </ReactMarkdown>
+                    </ContentMessage>
+                  )}
                   {OptionsComponent && plan && (
                     <>
                       <div className="heading-xl p-1">Connector options</div>
@@ -924,6 +957,8 @@ export function ConnectorPermissionsModal({
                 }}
               />
             );
+          case "slack_bot":
+            return null;
           default:
             assertNever(c.type);
         }

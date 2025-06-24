@@ -512,7 +512,7 @@ const JustUseDustSection = () => (
           Just use Dust
         </H2>
         <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
-          <Link href="/api/auth/login" passHref legacyBehavior>
+          <Link href="/api/workos/login" passHref legacyBehavior>
             <Button
               variant="highlight"
               size="md"

@@ -1,6 +1,6 @@
 import { Authenticator } from "@app/lib/auth";
-import { Workspace } from "@app/lib/models/workspace";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { makeScript } from "@app/scripts/helpers";
 
@@ -19,9 +19,9 @@ makeScript(
     },
   },
   async ({ execute, workspaceId, concurrency }, parentLogger) => {
-    let workspaces: Workspace[] = [];
+    let workspaces: WorkspaceModel[] = [];
     if (workspaceId) {
-      const workspace = await Workspace.findOne({
+      const workspace = await WorkspaceModel.findOne({
         where: {
           sId: workspaceId,
         },
@@ -32,7 +32,7 @@ makeScript(
       workspaces = [workspace];
     } else {
       // Process all workspaces
-      workspaces = await Workspace.findAll({
+      workspaces = await WorkspaceModel.findAll({
         order: [["id", "ASC"]],
       });
     }

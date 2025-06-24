@@ -10,6 +10,10 @@ export function makeSlowQueueName(baseQueueName: string): string {
   return baseQueueName.replace(/(-queue-v\d+)$/, `-slow$1`);
 }
 
+export function isSlowLaneQueue(queueName: string): boolean {
+  return /-slow-queue-v\d+$/.test(queueName);
+}
+
 // Workflow-level utilities for dynamic queue routing.
 function shouldUseSlowLane({
   connectorId,

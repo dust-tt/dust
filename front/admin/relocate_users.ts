@@ -8,13 +8,13 @@ import { getWorkOS } from "@app/lib/api/workos/client";
 import { getOrCreateWorkOSOrganization } from "@app/lib/api/workos/organization";
 import { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
-import { Workspace } from "@app/lib/models/workspace";
 import {
   FREE_NO_PLAN_CODE,
   FREE_TEST_PLAN_CODE,
 } from "@app/lib/plans/plan_codes";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type { Logger } from "@app/logger/logger";
 import { launchDeleteWorkspaceWorkflow } from "@app/poke/temporal/client";
@@ -226,7 +226,7 @@ export async function updateAllWorkspaceUsersRegionMetadata(
     const workspaceIds = [
       ...new Set(externalMemberships.map((m) => m.workspaceId)),
     ];
-    const workspaces = await Workspace.findAll({
+    const workspaces = await WorkspaceModel.findAll({
       where: {
         id: workspaceIds,
       },

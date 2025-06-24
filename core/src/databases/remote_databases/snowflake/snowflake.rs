@@ -5,10 +5,6 @@ use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use futures::future::try_join_all;
 use serde::Deserialize;
-use snowflake_connector_rs::{
-    SnowflakeAuthMethod, SnowflakeClient, SnowflakeClientConfig, SnowflakeDecode, SnowflakeRow,
-    SnowflakeSession,
-};
 
 use crate::databases::{
     database::{QueryDatabaseError, QueryResult, SqlDialect},
@@ -17,18 +13,39 @@ use crate::databases::{
     table_schema::{TableSchema, TableSchemaColumn, TableSchemaFieldType},
 };
 
+use super::api::{
+    client::{SnowflakeAuthMethod, SnowflakeClient, SnowflakeClientConfig},
+    row::{SnowflakeDecode, SnowflakeRow},
+    session::SnowflakeSession,
+};
+
 pub struct SnowflakeRemoteDatabase {
     client: SnowflakeClient,
     warehouse: String,
 }
 
 #[derive(Deserialize)]
-struct SnowflakeConnectionDetails {
-    username: String,
-    password: String,
-    account: String,
-    role: String,
-    warehouse: String,
+#[serde(untagged)]
+enum SnowflakeConnectionDetails {
+    KeyPair {
+        #[serde(default, rename = "auth_type")]
+        _auth_type: Option<String>,
+        username: String,
+        private_key: String,
+        private_key_passphrase: Option<String>,
+        account: String,
+        role: String,
+        warehouse: String,
+    },
+    Password {
+        #[serde(default, rename = "auth_type")]
+        _auth_type: Option<String>,
+        username: String,
+        password: String,
+        account: String,
+        role: String,
+        warehouse: String,
+    },
 }
 
 #[derive(Debug, Deserialize)]
@@ -176,13 +193,53 @@ impl SnowflakeRemoteDatabase {
                 QueryDatabaseError::GenericError(anyhow!("Error deserializing credentials: {}", e))
             })?;
 
+        let (username, auth_method, account, role, warehouse) = match &connection_details {
+            SnowflakeConnectionDetails::Password {
+                _auth_type: _,
+                username,
+                password,
+                account,
+                role,
+                warehouse,
+            } => (
+                username.clone(),
+                SnowflakeAuthMethod::Password(password.clone()),
+                account.clone(),
+                role.clone(),
+                warehouse.clone(),
+            ),
+            SnowflakeConnectionDetails::KeyPair {
+                _auth_type,
+                username,
+                private_key,
+                private_key_passphrase,
+                account,
+                role,
+                warehouse,
+            } => {
+                let auth = SnowflakeAuthMethod::KeyPair {
+                    pem: private_key.clone(),
+                    password: private_key_passphrase
+                        .as_ref()
+                        .map(|p| p.as_bytes().to_vec()),
+                };
+                (
+                    username.clone(),
+                    auth,
+                    account.clone(),
+                    role.clone(),
+                    warehouse.clone(),
+                )
+            }
+        };
+
         let mut client = SnowflakeClient::new(
-            &connection_details.username,
-            SnowflakeAuthMethod::Password(connection_details.password),
+            &username,
+            auth_method,
             SnowflakeClientConfig {
-                warehouse: Some(connection_details.warehouse.clone()),
-                account: connection_details.account,
-                role: Some(connection_details.role),
+                warehouse: Some(warehouse.clone()),
+                account,
+                role: Some(role),
                 database: None,
                 schema: None,
                 timeout: Some(std::time::Duration::from_secs(30)),
@@ -213,10 +270,7 @@ impl SnowflakeRemoteDatabase {
                 })?;
         }
 
-        Ok(Self {
-            client,
-            warehouse: connection_details.warehouse,
-        })
+        Ok(Self { client, warehouse })
     }
 
     async fn try_get_session(&self) -> Result<SnowflakeSession, QueryDatabaseError> {
@@ -260,12 +314,10 @@ impl SnowflakeRemoteDatabase {
     ) -> Result<(Vec<QueryResult>, TableSchema, String), QueryDatabaseError> {
         let executor = match session.execute(query).await {
             Ok(executor) => Ok(executor),
-            Err(snowflake_connector_rs::Error::TimedOut) => {
-                Err(QueryDatabaseError::ExecutionError(
-                    "Query execution timed out".to_string(),
-                    Some(query.to_string()),
-                ))
-            }
+            Err(super::api::error::Error::TimedOut) => Err(QueryDatabaseError::ExecutionError(
+                "Query execution timed out".to_string(),
+                Some(query.to_string()),
+            )),
             Err(e) => Err(QueryDatabaseError::ExecutionError(
                 format!("Error executing query: {}", e),
                 Some(query.to_string()),

@@ -6,10 +6,10 @@ import { Op } from "sequelize";
 import { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { GroupAgentModel } from "@app/lib/models/assistant/group_agent";
-import { Workspace } from "@app/lib/models/workspace";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
@@ -196,7 +196,7 @@ makeScript(
     logger.info("Starting agent editors group backfill");
 
     if (wId) {
-      const ws = await Workspace.findOne({ where: { sId: wId } });
+      const ws = await WorkspaceModel.findOne({ where: { sId: wId } });
       if (!ws) {
         throw new Error(`Workspace not found: ${wId}`);
       }

@@ -162,7 +162,7 @@ export function makeGetServerSidePropsRequirementsWrapper<
           return {
             redirect: {
               permanent: false,
-              destination: `/api/auth/login${
+              destination: `/api/workos/login${
                 context.resolvedUrl
                   ? `?returnTo=${encodeURIComponent(context.resolvedUrl)}`
                   : ""
