@@ -142,9 +142,10 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
           ? filePathOrPaths
           : [filePathOrPaths];
 
-        const fileInfos = await Promise.all(
-          paths.map((p) => validateAndGetFileInfo(p))
-        );
+        const fileInfos = [];
+        for (const p of paths) {
+          fileInfos.push(await validateAndGetFileInfo(p));
+        }
 
         let convId = conversationId;
         if (!convId) {
