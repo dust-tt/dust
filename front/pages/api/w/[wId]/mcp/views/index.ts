@@ -33,10 +33,10 @@ async function handler(
 
   switch (method) {
     case "GET": {
-    const spaceIds = req.query.spaceIds;
-    const availabilities = req.query.availabilities;
-    
-    if (!isString(spaceIds) || !isString(availabilities)) {
+      const spaceIds = req.query.spaceIds;
+      const availabilities = req.query.availabilities;
+
+      if (!isString(spaceIds) || !isString(availabilities)) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -49,9 +49,9 @@ async function handler(
       const normalizedQuery = {
         ...req.query,
         spaceIds: spaceIds.split(","),
-        availabilities: availabilities.split(",")
+        availabilities: availabilities.split(","),
       };
-      
+
       const r = GetMCPViewsRequestSchema.safeParse(normalizedQuery);
       if (r.error) {
         return apiError(req, res, {

@@ -944,7 +944,7 @@ function useMCPServerViewsFromSpacesBase(
 ) {
   const configFetcher: Fetcher<GetMCPServerViewsListResponseBody> = fetcher;
 
-  const spaceIds = spaces.map(s => s.sId).join(",");
+  const spaceIds = spaces.map((s) => s.sId).join(",");
   const availabilitiesParam = availabilities.join(",");
 
   const url = `/api/w/${owner.sId}/mcp/views?spaceIds=${spaceIds}&availabilities=${availabilitiesParam}`;
