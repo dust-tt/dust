@@ -98,55 +98,39 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId, agentSearch }) => {
     // Search for agents matching the search string (case-insensitive)
     const searchLower = agentSearch.toLowerCase();
     const matchingAgents = allAgents.filter(agent => 
-      agent.name.toLowerCase().includes(searchLower)
+      agent.name.toLowerCase().startsWith(searchLower)
     );
     
     if (matchingAgents.length === 0) {
-      setError(`No agent found matching "${agentSearch}"`);
+      setError(`No agent found starting with "${agentSearch}"`);
       return;
     }
     
-    if (matchingAgents.length > 1) {
-      // If multiple matches, prefer exact matches
+    // Determine which agent to select
+    let agentToSelect: AgentConfiguration;
+    
+    if (matchingAgents.length === 1) {
+      // Single match found
+      agentToSelect = matchingAgents[0];
+    } else {
+      // Multiple matches - prefer exact matches
       const exactMatches = matchingAgents.filter(agent => 
         agent.name.toLowerCase() === searchLower
       );
       
-      if (exactMatches.length === 1) {
-        setSelectedAgent(exactMatches[0]);
-        setConversationItems([
-          {
-            key: "welcome_header",
-            type: "welcome_header",
-            agentName: exactMatches[0].name,
-            agentId: exactMatches[0].sId,
-          },
-        ]);
-        return;
-      }
-      
-      // If still multiple matches, use the first one
-      setSelectedAgent(matchingAgents[0]);
-      setConversationItems([
-        {
-          key: "welcome_header",
-          type: "welcome_header",
-          agentName: matchingAgents[0].name,
-          agentId: matchingAgents[0].sId,
-        },
-      ]);
-    } else {
-      // Single match found
-      setSelectedAgent(matchingAgents[0]);
-      setConversationItems([
-        {
-          key: "welcome_header",
-          type: "welcome_header",
-          agentName: matchingAgents[0].name,
-          agentId: matchingAgents[0].sId,
-        },
-      ]);
+      agentToSelect = exactMatches.length === 1 ? exactMatches[0] : matchingAgents[0];
     }
+    
+    // Set the selected agent and initial conversation items
+    setSelectedAgent(agentToSelect);
+    setConversationItems([
+      {
+        key: "welcome_header",
+        type: "welcome_header",
+        agentName: agentToSelect.name,
+        agentId: agentToSelect.sId,
+      },
+    ]);
   }, [agentSearch, allAgents, selectedAgent]);
 
   const canSubmit =
