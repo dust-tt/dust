@@ -14,6 +14,7 @@ import type {
 import { ConnectorsAPI } from "@app/types";
 
 export type GetSlackChannelsLinkedWithAgentResponseBody = {
+  provider: Extract<ConnectorProvider, "slack" | "slack_bot">;
   slackChannels: {
     slackChannelId: string;
     slackChannelName: string;
@@ -41,13 +42,22 @@ export async function handleSlackChannelsLinkedWithAgent(
     });
   }
 
-  const [dataSource] = await DataSourceResource.listByConnectorProvider(
+  const [dataSourceSlack] = await DataSourceResource.listByConnectorProvider(
     auth,
-    connectorProvider
+    "slack"
   );
+
+  const [dataSourceSlackBot] = await DataSourceResource.listByConnectorProvider(
+    auth,
+    "slack_bot"
+  );
+
+  const provider = dataSourceSlackBot ? "slack_bot" : "slack";
+  const dataSource = dataSourceSlackBot ? dataSourceSlackBot : dataSourceSlack;
 
   if (!dataSource) {
     return res.status(200).json({
+      provider,
       slackChannels: [],
       slackDataSource: undefined,
     });
@@ -65,7 +75,8 @@ export async function handleSlackChannelsLinkedWithAgent(
 
   if (
     !dataSource.connectorProvider ||
-    dataSource.connectorProvider !== connectorProvider
+    (dataSource.connectorProvider !== "slack_bot" &&
+      dataSource.connectorProvider !== "slack")
   ) {
     return apiError(req, res, {
       status_code: 400,
@@ -98,6 +109,7 @@ export async function handleSlackChannelsLinkedWithAgent(
       }
 
       res.status(200).json({
+        provider,
         slackChannels: linkedSlackChannelsRes.value.slackChannels,
         slackDataSource: dataSource.toJSON(),
       });

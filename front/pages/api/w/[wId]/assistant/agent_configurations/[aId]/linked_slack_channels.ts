@@ -51,12 +51,11 @@ async function handler(
     });
   }
 
-  const slackDataSources = await DataSourceResource.listByConnectorProvider(
+  const [slackDataSource] = await DataSourceResource.listByConnectorProvider(
     auth,
     provider,
     { limit: 1 }
   );
-  const slackDataSource = slackDataSources[0];
 
   if (!slackDataSource) {
     return apiError(req, res, {

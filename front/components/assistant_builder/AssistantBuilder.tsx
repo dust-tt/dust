@@ -214,6 +214,7 @@ export default function AssistantBuilder({
   } = useTemplate(defaultTemplate);
 
   const {
+    provider,
     slackDataSource,
     selectedSlackChannels,
     slackChannelsLinkedWithAgent,
@@ -382,6 +383,7 @@ export default function AssistantBuilder({
         builderState,
         agentConfigurationId: agentConfiguration?.sId ?? null,
         slackData: {
+          provider,
           selectedSlackChannels: selectedSlackChannels || [],
           slackChannelsLinkedWithAgent,
         },
