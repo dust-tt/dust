@@ -803,12 +803,10 @@ export async function createOrUpgradeAgentConfiguration({
   auth,
   assistant,
   agentConfigurationId,
-  transaction,
 }: {
   auth: Authenticator;
   assistant: AssistantConfigurationInput;
   agentConfigurationId?: string;
-  transaction?: Transaction;
 }): Promise<Result<AgentConfigurationType, Error>> {
   const { actions } = assistant;
 
@@ -854,29 +852,25 @@ export async function createOrUpgradeAgentConfiguration({
     await UserResource.fetchByIds(assistant.editors.map((e) => e.sId))
   ).map((e) => e.toJSON());
 
-  const agentConfigurationRes = await createAgentConfiguration(
-    auth,
-    {
-      name: assistant.name,
-      description: assistant.description,
-      instructions: assistant.instructions ?? null,
-      maxStepsPerRun,
-      visualizationEnabled: assistant.visualizationEnabled,
-      pictureUrl: assistant.pictureUrl,
-      status: assistant.status,
-      scope: assistant.scope,
-      model: assistant.model,
-      agentConfigurationId,
-      templateId: assistant.templateId ?? null,
-      requestedGroupIds: await getAgentConfigurationGroupIdsFromActions(
-        auth,
-        actions
-      ),
-      tags: assistant.tags,
-      editors,
-    },
-    transaction
-  );
+  const agentConfigurationRes = await createAgentConfiguration(auth, {
+    name: assistant.name,
+    description: assistant.description,
+    instructions: assistant.instructions ?? null,
+    maxStepsPerRun,
+    visualizationEnabled: assistant.visualizationEnabled,
+    pictureUrl: assistant.pictureUrl,
+    status: assistant.status,
+    scope: assistant.scope,
+    model: assistant.model,
+    agentConfigurationId,
+    templateId: assistant.templateId ?? null,
+    requestedGroupIds: await getAgentConfigurationGroupIdsFromActions(
+      auth,
+      actions
+    ),
+    tags: assistant.tags,
+    editors,
+  });
 
   if (agentConfigurationRes.isErr()) {
     return agentConfigurationRes;
