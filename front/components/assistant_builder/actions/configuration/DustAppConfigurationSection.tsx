@@ -11,7 +11,7 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import { sortBy } from "lodash";
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 
 import { ConfigurationSectionContainer } from "@app/components/assistant_builder/actions/configuration/ConfigurationSectionContainer";
 import { SpaceSelector } from "@app/components/assistant_builder/spaces/SpaceSelector";
@@ -34,6 +34,13 @@ export function DustAppConfigurationSection({
   onConfigSelect,
 }: DustAppConfigurationSectionProps) {
   const { spaces, isSpacesLoading } = useSpaces({ workspaceId: owner.sId });
+  
+  const [selectedSpaceId, setSelectedSpaceId] = useState<string | undefined>(() => {
+    if (selectedConfig && selectedConfig.spaceId) {
+      return selectedConfig.spaceId;
+    }
+    return allowedSpaces[0]?.sId;
+  });
 
   return (
     <ConfigurationSectionContainer title="Select a Dust App">
@@ -62,7 +69,8 @@ export function DustAppConfigurationSection({
         <SpaceSelector
           spaces={spaces}
           allowedSpaces={allowedSpaces}
-          defaultSpace={allowedSpaces[0]?.sId}
+          selectedSpace={selectedSpaceId}
+          onSpaceChange={setSelectedSpaceId}
           renderChildren={(space) => {
             if (!space) {
               return (
@@ -162,6 +170,7 @@ export function SpaceAppsRadioGroup({
                         name: app.name,
                         description: app.description,
                         type: "dust_app_run_configuration",
+                        spaceId: app.space.sId,
                       });
                     }
                   }}
@@ -198,6 +207,7 @@ export function SpaceAppsRadioGroup({
                   name: app.name,
                   description: app.description,
                   type: "dust_app_run_configuration",
+                  spaceId: app.space.sId,
                 });
               }
             }}

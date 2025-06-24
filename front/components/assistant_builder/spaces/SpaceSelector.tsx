@@ -12,7 +12,7 @@ import {
   RadioGroupCustomItem,
   Separator,
 } from "@dust-tt/sparkle";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 
 import {
   getSpaceIcon,
@@ -23,20 +23,35 @@ import type { SpaceType } from "@app/types";
 
 interface SpaceSelectorProps {
   allowedSpaces?: SpaceType[];
-  defaultSpace: string | undefined;
+  selectedSpace?: string;
+  onSpaceChange?: (spaceId: string) => void;
+  defaultSpace?: string; // Keep for backward compatibility
   spaces: SpaceType[];
   renderChildren: (space?: SpaceType) => React.ReactNode;
 }
 export function SpaceSelector({
   allowedSpaces,
+  selectedSpace: controlledSelectedSpace,
+  onSpaceChange,
   defaultSpace,
   renderChildren,
   spaces,
 }: SpaceSelectorProps) {
-  const [selectedSpace, setSelectedSpace] = useState<string | undefined>(
-    defaultSpace
+  const [internalSelectedSpace, setInternalSelectedSpace] = useState<string | undefined>(
+    defaultSpace ?? spaces[0]?.sId
   );
   const [isAlertDialogOpen, setAlertIsDialogOpen] = useState(false);
+
+  // Use controlled value if provided, otherwise use internal state
+  const selectedSpace = controlledSelectedSpace ?? internalSelectedSpace;
+  
+  const handleSpaceChange = (spaceId: string) => {
+    if (onSpaceChange) {
+      onSpaceChange(spaceId);
+    } else {
+      setInternalSelectedSpace(spaceId);
+    }
+  };
 
   const shouldRenderDirectly = spaces.length === 1;
   const selectedSpaceObj = spaces.find((s) => s.sId === selectedSpace);
@@ -62,7 +77,7 @@ export function SpaceSelector({
     <>
       <RadioGroup
         value={selectedSpace}
-        onValueChange={(value) => setSelectedSpace(value)}
+        onValueChange={handleSpaceChange}
       >
         {sortedSpaces.map((space, index) => {
           const isDisabled =

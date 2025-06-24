@@ -63,6 +63,7 @@ export async function fetchDustAppRunActionConfigurations(
           appId: c.appId,
           name: dustApp.name,
           description: dustApp.description,
+          spaceId: dustApp.space.sId,
         });
       }
     }

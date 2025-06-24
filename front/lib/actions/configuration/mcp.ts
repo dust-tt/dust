@@ -179,6 +179,7 @@ export async function fetchMCPServerActionConfigurations(
               sId: dustApp.sId,
               appWorkspaceId: auth.getNonNullableWorkspace().sId,
               type: "dust_app_run_configuration",
+              spaceId: dustApp.space.sId,
             }
           : null,
         childAgentId:

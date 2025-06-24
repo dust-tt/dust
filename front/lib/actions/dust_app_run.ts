@@ -61,6 +61,7 @@ export type DustAppRunConfigurationType = {
 
   name: string;
   description: string | null;
+  spaceId?: string;
 };
 
 export type DustAppParameters = {
