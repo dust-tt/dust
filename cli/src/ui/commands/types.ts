@@ -1,5 +1,7 @@
 export interface CommandContext {
   triggerAgentSwitch?: () => void;
+  attachFile?: () => void;
+  clearFiles?: () => void;
 }
 
 export interface Command {
@@ -22,6 +24,24 @@ export const createCommands = (context: CommandContext): Command[] => [
     execute: () => {
       if (context.triggerAgentSwitch) {
         context.triggerAgentSwitch();
+      }
+    },
+  },
+  {
+    name: "attach",
+    description: "Open file selector to attach a file",
+    execute: () => {
+      if (context.attachFile) {
+        context.attachFile();
+      }
+    },
+  },
+  {
+    name: "clear-files",
+    description: "Clear any attached files",
+    execute: () => {
+      if (context.clearFiles) {
+        context.clearFiles();
       }
     },
   },

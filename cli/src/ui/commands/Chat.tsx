@@ -10,12 +10,21 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import AuthService from "../../utils/authService.js";
 import { getDustClient } from "../../utils/dustClient.js";
 import { normalizeError } from "../../utils/errors.js";
+import type { FileInfo } from "../../utils/fileHandling.js";
+import {
+  formatFileSize,
+  isImageFile,
+  validateAndGetFileInfo,
+} from "../../utils/fileHandling.js";
 import { useAgents } from "../../utils/hooks/use_agents.js";
 import { useMe } from "../../utils/hooks/use_me.js";
 import { clearTerminal } from "../../utils/terminal.js";
 import AgentSelector from "../components/AgentSelector.js";
 import type { ConversationItem } from "../components/Conversation.js";
 import Conversation from "../components/Conversation.js";
+import { FileSelector } from "../components/FileSelector.js";
+import type { UploadedFile } from "../components/FileUpload.js";
+import { FileUpload } from "../components/FileUpload.js";
 import { createCommands } from "./types.js";
 
 type AgentConfiguration =
@@ -58,6 +67,10 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId, agentSearch }) => {
   const [selectedCommandIndex, setSelectedCommandIndex] = useState(0);
   const [commandCursorPosition, setCommandCursorPosition] = useState(0);
   const [isSelectingNewAgent, setIsSelectingNewAgent] = useState(false);
+  const [pendingFiles, setPendingFiles] = useState<FileInfo[]>([]);
+  const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
+  const [isUploadingFiles, setIsUploadingFiles] = useState(false);
+  const [showFileSelector, setShowFileSelector] = useState(false);
 
   const updateIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const contentRef = useRef<string>("");
@@ -66,7 +79,7 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId, agentSearch }) => {
   const { stdout } = useStdout();
 
   const { me, isLoading: isMeLoading, error: meError } = useMe();
-  
+
   // Import useAgents hook for agent search functionality
   const {
     allAgents,
@@ -87,28 +100,115 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId, agentSearch }) => {
     setIsSelectingNewAgent(true);
   }, []);
 
-  const commands = createCommands({ triggerAgentSwitch });
-  
+  const clearFiles = useCallback(() => {
+    setUploadedFiles([]);
+    setPendingFiles([]);
+    setIsUploadingFiles(false);
+  }, []);
+
+  const showAttachDialog = useCallback(async () => {
+    await clearTerminal();
+    setShowFileSelector(true);
+  }, []);
+
+  // Helper to create a conversation for file uploads if none exists
+  // Only useful for uploading files to the first message
+  const createConversationForFiles = useCallback(
+    async (title: string) => {
+      if (!selectedAgent || !me || meError || isMeLoading) {
+        return null;
+      }
+
+      const dustClient = await getDustClient();
+      if (!dustClient) {
+        setError("Authentication required. Run `dust login` first.");
+        return null;
+      }
+
+      const convRes = await dustClient.createConversation({
+        title,
+        visibility: "unlisted",
+        contentFragments: [],
+      });
+
+      if (convRes.isErr()) {
+        setError(`Failed to create conversation: ${convRes.error.message}`);
+        return null;
+      }
+
+      setConversationId(convRes.value.conversation.sId);
+      return convRes.value.conversation.sId;
+    },
+    [selectedAgent, me, meError, isMeLoading]
+  );
+
+  const handleFileSelected = useCallback(
+    async (filePathOrPaths: string | string[]) => {
+      setShowFileSelector(false);
+      try {
+        // Normalize to array for unified handling
+        const paths = Array.isArray(filePathOrPaths)
+          ? filePathOrPaths
+          : [filePathOrPaths];
+
+        const fileInfos = [];
+        for (const p of paths) {
+          fileInfos.push(await validateAndGetFileInfo(p));
+        }
+
+        let convId = conversationId;
+        if (!convId) {
+          convId = await createConversationForFiles(
+            `File Upload: ${fileInfos.map((f) => f.name).join(", ")}`.slice(
+              0,
+              50
+            )
+          );
+          if (!convId) {
+            // error already handled in createConversationForFiles
+            return;
+          }
+        }
+
+        setPendingFiles(fileInfos);
+        setIsUploadingFiles(true);
+      } catch (error) {
+        setError(`File error: ${normalizeError(error).message}`);
+      }
+    },
+    [conversationId, createConversationForFiles]
+  );
+
+  const handleFileSelectorCancel = useCallback(() => {
+    setShowFileSelector(false);
+  }, []);
+
+  const commands = createCommands({
+    triggerAgentSwitch,
+    clearFiles,
+    attachFile: showAttachDialog,
+  });
+
   // Handle agent search when component mounts
   useEffect(() => {
     if (!agentSearch || !allAgents || allAgents.length === 0 || selectedAgent) {
       return;
     }
-    
+
     // Search for agents matching the search string (case-insensitive)
     const searchLower = agentSearch.toLowerCase();
-    const matchingAgents = allAgents.filter(agent => 
+    const matchingAgents = allAgents.filter((agent) =>
       agent.name.toLowerCase().startsWith(searchLower)
     );
-    
+
     if (matchingAgents.length === 0) {
       setError(`No agent found starting with "${agentSearch}"`);
       return;
     }
-    
+
     // Select the first matching agent (same as SelectWithSearch behavior)
     const agentToSelect = matchingAgents[0];
-    
+
     // Set the selected agent and initial conversation items
     setSelectedAgent(agentToSelect);
     setConversationItems([
@@ -130,12 +230,11 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId, agentSearch }) => {
     !!userInput.trim();
 
   const handleSubmitQuestion = useCallback(
-    async (questionText: string) => {
+    async (questionText: string, attachedFiles: UploadedFile[] = []) => {
       if (!selectedAgent || !me || meError || isMeLoading) {
         return;
       }
 
-      // Append the user message and agent message header to the conversation items
       setConversationItems((prev) => {
         const lastUserMessage = getLastConversationItem<
           ConversationItem & { type: "user_message" }
@@ -156,9 +255,7 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId, agentSearch }) => {
         const newAgentMessageHeaderKey = `agent_message_header_${newAgentMessageHeaderIndex}`;
 
         const newItems = [...prev];
-
-        return [
-          ...newItems,
+        const itemsToAdd: ConversationItem[] = [
           {
             key: newUserMessageKey,
             type: "user_message",
@@ -166,13 +263,26 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId, agentSearch }) => {
             content: questionText,
             index: newUserMessageIndex,
           },
-          {
-            key: newAgentMessageHeaderKey,
-            type: "agent_message_header",
-            agentName: selectedAgent.name,
-            index: newAgentMessageHeaderIndex,
-          },
         ];
+
+        // Add attachments if present
+        if (attachedFiles.length > 0) {
+          itemsToAdd.push({
+            key: `user_message_attachments_${newUserMessageIndex}`,
+            type: "user_message_attachments",
+            attachments: attachedFiles,
+            index: newUserMessageIndex,
+          });
+        }
+
+        itemsToAdd.push({
+          key: newAgentMessageHeaderKey,
+          type: "agent_message_header",
+          agentName: selectedAgent.name,
+          index: newAgentMessageHeaderIndex,
+        });
+
+        return [...newItems, ...itemsToAdd];
       });
 
       setIsProcessingQuestion(true);
@@ -191,9 +301,40 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId, agentSearch }) => {
       let conversation: CreateConversationResponseType["conversation"];
 
       try {
-        // Either create a new conversation or add to an existing one
+        let createdContentFragments = [];
+        // If there are files to attach, create content fragments for each
+        if (attachedFiles.length > 0 && conversationId) {
+          for (const file of attachedFiles) {
+            const fragmentRes = await dustClient.postContentFragment({
+              conversationId,
+              contentFragment: {
+                title: file.fileName,
+                fileId: file.fileId,
+              },
+            });
+            if (fragmentRes.isErr()) {
+              setError(
+                `Failed to create content fragment: ${fragmentRes.error.message}`
+              );
+              setIsProcessingQuestion(false);
+              return;
+            }
+            createdContentFragments.push({
+              type: "file_attachment",
+              fileId: file.fileId,
+              title: file.fileName,
+            });
+          }
+        }
+
         if (!conversationId) {
-          // Create a new conversation with the agent
+          // For new conversation, pass contentFragments (from uploaded files)
+          const contentFragments = attachedFiles.map((file) => ({
+            type: "file_attachment" as const,
+            fileId: file.fileId,
+            title: file.fileName,
+          }));
+
           const convRes = await dustClient.createConversation({
             title: `CLI Question: ${questionText.substring(0, 30)}${
               questionText.length > 30 ? "..." : ""
@@ -210,7 +351,7 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId, agentSearch }) => {
                 origin: "api",
               },
             },
-            contentFragment: undefined,
+            contentFragments,
           });
 
           if (convRes.isErr()) {
@@ -439,13 +580,37 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId, agentSearch }) => {
         setAbortController(null);
       }
     },
-    [selectedAgent, conversationId, me, meError, isMeLoading]
+    [selectedAgent, conversationId, me, meError, isMeLoading, uploadedFiles]
   );
+
+  // Handle file upload completion
+  const handleFileUploadComplete = useCallback(
+    (files: UploadedFile[]) => {
+      setUploadedFiles(files);
+      setIsUploadingFiles(false);
+      setPendingFiles([]);
+
+      // If there's a message waiting to be sent with these files, send it now
+      if (userInput.trim()) {
+        void handleSubmitQuestion(userInput, files);
+        setUserInput("");
+        setCursorPosition(0);
+      }
+    },
+    [userInput, handleSubmitQuestion]
+  );
+
+  // Handle file upload error
+  const handleFileUploadError = useCallback((error: string) => {
+    setError(error);
+    setIsUploadingFiles(false);
+    setPendingFiles([]);
+  }, []);
 
   // Handle keyboard events.
   useInput((input, key) => {
-    // Skip all input handling when selecting a new agent
-    if (!selectedAgent || isSelectingNewAgent) {
+    // Skip all input handling when selecting a new agent or showing file selector
+    if (!selectedAgent || isSelectingNewAgent || showFileSelector) {
       return;
     }
 
@@ -550,9 +715,11 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId, agentSearch }) => {
         return;
       }
 
-      void handleSubmitQuestion(userInput);
+      // No files, send message immediately
+      void handleSubmitQuestion(userInput, uploadedFiles);
       setUserInput("");
       setCursorPosition(0);
+      setUploadedFiles([]); // Clear uploaded files after sending
 
       return;
     }
@@ -804,11 +971,13 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId, agentSearch }) => {
   if (agentSearch && agentsIsLoading) {
     return (
       <Box flexDirection="column">
-        <Text color="green">Searching for agent matching "{agentSearch}"...</Text>
+        <Text color="green">
+          Searching for agent matching "{agentSearch}"...
+        </Text>
       </Box>
     );
   }
-  
+
   // Render error state
   if (error || agentsError) {
     return (
@@ -827,6 +996,15 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId, agentSearch }) => {
           </Box>
         </Box>
       </Box>
+    );
+  }
+
+  if (showFileSelector) {
+    return (
+      <FileSelector
+        onSelect={handleFileSelected}
+        onCancel={handleFileSelectorCancel}
+      />
     );
   }
 
@@ -872,20 +1050,64 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId, agentSearch }) => {
 
   // Main chat UI
   return (
-    <Conversation
-      conversationItems={conversationItems}
-      isProcessingQuestion={isProcessingQuestion}
-      userInput={userInput}
-      cursorPosition={cursorPosition}
-      mentionPrefix={mentionPrefix}
-      conversationId={conversationId}
-      stdout={stdout}
-      showCommandSelector={showCommandSelector}
-      commandQuery={commandQuery}
-      selectedCommandIndex={selectedCommandIndex}
-      commandCursorPosition={commandCursorPosition}
-      commands={commands}
-    />
+    <Box flexDirection="column">
+      {/* File upload component */}
+      {pendingFiles.length > 0 && conversationId && (
+        <FileUpload
+          files={pendingFiles}
+          onUploadComplete={handleFileUploadComplete}
+          onUploadError={handleFileUploadError}
+          conversationId={conversationId}
+        />
+      )}
+
+      {/* Display uploaded files ready to be sent */}
+      {uploadedFiles.length > 0 && !isUploadingFiles && (
+        <Box flexDirection="column" marginY={1}>
+          <Box borderStyle="round" borderColor="green" padding={1}>
+            <Box flexDirection="column">
+              <Text color="green" bold>
+                📁 {uploadedFiles.length} file
+                {uploadedFiles.length > 1 ? "s" : ""}
+              </Text>
+
+              {uploadedFiles.map((file) => {
+                const isImage = isImageFile(file.contentType);
+
+                return (
+                  <Box key={file.path} flexDirection="column" marginTop={1}>
+                    <Box>
+                      <Text color={isImage ? "yellow" : "cyan"}>
+                        {isImage ? "🖼️  " : "📄 "} {file.fileName}
+                      </Text>
+                      <Text color="gray">
+                        {" "}
+                        ({formatFileSize(file.fileSize)})
+                      </Text>
+                    </Box>
+                  </Box>
+                );
+              })}
+            </Box>
+          </Box>
+        </Box>
+      )}
+
+      <Conversation
+        conversationItems={conversationItems}
+        isProcessingQuestion={isProcessingQuestion}
+        userInput={userInput}
+        cursorPosition={cursorPosition}
+        mentionPrefix={mentionPrefix}
+        conversationId={conversationId}
+        stdout={stdout}
+        showCommandSelector={showCommandSelector}
+        commandQuery={commandQuery}
+        selectedCommandIndex={selectedCommandIndex}
+        commandCursorPosition={commandCursorPosition}
+        commands={commands}
+      />
+    </Box>
   );
 };
 
