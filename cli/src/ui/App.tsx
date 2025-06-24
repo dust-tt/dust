@@ -37,6 +37,9 @@ interface AppProps {
       type: "string";
       shortFlag: "a";
     };
+    withFs: {
+      type: "boolean";
+    };
   }>;
 }
 
@@ -63,7 +66,13 @@ const App: FC<AppProps> = ({ cli }) => {
     case "agents-mcp":
       return <AgentsMCP port={flags.port} sId={flags.sId} />;
     case "chat":
-      return <Chat sId={flags.sId?.[0]} agentSearch={flags.agent} />;
+      return (
+        <Chat
+          sId={flags.sId?.[0]}
+          agentSearch={flags.agent}
+          withFs={flags.withFs}
+        />
+      );
     case "help":
       return <Help />;
     default:

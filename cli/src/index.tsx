@@ -48,6 +48,20 @@ const cli = meow({
       shortFlag: "a",
       description: "Search for and use an agent by name",
     },
+    serverName: {
+      type: "string",
+      shortFlag: "n",
+      description: "Specify the server name for the MCP server",
+    },
+    verbose: {
+      type: "boolean",
+      shortFlag: "V",
+      description: "Enable verbose logging",
+    },
+    withFs: {
+      type: "boolean",
+      description: "Enable filesystem MCP server for file operations",
+    },
   },
 });
 

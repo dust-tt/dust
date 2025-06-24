@@ -13,6 +13,7 @@ import { normalizeError } from "../../utils/errors.js";
 import { useAgents } from "../../utils/hooks/use_agents.js";
 import { useMe } from "../../utils/hooks/use_me.js";
 import { clearTerminal } from "../../utils/terminal.js";
+import { startFsMcpServer } from "../../utils/fsMcpServer.js";
 import AgentSelector from "../components/AgentSelector.js";
 import type { ConversationItem } from "../components/Conversation.js";
 import Conversation from "../components/Conversation.js";
@@ -24,6 +25,7 @@ type AgentConfiguration =
 interface CliChatProps {
   sId?: string;
   agentSearch?: string;
+  withFs?: boolean;
 }
 
 function getLastConversationItem<T extends ConversationItem>(
@@ -39,7 +41,11 @@ function getLastConversationItem<T extends ConversationItem>(
   return null;
 }
 
-const CliChat: FC<CliChatProps> = ({ sId: requestedSId, agentSearch }) => {
+const CliChat: FC<CliChatProps> = ({
+  sId: requestedSId,
+  agentSearch,
+  withFs,
+}) => {
   const [error, setError] = useState<string | null>(null);
   const [selectedAgent, setSelectedAgent] = useState<AgentConfiguration | null>(
     null
@@ -58,6 +64,7 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId, agentSearch }) => {
   const [selectedCommandIndex, setSelectedCommandIndex] = useState(0);
   const [commandCursorPosition, setCommandCursorPosition] = useState(0);
   const [isSelectingNewAgent, setIsSelectingNewAgent] = useState(false);
+  const [fsMcpServerId, setFsMcpServerId] = useState<string | null>(null);
 
   const updateIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const contentRef = useRef<string>("");
@@ -66,7 +73,7 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId, agentSearch }) => {
   const { stdout } = useStdout();
 
   const { me, isLoading: isMeLoading, error: meError } = useMe();
-  
+
   // Import useAgents hook for agent search functionality
   const {
     allAgents,
@@ -88,27 +95,27 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId, agentSearch }) => {
   }, []);
 
   const commands = createCommands({ triggerAgentSwitch });
-  
+
   // Handle agent search when component mounts
   useEffect(() => {
     if (!agentSearch || !allAgents || allAgents.length === 0 || selectedAgent) {
       return;
     }
-    
+
     // Search for agents matching the search string (case-insensitive)
     const searchLower = agentSearch.toLowerCase();
-    const matchingAgents = allAgents.filter(agent => 
+    const matchingAgents = allAgents.filter((agent) =>
       agent.name.toLowerCase().startsWith(searchLower)
     );
-    
+
     if (matchingAgents.length === 0) {
       setError(`No agent found starting with "${agentSearch}"`);
       return;
     }
-    
+
     // Select the first matching agent (same as SelectWithSearch behavior)
     const agentToSelect = matchingAgents[0];
-    
+
     // Set the selected agent and initial conversation items
     setSelectedAgent(agentToSelect);
     setConversationItems([
@@ -120,6 +127,25 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId, agentSearch }) => {
       },
     ]);
   }, [agentSearch, allAgents, selectedAgent]);
+
+  // Start filesystem MCP server if withFS flag is enabled
+  useEffect(() => {
+    if (!withFs || fsMcpServerId) {
+      return;
+    }
+
+    const initFsMcpServer = async () => {
+      try {
+        await startFsMcpServer("Dust CLI File System", (serverId: string) => {
+          setFsMcpServerId(serverId);
+        });
+      } catch (error) {
+        console.error("Failed to start filesystem MCP server:", error);
+      }
+    };
+
+    void initFsMcpServer();
+  }, [withFs, fsMcpServerId]);
 
   const canSubmit =
     me &&
@@ -208,6 +234,9 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId, agentSearch }) => {
                 fullName: me.fullName,
                 email: me.email,
                 origin: "api",
+                ...(fsMcpServerId && {
+                  clientSideMCPServerIds: [fsMcpServerId],
+                }),
               },
             },
             contentFragment: undefined,
@@ -243,6 +272,9 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId, agentSearch }) => {
                 fullName: me.fullName,
                 email: me.email,
                 origin: "api",
+                ...(fsMcpServerId && {
+                  clientSideMCPServerIds: [fsMcpServerId],
+                }),
               },
             },
           });
@@ -439,7 +471,7 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId, agentSearch }) => {
         setAbortController(null);
       }
     },
-    [selectedAgent, conversationId, me, meError, isMeLoading]
+    [selectedAgent, conversationId, me, meError, isMeLoading, fsMcpServerId]
   );
 
   // Handle keyboard events.
@@ -804,11 +836,13 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId, agentSearch }) => {
   if (agentSearch && agentsIsLoading) {
     return (
       <Box flexDirection="column">
-        <Text color="green">Searching for agent matching "{agentSearch}"...</Text>
+        <Text color="green">
+          Searching for agent matching "{agentSearch}"...
+        </Text>
       </Box>
     );
   }
-  
+
   // Render error state
   if (error || agentsError) {
     return (
