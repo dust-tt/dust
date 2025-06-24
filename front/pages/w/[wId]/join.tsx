@@ -48,7 +48,6 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   onboardingType: OnboardingType;
   signUpCallbackUrl: string;
   workspace: LightWorkspaceType;
-  workOSEnabled: boolean;
 }>(async (context) => {
   const wId = context.query.wId as string;
   if (!wId) {
