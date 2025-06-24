@@ -216,6 +216,8 @@ export class GithubCodeFile extends ConnectorBaseModel<GithubCodeFile> {
   declare fileName: string;
   declare sourceUrl: string;
   declare contentHash: string;
+
+  declare skipReason: string | null;
 }
 GithubCodeFile.init(
   {
@@ -262,6 +264,10 @@ GithubCodeFile.init(
     contentHash: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    skipReason: {
+      type: DataTypes.STRING,
+      allowNull: true,
     },
   },
   {
