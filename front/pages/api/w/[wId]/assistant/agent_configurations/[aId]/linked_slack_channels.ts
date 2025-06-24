@@ -17,9 +17,16 @@ export type PatchLinkedSlackChannelsResponseBody = {
   success: true;
 };
 
-export const PatchLinkedSlackChannelsRequestBodySchema = t.type({
-  slack_channel_internal_ids: t.array(t.string),
-});
+export const PatchLinkedSlackChannelsRequestBodySchema = t.intersection([
+  t.type({
+    slack_channel_internal_ids: t.array(t.string),
+  }),
+  // partial for backwards compatibility
+  // we can make it required once it's been deployed for a week or two
+  t.partial({
+    provider: t.union([t.literal("slack"), t.literal("slack_bot")]),
+  }),
+]);
 
 async function handler(
   req: NextApiRequest,
@@ -39,24 +46,35 @@ async function handler(
     });
   }
 
-  const provider = (req.query.provider as string) || "slack";
-
-  if (provider !== "slack" && provider !== "slack_bot") {
+  if (req.method !== "PATCH") {
     return apiError(req, res, {
-      status_code: 400,
+      status_code: 405,
       api_error: {
-        type: "invalid_request_error",
-        message: "Provider parameter must be either 'slack' or 'slack_bot'",
+        type: "method_not_supported_error",
+        message: "The method passed is not supported, PATCH is expected.",
       },
     });
   }
 
-  const slackDataSources = await DataSourceResource.listByConnectorProvider(
+  const bodyValidation = PatchLinkedSlackChannelsRequestBodySchema.decode(
+    req.body
+  );
+  if (isLeft(bodyValidation)) {
+    const pathError = reporter.formatValidationErrors(bodyValidation.left);
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: `Invalid request body: ${pathError}`,
+      },
+    });
+  }
+
+  const [slackDataSource] = await DataSourceResource.listByConnectorProvider(
     auth,
-    provider,
+    bodyValidation.right.provider ?? "slack",
     { limit: 1 }
   );
-  const slackDataSource = slackDataSources[0];
 
   if (!slackDataSource) {
     return apiError(req, res, {
@@ -74,88 +92,61 @@ async function handler(
     throw new Error("Unreachable code: connectorId is null.");
   }
 
-  switch (req.method) {
-    case "PATCH":
-      const bodyValidation = PatchLinkedSlackChannelsRequestBodySchema.decode(
-        req.body
-      );
-      if (isLeft(bodyValidation)) {
-        const pathError = reporter.formatValidationErrors(bodyValidation.left);
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: `Invalid request body: ${pathError}`,
-          },
-        });
-      }
-
-      const agentConfigurationSid = req.query.aId as string;
-      const agentConfiguration = await getAgentConfiguration(
-        auth,
-        agentConfigurationSid,
-        "light"
-      );
-      if (!agentConfiguration) {
-        return apiError(req, res, {
-          status_code: 404,
-          api_error: {
-            type: "agent_configuration_not_found",
-            message:
-              "The agent configuration you're trying to modify was not found.",
-          },
-        });
-      }
-
-      if (!agentConfiguration.canEdit && !auth.isAdmin()) {
-        return apiError(req, res, {
-          status_code: 403,
-          api_error: {
-            type: "app_auth_error",
-            message: "Only editors can modify agents.",
-          },
-        });
-      }
-
-      const connectorsAPI = new ConnectorsAPI(
-        config.getConnectorsAPIConfig(),
-        logger
-      );
-
-      const connectorsApiRes = await connectorsAPI.linkSlackChannelsWithAgent({
-        connectorId: connectorId.toString(),
-        agentConfigurationId: agentConfiguration.sId,
-        slackChannelInternalIds:
-          bodyValidation.right.slack_channel_internal_ids,
-      });
-
-      if (connectorsApiRes.isErr()) {
-        logger.error(
-          connectorsApiRes.error,
-          "An error occurred while linking Slack channels."
-        );
-        return apiError(req, res, {
-          status_code: 500,
-          api_error: {
-            type: "internal_server_error",
-            message: "An error occurred while linking Slack channels.",
-          },
-        });
-      }
-
-      return res.status(200).json({
-        success: true,
-      });
-
-    default:
-      return apiError(req, res, {
-        status_code: 405,
-        api_error: {
-          type: "method_not_supported_error",
-          message: "The method passed is not supported, PATCH is expected.",
-        },
-      });
+  const agentConfigurationSid = req.query.aId as string;
+  const agentConfiguration = await getAgentConfiguration(
+    auth,
+    agentConfigurationSid,
+    "light"
+  );
+  if (!agentConfiguration) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "agent_configuration_not_found",
+        message:
+          "The agent configuration you're trying to modify was not found.",
+      },
+    });
   }
+
+  if (!agentConfiguration.canEdit && !auth.isAdmin()) {
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "app_auth_error",
+        message: "Only editors can modify agents.",
+      },
+    });
+  }
+
+  const connectorsAPI = new ConnectorsAPI(
+    config.getConnectorsAPIConfig(),
+    logger
+  );
+
+  const connectorsApiRes = await connectorsAPI.linkSlackChannelsWithAgent({
+    connectorId: connectorId.toString(),
+    agentConfigurationId: agentConfiguration.sId,
+    slackChannelInternalIds: bodyValidation.right.slack_channel_internal_ids,
+  });
+
+  if (connectorsApiRes.isErr()) {
+    logger.error(
+      connectorsApiRes.error,
+      "An error occurred while linking Slack channels."
+    );
+    return apiError(req, res, {
+      status_code: 500,
+      api_error: {
+        type: "internal_server_error",
+        message: "An error occurred while linking Slack channels.",
+      },
+    });
+  }
+
+  return res.status(200).json({
+    success: true,
+  });
 }
 
 export default withSessionAuthenticationForWorkspace(handler);
