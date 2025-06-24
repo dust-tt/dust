@@ -11,7 +11,7 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
 import { isString } from "@app/types";
-import type { WithAPIErrorResponse }from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types";
 
 export type GetMCPServerViewsListResponseBody = {
   success: boolean;
