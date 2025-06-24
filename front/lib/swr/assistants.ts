@@ -24,6 +24,7 @@ import type { PostAgentUserFavoriteRequestBody } from "@app/pages/api/w/[wId]/me
 import type {
   AgentConfigurationType,
   AgentsGetViewType,
+  ConnectorProvider,
   LightAgentConfigurationType,
   LightWorkspaceType,
   UserType,
@@ -449,16 +450,18 @@ export function useAgentAnalytics({
 
 export function useSlackChannelsLinkedWithAgent({
   workspaceId,
+  connectorProvider = "slack",
   disabled,
 }: {
   workspaceId: string;
+  connectorProvider: Extract<ConnectorProvider, "slack" | "slack_bot">;
   disabled?: boolean;
 }) {
   const slackChannelsLinkedWithAgentFetcher: Fetcher<GetSlackChannelsLinkedWithAgentResponseBody> =
     fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(
-    `/api/w/${workspaceId}/assistant/builder/slack/channels_linked_with_agent`,
+    `/api/w/${workspaceId}/assistant/builder/${connectorProvider}/channels_linked_with_agent`,
     slackChannelsLinkedWithAgentFetcher,
     {
       disabled: !!disabled,
