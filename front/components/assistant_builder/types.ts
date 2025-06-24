@@ -197,6 +197,19 @@ export type AssistantBuilderActionConfigurationWithId =
     id: string;
   };
 
+export type AssistantBuilderMCPConfiguration = {
+  type: "MCP";
+  configuration: AssistantBuilderMCPServerConfiguration;
+  name: string;
+  description: string;
+  noConfigurationRequired?: boolean;
+};
+
+export type AssistantBuilderMCPConfigurationWithId =
+  AssistantBuilderMCPConfiguration & {
+    id: string;
+  };
+
 export interface AssistantBuilderDataVisualizationConfiguration {
   type: "DATA_VISUALIZATION";
   configuration: Record<string, never>;
@@ -212,7 +225,7 @@ export type AssistantBuilderDataVisualizationConfigurationWithId =
   };
 
 export type AssistantBuilderActionAndDataVisualizationConfiguration =
-  | AssistantBuilderActionConfiguration
+  | AssistantBuilderMCPConfiguration
   | AssistantBuilderDataVisualizationConfiguration;
 
 export type TemplateActionType = Omit<
@@ -229,7 +242,7 @@ export type AssistantBuilderDataVisualizationType =
   AssistantBuilderDataVisualizationConfiguration["type"];
 
 export type AssistantBuilderActionState =
-  | AssistantBuilderActionConfigurationWithId
+  | AssistantBuilderMCPConfigurationWithId
   | AssistantBuilderDataVisualizationConfigurationWithId;
 
 export type AssistantBuilderSetActionType =
