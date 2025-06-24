@@ -12,10 +12,16 @@ import type {
   SearchResultResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
+  findTagsSchema,
+  makeFindTagsDescription,
+  makeFindTagsTool,
+} from "@app/lib/actions/mcp_internal_actions/servers/common/find_tags_tool";
+import {
   fetchAgentDataSourceConfiguration,
   getCoreSearchArgs,
   parseDataSourceConfigurationURI,
   renderRelativeTimeFrameForToolOutput,
+  shouldAutoGenerateTags,
 } from "@app/lib/actions/mcp_internal_actions/servers/utils";
 import {
   makeMCPToolRecoverableErrorSuccess,
@@ -513,6 +519,32 @@ const createServer = (
     )
   );
 
+  // Check if tags are dynamic before creating the search tool.
+  const areTagsDynamic = agentLoopContext
+    ? shouldAutoGenerateTags(agentLoopContext)
+    : false;
+
+  const tagsInputSchema = areTagsDynamic
+    ? {
+        tagsIn: z
+          .array(z.string())
+          .optional()
+          .describe(
+            "A list of labels (also called tags) to restrict the search based on the user request and past conversation context." +
+              "If multiple labels are provided, the search will return documents that have at least one of the labels." +
+              "You can't check that all labels are present, only that at least one is present." +
+              "If no labels are provided, the search will return all documents regardless of their labels."
+          ),
+        tagsNot: z
+          .array(z.string())
+          .optional()
+          .describe(
+            "A list of labels (also called tags) to exclude from the search based on the user request and past conversation context." +
+              "Any document having one of these labels will be excluded from the search."
+          ),
+      }
+    : {};
+
   server.tool(
     "search",
     "Perform a semantic search within the folders and files designated by `nodeIds`. All children " +
@@ -545,11 +577,19 @@ const createServer = (
             " Possible values are: `all`, `{k}h`, `{k}d`, `{k}w`, `{k}m`, `{k}y`" +
             " where {k} is a number. Be strict, do not invent invalid values."
         ),
+      ...tagsInputSchema,
     },
     withToolLogging(
       auth,
       SEARCH_TOOL_NAME,
-      async ({ nodeIds, dataSources, query, relativeTimeFrame }) => {
+      async ({
+        nodeIds,
+        dataSources,
+        query,
+        relativeTimeFrame,
+        tagsIn,
+        tagsNot,
+      }) => {
         const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
         const credentials = dustManagedCredentials();
         const timeFrame = parseTimeFrame(relativeTimeFrame);
@@ -585,21 +625,24 @@ const createServer = (
 
         const coreSearchArgsResults = await concurrentExecutor(
           dataSources,
-          async (dataSourceConfiguration) =>
-            getCoreSearchArgs(auth, dataSourceConfiguration),
+          async (
+            dataSourceConfiguration: DataSourcesToolConfigurationType[number]
+          ) => getCoreSearchArgs(auth, dataSourceConfiguration),
           { concurrency: 10 }
         );
 
         // Set to avoid O(n^2) complexity below.
         const dataSourceIds = new Set<string>(
           removeNulls(
-            nodeIds?.map((nodeId) => extractDataSourceIdFromNodeId(nodeId)) ??
-              []
+            nodeIds?.map((nodeId: string) =>
+              extractDataSourceIdFromNodeId(nodeId)
+            ) ?? []
           )
         );
 
         const regularNodeIds =
-          nodeIds?.filter((nodeId) => !isDataSourceNodeId(nodeId)) ?? [];
+          nodeIds?.filter((nodeId: string) => !isDataSourceNodeId(nodeId)) ??
+          [];
 
         const coreSearchArgs = removeNulls(
           coreSearchArgsResults.map((res) => {
@@ -648,8 +691,8 @@ const createServer = (
             filter: {
               ...args.filter,
               tags: {
-                in: null,
-                not: null,
+                in: tagsIn ?? null,
+                not: tagsNot ?? null,
               },
               timestamp: {
                 gt: timeFrame ? timeFrameFromNow(timeFrame) : null,
@@ -924,6 +967,16 @@ const createServer = (
       }
     )
   );
+
+  // Add the find_tags tool if tags are dynamic.
+  if (areTagsDynamic) {
+    server.tool(
+      "find_tags",
+      makeFindTagsDescription(SEARCH_TOOL_NAME),
+      findTagsSchema,
+      makeFindTagsTool(auth)
+    );
+  }
 
   return server;
 };
