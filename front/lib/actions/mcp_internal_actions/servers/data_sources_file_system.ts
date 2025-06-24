@@ -236,22 +236,31 @@ async function searchCallback(
     topK,
     credentials,
     false,
-    coreSearchArgs.map((args) => ({
-      projectId: args.projectId,
-      dataSourceId: args.dataSourceId,
-      filter: {
-        ...args.filter,
-        tags: {
-          in: tagsIn ?? null,
-          not: tagsNot ?? null,
+    coreSearchArgs.map((args) => {
+      // In addition to the tags provided by the user, we add the tags the agent passed.
+      const finalTagsIn = [...(args.filter.tags?.in ?? []), ...(tagsIn ?? [])];
+      const finalTagsNot = [
+        ...(args.filter.tags?.not ?? []),
+        ...(tagsNot ?? []),
+      ];
+
+      return {
+        projectId: args.projectId,
+        dataSourceId: args.dataSourceId,
+        filter: {
+          ...args.filter,
+          tags: {
+            in: finalTagsIn.length > 0 ? finalTagsIn : null,
+            not: finalTagsNot.length > 0 ? finalTagsNot : null,
+          },
+          timestamp: {
+            gt: timeFrame ? timeFrameFromNow(timeFrame) : null,
+            lt: null,
+          },
         },
-        timestamp: {
-          gt: timeFrame ? timeFrameFromNow(timeFrame) : null,
-          lt: null,
-        },
-      },
-      view_filter: args.view_filter,
-    }))
+        view_filter: args.view_filter,
+      };
+    })
   );
 
   if (searchResults.isErr()) {
