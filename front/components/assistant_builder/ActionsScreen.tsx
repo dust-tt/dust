@@ -31,13 +31,7 @@ import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import assert from "assert";
 import { uniqueId } from "lodash";
 import type { ReactNode } from "react";
-import React, {
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 import { MCPActionHeader } from "@app/components/actions/MCPActionHeader";
 import { DataVisualization } from "@app/components/assistant_builder/actions/DataVisualization";
@@ -117,7 +111,6 @@ import {
 } from "@app/types";
 
 import { DataDescription } from "./actions/DataDescription";
-import { useMCPServerViewsContext } from "@app/components/assistant_builder/contexts/MCPServerViewsContext";
 import { useSpacesContext } from "@app/components/assistant_builder/contexts/SpacesContext";
 
 const DATA_SOURCES_ACTION_CATEGORIES = [
@@ -709,7 +702,7 @@ function ActionCard({
 }) {
   const { mcpServerViews, isMCPServerViewsLoading } =
     useMCPServerViewsContext();
-    
+
   const spec =
     action.type === "DATA_VISUALIZATION"
       ? DATA_VISUALIZATION_SPECIFICATION

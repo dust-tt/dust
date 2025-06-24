@@ -69,7 +69,7 @@ export function AgentBuilderProvider({
         setIsPreviewPanelOpen,
       }}
     >
-      <MCPServerViewsProvider owner={owner} spaces={spaces}>
+      <MCPServerViewsProvider owner={owner}>
         {children}
       </MCPServerViewsProvider>
     </AgentBuilderContext.Provider>

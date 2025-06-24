@@ -172,7 +172,7 @@ export default function CreateAgent({
       dataSourceViews={dataSourceViews}
       owner={owner}
     >
-      <MCPServerViewsProvider owner={owner} spaces={spaces}>
+      <MCPServerViewsProvider owner={owner}>
         <AgentBuilder />
       </MCPServerViewsProvider>
     </AgentBuilderProvider>
