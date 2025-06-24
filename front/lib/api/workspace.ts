@@ -24,6 +24,7 @@ import type {
   LightWorkspaceType,
   MembershipOriginType,
   MembershipRoleType,
+  ModelId,
   PublicAPILimitsType,
   Result,
   RoleType,
@@ -343,6 +344,10 @@ export async function unsafeGetWorkspacesByModelId(
       },
     })
   ).map((w) => renderLightWorkspaceType({ workspace: w }));
+}
+
+export async function unsafeGetWorkspaceByModelId(modelId: ModelId) {
+  return WorkspaceModel.findByPk(modelId);
 }
 
 export async function areAllSubscriptionsCanceled(
