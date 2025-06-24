@@ -190,12 +190,14 @@ export default handleAuth({
           ]);
         }
 
-        return res.redirect(`/login-error?reason=${reason}`);
+        return res.redirect(
+          `/login-error?type=auth0-callback&reason=${reason}`
+        );
       }
 
       statsDClient.increment("login.callback.error", 1, ["error:unknow"]);
 
-      return res.redirect("/login-error");
+      return res.redirect("/login-error?type=auth0-callback");
     }
   },
   logout: async (req: NextApiRequest, res: NextApiResponse) => {

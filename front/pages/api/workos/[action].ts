@@ -112,14 +112,16 @@ async function handleLogin(req: NextApiRequest, res: NextApiResponse) {
   } catch (error) {
     logger.error({ error }, "Error during WorkOS login");
     statsDClient.increment("login.error", 1);
-    res.redirect("/login-error");
+    res.redirect("/login-error?type=workos-login");
   }
 }
 
 async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
   const { code, state } = req.query;
   if (!code || typeof code !== "string") {
-    return res.redirect("/login-error");
+    return res.redirect(
+      "/login-error?reason=invalid-code&type=workos-callback"
+    );
   }
 
   try {
@@ -258,7 +260,7 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
   } catch (error) {
     logger.error({ error }, "Error during WorkOS callback");
     statsDClient.increment("login.callback.error", 1);
-    res.redirect("/login-error");
+    res.redirect("/login-error?type=workos-callback");
   }
 }
 

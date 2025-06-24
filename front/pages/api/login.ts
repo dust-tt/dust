@@ -109,7 +109,9 @@ async function handler(
     );
     if (flow) {
       // Only happen if the workspace associated with workOSOrganizationId is not found.
-      res.redirect(`/api/auth/logout?returnTo=/login-error?reason=${flow}`);
+      res.redirect(
+        `/api/auth/logout?returnTo=/login-error${encodeURIComponent(`?type=sso-login&reason=${flow}`)}`
+      );
       return;
     }
 
@@ -148,7 +150,7 @@ async function handler(
           "Error during login flow."
         );
         res.redirect(
-          `/api/auth/logout?returnTo=/login-error?reason=${error.code}`
+          `/api/auth/logout?returnTo=/login-error${encodeURIComponent(`?type=login&reason=${error.code}`)}`
         );
         return;
       }
