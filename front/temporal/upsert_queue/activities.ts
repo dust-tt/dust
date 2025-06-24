@@ -15,12 +15,12 @@ import { CoreAPI, dustManagedCredentials, safeSubstring } from "@app/types";
 const { DUST_UPSERT_QUEUE_BUCKET, SERVICE_ACCOUNT } = process.env;
 
 function cleanUtf8Content(content: string): string {
-  // Early exit if no \uD sequences found
+  // Early exit if no \uD sequences found.
   if (!/[\uD800-\uDFFF]/.test(content)) {
     return content;
   }
 
-  // Replace low surrogates not preceded by a high surrogate with '?'
+  // Replace low surrogates not preceded by a high surrogate with '?'.
   return content
     .replace(/\\uD[89AB][0-9A-F]{2}(?!\\uD[CDEF][0-9A-F]{2})/gi, "?")
     .replace(/(?<!\\uD[89AB][0-9A-F]{2})\\uD[CDEF][0-9A-F]{2}/gi, "?");
