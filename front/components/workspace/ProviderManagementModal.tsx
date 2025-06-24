@@ -1,10 +1,12 @@
 import {
   Button,
+  Cog6ToothIcon,
   ContextItem,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  Icon,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -149,7 +151,7 @@ export function ProviderManagementModal({
   return (
     <Sheet>
       <SheetTrigger asChild>
-        <Button variant="primary" label="Manage providers" className="grow-0" />
+        <Button variant="outline" label="Manage Models" icon={Cog6ToothIcon} />
       </SheetTrigger>
       <SheetContent size="lg">
         <SheetHeader hideButton>
@@ -162,7 +164,7 @@ export function ProviderManagementModal({
                 Make all providers available
               </span>
               <SliderToggle
-                size="sm"
+                size="xs"
                 selected={allToggleEnabled}
                 disabled={masterToggleDisabled}
                 onClick={() => {
@@ -187,10 +189,10 @@ export function ProviderManagementModal({
                   <ContextItem
                     key={provider}
                     title={prettyfiedProviderNames[provider]}
-                    visual={<LogoComponent />}
+                    visual={<Icon visual={LogoComponent} size="lg" />}
                     action={
                       <SliderToggle
-                        size="sm"
+                        size="xs"
                         selected={providerStates[provider]}
                         onClick={() => handleToggleChange(provider)}
                       />

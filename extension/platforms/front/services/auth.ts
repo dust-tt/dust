@@ -2,7 +2,6 @@ import {
   DUST_API_AUDIENCE,
   DUST_US_URL,
   FRONT_EXTENSION_URL,
-  getOAuthClientID,
 } from "@app/shared/lib/config";
 import { generatePKCE } from "@app/shared/lib/utils";
 import type { StoredTokens } from "@app/shared/services/auth";
@@ -82,7 +81,7 @@ export class FrontAuthService extends AuthService {
 
     const result = await openAndWaitForPopup<{ code: string }>(
       authUrl,
-      "WorkOS Auth",
+      "Authentication",
       (popup) => {
         const popupUrl = popup.location.href;
         if (popupUrl?.includes("code=")) {
@@ -175,7 +174,7 @@ export class FrontAuthService extends AuthService {
       const tokens = await this.saveTokens({
         accessToken: data.access_token,
         refreshToken: data.refresh_token || "",
-        expiresIn: DEFAULT_TOKEN_EXPIRY,
+        expiresIn: data.expires_in || DEFAULT_TOKEN_EXPIRY,
       });
 
       const claims = jwtDecode<Record<string, string>>(data.access_token);
@@ -256,7 +255,6 @@ export class FrontAuthService extends AuthService {
     try {
       const tokenParams: Record<string, string> = {
         grant_type: "refresh_token",
-        client_id: getOAuthClientID("workos"),
         refresh_token: (await this.getStoredTokens())?.refreshToken || "",
       };
 
@@ -293,7 +291,7 @@ export class FrontAuthService extends AuthService {
       const storedTokens = await this.saveTokens({
         accessToken: data.access_token,
         refreshToken: data.refresh_token || "",
-        expiresIn: DEFAULT_TOKEN_EXPIRY,
+        expiresIn: data.expires_in || DEFAULT_TOKEN_EXPIRY,
       });
       return new Ok(storedTokens);
     } catch (error) {

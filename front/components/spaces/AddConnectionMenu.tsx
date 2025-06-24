@@ -153,7 +153,7 @@ export const AddConnectionMenu = ({
     [owner, systemSpace]
   );
 
-  // Filter available integrations
+  // Filter available integrations.
   const availableIntegrations = integrations.filter((i) => {
     const hide = CONNECTOR_CONFIGURATIONS[i.connectorProvider].hide;
     const rolloutFlag =
@@ -423,6 +423,7 @@ export const AddConnectionMenu = ({
                   }}
                 />
               );
+            case "slack_bot":
             case undefined:
               return null;
             default:

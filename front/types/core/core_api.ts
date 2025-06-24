@@ -324,7 +324,7 @@ export interface CoreAPIUpsertDataSourceDocumentPayload {
 
 // TODO(keyword-search): Until we remove the `managed-` prefix, we need to
 // sanitize the search name.
-function formatDataSourceDisplayName(name: string) {
+export function formatDataSourceDisplayName(name: string) {
   return name
     .replace(/[-_]/g, " ") // Replace both hyphens and underscores with spaces.
     .split(" ")

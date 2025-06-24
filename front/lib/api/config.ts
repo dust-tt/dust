@@ -165,6 +165,9 @@ const config = {
   getOAuthSlackClientId: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_SLACK_CLIENT_ID");
   },
+  getOAuthSlackBotClientId: (): string => {
+    return EnvironmentConfig.getEnvVariable("OAUTH_SLACK_BOT_CLIENT_ID");
+  },
   getOAuthIntercomClientId: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_INTERCOM_CLIENT_ID");
   },

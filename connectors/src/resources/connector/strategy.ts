@@ -50,6 +50,7 @@ export interface ConnectorProviderModelM {
   microsoft: MicrosoftConfigurationModel;
   notion: NotionConnectorState;
   slack: SlackConfigurationModel;
+  slack_bot: SlackConfigurationModel;
   webcrawler: WebCrawlerConfigurationModel;
   snowflake: SnowflakeConfigurationModel;
   zendesk: ZendeskConfigurationModel;
@@ -88,6 +89,7 @@ export interface ConnectorProviderConfigurationTypeM {
   notion: null;
   snowflake: null;
   slack: SlackConfigurationType;
+  slack_bot: SlackConfigurationType;
   webcrawler: WebCrawlerConfigurationType;
   zendesk: null;
   bigquery: null;
@@ -146,6 +148,9 @@ export function getConnectorProviderStrategy(
       return new NotionConnectorStrategy();
 
     case "slack":
+      return new SlackConnectorStrategy();
+
+    case "slack_bot":
       return new SlackConnectorStrategy();
 
     case "webcrawler":

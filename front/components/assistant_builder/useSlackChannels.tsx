@@ -1,3 +1,4 @@
+import type { ConnectorProvider } from "@dust-tt/client";
 import { useEffect, useState } from "react";
 
 import type { SlackChannel } from "@app/components/assistant_builder/SlackIntegration";
@@ -10,6 +11,7 @@ interface useSlackChannelProps {
   isEdited: boolean;
   isPrivateAssistant: boolean;
   workspaceId: string;
+  connectorProvider?: Extract<ConnectorProvider, "slack" | "slack_bot">;
 }
 
 export function useSlackChannel({
@@ -19,6 +21,7 @@ export function useSlackChannel({
   isEdited,
   isPrivateAssistant,
   workspaceId,
+  connectorProvider = "slack",
 }: useSlackChannelProps) {
   // This state stores the slack channels that should have the current agent as default.
   const [selectedSlackChannels, setSelectedSlackChannels] =
@@ -33,6 +36,7 @@ export function useSlackChannel({
     mutateSlackChannels,
   } = useSlackChannelsLinkedWithAgent({
     workspaceId,
+    connectorProvider,
     disabled: !isBuilder,
   });
 

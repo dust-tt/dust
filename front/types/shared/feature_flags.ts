@@ -34,6 +34,7 @@ export const WHITELISTABLE_FEATURES = [
   "salesforce_tool",
   "search_knowledge_builder",
   "show_debug_tools",
+  "slack_tool",
   "snowflake_connector_feature",
   "usage_data_api",
   "workos_user_provisioning",

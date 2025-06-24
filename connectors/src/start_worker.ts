@@ -25,7 +25,9 @@ import logger from "./logger/logger";
 
 setupGlobalErrorHandler(logger);
 
-type WorkerType = ConnectorProvider | "notion_garbage_collector";
+type WorkerType =
+  | Exclude<ConnectorProvider, "slack_bot">
+  | "notion_garbage_collector";
 
 const workerFunctions: Record<WorkerType, () => Promise<void>> = {
   confluence: runConfluenceWorker,

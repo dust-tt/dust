@@ -13,7 +13,7 @@ import type {
 import type { LightWorkspaceType } from "@app/types";
 import { assertNever } from "@app/types";
 
-function makeEnterpriseConnectionName(workspaceId: string) {
+export function makeEnterpriseConnectionName(workspaceId: string) {
   return `workspace-${workspaceId}`;
 }
 

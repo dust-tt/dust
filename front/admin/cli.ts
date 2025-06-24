@@ -1,5 +1,6 @@
-import parseArgs from "minimist";
 import fs from "fs/promises";
+import parseArgs from "minimist";
+import path from "path";
 
 import { getConversation } from "@app/lib/api/assistant/conversation";
 import { renderConversationForModel } from "@app/lib/api/assistant/preprocessing";
@@ -13,6 +14,7 @@ import { FREE_UPGRADED_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { getDustProdActionRegistry } from "@app/lib/registry";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import { KeyResource } from "@app/lib/resources/key_resource";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -34,8 +36,6 @@ import {
   removeNulls,
   SUPPORTED_MODEL_CONFIGS,
 } from "@app/types";
-import path from "path";
-import { KeyResource } from "@app/lib/resources/key_resource";
 
 // `cli` takes an object type and a command as first two arguments and then a list of arguments.
 const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
@@ -333,11 +333,13 @@ const conversation = async (command: string, args: parseArgs.ParsedArgs) => {
       const MIN_GENERATION_TOKENS = 2048;
       const allowedTokenCount = model.contextSize - MIN_GENERATION_TOKENS;
       const prompt = "";
+      const tools = "";
 
       const convoRes = await renderConversationForModel(auth, {
         conversation,
         model,
         prompt,
+        tools,
         allowedTokenCount,
       });
 
@@ -452,6 +454,7 @@ const transcripts = async (command: string, args: parseArgs.ParsedArgs) => {
         },
         "Transcript retrieval workflow started."
       );
+      return;
     }
     case "pause-all": {
       const execute = !!args.execute;
@@ -460,7 +463,7 @@ const transcripts = async (command: string, args: parseArgs.ParsedArgs) => {
         `Pausing all LabsTranscripts workflows and recording active ones... (activeIdsFile: ${activeIdsFile})`
       );
       const allWorkspaces = await Workspace.findAll();
-      let activeConfigSIds: string[] = [];
+      const activeConfigSIds: string[] = [];
       for (const ws of allWorkspaces) {
         const configs =
           await LabsTranscriptsConfigurationResource.findByWorkspaceId(ws.id);

@@ -1,5 +1,10 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { Octokit } from "@octokit/core";
+import type {
+  RequestInfo as UndiciRequestInfo,
+  RequestInit as UndiciRequestInit,
+} from "undici";
+import { fetch as undiciFetch, ProxyAgent } from "undici";
 import { z } from "zod";
 
 import {
@@ -7,9 +12,40 @@ import {
   makeMCPToolTextSuccess,
 } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
-import { normalizeError } from "@app/types";
+import type { Authenticator } from "@app/lib/auth";
+import { isWorkspaceUsingStaticIP } from "@app/lib/misc";
+import { EnvironmentConfig, normalizeError } from "@app/types";
 
 const GITHUB_GET_PULL_REQUEST_ACTION_MAX_COMMITS = 32;
+
+const createOctokit = async (
+  auth: Authenticator,
+  { accessToken }: { accessToken?: string }
+) => {
+  if (isWorkspaceUsingStaticIP(auth.getNonNullableWorkspace())) {
+    const myFetch = (url: UndiciRequestInfo, options: UndiciRequestInit) =>
+      undiciFetch(url, {
+        ...options,
+        dispatcher: new ProxyAgent(
+          `http://${EnvironmentConfig.getEnvVariable(
+            "PROXY_USER_NAME"
+          )}:${EnvironmentConfig.getEnvVariable(
+            "PROXY_USER_PASSWORD"
+          )}@${EnvironmentConfig.getEnvVariable(
+            "PROXY_HOST"
+          )}:${EnvironmentConfig.getEnvVariable("PROXY_PORT")}`
+        ),
+      });
+    return new Octokit({
+      auth: accessToken,
+      request: { fetch: myFetch },
+    });
+  }
+
+  return new Octokit({
+    auth: accessToken,
+  });
+};
 
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "github",
@@ -23,7 +59,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
   documentationUrl: null,
 };
 
-const createServer = (): McpServer => {
+const createServer = (auth: Authenticator): McpServer => {
   const server = new McpServer(serverInfo);
 
   server.tool(
@@ -48,9 +84,9 @@ const createServer = (): McpServer => {
         .describe("Labels to associate with this issue."),
     },
     async ({ owner, repo, title, body, assignees, labels }, { authInfo }) => {
-      const accessToken = authInfo?.token;
-
-      const octokit = new Octokit({ auth: accessToken });
+      const octokit = await createOctokit(auth, {
+        accessToken: authInfo?.token,
+      });
 
       try {
         const { data: issue } = await octokit.request(
@@ -90,9 +126,9 @@ const createServer = (): McpServer => {
       pullNumber: z.number().describe("The pull request number."),
     },
     async ({ owner, repo, pullNumber }, { authInfo }) => {
-      const accessToken = authInfo?.token;
-
-      const octokit = new Octokit({ auth: accessToken });
+      const octokit = await createOctokit(auth, {
+        accessToken: authInfo?.token,
+      });
 
       try {
         const query = `
@@ -398,9 +434,9 @@ const createServer = (): McpServer => {
       { owner, repo, pullNumber, body, event, comments = [] },
       { authInfo }
     ) => {
-      const accessToken = authInfo?.token;
-
-      const octokit = new Octokit({ auth: accessToken });
+      const octokit = await createOctokit(auth, {
+        accessToken: authInfo?.token,
+      });
 
       try {
         const { data: review } = await octokit.request(
@@ -437,9 +473,9 @@ const createServer = (): McpServer => {
         ),
     },
     async ({ owner }, { authInfo }) => {
-      const accessToken = authInfo?.token;
-
-      const octokit = new Octokit({ auth: accessToken });
+      const octokit = await createOctokit(auth, {
+        accessToken: authInfo?.token,
+      });
 
       try {
         const projectsQuery = `
@@ -569,9 +605,9 @@ const createServer = (): McpServer => {
         ),
     },
     async ({ owner, repo, issueNumber, projectId, field }, { authInfo }) => {
-      const accessToken = authInfo?.token;
-
-      const octokit = new Octokit({ auth: accessToken });
+      const octokit = await createOctokit(auth, {
+        accessToken: authInfo?.token,
+      });
 
       try {
         // First, get the issue's node ID using GraphQL.
@@ -673,9 +709,9 @@ const createServer = (): McpServer => {
         .describe("The contents of the comment (GitHub markdown)."),
     },
     async ({ owner, repo, issueNumber, body }, { authInfo }) => {
-      const accessToken = authInfo?.token;
-
-      const octokit = new Octokit({ auth: accessToken });
+      const octokit = await createOctokit(auth, {
+        accessToken: authInfo?.token,
+      });
 
       try {
         const { data: comment } = await octokit.request(
@@ -712,9 +748,9 @@ const createServer = (): McpServer => {
       issueNumber: z.number().describe("The issue number."),
     },
     async ({ owner, repo, issueNumber }, { authInfo }) => {
-      const accessToken = authInfo?.token;
-
-      const octokit = new Octokit({ auth: accessToken });
+      const octokit = await createOctokit(auth, {
+        accessToken: authInfo?.token,
+      });
 
       try {
         const query = `
@@ -871,9 +907,9 @@ const createServer = (): McpServer => {
       },
       { authInfo }
     ) => {
-      const accessToken = authInfo?.token;
-
-      const octokit = new Octokit({ auth: accessToken });
+      const octokit = await createOctokit(auth, {
+        accessToken: authInfo?.token,
+      });
 
       try {
         const query = `

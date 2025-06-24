@@ -3,11 +3,11 @@ import moment from "moment-timezone";
 import { z } from "zod";
 
 import { INTERNAL_MIME_TYPES_VALUES } from "./internal_mime_types";
-import { CallToolResultSchema } from "./raw_mcp_types";
 import {
   MCPExternalActionIconSchema,
   MCPInternalActionIconSchema,
 } from "./mcp_icon_types";
+import { CallToolResultSchema } from "./raw_mcp_types";
 
 type StringLiteral<T> = T extends string
   ? string extends T
@@ -316,6 +316,7 @@ const ConnectorProvidersSchema = FlexibleEnumSchema<
   | "intercom"
   | "notion"
   | "slack"
+  | "slack_bot"
   | "microsoft"
   | "webcrawler"
   | "snowflake"
@@ -838,6 +839,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "salesforce_tool"
   | "search_knowledge_builder"
   | "show_debug_tools"
+  | "slack_tool"
   | "snowflake_connector_feature"
   | "usage_data_api"
   | "workos_user_provisioning"

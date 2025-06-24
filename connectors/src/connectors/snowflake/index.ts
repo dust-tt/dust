@@ -77,6 +77,15 @@ export class SnowflakeConnectorManager extends BaseConnectorManager<null> {
     // Then we test the connection is successful.
     const connectionRes = await testConnection({ credentials });
     if (connectionRes.isErr()) {
+      logger.error(
+        {
+          error: connectionRes.error,
+          workspaceId: dataSourceConfig.workspaceId,
+          snowflakeAccount: credentials.account,
+          snowflakeWarehouse: credentials.warehouse,
+        },
+        "Error testing snowflake connection."
+      );
       return new Err(
         new ConnectorManagerError(
           handleTestConnectionError(connectionRes.error),

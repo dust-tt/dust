@@ -2,6 +2,7 @@ import { Client, isFullDatabase, isFullPage } from "@notionhq/client";
 import { Op } from "sequelize";
 
 import { updateAllParentsFields } from "@connectors/connectors/notion/lib/parents";
+import { pageOrDbIdFromUrl } from "@connectors/connectors/notion/lib/utils";
 import {
   clearParentsLastUpdatedAt,
   deleteDatabase,
@@ -111,32 +112,6 @@ export async function searchNotionPagesForQuery({
     isSkipped: p.object === "database" && skippedDatabaseIds.has(p.id),
     isFull: p.object === "database" ? isFullDatabase(p) : isFullPage(p),
   }));
-}
-
-function pageOrDbIdFromUrl(url: string) {
-  // parse URL
-  const u = new URL(url);
-  const last = u.pathname.split("/").pop();
-  if (!last) {
-    throw new Error(`Unhandled URL (could not get "last"): ${url}`);
-  }
-  const id = last.split("-").pop();
-  if (!id || id.length !== 32) {
-    throw new Error(`Unhandled URL (could not get 32 char ID): ${url}`);
-  }
-
-  const pageOrDbId =
-    id.slice(0, 8) +
-    "-" +
-    id.slice(8, 12) +
-    "-" +
-    id.slice(12, 16) +
-    "-" +
-    id.slice(16, 20) +
-    "-" +
-    id.slice(20);
-
-  return pageOrDbId;
 }
 
 export async function findNotionUrl({

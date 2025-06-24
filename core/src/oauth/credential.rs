@@ -154,7 +154,20 @@ impl Credential {
 
         let keys_to_check = match provider {
             CredentialProvider::Snowflake => {
-                vec!["account", "warehouse", "username", "password", "role"]
+                // Check if it's key-pair auth or password auth
+                if content.get("auth_type").and_then(|v| v.as_str()) == Some("keypair") {
+                    vec![
+                        "account",
+                        "warehouse",
+                        "username",
+                        "private_key",
+                        "role",
+                        "auth_type",
+                    ]
+                } else {
+                    // Legacy or explicit password auth
+                    vec!["account", "warehouse", "username", "password", "role"]
+                }
             }
             CredentialProvider::Modjo => {
                 vec!["api_key"]

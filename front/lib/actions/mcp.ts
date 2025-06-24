@@ -20,11 +20,11 @@ import {
   hideInternalConfiguration,
 } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { ProgressNotificationContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import { isSearchQueryResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
   isBlobResource,
   isMCPProgressNotificationType,
   isResourceWithName,
+  isSearchQueryResourceType,
   isToolApproveBubbleUpNotificationType,
   isToolGeneratedFile,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
@@ -229,15 +229,11 @@ type ActionBaseParams = Omit<
   "id" | "type" | "executionState" | "output" | "isError"
 >;
 
-function hideContentForModel({
+function hideFileFromActionOutput({
   fileId,
   content,
   workspaceId,
 }: AgentMCPActionOutputItem): CallToolResult["content"][number] | null {
-  // Hide certain types of content from the model: those are only used for display.
-  if (isSearchQueryResourceType(content)) {
-    return null;
-  }
   // For tool-generated files and non-file content, we keep the resource as is.
   if (!fileId || isToolGeneratedFile(content)) {
     return content;
@@ -266,6 +262,13 @@ function hideContentForModel({
     type: "text",
     text: `A file of type ${contentType} with id ${sid} was generated successfully and made available to the conversation.`,
   };
+}
+
+function shouldHideContentForModel(
+  content: CallToolResult["content"][number]
+): boolean {
+  // Hide certain types of content from the model: those are only used for display.
+  return isSearchQueryResourceType(content);
 }
 
 export type MCPActionRunningEvents =
@@ -361,7 +364,9 @@ export class MCPActionType extends BaseAction {
       name: this.functionCallName,
       function_call_id: this.functionCallId,
       content: this.output
-        ? JSON.stringify(this.output)
+        ? JSON.stringify(
+            this.output.filter((o) => !shouldHideContentForModel(o))
+          )
         : "Successfully executed action, no output.",
     };
   }
@@ -1061,7 +1066,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
         executionState: status,
         id: action.id,
         isError: false,
-        output: removeNulls(outputItems.map(hideContentForModel)),
+        output: removeNulls(outputItems.map(hideFileFromActionOutput)),
         type: "tool_action",
       }),
     };
@@ -1141,7 +1146,7 @@ export async function mcpActionTypesFromAgentMessageIds(
     return new MCPActionType({
       id: action.id,
       params: action.params,
-      output: removeNulls(action.outputItems.map(hideContentForModel)),
+      output: removeNulls(action.outputItems.map(hideFileFromActionOutput)),
       functionCallId: action.functionCallId,
       functionCallName: action.functionCallName,
       agentMessageId: action.agentMessageId,

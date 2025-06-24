@@ -3,6 +3,7 @@ import { Err, Ok } from "@dust-tt/client";
 import type { WorkflowHandle } from "@temporalio/client";
 import {
   ScheduleOverlapPolicy,
+  WorkflowExecutionAlreadyStartedError,
   WorkflowNotFoundError,
 } from "@temporalio/client";
 
@@ -16,11 +17,7 @@ import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { WebCrawlerConfigurationResource } from "@connectors/resources/webcrawler_resource";
 import type { CrawlingFrequency, ModelId } from "@connectors/types";
-import {
-  CrawlingFrequencies,
-  normalizeError,
-  WebcrawlerCustomCrawler,
-} from "@connectors/types";
+import { CrawlingFrequencies, normalizeError } from "@connectors/types";
 
 import { WebCrawlerQueueNames } from "./config";
 import {
@@ -160,38 +157,6 @@ export async function launchCrawlWebsiteScheduler() {
   });
 }
 
-export async function updateCrawlerType(
-  connectorId: string,
-  newCrawler: string
-): Promise<Result<void, Error>> {
-  const connector = await ConnectorResource.fetchById(connectorId);
-  if (!connector) {
-    return new Err(new Error(`Connector ${connectorId} not found`));
-  }
-
-  const webcrawlerConfig =
-    await WebCrawlerConfigurationResource.fetchByConnectorId(connector.id);
-
-  if (!webcrawlerConfig) {
-    return new Err(new Error(`CrawlerConfig not found for ${connector.id}`));
-  }
-
-  let customCrawler: WebcrawlerCustomCrawler | null = null;
-  // If not default, then we try to match
-  if (newCrawler !== "default") {
-    customCrawler =
-      Object.values(WebcrawlerCustomCrawler).find(
-        (value) => value === newCrawler
-      ) ?? null;
-    if (customCrawler === null) {
-      return new Err(new Error(`"${newCrawler}" is not a valid crawler`));
-    }
-  }
-
-  await webcrawlerConfig.updateCustomCrawler(customCrawler);
-  return new Ok(undefined);
-}
-
 function isCrawlFrequency(value: string): value is CrawlingFrequency {
   return (CrawlingFrequencies as readonly string[]).includes(value);
 }
@@ -249,6 +214,13 @@ export async function launchFirecrawlCrawlStartedWorkflow(
     });
     return new Ok(workflowId);
   } catch (e) {
+    if (e instanceof WorkflowExecutionAlreadyStartedError) {
+      logger.warn(
+        { workflowId, connectorId, crawlId },
+        "Workflow already started"
+      );
+      return new Ok(workflowId);
+    }
     return new Err(normalizeError(e));
   }
 }
@@ -279,6 +251,13 @@ export async function launchFirecrawlCrawlFailedWorkflow(
     });
     return new Ok(workflowId);
   } catch (e) {
+    if (e instanceof WorkflowExecutionAlreadyStartedError) {
+      logger.warn(
+        { workflowId, connectorId, crawlId },
+        "Workflow already started"
+      );
+      return new Ok(workflowId);
+    }
     return new Err(normalizeError(e));
   }
 }
@@ -309,6 +288,13 @@ export async function launchFirecrawlCrawlCompletedWorkflow(
     });
     return new Ok(workflowId);
   } catch (e) {
+    if (e instanceof WorkflowExecutionAlreadyStartedError) {
+      logger.warn(
+        { workflowId, connectorId, crawlId },
+        "Workflow already started"
+      );
+      return new Ok(workflowId);
+    }
     return new Err(normalizeError(e));
   }
 }
@@ -344,6 +330,13 @@ export async function launchFirecrawlCrawlPageWorkflow(
     });
     return new Ok(workflowId);
   } catch (e) {
+    if (e instanceof WorkflowExecutionAlreadyStartedError) {
+      logger.warn(
+        { workflowId, connectorId, crawlId },
+        "Workflow already started"
+      );
+      return new Ok(workflowId);
+    }
     return new Err(normalizeError(e));
   }
 }

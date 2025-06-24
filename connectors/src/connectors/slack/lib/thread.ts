@@ -3,19 +3,26 @@ import type { MessageElement } from "@slack/web-api/dist/response/ConversationsH
 import type { ConversationsRepliesResponse } from "@slack/web-api/dist/response/ConversationsRepliesResponse";
 
 import mainLogger from "@connectors/logger/logger";
+import type { ModelId } from "@connectors/types";
+
+import { reportSlackUsage, withSlackErrorHandling } from "./slack_client";
 
 const logger = mainLogger.child({ provider: "slack" });
 
-// The pagination logic for getting all the messages of a Slack thread
-// is a bit complicated, so we put it in a separate function.
+// The pagination logic for getting all the messages of a Slack thread is a bit complicated, so we
+// put it in a separate function.
 export async function getRepliesFromThread({
+  connectorId,
   slackClient,
   channelId,
   threadTs,
+  useCase,
 }: {
+  connectorId: ModelId;
   slackClient: WebClient;
   channelId: string;
   threadTs: string;
+  useCase: "batch_sync" | "incremental_sync" | "bot";
 }) {
   let allMessages: MessageElement[] = [];
 
@@ -24,13 +31,23 @@ export async function getRepliesFromThread({
   do {
     const now = new Date();
 
-    const replies: ConversationsRepliesResponse =
-      await slackClient.conversations.replies({
-        channel: channelId,
-        ts: threadTs,
-        cursor: next_cursor,
-        limit: 200,
-      });
+    reportSlackUsage({
+      connectorId,
+      method: "conversations.replies",
+      channelId,
+      limit: 200,
+      useCase,
+    });
+
+    const replies: ConversationsRepliesResponse = await withSlackErrorHandling(
+      () =>
+        slackClient.conversations.replies({
+          channel: channelId,
+          ts: threadTs,
+          cursor: next_cursor,
+          limit: 200,
+        })
+    );
 
     if (replies.error) {
       throw new Error(replies.error);

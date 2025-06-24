@@ -14,7 +14,7 @@ export class WebCrawlerConfigurationModel extends ConnectorBaseModel<WebCrawlerC
   declare depth: DepthOption;
   declare crawlFrequency: CrawlingFrequency;
   declare lastCrawledAt: Date | null;
-  declare customCrawler: string | null;
+  declare crawlId: string | null;
 }
 
 WebCrawlerConfigurationModel.init(
@@ -55,8 +55,8 @@ WebCrawlerConfigurationModel.init(
       type: DataTypes.DATE,
       allowNull: true,
     },
-    customCrawler: {
-      type: DataTypes.STRING(128),
+    crawlId: {
+      type: DataTypes.STRING(64),
       allowNull: true,
       defaultValue: null,
     },

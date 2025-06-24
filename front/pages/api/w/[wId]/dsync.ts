@@ -49,7 +49,7 @@ async function handler(
       status_code: 403,
       api_error: {
         type: "workspace_auth_error",
-        message: "Your workspace is not authorized to perfom this action.",
+        message: "Your workspace is not authorized to perform this action.",
       },
     });
   }

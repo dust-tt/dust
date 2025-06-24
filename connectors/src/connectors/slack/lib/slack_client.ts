@@ -13,6 +13,7 @@ import {
 } from "@connectors/lib/error";
 import { getOAuthConnectionAccessTokenWithThrow } from "@connectors/lib/oauth";
 import logger from "@connectors/logger/logger";
+import { statsDClient } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types";
 
@@ -21,6 +22,30 @@ const SLACK_NETWORK_TIMEOUT_MS = 30000;
 
 function isCodedError(error: unknown): error is CodedError {
   return error != null && typeof error === "object" && "code" in error;
+}
+
+export function reportSlackUsage({
+  connectorId,
+  method,
+  channelId,
+  limit,
+  useCase,
+}: {
+  connectorId: ModelId;
+  method: string;
+  channelId?: string;
+  limit?: number;
+  useCase?: "batch_sync" | "incremental_sync" | "bot";
+}) {
+  logger.info(
+    { connectorId, method, channelId, limit, useCase },
+    "Slack API call"
+  );
+  const tags = [`connector:${connectorId}`, `method:${method}`];
+  if (useCase) {
+    tags.push(`use_case:${useCase}`);
+  }
+  statsDClient.increment("slack_api_call.count", 1, tags);
 }
 
 // Type guards for Slack errors
@@ -172,9 +197,14 @@ export type SlackUserInfo = {
 };
 
 export async function getSlackUserInfo(
+  connectorId: ModelId,
   slackClient: WebClient,
   userId: string
 ): Promise<SlackUserInfo> {
+  reportSlackUsage({
+    connectorId,
+    method: "users.info",
+  });
   const res = await slackClient.users.info({ user: userId });
 
   if (!res.ok) {
@@ -206,9 +236,14 @@ export async function getSlackUserInfo(
 }
 
 export async function getSlackBotInfo(
+  connectorId: ModelId,
   slackClient: WebClient,
   botId: string
 ): Promise<SlackUserInfo> {
+  reportSlackUsage({
+    connectorId,
+    method: "bots.info",
+  });
   const slackBot = await slackClient.bots.info({ bot: botId });
   if (slackBot.error) {
     throw slackBot.error;
@@ -232,9 +267,15 @@ export async function getSlackBotInfo(
 }
 
 export async function getSlackConversationInfo(
+  connectorId: ModelId,
   slackClient: WebClient,
   channelId: string
 ) {
+  reportSlackUsage({
+    connectorId,
+    method: "conversations.info",
+    channelId,
+  });
   return slackClient.conversations.info({ channel: channelId });
 }
 

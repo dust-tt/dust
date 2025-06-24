@@ -30,6 +30,7 @@ import {
 } from "@app/lib/actions/types/guards";
 import { getCitationsCount } from "@app/lib/actions/utils";
 import { createClientSideMCPServerConfigurations } from "@app/lib/api/actions/mcp_client_side";
+import { getPublicErrorMessage } from "@app/lib/api/assistant/agent_errors";
 import {
   AgentMessageContentParser,
   getDelimitersConfiguration,
@@ -188,14 +189,20 @@ async function* runMultiActionsAgentLoop(
     for await (const event of loopIterationStream) {
       switch (event.type) {
         case "agent_error":
+          const publicErrorMessage = getPublicErrorMessage(event.error);
+
           localLogger.error(
             {
               elapsedTime: Date.now() - now,
               error: event.error,
+              publicErrorMessage,
             },
             "Error running multi-actions agent."
           );
-          yield event;
+          yield {
+            ...event,
+            error: { ...event.error, message: publicErrorMessage },
+          };
           return;
         case "agent_actions":
           runIds.push(event.runId);
@@ -470,49 +477,6 @@ async function* runMultiActionsAgent(
     serverToolsAndInstructions: mcpActions,
   });
 
-  const MIN_GENERATION_TOKENS = model.generationTokensCount;
-
-  // Prepend emulated actions to the current agent message before rendering the conversation for the
-  // model.
-  agentMessage.actions = emulatedActions.concat(agentMessage.actions);
-
-  // Turn the conversation into a digest that can be presented to the model.
-  const modelConversationRes = await renderConversationForModel(auth, {
-    conversation,
-    model,
-    prompt,
-    allowedTokenCount: model.contextSize - MIN_GENERATION_TOKENS,
-  });
-
-  // Scrub emulated actions from the agent message after rendering.
-  agentMessage.actions = agentMessage.actions.filter(
-    (a) => !emulatedActions.includes(a)
-  );
-
-  if (modelConversationRes.isErr()) {
-    logger.error(
-      {
-        workspaceId: conversation.owner.sId,
-        conversationId: conversation.sId,
-        error: modelConversationRes.error,
-      },
-      "Error rendering conversation for model."
-    );
-    yield {
-      type: "agent_error",
-      created: Date.now(),
-      configurationId: agentConfiguration.sId,
-      messageId: agentMessage.sId,
-      error: {
-        code: "conversation_render_error",
-        message: `Error rendering conversation for model: ${modelConversationRes.error.message}`,
-        metadata: null,
-      },
-    } satisfies AgentErrorEvent;
-
-    return;
-  }
-
   const specifications: AgentActionSpecification[] = [];
   for (const a of availableActions) {
     const specRes = await getRunnerForActionConfiguration(a).buildSpecification(
@@ -553,7 +517,57 @@ async function* runMultiActionsAgent(
     specifications.push(specRes.value);
   }
 
-  // If we have attachments, inject a fake LS action to handle them.
+  // Count the number of tokens used by the functions presented to the model.
+  // This is a rough estimate of the number of tokens.
+  const tools = JSON.stringify(
+    specifications.map((s) => ({
+      name: s.name,
+      description: s.description,
+      inputSchema: s.inputSchema,
+    }))
+  );
+
+  // Prepend emulated actions to the current agent message before rendering the conversation for the
+  // model.
+  agentMessage.actions = emulatedActions.concat(agentMessage.actions);
+
+  // Turn the conversation into a digest that can be presented to the model.
+  const modelConversationRes = await renderConversationForModel(auth, {
+    conversation,
+    model,
+    prompt,
+    tools,
+    allowedTokenCount: model.contextSize - model.generationTokensCount,
+  });
+
+  // Scrub emulated actions from the agent message after rendering.
+  agentMessage.actions = agentMessage.actions.filter(
+    (a) => !emulatedActions.includes(a)
+  );
+
+  if (modelConversationRes.isErr()) {
+    logger.error(
+      {
+        workspaceId: conversation.owner.sId,
+        conversationId: conversation.sId,
+        error: modelConversationRes.error,
+      },
+      "Error rendering conversation for model."
+    );
+    yield {
+      type: "agent_error",
+      created: Date.now(),
+      configurationId: agentConfiguration.sId,
+      messageId: agentMessage.sId,
+      error: {
+        code: "conversation_render_error",
+        message: `Error rendering conversation for model: ${modelConversationRes.error.message}`,
+        metadata: null,
+      },
+    } satisfies AgentErrorEvent;
+
+    return;
+  }
 
   // Check that specifications[].name are unique. This can happen if the user overrides two actions
   // names with the same name (advanced settings). We return an actionable error if that's the case
@@ -639,7 +653,7 @@ async function* runMultiActionsAgent(
       messageId: agentMessage.sId,
       error: {
         code: "multi_actions_error",
-        message: `Error running multi-actions agent action: [${res.error.type}] ${res.error.message}`,
+        message: `Error running agent: [${res.error.type}] ${res.error.message}`,
         metadata: null,
       },
     } satisfies AgentErrorEvent;

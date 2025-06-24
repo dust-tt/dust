@@ -9,9 +9,20 @@ import { searchMembers } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { MAX_SEARCH_EMAILS } from "@app/lib/memberships";
 import { apiError } from "@app/logger/withlogging";
-import type { UserTypeWithWorkspaces, WithAPIErrorResponse } from "@app/types";
+import type {
+  GroupKind,
+  UserTypeWithWorkspace,
+  WithAPIErrorResponse,
+} from "@app/types";
+import { GroupKindCodec } from "@app/types";
 
 const DEFAULT_PAGE_LIMIT = 25;
+
+const GroupKindWithoutSystemCodec = t.refinement(
+  GroupKindCodec,
+  (kind): kind is Exclude<GroupKind, "system"> => kind !== "system",
+  "GroupKindWithoutSystem"
+);
 
 const SearchMembersQueryCodec = t.type({
   orderColumn: withFallback(t.literal("name"), "name"),
@@ -30,10 +41,11 @@ const SearchMembersQueryCodec = t.type({
   ),
   searchTerm: t.union([t.string, t.undefined]),
   searchEmails: t.union([t.string, t.undefined]),
+  groupKind: t.union([GroupKindWithoutSystemCodec, t.undefined]),
 });
 
 export type SearchMembersResponseBody = {
-  members: UserTypeWithWorkspaces[];
+  members: UserTypeWithWorkspace[];
   total: number;
 };
 
@@ -44,16 +56,6 @@ async function handler(
 ): Promise<void> {
   switch (req.method) {
     case "GET":
-      if (!auth.isAdmin()) {
-        return apiError(req, res, {
-          status_code: 403,
-          api_error: {
-            type: "workspace_auth_error",
-            message: "Only workspace admins can search members.",
-          },
-        });
-      }
-
       const queryRes = SearchMembersQueryCodec.decode(req.query);
 
       if (isLeft(queryRes)) {
@@ -85,6 +87,7 @@ async function handler(
         {
           searchTerm: query.searchTerm,
           searchEmails: emails,
+          groupKind: query.groupKind,
         },
         query
       );

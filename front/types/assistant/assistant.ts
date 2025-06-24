@@ -503,8 +503,6 @@ export const O3_MODEL_CONFIG: ModelConfigurationType = {
   generationTokensCount: 2048,
   supportsVision: true,
   supportsResponseFormat: true,
-  featureFlag: "openai_o1_feature",
-  customAssistantFeatureFlag: "openai_o1_custom_assistants_feature",
 };
 
 export const O3_MINI_MODEL_CONFIG: ModelConfigurationType = {
@@ -575,7 +573,8 @@ export const O4_MINI_HIGH_REASONING_MODEL_CONFIG: ModelConfigurationType = {
   reasoningEffort: "high",
 };
 
-const ANTHROPIC_TOKEN_COUNT_ADJUSTMENT = 1.25;
+export const DEFAULT_TOKEN_COUNT_ADJUSTMENT = 1.15;
+const ANTHROPIC_TOKEN_COUNT_ADJUSTMENT = 1.3;
 
 export const CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",

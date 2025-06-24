@@ -10,11 +10,9 @@ use eventsource_client::Client as ESClient;
 use futures::TryStreamExt;
 use http::StatusCode;
 use hyper::{body::Buf, Uri};
-use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::io::prelude::*;
-use std::sync::Arc;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::time::timeout;
 
@@ -1011,7 +1009,7 @@ async fn streamed_chat_completion(
 
     let mut stream = client.stream();
 
-    let chunks: Arc<Mutex<Vec<ChatChunk>>> = Arc::new(Mutex::new(Vec::new()));
+    let mut chunks: Vec<ChatChunk> = Vec::new();
     let mut usage = None;
     let mut request_id: Option<String> = None;
 
@@ -1032,10 +1030,7 @@ async fn streamed_chat_completion(
                         break 'stream;
                     }
                     _ => {
-                        let index = {
-                            let guard = chunks.lock();
-                            guard.len()
-                        };
+                        let index = chunks.len();
 
                         let chunk: ChatChunk = match serde_json::from_str(e.data.as_str()) {
                             Ok(c) => c,
@@ -1143,7 +1138,7 @@ async fn streamed_chat_completion(
                         };
 
                         if !chunk.choices.is_empty() {
-                            chunks.lock().push(chunk);
+                            chunks.push(chunk);
                         }
                     }
                 },
@@ -1207,14 +1202,13 @@ async fn streamed_chat_completion(
     }
 
     let mut completion = {
-        let guard = chunks.lock();
-        let f = match guard.len() {
+        let f = match chunks.len() {
             0 => Err(anyhow!("No chunks received from {}", provider_name)),
-            _ => Ok(guard[0].clone()),
+            _ => Ok(chunks[0].clone()),
         }?;
 
         // merge logprobs from all choices of all chunks
-        let logprobs: Vec<OpenAIChatChoiceLogprob> = guard
+        let logprobs: Vec<OpenAIChatChoiceLogprob> = chunks
             .iter()
             .flat_map(|chunk| {
                 chunk
@@ -1253,8 +1247,8 @@ async fn streamed_chat_completion(
             usage,
         };
 
-        for i in 0..guard.len() {
-            let a = guard[i].clone();
+        for i in 0..chunks.len() {
+            let a = chunks[i].clone();
             if a.choices.len() != f.choices.len() {
                 Err(anyhow!("Inconsistent number of choices in streamed chunks"))?;
             }
@@ -1348,7 +1342,7 @@ async fn streamed_chat_completion(
                                         ));
                                     }
 
-                                    tool_calls[index].function.arguments += a;
+                                    tool_calls[index].function.arguments += &a;
                                 }
                             }
                             _ => (),

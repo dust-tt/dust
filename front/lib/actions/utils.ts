@@ -16,15 +16,15 @@ import type {
 } from "@app/components/assistant_builder/types";
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
-import { isInternalMCPServerOfName } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { ActionConfigurationType } from "@app/lib/actions/types/agent";
 import {
   isMCPInternalDataSourceFileSystem,
   isMCPInternalInclude,
+  isMCPInternalNotion,
   isMCPInternalSearch,
+  isMCPInternalSlack,
   isMCPInternalWebsearch,
   isRetrievalConfiguration,
-  isServerSideMCPToolConfiguration,
   isWebsearchConfiguration,
 } from "@app/lib/actions/types/guards";
 import type { WebsearchConfigurationType } from "@app/lib/actions/websearch";
@@ -34,6 +34,8 @@ import type { AgentConfigurationType, AgentMessageType } from "@app/types";
 import { assertNever } from "@app/types";
 
 export const WEBSEARCH_ACTION_NUM_RESULTS = 16;
+export const SLACK_SEARCH_ACTION_NUM_RESULTS = 16;
+export const NOTION_SEARCH_ACTION_NUM_RESULTS = 16;
 
 export const ACTION_SPECIFICATIONS: Record<
   AssistantBuilderActionConfiguration["type"],
@@ -247,16 +249,16 @@ export function getCitationsCount({
     case "reasoning_configuration":
       return 0;
     case "mcp_configuration":
-      if (
-        isServerSideMCPToolConfiguration(action) &&
-        isInternalMCPServerOfName(
-          action.internalMCPServerId,
-          "web_search_&_browse"
-        )
-      ) {
+      if (isMCPInternalWebsearch(action)) {
         return getWebsearchNumResults({
           stepActions,
         });
+      }
+      if (isMCPInternalSlack(action)) {
+        return SLACK_SEARCH_ACTION_NUM_RESULTS;
+      }
+      if (isMCPInternalNotion(action)) {
+        return NOTION_SEARCH_ACTION_NUM_RESULTS;
       }
       return getRetrievalTopK({
         agentConfiguration,

@@ -4,8 +4,8 @@ import {
   CloudArrowUpIcon,
   DoubleIcon,
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuSearchbar,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
@@ -37,6 +37,7 @@ interface InputBarAttachmentsPickerProps {
   owner: LightWorkspaceType;
   fileUploaderService: FileUploaderService;
   onNodeSelect: (node: DataSourceViewContentNode) => void;
+  onNodeUnselect: (node: DataSourceViewContentNode) => void;
   isLoading?: boolean;
   attachedNodes: DataSourceViewContentNode[];
 }
@@ -47,6 +48,7 @@ export const InputBarAttachmentsPicker = ({
   owner,
   fileUploaderService,
   onNodeSelect,
+  onNodeUnselect,
   attachedNodes,
   isLoading = false,
 }: InputBarAttachmentsPickerProps) => {
@@ -115,7 +117,6 @@ export const InputBarAttachmentsPicker = ({
     <DropdownMenu
       open={isOpen}
       onOpenChange={(open) => {
-        setIsOpen(open);
         if (open) {
           setSearch("");
         }
@@ -135,6 +136,7 @@ export const InputBarAttachmentsPicker = ({
         collisionPadding={15}
         align="end"
         onInteractOutside={() => setIsOpen(false)}
+        onEscapeKeyDown={() => setIsOpen(false)}
         dropdownHeaders={
           <>
             <Input
@@ -182,7 +184,7 @@ export const InputBarAttachmentsPicker = ({
         {searchQuery ? (
           <div ref={itemsContainerRef}>
             {pickedSpaceNodes.map((item, index) => (
-              <DropdownMenuItem
+              <DropdownMenuCheckboxItem
                 key={index}
                 label={item.title}
                 icon={
@@ -203,17 +205,19 @@ export const InputBarAttachmentsPicker = ({
                     />
                   )
                 }
-                disabled={attachedNodes.some(
+                description={getLocationForDataSourceViewContentNode(item)}
+                checked={attachedNodes.some(
                   (attachedNode) =>
                     attachedNode.internalId === item.internalId &&
                     attachedNode.dataSourceView.dataSource.sId ===
                       item.dataSourceView.dataSource.sId
                 )}
-                description={`${getLocationForDataSourceViewContentNode(item)}`}
-                onClick={() => {
-                  setSearch("");
-                  onNodeSelect(item);
-                  setIsOpen(false);
+                onCheckedChange={(checked) => {
+                  if (checked) {
+                    onNodeSelect(item);
+                  } else {
+                    onNodeUnselect(item);
+                  }
                 }}
                 truncateText
               />
