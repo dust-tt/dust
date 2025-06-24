@@ -406,7 +406,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     name: "Salesforce",
     connectorProvider: "salesforce",
     status: "rolling_out",
-    rollingOutFlag: "salesforce_feature",
+    rollingOutFlag: "salesforce_synced_queries",
     hide: true,
     description:
       "Authorize access to your Salesforce organization, in order to query your Salesforce data from Dust.",
