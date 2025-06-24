@@ -342,11 +342,13 @@ export async function handleMembershipInvitations(
     owner,
     subscription,
     user,
+    force = false,
   }: {
     owner: WorkspaceType;
     subscription: SubscriptionType;
     user: UserType;
     invitationRequests: MembershipInvitationBlob[];
+    force: boolean;
   }
 ): Promise<Result<HandleMembershipInvitationResult[], APIErrorWithStatusCode>> {
   const { maxUsers } = subscription.plan.limits.users;
@@ -440,20 +442,25 @@ export async function handleMembershipInvitations(
       const requestedEmails = new Set(
         invitationRequests.map((r) => r.email.toLowerCase().trim())
       );
-      const emailsToSendInvitations = invitationRequests.filter(
-        (r) =>
-          !emailsWithRecentUnconsumedInvitations.has(
-            r.email.toLowerCase().trim()
-          )
-      );
-      const invitationsToUnrevoke = unconsumedInvitations.revoked.filter((i) =>
-        requestedEmails.has(i.inviteEmail.toLowerCase().trim())
-      );
+      const emailsToSendInvitations = force
+        ? invitationRequests // If force is true, send to all requested emails
+        : invitationRequests.filter(
+            (r) =>
+              !emailsWithRecentUnconsumedInvitations.has(
+                r.email.toLowerCase().trim()
+              )
+          );
+      const invitationsToUnrevoke = force
+        ? [] // If force is true, don't unrevoke any invitations
+        : unconsumedInvitations.revoked.filter((i) =>
+            requestedEmails.has(i.inviteEmail.toLowerCase().trim())
+          );
 
       if (
         !emailsToSendInvitations.length &&
         !invitationsToUnrevoke.length &&
-        invitationRequests.length > 0
+        invitationRequests.length > 0 &&
+        !force // Only return this error if force is false
       ) {
         return new Err({
           status_code: 400,
@@ -469,6 +476,12 @@ export async function handleMembershipInvitations(
         invitationsToUnrevoke.map((i) => i.sId),
         t
       );
+
+      const unrevokedResults: HandleMembershipInvitationResult[] =
+        invitationsToUnrevoke.map((i) => ({
+          success: true,
+          email: i.inviteEmail,
+        }));
 
       const invitationResults = await Promise.all(
         emailsToSendInvitations.map(async ({ email, role }) => {
@@ -519,7 +532,7 @@ export async function handleMembershipInvitations(
         })
       );
 
-      return new Ok(invitationResults);
+      return new Ok([...invitationResults, ...unrevokedResults]);
     }
   );
 
