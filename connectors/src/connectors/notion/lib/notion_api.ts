@@ -807,6 +807,15 @@ export async function retrieveBlockChildrenResultPage({
       return null;
     }
 
+    // The block exists - Check if it is a child_page block.
+    // If it is, we return null, as it can't have children.
+    const block = await notionClient.blocks.retrieve({
+      block_id: blockOrPageId,
+    });
+    if (isFullBlock(block) && block.type === "child_page") {
+      return null;
+    }
+
     localLogger.error(
       {
         blockOrPageId,
