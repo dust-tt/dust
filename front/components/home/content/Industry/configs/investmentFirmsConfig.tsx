@@ -41,7 +41,7 @@ export const investmentFirmsConfig: IndustryPageConfig = {
       bgColor: "bg-blue-600",
       textColor: "text-white",
     },
-    decorativeShapes: {
+      decorativeShapes: {
       topRight: "/static/landing/industry/shapes/rounded-rectangle.svg",
       bottomLeft: "/static/landing/industry/shapes/diamond.svg",
     },
@@ -86,110 +86,112 @@ export const investmentFirmsConfig: IndustryPageConfig = {
     title: "Dust in Action",
     useCases: [
       {
-        title: "Target identification & research",
+        title: "Target Identification & Research",
         image: "/static/landing/industry/features/target_research.svg",
         bgColor: "bg-gray-100",
         features: [
           {
             icon: "bg-blue-500",
-            title: "Sector research",
+            title: "Sector Research",
             description:
               "Research companies operating in specific sectors, including recent funding activity and market positioning",
           },
           {
             icon: "bg-red-500 rounded-tr-full",
-            title: "Target intelligence",
+            title: "Target Intelligence",
             description:
               "Get snapshots of recent discussions and interactions with potential targets",
           },
           {
             icon: "bg-green-500 rounded-bl-full",
-            title: "Meeting preparation",
+            title: "Meeting Preparation",
             description:
               "Prepare notes for initial meetings with targets, analyzing past context and interactions",
           },
           {
             icon: "bg-purple-400 rounded-br-full",
-            title: "Industry news",
+            title: "Industry News",
             description:
               "Monitor industry trends and developments by pulling insights from newsletters, reports, and market intelligence",
           },
         ],
       },
       {
-        title: "Due diligence",
+        title: "Due Diligence",
         image: "/static/landing/industry/features/due_diligence.svg",
         bgColor: "bg-golden-100",
         features: [
           {
             icon: "bg-red-500",
-            title: "Investment memo writing",
+            title: "Investment Memo Writing",
             description:
               "Write comprehensive investment memos summarizing findings, risks, and opportunities",
           },
           {
             icon: "bg-golden-400 rounded-tr-full",
-            title: "Deal assessment",
+            title: "Deal Assessment",
             description:
               "Screen dealflow, evaluate pitch decks, and filter startups matching your investment thesis",
           },
           {
             icon: "bg-blue-500 rounded-bl-full",
-            title: "Document analysis",
+            title: "Document Analysis",
             description:
               "Summarize legal documents and extract key insights from due diligence materials",
           },
         ],
       },
       {
-        title: "Portfolio support",
+        title: "Portfolio Support",
         image: "/static/landing/industry/features/portfolio_support.svg",
         bgColor: "bg-gray-100",
         features: [
           {
             icon: "bg-blue-500",
-            title: "Board preparation",
-            description: "Prepare materials and briefings for board meetings",
+            title: "Board Preparation",
+            description:
+              "Prepare materials and briefings for board meetings",
           },
           {
             icon: "bg-red-500 rounded-tr-full",
-            title: "Network intelligence",
+            title: "Network Intelligence",
             description:
               "Identify key contacts from your network who can provide expertise to portfolio companies",
           },
           {
             icon: "bg-green-400 rounded-bl-full",
-            title: "Portfolio monitoring",
+            title: "Portfolio Monitoring",
             description:
               "Track news and developments related to your portfolio companies",
           },
           {
             icon: "bg-purple-400 rounded-br-full",
-            title: "Board minutes",
+            title: "Board Minutes",
             description:
               "Create meeting minutes from transcripts with key decisions and action points",
           },
         ],
       },
       {
-        title: "Reporting & content",
+        title: "Reporting & Content",
         image: "/static/landing/industry/features/reporting_content.svg",
         bgColor: "bg-blue-100",
         features: [
           {
             icon: "bg-red-500",
-            title: "LP communications",
-            description: "Generate reports for Limited Partners",
+            title: "LP Communications",
+            description:
+              "Generate reports for Limited Partners",
           },
           {
             icon: "bg-golden-400 rounded-tr-full",
-            title: "Marketing & social",
+            title: "Marketing & Social",
             description:
               "Generate content for public audiences including case studies, LinkedIn posts, and thought leadership pieces",
           },
           {
             icon: "bg-green-500 rounded-bl-full",
-            title: "Compliance support",
+            title: "Compliance Support",
             description:
               "Handle ESG questionnaires and ensure regulatory compliance across reporting",
           },

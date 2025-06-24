@@ -86,7 +86,7 @@ export const energyUtilitiesConfig: IndustryPageConfig = {
     title: "Dust in Action",
     useCases: [
       {
-        title: "Commercial operations",
+        title: "Commercial Operations",
         image: "/static/landing/industry/features/commercial_operations.svg",
         bgColor: "bg-gray-100",
         features: [
@@ -98,39 +98,39 @@ export const energyUtilitiesConfig: IndustryPageConfig = {
           },
           {
             icon: "bg-green-500 rounded-tr-full",
-            title: "Regulatory compliance management",
+            title: "Regulatory Compliance Management",
             description:
               "Streamlined regulatory reporting and compliance monitoring for energy regulations",
           },
           {
             icon: "bg-orange-400 rounded-bl-full",
-            title: "Contract analysis and management",
+            title: "Contract Analysis and Management",
             description:
               "AI-powered contract review and vendor management for energy suppliers and partners",
           },
           {
             icon: "bg-purple-400 rounded-br-full",
-            title: "Market analysis and forecasting",
+            title: "Market Analysis and Forecasting",
             description:
               "Advanced market intelligence and energy demand forecasting for strategic planning",
           },
           {
             icon: "bg-red-500",
-            title: "Risk management and assessment",
+            title: "Risk Management and Assessment",
             description:
               "Comprehensive risk analysis and mitigation strategies for energy operations",
           },
         ],
       },
       {
-        title: "Customer service operations",
+        title: "Customer Service Operations",
         image:
           "/static/landing/industry/features/customer_service_operations.svg",
         bgColor: "bg-gray-100",
         features: [
           {
             icon: "bg-red-500",
-            title: "Build & test proactive automated self-service applications",
+            title: "Build & Test proactive automated self-service applications",
             description:
               "AI-powered customer portals and automated service applications for enhanced user experience",
           },
@@ -142,20 +142,20 @@ export const energyUtilitiesConfig: IndustryPageConfig = {
           },
           {
             icon: "bg-blue-500 rounded-bl-full",
-            title: "Personalized communication and alerts",
+            title: "Personalized Communication and Alerts",
             description:
               "Smart notification systems and personalized energy usage insights for customers",
           },
           {
             icon: "bg-green-400 rounded-br-full",
-            title: "Automated billing and payment processing",
+            title: "Automated Billing and Payment Processing",
             description:
               "Streamlined billing operations and intelligent payment processing systems",
           },
         ],
       },
       {
-        title: "Field operations",
+        title: "Field Operations",
         image: "/static/landing/industry/features/field_operations.svg",
         bgColor: "bg-blue-100",
         features: [
@@ -167,26 +167,26 @@ export const energyUtilitiesConfig: IndustryPageConfig = {
           },
           {
             icon: "bg-green-500 rounded-tl-full",
-            title: "Mobile work management integration",
+            title: "Mobile Work Management Integration",
             description:
               "Integrated mobile platforms for field workers with real-time updates and task coordination",
           },
           {
             icon: "bg-orange-400 rounded-br-full",
-            title: "Equipment maintenance scheduling",
+            title: "Equipment Maintenance Scheduling",
             description:
               "Predictive maintenance scheduling and automated work order generation for field equipment",
           },
           {
             icon: "bg-purple-400",
-            title: "Asset inventory and tracking",
+            title: "Asset Inventory and Tracking",
             description:
               "Intelligent asset management and real-time inventory tracking for field operations",
           },
         ],
       },
       {
-        title: "Project management & strategic operations",
+        title: "Project Management & Strategic Operations",
         image: "/static/landing/industry/features/project_management.svg",
         bgColor: "bg-green-100",
         features: [
@@ -198,19 +198,19 @@ export const energyUtilitiesConfig: IndustryPageConfig = {
           },
           {
             icon: "bg-blue-500 rounded-tl-full",
-            title: "Resource allocation optimization",
+            title: "Resource Allocation Optimization",
             description:
               "Intelligent resource planning and allocation optimization for energy projects",
           },
           {
             icon: "bg-green-400 rounded-br-full",
-            title: "Performance analytics and reporting",
+            title: "Performance Analytics and Reporting",
             description:
               "Advanced analytics and automated reporting for project performance and strategic insights",
           },
           {
             icon: "bg-orange-400",
-            title: "Sustainability and environmental compliance",
+            title: "Sustainability and Environmental Compliance",
             description:
               "Environmental impact tracking and sustainability reporting for energy operations",
           },
@@ -219,7 +219,7 @@ export const energyUtilitiesConfig: IndustryPageConfig = {
     ],
   },
   impactMetrics: {
-    bgColor: "bg-blue-50",
+    bgColor: "bg-golden-50",
     metrics: [
       {
         value: "65",
@@ -289,7 +289,7 @@ export const energyUtilitiesConfig: IndustryPageConfig = {
   },
   justUseDust: {
     title: "Just use Dust",
-    titleColor: "text-blue-600",
+    titleColor: "text-golden-600",
     ctaButtons: {
       primary: {
         label: "Start Free Trial",
@@ -300,7 +300,7 @@ export const energyUtilitiesConfig: IndustryPageConfig = {
         href: "/home/contact",
       },
     },
-    bgColor: "bg-blue-50",
+    bgColor: "bg-golden-50",
     decorativeShapes: true,
   },
 };
