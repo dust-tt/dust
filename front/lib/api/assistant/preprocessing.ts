@@ -64,8 +64,23 @@ export async function renderConversationForModel(
   const now = Date.now();
   const messages: ModelMessageTypeMultiActions[] = [];
 
+  let lastAgentMessageIndex = conversation.content.length - 1;
+  while (
+    lastAgentMessageIndex >= 0 &&
+    !isAgentMessageType(
+      conversation.content[lastAgentMessageIndex][
+        conversation.content[lastAgentMessageIndex].length - 1
+      ]
+    )
+  ) {
+    lastAgentMessageIndex--;
+  }
+
   // Render loop: render all messages and all actions.
   for (const [i, versions] of conversation.content.entries()) {
+    const isLastAgentMessage =
+      !lastAgentMessageIndex || i === lastAgentMessageIndex;
+
     const m = versions[versions.length - 1];
 
     if (isAgentMessageType(m)) {
@@ -115,7 +130,7 @@ export async function renderConversationForModel(
       const shadowReadRawContents: { step: number; content: string }[] = [];
       if (
         m.status === "succeeded" &&
-        i === conversation.content.length - 1 &&
+        isLastAgentMessage &&
         (nonEmptyRawContents.length || m.contents.length)
       ) {
         if (m.contents.length) {
