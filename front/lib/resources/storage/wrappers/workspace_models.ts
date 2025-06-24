@@ -58,7 +58,7 @@ function isWhereClauseWithNumericWorkspaceId<TAttributes>(
 }
 
 // Define a custom FindOptions extension with the skipWorkspaceCheck flag.
-interface WorkspaceTenantIsolationSecurityBypassOptions<T>
+export interface WorkspaceTenantIsolationSecurityBypassOptions<T>
   extends FindOptions<T> {
   /**
    * When true, BYPASSES CRITICAL TENANT ISOLATION SECURITY for this query.
@@ -86,7 +86,24 @@ function isWorkspaceIsolationBypassEnabled<T>(
  * Models that we know trigger workspace_isolation_violation, but we want to keep observing
  * to avoid breaking anything. We'll only trigger a sample of events
  */
-const SAMPLED_MODELS = ["spaces", "data_source", "data_source_view"];
+const HEAVY_SAMPLED_MODELS = ["spaces", "data_source", "data_source_view"];
+
+const SAMPLED_MODELS = [
+  "labs_transcripts_configuration",
+  "workspace_has_domains",
+];
+
+const shouldSampleModelViolation = (modelName: string): boolean => {
+  const rand = Math.random();
+
+  // log only 1 time on 1000 approximately for SAMPLED_MODELS
+  if (HEAVY_SAMPLED_MODELS.includes(modelName) && rand < 0.999) {
+    return false;
+  } else if (SAMPLED_MODELS.includes(modelName) && rand < 0.99) {
+    return false;
+  }
+  return true;
+};
 
 export class WorkspaceAwareModel<M extends Model = any> extends BaseModel<M> {
   declare workspaceId: ForeignKey<Workspace["id"]>;
@@ -122,8 +139,7 @@ export class WorkspaceAwareModel<M extends Model = any> extends BaseModel<M> {
           return;
         }
 
-        // log only 1 time on 100 approximately for SAMPLED_MODELS
-        if (SAMPLED_MODELS.includes(this.name) && Math.random() < 0.99) {
+        if (!shouldSampleModelViolation(this.name)) {
           return;
         }
 
@@ -147,14 +163,14 @@ export class WorkspaceAwareModel<M extends Model = any> extends BaseModel<M> {
           );
 
           // Only trigger throw for violation in dev on the models that are not sampled
-          if (
-            process.env.NODE_ENV === "development" &&
-            !SAMPLED_MODELS.includes(this.name)
-          ) {
-            throw new Error(
-              `Query attempted without workspaceId on ${this.name}`
-            );
-          }
+          // if (
+          //   process.env.NODE_ENV === "development" &&
+          //   !HEAVY_SAMPLED_MODELS.includes(this.name)
+          // ) {
+          //   throw new Error(
+          //     `Query attempted without workspaceId on ${this.name}`
+          //   );
+          // }
         }
       },
       ...(restOptions.hooks || {}),

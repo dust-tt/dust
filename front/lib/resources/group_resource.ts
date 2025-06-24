@@ -25,6 +25,7 @@ import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces"
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { KeyModel } from "@app/lib/resources/storage/models/keys";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
+import type { WorkspaceTenantIsolationSecurityBypassOptions } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -641,7 +642,12 @@ export class GroupResource extends BaseResource<GroupModel> {
       );
     }
 
-    const group = await groupAgents[0].getGroup();
+    // Ok to `as`, it's to get typing, WorkspaceTenantIsolationSecurityBypassOptions
+    // is an extension of FindOptions
+    const group = await groupAgents[0].getGroup({
+      // WORKSPACE_ISOLATION_BYPASS: Ok because the filter is done before in the groupAgents
+      dangerouslyBypassWorkspaceIsolationSecurity: true,
+    } as WorkspaceTenantIsolationSecurityBypassOptions<GroupModel>);
 
     return new this(GroupModel, group.get());
   }
