@@ -229,9 +229,21 @@ export const INTERNAL_MCP_SERVERS: Record<
     isRestricted: (plan, featureFlags) => {
       return featureFlags.includes("jira_tool");
     },
+    tools_stakes: {
+      // Read operations - low friction
+      get_tickets: "never_ask",
+      list_tickets: "never_ask", 
+      get_transitions: "never_ask",
+      
+      // Write operations - require confirmation
+      create_issue: "low",
+      update_issue: "low",
+      add_comment: "low",
+      transition_issue: "low",
+    },
   },
   conversation_files: {
-    id: 17,
+    id: 19,
     availability: "auto_hidden_builder",
   },
   slack: {

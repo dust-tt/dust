@@ -28,7 +28,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
     "Comprehensive JIRA integration providing full ticket management capabilities including create, read, update, comment, and workflow transition operations using the JIRA REST API.",
   authorization: {
     provider: "jira" as const,
-    supported_use_cases: ["platform_actions"] as const,
+    supported_use_cases: ["platform_actions", "personal_actions"] as const,
   },
   icon: "JiraLogo",
   documentationUrl:

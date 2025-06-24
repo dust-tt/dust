@@ -7,22 +7,29 @@ import {
   getStringFromQuery,
 } from "@app/lib/api/oauth/utils";
 import type { ExtraConfigType } from "@app/pages/w/[wId]/oauth/[provider]/setup";
-import type { OAuthConnectionType, OAuthUseCase } from "@app/types/oauth/lib";
+import type { OAuthConnectionType } from "@app/types/oauth/lib";
 
 export class JiraOAuthProvider implements BaseOAuthStrategyProvider {
   setupUri({
     connection,
+    extraConfig,
   }: {
     connection: OAuthConnectionType;
-    useCase: OAuthUseCase;
+    extraConfig?: ExtraConfigType;
   }) {
+    if (extraConfig && Object.keys(extraConfig).length > 0) {
+      throw new Error("extraConfig is not supported for JIRA OAuth");
+    }
     const scopes = [
+      // Read permissions
       "read:jira-work",
       "read:jira-user",
       "read:issue:jira",
       "read:issue.property:jira",
       "read:project:jira",
       "read:user:jira",
+
+      // Required for OAuth refresh token
       "offline_access",
     ];
     return (
