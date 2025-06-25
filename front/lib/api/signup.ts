@@ -5,9 +5,9 @@ import {
   createWorkspace,
   findWorkspaceWithVerifiedDomain,
 } from "@app/lib/iam/workspaces";
-import { Workspace } from "@app/lib/models/workspace";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
@@ -23,11 +23,11 @@ export async function createAndLogMembership({
   role,
 }: {
   user: UserResource;
-  workspace: Workspace | LightWorkspaceType;
+  workspace: WorkspaceModel | LightWorkspaceType;
   role: ActiveRoleType;
 }) {
   const w =
-    workspace instanceof Workspace
+    workspace instanceof WorkspaceModel
       ? renderLightWorkspaceType({ workspace })
       : workspace;
   const m = await MembershipResource.createMembership({
@@ -59,7 +59,7 @@ export async function handleMembershipInvite(
   Result<
     {
       flow: null;
-      workspace: Workspace;
+      workspace: WorkspaceModel;
     },
     AuthFlowError | SSOEnforcedError
   >
@@ -144,7 +144,7 @@ export async function handleMembershipInvite(
 
 function canJoinTargetWorkspace(
   targetWorkspaceId: string | undefined,
-  workspace: Workspace | undefined,
+  workspace: WorkspaceModel | undefined,
   activeMemberships: MembershipResource[]
 ) {
   // If there is no target workspace id, return true.
@@ -172,14 +172,14 @@ export async function handleEnterpriseSignUpFlow(
   enterpriseConnectionWorkspaceId: string
 ): Promise<{
   flow: "unauthorized" | null;
-  workspace: Workspace | null;
+  workspace: WorkspaceModel | null;
 }> {
   // Combine queries to optimize database calls.
   const [{ total }, workspace] = await Promise.all([
     MembershipResource.getActiveMemberships({
       users: [user],
     }),
-    Workspace.findOne({
+    WorkspaceModel.findOne({
       where: {
         sId: enterpriseConnectionWorkspaceId,
       },
@@ -237,7 +237,7 @@ export async function handleRegularSignupFlow(
   Result<
     {
       flow: "no-auto-join" | "revoked" | null;
-      workspace: Workspace | null;
+      workspace: WorkspaceModel | null;
     },
     AuthFlowError | SSOEnforcedError
   >

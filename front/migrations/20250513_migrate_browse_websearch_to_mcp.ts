@@ -5,8 +5,8 @@ import { AgentBrowseConfiguration } from "@app/lib/models/assistant/actions/brow
 import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
 import { AgentWebsearchConfiguration } from "@app/lib/models/assistant/actions/websearch";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
-import { Workspace } from "@app/lib/models/workspace";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import type { LoggerInterface } from "@app/types";
 
@@ -21,7 +21,7 @@ const argumentSpecs = {
 };
 
 async function migrateWorkspace(
-  workspace: Workspace,
+  workspace: WorkspaceModel,
   logger: LoggerInterface,
   execute: boolean
 ): Promise<string> {
@@ -140,7 +140,7 @@ async function main(
 ) {
   let revertSql = "";
   if (args.workspaceId) {
-    const workspace = await Workspace.findOne({
+    const workspace = await WorkspaceModel.findOne({
       where: {
         sId: args.workspaceId,
       },
@@ -152,7 +152,7 @@ async function main(
 
     revertSql += await migrateWorkspace(workspace, logger, args.execute);
   } else {
-    const workspaces = await Workspace.findAll();
+    const workspaces = await WorkspaceModel.findAll();
     logger.info(
       {
         workspaceCount: workspaces.length,

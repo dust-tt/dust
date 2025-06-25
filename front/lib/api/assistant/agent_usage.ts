@@ -4,9 +4,9 @@ import { QueryTypes } from "sequelize";
 
 import { getRedisClient } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
-import { Workspace } from "@app/lib/models/workspace";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { getFrontReplicaDbConnection } from "@app/lib/resources/storage";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { getAssistantUsageData } from "@app/lib/workspace_usage";
 import { launchMentionsCountWorkflow } from "@app/temporal/mentions_count_queue/client";
 import type { LightAgentConfigurationType } from "@app/types";
@@ -46,7 +46,7 @@ export async function getAgentsUsage({
   providedRedis?: RedisClientType;
   limit?: number;
 }): Promise<AgentUsageCount[]> {
-  const owner = await Workspace.findOne({ where: { sId: workspaceId } });
+  const owner = await WorkspaceModel.findOne({ where: { sId: workspaceId } });
   if (!owner) {
     throw new Error(`Workspace ${workspaceId} not found`);
   }

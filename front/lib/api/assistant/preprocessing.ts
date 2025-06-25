@@ -65,7 +65,7 @@ export async function renderConversationForModel(
   const messages: ModelMessageTypeMultiActions[] = [];
 
   // Render loop: render all messages and all actions.
-  for (const versions of conversation.content) {
+  for (const [i, versions] of conversation.content.entries()) {
     const m = versions[versions.length - 1];
 
     if (isAgentMessageType(m)) {
@@ -113,7 +113,11 @@ export async function renderConversationForModel(
         (c) => !!c.content.trim()
       );
       const shadowReadRawContents: { step: number; content: string }[] = [];
-      if (nonEmptyRawContents.length || m.contents.length) {
+      if (
+        m.status === "succeeded" &&
+        i === conversation.content.length - 1 &&
+        (nonEmptyRawContents.length || m.contents.length)
+      ) {
         if (m.contents.length) {
           for (const content of m.contents) {
             if (

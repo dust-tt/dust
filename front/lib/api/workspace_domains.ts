@@ -1,5 +1,5 @@
-import { Workspace } from "@app/lib/models/workspace";
-import { WorkspaceHasDomainModel } from "@app/lib/models/workspace_has_domain";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
+import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
 import type { LightWorkspaceType, Result, WorkspaceDomain } from "@app/types";
 import { Err, Ok } from "@app/types";
 
@@ -11,7 +11,7 @@ export async function upsertWorkspaceDomain(
     where: { domain },
     include: [
       {
-        model: Workspace,
+        model: WorkspaceModel,
         as: "workspace",
         required: true,
       },

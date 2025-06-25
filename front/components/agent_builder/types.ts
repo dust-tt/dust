@@ -33,3 +33,9 @@ export type GenerationSettingsType = {
   temperature: number;
   responseFormat?: string;
 };
+
+export const BUILDER_FLOWS = [
+  "workspace_assistants",
+  "personal_assistants",
+] as const;
+export type BuilderFlow = (typeof BUILDER_FLOWS)[number];

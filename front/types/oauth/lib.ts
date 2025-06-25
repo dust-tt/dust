@@ -6,7 +6,6 @@ export const OAUTH_USE_CASES = [
   "connection",
   "labs_transcripts",
   "platform_actions",
-  "salesforce_personal",
   "personal_actions",
 ] as const;
 

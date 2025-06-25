@@ -1,8 +1,8 @@
 import { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { GroupAgentModel } from "@app/lib/models/assistant/group_agent";
-import { Workspace } from "@app/lib/models/workspace";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { makeScript } from "@app/scripts/helpers";
 
@@ -28,7 +28,7 @@ makeScript({}, async ({ execute }, logger) => {
     groupAgentRels,
     async (groupAgentRel) => {
       const group = await GroupResource.fetchByModelId(groupAgentRel.groupId);
-      const workspace = await Workspace.findOne({
+      const workspace = await WorkspaceModel.findOne({
         where: {
           id: group?.workspaceId,
         },

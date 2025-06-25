@@ -1,5 +1,6 @@
 export const WHITELISTABLE_FEATURES = [
   "advanced_notion_management",
+  "advanced_search",
   "agent_builder_v2",
   "agent_discovery",
   "claude_3_7_reasoning",
@@ -20,7 +21,6 @@ export const WHITELISTABLE_FEATURES = [
   "index_private_slack_channel",
   "jira_tool",
   "labs_mcp_actions_dashboard",
-  "labs_salesforce_personal_connections",
   "labs_trackers",
   "labs_transcripts",
   "okta_enterprise_connection",
@@ -29,8 +29,6 @@ export const WHITELISTABLE_FEATURES = [
   "openai_o1_high_reasoning_custom_assistants_feature",
   "openai_o1_high_reasoning_feature",
   "openai_o1_mini_feature",
-  "pro_plan_salesforce_connector",
-  "salesforce_feature",
   "salesforce_synced_queries",
   "salesforce_tool",
   "search_knowledge_builder",
@@ -38,8 +36,8 @@ export const WHITELISTABLE_FEATURES = [
   "slack_tool",
   "snowflake_connector_feature",
   "usage_data_api",
-  "workos_user_provisioning",
   "workos",
+  "workos_user_provisioning",
   "xai_feature",
 ] as const;
 export type WhitelistableFeature = (typeof WHITELISTABLE_FEATURES)[number];

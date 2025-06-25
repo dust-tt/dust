@@ -3,9 +3,9 @@ import * as _ from "lodash";
 
 import { getContentNodesForDataSourceView } from "@app/lib/api/data_source_view";
 import { Authenticator } from "@app/lib/auth";
-import { Workspace } from "@app/lib/models/workspace";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { makeScript } from "@app/scripts/helpers";
 
 makeScript({}, async ({ execute }, logger) => {
@@ -22,7 +22,7 @@ makeScript({}, async ({ execute }, logger) => {
   logger.info(`Found ${dataSourceViews.length} data source views to process`);
 
   for (const dataSourceView of dataSourceViews) {
-    const workspace = await Workspace.findOne({
+    const workspace = await WorkspaceModel.findOne({
       where: { id: dataSourceView.workspaceId },
     });
 

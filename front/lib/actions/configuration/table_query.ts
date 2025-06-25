@@ -9,8 +9,8 @@ import {
   AgentTablesQueryConfiguration,
   AgentTablesQueryConfigurationTable,
 } from "@app/lib/models/assistant/actions/tables_query";
-import { Workspace } from "@app/lib/models/workspace";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import type { AgentFetchVariant, ModelId } from "@app/types";
 
 export async function fetchTableQueryActionConfigurations(
@@ -52,7 +52,7 @@ export async function fetchTableQueryActionConfigurations(
           as: "dataSourceView",
           include: [
             {
-              model: Workspace,
+              model: WorkspaceModel,
               as: "workspace",
             },
           ],

@@ -5,11 +5,11 @@ import {
   getDefaultDataSourceName,
   isConnectorProviderAssistantDefaultSelected,
 } from "@app/lib/connector_providers";
-import { Workspace } from "@app/lib/models/workspace";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import type Logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import type { ConnectorProvider, DataSourceType } from "@app/types";
@@ -37,7 +37,7 @@ async function getAuthsForWorkspacesWithGong(): Promise<
       },
       include: [
         {
-          model: Workspace,
+          model: WorkspaceModel,
           as: "workspace",
         },
       ],
