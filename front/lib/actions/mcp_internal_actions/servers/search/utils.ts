@@ -4,13 +4,11 @@ import assert from "assert";
 
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type {
-  SearchQueryResourceType,
   SearchResultResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { makeQueryResource } from "@app/lib/actions/mcp_internal_actions/servers/search/rendering";
 import {
   getCoreSearchArgs,
-  renderRelativeTimeFrameForToolOutput,
-  renderTagsForToolOutput,
 } from "@app/lib/actions/mcp_internal_actions/servers/utils";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { actionRefsOffset, getRetrievalTopK } from "@app/lib/actions/utils";
@@ -20,7 +18,6 @@ import type { Authenticator } from "@app/lib/auth";
 import { getDisplayNameForDocument } from "@app/lib/data_sources";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import type { TimeFrame } from "@app/types";
 import {
   CoreAPI,
   dustManagedCredentials,
