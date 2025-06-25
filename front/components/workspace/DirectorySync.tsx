@@ -32,6 +32,7 @@ import { assertNever } from "@app/types";
 import { useGroups } from "@app/lib/swr/groups";
 import { GroupsList } from "../groups/GroupsList";
 import { WorkspaceSection } from "./WorkspaceSection";
+import { PaginationState } from "@tanstack/react-table";
 
 function useDirectorySyncStatus({
   owner,
@@ -97,7 +98,7 @@ function DirectorySyncStatus({
   }
 
   switch (dsyncStatus.status) {
-    case "configured":
+    case "not_configured":
       return (
         <>
           <div className="mb-4 flex flex-row items-center gap-2">
@@ -292,10 +293,16 @@ interface WorkspaceGroupButtonWithModalProps {
   owner: WorkspaceType;
 }
 
+const DEFAULT_PAGE_SIZE = 25;
+
 function WorkspaceGroupButtonWithModal({
   owner,
 }: WorkspaceGroupButtonWithModalProps) {
   const [open, setOpen] = useState(false);
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: DEFAULT_PAGE_SIZE,
+  });
 
   const { groups, isGroupsLoading } = useGroups({
     owner,
@@ -331,6 +338,8 @@ function WorkspaceGroupButtonWithModal({
                 isLoading={isGroupsLoading}
                 groups={groups}
                 showColumns={["name", "memberCount"]}
+                pagination={pagination}
+                setPagination={setPagination}
               />
             )}
           </div>

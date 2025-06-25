@@ -7,7 +7,7 @@ import {
 } from "@dust-tt/sparkle";
 import type { CellContext, PaginationState } from "@tanstack/react-table";
 import assert from "assert";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 
 import type { GroupType } from "@app/types";
 

@@ -200,7 +200,7 @@ function WorkspaceMembersGroupsList({
     workspaceId: owner.sId,
   });
 
-  const { ssoStatus, isLoading } = useWorkOSSSOStatus({ owner });
+  const { isLoading } = useWorkOSSSOStatus({ owner });
 
   if (isFeatureFlagsLoading || isLoading) {
     return (

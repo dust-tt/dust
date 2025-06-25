@@ -1,5 +1,6 @@
 import { Icon, Page } from "@dust-tt/sparkle";
-import React, { ComponentType } from "react";
+import React from "react";
+import type { ComponentType } from "react";
 
 interface WorkspaceSectionProps {
   icon: ComponentType<{ className?: string }>;
