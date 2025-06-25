@@ -25,6 +25,7 @@ import {
 } from "@app/lib/swr/workos";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { LightWorkspaceType, PlanType, WorkspaceDomain } from "@app/types";
+
 import { WorkspaceSection } from "./WorkspaceSection";
 
 interface WorkspaceAccessPanelProps {

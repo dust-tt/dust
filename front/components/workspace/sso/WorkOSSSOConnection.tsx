@@ -25,6 +25,7 @@ import {
 } from "@app/lib/swr/workos";
 import type { WorkOSConnectionSyncStatus } from "@app/lib/types/workos";
 import type { PlanType, WorkspaceType } from "@app/types";
+
 import { WorkspaceSection } from "../WorkspaceSection";
 
 interface WorkOSSSOConnectionProps {
