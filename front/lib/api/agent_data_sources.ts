@@ -858,7 +858,7 @@ export async function getDataSourceUsage({
               "agent_tables_query_configuration->agent_configuration.id"
             )
           ),
-          "names",
+          "ids",
         ],
       ],
       where: {
