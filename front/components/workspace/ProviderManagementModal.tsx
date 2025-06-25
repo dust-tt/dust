@@ -149,7 +149,15 @@ export function ProviderManagementModal({
     embeddingProvider !== owner.defaultEmbeddingProvider;
 
   return (
-    <Sheet>
+    <Sheet
+      onOpenChange={(open) => {
+        if (!open) {
+          // Reset states when the sheet is closed
+          setProviderStates(initialProviderStates);
+          setDefaultEmbeddingProvider(owner.defaultEmbeddingProvider);
+        }
+      }}
+    >
       <SheetTrigger asChild>
         <Button variant="outline" label="Manage Models" icon={Cog6ToothIcon} />
       </SheetTrigger>
@@ -246,10 +254,6 @@ export function ProviderManagementModal({
         <SheetFooter
           leftButtonProps={{
             label: "Cancel",
-            onClick: () => {
-              setProviderStates(initialProviderStates);
-              setDefaultEmbeddingProvider(owner.defaultEmbeddingProvider);
-            },
             variant: "outline",
           }}
           rightButtonProps={{
