@@ -11,16 +11,16 @@ import type {
   SearchResultResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
-  findTagsSchema,
-  makeFindTagsDescription,
-  makeFindTagsTool,
-} from "@app/lib/actions/mcp_internal_actions/servers/common/find_tags_tool";
-import {
   makeQueryResource,
   renderMimeType,
   renderNode,
   renderSearchResults,
-} from "@app/lib/actions/mcp_internal_actions/servers/search/rendering";
+} from "@app/lib/actions/mcp_internal_actions/rendering";
+import {
+  findTagsSchema,
+  makeFindTagsDescription,
+  makeFindTagsTool,
+} from "@app/lib/actions/mcp_internal_actions/servers/common/find_tags_tool";
 import {
   getAgentDataSourceConfigurations,
   makeDataSourceViewFilter,
