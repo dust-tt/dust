@@ -144,6 +144,7 @@ pub mod oauth {
         pub mod intercom;
         pub mod mcp;
         pub mod microsoft;
+        pub mod monday;
         pub mod mock;
         pub mod notion;
         pub mod salesforce;
