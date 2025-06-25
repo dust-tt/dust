@@ -39,6 +39,8 @@ async function findWorkspacesWithRetrievalConfigurations(): Promise<ModelId[]> {
   return retrievalConfigurations.map((config) => config.workspaceId);
 }
 
+type AgentStatus = "active" | "archived" | "draft";
+
 /**
  * Migrates retrieval actions from non-MCP to MCP version for a specific workspace.
  * If query is "auto", migrates to search MCP action.
@@ -49,9 +51,11 @@ async function migrateWorkspaceRetrievalActions(
   {
     execute,
     parentLogger,
+    agentStatus,
   }: {
     execute: boolean;
     parentLogger: typeof Logger;
+    agentStatus: AgentStatus;
   }
 ): Promise<string> {
   const logger = parentLogger.child({
@@ -73,7 +77,7 @@ async function migrateWorkspaceRetrievalActions(
         model: AgentConfiguration,
         required: true,
         where: {
-          status: "active",
+          status: agentStatus,
         },
       },
     ],
@@ -227,8 +231,15 @@ makeScript(
       description: "Workspace SID to migrate",
       required: false,
     },
+    agentStatus: {
+      type: "string",
+      description: "Agent status to filter on",
+      required: false,
+      default: "active",
+      choices: ["active", "archived", "draft"],
+    },
   },
-  async ({ execute, workspaceId }, parentLogger) => {
+  async ({ execute, workspaceId, agentStatus }, parentLogger) => {
     const now = new Date().toISOString().slice(0, 16).replace(/-/g, "");
 
     let workspaces: WorkspaceModel[] = [];
@@ -259,6 +270,7 @@ makeScript(
       const workspaceRevertSql = await migrateWorkspaceRetrievalActions(auth, {
         execute,
         parentLogger,
+        agentStatus: agentStatus as AgentStatus,
       });
 
       if (execute) {
