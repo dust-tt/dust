@@ -63,7 +63,6 @@ interface AssistantBuilderRightPanelProps {
   builderState: AssistantBuilderState;
   agentConfiguration: LightAgentConfigurationType | null;
   setAction: (action: AssistantBuilderSetActionType) => void;
-  reasoningModels: ModelConfigurationType[];
   mcpServerViews: MCPServerViewType[];
 }
 
@@ -77,7 +76,6 @@ export default function AssistantBuilderRightPanel({
   builderState,
   agentConfiguration,
   setAction,
-  reasoningModels,
   mcpServerViews,
 }: AssistantBuilderRightPanelProps) {
   const [rightPanelTab, setRightPanelTab] =
@@ -87,7 +85,6 @@ export default function AssistantBuilderRightPanel({
     usePreviewAssistant({
       owner,
       builderState,
-      reasoningModels,
     });
 
   const { user } = useUser();
