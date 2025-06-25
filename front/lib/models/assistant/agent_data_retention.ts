@@ -5,7 +5,7 @@ import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 
-export class AgentDataRetention extends WorkspaceAwareModel<AgentDataRetention> {
+export class AgentDataRetentionModel extends WorkspaceAwareModel<AgentDataRetentionModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -13,7 +13,7 @@ export class AgentDataRetention extends WorkspaceAwareModel<AgentDataRetention> 
   declare retentionDays: number;
 }
 
-AgentDataRetention.init(
+AgentDataRetentionModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -54,11 +54,11 @@ AgentDataRetention.init(
   }
 );
 
-AgentConfiguration.hasOne(AgentDataRetention, {
+AgentConfiguration.hasOne(AgentDataRetentionModel, {
   foreignKey: { name: "agentConfigurationId", allowNull: false },
   onDelete: "CASCADE",
 });
 
-AgentDataRetention.belongsTo(AgentConfiguration, {
+AgentDataRetentionModel.belongsTo(AgentConfiguration, {
   foreignKey: { name: "agentConfigurationId", allowNull: false },
 });
