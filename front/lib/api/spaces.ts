@@ -139,8 +139,7 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
         async (agentName) => {
           const requestedGroupIds = await getAgentConfigurationGroupIdsFromName(
             auth,
-            agentName,
-            [space]
+            { agentName, ignoreSpaces: [space] }
           );
 
           const res = await updateAgentRequestedGroupIds(
