@@ -574,6 +574,7 @@ export default function AssistantBuilder({
             <AssistantBuilderRightPanel
               screen={screen}
               template={template}
+              mcpServerViews={mcpServerViews}
               removeTemplate={removeTemplate}
               resetToTemplateInstructions={async () => {
                 resetToTemplateInstructions(setBuilderState);
