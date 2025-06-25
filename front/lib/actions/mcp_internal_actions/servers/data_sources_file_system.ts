@@ -768,9 +768,19 @@ const createServer = (
     ? shouldAutoGenerateTags(agentLoopContext)
     : false;
 
-  // If tags are dynamic, then we add a tool for the agent to discover tags and let it pass tags in
-  // the search tool.
-  if (areTagsDynamic) {
+  if (!areTagsDynamic) {
+    server.tool(
+      "search",
+      "Perform a semantic search within the folders and files designated by `nodeIds`. All " +
+        "children of the designated nodes will be searched.",
+      SearchToolInputSchema.shape,
+      withToolLogging(auth, SEARCH_TOOL_NAME, async (params) =>
+        searchCallback(auth, agentLoopContext, params)
+      )
+    );
+  } else {
+    // If tags are dynamic, then we add a tool for the agent to discover tags and let it pass tags
+    // in the search tool.
     server.tool(
       "find_tags",
       makeFindTagsDescription(SEARCH_TOOL_NAME),
@@ -808,16 +818,6 @@ const createServer = (
           tagsIn: params.tagsIn,
           tagsNot: params.tagsNot,
         })
-      )
-    );
-  } else {
-    server.tool(
-      "search",
-      "Perform a semantic search within the folders and files designated by `nodeIds`. All " +
-        "children of the designated nodes will be searched.",
-      SearchToolInputSchema.shape,
-      withToolLogging(auth, SEARCH_TOOL_NAME, async (params) =>
-        searchCallback(auth, agentLoopContext, params)
       )
     );
   }
