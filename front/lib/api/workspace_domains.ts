@@ -1,6 +1,10 @@
-import { listWorkOSOrganizationsWithDomain } from "@app/lib/api/workos/organization";
+import {
+  listWorkOSOrganizationsWithDomain,
+  removeWorkOSOrganizationDomain,
+} from "@app/lib/api/workos/organization";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import type { LightWorkspaceType, Result, WorkspaceDomain } from "@app/types";
 import { Err, Ok } from "@app/types";
@@ -40,7 +44,18 @@ export async function upsertWorkspaceDomain(
         "Dropping existing domain"
       );
 
+      const { workspace } = existingDomainInRegion;
+
+      // Delete the domain from the DB.
       await existingDomainInRegion.destroy();
+
+      // Delete the domain from WorkOS.
+      await removeWorkOSOrganizationDomain(
+        renderLightWorkspaceType({ workspace }),
+        {
+          domain,
+        }
+      );
     } else {
       return new Err(
         new Error(
