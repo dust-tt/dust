@@ -5,7 +5,7 @@ import { Op } from "sequelize";
 
 import config from "@app/lib/api/config";
 import { config as regionConfig } from "@app/lib/api/regions/config";
-import { fetchUserFromWorkOSWithEmails } from "@app/lib/api/workos/user";
+import { fetchUsersFromWorkOSWithEmails } from "@app/lib/api/workos/user";
 import {
   getMembers,
   getWorkspaceAdministrationVersionLock,
@@ -400,7 +400,7 @@ export async function handleMembershipInvitations(
         transaction: t,
       });
 
-      const auth0Users = await fetchUserFromWorkOSWithEmails(
+      const auth0Users = await fetchUsersFromWorkOSWithEmails(
         invitationRequests.map((invite) => invite.email)
       );
 

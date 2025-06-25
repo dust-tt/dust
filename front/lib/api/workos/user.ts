@@ -159,7 +159,7 @@ export async function fetchUserFromWorkOS(
   return new Ok(workOSUser);
 }
 
-export async function fetchUserFromWorkOSWithEmails(emails: string[]) {
+export async function fetchUsersFromWorkOSWithEmails(emails: string[]) {
   const workOSResponses = await concurrentExecutor(
     emails,
     async (email) => getWorkOS().userManagement.listUsers({ email }),
