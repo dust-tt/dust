@@ -1,12 +1,12 @@
 import {
   Page,
   SearchInput,
-  Separator,
   Spinner,
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
+  UserIcon,
 } from "@dust-tt/sparkle";
 import { UsersIcon } from "@heroicons/react/20/solid";
 import type { PaginationState } from "@tanstack/react-table";
@@ -41,6 +41,7 @@ import type {
   WorkspaceDomain,
   WorkspaceType,
 } from "@app/types";
+import { WorkspaceSection } from "@app/components/workspace/WorkspaceSection";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   user: UserType;
@@ -129,56 +130,53 @@ export default function WorkspaceAdmin({
       owner={owner}
       subNavigation={subNavigationAdmin({ owner, current: "members" })}
     >
-      <Page.Vertical gap="lg" align="stretch">
-        <Page.Header
-          title="Domain & Members"
-          icon={UsersIcon}
-          description="Verify your domain, manage team members and their permissions."
-        />
-        <WorkspaceAccessPanel
-          workspaceVerifiedDomains={workspaceVerifiedDomains}
-          owner={owner}
-          plan={plan}
-        />
-        <Separator />
-        <div className="flex flex-col gap-2">
-          <Page.H variant="h4">
-            {isProvisioningEnabled ? "Members and groups" : "Member list"}
-          </Page.H>
-          <div className="flex flex-row gap-2">
-            <SearchInput
-              placeholder={
-                isProvisioningEnabled ? "Search" : "Search members (email)"
-              }
-              value={searchTerm}
-              name="search"
-              onChange={setSearchTerm}
-            />
-            <InviteEmailButtonWithModal
+      <div className="mb-4">
+        <Page.Vertical gap="lg" align="stretch">
+          <Page.Header
+            title="People & Security"
+            icon={UsersIcon}
+            description="Verify your domain, manage team members and their permissions."
+          />
+          <WorkspaceAccessPanel
+            workspaceVerifiedDomains={workspaceVerifiedDomains}
+            owner={owner}
+            plan={plan}
+          />
+          <WorkspaceSection title="Members" icon={UserIcon}>
+            <div className="flex flex-row gap-2">
+              <SearchInput
+                placeholder={
+                  isProvisioningEnabled ? "Search" : "Search members (email)"
+                }
+                value={searchTerm}
+                name="search"
+                onChange={setSearchTerm}
+              />
+              <InviteEmailButtonWithModal
+                owner={owner}
+                prefillText=""
+                perSeatPricing={perSeatPricing}
+                onInviteClick={onInviteClick}
+              />
+            </div>
+            <WorkspaceMembersGroupsList
+              currentUser={user}
               owner={owner}
-              prefillText=""
-              perSeatPricing={perSeatPricing}
-              onInviteClick={onInviteClick}
+              searchTerm={searchTerm}
+              isProvisioningEnabled={isProvisioningEnabled}
             />
-          </div>
-          <InvitationsList owner={owner} searchText={searchTerm} />
-          <WorkspaceMembersGroupsList
-            currentUser={user}
-            owner={owner}
-            searchTerm={searchTerm}
-            isProvisioningEnabled={isProvisioningEnabled}
-          />
-        </div>
-        {inviteBlockedPopupReason && (
-          <ReachedLimitPopup
-            isOpened={!!inviteBlockedPopupReason}
-            onClose={() => setInviteBlockedPopupReason(null)}
-            subscription={subscription}
-            owner={owner}
-            code={inviteBlockedPopupReason}
-          />
-        )}
-      </Page.Vertical>
+          </WorkspaceSection>
+          {inviteBlockedPopupReason && (
+            <ReachedLimitPopup
+              isOpened={!!inviteBlockedPopupReason}
+              onClose={() => setInviteBlockedPopupReason(null)}
+              subscription={subscription}
+              owner={owner}
+              code={inviteBlockedPopupReason}
+            />
+          )}
+        </Page.Vertical>
+      </div>
     </AppContentLayout>
   );
 }
@@ -218,10 +216,7 @@ function WorkspaceMembersGroupsList({
         <Tabs defaultValue="members">
           <TabsList className="mb-4">
             <TabsTrigger value="members" label="Members" />
-            <TabsTrigger
-              value="groups"
-              label={`Groups${ssoStatus?.connection ? ` (${ssoStatus.connection.type})` : ""}`}
-            />
+            <TabsTrigger value="groups" label="Invitations" />
           </TabsList>
           <TabsContent value="members">
             <WorkspaceMembersList
@@ -232,7 +227,7 @@ function WorkspaceMembersGroupsList({
             />
           </TabsContent>
           <TabsContent value="groups">
-            <WorkspaceGroupsList owner={owner} searchTerm={searchTerm} />
+            <InvitationsList owner={owner} searchText={searchTerm} />
           </TabsContent>
         </Tabs>
       ) : (
@@ -305,6 +300,7 @@ function WorkspaceMembersList({
         onClose={resetSelectedMember}
         member={selectedMember}
         mutateMembers={membersData.mutateRegardlessOfQueryParams}
+        owner={owner}
       />
     </>
   );

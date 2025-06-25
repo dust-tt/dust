@@ -7,7 +7,7 @@ import {
 } from "@dust-tt/sparkle";
 import type { CellContext, PaginationState } from "@tanstack/react-table";
 import assert from "assert";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 import type { GroupType } from "@app/types";
 
@@ -84,7 +84,6 @@ export type GroupsListProps = {
 };
 
 export function GroupsList({
-  searchTerm,
   isLoading,
   groups,
   showColumns,
@@ -115,7 +114,6 @@ export function GroupsList({
 
   return (
     <DataTable
-      filter={searchTerm}
       filterColumn="name"
       data={rows}
       columns={groupColumns.filter(filterColumn(showColumns))}

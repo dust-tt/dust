@@ -8,9 +8,17 @@ import {
   DialogHeader,
   DialogTitle,
   Page,
+  Separator,
+  Sheet,
+  SheetContainer,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
   Spinner,
+  UserGroupIcon,
 } from "@dust-tt/sparkle";
-import React from "react";
+import React, { useState } from "react";
 
 import { UpgradePlanDialog } from "@app/components/workspace/UpgradePlanDialog";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
@@ -19,8 +27,11 @@ import {
   useWorkOSDSyncStatus,
 } from "@app/lib/swr/workos";
 import type { WorkOSConnectionSyncStatus } from "@app/lib/types/workos";
-import type { LightWorkspaceType, PlanType } from "@app/types";
+import type { LightWorkspaceType, PlanType, WorkspaceType } from "@app/types";
 import { assertNever } from "@app/types";
+import { useGroups } from "@app/lib/swr/groups";
+import { GroupsList } from "../groups/GroupsList";
+import { WorkspaceSection } from "./WorkspaceSection";
 
 function useDirectorySyncStatus({
   owner,
@@ -63,6 +74,7 @@ function useDirectorySyncStatus({
 }
 
 interface DirectorySyncStatusProps {
+  owner: WorkspaceType;
   dsyncStatus: WorkOSConnectionSyncStatus | undefined;
   isLoadingDSync: boolean;
   onDisableClick: () => void;
@@ -70,6 +82,7 @@ interface DirectorySyncStatusProps {
 }
 
 function DirectorySyncStatus({
+  owner,
   dsyncStatus,
   isLoadingDSync,
   onDisableClick,
@@ -84,10 +97,10 @@ function DirectorySyncStatus({
   }
 
   switch (dsyncStatus.status) {
-    case "configured":
+    case "not_configured":
       return (
         <>
-          <div className="flex flex-row items-center gap-2">
+          <div className="mb-4 flex flex-row items-center gap-2">
             <div className="flex-1">
               <div className="flex flex-row items-center gap-2">
                 <Page.H variant="h5">Directory sync</Page.H>
@@ -107,13 +120,14 @@ function DirectorySyncStatus({
               />
             </div>
           </div>
+          <WorkspaceGroupButtonWithModal owner={owner} />
         </>
       );
 
     case "not_configured":
       return (
         <>
-          <div className="flex flex-row items-center gap-2">
+          <div className="mb-3 flex flex-row items-center gap-2">
             <div className="flex-1">
               <Page.H variant="h5">Directory sync</Page.H>
               <Page.P variant="secondary">
@@ -139,7 +153,7 @@ function DirectorySyncStatus({
           <div className="flex flex-row items-center gap-2">
             <div className="flex-1">
               <div className="flex flex-row items-center gap-2">
-                <Page.H variant="h5">Directory sync</Page.H>
+                <Page.H variant="h5">User Provisioning</Page.H>
                 <Chip color="info" label="Setting up" size="xs" />
               </div>
               <Page.P variant="secondary">
@@ -244,11 +258,11 @@ export default function UserProvisioning({
   } = useDirectorySyncStatus({ owner, plan });
 
   return (
-    <Page.Vertical gap="lg">
-      <Page.H variant="h4">User provisioning</Page.H>
+    <WorkspaceSection title="User provisioning" icon={UserGroupIcon}>
       <div className="flex w-full flex-row items-center gap-2">
         <div className="flex-1">
           <DirectorySyncStatus
+            owner={owner}
             dsyncStatus={dsyncStatus}
             isLoadingDSync={isLoadingDSync}
             onSetupClick={handleSetupClick}
@@ -256,6 +270,7 @@ export default function UserProvisioning({
           />
         </div>
       </div>
+      <Separator />
       <UpgradePlanDialog
         isOpen={showUpgradePlanDialog}
         onClose={() => setShowUpgradePlanDialog(false)}
@@ -269,6 +284,58 @@ export default function UserProvisioning({
         owner={owner}
         dsyncStatus={dsyncStatus}
       />
-    </Page.Vertical>
+    </WorkspaceSection>
+  );
+}
+
+interface WorkspaceGroupButtonWithModalProps {
+  owner: WorkspaceType;
+}
+
+function WorkspaceGroupButtonWithModal({
+  owner,
+}: WorkspaceGroupButtonWithModalProps) {
+  const [open, setOpen] = useState(false);
+
+  const { groups, isGroupsLoading } = useGroups({
+    owner,
+    kinds: ["provisioned"],
+  });
+
+  return (
+    <Sheet
+      open={open}
+      onOpenChange={(newOpen) => {
+        setOpen(newOpen);
+      }}
+    >
+      <SheetTrigger asChild>
+        <Button icon={UserGroupIcon} label="View groups" />
+      </SheetTrigger>
+      <SheetContent size="lg">
+        <SheetHeader>
+          <SheetTitle>Workspace Groups</SheetTitle>
+        </SheetHeader>
+        <SheetContainer>
+          <div className="flex grow flex-col gap-4">
+            {isGroupsLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Spinner size="lg" />
+              </div>
+            ) : groups.length === 0 ? (
+              <div className="flex items-center justify-center py-8 text-muted-foreground">
+                No groups found in this workspace.
+              </div>
+            ) : (
+              <GroupsList
+                isLoading={isGroupsLoading}
+                groups={groups}
+                showColumns={["name", "memberCount"]}
+              />
+            )}
+          </div>
+        </SheetContainer>
+      </SheetContent>
+    </Sheet>
   );
 }
