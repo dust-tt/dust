@@ -77,7 +77,7 @@ makeScript({}, async () => {
     });
 
     const workspaceCount = new Set(
-      configs.map((c: any) => c.AgentConfiguration.Workspace.id)
+      configs.map((c: any) => c.AgentConfiguration.WorkspaceModel.id)
     ).size;
 
     if (configs.length === 0) {
@@ -90,7 +90,7 @@ makeScript({}, async () => {
       const workspaceGroups: Record<string, number> = {};
 
       configs.forEach((config: any) => {
-        const workspace = config.AgentConfiguration.Workspace;
+        const workspace = config.AgentConfiguration.WorkspaceModel;
         const wsKey = `${workspace.sId} (${workspace.name})`;
         workspaceGroups[wsKey] = (workspaceGroups[wsKey] || 0) + 1;
       });
