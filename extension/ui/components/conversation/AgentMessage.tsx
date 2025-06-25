@@ -150,18 +150,8 @@ export function makeWebsearchResultsCitation(
   };
 }
 
-export function makeMCPSearchActionCitation(
-  result: SearchResultResourceType
-): MarkdownCitation {
-  return {
-    href: result.uri,
-    title: result.text,
-    icon: <DocumentTextIcon />,
-  };
-}
-
-export function makeMCPWebSearchActionCitation(
-  result: WebsearchResultResourceType
+export function makeMCPActionCitation(
+  result: SearchResultResourceType | WebsearchResultResourceType
 ): MarkdownCitation {
   return {
     href: result.uri,
@@ -441,7 +431,7 @@ export function AgentMessage({
     const allMCPSearchReferences = removeNulls(allMCPSearchResources).reduce<{
       [key: string]: MarkdownCitation;
     }>((acc, l) => {
-      acc[l.ref] = makeMCPSearchActionCitation(l);
+      acc[l.ref] = makeMCPActionCitation(l);
       return acc;
     }, {});
 
@@ -458,7 +448,7 @@ export function AgentMessage({
     ).reduce<{
       [key: string]: MarkdownCitation;
     }>((acc, l) => {
-      acc[l.reference] = makeMCPWebSearchActionCitation(l);
+      acc[l.reference] = makeMCPActionCitation(l);
       return acc;
     }, {});
 
