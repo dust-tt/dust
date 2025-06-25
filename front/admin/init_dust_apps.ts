@@ -6,7 +6,6 @@ import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserModel } from "@app/lib/resources/storage/models/user";
-import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -25,7 +24,7 @@ async function main() {
   if (!where.name && !where.sId) {
     throw new Error("Please provide name and/or sId for the workspace");
   }
-  let w = await WorkspaceResource.fetchByNameAndSId(where.name, where.sId);
+  let w = await WorkspaceResource.fetchByNameAndSId(where);
   if (!w) {
     console.log("Creating workspace");
     w = await WorkspaceResource.makeNew({
