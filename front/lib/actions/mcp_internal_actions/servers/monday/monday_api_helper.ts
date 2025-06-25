@@ -1,4 +1,7 @@
+import logger from "@app/logger/logger";
 import { normalizeError } from "@app/types";
+
+const localLogger = logger.child({ module: "monday_api_helper" });
 
 export interface MondayBoard {
   id: string;
@@ -907,7 +910,7 @@ export const uploadFileToColumn = async (
 
     return result.data.add_file_to_column;
   } catch (error) {
-    console.error("Error uploading file to Monday:", error);
+    localLogger.error("Error uploading file to Monday:", error);
     throw normalizeError(error);
   }
 };
