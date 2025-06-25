@@ -176,7 +176,7 @@ export const INTERNAL_MCP_SERVERS: Record<
       get_group_details: "never_ask",
       get_subitem_values: "never_ask",
       get_user_details: "never_ask",
-      
+
       // Write operations - High stakes
       create_item: "high",
       update_item: "high",

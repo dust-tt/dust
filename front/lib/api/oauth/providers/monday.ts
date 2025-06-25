@@ -25,7 +25,7 @@ export class MondayOAuthProvider implements BaseOAuthStrategyProvider {
       "users:read",
       "workspaces:read",
     ];
-    
+
     return (
       `https://auth.monday.com/oauth2/authorize` +
       `?client_id=${config.getOAuthMondayClientId()}` +
