@@ -35,7 +35,7 @@ export const financialServicesConfig: IndustryPageConfig = {
         title: "Chief Technology Officer",
       },
       company: {
-        logo: "/static/landing/logos/color/kyriba.png",
+        logo: "/static/landing/logos/white/kyriba.svg",
         alt: "Kyriba logo",
       },
       bgColor: "bg-violet-400",
@@ -246,10 +246,10 @@ export const financialServicesConfig: IndustryPageConfig = {
       title: "Chief Technology Officer",
     },
     company: {
-      logo: "/static/landing/logos/color/kyriba.png",
+      logo: "/static/landing/logos/white/kyriba.svg",
       alt: "Kyriba logo",
     },
-    bgColor: "bg-golden-600",
+    bgColor: "bg-violet-400",
     textColor: "text-white",
   },
   customerStories: {

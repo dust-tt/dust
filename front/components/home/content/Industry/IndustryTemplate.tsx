@@ -318,7 +318,7 @@ const ImpactMetricsSection = ({
             key={index}
             className="flex min-w-[200px] max-w-[300px] flex-1 flex-col items-center justify-center"
           >
-            <div className="mb-4 text-left md:mb-8">
+            <div className="text-left">
               <div className="text-5xl font-bold text-gray-900 md:text-8xl">
                 {metric.value}
                 {metric.unit}
