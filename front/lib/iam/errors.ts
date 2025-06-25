@@ -12,6 +12,7 @@ type AuthFlowErrorCodeType =
   | "invalid_invitation_token"
   | "invitation_token_email_mismatch"
   | "invalid_domain"
+  | "token_invitation_region_mismatch"
   | "membership_update_error"
   | "revoked";
 
