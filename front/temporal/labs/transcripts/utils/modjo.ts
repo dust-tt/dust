@@ -81,25 +81,25 @@ const ModjoHighlightSchema = t.union([
 ]);
 
 const ModjoRelationsSchema = t.partial({
-  recording: ModjoRecordingSchema,
+  recording: t.union([ModjoRecordingSchema, t.null]),
   highlights: ModjoHighlightSchema,
-  speakers: t.array(ModjoSpeakerSchema),
-  transcript: t.array(ModjoTranscriptEntrySchema),
-  tags: t.array(ModjoTagSchema),
-  contacts: t.array(ModjoContactSchema),
-  account: ModjoAccountSchema,
-  deal: ModjoDealSchema,
+  speakers: t.union([t.array(ModjoSpeakerSchema), t.null]),
+  transcript: t.union([t.array(ModjoTranscriptEntrySchema), t.null]),
+  tags: t.union([t.array(ModjoTagSchema), t.null]),
+  contacts: t.union([t.array(ModjoContactSchema), t.null]),
+  account: t.union([ModjoAccountSchema, t.null]),
+  deal: t.union([ModjoDealSchema, t.null]),
 });
 
 const ModjoCallSchema = t.partial({
   callId: t.number,
-  title: t.string,
+  title: t.union([t.string, t.null]),
   startDate: t.string,
   duration: t.number,
   provider: t.string,
   language: t.union([t.string, t.null, t.undefined]),
   callCrmId: t.union([t.string, t.null, t.undefined]),
-  relations: ModjoRelationsSchema,
+  relations: t.union([ModjoRelationsSchema, t.null]),
 });
 
 const ModjoPaginationSchema = t.partial({
@@ -468,15 +468,15 @@ export async function retrieveModjoTranscriptContent(
 
   const user = await findModjoUser();
   const userParticipated =
-    callData.relations?.speakers?.some(
-      (speaker) => speaker.email === user?.email
-    ) ?? false;
+    (callData.relations?.speakers && Array.isArray(callData.relations.speakers)
+      ? callData.relations.speakers.some((speaker) => speaker.email === user?.email)
+      : false);
 
   localLogger.info(
     {
       userParticipated,
       user,
-      speakers: callData.relations?.speakers,
+      speakers: callData.relations?.speakers || [],
     },
     "[retrieveModjoTranscripts] User participated in the call?"
   );
@@ -494,21 +494,23 @@ export async function retrieveModjoTranscriptContent(
   }\n\nDate: ${callData.startDate || "Unknown"}\n\nDuration: ${callDuration}\n\n`;
 
   // Add speakers section
-  transcriptContent += "Speakers:\n";
-  callData.relations?.speakers?.forEach((speaker) => {
-    transcriptContent += `${speaker.name || "Unknown"} (${speaker.type || "Unknown"})`;
-    if (speaker.email) {
-      transcriptContent += ` - ${speaker.email}`;
-    }
-    if (speaker.phoneNumber) {
-      transcriptContent += ` - ${speaker.phoneNumber}`;
-    }
+  if (callData.relations?.speakers && Array.isArray(callData.relations.speakers)) {
+    transcriptContent += "Speakers:\n";
+    callData.relations.speakers.forEach((speaker) => {
+      transcriptContent += `${speaker.name || "Unknown"} (${speaker.type || "Unknown"})`;
+      if (speaker.email) {
+        transcriptContent += ` - ${speaker.email}`;
+      }
+      if (speaker.phoneNumber) {
+        transcriptContent += ` - ${speaker.phoneNumber}`;
+      }
+      transcriptContent += "\n";
+    });
     transcriptContent += "\n";
-  });
-  transcriptContent += "\n";
+  }
 
   // Add contacts section if available
-  if (callData.relations?.contacts && callData.relations.contacts.length > 0) {
+  if (callData.relations?.contacts && Array.isArray(callData.relations.contacts) && callData.relations.contacts.length > 0) {
     transcriptContent += "Contacts:\n";
     callData.relations.contacts.forEach((contact) => {
       const fullName = [contact.firstName, contact.lastName]
@@ -576,7 +578,7 @@ export async function retrieveModjoTranscriptContent(
   }
 
   // Add tags section if available
-  if (callData.relations?.tags && callData.relations.tags.length > 0) {
+  if (callData.relations?.tags && Array.isArray(callData.relations.tags) && callData.relations.tags.length > 0) {
     transcriptContent += "Tags: ";
     transcriptContent += callData.relations.tags
       .map((tag) => tag.name)
@@ -586,19 +588,21 @@ export async function retrieveModjoTranscriptContent(
   }
 
   // Add transcript content
-  callData.relations?.transcript?.forEach((entry) => {
-    const speaker = callData.relations?.speakers?.find(
-      (s) => s.speakerId === entry.speakerId
-    );
-    const speakerName = speaker ? speaker.name : `Speaker ${entry.speakerId}`;
-    transcriptContent += `${speakerName}: ${entry.content || ""}\n`;
-  });
+  if (callData.relations?.transcript && Array.isArray(callData.relations.transcript)) {
+    callData.relations.transcript.forEach((entry) => {
+      const speaker = Array.isArray(callData.relations?.speakers) 
+        ? callData.relations.speakers.find((s) => s.speakerId === entry.speakerId)
+        : null;
+      const speakerName = speaker ? speaker.name : `Speaker ${entry.speakerId}`;
+      transcriptContent += `${speakerName}: ${entry.content || ""}\n`;
+    });
+  }
 
   // Extract tags from Modjo data
   const tags: string[] = [];
 
   // Add Modjo tags
-  if (callData.relations?.tags && callData.relations.tags.length > 0) {
+  if (callData.relations?.tags && Array.isArray(callData.relations.tags) && callData.relations.tags.length > 0) {
     tags.push(
       ...callData.relations.tags
         .map((tag) => tag.name)
