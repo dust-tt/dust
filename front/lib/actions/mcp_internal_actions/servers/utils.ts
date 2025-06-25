@@ -418,10 +418,10 @@ export function renderTagsForToolOutput(
 }
 
 /**
- * Checks for clashing tags across core search arguments and returns an error message if any.
+ * Checks for conflicting tags across core search arguments and returns an error message if any.
  * If a tag is both included and excluded, we will not get any result.
  */
-export function checkClashingTags(
+export function checkConflictingTags(
   coreSearchArgs: CoreSearchArgs[],
   { tagsIn, tagsNot }: { tagsIn?: string[]; tagsNot?: string[] }
 ): string | null {
@@ -432,11 +432,11 @@ export function checkClashingTags(
     const finalTagsIn = [...configTagsIn, ...(tagsIn ?? [])];
     const finalTagsNot = [...configTagsNot, ...(tagsNot ?? [])];
 
-    const clashingTags = finalTagsIn.filter((tag) =>
+    const conflictingTags = finalTagsIn.filter((tag) =>
       finalTagsNot.includes(tag)
     );
-    if (clashingTags.length > 0) {
-      const clashingTagsList = clashingTags.join(", ");
+    if (conflictingTags.length > 0) {
+      const clashingTagsList = conflictingTags.join(", ");
       const tagsInList =
         configTagsIn.length > 0 ? configTagsIn.join(", ") : "none";
       const tagsNotList =
@@ -449,10 +449,10 @@ export function checkClashingTags(
       // sources. Therefore, even if we did have some content in another data source, it is
       // probably not what the agent intended and its filtering had no use.
       return (
-        "No results found due to conflicting tags. The following tags appear in both include and " +
-        `exclude lists: ${clashingTagsList}.\n\nTags that are already included: ${tagsInList}\n` +
-        `Tags that are already excluded ${tagsNotList}\n\nPlease adjust your tag filters to ` +
-        "avoid conflicts."
+        "No results were found due to conflicting tags. The following tags appear in both " +
+        `include and exclude lists: ${clashingTagsList}.\n\nTags that are already included: ` +
+        `${tagsInList}\n Tags that are already excluded ${tagsNotList}\n\nPlease adjust your ` +
+        "tag filters to avoid conflicts."
       );
     }
   }

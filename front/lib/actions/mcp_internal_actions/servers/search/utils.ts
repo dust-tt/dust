@@ -8,7 +8,7 @@ import type {
   SearchResultResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
-  checkClashingTags,
+  checkConflictingTags,
   getCoreSearchArgs,
   renderRelativeTimeFrameForToolOutput,
   renderTagsForToolOutput,
@@ -107,14 +107,14 @@ export async function searchFunction({
     };
   }
 
-  const clashingTagsError = checkClashingTags(coreSearchArgs, {
+  const conflictingTagsError = checkConflictingTags(coreSearchArgs, {
     tagsIn,
     tagsNot,
   });
-  if (clashingTagsError) {
+  if (conflictingTagsError) {
     return {
       isError: false,
-      content: [{ type: "text", text: clashingTagsError }],
+      content: [{ type: "text", text: conflictingTagsError }],
     };
   }
 

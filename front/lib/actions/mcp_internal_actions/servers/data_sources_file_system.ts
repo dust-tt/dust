@@ -18,7 +18,7 @@ import {
   makeFindTagsTool,
 } from "@app/lib/actions/mcp_internal_actions/servers/common/find_tags_tool";
 import {
-  checkClashingTags,
+  checkConflictingTags,
   fetchAgentDataSourceConfiguration,
   getCoreSearchArgs,
   parseDataSourceConfigurationURI,
@@ -233,14 +233,14 @@ async function searchCallback(
     );
   }
 
-  const clashingTagsError = checkClashingTags(coreSearchArgs, {
+  const conflictingTags = checkConflictingTags(coreSearchArgs, {
     tagsIn,
     tagsNot,
   });
-  if (clashingTagsError) {
+  if (conflictingTags) {
     return {
       isError: false,
-      content: [{ type: "text", text: clashingTagsError }],
+      content: [{ type: "text", text: conflictingTags }],
     };
   }
 
