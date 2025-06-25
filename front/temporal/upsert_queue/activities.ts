@@ -19,11 +19,11 @@ function cleanUtf8Content(content: string): string {
   if (!/[\uD800-\uDFFF]/.test(content)) {
     return content;
   }
-
-  // Replace low surrogates not preceded by a high surrogate with '?'.
+  // Replace invalid high surrogates not followed by a low surrogate with a valid JSON string
+  // Replace invalid low surrogates not preceded by a high surrogate with a valid JSON string
   return content
-    .replace(/\\uD[89AB][0-9A-F]{2}(?!\\uD[CDEF][0-9A-F]{2})/gi, "?")
-    .replace(/(?<!\\uD[89AB][0-9A-F]{2})\\uD[CDEF][0-9A-F]{2}/gi, "?");
+    .replace(/\\uD[89AB][0-9A-F]{2}(?!\\uD[CDEF][0-9A-F]{2})/gi, "\\u003F")
+    .replace(/(?<!\\uD[89AB][0-9A-F]{2})\\uD[CDEF][0-9A-F]{2}/gi, "\\u003F");
 }
 
 export async function upsertDocumentActivity(
