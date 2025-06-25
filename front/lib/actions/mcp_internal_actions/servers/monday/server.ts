@@ -23,6 +23,7 @@ import {
   getSubitemValues,
   getUserDetails,
   searchItems,
+  SearchItemsFilters,
   updateItem,
   updateItemName,
   updateSubitem,
@@ -57,49 +58,40 @@ const createServer = (): McpServer => {
 
   server.tool(
     "get_boards",
-    "Lists all accessible boards in Monday.com workspace",
-    {
-      limit: z
-        .number()
-        .optional()
-        .describe("Maximum number of boards to return (default: 50)"),
-    },
-    async ({ limit }, { authInfo }) => {
+    "Lists all accessible boards in Monday.com workspace. Returns up to 100 boards.",
+    {},
+    async (_params, { authInfo }) => {
       return withAuth({
         action: async (accessToken) => {
-          const boards = await getBoards(accessToken, limit);
+          const boards = await getBoards(accessToken);
           return makeMCPToolJSONSuccess({
             message: "Boards retrieved successfully",
             result: boards,
           });
         },
         authInfo,
-        params: { limit },
+        params: {},
       });
     }
   );
 
   server.tool(
     "get_board_items",
-    "Retrieves items from a specific Monday.com board",
+    "Retrieves items from a specific Monday.com board. Returns up to 100 items.",
     {
       boardId: z.string().describe("The board ID to retrieve items from"),
-      limit: z
-        .number()
-        .optional()
-        .describe("Maximum number of items to return (default: 50)"),
     },
-    async ({ boardId, limit }, { authInfo }) => {
+    async ({ boardId }, { authInfo }) => {
       return withAuth({
         action: async (accessToken) => {
-          const items = await getBoardItems(accessToken, boardId, limit);
+          const items = await getBoardItems(accessToken, boardId);
           return makeMCPToolJSONSuccess({
             message: "Board items retrieved successfully",
             result: items,
           });
         },
         authInfo,
-        params: { boardId, limit },
+        params: { boardId },
       });
     }
   );
@@ -130,34 +122,73 @@ const createServer = (): McpServer => {
 
   server.tool(
     "search_items",
-    "Searches for items across Monday.com boards or within a specific board",
+    "Searches for items in Monday.com with advanced filtering options. Returns up to 100 items.",
     {
-      searchQuery: z.string().describe("The search query to find items"),
+      query: z
+        .string()
+        .optional()
+        .describe("Text query to search in item names and column values"),
       boardId: z
         .string()
         .optional()
-        .describe("Optional board ID to limit search to a specific board"),
-      limit: z
-        .number()
+        .describe("Filter by specific board ID"),
+      status: z
+        .string()
         .optional()
-        .describe("Maximum number of items to return (default: 50)"),
+        .describe("Filter by status (e.g., 'Working on it', 'Done', 'Stuck')"),
+      assigneeId: z
+        .string()
+        .optional()
+        .describe("Filter by assignee user ID"),
+      groupId: z
+        .string()
+        .optional()
+        .describe("Filter by group ID"),
+      timeframeStart: z
+        .string()
+        .optional()
+        .describe("Filter items created after this date (ISO 8601 format)"),
+      timeframeEnd: z
+        .string()
+        .optional()
+        .describe("Filter items created before this date (ISO 8601 format)"),
+      orderBy: z
+        .enum(["created_at", "updated_at", "name"])
+        .optional()
+        .describe("Field to order results by"),
+      orderDirection: z
+        .enum(["asc", "desc"])
+        .optional()
+        .describe("Order direction (default: asc)"),
     },
-    async ({ searchQuery, boardId, limit }, { authInfo }) => {
+    async ({ query, boardId, status, assigneeId, groupId, timeframeStart, timeframeEnd, orderBy, orderDirection }, { authInfo }) => {
       return withAuth({
         action: async (accessToken) => {
-          const items = await searchItems(
-            accessToken,
-            searchQuery,
+          const filters: SearchItemsFilters = {
+            query,
             boardId,
-            limit
-          );
+            status,
+            assigneeId,
+            groupId,
+            orderBy,
+            orderDirection,
+          };
+          
+          if (timeframeStart || timeframeEnd) {
+            filters.timeframe = {
+              start: timeframeStart ? new Date(timeframeStart) : undefined,
+              end: timeframeEnd ? new Date(timeframeEnd) : undefined,
+            };
+          }
+          
+          const items = await searchItems(accessToken, filters);
           return makeMCPToolJSONSuccess({
-            message: "Search completed successfully",
+            message: `Found ${items.length} items (max 100 returned)`,
             result: items,
           });
         },
         authInfo,
-        params: { searchQuery, boardId, limit },
+        params: { query, boardId, status, assigneeId, groupId, timeframeStart, timeframeEnd, orderBy, orderDirection },
       });
     }
   );
@@ -573,25 +604,20 @@ const createServer = (): McpServer => {
 
   server.tool(
     "get_items_by_column_value",
-    "Finds all items that match a specific value in a selected column",
+    "Finds all items that match a specific value in a selected column. Returns up to 100 items.",
     {
       boardId: z.string().describe("The board ID to search in"),
       columnId: z.string().describe("The column ID to search by"),
       columnValue: z.string().describe("The value to search for"),
-      limit: z
-        .number()
-        .optional()
-        .describe("Maximum number of items to return (default: 50)"),
     },
-    async ({ boardId, columnId, columnValue, limit }, { authInfo }) => {
+    async ({ boardId, columnId, columnValue }, { authInfo }) => {
       return withAuth({
         action: async (accessToken) => {
           const items = await getItemsByColumnValue(
             accessToken,
             boardId,
             columnId,
-            columnValue,
-            limit
+            columnValue
           );
           return makeMCPToolJSONSuccess({
             message: "Items retrieved successfully",
@@ -599,7 +625,7 @@ const createServer = (): McpServer => {
           });
         },
         authInfo,
-        params: { boardId, columnId, columnValue, limit },
+        params: { boardId, columnId, columnValue },
       });
     }
   );

@@ -56,6 +56,8 @@ export interface MondayWorkspace {
   description?: string;
 }
 
+const RETRIEVAL_LIMIT = 100;
+
 const makeGraphQLRequest = async (
   accessToken: string,
   query: string,
@@ -82,7 +84,7 @@ const makeGraphQLRequest = async (
     }
 
     const result = await response.json();
-    
+
     if (result.errors) {
       const error = new Error(
         `Monday GraphQL error: ${result.errors.map((e: any) => e.message).join(", ")}`
@@ -98,8 +100,7 @@ const makeGraphQLRequest = async (
 };
 
 export const getBoards = async (
-  accessToken: string,
-  limit: number = 50
+  accessToken: string
 ): Promise<MondayBoard[]> => {
   const query = `
     query GetBoards($limit: Int!) {
@@ -115,14 +116,15 @@ export const getBoards = async (
     }
   `;
 
-  const data = await makeGraphQLRequest(accessToken, query, { limit });
+  const data = await makeGraphQLRequest(accessToken, query, {
+    limit: RETRIEVAL_LIMIT,
+  });
   return data.boards;
 };
 
 export const getBoardItems = async (
   accessToken: string,
-  boardId: string,
-  limit: number = 50
+  boardId: string
 ): Promise<MondayItem[]> => {
   const query = `
     query GetBoardItems($boardId: ID!, $limit: Int!) {
@@ -160,7 +162,10 @@ export const getBoardItems = async (
     }
   `;
 
-  const data = await makeGraphQLRequest(accessToken, query, { boardId, limit });
+  const data = await makeGraphQLRequest(accessToken, query, {
+    boardId,
+    limit: RETRIEVAL_LIMIT,
+  });
   return data.boards[0]?.items_page?.items || [];
 };
 
@@ -204,15 +209,31 @@ export const getItemDetails = async (
   return data.items?.[0] || null;
 };
 
+export interface SearchItemsFilters {
+  query?: string;
+  boardId?: string;
+  status?: string;
+  assigneeId?: string;
+  timeframe?: {
+    start?: Date;
+    end?: Date;
+  };
+  groupId?: string;
+  orderBy?: "created_at" | "updated_at" | "name";
+  orderDirection?: "asc" | "desc";
+}
+
 export const searchItems = async (
   accessToken: string,
-  searchQuery: string,
-  boardId?: string,
-  limit: number = 50
+  filters: SearchItemsFilters
 ): Promise<MondayItem[]> => {
-  // Monday.com's items_page_by_column_values allows searching by text
-  const query = boardId
-    ? `
+  // Build the query based on filters
+  let query: string;
+  const variables: Record<string, any> = { limit: RETRIEVAL_LIMIT };
+
+  if (filters.boardId) {
+    // Search within a specific board
+    query = `
       query SearchBoardItems($boardId: ID!, $limit: Int!) {
         boards(ids: [$boardId]) {
           items_page(limit: $limit) {
@@ -246,10 +267,14 @@ export const searchItems = async (
           }
         }
       }
-    `
-    : `
+    `;
+    variables.boardId = filters.boardId;
+  } else {
+    query = `
       query SearchAllItems($limit: Int!) {
-        boards(limit: 10) {
+        boards {
+          id
+          name
           items_page(limit: $limit) {
             items {
               id
@@ -282,21 +307,109 @@ export const searchItems = async (
         }
       }
     `;
+  }
 
-  const variables = boardId ? { boardId, limit } : { limit };
   const data = await makeGraphQLRequest(accessToken, query, variables);
-  
-  // Filter items based on search query
-  const allItems = boardId
+
+  // Get all items
+  let allItems: MondayItem[] = filters.boardId
     ? data.boards[0]?.items_page?.items || []
     : data.boards.flatMap((board: any) => board.items_page?.items || []);
-    
-  return allItems.filter((item: MondayItem) =>
-    item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    item.column_values.some((col: MondayColumnValue) =>
-      col.text?.toLowerCase().includes(searchQuery.toLowerCase())
-    )
-  );
+
+  // Apply client-side filters
+  if (filters.query) {
+    const searchQuery = filters.query.toLowerCase();
+    allItems = allItems.filter(
+      (item: MondayItem) =>
+        item.name.toLowerCase().includes(searchQuery) ||
+        item.column_values.some((col: MondayColumnValue) =>
+          col.text?.toLowerCase().includes(searchQuery)
+        )
+    );
+  }
+
+  // Filter by status
+  if (filters.status) {
+    allItems = allItems.filter((item: MondayItem) => {
+      const statusColumn = item.column_values.find(
+        (col) =>
+          col.type === "status" || col.title.toLowerCase().includes("status")
+      );
+      return (
+        statusColumn?.text?.toLowerCase() === filters.status?.toLowerCase()
+      );
+    });
+  }
+
+  // Filter by assignee
+  if (filters.assigneeId) {
+    allItems = allItems.filter((item: MondayItem) => {
+      const peopleColumns = item.column_values.filter(
+        (col) => col.type === "people" || col.type === "person"
+      );
+      return peopleColumns.some((col) => {
+        try {
+          const value = JSON.parse(col.value || "{}");
+          const personsIds =
+            value.personsAndTeams?.map((p: any) => p.id.toString()) || [];
+          return personsIds.includes(filters.assigneeId);
+        } catch {
+          return false;
+        }
+      });
+    });
+  }
+
+  // Filter by group
+  if (filters.groupId) {
+    allItems = allItems.filter(
+      (item: MondayItem) => item.group.id === filters.groupId
+    );
+  }
+
+  // Filter by timeframe
+  if (filters.timeframe) {
+    allItems = allItems.filter((item: MondayItem) => {
+      const createdAt = new Date(item.created_at);
+      if (filters.timeframe?.start && createdAt < filters.timeframe.start) {
+        return false;
+      }
+      if (filters.timeframe?.end && createdAt > filters.timeframe.end) {
+        return false;
+      }
+      return true;
+    });
+  }
+
+  // Sort items
+  if (filters.orderBy) {
+    allItems.sort((a, b) => {
+      let aVal: any, bVal: any;
+
+      switch (filters.orderBy) {
+        case "created_at":
+          aVal = new Date(a.created_at).getTime();
+          bVal = new Date(b.created_at).getTime();
+          break;
+        case "updated_at":
+          aVal = new Date(a.updated_at || a.created_at).getTime();
+          bVal = new Date(b.updated_at || b.created_at).getTime();
+          break;
+        case "name":
+          aVal = a.name.toLowerCase();
+          bVal = b.name.toLowerCase();
+          break;
+        default:
+          return 0;
+      }
+
+      const direction = filters.orderDirection === "desc" ? -1 : 1;
+      return aVal < bVal ? -direction : aVal > bVal ? direction : 0;
+    });
+  }
+
+  // Return limited results
+  return allItems.slice(0, limit);
 };
 
 export const createItem = async (
@@ -510,11 +623,11 @@ export const createBoard = async (
     }
   `;
 
-  const data = await makeGraphQLRequest(accessToken, query, { 
-    boardName, 
-    boardKind, 
+  const data = await makeGraphQLRequest(accessToken, query, {
+    boardName,
+    boardKind,
     workspaceId,
-    description 
+    description,
   });
   return data.create_board;
 };
@@ -541,11 +654,11 @@ export const createColumn = async (
     }
   `;
 
-  const data = await makeGraphQLRequest(accessToken, query, { 
-    boardId, 
-    title, 
+  const data = await makeGraphQLRequest(accessToken, query, {
+    boardId,
+    title,
     columnType,
-    description 
+    description,
   });
   return data.create_column;
 };
@@ -570,10 +683,10 @@ export const createGroup = async (
     }
   `;
 
-  const data = await makeGraphQLRequest(accessToken, query, { 
-    boardId, 
+  const data = await makeGraphQLRequest(accessToken, query, {
+    boardId,
     groupName,
-    position 
+    position,
   });
   return data.create_group;
 };
@@ -644,7 +757,10 @@ export const deleteGroup = async (
     }
   `;
 
-  const data = await makeGraphQLRequest(accessToken, query, { boardId, groupId });
+  const data = await makeGraphQLRequest(accessToken, query, {
+    boardId,
+    groupId,
+  });
   return data.delete_group;
 };
 
@@ -669,11 +785,11 @@ export const duplicateGroup = async (
     }
   `;
 
-  const data = await makeGraphQLRequest(accessToken, query, { 
-    boardId, 
+  const data = await makeGraphQLRequest(accessToken, query, {
+    boardId,
     groupId,
     addToTop,
-    groupTitle 
+    groupTitle,
   });
   return data.duplicate_group;
 };
@@ -734,7 +850,9 @@ export const uploadFileToColumn = async (
   file: File | Blob
 ): Promise<{ id: string; url: string }> => {
   const formData = new FormData();
-  formData.append('query', `
+  formData.append(
+    "query",
+    `
     mutation AddFileToColumn($itemId: ID!, $columnId: String!, $file: File!) {
       add_file_to_column(
         item_id: $itemId
@@ -745,15 +863,22 @@ export const uploadFileToColumn = async (
         url
       }
     }
-  `);
-  formData.append('variables', JSON.stringify({
-    itemId,
-    columnId,
-  }));
-  formData.append('map', JSON.stringify({
-    "0": ["variables.file"]
-  }));
-  formData.append('0', file);
+  `
+  );
+  formData.append(
+    "variables",
+    JSON.stringify({
+      itemId,
+      columnId,
+    })
+  );
+  formData.append(
+    "map",
+    JSON.stringify({
+      "0": ["variables.file"],
+    })
+  );
+  formData.append("0", file);
 
   try {
     const response = await fetch("https://api.monday.com/v2/file", {
@@ -772,7 +897,7 @@ export const uploadFileToColumn = async (
     }
 
     const result = await response.json();
-    
+
     if (result.errors) {
       const error = new Error(
         `Monday GraphQL error: ${result.errors.map((e: any) => e.message).join(", ")}`
@@ -791,8 +916,7 @@ export const getItemsByColumnValue = async (
   accessToken: string,
   boardId: string,
   columnId: string,
-  columnValue: string,
-  limit: number = 50
+  columnValue: string
 ): Promise<MondayItem[]> => {
   const query = `
     query GetItemsByColumnValue($boardId: ID!, $columnId: String!, $columnValue: String!, $limit: Int!) {
@@ -832,11 +956,11 @@ export const getItemsByColumnValue = async (
     }
   `;
 
-  const data = await makeGraphQLRequest(accessToken, query, { 
-    boardId, 
-    columnId, 
+  const data = await makeGraphQLRequest(accessToken, query, {
+    boardId,
+    columnId,
     columnValue,
-    limit 
+    limit: RETRIEVAL_LIMIT,
   });
   return data.items_page_by_column_values?.items || [];
 };
@@ -860,10 +984,12 @@ export const findUserByName = async (
 
   const data = await makeGraphQLRequest(accessToken, query);
   const users = data.users || [];
-  
-  return users.find((user: MondayUser) => 
-    user.name.toLowerCase() === name.toLowerCase()
-  ) || null;
+
+  return (
+    users.find(
+      (user: MondayUser) => user.name.toLowerCase() === name.toLowerCase()
+    ) || null
+  );
 };
 
 export const getBoardValues = async (
@@ -900,7 +1026,7 @@ export const getBoardValues = async (
 
 export const getColumnValues = async (
   accessToken: string,
-  boardId: string,
+  _boardId: string,
   itemId: string,
   columnId: string
 ): Promise<MondayColumnValue | null> => {
@@ -918,7 +1044,10 @@ export const getColumnValues = async (
     }
   `;
 
-  const data = await makeGraphQLRequest(accessToken, query, { itemId, columnId });
+  const data = await makeGraphQLRequest(accessToken, query, {
+    itemId,
+    columnId,
+  });
   const item = data.items?.[0];
   return item?.column_values?.[0] || null;
 };
@@ -955,17 +1084,20 @@ export const getFileColumnValues = async (
     }
   `;
 
-  const data = await makeGraphQLRequest(accessToken, query, { itemId, columnId });
+  const data = await makeGraphQLRequest(accessToken, query, {
+    itemId,
+    columnId,
+  });
   const item = data.items?.[0];
   const columnValue = item?.column_values?.[0];
-  
-  if (columnValue?.type === 'file') {
+
+  if (columnValue?.type === "file") {
     return {
       ...columnValue,
-      files: JSON.parse(columnValue.value || '[]')
+      files: JSON.parse(columnValue.value || "[]"),
     };
   }
-  
+
   return null;
 };
 
@@ -986,7 +1118,10 @@ export const getGroupDetails = async (
     }
   `;
 
-  const data = await makeGraphQLRequest(accessToken, query, { boardId, groupId });
+  const data = await makeGraphQLRequest(accessToken, query, {
+    boardId,
+    groupId,
+  });
   const board = data.boards?.[0];
   return board?.groups?.[0] || null;
 };
