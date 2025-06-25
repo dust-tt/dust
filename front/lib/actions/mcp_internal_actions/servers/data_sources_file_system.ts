@@ -16,11 +16,11 @@ import {
   makeFindTagsDescription,
   makeFindTagsTool,
 } from "@app/lib/actions/mcp_internal_actions/servers/common/find_tags_tool";
+import { makeQueryResource } from "@app/lib/actions/mcp_internal_actions/servers/search/utils";
 import {
   fetchAgentDataSourceConfiguration,
   getCoreSearchArgs,
   parseDataSourceConfigurationURI,
-  renderRelativeTimeFrameForToolOutput,
   shouldAutoGenerateTags,
 } from "@app/lib/actions/mcp_internal_actions/servers/utils";
 import {
@@ -47,7 +47,6 @@ import type {
   CoreAPIError,
   CoreAPISearchNodesResponse,
   Result,
-  TimeFrame,
 } from "@app/types";
 import {
   assertNever,
@@ -336,7 +335,7 @@ async function searchCallback(
     content: [
       {
         type: "resource" as const,
-        resource: makeQueryResource(query, timeFrame),
+        resource: makeQueryResource(query, timeFrame, tagsIn, tagsNot),
       },
       ...(renderedNodes
         ? [{ type: "resource" as const, resource: renderedNodes }]
@@ -1246,22 +1245,6 @@ function renderSearchResults(
     ),
     nextPageCursor: response.next_page_cursor,
     resultCount: response.hit_count,
-  };
-}
-
-function makeQueryResource(
-  query: string,
-  relativeTimeFrame: TimeFrame | null
-): SearchQueryResourceType {
-  const timeFrameAsString =
-    renderRelativeTimeFrameForToolOutput(relativeTimeFrame);
-
-  return {
-    mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_QUERY,
-    text: query
-      ? `Searching "${query}", ${timeFrameAsString}.`
-      : `Searching ${timeFrameAsString}.`,
-    uri: "",
   };
 }
 
