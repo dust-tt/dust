@@ -12,7 +12,6 @@ export async function getStaticProps() {
   };
 }
 
-
 export default function B2BSaaS() {
   return <IndustryTemplate config={b2bSaasConfig} />;
 }
