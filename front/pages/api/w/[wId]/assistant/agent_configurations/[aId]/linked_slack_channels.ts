@@ -17,16 +17,10 @@ export type PatchLinkedSlackChannelsResponseBody = {
   success: true;
 };
 
-export const PatchLinkedSlackChannelsRequestBodySchema = t.intersection([
-  t.type({
-    slack_channel_internal_ids: t.array(t.string),
-  }),
-  // partial for backwards compatibility
-  // we can make it required once it's been deployed for a week or two
-  t.partial({
-    provider: t.union([t.literal("slack"), t.literal("slack_bot")]),
-  }),
-]);
+export const PatchLinkedSlackChannelsRequestBodySchema = t.type({
+  slack_channel_internal_ids: t.array(t.string),
+  provider: t.union([t.literal("slack"), t.literal("slack_bot")]),
+});
 
 async function handler(
   req: NextApiRequest,
@@ -72,7 +66,7 @@ async function handler(
 
   const [slackDataSource] = await DataSourceResource.listByConnectorProvider(
     auth,
-    bodyValidation.right.provider ?? "slack",
+    bodyValidation.right.provider,
     { limit: 1 }
   );
 
