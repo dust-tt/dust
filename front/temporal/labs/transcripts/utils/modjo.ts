@@ -7,6 +7,7 @@ import type { Authenticator } from "@app/lib/auth";
 import type { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import type { Logger } from "@app/logger/logger";
 import logger from "@app/logger/logger";
+import { stopRetrieveTranscriptsWorkflow } from "@app/temporal/labs/transcripts/client";
 import { isModjoCredentials, OAuthAPI } from "@app/types";
 
 const ModjoSpeakerSchema = t.partial({
@@ -168,8 +169,12 @@ export async function retrieveModjoTranscripts(
   if (modjoApiKeyRes.isErr()) {
     localLogger.error(
       { error: modjoApiKeyRes.error },
-      "[retrieveModjoTranscripts] Error fetching API key from Modjo. Skipping."
+      "[retrieveModjoTranscripts] Error fetching API key from Modjo. Stopping workflow."
     );
+
+    // Stopping worklow
+    await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
+
     return [];
   }
 
@@ -382,6 +387,9 @@ export async function retrieveModjoTranscriptContent(
   });
 
   if (modjoApiKeyRes.isErr()) {
+    // Stopping worklow
+    await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
+
     throw new Error(
       "[retrieveModjoTranscripts] Error fetching API key from Modjo. Skipping."
     );
