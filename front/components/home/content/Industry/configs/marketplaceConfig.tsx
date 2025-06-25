@@ -57,7 +57,7 @@ export const marketplaceConfig: IndustryPageConfig = {
     logoSet: "marketplace",
   },
   painPoints: {
-    title: "The 3 marketplace bottlenecks Dust solves",
+    title: "Transform how you work",
     painPoints: [
       {
         icon: "/static/landing/industry/d-blue.svg",
