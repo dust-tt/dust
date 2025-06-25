@@ -24,10 +24,6 @@ const actionConfigurations = [
     model: AgentBrowseConfiguration,
   },
   {
-    type: "mcp_server",
-    model: AgentMCPServerConfiguration,
-  },
-  {
     type: "dust_app_run",
     model: AgentDustAppRunConfiguration,
   },
