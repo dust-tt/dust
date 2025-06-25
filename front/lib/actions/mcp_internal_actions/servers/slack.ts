@@ -11,7 +11,7 @@ import type {
   SearchQueryResourceType,
   SearchResultResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import { renderRelativeTimeFrameForToolOutput } from "@app/lib/actions/mcp_internal_actions/servers/utils";
+import { renderRelativeTimeFrameForToolOutput } from "@app/lib/actions/mcp_internal_actions/rendering";
 import {
   makeMCPToolJSONSuccess,
   makeMCPToolTextError,
