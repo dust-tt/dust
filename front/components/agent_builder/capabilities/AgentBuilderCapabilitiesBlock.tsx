@@ -39,7 +39,7 @@ function ActionCard({
         <CardActionButton
           size="mini"
           icon={XMarkIcon}
-          onClick={(e: any) => {
+          onClick={(e: Event) => {
             onRemove();
             e.stopPropagation();
           }}
@@ -63,7 +63,9 @@ export function AgentBuilderCapabilitiesBlock() {
   const { actions, setActions } = useAgentBuilderCapabilitiesContext();
 
   function removeAction(actionToRemove: AssistantBuilderActionState) {
-    setActions(actions.filter((action) => action.id !== actionToRemove.id));
+    setActions((prevActions) =>
+      prevActions.filter((action) => action.id !== actionToRemove.id)
+    );
   }
 
   return (

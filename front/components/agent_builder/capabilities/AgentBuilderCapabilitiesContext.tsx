@@ -4,7 +4,9 @@ import type { AssistantBuilderActionState } from "@app/components/assistant_buil
 
 interface AgentBuilderCapabilitiesContextType {
   actions: AssistantBuilderActionState[];
-  setActions: (actions: AssistantBuilderActionState[]) => void;
+  setActions: React.Dispatch<
+    React.SetStateAction<AssistantBuilderActionState[]>
+  >;
 }
 
 const AgentBuilderCapabilitiesContext = createContext<
