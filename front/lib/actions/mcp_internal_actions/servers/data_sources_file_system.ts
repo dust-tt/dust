@@ -768,6 +768,8 @@ const createServer = (
     ? shouldAutoGenerateTags(agentLoopContext)
     : false;
 
+  // If tags are dynamic, then we add a tool for the agent to discover tags and let it pass tags in
+  // the search tool.
   if (areTagsDynamic) {
     server.tool(
       "find_tags",
