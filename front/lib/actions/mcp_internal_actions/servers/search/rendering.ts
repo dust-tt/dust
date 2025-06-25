@@ -5,10 +5,6 @@ import type {
   SearchQueryResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { ResolvedDataSourceConfiguration } from "@app/lib/actions/mcp_internal_actions/servers/search/utils";
-import {
-  renderRelativeTimeFrameForToolOutput,
-  renderTagsForToolOutput,
-} from "@app/lib/actions/mcp_internal_actions/servers/utils";
 import type { ConnectorProvider, CoreAPIContentNode } from "@app/types";
 import type { CoreAPISearchNodesResponse, TimeFrame } from "@app/types";
 import { DATA_SOURCE_NODE_ID } from "@app/types";
@@ -104,44 +100,28 @@ export function renderMimeType(mimeType: string) {
     .replace(".", " ");
 }
 
-export function makeQueryResourceForFind(
-  query?: string,
-  rootNodeId?: string,
-  mimeTypes?: string[],
-  nextPageCursor?: string
-): SearchQueryResourceType {
-  const queryText = query ? ` "${query}"` : " all content";
-  const scope = rootNodeId
-    ? ` under ${rootNodeId}`
-    : " across the entire data sources";
-  const types = mimeTypes?.length
-    ? ` (${mimeTypes.map(renderMimeType).join(", ")} files)`
-    : "";
-  const pagination = nextPageCursor ? " - next page" : "";
-
-  return {
-    mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_QUERY,
-    text: `Searching for${queryText}${scope}${types}${pagination}.`,
-    uri: "",
-  };
+export function renderRelativeTimeFrameForToolOutput(
+  relativeTimeFrame: TimeFrame | null
+): string {
+  return relativeTimeFrame
+    ? "over the last " +
+        (relativeTimeFrame.duration > 1
+          ? `${relativeTimeFrame.duration} ${relativeTimeFrame.unit}s`
+          : `${relativeTimeFrame.unit}`)
+    : "across all time periods";
 }
 
-export function makeQueryResourceForList(
-  nodeId: string | null,
-  mimeTypes?: string[],
-  nextPageCursor?: string
-): SearchQueryResourceType {
-  const location = nodeId ? ` within node "${nodeId}"` : " at the root level";
-  const types = mimeTypes?.length
-    ? ` (${mimeTypes.map(renderMimeType).join(", ")} files)`
-    : "";
-  const pagination = nextPageCursor ? " - next page" : "";
-
-  return {
-    mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_QUERY,
-    text: `Listing content${location}${types}${pagination}.`,
-    uri: "",
-  };
+export function renderTagsForToolOutput(
+  tagsIn?: string[],
+  tagsNot?: string[]
+): string {
+  const tagsInAsString =
+    tagsIn && tagsIn.length > 0 ? `, with labels ${tagsIn?.join(", ")}` : "";
+  const tagsNotAsString =
+    tagsNot && tagsNot.length > 0
+      ? `, excluding labels ${tagsNot?.join(", ")}`
+      : "";
+  return `${tagsInAsString}${tagsNotAsString}`;
 }
 
 export function makeQueryResource(
