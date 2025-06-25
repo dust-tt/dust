@@ -780,25 +780,27 @@ const createServer = (
 
     server.tool(
       "search",
-      "Perform a semantic search within the folders and files designated by `nodeIds`. All children " +
-        "of the designated nodes will be searched.",
+      "Perform a semantic search within the folders and files designated by `nodeIds`. All " +
+        "children of the designated nodes will be searched.",
       {
         ...SearchToolInputSchema.shape,
         tagsIn: z
           .array(z.string())
           .optional()
           .describe(
-            "A list of labels (also called tags) to restrict the search based on the user request and past conversation context." +
-              "If multiple labels are provided, the search will return documents that have at least one of the labels." +
-              "You can't check that all labels are present, only that at least one is present." +
-              "If no labels are provided, the search will return all documents regardless of their labels."
+            "A list of labels (also called tags) to restrict the search based on the user " +
+              "request and past conversation context. If multiple labels are provided, the " +
+              "search will return documents that have at least one of the labels. You can't " +
+              "check that all labels are present, only that at least one is present. If no labels " +
+              "are provided, the search will  return all documents regardless of their labels."
           ),
         tagsNot: z
           .array(z.string())
           .optional()
           .describe(
-            "A list of labels (also called tags) to exclude from the search based on the user request and past conversation context." +
-              "Any document having one of these labels will be excluded from the search."
+            "A list of labels (also called tags) to exclude from the search based on the user " +
+              "request and past conversation context. Any document having one of these labels " +
+              "will be excluded from the search."
           ),
       },
       withToolLogging(auth, SEARCH_TOOL_NAME, async (params) =>
@@ -811,8 +813,8 @@ const createServer = (
   } else {
     server.tool(
       "search",
-      "Perform a semantic search within the folders and files designated by `nodeIds`. All children " +
-        "of the designated nodes will be searched.",
+      "Perform a semantic search within the folders and files designated by `nodeIds`. All " +
+        "children of the designated nodes will be searched.",
       SearchToolInputSchema.shape,
       withToolLogging(auth, SEARCH_TOOL_NAME, async (params) =>
         searchCallback(auth, agentLoopContext, params)
