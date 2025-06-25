@@ -1,6 +1,7 @@
 import { BarHeader } from "@dust-tt/sparkle";
 import React from "react";
 
+import { AgentBuilderCapabilitiesBlock } from "@app/components/agent_builder/capabilities/AgentBuilderCapabilitiesBlock";
 import { AgentBuilderInstructionsBlock } from "@app/components/agent_builder/instructions/AgentBuilderInstructionsBlock";
 
 interface AgentBuilderLeftPanelProps {
@@ -30,8 +31,9 @@ export function AgentBuilderLeftPanel({
           />
         }
       />
-      <div className="flex-1 p-4">
+      <div className="flex-1 space-y-6 p-4">
         <AgentBuilderInstructionsBlock />
+        <AgentBuilderCapabilitiesBlock />
       </div>
     </div>
   );
