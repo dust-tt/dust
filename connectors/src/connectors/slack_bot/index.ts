@@ -90,12 +90,11 @@ export class SlackBotConnectorManager extends BaseConnectorManager<SlackConfigur
       }
     );
 
-    const legacyConnector = await ConnectorResource.model.findOne({
-      where: {
-        workspaceId: connector.workspaceId,
-        type: "slack",
-      },
-    });
+    const legacyConnector = await ConnectorResource.findBy(
+      connector.workspaceId,
+      { type: "slack" },
+      ["id"]
+    );
     if (legacyConnector) {
       const slackBotChannelsCount = await SlackChannel.count({
         where: {

@@ -3,6 +3,7 @@ import { Err, Ok } from "@dust-tt/client";
 import type {
   Attributes,
   CreationAttributes,
+  FindAttributeOptions,
   ModelStatic,
   Transaction,
   WhereOptions,
@@ -146,6 +147,26 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
 
     const c = new this(this.model, blob.get());
     await c.postFetchHook();
+    return c;
+  }
+
+  static async findBy(
+    workspaceId: string,
+    where: WhereOptions<ConnectorModel>,
+    attributes?: FindAttributeOptions
+  ) {
+    const blob = await ConnectorResource.model.findOne({
+      where: {
+        ...where,
+        workspaceId,
+      },
+      attributes: attributes ?? undefined,
+    });
+    if (!blob) {
+      return null;
+    }
+
+    const c = new this(this.model, blob.get());
     return c;
   }
 
