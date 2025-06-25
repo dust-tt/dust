@@ -1,7 +1,7 @@
 import { Op } from "sequelize";
 
 import { createPlugin } from "@app/lib/api/poke/types";
-import { Workspace } from "@app/lib/models/workspace";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { launchScheduleWorkspaceScrubWorkflow } from "@app/temporal/scrub_workspace/client";
 import { Err, Ok } from "@app/types";
@@ -31,7 +31,7 @@ export const batchDowngradePlugin = createPlugin({
       .map((sId) => sId.trim())
       .filter((sId) => sId.length > 0);
 
-    const workspaces = await Workspace.findAll({
+    const workspaces = await WorkspaceModel.findAll({
       where: {
         sId: {
           [Op.in]: sIdsArray,

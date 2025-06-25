@@ -33,6 +33,7 @@ import React, {
   useMemo,
   useState,
 } from "react";
+import ReactMarkdown from "react-markdown";
 import { useSWRConfig } from "swr";
 
 import type { ConfirmDataType } from "@app/components/Confirm";
@@ -360,8 +361,18 @@ function UpdateConnectionOAuthModal({
                 disabled={
                   !isExtraConfigValid || permissionsConfigurable.blocked
                 }
-                tooltip={permissionsConfigurable.placeholder}
               />
+              {permissionsConfigurable.blocked && (
+                <ContentMessage
+                  title="Editing permissions is temporarily disabled"
+                  variant="info"
+                  icon={InformationCircleIcon}
+                >
+                  <ReactMarkdown>
+                    {permissionsConfigurable.placeholder ?? ""}
+                  </ReactMarkdown>
+                </ContentMessage>
+              )}
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
@@ -790,7 +801,6 @@ export function ConnectorPermissionsModal({
                         setModalToShow("edition");
                       }}
                       disabled={permissionsConfigurable.blocked}
-                      tooltip={permissionsConfigurable.placeholder}
                     />
                   )}
                   {isDeletable && (
@@ -808,6 +818,17 @@ export function ConnectorPermissionsModal({
 
               <SheetContainer>
                 <div className="flex w-full flex-col gap-4">
+                  {permissionsConfigurable.blocked && (
+                    <ContentMessage
+                      title="Editing permissions is temporarily disabled"
+                      variant="info"
+                      icon={InformationCircleIcon}
+                    >
+                      <ReactMarkdown>
+                        {permissionsConfigurable.placeholder ?? ""}
+                      </ReactMarkdown>
+                    </ContentMessage>
+                  )}
                   {OptionsComponent && plan && (
                     <>
                       <div className="heading-xl p-1">Connector options</div>
@@ -936,6 +957,8 @@ export function ConnectorPermissionsModal({
                 }}
               />
             );
+          case "slack_bot":
+            return null;
           default:
             assertNever(c.type);
         }

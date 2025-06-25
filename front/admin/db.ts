@@ -69,12 +69,9 @@ import {
 import { DustAppSecret } from "@app/lib/models/dust_app_secret";
 import { ExtensionConfigurationModel } from "@app/lib/models/extension";
 import { FeatureFlag } from "@app/lib/models/feature_flag";
-import { LabsPersonalSalesforceConnection } from "@app/lib/models/labs_personal_salesforce_connection";
 import { MembershipInvitationModel } from "@app/lib/models/membership_invitation";
 import { Plan, Subscription } from "@app/lib/models/plan";
 import { TagModel } from "@app/lib/models/tags";
-import { Workspace } from "@app/lib/models/workspace";
-import { WorkspaceHasDomainModel } from "@app/lib/models/workspace_has_domain";
 import {
   AppModel,
   Clone,
@@ -107,6 +104,8 @@ import {
   UserMetadataModel,
   UserModel,
 } from "@app/lib/resources/storage/models/user";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
+import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
 import logger from "@app/logger/logger";
 import { sendInitDbMessage } from "@app/types";
 
@@ -117,7 +116,7 @@ async function main() {
   });
   await UserModel.sync({ alter: true });
   await UserMetadataModel.sync({ alter: true });
-  await Workspace.sync({ alter: true });
+  await WorkspaceModel.sync({ alter: true });
   await WorkspaceHasDomainModel.sync({ alter: true });
   await MembershipModel.sync({ alter: true });
   await MembershipInvitationModel.sync({ alter: true });
@@ -207,7 +206,6 @@ async function main() {
 
   await LabsTranscriptsConfigurationModel.sync({ alter: true });
   await LabsTranscriptsHistoryModel.sync({ alter: true });
-  await LabsPersonalSalesforceConnection.sync({ alter: true });
 
   await PluginRunModel.sync({ alter: true });
 

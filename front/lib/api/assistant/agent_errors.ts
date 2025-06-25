@@ -43,7 +43,10 @@ export const getPublicErrorMessage = (error: {
       } else if (error.message.includes("server_error")) {
         return "OpenAI (provider of GPT) encountered an internal server error. Please try again.";
       }
-    } else if (error.message.includes("Error streaming chunks")) {
+    } else if (
+      error.message.includes("Error streaming chunks") ||
+      error.message.includes("Error parsing error")
+    ) {
       return "There was an error streaming the answer to your query. Please try again.";
     }
   }

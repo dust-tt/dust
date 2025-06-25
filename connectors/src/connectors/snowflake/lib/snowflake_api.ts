@@ -1,9 +1,15 @@
 import type { Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
+import crypto from "crypto";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
-import type { Connection, RowStatement, SnowflakeError } from "snowflake-sdk";
+import type {
+  Connection,
+  ConnectionOptions,
+  RowStatement,
+  SnowflakeError,
+} from "snowflake-sdk";
 import snowflake from "snowflake-sdk";
 
 import type {
@@ -123,19 +129,58 @@ export async function connectToSnowflake(
     logLevel: "OFF",
   });
   try {
+    const connectionOptions: ConnectionOptions = {
+      account: credentials.account,
+      username: credentials.username,
+      role: credentials.role,
+      warehouse: credentials.warehouse,
+
+      // Use proxy if defined to have all requests coming from the same IP.
+      proxyHost: process.env.PROXY_HOST,
+      proxyPort: process.env.PROXY_PORT
+        ? parseInt(process.env.PROXY_PORT)
+        : undefined,
+      proxyUser: process.env.PROXY_USER_NAME,
+      proxyPassword: process.env.PROXY_USER_PASSWORD,
+    };
+
+    if ("password" in credentials) {
+      // Legacy credentials or explicit password auth
+      connectionOptions.password = credentials.password;
+    } else if ("private_key" in credentials) {
+      // Key-pair authentication
+      connectionOptions.authenticator = "SNOWFLAKE_JWT";
+
+      // If the private key is encrypted (has a passphrase), decrypt it first
+      if (credentials.private_key_passphrase) {
+        try {
+          const privateKeyObject = crypto.createPrivateKey({
+            key: credentials.private_key,
+            format: "pem",
+            passphrase: credentials.private_key_passphrase,
+          });
+
+          // Extract the decrypted private key as a PEM-encoded string
+          connectionOptions.privateKey = privateKeyObject
+            .export({
+              format: "pem",
+              type: "pkcs8",
+            })
+            .toString();
+        } catch (err) {
+          return new Err(new Error("Invalid private key passphrase."));
+        }
+      } else {
+        // Unencrypted private key can be used directly
+        connectionOptions.privateKey = credentials.private_key;
+      }
+    } else {
+      throw new Error("Invalid credentials format");
+    }
+
     const connection = await new Promise<Connection>((resolve, reject) => {
       snowflake
-        .createConnection({
-          ...credentials,
-
-          // Use proxy if defined to have all requests coming from the same IP.
-          proxyHost: process.env.PROXY_HOST,
-          proxyPort: process.env.PROXY_PORT
-            ? parseInt(process.env.PROXY_PORT)
-            : undefined,
-          proxyUser: process.env.PROXY_USER_NAME,
-          proxyPassword: process.env.PROXY_USER_PASSWORD,
-        })
+        .createConnection(connectionOptions)
         .connect((err: SnowflakeError | undefined, conn: Connection) => {
           if (err) {
             reject(err);

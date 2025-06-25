@@ -372,6 +372,7 @@ export async function getChannelsToSync(
         permission: {
           [Op.or]: ["read", "read_write"],
         },
+        skipReason: null,
       },
     }),
   ]);

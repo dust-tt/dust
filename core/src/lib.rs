@@ -34,7 +34,18 @@ pub mod databases {
         pub mod get_remote_database;
         pub mod remote_database;
 
-        pub mod snowflake;
+        pub mod snowflake {
+            pub mod api {
+                pub mod auth;
+                pub mod chunk;
+                pub mod client;
+                pub mod error;
+                pub mod query;
+                pub mod row;
+                pub mod session;
+            }
+            pub mod snowflake;
+        }
 
         pub mod salesforce {
             pub mod process_json_query;
@@ -70,7 +81,12 @@ pub mod providers {
     pub mod sentencepiece {
         pub mod sentencepiece;
     }
-    pub mod anthropic;
+    pub mod anthropic {
+        pub mod anthropic;
+        pub mod helpers;
+        pub mod streaming;
+        pub mod types;
+    }
     pub mod deepseek;
     pub mod fireworks;
     pub mod google_ai_studio;
@@ -144,6 +160,7 @@ pub mod oauth {
         pub mod notion;
         pub mod salesforce;
         pub mod slack;
+        pub mod slack_bot;
         pub mod utils;
         pub mod zendesk;
     }

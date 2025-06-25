@@ -1,3 +1,5 @@
+import type { ConnectorProvider } from "@dust-tt/client";
+
 import { isLegacyAssistantBuilderConfiguration } from "@app/components/assistant_builder/legacy_agent";
 import { removeLeadingAt } from "@app/components/assistant_builder/SettingsScreen";
 import { getTableIdForContentNode } from "@app/components/assistant_builder/shared";
@@ -86,6 +88,7 @@ export async function submitAssistantBuilderForm({
   builderState: AssistantBuilderState;
   agentConfigurationId: string | null;
   slackData: {
+    provider: Extract<ConnectorProvider, "slack" | "slack_bot">;
     selectedSlackChannels: SlackChannel[];
     slackChannelsLinkedWithAgent: SlackChannelLinkedWithAgent[];
   };
@@ -94,7 +97,8 @@ export async function submitAssistantBuilderForm({
 }): Promise<
   Result<LightAgentConfigurationType | AgentConfigurationType, Error>
 > {
-  const { selectedSlackChannels, slackChannelsLinkedWithAgent } = slackData;
+  const { provider, selectedSlackChannels, slackChannelsLinkedWithAgent } =
+    slackData;
   let { handle, description, instructions, avatarUrl, editors } = builderState;
   if (!handle || !description || !instructions || !avatarUrl || !editors) {
     if (!isDraft) {
@@ -395,6 +399,7 @@ export async function submitAssistantBuilderForm({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
+          provider,
           slack_channel_internal_ids: selectedSlackChannels.map(
             ({ slackChannelId }) => slackChannelId
           ),

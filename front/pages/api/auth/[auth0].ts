@@ -190,17 +190,20 @@ export default handleAuth({
           ]);
         }
 
-        return res.redirect(`/login-error?reason=${reason}`);
+        return res.redirect(
+          `/login-error?type=auth0-callback&reason=${reason}`
+        );
       }
 
       statsDClient.increment("login.callback.error", 1, ["error:unknow"]);
 
-      return res.redirect("/login-error");
+      return res.redirect("/login-error?type=auth0-callback");
     }
   },
   logout: async (req: NextApiRequest, res: NextApiResponse) => {
     res.setHeader("Set-Cookie", [
       "sessionType=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax",
+      "workos_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax",
     ]);
     return handleLogout(req, res, {
       returnTo:

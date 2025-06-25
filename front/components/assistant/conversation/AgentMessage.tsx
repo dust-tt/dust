@@ -29,7 +29,6 @@ import type { FeedbackSelectorProps } from "@app/components/assistant/conversati
 import { FeedbackSelector } from "@app/components/assistant/conversation/FeedbackSelector";
 import { FeedbackSelectorPopoverContent } from "@app/components/assistant/conversation/FeedbackSelectorPopoverContent";
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
-import { LabsSalesforceAuthenticationError } from "@app/components/assistant/conversation/LabsSalesforceErrorHandler";
 import { MCPServerPersonalAuthenticationRequired } from "@app/components/assistant/conversation/MCPServerPersonalAuthenticationRequired";
 import {
   CitationsContext,
@@ -242,7 +241,7 @@ export function AgentMessage({
   })();
 
   const references = Object.entries(
-    agentMessageToRender?.citations ?? {}
+    agentMessageToRender.citations ?? {}
   ).reduce<Record<string, MarkdownCitation>>((acc, [key, citation]) => {
     if (citation) {
       const IconComponent = getCitationIcon(citation.provider, isDark);
@@ -530,14 +529,6 @@ export function AgentMessage({
             mcpServerId={agentMessage.error.metadata.mcp_server_id}
             provider={agentMessage.error.metadata.provider}
             scope={agentMessage.error.metadata.scope}
-            retryHandler={async () => retryHandler(agentMessage)}
-          />
-        );
-      }
-      if (agentMessage.error?.code == "require_salesforce_authentication") {
-        return (
-          <LabsSalesforceAuthenticationError
-            owner={owner}
             retryHandler={async () => retryHandler(agentMessage)}
           />
         );

@@ -14,6 +14,18 @@ import { CoreAPI, dustManagedCredentials, safeSubstring } from "@app/types";
 
 const { DUST_UPSERT_QUEUE_BUCKET, SERVICE_ACCOUNT } = process.env;
 
+function cleanUtf8Content(content: string): string {
+  // Early exit if no \uD sequences found.
+  if (!/[\uD800-\uDFFF]/.test(content)) {
+    return content;
+  }
+  // Replace invalid high surrogates not followed by a low surrogate with a valid JSON string
+  // Replace invalid low surrogates not preceded by a high surrogate with a valid JSON string
+  return content
+    .replace(/\\uD[89AB][0-9A-F]{2}(?!\\uD[CDEF][0-9A-F]{2})/gi, "\\u003F")
+    .replace(/(?<!\\uD[89AB][0-9A-F]{2})\\uD[CDEF][0-9A-F]{2}/gi, "\\u003F");
+}
+
 export async function upsertDocumentActivity(
   upsertQueueId: string,
   enqueueTimestamp: number
@@ -29,7 +41,7 @@ export async function upsertDocumentActivity(
   const bucket = storage.bucket(DUST_UPSERT_QUEUE_BUCKET);
   const content = await bucket.file(`${upsertQueueId}.json`).download();
 
-  const upsertDocument = JSON.parse(content.toString());
+  const upsertDocument = JSON.parse(cleanUtf8Content(content.toString()));
 
   const documentItemValidation = EnqueueUpsertDocument.decode(upsertDocument);
 

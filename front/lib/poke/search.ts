@@ -1,5 +1,6 @@
 import config from "@app/lib/api/config";
 import {
+  findWorkspaceByWorkOSOrganizationId,
   getWorkspaceInfos,
   unsafeGetWorkspacesByModelId,
 } from "@app/lib/api/workspace";
@@ -39,6 +40,20 @@ async function searchPokeWorkspaces(
         name: `Workspace (${w.name})`,
         link: `${config.getClientFacingUrl()}/poke/${w.sId}`,
       }));
+    }
+  }
+
+  if (searchTerm.startsWith("org_")) {
+    const workspaceByOrgId =
+      await findWorkspaceByWorkOSOrganizationId(searchTerm);
+    if (workspaceByOrgId) {
+      return [
+        {
+          id: workspaceByOrgId.id,
+          name: `Workspace (${workspaceByOrgId.name})`,
+          link: `${config.getClientFacingUrl()}/poke/${workspaceByOrgId.sId}`,
+        },
+      ];
     }
   }
 

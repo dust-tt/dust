@@ -9,6 +9,7 @@ import {
 import { DEFAULT_TABLES_QUERY_ACTION_NAME } from "@app/lib/actions/constants";
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type {
+  ExecuteTablesQueryErrorResourceType,
   SqlQueryOutputType,
   ThinkingOutputType,
   ToolGeneratedFileType,
@@ -22,10 +23,8 @@ import type { CSVRecord } from "@app/lib/api/csv";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import { LabsSalesforcePersonalConnectionResource } from "@app/lib/resources/labs_salesforce_personal_connection_resource";
 import { sanitizeJSONOutput } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import type { ConnectorProvider } from "@app/types";
@@ -35,6 +34,7 @@ import { assertNever } from "@app/types";
 type TablesQueryOutputResources =
   | ThinkingOutputType
   | SqlQueryOutputType
+  | ExecuteTablesQueryErrorResourceType
   | ToolGeneratedFileType;
 
 export // We need a model with at least 54k tokens to run tables_query.
@@ -94,6 +94,7 @@ function createServer(
         conversation: agentLoopRunContext.conversation,
         model: supportedModel,
         prompt: agentLoopRunContext.agentConfiguration.instructions ?? "",
+        tools: "",
         allowedTokenCount,
         excludeImages: true,
       });
@@ -122,37 +123,6 @@ function createServer(
 
       const tableConfigurations = tableConfigurationsRes.value;
 
-      const personalConnectionIds: Record<string, string> = {};
-
-      // This is for Salesforce personal connections.
-      const flags = await getFeatureFlags(owner);
-      if (flags.includes("labs_salesforce_personal_connections")) {
-        const dataSourceViews = await DataSourceViewResource.fetchByIds(auth, [
-          ...new Set(tableConfigurations.map((t) => t.dataSourceViewId)),
-        ]);
-
-        for (const dataSourceView of dataSourceViews) {
-          if (dataSourceView.dataSource.connectorProvider === "salesforce") {
-            const personalConnection =
-              await LabsSalesforcePersonalConnectionResource.fetchByDataSource(
-                auth,
-                {
-                  dataSource: dataSourceView.dataSource.toJSON(),
-                }
-              );
-            if (personalConnection) {
-              personalConnectionIds[dataSourceView.sId] =
-                personalConnection.connectionId;
-            } else {
-              return makeMCPToolTextError(
-                `The query requires authentication. Please connect to Salesforce.`
-              );
-            }
-          }
-        }
-      }
-      // End salesforce specific
-
       const configuredTables = tableConfigurations.map((t) => {
         return {
           workspace_id: t.workspaceId,
@@ -160,9 +130,7 @@ function createServer(
           // Note: This value is passed to the registry for lookup.
           // The registry will return the associated data source's dustAPIDataSourceId.
           data_source_id: t.dataSourceViewId,
-          remote_database_secret_id: t.dataSourceViewId
-            ? personalConnectionIds[t.dataSourceViewId]
-            : null,
+          remote_database_secret_id: null,
         };
       });
       if (configuredTables.length === 0) {
@@ -292,85 +260,98 @@ function createServer(
           )
         : [];
 
-      const queryTitle = getTablesQueryResultsFileTitle({
-        output: sanitizedOutput,
-      });
-
-      // Generate the CSV file.
-      const { csvFile, csvSnippet } = await generateCSVFileAndSnippet(auth, {
-        title: queryTitle,
-        conversationId: agentLoopRunContext.conversation.sId,
-        results,
-      });
-
-      // Upload the CSV file to the conversation data source.
-      await uploadFileToConversationDataSource({
-        auth,
-        file: csvFile,
-      });
-
-      // Append the CSV file to the output of the tool as an agent-generated file.
-      content.push({
-        type: "resource",
-        resource: {
-          text: `Your query results were generated successfully.`,
-          uri: csvFile.getPublicUrl(auth),
-          mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
-          fileId: csvFile.sId,
-          title: queryTitle,
-          contentType: csvFile.contentType,
-          snippet: csvSnippet,
-        },
-      });
-
-      // Check if we should generate a section JSON file.
-      const shouldGenerateSectionFile = results.some((result) =>
-        Object.values(result).some(
-          (value) =>
-            typeof value === "string" &&
-            value.length > TABLES_QUERY_SECTION_FILE_MIN_COLUMN_LENGTH
-        )
-      );
-
-      if (shouldGenerateSectionFile) {
-        // First, we fetch the connector provider for the data source, cause the chunking
-        // strategy of the section file depends on it: Since all tables are from the same
-        // data source, we can just take the first table's data source view id.
-        const dataSourceView = await DataSourceViewResource.fetchById(
-          auth,
-          tableConfigurations[0].dataSourceViewId
-        );
-        const connectorProvider =
-          dataSourceView?.dataSource?.connectorProvider ?? null;
-        const sectionColumnsPrefix = getSectionColumnsPrefix(connectorProvider);
-
-        // Generate the section file.
-        const sectionFile = await generateSectionFile(auth, {
-          title: queryTitle,
-          conversationId: agentLoopRunContext.conversation.sId,
-          results,
-          sectionColumnsPrefix,
-        });
-
-        // Upload the section file to the conversation data source.
-        await uploadFileToConversationDataSource({
-          auth,
-          file: sectionFile,
-        });
-
-        // Append the section file to the output of the tool as an agent-generated file.
+      if (sanitizedOutput.error && typeof sanitizedOutput.error === "string") {
         content.push({
           type: "resource",
           resource: {
-            text: "Your query results were generated successfully.",
-            uri: sectionFile.getPublicUrl(auth),
-            mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
-            fileId: sectionFile.sId,
-            title: `${queryTitle} (Rich Text)`,
-            contentType: sectionFile.contentType,
-            snippet: null,
+            text: sanitizedOutput.error as string,
+            mimeType:
+              INTERNAL_MIME_TYPES.TOOL_OUTPUT.EXECUTE_TABLES_QUERY_ERROR,
+            uri: "",
           },
         });
+      } else {
+        const queryTitle = getTablesQueryResultsFileTitle({
+          output: sanitizedOutput,
+        });
+
+        // Generate the CSV file.
+        const { csvFile, csvSnippet } = await generateCSVFileAndSnippet(auth, {
+          title: queryTitle,
+          conversationId: agentLoopRunContext.conversation.sId,
+          results,
+        });
+
+        // Upload the CSV file to the conversation data source.
+        await uploadFileToConversationDataSource({
+          auth,
+          file: csvFile,
+        });
+
+        // Append the CSV file to the output of the tool as an agent-generated file.
+        content.push({
+          type: "resource",
+          resource: {
+            text: `Your query results were generated successfully.`,
+            uri: csvFile.getPublicUrl(auth),
+            mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
+            fileId: csvFile.sId,
+            title: queryTitle,
+            contentType: csvFile.contentType,
+            snippet: csvSnippet,
+          },
+        });
+
+        // Check if we should generate a section JSON file.
+        const shouldGenerateSectionFile = results.some((result) =>
+          Object.values(result).some(
+            (value) =>
+              typeof value === "string" &&
+              value.length > TABLES_QUERY_SECTION_FILE_MIN_COLUMN_LENGTH
+          )
+        );
+
+        if (shouldGenerateSectionFile) {
+          // First, we fetch the connector provider for the data source, cause the chunking
+          // strategy of the section file depends on it: Since all tables are from the same
+          // data source, we can just take the first table's data source view id.
+          const dataSourceView = await DataSourceViewResource.fetchById(
+            auth,
+            tableConfigurations[0].dataSourceViewId
+          );
+          const connectorProvider =
+            dataSourceView?.dataSource?.connectorProvider ?? null;
+          const sectionColumnsPrefix =
+            getSectionColumnsPrefix(connectorProvider);
+
+          // Generate the section file.
+          const sectionFile = await generateSectionFile(auth, {
+            title: queryTitle,
+            conversationId: agentLoopRunContext.conversation.sId,
+            results,
+            sectionColumnsPrefix,
+          });
+
+          // Upload the section file to the conversation data source.
+          await uploadFileToConversationDataSource({
+            auth,
+            file: sectionFile,
+          });
+
+          // Append the section file to the output of the tool as an agent-generated file.
+          content.push({
+            type: "resource",
+            resource: {
+              text: "Your query results were generated successfully.",
+              uri: sectionFile.getPublicUrl(auth),
+              mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
+              fileId: sectionFile.sId,
+              title: `${queryTitle} (Rich Text)`,
+              contentType: sectionFile.contentType,
+              snippet: null,
+            },
+          });
+        }
       }
 
       return {
@@ -424,6 +405,7 @@ export function getSectionColumnsPrefix(
     case "google_drive":
     case "intercom":
     case "notion":
+    case "slack_bot":
     case "slack":
     case "microsoft":
     case "webcrawler":

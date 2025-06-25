@@ -18,6 +18,7 @@ import {
   CloudArrowUpIcon,
   DoubleIcon,
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSearchbar,
@@ -36,6 +37,7 @@ interface InputBarAttachmentsPickerProps {
   owner: LightWorkspaceType;
   fileUploaderService: FileUploaderService;
   onNodeSelect: (node: DataSourceViewContentNodeType) => void;
+  onNodeUnselect: (node: DataSourceViewContentNodeType) => void;
   isLoading?: boolean;
   attachedNodes: DataSourceViewContentNodeType[];
 }
@@ -43,6 +45,7 @@ interface InputBarAttachmentsPickerProps {
 export const InputBarAttachmentsPicker = ({
   fileUploaderService,
   onNodeSelect,
+  onNodeUnselect,
   attachedNodes,
   isLoading = false,
 }: InputBarAttachmentsPickerProps) => {
@@ -115,7 +118,7 @@ export const InputBarAttachmentsPicker = ({
     <DropdownMenu
       open={isOpen}
       onOpenChange={(open) => {
-        if (!open) {
+        if (open) {
           setSearch("");
         }
       }}
@@ -134,6 +137,7 @@ export const InputBarAttachmentsPicker = ({
         side="bottom"
         align="end"
         onInteractOutside={() => setIsOpen(false)}
+        onEscapeKeyDown={() => setIsOpen(false)}
       >
         <Input
           type="file"
@@ -177,7 +181,7 @@ export const InputBarAttachmentsPicker = ({
             <ScrollArea className="flex max-h-96 flex-col" hideScrollBar>
               <div ref={itemsContainerRef}>
                 {pickedSpaceNodes.map((item, index) => (
-                  <DropdownMenuItem
+                  <DropdownMenuCheckboxItem
                     key={index}
                     label={item.title}
                     icon={
@@ -190,13 +194,16 @@ export const InputBarAttachmentsPicker = ({
                         size="md"
                       />
                     }
-                    disabled={attachedNodeIds.includes(item.internalId)}
                     description={`${getLocationForDataSourceViewContentNode(item)}`}
-                    onClick={() => {
-                      setSearch("");
-                      onNodeSelect(item);
-                      setIsOpen(false);
+                    checked={attachedNodeIds.includes(item.internalId)}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        onNodeSelect(item);
+                      } else {
+                        onNodeUnselect(item);
+                      }
                     }}
+                    truncateText
                   />
                 ))}
                 {pickedSpaceNodes.length === 0 && !showLoader && (

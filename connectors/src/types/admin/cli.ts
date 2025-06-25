@@ -143,6 +143,8 @@ export const GithubCommandSchema = t.type({
     t.literal("skip-repo"),
     t.literal("unskip-repo"),
     t.literal("list-skipped-repos"),
+    t.literal("skip-code-file"),
+    t.literal("unskip-code-file"),
     t.literal("clear-installation-id"),
   ]),
   args: t.record(
@@ -509,6 +511,8 @@ export const SlackCommandSchema = t.type({
     t.literal("sync-channel"),
     t.literal("sync-thread"),
     t.literal("skip-thread"),
+    t.literal("skip-channel"),
+    t.literal("unskip-channel"),
     t.literal("uninstall-for-unknown-team-ids"),
     t.literal("whitelist-domains"),
     t.literal("whitelist-bot"),
@@ -618,7 +622,6 @@ export const WebcrawlerCommandSchema = t.type({
   majorCommand: t.literal("webcrawler"),
   command: t.union([
     t.literal("start-scheduler"),
-    t.literal("update-crawler"),
     t.literal("update-frequency"),
   ]),
   args: t.record(t.string, t.string),

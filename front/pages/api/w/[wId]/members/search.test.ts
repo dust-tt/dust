@@ -24,7 +24,7 @@ describe("GET /api/w/[wId]/members/search", () => {
     expect(data.total).toBe(1);
     expect(data.members).toHaveLength(1);
     expect(data.members[0].id).toBe(user.id);
-    expect(data.members[0].workspaces[0].role).toBe("user");
+    expect(data.members[0].workspace.role).toBe("user");
   });
 
   itInTransaction("returns 405 for non-GET methods", async () => {

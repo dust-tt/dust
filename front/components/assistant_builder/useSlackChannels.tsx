@@ -28,6 +28,7 @@ export function useSlackChannel({
 
   // Retrieve all the slack channels that are linked with an agent.
   const {
+    provider,
     slackChannels: slackChannelsLinkedWithAgent,
     slackDataSource,
     mutateSlackChannels,
@@ -64,6 +65,7 @@ export function useSlackChannel({
   ]);
 
   return {
+    provider,
     slackDataSource,
     showSlackIntegration: !isPrivateAssistant && isBuilder,
     selectedSlackChannels,

@@ -10,8 +10,8 @@ import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/
 import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
 import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
-import { Workspace } from "@app/lib/models/workspace";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { getInsertSQL } from "@app/lib/utils/sql_utils";
@@ -231,9 +231,9 @@ makeScript(
   async ({ execute, workspaceId }, parentLogger) => {
     const now = new Date().toISOString().slice(0, 16).replace(/-/g, "");
 
-    let workspaces: Workspace[] = [];
+    let workspaces: WorkspaceModel[] = [];
     if (workspaceId) {
-      const workspace = await Workspace.findOne({
+      const workspace = await WorkspaceModel.findOne({
         where: {
           sId: workspaceId,
         },
@@ -244,7 +244,7 @@ makeScript(
       workspaces = [workspace];
     } else {
       const workspaceIds = await findWorkspacesWithRetrievalConfigurations();
-      workspaces = await Workspace.findAll({
+      workspaces = await WorkspaceModel.findAll({
         where: {
           id: { [Op.in]: workspaceIds },
         },

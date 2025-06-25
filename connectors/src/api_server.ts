@@ -12,6 +12,7 @@ import {
   getConnectorsAPIHandler,
 } from "@connectors/api/get_connector";
 import { getConnectorPermissionsAPIHandler } from "@connectors/api/get_connector_permissions";
+import { getNotionUrlStatusHandler } from "@connectors/api/notion_url_status";
 import { pauseConnectorAPIHandler } from "@connectors/api/pause_connector";
 import { resumeConnectorAPIHandler } from "@connectors/api/resume_connector";
 import { setConnectorPermissionsAPIHandler } from "@connectors/api/set_connector_permissions";
@@ -29,6 +30,8 @@ import {
   webhookIntercomUninstallAPIHandler,
 } from "@connectors/api/webhooks/webhook_intercom";
 import { webhookSlackAPIHandler } from "@connectors/api/webhooks/webhook_slack";
+import { webhookSlackBotAPIHandler } from "@connectors/api/webhooks/webhook_slack_bot";
+import { webhookSlackBotInteractionsAPIHandler } from "@connectors/api/webhooks/webhook_slack_bot_interaction";
 import { webhookSlackInteractionsAPIHandler } from "@connectors/api/webhooks/webhook_slack_interaction";
 import logger from "@connectors/logger/logger";
 import { authMiddleware } from "@connectors/middleware/auth";
@@ -126,10 +129,17 @@ export function startServer(port: number) {
     getSlackChannelsLinkedWithAgentHandler
   );
 
+  app.get("/notion/url/status", getNotionUrlStatusHandler);
+
   app.post("/webhooks/:webhook_secret/slack", webhookSlackAPIHandler);
   app.post(
     "/webhooks/:webhook_secret/slack_interaction",
     webhookSlackInteractionsAPIHandler
+  );
+  app.post("/webhooks/:webhook_secret/slack_bot", webhookSlackBotAPIHandler);
+  app.post(
+    "/webhooks/:webhook_secret/slack_bot_interaction",
+    webhookSlackBotInteractionsAPIHandler
   );
   app.post(
     "/webhooks/:webhooks_secret/github",
