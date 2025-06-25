@@ -216,7 +216,7 @@ function WorkspaceMembersGroupsList({
         <Tabs defaultValue="members">
           <TabsList className="mb-4">
             <TabsTrigger value="members" label="Members" />
-            <TabsTrigger value="groups" label="Invitations" />
+            <TabsTrigger value="invitations" label="Invitations" />
           </TabsList>
           <TabsContent value="members">
             <WorkspaceMembersList
@@ -226,7 +226,7 @@ function WorkspaceMembersGroupsList({
               isProvisioningEnabled={isProvisioningEnabled}
             />
           </TabsContent>
-          <TabsContent value="groups">
+          <TabsContent value="invitations">
             <InvitationsList owner={owner} searchText={searchTerm} />
           </TabsContent>
         </Tabs>
