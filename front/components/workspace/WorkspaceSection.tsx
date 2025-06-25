@@ -14,15 +14,15 @@ export function WorkspaceSection({
 }: WorkspaceSectionProps) {
   return (
     <Page.Vertical gap="xl">
-    <div className="flex w-full flex-col gap-4">
-      <Page.H variant="h4">
-        <div className="flex items-center gap-2">
-          <Icon visual={icon} />
-          {title}
-        </div>
-      </Page.H>
-      {children}
-    </div>
+      <div className="flex w-full flex-col gap-4">
+        <Page.H variant="h4">
+          <div className="flex items-center gap-2">
+            <Icon visual={icon} />
+            {title}
+          </div>
+        </Page.H>
+        {children}
+      </div>
     </Page.Vertical>
   );
 }
