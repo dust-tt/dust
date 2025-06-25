@@ -9,6 +9,7 @@ import {
 } from "@dust-tt/sparkle";
 import React from "react";
 
+import { AddKnowledgeDropdown } from "@app/components/agent_builder/capabilities/AddKnowledgeDropdown";
 import { AddToolsDropdown } from "@app/components/agent_builder/capabilities/AddToolsDropdown";
 import { useAgentBuilderCapabilitiesContext } from "@app/components/agent_builder/capabilities/AgentBuilderCapabilitiesContext";
 import type { AssistantBuilderActionState } from "@app/components/assistant_builder/types";
@@ -77,6 +78,7 @@ export function AgentBuilderCapabilitiesBlock() {
         {actions.length > 0 && (
           <div className="flex w-full flex-col gap-2 sm:w-auto">
             <div className="flex items-center gap-2">
+              <AddKnowledgeDropdown />
               <AddToolsDropdown />
             </div>
           </div>
@@ -85,8 +87,13 @@ export function AgentBuilderCapabilitiesBlock() {
       <div className="flex-1">
         {actions.length === 0 ? (
           <EmptyCTA
-            message="No tools added yet. Add tools to enhance your agent's capabilities."
-            action={<AddToolsDropdown />}
+            message="No tools added yet. Add knowledge and tools to enhance your agent's capabilities."
+            action={
+              <div className="flex items-center gap-2">
+                <AddKnowledgeDropdown />
+                <AddToolsDropdown />
+              </div>
+            }
           />
         ) : (
           <CardGrid>
