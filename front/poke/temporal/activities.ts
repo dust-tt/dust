@@ -831,7 +831,7 @@ export async function deleteWorkspaceActivity({
   });
   await AgentDataRetentionModel.destroy({
     where: { workspaceId: workspace.id },
-});
+  });
 }
 
 export async function deleteTranscriptsActivity({
