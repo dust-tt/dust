@@ -203,6 +203,9 @@ impl Credential {
             CredentialProvider::Gmail => {
                 vec!["client_id", "client_secret"]
             }
+            CredentialProvider::Monday => {
+                vec!["client_id", "client_secret"]
+            }
             CredentialProvider::Mcp => {
                 vec!["client_id", "client_secret"]
             }

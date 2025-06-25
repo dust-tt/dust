@@ -28,7 +28,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
     "Monday.com integration providing CRM-like operations for boards, items, and updates. Enables reading and managing Monday.com boards and items through the GraphQL API.",
   authorization: {
     provider: "monday" as const,
-    supported_use_cases: ["platform_actions"] as const,
+    supported_use_cases: ["personal_actions", "platform_actions"] as const,
   },
   icon: "MondayLogo",
   documentationUrl: "https://developer.monday.com/api-reference/docs/introduction-to-graphql",
