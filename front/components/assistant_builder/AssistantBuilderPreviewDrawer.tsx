@@ -47,7 +47,6 @@ import { useUser } from "@app/lib/swr/user";
 import type { FetchAssistantTemplateResponse } from "@app/pages/api/templates/[tId]";
 import type {
   AssistantBuilderRightPanelTabType,
-  ModelConfigurationType,
   WorkspaceType,
 } from "@app/types";
 import type { LightAgentConfigurationType } from "@app/types";

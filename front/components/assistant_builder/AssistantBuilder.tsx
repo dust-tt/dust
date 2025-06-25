@@ -587,7 +587,6 @@ export default function AssistantBuilder({
               builderState={builderState}
               agentConfiguration={agentConfiguration}
               setAction={setAction}
-              reasoningModels={reasoningModels}
             />
           }
         />
