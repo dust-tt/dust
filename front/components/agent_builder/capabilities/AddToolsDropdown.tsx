@@ -10,9 +10,9 @@ import {
 } from "@dust-tt/sparkle";
 import { uniqueId } from "lodash";
 
+import { useAgentBuilderCapabilitiesContext } from "@app/components/agent_builder/capabilities/AgentBuilderCapabilitiesContext";
 import type { AssistantBuilderDataVisualizationConfigurationWithId } from "@app/components/assistant_builder/types";
 import { getDataVisualizationActionConfiguration } from "@app/components/assistant_builder/types";
-import { useAgentBuilderCapabilitiesContext } from "@app/components/agent_builder/capabilities/AgentBuilderCapabilitiesContext";
 import { DATA_VISUALIZATION_SPECIFICATION } from "@app/lib/actions/utils";
 
 export function AddToolsDropdown() {
