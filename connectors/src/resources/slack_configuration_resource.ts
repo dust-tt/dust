@@ -12,8 +12,8 @@ import {
 import logger from "@connectors/logger/logger";
 import { BaseResource } from "@connectors/resources/base_resource";
 import type { ReadonlyAttributesType } from "@connectors/resources/storage/types";
-import type { ModelId } from "@connectors/types";
 import type {
+  ModelId,
   SlackAutoReadPattern,
   SlackbotWhitelistType,
   SlackConfigurationType,
@@ -78,11 +78,12 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
     );
   }
 
-  static async fetchByConnectorId(connectorId: ModelId) {
+  static async fetchByConnectorId(connectorId: ModelId, attributes?: string[]) {
     const blob = await this.model.findOne({
       where: {
         connectorId: connectorId,
       },
+      attributes,
     });
     if (!blob) {
       return null;

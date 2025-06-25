@@ -25,7 +25,10 @@ import {
   getSlackClient,
   reportSlackUsage,
 } from "@connectors/connectors/slack/lib/slack_client";
-import { SlackChannel } from "@connectors/lib/models/slack";
+import {
+  SlackBotWhitelistModel,
+  SlackChannel,
+} from "@connectors/lib/models/slack";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
@@ -138,6 +141,38 @@ export class SlackBotConnectorManager extends BaseConnectorManager<SlackConfigur
           })
         );
         await SlackChannel.bulkCreate(creationRecords);
+      }
+    }
+    // fetch configurationId from the configuration resource because it is not set in the connector creation
+    const configurationResource =
+      await SlackConfigurationResource.fetchByConnectorId(connector.id, ["id"]);
+    if (legacyConfiguration && configurationResource) {
+      const slackBotWhitelistModelCount = await SlackBotWhitelistModel.count({
+        where: {
+          connectorId: legacyConfiguration.connectorId,
+        },
+      });
+      if (slackBotWhitelistModelCount > 0) {
+        // Migrate SlackBotWhitelistModel from legacy slack connector
+        const slackBotWhitelistModels = await SlackBotWhitelistModel.findAll({
+          where: {
+            connectorId: legacyConfiguration.connectorId,
+          },
+        });
+        const whitelistRecords = slackBotWhitelistModels.map(
+          (whitelistModel) => {
+            return {
+              createdAt: whitelistModel.createdAt,
+              updatedAt: whitelistModel.updatedAt,
+              botName: whitelistModel.botName,
+              groupIds: whitelistModel.groupIds,
+              whitelistType: whitelistModel.whitelistType,
+              connectorId: connector.id,
+              slackConfigurationId: configurationResource.id,
+            };
+          }
+        );
+        await SlackBotWhitelistModel.bulkCreate(whitelistRecords);
       }
     }
 
