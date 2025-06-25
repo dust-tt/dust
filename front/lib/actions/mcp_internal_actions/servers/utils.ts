@@ -422,7 +422,7 @@ export function renderTagsForToolOutput(
  * If a tag is both included and excluded, we will not get any result.
  */
 export function checkClashingTags(
-  coreSearchArgs: CoreAPISearchFilter[],
+  coreSearchArgs: CoreSearchArgs[],
   { tagsIn, tagsNot }: { tagsIn?: string[]; tagsNot?: string[] }
 ): string | null {
   for (const args of coreSearchArgs) {
