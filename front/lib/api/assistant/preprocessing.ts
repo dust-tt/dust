@@ -140,7 +140,7 @@ export async function renderConversationForModel(
             role: "assistant",
             name: m.configuration.name,
             content: textContents.map((c) => c.value).join("\n"),
-            contents: lastStepWithContent.contents,
+            contents: lastStepWithContent.contents.map((c) => c.content),
           } satisfies AssistantContentMessageTypeModel);
         }
       } else {
@@ -181,14 +181,14 @@ export async function renderConversationForModel(
               role: "assistant",
               function_calls: step.actions.map((s) => s.call),
               content: textContents.map((c) => c.value).join("\n"),
-              contents: step.contents,
+              contents: step.contents.map((c) => c.content),
             } satisfies AssistantFunctionCallMessageTypeModel);
           } else {
             messages.push({
               role: "assistant",
               content: textContents.map((c) => c.value).join("\n"),
               name: m.configuration.name,
-              contents: step.contents,
+              contents: step.contents.map((c) => c.content),
             } satisfies AssistantContentMessageTypeModel);
           }
 
