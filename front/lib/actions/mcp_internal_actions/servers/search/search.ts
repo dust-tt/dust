@@ -8,6 +8,10 @@ import {
   makeFindTagsDescription,
   makeFindTagsTool,
 } from "@app/lib/actions/mcp_internal_actions/servers/common/find_tags_tool";
+import {
+  getAgentDataSourceConfigurations,
+  makeDataSourceViewFilter,
+} from "@app/lib/actions/mcp_internal_actions/servers/data_sources_file_system";
 import { searchFunction } from "@app/lib/actions/mcp_internal_actions/servers/search/utils";
 import { shouldAutoGenerateTags } from "@app/lib/actions/mcp_internal_actions/servers/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";

@@ -206,22 +206,3 @@ export async function searchFunction({
     ],
   };
 }
-
-export function makeQueryResource(
-  query: string,
-  relativeTimeFrame: TimeFrame | null,
-  tagsIn?: string[],
-  tagsNot?: string[]
-): SearchQueryResourceType {
-  const timeFrameAsString =
-    renderRelativeTimeFrameForToolOutput(relativeTimeFrame);
-  const tagsAsString = renderTagsForToolOutput(tagsIn, tagsNot);
-
-  return {
-    mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_QUERY,
-    text: query
-      ? `Searching "${query}", ${timeFrameAsString}${tagsAsString}.`
-      : `Searching ${timeFrameAsString}${tagsAsString}.`,
-    uri: "",
-  };
-}

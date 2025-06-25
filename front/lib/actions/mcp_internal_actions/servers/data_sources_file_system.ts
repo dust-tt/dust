@@ -6,9 +6,7 @@ import { z } from "zod";
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type {
-  DataSourceNodeListType,
   FilesystemPathType,
-  SearchQueryResourceType,
   SearchResultResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
@@ -16,7 +14,13 @@ import {
   makeFindTagsDescription,
   makeFindTagsTool,
 } from "@app/lib/actions/mcp_internal_actions/servers/common/find_tags_tool";
-import { makeQueryResource } from "@app/lib/actions/mcp_internal_actions/servers/search/utils";
+import {
+  makeQueryResource,
+  makeQueryResourceForFind,
+  makeQueryResourceForList,
+  renderNode,
+  renderSearchResults,
+} from "@app/lib/actions/mcp_internal_actions/servers/search/rendering";
 import {
   fetchAgentDataSourceConfiguration,
   getCoreSearchArgs,
@@ -1009,7 +1013,7 @@ type ResolvedDataSourceConfiguration = DataSourceConfiguration & {
   };
 };
 
-async function getAgentDataSourceConfigurations(
+export async function getAgentDataSourceConfigurations(
   auth: Authenticator,
   dataSources: DataSourcesToolConfigurationType
 ): Promise<Result<ResolvedDataSourceConfiguration[], Error>> {
@@ -1127,7 +1131,7 @@ async function getAgentDataSourceConfigurations(
   );
 }
 
-function makeDataSourceViewFilter(
+export function makeDataSourceViewFilter(
   agentDataSourceConfigurations: ResolvedDataSourceConfiguration[]
 ) {
   return agentDataSourceConfigurations.map(({ dataSource, filter }) => ({
@@ -1162,137 +1166,6 @@ function extractDataSourceIdFromNodeId(nodeId: string): string | null {
     return null;
   }
   return nodeId.substring(`${DATA_SOURCE_NODE_ID}-`.length);
-}
-
-function formatTimestamp(timestamp: number): string {
-  const date = new Date(timestamp);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-  const formattedDate = date.toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-
-  if (diffDays === 0) {
-    return `${formattedDate} (today)`;
-  } else if (diffDays === 1) {
-    return `${formattedDate} (yesterday)`;
-  } else if (diffDays < 7) {
-    return `${formattedDate} (${diffDays} days ago)`;
-  } else if (diffDays < 30) {
-    const weeks = Math.floor(diffDays / 7);
-    return `${formattedDate} (${weeks} week${weeks > 1 ? "s" : ""} ago)`;
-  } else {
-    return formattedDate;
-  }
-}
-
-/**
- * Translation from a content node to the format expected to the agent.
- * Removes references to the term 'content node' and simplifies the format.
- */
-function renderNode(
-  node: CoreAPIContentNode,
-  dataSourceIdToConnectorMap: Map<string, ConnectorProvider | null>
-) {
-  // Transform data source node IDs to include the data source ID
-  const nodeId =
-    node.node_id === DATA_SOURCE_NODE_ID
-      ? `${DATA_SOURCE_NODE_ID}-${node.data_source_id}`
-      : node.node_id;
-
-  return {
-    nodeId,
-    title: node.title,
-    path: node.parents.join("/"),
-    parentTitle: node.parent_title,
-    lastUpdatedAt: formatTimestamp(node.timestamp),
-    sourceUrl: node.source_url,
-    mimeType: node.mime_type,
-    hasChildren: node.children_count > 0,
-    connectorProvider:
-      dataSourceIdToConnectorMap.get(node.data_source_id) ?? null,
-  };
-}
-
-/**
- * Translation from core's response to the format expected to the agent.
- * Removes references to the term 'content node' and simplifies the format.
- */
-function renderSearchResults(
-  response: CoreAPISearchNodesResponse,
-  agentDataSourceConfigurations: ResolvedDataSourceConfiguration[]
-): DataSourceNodeListType {
-  const dataSourceIdToConnectorMap = new Map<
-    string,
-    ConnectorProvider | null
-  >();
-  for (const {
-    dataSource: { dustAPIDataSourceId, connectorProvider },
-  } of agentDataSourceConfigurations) {
-    dataSourceIdToConnectorMap.set(dustAPIDataSourceId, connectorProvider);
-  }
-
-  return {
-    mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_NODE_LIST,
-    text: "Content successfully retrieved.",
-    uri: "",
-    data: response.nodes.map((node) =>
-      renderNode(node, dataSourceIdToConnectorMap)
-    ),
-    nextPageCursor: response.next_page_cursor,
-    resultCount: response.hit_count,
-  };
-}
-
-function renderMimeType(mimeType: string) {
-  return mimeType
-    .replace("application/vnd.dust.", "")
-    .replace("-", " ")
-    .replace(".", " ");
-}
-
-function makeQueryResourceForFind(
-  query?: string,
-  rootNodeId?: string,
-  mimeTypes?: string[],
-  nextPageCursor?: string
-): SearchQueryResourceType {
-  const queryText = query ? ` "${query}"` : " all content";
-  const scope = rootNodeId
-    ? ` under ${rootNodeId}`
-    : " across the entire data sources";
-  const types = mimeTypes?.length
-    ? ` (${mimeTypes.map(renderMimeType).join(", ")} files)`
-    : "";
-  const pagination = nextPageCursor ? " - next page" : "";
-
-  return {
-    mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_QUERY,
-    text: `Searching for${queryText}${scope}${types}${pagination}.`,
-    uri: "",
-  };
-}
-
-function makeQueryResourceForList(
-  nodeId: string | null,
-  mimeTypes?: string[],
-  nextPageCursor?: string
-): SearchQueryResourceType {
-  const location = nodeId ? ` within node "${nodeId}"` : " at the root level";
-  const types = mimeTypes?.length
-    ? ` (${mimeTypes.map(renderMimeType).join(", ")} files)`
-    : "";
-  const pagination = nextPageCursor ? " - next page" : "";
-
-  return {
-    mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_QUERY,
-    text: `Listing content${location}${types}${pagination}.`,
-    uri: "",
-  };
 }
 
 export default createServer;
