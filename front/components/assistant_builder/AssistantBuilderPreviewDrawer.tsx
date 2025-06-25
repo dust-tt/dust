@@ -17,6 +17,7 @@ import {
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import { Separator } from "@radix-ui/react-select";
+import assert from "assert";
 import { uniqueId } from "lodash";
 import { useContext, useEffect, useRef, useState } from "react";
 
@@ -51,7 +52,6 @@ import type {
 } from "@app/types";
 import type { LightAgentConfigurationType } from "@app/types";
 import { assertNever, isAssistantBuilderRightPanelTab } from "@app/types";
-import assert from "assert";
 
 interface AssistantBuilderRightPanelProps {
   screen: BuilderScreen;
