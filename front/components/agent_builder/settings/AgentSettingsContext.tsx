@@ -2,9 +2,9 @@ import React, { createContext, useContext, useMemo, useState } from "react";
 
 interface AgentBuilderSettingsContextType {
   name: string;
-  setName: (name: string) => void;
+  setName: React.Dispatch<React.SetStateAction<string>>;
   description: string;
-  setDescription: (description: string) => void;
+  setDescription: React.Dispatch<React.SetStateAction<string>>;
 }
 
 const AgentBuilderSettingsContext = createContext<
