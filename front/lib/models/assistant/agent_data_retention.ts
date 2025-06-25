@@ -1,7 +1,6 @@
-import type { CreationOptional, ForeignKey } from "sequelize";
+import type { CreationOptional } from "sequelize";
 import { DataTypes } from "sequelize";
 
-import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 
@@ -9,7 +8,7 @@ export class AgentDataRetentionModel extends WorkspaceAwareModel<AgentDataRetent
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare agentConfigurationId: ForeignKey<AgentConfiguration["id"]>;
+  declare agentSId: string;
   declare retentionDays: number;
 }
 
@@ -25,8 +24,8 @@ AgentDataRetentionModel.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
-    agentConfigurationId: {
-      type: DataTypes.BIGINT,
+    agentSId: {
+      type: DataTypes.STRING,
       allowNull: false,
     },
     retentionDays: {
@@ -42,11 +41,12 @@ AgentDataRetentionModel.init(
     sequelize: frontSequelize,
     indexes: [
       {
-        fields: ["agentConfigurationId"],
+        fields: ["agentSId"],
         concurrently: true,
+        name: "agent_data_retention_agent_s_id",
       },
       {
-        fields: ["workspaceId", "agentConfigurationId"],
+        fields: ["workspaceId", "agentSId"],
         unique: true,
         name: "agent_data_retention_unique_agent_workspace",
       },
@@ -54,11 +54,3 @@ AgentDataRetentionModel.init(
   }
 );
 
-AgentConfiguration.hasOne(AgentDataRetentionModel, {
-  foreignKey: { name: "agentConfigurationId", allowNull: false },
-  onDelete: "CASCADE",
-});
-
-AgentDataRetentionModel.belongsTo(AgentConfiguration, {
-  foreignKey: { name: "agentConfigurationId", allowNull: false },
-});
