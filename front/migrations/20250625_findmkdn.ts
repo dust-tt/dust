@@ -1,15 +1,12 @@
 import { QueryTypes } from "sequelize";
 
-import { frontSequelize } from "@app/lib/resources/storage";
+import { getFrontReplicaDbConnection } from "@app/lib/resources/storage";
 import type Logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 
 const BATCH_SIZE = 1000;
 
-async function countImageMarkdownInMessages(
-  execute: boolean,
-  logger: typeof Logger
-) {
+async function countImageMarkdownInMessages(logger: typeof Logger) {
   logger.info("Processing agent message contents");
 
   let imageMarkdownCount = 0;
@@ -17,15 +14,16 @@ async function countImageMarkdownInMessages(
   // Regex to match image markdown: ![anything](anything)
   const imageMarkdownRegex = /!\[.*?\]\(.*?\)/;
 
-  const messages = await frontSequelize.query<{
+  const frontSecondary = getFrontReplicaDbConnection();
+
+  const messages = await frontSecondary.query<{
     id: number;
-    content: string;
+    value: { value: string };
   }>(
-    `SELECT amc.id, amc.content
-     FROM agent_message_contents amc
-     WHERE amc.content IS NOT NULL
-       AND amc.content != ''
-     ORDER BY amc.id DESC
+    `SELECT id, value
+     FROM agent_step_contents
+     WHERE type = 'text_content'
+     ORDER BY id DESC
      LIMIT :batchSize`,
     {
       replacements: { batchSize: BATCH_SIZE },
@@ -38,7 +36,7 @@ async function countImageMarkdownInMessages(
   );
 
   for (const message of messages) {
-    if (imageMarkdownRegex.test(message.content)) {
+    if (imageMarkdownRegex.test(message.value.value)) {
       imageMarkdownCount++;
     }
   }
@@ -51,5 +49,5 @@ async function countImageMarkdownInMessages(
 makeScript({}, async ({ execute }, logger) => {
   logger.info("Starting image markdown component count migration");
 
-  await countImageMarkdownInMessages(execute, logger);
+  await countImageMarkdownInMessages(logger);
 });
