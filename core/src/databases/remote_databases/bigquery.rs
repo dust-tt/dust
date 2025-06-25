@@ -414,7 +414,7 @@ impl BigQueryRemoteDatabase {
             });
 
             let request = QueryRequest {
-                query,
+                query: query.clone(),
                 parameter_mode: Some("NAMED".to_string()),
                 query_parameters: Some(query_parameters),
                 use_legacy_sql: false,
@@ -427,7 +427,17 @@ impl BigQueryRemoteDatabase {
                 .query(&self.project_id, request)
                 .await
                 .map_err(|e| {
-                    QueryDatabaseError::GenericError(anyhow!("Error executing query: {}", e))
+                    QueryDatabaseError::GenericError(anyhow!(
+                        "Error executing views check query {} dataset_key {}, view_names: {:?}, error: {}",
+                        query,
+                        dataset_key,
+                        dataset
+                            .allowed_table_names
+                            .iter()
+                            .map(|name| name.clone())
+                            .collect::<Vec<_>>(),
+                        e
+                    ))
                 })?;
 
             // Turn the result into a list of view_name, view definitions.
