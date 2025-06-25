@@ -51,6 +51,7 @@ import type {
 } from "@app/types";
 import type { LightAgentConfigurationType } from "@app/types";
 import { assertNever, isAssistantBuilderRightPanelTab } from "@app/types";
+import assert from "assert";
 
 interface AssistantBuilderRightPanelProps {
   screen: BuilderScreen;
@@ -114,12 +115,12 @@ export default function AssistantBuilderRightPanel({
   function getMCPServerViewFromPresetAction(
     mcpServerViews: MCPServerViewType[],
     type: AssistantBuilderActionConfiguration["type"]
-  ): MCPServerViewType | undefined {
+  ): MCPServerViewType {
     const internalMcpServerName: InternalMCPServerNameType | undefined =
       (() => {
         switch (type) {
           case "MCP":
-            return undefined;
+            throw new Error("MCP preset action not supported");
           case "RETRIEVAL_SEARCH":
             return "search";
           case "RETRIEVAL_EXHAUSTIVE":
@@ -129,7 +130,7 @@ export default function AssistantBuilderRightPanel({
           case "TABLES_QUERY":
             return "query_tables";
           case "PROCESS":
-            return "run_agent";
+            return "extract_data";
           case "WEB_NAVIGATION":
             return "web_search_&_browse";
           case "REASONING":
@@ -138,17 +139,16 @@ export default function AssistantBuilderRightPanel({
             assertNever(type);
         }
       })();
-    if (!internalMcpServerName) {
-      return undefined;
-    }
-    return mcpServerViews.find(
+    const mcpServerView = mcpServerViews.find(
       (mcpServerView) =>
-        mcpServerView.sId ===
+        mcpServerView.server.sId ===
         internalMCPServerNameToSId({
           name: internalMcpServerName,
           workspaceId: owner.id,
         })
     );
+    assert(mcpServerView);
+    return mcpServerView;
   }
 
   return (
@@ -289,13 +289,10 @@ export default function AssistantBuilderRightPanel({
                               mcpServerViews,
                               presetAction.type
                             );
-
-                          const action = {
-                            id: uniqueId(),
-                            ...getDefaultMCPServerActionConfiguration(
+                          const action =
+                            getDefaultMCPServerActionConfiguration(
                               defaultMcpServer
-                            ),
-                          };
+                            );
                           if (!action) {
                             // Unreachable
                             return;
@@ -306,7 +303,10 @@ export default function AssistantBuilderRightPanel({
                             type: action.noConfigurationRequired
                               ? "insert"
                               : "pending",
-                            action,
+                            action: {
+                              ...action,
+                              id: uniqueId(),
+                            },
                           });
                         }}
                       />
