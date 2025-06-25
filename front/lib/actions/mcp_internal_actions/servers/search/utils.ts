@@ -114,7 +114,7 @@ export async function searchFunction({
   if (clashingTagsError) {
     return {
       isError: false,
-      content: { type: "text", text: clashingTagsError },
+      content: [{ type: "text", text: clashingTagsError }],
     };
   }
 
