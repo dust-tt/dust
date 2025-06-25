@@ -19,21 +19,25 @@ export function AgentBuilderLeftPanel({
 }: AgentBuilderLeftPanelProps) {
   return (
     <div className="flex h-full flex-col">
-      <BarHeader
-        variant="default"
-        title={title}
-        rightActions={
-          <BarHeader.ButtonBar
-            variant="validate"
-            onCancel={onCancel}
-            onSave={onSave}
-            isSaving={isSaving}
-          />
-        }
-      />
-      <div className="flex-1 space-y-6 p-4">
-        <AgentBuilderInstructionsBlock />
-        <AgentBuilderCapabilitiesBlock />
+      <div className="sticky top-0 z-10">
+        <BarHeader
+          variant="default"
+          title={title}
+          rightActions={
+            <BarHeader.ButtonBar
+              variant="validate"
+              onCancel={onCancel}
+              onSave={onSave}
+              isSaving={isSaving}
+            />
+          }
+        />
+      </div>
+      <div className="flex-1 overflow-y-auto">
+        <div className="space-y-6 p-4">
+          <AgentBuilderInstructionsBlock />
+          <AgentBuilderCapabilitiesBlock />
+        </div>
       </div>
     </div>
   );

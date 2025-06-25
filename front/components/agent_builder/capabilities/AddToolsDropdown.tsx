@@ -10,10 +10,7 @@ import {
 } from "@dust-tt/sparkle";
 import { uniqueId } from "lodash";
 
-import type {
-  AssistantBuilderActionState,
-  AssistantBuilderDataVisualizationConfigurationWithId,
-} from "@app/components/assistant_builder/types";
+import type { AssistantBuilderDataVisualizationConfigurationWithId } from "@app/components/assistant_builder/types";
 import { getDataVisualizationActionConfiguration } from "@app/components/assistant_builder/types";
 import { useAgentBuilderCapabilitiesContext } from "@app/components/agent_builder/capabilities/AgentBuilderCapabilitiesContext";
 import { DATA_VISUALIZATION_SPECIFICATION } from "@app/lib/actions/utils";
@@ -50,11 +47,7 @@ export function AddToolsDropdown() {
           isSelect
         />
       </DropdownMenuTrigger>
-      <DropdownMenuContent
-        className="w-[20rem]"
-        align="start"
-        collisionPadding={10}
-      >
+      <DropdownMenuContent>
         {hasDataVisualization ? (
           <DropdownMenuLabel label="All tools have been added" />
         ) : (
