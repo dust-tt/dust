@@ -13,8 +13,8 @@ import {
   duplicateGroup,
   findUserByName,
   getBoardItems,
-  getBoardValues,
   getBoards,
+  getBoardValues,
   getColumnValues,
   getFileColumnValues,
   getGroupDetails,
@@ -48,7 +48,8 @@ const serverInfo: InternalMCPServerDefinitionType = {
     supported_use_cases: ["personal_actions", "platform_actions"] as const,
   },
   icon: "MondayLogo",
-  documentationUrl: "https://developer.monday.com/api-reference/docs/introduction-to-graphql",
+  documentationUrl:
+    "https://developer.monday.com/api-reference/docs/introduction-to-graphql",
 };
 
 const createServer = (): McpServer => {
@@ -144,7 +145,12 @@ const createServer = (): McpServer => {
     async ({ searchQuery, boardId, limit }, { authInfo }) => {
       return withAuth({
         action: async (accessToken) => {
-          const items = await searchItems(accessToken, searchQuery, boardId, limit);
+          const items = await searchItems(
+            accessToken,
+            searchQuery,
+            boardId,
+            limit
+          );
           return makeMCPToolJSONSuccess({
             message: "Search completed successfully",
             result: items,
@@ -169,7 +175,9 @@ const createServer = (): McpServer => {
       columnValues: z
         .record(z.any())
         .optional()
-        .describe("Optional column values as a JSON object (e.g., {\"status\": \"Working on it\", \"date\": \"2024-01-25\"})"),
+        .describe(
+          'Optional column values as a JSON object (e.g., {"status": "Working on it", "date": "2024-01-25"})'
+        ),
     },
     async ({ boardId, itemName, groupId, columnValues }, { authInfo }) => {
       return withAuth({
@@ -199,7 +207,9 @@ const createServer = (): McpServer => {
       itemId: z.string().describe("The item ID to update"),
       columnValues: z
         .record(z.any())
-        .describe("Column values to update as a JSON object (e.g., {\"status\": \"Done\", \"priority\": \"High\"})"),
+        .describe(
+          'Column values to update as a JSON object (e.g., {"status": "Done", "priority": "High"})'
+        ),
     },
     async ({ itemId, columnValues }, { authInfo }) => {
       return withAuth({
@@ -302,7 +312,10 @@ const createServer = (): McpServer => {
         .optional()
         .describe("Optional description for the board"),
     },
-    async ({ boardName, boardKind, workspaceId, description }, { authInfo }) => {
+    async (
+      { boardName, boardKind, workspaceId, description },
+      { authInfo }
+    ) => {
       return withAuth({
         action: async (accessToken) => {
           const board = await createBoard(
@@ -331,7 +344,9 @@ const createServer = (): McpServer => {
       title: z.string().describe("The title of the new column"),
       columnType: z
         .string()
-        .describe("The type of column (e.g., 'text', 'status', 'date', 'numbers')"),
+        .describe(
+          "The type of column (e.g., 'text', 'status', 'date', 'numbers')"
+        ),
       description: z
         .string()
         .optional()
@@ -493,7 +508,11 @@ const createServer = (): McpServer => {
           if (!columnValues || Object.keys(columnValues).length === 0) {
             return makeMCPToolTextError(ERROR_MESSAGES.INVALID_COLUMN_VALUES);
           }
-          const subitem = await updateSubitem(accessToken, subitemId, columnValues);
+          const subitem = await updateSubitem(
+            accessToken,
+            subitemId,
+            columnValues
+          );
           return makeMCPToolJSONSuccess({
             message: "Subitem updated successfully",
             result: subitem,
@@ -515,21 +534,35 @@ const createServer = (): McpServer => {
       fileName: z.string().describe("The name of the file"),
       mimeType: z.string().optional().describe("The MIME type of the file"),
     },
-    async ({ itemId, columnId, fileData, fileName, mimeType }, { authInfo }) => {
+    async (
+      { itemId, columnId, fileData, fileName, mimeType },
+      { authInfo }
+    ) => {
       return withAuth({
         action: async (accessToken) => {
           try {
-            const binaryData = Buffer.from(fileData, 'base64');
-            const blob = new Blob([binaryData], { type: mimeType || 'application/octet-stream' });
-            const file = new File([blob], fileName, { type: mimeType || 'application/octet-stream' });
-            
-            const result = await uploadFileToColumn(accessToken, itemId, columnId, file);
+            const binaryData = Buffer.from(fileData, "base64");
+            const blob = new Blob([binaryData], {
+              type: mimeType || "application/octet-stream",
+            });
+            const file = new File([blob], fileName, {
+              type: mimeType || "application/octet-stream",
+            });
+
+            const result = await uploadFileToColumn(
+              accessToken,
+              itemId,
+              columnId,
+              file
+            );
             return makeMCPToolJSONSuccess({
               message: "File uploaded successfully",
               result,
             });
           } catch (error) {
-            return makeMCPToolTextError("Failed to upload file: " + (error as Error).message);
+            return makeMCPToolTextError(
+              "Failed to upload file: " + (error as Error).message
+            );
           }
         },
         authInfo,
@@ -666,7 +699,9 @@ const createServer = (): McpServer => {
             columnId
           );
           if (!fileColumn) {
-            return makeMCPToolTextError("File column not found or not a file type");
+            return makeMCPToolTextError(
+              "File column not found or not a file type"
+            );
           }
           return makeMCPToolJSONSuccess({
             message: "File column values retrieved successfully",
