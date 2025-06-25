@@ -1,8 +1,6 @@
 use std::collections::HashMap;
 
-use crate::providers::chat_messages::{
-    AssistantContentItem, ChatMessage, ContentBlock, MixedContent,
-};
+use crate::providers::chat_messages::{ChatMessage, ContentBlock, MixedContent};
 
 use super::types::{
     AnthropicChatMessage, AnthropicChatMessageRole, AnthropicContent, AnthropicContentToolResult,
@@ -106,42 +104,38 @@ fn convert_chat_message_to_anthropic_chat_message(
             }
         },
         ChatMessage::Assistant(assistant_msg) => {
+            // TODO(reasoning_v2): use the contents array.
+
+            let mut content: Vec<AnthropicContent> = Vec::new();
+
+            if let Some(assistant_msg_content) = assistant_msg.content.as_ref() {
+                content.push(AnthropicContent {
+                    r#type: AnthropicContentType::Text,
+                    text: Some(assistant_msg_content.clone()),
+                    tool_use: None,
+                    tool_result: None,
+                    source: None,
+                });
+            };
+
+            for function_call in assistant_msg.function_calls.as_ref().unwrap_or(&vec![]) {
+                let args = serde_json::from_str(function_call.arguments.as_str())?;
+                content.push(AnthropicContent {
+                    r#type: AnthropicContentType::ToolUse,
+                    text: None,
+                    tool_use: Some(AnthropicContentToolUse {
+                        name: function_call.name.clone(),
+                        id: function_call.id.clone(),
+                        input: args,
+                    }),
+                    tool_result: None,
+                    source: None,
+                });
+            }
+
             Ok(AnthropicChatMessage {
+                content,
                 role: AnthropicChatMessageRole::Assistant,
-                content: assistant_msg
-                    .contents
-                    .as_ref()
-                    .unwrap_or(&vec![])
-                    .iter()
-                    .filter_map(|content_item| match content_item {
-                        AssistantContentItem::TextContent { value } => Some(Ok(AnthropicContent {
-                            r#type: AnthropicContentType::Text,
-                            text: Some(value.clone()),
-                            tool_use: None,
-                            tool_result: None,
-                            source: None,
-                        })),
-                        AssistantContentItem::FunctionCall { value } => {
-                            Some(serde_json::from_str(&value.arguments).map(|input| {
-                                AnthropicContent {
-                                    r#type: AnthropicContentType::ToolUse,
-                                    text: None,
-                                    tool_use: Some(AnthropicContentToolUse {
-                                        name: value.name.clone(),
-                                        id: value.id.clone(),
-                                        input,
-                                    }),
-                                    tool_result: None,
-                                    source: None,
-                                }
-                            }))
-                        }
-                        AssistantContentItem::Reasoning { value: _ } => {
-                            // TODO(reasoning_v2): use the reasoning content.
-                            None
-                        }
-                    })
-                    .collect::<Result<Vec<_>, _>>()?,
             })
         }
         ChatMessage::Function(function_msg) => match &function_msg.content {
