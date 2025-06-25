@@ -8,7 +8,7 @@ export class AgentDataRetentionModel extends WorkspaceAwareModel<AgentDataRetent
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare agentSId: string;
+  declare agentConfigurationId: string;
   declare retentionDays: number;
 }
 
@@ -24,7 +24,7 @@ AgentDataRetentionModel.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
-    agentSId: {
+    agentConfigurationId: {
       type: DataTypes.STRING,
       allowNull: false,
     },
@@ -41,12 +41,12 @@ AgentDataRetentionModel.init(
     sequelize: frontSequelize,
     indexes: [
       {
-        fields: ["agentSId"],
+        fields: ["agentConfigurationId"],
         concurrently: true,
-        name: "agent_data_retention_agent_s_id",
+        name: "agent_data_retention_agent_configuration_id",
       },
       {
-        fields: ["workspaceId", "agentSId"],
+        fields: ["workspaceId", "agentConfigurationId"],
         unique: true,
         name: "agent_data_retention_unique_agent_workspace",
       },
