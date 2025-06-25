@@ -99,7 +99,7 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
           throw res.error;
         }
       },
-      { concurrency: 8 }
+      { concurrency: 4 }
     );
 
     // Soft delete data sources they will be hard deleted in the scrubbing job.
@@ -114,7 +114,7 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
           throw res.error;
         }
       },
-      { concurrency: 8 }
+      { concurrency: 4 }
     );
 
     // Soft delete the apps, which will be hard deleted in the scrubbing job.
@@ -129,7 +129,7 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
           throw res.error;
         }
       },
-      { concurrency: 8 }
+      { concurrency: 4 }
     );
 
     if (force) {
@@ -153,7 +153,7 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
             throw res.error;
           }
         },
-        { concurrency: 8 }
+        { concurrency: 4 }
       );
     }
 
