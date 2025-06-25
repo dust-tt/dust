@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS "agent_data_retention" (
     "updatedAt" TIMESTAMP WITH TIME ZONE NOT NULL,
     "agentConfigurationId" BIGINT NOT NULL REFERENCES "agent_configurations" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
     "workspaceId" BIGINT NOT NULL REFERENCES "workspaces" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
-    "retentionDays" BIGINT NULL,
+    "retentionDays" BIGINT NOT NULL CHECK ("retentionDays" > 0),
     PRIMARY KEY ("id")
 );
 

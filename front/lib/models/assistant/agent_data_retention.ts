@@ -10,7 +10,7 @@ export class AgentDataRetention extends WorkspaceAwareModel<AgentDataRetention> 
   declare updatedAt: CreationOptional<Date>;
 
   declare agentConfigurationId: ForeignKey<AgentConfiguration["id"]>;
-  declare retentionDays: number | null;
+  declare retentionDays: number;
 }
 
 AgentDataRetention.init(
@@ -31,7 +31,7 @@ AgentDataRetention.init(
     },
     retentionDays: {
       type: DataTypes.BIGINT,
-      allowNull: true,
+      allowNull: false,
       validate: {
         min: 1,
       },
