@@ -43,6 +43,10 @@ export const DataDescription = ({
               getNewActionConfig: (old) => old,
             });
             setShowInvalidActionDescError(null);
+          } else {
+            setShowInvalidActionDescError(
+              "The description must be less than 800 characters."
+            );
           }
         }}
         error={showInvalidActionDescError}
