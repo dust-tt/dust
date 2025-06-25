@@ -52,7 +52,7 @@ makeScript({}, async () => {
       include: [
         {
           model: AgentConfiguration,
-          as: "agentConfiguration",
+          as: "agent_configuration",
           required: true,
           where: {
             status: "active",
@@ -70,7 +70,7 @@ makeScript({}, async () => {
       attributes: ["id", "agentConfigurationId"],
       order: [
         [
-          { model: AgentConfiguration, as: "agentConfiguration" },
+          { model: AgentConfiguration, as: "agent_configuration" },
           { model: WorkspaceModel, as: "workspace" },
           "name",
           "ASC",
@@ -79,7 +79,7 @@ makeScript({}, async () => {
     });
 
     const workspaceCount = new Set(
-      configs.map((c: any) => c.agentConfiguration.workspace.id)
+      configs.map((c: any) => c.agent_configuration.workspace.id)
     ).size;
 
     if (configs.length === 0) {
@@ -92,7 +92,7 @@ makeScript({}, async () => {
       const workspaceGroups: Record<string, number> = {};
 
       configs.forEach((config: any) => {
-        const workspace = config.agentConfiguration.workspace;
+        const workspace = config.agent_configuration.workspace;
         const wsKey = `${workspace.sId} (${workspace.name})`;
         workspaceGroups[wsKey] = (workspaceGroups[wsKey] || 0) + 1;
       });
@@ -113,7 +113,7 @@ makeScript({}, async () => {
       include: [
         {
           model: AgentConfiguration,
-          as: "agentConfiguration",
+          as: "agent_configuration",
           required: true,
           where: {
             status: "active",
@@ -128,7 +128,7 @@ makeScript({}, async () => {
       include: [
         {
           model: AgentConfiguration,
-          as: "agentConfiguration",
+          as: "agent_configuration",
           required: true,
           where: {
             status: "active",
