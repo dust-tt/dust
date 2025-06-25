@@ -88,7 +88,7 @@ export const insuranceConfig: IndustryPageConfig = {
     useCases: [
       {
         title: "Customer service",
-        image: "/static/landing/industry/features/uxWriter.svg",
+        image: "/static/landing/industry/features/UxWriter.svg",
         bgColor: "bg-orange-100",
         features: [
           {
