@@ -770,15 +770,12 @@ const createServer = (
 
   if (tagsAreDynamic) {
     server.tool(
-      "search",
-      "Perform a semantic search within the folders and files designated by `nodeIds`. All children " +
-        "of the designated nodes will be searched.",
-      SearchToolInputSchema.shape,
-      withToolLogging(auth, SEARCH_TOOL_NAME, async (params) =>
-        searchCallback(auth, agentLoopContext, params)
-      )
+      "find_tags",
+      makeFindTagsDescription(SEARCH_TOOL_NAME),
+      findTagsSchema,
+      makeFindTagsTool(auth)
     );
-  } else {
+
     server.tool(
       "search",
       "Perform a semantic search within the folders and files designated by `nodeIds`. All children " +
@@ -807,6 +804,16 @@ const createServer = (
           tagsIn: params.tagsIn,
           tagsNot: params.tagsNot,
         })
+      )
+    );
+  } else {
+    server.tool(
+      "search",
+      "Perform a semantic search within the folders and files designated by `nodeIds`. All children " +
+        "of the designated nodes will be searched.",
+      SearchToolInputSchema.shape,
+      withToolLogging(auth, SEARCH_TOOL_NAME, async (params) =>
+        searchCallback(auth, agentLoopContext, params)
       )
     );
   }
@@ -985,16 +992,6 @@ const createServer = (
       }
     )
   );
-
-  // Add the find_tags tool if tags are dynamic.
-  if (tagsAreDynamic) {
-    server.tool(
-      "find_tags",
-      makeFindTagsDescription(SEARCH_TOOL_NAME),
-      findTagsSchema,
-      makeFindTagsTool(auth)
-    );
-  }
 
   return server;
 };
