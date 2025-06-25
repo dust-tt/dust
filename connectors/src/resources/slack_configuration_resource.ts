@@ -46,12 +46,14 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
     connectorId,
     autoReadChannelPatterns,
     whitelistedDomains,
+    restrictedSpaceAgentsEnabled,
     transaction,
   }: {
     slackTeamId: string;
     connectorId: ModelId;
     autoReadChannelPatterns?: SlackAutoReadPattern[];
     whitelistedDomains?: string[];
+    restrictedSpaceAgentsEnabled?: boolean;
     transaction: Transaction;
   }) {
     const otherSlackConfigurationWithBotEnabled =
@@ -69,7 +71,7 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
         botEnabled: otherSlackConfigurationWithBotEnabled ? false : true,
         connectorId,
         slackTeamId,
-        restrictedSpaceAgentsEnabled: true,
+        restrictedSpaceAgentsEnabled: restrictedSpaceAgentsEnabled ?? true,
         whitelistedDomains,
       },
       { transaction }

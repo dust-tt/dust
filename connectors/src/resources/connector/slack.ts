@@ -25,6 +25,7 @@ export class SlackConnectorStrategy
       whitelistedDomains: blob.whitelistedDomains
         ? [...blob.whitelistedDomains] // Ensure it's a readonly string[]
         : undefined,
+      restrictedSpaceAgentsEnabled: blob.restrictedSpaceAgentsEnabled,
       connectorId,
       transaction,
     });
