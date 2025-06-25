@@ -17,13 +17,13 @@ import { AppResource } from "@app/lib/resources/app_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import type { SpaceResource } from "@app/lib/resources/space_resource";
 import type {
   CombinedResourcePermissions,
   ContentFragmentInputWithContentNode,
   ModelId,
 } from "@app/types";
 import { removeNulls } from "@app/types";
-import { SpaceResource } from "@app/lib/resources/space_resource";
 
 export async function listAgentConfigurationsForGroups(
   auth: Authenticator,
