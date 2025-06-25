@@ -9,10 +9,12 @@ import { GPT_4O_MODEL_ID, isSupportingResponseFormat } from "@app/types";
 
 interface AgentBuilderInstructionsContextType {
   generationSettings: GenerationSettingsType;
-  setGenerationSettings: (settings: GenerationSettingsType) => void;
+  setGenerationSettings: React.Dispatch<
+    React.SetStateAction<GenerationSettingsType>
+  >;
   models: ModelConfigurationType[];
   instructions: string;
-  setInstructions: (instructions: string) => void;
+  setInstructions: React.Dispatch<React.SetStateAction<string>>;
 }
 
 const AgentBuilderInstructionsContext = createContext<
@@ -41,16 +43,19 @@ export function AgentBuilderInstructionsProvider({
   const [instructions, setInstructions] = useState<string>("");
 
   const handleSetGenerationSettings = useCallback(
-    (settings: GenerationSettingsType) => {
-      const processedSettings = {
-        ...settings,
-        responseFormat: isSupportingResponseFormat(
-          settings.modelSettings.modelId
-        )
-          ? settings.responseFormat
-          : undefined,
-      };
-      setGenerationSettings(processedSettings);
+    (settings: React.SetStateAction<GenerationSettingsType>) => {
+      setGenerationSettings((prevSettings) => {
+        const newSettings =
+          typeof settings === "function" ? settings(prevSettings) : settings;
+        return {
+          ...newSettings,
+          responseFormat: isSupportingResponseFormat(
+            newSettings.modelSettings.modelId
+          )
+            ? newSettings.responseFormat
+            : undefined,
+        };
+      });
     },
     []
   );
