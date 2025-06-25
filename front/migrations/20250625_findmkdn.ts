@@ -4,7 +4,7 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import type Logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 
-const BATCH_SIZE = 10000;
+const BATCH_SIZE = 1000;
 
 async function countImageMarkdownInMessages(
   execute: boolean,
