@@ -7,6 +7,7 @@ import { col, fn, literal, Op, Sequelize, where } from "sequelize";
 
 import { Authenticator } from "@app/lib/auth";
 import {
+  AgentMessage,
   ConversationModel,
   ConversationParticipantModel,
   Mention,
@@ -227,6 +228,66 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     }
 
     return results;
+  }
+  static async listConversationWithAgentCreatedBeforeDate({
+    auth,
+    agentConfigurationId,
+    cutoffDate,
+  }: {
+    auth: Authenticator;
+    agentConfigurationId: string;
+    cutoffDate: Date;
+  }): Promise<string[]> {
+    // Find all conversations that:
+    // 1. Were created before the cutoff date.
+    // 2. Have at least one message from the specified agent.
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
+    // Two-step approach for better performance:
+    // Step 1: Get distinct conversation IDs that have messages from this agent.
+    const messageWithAgent = await Message.findAll({
+      attributes: [
+        [
+          Sequelize.fn("DISTINCT", Sequelize.col("conversationId")),
+          "conversationId",
+        ],
+      ],
+      where: {
+        workspaceId,
+      },
+      include: [
+        {
+          model: AgentMessage,
+          as: "agentMessage",
+          required: true,
+          attributes: [],
+          where: {
+            agentConfigurationId,
+          },
+        },
+      ],
+      raw: true,
+    });
+
+    if (messageWithAgent.length === 0) {
+      return [];
+    }
+
+    // Step 2: Filter conversations by creation date.
+    const conversationIds = messageWithAgent.map((m) => m.conversationId);
+    const conversations = await this.model.findAll({
+      where: {
+        workspaceId,
+        id: {
+          [Op.in]: conversationIds,
+        },
+        createdAt: {
+          [Op.lt]: cutoffDate,
+        },
+      },
+    });
+
+    return conversations.map((c) => c.sId);
   }
 
   static canAccessConversation(
