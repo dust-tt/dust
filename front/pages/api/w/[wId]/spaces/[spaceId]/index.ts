@@ -69,6 +69,7 @@ async function handler(
           usage: {
             count: 0,
             agentNames: [],
+            agentConfigurationIds: [],
           },
         };
 

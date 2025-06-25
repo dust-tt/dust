@@ -132,7 +132,15 @@ export class AppResource extends ResourceWithSpace<AppModel> {
       ...new Set(agentConfigurations.map((a) => a.name)),
     ].sort();
 
-    return new Ok({ count: agentNames.length, agentNames });
+    const agentConfigurationIds = [
+      ...new Set(agentConfigurations.map((a) => a.id)),
+    ];
+
+    return new Ok({
+      count: agentNames.length,
+      agentNames,
+      agentConfigurationIds,
+    });
   }
 
   // Clone.

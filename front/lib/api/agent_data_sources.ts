@@ -140,6 +140,15 @@ export async function getDataSourceViewsUsageByCategory({
           ),
           "names",
         ],
+        [
+          Sequelize.fn(
+            "array_agg",
+            Sequelize.col(
+              "agent_retrieval_configuration->agent_configuration.id"
+            )
+          ),
+          "ids",
+        ],
       ],
       include: [
         {
@@ -184,6 +193,13 @@ export async function getDataSourceViewsUsageByCategory({
             )
           ),
           "names",
+        ],
+        [
+          Sequelize.fn(
+            "array_agg",
+            Sequelize.col("agent_process_configuration->agent_configuration.id")
+          ),
+          "ids",
         ],
       ],
       include: [
@@ -230,6 +246,15 @@ export async function getDataSourceViewsUsageByCategory({
           ),
           "names",
         ],
+        [
+          Sequelize.fn(
+            "array_agg",
+            Sequelize.col(
+              "agent_mcp_server_configuration->agent_configuration.id"
+            )
+          ),
+          "ids",
+        ],
       ],
       include: [
         {
@@ -275,6 +300,15 @@ export async function getDataSourceViewsUsageByCategory({
           ),
           "names",
         ],
+        [
+          Sequelize.fn(
+            "array_agg",
+            Sequelize.col(
+              "agent_tables_query_configuration->agent_configuration.id"
+            )
+          ),
+          "ids",
+        ],
       ],
       include: [
         {
@@ -317,6 +351,7 @@ export async function getDataSourceViewsUsageByCategory({
   ])) as unknown as {
     dataSourceViewId: ModelId;
     names: string[];
+    ids: number[];
   }[][];
 
   return res.flat().reduce<DataSourcesUsageByAgent>((acc, dsViewConfig) => {
@@ -326,6 +361,7 @@ export async function getDataSourceViewsUsageByCategory({
       usage = {
         count: 0,
         agentNames: [],
+        agentConfigurationIds: [],
       };
     }
 
@@ -333,6 +369,14 @@ export async function getDataSourceViewsUsageByCategory({
       .concat(dsViewConfig.names)
       .filter((t) => t && t.length > 0);
     usage.agentNames = uniq(sortBy(usage.agentNames));
+    usage.agentConfigurationIds = uniq(
+      sortBy(
+        usage.agentConfigurationIds
+          .concat(dsViewConfig.ids || [])
+          .filter((t) => t && t > 0)
+      )
+    );
+
     usage.count = usage.agentNames.length;
 
     acc[dsViewConfig.dataSourceViewId] = usage;
@@ -391,6 +435,15 @@ export async function getDataSourcesUsageByCategory({
           ),
           "names",
         ],
+        [
+          Sequelize.fn(
+            "array_agg",
+            Sequelize.col(
+              "agent_retrieval_configuration->agent_configuration.id"
+            )
+          ),
+          "ids",
+        ],
       ],
       include: [
         {
@@ -439,6 +492,13 @@ export async function getDataSourcesUsageByCategory({
           ),
           "names",
         ],
+        [
+          Sequelize.fn(
+            "array_agg",
+            Sequelize.col("agent_process_configuration->agent_configuration.id")
+          ),
+          "ids",
+        ],
       ],
       include: [
         {
@@ -486,6 +546,15 @@ export async function getDataSourcesUsageByCategory({
             )
           ),
           "names",
+        ],
+        [
+          Sequelize.fn(
+            "array_agg",
+            Sequelize.col(
+              "agent_mcp_server_configuration->agent_configuration.id"
+            )
+          ),
+          "ids",
         ],
       ],
       include: [
@@ -535,6 +604,15 @@ export async function getDataSourcesUsageByCategory({
           ),
           "names",
         ],
+        [
+          Sequelize.fn(
+            "array_agg",
+            Sequelize.col(
+              "agent_tables_query_configuration->agent_configuration.id"
+            )
+          ),
+          "ids",
+        ],
       ],
       include: [
         {
@@ -569,6 +647,7 @@ export async function getDataSourcesUsageByCategory({
   ])) as unknown as {
     dataSourceId: ModelId;
     names: string[];
+    ids: number[];
   }[][];
 
   return res.flat().reduce<DataSourcesUsageByAgent>((acc, dsConfig) => {
@@ -577,6 +656,7 @@ export async function getDataSourcesUsageByCategory({
       usage = {
         count: 0,
         agentNames: [],
+        agentConfigurationIds: [],
       };
     }
 
@@ -584,6 +664,14 @@ export async function getDataSourcesUsageByCategory({
       .concat(dsConfig.names)
       .filter((t) => t && t.length > 0);
     usage.agentNames = uniq(sortBy(usage.agentNames));
+    usage.agentConfigurationIds = uniq(
+      sortBy(
+        usage.agentConfigurationIds
+          .concat(dsConfig.ids || [])
+          .filter((t) => t && t > 0)
+      )
+    );
+
     usage.count = usage.agentNames.length;
 
     acc[dsConfig.dataSourceId] = usage;
@@ -608,7 +696,7 @@ export async function getDataSourceUsage({
   }
 
   if (DISABLE_QUERIES) {
-    new Ok({ count: 0, agentNames: [] });
+    new Ok({ count: 0, agentNames: [], agentConfigurationIds: [] });
   }
 
   const res = (await Promise.all([
@@ -623,6 +711,15 @@ export async function getDataSourceUsage({
             )
           ),
           "names",
+        ],
+        [
+          Sequelize.fn(
+            "array_agg",
+            Sequelize.col(
+              "agent_retrieval_configuration->agent_configuration.id"
+            )
+          ),
+          "ids",
         ],
       ],
       where: {
@@ -662,6 +759,13 @@ export async function getDataSourceUsage({
           ),
           "names",
         ],
+        [
+          Sequelize.fn(
+            "array_agg",
+            Sequelize.col("agent_process_configuration->agent_configuration.id")
+          ),
+          "ids",
+        ],
       ],
       where: {
         workspaceId: owner.id,
@@ -699,6 +803,15 @@ export async function getDataSourceUsage({
             )
           ),
           "names",
+        ],
+        [
+          Sequelize.fn(
+            "array_agg",
+            Sequelize.col(
+              "agent_mcp_server_configuration->agent_configuration.id"
+            )
+          ),
+          "ids",
         ],
       ],
       where: {
@@ -738,6 +851,15 @@ export async function getDataSourceUsage({
           ),
           "names",
         ],
+        [
+          Sequelize.fn(
+            "array_agg",
+            Sequelize.col(
+              "agent_tables_query_configuration->agent_configuration.id"
+            )
+          ),
+          "names",
+        ],
       ],
       where: {
         workspaceId: owner.id,
@@ -764,10 +886,10 @@ export async function getDataSourceUsage({
         },
       ],
     }),
-  ])) as unknown as { names: string[] }[] | null;
+  ])) as unknown as { names: string[]; ids: number[] }[] | null;
 
   if (!res) {
-    return new Ok({ count: 0, agentNames: [] });
+    return new Ok({ count: 0, agentNames: [], agentConfigurationIds: [] });
   } else {
     const agentNames = uniq(
       sortBy(
@@ -776,8 +898,18 @@ export async function getDataSourceUsage({
           .filter((t) => t && t.length > 0)
       )
     );
-
-    return new Ok({ count: agentNames.length, agentNames });
+    const agentConfigurationIds = uniq(
+      sortBy(
+        res
+          .reduce<number[]>((acc, r) => acc.concat(r.ids), [])
+          .filter((t) => t && t > 0)
+      )
+    );
+    return new Ok({
+      count: agentNames.length,
+      agentNames,
+      agentConfigurationIds,
+    });
   }
 }
 
@@ -798,7 +930,7 @@ export async function getDataSourceViewUsage({
   }
 
   if (DISABLE_QUERIES) {
-    new Ok({ count: 0, agentNames: [] });
+    new Ok({ count: 0, agentNames: [], agentConfigurationIds: [] });
   }
 
   const res = (await Promise.all([
@@ -813,6 +945,15 @@ export async function getDataSourceViewUsage({
             )
           ),
           "names",
+        ],
+        [
+          Sequelize.fn(
+            "array_agg",
+            Sequelize.col(
+              "agent_retrieval_configuration->agent_configuration.id"
+            )
+          ),
+          "ids",
         ],
       ],
       where: {
@@ -852,6 +993,13 @@ export async function getDataSourceViewUsage({
           ),
           "names",
         ],
+        [
+          Sequelize.fn(
+            "array_agg",
+            Sequelize.col("agent_process_configuration->agent_configuration.id")
+          ),
+          "ids",
+        ],
       ],
       where: {
         workspaceId: owner.id,
@@ -889,6 +1037,15 @@ export async function getDataSourceViewUsage({
             )
           ),
           "names",
+        ],
+        [
+          Sequelize.fn(
+            "array_agg",
+            Sequelize.col(
+              "agent_mcp_server_configuration->agent_configuration.id"
+            )
+          ),
+          "ids",
         ],
       ],
       where: {
@@ -928,6 +1085,15 @@ export async function getDataSourceViewUsage({
           ),
           "names",
         ],
+        [
+          Sequelize.fn(
+            "array_agg",
+            Sequelize.col(
+              "agent_tables_query_configuration->agent_configuration.id"
+            )
+          ),
+          "ids",
+        ],
       ],
       where: {
         workspaceId: owner.id,
@@ -954,10 +1120,10 @@ export async function getDataSourceViewUsage({
         },
       ],
     }),
-  ])) as unknown as { names: string[] }[] | null;
+  ])) as unknown as { names: string[]; ids: number[] }[] | null;
 
   if (!res) {
-    return new Ok({ count: 0, agentNames: [] });
+    return new Ok({ count: 0, agentNames: [], agentConfigurationIds: [] });
   } else {
     const agentNames = uniq(
       sortBy(
@@ -966,6 +1132,17 @@ export async function getDataSourceViewUsage({
           .filter((t) => t && t.length > 0)
       )
     );
-    return new Ok({ count: agentNames.length, agentNames });
+    const agentConfigurationIds = uniq(
+      sortBy(
+        res
+          .reduce<number[]>((acc, r) => acc.concat(r.ids), [])
+          .filter((t) => t && t > 0)
+      )
+    );
+    return new Ok({
+      count: agentNames.length,
+      agentNames,
+      agentConfigurationIds,
+    });
   }
 }
