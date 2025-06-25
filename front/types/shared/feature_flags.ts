@@ -92,6 +92,9 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   xai_feature: {
     description: "Access to xAI models in the agent builder",
   },
+  monday_tool: {
+    description: "Monday MCP tool",
+  },
 } as const;
 
 export const WHITELISTABLE_FEATURES = Object.keys(

@@ -27,6 +27,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "image_generation",
   "include_data",
   "missing_action_catcher",
+  "monday",
   "notion",
   "primitive_types_debugger",
   "query_tables",
@@ -153,6 +154,26 @@ export const INTERNAL_MCP_SERVERS: Record<
       update_company: "high",
       update_deal: "high",
       remove_association: "high",
+    },
+  },
+  monday: {
+    id: 19,
+    availability: "manual",
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("monday_tool");
+    },
+    tools_stakes: {
+      // Read operations
+      get_boards: "never_ask",
+      get_board_items: "never_ask",
+      get_item_details: "never_ask",
+      search_items: "never_ask",
+      
+      // Write operations
+      create_item: "low",
+      update_item: "low",
+      create_update: "low",
+      delete_item: "high",
     },
   },
   agent_router: {
