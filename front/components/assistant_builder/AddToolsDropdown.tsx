@@ -16,14 +16,14 @@ import { useState } from "react";
 
 import type {
   ActionSpecificationWithType,
-  AssistantBuilderActionType,
+  AssistantBuilderMCPServerType,
   AssistantBuilderDataVisualizationType,
   AssistantBuilderSetActionType,
   AssistantBuilderState,
 } from "@app/components/assistant_builder/types";
 import {
   getDataVisualizationActionConfiguration,
-  getDefaultActionConfiguration,
+  getDefaultMCPServerConfigurationWithId,
   getDefaultMCPServerActionConfiguration,
 } from "@app/components/assistant_builder/types";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
@@ -97,7 +97,7 @@ export function AddToolsDropdown({
 
   function onClickDefaultTool(
     actionType:
-      | AssistantBuilderActionType
+      | AssistantBuilderMCPServerType
       | AssistantBuilderDataVisualizationType
   ) {
     setEdited(true);
@@ -114,15 +114,7 @@ export function AddToolsDropdown({
     const defaultAction =
       actionType === "DATA_VISUALIZATION"
         ? getDataVisualizationActionConfiguration()
-        : getDefaultActionConfiguration(actionType);
-
-    // TODO(durable agents, 2025-06-24): remove this on cleaning by typing
-    // getDefaultActionConfiguration.
-    assert(
-      defaultAction &&
-        (defaultAction.type === "MCP" ||
-          defaultAction.type === "DATA_VISUALIZATION")
-    );
+        : getDefaultMCPServerConfigurationWithId();
 
     setAction({
       type: defaultAction.noConfigurationRequired ? "insert" : "pending",

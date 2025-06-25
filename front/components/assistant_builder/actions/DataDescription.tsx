@@ -2,8 +2,8 @@ import { TextArea } from "@dust-tt/sparkle";
 
 import { ConfigurationSectionContainer } from "@app/components/assistant_builder/actions/configuration/ConfigurationSectionContainer";
 import type {
-  AssistantBuilderActionConfiguration,
-  AssistantBuilderActionState,
+  AssistantBuilderMCPConfiguration,
+  AssistantBuilderMCPOrVizState,
 } from "@app/components/assistant_builder/types";
 
 interface DataDescriptionProps {
@@ -11,10 +11,10 @@ interface DataDescriptionProps {
     actionName: string;
     actionDescription: string;
     getNewActionConfig: (
-      old: AssistantBuilderActionConfiguration["configuration"]
-    ) => AssistantBuilderActionConfiguration["configuration"];
+      old: AssistantBuilderMCPConfiguration["configuration"]
+    ) => AssistantBuilderMCPConfiguration["configuration"];
   }) => void;
-  action: AssistantBuilderActionState;
+  action: AssistantBuilderMCPOrVizState;
   setShowInvalidActionDescError: (
     showInvalidActionDescError: string | null
   ) => void;

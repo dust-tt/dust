@@ -29,7 +29,6 @@ import {
 } from "@dust-tt/sparkle";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import assert from "assert";
-import { uniqueId } from "lodash";
 import type { ReactNode } from "react";
 import React, {
   useCallback,
@@ -50,21 +49,15 @@ import { AssistantBuilderContext } from "@app/components/assistant_builder/Assis
 import { isLegacyAssistantBuilderConfiguration } from "@app/components/assistant_builder/legacy_agent";
 import type {
   AssistantBuilderActionAndDataVisualizationConfiguration,
-  AssistantBuilderActionConfiguration,
-  AssistantBuilderActionConfigurationWithId,
-  AssistantBuilderActionState,
+  AssistantBuilderMCPConfiguration,
+  AssistantBuilderMCPConfigurationWithId,
+  AssistantBuilderMCPOrVizState,
   AssistantBuilderPendingAction,
   AssistantBuilderSetActionType,
   AssistantBuilderState,
 } from "@app/components/assistant_builder/types";
-import {
-  getDefaultMCPServerActionConfiguration,
-  isDefaultActionName,
-} from "@app/components/assistant_builder/types";
-import {
-  isReservedName,
-  useBuilderActionInfo,
-} from "@app/components/assistant_builder/useBuilderActionInfo";
+import { isDefaultActionName } from "@app/components/assistant_builder/types";
+import { useBuilderActionInfo } from "@app/components/assistant_builder/useBuilderActionInfo";
 import { useTools } from "@app/components/assistant_builder/useTools";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
@@ -148,7 +141,7 @@ function actionDisplayName(
   }`;
 }
 
-type SpaceIdToActions = Record<string, AssistantBuilderActionState[]>;
+type SpaceIdToActions = Record<string, AssistantBuilderMCPOrVizState[]>;
 
 interface ActionScreenProps {
   owner: WorkspaceType;
@@ -203,8 +196,8 @@ export default function ActionsScreen({
       newActionName?: string;
       newActionDescription?: string;
       getNewActionConfig: (
-        old: AssistantBuilderActionConfiguration["configuration"]
-      ) => AssistantBuilderActionConfiguration["configuration"];
+        old: AssistantBuilderMCPConfiguration["configuration"]
+      ) => AssistantBuilderMCPConfiguration["configuration"];
     }) {
       setEdited(true);
       setBuilderState((state) => ({
@@ -229,7 +222,7 @@ export default function ActionsScreen({
   );
 
   const removeAction = useCallback(
-    (selectedAction: AssistantBuilderActionState) => {
+    (selectedAction: AssistantBuilderMCPOrVizState) => {
       setEdited(true);
       setBuilderState((state) => {
         return {
@@ -435,16 +428,16 @@ export default function ActionsScreen({
 type NewActionModalProps = {
   isOpen: boolean;
   builderState: AssistantBuilderState;
-  initialAction: AssistantBuilderActionState | null;
+  initialAction: AssistantBuilderMCPOrVizState | null;
   isEditing: boolean;
   spacesUsedInActions: SpaceIdToActions;
-  onSave: (newAction: AssistantBuilderActionState) => void;
+  onSave: (newAction: AssistantBuilderMCPOrVizState) => void;
   onClose: () => void;
   updateAction: (args: {
     actionName: string;
     getNewActionConfig: (
-      old: AssistantBuilderActionConfiguration["configuration"]
-    ) => AssistantBuilderActionConfiguration["configuration"];
+      old: AssistantBuilderMCPConfiguration["configuration"]
+    ) => AssistantBuilderMCPConfiguration["configuration"];
   }) => void;
   owner: WorkspaceType;
   setEdited: (edited: boolean) => void;
@@ -464,7 +457,7 @@ function NewActionModal({
   hasFeature,
 }: NewActionModalProps) {
   const [newActionConfig, setNewActionConfig] =
-    useState<AssistantBuilderActionState | null>(null);
+    useState<AssistantBuilderMCPOrVizState | null>(null);
 
   const [showInvalidActionError, setShowInvalidActionError] = useState<
     string | null
@@ -501,10 +494,6 @@ function NewActionModal({
     }
     if (!/^[a-z0-9_]+$/.test(name)) {
       return "The name can only contain lowercase letters, numbers, and underscores (no spaces).";
-    }
-
-    if (isReservedName(name)) {
-      return "This name is reserved for a system tool. Please use a different name.";
     }
 
     return null;
@@ -569,8 +558,8 @@ function NewActionModal({
       actionName: string;
       actionDescription: string;
       getNewActionConfig: (
-        old: AssistantBuilderActionConfiguration["configuration"]
-      ) => AssistantBuilderActionConfiguration["configuration"];
+        old: AssistantBuilderMCPConfiguration["configuration"]
+      ) => AssistantBuilderMCPConfiguration["configuration"];
     }) => {
       setNewActionConfig((prev) => {
         if (!prev) {
@@ -720,15 +709,15 @@ function ActionCard({
 
 interface ActionConfigEditorProps {
   owner: WorkspaceType;
-  action: AssistantBuilderActionState;
+  action: AssistantBuilderMCPOrVizState;
   isEditing: boolean;
   spacesUsedInActions: SpaceIdToActions;
   updateAction: (args: {
     actionName: string;
     actionDescription: string;
     getNewActionConfig: (
-      old: AssistantBuilderActionConfigurationWithId["configuration"]
-    ) => AssistantBuilderActionConfigurationWithId["configuration"];
+      old: AssistantBuilderMCPConfigurationWithId["configuration"]
+    ) => AssistantBuilderMCPConfigurationWithId["configuration"];
   }) => void;
   setEdited: (edited: boolean) => void;
   setShowInvalidActionDescError: (
@@ -797,7 +786,7 @@ function ActionConfigEditor({
 }
 
 interface ActionEditorProps {
-  action: AssistantBuilderActionState;
+  action: AssistantBuilderMCPOrVizState;
   isEditing: boolean;
   spacesUsedInActions: SpaceIdToActions;
   showInvalidActionNameError: string | null;
@@ -809,8 +798,8 @@ interface ActionEditorProps {
     actionName: string;
     actionDescription: string;
     getNewActionConfig: (
-      old: AssistantBuilderActionConfiguration["configuration"]
-    ) => AssistantBuilderActionConfiguration["configuration"];
+      old: AssistantBuilderMCPConfiguration["configuration"]
+    ) => AssistantBuilderMCPConfiguration["configuration"];
   }) => void;
   owner: WorkspaceType;
   setEdited: (edited: boolean) => void;
@@ -1009,7 +998,7 @@ function AddKnowledgeDropdown({
         collisionPadding={10}
       >
         {mcpServerViewsWithKnowledge.map((view) => {
-          const action = getDefaultMCPServerActionConfiguration(view);
+          const action = getDefaultMCPServerConfigurationWithId(view);
           assert(action);
 
           return (
@@ -1019,7 +1008,7 @@ function AddKnowledgeDropdown({
               onClick={() => {
                 setAction({
                   type: "pending",
-                  action: { id: uniqueId(), ...action },
+                  action,
                 });
               }}
               icon={getAvatar(view.server)}

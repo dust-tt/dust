@@ -12,7 +12,7 @@ import {
 
 import type {
   ActionSpecification,
-  AssistantBuilderActionConfiguration,
+  AssistantBuilderMCPConfiguration,
 } from "@app/components/assistant_builder/types";
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
@@ -38,7 +38,7 @@ export const SLACK_SEARCH_ACTION_NUM_RESULTS = 24;
 export const NOTION_SEARCH_ACTION_NUM_RESULTS = 16;
 
 export const ACTION_SPECIFICATIONS: Record<
-  AssistantBuilderActionConfiguration["type"],
+  AssistantBuilderMCPConfiguration["type"],
   ActionSpecification
 > = {
   RETRIEVAL_EXHAUSTIVE: {

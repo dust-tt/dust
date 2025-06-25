@@ -5,9 +5,9 @@ import { useCallback } from "react";
 import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
 import type {
   ActionSpecificationWithType,
-  AssistantBuilderActionConfiguration,
-  AssistantBuilderActionState,
-  AssistantBuilderActionType,
+  AssistantBuilderMCPConfiguration,
+  AssistantBuilderMCPOrVizState,
+  AssistantBuilderMCPServerType,
   AssistantBuilderDataVisualizationConfiguration,
 } from "@app/components/assistant_builder/types";
 import { ASSISTANT_BUILDER_DUST_APP_RUN_ACTION_CONFIGURATION_DEFAULT_NAME } from "@app/components/assistant_builder/types";
@@ -23,17 +23,17 @@ import type { ModelConfigurationType, SpaceType } from "@app/types";
 
 const DEFAULT_TOOLS_WITH_CONFIGURATION = [
   "DUST_APP_RUN",
-] as const satisfies Array<AssistantBuilderActionConfiguration["type"]>;
+] as const satisfies Array<AssistantBuilderMCPConfiguration["type"]>;
 
 const DEFAULT_TOOLS_WITHOUT_CONFIGURATION = [
   "DATA_VISUALIZATION",
 ] as const satisfies Array<
-  | AssistantBuilderActionConfiguration["type"]
+  | AssistantBuilderMCPConfiguration["type"]
   | AssistantBuilderDataVisualizationConfiguration["type"]
 >;
 
 function getDefaultConfigurationSpecification(
-  type: AssistantBuilderActionType | "DATA_VISUALIZATION"
+  type: AssistantBuilderMCPServerType | "DATA_VISUALIZATION"
 ): ActionSpecificationWithType {
   if (type === "DATA_VISUALIZATION") {
     return {
@@ -124,7 +124,7 @@ function getGroupedMCPServerViews({
 }
 
 interface UseToolsProps {
-  actions: AssistantBuilderActionState[];
+  actions: AssistantBuilderMCPOrVizState[];
   reasoningModels: ModelConfigurationType[];
 }
 

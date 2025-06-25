@@ -2,7 +2,7 @@ import assert from "assert";
 import { tracer } from "dd-trace";
 
 import type {
-  AssistantBuilderActionConfiguration,
+  AssistantBuilderMCPConfiguration,
   AssistantBuilderMCPConfiguration,
 } from "@app/components/assistant_builder/types";
 import {
@@ -129,7 +129,7 @@ async function initializeBuilderAction(
   dataSourceViews: DataSourceViewResource[],
   dustApps: AppResource[],
   mcpServerView?: MCPServerViewType
-): Promise<AssistantBuilderActionConfiguration | null> {
+): Promise<AssistantBuilderMCPConfiguration | null> {
   if (isRetrievalConfiguration(action)) {
     return getRetrievalActionConfiguration(action, dataSourceViews);
   } else if (isDustAppRunConfiguration(action)) {
@@ -158,7 +158,7 @@ async function initializeBuilderAction(
 async function getRetrievalActionConfiguration(
   action: RetrievalConfigurationType,
   dataSourceViews: DataSourceViewResource[]
-): Promise<AssistantBuilderActionConfiguration> {
+): Promise<AssistantBuilderMCPConfiguration> {
   const retrievalConfiguration =
     action.query !== "none"
       ? getDefaultRetrievalSearchActionConfiguration()
@@ -183,7 +183,7 @@ async function getRetrievalActionConfiguration(
 async function getDustAppRunActionConfiguration(
   action: DustAppRunConfigurationType,
   dustApps: AppResource[]
-): Promise<AssistantBuilderActionConfiguration> {
+): Promise<AssistantBuilderMCPConfiguration> {
   const dustAppConfiguration = getDefaultDustAppRunActionConfiguration();
   const app = dustApps.find((app) => app.sId === action.appId);
 
@@ -199,7 +199,7 @@ async function getDustAppRunActionConfiguration(
 async function getTablesQueryActionConfiguration(
   action: TablesQueryConfigurationType,
   dataSourceViews: DataSourceViewResource[]
-): Promise<AssistantBuilderActionConfiguration> {
+): Promise<AssistantBuilderMCPConfiguration> {
   const tablesQueryConfiguration = getDefaultTablesQueryActionConfiguration();
   tablesQueryConfiguration.configuration =
     await renderTableDataSourcesConfigurations(action, dataSourceViews);
@@ -210,7 +210,7 @@ async function getTablesQueryActionConfiguration(
 async function getProcessActionConfiguration(
   action: ProcessConfigurationType,
   dataSourceViews: DataSourceViewResource[]
-): Promise<AssistantBuilderActionConfiguration> {
+): Promise<AssistantBuilderMCPConfiguration> {
   const processConfiguration = getDefaultProcessActionConfiguration();
 
   if (
@@ -232,7 +232,7 @@ async function getProcessActionConfiguration(
 
 function getReasoningActionConfiguration(
   action: ReasoningConfigurationType
-): AssistantBuilderActionConfiguration {
+): AssistantBuilderMCPConfiguration {
   const builderAction = getDefaultReasoningActionConfiguration();
   if (builderAction.type !== "REASONING") {
     throw new Error("Reasoning action configuration is not valid");
@@ -259,7 +259,7 @@ async function getMCPServerActionConfiguration(
   action: MCPServerConfigurationType,
   dataSourceViews: DataSourceViewResource[],
   mcpServerView?: MCPServerViewType
-): Promise<AssistantBuilderActionConfiguration> {
+): Promise<AssistantBuilderMCPConfiguration> {
   assert(isServerSideMCPServerConfiguration(action));
 
   const builderAction = getDefaultMCPServerActionConfiguration(mcpServerView);
