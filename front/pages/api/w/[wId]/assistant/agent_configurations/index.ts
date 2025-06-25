@@ -263,7 +263,6 @@ export async function createOrUpgradeAgentConfiguration({
   auth,
   assistant,
   agentConfigurationId,
-  ignoreSpaceIds,
 }: {
   auth: Authenticator;
   assistant: PostOrPatchAgentConfigurationRequestBody["assistant"];
@@ -326,11 +325,9 @@ export async function createOrUpgradeAgentConfiguration({
     model: assistant.model,
     agentConfigurationId,
     templateId: assistant.templateId ?? null,
-    requestedGroupIds: await getAgentConfigurationGroupIdsFromActions(
-      auth,
+    requestedGroupIds: await getAgentConfigurationGroupIdsFromActions(auth, {
       actions,
-      ignoreSpaceIds
-    ),
+    }),
     tags: assistant.tags,
     editors,
   });

@@ -140,7 +140,7 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
           const requestedGroupIds = await getAgentConfigurationGroupIdsFromName(
             auth,
             agentName,
-            new Set([space.sId])
+            [space]
           );
 
           const res = await updateAgentRequestedGroupIds(
