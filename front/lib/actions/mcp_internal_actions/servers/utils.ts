@@ -449,7 +449,7 @@ export function checkClashingTags(
       // sources. Therefore, even if we did have some content in another data source, it is
       // probably not what the agent intended and its filtering had no use.
       return (
-        "No results found due to clashing tags. The following tags appear in both include and " +
+        "No results found due to conflicting tags. The following tags appear in both include and " +
         `exclude lists: ${clashingTagsList}.\n\nTags that are already included: ${tagsInList}\n` +
         `Tags that are already excluded ${tagsNotList}\n\nPlease adjust your tag filters to ` +
         "avoid conflicts."
