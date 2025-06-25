@@ -6,15 +6,24 @@ import {
   Input,
   Page,
   SparklesIcon,
-  TextArea,
+  useSendNotification,
 } from "@dust-tt/sparkle";
 import React, { useState } from "react";
 
+import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
+import { useAgentBuilderInstructionsContext } from "@app/components/agent_builder/instructions/AgentBuilderInstructionsContext";
 import { useAgentBuilderSettingsContext } from "@app/components/agent_builder/settings/AgentSettingsContext";
+import {
+  getDescriptionSuggestion,
+  getNameSuggestions,
+} from "@app/components/agent_builder/settings/utils";
 
 export function AgentBuilderSettingsBlock() {
   const { name, setName, description, setDescription } =
     useAgentBuilderSettingsContext();
+  const { owner } = useAgentBuilderContext();
+  const { instructions } = useAgentBuilderInstructionsContext();
+  const sendNotification = useSendNotification();
   const [isOpen, setIsOpen] = useState(false);
   const [isGenerating, setIsGenerating] = useState<
     "name" | "description" | null
@@ -24,11 +33,40 @@ export function AgentBuilderSettingsBlock() {
   const handleGenerateNameSuggestions = async () => {
     setIsGenerating("name");
     try {
-      // TODO: Implement API call for name suggestions
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      setNameSuggestions(["DataAnalyst", "ResearchBot", "ContentHelper"]);
+      const result = await getNameSuggestions({
+        owner,
+        instructions,
+        description,
+      });
+
+      if (result.isErr()) {
+        console.error("Failed to generate name suggestions:", result.error);
+        sendNotification({
+          type: "error",
+          title: "Failed to generate name suggestions",
+          description: result.error.message,
+        });
+        return;
+      }
+
+      if (result.value.status === "ok" && result.value.suggestions) {
+        setNameSuggestions(result.value.suggestions);
+        if (result.value.suggestions.length === 0) {
+          sendNotification({
+            type: "info",
+            title: "No suggestions available",
+            description:
+              "Try adding more details to your instructions to get better suggestions.",
+          });
+        }
+      }
     } catch (error) {
       console.error("Failed to generate name suggestions:", error);
+      sendNotification({
+        type: "error",
+        title: "Failed to generate name suggestions",
+        description: "Failed to generate name suggestions. Please try again.",
+      });
     } finally {
       setIsGenerating(null);
     }
@@ -36,16 +74,28 @@ export function AgentBuilderSettingsBlock() {
 
   const handleGenerateDescription = async () => {
     setIsGenerating("description");
-    try {
-      // TODO: Implement API call for description generation
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      setDescription(
-        "An intelligent assistant that helps with data analysis and research tasks."
-      );
-    } catch (error) {
-      console.error("Failed to generate description:", error);
-    } finally {
-      setIsGenerating(null);
+    const result = await getDescriptionSuggestion({
+      owner,
+      instructions,
+      name: name || "Assistant",
+    });
+
+    if (result.isErr()) {
+      console.error("Failed to generate description:", result.error);
+      sendNotification({
+        type: "error",
+        title: "Failed to generate description",
+        description: result.error.message,
+      });
+      return;
+    }
+
+    if (
+      result.value.status === "ok" &&
+      result.value.suggestions &&
+      result.value.suggestions.length > 0
+    ) {
+      setDescription(result.value.suggestions[0]);
     }
   };
 
@@ -67,10 +117,17 @@ export function AgentBuilderSettingsBlock() {
             </Page.P>
             <div className="space-y-4">
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="text-sm font-medium text-foreground dark:text-foreground-night">
-                    Name
-                  </label>
+                <label className="text-sm font-medium text-foreground dark:text-foreground-night">
+                  Name
+                </label>
+                <div className="flex items-center gap-2">
+                  <div className="flex-grow">
+                    <Input
+                      placeholder="Enter agent name"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                    />
+                  </div>
                   <Button
                     label="Suggest"
                     size="xs"
@@ -80,11 +137,6 @@ export function AgentBuilderSettingsBlock() {
                     onClick={handleGenerateNameSuggestions}
                   />
                 </div>
-                <Input
-                  placeholder="Enter agent name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                />
                 {nameSuggestions.length > 0 && (
                   <div className="flex items-center gap-2">
                     <div className="text-xs font-semibold text-muted-foreground dark:text-muted-foreground-night">
@@ -103,10 +155,17 @@ export function AgentBuilderSettingsBlock() {
                 )}
               </div>
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="text-sm font-medium text-foreground dark:text-foreground-night">
-                    Description
-                  </label>
+                <label className="text-sm font-medium text-foreground dark:text-foreground-night">
+                  Description
+                </label>
+                <div className="flex items-center gap-2">
+                  <div className="flex-grow">
+                    <Input
+                      placeholder="Enter agent description"
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                    />
+                  </div>
                   <Button
                     label="Suggest"
                     size="xs"
@@ -116,15 +175,6 @@ export function AgentBuilderSettingsBlock() {
                     onClick={handleGenerateDescription}
                   />
                 </div>
-                <TextArea
-                  placeholder="Enter agent description"
-                  value={description}
-                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
-                    setDescription(e.target.value)
-                  }
-                  rows={3}
-                  disabled={isGenerating === "description"}
-                />
               </div>
             </div>
           </div>
