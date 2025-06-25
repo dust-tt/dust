@@ -97,7 +97,7 @@ const makeGraphQLRequest = async (
 
     return result.data;
   } catch (error) {
-    console.error("Error making Monday API request:", error);
+    localLogger.error("Error making Monday API request:", error);
     throw normalizeError(error);
   }
 };
