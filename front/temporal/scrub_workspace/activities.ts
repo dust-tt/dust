@@ -33,7 +33,7 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { CustomerioServerSideTracking } from "@app/lib/tracking/customerio/server";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
-import { ConnectorsAPI, removeNulls, isGlobalAgentId } from "@app/types";
+import { ConnectorsAPI, isGlobalAgentId, removeNulls } from "@app/types";
 
 export async function sendDataDeletionEmail({
   remainingDays,

@@ -9,6 +9,11 @@ import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_acti
 import type { SearchResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { makeQueryResource } from "@app/lib/actions/mcp_internal_actions/rendering";
 import {
+  checkConflictingTags,
+  getCoreSearchArgs,
+  renderRelativeTimeFrameForToolOutput,
+  renderTagsForToolOutput,
+} from "@app/lib/actions/mcp_internal_actions/servers/utils";
   findTagsSchema,
   makeFindTagsDescription,
   makeFindTagsTool,
@@ -118,6 +123,17 @@ export async function searchFunction({
           text: "Search action must have at least one data source configured.",
         },
       ],
+    };
+  }
+
+  const conflictingTagsError = checkConflictingTags(coreSearchArgs, {
+    tagsIn,
+    tagsNot,
+  });
+  if (conflictingTagsError) {
+    return {
+      isError: false,
+      content: [{ type: "text", text: conflictingTagsError }],
     };
   }
 

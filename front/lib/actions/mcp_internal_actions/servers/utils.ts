@@ -530,3 +530,70 @@ export function shouldAutoGenerateTags(
 
   return false;
 }
+
+export function renderRelativeTimeFrameForToolOutput(
+  relativeTimeFrame: TimeFrame | null
+): string {
+  return relativeTimeFrame
+    ? "over the last " +
+        (relativeTimeFrame.duration > 1
+          ? `${relativeTimeFrame.duration} ${relativeTimeFrame.unit}s`
+          : `${relativeTimeFrame.unit}`)
+    : "across all time periods";
+}
+
+export function renderTagsForToolOutput(
+  tagsIn?: string[],
+  tagsNot?: string[]
+): string {
+  const tagsInAsString =
+    tagsIn && tagsIn.length > 0 ? `, with labels ${tagsIn?.join(", ")}` : "";
+  const tagsNotAsString =
+    tagsNot && tagsNot.length > 0
+      ? `, excluding labels ${tagsNot?.join(", ")}`
+      : "";
+  return `${tagsInAsString}${tagsNotAsString}`;
+}
+
+/**
+ * Checks for conflicting tags across core search arguments and returns an error message if any.
+ * If a tag is both included and excluded, we will not get any result.
+ */
+export function checkConflictingTags(
+  coreSearchArgs: CoreSearchArgs[],
+  { tagsIn, tagsNot }: { tagsIn?: string[]; tagsNot?: string[] }
+): string | null {
+  for (const args of coreSearchArgs) {
+    const configTagsIn = args.filter.tags?.in ?? [];
+    const configTagsNot = args.filter.tags?.not ?? [];
+
+    const finalTagsIn = [...configTagsIn, ...(tagsIn ?? [])];
+    const finalTagsNot = [...configTagsNot, ...(tagsNot ?? [])];
+
+    const conflictingTags = finalTagsIn.filter((tag) =>
+      finalTagsNot.includes(tag)
+    );
+    if (conflictingTags.length > 0) {
+      const conflictingTagsList = conflictingTags.join(", ");
+      const tagsInList =
+        configTagsIn.length > 0 ? configTagsIn.join(", ") : "none";
+      const tagsNotList =
+        configTagsNot.length > 0 ? configTagsNot.join(", ") : "none";
+
+      // We actually return even if we get one conflict.
+      // We can have a conflict only if the agent created one by passing some tags without being
+      // aware that it would create a conflict with a configured tag.
+      // The rationale behind it is that there is a low overlap between the tags across data
+      // sources. Therefore, even if we did have some content in another data source, it is
+      // probably not what the agent intended and its filtering had no use.
+      return (
+        "No results were found due to conflicting tags. The following tags appear in both " +
+        `include and exclude lists: ${conflictingTagsList}.\n\nTags that are already included: ` +
+        `${tagsInList}\n Tags that are already excluded ${tagsNotList}\n\nPlease adjust your ` +
+        "tag filters to avoid conflicts."
+      );
+    }
+  }
+
+  return null;
+}

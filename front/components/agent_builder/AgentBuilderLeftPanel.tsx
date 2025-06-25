@@ -3,6 +3,7 @@ import React from "react";
 
 import { AgentBuilderCapabilitiesBlock } from "@app/components/agent_builder/capabilities/AgentBuilderCapabilitiesBlock";
 import { AgentBuilderInstructionsBlock } from "@app/components/agent_builder/instructions/AgentBuilderInstructionsBlock";
+import { AgentBuilderSettingsBlock } from "@app/components/agent_builder/settings/AgentBuilderSettingsBlock";
 
 interface AgentBuilderLeftPanelProps {
   title: string;
@@ -37,6 +38,7 @@ export function AgentBuilderLeftPanel({
         <div className="space-y-6 p-4">
           <AgentBuilderInstructionsBlock />
           <AgentBuilderCapabilitiesBlock />
+          <AgentBuilderSettingsBlock />
         </div>
       </div>
     </div>

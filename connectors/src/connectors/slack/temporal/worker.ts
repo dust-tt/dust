@@ -27,7 +27,7 @@ async function runSlackNormalWorker() {
     activities,
     taskQueue: QUEUE_NAME,
     connection,
-    reuseV8Context: true,
+    reuseV8Context: false,
     namespace,
     maxConcurrentActivityTaskExecutions: 16,
     maxCachedWorkflows: TEMPORAL_MAXED_CACHED_WORKFLOWS,
@@ -51,7 +51,7 @@ async function runSlackSlowWorker() {
     activities,
     taskQueue: SLOW_QUEUE_NAME,
     connection,
-    reuseV8Context: true,
+    reuseV8Context: false,
     namespace,
     maxConcurrentActivityTaskExecutions: 4, // Lower concurrency for slow lane.
     maxCachedWorkflows: TEMPORAL_MAXED_CACHED_WORKFLOWS,

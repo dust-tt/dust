@@ -1,5 +1,6 @@
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import assert from "assert";
 import { z } from "zod";
 
@@ -26,6 +27,7 @@ import {
   makeDataSourceViewFilter,
 } from "@app/lib/actions/mcp_internal_actions/servers/utils";
 import {
+  checkConflictingTags,
   getCoreSearchArgs,
   shouldAutoGenerateTags,
 } from "@app/lib/actions/mcp_internal_actions/servers/utils";
@@ -142,7 +144,7 @@ async function searchCallback(
     relativeTimeFrame,
   }: z.infer<typeof SearchToolInputSchema>,
   { tagsIn, tagsNot }: { tagsIn?: string[]; tagsNot?: string[] } = {}
-) {
+): Promise<CallToolResult> {
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
   const credentials = dustManagedCredentials();
   const timeFrame = parseTimeFrame(relativeTimeFrame);
@@ -228,6 +230,17 @@ async function searchCallback(
     return makeMCPToolTextError(
       "Search action must have at least one data source configured."
     );
+  }
+
+  const conflictingTags = checkConflictingTags(coreSearchArgs, {
+    tagsIn,
+    tagsNot,
+  });
+  if (conflictingTags) {
+    return {
+      isError: false,
+      content: [{ type: "text", text: conflictingTags }],
+    };
   }
 
   const searchResults = await coreAPI.searchDataSources(
@@ -483,7 +496,7 @@ const createServer = (
 
   server.tool(
     "find",
-    "Find content based on their title starting from a specific node. Can be used to to find specific " +
+    "Find content based on their title starting from a specific node. Can be used to find specific " +
       "nodes by searching for their titles. The query title can be omitted to list all nodes " +
       "starting from a specific node. This is like using 'find' in Unix.",
     {
