@@ -437,3 +437,620 @@ export const deleteItem = async (
   const data = await makeGraphQLRequest(accessToken, query, { itemId });
   return data.delete_item;
 };
+
+export const updateItemName = async (
+  accessToken: string,
+  itemId: string,
+  name: string
+): Promise<MondayItem> => {
+  const query = `
+    mutation UpdateItemName($itemId: ID!, $name: String!) {
+      change_simple_column_value(
+        item_id: $itemId
+        board_id: ""
+        column_id: "name"
+        value: $name
+      ) {
+        id
+        name
+        state
+        board {
+          id
+          name
+        }
+        group {
+          id
+          title
+        }
+        column_values {
+          id
+          title
+          type
+          value
+          text
+        }
+        created_at
+        updated_at
+        creator {
+          id
+          name
+          email
+        }
+      }
+    }
+  `;
+
+  const data = await makeGraphQLRequest(accessToken, query, { itemId, name });
+  return data.change_simple_column_value;
+};
+
+export const createBoard = async (
+  accessToken: string,
+  boardName: string,
+  boardKind: string = "public",
+  workspaceId?: string,
+  description?: string
+): Promise<MondayBoard> => {
+  const query = `
+    mutation CreateBoard($boardName: String!, $boardKind: BoardKind!, $workspaceId: ID, $description: String) {
+      create_board(
+        board_name: $boardName
+        board_kind: $boardKind
+        workspace_id: $workspaceId
+        description: $description
+      ) {
+        id
+        name
+        description
+        state
+        board_folder_id
+        board_kind
+        workspace_id
+      }
+    }
+  `;
+
+  const data = await makeGraphQLRequest(accessToken, query, { 
+    boardName, 
+    boardKind, 
+    workspaceId,
+    description 
+  });
+  return data.create_board;
+};
+
+export const createColumn = async (
+  accessToken: string,
+  boardId: string,
+  title: string,
+  columnType: string,
+  description?: string
+): Promise<{ id: string; title: string; type: string }> => {
+  const query = `
+    mutation CreateColumn($boardId: ID!, $title: String!, $columnType: ColumnType!, $description: String) {
+      create_column(
+        board_id: $boardId
+        title: $title
+        column_type: $columnType
+        description: $description
+      ) {
+        id
+        title
+        type
+      }
+    }
+  `;
+
+  const data = await makeGraphQLRequest(accessToken, query, { 
+    boardId, 
+    title, 
+    columnType,
+    description 
+  });
+  return data.create_column;
+};
+
+export const createGroup = async (
+  accessToken: string,
+  boardId: string,
+  groupName: string,
+  position?: string
+): Promise<{ id: string; title: string; position: string }> => {
+  const query = `
+    mutation CreateGroup($boardId: ID!, $groupName: String!, $position: String) {
+      create_group(
+        board_id: $boardId
+        group_name: $groupName
+        position: $position
+      ) {
+        id
+        title
+        position
+      }
+    }
+  `;
+
+  const data = await makeGraphQLRequest(accessToken, query, { 
+    boardId, 
+    groupName,
+    position 
+  });
+  return data.create_group;
+};
+
+export const createSubitem = async (
+  accessToken: string,
+  parentItemId: string,
+  itemName: string,
+  columnValues?: Record<string, any>
+): Promise<MondayItem> => {
+  const query = `
+    mutation CreateSubitem($parentItemId: ID!, $itemName: String!, $columnValues: JSON) {
+      create_subitem(
+        parent_item_id: $parentItemId
+        item_name: $itemName
+        column_values: $columnValues
+      ) {
+        id
+        name
+        state
+        board {
+          id
+          name
+        }
+        group {
+          id
+          title
+        }
+        column_values {
+          id
+          title
+          type
+          value
+          text
+        }
+        created_at
+        updated_at
+        creator {
+          id
+          name
+          email
+        }
+      }
+    }
+  `;
+
+  const variables = {
+    parentItemId,
+    itemName,
+    columnValues: columnValues ? JSON.stringify(columnValues) : undefined,
+  };
+
+  const data = await makeGraphQLRequest(accessToken, query, variables);
+  return data.create_subitem;
+};
+
+export const deleteGroup = async (
+  accessToken: string,
+  boardId: string,
+  groupId: string
+): Promise<{ id: string; deleted: boolean }> => {
+  const query = `
+    mutation DeleteGroup($boardId: ID!, $groupId: String!) {
+      delete_group(board_id: $boardId, group_id: $groupId) {
+        id
+        deleted
+      }
+    }
+  `;
+
+  const data = await makeGraphQLRequest(accessToken, query, { boardId, groupId });
+  return data.delete_group;
+};
+
+export const duplicateGroup = async (
+  accessToken: string,
+  boardId: string,
+  groupId: string,
+  addToTop?: boolean,
+  groupTitle?: string
+): Promise<{ id: string; title: string }> => {
+  const query = `
+    mutation DuplicateGroup($boardId: ID!, $groupId: String!, $addToTop: Boolean, $groupTitle: String) {
+      duplicate_group(
+        board_id: $boardId
+        group_id: $groupId
+        add_to_top: $addToTop
+        group_title: $groupTitle
+      ) {
+        id
+        title
+      }
+    }
+  `;
+
+  const data = await makeGraphQLRequest(accessToken, query, { 
+    boardId, 
+    groupId,
+    addToTop,
+    groupTitle 
+  });
+  return data.duplicate_group;
+};
+
+export const updateSubitem = async (
+  accessToken: string,
+  subitemId: string,
+  columnValues: Record<string, any>
+): Promise<MondayItem> => {
+  const query = `
+    mutation UpdateSubitem($subitemId: ID!, $columnValues: JSON!) {
+      change_multiple_column_values(
+        item_id: $subitemId
+        column_values: $columnValues
+      ) {
+        id
+        name
+        state
+        board {
+          id
+          name
+        }
+        group {
+          id
+          title
+        }
+        column_values {
+          id
+          title
+          type
+          value
+          text
+        }
+        created_at
+        updated_at
+        creator {
+          id
+          name
+          email
+        }
+      }
+    }
+  `;
+
+  const variables = {
+    subitemId,
+    columnValues: JSON.stringify(columnValues),
+  };
+
+  const data = await makeGraphQLRequest(accessToken, query, variables);
+  return data.change_multiple_column_values;
+};
+
+export const uploadFileToColumn = async (
+  accessToken: string,
+  itemId: string,
+  columnId: string,
+  file: File | Blob
+): Promise<{ id: string; url: string }> => {
+  const formData = new FormData();
+  formData.append('query', `
+    mutation AddFileToColumn($itemId: ID!, $columnId: String!, $file: File!) {
+      add_file_to_column(
+        item_id: $itemId
+        column_id: $columnId
+        file: $file
+      ) {
+        id
+        url
+      }
+    }
+  `);
+  formData.append('variables', JSON.stringify({
+    itemId,
+    columnId,
+  }));
+  formData.append('map', JSON.stringify({
+    "0": ["variables.file"]
+  }));
+  formData.append('0', file);
+
+  try {
+    const response = await fetch("https://api.monday.com/v2/file", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const error = new Error(
+        `Monday API file upload failed: ${response.status} ${response.statusText}`
+      );
+      throw normalizeError(error);
+    }
+
+    const result = await response.json();
+    
+    if (result.errors) {
+      const error = new Error(
+        `Monday GraphQL error: ${result.errors.map((e: any) => e.message).join(", ")}`
+      );
+      throw normalizeError(error);
+    }
+
+    return result.data.add_file_to_column;
+  } catch (error) {
+    console.error("Error uploading file to Monday:", error);
+    throw normalizeError(error);
+  }
+};
+
+export const getItemsByColumnValue = async (
+  accessToken: string,
+  boardId: string,
+  columnId: string,
+  columnValue: string,
+  limit: number = 50
+): Promise<MondayItem[]> => {
+  const query = `
+    query GetItemsByColumnValue($boardId: ID!, $columnId: String!, $columnValue: String!, $limit: Int!) {
+      items_page_by_column_values(
+        board_id: $boardId
+        columns: [{column_id: $columnId, column_values: [$columnValue]}]
+        limit: $limit
+      ) {
+        items {
+          id
+          name
+          state
+          board {
+            id
+            name
+          }
+          group {
+            id
+            title
+          }
+          column_values {
+            id
+            title
+            type
+            value
+            text
+          }
+          created_at
+          updated_at
+          creator {
+            id
+            name
+            email
+          }
+        }
+      }
+    }
+  `;
+
+  const data = await makeGraphQLRequest(accessToken, query, { 
+    boardId, 
+    columnId, 
+    columnValue,
+    limit 
+  });
+  return data.items_page_by_column_values?.items || [];
+};
+
+export const findUserByName = async (
+  accessToken: string,
+  name: string
+): Promise<MondayUser | null> => {
+  const query = `
+    query FindUsers {
+      users {
+        id
+        name
+        email
+        title
+        phone
+        photo_url
+      }
+    }
+  `;
+
+  const data = await makeGraphQLRequest(accessToken, query);
+  const users = data.users || [];
+  
+  return users.find((user: MondayUser) => 
+    user.name.toLowerCase() === name.toLowerCase()
+  ) || null;
+};
+
+export const getBoardValues = async (
+  accessToken: string,
+  boardId: string
+): Promise<any> => {
+  const query = `
+    query GetBoardValues($boardId: ID!) {
+      boards(ids: [$boardId]) {
+        id
+        name
+        description
+        state
+        board_kind
+        workspace_id
+        columns {
+          id
+          title
+          type
+          settings_str
+        }
+        groups {
+          id
+          title
+          position
+        }
+      }
+    }
+  `;
+
+  const data = await makeGraphQLRequest(accessToken, query, { boardId });
+  return data.boards[0] || null;
+};
+
+export const getColumnValues = async (
+  accessToken: string,
+  boardId: string,
+  itemId: string,
+  columnId: string
+): Promise<MondayColumnValue | null> => {
+  const query = `
+    query GetColumnValues($itemId: ID!, $columnId: String!) {
+      items(ids: [$itemId]) {
+        column_values(ids: [$columnId]) {
+          id
+          title
+          type
+          value
+          text
+        }
+      }
+    }
+  `;
+
+  const data = await makeGraphQLRequest(accessToken, query, { itemId, columnId });
+  const item = data.items?.[0];
+  return item?.column_values?.[0] || null;
+};
+
+export const getFileColumnValues = async (
+  accessToken: string,
+  itemId: string,
+  columnId: string
+): Promise<any> => {
+  const query = `
+    query GetFileColumnValues($itemId: ID!, $columnId: String!) {
+      items(ids: [$itemId]) {
+        column_values(ids: [$columnId]) {
+          id
+          title
+          type
+          value
+          text
+          ... on FileValue {
+            files {
+              id
+              name
+              url
+              file_size
+              file_extension
+              uploaded_by {
+                id
+                name
+              }
+            }
+          }
+        }
+      }
+    }
+  `;
+
+  const data = await makeGraphQLRequest(accessToken, query, { itemId, columnId });
+  const item = data.items?.[0];
+  const columnValue = item?.column_values?.[0];
+  
+  if (columnValue?.type === 'file') {
+    return {
+      ...columnValue,
+      files: JSON.parse(columnValue.value || '[]')
+    };
+  }
+  
+  return null;
+};
+
+export const getGroupDetails = async (
+  accessToken: string,
+  boardId: string,
+  groupId: string
+): Promise<{ id: string; title: string; position: string } | null> => {
+  const query = `
+    query GetGroupDetails($boardId: ID!) {
+      boards(ids: [$boardId]) {
+        groups(ids: [$groupId]) {
+          id
+          title
+          position
+        }
+      }
+    }
+  `;
+
+  const data = await makeGraphQLRequest(accessToken, query, { boardId, groupId });
+  const board = data.boards?.[0];
+  return board?.groups?.[0] || null;
+};
+
+export const getSubitemValues = async (
+  accessToken: string,
+  itemId: string
+): Promise<MondayItem[]> => {
+  const query = `
+    query GetSubitemValues($itemId: ID!) {
+      items(ids: [$itemId]) {
+        subitems {
+          id
+          name
+          state
+          board {
+            id
+            name
+          }
+          group {
+            id
+            title
+          }
+          column_values {
+            id
+            title
+            type
+            value
+            text
+          }
+          created_at
+          updated_at
+          creator {
+            id
+            name
+            email
+          }
+        }
+      }
+    }
+  `;
+
+  const data = await makeGraphQLRequest(accessToken, query, { itemId });
+  const item = data.items?.[0];
+  return item?.subitems || [];
+};
+
+export const getUserDetails = async (
+  accessToken: string,
+  userId: string
+): Promise<MondayUser | null> => {
+  const query = `
+    query GetUserDetails($userId: ID!) {
+      users(ids: [$userId]) {
+        id
+        name
+        email
+        title
+        phone
+        photo_url
+      }
+    }
+  `;
+
+  const data = await makeGraphQLRequest(accessToken, query, { userId });
+  return data.users?.[0] || null;
+};
