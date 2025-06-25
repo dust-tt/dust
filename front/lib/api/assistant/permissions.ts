@@ -7,6 +7,10 @@ import {
   isDustAppRunConfiguration,
   isServerSideMCPServerConfiguration,
 } from "@app/lib/actions/types/guards";
+import {
+  getAgentConfigurations,
+  getAgentSIdFromName,
+} from "@app/lib/api/assistant/configuration";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { AppResource } from "@app/lib/resources/app_resource";
@@ -93,6 +97,48 @@ export function groupsFromRequestedPermissions(
       .flatMap((rp) => rp.groups.map((g) => g.id))
       // Sort to ensure consistent ordering.
       .sort((a, b) => a - b)
+  );
+}
+
+/**
+ * This is a wrapper function of getAgentConfigurationGroupIdsFromActions for simplicity of use.
+ * Note: if you have the actions, use getAgentConfigurationGroupIdsFromActions as this is a less efficient function.
+ *
+ * @param auth - The authenticator instance for workspace access and permissions
+ * @param agentName - The sId/name of the agent configuration to fetch group IDs for
+ * @param ignoreSpaceIds - Optional set of space IDs to exclude from group requirements calculation
+ * @returns Promise resolving to array of arrays, where each inner array contains ModelIds of groups required for one space
+ * @throws Error if the agent configuration is not found
+ */
+export async function getAgentConfigurationGroupIdsFromName(
+  auth: Authenticator,
+  agentName: string,
+  ignoreSpaceIds?: Set<string>
+): Promise<ModelId[][]> {
+  // Get the agent sId via name and auth
+  const agentId = await getAgentSIdFromName(auth, agentName);
+
+  if (!agentId) {
+    throw new Error(`Agent Id not found: ${agentName}`);
+  }
+
+  // Get the agent configuration with full details including actions
+  const [agentConfig] = await getAgentConfigurations({
+    auth,
+    agentsGetView: { agentIds: [agentId] },
+    variant: "full",
+    dangerouslySkipPermissionFiltering: true,
+  });
+
+  if (!agentConfig) {
+    throw new Error(`Agent configuration not found: ${agentName}`);
+  }
+
+  // Get the required group IDs from the agent's actions
+  return getAgentConfigurationGroupIdsFromActions(
+    auth,
+    agentConfig.actions,
+    ignoreSpaceIds
   );
 }
 
