@@ -3,6 +3,7 @@ import { uniq } from "lodash";
 
 import { hardDeleteApp } from "@app/lib/api/apps";
 import { updateAgentRequestedGroupIds } from "@app/lib/api/assistant/configuration";
+import { getAgentConfigurationGroupIdsFromName } from "@app/lib/api/assistant/permissions";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { AppResource } from "@app/lib/resources/app_resource";
@@ -136,11 +137,18 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
       await concurrentExecutor(
         agentNames,
         async (agentName) => {
+          const requestedGroupIds = await getAgentConfigurationGroupIdsFromName(
+            auth,
+            agentName,
+            new Set([space.sId])
+          );
+
           const res = await updateAgentRequestedGroupIds(
             auth,
-            { agentName: agentName, newGroupIds: [] },
+            { agentName: agentName, newGroupIds: requestedGroupIds },
             { transaction: t }
           );
+
           if (res.isErr()) {
             throw res.error;
           }
