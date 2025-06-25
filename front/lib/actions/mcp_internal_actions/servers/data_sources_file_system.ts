@@ -24,7 +24,7 @@ import {
 import {
   getAgentDataSourceConfigurations,
   makeDataSourceViewFilter,
-} from "@app/lib/actions/mcp_internal_actions/servers/search/utils";
+} from "@app/lib/actions/mcp_internal_actions/servers/utils";
 import {
   getCoreSearchArgs,
   shouldAutoGenerateTags,
