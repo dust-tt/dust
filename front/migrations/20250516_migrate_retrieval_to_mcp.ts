@@ -19,7 +19,11 @@ import type Logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import type { ModelId } from "@app/types";
 
-async function findWorkspacesWithRetrievalConfigurations(): Promise<ModelId[]> {
+type AgentStatus = "active" | "archived" | "draft";
+
+async function findWorkspacesWithRetrievalConfigurations(
+  agentStatus: AgentStatus
+): Promise<ModelId[]> {
   const retrievalConfigurations = await AgentRetrievalConfiguration.findAll({
     attributes: ["workspaceId"],
     // Filter on active agents.
@@ -29,7 +33,7 @@ async function findWorkspacesWithRetrievalConfigurations(): Promise<ModelId[]> {
         model: AgentConfiguration,
         required: true,
         where: {
-          status: "active",
+          status: agentStatus,
         },
       },
     ],
@@ -38,8 +42,6 @@ async function findWorkspacesWithRetrievalConfigurations(): Promise<ModelId[]> {
 
   return retrievalConfigurations.map((config) => config.workspaceId);
 }
-
-type AgentStatus = "active" | "archived" | "draft";
 
 /**
  * Migrates retrieval actions from non-MCP to MCP version for a specific workspace.
@@ -254,7 +256,9 @@ makeScript(
       }
       workspaces = [workspace];
     } else {
-      const workspaceIds = await findWorkspacesWithRetrievalConfigurations();
+      const workspaceIds = await findWorkspacesWithRetrievalConfigurations(
+        agentStatus as AgentStatus
+      );
       workspaces = await WorkspaceModel.findAll({
         where: {
           id: { [Op.in]: workspaceIds },
