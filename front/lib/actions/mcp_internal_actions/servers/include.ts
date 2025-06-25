@@ -17,6 +17,7 @@ import {
   makeFindTagsTool,
 } from "@app/lib/actions/mcp_internal_actions/servers/common/find_tags_tool";
 import {
+  checkClashingTags,
   getCoreSearchArgs,
   renderRelativeTimeFrameForToolOutput,
   shouldAutoGenerateTags,
@@ -157,6 +158,17 @@ function createServer(
     const coreSearchArgs = removeNulls(
       coreSearchArgsResults.map((res) => (res.isOk() ? res.value : null))
     );
+
+    const clashingTagsError = checkClashingTags(coreSearchArgs, {
+      tagsIn,
+      tagsNot,
+    });
+    if (clashingTagsError) {
+      return {
+        isError: false,
+        content: { type: "text", text: clashingTagsError },
+      };
+    }
 
     const searchResults = await coreAPI.searchDataSources(
       "",

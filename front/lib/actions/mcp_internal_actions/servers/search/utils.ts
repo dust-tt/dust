@@ -8,6 +8,7 @@ import type {
   SearchResultResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
+  checkClashingTags,
   getCoreSearchArgs,
   renderRelativeTimeFrameForToolOutput,
   renderTagsForToolOutput,
@@ -103,6 +104,17 @@ export async function searchFunction({
           text: "Search action must have at least one data source configured.",
         },
       ],
+    };
+  }
+
+  const clashingTagsError = checkClashingTags(coreSearchArgs, {
+    tagsIn,
+    tagsNot,
+  });
+  if (clashingTagsError) {
+    return {
+      isError: false,
+      content: { type: "text", text: clashingTagsError },
     };
   }
 

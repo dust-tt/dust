@@ -17,6 +17,7 @@ import {
   makeFindTagsTool,
 } from "@app/lib/actions/mcp_internal_actions/servers/common/find_tags_tool";
 import {
+  checkClashingTags,
   fetchAgentDataSourceConfiguration,
   getCoreSearchArgs,
   parseDataSourceConfigurationURI,
@@ -229,6 +230,17 @@ async function searchCallback(
     return makeMCPToolTextError(
       "Search action must have at least one data source configured."
     );
+  }
+
+  const clashingTagsError = checkClashingTags(coreSearchArgs, {
+    tagsIn,
+    tagsNot,
+  });
+  if (clashingTagsError) {
+    return {
+      isError: false,
+      content: { type: "text", text: clashingTagsError },
+    };
   }
 
   const searchResults = await coreAPI.searchDataSources(
