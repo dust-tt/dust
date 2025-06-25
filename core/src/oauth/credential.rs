@@ -23,6 +23,7 @@ pub enum CredentialProvider {
     Hubspot,
     Linear,
     Gmail,
+    Monday,
     Mcp,
 }
 
