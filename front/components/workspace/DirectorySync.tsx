@@ -98,7 +98,7 @@ function DirectorySyncStatus({
   }
 
   switch (dsyncStatus.status) {
-    case "not_configured":
+    case "configured":
       return (
         <>
           <div className="mb-4 flex flex-row items-center gap-2">
