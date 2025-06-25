@@ -113,9 +113,9 @@ export function groupsFromRequestedPermissions(
  */
 export async function getAgentConfigurationGroupIdsFromName(
   auth: Authenticator,
-  agentName: string,
-  ignoreSpaces?: SpaceResource[]
+  params: { agentName: string; ignoreSpaces?: SpaceResource[] }
 ): Promise<ModelId[][]> {
+  const { agentName, ignoreSpaces } = params;
   // Get the agent sId via name and auth
   const agentId = await getAgentSIdFromName(auth, agentName);
 
