@@ -361,37 +361,33 @@ export async function getCoreSearchArgs(
   }
 }
 
+function hasTagAutoMode(dataSourceConfigurations: DataSourceConfiguration[]) {
+  return dataSourceConfigurations.some(
+    (dataSourceConfiguration) =>
+      dataSourceConfiguration.filter.tags?.mode === "auto"
+  );
+}
+
 export function shouldAutoGenerateTags(
   agentLoopContext: AgentLoopContextType
 ): boolean {
-  const hasTagAutoMode = (
-    dataSourceConfigurations: DataSourceConfiguration[]
-  ) =>
-    dataSourceConfigurations.some(
-      (dataSourceConfiguration) =>
-        dataSourceConfiguration.filter.tags?.mode === "auto"
-    );
-
+  const { listToolsContext, runContext } = agentLoopContext;
   if (
-    !!agentLoopContext.listToolsContext?.agentActionConfiguration &&
+    !!listToolsContext?.agentActionConfiguration &&
     isServerSideMCPServerConfiguration(
-      agentLoopContext.listToolsContext.agentActionConfiguration
+      listToolsContext.agentActionConfiguration
     ) &&
-    !!agentLoopContext.listToolsContext.agentActionConfiguration.dataSources
+    !!listToolsContext.agentActionConfiguration.dataSources
   ) {
     return hasTagAutoMode(
-      agentLoopContext.listToolsContext.agentActionConfiguration.dataSources
+      listToolsContext.agentActionConfiguration.dataSources
     );
   } else if (
-    !!agentLoopContext.runContext?.actionConfiguration &&
-    isServerSideMCPToolConfiguration(
-      agentLoopContext.runContext.actionConfiguration
-    ) &&
-    !!agentLoopContext.runContext.actionConfiguration.dataSources
+    !!runContext?.actionConfiguration &&
+    isServerSideMCPToolConfiguration(runContext.actionConfiguration) &&
+    !!runContext.actionConfiguration.dataSources
   ) {
-    return hasTagAutoMode(
-      agentLoopContext.runContext.actionConfiguration.dataSources
-    );
+    return hasTagAutoMode(runContext.actionConfiguration.dataSources);
   }
 
   return false;
