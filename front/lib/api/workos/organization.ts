@@ -161,6 +161,18 @@ export async function removeWorkOSOrganizationDomain(
   return new Ok(undefined);
 }
 
+export async function listWorkOSOrganizationsWithDomain(
+  domain: string
+): Promise<Organization[]> {
+  const workOS = getWorkOS();
+  const organizations = await workOS.organizations.listOrganizations({
+    domains: [domain],
+    limit: 100,
+  });
+
+  return organizations.data;
+}
+
 // Mapping WorkOSPortalIntent to GeneratePortalLinkIntent,
 // as we can't use the WorkOSPortalIntent enum on any Client-Side code.
 const INTENT_MAP: Record<WorkOSPortalIntent, GeneratePortalLinkIntent> = {

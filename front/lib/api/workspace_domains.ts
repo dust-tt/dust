@@ -1,3 +1,4 @@
+import { listWorkOSOrganizationsWithDomain } from "@app/lib/api/workos/organization";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
 import logger from "@app/logger/logger";
@@ -11,7 +12,7 @@ export async function upsertWorkspaceDomain(
     dropExistingDomain = false,
   }: { domain: string; dropExistingDomain?: boolean }
 ): Promise<Result<WorkspaceHasDomainModel, Error>> {
-  const existingDomain = await WorkspaceHasDomainModel.findOne({
+  const existingDomainInRegion = await WorkspaceHasDomainModel.findOne({
     where: { domain },
     include: [
       {
@@ -22,25 +23,48 @@ export async function upsertWorkspaceDomain(
     ],
   });
 
-  if (existingDomain && existingDomain.workspace.id === workspace.id) {
-    return new Ok(existingDomain);
+  if (
+    existingDomainInRegion &&
+    existingDomainInRegion.workspace.id === workspace.id
+  ) {
+    return new Ok(existingDomainInRegion);
   }
 
-  if (existingDomain) {
+  if (existingDomainInRegion) {
     if (dropExistingDomain) {
       logger.info(
         {
           domain,
-          workspaceId: existingDomain.workspace.id,
+          workspaceId: existingDomainInRegion.workspace.id,
         },
         "Dropping existing domain"
       );
 
-      await existingDomain.destroy();
+      await existingDomainInRegion.destroy();
     } else {
       return new Err(
         new Error(
-          `Domain ${domain} already exists in workspace ${existingDomain.workspace.id}`
+          `Domain ${domain} already exists in workspace ${existingDomainInRegion.workspace.id}`
+        )
+      );
+    }
+  }
+
+  // Ensure the domain is not already in use by another workspace in another region.
+  const organizationsWithDomain =
+    await listWorkOSOrganizationsWithDomain(domain);
+
+  if (organizationsWithDomain.length > 0) {
+    const otherOrganizationsWithDomain = organizationsWithDomain.filter(
+      (o) => o.id !== workspace.workOSOrganizationId
+    );
+
+    const [otherOrganizationWithDomain] = otherOrganizationsWithDomain;
+    if (otherOrganizationWithDomain) {
+      return new Err(
+        new Error(
+          `Domain ${domain} already associated with organization ` +
+            `${otherOrganizationWithDomain.id} - ${otherOrganizationWithDomain.metadata.region}`
         )
       );
     }
