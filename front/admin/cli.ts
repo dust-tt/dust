@@ -72,7 +72,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
         throw new Error("Missing --wId argument");
       }
 
-      const w = await WorkspaceResource.fetchBySId(args.wId);
+      const w = await WorkspaceResource.fetchById(args.wId);
       if (!w) {
         throw new Error(`Workspace not found: wId='${args.wId}'`);
       }
@@ -91,7 +91,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
         throw new Error("Missing --wId argument");
       }
 
-      const w = await WorkspaceResource.fetchBySId(args.wId);
+      const w = await WorkspaceResource.fetchById(args.wId);
       if (!w) {
         throw new Error(`Workspace not found: wId='${args.wId}'`);
       }
@@ -114,7 +114,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
 
       for (const wId of wIds) {
         console.log(`Pausing connectors for workspace: wId=${wId}`);
-        const w = await WorkspaceResource.fetchBySId(wId);
+        const w = await WorkspaceResource.fetchById(wId);
         if (!w) {
           throw new Error(`Workspace not found: wId='${args.wId}'`);
         }
@@ -149,7 +149,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
       const wIds: string[] = args.wIds ? args.wIds.split(",") : [args.wId];
 
       for (const wId of wIds) {
-        const w = await WorkspaceResource.fetchBySId(wId);
+        const w = await WorkspaceResource.fetchById(wId);
         if (!w) {
           throw new Error(`Workspace not found: wId='${args.wId}'`);
         }
@@ -219,7 +219,7 @@ const user = async (command: string, args: parseArgs.ParsedArgs) => {
         users: [u],
       });
 
-      const workspaces = await WorkspaceResource.findAllByIds(
+      const workspaces = await WorkspaceResource.listByIds(
         memberships.map((m) => m.workspaceId)
       );
 
@@ -444,7 +444,7 @@ const transcripts = async (command: string, args: parseArgs.ParsedArgs) => {
       logger.info(
         `Pausing all LabsTranscripts workflows and recording active ones... (activeIdsFile: ${activeIdsFile})`
       );
-      const allWorkspaces = await WorkspaceResource.findAll();
+      const allWorkspaces = await WorkspaceResource.listAll();
       const activeConfigSIds: string[] = [];
       for (const ws of allWorkspaces) {
         const configs =

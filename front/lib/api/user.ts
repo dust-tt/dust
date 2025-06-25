@@ -69,7 +69,7 @@ export async function fetchRevokedWorkspace(
   }
 
   const revokedWorkspaceId = memberships[0].workspaceId;
-  const workspace = await WorkspaceResource.fetchById(revokedWorkspaceId);
+  const workspace = await WorkspaceResource.fetchByModelId(revokedWorkspaceId);
 
   if (!workspace) {
     const message = "Unreachable: workspace not found.";
@@ -90,7 +90,7 @@ export async function getUserWithWorkspaces<T extends boolean>(
     users: [user],
   });
   const workspaceIds = memberships.map((m) => m.workspaceId);
-  const workspaces = await WorkspaceResource.findAllByIds(workspaceIds);
+  const workspaces = await WorkspaceResource.listByIds(workspaceIds);
 
   const configs = populateExtensionConfig
     ? await ExtensionConfigurationResource.internalFetchForWorkspaces(

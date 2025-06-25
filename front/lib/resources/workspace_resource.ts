@@ -32,51 +32,43 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
   static async makeNew(
     blob: CreationAttributes<WorkspaceModel>
   ): Promise<WorkspaceResource> {
-    const workspace = await WorkspaceModel.create(blob);
+    const workspace = await this.model.create(blob);
 
-    return new this(WorkspaceModel, workspace.get());
+    return new this(this.model, workspace.get());
   }
 
-  static async fetchById(
-    workspaceId: ModelId
-  ): Promise<WorkspaceResource | null> {
-    const workspace = await WorkspaceModel.findByPk(workspaceId);
-    return workspace ? new this(WorkspaceModel, workspace.get()) : null;
-  }
-
-  static async fetchBySId(wId: string): Promise<WorkspaceResource | null> {
-    const workspace = await WorkspaceModel.findOne({
+  static async fetchById(wId: string): Promise<WorkspaceResource | null> {
+    const workspace = await this.model.findOne({
       where: {
-        sId: `${wId}`,
+        sId: wId,
       },
     });
-    return workspace ? new this(WorkspaceModel, workspace.get()) : null;
+    return workspace ? new this(this.model, workspace.get()) : null;
   }
 
-  static async fetchByNameAndSId(
-    name: string,
-    sId: string
-  ): Promise<WorkspaceResource | null> {
-    const workspace = await WorkspaceModel.findOne({
+  static async fetchByNameAndSId({
+    name,
+    sId,
+  }: {
+    name: string;
+    sId: string;
+  }): Promise<WorkspaceResource | null> {
+    const workspace = await this.model.findOne({
       where: { name, sId },
     });
-    return workspace ? new this(WorkspaceModel, workspace.get()) : null;
+    return workspace ? new this(this.model, workspace.get()) : null;
   }
 
-  static async findAllByIds(ids: ModelId[]): Promise<WorkspaceResource[]> {
-    const workspaces = await WorkspaceModel.findAll({
+  static async listByIds(ids: ModelId[]): Promise<WorkspaceResource[]> {
+    const workspaces = await this.model.findAll({
       where: { id: ids },
     });
-    return workspaces.map(
-      (workspace) => new this(WorkspaceModel, workspace.get())
-    );
+    return workspaces.map((workspace) => new this(this.model, workspace.get()));
   }
 
-  static async findAll(): Promise<WorkspaceResource[]> {
-    const workspaces = await WorkspaceModel.findAll();
-    return workspaces.map(
-      (workspace) => new this(WorkspaceModel, workspace.get())
-    );
+  static async listAll(): Promise<WorkspaceResource[]> {
+    const workspaces = await this.model.findAll();
+    return workspaces.map((workspace) => new this(this.model, workspace.get()));
   }
 
   async delete(
@@ -84,7 +76,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     { transaction }: { transaction?: Transaction }
   ): Promise<Result<number | undefined, Error>> {
     try {
-      const deletedCount = await WorkspaceModel.destroy({
+      const deletedCount = await this.model.destroy({
         where: { id: this.blob.id },
         transaction,
       });
