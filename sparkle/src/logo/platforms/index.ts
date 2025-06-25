@@ -32,6 +32,7 @@ export { default as MicrosoftExcelLogo } from "./MicrosoftExcel";
 export { default as MicrosoftPowerpointLogo } from "./MicrosoftPowerpoint";
 export { default as MicrosoftWordLogo } from "./MicrosoftWord";
 export { default as MistralLogo } from "./Mistral";
+export { default as MondayLogo } from "./Monday";
 export { default as NotionLogo } from "./Notion";
 export { default as OfficeLogo } from "./Office";
 export { default as OpenaiLogo } from "./Openai";
