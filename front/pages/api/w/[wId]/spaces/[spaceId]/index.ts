@@ -107,7 +107,16 @@ async function handler(
       const currentMembers = uniqBy(
         (
           await concurrentExecutor(
-            space.groups,
+            // Filter the correct group, if we switch back and forth, the space will have 2 group
+            // one provisioned and one regular.
+            // If a user manully remove users from the regular group, they might still appear as they
+            // would still be in the provisioned group
+            space.groups.filter((g) => {
+              if (space.managementMode === "group") {
+                return g.kind === "provisioned";
+              }
+              return g.kind === "regular";
+            }),
             (group) => group.getActiveMembers(auth),
             { concurrency: 10 }
           )
