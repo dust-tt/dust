@@ -87,7 +87,7 @@ export const retailEcommerceConfig: IndustryPageConfig = {
     useCases: [
       {
         title: "Customer service",
-        image: "/static/landing/industry/features/uxWriter_2.svg",
+        image: "/static/landing/industry/features/UxWriter_2.svg",
         bgColor: "bg-pink-100",
         features: [
           {

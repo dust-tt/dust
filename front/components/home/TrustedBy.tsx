@@ -42,7 +42,7 @@ const LOGO_SETS = {
     { name: "blueground", src: "/static/landing/logos/gray/blueground.svg" },
     { name: "malt", src: "/static/landing/logos/gray/malt.svg" },
     { name: "ornikar", src: "/static/landing/logos/gray/ornikar.svg" },
-    { name: "wttj", src: "/static/landing/logos/gray/wttj.svg" },
+    { name: "wttj", src: "/static/landing/logos/gray/WTTJ.svg" },
   ],
   finance: [
     { name: "pennylane", src: "/static/landing/logos/gray/pennylane.svg" },
@@ -58,8 +58,8 @@ const LOGO_SETS = {
     { name: "mirakl", src: "/static/landing/logos/gray/mirakle.svg" },
     { name: "ankorstore", src: "/static/landing/logos/gray/ankorstore.svg" },
     { name: "fleet", src: "/static/landing/logos/gray/fleet.svg" },
-    { name: "alma", src: "/static/landing/logos/gray/alma.svg" },
-    { name: "jumia", src: "/static/landing/logos/gray/jumia.svg" },
+    { name: "alma", src: "/static/landing/logos/gray/Alma.svg" },
+    { name: "jumia", src: "/static/landing/logos/gray/Jumia.svg" },
   ],
 } as const;
 
