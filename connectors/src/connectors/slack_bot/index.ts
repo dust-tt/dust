@@ -72,6 +72,14 @@ export class SlackBotConnectorManager extends BaseConnectorManager<SlackConfigur
         }`
       );
     }
+    const legacyConnector = await ConnectorResource.findBy(
+      dataSourceConfig.workspaceId,
+      { type: "slack" },
+      ["id"]
+    );
+    const legacyConfiguration = legacyConnector
+      ? await SlackConfigurationResource.fetchByConnectorId(legacyConnector.id)
+      : null;
     const connector = await ConnectorResource.makeNew(
       "slack_bot",
       {
@@ -81,20 +89,23 @@ export class SlackBotConnectorManager extends BaseConnectorManager<SlackConfigur
         dataSourceId: dataSourceConfig.dataSourceId,
       },
       {
-        autoReadChannelPatterns: configuration.autoReadChannelPatterns,
+        ...(legacyConfiguration
+          ? {
+              autoReadChannelPatterns:
+                legacyConfiguration.autoReadChannelPatterns,
+              whitelistedDomains: legacyConfiguration.whitelistedDomains,
+            }
+          : {
+              autoReadChannelPatterns: configuration.autoReadChannelPatterns,
+              whitelistedDomains: configuration.whitelistedDomains,
+            }),
         botEnabled: configuration.botEnabled,
         slackTeamId: teamInfo.team.id,
-        whitelistedDomains: configuration.whitelistedDomains,
         restrictedSpaceAgentsEnabled:
           configuration.restrictedSpaceAgentsEnabled ?? true,
       }
     );
 
-    const legacyConnector = await ConnectorResource.findBy(
-      connector.workspaceId,
-      { type: "slack" },
-      ["id"]
-    );
     if (legacyConnector) {
       const slackBotChannelsCount = await SlackChannel.count({
         where: {

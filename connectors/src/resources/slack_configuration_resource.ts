@@ -44,10 +44,14 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
   static async makeNew({
     slackTeamId,
     connectorId,
+    autoReadChannelPatterns,
+    whitelistedDomains,
     transaction,
   }: {
     slackTeamId: string;
     connectorId: ModelId;
+    autoReadChannelPatterns?: SlackAutoReadPattern[];
+    whitelistedDomains?: string[];
     transaction: Transaction;
   }) {
     const otherSlackConfigurationWithBotEnabled =
@@ -61,11 +65,12 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
 
     await SlackConfigurationModel.create(
       {
-        autoReadChannelPatterns: [],
+        autoReadChannelPatterns: autoReadChannelPatterns ?? [],
         botEnabled: otherSlackConfigurationWithBotEnabled ? false : true,
         connectorId,
         slackTeamId,
         restrictedSpaceAgentsEnabled: true,
+        whitelistedDomains,
       },
       { transaction }
     );

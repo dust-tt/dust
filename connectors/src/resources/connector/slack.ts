@@ -21,6 +21,10 @@ export class SlackConnectorStrategy
   ): Promise<ConnectorProviderModelResourceMapping["slack"] | null> {
     await SlackConfigurationResource.makeNew({
       slackTeamId: blob.slackTeamId,
+      autoReadChannelPatterns: blob.autoReadChannelPatterns,
+      whitelistedDomains: blob.whitelistedDomains
+        ? [...blob.whitelistedDomains] // Ensure it's a readonly string[]
+        : undefined,
       connectorId,
       transaction,
     });
