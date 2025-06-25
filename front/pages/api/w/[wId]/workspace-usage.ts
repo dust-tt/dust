@@ -12,6 +12,7 @@ import {
   getBuildersUsageData,
   getFeedbacksUsageData,
   getMessageUsageData,
+  getTotalUserUsageData,
   getUserUsageData,
 } from "@app/lib/workspace_usage";
 import { apiError } from "@app/logger/withlogging";
@@ -26,6 +27,7 @@ const MonthSchema = t.refinement(
 
 const usageTables = [
   "users",
+  "total_users",
   "assistant_messages",
   "builders",
   "assistants",
@@ -184,6 +186,10 @@ async function fetchUsageData({
   switch (table) {
     case "users":
       return { users: await getUserUsageData(start, end, workspace) };
+    case "total_users":
+      return {
+        total_users: await getTotalUserUsageData(start, end, workspace),
+      };
     case "assistant_messages":
       return { mentions: await getMessageUsageData(start, end, workspace) };
     case "builders":
@@ -197,15 +203,29 @@ async function fetchUsageData({
         assistants: await getAssistantsUsageData(start, end, workspace),
       };
     case "all":
-      const [users, assistant_messages, builders, assistants, feedbacks] =
-        await Promise.all([
-          getUserUsageData(start, end, workspace),
-          getMessageUsageData(start, end, workspace),
-          getBuildersUsageData(start, end, workspace),
-          getAssistantsUsageData(start, end, workspace),
-          getFeedbacksUsageData(start, end, workspace),
-        ]);
-      return { users, assistant_messages, builders, assistants, feedbacks };
+      const [
+        users,
+        total_users,
+        assistant_messages,
+        builders,
+        assistants,
+        feedbacks,
+      ] = await Promise.all([
+        getUserUsageData(start, end, workspace),
+        getTotalUserUsageData(start, end, workspace),
+        getMessageUsageData(start, end, workspace),
+        getBuildersUsageData(start, end, workspace),
+        getAssistantsUsageData(start, end, workspace),
+        getFeedbacksUsageData(start, end, workspace),
+      ]);
+      return {
+        users,
+        total_users,
+        assistant_messages,
+        builders,
+        assistants,
+        feedbacks,
+      };
     default:
       return {};
   }
