@@ -12,30 +12,17 @@ import {
 } from "@connectors/connectors/interface";
 import { getSalesforceCredentials } from "@connectors/connectors/salesforce/lib/oauth";
 import {
-  fetchAvailableChildrenInSalesforce,
-  fetchReadNodes,
-  fetchSyncedChildren,
-} from "@connectors/connectors/salesforce/lib/permissions";
-import {
   getSalesforceConnection,
   testSalesforceConnection,
 } from "@connectors/connectors/salesforce/lib/salesforce_api";
 import { getConnectorAndCredentials } from "@connectors/connectors/salesforce/lib/utils";
-import {
-  launchSalesforceSyncWorkflow,
-  stopSalesforceSyncWorkflow,
-} from "@connectors/connectors/salesforce/temporal/client";
-import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
-import {
-  RemoteDatabaseModel,
-  RemoteSchemaModel,
-  RemoteTableModel,
-} from "@connectors/lib/models/remote_databases";
-import { saveNodesFromPermissions } from "@connectors/lib/remote_databases/utils";
+import { stopSalesforceSyncQueryWorkflow } from "@connectors/connectors/salesforce/temporal/client";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import type { ConnectorPermission, ContentNode } from "@connectors/types";
+import { SalesforceSyncedQueryResource } from "@connectors/resources/salesforce_resources";
 import type { DataSourceConfig } from "@connectors/types";
+import type { ContentNode } from "@connectors/types";
+import { INTERNAL_MIME_TYPES } from "@connectors/types";
 
 const logger = mainLogger.child({
   connector: "salesforce",
@@ -61,12 +48,7 @@ export class SalesforceConnectorManager extends BaseConnectorManager<null> {
       },
       {}
     );
-    const launchResult = await launchSalesforceSyncWorkflow(connector.id);
-    if (launchResult.isErr()) {
-      await connector.delete();
-      throw launchResult.error;
-    }
-
+    // The synced query workflow is lauched manually by us with a cli command once we've set up the query.
     return new Ok(connector.id.toString());
   }
 
@@ -108,19 +90,17 @@ export class SalesforceConnectorManager extends BaseConnectorManager<null> {
         )
       );
     }
-    await stopSalesforceSyncWorkflow(connector.id);
-    await connector.update({ connectionId });
-    // We reset all the remote tables "lastUpsertedAt" to null, to force the tables to be
-    // upserted again (to update their remoteDatabaseSecret).
-    await RemoteTableModel.update(
-      {
-        lastUpsertedAt: null,
-      },
-      { where: { connectorId: connector.id } }
-    );
-    // We launch the workflow again so it syncs immediately.
-    await launchSalesforceSyncWorkflow(connector.id);
 
+    const queries =
+      await SalesforceSyncedQueryResource.fetchByConnector(connector);
+    await Promise.all(
+      queries.map((query) =>
+        stopSalesforceSyncQueryWorkflow(connector.id, query.id)
+      )
+    );
+    await connector.update({ connectionId });
+
+    // We do not launch the workflow again - it has to be done manually with the cli command.
     return new Ok(connector.id.toString());
   }
 
@@ -130,24 +110,7 @@ export class SalesforceConnectorManager extends BaseConnectorManager<null> {
       throw new Error(`Connector ${this.connectorId} not found`);
     }
 
-    await RemoteTableModel.destroy({
-      where: {
-        connectorId: connector.id,
-      },
-    });
-
-    await RemoteSchemaModel.destroy({
-      where: {
-        connectorId: connector.id,
-      },
-    });
-
-    await RemoteDatabaseModel.destroy({
-      where: {
-        connectorId: connector.id,
-      },
-    });
-
+    await SalesforceSyncedQueryResource.deleteByConnectorId(connector.id);
     const res = await connector.delete();
     if (res.isErr()) {
       return res;
@@ -157,52 +120,25 @@ export class SalesforceConnectorManager extends BaseConnectorManager<null> {
   }
 
   async stop(): Promise<Result<undefined, Error>> {
-    const stopRes = await stopSalesforceSyncWorkflow(this.connectorId);
-    if (stopRes.isErr()) {
-      return stopRes;
+    const connector = await ConnectorResource.fetchById(this.connectorId);
+    if (!connector) {
+      throw new Error(`Connector ${this.connectorId} not found`);
     }
+
+    const queries =
+      await SalesforceSyncedQueryResource.fetchByConnector(connector);
+
+    await Promise.all(
+      queries.map((query) =>
+        stopSalesforceSyncQueryWorkflow(connector.id, query.id)
+      )
+    );
+
     return new Ok(undefined);
   }
 
   async resume(): Promise<Result<undefined, Error>> {
-    const connector = await ConnectorResource.fetchById(this.connectorId);
-
-    if (!connector) {
-      logger.error(
-        {
-          connectorId: this.connectorId,
-        },
-        "Salesforce connector not found."
-      );
-      return new Err(new Error("Connector not found"));
-    }
-
-    const dataSourceConfig = dataSourceConfigFromConnector(connector);
-    try {
-      const launchRes = await launchSalesforceSyncWorkflow(connector.id);
-      if (launchRes.isErr()) {
-        logger.error(
-          {
-            workspaceId: dataSourceConfig.workspaceId,
-            dataSourceId: dataSourceConfig.dataSourceId,
-            error: launchRes.error,
-          },
-          "Error launching salesforce sync workflow."
-        );
-        return launchRes;
-      }
-    } catch (e) {
-      logger.error(
-        {
-          workspaceId: dataSourceConfig.workspaceId,
-          dataSourceId: dataSourceConfig.dataSourceId,
-          error: e,
-        },
-        "Error launching salesforce sync workflow."
-      );
-    }
-
-    return new Ok(undefined);
+    throw new Error("Method resume not implemented.");
   }
 
   async sync({
@@ -211,20 +147,14 @@ export class SalesforceConnectorManager extends BaseConnectorManager<null> {
   }: {
     fromTs: number | null;
   }): Promise<Result<string, Error>> {
-    return launchSalesforceSyncWorkflow(this.connectorId);
+    throw new Error("Method sync not implemented.");
   }
 
   /**
    * For Salesforce the tree is:
    * Project > Standard Objects & Custom Objects > Objects.
    */
-  async retrievePermissions({
-    parentInternalId,
-    filterPermission,
-  }: {
-    parentInternalId: string | null;
-    filterPermission: ConnectorPermission | null;
-  }): Promise<
+  async retrievePermissions(): Promise<
     Result<ContentNode[], ConnectorManagerError<RetrievePermissionsErrorCode>>
   > {
     // Get connector and credentials.
@@ -234,7 +164,7 @@ export class SalesforceConnectorManager extends BaseConnectorManager<null> {
     if (getConnectorAndCredentialsRes.isErr()) {
       return new Err(getConnectorAndCredentialsRes.error);
     }
-    const { connector, credentials } = getConnectorAndCredentialsRes.value;
+    const { credentials } = getConnectorAndCredentialsRes.value;
 
     // Get connection.
     const connRes = await getSalesforceConnection(credentials);
@@ -247,40 +177,21 @@ export class SalesforceConnectorManager extends BaseConnectorManager<null> {
       );
     }
 
-    // TODO(salesforce): There is a big comment for the same code in snowflake.
-    if (filterPermission === "read" && parentInternalId === null) {
-      const fetchRes = await fetchReadNodes({
-        connectorId: connector.id,
-      });
-      if (fetchRes.isErr()) {
-        throw fetchRes.error;
-      }
-      return fetchRes;
-    }
+    // We return a single fake node just to display the message in the UI instead of "No documents found".
+    const node: ContentNode = {
+      internalId: `salesforce-synced-query-root-${this.connectorId}`,
+      parentInternalId: null,
+      type: "folder",
+      title: "Synced Queries are set by Dust - no permissions needed.",
+      sourceUrl: null,
+      expandable: false,
+      preventSelection: false,
+      permission: "read",
+      lastUpdatedAt: null,
+      mimeType: INTERNAL_MIME_TYPES.SALESFORCE.SYNCED_QUERY_FOLDER,
+    };
 
-    // We display the nodes that we were given access to by the admin.
-    // We display the db/schemas if we have access to at least one table within those.
-    if (filterPermission === "read") {
-      const fetchRes = await fetchSyncedChildren({
-        connectorId: connector.id,
-        parentInternalId: parentInternalId,
-      });
-      if (fetchRes.isErr()) {
-        throw fetchRes.error;
-      }
-      return fetchRes;
-    }
-
-    // We display all available nodes with our credentials.
-    const fetchRes = await fetchAvailableChildrenInSalesforce({
-      connectorId: connector.id,
-      credentials,
-      parentInternalId: parentInternalId,
-    });
-    if (fetchRes.isErr()) {
-      throw fetchRes.error;
-    }
-    return fetchRes;
+    return new Ok([node]);
   }
 
   async retrieveContentNodeParents({
@@ -292,30 +203,8 @@ export class SalesforceConnectorManager extends BaseConnectorManager<null> {
     return new Ok([internalId]);
   }
 
-  async setPermissions({
-    permissions,
-  }: {
-    permissions: Record<string, ConnectorPermission>;
-  }): Promise<Result<void, Error>> {
-    // Get connector and credentials just to check that the connector exists
-    // and that the credentials are valid.
-    const getConnectorAndCredentialsRes = await getConnectorAndCredentials(
-      this.connectorId
-    );
-    if (getConnectorAndCredentialsRes.isErr()) {
-      return new Err(getConnectorAndCredentialsRes.error);
-    }
-
-    await saveNodesFromPermissions({
-      connectorId: this.connectorId,
-      permissions,
-    });
-
-    const launchRes = await launchSalesforceSyncWorkflow(this.connectorId);
-    if (launchRes.isErr()) {
-      return launchRes;
-    }
-
+  async setPermissions(): Promise<Result<void, Error>> {
+    // No permissions to set for Salesforce synced queries.
     return new Ok(undefined);
   }
 
