@@ -3,9 +3,9 @@ import { sign } from "jsonwebtoken";
 import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
 
-import { getAuth0UsersFromEmail } from "@app/lib/api/auth0";
 import config from "@app/lib/api/config";
 import { config as regionConfig } from "@app/lib/api/regions/config";
+import { fetchUserFromWorkOSWithEmails } from "@app/lib/api/workos/user";
 import {
   getMembers,
   getWorkspaceAdministrationVersionLock,
@@ -400,19 +400,16 @@ export async function handleMembershipInvitations(
         transaction: t,
       });
 
-      const auth0Users = await getAuth0UsersFromEmail(
+      const auth0Users = await fetchUserFromWorkOSWithEmails(
         invitationRequests.map((invite) => invite.email)
       );
 
-      const otherRegionUsers = auth0Users
-        .filter(
-          (user) =>
-            // Type isn't accurate, user.app_metadata can be undefined.
-            typeof user.app_metadata === "object" &&
-            "region" in user.app_metadata &&
-            user.app_metadata.region !== regionConfig.getCurrentRegion()
-        )
-        .map((user) => user.email);
+      const otherRegionUsers = auth0Users.reduce((acc, user) => {
+        if (user.metadata.region !== regionConfig.getCurrentRegion()) {
+          acc.push(user.email);
+        }
+        return acc;
+      }, [] as string[]);
 
       const unconsumedInvitations = await getRecentPendingAndRevokedInvitations(
         auth,
