@@ -436,7 +436,7 @@ export function checkConflictingTags(
       finalTagsNot.includes(tag)
     );
     if (conflictingTags.length > 0) {
-      const clashingTagsList = conflictingTags.join(", ");
+      const conflictingTagsList = conflictingTags.join(", ");
       const tagsInList =
         configTagsIn.length > 0 ? configTagsIn.join(", ") : "none";
       const tagsNotList =
@@ -450,7 +450,7 @@ export function checkConflictingTags(
       // probably not what the agent intended and its filtering had no use.
       return (
         "No results were found due to conflicting tags. The following tags appear in both " +
-        `include and exclude lists: ${clashingTagsList}.\n\nTags that are already included: ` +
+        `include and exclude lists: ${conflictingTagsList}.\n\nTags that are already included: ` +
         `${tagsInList}\n Tags that are already excluded ${tagsNotList}\n\nPlease adjust your ` +
         "tag filters to avoid conflicts."
       );
