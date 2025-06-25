@@ -22,14 +22,14 @@ import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { getResourceNameAndIdFromSId } from "@app/lib/resources/string_ids";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type {
   ConnectorProvider,
   CoreAPISearchFilter,
   DataSourceViewType,
   Result,
 } from "@app/types";
-import { removeNulls, assertNever, Err, Ok } from "@app/types";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import { assertNever, Err, Ok,removeNulls } from "@app/types";
 
 // Type to represent data source configuration with resolved data source model
 export type ResolvedDataSourceConfiguration = DataSourceConfiguration & {
