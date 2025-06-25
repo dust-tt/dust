@@ -1,6 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
+import type { SearchItemsFilters } from "@app/lib/actions/mcp_internal_actions/servers/monday/monday_api_helper";
 import {
   createBoard,
   createColumn,
@@ -23,7 +24,6 @@ import {
   getSubitemValues,
   getUserDetails,
   searchItems,
-  SearchItemsFilters,
   updateItem,
   updateItemName,
   updateSubitem,
@@ -128,22 +128,13 @@ const createServer = (): McpServer => {
         .string()
         .optional()
         .describe("Text query to search in item names and column values"),
-      boardId: z
-        .string()
-        .optional()
-        .describe("Filter by specific board ID"),
+      boardId: z.string().optional().describe("Filter by specific board ID"),
       status: z
         .string()
         .optional()
         .describe("Filter by status (e.g., 'Working on it', 'Done', 'Stuck')"),
-      assigneeId: z
-        .string()
-        .optional()
-        .describe("Filter by assignee user ID"),
-      groupId: z
-        .string()
-        .optional()
-        .describe("Filter by group ID"),
+      assigneeId: z.string().optional().describe("Filter by assignee user ID"),
+      groupId: z.string().optional().describe("Filter by group ID"),
       timeframeStart: z
         .string()
         .optional()
@@ -161,7 +152,20 @@ const createServer = (): McpServer => {
         .optional()
         .describe("Order direction (default: asc)"),
     },
-    async ({ query, boardId, status, assigneeId, groupId, timeframeStart, timeframeEnd, orderBy, orderDirection }, { authInfo }) => {
+    async (
+      {
+        query,
+        boardId,
+        status,
+        assigneeId,
+        groupId,
+        timeframeStart,
+        timeframeEnd,
+        orderBy,
+        orderDirection,
+      },
+      { authInfo }
+    ) => {
       return withAuth({
         action: async (accessToken) => {
           const filters: SearchItemsFilters = {
@@ -173,14 +177,14 @@ const createServer = (): McpServer => {
             orderBy,
             orderDirection,
           };
-          
+
           if (timeframeStart || timeframeEnd) {
             filters.timeframe = {
               start: timeframeStart ? new Date(timeframeStart) : undefined,
               end: timeframeEnd ? new Date(timeframeEnd) : undefined,
             };
           }
-          
+
           const items = await searchItems(accessToken, filters);
           return makeMCPToolJSONSuccess({
             message: `Found ${items.length} items (max 100 returned)`,
@@ -188,7 +192,17 @@ const createServer = (): McpServer => {
           });
         },
         authInfo,
-        params: { query, boardId, status, assigneeId, groupId, timeframeStart, timeframeEnd, orderBy, orderDirection },
+        params: {
+          query,
+          boardId,
+          status,
+          assigneeId,
+          groupId,
+          timeframeStart,
+          timeframeEnd,
+          orderBy,
+          orderDirection,
+        },
       });
     }
   );
