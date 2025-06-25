@@ -19,7 +19,7 @@ export class SlackConnectorStrategy
     blob: WithCreationAttributes<SlackConfigurationModel>,
     transaction: Transaction
   ): Promise<ConnectorProviderModelResourceMapping["slack"] | null> {
-    await SlackConfigurationResource.makeNew({
+    const model = await SlackConfigurationResource.makeNew({
       slackTeamId: blob.slackTeamId,
       autoReadChannelPatterns: blob.autoReadChannelPatterns,
       whitelistedDomains: blob.whitelistedDomains
@@ -29,7 +29,10 @@ export class SlackConnectorStrategy
       connectorId,
       transaction,
     });
-    return null;
+    return new SlackConfigurationResource(
+      SlackConfigurationResource.model,
+      model.get()
+    );
   }
 
   async delete(

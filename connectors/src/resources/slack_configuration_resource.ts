@@ -65,7 +65,7 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
         transaction,
       });
 
-    await SlackConfigurationModel.create(
+    return SlackConfigurationModel.create(
       {
         autoReadChannelPatterns: autoReadChannelPatterns ?? [],
         botEnabled: otherSlackConfigurationWithBotEnabled ? false : true,
@@ -78,12 +78,11 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
     );
   }
 
-  static async fetchByConnectorId(connectorId: ModelId, attributes?: string[]) {
+  static async fetchByConnectorId(connectorId: ModelId) {
     const blob = await this.model.findOne({
       where: {
         connectorId: connectorId,
       },
-      attributes,
     });
     if (!blob) {
       return null;

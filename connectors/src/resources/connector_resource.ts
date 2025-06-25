@@ -282,6 +282,10 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
     return this.errorType === "third_party_internal_error";
   }
 
+  get configurationId() {
+    return this.configuration?.id ?? null;
+  }
+
   toJSON(): ConnectorType {
     return {
       id: this.id.toString(),

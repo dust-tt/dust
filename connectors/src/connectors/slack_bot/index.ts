@@ -143,10 +143,7 @@ export class SlackBotConnectorManager extends BaseConnectorManager<SlackConfigur
         await SlackChannel.bulkCreate(creationRecords);
       }
     }
-    // fetch configurationId from the configuration resource because it is not set in the connector creation
-    const configurationResource =
-      await SlackConfigurationResource.fetchByConnectorId(connector.id, ["id"]);
-    if (legacyConfiguration && configurationResource) {
+    if (legacyConfiguration && connector.configurationId) {
       const slackBotWhitelistModelCount = await SlackBotWhitelistModel.count({
         where: {
           connectorId: legacyConfiguration.connectorId,
@@ -168,7 +165,7 @@ export class SlackBotConnectorManager extends BaseConnectorManager<SlackConfigur
               groupIds: whitelistModel.groupIds,
               whitelistType: whitelistModel.whitelistType,
               connectorId: connector.id,
-              slackConfigurationId: configurationResource.id,
+              slackConfigurationId: connector.configurationId as number,
             };
           }
         );
