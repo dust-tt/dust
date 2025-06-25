@@ -5,9 +5,9 @@ import type { CreateIssueRequest } from "@app/lib/actions/mcp_internal_actions/s
 import {
   addComment,
   createIssue,
-  getTicket,
+  getIssue,
   getTransitions,
-  searchTickets,
+  searchIssues,
   transitionIssue,
   updateIssue,
 } from "@app/lib/actions/mcp_internal_actions/servers/jira/jira_api_helper";
@@ -25,7 +25,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
   name: "jira",
   version: "2.0.0",
   description:
-    "Comprehensive JIRA integration providing full ticket management capabilities including create, read, update, comment, and workflow transition operations using the JIRA REST API.",
+    "Comprehensive JIRA integration providing full issue management capabilities including create, read, update, comment, and workflow transition operations using the JIRA REST API.",
   authorization: {
     provider: "jira" as const,
     supported_use_cases: ["platform_actions", "personal_actions"] as const,
@@ -39,38 +39,38 @@ const createServer = (): McpServer => {
   const server = new McpServer(serverInfo);
 
   server.tool(
-    "get_tickets",
-    "Retrieves a single JIRA ticket by its key (e.g., 'PROJ-123').",
+    "get_issues",
+    "Retrieves a single JIRA issue by its key (e.g., 'PROJ-123').",
     {
-      ticketKey: z.string().describe("The JIRA ticket key (e.g., 'PROJ-123')"),
+      issueKey: z.string().describe("The JIRA issue key (e.g., 'PROJ-123')"),
     },
-    async ({ ticketKey }, { authInfo }) => {
+    async ({ issueKey }, { authInfo }) => {
       return withAuth({
         action: async (baseUrl, accessToken) => {
-          const ticket = await getTicket(baseUrl, accessToken, ticketKey);
-          if (!ticket) {
-            return makeMCPToolTextError(ERROR_MESSAGES.TICKET_NOT_FOUND);
+          const issue = await getIssue(baseUrl, accessToken, issueKey);
+          if (!issue) {
+            return makeMCPToolTextError(ERROR_MESSAGES.ISSUE_NOT_FOUND);
           }
           return makeMCPToolJSONSuccess({
-            message: "Ticket retrieved successfully",
-            result: ticket,
+            message: "Issue retrieved successfully",
+            result: issue,
           });
         },
         authInfo,
-        params: { ticketKey },
+        params: { issueKey },
       });
     }
   );
 
   server.tool(
-    "list_tickets",
-    "Lists JIRA tickets based on a JQL query. Returns a paginated list of tickets.",
+    "list_issues",
+    "Lists JIRA issues based on a JQL query. Returns a paginated list of issues.",
     {
       jql: z
         .string()
         .optional()
         .describe(
-          "JQL query to filter tickets (e.g., 'project = PROJ AND status = Open')"
+          "JQL query to filter issues (e.g., 'project = PROJ AND status = Open')"
         ),
       startAt: z
         .number()
@@ -84,7 +84,7 @@ const createServer = (): McpServer => {
     async ({ jql, startAt, maxResults }, { authInfo }) => {
       return withAuth({
         action: async (baseUrl, accessToken) => {
-          const result = await searchTickets(
+          const result = await searchIssues(
             baseUrl,
             accessToken,
             jql,
@@ -92,7 +92,7 @@ const createServer = (): McpServer => {
             maxResults
           );
           return makeMCPToolJSONSuccess({
-            message: "Tickets retrieved successfully",
+            message: "Issues retrieved successfully",
             result,
           });
         },
@@ -177,7 +177,7 @@ const createServer = (): McpServer => {
     "update_issue",
     "Updates an existing JIRA issue with new field values.",
     {
-      ticketKey: z.string().describe("The JIRA ticket key (e.g., 'PROJ-123')"),
+      issueKey: z.string().describe("The JIRA issue key (e.g., 'PROJ-123')"),
       summary: z.string().optional().describe("Updated summary of the issue"),
       description: z
         .string()
@@ -197,7 +197,7 @@ const createServer = (): McpServer => {
         .describe("Updated array of labels"),
     },
     async (
-      { ticketKey, summary, description, priority, assigneeAccountId, labels },
+      { issueKey, summary, description, priority, assigneeAccountId, labels },
       { authInfo }
     ) => {
       return withAuth({
@@ -220,14 +220,14 @@ const createServer = (): McpServer => {
             updateData.labels = labels;
           }
 
-          await updateIssue(baseUrl, accessToken, ticketKey, updateData);
+          await updateIssue(baseUrl, accessToken, issueKey, updateData);
           return makeMCPToolJSONSuccess({
             message: "Issue updated successfully",
-            result: { ticketKey, updatedFields: Object.keys(updateData) },
+            result: { issueKey, updatedFields: Object.keys(updateData) },
           });
         },
         authInfo,
-        params: { ticketKey },
+        params: { issueKey },
       });
     }
   );
@@ -236,7 +236,7 @@ const createServer = (): McpServer => {
     "add_comment",
     "Adds a comment to an existing JIRA issue.",
     {
-      ticketKey: z.string().describe("The JIRA ticket key (e.g., 'PROJ-123')"),
+      issueKey: z.string().describe("The JIRA issue key (e.g., 'PROJ-123')"),
       comment: z.string().describe("The comment text to add"),
       visibilityType: z
         .enum(["group", "role"])
@@ -248,7 +248,7 @@ const createServer = (): McpServer => {
         .describe("Group or role name for visibility restriction"),
     },
     async (
-      { ticketKey, comment, visibilityType, visibilityValue },
+      { issueKey, comment, visibilityType, visibilityValue },
       { authInfo }
     ) => {
       return withAuth({
@@ -261,7 +261,7 @@ const createServer = (): McpServer => {
           const result = await addComment(
             baseUrl,
             accessToken,
-            ticketKey,
+            issueKey,
             comment,
             visibility
           );
@@ -271,7 +271,7 @@ const createServer = (): McpServer => {
           });
         },
         authInfo,
-        params: { ticketKey },
+        params: { issueKey },
       });
     }
   );
@@ -280,34 +280,34 @@ const createServer = (): McpServer => {
     "transition_issue",
     "Transitions a JIRA issue to a different status/workflow state.",
     {
-      ticketKey: z.string().describe("The JIRA ticket key (e.g., 'PROJ-123')"),
+      issueKey: z.string().describe("The JIRA issue key (e.g., 'PROJ-123')"),
       transitionId: z.string().describe("The ID of the transition to perform"),
       comment: z
         .string()
         .optional()
         .describe("Optional comment to add during transition"),
     },
-    async ({ ticketKey, transitionId, comment }, { authInfo }) => {
+    async ({ issueKey, transitionId, comment }, { authInfo }) => {
       return withAuth({
         action: async (baseUrl, accessToken) => {
           await transitionIssue(
             baseUrl,
             accessToken,
-            ticketKey,
+            issueKey,
             transitionId,
             comment
           );
           return makeMCPToolJSONSuccess({
             message: "Issue transitioned successfully",
             result: {
-              ticketKey,
+              issueKey,
               transitionId,
               ...(comment && { comment }),
             },
           });
         },
         authInfo,
-        params: { ticketKey, transitionId },
+        params: { issueKey, transitionId },
       });
     }
   );
@@ -316,19 +316,19 @@ const createServer = (): McpServer => {
     "get_transitions",
     "Gets available transitions for a JIRA issue based on its current status and workflow.",
     {
-      ticketKey: z.string().describe("The JIRA ticket key (e.g., 'PROJ-123')"),
+      issueKey: z.string().describe("The JIRA issue key (e.g., 'PROJ-123')"),
     },
-    async ({ ticketKey }, { authInfo }) => {
+    async ({ issueKey }, { authInfo }) => {
       return withAuth({
         action: async (baseUrl, accessToken) => {
-          const result = await getTransitions(baseUrl, accessToken, ticketKey);
+          const result = await getTransitions(baseUrl, accessToken, issueKey);
           return makeMCPToolJSONSuccess({
             message: "Transitions retrieved successfully",
             result,
           });
         },
         authInfo,
-        params: { ticketKey },
+        params: { issueKey },
       });
     }
   );

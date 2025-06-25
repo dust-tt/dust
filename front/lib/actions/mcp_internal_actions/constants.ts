@@ -228,15 +228,15 @@ export const INTERNAL_MCP_SERVERS: Record<
   jira: {
     id: 17,
     availability: "manual",
-    isRestricted: (plan, featureFlags) => {
-      return featureFlags.includes("jira_tool");
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("jira_tool");
     },
     tools_stakes: {
       // Read operations - low friction
       get_tickets: "never_ask",
-      list_tickets: "never_ask", 
+      list_tickets: "never_ask",
       get_transitions: "never_ask",
-      
+
       // Write operations - require confirmation
       create_issue: "low",
       update_issue: "low",

@@ -7,7 +7,7 @@ import logger from "@app/logger/logger";
 export const ERROR_MESSAGES = {
   NO_ACCESS_TOKEN: "No access token found",
   NO_BASE_URL: "No JIRA base URL found in auth info",
-  TICKET_NOT_FOUND: "Ticket not found",
+  ISSUE_NOT_FOUND: "Issue not found",
 } as const;
 
 export const withAuth = async ({
@@ -61,7 +61,7 @@ async function getJiraBaseUrl(accessToken: string): Promise<string | null> {
     }
 
     const resources = await response.json();
-    
+
     // Get the first accessible resource (primary workspace) and use its CloudID
     if (resources && resources.length > 0) {
       const cloudId = resources[0].id;

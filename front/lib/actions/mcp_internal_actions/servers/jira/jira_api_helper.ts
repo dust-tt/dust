@@ -2,7 +2,7 @@ import { normalizeError } from "@app/types";
 
 export const MAX_LIMIT = 50;
 
-export interface JiraTicket {
+export interface JiraIssue {
   id: string;
   key: string;
   self: string;
@@ -39,19 +39,19 @@ export interface JiraTicket {
 }
 
 export interface JiraSearchResult {
-  issues: JiraTicket[];
+  issues: JiraIssue[];
   total: number;
   startAt: number;
   maxResults: number;
 }
 
-export const getTicket = async (
+export const getIssue = async (
   baseUrl: string,
   accessToken: string,
-  ticketKey: string
-): Promise<JiraTicket | null> => {
+  issueKey: string
+): Promise<JiraIssue | null> => {
   try {
-    const response = await fetch(`${baseUrl}/rest/api/3/issue/${ticketKey}`, {
+    const response = await fetch(`${baseUrl}/rest/api/3/issue/${issueKey}`, {
       method: "GET",
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -65,20 +65,20 @@ export const getTicket = async (
         return null;
       }
       const error = new Error(
-        `Failed to fetch ticket ${baseUrl} ${ticketKey}: ${response.status} ${response.statusText}`
+        `Failed to fetch issue ${baseUrl} ${issueKey}: ${response.status} ${response.statusText}`
       );
       throw normalizeError(error);
     }
 
-    const ticket = await response.json();
-    return ticket as JiraTicket;
+    const issue = await response.json();
+    return issue as JiraIssue;
   } catch (error) {
-    console.error(`${baseUrl} Error fetching JIRA ticket ${ticketKey}:`, error);
+    console.error(`${baseUrl} Error fetching JIRA issue ${issueKey}:`, error);
     throw normalizeError(error);
   }
 };
 
-export const searchTickets = async (
+export const searchIssues = async (
   baseUrl: string,
   accessToken: string,
   jql: string = "*",
@@ -100,7 +100,7 @@ export const searchTickets = async (
 
     if (!response.ok) {
       const error = new Error(
-        `Failed to search tickets: ${response.status} ${response.statusText}`
+        `Failed to search issues: ${response.status} ${response.statusText}`
       );
       throw normalizeError(error);
     }
@@ -108,7 +108,7 @@ export const searchTickets = async (
     const result = await response.json();
     return result as JiraSearchResult;
   } catch (error) {
-    console.error("Error searching JIRA tickets:", error);
+    console.error("Error searching JIRA issues:", error);
     throw normalizeError(error);
   }
 };
@@ -135,7 +135,7 @@ export const createIssue = async (
   baseUrl: string,
   accessToken: string,
   issueData: CreateIssueRequest
-): Promise<JiraTicket> => {
+): Promise<JiraIssue> => {
   try {
     const response = await fetch(`${baseUrl}/rest/api/3/issue`, {
       method: "POST",
@@ -158,7 +158,7 @@ export const createIssue = async (
     }
 
     const result = await response.json();
-    return result as JiraTicket;
+    return result as JiraIssue;
   } catch (error) {
     console.error("Error creating JIRA issue:", error);
     throw normalizeError(error);
@@ -227,15 +227,18 @@ export const addComment = async (
       requestBody.visibility = visibility;
     }
 
-    const response = await fetch(`${baseUrl}/rest/api/3/issue/${issueKey}/comment`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-      body: JSON.stringify(requestBody),
-    });
+    const response = await fetch(
+      `${baseUrl}/rest/api/3/issue/${issueKey}/comment`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify(requestBody),
+      }
+    );
 
     if (!response.ok) {
       const errorBody = await response.text();
@@ -272,14 +275,17 @@ export const getTransitions = async (
   issueKey: string
 ): Promise<JiraTransitionsResponse> => {
   try {
-    const response = await fetch(`${baseUrl}/rest/api/3/issue/${issueKey}/transitions`, {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-    });
+    const response = await fetch(
+      `${baseUrl}/rest/api/3/issue/${issueKey}/transitions`,
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+      }
+    );
 
     if (!response.ok) {
       const errorBody = await response.text();
@@ -292,7 +298,10 @@ export const getTransitions = async (
     const result = await response.json();
     return result as JiraTransitionsResponse;
   } catch (error) {
-    console.error(`Error getting transitions for JIRA issue ${issueKey}:`, error);
+    console.error(
+      `Error getting transitions for JIRA issue ${issueKey}:`,
+      error
+    );
     throw normalizeError(error);
   }
 };
@@ -323,15 +332,18 @@ export const transitionIssue = async (
       };
     }
 
-    const response = await fetch(`${baseUrl}/rest/api/3/issue/${issueKey}/transitions`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-      body: JSON.stringify(requestBody),
-    });
+    const response = await fetch(
+      `${baseUrl}/rest/api/3/issue/${issueKey}/transitions`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify(requestBody),
+      }
+    );
 
     if (!response.ok) {
       const errorBody = await response.text();
