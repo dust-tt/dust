@@ -293,22 +293,6 @@ export const retailEcommerceConfig: IndustryPageConfig = {
         href: "https://blog.dust.tt/how-valentine-head-of-marketing-at-fleet-uses-dust/",
         src: "https://blog.dust.tt/content/images/size/w2000/2025/01/dust_fleet.png",
       },
-      // {
-      //   title:
-      //     "20%+ productivity gains in Sales: Insights from Alan and Payfit",
-      //   content:
-      //     "Leading companies share how Dust agents deliver significant productivity improvements and measurable ROI in sales operations.",
-      //   href: "https://blog.dust.tt/generative-ai-insights-alan-payfit-leaders/",
-      //   src: "https://blog.dust.tt/content/images/size/w2000/2025/01/Founder.jpg",
-      // },
-      // {
-      //   title:
-      //     "50% Time Savings: How Didomi Transformed Privacy Compliance with AI",
-      //   content:
-      //     "Didomi's legal team cuts workload by 50% using Dust's AI assistants for privacy compliance and legal document management.",
-      //   href: "https://blog.dust.tt/how-thomas-uses-ai-assistants-to-manage-legal-and-data-privacy-at-didomi/",
-      //   src: "https://blog.dust.tt/content/images/size/w2000/2025/01/dust_didomi.png",
-      // },
     ],
   },
   justUseDust: {

@@ -258,21 +258,6 @@ export const insuranceConfig: IndustryPageConfig = {
         href: "https://blog.dust.tt/generative-ai-insights-alan-payfit-leaders/",
         src: "https://blog.dust.tt/content/images/size/w2000/2025/01/Founder.jpg",
       },
-      // {
-      //   title: "How Wakam Achieved 70% Company-Wide AI Adoption with 100+ Custom Agents",
-      //   content:
-      //     "Wakam transforms European insurance operations with AI, achieving 70% employee adoption and 90% productivity gains across 136 deployed agents.",
-      //   href: "TO BE ADDED",
-      //   src: "TO BE ADDED",
-      // },
-      // {
-      //   title:
-      //     "Wakam transforms legal workflows: 50% faster contract analysis with Dust",
-      //   content:
-      //     "Wakam slashes legal contract analysis time 50% using AI agents for document processing, compliance verification, and multilingual translation.",
-      //   href: "https://blog.dust.tt/how-thomas-uses-ai-assistants-to-manage-legal-and-data-privacy-at-didomi/",
-      //   src: "https://blog.dust.tt/content/images/size/w2000/2025/01/dust_didomi.png",
-      // },
     ],
   },
   justUseDust: {

@@ -1,4 +1,3 @@
-import type { RocketIcon } from "@dust-tt/sparkle";
 import type { ReactNode } from "react";
 
 // Basic config types
@@ -14,7 +13,7 @@ export interface ChipConfig {
     | "blue"
     | "rose"
     | "golden";
-  icon?: typeof RocketIcon;
+  icon: React.ComponentType;
 }
 
 export interface CTAButtonsConfig {
