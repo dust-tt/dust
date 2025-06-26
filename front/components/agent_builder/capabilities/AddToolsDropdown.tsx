@@ -8,18 +8,19 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
-import { uniqueId } from "lodash";
+import { useController } from "react-hook-form";
 
-import {
-  type AgentBuilderAction,
-  type AgentBuilderFormData,
+import type {
+  AgentBuilderAction,
+  AgentBuilderFormData,
 } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { useFormContext } from "react-hook-form";
 import { getDataVisualizationActionConfiguration } from "@app/components/assistant_builder/types";
 import { DATA_VISUALIZATION_SPECIFICATION } from "@app/lib/actions/utils";
 
 export function AddToolsDropdown() {
-  const form = useFormContext<AgentBuilderFormData>();
+  const { field } = useController<AgentBuilderFormData, "actions">({
+    name: "actions",
+  });
 
   function onClickDataVisualization() {
     const dataVisualizationConfig = getDataVisualizationActionConfiguration();
@@ -33,12 +34,10 @@ export function AddToolsDropdown() {
       id: dataVisualizationConfig.id,
     };
 
-    const currentActions = form.getValues("actions");
-    form.setValue("actions", [...currentActions, newAction]);
+    field.onChange([...field.value, newAction]);
   }
 
-  const actions = form.watch("actions");
-  const hasDataVisualization = actions.some(
+  const hasDataVisualization = field.value.some(
     (action: AgentBuilderAction) => action.type === "DATA_VISUALIZATION"
   );
 

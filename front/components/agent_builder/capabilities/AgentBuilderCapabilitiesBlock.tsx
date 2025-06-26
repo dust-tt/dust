@@ -8,7 +8,7 @@ import {
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import React from "react";
-import { useFormContext } from "react-hook-form";
+import { useController } from "react-hook-form";
 
 import type {
   AgentBuilderAction,
@@ -63,15 +63,15 @@ function ActionCard({
 }
 
 export function AgentBuilderCapabilitiesBlock() {
-  const form = useFormContext<AgentBuilderFormData>();
-  const actions = form.watch("actions");
+  const { field } = useController<AgentBuilderFormData, "actions">({
+    name: "actions",
+  });
 
   function removeAction(actionToRemove: AgentBuilderAction) {
-    const currentActions = form.getValues("actions");
-    const updatedActions = currentActions.filter(
+    const updatedActions = field.value.filter(
       (action) => action.id !== actionToRemove.id
     );
-    form.setValue("actions", updatedActions);
+    field.onChange(updatedActions);
   }
 
   return (
@@ -83,7 +83,7 @@ export function AgentBuilderCapabilitiesBlock() {
             Add tools and capabilities to enhance your agent's abilities.
           </span>
         </Page.P>
-        {actions.length > 0 && (
+        {field.value.length > 0 && (
           <div className="flex w-full flex-col gap-2 sm:w-auto">
             <div className="flex items-center gap-2">
               <AddKnowledgeDropdown />
@@ -93,7 +93,7 @@ export function AgentBuilderCapabilitiesBlock() {
         )}
       </div>
       <div className="flex-1">
-        {actions.length === 0 ? (
+        {field.value.length === 0 ? (
           <EmptyCTA
             message="No tools added yet. Add knowledge and tools to enhance your agent's capabilities."
             action={
@@ -105,7 +105,7 @@ export function AgentBuilderCapabilitiesBlock() {
           />
         ) : (
           <CardGrid>
-            {actions.map((action) => (
+            {field.value.map((action) => (
               <ActionCard
                 key={action.id}
                 action={action}
