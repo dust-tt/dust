@@ -34,12 +34,12 @@ import type {
   AssistantBuilderSetActionType,
   AssistantBuilderState,
   BuilderScreen,
-  TemplateActionType,
 } from "@app/components/assistant_builder/types";
 import { getDefaultMCPServerConfigurationWithId } from "@app/components/assistant_builder/types";
 import { ConfirmContext } from "@app/components/Confirm";
 import { internalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
+import { MCP_SPECIFICATION } from "@app/lib/actions/utils";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useUser } from "@app/lib/swr/user";
 import type { FetchAssistantTemplateResponse } from "@app/pages/api/templates/[tId]";
@@ -50,7 +50,6 @@ import type {
 } from "@app/types";
 import type { LightAgentConfigurationType } from "@app/types";
 import { assertNever, isAssistantBuilderRightPanelTab } from "@app/types";
-import { MCP_SPECIFICATION } from "@app/lib/actions/utils";
 
 interface AssistantBuilderRightPanelProps {
   screen: BuilderScreen;

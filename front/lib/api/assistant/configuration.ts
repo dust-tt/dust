@@ -20,12 +20,12 @@ import {
   DEFAULT_REASONING_ACTION_DESCRIPTION,
   DEFAULT_RETRIEVAL_ACTION_NAME,
 } from "@app/lib/actions/constants";
+import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { ReasoningModelConfiguration } from "@app/lib/actions/reasoning";
 import type { TableDataSourceConfiguration } from "@app/lib/actions/tables_query";
 import type {
   AgentActionConfigurationType,
   UnsavedAgentActionConfigurationType,
-  UnsavedMCPServerConfigurationType,
 } from "@app/lib/actions/types/agent";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import { getFavoriteStates } from "@app/lib/api/assistant/get_favorite_states";
@@ -88,7 +88,6 @@ import {
   removeNulls,
 } from "@app/types";
 import type { TagType } from "@app/types/tag";
-import { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 
 export type DataSourceFilter = {
   parents: { in: string[]; not: string[] } | null;

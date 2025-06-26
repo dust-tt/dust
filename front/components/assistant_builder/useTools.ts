@@ -1,17 +1,15 @@
 import { groupBy } from "lodash";
 import { useContext, useMemo } from "react";
-import { useCallback } from "react";
 
 import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
 import type {
   ActionSpecificationWithType,
+  AssistantBuilderDataVisualizationConfiguration,
   AssistantBuilderMCPConfiguration,
   AssistantBuilderMCPOrVizState,
   AssistantBuilderMCPServerType,
-  AssistantBuilderDataVisualizationConfiguration,
 } from "@app/components/assistant_builder/types";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
-import { getInternalMCPServerNameAndWorkspaceId } from "@app/lib/actions/mcp_internal_actions/constants";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import {
   DATA_VISUALIZATION_SPECIFICATION,

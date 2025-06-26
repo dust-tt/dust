@@ -1,3 +1,4 @@
+import assert from "assert";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
@@ -10,7 +11,6 @@ import type {
   LightAgentConfigurationType,
   WithAPIErrorResponse,
 } from "@app/types";
-import assert from "assert";
 
 export type ExportAgentConfigurationResponseBody = {
   assistant: Omit<

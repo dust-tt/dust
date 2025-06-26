@@ -11,6 +11,7 @@ import {
 import { groupBy } from "lodash";
 import type React from "react";
 
+import { MCP_SPECIFICATION } from "@app/lib/actions/utils";
 import type {
   DataSourceViewCategory,
   PlanType,
@@ -19,7 +20,6 @@ import type {
   WorkspaceType,
 } from "@app/types";
 import { assertNever } from "@app/types";
-import { MCP_SPECIFICATION } from "@app/lib/actions/utils";
 
 const SPACE_SECTION_GROUP_ORDER = [
   "system",

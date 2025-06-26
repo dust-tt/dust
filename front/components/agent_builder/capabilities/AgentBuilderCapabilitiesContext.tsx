@@ -1,5 +1,6 @@
-import { AssistantBuilderMCPOrVizState } from "@app/components/assistant_builder/types";
 import React, { createContext, useContext, useMemo, useState } from "react";
+
+import type { AssistantBuilderMCPOrVizState } from "@app/components/assistant_builder/types";
 
 interface AgentBuilderCapabilitiesContextType {
   actions: AssistantBuilderMCPOrVizState[];

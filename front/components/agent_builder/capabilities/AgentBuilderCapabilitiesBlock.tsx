@@ -12,8 +12,8 @@ import React from "react";
 import { AddKnowledgeDropdown } from "@app/components/agent_builder/capabilities/AddKnowledgeDropdown";
 import { AddToolsDropdown } from "@app/components/agent_builder/capabilities/AddToolsDropdown";
 import { useAgentBuilderCapabilitiesContext } from "@app/components/agent_builder/capabilities/AgentBuilderCapabilitiesContext";
+import type { AssistantBuilderMCPOrVizState } from "@app/components/assistant_builder/types";
 import { DATA_VISUALIZATION_SPECIFICATION } from "@app/lib/actions/utils";
-import { AssistantBuilderMCPOrVizState } from "@app/components/assistant_builder/types";
 
 function ActionCard({
   action,
