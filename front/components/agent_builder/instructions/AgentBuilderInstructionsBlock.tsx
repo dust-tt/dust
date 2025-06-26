@@ -1,5 +1,6 @@
 import { Page } from "@dust-tt/sparkle";
 import React from "react";
+
 import { AdvancedSettings } from "@app/components/agent_builder/instructions/AdvancedSettings";
 import { AgentBuilderInstructionsEditor } from "@app/components/agent_builder/instructions/AgentBuilderInstructionsEditor";
 
