@@ -255,6 +255,10 @@ export default function ActionsScreen({
         isEditing={!!pendingAction.previousActionName}
         spacesUsedInActions={spaceIdToActions}
         onSave={(newAction) => {
+          assert(
+            newAction.type === "MCP",
+            "Only MCP actions can be edited. This should not happen."
+          );
           setEdited(true);
           if (!pendingAction.action) {
             return;
@@ -432,10 +436,10 @@ export default function ActionsScreen({
 type NewActionModalProps = {
   isOpen: boolean;
   builderState: AssistantBuilderState;
-  initialAction: AssistantBuilderMCPConfigurationWithId | null;
+  initialAction: AssistantBuilderMCPOrVizState | null;
   isEditing: boolean;
   spacesUsedInActions: SpaceIdToActions;
-  onSave: (newAction: AssistantBuilderMCPConfigurationWithId) => void;
+  onSave: (newAction: AssistantBuilderMCPOrVizState) => void;
   onClose: () => void;
   updateAction: (args: {
     actionName: string;
@@ -461,7 +465,7 @@ function NewActionModal({
   hasFeature,
 }: NewActionModalProps) {
   const [newActionConfig, setNewActionConfig] =
-    useState<AssistantBuilderMCPConfigurationWithId | null>(null);
+    useState<AssistantBuilderMCPOrVizState | null>(null);
 
   const [showInvalidActionError, setShowInvalidActionError] = useState<
     string | null
@@ -569,6 +573,10 @@ function NewActionModal({
         if (!prev) {
           return null;
         }
+        assert(
+          prev.type === "MCP",
+          "Only MCP actions can be edited. This should not happen."
+        );
         return {
           ...prev,
           configuration: getNewActionConfig(prev.configuration) as any,
