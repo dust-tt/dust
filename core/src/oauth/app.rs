@@ -5,7 +5,7 @@ use crate::{
         credential::{Credential, CredentialMetadata, CredentialProvider},
         store,
     },
-    utils::{error_response, APIResponse, CoreRequestMakeSpan},
+    utils::{error_response, APIResponse},
 };
 use anyhow::{anyhow, Result};
 use axum::{
@@ -15,13 +15,11 @@ use axum::{
     routing::{delete, get, post},
     Router,
 };
+use axum_tracing_opentelemetry::middleware::{OtelAxumLayer, OtelInResponseLayer};
 use hyper::StatusCode;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::sync::Arc;
-
-use tower_http::trace::{self, TraceLayer};
-use tracing::Level;
 
 struct OAuthState {
     store: Box<dyn store::OAuthStore + Sync + Send>,
@@ -431,30 +429,28 @@ pub async fn create_app() -> Result<Router> {
         // Connections
         .route("/connections", post(connections_create))
         .route(
-            "/connections/:connection_id/finalize",
+            "/connections/{connection_id}/finalize",
             post(connections_finalize),
         )
         .route(
-            "/connections/:connection_id/access_token",
+            "/connections/{connection_id}/access_token",
             post(deprecated_connections_access_token),
         )
         .route(
-            "/connections/:connection_id/access_token",
+            "/connections/{connection_id}/access_token",
             get(connections_access_token),
         )
         .route(
-            "/connections/:connection_id/metadata",
+            "/connections/{connection_id}/metadata",
             get(connections_metadata),
         )
         .route("/credentials", post(credentials_create))
-        .route("/credentials/:credential_id", get(credentials_retrieve))
-        .route("/credentials/:credential_id", delete(credentials_delete))
+        .route("/credentials/{credential_id}", get(credentials_retrieve))
+        .route("/credentials/{credential_id}", delete(credentials_delete))
         // Extensions
-        .layer(
-            TraceLayer::new_for_http()
-                .make_span_with(CoreRequestMakeSpan::new())
-                .on_response(trace::DefaultOnResponse::new().level(Level::INFO)),
-        )
+        .layer(OtelInResponseLayer::default())
+        //start OpenTelemetry trace on incoming request
+        .layer(OtelAxumLayer::default())
         .layer(from_fn(validate_api_key))
         .with_state(state.clone());
 

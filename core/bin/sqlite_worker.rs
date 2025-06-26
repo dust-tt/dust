@@ -8,6 +8,7 @@ use axum::{
 use dust::{
     databases::table::{LocalTable, Table},
     databases_store::{self},
+    open_telemetry::init_subscribers,
     sqlite_workers::{
         client::HEARTBEAT_INTERVAL_MS,
         sqlite_database::{SqliteDatabase, SqliteDatabaseError},
@@ -34,8 +35,6 @@ use tokio::{
 };
 use tower_http::trace::{self, TraceLayer};
 use tracing::{error, info, Level};
-use tracing_bunyan_formatter::{BunyanFormattingLayer, JsonStorageLayer};
-use tracing_subscriber::prelude::*;
 
 lazy_static! {
     static ref WORKER_URL: String = match std::env::var("IS_LOCAL_DEV") {
@@ -340,15 +339,7 @@ fn main() {
         .unwrap();
 
     let r = rt.block_on(async {
-        tracing_subscriber::registry()
-            .with(JsonStorageLayer)
-            .with(
-                BunyanFormattingLayer::new("sqlite_worker".into(), std::io::stdout)
-                    .skip_fields(vec!["file", "line", "target"].into_iter())
-                    .unwrap(),
-            )
-            .with(tracing_subscriber::EnvFilter::new("info"))
-            .init();
+        let _guard = init_subscribers()?;
 
         let s = databases_store::store::PostgresDatabasesStore::new(&DATABASES_STORE_DATABASE_URI)
             .await?;
