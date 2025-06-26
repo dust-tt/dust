@@ -8,7 +8,7 @@ import {
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import React from "react";
-import { useController } from "react-hook-form";
+import { useFieldArray } from "react-hook-form";
 
 import type {
   AgentBuilderAction,
@@ -63,15 +63,12 @@ function ActionCard({
 }
 
 export function AgentBuilderCapabilitiesBlock() {
-  const { field } = useController<AgentBuilderFormData, "actions">({
+  const { fields, remove } = useFieldArray<AgentBuilderFormData, "actions">({
     name: "actions",
   });
 
-  function removeAction(actionToRemove: AgentBuilderAction) {
-    const updatedActions = field.value.filter(
-      (action) => action.id !== actionToRemove.id
-    );
-    field.onChange(updatedActions);
+  function removeAction(index: number) {
+    remove(index);
   }
 
   return (
@@ -83,7 +80,7 @@ export function AgentBuilderCapabilitiesBlock() {
             Add tools and capabilities to enhance your agent's abilities.
           </span>
         </Page.P>
-        {field.value.length > 0 && (
+        {fields.length > 0 && (
           <div className="flex w-full flex-col gap-2 sm:w-auto">
             <div className="flex items-center gap-2">
               <AddKnowledgeDropdown />
@@ -93,7 +90,7 @@ export function AgentBuilderCapabilitiesBlock() {
         )}
       </div>
       <div className="flex-1">
-        {field.value.length === 0 ? (
+        {fields.length === 0 ? (
           <EmptyCTA
             message="No tools added yet. Add knowledge and tools to enhance your agent's capabilities."
             action={
@@ -105,11 +102,11 @@ export function AgentBuilderCapabilitiesBlock() {
           />
         ) : (
           <CardGrid>
-            {field.value.map((action) => (
+            {fields.map((field, index) => (
               <ActionCard
-                key={action.id}
-                action={action}
-                onRemove={() => removeAction(action)}
+                key={field.id}
+                action={field}
+                onRemove={() => removeAction(index)}
               />
             ))}
           </CardGrid>

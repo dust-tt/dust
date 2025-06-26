@@ -9,7 +9,7 @@ import { LightbulbIcon } from "@dust-tt/sparkle";
 import { Button } from "@dust-tt/sparkle";
 import { useState } from "react";
 import React from "react";
-import { useController } from "react-hook-form";
+import { useWatch } from "react-hook-form";
 
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import type {
@@ -33,7 +33,7 @@ interface InstructionTipsPopoverProps {
 }
 
 export function InstructionTipsPopover({ owner }: InstructionTipsPopoverProps) {
-  const { field } = useController<AgentBuilderFormData, "instructions">({
+  const instructions = useWatch<AgentBuilderFormData, "instructions">({
     name: "instructions",
   });
   const [tips, setTips] = useState<string[]>(STATIC_TIPS);
@@ -47,7 +47,7 @@ export function InstructionTipsPopover({ owner }: InstructionTipsPopoverProps) {
 
     const result = await getRankedSuggestions({
       owner,
-      currentInstructions: field.value,
+      currentInstructions: instructions,
       formerSuggestions: [],
     });
 

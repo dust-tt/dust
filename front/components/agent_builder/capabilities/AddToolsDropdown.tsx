@@ -8,7 +8,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
-import { useController } from "react-hook-form";
+import { useFieldArray } from "react-hook-form";
 
 import type {
   AgentBuilderAction,
@@ -18,7 +18,7 @@ import { getDataVisualizationActionConfiguration } from "@app/components/assista
 import { DATA_VISUALIZATION_SPECIFICATION } from "@app/lib/actions/utils";
 
 export function AddToolsDropdown() {
-  const { field } = useController<AgentBuilderFormData, "actions">({
+  const { fields, append } = useFieldArray<AgentBuilderFormData, "actions">({
     name: "actions",
   });
 
@@ -34,10 +34,10 @@ export function AddToolsDropdown() {
       id: dataVisualizationConfig.id,
     };
 
-    field.onChange([...field.value, newAction]);
+    append(newAction);
   }
 
-  const hasDataVisualization = field.value.some(
+  const hasDataVisualization = fields.some(
     (action: AgentBuilderAction) => action.type === "DATA_VISUALIZATION"
   );
 
