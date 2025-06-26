@@ -84,7 +84,6 @@ export type GroupsListProps = {
 };
 
 export function GroupsList({
-  searchTerm,
   isLoading,
   groups,
   showColumns,
@@ -115,7 +114,6 @@ export function GroupsList({
 
   return (
     <DataTable
-      filter={searchTerm}
       filterColumn="name"
       data={rows}
       columns={groupColumns.filter(filterColumn(showColumns))}

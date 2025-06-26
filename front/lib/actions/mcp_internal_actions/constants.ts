@@ -201,9 +201,6 @@ export const INTERNAL_MCP_SERVERS: Record<
   gmail: {
     id: 15,
     availability: "manual",
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("gmail_tool");
-    },
     tools_stakes: {
       get_drafts: "never_ask",
       create_draft: "low",
@@ -212,9 +209,6 @@ export const INTERNAL_MCP_SERVERS: Record<
   google_calendar: {
     id: 16,
     availability: "manual",
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("google_calendar_tool");
-    },
     tools_stakes: {
       list_calendars: "never_ask",
       list_events: "never_ask",

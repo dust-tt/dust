@@ -387,7 +387,6 @@ export default function AssistantBuilder({
           selectedSlackChannels: selectedSlackChannels || [],
           slackChannelsLinkedWithAgent,
         },
-        reasoningModels,
       });
 
       if (res.isErr()) {
@@ -574,6 +573,7 @@ export default function AssistantBuilder({
             <AssistantBuilderRightPanel
               screen={screen}
               template={template}
+              mcpServerViews={mcpServerViews}
               removeTemplate={removeTemplate}
               resetToTemplateInstructions={async () => {
                 resetToTemplateInstructions(setBuilderState);
@@ -587,7 +587,6 @@ export default function AssistantBuilder({
               builderState={builderState}
               agentConfiguration={agentConfiguration}
               setAction={setAction}
-              reasoningModels={reasoningModels}
             />
           }
         />

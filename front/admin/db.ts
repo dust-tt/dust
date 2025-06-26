@@ -47,7 +47,6 @@ import {
   AgentUserRelation,
   GlobalAgentSettings,
 } from "@app/lib/models/assistant/agent";
-import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
 import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
 import {
   AgentMessage,
@@ -59,6 +58,7 @@ import {
   MessageReaction,
   UserMessage,
 } from "@app/lib/models/assistant/conversation";
+import { AgentDataRetentionModel } from "@app/lib/models/assistant/agent_data_retention";
 import { GroupAgentModel } from "@app/lib/models/assistant/group_agent";
 import { TagAgentModel } from "@app/lib/models/assistant/tag_agent";
 import {
@@ -186,8 +186,8 @@ async function main() {
 
   await AgentBrowseAction.sync({ alter: true });
   await AgentConversationIncludeFileAction.sync({ alter: true });
+  await AgentDataRetentionModel.sync({ alter: true });
   await AgentDustAppRunAction.sync({ alter: true });
-  await AgentMessageContent.sync({ alter: true });
   await AgentStepContentModel.sync({ alter: true });
   await AgentProcessAction.sync({ alter: true });
   await AgentReasoningAction.sync({ alter: true });
