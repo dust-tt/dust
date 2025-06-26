@@ -15,7 +15,6 @@ import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type {
   AppType,
-  DataSourceViewType,
   LightAgentConfigurationType,
   PlanType,
   SpaceType,
@@ -28,7 +27,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   agentConfiguration: LightAgentConfigurationType;
   agentEditors: UserType[];
   baseUrl: string;
-  dataSourceViews: DataSourceViewType[];
   dustApps: AppType[];
   mcpServerViews: MCPServerViewType[];
   flow: BuilderFlow;
@@ -53,14 +51,12 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       };
     }
 
-    const [
-      { spaces, dataSourceViews, dustApps, mcpServerViews },
-      configuration,
-    ] = await Promise.all([
-      getAccessibleSourcesAndApps(auth),
-      getAgentConfiguration(auth, context.params?.aId as string, "light"),
-      MCPServerViewResource.ensureAllAutoToolsAreCreated(auth),
-    ]);
+    const [{ spaces, dustApps, mcpServerViews }, configuration] =
+      await Promise.all([
+        getAccessibleSourcesAndApps(auth),
+        getAgentConfiguration(auth, context.params?.aId as string, "light"),
+        MCPServerViewResource.ensureAllAutoToolsAreCreated(auth),
+      ]);
 
     if (!configuration) {
       return {
@@ -99,7 +95,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
         agentConfiguration: configuration,
         agentEditors,
         baseUrl: config.getClientFacingUrl(),
-        dataSourceViews: dataSourceViews.map((v) => v.toJSON()),
         dustApps: dustApps.map((a) => a.toJSON()),
         mcpServerViews: mcpServerViewsJSON,
         flow,
@@ -117,7 +112,6 @@ export default function EditAssistant({
   agentEditors,
   baseUrl,
   spaces,
-  dataSourceViews,
   dustApps,
   mcpServerViews,
   flow,
@@ -135,9 +129,9 @@ export default function EditAssistant({
 
   return (
     <AssistantBuilderProvider
+      owner={owner}
       spaces={spaces}
       dustApps={dustApps}
-      dataSourceViews={dataSourceViews}
       mcpServerViews={mcpServerViews}
     >
       <AssistantBuilder
@@ -145,6 +139,7 @@ export default function EditAssistant({
         subscription={subscription}
         plan={plan}
         flow={flow}
+        duplicateAgentId={null}
         initialBuilderState={{
           scope: agentConfiguration.scope,
           handle: agentConfiguration.name,

@@ -3,13 +3,14 @@ import {
   Button,
   ExternalLinkIcon,
   IconButton,
+  Spinner,
   Tree,
 } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
-import { useContext, useState } from "react";
+import { useState } from "react";
 
 import { ConfigurationSectionContainer } from "@app/components/assistant_builder/actions/configuration/ConfigurationSectionContainer";
-import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
+import { useDataSourceViewsContext } from "@app/components/assistant_builder/contexts/DataSourceViewsContext";
 import { DataSourceViewTagsFilterDropdown } from "@app/components/assistant_builder/tags/DataSourceViewTagsFilterDropdown";
 import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
 import { DataSourceViewPermissionTree } from "@app/components/DataSourceViewPermissionTree";
@@ -60,7 +61,8 @@ export default function DataSourceSelectionSection({
 }: DataSourceSelectionSectionProps) {
   const router = useRouter();
   const { isDark } = useTheme();
-  const { dataSourceViews } = useContext(AssistantBuilderContext);
+  const { dataSourceViews, isDataSourceViewsLoading } =
+    useDataSourceViewsContext();
   const [dataSourceViewToDisplay, setDataSourceViewToDisplay] =
     useState<DataSourceViewType | null>(null);
 
@@ -86,11 +88,18 @@ export default function DataSourceSelectionSection({
                   size="sm"
                   onClick={openDataSourceModal}
                   disabled={!canAddDataSource}
+                  isLoading={isDataSourceViewsLoading}
                 />
               )}
             </div>
           </div>
-          {!Object.keys(dataSourceConfigurations).length ? (
+          {isDataSourceViewsLoading && (
+            <div className="flex w-full justify-center py-5">
+              <Spinner />
+            </div>
+          )}
+          {!isDataSourceViewsLoading &&
+          !Object.keys(dataSourceConfigurations).length ? (
             <EmptyCallToAction
               label={`Select ${viewTypeToLabel(viewType)}`}
               onClick={openDataSourceModal}

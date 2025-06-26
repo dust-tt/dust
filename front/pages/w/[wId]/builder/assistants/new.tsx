@@ -3,10 +3,7 @@ import type { ParsedUrlQuery } from "querystring";
 
 import AssistantBuilder from "@app/components/assistant_builder/AssistantBuilder";
 import { AssistantBuilderProvider } from "@app/components/assistant_builder/AssistantBuilderContext";
-import {
-  buildInitialActions,
-  getAccessibleSourcesAndApps,
-} from "@app/components/assistant_builder/server_side_props_helpers";
+import { getAccessibleSourcesAndApps } from "@app/components/assistant_builder/server_side_props_helpers";
 import type {
   AssistantBuilderInitialState,
   BuilderFlow,
@@ -25,7 +22,6 @@ import { useAssistantTemplate } from "@app/lib/swr/assistants";
 import type {
   AgentConfigurationType,
   AppType,
-  DataSourceViewType,
   PlanType,
   SpaceType,
   SubscriptionType,
@@ -48,10 +44,8 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   subscription: SubscriptionType;
   plan: PlanType;
   spaces: SpaceType[];
-  dataSourceViews: DataSourceViewType[];
   dustApps: AppType[];
   mcpServerViews: MCPServerViewType[];
-  actions: AssistantBuilderInitialState["actions"];
   agentConfiguration:
     | AgentConfigurationType
     | TemplateAgentConfigurationType
@@ -59,6 +53,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   flow: BuilderFlow;
   baseUrl: string;
   templateId: string | null;
+  duplicateAgentId: string | null;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const plan = auth.plan();
@@ -78,7 +73,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 
   await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
 
-  const { spaces, dataSourceViews, dustApps, mcpServerViews } =
+  const { spaces, dustApps, mcpServerViews } =
     await getAccessibleSourcesAndApps(auth);
 
   const flow: BuilderFlow = BUILDER_FLOWS.includes(
@@ -120,22 +115,12 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     configuration = agentConfigRes.value;
   }
 
-  const actions = configuration
-    ? await buildInitialActions({
-        dataSourceViews,
-        dustApps,
-        configuration,
-      })
-    : [];
-
   const mcpServerViewsJSON = mcpServerViews.map((v) => v.toJSON());
 
   return {
     props: {
-      actions,
       agentConfiguration: configuration,
       baseUrl: config.getClientFacingUrl(),
-      dataSourceViews: dataSourceViews.map((v) => v.toJSON()),
       dustApps: dustApps.map((a) => a.toJSON()),
       mcpServerViews: mcpServerViewsJSON,
       flow,
@@ -144,16 +129,15 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       subscription,
       templateId,
       spaces: spaces.map((s) => s.toJSON()),
+      duplicateAgentId: duplicate,
     },
   };
 });
 
 export default function CreateAssistant({
-  actions,
   agentConfiguration,
   baseUrl,
   spaces,
-  dataSourceViews,
   dustApps,
   mcpServerViews,
   flow,
@@ -161,6 +145,7 @@ export default function CreateAssistant({
   plan,
   subscription,
   templateId,
+  duplicateAgentId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const { assistantTemplate } = useAssistantTemplate({ templateId });
 
@@ -174,9 +159,9 @@ export default function CreateAssistant({
 
   return (
     <AssistantBuilderProvider
+      owner={owner}
       spaces={spaces}
       dustApps={dustApps}
-      dataSourceViews={dataSourceViews}
       mcpServerViews={mcpServerViews}
     >
       <AssistantBuilder
@@ -184,11 +169,11 @@ export default function CreateAssistant({
         subscription={subscription}
         plan={plan}
         flow={flow}
-        isAgentDuplication={!!agentConfiguration}
+        duplicateAgentId={duplicateAgentId}
         initialBuilderState={
           agentConfiguration
             ? {
-                actions,
+                actions: [],
                 scope:
                   agentConfiguration.scope !== "global"
                     ? agentConfiguration.scope
