@@ -8,7 +8,11 @@ export function isMembershipRoleType(
   return MEMBERSHIP_ROLE_TYPES.includes(value as MembershipRoleType);
 }
 
-export const MEMBERSHIP_ORIGIN_TYPES = ["provisioned", "invited", "auto-joined"] as const;
+export const MEMBERSHIP_ORIGIN_TYPES = [
+  "provisioned",
+  "invited",
+  "auto-joined",
+] as const;
 
 export type MembershipOriginType = (typeof MEMBERSHIP_ORIGIN_TYPES)[number];
 
