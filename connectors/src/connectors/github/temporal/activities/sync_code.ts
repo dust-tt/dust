@@ -169,7 +169,7 @@ interface FileListing {
 }
 
 // Activity to get GCS files with simple pagination to avoid Temporal return size limits.
-export async function githubGetGcsFilesByDepthActivity({
+export async function githubGetGcsFilesActivity({
   batchSize = GCS_FILES_BATCH_SIZE,
   gcsBasePath,
   pageToken,

@@ -69,7 +69,7 @@ const {
   githubCleanupCodeSyncActivity,
   githubEnsureCodeSyncEnabledActivity,
   githubExtractToGcsActivity,
-  githubGetGcsFilesByDepthActivity,
+  githubGetGcsFilesActivity,
   githubProcessDirectoryChunkActivity,
   githubProcessFileChunkActivity,
 } = proxyActivities<typeof activitiesSyncCode>({
@@ -569,7 +569,7 @@ export async function githubCodeSyncStatelessWorkflow({
   let pageToken: string | undefined;
   do {
     const { directories, files, nextPageToken } =
-      await githubGetGcsFilesByDepthActivity({
+      await githubGetGcsFilesActivity({
         gcsBasePath: extractResult.gcsBasePath,
         repoId,
         pageToken,
