@@ -176,7 +176,9 @@ export function ProviderManagementModal({
     <Sheet
       onOpenChange={(open) => {
         if (!open) {
-          // Reset states to the initial states when the sheet is closed without saving
+          // Reset states to the initial states when the sheet is closed
+          // We do this even if changes were saved, which is quirky but harmless,
+          // since in that case we call mutateWorkspace() which will refetch the data
           setProviderStates(initialProviderStates);
           setDefaultEmbeddingProvider(initialDefaultEmbeddingProvider);
         }
