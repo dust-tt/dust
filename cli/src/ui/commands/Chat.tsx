@@ -35,6 +35,7 @@ interface CliChatProps {
   sId?: string;
   agentSearch?: string;
   message?: string;
+  conversationId?: string;
 }
 
 function getLastConversationItem<T extends ConversationItem>(
@@ -53,7 +54,8 @@ function getLastConversationItem<T extends ConversationItem>(
 async function sendNonInteractiveMessage(
   message: string,
   selectedAgent: AgentConfiguration,
-  me: MeResponseType["user"]
+  me: MeResponseType["user"],
+  existingConversationId?: string
 ): Promise<void> {
   const dustClient = await getDustClient();
   if (!dustClient) {
@@ -65,40 +67,86 @@ async function sendNonInteractiveMessage(
   }
 
   try {
-    // Create a new conversation with the agent
-    const convRes = await dustClient.createConversation({
-      title: message.substring(0, 50) + (message.length > 50 ? "..." : ""),
-      visibility: "unlisted",
-      message: {
-        content: message,
-        mentions: [{ configurationId: selectedAgent.sId }],
-        context: {
-          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-          username: me.username,
-          fullName: me.fullName,
-          email: me.email,
-          origin: "api",
-        },
-      },
-      contentFragment: undefined,
-    });
-
-    if (convRes.isErr()) {
-      console.error(JSON.stringify({ 
-        error: "Failed to create conversation",
-        details: convRes.error.message
-      }));
-      process.exit(1);
-    }
-
-    const conversation = convRes.value.conversation;
-    const userMessageId = convRes.value.message?.sId;
+    let conversation: CreateConversationResponseType["conversation"];
+    let userMessageId: string;
     
-    if (!userMessageId) {
-      console.error(JSON.stringify({ 
-        error: "No message created"
-      }));
-      process.exit(1);
+    if (existingConversationId) {
+      // Add message to existing conversation
+      const messageRes = await dustClient.postUserMessage({
+        conversationId: existingConversationId,
+        message: {
+          content: message,
+          mentions: [{ configurationId: selectedAgent.sId }],
+          context: {
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+            username: me.username,
+            fullName: me.fullName,
+            email: me.email,
+            origin: "api",
+          },
+        },
+      });
+
+      if (messageRes.isErr()) {
+        console.error(JSON.stringify({ 
+          error: "Error adding message to conversation",
+          details: messageRes.error.message
+        }));
+        process.exit(1);
+      }
+
+      userMessageId = messageRes.value.sId;
+
+      // Get the conversation for streaming
+      const convRes = await dustClient.getConversation({ 
+        conversationId: existingConversationId 
+      });
+      if (convRes.isErr()) {
+        console.error(JSON.stringify({ 
+          error: "Error retrieving conversation",
+          details: convRes.error.message
+        }));
+        process.exit(1);
+      }
+      conversation = convRes.value;
+    } else {
+      // Create a new conversation with the agent
+      const convRes = await dustClient.createConversation({
+        title: message.substring(0, 50) + (message.length > 50 ? "..." : ""),
+        visibility: "unlisted",
+        message: {
+          content: message,
+          mentions: [{ configurationId: selectedAgent.sId }],
+          context: {
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+            username: me.username,
+            fullName: me.fullName,
+            email: me.email,
+            origin: "api",
+          },
+        },
+        contentFragment: undefined,
+      });
+
+      if (convRes.isErr()) {
+        console.error(JSON.stringify({ 
+          error: "Failed to create conversation",
+          details: convRes.error.message
+        }));
+        process.exit(1);
+      }
+
+      conversation = convRes.value.conversation;
+      const messageId = convRes.value.message?.sId;
+      
+      if (!messageId) {
+        console.error(JSON.stringify({ 
+          error: "No message created"
+        }));
+        process.exit(1);
+      }
+      
+      userMessageId = messageId;
     }
 
     // Stream the agent's response
@@ -153,10 +201,10 @@ async function sendNonInteractiveMessage(
   }
 }
 
-const CliChat: FC<CliChatProps> = ({ sId: requestedSId, agentSearch, message }) => {
+const CliChat: FC<CliChatProps> = ({ sId: requestedSId, agentSearch, message, conversationId }) => {
   const [error, setError] = useState<string | null>(null);
   
-  // Validate that --message requires --agent
+  // Validate flags usage
   useEffect(() => {
     if (message && !agentSearch) {
       console.error(JSON.stringify({ 
@@ -165,12 +213,19 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId, agentSearch, message }) 
       }));
       process.exit(1);
     }
-  }, [message, agentSearch]);
+    if (conversationId && (!agentSearch || !message)) {
+      console.error(JSON.stringify({ 
+        error: "Invalid usage",
+        details: "--conversationId requires both --agent and --message to be specified"
+      }));
+      process.exit(1);
+    }
+  }, [message, agentSearch, conversationId]);
   const [selectedAgent, setSelectedAgent] = useState<AgentConfiguration | null>(
     null
   );
   const [isProcessingQuestion, setIsProcessingQuestion] = useState(false);
-  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [conversationItems, setConversationItems] = useState<
     ConversationItem[]
   >([]);
@@ -252,7 +307,7 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId, agentSearch, message }) 
         return null;
       }
 
-      setConversationId(convRes.value.conversation.sId);
+      setCurrentConversationId(convRes.value.conversation.sId);
       return convRes.value.conversation.sId;
     },
     [selectedAgent, me, meError, isMeLoading]
@@ -272,7 +327,7 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId, agentSearch, message }) 
           fileInfos.push(await validateAndGetFileInfo(p));
         }
 
-        let convId = conversationId;
+        let convId = conversationId || currentConversationId;
         if (!convId) {
           convId = await createConversationForFiles(
             `File Upload: ${fileInfos.map((f) => f.name).join(", ")}`.slice(
@@ -359,8 +414,8 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId, agentSearch, message }) 
 
     // Call the standalone function
     setIsProcessingQuestion(true);
-    void sendNonInteractiveMessage(message, selectedAgent, me);
-  }, [message, selectedAgent, me, meError, isMeLoading]);
+    void sendNonInteractiveMessage(message, selectedAgent, me, conversationId);
+  }, [message, selectedAgent, me, meError, isMeLoading, conversationId]);
 
   const canSubmit =
     me &&
@@ -444,10 +499,10 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId, agentSearch, message }) 
       try {
         let createdContentFragments = [];
         // If there are files to attach, create content fragments for each
-        if (attachedFiles.length > 0 && conversationId) {
+        if (attachedFiles.length > 0 && currentConversationId) {
           for (const file of attachedFiles) {
             const fragmentRes = await dustClient.postContentFragment({
-              conversationId,
+              conversationId: currentConversationId,
               contentFragment: {
                 title: file.fileName,
                 fileId: file.fileId,
@@ -468,7 +523,7 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId, agentSearch, message }) 
           }
         }
 
-        if (!conversationId) {
+        if (!currentConversationId) {
           // For new conversation, pass contentFragments (from uploaded files)
           const contentFragments = attachedFiles.map((file) => ({
             type: "file_attachment" as const,
@@ -502,7 +557,7 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId, agentSearch, message }) 
           }
 
           conversation = convRes.value.conversation;
-          setConversationId(conversation.sId);
+          setCurrentConversationId(conversation.sId);
 
           if (!convRes.value.message) {
             throw new Error("No message created");
@@ -515,7 +570,7 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId, agentSearch, message }) 
           }
 
           const messageRes = await dustClient.postUserMessage({
-            conversationId: conversationId,
+            conversationId: currentConversationId,
             message: {
               content: questionText,
               mentions: [{ configurationId: selectedAgent.sId }],
@@ -538,7 +593,7 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId, agentSearch, message }) 
           userMessageId = messageRes.value.sId;
 
           // Get the conversation for streaming
-          const convRes = await dustClient.getConversation({ conversationId });
+          const convRes = await dustClient.getConversation({ conversationId: currentConversationId });
           if (convRes.isErr()) {
             throw new Error(
               `Error retrieving conversation: ${convRes.error.message}`
@@ -812,11 +867,11 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId, agentSearch, message }) 
     }
 
     if (key.ctrl && input === "g") {
-      if (conversationId) {
+      if (currentConversationId) {
         void (async () => {
           const workspaceId = await AuthService.getSelectedWorkspaceId();
           if (workspaceId) {
-            const url = `https://dust.tt/w/${workspaceId}/assistant/${conversationId}`;
+            const url = `https://dust.tt/w/${workspaceId}/assistant/${currentConversationId}`;
             await open(url);
           } else {
             console.error("\nCould not determine workspace ID");
@@ -1200,12 +1255,12 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId, agentSearch, message }) 
   return (
     <Box flexDirection="column">
       {/* File upload component */}
-      {pendingFiles.length > 0 && conversationId && (
+      {pendingFiles.length > 0 && currentConversationId && (
         <FileUpload
           files={pendingFiles}
           onUploadComplete={handleFileUploadComplete}
           onUploadError={handleFileUploadError}
-          conversationId={conversationId}
+          conversationId={currentConversationId}
         />
       )}
 
@@ -1247,7 +1302,7 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId, agentSearch, message }) 
         userInput={userInput}
         cursorPosition={cursorPosition}
         mentionPrefix={mentionPrefix}
-        conversationId={conversationId}
+        conversationId={currentConversationId}
         stdout={stdout}
         showCommandSelector={showCommandSelector}
         commandQuery={commandQuery}

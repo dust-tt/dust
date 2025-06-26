@@ -53,6 +53,11 @@ const cli = meow({
       shortFlag: "m",
       description: "Send a message to the agent non-interactively",
     },
+    conversationId: {
+      type: "string",
+      shortFlag: "c",
+      description: "Send message to an existing conversation (requires --agent and --message)",
+    },
   },
 });
 

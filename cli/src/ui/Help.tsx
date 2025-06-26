@@ -81,6 +81,11 @@ const Help: FC = () => {
           <Text bold>-m, --message</Text> Send a message non-interactively (requires --agent)
         </Text>
       </Box>
+      <Box marginLeft={2}>
+        <Text>
+          <Text bold>-c, --conversationId</Text> Send to existing conversation (requires --agent and --message)
+        </Text>
+      </Box>
     </Box>
   );
 };
