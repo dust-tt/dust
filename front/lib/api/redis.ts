@@ -23,7 +23,8 @@ export type RedisUsageTagsType =
   | "reasoning_generation"
   | "retry_agent_message"
   | "update_authors"
-  | "user_message_events";
+  | "user_message_events"
+  | "workos_session_refresh";
 
 export async function getRedisClient({
   origin,

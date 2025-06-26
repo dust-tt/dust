@@ -14,6 +14,7 @@ import type {
 } from "next";
 
 import config from "@app/lib/api/config";
+import { runOnRedis } from "@app/lib/api/redis";
 import type { RegionType } from "@app/lib/api/regions/config";
 import { config as multiRegionsConfig } from "@app/lib/api/regions/config";
 import { getWorkOS } from "@app/lib/api/workos/client";
@@ -41,57 +42,127 @@ export async function getWorkOSSession(
 ): Promise<SessionWithUser | undefined> {
   const workOSSessionCookie = req.cookies["workos_session"];
   if (workOSSessionCookie) {
-    const {
-      sessionData,
-      organizationId,
-      authenticationMethod,
-      workspaceId,
-      region,
-    } = await unsealData<SessionCookie>(workOSSessionCookie, {
-      password: config.getWorkOSCookiePassword(),
-    });
-    const session = getWorkOS().userManagement.loadSealedSession({
-      sessionData,
-      cookiePassword: config.getWorkOSCookiePassword(),
-    });
+    const result = await getWorkOSSessionFromCookie(workOSSessionCookie);
 
-    try {
-      let r:
-        | AuthenticateWithSessionCookieSuccessResponse
-        | AuthenticateWithSessionCookieFailedResponse
-        | RefreshSessionResponse = await session.authenticate();
+    if (result.cookie === "") {
+      res.setHeader("Set-Cookie", [
+        "workos_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax",
+        `sessionType=workos; Path=/; Secure; SameSite=Lax`,
+      ]);
+    } else if (result.cookie) {
+      res.setHeader("Set-Cookie", [
+        `workos_session=${result.cookie}; Path=/; HttpOnly; Secure; SameSite=Lax`,
+        `sessionType=workos; Path=/; Secure; SameSite=Lax`,
+      ]);
+    }
 
-      if (!r.authenticated) {
-        // If authentication fails, try to refresh the session
-        r = await session.refresh({
-          cookiePassword: config.getWorkOSCookiePassword(),
-        });
-        if (r.authenticated) {
-          // Update the session cookie with new session data
-          const sealedCookie = await sealData(
-            {
-              sessionData: r.sealedSession,
-              organizationId,
-              authenticationMethod,
-              region,
-              workspaceId,
-            },
-            {
-              password: config.getWorkOSCookiePassword(),
-            }
-          );
+    return result.session;
+  }
 
-          // Set the new cookie
-          res.setHeader("Set-Cookie", [
-            `workos_session=${sealedCookie}; Path=/; HttpOnly; Secure;SameSite=Lax; Max-Age=86400`,
-            `sessionType=workos; Path=/; Secure;SameSite=Lax; Max-Age=86400`,
-          ]);
-        } else {
-          return undefined;
+  return undefined;
+}
+
+export async function getWorkOSSessionFromCookie(
+  workOSSessionCookie: string
+): Promise<{
+  cookie: string | undefined;
+  session: SessionWithUser | undefined;
+}> {
+  const {
+    sessionData,
+    organizationId,
+    authenticationMethod,
+    workspaceId,
+    region,
+  } = await unsealData<SessionCookie>(workOSSessionCookie, {
+    password: config.getWorkOSCookiePassword(),
+  });
+  const session = getWorkOS().userManagement.loadSealedSession({
+    sessionData,
+    cookiePassword: config.getWorkOSCookiePassword(),
+  });
+
+  let newCookie: string | undefined;
+
+  try {
+    let r:
+      | AuthenticateWithSessionCookieSuccessResponse
+      | AuthenticateWithSessionCookieFailedResponse
+      | RefreshSessionResponse = await session.authenticate();
+
+    if (!r.authenticated) {
+      const cachedCookie = await runOnRedis(
+        { origin: "workos_session_refresh" },
+        async (redisCli) => {
+          return redisCli.get(`workos_session_refresh:${workOSSessionCookie}`);
         }
+      );
+
+      if (cachedCookie) {
+        return await getWorkOSSessionFromCookie(cachedCookie);
       }
 
-      return {
+      // If authentication fails, try to refresh the session
+      r = await session.refresh({
+        cookiePassword: config.getWorkOSCookiePassword(),
+      });
+      if (r.authenticated) {
+        // Update the session cookie with new session data
+        const sealedCookie = await sealData(
+          {
+            sessionData: r.sealedSession,
+            organizationId,
+            authenticationMethod,
+            region,
+            workspaceId,
+          },
+          {
+            password: config.getWorkOSCookiePassword(),
+          }
+        );
+
+        newCookie = sealedCookie;
+
+        // Cache the new sealed cookie in Redis using the previous cookie as key
+        try {
+          await runOnRedis(
+            { origin: "workos_session_refresh" },
+            async (redisCli) => {
+              await redisCli.set(
+                `workos_session_refresh:${workOSSessionCookie}`,
+                sealedCookie,
+                {
+                  PX: 3600 * 1000,
+                }
+              );
+            }
+          );
+        } catch (cacheError) {
+          logger.error(
+            { error: cacheError },
+            "Failed to cache refreshed WorkOS session cookie in Redis"
+          );
+          // Continue execution even if caching fails
+        }
+      } else {
+        logger.info(
+          {
+            refreshResponse: r.reason,
+            workOSSessionCookie: workOSSessionCookie.substring(0, 15),
+          },
+          "Can't refresh session"
+        );
+
+        return {
+          cookie: "",
+          session: undefined,
+        };
+      }
+    }
+
+    return {
+      cookie: newCookie,
+      session: {
         type: "workos" as const,
         sessionId: r.sessionId,
         user: {
@@ -107,11 +178,14 @@ export async function getWorkOSSession(
         workspaceId,
         isSSO: authenticationMethod?.toLowerCase() === "sso",
         authenticationMethod,
-      };
-    } catch (error) {
-      logger.error({ error }, "Session authentication error");
-      return undefined;
-    }
+      },
+    };
+  } catch (error) {
+    logger.error({ error }, "Session authentication error");
+    return {
+      cookie: "",
+      session: undefined,
+    };
   }
 }
 
