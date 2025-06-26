@@ -5,6 +5,7 @@ import type {
   DirectoryUser as WorkOSDirectoryUser,
   RefreshSessionResponse,
   User as WorkOSUser,
+  WorkOS,
 } from "@workos-inc/node";
 import { sealData, unsealData } from "iron-session";
 import type {
@@ -64,7 +65,7 @@ export async function getWorkOSSession(
 
 export async function _getRefreshedCookie(
   workOSSessionCookie: string,
-  session: any,
+  session: ReturnType<WorkOS["userManagement"]["loadSealedSession"]>,
   organizationId: string | undefined,
   authenticationMethod: string | undefined,
   workspaceId: string | undefined,
