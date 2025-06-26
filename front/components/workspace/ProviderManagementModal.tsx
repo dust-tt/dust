@@ -18,7 +18,7 @@ import {
   useSendNotification,
 } from "@dust-tt/sparkle";
 import { isEqual, uniqBy } from "lodash";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
   getModelProviderLogo,
@@ -26,6 +26,7 @@ import {
   USED_MODEL_CONFIGS,
 } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { useWorkspace } from "@app/lib/swr/workspaces";
 import type { ModelProviderIdType, WorkspaceType } from "@app/types";
 import { EMBEDDING_PROVIDER_IDS, MODEL_PROVIDER_IDS } from "@app/types";
 
@@ -66,21 +67,41 @@ export function ProviderManagementModal({
   const { isDark } = useTheme();
   const sendNotifications = useSendNotification();
 
-  const initialProviderStates: ProviderStates = useMemo(() => {
-    const enabledProviders: ModelProviderIdType[] =
-      owner.whiteListedProviders ?? [...MODEL_PROVIDER_IDS];
-    return MODEL_PROVIDER_IDS.reduce((acc, provider) => {
-      acc[provider] = enabledProviders.includes(provider);
-      return acc;
-    }, {} as ProviderStates);
-  }, [owner.whiteListedProviders]);
+  const { workspace, isWorkspaceLoading, mutateWorkspace } = useWorkspace({
+    owner,
+  });
+
+  const [initialProviderStates, setInitialProviderStates] =
+    useState<ProviderStates>({} as ProviderStates);
 
   const [providerStates, setProviderStates] = useState<ProviderStates>(
-    initialProviderStates
+    {} as ProviderStates
   );
-  const [embeddingProvider, setDefaultEmbeddingProvider] = useState(
-    owner.defaultEmbeddingProvider
-  );
+
+  const [initialDefaultEmbeddingProvider, setInitialDefaultEmbeddingProvider] =
+    useState<ModelProviderIdType | null>(null);
+
+  const [embeddingProvider, setDefaultEmbeddingProvider] =
+    useState<ModelProviderIdType | null>(null);
+
+  useEffect(() => {
+    if (!isWorkspaceLoading) {
+      const enabledProviders: ModelProviderIdType[] =
+        workspace?.whiteListedProviders ?? [...MODEL_PROVIDER_IDS];
+      const states = MODEL_PROVIDER_IDS.reduce((acc, provider) => {
+        acc[provider] = enabledProviders.includes(provider);
+        return acc;
+      }, {} as ProviderStates);
+
+      // After a data fetch, we set both the initial and current states
+      setInitialProviderStates(states);
+      setProviderStates(states);
+      setInitialDefaultEmbeddingProvider(
+        workspace?.defaultEmbeddingProvider ?? null
+      );
+      setDefaultEmbeddingProvider(workspace?.defaultEmbeddingProvider ?? null);
+    }
+  }, [isWorkspaceLoading, workspace]);
 
   const allToggleEnabled = useMemo(
     () => Object.values(providerStates).every(Boolean),
@@ -134,6 +155,9 @@ export function ProviderManagementModal({
           title: "Providers Updated",
           description: "The list of providers has been successfully updated.",
         });
+
+        // Retrigger a server fetch after a successful update
+        await mutateWorkspace();
       } catch (error) {
         sendNotifications({
           type: "error",
@@ -146,15 +170,15 @@ export function ProviderManagementModal({
 
   const hasChanges =
     !isEqual(providerStates, initialProviderStates) ||
-    embeddingProvider !== owner.defaultEmbeddingProvider;
+    embeddingProvider !== initialDefaultEmbeddingProvider;
 
   return (
     <Sheet
       onOpenChange={(open) => {
         if (!open) {
-          // Reset states when the sheet is closed
+          // Reset states to the initial states when the sheet is closed without saving
           setProviderStates(initialProviderStates);
-          setDefaultEmbeddingProvider(owner.defaultEmbeddingProvider);
+          setDefaultEmbeddingProvider(initialDefaultEmbeddingProvider);
         }
       }}
     >
