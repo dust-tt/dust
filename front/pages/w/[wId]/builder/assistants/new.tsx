@@ -4,10 +4,7 @@ import type { ParsedUrlQuery } from "querystring";
 import AssistantBuilder from "@app/components/assistant_builder/AssistantBuilder";
 import { AssistantBuilderProvider } from "@app/components/assistant_builder/AssistantBuilderContext";
 import { getAccessibleSourcesAndApps } from "@app/components/assistant_builder/server_side_props_helpers";
-import type {
-  AssistantBuilderInitialState,
-  BuilderFlow,
-} from "@app/components/assistant_builder/types";
+import type { BuilderFlow } from "@app/components/assistant_builder/types";
 import { BUILDER_FLOWS } from "@app/components/assistant_builder/types";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { throwIfInvalidAgentConfiguration } from "@app/lib/actions/types/guards";
@@ -128,7 +125,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 
 export default function CreateAssistant({
   dustApps,
-  actions,
   agentConfiguration,
   baseUrl,
   spaces,
