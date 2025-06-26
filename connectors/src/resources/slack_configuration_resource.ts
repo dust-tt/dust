@@ -65,7 +65,7 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
         transaction,
       });
 
-    return SlackConfigurationModel.create(
+    const model = await SlackConfigurationModel.create(
       {
         autoReadChannelPatterns: autoReadChannelPatterns ?? [],
         botEnabled: otherSlackConfigurationWithBotEnabled ? false : true,
@@ -75,6 +75,11 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
         whitelistedDomains,
       },
       { transaction }
+    );
+
+    return new SlackConfigurationResource(
+      SlackConfigurationResource.model,
+      model.get()
     );
   }
 
