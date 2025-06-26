@@ -288,11 +288,12 @@ export async function deleteWorksOSOrganizationWithWorkspace(
     workspaceId,
   });
 
-  const organization =
-    await getWorkOS().organizations.getOrganizationByExternalId(workspaceId);
-
-  if (!organization) {
-    localLogger.warn({ workspaceId }, "No workOSOrganization found");
+  let organization: Organization;
+  try {
+    organization =
+      await getWorkOS().organizations.getOrganizationByExternalId(workspaceId);
+  } catch (err) {
+    localLogger.warn({ workspaceId }, "Can't get workOSOrganization");
     return new Ok(undefined);
   }
 
