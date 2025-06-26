@@ -88,6 +88,7 @@ import {
   removeNulls,
 } from "@app/types";
 import type { TagType } from "@app/types/tag";
+import { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 
 export type DataSourceFilter = {
   parents: { in: string[]; not: string[] } | null;
@@ -1131,7 +1132,7 @@ export async function createAgentActionConfiguration(
   auth: Authenticator,
   action: UnsavedAgentActionConfigurationType,
   agentConfiguration: LightAgentConfigurationType
-): Promise<Result<AgentActionConfigurationType, Error>> {
+): Promise<Result<MCPServerConfigurationType, Error>> {
   const owner = auth.getNonNullableWorkspace();
 
   assert(isServerSideMCPServerConfiguration(action));
