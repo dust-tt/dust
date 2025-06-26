@@ -6,7 +6,10 @@ import { getConversation } from "@app/lib/api/assistant/conversation";
 import { renderConversationForModel } from "@app/lib/api/assistant/preprocessing";
 import { getTextRepresentationFromMessages } from "@app/lib/api/assistant/utils";
 import { default as config } from "@app/lib/api/config";
-import { getDataSources } from "@app/lib/api/data_sources";
+import {
+  getDataSources,
+  softDeleteDataSourceAndLaunchScrubWorkflow,
+} from "@app/lib/api/data_sources";
 import { garbageCollectGoogleDriveDocument } from "@app/lib/api/poke/plugins/data_sources/garbage_collect_google_drive_document";
 import { Authenticator } from "@app/lib/auth";
 import { FREE_UPGRADED_PLAN_CODE } from "@app/lib/plans/plan_codes";
@@ -295,10 +298,38 @@ const dataSource = async (command: string, args: parseArgs.ParsedArgs) => {
 
       return;
     }
+    case "delete": {
+      // It's possible to delete a data source directly from Pokké UI but
+      // it's not accessible for a relocated workspace. This command is there to let us
+      // delete a data source for a relocated workspace.
+      if (!args.wId) {
+        throw new Error("Missing --wId argument");
+      }
+      if (!args.dsId) {
+        throw new Error("Missing --dsId argument");
+      }
+
+      const auth = await Authenticator.internalAdminForWorkspace(args.wId);
+
+      const dataSource = await DataSourceResource.fetchById(auth, args.dsId, {
+        includeDeleted: true,
+      });
+      if (!dataSource) {
+        throw new Error(
+          `DataSource not found: wId='${args.wId}' dsId='${args.dsId}'`
+        );
+      }
+
+      await softDeleteDataSourceAndLaunchScrubWorkflow(auth, dataSource);
+
+      console.log(`Data Source deleted: ${args.dsId}`);
+
+      return;
+    }
 
     default:
       console.log(`Unknown data-source command: ${command}`);
-      console.log("Possible values: `delete`, `scrub`");
+      console.log("Possible values: `delete`, `delete-document`");
   }
 };
 
