@@ -14,17 +14,24 @@ import { ServerSideTracking } from "@app/lib/tracking/server";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { launchUpdateUsageWorkflow } from "@app/temporal/usage_queue/client";
-import type { ActiveRoleType, LightWorkspaceType, Result } from "@app/types";
+import type {
+  ActiveRoleType,
+  LightWorkspaceType,
+  MembershipOriginType,
+  Result,
+} from "@app/types";
 import { Err, Ok } from "@app/types";
 
 export async function createAndLogMembership({
   user,
   workspace,
   role,
+  origin,
 }: {
   user: UserResource;
   workspace: WorkspaceModel | LightWorkspaceType;
   role: ActiveRoleType;
+  origin: MembershipOriginType;
 }) {
   const w =
     workspace instanceof WorkspaceModel
@@ -34,6 +41,7 @@ export async function createAndLogMembership({
     role,
     user,
     workspace: w,
+    origin,
   });
 
   void ServerSideTracking.trackCreateMembership({
@@ -134,6 +142,7 @@ export async function handleMembershipInvite(
       workspace,
       user,
       role: membershipInvite.initialRole,
+      origin: "invited",
     });
   }
 
@@ -216,6 +225,7 @@ export async function handleEnterpriseSignUpFlow(
       workspace,
       user,
       role: pendingMembershipInvitation?.initialRole ?? "user",
+      origin: pendingMembershipInvitation ? "invited" : "provisioned",
     });
   }
 
@@ -311,6 +321,7 @@ export async function handleRegularSignupFlow(
         workspace: existingWorkspace,
         user,
         role: "user",
+        origin: "invited",
       });
     }
 
@@ -321,6 +332,7 @@ export async function handleRegularSignupFlow(
       workspace,
       user,
       role: "admin",
+      origin: "invited",
     });
 
     return new Ok({ flow: null, workspace });
