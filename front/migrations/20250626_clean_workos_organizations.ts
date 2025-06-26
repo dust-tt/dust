@@ -45,64 +45,74 @@ WHERE
 
     logger.info(`${domains.length} found`);
 
-    const records: Record<string, any>[] = [];
-
     const workOS = getWorkOS();
 
     if (execute) {
       logger.info("Will execute");
     }
 
-    for (const domain of domains) {
-      const domainRecord: Record<string, any> = domain;
+    const records = await concurrentExecutor(
+      domains,
+      async (domain) => {
+        const domainRecord: Record<string, any> = domain;
 
-      try {
-        if (execute) {
-          // Remove the domain data.
-          await workOS.organizations.updateOrganization({
-            organization: domain.workOSOrganizationId,
-            domainData: [],
-            metadata: {
-              // Add a metadata to trigger the webhook.
-              cleanDomain: format(new Date(), "PPP"),
-            },
-          });
-
-          // Fetch all organization memberships.
-          const memberships =
-            await workOS.userManagement.listOrganizationMemberships({
-              organizationId: domain.workOSOrganizationId,
-              limit: 100,
+        try {
+          if (execute) {
+            // Remove the domain data.
+            await workOS.organizations.updateOrganization({
+              organization: domain.workOSOrganizationId,
+              domainData: [],
+            });
+            // Add a second update, for a weird reason doing both doesn't work
+            await workOS.organizations.updateOrganization({
+              organization: domain.workOSOrganizationId,
+              metadata: {
+                // Add a metadata to trigger the webhook.
+                cleanDomain: format(new Date(), "PPP"),
+              },
             });
 
-          domainRecord.memberships = memberships.data.length;
+            // Fetch all organization memberships.
+            const memberships =
+              await workOS.userManagement.listOrganizationMemberships({
+                organizationId: domain.workOSOrganizationId,
+                limit: 100,
+              });
 
-          // Remove all.
-          await concurrentExecutor(
-            memberships.data,
-            async (membership) =>
-              workOS.userManagement.deleteOrganizationMembership(membership.id),
-            { concurrency: 10 }
-          );
-        } else {
-          // If we don't execute, we still want to get some information
-          await workOS.organizations.getOrganization(
-            domain.workOSOrganizationId
-          );
+            domainRecord.memberships = memberships.data.length;
 
-          const memberships =
-            await workOS.userManagement.listOrganizationMemberships({
-              organizationId: domain.workOSOrganizationId,
-              limit: 100,
-            });
-          domainRecord.memberships = memberships.data.length;
+            // Remove all.
+            await concurrentExecutor(
+              memberships.data,
+              async (membership) =>
+                workOS.userManagement.deleteOrganizationMembership(
+                  membership.id
+                ),
+              { concurrency: 10 }
+            );
+          } else {
+            // If we don't execute, we still want to get some information
+            await workOS.organizations.getOrganization(
+              domain.workOSOrganizationId
+            );
+
+            const memberships =
+              await workOS.userManagement.listOrganizationMemberships({
+                organizationId: domain.workOSOrganizationId,
+                limit: 100,
+              });
+            domainRecord.memberships = memberships.data.length;
+          }
+        } catch (err) {
+          domainRecord.missingOrg = true;
         }
-      } catch (err) {
-        domainRecord.missingOrg = true;
-      }
 
-      records.push(domainRecord);
-    }
+        return domainRecord;
+      },
+      {
+        concurrency: 5,
+      }
+    );
 
     if (file) {
       writeFileSync(file, stringify(records));
