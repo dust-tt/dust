@@ -321,7 +321,7 @@ export async function handleRegularSignupFlow(
         workspace: existingWorkspace,
         user,
         role: "user",
-        origin: "invited",
+        origin: "auto-joined",
       });
     }
 
