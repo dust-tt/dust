@@ -56,10 +56,13 @@ async function updateMembershipOriginsForWorkspace(
         : "auto-joined";
 
       if (execute) {
-        await membership.model.update(
-          { origin },
-          { where: { id: membership.id } }
-        );
+        // "invited" is the default value.
+        if (origin !== "invited") {
+          await membership.model.update(
+            { origin },
+            { where: { id: membership.id } }
+          );
+        }
         workspaceLogger.info(
           `Set membership ${membership.id} (user ${membership.userId}) origin to: ${origin}`
         );
