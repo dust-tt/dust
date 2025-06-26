@@ -185,6 +185,7 @@ function createOutputItem(
 async function migrateSingleRetrievalAction(
   auth: Authenticator,
   dustAppsWorkspaceAuth: Authenticator,
+  agentMessage: AgentMessage,
   retrievalAction: AgentRetrievalAction,
   agentConfiguration: AgentConfiguration | null,
   logger: Logger,
@@ -222,7 +223,7 @@ async function migrateSingleRetrievalAction(
 
   // Step 2.2: Fetch in dust-apps workspace as well. This is required to cover for the usage of
   // `@help` agent that relies on public data sources.
-  if (agentConfiguration?.sId === GLOBAL_AGENTS_SID["HELPER"]) {
+  if (agentMessage.agentConfigurationId === GLOBAL_AGENTS_SID["HELPER"]) {
     const dustAppsDocumentRetrievalsWithChunks =
       await RetrievalDocumentResource.listAllForActions(dustAppsWorkspaceAuth, [
         retrievalAction.id,
@@ -387,6 +388,7 @@ async function migrateWorkspaceRetrievalActions(
         await migrateSingleRetrievalAction(
           auth,
           dustAppsWorkspaceAuth,
+          agentMessage,
           retrievalAction,
           agentConfiguration ?? null,
           logger,
