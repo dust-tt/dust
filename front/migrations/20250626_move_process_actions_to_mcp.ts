@@ -1,16 +1,15 @@
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import * as assert from "assert";
 import type { Logger } from "pino";
 import type { CreationAttributes } from "sequelize";
 import { Op } from "sequelize";
 
 import { DEFAULT_CONVERSATION_EXTRACT_ACTION_NAME } from "@app/lib/actions/constants";
-import type { ActionBaseParams } from "@app/lib/actions/mcp";
 import type {
   ExtractQueryResourceType,
   ExtractResultResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { ProcessActionOutputsType } from "@app/lib/actions/process";
+import type { ActionGeneratedFileType } from "@app/lib/actions/types";
 import { getWorkspaceInfos } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
 import {
@@ -27,6 +26,21 @@ import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import type { LightWorkspaceType, ModelId, TimeFrame } from "@app/types";
 import { isGlobalAgentId } from "@app/types";
+
+// TODO: Remove this once PR #13832 is merged and ActionBaseParams is exported.
+// This is based on the MCPActionType class structure.
+type ActionBaseParams = {
+  agentMessageId: ModelId;
+  functionCallId: string | null;
+  functionCallName: string | null;
+  generatedFiles: ActionGeneratedFileType[];
+  mcpServerConfigurationId: string;
+  params: Record<string, unknown>;
+  step: number;
+  workspaceId: ModelId;
+  createdAt: Date;
+  updatedAt: Date;
+};
 
 const WORKSPACE_CONCURRENCY = 50;
 const BATCH_SIZE = 200;
@@ -48,14 +62,14 @@ function getTimeFrameUnit(processAction: AgentProcessAction): TimeFrame | null {
   return null;
 }
 
-function agentProcessActionToAgentMCPAction(
+async function agentProcessActionToAgentMCPAction(
   processAction: AgentProcessAction,
   agentConfiguration: AgentConfiguration | null,
   mcpServerViewForExtractId: ModelId,
   logger: Logger
-): {
+): Promise<{
   action: ActionBaseParams & CreationAttributes<AgentMCPAction>;
-} {
+}> {
   logger.info(
     {
       mcpServerViewForExtractId,
@@ -63,10 +77,18 @@ function agentProcessActionToAgentMCPAction(
     "Found MCP server view ID for extract_data"
   );
 
-  const extractMcpServerConfiguration =
-    agentConfiguration?.mcpServerConfigurations.find(
-      (config) => config.mcpServerViewId === mcpServerViewForExtractId
-    );
+  // TODO: Once PR #13832 is merged, use agentConfiguration.mcpServerConfigurations
+  // For now, we'll fetch the MCP server configuration separately.
+  let extractMcpServerConfiguration = null;
+  if (agentConfiguration) {
+    const configs = await AgentMCPServerConfiguration.findAll({
+      where: {
+        agentConfigurationId: agentConfiguration.id,
+        mcpServerViewId: mcpServerViewForExtractId,
+      },
+    });
+    extractMcpServerConfiguration = configs[0] || null;
+  }
 
   const isJITServerAction =
     processAction.functionCallName === DEFAULT_CONVERSATION_EXTRACT_ACTION_NAME;
@@ -99,7 +121,14 @@ function agentProcessActionToAgentMCPAction(
       createdAt: processAction.createdAt,
       updatedAt: processAction.updatedAt,
       generatedFiles: processAction.jsonFileId
-        ? [{ id: processAction.jsonFileId }]
+        ? [
+            {
+              fileId: processAction.jsonFileId.toString(),
+              title: "Extracted Data",
+              contentType: "application/json",
+              snippet: null,
+            },
+          ]
         : [],
       mcpServerConfigurationId,
       params: {
@@ -170,7 +199,7 @@ function createResultOutputItem(
     mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.EXTRACT_RESULT,
     text: extractResult,
     uri: `https://dust.tt/api/v1/w/${auth.getNonNullableWorkspace().sId}/files/${processAction.jsonFileId}`,
-    fileId: processAction.jsonFileId,
+    fileId: processAction.jsonFileId.toString(),
     title: "Extracted Data",
     contentType: "application/json",
     snippet:
@@ -204,7 +233,7 @@ async function migrateSingleProcessAction(
     mcpServerViewForExtractId: ModelId;
   }
 ) {
-  const mcpAction = agentProcessActionToAgentMCPAction(
+  const mcpAction = await agentProcessActionToAgentMCPAction(
     processAction,
     agentConfiguration ?? null,
     mcpServerViewForExtractId,
@@ -246,7 +275,9 @@ async function migrateWorkspaceProcessActions(
       "extract_data"
     );
 
-  assert(mcpServerViewForExtract, "Extract data MCP server view must exist");
+  if (!mcpServerViewForExtract) {
+    throw new Error("Extract data MCP server view must exist");
+  }
 
   let hasMore = false;
   do {
@@ -283,12 +314,6 @@ async function migrateWorkspaceProcessActions(
         },
         workspaceId: workspace.id,
       },
-      include: [
-        {
-          model: AgentMCPServerConfiguration,
-          as: "mcpServerConfigurations",
-        },
-      ],
     });
 
     const agentConfigurationsMap = new Map(
@@ -306,16 +331,19 @@ async function migrateWorkspaceProcessActions(
       processActions,
       async (processAction) => {
         const agentMessage = agentMessagesMap.get(processAction.agentMessageId);
-        assert(agentMessage, "Agent message must exist");
+        if (!agentMessage) {
+          throw new Error("Agent message must exist");
+        }
 
         const agentConfiguration = agentConfigurationsMap.get(
           `${agentMessage.agentConfigurationId}-${agentMessage.agentConfigurationVersion}`
         );
-        assert(
-          agentConfiguration ||
-            isGlobalAgentId(agentMessage.agentConfigurationId),
-          "Agent configuration must exist"
-        );
+        if (
+          !agentConfiguration &&
+          !isGlobalAgentId(agentMessage.agentConfigurationId)
+        ) {
+          throw new Error("Agent configuration must exist");
+        }
 
         await migrateSingleProcessAction(
           auth,
