@@ -2,6 +2,7 @@ import _ from "lodash";
 import type { Attributes, CreationAttributes, Transaction } from "sequelize";
 import { Op } from "sequelize";
 import type Stripe from "stripe";
+import SuperJSON from "superjson";
 
 import { sendProactiveTrialCancelledEmail } from "@app/lib/api/email";
 import { getWorkspaceInfos } from "@app/lib/api/workspace";
@@ -34,6 +35,7 @@ import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+import { cacheWithRedis } from "@app/lib/utils/cache";
 import { getWorkspaceFirstAdmin } from "@app/lib/workspace";
 import { checkWorkspaceActivity } from "@app/lib/workspace_usage";
 import logger from "@app/logger/logger";
@@ -90,6 +92,19 @@ export class SubscriptionResource extends BaseResource<Subscription> {
     return res[workspace.sId];
   }
 
+  static async fetchActiveByWorkspaceCache(workspace: LightWorkspaceType) {
+    const res = await cacheWithRedis(
+      this.fetchActiveByWorkspaces,
+      () => workspace.sId,
+      {
+        ttlMs: 120_000, // 2min
+        prefix: `${SubscriptionResource.prototype.className()}:w:${workspace.sId}`,
+      }
+    )([workspace]);
+
+    return res[workspace.sId];
+  }
+
   static async fetchActiveByWorkspaces(
     workspaces: LightWorkspaceType[],
     transaction?: Transaction
@@ -97,7 +112,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
     const workspaceModelBySid = _.keyBy(workspaces, "sId");
 
     const activeSubscriptionByWorkspaceId = _.keyBy(
-      await this.model.findAll({
+      await SubscriptionResource.model.findAll({
         attributes: [
           "endDate",
           "id",
@@ -157,7 +172,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
       subscriptionResourceByWorkspaceSid[sId] = new SubscriptionResource(
         Subscription,
         activeSubscription?.get() ||
-          this.createFreeNoPlanSubscription(workspace),
+          SubscriptionResource.createFreeNoPlanSubscription(workspace),
         renderPlanFromModel({ plan })
       );
     }
@@ -457,6 +472,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
           },
         }
       );
+      // WARN: probably invalidate all cache keys here in case
       return;
     }
 
@@ -721,13 +737,12 @@ export class SubscriptionResource extends BaseResource<Subscription> {
    */
   private static async endActiveSubscription(
     workspace: LightWorkspaceType
-  ): Promise<Subscription | null> {
+  ): Promise<SubscriptionResource | null> {
     const now = new Date();
 
     // Find active subscription
-    const activeSubscription = await Subscription.findOne({
-      where: { workspaceId: workspace.id, status: "active" },
-    });
+    const activeSubscription =
+      await SubscriptionResource.fetchActiveByWorkspace(workspace);
 
     if (activeSubscription) {
       await frontSequelize.transaction(async (t) => {
@@ -741,7 +756,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
             status: endedStatus,
             endDate: now,
           },
-          { transaction: t }
+          t
         );
       });
 
@@ -775,3 +790,5 @@ export class SubscriptionResource extends BaseResource<Subscription> {
     );
   }
 }
+
+SuperJSON.registerClass(SubscriptionResource);

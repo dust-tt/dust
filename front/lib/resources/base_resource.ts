@@ -1,3 +1,4 @@
+import snakeCase from "lodash/snakeCase";
 import type {
   Attributes,
   Model,
@@ -103,11 +104,7 @@ export abstract class BaseResource<M extends Model & ResourceWithId> {
    * MCPServerViewResource -> mcp_server_view
    */
   className(): string {
-    return this.constructor.name
-      .replace(/Resource$/, "") // Remove 'Resource' suffix
-      .replace(/([A-Z]+)([A-Z][a-z])/g, "$1_$2") // handle UPPERCASE followed by Titlecase
-      .replace(/([a-z])([A-Z])/g, "$1_$2") // handle normal camelCase
-      .toLowerCase();
+    return snakeCase(this.constructor.name.replace(/Resource$/, ""));
   }
 
   /**
