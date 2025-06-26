@@ -154,7 +154,7 @@ export default function CreateAssistant({
         initialBuilderState={
           agentConfiguration
             ? {
-                actions,
+                actions: [],
                 scope:
                   agentConfiguration.scope !== "global"
                     ? agentConfiguration.scope
