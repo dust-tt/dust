@@ -8,6 +8,7 @@ import {
 } from "@app/lib/iam/session";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
 import type { UserTypeWithWorkspaces } from "@app/types";
 
@@ -50,13 +51,15 @@ export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
       ? context.query.flow
       : null;
 
-  let workspace: WorkspaceModel | null = null;
+  let workspace: WorkspaceResource | null = null;
   let workspaceVerifiedDomain: string | null = null;
   let status: "auto-join-disabled" | "revoked";
   if (flow === "no-auto-join") {
     status = "auto-join-disabled";
     const workspaceHasDomain = await fetchWorkspaceDetails(user);
-    workspace = workspaceHasDomain?.workspace ?? null;
+    workspace = workspaceHasDomain?.workspace
+      ? await WorkspaceResource.makeNew(workspaceHasDomain.workspace.get())
+      : null;
     workspaceVerifiedDomain = workspaceHasDomain?.domain ?? null;
 
     if (!workspace || !workspaceVerifiedDomain) {

@@ -20,10 +20,10 @@ import { KeyResource } from "@app/lib/resources/key_resource";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { tokenCountForTexts } from "@app/lib/tokenization";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
@@ -48,7 +48,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
         throw new Error("Missing --name argument");
       }
 
-      const w = await WorkspaceModel.create({
+      const w = await WorkspaceResource.makeNew({
         sId: generateRandomModelSId(),
         name: args.name,
       });
@@ -75,11 +75,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
         throw new Error("Missing --wId argument");
       }
 
-      const w = await WorkspaceModel.findOne({
-        where: {
-          sId: `${args.wId}`,
-        },
-      });
+      const w = await WorkspaceResource.fetchById(args.wId);
       if (!w) {
         throw new Error(`Workspace not found: wId='${args.wId}'`);
       }
@@ -98,11 +94,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
         throw new Error("Missing --wId argument");
       }
 
-      const w = await WorkspaceModel.findOne({
-        where: {
-          sId: `${args.wId}`,
-        },
-      });
+      const w = await WorkspaceResource.fetchById(args.wId);
       if (!w) {
         throw new Error(`Workspace not found: wId='${args.wId}'`);
       }
@@ -125,11 +117,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
 
       for (const wId of wIds) {
         console.log(`Pausing connectors for workspace: wId=${wId}`);
-        const w = await WorkspaceModel.findOne({
-          where: {
-            sId: `${wId}`,
-          },
-        });
+        const w = await WorkspaceResource.fetchById(wId);
         if (!w) {
           throw new Error(`Workspace not found: wId='${args.wId}'`);
         }
@@ -164,11 +152,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
       const wIds: string[] = args.wIds ? args.wIds.split(",") : [args.wId];
 
       for (const wId of wIds) {
-        const w = await WorkspaceModel.findOne({
-          where: {
-            sId: `${wId}`,
-          },
-        });
+        const w = await WorkspaceResource.fetchById(wId);
         if (!w) {
           throw new Error(`Workspace not found: wId='${args.wId}'`);
         }
@@ -238,11 +222,9 @@ const user = async (command: string, args: parseArgs.ParsedArgs) => {
         users: [u],
       });
 
-      const workspaces = await WorkspaceModel.findAll({
-        where: {
-          id: memberships.map((m) => m.workspaceId),
-        },
-      });
+      const workspaces = await WorkspaceResource.fetchByModelIds(
+        memberships.map((m) => m.workspaceId)
+      );
 
       console.log(`  workspaces:`);
 
@@ -493,7 +475,7 @@ const transcripts = async (command: string, args: parseArgs.ParsedArgs) => {
       logger.info(
         `Pausing all LabsTranscripts workflows and recording active ones... (activeIdsFile: ${activeIdsFile})`
       );
-      const allWorkspaces = await WorkspaceModel.findAll();
+      const allWorkspaces = await WorkspaceResource.listAll();
       const activeConfigSIds: string[] = [];
       for (const ws of allWorkspaces) {
         const configs =
