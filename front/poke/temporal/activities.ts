@@ -7,6 +7,7 @@ import { getAuth0ManagemementClient } from "@app/lib/api/auth0";
 import config from "@app/lib/api/config";
 import { hardDeleteDataSource } from "@app/lib/api/data_sources";
 import { hardDeleteSpace } from "@app/lib/api/spaces";
+import { deleteWorksOSOrganizationWithWorkspace } from "@app/lib/api/workos/organization";
 import {
   areAllSubscriptionsCanceled,
   isWorkspaceRelocationDone,
@@ -873,4 +874,14 @@ export async function deleteTagsActivity({
   for (const tag of tags) {
     await tag.delete(auth);
   }
+}
+
+export async function deleteWorkOSOrganization({
+  workspaceId,
+}: {
+  workspaceId: string;
+}) {
+  const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
+  const owner = auth.getNonNullableWorkspace();
+  await deleteWorksOSOrganizationWithWorkspace(owner);
 }
