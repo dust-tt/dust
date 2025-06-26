@@ -1,13 +1,21 @@
 import { createContext, useState } from "react";
 import { useEffect } from "react";
 
+import { DataSourceViewsProvider } from "@app/components/assistant_builder/contexts/DataSourceViewsContext";
 import { mcpServerViewSortingFn } from "@app/lib/actions/mcp_helper";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import type { AppType, DataSourceViewType, SpaceType } from "@app/types";
+import type { AppType, SpaceType, WorkspaceType } from "@app/types";
+
+interface AssistantBuilderProviderProps {
+  owner: WorkspaceType;
+  dustApps: AppType[];
+  spaces: SpaceType[];
+  mcpServerViews: MCPServerViewType[];
+  children: React.ReactNode;
+}
 
 type AssistantBuilderContextType = {
   dustApps: AppType[];
-  dataSourceViews: DataSourceViewType[];
   spaces: SpaceType[];
   mcpServerViews: MCPServerViewType[];
   isPreviewPanelOpen: boolean;
@@ -17,7 +25,6 @@ type AssistantBuilderContextType = {
 export const AssistantBuilderContext =
   createContext<AssistantBuilderContextType>({
     dustApps: [],
-    dataSourceViews: [],
     spaces: [],
     mcpServerViews: [],
     isPreviewPanelOpen: true,
@@ -26,16 +33,11 @@ export const AssistantBuilderContext =
 
 export function AssistantBuilderProvider({
   dustApps,
-  dataSourceViews,
   spaces,
   mcpServerViews,
+  owner,
   children,
-}: Omit<
-  AssistantBuilderContextType,
-  "isPreviewPanelOpen" | "setIsPreviewPanelOpen"
-> & {
-  children: React.ReactNode;
-}) {
+}: AssistantBuilderProviderProps) {
   const [isPreviewPanelOpen, setIsPreviewPanelOpen] = useState(() => {
     if (typeof window === "undefined") {
       return false;
@@ -58,14 +60,15 @@ export function AssistantBuilderProvider({
     <AssistantBuilderContext.Provider
       value={{
         dustApps,
-        dataSourceViews,
         spaces,
         mcpServerViews: mcpServerViews.sort(mcpServerViewSortingFn),
         isPreviewPanelOpen,
         setIsPreviewPanelOpen,
       }}
     >
-      {children}
+      <DataSourceViewsProvider owner={owner}>
+        {children}
+      </DataSourceViewsProvider>
     </AssistantBuilderContext.Provider>
   );
 }

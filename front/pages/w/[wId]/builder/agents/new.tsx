@@ -3,14 +3,9 @@ import type { ParsedUrlQuery } from "querystring";
 
 import AgentBuilder from "@app/components/agent_builder/AgentBuilder";
 import { AgentBuilderProvider } from "@app/components/agent_builder/AgentBuilderContext";
-import {
-  buildInitialActions,
-  getAccessibleSourcesAndApps,
-} from "@app/components/assistant_builder/server_side_props_helpers";
-import type {
-  AssistantBuilderInitialState,
-  BuilderFlow,
-} from "@app/components/assistant_builder/types";
+import { DataSourceViewsProvider } from "@app/components/assistant_builder/contexts/DataSourceViewsContext";
+import { getAccessibleSourcesAndApps } from "@app/components/assistant_builder/server_side_props_helpers";
+import type { BuilderFlow } from "@app/components/assistant_builder/types";
 import { BUILDER_FLOWS } from "@app/components/assistant_builder/types";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { throwIfInvalidAgentConfiguration } from "@app/lib/actions/types/guards";
@@ -23,7 +18,7 @@ import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useAssistantTemplate } from "@app/lib/swr/assistants";
 import type {
   AgentConfigurationType,
-  DataSourceViewType,
+  AppType,
   PlanType,
   SpaceType,
   SubscriptionType,
@@ -46,9 +41,8 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   subscription: SubscriptionType;
   plan: PlanType;
   spaces: SpaceType[];
-  dataSourceViews: DataSourceViewType[];
+  dustApps: AppType[];
   mcpServerViews: MCPServerViewType[];
-  actions: AssistantBuilderInitialState["actions"];
   agentConfiguration:
     | AgentConfigurationType
     | TemplateAgentConfigurationType
@@ -79,7 +73,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
-  const { spaces, dataSourceViews, dustApps, mcpServerViews } =
+  const { spaces, dustApps, mcpServerViews } =
     await getAccessibleSourcesAndApps(auth);
 
   const flow: BuilderFlow = BUILDER_FLOWS.includes(
@@ -121,21 +115,12 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     configuration = agentConfigRes.value;
   }
 
-  const actions = configuration
-    ? await buildInitialActions({
-        dataSourceViews,
-        configuration,
-      })
-    : [];
-
   const mcpServerViewsJSON = mcpServerViews.map((v) => v.toJSON());
 
   return {
     props: {
-      actions,
       agentConfiguration: configuration,
       baseUrl: config.getClientFacingUrl(),
-      dataSourceViews: dataSourceViews.map((v) => v.toJSON()),
       dustApps: dustApps.map((a) => a.toJSON()),
       mcpServerViews: mcpServerViewsJSON,
       flow,
@@ -151,7 +136,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 export default function CreateAgent({
   agentConfiguration,
   spaces,
-  dataSourceViews,
   mcpServerViews,
   owner,
   templateId,
@@ -169,11 +153,12 @@ export default function CreateAgent({
   return (
     <AgentBuilderProvider
       spaces={spaces}
-      dataSourceViews={dataSourceViews}
       mcpServerViews={mcpServerViews}
       owner={owner}
     >
-      <AgentBuilder />
+      <DataSourceViewsProvider owner={owner}>
+        <AgentBuilder />
+      </DataSourceViewsProvider>
     </AgentBuilderProvider>
   );
 }

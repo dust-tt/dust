@@ -34,18 +34,39 @@ export const getAccessibleSourcesAndApps = async (auth: Authenticator) => {
       await SpaceResource.listWorkspaceSpaces(auth)
     ).filter((space) => !space.isSystem() && space.canRead(auth));
 
-    const [dsViews, allDustApps, allMCPServerViews] = await Promise.all([
-      DataSourceViewResource.listBySpaces(auth, accessibleSpaces, {
-        includeEditedBy: true,
-      }),
+    const [allDustApps, allMCPServerViews] = await Promise.all([
       AppResource.listByWorkspace(auth),
       MCPServerViewResource.listBySpaces(auth, accessibleSpaces),
     ]);
 
     return {
       spaces: accessibleSpaces,
-      dataSourceViews: dsViews,
       dustApps: allDustApps,
+      mcpServerViews: allMCPServerViews,
+    };
+  });
+};
+
+// We are moving resource fetch to the client side. Until we finish,
+// we will keep this duplicated version for fetching actions.
+export const getAccessibleSourcesAndAppsForActions = async (
+  auth: Authenticator
+) => {
+  return tracer.trace("getAccessibleSourcesAndAppsForActions", async () => {
+    const accessibleSpaces = (
+      await SpaceResource.listWorkspaceSpaces(auth)
+    ).filter((space) => !space.isSystem() && space.canRead(auth));
+
+    const [dsViews, allMCPServerViews] = await Promise.all([
+      DataSourceViewResource.listBySpaces(auth, accessibleSpaces, {
+        includeEditedBy: true,
+      }),
+      MCPServerViewResource.listBySpaces(auth, accessibleSpaces),
+    ]);
+
+    return {
+      spaces: accessibleSpaces,
+      dataSourceViews: dsViews,
       mcpServerViews: allMCPServerViews,
     };
   });
