@@ -7,6 +7,7 @@ import { getAuth0ManagemementClient } from "@app/lib/api/auth0";
 import config from "@app/lib/api/config";
 import { hardDeleteDataSource } from "@app/lib/api/data_sources";
 import { hardDeleteSpace } from "@app/lib/api/spaces";
+import { deleteWorksOSOrganizationWithWorkspace } from "@app/lib/api/workos/organization";
 import {
   areAllSubscriptionsCanceled,
   isWorkspaceRelocationDone,
@@ -50,13 +51,12 @@ import {
   AgentUserRelation,
   GlobalAgentSettings,
 } from "@app/lib/models/assistant/agent";
+import { AgentDataRetentionModel } from "@app/lib/models/assistant/agent_data_retention";
 import { TagAgentModel } from "@app/lib/models/assistant/tag_agent";
 import { DustAppSecret } from "@app/lib/models/dust_app_secret";
 import { FeatureFlag } from "@app/lib/models/feature_flag";
 import { MembershipInvitationModel } from "@app/lib/models/membership_invitation";
 import { Subscription } from "@app/lib/models/plan";
-import { Workspace } from "@app/lib/models/workspace";
-import { WorkspaceHasDomainModel } from "@app/lib/models/workspace_has_domain";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -76,6 +76,8 @@ import {
   LabsTranscriptsConfigurationModel,
   LabsTranscriptsHistoryModel,
 } from "@app/lib/resources/storage/models/labs_transcripts";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
+import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { TrackerConfigurationResource } from "@app/lib/resources/tracker_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -340,7 +342,7 @@ export async function deleteAgentsActivity({
     await AgentReasoningAction.destroy({
       where: {
         reasoningConfigurationId: {
-          [Op.in]: reasoningConfigurations.map((r) => r.id),
+          [Op.in]: reasoningConfigurations.map((r) => r.sId),
         },
       },
     });
@@ -823,10 +825,13 @@ export async function deleteWorkspaceActivity({
 
   hardDeleteLogger.info({ workspaceId }, "Deleting Workspace");
 
-  await Workspace.destroy({
+  await WorkspaceModel.destroy({
     where: {
       id: workspace.id,
     },
+  });
+  await AgentDataRetentionModel.destroy({
+    where: { workspaceId: workspace.id },
   });
 }
 
@@ -869,4 +874,14 @@ export async function deleteTagsActivity({
   for (const tag of tags) {
     await tag.delete(auth);
   }
+}
+
+export async function deleteWorkOSOrganization({
+  workspaceId,
+}: {
+  workspaceId: string;
+}) {
+  const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
+  const owner = auth.getNonNullableWorkspace();
+  await deleteWorksOSOrganizationWithWorkspace(owner);
 }

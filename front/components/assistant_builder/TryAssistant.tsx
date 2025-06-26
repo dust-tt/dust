@@ -16,7 +16,6 @@ import type {
   ConversationType,
   LightAgentConfigurationType,
   MentionType,
-  ModelConfigurationType,
   Result,
   UserType,
   WorkspaceType,
@@ -26,13 +25,11 @@ import { Err, Ok } from "@app/types";
 interface UsePreviewAssistantProps {
   owner: WorkspaceType;
   builderState: AssistantBuilderState;
-  reasoningModels: ModelConfigurationType[];
 }
 
 export function usePreviewAssistant({
   owner,
   builderState,
-  reasoningModels,
 }: UsePreviewAssistantProps) {
   const [draftAssistant, setDraftAssistant] =
     useState<LightAgentConfigurationType | null>(null);
@@ -65,11 +62,11 @@ export function usePreviewAssistant({
         },
         agentConfigurationId: null,
         slackData: {
+          provider: "slack_bot",
           selectedSlackChannels: [],
           slackChannelsLinkedWithAgent: [],
         },
         isDraft: true,
-        reasoningModels,
       });
 
       if (!aRes.isOk()) {
@@ -88,13 +85,7 @@ export function usePreviewAssistant({
       setIsSavingDraftAgent(false);
 
       return aRes.value;
-    }, [
-      draftAssistant,
-      owner,
-      builderState,
-      reasoningModels,
-      sendNotification,
-    ]);
+    }, [draftAssistant, owner, builderState, sendNotification]);
 
   useEffect(() => {
     const createDraftAgentIfNeeded = async () => {

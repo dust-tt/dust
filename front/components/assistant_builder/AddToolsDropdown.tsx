@@ -17,15 +17,15 @@ import { useState } from "react";
 
 import type {
   ActionSpecificationWithType,
-  AssistantBuilderActionType,
   AssistantBuilderDataVisualizationType,
+  AssistantBuilderMCPServerType,
   AssistantBuilderSetActionType,
   AssistantBuilderState,
 } from "@app/components/assistant_builder/types";
 import {
   getDataVisualizationActionConfiguration,
-  getDefaultActionConfiguration,
   getDefaultMCPServerActionConfiguration,
+  getDefaultMCPServerConfigurationWithId,
 } from "@app/components/assistant_builder/types";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
@@ -100,7 +100,7 @@ export function AddToolsDropdown({
 
   function onClickDefaultTool(
     actionType:
-      | AssistantBuilderActionType
+      | AssistantBuilderMCPServerType
       | AssistantBuilderDataVisualizationType
   ) {
     setEdited(true);
@@ -117,8 +117,7 @@ export function AddToolsDropdown({
     const defaultAction =
       actionType === "DATA_VISUALIZATION"
         ? getDataVisualizationActionConfiguration()
-        : getDefaultActionConfiguration(actionType);
-    assert(defaultAction);
+        : getDefaultMCPServerConfigurationWithId();
 
     setAction({
       type: defaultAction.noConfigurationRequired ? "insert" : "pending",

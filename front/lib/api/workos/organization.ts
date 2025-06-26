@@ -8,7 +8,7 @@ import assert from "assert";
 
 import { config } from "@app/lib/api/regions/config";
 import { getWorkOS } from "@app/lib/api/workos/client";
-import { Workspace } from "@app/lib/models/workspace";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { WorkOSPortalIntent } from "@app/lib/types/workos";
 import logger from "@app/logger/logger";
 import type { LightWorkspaceType, Result } from "@app/types";
@@ -72,7 +72,7 @@ export async function getOrCreateWorkOSOrganization(
       });
     }
 
-    await Workspace.update(
+    await WorkspaceModel.update(
       {
         workOSOrganizationId: organization.id,
       },
@@ -159,6 +159,18 @@ export async function removeWorkOSOrganizationDomain(
   });
 
   return new Ok(undefined);
+}
+
+export async function listWorkOSOrganizationsWithDomain(
+  domain: string
+): Promise<Organization[]> {
+  const workOS = getWorkOS();
+  const organizations = await workOS.organizations.listOrganizations({
+    domains: [domain],
+    limit: 100,
+  });
+
+  return organizations.data;
 }
 
 // Mapping WorkOSPortalIntent to GeneratePortalLinkIntent,
@@ -266,5 +278,28 @@ export async function deleteWorkOSOrganizationDSyncConnection(
     return new Ok(undefined);
   } catch (error) {
     return new Err(normalizeError(error));
+  }
+}
+
+export async function deleteWorksOSOrganizationWithWorkspace(
+  workspace: LightWorkspaceType
+): Promise<Result<undefined, Error>> {
+  const localLogger = logger.child({
+    workspaceId: workspace.sId,
+  });
+
+  if (!workspace.workOSOrganizationId) {
+    localLogger.warn({ workspaceId: workspace.sId }, "No workOSOrgnizationId");
+    return new Ok(undefined);
+  }
+
+  try {
+    await getWorkOS().organizations.deleteOrganization(
+      workspace.workOSOrganizationId
+    );
+
+    return new Ok(undefined);
+  } catch (err) {
+    return new Err(normalizeError(err));
   }
 }

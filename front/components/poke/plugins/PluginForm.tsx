@@ -19,7 +19,7 @@ import {
   PokeFormUpload,
 } from "@app/components/poke/shadcn/ui/form";
 import type { PokeGetPluginDetailsResponseBody } from "@app/pages/api/poke/plugins/[pluginId]/manifest";
-import type { EnumValues } from "@app/types";
+import type { AsyncEnumValues, EnumValues } from "@app/types";
 import { createIoTsCodecFromArgs } from "@app/types";
 
 type FallbackArgs = Record<string, unknown>;
@@ -28,7 +28,7 @@ type FormValues<T> = T extends t.TypeC<any> ? t.TypeOf<T> : FallbackArgs;
 
 interface PluginFormProps {
   asyncArgs?: Partial<
-    Record<string, string | number | boolean | EnumValues>
+    Record<string, string | number | boolean | AsyncEnumValues | EnumValues>
   > | null;
   disabled?: boolean;
   manifest: PokeGetPluginDetailsResponseBody["manifest"];
@@ -66,13 +66,18 @@ export function PluginForm({
           case "number":
             return [key, 0];
           case "boolean":
-            return [key, false];
+            return [
+              key,
+              arg.async && asyncArgs?.[key] !== undefined
+                ? (asyncArgs[key] as boolean)
+                : false,
+            ];
           default:
             return [key, null];
         }
       })
     );
-  }, [manifest]);
+  }, [manifest, asyncArgs]);
 
   const form = useForm({
     resolver: argsCodec ? ioTsResolver(argsCodec) : undefined,
@@ -137,7 +142,7 @@ export function PluginForm({
                           onValueChange={(value) => field.onChange(value)}
                           options={
                             arg.async && asyncArgs?.[key]
-                              ? (asyncArgs[key] as EnumValues)
+                              ? (asyncArgs[key] as AsyncEnumValues)
                               : arg.values
                           }
                           placeholder="Select value"

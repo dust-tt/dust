@@ -1,3 +1,4 @@
+import assert from "assert";
 import { hash as blake3 } from "blake3/esm/node/hash-fn";
 import { join } from "path";
 
@@ -205,4 +206,102 @@ export function getIssueLabels(
   return labels.map((label) =>
     typeof label === "string" ? label : label.name ?? ""
   );
+}
+
+/**
+ * Build parent relationships from a file path.
+ * For filePath "front/sub/test.ts", returns:
+ * - parents: directory IDs for ["front", "sub"] + [root, repo]
+ * - parentInternalId: directory ID for "sub" (immediate parent)
+ *
+ * For filePath "front/test.ts", returns:
+ * - parents: directory IDs for ["front"] + [root, repo]
+ * - parentInternalId: directory ID for "front"
+ *
+ * For filePath "test.ts", returns:
+ * - parents: [root, repo]
+ * - parentInternalId: null (root level)
+ */
+export function buildDirectoryParents(
+  repoId: number,
+  filePath: string
+): {
+  parentInternalId: string;
+  parents: string[];
+} {
+  const pathParts = filePath.split("/").filter((part) => part.trim() !== "");
+
+  // Remove the filename (last part) to get directory components.
+  const directoryParts = pathParts.slice(0, -1);
+
+  if (directoryParts.length === 0) {
+    // File is at root level.
+    return {
+      parentInternalId: getCodeRootInternalId(repoId),
+      parents: [getCodeRootInternalId(repoId), getRepositoryInternalId(repoId)],
+    };
+  }
+
+  // Add root and repository at the beginning.
+  const parents = [
+    getRepositoryInternalId(repoId),
+    getCodeRootInternalId(repoId),
+  ];
+
+  // Build directory hierarchy from shallowest to deepest
+  // For "front/sub/test.ts" -> directories are ["front", "sub"]
+  // Build: ["front", "sub"]
+  for (let i = 1; i <= directoryParts.length; i++) {
+    const dirPath = directoryParts.slice(0, i).join("/");
+    parents.push(getCodeDirInternalId(repoId, dirPath));
+  }
+
+  // Reverse to get deepest first: ["sub", "front"].
+  parents.reverse();
+
+  // The parentInternalId is the immediate parent directory (deepest directory).
+  const immediateParentPath = directoryParts.join("/");
+  const parentInternalId = getCodeDirInternalId(repoId, immediateParentPath);
+
+  return {
+    parentInternalId,
+    parents,
+  };
+}
+
+// Helper function to infer parent relationships from GCS path.
+export function inferParentsFromGcsPath({
+  gcsBasePath,
+  gcsPath,
+  repoId,
+}: {
+  gcsBasePath: string;
+  gcsPath: string;
+  repoId: number;
+}): {
+  parentInternalId: string;
+  parents: string[];
+  fileName: string;
+  relativePath: string;
+} {
+  const relativePath = gcsPath.replace(`${gcsBasePath}/`, "");
+  const pathParts = relativePath.split("/");
+  const fileName = pathParts[pathParts.length - 1];
+  assert(fileName, "File name is required");
+
+  // Build parents using the full file path.
+  const { parentInternalId, parents: directoryParents } = buildDirectoryParents(
+    repoId,
+    relativePath
+  );
+
+  const fileDocumentId = getCodeFileInternalId(repoId, relativePath);
+
+  return {
+    parentInternalId,
+    // Add the file document id first, then the directory parents.
+    parents: [fileDocumentId, ...directoryParents],
+    fileName,
+    relativePath,
+  };
 }

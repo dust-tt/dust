@@ -1,5 +1,6 @@
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import assert from "assert";
 import { z } from "zod";
 
@@ -12,15 +13,23 @@ import type {
   SearchResultResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
+  findTagsSchema,
+  makeFindTagsDescription,
+  makeFindTagsTool,
+} from "@app/lib/actions/mcp_internal_actions/servers/common/find_tags_tool";
+import { makeQueryResource } from "@app/lib/actions/mcp_internal_actions/servers/search/utils";
+import {
+  checkConflictingTags,
   fetchAgentDataSourceConfiguration,
   getCoreSearchArgs,
   parseDataSourceConfigurationURI,
-  renderRelativeTimeFrameForToolOutput,
+  shouldAutoGenerateTags,
 } from "@app/lib/actions/mcp_internal_actions/servers/utils";
 import {
   makeMCPToolRecoverableErrorSuccess,
   makeMCPToolTextError,
 } from "@app/lib/actions/mcp_internal_actions/utils";
+import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { actionRefsOffset, getRetrievalTopK } from "@app/lib/actions/utils";
 import { getRefs } from "@app/lib/api/assistant/citations";
@@ -40,7 +49,6 @@ import type {
   CoreAPIError,
   CoreAPISearchNodesResponse,
   Result,
-  TimeFrame,
 } from "@app/types";
 import {
   assertNever,
@@ -54,6 +62,9 @@ import {
   stripNullBytes,
   timeFrameFromNow,
 } from "@app/types";
+
+const SEARCH_TOOL_NAME = "semantic_search";
+const FILESYSTEM_TOOL_NAME = "filesystem_navigation";
 
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "data_sources_file_system",
@@ -95,6 +106,261 @@ const OPTION_PARAMETERS = {
     ),
 };
 
+const SearchToolInputSchema = z.object({
+  nodeIds: z
+    .array(z.string())
+    .describe(
+      "Array of exact content node IDs to search within. These are the 'nodeId' values from " +
+        "previous search results, which can be folders or files. All children of the designated " +
+        "nodes will be searched. If not provided, all available files and folders will be searched."
+    )
+    .optional(),
+  dataSources:
+    ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE],
+  query: z
+    .string()
+    .describe(
+      "The query to search for. This is a natural language query. It doesn't support any " +
+        "specific filter syntax."
+    ),
+  relativeTimeFrame: z
+    .string()
+    .regex(/^(all|\d+[hdwmy])$/)
+    .describe(
+      "The time frame (relative to LOCAL_TIME) to restrict the search based on the file updated " +
+        "time." +
+        " Possible values are: `all`, `{k}h`, `{k}d`, `{k}w`, `{k}m`, `{k}y`" +
+        " where {k} is a number. Be strict, do not invent invalid values."
+    ),
+});
+
+async function searchCallback(
+  auth: Authenticator,
+  agentLoopContext: AgentLoopContextType | undefined,
+  {
+    nodeIds,
+    dataSources,
+    query,
+    relativeTimeFrame,
+  }: z.infer<typeof SearchToolInputSchema>,
+  { tagsIn, tagsNot }: { tagsIn?: string[]; tagsNot?: string[] } = {}
+): Promise<CallToolResult> {
+  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+  const credentials = dustManagedCredentials();
+  const timeFrame = parseTimeFrame(relativeTimeFrame);
+
+  if (!agentLoopContext?.runContext) {
+    throw new Error(
+      "agentLoopRunContext is required where the tool is called."
+    );
+  }
+
+  // Compute the topK and refsOffset for the search.
+  const topK = getRetrievalTopK({
+    agentConfiguration: agentLoopContext.runContext.agentConfiguration,
+    stepActions: agentLoopContext.runContext.stepActions,
+  });
+  const refsOffset = actionRefsOffset({
+    agentConfiguration: agentLoopContext.runContext.agentConfiguration,
+    stepActionIndex: agentLoopContext.runContext.stepActionIndex,
+    stepActions: agentLoopContext.runContext.stepActions,
+    refsOffset: agentLoopContext.runContext.citationsRefsOffset,
+  });
+
+  const agentDataSourceConfigurationsResult =
+    await getAgentDataSourceConfigurations(auth, dataSources);
+
+  if (agentDataSourceConfigurationsResult.isErr()) {
+    return makeMCPToolTextError(
+      agentDataSourceConfigurationsResult.error.message
+    );
+  }
+  const agentDataSourceConfigurations =
+    agentDataSourceConfigurationsResult.value;
+
+  const coreSearchArgsResults = await concurrentExecutor(
+    dataSources,
+    async (dataSourceConfiguration: DataSourcesToolConfigurationType[number]) =>
+      getCoreSearchArgs(auth, dataSourceConfiguration),
+    { concurrency: 10 }
+  );
+
+  // Set to avoid O(n^2) complexity below.
+  const dataSourceIds = new Set<string>(
+    removeNulls(
+      nodeIds?.map((nodeId: string) => extractDataSourceIdFromNodeId(nodeId)) ??
+        []
+    )
+  );
+
+  const regularNodeIds =
+    nodeIds?.filter((nodeId: string) => !isDataSourceNodeId(nodeId)) ?? [];
+
+  const coreSearchArgs = removeNulls(
+    coreSearchArgsResults.map((res) => {
+      if (!res.isOk() || res.value === null) {
+        return null;
+      }
+      const coreSearchArgs = res.value;
+
+      if (!nodeIds || dataSourceIds.has(coreSearchArgs.dataSourceId)) {
+        // If the agent doesn't provide nodeIds, or if it provides the node id
+        // of this data source, we keep the default filter.
+        return coreSearchArgs;
+      }
+
+      // If there are no regular nodes, then we searched for data sources other than the
+      // current one; so we don't search this data source.
+      if (regularNodeIds.length === 0) {
+        return null;
+      }
+
+      // If there are regular nodes, we filter to search within these nodes.
+      return {
+        ...coreSearchArgs,
+        filter: {
+          ...coreSearchArgs.filter,
+          parents: { in: regularNodeIds, not: [] },
+        },
+      };
+    })
+  );
+
+  if (coreSearchArgs.length === 0) {
+    return makeMCPToolTextError(
+      "Search action must have at least one data source configured."
+    );
+  }
+
+  const conflictingTags = checkConflictingTags(coreSearchArgs, {
+    tagsIn,
+    tagsNot,
+  });
+  if (conflictingTags) {
+    return {
+      isError: false,
+      content: [{ type: "text", text: conflictingTags }],
+    };
+  }
+
+  const searchResults = await coreAPI.searchDataSources(
+    query,
+    topK,
+    credentials,
+    false,
+    coreSearchArgs.map((args) => {
+      // In addition to the tags provided by the user, we add the tags the agent passed.
+      const finalTagsIn = [...(args.filter.tags?.in ?? []), ...(tagsIn ?? [])];
+      const finalTagsNot = [
+        ...(args.filter.tags?.not ?? []),
+        ...(tagsNot ?? []),
+      ];
+
+      return {
+        projectId: args.projectId,
+        dataSourceId: args.dataSourceId,
+        filter: {
+          ...args.filter,
+          tags: {
+            in: finalTagsIn.length > 0 ? finalTagsIn : null,
+            not: finalTagsNot.length > 0 ? finalTagsNot : null,
+          },
+          timestamp: {
+            gt: timeFrame ? timeFrameFromNow(timeFrame) : null,
+            lt: null,
+          },
+        },
+        view_filter: args.view_filter,
+      };
+    })
+  );
+
+  if (searchResults.isErr()) {
+    return makeMCPToolTextError(
+      `Failed to search content: ${searchResults.error.message}`
+    );
+  }
+
+  if (refsOffset + topK > getRefs().length) {
+    return makeMCPToolTextError(
+      "The search exhausted the total number of references available for citations"
+    );
+  }
+
+  const refs = getRefs().slice(refsOffset, refsOffset + topK);
+
+  const results = searchResults.value.documents.map(
+    (doc): SearchResultResourceType => {
+      const dataSourceView = coreSearchArgs.find(
+        (args) =>
+          args.dataSourceView.dataSource.dustAPIDataSourceId ===
+          doc.data_source_id
+      )?.dataSourceView;
+
+      assert(dataSourceView, "DataSource view not found");
+
+      return {
+        mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_RESULT,
+        uri: doc.source_url ?? "",
+        text: `"${getDisplayNameForDocument(doc)}" (${doc.chunks.length} chunks)`,
+
+        id: doc.document_id,
+        source: {
+          provider: dataSourceView.dataSource.connectorProvider ?? undefined,
+        },
+        tags: doc.tags,
+        ref: refs.shift() as string,
+        chunks: doc.chunks.map((chunk) => stripNullBytes(chunk.text)),
+      };
+    }
+  );
+
+  const searchNodeIds = searchResults.value.documents.map(
+    ({ document_id }) => document_id
+  );
+
+  let renderedNodes;
+  if (searchNodeIds.length > 0) {
+    const searchResult = await coreAPI.searchNodes({
+      filter: {
+        node_ids: searchNodeIds,
+        data_source_views: coreSearchArgs.map((args) => ({
+          data_source_id: args.dataSourceId,
+          view_filter: args.filter.parents?.in ?? [],
+        })),
+      },
+      options: {
+        limit: searchNodeIds.length,
+      },
+    });
+
+    if (searchResult.isErr()) {
+      return makeMCPToolTextError("Failed to search content");
+    }
+    renderedNodes = renderSearchResults(
+      searchResult.value,
+      agentDataSourceConfigurations
+    );
+  }
+
+  return {
+    isError: false,
+    content: [
+      {
+        type: "resource" as const,
+        resource: makeQueryResource(query, timeFrame, tagsIn, tagsNot),
+      },
+      ...(renderedNodes
+        ? [{ type: "resource" as const, resource: renderedNodes }]
+        : []),
+      ...results.map((result) => ({
+        type: "resource" as const,
+        resource: result,
+      })),
+    ],
+  };
+}
+
 const createServer = (
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
@@ -132,101 +398,105 @@ const createServer = (
             "matching this pattern will be returned."
         ),
     },
-    async ({ dataSources, nodeId, offset, limit, grep }) => {
-      const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+    withToolLogging(
+      auth,
+      FILESYSTEM_TOOL_NAME,
+      async ({ dataSources, nodeId, offset, limit, grep }) => {
+        const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
-      // Gather data source configurations.
-      const fetchResult = await getAgentDataSourceConfigurations(
-        auth,
-        dataSources
-      );
-
-      if (fetchResult.isErr()) {
-        return makeMCPToolTextError(fetchResult.error.message);
-      }
-      const agentDataSourceConfigurations = fetchResult.value;
-
-      // Search the node using our search api.
-      const searchResult = await coreAPI.searchNodes({
-        filter: {
-          node_ids: [nodeId],
-          data_source_views: makeDataSourceViewFilter(
-            agentDataSourceConfigurations
-          ),
-        },
-      });
-
-      if (searchResult.isErr() || searchResult.value.nodes.length === 0) {
-        return makeMCPToolRecoverableErrorSuccess(
-          `Could not find node: ${nodeId} (error: ${
-            searchResult.isErr() ? searchResult.error : "No nodes found"
-          })`
+        // Gather data source configurations.
+        const fetchResult = await getAgentDataSourceConfigurations(
+          auth,
+          dataSources
         );
-      }
 
-      const node = searchResult.value.nodes[0];
+        if (fetchResult.isErr()) {
+          return makeMCPToolTextError(fetchResult.error.message);
+        }
+        const agentDataSourceConfigurations = fetchResult.value;
 
-      if (node.node_type !== "document") {
-        return makeMCPToolRecoverableErrorSuccess(
-          `Node is of type ${node.node_type}, not a document.`
-        );
-      }
-
-      // Get dataSource from the data source configuration.
-      const dataSource = agentDataSourceConfigurations.find(
-        (config) =>
-          config.dataSource.dustAPIDataSourceId === node.data_source_id
-      )?.dataSource;
-
-      if (!dataSource) {
-        return makeMCPToolTextError(
-          `Could not find dataSource for node: ${nodeId}`
-        );
-      }
-
-      const dataSourceIdToConnectorMap = new Map();
-      dataSourceIdToConnectorMap.set(
-        dataSource.dustAPIDataSourceId,
-        dataSource.connectorProvider
-      );
-
-      // Read the node.
-      const readResult = await coreAPI.getDataSourceDocumentText({
-        dataSourceId: node.data_source_id,
-        documentId: node.node_id,
-        projectId: dataSource.dustAPIProjectId,
-        offset: offset,
-        limit: limit,
-        grep: grep,
-      });
-
-      if (readResult.isErr()) {
-        return makeMCPToolTextError(
-          `Could not read node: ${nodeId} (error: ${readResult.error})`
-        );
-      }
-
-      return {
-        isError: false,
-        content: [
-          {
-            type: "resource" as const,
-            resource: {
-              mimeType:
-                INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_NODE_CONTENT,
-              uri: node.source_url ?? "",
-              text: readResult.value.text,
-              metadata: renderNode(node, dataSourceIdToConnectorMap),
-            },
+        // Search the node using our search api.
+        const searchResult = await coreAPI.searchNodes({
+          filter: {
+            node_ids: [nodeId],
+            data_source_views: makeDataSourceViewFilter(
+              agentDataSourceConfigurations
+            ),
           },
-        ],
-      };
-    }
+        });
+
+        if (searchResult.isErr() || searchResult.value.nodes.length === 0) {
+          return makeMCPToolRecoverableErrorSuccess(
+            `Could not find node: ${nodeId} (error: ${
+              searchResult.isErr() ? searchResult.error : "No nodes found"
+            })`
+          );
+        }
+
+        const node = searchResult.value.nodes[0];
+
+        if (node.node_type !== "document") {
+          return makeMCPToolRecoverableErrorSuccess(
+            `Node is of type ${node.node_type}, not a document.`
+          );
+        }
+
+        // Get dataSource from the data source configuration.
+        const dataSource = agentDataSourceConfigurations.find(
+          (config) =>
+            config.dataSource.dustAPIDataSourceId === node.data_source_id
+        )?.dataSource;
+
+        if (!dataSource) {
+          return makeMCPToolTextError(
+            `Could not find dataSource for node: ${nodeId}`
+          );
+        }
+
+        const dataSourceIdToConnectorMap = new Map();
+        dataSourceIdToConnectorMap.set(
+          dataSource.dustAPIDataSourceId,
+          dataSource.connectorProvider
+        );
+
+        // Read the node.
+        const readResult = await coreAPI.getDataSourceDocumentText({
+          dataSourceId: node.data_source_id,
+          documentId: node.node_id,
+          projectId: dataSource.dustAPIProjectId,
+          offset: offset,
+          limit: limit,
+          grep: grep,
+        });
+
+        if (readResult.isErr()) {
+          return makeMCPToolTextError(
+            `Could not read node: ${nodeId} (error: ${readResult.error})`
+          );
+        }
+
+        return {
+          isError: false,
+          content: [
+            {
+              type: "resource" as const,
+              resource: {
+                mimeType:
+                  INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_NODE_CONTENT,
+                uri: node.source_url ?? "",
+                text: readResult.value.text,
+                metadata: renderNode(node, dataSourceIdToConnectorMap),
+              },
+            },
+          ],
+        };
+      }
+    )
   );
 
   server.tool(
     "find",
-    "Find content based on their title starting from a specific node. Can be used to to find specific " +
+    "Find content based on their title starting from a specific node. Can be used to find specific " +
       "nodes by searching for their titles. The query title can be omitted to list all nodes " +
       "starting from a specific node. This is like using 'find' in Unix.",
     {
@@ -262,91 +532,97 @@ const createServer = (
         ],
       ...OPTION_PARAMETERS,
     },
-    async ({
-      query,
-      dataSources,
-      limit,
-      sortBy,
-      nextPageCursor,
-      rootNodeId,
-      mimeTypes,
-    }) => {
-      const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-
-      const fetchResult = await getAgentDataSourceConfigurations(
-        auth,
-        dataSources
-      );
-
-      if (fetchResult.isErr()) {
-        return makeMCPToolTextError(fetchResult.error.message);
-      }
-      const agentDataSourceConfigurations = fetchResult.value;
-
-      const dataSourceNodeId = rootNodeId
-        ? extractDataSourceIdFromNodeId(rootNodeId)
-        : null;
-
-      // If rootNodeId is provided and is a data source node ID, search only in
-      // the data source. If rootNodeId is provided and is a regular node ID,
-      // reset all view_filters to this node, so only descendents of this node
-      // are searched. It is not straightforward to guess which data source it
-      // belongs to, this is why irrelevant data sources are not directly
-      // filtered out.
-      let viewFilter = makeDataSourceViewFilter(agentDataSourceConfigurations);
-
-      if (dataSourceNodeId) {
-        viewFilter = viewFilter.filter(
-          (view) => view.data_source_id === dataSourceNodeId
-        );
-      } else if (rootNodeId) {
-        viewFilter = viewFilter.map((view) => ({
-          ...view,
-          view_filter: [rootNodeId],
-        }));
-      }
-
-      const searchResult = await coreAPI.searchNodes({
+    withToolLogging(
+      auth,
+      FILESYSTEM_TOOL_NAME,
+      async ({
         query,
-        filter: {
-          data_source_views: viewFilter,
-          mime_types: mimeTypes ? { in: mimeTypes, not: null } : undefined,
-        },
-        options: {
-          cursor: nextPageCursor,
-          limit,
-          sort: sortBy
-            ? [{ field: sortBy, direction: getSortDirection(sortBy) }]
-            : undefined,
-        },
-      });
+        dataSources,
+        limit,
+        sortBy,
+        nextPageCursor,
+        rootNodeId,
+        mimeTypes,
+      }) => {
+        const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
-      if (searchResult.isErr()) {
-        return makeMCPToolTextError("Failed to search content");
+        const fetchResult = await getAgentDataSourceConfigurations(
+          auth,
+          dataSources
+        );
+
+        if (fetchResult.isErr()) {
+          return makeMCPToolTextError(fetchResult.error.message);
+        }
+        const agentDataSourceConfigurations = fetchResult.value;
+
+        const dataSourceNodeId = rootNodeId
+          ? extractDataSourceIdFromNodeId(rootNodeId)
+          : null;
+
+        // If rootNodeId is provided and is a data source node ID, search only in
+        // the data source. If rootNodeId is provided and is a regular node ID,
+        // reset all view_filters to this node, so only descendents of this node
+        // are searched. It is not straightforward to guess which data source it
+        // belongs to, this is why irrelevant data sources are not directly
+        // filtered out.
+        let viewFilter = makeDataSourceViewFilter(
+          agentDataSourceConfigurations
+        );
+
+        if (dataSourceNodeId) {
+          viewFilter = viewFilter.filter(
+            (view) => view.data_source_id === dataSourceNodeId
+          );
+        } else if (rootNodeId) {
+          viewFilter = viewFilter.map((view) => ({
+            ...view,
+            view_filter: [rootNodeId],
+          }));
+        }
+
+        const searchResult = await coreAPI.searchNodes({
+          query,
+          filter: {
+            data_source_views: viewFilter,
+            mime_types: mimeTypes ? { in: mimeTypes, not: null } : undefined,
+          },
+          options: {
+            cursor: nextPageCursor,
+            limit,
+            sort: sortBy
+              ? [{ field: sortBy, direction: getSortDirection(sortBy) }]
+              : undefined,
+          },
+        });
+
+        if (searchResult.isErr()) {
+          return makeMCPToolTextError("Failed to search content");
+        }
+
+        return {
+          isError: false,
+          content: [
+            {
+              type: "resource" as const,
+              resource: makeQueryResourceForFind(
+                query,
+                rootNodeId,
+                mimeTypes,
+                nextPageCursor
+              ),
+            },
+            {
+              type: "resource" as const,
+              resource: renderSearchResults(
+                searchResult.value,
+                agentDataSourceConfigurations
+              ),
+            },
+          ],
+        };
       }
-
-      return {
-        isError: false,
-        content: [
-          {
-            type: "resource" as const,
-            resource: makeQueryResourceForFind(
-              query,
-              rootNodeId,
-              mimeTypes,
-              nextPageCursor
-            ),
-          },
-          {
-            type: "resource" as const,
-            resource: renderSearchResults(
-              searchResult.value,
-              agentDataSourceConfigurations
-            ),
-          },
-        ],
-      };
-    }
+    )
   );
 
   server.tool(
@@ -379,352 +655,184 @@ const createServer = (
         ],
       ...OPTION_PARAMETERS,
     },
-    async ({
-      nodeId,
-      dataSources,
-      limit,
-      mimeTypes,
-      sortBy,
-      nextPageCursor,
-    }) => {
-      const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-      const fetchResult = await getAgentDataSourceConfigurations(
-        auth,
-        dataSources
-      );
-
-      if (fetchResult.isErr()) {
-        return makeMCPToolTextError(fetchResult.error.message);
-      }
-      const agentDataSourceConfigurations = fetchResult.value;
-
-      const options = {
-        cursor: nextPageCursor,
-        limit,
-        sort: sortBy
-          ? [{ field: sortBy, direction: getSortDirection(sortBy) }]
-          : undefined,
-      };
-
-      let searchResult: Result<CoreAPISearchNodesResponse, CoreAPIError>;
-
-      if (!nodeId) {
-        // When nodeId is null, search for data sources only
-        const dataSourceViewFilter = makeDataSourceViewFilter(
-          agentDataSourceConfigurations
-        ).map((view) => ({
-          ...view,
-          search_scope: "data_source_name" as const,
-        }));
-
-        searchResult = await coreAPI.searchNodes({
-          filter: {
-            data_source_views: dataSourceViewFilter,
-            mime_types: mimeTypes ? { in: mimeTypes, not: null } : undefined,
-          },
-          options,
-        });
-      } else if (isDataSourceNodeId(nodeId)) {
-        // If it's a data source node ID, extract the data source ID and list its root contents
-        const dataSourceId = extractDataSourceIdFromNodeId(nodeId);
-        if (!dataSourceId) {
-          return makeMCPToolTextError("Invalid data source node ID format");
-        }
-
-        const dataSourceConfig = agentDataSourceConfigurations.find(
-          ({ dataSource }) => dataSource.dustAPIDataSourceId === dataSourceId
-        );
-
-        if (!dataSourceConfig) {
-          return makeMCPToolTextError(
-            `Data source not found for ID: ${dataSourceId}`
-          );
-        }
-
-        searchResult = await coreAPI.searchNodes({
-          filter: {
-            data_source_views: makeDataSourceViewFilter([dataSourceConfig]),
-            node_ids: dataSourceConfig.filter.parents?.in ?? undefined,
-            parent_id: dataSourceConfig.filter.parents?.in
-              ? undefined
-              : ROOT_PARENT_ID,
-            mime_types: mimeTypes ? { in: mimeTypes, not: null } : undefined,
-          },
-          options,
-        });
-      } else {
-        // Regular node listing
-        const dataSourceViewFilter = makeDataSourceViewFilter(
-          agentDataSourceConfigurations
-        );
-
-        searchResult = await coreAPI.searchNodes({
-          filter: {
-            data_source_views: dataSourceViewFilter,
-            parent_id: nodeId,
-            mime_types: mimeTypes ? { in: mimeTypes, not: null } : undefined,
-          },
-          options,
-        });
-      }
-
-      if (searchResult.isErr()) {
-        return makeMCPToolTextError("Failed to list folder contents");
-      }
-
-      return {
-        isError: false,
-        content: [
-          {
-            type: "resource" as const,
-            resource: makeQueryResourceForList(
-              nodeId,
-              mimeTypes,
-              nextPageCursor
-            ),
-          },
-          {
-            type: "resource" as const,
-            resource: renderSearchResults(
-              searchResult.value,
-              agentDataSourceConfigurations
-            ),
-          },
-        ],
-      };
-    }
-  );
-
-  server.tool(
-    "search",
-    "Perform a semantic search within the folders and files designated by `nodeIds`. All children " +
-      "of the designated nodes will be searched.",
-    {
-      nodeIds: z
-        .array(z.string())
-        .describe(
-          "Array of exact content node IDs to search within. These are the 'nodeId' values from " +
-            "previous search results, which can be folders or files. All children of the designated " +
-            "nodes will be searched. If not provided, all available files and folders will be searched."
-        )
-        .optional(),
-      dataSources:
-        ConfigurableToolInputSchemas[
-          INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
-        ],
-      query: z
-        .string()
-        .describe(
-          "The query to search for. This is a natural language query. It doesn't support any " +
-            "specific filter syntax."
-        ),
-      relativeTimeFrame: z
-        .string()
-        .regex(/^(all|\d+[hdwmy])$/)
-        .describe(
-          "The time frame (relative to LOCAL_TIME) to restrict the search based on the file updated " +
-            "time." +
-            " Possible values are: `all`, `{k}h`, `{k}d`, `{k}w`, `{k}m`, `{k}y`" +
-            " where {k} is a number. Be strict, do not invent invalid values."
-        ),
-    },
-    async ({ nodeIds, dataSources, query, relativeTimeFrame }) => {
-      const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-      const credentials = dustManagedCredentials();
-      const timeFrame = parseTimeFrame(relativeTimeFrame);
-
-      if (!agentLoopContext?.runContext) {
-        throw new Error(
-          "agentLoopRunContext is required where the tool is called."
-        );
-      }
-
-      // Compute the topK and refsOffset for the search.
-      const topK = getRetrievalTopK({
-        agentConfiguration: agentLoopContext.runContext.agentConfiguration,
-        stepActions: agentLoopContext.runContext.stepActions,
-      });
-      const refsOffset = actionRefsOffset({
-        agentConfiguration: agentLoopContext.runContext.agentConfiguration,
-        stepActionIndex: agentLoopContext.runContext.stepActionIndex,
-        stepActions: agentLoopContext.runContext.stepActions,
-        refsOffset: agentLoopContext.runContext.citationsRefsOffset,
-      });
-
-      const agentDataSourceConfigurationsResult =
-        await getAgentDataSourceConfigurations(auth, dataSources);
-
-      if (agentDataSourceConfigurationsResult.isErr()) {
-        return makeMCPToolTextError(
-          agentDataSourceConfigurationsResult.error.message
-        );
-      }
-      const agentDataSourceConfigurations =
-        agentDataSourceConfigurationsResult.value;
-
-      const coreSearchArgsResults = await concurrentExecutor(
+    withToolLogging(
+      auth,
+      FILESYSTEM_TOOL_NAME,
+      async ({
+        nodeId,
         dataSources,
-        async (dataSourceConfiguration) =>
-          getCoreSearchArgs(auth, dataSourceConfiguration),
-        { concurrency: 10 }
-      );
-
-      // Set to avoid O(n^2) complexity below.
-      const dataSourceIds = new Set<string>(
-        removeNulls(
-          nodeIds?.map((nodeId) => extractDataSourceIdFromNodeId(nodeId)) ?? []
-        )
-      );
-
-      const regularNodeIds =
-        nodeIds?.filter((nodeId) => !isDataSourceNodeId(nodeId)) ?? [];
-
-      const coreSearchArgs = removeNulls(
-        coreSearchArgsResults.map((res) => {
-          if (!res.isOk() || res.value === null) {
-            return null;
-          }
-          const coreSearchArgs = res.value;
-
-          if (!nodeIds || dataSourceIds.has(coreSearchArgs.dataSourceId)) {
-            // If the agent doesn't provide nodeIds, or if it provides the node id
-            // of this data source, we keep the default filter.
-            return coreSearchArgs;
-          }
-
-          // If there are no regular nodes, then we searched for data sources other than the
-          // current one; so we don't search this data source.
-          if (regularNodeIds.length === 0) {
-            return null;
-          }
-
-          // If there are regular nodes, we filter to search within these nodes.
-          return {
-            ...coreSearchArgs,
-            filter: {
-              ...coreSearchArgs.filter,
-              parents: { in: regularNodeIds, not: [] },
-            },
-          };
-        })
-      );
-
-      if (coreSearchArgs.length === 0) {
-        return makeMCPToolTextError(
-          "Search action must have at least one data source configured."
+        limit,
+        mimeTypes,
+        sortBy,
+        nextPageCursor,
+      }) => {
+        const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+        const fetchResult = await getAgentDataSourceConfigurations(
+          auth,
+          dataSources
         );
-      }
 
-      const searchResults = await coreAPI.searchDataSources(
-        query,
-        topK,
-        credentials,
-        false,
-        coreSearchArgs.map((args) => ({
-          projectId: args.projectId,
-          dataSourceId: args.dataSourceId,
-          filter: {
-            ...args.filter,
-            tags: {
-              in: null,
-              not: null,
-            },
-            timestamp: {
-              gt: timeFrame ? timeFrameFromNow(timeFrame) : null,
-              lt: null,
-            },
-          },
-          view_filter: args.view_filter,
-        }))
-      );
-
-      if (searchResults.isErr()) {
-        return makeMCPToolTextError(
-          `Failed to search content: ${searchResults.error.message}`
-        );
-      }
-
-      if (refsOffset + topK > getRefs().length) {
-        return makeMCPToolTextError(
-          "The search exhausted the total number of references available for citations"
-        );
-      }
-
-      const refs = getRefs().slice(refsOffset, refsOffset + topK);
-
-      const results = searchResults.value.documents.map(
-        (doc): SearchResultResourceType => {
-          const dataSourceView = coreSearchArgs.find(
-            (args) =>
-              args.dataSourceView.dataSource.dustAPIDataSourceId ===
-              doc.data_source_id
-          )?.dataSourceView;
-
-          assert(dataSourceView, "DataSource view not found");
-
-          return {
-            mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_RESULT,
-            uri: doc.source_url ?? "",
-            text: `"${getDisplayNameForDocument(doc)}" (${doc.chunks.length} chunks)`,
-
-            id: doc.document_id,
-            source: {
-              provider:
-                dataSourceView.dataSource.connectorProvider ?? undefined,
-            },
-            tags: doc.tags,
-            ref: refs.shift() as string,
-            chunks: doc.chunks.map((chunk) => stripNullBytes(chunk.text)),
-          };
+        if (fetchResult.isErr()) {
+          return makeMCPToolTextError(fetchResult.error.message);
         }
-      );
+        const agentDataSourceConfigurations = fetchResult.value;
 
-      const searchNodeIds = searchResults.value.documents.map(
-        ({ document_id }) => document_id
-      );
+        const options = {
+          cursor: nextPageCursor,
+          limit,
+          sort: sortBy
+            ? [{ field: sortBy, direction: getSortDirection(sortBy) }]
+            : undefined,
+        };
 
-      let renderedNodes;
-      if (searchNodeIds.length > 0) {
-        const searchResult = await coreAPI.searchNodes({
-          filter: {
-            node_ids: searchNodeIds,
-            data_source_views: coreSearchArgs.map((args) => ({
-              data_source_id: args.dataSourceId,
-              view_filter: args.filter.parents?.in ?? [],
-            })),
-          },
-          options: {
-            limit: searchNodeIds.length,
-          },
-        });
+        let searchResult: Result<CoreAPISearchNodesResponse, CoreAPIError>;
+
+        if (!nodeId) {
+          // When nodeId is null, search for data sources only
+          const dataSourceViewFilter = makeDataSourceViewFilter(
+            agentDataSourceConfigurations
+          ).map((view) => ({
+            ...view,
+            search_scope: "data_source_name" as const,
+          }));
+
+          searchResult = await coreAPI.searchNodes({
+            filter: {
+              data_source_views: dataSourceViewFilter,
+              mime_types: mimeTypes ? { in: mimeTypes, not: null } : undefined,
+            },
+            options,
+          });
+        } else if (isDataSourceNodeId(nodeId)) {
+          // If it's a data source node ID, extract the data source ID and list its root contents
+          const dataSourceId = extractDataSourceIdFromNodeId(nodeId);
+          if (!dataSourceId) {
+            return makeMCPToolTextError("Invalid data source node ID format");
+          }
+
+          const dataSourceConfig = agentDataSourceConfigurations.find(
+            ({ dataSource }) => dataSource.dustAPIDataSourceId === dataSourceId
+          );
+
+          if (!dataSourceConfig) {
+            return makeMCPToolTextError(
+              `Data source not found for ID: ${dataSourceId}`
+            );
+          }
+
+          searchResult = await coreAPI.searchNodes({
+            filter: {
+              data_source_views: makeDataSourceViewFilter([dataSourceConfig]),
+              node_ids: dataSourceConfig.filter.parents?.in ?? undefined,
+              parent_id: dataSourceConfig.filter.parents?.in
+                ? undefined
+                : ROOT_PARENT_ID,
+              mime_types: mimeTypes ? { in: mimeTypes, not: null } : undefined,
+            },
+            options,
+          });
+        } else {
+          // Regular node listing
+          const dataSourceViewFilter = makeDataSourceViewFilter(
+            agentDataSourceConfigurations
+          );
+
+          searchResult = await coreAPI.searchNodes({
+            filter: {
+              data_source_views: dataSourceViewFilter,
+              parent_id: nodeId,
+              mime_types: mimeTypes ? { in: mimeTypes, not: null } : undefined,
+            },
+            options,
+          });
+        }
 
         if (searchResult.isErr()) {
-          return makeMCPToolTextError("Failed to search content");
+          return makeMCPToolTextError("Failed to list folder contents");
         }
-        renderedNodes = renderSearchResults(
-          searchResult.value,
-          agentDataSourceConfigurations
-        );
-      }
 
-      return {
-        isError: false,
-        content: [
-          {
-            type: "resource" as const,
-            resource: makeQueryResource(query, timeFrame),
-          },
-          ...(renderedNodes
-            ? [{ type: "resource" as const, resource: renderedNodes }]
-            : []),
-          ...results.map((result) => ({
-            type: "resource" as const,
-            resource: result,
-          })),
-        ],
-      };
-    }
+        return {
+          isError: false,
+          content: [
+            {
+              type: "resource" as const,
+              resource: makeQueryResourceForList(
+                nodeId,
+                mimeTypes,
+                nextPageCursor
+              ),
+            },
+            {
+              type: "resource" as const,
+              resource: renderSearchResults(
+                searchResult.value,
+                agentDataSourceConfigurations
+              ),
+            },
+          ],
+        };
+      }
+    )
   );
+
+  // Check if tags are dynamic before creating the search tool.
+  const areTagsDynamic = agentLoopContext
+    ? shouldAutoGenerateTags(agentLoopContext)
+    : false;
+
+  if (!areTagsDynamic) {
+    server.tool(
+      "search",
+      "Perform a semantic search within the folders and files designated by `nodeIds`. All " +
+        "children of the designated nodes will be searched.",
+      SearchToolInputSchema.shape,
+      withToolLogging(auth, SEARCH_TOOL_NAME, async (params) =>
+        searchCallback(auth, agentLoopContext, params)
+      )
+    );
+  } else {
+    // If tags are dynamic, then we add a tool for the agent to discover tags and let it pass tags
+    // in the search tool.
+    server.tool(
+      "find_tags",
+      makeFindTagsDescription(SEARCH_TOOL_NAME),
+      findTagsSchema,
+      makeFindTagsTool(auth)
+    );
+
+    server.tool(
+      "search",
+      "Perform a semantic search within the folders and files designated by `nodeIds`. All " +
+        "children of the designated nodes will be searched.",
+      {
+        ...SearchToolInputSchema.shape,
+        tagsIn: z
+          .array(z.string())
+          .optional()
+          .describe(
+            "A list of labels (also called tags) to restrict the search based on the user " +
+              "request and past conversation context. If multiple labels are provided, the " +
+              "search will return documents that have at least one of the labels. You can't " +
+              "check that all labels are present, only that at least one is present. If no labels " +
+              "are provided, the search will  return all documents regardless of their labels."
+          ),
+        tagsNot: z
+          .array(z.string())
+          .optional()
+          .describe(
+            "A list of labels (also called tags) to exclude from the search based on the user " +
+              "request and past conversation context. Any document having one of these labels " +
+              "will be excluded from the search."
+          ),
+      },
+      withToolLogging(auth, SEARCH_TOOL_NAME, async (params) =>
+        searchCallback(auth, agentLoopContext, params, {
+          tagsIn: params.tagsIn,
+          tagsNot: params.tagsNot,
+        })
+      )
+    );
+  }
 
   server.tool(
     "locate_in_tree",
@@ -739,33 +847,149 @@ const createServer = (
           INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
         ],
     },
-    async ({ nodeId, dataSources }) => {
-      const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-      const fetchResult = await getAgentDataSourceConfigurations(
-        auth,
-        dataSources
-      );
+    withToolLogging(
+      auth,
+      FILESYSTEM_TOOL_NAME,
+      async ({ nodeId, dataSources }) => {
+        const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+        const fetchResult = await getAgentDataSourceConfigurations(
+          auth,
+          dataSources
+        );
 
-      if (fetchResult.isErr()) {
-        return makeMCPToolTextError(fetchResult.error.message);
-      }
-      const agentDataSourceConfigurations = fetchResult.value;
+        if (fetchResult.isErr()) {
+          return makeMCPToolTextError(fetchResult.error.message);
+        }
+        const agentDataSourceConfigurations = fetchResult.value;
 
-      if (isDataSourceNodeId(nodeId)) {
-        const dataSourceId = extractDataSourceIdFromNodeId(nodeId);
-        if (!dataSourceId) {
-          return makeMCPToolTextError("Invalid data source node ID format");
+        if (isDataSourceNodeId(nodeId)) {
+          const dataSourceId = extractDataSourceIdFromNodeId(nodeId);
+          if (!dataSourceId) {
+            return makeMCPToolTextError("Invalid data source node ID format");
+          }
+
+          const dataSourceConfig = agentDataSourceConfigurations.find(
+            ({ dataSource }) => dataSource.dustAPIDataSourceId === dataSourceId
+          );
+
+          if (!dataSourceConfig) {
+            return makeMCPToolTextError(
+              `Data source not found for ID: ${dataSourceId}`
+            );
+          }
+
+          return {
+            isError: false,
+            content: [
+              {
+                type: "resource" as const,
+                resource: {
+                  mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILESYSTEM_PATH,
+                  uri: "",
+                  text: "Node is the data source root.",
+                  path: [
+                    {
+                      nodeId: nodeId,
+                      title: dataSourceConfig.dataSource.name,
+                      isCurrentNode: true,
+                    },
+                  ],
+                },
+              },
+            ],
+          };
+        }
+
+        // Search for the target node.
+        const searchResult = await coreAPI.searchNodes({
+          filter: {
+            node_ids: [nodeId],
+            data_source_views: makeDataSourceViewFilter(
+              agentDataSourceConfigurations
+            ),
+          },
+        });
+
+        if (searchResult.isErr() || searchResult.value.nodes.length === 0) {
+          return makeMCPToolRecoverableErrorSuccess(
+            `Could not find node: ${nodeId}`
+          );
+        }
+
+        const targetNode = searchResult.value.nodes[0];
+
+        const dataSourceRootId = `${DATA_SOURCE_NODE_ID}-${targetNode.data_source_id}`;
+
+        // Build path node IDs excluding the data source root and target node.
+        const parentNodeIds = targetNode.parents
+          .filter((parentId) => parentId !== nodeId)
+          .reverse();
+
+        // Fetch the parent nodes (we already have the target node)
+        const pathNodes: Record<string, CoreAPIContentNode> = {};
+        if (parentNodeIds.length > 0) {
+          const pathSearchResult = await coreAPI.searchNodes({
+            filter: {
+              node_ids: parentNodeIds,
+              data_source_views: makeDataSourceViewFilter(
+                agentDataSourceConfigurations
+              ),
+            },
+          });
+
+          if (pathSearchResult.isErr()) {
+            return makeMCPToolTextError("Failed to fetch nodes in the path");
+          }
+
+          for (const node of pathSearchResult.value.nodes) {
+            pathNodes[node.node_id] = node;
+          }
         }
 
         const dataSourceConfig = agentDataSourceConfigurations.find(
-          ({ dataSource }) => dataSource.dustAPIDataSourceId === dataSourceId
+          ({ dataSource }) =>
+            dataSource.dustAPIDataSourceId === targetNode.data_source_id
         );
 
         if (!dataSourceConfig) {
           return makeMCPToolTextError(
-            `Data source not found for ID: ${dataSourceId}`
+            "Could not find data source configuration"
           );
         }
+
+        // Build the path array.
+        const pathItems: FilesystemPathType["path"] = removeNulls([
+          // Data source root node
+          {
+            nodeId: dataSourceRootId,
+            title: dataSourceConfig.dataSource.name,
+            nodeType: "folder" as ContentNodeType,
+            sourceUrl: null,
+            isCurrentNode: false,
+          },
+          // Parent nodes
+          ...parentNodeIds.map((parentId) => {
+            const node = pathNodes[parentId];
+            if (!node) {
+              return null;
+            }
+            return {
+              nodeId: parentId,
+              title: node.title,
+              nodeType: node.node_type,
+              sourceUrl: node.source_url,
+              isCurrentNode: false,
+            };
+          }),
+          // Target node (always last)
+          {
+            nodeId: nodeId,
+            title: targetNode.title,
+            nodeType: targetNode.node_type,
+            sourceUrl: targetNode.source_url,
+            isCurrentNode: true,
+          },
+        ]);
 
         return {
           isError: false,
@@ -775,124 +999,14 @@ const createServer = (
               resource: {
                 mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILESYSTEM_PATH,
                 uri: "",
-                text: "Node is the data source root.",
-                path: [
-                  {
-                    nodeId: nodeId,
-                    title: dataSourceConfig.dataSource.name,
-                    isCurrentNode: true,
-                  },
-                ],
+                text: "Path located successfully.",
+                path: pathItems,
               },
             },
           ],
         };
       }
-
-      // Search for the target node.
-      const searchResult = await coreAPI.searchNodes({
-        filter: {
-          node_ids: [nodeId],
-          data_source_views: makeDataSourceViewFilter(
-            agentDataSourceConfigurations
-          ),
-        },
-      });
-
-      if (searchResult.isErr() || searchResult.value.nodes.length === 0) {
-        return makeMCPToolRecoverableErrorSuccess(
-          `Could not find node: ${nodeId}`
-        );
-      }
-
-      const targetNode = searchResult.value.nodes[0];
-
-      const dataSourceRootId = `${DATA_SOURCE_NODE_ID}-${targetNode.data_source_id}`;
-
-      // Build path node IDs excluding the data source root and target node.
-      const parentNodeIds = targetNode.parents
-        .filter((parentId) => parentId !== nodeId)
-        .reverse();
-
-      // Fetch the parent nodes (we already have the target node)
-      const pathNodes: Record<string, CoreAPIContentNode> = {};
-      if (parentNodeIds.length > 0) {
-        const pathSearchResult = await coreAPI.searchNodes({
-          filter: {
-            node_ids: parentNodeIds,
-            data_source_views: makeDataSourceViewFilter(
-              agentDataSourceConfigurations
-            ),
-          },
-        });
-
-        if (pathSearchResult.isErr()) {
-          return makeMCPToolTextError("Failed to fetch nodes in the path");
-        }
-
-        for (const node of pathSearchResult.value.nodes) {
-          pathNodes[node.node_id] = node;
-        }
-      }
-
-      const dataSourceConfig = agentDataSourceConfigurations.find(
-        ({ dataSource }) =>
-          dataSource.dustAPIDataSourceId === targetNode.data_source_id
-      );
-
-      if (!dataSourceConfig) {
-        return makeMCPToolTextError("Could not find data source configuration");
-      }
-
-      // Build the path array.
-      const pathItems: FilesystemPathType["path"] = removeNulls([
-        // Data source root node
-        {
-          nodeId: dataSourceRootId,
-          title: dataSourceConfig.dataSource.name,
-          nodeType: "folder" as ContentNodeType,
-          sourceUrl: null,
-          isCurrentNode: false,
-        },
-        // Parent nodes
-        ...parentNodeIds.map((parentId) => {
-          const node = pathNodes[parentId];
-          if (!node) {
-            return null;
-          }
-          return {
-            nodeId: parentId,
-            title: node.title,
-            nodeType: node.node_type,
-            sourceUrl: node.source_url,
-            isCurrentNode: false,
-          };
-        }),
-        // Target node (always last)
-        {
-          nodeId: nodeId,
-          title: targetNode.title,
-          nodeType: targetNode.node_type,
-          sourceUrl: targetNode.source_url,
-          isCurrentNode: true,
-        },
-      ]);
-
-      return {
-        isError: false,
-        content: [
-          {
-            type: "resource" as const,
-            resource: {
-              mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILESYSTEM_PATH,
-              uri: "",
-              text: "Path located successfully.",
-              path: pathItems,
-            },
-          },
-        ],
-      };
-    }
+    )
   );
 
   return server;
@@ -1144,22 +1258,6 @@ function renderSearchResults(
     ),
     nextPageCursor: response.next_page_cursor,
     resultCount: response.hit_count,
-  };
-}
-
-function makeQueryResource(
-  query: string,
-  relativeTimeFrame: TimeFrame | null
-): SearchQueryResourceType {
-  const timeFrameAsString =
-    renderRelativeTimeFrameForToolOutput(relativeTimeFrame);
-
-  return {
-    mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_QUERY,
-    text: query
-      ? `Searching "${query}", ${timeFrameAsString}.`
-      : `Searching ${timeFrameAsString}.`,
-    uri: "",
   };
 }
 

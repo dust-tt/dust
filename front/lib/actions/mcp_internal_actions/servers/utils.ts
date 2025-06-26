@@ -17,10 +17,10 @@ import type { DataSourceConfiguration } from "@app/lib/api/assistant/configurati
 import type { Authenticator } from "@app/lib/auth";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
-import { Workspace } from "@app/lib/models/workspace";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { getResourceNameAndIdFromSId } from "@app/lib/resources/string_ids";
 import type {
   CoreAPISearchFilter,
@@ -60,7 +60,7 @@ export async function fetchAgentDataSourceConfiguration(
           model: DataSourceViewModel,
           as: "dataSourceView",
           required: true,
-          include: [{ model: Workspace, as: "workspace", required: true }],
+          include: [{ model: WorkspaceModel, as: "workspace", required: true }],
         },
       ],
     });
@@ -361,37 +361,33 @@ export async function getCoreSearchArgs(
   }
 }
 
+function hasTagAutoMode(dataSourceConfigurations: DataSourceConfiguration[]) {
+  return dataSourceConfigurations.some(
+    (dataSourceConfiguration) =>
+      dataSourceConfiguration.filter.tags?.mode === "auto"
+  );
+}
+
 export function shouldAutoGenerateTags(
   agentLoopContext: AgentLoopContextType
 ): boolean {
-  const hasTagAutoMode = (
-    dataSourceConfigurations: DataSourceConfiguration[]
-  ) =>
-    dataSourceConfigurations.some(
-      (dataSourceConfiguration) =>
-        dataSourceConfiguration.filter.tags?.mode === "auto"
-    );
-
+  const { listToolsContext, runContext } = agentLoopContext;
   if (
-    !!agentLoopContext.listToolsContext?.agentActionConfiguration &&
+    !!listToolsContext?.agentActionConfiguration &&
     isServerSideMCPServerConfiguration(
-      agentLoopContext.listToolsContext.agentActionConfiguration
+      listToolsContext.agentActionConfiguration
     ) &&
-    !!agentLoopContext.listToolsContext.agentActionConfiguration.dataSources
+    !!listToolsContext.agentActionConfiguration.dataSources
   ) {
     return hasTagAutoMode(
-      agentLoopContext.listToolsContext.agentActionConfiguration.dataSources
+      listToolsContext.agentActionConfiguration.dataSources
     );
   } else if (
-    !!agentLoopContext.runContext?.actionConfiguration &&
-    isServerSideMCPToolConfiguration(
-      agentLoopContext.runContext.actionConfiguration
-    ) &&
-    !!agentLoopContext.runContext.actionConfiguration.dataSources
+    !!runContext?.actionConfiguration &&
+    isServerSideMCPToolConfiguration(runContext.actionConfiguration) &&
+    !!runContext.actionConfiguration.dataSources
   ) {
-    return hasTagAutoMode(
-      agentLoopContext.runContext.actionConfiguration.dataSources
-    );
+    return hasTagAutoMode(runContext.actionConfiguration.dataSources);
   }
 
   return false;
@@ -419,4 +415,47 @@ export function renderTagsForToolOutput(
       ? `, excluding labels ${tagsNot?.join(", ")}`
       : "";
   return `${tagsInAsString}${tagsNotAsString}`;
+}
+
+/**
+ * Checks for conflicting tags across core search arguments and returns an error message if any.
+ * If a tag is both included and excluded, we will not get any result.
+ */
+export function checkConflictingTags(
+  coreSearchArgs: CoreSearchArgs[],
+  { tagsIn, tagsNot }: { tagsIn?: string[]; tagsNot?: string[] }
+): string | null {
+  for (const args of coreSearchArgs) {
+    const configTagsIn = args.filter.tags?.in ?? [];
+    const configTagsNot = args.filter.tags?.not ?? [];
+
+    const finalTagsIn = [...configTagsIn, ...(tagsIn ?? [])];
+    const finalTagsNot = [...configTagsNot, ...(tagsNot ?? [])];
+
+    const conflictingTags = finalTagsIn.filter((tag) =>
+      finalTagsNot.includes(tag)
+    );
+    if (conflictingTags.length > 0) {
+      const conflictingTagsList = conflictingTags.join(", ");
+      const tagsInList =
+        configTagsIn.length > 0 ? configTagsIn.join(", ") : "none";
+      const tagsNotList =
+        configTagsNot.length > 0 ? configTagsNot.join(", ") : "none";
+
+      // We actually return even if we get one conflict.
+      // We can have a conflict only if the agent created one by passing some tags without being
+      // aware that it would create a conflict with a configured tag.
+      // The rationale behind it is that there is a low overlap between the tags across data
+      // sources. Therefore, even if we did have some content in another data source, it is
+      // probably not what the agent intended and its filtering had no use.
+      return (
+        "No results were found due to conflicting tags. The following tags appear in both " +
+        `include and exclude lists: ${conflictingTagsList}.\n\nTags that are already included: ` +
+        `${tagsInList}\n Tags that are already excluded ${tagsNotList}\n\nPlease adjust your ` +
+        "tag filters to avoid conflicts."
+      );
+    }
+  }
+
+  return null;
 }

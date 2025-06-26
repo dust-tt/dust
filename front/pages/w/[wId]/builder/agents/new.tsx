@@ -3,15 +3,10 @@ import type { ParsedUrlQuery } from "querystring";
 
 import AgentBuilder from "@app/components/agent_builder/AgentBuilder";
 import { AgentBuilderProvider } from "@app/components/agent_builder/AgentBuilderContext";
+import { DataSourceViewsProvider } from "@app/components/assistant_builder/contexts/DataSourceViewsContext";
 import { MCPServerViewsProvider } from "@app/components/assistant_builder/contexts/MCPServerViewsContext";
-import {
-  buildInitialActions,
-  getAccessibleSourcesAndApps,
-} from "@app/components/assistant_builder/server_side_props_helpers";
-import type {
-  AssistantBuilderInitialState,
-  BuilderFlow,
-} from "@app/components/assistant_builder/types";
+import { getAccessibleSourcesAndApps } from "@app/components/assistant_builder/server_side_props_helpers";
+import type { BuilderFlow } from "@app/components/assistant_builder/types";
 import { BUILDER_FLOWS } from "@app/components/assistant_builder/types";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { throwIfInvalidAgentConfiguration } from "@app/lib/actions/types/guards";
@@ -24,7 +19,6 @@ import { useAssistantTemplate } from "@app/lib/swr/assistants";
 import type {
   AgentConfigurationType,
   AppType,
-  DataSourceViewType,
   PlanType,
   SpaceType,
   SubscriptionType,
@@ -47,9 +41,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   subscription: SubscriptionType;
   plan: PlanType;
   spaces: SpaceType[];
-  dataSourceViews: DataSourceViewType[];
   dustApps: AppType[];
-  actions: AssistantBuilderInitialState["actions"];
   agentConfiguration:
     | AgentConfigurationType
     | TemplateAgentConfigurationType
@@ -80,8 +72,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
-  const { spaces, dataSourceViews, dustApps } =
-    await getAccessibleSourcesAndApps(auth);
+  const { spaces, dustApps } = await getAccessibleSourcesAndApps(auth);
 
   const flow: BuilderFlow = BUILDER_FLOWS.includes(
     context.query.flow as BuilderFlow
@@ -122,20 +113,10 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     configuration = agentConfigRes.value;
   }
 
-  const actions = configuration
-    ? await buildInitialActions({
-        dataSourceViews,
-        dustApps,
-        configuration,
-      })
-    : [];
-
   return {
     props: {
-      actions,
       agentConfiguration: configuration,
       baseUrl: config.getClientFacingUrl(),
-      dataSourceViews: dataSourceViews.map((v) => v.toJSON()),
       dustApps: dustApps.map((a) => a.toJSON()),
       flow,
       owner,
@@ -150,8 +131,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 export default function CreateAgent({
   agentConfiguration,
   spaces,
-  dataSourceViews,
-  dustApps,
   owner,
   templateId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
@@ -166,14 +145,11 @@ export default function CreateAgent({
   }
 
   return (
-    <AgentBuilderProvider
-      spaces={spaces}
-      dustApps={dustApps}
-      dataSourceViews={dataSourceViews}
-      owner={owner}
-    >
+    <AgentBuilderProvider spaces={spaces} owner={owner}>
       <MCPServerViewsProvider owner={owner} spaces={spaces}>
-        <AgentBuilder />
+        <DataSourceViewsProvider owner={owner}>
+          <AgentBuilder />
+        </DataSourceViewsProvider>
       </MCPServerViewsProvider>
     </AgentBuilderProvider>
   );

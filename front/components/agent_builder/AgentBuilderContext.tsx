@@ -2,16 +2,9 @@ import { createContext, useContext, useState } from "react";
 import { useEffect } from "react";
 
 import { MCPServerViewsProvider } from "@app/components/assistant_builder/contexts/MCPServerViewsContext";
-import type {
-  AppType,
-  DataSourceViewType,
-  SpaceType,
-  WorkspaceType,
-} from "@app/types";
+import type { SpaceType, WorkspaceType } from "@app/types";
 
 type AgentBuilderContextType = {
-  dustApps: AppType[];
-  dataSourceViews: DataSourceViewType[];
   spaces: SpaceType[];
   owner: WorkspaceType;
   isPreviewPanelOpen: boolean;
@@ -19,8 +12,6 @@ type AgentBuilderContextType = {
 };
 
 export const AgentBuilderContext = createContext<AgentBuilderContextType>({
-  dustApps: [],
-  dataSourceViews: [],
   spaces: [],
   owner: {} as WorkspaceType,
   isPreviewPanelOpen: true,
@@ -36,8 +27,6 @@ interface AgentBuilderContextProps
 }
 
 export function AgentBuilderProvider({
-  dustApps,
-  dataSourceViews,
   spaces,
   owner,
   children,
@@ -61,8 +50,6 @@ export function AgentBuilderProvider({
   return (
     <AgentBuilderContext.Provider
       value={{
-        dustApps,
-        dataSourceViews,
         spaces,
         owner,
         isPreviewPanelOpen,

@@ -25,6 +25,13 @@ export const inviteUser = createPlugin({
           value: role,
         })),
       },
+      force: {
+        type: "boolean",
+        label: "Force",
+        description:
+          "If true, sends an email even if the user was already invited.",
+        defaultValue: false,
+      },
     },
   },
   execute: async (auth, _, args) => {
@@ -51,6 +58,7 @@ export const inviteUser = createPlugin({
       owner: auth.getNonNullableWorkspace(),
       user: auth.getNonNullableUser().toJSON(),
       subscription,
+      force: args.force,
       invitationRequests: [
         {
           ...args,

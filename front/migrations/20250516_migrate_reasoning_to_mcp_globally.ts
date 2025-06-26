@@ -5,8 +5,8 @@ import { Authenticator } from "@app/lib/auth";
 import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
 import { AgentReasoningConfiguration } from "@app/lib/models/assistant/actions/reasoning";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
-import { Workspace } from "@app/lib/models/workspace";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type Logger from "@app/logger/logger";
@@ -187,7 +187,7 @@ makeScript(
     const now = new Date().toISOString().slice(0, 10).replace(/-/g, "");
 
     const workspaceIds = await findWorkspacesWithReasoningConfigurations();
-    const workspaces = await Workspace.findAll({
+    const workspaces = await WorkspaceModel.findAll({
       where: {
         id: { [Op.in]: workspaceIds },
         ...(startFromWorkspaceId

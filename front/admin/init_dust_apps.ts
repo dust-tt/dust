@@ -2,7 +2,6 @@ import _ from "lodash";
 import parseArgs from "minimist";
 
 import { Authenticator } from "@app/lib/auth";
-import { Workspace } from "@app/lib/models/workspace";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -10,6 +9,7 @@ import { UserModel } from "@app/lib/resources/storage/models/user";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { isDevelopment } from "@app/types";
@@ -24,10 +24,10 @@ async function main() {
   if (!where.name && !where.sId) {
     throw new Error("Please provide name and/or sId for the workspace");
   }
-  let w = await Workspace.findOne({ where });
+  let w = await WorkspaceResource.fetchByNameAndId(where);
   if (!w) {
     console.log("Creating workspace");
-    w = await Workspace.create({
+    w = await WorkspaceResource.makeNew({
       sId: argv.sId || generateRandomModelSId(),
       name: argv.name || DEFAULT_WORKSPACE_NAME,
     });

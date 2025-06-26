@@ -150,12 +150,16 @@ export function RunPluginDialog({
                   </div>
                 </div>
               )}
-              <PluginForm
-                disabled={result !== null}
-                manifest={manifest}
-                asyncArgs={asyncArgs}
-                onSubmit={onSubmit}
-              />
+              {isLoadingAsyncArgs ? (
+                <Spinner />
+              ) : (
+                <PluginForm
+                  disabled={result !== null}
+                  manifest={manifest}
+                  asyncArgs={asyncArgs}
+                  onSubmit={onSubmit}
+                />
+              )}
               {manifest.warning && (
                 <PokeAlert variant="destructive">
                   <PokeAlertTitle>Warning</PokeAlertTitle>

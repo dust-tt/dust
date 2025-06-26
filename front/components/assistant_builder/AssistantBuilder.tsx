@@ -126,7 +126,7 @@ export default function AssistantBuilder({
   defaultIsEdited,
   baseUrl,
   defaultTemplate,
-  isAgentDuplication = false,
+  duplicateAgentId,
 }: AssistantBuilderLightProps) {
   const router = useRouter();
   const sendNotification = useSendNotification();
@@ -162,9 +162,12 @@ export default function AssistantBuilder({
   const [descriptionError, setDescriptionError] = useState<string | null>(null);
   const [hasAnyActionsError, setHasAnyActionsError] = useState<boolean>(false);
 
+  // You can duplicate another agent, so if it's for duplicate we will use that agent ID to fetch actions and copy it.
+  // Otherwise, for existing agents we use the ID of the agent, and for new agents we don't fetch anything
+  // since there will be no actions yet.
   const { actions, isActionsLoading, error } = useAssistantConfigurationActions(
     owner.sId,
-    agentConfiguration?.sId ?? null
+    duplicateAgentId ?? agentConfiguration?.sId ?? null
   );
 
   useEffect(() => {
@@ -178,23 +181,19 @@ export default function AssistantBuilder({
       return;
     }
 
-    // In case of duplicating an agent, we set initial action state from the original agent.
-    // We should not override it with the actions we fetched from the client side (= empty actions).
-    if (!isAgentDuplication) {
-      setBuilderState((prevState) => ({
-        ...prevState,
-        actions: [
-          ...actions.map((action) => ({
-            id: uniqueId(),
-            ...action,
-          })),
-          ...(prevState.visualizationEnabled
-            ? [getDataVisualizationActionConfiguration()]
-            : []),
-        ],
-      }));
-    }
-  }, [actions, error, sendNotification, isAgentDuplication]);
+    setBuilderState((prevState) => ({
+      ...prevState,
+      actions: [
+        ...actions.map((action) => ({
+          id: uniqueId(),
+          ...action,
+        })),
+        ...(prevState.visualizationEnabled
+          ? [getDataVisualizationActionConfiguration()]
+          : []),
+      ],
+    }));
+  }, [actions, error, sendNotification]);
 
   const [builderState, setBuilderState] = useState<AssistantBuilderState>(() =>
     getDefaultBuilderState(initialBuilderState, defaultScope, plan)
@@ -215,6 +214,7 @@ export default function AssistantBuilder({
   } = useTemplate(defaultTemplate);
 
   const {
+    provider,
     slackDataSource,
     selectedSlackChannels,
     slackChannelsLinkedWithAgent,
@@ -388,10 +388,10 @@ export default function AssistantBuilder({
         builderState,
         agentConfigurationId: agentConfiguration?.sId ?? null,
         slackData: {
+          provider,
           selectedSlackChannels: selectedSlackChannels || [],
           slackChannelsLinkedWithAgent,
         },
-        reasoningModels,
       });
 
       if (res.isErr()) {
@@ -578,6 +578,7 @@ export default function AssistantBuilder({
             <AssistantBuilderRightPanel
               screen={screen}
               template={template}
+              mcpServerViews={mcpServerViews}
               removeTemplate={removeTemplate}
               resetToTemplateInstructions={async () => {
                 resetToTemplateInstructions(setBuilderState);
@@ -591,7 +592,6 @@ export default function AssistantBuilder({
               builderState={builderState}
               agentConfiguration={agentConfiguration}
               setAction={setAction}
-              reasoningModels={reasoningModels}
             />
           }
         />

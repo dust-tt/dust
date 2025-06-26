@@ -77,12 +77,10 @@ export function isManaged(ds: DataSource): ds is DataSource & WithConnector {
 
 export function isRemoteDatabase(ds: DataSource): ds is DataSource &
   WithConnector & {
-    connectorProvider: "snowflake" | "bigquery" | "salesforce";
+    connectorProvider: "snowflake" | "bigquery";
   } {
   return (
-    ds.connectorProvider === "snowflake" ||
-    ds.connectorProvider === "bigquery" ||
-    ds.connectorProvider === "salesforce"
+    ds.connectorProvider === "snowflake" || ds.connectorProvider === "bigquery"
   );
 }
 
@@ -97,11 +95,10 @@ export function supportsDocumentsData(
   ds: DataSource,
   featureFlags: WhitelistableFeature[]
 ): boolean {
-  return (
-    !isRemoteDatabase(ds) ||
-    (ds.connectorProvider === "salesforce" &&
-      featureFlags.includes("salesforce_synced_queries"))
-  );
+  if (ds.connectorProvider === "salesforce") {
+    return featureFlags.includes("salesforce_synced_queries");
+  }
+  return !isRemoteDatabase(ds);
 }
 
 export function supportsStructuredData(ds: DataSource): boolean {

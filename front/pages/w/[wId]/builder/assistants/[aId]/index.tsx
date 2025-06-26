@@ -14,7 +14,6 @@ import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type {
   AppType,
-  DataSourceViewType,
   LightAgentConfigurationType,
   PlanType,
   SpaceType,
@@ -27,7 +26,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   agentConfiguration: LightAgentConfigurationType;
   agentEditors: UserType[];
   baseUrl: string;
-  dataSourceViews: DataSourceViewType[];
   dustApps: AppType[];
   flow: BuilderFlow;
   owner: WorkspaceType;
@@ -51,12 +49,11 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       };
     }
 
-    const [{ spaces, dataSourceViews, dustApps }, configuration] =
-      await Promise.all([
-        getAccessibleSourcesAndApps(auth),
-        getAgentConfiguration(auth, context.params?.aId as string, "light"),
-        MCPServerViewResource.ensureAllAutoToolsAreCreated(auth),
-      ]);
+    const [{ spaces, dustApps }, configuration] = await Promise.all([
+      getAccessibleSourcesAndApps(auth),
+      getAgentConfiguration(auth, context.params?.aId as string, "light"),
+      MCPServerViewResource.ensureAllAutoToolsAreCreated(auth),
+    ]);
 
     if (!configuration) {
       return {
@@ -93,7 +90,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
         agentConfiguration: configuration,
         agentEditors,
         baseUrl: config.getClientFacingUrl(),
-        dataSourceViews: dataSourceViews.map((v) => v.toJSON()),
         dustApps: dustApps.map((a) => a.toJSON()),
         flow,
         owner,
@@ -110,7 +106,6 @@ export default function EditAssistant({
   agentEditors,
   baseUrl,
   spaces,
-  dataSourceViews,
   dustApps,
   flow,
   owner,
@@ -126,12 +121,7 @@ export default function EditAssistant({
   }
 
   return (
-    <AssistantBuilderProvider
-      spaces={spaces}
-      dustApps={dustApps}
-      dataSourceViews={dataSourceViews}
-      owner={owner}
-    >
+    <AssistantBuilderProvider owner={owner} spaces={spaces} dustApps={dustApps}>
       <AssistantBuilder
         owner={owner}
         subscription={subscription}

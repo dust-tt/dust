@@ -27,7 +27,6 @@ import { SalesforceOauthExtraConfig } from "@app/components/data_source/salesfor
 import { SlackBotEnableView } from "@app/components/data_source/SlackBotEnableView";
 import { ZendeskConfigView } from "@app/components/data_source/ZendeskConfigView";
 import { ZendeskOAuthExtraConfig } from "@app/components/data_source/ZendeskOAuthExtraConfig";
-import { isProPlan } from "@app/lib/plans/plan_codes";
 import type {
   ConnectorPermission,
   ConnectorProvider,
@@ -406,7 +405,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     name: "Salesforce",
     connectorProvider: "salesforce",
     status: "rolling_out",
-    rollingOutFlag: "salesforce_feature",
+    rollingOutFlag: "salesforce_synced_queries",
     hide: true,
     description:
       "Authorize access to your Salesforce organization, in order to query your Salesforce data from Dust.",
@@ -421,7 +420,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
       selected: "read",
       unselected: "none",
     },
-    isDeletable: true,
+    isDeletable: false,
     guideLink: "https://docs.dust.tt/docs/salesforce",
   },
   gong: {
@@ -499,14 +498,7 @@ export const isConnectorProviderAllowedForPlan = (
     case "webcrawler":
       return plan.limits.connections.isWebCrawlerAllowed;
     case "salesforce":
-      // Either salesforce is allowed for the plan, or the workspace
-      // is pro plan but has the pro_plan_salesforce_connector feature flag enabled
-      return (
-        plan.limits.connections.isSalesforceAllowed ||
-        (isProPlan(plan.code) &&
-          !!featureFlags?.includes("pro_plan_salesforce_connector"))
-      );
-
+      return !!featureFlags?.includes("salesforce_synced_queries");
     case "microsoft":
     case "slack_bot":
     case "snowflake":

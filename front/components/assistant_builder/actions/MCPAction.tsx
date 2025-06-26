@@ -6,27 +6,35 @@ import { AdditionalConfigurationSection } from "@app/components/assistant_builde
 import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/actions/configuration/AssistantBuilderDataSourceModal";
 import { ChildAgentConfigurationSection } from "@app/components/assistant_builder/actions/configuration/ChildAgentConfigurationSection";
 import { ConfigurationSectionContainer } from "@app/components/assistant_builder/actions/configuration/ConfigurationSectionContainer";
+import { CustomToggleSection } from "@app/components/assistant_builder/actions/configuration/CustomToggleSection";
 import DataSourceSelectionSection from "@app/components/assistant_builder/actions/configuration/DataSourceSelectionSection";
 import { DustAppConfigurationSection } from "@app/components/assistant_builder/actions/configuration/DustAppConfigurationSection";
 import { JsonSchemaConfigurationSection } from "@app/components/assistant_builder/actions/configuration/JsonSchemaConfigurationSection";
 import { ReasoningModelConfigurationSection } from "@app/components/assistant_builder/actions/configuration/ReasoningModelConfigurationSection";
 import { TimeFrameConfigurationSection } from "@app/components/assistant_builder/actions/configuration/TimeFrameConfigurationSection";
 import { DataDescription } from "@app/components/assistant_builder/actions/DataDescription";
-import { generateSchema } from "@app/components/assistant_builder/actions/ProcessAction";
 import { useMCPServerViewsContext } from "@app/components/assistant_builder/contexts/MCPServerViewsContext";
 import type {
-  AssistantBuilderActionConfiguration,
-  AssistantBuilderActionState,
+  AssistantBuilderMCPConfiguration,
+  AssistantBuilderMCPOrVizState,
   AssistantBuilderMCPServerConfiguration,
 } from "@app/components/assistant_builder/types";
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import type { MCPServerAvailability } from "@app/lib/actions/mcp_internal_actions/constants";
+import { ADVANCED_SEARCH_SWITCH } from "@app/lib/actions/mcp_internal_actions/constants";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import { validateConfiguredJsonSchema } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { isDustAppRunConfiguration } from "@app/lib/actions/types/guards";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import type { LightWorkspaceType, SpaceType, TimeFrame } from "@app/types";
-import { asDisplayName, assertNever } from "@app/types";
+import type {
+  LightWorkspaceType,
+  Result,
+  SpaceType,
+  TimeFrame,
+  WhitelistableFeature,
+  WorkspaceType,
+} from "@app/types";
+import { asDisplayName, assertNever, Err, Ok } from "@app/types";
 
 interface NoActionAvailableProps {
   owner: LightWorkspaceType;
@@ -72,14 +80,15 @@ function NoActionAvailable({ owner }: NoActionAvailableProps) {
 interface MCPActionProps {
   owner: LightWorkspaceType;
   allowedSpaces: SpaceType[];
-  action: AssistantBuilderActionState;
+  hasFeature: (feature: WhitelistableFeature | null | undefined) => boolean;
+  action: AssistantBuilderMCPOrVizState;
   isEditing: boolean;
   updateAction: (args: {
     actionName: string;
     actionDescription: string;
     getNewActionConfig: (
-      old: AssistantBuilderActionConfiguration["configuration"]
-    ) => AssistantBuilderActionConfiguration["configuration"];
+      old: AssistantBuilderMCPConfiguration["configuration"]
+    ) => AssistantBuilderMCPConfiguration["configuration"];
   }) => void;
   setEdited: (edited: boolean) => void;
   setShowInvalidActionDescError: (
@@ -93,6 +102,7 @@ interface MCPActionProps {
 export function MCPAction({
   owner,
   allowedSpaces,
+  hasFeature,
   action,
   updateAction,
   setEdited,
@@ -344,12 +354,25 @@ export function MCPAction({
           />
         </ConfigurationSectionContainer>
       )}
+
+      {/* Add a custom toggle for the search server that enables the advanced search mode. */}
+      {hasFeature("advanced_search") && (
+        <CustomToggleSection
+          title="Advanced Search Mode"
+          description="Enable advanced search capabilities with enhanced discovery and filtering options for more precise results."
+          targetMCPServerName="search"
+          selectedMCPServerView={selectedMCPServerView}
+          configurationKey={ADVANCED_SEARCH_SWITCH}
+          actionConfiguration={actionConfiguration}
+          handleConfigUpdate={handleConfigUpdate}
+        />
+      )}
     </>
   );
 }
 
 export function hasErrorActionMCP(
-  action: AssistantBuilderActionConfiguration,
+  action: AssistantBuilderMCPConfiguration,
   mcpServerViews: MCPServerViewType[]
 ): string | null {
   if (action.type === "MCP") {
@@ -427,4 +450,29 @@ export function hasErrorActionMCP(
     return null;
   }
   return "Please select a tool.";
+}
+
+export async function generateSchema({
+  owner,
+  instructions,
+}: {
+  owner: WorkspaceType;
+  instructions: string;
+}): Promise<Result<Record<string, unknown>, Error>> {
+  const res = await fetch(
+    `/api/w/${owner.sId}/assistant/builder/process/generate_schema`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        instructions,
+      }),
+    }
+  );
+  if (!res.ok) {
+    return new Err(new Error("Failed to generate schema"));
+  }
+  return new Ok((await res.json()).schema || null);
 }

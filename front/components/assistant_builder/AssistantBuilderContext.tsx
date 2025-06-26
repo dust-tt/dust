@@ -1,18 +1,13 @@
 import { createContext, useState } from "react";
 import { useEffect } from "react";
 
-import type {
-  AppType,
-  DataSourceViewType,
-  SpaceType,
-  WorkspaceType,
-} from "@app/types";
+import { DataSourceViewsProvider } from "@app/components/assistant_builder/contexts/DataSourceViewsContext";
+import type { AppType, SpaceType, WorkspaceType } from "@app/types";
 
 import { MCPServerViewsProvider } from "./contexts/MCPServerViewsContext";
 
 type AssistantBuilderContextType = {
   dustApps: AppType[];
-  dataSourceViews: DataSourceViewType[];
   spaces: SpaceType[];
   isPreviewPanelOpen: boolean;
   setIsPreviewPanelOpen: React.Dispatch<React.SetStateAction<boolean>>;
@@ -21,7 +16,6 @@ type AssistantBuilderContextType = {
 export const AssistantBuilderContext =
   createContext<AssistantBuilderContextType>({
     dustApps: [],
-    dataSourceViews: [],
     spaces: [],
     isPreviewPanelOpen: true,
     setIsPreviewPanelOpen: () => {},
@@ -30,7 +24,6 @@ export const AssistantBuilderContext =
 interface AssistantBuilderProviderProps {
   owner: WorkspaceType;
   dustApps: AppType[];
-  dataSourceViews: DataSourceViewType[];
   spaces: SpaceType[];
   children: React.ReactNode;
 }
@@ -38,7 +31,6 @@ interface AssistantBuilderProviderProps {
 export function AssistantBuilderProvider({
   owner,
   dustApps,
-  dataSourceViews,
   spaces,
   children,
 }: AssistantBuilderProviderProps) {
@@ -65,14 +57,15 @@ export function AssistantBuilderProvider({
     <AssistantBuilderContext.Provider
       value={{
         dustApps,
-        dataSourceViews,
         spaces,
         isPreviewPanelOpen,
         setIsPreviewPanelOpen,
       }}
     >
       <MCPServerViewsProvider owner={owner} spaces={spaces}>
-        {children}
+        <DataSourceViewsProvider owner={owner}>
+          {children}
+        </DataSourceViewsProvider>
       </MCPServerViewsProvider>
     </AssistantBuilderContext.Provider>
   );

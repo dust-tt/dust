@@ -145,7 +145,6 @@ export function withSessionAuthenticationForWorkspace<T>(
       );
 
       const auth = await Authenticator.fromSession(session, wId);
-      req.addResourceToLog?.(auth.getNonNullableUser());
 
       const owner = auth.workspace();
       const plan = auth.plan();
@@ -193,6 +192,7 @@ export function withSessionAuthenticationForWorkspace<T>(
           },
         });
       }
+      req.addResourceToLog?.(user);
 
       // If `allowUserOutsideCurrentWorkspace` is not set or false then we check that the user is a
       // member of the workspace.
@@ -406,17 +406,6 @@ export function withPublicAPIAuthentication<T, U extends boolean>(
             }
           )) ?? workspaceAuth;
       }
-
-      const apiKey = keyAuth.key();
-
-      logger.info(
-        {
-          method: req.method,
-          url: req.url,
-          key: apiKey ? { id: apiKey.id, name: apiKey.name } : null,
-        },
-        "withPublicAPIAuthentication request"
-      );
 
       return handler(
         req,
