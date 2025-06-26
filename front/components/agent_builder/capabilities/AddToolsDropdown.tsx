@@ -33,7 +33,6 @@ export function AddToolsDropdown() {
       ...dataVisualizationConfig,
       id: dataVisualizationConfig.id,
     };
-
     append(newAction);
   }
 
