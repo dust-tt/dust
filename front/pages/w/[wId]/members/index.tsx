@@ -194,13 +194,9 @@ function WorkspaceMembersGroupsList({
   searchTerm,
   isProvisioningEnabled,
 }: WorkspaceMembersListProps) {
-  const { hasFeature, isFeatureFlagsLoading } = useFeatureFlags({
-    workspaceId: owner.sId,
-  });
-
   const { isLoading } = useWorkOSSSOStatus({ owner });
 
-  if (isFeatureFlagsLoading || isLoading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center py-8">
         <Spinner size="lg" />
