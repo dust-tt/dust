@@ -136,7 +136,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 export default function CreateAgent({
   agentConfiguration,
   spaces,
-  dustApps,
   mcpServerViews,
   owner,
   templateId,
@@ -154,7 +153,6 @@ export default function CreateAgent({
   return (
     <AgentBuilderProvider
       spaces={spaces}
-      dustApps={dustApps}
       mcpServerViews={mcpServerViews}
       owner={owner}
     >
