@@ -332,7 +332,7 @@ export async function handleRegularSignupFlow(
       workspace,
       user,
       role: "admin",
-      origin: "invited",
+      origin: "auto-joined",
     });
 
     return new Ok({ flow: null, workspace });
