@@ -37,7 +37,7 @@ export interface ConnectorResource
 export class ConnectorResource extends BaseResource<ConnectorModel> {
   static model: ModelStatic<ConnectorModel> = ConnectorModel;
 
-  private configuration: ConnectorProviderConfigurationResource | null = null;
+  private _configuration: ConnectorProviderConfigurationResource | null = null;
 
   // TODO(2024-02-20 flav): Delete Model from the constructor, once `update` has been migrated.
   constructor(
@@ -50,7 +50,7 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
   async postFetchHook() {
     const configurations =
       await this.strategy.fetchConfigurationsbyConnectorIds([this.id]);
-    this.configuration = configurations[this.id] ?? null;
+    this._configuration = configurations[this.id] ?? null;
   }
 
   get strategy(): ConnectorProviderStrategy<
@@ -83,7 +83,7 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
         t
       );
 
-      connectorRes.configuration = configuration;
+      connectorRes._configuration = configuration;
 
       return connectorRes;
     };
@@ -121,7 +121,7 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
 
     const connectors = blobs.map((b: ConnectorModel) => {
       const c = new this(this.model, b.get());
-      c.configuration = configurations[b.id] ?? null;
+      c._configuration = configurations[b.id] ?? null;
       return c;
     });
 
@@ -139,6 +139,25 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
 
     const blob = await ConnectorResource.model.findOne({
       where,
+    });
+    if (!blob) {
+      return null;
+    }
+
+    const c = new this(this.model, blob.get());
+    await c.postFetchHook();
+    return c;
+  }
+
+  static async findByWorkspaceIdAndType(
+    workspaceId: string,
+    type: ConnectorProvider
+  ) {
+    const blob = await ConnectorResource.model.findOne({
+      where: {
+        workspaceId,
+        type,
+      },
     });
     if (!blob) {
       return null;
@@ -187,7 +206,7 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
 
     return blobs.map((b: ConnectorModel) => {
       const c = new this(this.model, b.get());
-      c.configuration = configurations[b.id] ?? null;
+      c._configuration = configurations[b.id] ?? null;
       return c;
     });
   }
@@ -261,6 +280,10 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
     return this.errorType === "third_party_internal_error";
   }
 
+  get configuration(): ConnectorProviderConfigurationResource | null {
+    return this._configuration;
+  }
+
   toJSON(): ConnectorType {
     return {
       id: this.id.toString(),
@@ -276,8 +299,8 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
       firstSuccessfulSyncTime: this.firstSuccessfulSyncTime?.getTime(),
       firstSyncProgress: this.firstSyncProgress,
       errorType: this.errorType ?? undefined,
-      configuration: this.configuration
-        ? this.strategy.configurationJSON(this.configuration)
+      configuration: this._configuration
+        ? this.strategy.configurationJSON(this._configuration)
         : null,
       pausedAt: this.pausedAt?.getTime(),
       updatedAt: this.updatedAt.getTime(),
