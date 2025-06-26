@@ -386,7 +386,7 @@ async function migrateWorkspaceRetrievalActions(
         assert(
           agentConfiguration ||
             isGlobalAgentId(agentMessage.agentConfigurationId),
-          "Agent configuration must exist"
+          `Agent configuration must exist for agent ${agentMessage.agentConfigurationId}`
         );
 
         await migrateSingleRetrievalAction(
