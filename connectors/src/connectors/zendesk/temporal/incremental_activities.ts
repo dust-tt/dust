@@ -273,6 +273,22 @@ export async function syncZendeskTicketUpdateBatchActivity({
     { concurrency: 10 }
   );
 
+  // If we hide customer details, we don't need to fetch the users at all.
+  // Also guarantees that user information is not included in the ticket content.
+  const users = configuration.hideCustomerDetails
+    ? []
+    : await listZendeskUsers({
+        accessToken,
+        brandSubdomain,
+        userIds: [
+          ...new Set(
+            Object.values(commentsPerTicket).flatMap((comments) =>
+              comments.map((c) => c.author_id)
+            )
+          ),
+        ],
+      });
+
   await concurrentExecutor(
     tickets,
     async (ticket) => {
@@ -291,15 +307,6 @@ export async function syncZendeskTicketUpdateBatchActivity({
             `[Zendesk] Comments not found for ticket ${ticket.id}`
           );
         }
-        // If we hide customer details, we don't need to fetch the users at all.
-        // Also guarantees that user information is not included in the ticket content.
-        const users = configuration.hideCustomerDetails
-          ? []
-          : await listZendeskUsers({
-              accessToken,
-              brandSubdomain,
-              userIds: comments.map((c) => c.author_id),
-            });
         return syncTicket({
           ticket,
           connector,
