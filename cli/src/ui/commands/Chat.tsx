@@ -244,6 +244,11 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId, agentSearch, message }) 
 
     // Automatically send the message in non-interactive mode
     async function sendNonInteractiveMessage() {
+      if (!message) {
+        // This should never happen due to the outer check, but TypeScript needs this
+        return;
+      }
+      
       if (!me || meError || isMeLoading) {
         console.error(JSON.stringify({ 
           error: "Authentication error",
@@ -270,7 +275,7 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId, agentSearch, message }) 
           visibility: "unlisted",
           message: {
             content: message,
-            mentions: [{ configurationId: selectedAgent.sId }],
+            mentions: [{ configurationId: selectedAgent!.sId }],
             context: {
               timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
               username: me.username,
@@ -336,7 +341,7 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId, agentSearch, message }) 
           } else if (event.type === "agent_message_success") {
             // Success - output the result
             console.log(JSON.stringify({
-              agentId: selectedAgent.sId,
+              agentId: selectedAgent!.sId,
               agentAnswer: fullResponse.trim(),
               conversationId: conversation.sId
             }));
