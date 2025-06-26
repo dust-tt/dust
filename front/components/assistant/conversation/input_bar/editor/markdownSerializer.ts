@@ -46,6 +46,10 @@ function buildNodeSerializers(schema: Schema) {
     state.write(`:content_node_mention[${node.attrs.title}]`);
   };
 
+  map.hardBreak = (state: MarkdownSerializerState) => {
+    state.write("\n");
+  };
+
   // Add fallback for any missing nodes in schema.
   Object.keys(schema.nodes).forEach((nodeName) => {
     if (!map[nodeName]) {
