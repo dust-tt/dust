@@ -50,6 +50,7 @@ import {
   AgentUserRelation,
   GlobalAgentSettings,
 } from "@app/lib/models/assistant/agent";
+import { AgentDataRetentionModel } from "@app/lib/models/assistant/agent_data_retention";
 import { TagAgentModel } from "@app/lib/models/assistant/tag_agent";
 import { DustAppSecret } from "@app/lib/models/dust_app_secret";
 import { FeatureFlag } from "@app/lib/models/feature_flag";
@@ -340,7 +341,7 @@ export async function deleteAgentsActivity({
     await AgentReasoningAction.destroy({
       where: {
         reasoningConfigurationId: {
-          [Op.in]: reasoningConfigurations.map((r) => r.id),
+          [Op.in]: reasoningConfigurations.map((r) => r.sId),
         },
       },
     });
@@ -827,6 +828,9 @@ export async function deleteWorkspaceActivity({
     where: {
       id: workspace.id,
     },
+  });
+  await AgentDataRetentionModel.destroy({
+    where: { workspaceId: workspace.id },
   });
 }
 

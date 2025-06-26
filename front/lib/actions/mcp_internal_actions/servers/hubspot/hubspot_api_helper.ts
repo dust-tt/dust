@@ -10,6 +10,8 @@ import type { Property } from "@hubspot/api-client/lib/codegen/crm/properties/mo
 import logger from "@app/logger/logger";
 import { normalizeError } from "@app/types";
 
+const localLogger = logger.child({ module: "hubspot_api_helper" });
+
 const MAX_ENUM_OPTIONS_DISPLAYED = 50;
 export const MAX_LIMIT = 50; // Hubspot API results are capped at 200, but this limit is set lower for internal use.
 export const MAX_COUNT_LIMIT = 10000; // This is the Hubspot API limit for total count.
@@ -441,12 +443,9 @@ export const createNote = async ({
     );
     return createdNote;
   } catch (error) {
-    logger.error(
-      {
-        error,
-        noteInput: JSON.stringify(noteInput, null, 2),
-      },
-      "Error creating note"
+    localLogger.error(
+      { error, noteInput, function: "createNote" },
+      `Error creating note.`
     );
     throw normalizeError(error);
   }
@@ -682,14 +681,9 @@ export const createCommunication = async ({
     );
     return communication;
   } catch (error) {
-    logger.error(
-      {
-        error,
-        engagementType: finalProperties.hs_engagement_type,
-        channelType: finalProperties.hs_communication_channel_type,
-        communicationData: JSON.stringify(communicationData, null, 2),
-      },
-      "Error creating communication"
+    localLogger.error(
+      { error, communicationData, function: "createCommunication" },
+      `Error creating communication (engagement type: ${finalProperties.hs_engagement_type}, channel: ${finalProperties.hs_communication_channel_type}).`
     );
     throw normalizeError(error);
   }
@@ -769,13 +763,9 @@ export const createMeeting = async ({
     );
     return meeting;
   } catch (error) {
-    logger.error(
-      {
-        error,
-        engagementType: finalProperties.hs_engagement_type,
-        meetingInput: JSON.stringify(meetingInput, null, 2),
-      },
-      "Error creating meeting engagement"
+    localLogger.error(
+      { error, meetingInput, function: "createMeeting" },
+      `Error creating meeting engagement (type: ${finalProperties.hs_engagement_type}).`
     );
     throw normalizeError(error);
   }
@@ -847,7 +837,10 @@ export const getContact = async (
       // Return null in this case, as per typical "get by ID" patterns.
       return null;
     }
-    logger.error({ error, contactId }, "Error fetching contact");
+    localLogger.error(
+      { error, contactId },
+      `Error fetching contact ${contactId}:`
+    );
     throw normalizeError(error);
   }
 };
@@ -868,7 +861,10 @@ export const getCompany = async (
     if (error.code === 404) {
       return null;
     }
-    logger.error({ error, companyId }, "Error fetching company");
+    localLogger.error(
+      { error, companyId },
+      `Error fetching company ${companyId}:`
+    );
     throw normalizeError(error);
   }
 };
@@ -888,7 +884,7 @@ export const getDeal = async (
     if (error.code === 404) {
       return null;
     }
-    logger.error({ error, dealId }, "Error fetching deal");
+    localLogger.error({ error, dealId }, `Error fetching deal ${dealId}:`);
     throw normalizeError(error);
   }
 };
@@ -918,7 +914,10 @@ export const getMeeting = async (
     if (error.code === 404) {
       return null;
     }
-    logger.error({ error, meetingId }, "Error fetching meeting (engagement)");
+    localLogger.error(
+      { error, meetingId },
+      `Error fetching meeting (engagement) ${meetingId}:`
+    );
     throw normalizeError(error);
   }
 };
@@ -947,9 +946,9 @@ export const getFilePublicUrl = async (
     if (file && file.url) {
       return file.url;
     } else if (file) {
-      logger.warn(
+      localLogger.warn(
         { fileId },
-        "File found, but it does not have a public URL property"
+        `File ${fileId} found, but it does not have a public URL property.`
       );
       // Fallback: Attempt to get a signed URL if the direct URL isn't available or for temporary access.
       // This part is speculative as the exact method might differ or require specific options.
@@ -962,9 +961,9 @@ export const getFilePublicUrl = async (
           return signedUrlResponse.url;
         }
       } catch (signedUrlError) {
-        logger.warn(
-          { error: signedUrlError, fileId },
-          "Could not get signed URL for file"
+        localLogger.warn(
+          { signedUrlError },
+          `Could not get signed URL for file ${fileId}:`
         );
       }
       return null;
@@ -973,10 +972,13 @@ export const getFilePublicUrl = async (
     }
   } catch (error: any) {
     if (error.code === 404) {
-      logger.warn({ fileId }, "File not found");
+      localLogger.warn({ fileId }, `File ${fileId} not found.`);
       return null;
     }
-    logger.error({ error, fileId }, "Error fetching file public URL");
+    localLogger.error(
+      { error, fileId },
+      `Error fetching file ${fileId} public URL:`
+    );
     throw normalizeError(error);
   }
 };
@@ -1019,12 +1021,9 @@ export const getAssociatedMeetings = async (
       ) {
         associatedMeetingDetails.push(meetingDetail);
       } else if (meetingDetail) {
-        logger.warn(
-          {
-            meetingId,
-            engagementType: meetingDetail.properties?.hs_engagement_type,
-          },
-          "Associated engagement is not of type MEETING, skipping"
+        localLogger.warn(
+          { meetingId },
+          `Associated engagement ${meetingId} is not of type MEETING (type: ${meetingDetail.properties?.hs_engagement_type}). Skipping.`
         );
       }
     }
@@ -1033,23 +1032,15 @@ export const getAssociatedMeetings = async (
     if (error.code === 404) {
       // This could be because the fromObject doesn't exist, or no associations of 'meetings' type exist.
       // The API might return 404 if the association path itself is invalid rather than just empty results.
-      logger.warn(
-        {
-          fromObjectType,
-          fromObjectId,
-          toObjectType,
-        },
-        "Error 404 when fetching associated meetings, object may not exist or no associations exist"
+      localLogger.warn(
+        { fromObjectType, fromObjectId },
+        `Error 404 when fetching associated meetings for ${fromObjectType}/${fromObjectId} to ${toObjectType}. This might mean the object does not exist or no such associations exist.`
       );
       return []; // Return an empty array in case of 404, indicating no associated meetings found or accessible.
     }
-    logger.error(
-      {
-        error,
-        fromObjectType,
-        fromObjectId,
-      },
-      "Error fetching associated meetings"
+    localLogger.error(
+      { error, fromObjectType, fromObjectId },
+      `Error fetching associated meetings for ${fromObjectType}/${fromObjectId}:`
     );
     throw normalizeError(error);
   }
@@ -1103,12 +1094,9 @@ export const searchCrmObjects = async ({
         await hubspotClient.crm.properties.coreApi.getAll(objectType);
       finalPropertiesToReturn = allProps.results.map((p) => p.name);
     } catch (propError) {
-      logger.error(
-        {
-          error: propError,
-          objectType,
-        },
-        "Error fetching all properties to include in search"
+      localLogger.error(
+        { propError },
+        `Error fetching all properties for ${objectType} to include in search:`
       );
       // Fallback to an empty array; the API will return default properties in this case.
       finalPropertiesToReturn = [];
@@ -1171,7 +1159,7 @@ export const searchCrmObjects = async ({
       paging: searchResponse.paging,
     };
   } catch (error: any) {
-    logger.error({ error, objectType }, "Error searching CRM objects");
+    localLogger.error({ error }, `Error searching ${objectType}:`);
     throw normalizeError(error);
   }
 };
@@ -1199,7 +1187,10 @@ export const updateContact = async ({
 
     return result;
   } catch (error) {
-    logger.error({ error, contactId }, "Error updating contact");
+    localLogger.error(
+      { error, contactId },
+      `Error updating contact with ID ${contactId}:`
+    );
     throw normalizeError(error);
   }
 };
@@ -1227,7 +1218,10 @@ export const updateCompany = async ({
 
     return result;
   } catch (error) {
-    logger.error({ error, companyId }, "Error updating company");
+    localLogger.error(
+      { error, companyId },
+      `Error updating company with ID ${companyId}:`
+    );
     throw normalizeError(error);
   }
 };
@@ -1255,38 +1249,10 @@ export const updateDeal = async ({
 
     return result;
   } catch (error) {
-    logger.error({ error, dealId }, "Error updating deal");
-    throw normalizeError(error);
-  }
-};
-
-export const getUserDetails = async (accessToken: string) => {
-  try {
-    const response = await fetch(
-      `https://api.hubapi.com/oauth/v1/access-tokens/${accessToken}`,
-      {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-        },
-      }
+    localLogger.error(
+      { error, dealId },
+      `Error updating deal with ID ${dealId}:`
     );
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const data = await response.json();
-
-    // Only return the specified fields
-    return {
-      user_id: data.user_id,
-      user: data.user,
-      hub_id: data.hub_id,
-    };
-  } catch (error) {
-    logger.error({ error }, "Error getting user details");
     throw normalizeError(error);
   }
 };

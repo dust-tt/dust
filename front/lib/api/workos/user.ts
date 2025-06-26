@@ -18,6 +18,7 @@ import type { RegionType } from "@app/lib/api/regions/config";
 import { config as multiRegionsConfig } from "@app/lib/api/regions/config";
 import { getWorkOS } from "@app/lib/api/workos/client";
 import type { SessionWithUser } from "@app/lib/iam/provider";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { LightWorkspaceType, Result } from "@app/types";
 import { Err, Ok } from "@app/types";
@@ -156,6 +157,16 @@ export async function fetchUserFromWorkOS(
   }
 
   return new Ok(workOSUser);
+}
+
+export async function fetchUsersFromWorkOSWithEmails(emails: string[]) {
+  const workOSResponses = await concurrentExecutor(
+    emails,
+    async (email) => getWorkOS().userManagement.listUsers({ email }),
+    { concurrency: 10 }
+  );
+
+  return workOSResponses.flatMap((res) => res.data);
 }
 
 export async function addUserToWorkOSOrganization(

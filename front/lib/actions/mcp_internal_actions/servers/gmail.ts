@@ -14,7 +14,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
   version: "1.0.0",
   description: "Gmail tools for managing email drafts.",
   authorization: {
-    provider: "gmail" as const,
+    provider: "google_drive" as const,
     supported_use_cases: ["personal_actions"] as const,
     scope:
       "https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.compose" as const,

@@ -209,17 +209,6 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
         return null;
       }
 
-      logger.info(
-        {
-          workspaceId: auth.workspace()?.sId,
-          nameOrId: nameOrId,
-          type: "sid",
-          sId: nameOrId,
-          origin: options?.origin,
-          success: true,
-        },
-        "fetchByNameOrId"
-      );
       return dataSources[0];
     } else {
       // Fetch by name

@@ -283,7 +283,13 @@ async function fetchUsageData({
           getAssistantsUsageData(start, end, workspace),
           getFeedbacksUsageData(start, end, workspace),
         ]);
-      return { users, assistant_messages, builders, assistants, feedbacks };
+      return {
+        users,
+        assistant_messages,
+        builders,
+        assistants,
+        feedbacks,
+      };
     default:
       return {};
   }
