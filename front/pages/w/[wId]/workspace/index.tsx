@@ -33,11 +33,12 @@ import {
   useToggleSlackChatBot,
 } from "@app/lib/swr/connectors";
 import type { PostDataSourceRequestBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources";
-import type {
-  DataSourceType,
-  SpaceType,
-  SubscriptionType,
-  WorkspaceType,
+import {
+  setupOAuthConnection,
+  type DataSourceType,
+  type SpaceType,
+  type SubscriptionType,
+  type WorkspaceType,
 } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
@@ -247,13 +248,16 @@ function SlackBotToggle({
 
   const createSlackBotConnectionAndDataSource = async () => {
     try {
-      const connectionIdRes = await setupConnection({
+      // OAuth flow
+      const cRes = await setupOAuthConnection({
+        dustClientFacingUrl: `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}`,
         owner,
-        provider: "slack_bot",
+        provider: "slack",
+        useCase: "bot",
         extraConfig: {},
       });
-      if (connectionIdRes.isErr()) {
-        throw connectionIdRes.error;
+      if (!cRes.isOk()) {
+        throw cRes.error;
       }
 
       const res = await fetch(
@@ -265,7 +269,7 @@ function SlackBotToggle({
           },
           body: JSON.stringify({
             provider: "slack_bot",
-            connectionId: connectionIdRes.value,
+            connectionId: cRes.value.connection_id,
             name: undefined,
             configuration: null,
           } satisfies PostDataSourceRequestBody),
