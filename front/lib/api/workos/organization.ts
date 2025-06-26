@@ -282,21 +282,22 @@ export async function deleteWorkOSOrganizationDSyncConnection(
 }
 
 export async function deleteWorksOSOrganizationWithWorkspace(
-  workspace: LightWorkspaceType
+  workspaceId: string
 ): Promise<Result<undefined, Error>> {
   const localLogger = logger.child({
-    workspaceId: workspace.sId,
+    workspaceId,
   });
 
-  if (!workspace.workOSOrganizationId) {
-    localLogger.warn({ workspaceId: workspace.sId }, "No workOSOrgnizationId");
+  const organization =
+    await getWorkOS().organizations.getOrganizationByExternalId(workspaceId);
+
+  if (!organization) {
+    localLogger.warn({ workspaceId }, "No workOSOrganization found");
     return new Ok(undefined);
   }
 
   try {
-    await getWorkOS().organizations.deleteOrganization(
-      workspace.workOSOrganizationId
-    );
+    await getWorkOS().organizations.deleteOrganization(organization.id);
 
     return new Ok(undefined);
   } catch (err) {
