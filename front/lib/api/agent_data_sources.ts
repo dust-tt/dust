@@ -898,13 +898,9 @@ export async function getDataSourceUsage({
           .filter((t) => t && t.length > 0)
       )
     );
-    const agentConfigurationIds = uniq(
-      sortBy(
-        res
-          .reduce<number[]>((acc, r) => acc.concat(r.ids), [])
-          .filter((t) => t && t > 0)
-      )
-    );
+    const agentConfigurationIds = [
+      ...new Set(res.flatMap((r) => r.ids).filter((id) => id > 0)),
+    ];
     return new Ok({
       count: agentNames.length,
       agentNames,
@@ -1132,13 +1128,9 @@ export async function getDataSourceViewUsage({
           .filter((t) => t && t.length > 0)
       )
     );
-    const agentConfigurationIds = uniq(
-      sortBy(
-        res
-          .reduce<number[]>((acc, r) => acc.concat(r.ids), [])
-          .filter((t) => t && t > 0)
-      )
-    );
+    const agentConfigurationIds = [
+      ...new Set(res.flatMap((r) => r.ids).filter((id) => id > 0)),
+    ];
     return new Ok({
       count: agentNames.length,
       agentNames,
