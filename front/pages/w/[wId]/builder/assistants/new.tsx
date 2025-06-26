@@ -48,6 +48,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   flow: BuilderFlow;
   baseUrl: string;
   templateId: string | null;
+  duplicateAgentId: string | null;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const plan = auth.plan();
@@ -119,6 +120,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       subscription,
       templateId,
       spaces: spaces.map((s) => s.toJSON()),
+      duplicateAgentId: duplicate,
     },
   };
 });
@@ -133,6 +135,7 @@ export default function CreateAssistant({
   plan,
   subscription,
   templateId,
+  duplicateAgentId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const { assistantTemplate } = useAssistantTemplate({ templateId });
 
@@ -151,6 +154,7 @@ export default function CreateAssistant({
         subscription={subscription}
         plan={plan}
         flow={flow}
+        duplicateAgentId={duplicateAgentId}
         initialBuilderState={
           agentConfiguration
             ? {
