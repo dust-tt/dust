@@ -42,7 +42,7 @@ import { getContentNodesForDataSourceView } from "@app/lib/api/data_source_view"
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { AppResource } from "@app/lib/resources/app_resource";
-import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
@@ -99,7 +99,6 @@ export const getAccessibleSourcesAndAppsForActions = async (
     };
   });
 };
-
 
 export async function buildInitialActions({
   dataSourceViews,
