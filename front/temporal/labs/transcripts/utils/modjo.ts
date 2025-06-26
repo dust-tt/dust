@@ -441,7 +441,7 @@ export async function retrieveModjoTranscriptContent(
       },
       "[processTranscriptActivity] Error fetching call from Modjo. Skipping."
     );
-    throw new Error("Error fetching call from Modjo. Skipping.");
+    return null;
   }
 
   const rawData = await response.json();
