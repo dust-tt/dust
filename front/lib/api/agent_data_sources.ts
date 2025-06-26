@@ -369,13 +369,9 @@ export async function getDataSourceViewsUsageByCategory({
       .concat(dsViewConfig.names)
       .filter((t) => t && t.length > 0);
     usage.agentNames = uniq(sortBy(usage.agentNames));
-    usage.agentConfigurationIds = uniq(
-      sortBy(
-        usage.agentConfigurationIds
-          .concat(dsViewConfig.ids || [])
-          .filter((t) => t && t > 0)
-      )
-    );
+    usage.agentConfigurationIds = [
+      ...new Set(usage.agentConfigurationIds.filter((id) => id > 0)),
+    ];
 
     usage.count = usage.agentNames.length;
 
@@ -664,13 +660,9 @@ export async function getDataSourcesUsageByCategory({
       .concat(dsConfig.names)
       .filter((t) => t && t.length > 0);
     usage.agentNames = uniq(sortBy(usage.agentNames));
-    usage.agentConfigurationIds = uniq(
-      sortBy(
-        usage.agentConfigurationIds
-          .concat(dsConfig.ids || [])
-          .filter((t) => t && t > 0)
-      )
-    );
+    usage.agentConfigurationIds = [
+      ...new Set(usage.agentConfigurationIds.filter((id) => id > 0)),
+    ];
 
     usage.count = usage.agentNames.length;
 
