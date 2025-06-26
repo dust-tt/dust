@@ -210,35 +210,23 @@ function WorkspaceMembersGroupsList({
 
   return (
     <div className="flex flex-col gap-1 pt-2">
-      {hasFeature("workos_user_provisioning") ? (
-        <Tabs defaultValue="members">
-          <TabsList className="mb-4">
-            <TabsTrigger value="members" label="Members" />
-            <TabsTrigger value="invitations" label="Invitations" />
-          </TabsList>
-          <TabsContent value="members">
-            <WorkspaceMembersList
-              currentUser={currentUser}
-              owner={owner}
-              searchTerm={searchTerm}
-              isProvisioningEnabled={isProvisioningEnabled}
-            />
-          </TabsContent>
-          <TabsContent value="invitations">
-            <InvitationsList owner={owner} searchText={searchTerm} />
-          </TabsContent>
-        </Tabs>
-      ) : (
-        <>
-          <Page.H variant="h6">Members</Page.H>
+      <Tabs defaultValue="members">
+        <TabsList className="mb-4">
+          <TabsTrigger value="members" label="Members" />
+          <TabsTrigger value="invitations" label="Invitations" />
+        </TabsList>
+        <TabsContent value="members">
           <WorkspaceMembersList
             currentUser={currentUser}
             owner={owner}
             searchTerm={searchTerm}
             isProvisioningEnabled={isProvisioningEnabled}
           />
-        </>
-      )}
+        </TabsContent>
+        <TabsContent value="invitations">
+          <InvitationsList owner={owner} searchText={searchTerm} />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
