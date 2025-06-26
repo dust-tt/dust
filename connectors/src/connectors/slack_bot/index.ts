@@ -162,6 +162,7 @@ export class SlackBotConnectorManager extends BaseConnectorManager<SlackConfigur
                   connectorId: legacyConfiguration.connectorId,
                 },
               });
+            const slackConfigurationId = connector.configuration.id;
             const whitelistRecords = slackBotWhitelistModels.map(
               (whitelistModel) => {
                 return {
@@ -171,7 +172,7 @@ export class SlackBotConnectorManager extends BaseConnectorManager<SlackConfigur
                   groupIds: whitelistModel.groupIds,
                   whitelistType: whitelistModel.whitelistType,
                   connectorId: connector.id,
-                  slackConfigurationId: connector.configuration!.id,
+                  slackConfigurationId,
                 };
               }
             );
