@@ -8,12 +8,14 @@ import { runSignal } from "./signals";
 const {
   getWorkspacesWithConversationsRetentionActivity,
   getAgentsWithConversationsRetentionActivity,
-  purgeAgentConversationsBatchActivity,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "5 minutes",
 });
 
-const { purgeConversationsBatchActivity } = proxyActivities<typeof activities>({
+const {
+  purgeConversationsBatchActivity,
+  purgeAgentConversationsBatchActivity,
+} = proxyActivities<typeof activities>({
   startToCloseTimeout: "15 minutes",
 });
 
