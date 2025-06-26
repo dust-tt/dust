@@ -1,0 +1,383 @@
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import assert from "assert";
+import type { Logger } from "pino";
+import type { CreationAttributes } from "sequelize";
+import { Op } from "sequelize";
+
+import {
+  DEFAULT_CONVERSATION_INCLUDE_FILE_ACTION_NAME,
+  DEFAULT_CONVERSATION_SEARCH_ACTION_NAME,
+} from "@app/lib/actions/constants";
+import type { ActionBaseParams } from "@app/lib/actions/mcp";
+import type { SearchResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { getWorkspaceInfos } from "@app/lib/api/workspace";
+import { Authenticator } from "@app/lib/auth";
+import { getDisplayNameForDocument } from "@app/lib/data_sources";
+import {
+  AgentMCPAction,
+  AgentMCPActionOutputItem,
+  AgentMCPServerConfiguration,
+} from "@app/lib/models/assistant/actions/mcp";
+import { AgentRetrievalAction } from "@app/lib/models/assistant/actions/retrieval";
+import { AgentConfiguration } from "@app/lib/models/assistant/agent";
+import { AgentMessage } from "@app/lib/models/assistant/conversation";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { RetrievalDocumentResource } from "@app/lib/resources/retrieval_document_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import { makeScript } from "@app/scripts/helpers";
+import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
+import type { LightWorkspaceType, ModelId } from "@app/types";
+import { stripNullBytes } from "@app/types";
+
+const WORKSPACE_CONCURRENCY = 50;
+const BATCH_SIZE = 200;
+const CREATION_CONCURRENCY = 50;
+
+const NOT_FOUND_MCP_SERVER_CONFIGURATION_ID = "unknown";
+
+function agentRetrievalActionToAgentMCPAction(
+  retrievalAction: AgentRetrievalAction,
+  agentConfiguration: AgentConfiguration | null,
+  {
+    mcpServerViewForSearchId,
+    mcpServerViewForIncludeDataId,
+  }: {
+    mcpServerViewForSearchId: ModelId;
+    mcpServerViewForIncludeDataId: ModelId;
+  },
+  logger: Logger
+): {
+  action: ActionBaseParams & CreationAttributes<AgentMCPAction>;
+} {
+  logger.info(
+    {
+      mcpServerViewForSearchId,
+      mcpServerViewForIncludeDataId,
+    },
+    "Found MCP server view IDs"
+  );
+
+  // The `mcpServerConfigurationId` was not properly backfilled when AgentRetrievalConfiguration
+  // was migrated to MCP. Preventing any possibility to convert the legacy retrieval actions
+  // to MCP "working/replayable" actions. This is best effort, we take the first agent_data_source
+  // as the MCP server configuration if available.
+  const searchMcpServerConfiguration =
+    agentConfiguration?.mcpServerConfigurations.find(
+      (config) => config.mcpServerViewId === mcpServerViewForSearchId
+    );
+
+  const includeDataMcpServerConfiguration =
+    agentConfiguration?.mcpServerConfigurations.find(
+      (config) => config.mcpServerViewId === mcpServerViewForIncludeDataId
+    );
+
+  const isJITServerAction = [
+    DEFAULT_CONVERSATION_SEARCH_ACTION_NAME,
+    DEFAULT_CONVERSATION_INCLUDE_FILE_ACTION_NAME,
+  ].includes(retrievalAction.functionCallName ?? "");
+
+  // Determine the MCP server configuration ID to use.
+  let mcpServerConfigurationId: string;
+
+  if (isJITServerAction) {
+    // For JIT server actions (default search/include), use the retrieval configuration ID directly
+    // It was generated randomly anyway.
+    mcpServerConfigurationId = retrievalAction.retrievalConfigurationId;
+  } else {
+    // For custom agent configurations, prefer search configuration over include_data configuration.
+    mcpServerConfigurationId =
+      searchMcpServerConfiguration?.sId ??
+      includeDataMcpServerConfiguration?.sId ??
+      NOT_FOUND_MCP_SERVER_CONFIGURATION_ID;
+  }
+
+  logger.info(
+    {
+      retrievalActionId: retrievalAction.id,
+      mcpServerConfigurationId,
+    },
+    "Converted retrieval action to MCP action"
+  );
+
+  return {
+    action: {
+      agentMessageId: retrievalAction.agentMessageId,
+      functionCallId: retrievalAction.functionCallId,
+      functionCallName: retrievalAction.functionCallName,
+      createdAt: retrievalAction.createdAt,
+      updatedAt: retrievalAction.updatedAt,
+      generatedFiles: [],
+      mcpServerConfigurationId,
+      params: {
+        query: retrievalAction.query,
+        tagsIn: retrievalAction.tagsIn,
+        tagsNot: retrievalAction.tagsNot,
+        relativeTimeFrame: `${retrievalAction.relativeTimeFrameDuration}${retrievalAction.relativeTimeFrameUnit}`,
+      },
+      step: retrievalAction.step,
+      workspaceId: retrievalAction.workspaceId,
+      // We did not save the error in the legacy retrieval action.
+      isError: false,
+      executionState: "allowed_implicitly",
+    },
+  };
+}
+
+function documentRetrievalToSearchResultResourceType(
+  retrievalDocument: RetrievalDocumentResource
+): { type: "resource"; resource: SearchResultResourceType } {
+  return {
+    type: "resource",
+    resource: {
+      mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_RESULT,
+      uri: retrievalDocument.sourceUrl ?? "",
+      text: stripNullBytes(getDisplayNameForDocument(retrievalDocument)),
+      ref: retrievalDocument.reference,
+      chunks: retrievalDocument.chunks.map((chunk) =>
+        stripNullBytes(chunk.text)
+      ),
+      id: retrievalDocument.documentId,
+      tags: retrievalDocument.tags,
+      source: {
+        provider:
+          retrievalDocument.dataSourceView?.dataSource.connectorProvider ??
+          undefined,
+      },
+    },
+  };
+}
+
+async function migrateSingleRetrievalAction(
+  auth: Authenticator,
+  retrievalAction: AgentRetrievalAction,
+  agentMessages: Map<number, AgentMessage>,
+  agentConfigurations: Map<string, AgentConfiguration>,
+  logger: Logger,
+  {
+    execute,
+    mcpServerViewForSearchId,
+    mcpServerViewForIncludeDataId,
+  }: {
+    execute: boolean;
+    mcpServerViewForSearchId: ModelId;
+    mcpServerViewForIncludeDataId: ModelId;
+  }
+) {
+  const agentMessage = agentMessages.get(retrievalAction.agentMessageId);
+  assert(agentMessage, "Agent message must exist");
+
+  const agentConfiguration = agentConfigurations.get(
+    `${agentMessage.agentConfigurationId}-${agentMessage.agentConfigurationVersion}`
+  );
+
+  logger.info(
+    {
+      agentConfiguration,
+    },
+    "Found agent configuration"
+  );
+
+  // Step 1: Convert the legacy retrieval action to an MCP action.
+  const mcpAction = agentRetrievalActionToAgentMCPAction(
+    retrievalAction,
+    agentConfiguration ?? null,
+    {
+      mcpServerViewForSearchId,
+      mcpServerViewForIncludeDataId,
+    },
+    logger
+  );
+
+  // Step 2: Find the corresponding DocumentRetrieval resources.
+  const documentRetrievalsWithChunks =
+    await RetrievalDocumentResource.listAllForActions(auth, [
+      retrievalAction.id,
+    ]);
+
+  logger.info(
+    {
+      retrievalActionId: retrievalAction.id,
+      documentRetrievalsWithChunks: documentRetrievalsWithChunks.length,
+    },
+    "Found document retrievals with chunks"
+  );
+
+  if (execute) {
+    // Step 3: Create the MCP action.
+    const mcpActionCreated = await AgentMCPAction.create(mcpAction.action);
+
+    if (documentRetrievalsWithChunks.length > 0) {
+      // Step 4: Create the MCP action output items.
+      await AgentMCPActionOutputItem.bulkCreate(
+        documentRetrievalsWithChunks.map((documentRetrieval) => ({
+          content:
+            documentRetrievalToSearchResultResourceType(documentRetrieval),
+          agentMCPActionId: mcpActionCreated.id,
+          workspaceId: retrievalAction.workspaceId,
+          createdAt: retrievalAction.createdAt,
+          updatedAt: retrievalAction.updatedAt,
+        }))
+      );
+
+      // Step 5: Delete the legacy retrieval document and chunks.
+      await RetrievalDocumentResource.deleteAllForActions(auth, [
+        retrievalAction.id,
+      ]);
+    }
+  }
+}
+
+async function migrateWorkspaceRetrievalActions(
+  workspace: LightWorkspaceType,
+  logger: Logger,
+  { execute }: { execute: boolean }
+) {
+  const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+  await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
+
+  const [mcpServerViewForSearch, mcpServerViewForIncludeData] =
+    await Promise.all([
+      MCPServerViewResource.getMCPServerViewForAutoInternalTool(auth, "search"),
+      MCPServerViewResource.getMCPServerViewForAutoInternalTool(
+        auth,
+        "include_data"
+      ),
+    ]);
+
+  assert(mcpServerViewForSearch, "Search MCP server view must exist");
+  assert(
+    mcpServerViewForIncludeData,
+    "Include data MCP server view must exist"
+  );
+
+  let hasMore = false;
+  do {
+    // Step 1: Retrieve the legacy retrieval actions.
+    const retrievalActions = await AgentRetrievalAction.findAll({
+      where: {
+        workspaceId: workspace.id,
+      },
+      limit: BATCH_SIZE,
+    });
+
+    if (retrievalActions.length === 0) {
+      return;
+    }
+
+    logger.info(`Found ${retrievalActions.length} retrieval actions`);
+
+    // Step 2: Find the corresponding AgentMessages.
+    const agentMessages = await AgentMessage.findAll({
+      where: {
+        id: {
+          [Op.in]: retrievalActions.map((action) => action.agentMessageId),
+        },
+        workspaceId: workspace.id,
+      },
+    });
+
+    // Step 3: Find the corresponding AgentConfigurations.
+    const agentConfigurationSIds = [
+      ...new Set(agentMessages.map((message) => message.agentConfigurationId)),
+    ];
+
+    const agentConfigurations = await AgentConfiguration.findAll({
+      where: {
+        sId: {
+          [Op.in]: agentConfigurationSIds,
+        },
+        workspaceId: workspace.id,
+      },
+      include: [
+        {
+          model: AgentMCPServerConfiguration,
+          as: "mcpServerConfigurations",
+        },
+      ],
+    });
+
+    const agentConfigurationsMap = new Map(
+      agentConfigurations.map((config) => [
+        `${config.sId}-${config.version}`,
+        config,
+      ])
+    );
+
+    const agentMessagesMap = new Map(
+      agentMessages.map((message) => [message.id, message])
+    );
+
+    // Step 4: Create the MCP actions with their output items.
+    await concurrentExecutor(
+      retrievalActions,
+      (retrievalAction) =>
+        migrateSingleRetrievalAction(
+          auth,
+          retrievalAction,
+          agentMessagesMap,
+          agentConfigurationsMap,
+          logger,
+          {
+            execute,
+            mcpServerViewForSearchId: mcpServerViewForSearch.id,
+            mcpServerViewForIncludeDataId: mcpServerViewForIncludeData.id,
+          }
+        ),
+      {
+        concurrency: CREATION_CONCURRENCY,
+      }
+    );
+
+    // Step 5: Delete the legacy retrieval actions.
+    if (execute) {
+      await AgentRetrievalAction.destroy({
+        where: {
+          id: {
+            [Op.in]: retrievalActions.map((action) => action.id),
+          },
+          workspaceId: workspace.id,
+        },
+      });
+    }
+
+    hasMore = retrievalActions.length === BATCH_SIZE;
+  } while (hasMore);
+}
+
+makeScript(
+  {
+    workspaceId: {
+      type: "string",
+      description: "Workspace ID to migrate",
+      required: false,
+    },
+  },
+  async ({ execute, workspaceId }, parentLogger) => {
+    const logger = parentLogger.child({ workspaceId });
+
+    if (workspaceId) {
+      const workspace = await getWorkspaceInfos(workspaceId);
+
+      if (!workspace) {
+        throw new Error(`Workspace ${workspaceId} not found`);
+      }
+
+      await migrateWorkspaceRetrievalActions(workspace, logger, { execute });
+    } else {
+      await runOnAllWorkspaces(
+        async (workspace) =>
+          migrateWorkspaceRetrievalActions(
+            workspace,
+            logger.child({ workspaceId: workspace.sId }),
+            {
+              execute,
+            }
+          ),
+        {
+          concurrency: WORKSPACE_CONCURRENCY,
+        }
+      );
+    }
+  }
+);
