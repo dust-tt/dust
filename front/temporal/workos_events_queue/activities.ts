@@ -153,26 +153,6 @@ async function handleRoleAssignmentForGroup({
         role: targetRole,
       });
     }
-
-    // Update membership origin to "provisioned" when syncing from WorkOS groups.
-    if (currentMembership.origin !== "provisioned") {
-      const { previousOrigin, newOrigin } =
-        await currentMembership.updateOrigin({
-          user,
-          workspace,
-          newOrigin: "provisioned",
-        });
-
-      logger.info(
-        {
-          userId: user.sId,
-          previousOrigin,
-          newOrigin,
-          groupName: group.name,
-        },
-        "Updated membership origin to provisioned based on group sync"
-      );
-    }
   } else if (action === "remove") {
     // Check if the user should lose their role when removed from the group.
     // We need to check if they're still in other groups that grant the same or higher role.
@@ -517,6 +497,31 @@ async function handleUserAddedToGroup(
 
   // Handle role assignment for special groups.
   await handleRoleAssignmentForGroup({ workspace, user, group, action: "add" });
+
+  // Update membership origin to "provisioned" when syncing from WorkOS groups.
+  const currentMembership =
+    await MembershipResource.getActiveMembershipOfUserInWorkspace({
+      user,
+      workspace,
+    });
+
+  if (currentMembership && currentMembership.origin !== "provisioned") {
+    const { previousOrigin, newOrigin } = await currentMembership.updateOrigin({
+      user,
+      workspace,
+      newOrigin: "provisioned",
+    });
+
+    logger.info(
+      {
+        userId: user.sId,
+        previousOrigin,
+        newOrigin,
+        groupName: group.name,
+      },
+      "Updated membership origin to provisioned based on group sync"
+    );
+  }
 }
 
 async function handleUserRemovedFromGroup(
