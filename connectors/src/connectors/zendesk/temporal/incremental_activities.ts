@@ -28,6 +28,7 @@ import {
 } from "@connectors/resources/zendesk_resources";
 import type { ModelId } from "@connectors/types";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
+import { ZendeskFetchedTicketComment } from "@connectors/connectors/zendesk/lib/types";
 
 /**
  * Retrieves the timestamp cursor, which is the start date of the last successful incremental sync.
@@ -259,6 +260,19 @@ export async function syncZendeskTicketUpdateBatchActivity({
     url ? { url } : { brandSubdomain, startTime }
   );
 
+  const commentsPerTicket: Record<number, ZendeskFetchedTicketComment[]> = {};
+  await concurrentExecutor(
+    tickets,
+    async (ticket) => {
+      commentsPerTicket[ticket.id] = await listZendeskTicketComments({
+        accessToken,
+        brandSubdomain,
+        ticketId: ticket.id,
+      });
+    },
+    { concurrency: 10 }
+  );
+
   await concurrentExecutor(
     tickets,
     async (ticket) => {
@@ -271,11 +285,12 @@ export async function syncZendeskTicketUpdateBatchActivity({
           loggerArgs,
         });
       } else if (shouldSyncTicket(ticket, configuration)) {
-        const comments = await listZendeskTicketComments({
-          accessToken,
-          brandSubdomain,
-          ticketId: ticket.id,
-        });
+        const comments = commentsPerTicket[ticket.id];
+        if (!comments) {
+          throw new Error(
+            `[Zendesk] Comments not found for ticket ${ticket.id}`
+          );
+        }
         // If we hide customer details, we don't need to fetch the users at all.
         // Also guarantees that user information is not included in the ticket content.
         const users = configuration.hideCustomerDetails
