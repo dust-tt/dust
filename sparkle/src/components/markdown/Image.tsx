@@ -1,12 +1,11 @@
 import React from "react";
 
-export function Img({
-  src,
-  alt,
-}: {
-  src?: string | undefined;
-  alt?: string | undefined;
-}) {
+type ImgProps = {
+  src?: string;
+  alt?: string;
+};
+
+export function Img({ src, alt }: ImgProps): JSX.Element {
   if (!src || !isAllowedImageSrc(src)) {
     return <img src="" alt="IMAGE BLOCKED"></img>;
   }
