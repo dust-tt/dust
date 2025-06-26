@@ -696,7 +696,7 @@ export async function getDataSourceUsage({
   }
 
   if (DISABLE_QUERIES) {
-    new Ok({ count: 0, agentNames: [], agentConfigurationIds: [] });
+    return new Ok({ count: 0, agentNames: [], agentConfigurationIds: [] });
   }
 
   const res = (await Promise.all([
@@ -930,7 +930,7 @@ export async function getDataSourceViewUsage({
   }
 
   if (DISABLE_QUERIES) {
-    new Ok({ count: 0, agentNames: [], agentConfigurationIds: [] });
+    return new Ok({ count: 0, agentNames: [], agentConfigurationIds: [] });
   }
 
   const res = (await Promise.all([
