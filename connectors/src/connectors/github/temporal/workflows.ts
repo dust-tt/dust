@@ -79,8 +79,9 @@ const MAX_CONCURRENT_REPO_SYNC_WORKFLOWS = 3;
 const MAX_CONCURRENT_ISSUE_SYNC_ACTIVITIES_PER_WORKFLOW = 8;
 
 const FILE_CHUNK_SIZE = 50;
+const DIRECTORY_CHUNK_SIZE = 20;
 
-const CONNECTOR_IDS_USING_GCS_CODE_SYNC: number[] = [15];
+const CONNECTOR_IDS_USING_GCS_CODE_SYNC: number[] = [15, 8714];
 
 /**
  * This workflow is used to fetch and sync all the repositories of a GitHub connector.
@@ -599,26 +600,32 @@ export async function githubCodeSyncStatelessWorkflow({
     }
   }
 
-  // 2. Process directories depth-first (parents before children) with updated directory info.
+  // 2. Process directories with updated directory info.
+  const directoryChunkPromises = [];
   for (const dirBatch of directoryBatches) {
-    const CHUNK_SIZE = 20;
-
-    for (let i = 0; i < dirBatch.directories.length; i += CHUNK_SIZE) {
-      const directoryChunk = dirBatch.directories.slice(i, i + CHUNK_SIZE);
-
-      await githubProcessDirectoryChunkActivity({
-        codeSyncStartedAtMs,
-        connectorId,
-        dataSourceConfig,
-        defaultBranch: extractResult.repoInfo.default_branch,
-        directories: directoryChunk,
-        repoId,
-        repoLogin,
-        repoName,
-        updatedDirectoryIds: allUpdatedDirectoryIds,
-      });
+    const directoryDepthChunks = chunk(
+      dirBatch.directories,
+      DIRECTORY_CHUNK_SIZE
+    );
+    for (const directoryDepthChunk of directoryDepthChunks) {
+      directoryChunkPromises.push(
+        githubProcessDirectoryChunkActivity({
+          codeSyncStartedAtMs,
+          connectorId,
+          dataSourceConfig,
+          defaultBranch: extractResult.repoInfo.default_branch,
+          directories: directoryDepthChunk,
+          repoId,
+          repoLogin,
+          repoName,
+          // Temporal does not support Sets in activity arguments, so we convert to an array.
+          updatedDirectoryIdsArray: Array.from(allUpdatedDirectoryIds),
+        })
+      );
     }
   }
+
+  await Promise.all(directoryChunkPromises);
 
   await githubCleanupCodeSyncActivity({
     connectorId,

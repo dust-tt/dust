@@ -826,7 +826,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "google_calendar_tool"
   | "index_private_slack_channel"
   | "labs_mcp_actions_dashboard"
-  | "labs_salesforce_personal_connections"
   | "labs_trackers"
   | "labs_transcripts"
   | "okta_enterprise_connection"

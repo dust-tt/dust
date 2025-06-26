@@ -27,7 +27,6 @@ import { SalesforceOauthExtraConfig } from "@app/components/data_source/salesfor
 import { SlackBotEnableView } from "@app/components/data_source/SlackBotEnableView";
 import { ZendeskConfigView } from "@app/components/data_source/ZendeskConfigView";
 import { ZendeskOAuthExtraConfig } from "@app/components/data_source/ZendeskOAuthExtraConfig";
-import { isProPlan } from "@app/lib/plans/plan_codes";
 import type {
   ConnectorPermission,
   ConnectorProvider,
@@ -499,14 +498,7 @@ export const isConnectorProviderAllowedForPlan = (
     case "webcrawler":
       return plan.limits.connections.isWebCrawlerAllowed;
     case "salesforce":
-      // Either salesforce is allowed for the plan, or the workspace
-      // is pro plan but has the pro_plan_salesforce_connector feature flag enabled
-      return (
-        plan.limits.connections.isSalesforceAllowed ||
-        (isProPlan(plan.code) &&
-          !!featureFlags?.includes("pro_plan_salesforce_connector"))
-      );
-
+      return !!featureFlags?.includes("salesforce_synced_queries");
     case "microsoft":
     case "slack_bot":
     case "snowflake":

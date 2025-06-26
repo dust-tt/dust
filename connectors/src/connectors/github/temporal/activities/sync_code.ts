@@ -211,7 +211,7 @@ export async function githubProcessDirectoryChunkActivity({
   repoId,
   repoLogin,
   repoName,
-  updatedDirectoryIds,
+  updatedDirectoryIdsArray,
 }: {
   codeSyncStartedAtMs: number;
   connectorId: number;
@@ -226,7 +226,7 @@ export async function githubProcessDirectoryChunkActivity({
   repoId: number;
   repoLogin: string;
   repoName: string;
-  updatedDirectoryIds?: Set<string>;
+  updatedDirectoryIdsArray?: string[];
 }) {
   const codeSyncStartedAt = new Date(codeSyncStartedAtMs);
 
@@ -242,7 +242,7 @@ export async function githubProcessDirectoryChunkActivity({
         repoId,
         repoLogin,
         repoName,
-        updatedDirectoryIds,
+        updatedDirectoryIds: new Set(updatedDirectoryIdsArray),
       });
     },
     { concurrency: PARALLEL_DIRECTORY_UPLOADS }
