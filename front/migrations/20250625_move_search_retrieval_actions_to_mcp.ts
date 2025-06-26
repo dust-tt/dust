@@ -76,7 +76,7 @@ function agentRetrievalActionToAgentMCPAction(
   );
 
   // The `mcpServerConfigurationId` was not properly backfilled when AgentRetrievalConfiguration
-  // was migrated to MCP. Preventing any possibility to convert the legacy retrieval actions
+  // was migrated to MCP, preventing any possibility to convert the legacy retrieval actions
   // to MCP "working/replayable" actions. This is best effort, we take the first agent_data_source
   // as the MCP server configuration if available.
   const searchMcpServerConfiguration =
@@ -184,8 +184,7 @@ function createOutputItem(
 async function migrateSingleRetrievalAction(
   auth: Authenticator,
   retrievalAction: AgentRetrievalAction,
-  agentMessages: Map<number, AgentMessage>,
-  agentConfigurations: Map<string, AgentConfiguration>,
+  agentConfiguration: AgentConfiguration,
   logger: Logger,
   {
     execute,
@@ -197,20 +196,6 @@ async function migrateSingleRetrievalAction(
     mcpServerViewForIncludeDataId: ModelId;
   }
 ) {
-  const agentMessage = agentMessages.get(retrievalAction.agentMessageId);
-  assert(agentMessage, "Agent message must exist");
-
-  const agentConfiguration = agentConfigurations.get(
-    `${agentMessage.agentConfigurationId}-${agentMessage.agentConfigurationVersion}`
-  );
-
-  logger.info(
-    {
-      agentConfiguration,
-    },
-    "Found agent configuration"
-  );
-
   // Step 1: Convert the legacy retrieval action to an MCP action.
   const mcpAction = agentRetrievalActionToAgentMCPAction(
     retrievalAction,
@@ -358,19 +343,29 @@ async function migrateWorkspaceRetrievalActions(
     // Step 4: Create the MCP actions with their output items.
     await concurrentExecutor(
       retrievalActions,
-      (retrievalAction) =>
-        migrateSingleRetrievalAction(
+      async (retrievalAction) => {
+        const agentMessage = agentMessagesMap.get(
+          retrievalAction.agentMessageId
+        );
+        assert(agentMessage, "Agent message must exist");
+
+        const agentConfiguration = agentConfigurationsMap.get(
+          `${agentMessage.agentConfigurationId}-${agentMessage.agentConfigurationVersion}`
+        );
+        assert(agentConfiguration, "Agent configuration must exist");
+
+        await migrateSingleRetrievalAction(
           auth,
           retrievalAction,
-          agentMessagesMap,
-          agentConfigurationsMap,
+          agentConfiguration,
           logger,
           {
             execute,
             mcpServerViewForSearchId: mcpServerViewForSearch.id,
             mcpServerViewForIncludeDataId: mcpServerViewForIncludeData.id,
           }
-        ),
+        );
+      },
       {
         concurrency: CREATION_CONCURRENCY,
       }
