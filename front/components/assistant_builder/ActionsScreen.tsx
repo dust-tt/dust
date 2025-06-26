@@ -69,7 +69,6 @@ import {
   MCP_SPECIFICATION,
 } from "@app/lib/actions/utils";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import { useMCPServerConnections } from "@app/lib/swr/mcp_servers";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
   ModelConfigurationType,
@@ -835,18 +834,6 @@ function ActionEditor({
         )
       : undefined;
 
-  const { connections, isConnectionsLoading } = useMCPServerConnections({
-    owner,
-    connectionType: "workspace",
-    disabled: !selectedMCPServerView?.server.authorization,
-  });
-
-  const connection = connections.find(
-    (c) =>
-      c.internalMCPServerId === selectedMCPServerView?.server.sId ||
-      c.remoteMCPServerId === selectedMCPServerView?.server.sId
-  );
-
   const shouldDisplayAdvancedSettings = !["DUST_APP_RUN"].includes(action.type);
 
   return (
@@ -856,9 +843,6 @@ function ActionEditor({
           {action.type === "MCP" && selectedMCPServerView ? (
             <MCPActionHeader
               mcpServer={selectedMCPServerView.server}
-              oAuthUseCase={selectedMCPServerView.oAuthUseCase}
-              isConnected={Boolean(connection)}
-              isConnectionsLoading={isConnectionsLoading}
               action={action}
             />
           ) : (
