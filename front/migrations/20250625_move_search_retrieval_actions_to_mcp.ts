@@ -98,9 +98,9 @@ function agentRetrievalActionToAgentMCPAction(
   let mcpServerConfigurationId: string;
 
   if (isJITServerAction) {
-    // For JIT server actions (default search/include), use the retrieval configuration ID directly
-    // It was generated randomly anyway.
-    mcpServerConfigurationId = retrievalAction.retrievalConfigurationId;
+    // For JIT server actions (default search/include), use the hardcoded -1 ID like in the MCP
+    // server implementation.
+    mcpServerConfigurationId = "-1";
   } else {
     // For custom agent configurations, prefer search configuration over include_data configuration.
     mcpServerConfigurationId =
