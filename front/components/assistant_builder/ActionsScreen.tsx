@@ -195,23 +195,23 @@ export default function ActionsScreen({
       newActionName?: string;
       newActionDescription?: string;
       getNewActionConfig: (
-        old: AssistantBuilderMCPConfiguration["configuration"]
-      ) => AssistantBuilderMCPConfiguration["configuration"];
+        old: AssistantBuilderMCPOrVizState["configuration"]
+      ) => AssistantBuilderMCPOrVizState["configuration"];
     }) {
       setEdited(true);
       setBuilderState((state) => ({
         ...state,
         actions: state.actions.map((action) => {
           if (action.name === actionName) {
-            assert(
-              action.type !== "DATA_VISUALIZATION",
-              "Data visualization actions cannot be edited"
-            );
             return {
               ...action,
               name: newActionName ?? action.name,
               description: newActionDescription ?? action.description,
-              configuration: getNewActionConfig(action.configuration),
+              // This is quite unsatisfying, but using `as any` here and repeating every
+              // other key in the object instead of spreading is actually the safest we can do.
+              // There is no way (that I could find) to make typescript understand that
+              // type and configuration are compatible.
+              configuration: getNewActionConfig(action.configuration) as any,
             };
           }
           return action;
@@ -251,10 +251,6 @@ export default function ActionsScreen({
         isEditing={!!pendingAction.previousActionName}
         spacesUsedInActions={spaceIdToActions}
         onSave={(newAction) => {
-          assert(
-            newAction.type === "MCP",
-            "Only MCP actions can be edited. This should not happen."
-          );
           setEdited(true);
           if (!pendingAction.action) {
             return;
@@ -440,8 +436,8 @@ type NewActionModalProps = {
   updateAction: (args: {
     actionName: string;
     getNewActionConfig: (
-      old: AssistantBuilderMCPConfiguration["configuration"]
-    ) => AssistantBuilderMCPConfiguration["configuration"];
+      old: AssistantBuilderMCPOrVizState["configuration"]
+    ) => AssistantBuilderMCPOrVizState["configuration"];
   }) => void;
   owner: WorkspaceType;
   setEdited: (edited: boolean) => void;
