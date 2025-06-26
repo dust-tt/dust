@@ -19,7 +19,6 @@ import type {
   AssistantBuilderMCPOrVizState,
   AssistantBuilderMCPServerConfiguration,
 } from "@app/components/assistant_builder/types";
-import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import type { MCPServerAvailability } from "@app/lib/actions/mcp_internal_actions/constants";
 import { ADVANCED_SEARCH_SWITCH } from "@app/lib/actions/mcp_internal_actions/constants";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
@@ -344,13 +343,8 @@ export function MCPAction({
         <ConfigurationSectionContainer title="Available Tools">
           <ToolsList
             owner={owner}
-            tools={selectedMCPServerView.server.tools}
-            serverType={
-              getServerTypeAndIdFromSId(selectedMCPServerView.server.sId)
-                .serverType
-            }
-            serverId={selectedMCPServerView.server.sId}
-            canUpdate={false}
+            mcpServerView={selectedMCPServerView}
+            forcedCanUpdate={false}
           />
         </ConfigurationSectionContainer>
       )}

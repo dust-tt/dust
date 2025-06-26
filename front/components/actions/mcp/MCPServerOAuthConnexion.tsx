@@ -1,14 +1,10 @@
 import {
   Button,
-  Chip,
-  ContentMessage,
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuTrigger,
-  InformationCircleIcon,
   Input,
-  Label,
 } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
 
@@ -24,13 +20,12 @@ import {
   OAUTH_PROVIDER_NAMES,
 } from "@app/types";
 
-const OAUTH_USE_CASE_TO_LABEL: Record<MCPOAuthUseCase, string> = {
+export const OAUTH_USE_CASE_TO_LABEL: Record<MCPOAuthUseCase, string> = {
   platform_actions: "Workspace",
   personal_actions: "Personal",
 };
 
 type MCPServerOauthConnexionProps = {
-  remoteMCPServerUrl?: string;
   authorization: AuthorizationInfo;
   authCredentials: OAuthCredentials | null;
   useCase: MCPOAuthUseCase | null;
@@ -41,7 +36,6 @@ type MCPServerOauthConnexionProps = {
 };
 
 export function MCPServerOAuthConnexion({
-  remoteMCPServerUrl,
   authorization,
   authCredentials,
   useCase,
@@ -119,32 +113,9 @@ export function MCPServerOAuthConnexion({
     >
       {authorization && (
         <>
-          <Chip color="warning">
-            <span>
-              {remoteMCPServerUrl
-                ? `${remoteMCPServerUrl} requires authentication with `
-                : "These tools require authentication with "}
-              {OAUTH_PROVIDER_NAMES[authorization.provider]}
-              {documentationUrl && (
-                <>
-                  . Follow{" "}
-                  <a
-                    href={documentationUrl}
-                    className="text-highlight-600"
-                    target="_blank"
-                  >
-                    this guide
-                  </a>{" "}
-                  to set it up
-                </>
-              )}
-              .
-            </span>
-          </Chip>
-
           {authorization.supported_use_cases.length > 1 && containerRef && (
             <div className="w-full">
-              <Label>Credentials Type</Label>
+              <div className="heading-base">Authentication type</div>
               <div>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -177,28 +148,18 @@ export function MCPServerOAuthConnexion({
               </div>
             </div>
           )}
-          <div className="w-full">
+          <div className="w-full text-xs text-muted-foreground dark:text-muted-foreground-night">
             {useCase === "platform_actions" && (
-              <ContentMessage
-                size="lg"
-                variant="golden"
-                title="Workspace level credentials."
-                icon={InformationCircleIcon}
-              >
-                The authentication credentials you provide during setup will be
-                shared by all users in this workspace when using these tools.
-              </ContentMessage>
+              <>
+                The credentials you provide will be shared by all users of these
+                tools.
+              </>
             )}
             {useCase === "personal_actions" && (
-              <ContentMessage
-                size="lg"
-                variant="highlight"
-                title="Personal level credentials."
-                icon={InformationCircleIcon}
-              >
-                Once setup for the workspace, each user will have to connect
-                their own credentials to interact with these tools.
-              </ContentMessage>
+              <>
+                Users will connect their own accounts the first time they
+                interact with these tools.
+              </>
             )}
           </div>
           {inputs &&
@@ -214,7 +175,7 @@ export function MCPServerOAuthConnexion({
               const value = authCredentials?.[key] ?? "";
               return (
                 <div key={key} className="w-full">
-                  <Label htmlFor={key}>{inputData.label}</Label>
+                  <div className="heading-base">{inputData.label}</div>
                   <Input
                     id={key}
                     value={value}
@@ -236,6 +197,19 @@ export function MCPServerOAuthConnexion({
                 </div>
               );
             })}
+          {documentationUrl && (
+            <div className="w-full text-muted-foreground dark:text-muted-foreground-night">
+              Questions ? Read{" "}
+              <a
+                href={documentationUrl}
+                className="font-bold text-highlight-600 dark:text-highlight-600-night"
+                target="_blank"
+              >
+                our guide
+              </a>{" "}
+              on {OAUTH_PROVIDER_NAMES[authorization.provider]}
+            </div>
+          )}
         </>
       )}
     </div>
