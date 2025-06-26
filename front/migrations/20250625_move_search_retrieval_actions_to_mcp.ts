@@ -1,3 +1,4 @@
+import type { SearchQueryResourceType } from "@dust-tt/client";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import assert from "assert";
 import type { Logger } from "pino";
@@ -10,6 +11,7 @@ import {
 } from "@app/lib/actions/constants";
 import type { ActionBaseParams } from "@app/lib/actions/mcp";
 import type { SearchResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { makeQueryResource } from "@app/lib/actions/mcp_internal_actions/servers/search/utils";
 import { getWorkspaceInfos } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
 import { getDisplayNameForDocument } from "@app/lib/data_sources";
@@ -26,7 +28,7 @@ import { RetrievalDocumentResource } from "@app/lib/resources/retrieval_document
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
-import type { LightWorkspaceType, ModelId } from "@app/types";
+import type { LightWorkspaceType, ModelId, TimeFrame } from "@app/types";
 import { stripNullBytes } from "@app/types";
 
 const WORKSPACE_CONCURRENCY = 50;
@@ -34,6 +36,22 @@ const BATCH_SIZE = 200;
 const CREATION_CONCURRENCY = 50;
 
 const NOT_FOUND_MCP_SERVER_CONFIGURATION_ID = "unknown";
+
+function getTimeFrameUnit(
+  retrievalAction: AgentRetrievalAction
+): TimeFrame | null {
+  if (
+    retrievalAction.relativeTimeFrameUnit &&
+    retrievalAction.relativeTimeFrameDuration
+  ) {
+    return {
+      duration: retrievalAction.relativeTimeFrameDuration,
+      unit: retrievalAction.relativeTimeFrameUnit,
+    };
+  }
+
+  return null;
+}
 
 function agentRetrievalActionToAgentMCPAction(
   retrievalAction: AgentRetrievalAction,
@@ -99,6 +117,8 @@ function agentRetrievalActionToAgentMCPAction(
     "Converted retrieval action to MCP action"
   );
 
+  const timeFrame = getTimeFrameUnit(retrievalAction);
+
   return {
     action: {
       agentMessageId: retrievalAction.agentMessageId,
@@ -112,7 +132,9 @@ function agentRetrievalActionToAgentMCPAction(
         query: retrievalAction.query,
         tagsIn: retrievalAction.tagsIn,
         tagsNot: retrievalAction.tagsNot,
-        relativeTimeFrame: `${retrievalAction.relativeTimeFrameDuration}${retrievalAction.relativeTimeFrameUnit}`,
+        relativeTimeFrame: timeFrame
+          ? `${timeFrame.duration}${timeFrame.unit}`
+          : "all",
       },
       step: retrievalAction.step,
       workspaceId: retrievalAction.workspaceId,
@@ -125,25 +147,37 @@ function agentRetrievalActionToAgentMCPAction(
 
 function documentRetrievalToSearchResultResourceType(
   retrievalDocument: RetrievalDocumentResource
-): { type: "resource"; resource: SearchResultResourceType } {
+): SearchResultResourceType {
   return {
-    type: "resource",
-    resource: {
-      mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_RESULT,
-      uri: retrievalDocument.sourceUrl ?? "",
-      text: stripNullBytes(getDisplayNameForDocument(retrievalDocument)),
-      ref: retrievalDocument.reference,
-      chunks: retrievalDocument.chunks.map((chunk) =>
-        stripNullBytes(chunk.text)
-      ),
-      id: retrievalDocument.documentId,
-      tags: retrievalDocument.tags,
-      source: {
-        provider:
-          retrievalDocument.dataSourceView?.dataSource.connectorProvider ??
-          undefined,
-      },
+    mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_RESULT,
+    uri: retrievalDocument.sourceUrl ?? "",
+    text: stripNullBytes(getDisplayNameForDocument(retrievalDocument)),
+    ref: retrievalDocument.reference,
+    chunks: retrievalDocument.chunks.map((chunk) => stripNullBytes(chunk.text)),
+    id: retrievalDocument.documentId,
+    tags: retrievalDocument.tags,
+    source: {
+      provider:
+        retrievalDocument.dataSourceView?.dataSource.connectorProvider ??
+        undefined,
     },
+  };
+}
+
+function createOutputItem(
+  resource: SearchQueryResourceType | SearchResultResourceType,
+  mcpActionId: ModelId,
+  retrievalAction: AgentRetrievalAction
+) {
+  return {
+    agentMCPActionId: mcpActionId,
+    content: {
+      type: "resource" as const,
+      resource,
+    },
+    createdAt: retrievalAction.createdAt,
+    updatedAt: retrievalAction.updatedAt,
+    workspaceId: retrievalAction.workspaceId,
   };
 }
 
@@ -206,18 +240,31 @@ async function migrateSingleRetrievalAction(
     // Step 3: Create the MCP action.
     const mcpActionCreated = await AgentMCPAction.create(mcpAction.action);
 
+    const searchQueryResource: SearchQueryResourceType = makeQueryResource(
+      retrievalAction.query ?? "",
+      getTimeFrameUnit(retrievalAction),
+      retrievalAction.tagsIn ?? undefined,
+      retrievalAction.tagsNot ?? undefined
+    );
+
     if (documentRetrievalsWithChunks.length > 0) {
       // Step 4: Create the MCP action output items.
-      await AgentMCPActionOutputItem.bulkCreate(
-        documentRetrievalsWithChunks.map((documentRetrieval) => ({
-          content:
+      await AgentMCPActionOutputItem.bulkCreate([
+        // Create the search query resource.
+        createOutputItem(
+          searchQueryResource,
+          mcpActionCreated.id,
+          retrievalAction
+        ),
+        // Map the document retrievals to search result resources.
+        ...documentRetrievalsWithChunks.map((documentRetrieval) =>
+          createOutputItem(
             documentRetrievalToSearchResultResourceType(documentRetrieval),
-          agentMCPActionId: mcpActionCreated.id,
-          workspaceId: retrievalAction.workspaceId,
-          createdAt: retrievalAction.createdAt,
-          updatedAt: retrievalAction.updatedAt,
-        }))
-      );
+            mcpActionCreated.id,
+            retrievalAction
+          )
+        ),
+      ]);
 
       // Step 5: Delete the legacy retrieval document and chunks.
       await RetrievalDocumentResource.deleteAllForActions(auth, [
