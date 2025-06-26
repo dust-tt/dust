@@ -33,6 +33,7 @@ type AgentConfiguration =
 interface CliChatProps {
   sId?: string;
   agentSearch?: string;
+  message?: string;
 }
 
 function getLastConversationItem<T extends ConversationItem>(
@@ -48,8 +49,19 @@ function getLastConversationItem<T extends ConversationItem>(
   return null;
 }
 
-const CliChat: FC<CliChatProps> = ({ sId: requestedSId, agentSearch }) => {
+const CliChat: FC<CliChatProps> = ({ sId: requestedSId, agentSearch, message }) => {
   const [error, setError] = useState<string | null>(null);
+  
+  // Validate that --message requires --agent
+  useEffect(() => {
+    if (message && !agentSearch) {
+      console.error(JSON.stringify({ 
+        error: "Invalid usage",
+        details: "--message requires --agent to be specified"
+      }));
+      process.exit(1);
+    }
+  }, [message, agentSearch]);
   const [selectedAgent, setSelectedAgent] = useState<AgentConfiguration | null>(
     null
   );
@@ -220,6 +232,129 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId, agentSearch }) => {
       },
     ]);
   }, [agentSearch, allAgents, selectedAgent]);
+
+  // State for non-interactive mode
+  const [nonInteractiveComplete, setNonInteractiveComplete] = useState(false);
+
+  // Handle non-interactive mode when message is provided
+  useEffect(() => {
+    if (!message || !selectedAgent || nonInteractiveComplete) {
+      return;
+    }
+
+    // Automatically send the message in non-interactive mode
+    async function sendNonInteractiveMessage() {
+      if (!me || meError || isMeLoading) {
+        console.error(JSON.stringify({ 
+          error: "Authentication error",
+          details: meError || "Not authenticated"
+        }));
+        process.exit(1);
+      }
+
+      setIsProcessingQuestion(true);
+      
+      const dustClient = await getDustClient();
+      if (!dustClient) {
+        console.error(JSON.stringify({ 
+          error: "Authentication required",
+          details: "Run `dust login` first"
+        }));
+        process.exit(1);
+      }
+
+      try {
+        // Create a new conversation with the agent
+        const convRes = await dustClient.createConversation({
+          title: message.substring(0, 50) + (message.length > 50 ? "..." : ""),
+          visibility: "unlisted",
+          message: {
+            content: message,
+            mentions: [{ configurationId: selectedAgent.sId }],
+            context: {
+              timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+              username: me.username,
+              fullName: me.fullName,
+              email: me.email,
+              origin: "api",
+            },
+          },
+          contentFragment: undefined,
+        });
+
+        if (convRes.isErr()) {
+          console.error(JSON.stringify({ 
+            error: "Failed to create conversation",
+            details: convRes.error.message
+          }));
+          process.exit(1);
+        }
+
+        const conversation = convRes.value.conversation;
+        const userMessageId = convRes.value.message?.sId;
+        
+        if (!userMessageId) {
+          console.error(JSON.stringify({ 
+            error: "No message created"
+          }));
+          process.exit(1);
+        }
+
+        // Stream the agent's response
+        const streamRes = await dustClient.streamAgentAnswerEvents({
+          conversation: conversation,
+          userMessageId: userMessageId,
+        });
+
+        if (streamRes.isErr()) {
+          console.error(JSON.stringify({ 
+            error: "Failed to stream agent answer",
+            details: streamRes.error.message
+          }));
+          process.exit(1);
+        }
+
+        let fullResponse = "";
+        
+        for await (const event of streamRes.value.eventStream) {
+          if (event.type === "generation_tokens") {
+            if (event.classification === "tokens") {
+              fullResponse += event.text;
+            }
+          } else if (event.type === "agent_error") {
+            console.error(JSON.stringify({ 
+              error: "Agent error",
+              details: event.error.message
+            }));
+            process.exit(1);
+          } else if (event.type === "user_message_error") {
+            console.error(JSON.stringify({ 
+              error: "User message error",
+              details: event.error.message
+            }));
+            process.exit(1);
+          } else if (event.type === "agent_message_success") {
+            // Success - output the result
+            console.log(JSON.stringify({
+              agentId: selectedAgent.sId,
+              agentAnswer: fullResponse.trim(),
+              conversationId: conversation.sId
+            }));
+            setNonInteractiveComplete(true);
+            process.exit(0);
+          }
+        }
+      } catch (error) {
+        console.error(JSON.stringify({ 
+          error: "Unexpected error",
+          details: normalizeError(error).message
+        }));
+        process.exit(1);
+      }
+    }
+
+    void sendNonInteractiveMessage();
+  }, [message, selectedAgent, nonInteractiveComplete, me, meError, isMeLoading]);
 
   const canSubmit =
     me &&
@@ -966,6 +1101,25 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId, agentSearch }) => {
       }
     }
   });
+
+  // In non-interactive mode, show minimal UI
+  if (message) {
+    if (agentSearch && agentsIsLoading) {
+      return <Text>Searching for agent...</Text>;
+    }
+    if (error || agentsError) {
+      // Error already logged in useEffect
+      return null;
+    }
+    if (!selectedAgent) {
+      return <Text>Waiting for agent selection...</Text>;
+    }
+    if (isProcessingQuestion) {
+      return <Text>Processing message...</Text>;
+    }
+    // Non-interactive mode complete or processing
+    return null;
+  }
 
   // Show loading state while searching for agent
   if (agentSearch && agentsIsLoading) {
