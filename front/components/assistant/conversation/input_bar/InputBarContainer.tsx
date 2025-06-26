@@ -1,4 +1,5 @@
 import {
+  ActionMicIcon,
   ArrowUpIcon,
   Button,
   FullscreenExitIcon,
@@ -26,6 +27,7 @@ import useUrlHandler from "@app/components/assistant/conversation/input_bar/edit
 import { InputBarAttachmentsPicker } from "@app/components/assistant/conversation/input_bar/InputBarAttachmentsPicker";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
+import { useSpeechRecognition } from "@app/hooks/useSpeechRecognition";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isNodeCandidate } from "@app/lib/connectors";
@@ -45,6 +47,7 @@ export const INPUT_BAR_ACTIONS = [
   "assistants-list",
   "assistants-list-with-actions",
   "fullscreen",
+  "voice-input",
 ] as const;
 
 export type InputBarAction = (typeof INPUT_BAR_ACTIONS)[number];
@@ -91,6 +94,17 @@ const InputBarContainer = ({
 
   // Create a ref to hold the editor instance
   const editorRef = useRef<Editor | null>(null);
+
+  // Speech recognition hook
+  const {
+    isRecording,
+    transcript,
+    isSupported: isSpeechSupported,
+    startRecording,
+    stopRecording,
+    resetTranscript,
+    error: speechError,
+  } = useSpeechRecognition();
 
   const handleUrlDetected = useCallback(
     (candidate: UrlCandidate | NodeCandidate | null) => {
@@ -237,6 +251,38 @@ const InputBarContainer = ({
     setIsExpanded(false);
   }
 
+  const handleVoiceInput = useCallback(() => {
+    if (!isSpeechSupported) {
+      return;
+    }
+
+    if (isRecording) {
+      stopRecording();
+    } else {
+      resetTranscript();
+      startRecording();
+    }
+  }, [isRecording, stopRecording, startRecording, resetTranscript, isSpeechSupported]);
+
+  // Insert transcript into editor when speech recognition stops
+  useEffect(() => {
+    if (!isRecording && transcript && editorService) {
+      editorService.insertText(transcript);
+      resetTranscript();
+    }
+  }, [isRecording, transcript, editorService, resetTranscript]);
+
+  // Show error notifications for speech recognition errors
+  useEffect(() => {
+    if (speechError) {
+      sendNotification({
+        title: "Speech Recognition Error",
+        description: speechError,
+        type: "error",
+      });
+    }
+  }, [speechError, sendNotification]);
+
   const contentEditableClasses = classNames(
     "inline-block w-full",
     "border-0 px-2 outline-none ring-0 focus:border-0 focus:outline-none focus:ring-0",
@@ -301,6 +347,26 @@ const InputBarContainer = ({
               showFooterButtons={actions.includes(
                 "assistants-list-with-actions"
               )}
+            />
+          )}
+          {actions.includes("voice-input") && (
+            <Button
+              variant="ghost-secondary"
+              icon={ActionMicIcon}
+              size="xs"
+              onClick={handleVoiceInput}
+              className={classNames(
+                isRecording && "animate-pulse bg-red-100 text-red-600",
+                !isSpeechSupported && "opacity-50 cursor-not-allowed"
+              )}
+              tooltip={
+                !isSpeechSupported
+                  ? "Voice input not supported in this browser"
+                  : isRecording
+                    ? "Stop recording"
+                    : "Start voice input"
+              }
+              disabled={!isSpeechSupported}
             />
           )}
           {actions.includes("fullscreen") && (

@@ -178,6 +178,10 @@ const useEditorService = (editor: Editor | null) => {
         }
         return editor?.setEditable(!loading);
       },
+
+      insertText(text: string) {
+        editor?.chain().focus().insertContent(text).run();
+      },
     };
   }, [editor, markdownSerializer]);
 
