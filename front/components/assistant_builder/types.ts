@@ -539,7 +539,7 @@ type AssistantBuilderPropsBase<T> = {
   owner: WorkspaceType;
   plan: PlanType;
   subscription: SubscriptionType;
-  duplicateAgentId: string | null;
+  duplicateAgentId?: string | null;
 };
 
 export type AssistantBuilderProps =

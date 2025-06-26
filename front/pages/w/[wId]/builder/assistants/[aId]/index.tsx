@@ -139,7 +139,6 @@ export default function EditAssistant({
         subscription={subscription}
         plan={plan}
         flow={flow}
-        duplicateAgentId={null}
         initialBuilderState={{
           scope: agentConfiguration.scope,
           handle: agentConfiguration.name,
