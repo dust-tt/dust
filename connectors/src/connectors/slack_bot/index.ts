@@ -77,14 +77,12 @@ export class SlackBotConnectorManager extends BaseConnectorManager<SlackConfigur
       );
     }
     const slackTeamId = teamInfo.team.id;
-    const legacyConnector = await ConnectorResource.findBy(
+    const legacyConnector = await ConnectorResource.findByWorkspaceIdAndType(
       dataSourceConfig.workspaceId,
-      { type: "slack" },
-      ["id"]
+      "slack"
     );
-    const legacyConfiguration = legacyConnector
-      ? await SlackConfigurationResource.fetchByConnectorId(legacyConnector.id)
-      : null;
+    const legacyConfiguration =
+      legacyConnector?.configuration as SlackConfigurationResource;
     const connector = await sequelizeConnection.transaction(
       async (transaction) => {
         const connector = await ConnectorResource.makeNew(
@@ -149,7 +147,7 @@ export class SlackBotConnectorManager extends BaseConnectorManager<SlackConfigur
             await SlackChannel.bulkCreate(creationRecords, { transaction });
           }
         }
-        if (legacyConfiguration && connector.configurationId) {
+        if (legacyConfiguration && connector.configuration) {
           const slackBotWhitelistModelCount =
             await SlackBotWhitelistModel.count({
               where: {
@@ -173,7 +171,7 @@ export class SlackBotConnectorManager extends BaseConnectorManager<SlackConfigur
                   groupIds: whitelistModel.groupIds,
                   whitelistType: whitelistModel.whitelistType,
                   connectorId: connector.id,
-                  slackConfigurationId: connector.configurationId as number,
+                  slackConfigurationId: connector.configuration!.id,
                 };
               }
             );

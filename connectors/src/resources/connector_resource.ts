@@ -3,7 +3,6 @@ import { Err, Ok } from "@dust-tt/client";
 import type {
   Attributes,
   CreationAttributes,
-  FindAttributeOptions,
   ModelStatic,
   Transaction,
   WhereOptions,
@@ -38,7 +37,7 @@ export interface ConnectorResource
 export class ConnectorResource extends BaseResource<ConnectorModel> {
   static model: ModelStatic<ConnectorModel> = ConnectorModel;
 
-  private configuration: ConnectorProviderConfigurationResource | null = null;
+  public configuration: ConnectorProviderConfigurationResource | null = null;
 
   // TODO(2024-02-20 flav): Delete Model from the constructor, once `update` has been migrated.
   constructor(
@@ -150,23 +149,22 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
     return c;
   }
 
-  static async findBy(
+  static async findByWorkspaceIdAndType(
     workspaceId: string,
-    where: WhereOptions<ConnectorModel>,
-    attributes?: FindAttributeOptions
+    type: ConnectorProvider
   ) {
     const blob = await ConnectorResource.model.findOne({
       where: {
-        ...where,
         workspaceId,
+        type,
       },
-      attributes: attributes ?? undefined,
     });
     if (!blob) {
       return null;
     }
 
     const c = new this(this.model, blob.get());
+    await c.postFetchHook();
     return c;
   }
 
@@ -280,10 +278,6 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
 
   get isThirdPartyInternalError() {
     return this.errorType === "third_party_internal_error";
-  }
-
-  get configurationId() {
-    return this.configuration?.id ?? null;
   }
 
   toJSON(): ConnectorType {
