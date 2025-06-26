@@ -8,7 +8,8 @@ import { cva } from "class-variance-authority";
 import React, { useEffect } from "react";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
-import { useAgentBuilderInstructionsContext } from "@app/components/agent_builder/instructions/AgentBuilderInstructionsContext";
+import { useFormContext } from "react-hook-form";
+import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { InstructionTipsPopover } from "@app/components/agent_builder/instructions/InstructionsTipsPopover";
 import { ParagraphExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/ParagraphExtension";
 import {
@@ -58,8 +59,8 @@ const editorVariants = cva(
 
 export function AgentBuilderInstructionsEditor() {
   const { owner } = useAgentBuilderContext();
-  const { instructions, setInstructions } =
-    useAgentBuilderInstructionsContext();
+  const form = useFormContext<AgentBuilderFormData>();
+  const instructions = form.watch("instructions");
 
   const editor = useEditor({
     extensions,
@@ -67,7 +68,7 @@ export function AgentBuilderInstructionsEditor() {
     onUpdate: ({ editor }) => {
       const json = editor.getJSON();
       const plainText = plainTextFromTipTapContent(json);
-      setInstructions(plainText);
+      form.setValue("instructions", plainText);
     },
   });
 

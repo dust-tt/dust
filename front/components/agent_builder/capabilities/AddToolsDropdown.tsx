@@ -10,12 +10,16 @@ import {
 } from "@dust-tt/sparkle";
 import { uniqueId } from "lodash";
 
-import { useAgentBuilderCapabilitiesContext } from "@app/components/agent_builder/capabilities/AgentBuilderCapabilitiesContext";
+import {
+  type AgentBuilderAction,
+  type AgentBuilderFormData,
+} from "@app/components/agent_builder/AgentBuilderFormContext";
+import { useFormContext } from "react-hook-form";
 import { getDataVisualizationActionConfiguration } from "@app/components/assistant_builder/types";
 import { DATA_VISUALIZATION_SPECIFICATION } from "@app/lib/actions/utils";
 
 export function AddToolsDropdown() {
-  const { actions, setActions } = useAgentBuilderCapabilitiesContext();
+  const form = useFormContext<AgentBuilderFormData>();
 
   function onClickDataVisualization() {
     const dataVisualizationConfig = getDataVisualizationActionConfiguration();
@@ -23,16 +27,19 @@ export function AddToolsDropdown() {
       return;
     }
 
-    const newAction = {
+    // The configuration already has an id, but we ensure it matches our expected type
+    const newAction: AgentBuilderAction = {
       ...dataVisualizationConfig,
-      id: uniqueId(),
+      id: dataVisualizationConfig.id,
     };
 
-    setActions((prevActions) => [...prevActions, newAction]);
+    const currentActions = form.getValues("actions");
+    form.setValue("actions", [...currentActions, newAction]);
   }
 
+  const actions = form.watch("actions");
   const hasDataVisualization = actions.some(
-    (action) => action.type === "DATA_VISUALIZATION"
+    (action: AgentBuilderAction) => action.type === "DATA_VISUALIZATION"
   );
 
   return (

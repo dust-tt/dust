@@ -8,18 +8,21 @@ import {
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import React from "react";
+import { useFormContext } from "react-hook-form";
 
+import type {
+  AgentBuilderAction,
+  AgentBuilderFormData,
+} from "@app/components/agent_builder/AgentBuilderFormContext";
 import { AddKnowledgeDropdown } from "@app/components/agent_builder/capabilities/AddKnowledgeDropdown";
 import { AddToolsDropdown } from "@app/components/agent_builder/capabilities/AddToolsDropdown";
-import { useAgentBuilderCapabilitiesContext } from "@app/components/agent_builder/capabilities/AgentBuilderCapabilitiesContext";
-import type { AssistantBuilderMCPOrVizState } from "@app/components/assistant_builder/types";
 import { DATA_VISUALIZATION_SPECIFICATION } from "@app/lib/actions/utils";
 
 function ActionCard({
   action,
   onRemove,
 }: {
-  action: AssistantBuilderMCPOrVizState;
+  action: AgentBuilderAction;
   onRemove: () => void;
 }) {
   const spec =
@@ -60,12 +63,15 @@ function ActionCard({
 }
 
 export function AgentBuilderCapabilitiesBlock() {
-  const { actions, setActions } = useAgentBuilderCapabilitiesContext();
+  const form = useFormContext<AgentBuilderFormData>();
+  const actions = form.watch("actions");
 
-  function removeAction(actionToRemove: AssistantBuilderMCPOrVizState) {
-    setActions((prevActions) =>
-      prevActions.filter((action) => action.id !== actionToRemove.id)
+  function removeAction(actionToRemove: AgentBuilderAction) {
+    const currentActions = form.getValues("actions");
+    const updatedActions = currentActions.filter(
+      (action) => action.id !== actionToRemove.id
     );
+    form.setValue("actions", updatedActions);
   }
 
   return (
