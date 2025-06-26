@@ -108,7 +108,7 @@ export function AgentBuilderInstructionsEditor() {
       <div className="relative h-full min-h-60 grow p-px">
         <EditorContent editor={editor} className="absolute inset-0" />
         <div className="absolute bottom-2 right-2">
-          <InstructionTipsPopover owner={owner} instructions={field.value} />
+          <InstructionTipsPopover owner={owner} />
         </div>
       </div>
       {editor && (
