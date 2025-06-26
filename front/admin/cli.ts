@@ -281,7 +281,7 @@ const dataSource = async (command: string, args: parseArgs.ParsedArgs) => {
       return;
     }
     case "delete": {
-      // It's possible to delete a data source directly from Pokké UI but
+      // It's possible to delete a data source directly from Poké UI but
       // it's not accessible for a relocated workspace. This command is there to let us
       // delete a data source for a relocated workspace.
       if (!args.wId) {
