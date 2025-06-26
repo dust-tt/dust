@@ -420,7 +420,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
       selected: "read",
       unselected: "none",
     },
-    isDeletable: true,
+    isDeletable: false,
     guideLink: "https://docs.dust.tt/docs/salesforce",
   },
   gong: {
