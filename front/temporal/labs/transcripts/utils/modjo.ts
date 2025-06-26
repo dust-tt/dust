@@ -1,3 +1,4 @@
+import { error } from "console";
 import { either } from "fp-ts";
 import { pipe } from "fp-ts/function";
 import * as t from "io-ts";
@@ -436,6 +437,8 @@ export async function retrieveModjoTranscriptContent(
       {
         fileId,
         transcriptsConfigurationId: transcriptsConfiguration.sId,
+        status: response.status,
+        error: await response.text(),
       },
       "[processTranscriptActivity] Error fetching call from Modjo. Skipping."
     );
