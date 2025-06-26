@@ -37,7 +37,7 @@ AgentDataRetentionModel.init(
     },
   },
   {
-    modelName: "agent_data_retention",
+    modelName: "agent_data_retentions",
     sequelize: frontSequelize,
     indexes: [
       {
