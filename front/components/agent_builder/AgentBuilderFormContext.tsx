@@ -43,9 +43,6 @@ export const agentBuilderFormSchema = z.object({
 
 export type AgentBuilderFormData = z.infer<typeof agentBuilderFormSchema>;
 
-export type AgentBuilderGenerationSettings =
-  AgentBuilderFormData["generationSettings"];
-
 export type AgentBuilderAction = z.infer<typeof actionSchema>;
 
 interface AgentBuilderFormProviderProps {

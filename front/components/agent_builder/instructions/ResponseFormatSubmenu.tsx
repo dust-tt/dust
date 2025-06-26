@@ -6,7 +6,6 @@ import {
 } from "@dust-tt/sparkle";
 import dynamic from "next/dynamic";
 import React from "react";
-
 import { useController } from "react-hook-form";
 
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
