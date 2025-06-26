@@ -30,6 +30,7 @@ import {
   generateRandomModelSId,
   getResourceNameAndIdFromSId,
 } from "@app/lib/resources/string_ids";
+import { getFileProcessedUrl } from "@app/lib/swr/file";
 import logger from "@app/logger/logger";
 import type {
   BaseContentFragmentType,
@@ -699,6 +700,10 @@ export async function renderLightContentFragmentForModel(
           image_url: {
             url: signedUrl,
           },
+        },
+        {
+          type: "text",
+          text: `url="${getFileProcessedUrl(auth.getNonNullableWorkspace(), fileStringId)}" type="${contentType}" title=${title}"`,
         },
       ],
     };
