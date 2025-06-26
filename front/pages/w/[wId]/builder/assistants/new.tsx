@@ -44,7 +44,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   subscription: SubscriptionType;
   plan: PlanType;
   spaces: SpaceType[];
-  actions: AssistantBuilderInitialState["actions"];
   agentConfiguration:
     | AgentConfigurationType
     | TemplateAgentConfigurationType
