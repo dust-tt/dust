@@ -3,10 +3,9 @@ import { useEffect } from "react";
 
 import { mcpServerViewSortingFn } from "@app/lib/actions/mcp_helper";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import type { AppType, SpaceType, WorkspaceType } from "@app/types";
+import type { SpaceType, WorkspaceType } from "@app/types";
 
 type AgentBuilderContextType = {
-  dustApps: AppType[];
   spaces: SpaceType[];
   mcpServerViews: MCPServerViewType[];
   owner: WorkspaceType;
@@ -15,7 +14,6 @@ type AgentBuilderContextType = {
 };
 
 export const AgentBuilderContext = createContext<AgentBuilderContextType>({
-  dustApps: [],
   spaces: [],
   mcpServerViews: [],
   owner: {} as WorkspaceType,
@@ -32,7 +30,6 @@ interface AgentBuilderContextProps
 }
 
 export function AgentBuilderProvider({
-  dustApps,
   spaces,
   mcpServerViews,
   owner,
@@ -57,7 +54,6 @@ export function AgentBuilderProvider({
   return (
     <AgentBuilderContext.Provider
       value={{
-        dustApps,
         spaces,
         mcpServerViews: mcpServerViews.sort(mcpServerViewSortingFn),
         owner,

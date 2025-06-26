@@ -20,11 +20,12 @@ import {
   DEFAULT_REASONING_ACTION_DESCRIPTION,
   DEFAULT_RETRIEVAL_ACTION_NAME,
 } from "@app/lib/actions/constants";
+import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { ReasoningModelConfiguration } from "@app/lib/actions/reasoning";
 import type { TableDataSourceConfiguration } from "@app/lib/actions/tables_query";
 import type {
   AgentActionConfigurationType,
-  UnsavedMCPServerConfigurationType,
+  UnsavedAgentActionConfigurationType,
 } from "@app/lib/actions/types/agent";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import { getFavoriteStates } from "@app/lib/api/assistant/get_favorite_states";
@@ -1128,9 +1129,9 @@ export async function restoreAgentConfiguration(
  */
 export async function createAgentActionConfiguration(
   auth: Authenticator,
-  action: UnsavedMCPServerConfigurationType,
+  action: UnsavedAgentActionConfigurationType,
   agentConfiguration: LightAgentConfigurationType
-): Promise<Result<AgentActionConfigurationType, Error>> {
+): Promise<Result<MCPServerConfigurationType, Error>> {
   const owner = auth.getNonNullableWorkspace();
 
   assert(isServerSideMCPServerConfiguration(action));

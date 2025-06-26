@@ -6,7 +6,10 @@ import { getConversation } from "@app/lib/api/assistant/conversation";
 import { renderConversationForModel } from "@app/lib/api/assistant/preprocessing";
 import { getTextRepresentationFromMessages } from "@app/lib/api/assistant/utils";
 import { default as config } from "@app/lib/api/config";
-import { getDataSources } from "@app/lib/api/data_sources";
+import {
+  getDataSources,
+  softDeleteDataSourceAndLaunchScrubWorkflow,
+} from "@app/lib/api/data_sources";
 import { garbageCollectGoogleDriveDocument } from "@app/lib/api/poke/plugins/data_sources/garbage_collect_google_drive_document";
 import { Authenticator } from "@app/lib/auth";
 import { FREE_UPGRADED_PLAN_CODE } from "@app/lib/plans/plan_codes";
@@ -17,10 +20,10 @@ import { KeyResource } from "@app/lib/resources/key_resource";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { tokenCountForTexts } from "@app/lib/tokenization";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
@@ -45,7 +48,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
         throw new Error("Missing --name argument");
       }
 
-      const w = await WorkspaceModel.create({
+      const w = await WorkspaceResource.makeNew({
         sId: generateRandomModelSId(),
         name: args.name,
       });
@@ -72,11 +75,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
         throw new Error("Missing --wId argument");
       }
 
-      const w = await WorkspaceModel.findOne({
-        where: {
-          sId: `${args.wId}`,
-        },
-      });
+      const w = await WorkspaceResource.fetchById(args.wId);
       if (!w) {
         throw new Error(`Workspace not found: wId='${args.wId}'`);
       }
@@ -95,11 +94,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
         throw new Error("Missing --wId argument");
       }
 
-      const w = await WorkspaceModel.findOne({
-        where: {
-          sId: `${args.wId}`,
-        },
-      });
+      const w = await WorkspaceResource.fetchById(args.wId);
       if (!w) {
         throw new Error(`Workspace not found: wId='${args.wId}'`);
       }
@@ -122,11 +117,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
 
       for (const wId of wIds) {
         console.log(`Pausing connectors for workspace: wId=${wId}`);
-        const w = await WorkspaceModel.findOne({
-          where: {
-            sId: `${wId}`,
-          },
-        });
+        const w = await WorkspaceResource.fetchById(wId);
         if (!w) {
           throw new Error(`Workspace not found: wId='${args.wId}'`);
         }
@@ -161,11 +152,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
       const wIds: string[] = args.wIds ? args.wIds.split(",") : [args.wId];
 
       for (const wId of wIds) {
-        const w = await WorkspaceModel.findOne({
-          where: {
-            sId: `${wId}`,
-          },
-        });
+        const w = await WorkspaceResource.fetchById(wId);
         if (!w) {
           throw new Error(`Workspace not found: wId='${args.wId}'`);
         }
@@ -235,11 +222,9 @@ const user = async (command: string, args: parseArgs.ParsedArgs) => {
         users: [u],
       });
 
-      const workspaces = await WorkspaceModel.findAll({
-        where: {
-          id: memberships.map((m) => m.workspaceId),
-        },
-      });
+      const workspaces = await WorkspaceResource.fetchByModelIds(
+        memberships.map((m) => m.workspaceId)
+      );
 
       console.log(`  workspaces:`);
 
@@ -295,10 +280,38 @@ const dataSource = async (command: string, args: parseArgs.ParsedArgs) => {
 
       return;
     }
+    case "delete": {
+      // It's possible to delete a data source directly from Poké UI but
+      // it's not accessible for a relocated workspace. This command is there to let us
+      // delete a data source for a relocated workspace.
+      if (!args.wId) {
+        throw new Error("Missing --wId argument");
+      }
+      if (!args.dsId) {
+        throw new Error("Missing --dsId argument");
+      }
+
+      const auth = await Authenticator.internalAdminForWorkspace(args.wId);
+
+      const dataSource = await DataSourceResource.fetchById(auth, args.dsId, {
+        includeDeleted: true,
+      });
+      if (!dataSource) {
+        throw new Error(
+          `DataSource not found: wId='${args.wId}' dsId='${args.dsId}'`
+        );
+      }
+
+      await softDeleteDataSourceAndLaunchScrubWorkflow(auth, dataSource);
+
+      console.log(`Data Source deleted: ${args.dsId}`);
+
+      return;
+    }
 
     default:
       console.log(`Unknown data-source command: ${command}`);
-      console.log("Possible values: `delete`, `scrub`");
+      console.log("Possible values: `delete`, `delete-document`");
   }
 };
 
@@ -462,7 +475,7 @@ const transcripts = async (command: string, args: parseArgs.ParsedArgs) => {
       logger.info(
         `Pausing all LabsTranscripts workflows and recording active ones... (activeIdsFile: ${activeIdsFile})`
       );
-      const allWorkspaces = await WorkspaceModel.findAll();
+      const allWorkspaces = await WorkspaceResource.listAll();
       const activeConfigSIds: string[] = [];
       for (const ws of allWorkspaces) {
         const configs =

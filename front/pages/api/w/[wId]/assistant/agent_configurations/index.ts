@@ -5,7 +5,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { DEFAULT_MCP_ACTION_DESCRIPTION } from "@app/lib/actions/constants";
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
-import type { AgentActionConfigurationType } from "@app/lib/actions/types/agent";
+import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import { getAgentsUsage } from "@app/lib/api/assistant/agent_usage";
 import {
   createAgentActionConfiguration,
@@ -336,7 +336,7 @@ export async function createOrUpgradeAgentConfiguration({
     return agentConfigurationRes;
   }
 
-  const actionConfigs: AgentActionConfigurationType[] = [];
+  const actionConfigs: MCPServerConfigurationType[] = [];
 
   for (const action of actions) {
     const res = await createAgentActionConfiguration(

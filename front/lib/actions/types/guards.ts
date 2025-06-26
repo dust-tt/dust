@@ -135,7 +135,7 @@ export function isMCPServerConfiguration(
 }
 
 export function isServerSideMCPServerConfiguration(
-  arg: AgentActionConfigurationType | UnsavedAgentActionConfigurationType
+  arg: MCPServerConfigurationType | UnsavedAgentActionConfigurationType
 ): arg is ServerSideMCPServerConfigurationType {
   return isMCPServerConfiguration(arg) && "mcpServerViewId" in arg;
 }
@@ -177,7 +177,7 @@ export function isMCPConfigurationForInternalNotion(
   );
 }
 export function isMCPConfigurationForDustAppRun(
-  arg: AgentActionConfigurationType
+  arg: MCPServerConfigurationType
 ): arg is ServerSideMCPServerConfigurationType {
   return (
     isServerSideMCPServerConfiguration(arg) &&
@@ -313,17 +313,6 @@ export function isConversationIncludeFileConfigurationActionType(
 export function throwIfInvalidAgentConfiguration(
   configuration: AgentConfigurationType | TemplateAgentConfigurationType
 ) {
-  configuration.actions.forEach((action) => {
-    if (isProcessConfiguration(action)) {
-      if (action.relativeTimeFrame === "none") {
-        /** Should never happen as not permitted for now. */
-        throw new Error(
-          "Invalid configuration: process must have a definite time frame"
-        );
-      }
-    }
-  });
-
   const templateConfiguration = configuration as TemplateAgentConfigurationType; // Creation
   const agentConfiguration = configuration as AgentConfigurationType; // Edition
 

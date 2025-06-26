@@ -1,6 +1,6 @@
 import { Chip } from "@dust-tt/sparkle";
 
-import type { AssistantBuilderActionConfiguration } from "@app/components/assistant_builder/types";
+import type { AssistantBuilderMCPConfiguration } from "@app/components/assistant_builder/types";
 import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerType } from "@app/lib/api/mcp";
@@ -11,7 +11,7 @@ interface MCPActionHeaderProps {
   oAuthUseCase: MCPOAuthUseCase | null;
   isConnected: boolean;
   isConnectionsLoading: boolean;
-  action?: AssistantBuilderActionConfiguration;
+  action?: AssistantBuilderMCPConfiguration;
 }
 
 export function MCPActionHeader({

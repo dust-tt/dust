@@ -436,6 +436,8 @@ export async function retrieveModjoTranscriptContent(
       {
         fileId,
         transcriptsConfigurationId: transcriptsConfiguration.sId,
+        status: response.status,
+        error: await response.text(),
       },
       "[processTranscriptActivity] Error fetching call from Modjo. Skipping."
     );

@@ -11,7 +11,7 @@ import {
 import { groupBy } from "lodash";
 import type React from "react";
 
-import { ACTION_SPECIFICATIONS } from "@app/lib/actions/utils";
+import { MCP_SPECIFICATION } from "@app/lib/actions/utils";
 import type {
   DataSourceViewCategory,
   PlanType,
@@ -129,7 +129,7 @@ export const CATEGORY_DETAILS: {
   },
   actions: {
     label: "Tools",
-    icon: ACTION_SPECIFICATIONS["MCP"].cardIcon,
+    icon: MCP_SPECIFICATION.cardIcon,
   },
 };
 
