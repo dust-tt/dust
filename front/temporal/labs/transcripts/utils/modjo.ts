@@ -1,4 +1,3 @@
-import { error } from "console";
 import { either } from "fp-ts";
 import { pipe } from "fp-ts/function";
 import * as t from "io-ts";
