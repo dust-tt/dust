@@ -4,7 +4,8 @@ import {
   buildInitialActions,
 } from "@app/components/assistant_builder/server_side_props_helpers";
 import type { AssistantBuilderMCPConfiguration } from "@app/components/assistant_builder/types";
-import { getAccessibleSourcesAndAppsForActions, getAgentConfiguration } from "@app/lib/api/assistant/configuration";
+import { getAccessibleSourcesAndAppsForActions } from "@app/lib/api/assistant/action";
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";

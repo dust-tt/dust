@@ -87,8 +87,6 @@ import {
   removeNulls,
 } from "@app/types";
 import type { TagType } from "@app/types/tag";
-import { SpaceResource } from "@app/lib/resources/space_resource";
-import { AppResource } from "@app/lib/resources/app_resource";
 
 export type DataSourceFilter = {
   parents: { in: string[]; not: string[] } | null;
@@ -1640,25 +1638,4 @@ export async function updateAgentConfigurationScope(
   return new Ok(undefined);
 }
 
-export const getAccessibleSourcesAndAppsForActions = async (auth: Authenticator) => {
-  return tracer.trace("getAccessibleSourcesAndAppsForActions", async () => {
-    const accessibleSpaces = (
-      await SpaceResource.listWorkspaceSpaces(auth)
-    ).filter((space) => !space.isSystem() && space.canRead(auth));
 
-    const [dsViews, allDustApps, allMCPServerViews] = await Promise.all([
-      DataSourceViewResource.listBySpaces(auth, accessibleSpaces, {
-        includeEditedBy: true,
-      }),
-      AppResource.listByWorkspace(auth),
-      MCPServerViewResource.listBySpaces(auth, accessibleSpaces),
-    ]);
-
-    return {
-      spaces: accessibleSpaces,
-      dataSourceViews: dsViews,
-      dustApps: allDustApps,
-      mcpServerViews: allMCPServerViews,
-    };
-  });
-};
