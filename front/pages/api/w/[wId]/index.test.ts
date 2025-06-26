@@ -26,7 +26,7 @@ describe("GET /api/w/[wId]", () => {
     });
   });
 
-  itInTransaction("returns 403 when user is not admin", async () => {
+  itInTransaction("returns the workspace", async () => {
     const { req, res, workspace } = await createPrivateApiMockRequest({
       method: "GET",
       role: "admin",
