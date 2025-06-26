@@ -6,7 +6,9 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 
-export const getAccessibleSourcesAndAppsForActions = async (auth: Authenticator) => {
+export const getAccessibleSourcesAndAppsForActions = async (
+  auth: Authenticator
+) => {
   return tracer.trace("getAccessibleSourcesAndAppsForActions", async () => {
     const accessibleSpaces = (
       await SpaceResource.listWorkspaceSpaces(auth)

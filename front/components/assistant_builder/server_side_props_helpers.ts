@@ -73,7 +73,6 @@ export const getAccessibleSourcesAndApps = async (auth: Authenticator) => {
   });
 };
 
-
 export async function buildInitialActions({
   dataSourceViews,
   dustApps,

@@ -1,8 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import {
-  buildInitialActions,
-} from "@app/components/assistant_builder/server_side_props_helpers";
+import { buildInitialActions } from "@app/components/assistant_builder/server_side_props_helpers";
 import type { AssistantBuilderMCPConfiguration } from "@app/components/assistant_builder/types";
 import { getAccessibleSourcesAndAppsForActions } from "@app/lib/api/assistant/action";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";

@@ -1637,5 +1637,3 @@ export async function updateAgentConfigurationScope(
 
   return new Ok(undefined);
 }
-
-
