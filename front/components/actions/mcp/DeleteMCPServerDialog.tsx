@@ -46,10 +46,13 @@ export function DeleteMCPServerDialog({
         <DialogContainer>
           <div>
             Are you sure you want to remove{" "}
-            <b>{getMcpServerDisplayName(mcpServer)}</b> ?
+            <span className="font-semibold">
+              {getMcpServerDisplayName(mcpServer)}
+            </span>{" "}
+            ?
           </div>
           <div className="mt-2">
-            <b>This action cannot be undone.</b>
+            <span className="font-semibold">This action cannot be undone.</span>
           </div>
         </DialogContainer>
         <DialogFooter

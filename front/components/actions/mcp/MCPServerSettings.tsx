@@ -103,14 +103,14 @@ export function MCPServerSettings({
           </div>
           {connection ? (
             <Button
-              label={"Deactivate"}
+              label="Deactivate"
               icon={XMarkIcon}
               variant="outline"
               onClick={handleDeleteConnection}
             />
           ) : (
             <Button
-              label={"Activate"}
+              label="Activate"
               icon={LoginIcon}
               variant="primary"
               onClick={() => setIsConnectDialogOpen(true)}
@@ -130,50 +130,50 @@ export function MCPServerSettings({
             mcpServerView.server.authorization.supported_use_cases &&
             mcpServerView.server.authorization.supported_use_cases.length <
               0 && (
-              <>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      isSelect
-                      variant="outline"
-                      label={
-                        useCase
-                          ? OAUTH_USE_CASE_TO_LABEL[useCase]
-                          : "Select credentials type"
-                      }
-                      size="sm"
-                    />
-                  </DropdownMenuTrigger>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    isSelect
+                    variant="outline"
+                    label={
+                      useCase
+                        ? OAUTH_USE_CASE_TO_LABEL[useCase]
+                        : "Select credentials type"
+                    }
+                    size="sm"
+                  />
+                </DropdownMenuTrigger>
 
-                  <DropdownMenuContent>
-                    {mcpServerView.server.authorization.supported_use_cases.map(
-                      (selectableUseCase) => (
-                        <DropdownMenuCheckboxItem
-                          key={selectableUseCase}
-                          checked={selectableUseCase === useCase}
-                          onCheckedChange={() =>
-                            setSelectedUseCase(selectableUseCase)
-                          }
-                        >
-                          {OAUTH_USE_CASE_TO_LABEL[selectableUseCase]}
-                        </DropdownMenuCheckboxItem>
-                      )
-                    )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </>
+                <DropdownMenuContent>
+                  {mcpServerView.server.authorization.supported_use_cases.map(
+                    (selectableUseCase) => (
+                      <DropdownMenuCheckboxItem
+                        key={selectableUseCase}
+                        checked={selectableUseCase === useCase}
+                        onCheckedChange={() =>
+                          setSelectedUseCase(selectableUseCase)
+                        }
+                      >
+                        {OAUTH_USE_CASE_TO_LABEL[selectableUseCase]}
+                      </DropdownMenuCheckboxItem>
+                    )
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
           <div className="w-full text-muted-foreground dark:text-muted-foreground-night">
             {useCase === "platform_actions" && (
               <>
-                <b>Workspace credentials</b>: These tools will use the account's
-                credentials provided during activation for all users.
+                <span className="font-semibold">Workspace credentials</span>:
+                These tools will use the account's credentials provided during
+                activation for all users.
               </>
             )}
             {useCase === "personal_actions" && (
               <>
-                <b>Personal credentials</b>: Users will connect their own
-                accounts the first time they interact with these tools.
+                <span className="font-semibold">Personal credentials</span>:
+                Users will connect their own accounts the first time they
+                interact with these tools.
               </>
             )}
           </div>

@@ -6,6 +6,7 @@ import {
   DropdownMenuTrigger,
   Input,
 } from "@dust-tt/sparkle";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata";
@@ -148,7 +149,7 @@ export function MCPServerOAuthConnexion({
               </div>
             </div>
           )}
-          <div className="w-full text-xs text-muted-foreground dark:text-muted-foreground-night">
+          <div className="w-full text-muted-foreground dark:text-muted-foreground-night">
             {useCase === "platform_actions" && (
               <>
                 The credentials you provide will be shared by all users of these
@@ -200,13 +201,13 @@ export function MCPServerOAuthConnexion({
           {documentationUrl && (
             <div className="w-full text-muted-foreground dark:text-muted-foreground-night">
               Questions ? Read{" "}
-              <a
+              <Link
                 href={documentationUrl}
-                className="font-bold text-highlight-600 dark:text-highlight-600-night"
                 target="_blank"
+                className="font-semibold text-highlight-600 dark:text-highlight-600-night"
               >
                 our guide
-              </a>{" "}
+              </Link>{" "}
               on {OAUTH_PROVIDER_NAMES[authorization.provider]}
             </div>
           )}

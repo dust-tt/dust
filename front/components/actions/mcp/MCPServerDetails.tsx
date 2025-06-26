@@ -104,9 +104,9 @@ export function MCPServerDetails({
                       </DropdownMenuTrigger>
                       <DropdownMenuContent>
                         <DropdownMenuItem
-                          key={`remove-mcp-server`}
+                          key="remove-mcp-server"
                           icon={TrashIcon}
-                          label={"Remove"}
+                          label="Remove"
                           variant="warning"
                           onClick={() => {
                             setMCPServerToDelete(mcpServerView.server);
