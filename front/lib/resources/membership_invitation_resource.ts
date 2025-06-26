@@ -5,8 +5,8 @@ import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { AuthFlowError } from "@app/lib/iam/errors";
 import { MembershipInvitationModel } from "@app/lib/models/membership_invitation";
-import { Workspace } from "@app/lib/models/workspace";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { UserResource } from "@app/lib/resources/user_resource";
@@ -27,12 +27,12 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
   static logger = logger.child({
     module: MembershipInvitationResource.constructor.name,
   });
-  readonly workspace: Workspace;
+  readonly workspace: WorkspaceModel;
 
   constructor(
     model: ModelStaticWorkspaceAware<MembershipInvitationModel>,
     blob: Attributes<MembershipInvitationModel>,
-    { workspace }: { workspace: Workspace }
+    { workspace }: { workspace: WorkspaceModel }
   ) {
     super(MembershipInvitationModel, blob);
     this.workspace = workspace;
@@ -46,7 +46,7 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
         inviteEmail: email,
         status: "pending",
       },
-      include: [Workspace],
+      include: [WorkspaceModel],
       // WORKSPACE_ISOLATION_BYPASS: We don't know the workspace yet, the user is not authed
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
@@ -68,7 +68,7 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
         workspaceId,
         status: "pending",
       },
-      include: [Workspace],
+      include: [WorkspaceModel],
     });
 
     return invitation
@@ -113,7 +113,7 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
           id: decodedToken.membershipInvitationId,
           status: "pending",
         },
-        include: [Workspace],
+        include: [WorkspaceModel],
         // WORKSPACE_ISOLATION_BYPASS: We don't know the workspace yet, the user is not authed
         dangerouslyBypassWorkspaceIsolationSecurity: true,
       });

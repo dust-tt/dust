@@ -1,9 +1,9 @@
 import * as _ from "lodash";
 
-import { Workspace } from "@app/lib/models/workspace";
 import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserModel } from "@app/lib/resources/storage/models/user";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { CustomerioServerSideTracking } from "@app/lib/tracking/customerio/server";
@@ -35,7 +35,7 @@ const backfillCustomerIo = async (execute: boolean) => {
       .map((m) => m.workspaceId);
     const workspaceById = _.keyBy(
       workspaceIds.length
-        ? await Workspace.findAll({
+        ? await WorkspaceModel.findAll({
             where: {
               id: workspaceIds,
             },

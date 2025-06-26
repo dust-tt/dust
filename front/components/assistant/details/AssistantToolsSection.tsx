@@ -30,12 +30,28 @@ import {
 import type { MCPServerTypeWithViews } from "@app/lib/api/mcp";
 import { useMCPServers } from "@app/lib/swr/mcp_servers";
 import type { AgentConfigurationType, LightWorkspaceType } from "@app/types";
-import { assertNever, removeNulls, SUPPORTED_MODEL_CONFIGS } from "@app/types";
+import {
+  assertNever,
+  GLOBAL_AGENTS_SID,
+  removeNulls,
+  SUPPORTED_MODEL_CONFIGS,
+} from "@app/types";
 
 interface AssistantToolsSectionProps {
   agentConfiguration: AgentConfigurationType;
   owner: LightWorkspaceType;
 }
+
+// Since Dust is configured with one search for all, plus individual searches for each managed data source,
+// we hide these additional searches from the user in the UI to avoid displaying the same data source twice.
+// We use the `hidden_dust_search_` prefix to identify these additional searches.
+const isHiddenDustAction = (
+  agentConfiguration: AgentConfigurationType,
+  action: AgentActionConfigurationType
+) => {
+  const isDustGlobalAgent = agentConfiguration.sId === GLOBAL_AGENTS_SID.DUST;
+  return isDustGlobalAgent && action.name.startsWith("hidden_dust_search_");
+};
 
 export function AssistantToolsSection({
   agentConfiguration,
@@ -45,9 +61,9 @@ export function AssistantToolsSection({
   const { mcpServers } = useMCPServers({ owner });
 
   const actions = removeNulls(
-    agentConfiguration.actions.map((action) =>
-      renderOtherAction(action, mcpServers)
-    )
+    agentConfiguration.actions
+      .filter((action) => !isHiddenDustAction(agentConfiguration, action))
+      .map((action) => renderOtherAction(action, mcpServers))
   );
   if (agentConfiguration.visualizationEnabled) {
     actions.push({

@@ -402,6 +402,7 @@ export async function* runReasoning(
     conversation,
     model: supportedModel,
     prompt: agentConfiguration.instructions ?? "",
+    tools: "",
     allowedTokenCount: supportedModel.contextSize - REASONING_GENERATION_TOKENS,
     excludeImages: true,
   });

@@ -17,6 +17,8 @@ import {
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import { Separator } from "@radix-ui/react-select";
+import assert from "assert";
+import { uniqueId } from "lodash";
 import { useContext, useEffect, useRef, useState } from "react";
 
 import { AssistantDetailsPerformance } from "@app/components/assistant/AssistantDetailsPerformance";
@@ -30,23 +32,26 @@ import {
   useTryAssistantCore,
 } from "@app/components/assistant_builder/TryAssistant";
 import type {
+  AssistantBuilderActionConfiguration,
   AssistantBuilderSetActionType,
   AssistantBuilderState,
   BuilderScreen,
   TemplateActionType,
 } from "@app/components/assistant_builder/types";
-import { getDefaultActionConfiguration } from "@app/components/assistant_builder/types";
+import { getDefaultMCPServerActionConfiguration } from "@app/components/assistant_builder/types";
 import { ConfirmContext } from "@app/components/Confirm";
+import { internalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
+import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { ACTION_SPECIFICATIONS } from "@app/lib/actions/utils";
+import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useUser } from "@app/lib/swr/user";
 import type { FetchAssistantTemplateResponse } from "@app/pages/api/templates/[tId]";
 import type {
   AssistantBuilderRightPanelTabType,
-  ModelConfigurationType,
   WorkspaceType,
 } from "@app/types";
 import type { LightAgentConfigurationType } from "@app/types";
-import { isAssistantBuilderRightPanelTab } from "@app/types";
+import { assertNever, isAssistantBuilderRightPanelTab } from "@app/types";
 
 interface AssistantBuilderRightPanelProps {
   screen: BuilderScreen;
@@ -58,7 +63,7 @@ interface AssistantBuilderRightPanelProps {
   builderState: AssistantBuilderState;
   agentConfiguration: LightAgentConfigurationType | null;
   setAction: (action: AssistantBuilderSetActionType) => void;
-  reasoningModels: ModelConfigurationType[];
+  mcpServerViews: MCPServerViewType[];
 }
 
 export default function AssistantBuilderRightPanel({
@@ -71,7 +76,7 @@ export default function AssistantBuilderRightPanel({
   builderState,
   agentConfiguration,
   setAction,
-  reasoningModels,
+  mcpServerViews,
 }: AssistantBuilderRightPanelProps) {
   const [rightPanelTab, setRightPanelTab] =
     useState<AssistantBuilderRightPanelTabType>("Preview");
@@ -80,7 +85,6 @@ export default function AssistantBuilderRightPanel({
     usePreviewAssistant({
       owner,
       builderState,
-      reasoningModels,
     });
 
   const { user } = useUser();
@@ -107,6 +111,45 @@ export default function AssistantBuilderRightPanel({
       setStickyMentions([{ configurationId: draftAssistant.sId }]);
     }
   }, [draftAssistant?.sId, setStickyMentions]);
+
+  function getMCPServerViewFromPresetAction(
+    mcpServerViews: MCPServerViewType[],
+    type: AssistantBuilderActionConfiguration["type"]
+  ): MCPServerViewType {
+    const internalMcpServerName: InternalMCPServerNameType | undefined =
+      (() => {
+        switch (type) {
+          case "MCP":
+            throw new Error("MCP preset action not supported");
+          case "RETRIEVAL_SEARCH":
+            return "search";
+          case "RETRIEVAL_EXHAUSTIVE":
+            return "include_data";
+          case "DUST_APP_RUN":
+            return "run_dust_app";
+          case "TABLES_QUERY":
+            return "query_tables";
+          case "PROCESS":
+            return "extract_data";
+          case "WEB_NAVIGATION":
+            return "web_search_&_browse";
+          case "REASONING":
+            return "reasoning";
+          default:
+            assertNever(type);
+        }
+      })();
+    const mcpServerView = mcpServerViews.find(
+      (mcpServerView) =>
+        mcpServerView.server.sId ===
+        internalMCPServerNameToSId({
+          name: internalMcpServerName,
+          workspaceId: owner.id,
+        })
+    );
+    assert(mcpServerView);
+    return mcpServerView;
+  }
 
   return (
     <div className="flex h-full flex-col">
@@ -241,9 +284,15 @@ export default function AssistantBuilderRightPanel({
                       <TemplateAddActionButton
                         action={presetAction}
                         addAction={(presetAction) => {
-                          const action = getDefaultActionConfiguration(
-                            presetAction.type
-                          );
+                          const defaultMcpServer =
+                            getMCPServerViewFromPresetAction(
+                              mcpServerViews,
+                              presetAction.type
+                            );
+                          const action =
+                            getDefaultMCPServerActionConfiguration(
+                              defaultMcpServer
+                            );
                           if (!action) {
                             // Unreachable
                             return;
@@ -254,7 +303,10 @@ export default function AssistantBuilderRightPanel({
                             type: action.noConfigurationRequired
                               ? "insert"
                               : "pending",
-                            action,
+                            action: {
+                              ...action,
+                              id: uniqueId(),
+                            },
                           });
                         }}
                       />

@@ -2,7 +2,6 @@ import type {
   CrawlingFrequency,
   DepthOption,
   WebCrawlerConfigurationType,
-  WebcrawlerCustomCrawler,
 } from "./connectors/webcrawler";
 
 export type WebsiteFormState = {
@@ -13,7 +12,6 @@ export type WebsiteFormState = {
   crawlMode: "child" | "website";
   crawlFrequency: CrawlingFrequency;
   headers: { key: string; value: string }[];
-  customCrawler: WebcrawlerCustomCrawler | null;
   errors?: {
     url?: string;
     name?: string;

@@ -55,6 +55,7 @@ export function useWorkspaceAnalytics({
   };
 }
 
+// TODO(workos): Remove this once we have migrated to WorkOS.
 export function useWorkspaceEnterpriseConnection({
   owner,
   disabled,

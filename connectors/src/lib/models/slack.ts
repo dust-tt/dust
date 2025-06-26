@@ -125,6 +125,8 @@ export class SlackChannel extends ConnectorBaseModel<SlackChannel> {
   declare slackChannelId: string;
   declare slackChannelName: string;
 
+  declare skipReason: string | null;
+
   declare private: boolean;
 
   declare permission: ConnectorPermission;
@@ -149,6 +151,10 @@ SlackChannel.init(
     slackChannelName: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    skipReason: {
+      type: DataTypes.STRING,
+      allowNull: true,
     },
     private: {
       type: DataTypes.BOOLEAN,

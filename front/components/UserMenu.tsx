@@ -167,18 +167,13 @@ export function UserMenu({
           label="Sign&nbsp;out"
           icon={LogoutIcon}
           onClick={() => {
-            window.location.href = "/api/auth/logout";
+            if (document.cookie.includes("sessionType=workos")) {
+              window.location.href = "/api/workos/logout";
+            } else {
+              window.location.href = "/api/auth/logout";
+            }
           }}
         />
-        {document.cookie.includes("sessionType=workos") && (
-          <DropdownMenuItem
-            onClick={() => {
-              window.location.href = "/api/workos/logout";
-            }}
-            icon={LogoutIcon}
-            label="Sign&nbsp;out from WorkOS"
-          />
-        )}
 
         {showDebugTools(featureFlags) && (
           <>

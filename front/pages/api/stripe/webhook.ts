@@ -13,7 +13,6 @@ import {
 import { getMembers } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
 import { Plan, Subscription } from "@app/lib/models/plan";
-import { Workspace } from "@app/lib/models/workspace";
 import {
   assertStripeSubscriptionIsValid,
   createCustomerPortalSession,
@@ -21,6 +20,7 @@ import {
 } from "@app/lib/plans/stripe";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
@@ -148,7 +148,7 @@ async function handler(
               throw new Error("Missing required data in event.");
             }
 
-            const workspace = await Workspace.findOne({
+            const workspace = await WorkspaceModel.findOne({
               where: { sId: workspaceId },
             });
             if (!workspace) {
@@ -311,7 +311,7 @@ async function handler(
           // Setting subscription payment status to succeeded
           subscription = await Subscription.findOne({
             where: { stripeSubscriptionId: invoice.subscription },
-            include: [Workspace],
+            include: [WorkspaceModel],
           });
           if (!subscription) {
             logger.warn(
@@ -354,7 +354,7 @@ async function handler(
           // Logging that we have a failed payment
           subscription = await Subscription.findOne({
             where: { stripeSubscriptionId: invoice.subscription },
-            include: [Workspace],
+            include: [WorkspaceModel],
           });
           if (!subscription) {
             logger.warn(
@@ -466,7 +466,7 @@ async function handler(
               const endDate = new Date(stripeSubscription.cancel_at * 1000);
               const subscription = await Subscription.findOne({
                 where: { stripeSubscriptionId: stripeSubscription.id },
-                include: [Workspace],
+                include: [WorkspaceModel],
               });
               if (!subscription) {
                 logger.warn(
@@ -503,7 +503,7 @@ async function handler(
             // get subscription
             const subscription = await Subscription.findOne({
               where: { stripeSubscriptionId: stripeSubscription.id },
-              include: [Workspace],
+              include: [WorkspaceModel],
             });
             if (!subscription) {
               logger.warn(
@@ -647,7 +647,7 @@ async function handler(
 
           const matchingSubscription = await Subscription.findOne({
             where: { stripeSubscriptionId: stripeSubscription.id },
-            include: [Workspace],
+            include: [WorkspaceModel],
           });
 
           if (!matchingSubscription) {
@@ -727,7 +727,7 @@ async function handler(
 
           const trialingSubscription = await Subscription.findOne({
             where: { stripeSubscriptionId: stripeSubscription.id },
-            include: [Workspace],
+            include: [WorkspaceModel],
           });
 
           if (!trialingSubscription) {

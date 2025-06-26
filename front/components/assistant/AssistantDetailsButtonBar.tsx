@@ -13,7 +13,6 @@ import {
   StarStrokeIcon,
   TrashIcon,
 } from "@dust-tt/sparkle";
-import Link from "next/link";
 import { useRouter } from "next/router";
 import { useState } from "react";
 
@@ -158,31 +157,26 @@ export function AssistantDetailsButtonBar({
         />
       </div>
 
-      <Link
+      <Button
+        icon={ChatBubbleBottomCenterTextIcon}
+        size="sm"
+        variant="outline"
         href={`/w/${owner.sId}/assistant/new?assistant=${agentConfiguration.sId}`}
-      >
-        <Button
-          icon={ChatBubbleBottomCenterTextIcon}
-          size="sm"
-          variant="outline"
-        />
-      </Link>
+      />
 
       {agentConfiguration.scope !== "global" &&
         !isRestrictedFromAgentCreation && (
-          <Link
-            onClick={(e) => !canEditAssistant && e.preventDefault()}
-            href={`/w/${owner.sId}/builder/assistants/${
-              agentConfiguration.sId
-            }?flow=workspace_assistants`}
-          >
-            <Button
-              size="sm"
-              disabled={!canEditAssistant}
-              variant="outline"
-              icon={PencilSquareIcon}
-            />
-          </Link>
+          <Button
+            size="sm"
+            href={
+              canEditAssistant
+                ? `/w/${owner.sId}/builder/assistants/${agentConfiguration.sId}?flow=workspace_assistants`
+                : undefined
+            }
+            disabled={!canEditAssistant}
+            variant="outline"
+            icon={PencilSquareIcon}
+          />
         )}
 
       {agentConfiguration.scope !== "global" && (

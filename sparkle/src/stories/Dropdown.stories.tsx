@@ -237,28 +237,31 @@ function DropdownMenuCheckboxes() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger>Open Checkbox</DropdownMenuTrigger>
-      <DropdownMenuContent className="s-w-56">
-        <DropdownMenuLabel label="Appearance" />
+      <DropdownMenuContent className="s-w-72">
+        <DropdownMenuLabel label="Interface Settings" />
         <DropdownMenuSeparator />
         <DropdownMenuCheckboxItem
           checked={showStatusBar}
           onCheckedChange={setShowStatusBar}
-        >
-          Status Bar
-        </DropdownMenuCheckboxItem>
+          label="Status Bar"
+          description="Show application status and progress indicators"
+          truncateText
+        />
         <DropdownMenuCheckboxItem
           checked={showActivityBar}
           onCheckedChange={setShowActivityBar}
+          label="Activity Bar"
+          description="Display sidebar with quick access to tools"
+          truncateText
           disabled
-        >
-          Activity Bar
-        </DropdownMenuCheckboxItem>
+        />
         <DropdownMenuCheckboxItem
           checked={showPanel}
           onCheckedChange={setShowPanel}
-        >
-          Panel
-        </DropdownMenuCheckboxItem>
+          label="Panel"
+          description="Bottom panel for terminal and debug output"
+          truncateText
+        />
       </DropdownMenuContent>
     </DropdownMenu>
   );

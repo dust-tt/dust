@@ -1,12 +1,12 @@
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { Plan } from "@app/lib/models/plan";
-import { Workspace } from "@app/lib/models/workspace";
-import { WorkspaceHasDomainModel } from "@app/lib/models/workspace_has_domain";
 import { isFreePlan } from "@app/lib/plans/plan_codes";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
+import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
@@ -50,7 +50,7 @@ export async function createWorkspaceInternal({
     }
   }
 
-  const workspace = await Workspace.create({
+  const workspace = await WorkspaceModel.create({
     sId: generateRandomModelSId(),
     name,
     metadata: {
@@ -100,7 +100,7 @@ export async function findWorkspaceWithVerifiedDomain(user: {
     },
     include: [
       {
-        model: Workspace,
+        model: WorkspaceModel,
         as: "workspace",
         required: true,
       },

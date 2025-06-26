@@ -1,4 +1,4 @@
-import type { Result } from "@dust-tt/client";
+import type { ConnectorProvider, Result } from "@dust-tt/client";
 import { assertNever, Err, Ok } from "@dust-tt/client";
 
 import {
@@ -48,6 +48,8 @@ import { INTERNAL_MIME_TYPES, normalizeError } from "@connectors/types";
 const logger = mainLogger.child({ provider: "github" });
 
 export class GithubConnectorManager extends BaseConnectorManager<null> {
+  readonly provider: ConnectorProvider = "github";
+
   static async create({
     dataSourceConfig,
     connectionId,
@@ -129,7 +131,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
 
       // If connector was previously paused, unpause it.
       if (c.isPaused()) {
-        await this.unpause();
+        await this.unpauseAndResume();
       }
 
       await launchGithubFullSyncWorkflow({
@@ -580,32 +582,6 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
       default:
         return new Err(new Error(`Invalid config key ${configKey}`));
     }
-  }
-
-  async pause(): Promise<Result<undefined, Error>> {
-    const connector = await ConnectorResource.fetchById(this.connectorId);
-    if (!connector) {
-      logger.error({ connectorId: this.connectorId }, "Connector not found");
-      return new Err(new Error("Connector not found"));
-    }
-    await connector.markAsPaused();
-    await terminateAllWorkflowsForConnectorId(this.connectorId);
-    return new Ok(undefined);
-  }
-
-  async unpause(): Promise<Result<undefined, Error>> {
-    const connector = await ConnectorResource.fetchById(this.connectorId);
-    if (!connector) {
-      logger.error({ connectorId: this.connectorId }, "Connector not found");
-      return new Err(new Error("Connector not found"));
-    }
-    await connector.markAsUnpaused();
-    await launchGithubFullSyncWorkflow({
-      connectorId: this.connectorId,
-      syncCodeOnly: false,
-    });
-
-    return new Ok(undefined);
   }
 
   async setPermissions(): Promise<Result<void, Error>> {

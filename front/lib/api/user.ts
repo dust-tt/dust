@@ -1,6 +1,6 @@
 import type { Authenticator } from "@app/lib/auth";
-import { Workspace } from "@app/lib/models/workspace";
 import { ExtensionConfigurationResource } from "@app/lib/resources/extension";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
@@ -47,7 +47,7 @@ export async function getUserForWorkspace(
 
 export async function fetchRevokedWorkspace(
   user: UserTypeWithWorkspaces
-): Promise<Result<Workspace, Error>> {
+): Promise<Result<WorkspaceModel, Error>> {
   // TODO(@fontanierh): this doesn't look very solid as it will start to behave
   // weirdly if a user has multiple revoked memberships.
   const u = await UserResource.fetchByModelId(user.id);
@@ -69,7 +69,7 @@ export async function fetchRevokedWorkspace(
   }
 
   const revokedWorkspaceId = memberships[0].workspaceId;
-  const workspace = await Workspace.findByPk(revokedWorkspaceId);
+  const workspace = await WorkspaceModel.findByPk(revokedWorkspaceId);
 
   if (!workspace) {
     const message = "Unreachable: workspace not found.";
@@ -90,7 +90,7 @@ export async function getUserWithWorkspaces<T extends boolean>(
     users: [user],
   });
   const workspaceIds = memberships.map((m) => m.workspaceId);
-  const workspaces = await Workspace.findAll({
+  const workspaces = await WorkspaceModel.findAll({
     where: {
       id: workspaceIds,
     },

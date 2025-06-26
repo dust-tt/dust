@@ -3,7 +3,7 @@ import { Op } from "sequelize";
 
 import { Authenticator } from "@app/lib/auth";
 import { Subscription } from "@app/lib/models/plan";
-import { Workspace } from "@app/lib/models/workspace";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { launchImmediateWorkspaceScrubWorkflow } from "@app/temporal/scrub_workspace/client";
@@ -18,7 +18,7 @@ const scrubWorkspaces = async (execute: boolean) => {
     },
   });
 
-  const workspaces = await Workspace.findAll({
+  const workspaces = await WorkspaceModel.findAll({
     where: {
       id: endedSubs.map((s) => s.workspaceId),
     },

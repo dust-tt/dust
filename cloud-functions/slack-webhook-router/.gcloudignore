@@ -1,0 +1,32 @@
+# Node.js
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Development files
+.git/
+.gitignore
+README.md
+tsup.config.ts
+
+# ESLint
+eslint.config.js
+.eslintrc.*
+
+# Logs
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Development scripts
+.env*
+.env.local
+.env.development

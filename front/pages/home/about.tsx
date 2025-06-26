@@ -291,6 +291,20 @@ const PEOPLE: Record<
     github: "https://github.com/jgr142",
     linkedIn: "https://www.linkedin.com/in/joshuagisiger",
   },
+  david: {
+    name: "David Ebbo",
+    title: "Software Engineer",
+    image: "https://avatars.githubusercontent.com/u/556238?v=4",
+    github: "https://github.com/davidebbo",
+    linkedIn: "https://www.linkedin.com/in/davidebbo",
+  },
+  edouard: {
+    name: "Edouard Villette",
+    title: "Senior Account Executive",
+    image: "https://avatars.githubusercontent.com/u/215458058?v=4",
+    github: "https://github.com/TrismoEd",
+    linkedIn: "https://www.linkedin.com/in/edouard-villette",
+  },
 };
 
 const Person = ({ handle }: { handle: string }) => {

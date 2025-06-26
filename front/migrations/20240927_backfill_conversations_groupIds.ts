@@ -8,7 +8,7 @@ import {
   ConversationModel,
   Message,
 } from "@app/lib/models/assistant/conversation";
-import { Workspace } from "@app/lib/models/workspace";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 
@@ -56,7 +56,7 @@ async function updateConversationsForWorkspace(
   const conversationChunks = _.chunk(conversations, 16);
 
   // get workspace sid
-  const workspace = await Workspace.findByPk(workspaceId);
+  const workspace = await WorkspaceModel.findByPk(workspaceId);
 
   if (!workspace) {
     logger.error(

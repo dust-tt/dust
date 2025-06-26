@@ -1,10 +1,15 @@
 import {
   Button,
   DataTable,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   EmptyCTA,
   Input,
-  Label,
+  MoreIcon,
   Page,
+  PencilSquareIcon,
   ScrollArea,
   SearchInput,
   Sheet,
@@ -14,9 +19,7 @@ import {
   SheetHeader,
   SheetTitle,
   SliderToggle,
-  Tabs,
-  TabsList,
-  TabsTrigger,
+  TrashIcon,
   useSendNotification,
   XMarkIcon,
 } from "@dust-tt/sparkle";
@@ -32,8 +35,9 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { ConfirmContext } from "@app/components/Confirm";
 import { GroupsList } from "@app/components/groups/GroupsList";
 import { ConfirmDeleteSpaceDialog } from "@app/components/spaces/ConfirmDeleteSpaceDialog";
+import { EditSpaceNameDialog } from "@app/components/spaces/EditSpaceNameDialog";
 import { SearchGroupsDropdown } from "@app/components/spaces/SearchGroupsDropdown";
-import { SearchMembersPopover } from "@app/components/spaces/SearchMembersPopover";
+import { SearchMembersDropdown } from "@app/components/spaces/SearchMembersDropdown";
 import { useGroups } from "@app/lib/swr/groups";
 import {
   useCreateSpace,
@@ -83,6 +87,7 @@ export function CreateOrEditSpaceModal({
 
   const [isSaving, setIsSaving] = useState(false);
   const [showDeleteConfirmDialog, setShowDeleteConfirmDialog] = useState(false);
+  const [showEditNameDialog, setShowEditNameDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isRestricted, setIsRestricted] = useState(false);
   const [searchSelectedMembers, setSearchSelectedMembers] =
@@ -95,7 +100,7 @@ export function CreateOrEditSpaceModal({
     workspaceId: owner.sId,
   });
 
-  const isWorkOSFeatureEnabled = hasFeature("workos");
+  const isWorkOSFeatureEnabled = hasFeature("workos_user_provisioning");
 
   useEffect(() => {
     if (!isWorkOSFeatureEnabled) {
@@ -172,6 +177,7 @@ export function CreateOrEditSpaceModal({
       setSelectedGroups([]);
       setManagementType("manual");
       setShowDeleteConfirmDialog(false);
+      setShowEditNameDialog(false);
       setIsDeleting(false);
       setIsSaving(false);
     }, 500);
@@ -272,24 +278,43 @@ export function CreateOrEditSpaceModal({
     }
   }, [doDelete, handleClose, owner.sId, router, space]);
 
+  const onEditName = async (newName: string) => {
+    if (!space || !newName.trim()) {
+      setShowEditNameDialog(false);
+      return;
+    }
+
+    if (spaceInfo) {
+      await doUpdate(space, {
+        name: newName.trim(),
+        isRestricted: spaceInfo.isRestricted,
+      });
+      await mutateSpaceInfo();
+    }
+
+    setSpaceName(newName.trim());
+    setShowEditNameDialog(false);
+  };
+
   const handleManagementTypeChange = useCallback(
     async (value: string) => {
       if (!isMembersManagementType(value) || !isWorkOSFeatureEnabled) {
         return;
       }
 
-      // If switching from manual to group mode with manually added members
+      // If switching from manual to group mode with manually added members.
       if (
         managementType === "manual" &&
         value === "group" &&
         selectedMembers.length > 0
       ) {
         const confirmed = await confirm({
-          title: "Switch to Group Management",
+          title: "Switch to groups",
           message:
-            "Switching to group member management will remove all manually added members",
-          validateLabel: "Switch to Groups",
-          validateVariant: "warning",
+            "This switches from manual member to group-based access. " +
+            "Your current member list will be saved but no longer active.",
+          validateLabel: "Confirm",
+          validateVariant: "primary",
         });
 
         if (confirmed) {
@@ -297,18 +322,19 @@ export function CreateOrEditSpaceModal({
           setIsDirty(true);
         }
       }
-      // If switching from group to manual mode with selected groups
+      // If switching from group to manual mode with selected groups.
       else if (
         managementType === "group" &&
         value === "manual" &&
         selectedGroups.length > 0
       ) {
         const confirmed = await confirm({
-          title: "Switch to Manual Management",
+          title: "Switch to members",
           message:
-            "Switching to manual member management will remove all selected groups",
-          validateLabel: "Switch to Manual",
-          validateVariant: "warning",
+            "This switches from group-based access to manual member management. " +
+            "Your current group settings will be saved but no longer active.",
+          validateLabel: "Confirm",
+          validateVariant: "primary",
         });
 
         if (confirmed) {
@@ -316,7 +342,7 @@ export function CreateOrEditSpaceModal({
           setIsDirty(true);
         }
       } else {
-        // For direct switches without selections, clear everything and let user start fresh
+        // For direct switches without selections, clear everything and let the user start fresh.
         setManagementType(value);
         setIsDirty(true);
       }
@@ -354,15 +380,58 @@ export function CreateOrEditSpaceModal({
     <Sheet open={isOpen} onOpenChange={handleClose}>
       <SheetContent trapFocusScope={false} size="lg">
         <SheetHeader>
-          <SheetTitle>
-            {space ? `Edit ${space.name}` : "Create a Space"}
-          </SheetTitle>
+          <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-0">
+              <SheetTitle>
+                Space Settings{space ? `- ${spaceName}` : ""}
+              </SheetTitle>
+            </div>
+
+            {isAdmin && space && space.kind === "regular" && (
+              <>
+                <ConfirmDeleteSpaceDialog
+                  space={space}
+                  handleDelete={onDelete}
+                  isOpen={showDeleteConfirmDialog}
+                  isDeleting={isDeleting}
+                  onClose={() => setShowDeleteConfirmDialog(false)}
+                />
+                <EditSpaceNameDialog
+                  spaceInfo={spaceInfo}
+                  handleEditName={onEditName}
+                  isOpen={showEditNameDialog}
+                  isSaving={isSaving}
+                  onClose={() => setShowEditNameDialog(false)}
+                />
+                <div className="flex w-full justify-end">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button icon={MoreIcon} size="sm" variant="ghost" />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                      <DropdownMenuItem
+                        label="Rename space"
+                        onClick={() => setShowEditNameDialog(true)}
+                        icon={PencilSquareIcon}
+                      />
+                      <DropdownMenuItem
+                        label="Delete Space"
+                        onClick={() => setShowDeleteConfirmDialog(true)}
+                        icon={TrashIcon}
+                        variant="warning"
+                      />
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              </>
+            )}
+          </div>
         </SheetHeader>
         <SheetContainer>
           <div className="flex w-full flex-col gap-y-4">
-            <div className="mb-4 flex w-full flex-col gap-y-2">
-              <Page.SectionHeader title="Name" />
-              {!space ? (
+            {!space && (
+              <div className="mb-4 flex w-full flex-col gap-y-4">
+                <Page.SectionHeader title="Name" />
                 <Input
                   placeholder="Space's name"
                   value={spaceName}
@@ -374,164 +443,175 @@ export function CreateOrEditSpaceModal({
                     setIsDirty(true);
                   }}
                 />
-              ) : (
-                <Input
-                  placeholder="Space's name"
-                  value={spaceName}
-                  name="spaceName"
-                  onChange={(e) => {
-                    setSpaceName(e.target.value);
-                    setIsDirty(true);
-                  }}
-                />
-              )}
-            </div>
-
-            <div className="flex w-full flex-col gap-y-2 border-t pt-2">
-              <div className="flex w-full items-center justify-between overflow-visible">
-                <Page.SectionHeader title="Restricted Access" />
-                <SliderToggle
-                  selected={isRestricted}
-                  onClick={() => {
-                    setIsRestricted(!isRestricted);
-                    setIsDirty(true);
-                  }}
-                />
               </div>
-              {isRestricted ? (
-                <Label>Restricted access is active.</Label>
-              ) : (
-                <Label>
-                  Restricted access is disabled. The space is accessible to
-                  everyone in the workspace.
-                </Label>
-              )}
+            )}
+
+            <div className="flex w-full items-center justify-between overflow-visible">
+              <Page.SectionHeader title="Restricted Access" />
+              <SliderToggle
+                selected={isRestricted}
+                onClick={() => {
+                  setIsRestricted(!isRestricted);
+                  setIsDirty(true);
+                }}
+              />
             </div>
+            {isRestricted ? (
+              <span>Restricted access is active.</span>
+            ) : (
+              <span>
+                Restricted access is disabled. The space is accessible to
+                everyone in the workspace.
+              </span>
+            )}
 
             {isRestricted && (
               <>
                 {isWorkOSFeatureEnabled ? (
-                  <Tabs
-                    value={managementType}
-                    onValueChange={(tabId) => {
-                      if (isMembersManagementType(tabId)) {
-                        void handleManagementTypeChange(tabId);
-                      }
-                    }}
-                  >
-                    <TabsList>
-                      <TabsTrigger value="manual" label="Members management" />
-                      <TabsTrigger value="group" label="Group management" />
-                    </TabsList>
-                  </Tabs>
-                ) : null}
-                {(isManual && selectedMembers.length === 0) ||
-                (!isManual && selectedGroups.length === 0) ? (
-                  isManual ? (
-                    <EmptyCTA
-                      action={
-                        <SearchMembersPopover
-                          owner={owner}
-                          selectedMembers={selectedMembers}
-                          onMembersUpdated={(members) => {
-                            setSelectedMembers(members);
-                            setIsDirty(true);
+                  <div className="flex flex-row items-center justify-between">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="outline"
+                          isSelect
+                          label={
+                            managementType === "manual"
+                              ? "Manual access"
+                              : "Provisioned group access"
+                          }
+                        />
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent>
+                        <DropdownMenuItem
+                          label="Manual access"
+                          onClick={() => {
+                            if (isMembersManagementType("manual")) {
+                              void handleManagementTypeChange("manual");
+                            }
                           }}
                         />
-                      }
-                      message="Add members to the space"
-                    />
-                  ) : (
-                    <EmptyCTA
-                      action={
-                        <SearchGroupsDropdown
-                          owner={owner}
-                          selectedGroups={selectedGroups}
-                          onGroupsUpdated={(groups) => {
-                            setSelectedGroups(groups);
-                            setIsDirty(true);
+                        <DropdownMenuItem
+                          label="Provisioned group access"
+                          onClick={() => {
+                            if (isMembersManagementType("group")) {
+                              void handleManagementTypeChange("group");
+                            }
                           }}
                         />
-                      }
-                      message="Add groups to the space"
-                    />
-                  )
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                    {isManual && selectedMembers.length > 0 && (
+                      <SearchMembersDropdown
+                        owner={owner}
+                        selectedMembers={selectedMembers}
+                        onMembersUpdated={(members) => {
+                          setSelectedMembers(members);
+                          setIsDirty(true);
+                        }}
+                      />
+                    )}
+                    {!isManual && selectedGroups.length > 0 && (
+                      <SearchGroupsDropdown
+                        owner={owner}
+                        selectedGroups={selectedGroups}
+                        onGroupsUpdated={(groups) => {
+                          setSelectedGroups(groups);
+                          setIsDirty(true);
+                        }}
+                      />
+                    )}
+                  </div>
                 ) : (
-                  <>
-                    <div className="flex flex-row items-center justify-between">
-                      {isManual ? (
-                        <SearchMembersPopover
-                          owner={owner}
-                          selectedMembers={selectedMembers}
-                          onMembersUpdated={(members) => {
-                            setSelectedMembers(members);
-                            setIsDirty(true);
-                          }}
-                        />
-                      ) : (
-                        <SearchGroupsDropdown
-                          owner={owner}
-                          selectedGroups={selectedGroups}
-                          onGroupsUpdated={(groups) => {
-                            setSelectedGroups(groups);
-                            setIsDirty(true);
-                          }}
-                        />
-                      )}
+                  isManual &&
+                  selectedMembers.length > 0 && (
+                    <div className="flex w-full justify-end">
+                      <SearchMembersDropdown
+                        owner={owner}
+                        selectedMembers={selectedMembers}
+                        onMembersUpdated={(members) => {
+                          setSelectedMembers(members);
+                          setIsDirty(true);
+                        }}
+                      />
                     </div>
+                  )
+                )}
+
+                {isManual && selectedMembers.length === 0 && (
+                  <EmptyCTA
+                    action={
+                      <SearchMembersDropdown
+                        owner={owner}
+                        selectedMembers={selectedMembers}
+                        onMembersUpdated={(members) => {
+                          setSelectedMembers(members);
+                          setIsDirty(true);
+                        }}
+                      />
+                    }
+                    message="Add members to the space"
+                  />
+                )}
+                {!isManual && selectedGroups.length === 0 && (
+                  <EmptyCTA
+                    action={
+                      <SearchGroupsDropdown
+                        owner={owner}
+                        selectedGroups={selectedGroups}
+                        onGroupsUpdated={(groups) => {
+                          setSelectedGroups(groups);
+                          setIsDirty(true);
+                        }}
+                      />
+                    }
+                    message="Add groups to the space"
+                  />
+                )}
+
+                {isManual && selectedMembers.length > 0 && (
+                  <>
                     <SearchInput
                       name="search"
-                      placeholder={
-                        isManual ? "Search (email)" : "Search groups"
-                      }
+                      placeholder="Search (email)"
                       value={searchSelectedMembers}
                       onChange={(s) => {
                         setSearchSelectedMembers(s);
                       }}
                     />
                     <ScrollArea className="h-full">
-                      {isManual ? (
-                        <MembersTable
-                          onMembersUpdated={(members) => {
-                            setSelectedMembers(members);
-                            setIsDirty(true);
-                          }}
-                          selectedMembers={selectedMembers}
-                          searchSelectedMembers={searchSelectedMembers}
-                        />
-                      ) : (
-                        <GroupsTable
-                          onGroupsUpdated={(groups) => {
-                            setSelectedGroups(groups);
-                            setIsDirty(true);
-                          }}
-                          selectedGroups={selectedGroups}
-                          searchSelectedGroups={searchSelectedMembers}
-                        />
-                      )}
+                      <MembersTable
+                        onMembersUpdated={(members) => {
+                          setSelectedMembers(members);
+                          setIsDirty(true);
+                        }}
+                        selectedMembers={selectedMembers}
+                        searchSelectedMembers={searchSelectedMembers}
+                      />
                     </ScrollArea>
                   </>
                 )}
-              </>
-            )}
-
-            {isAdmin && space && space.kind === "regular" && (
-              <>
-                <ConfirmDeleteSpaceDialog
-                  space={space}
-                  handleDelete={onDelete}
-                  isOpen={showDeleteConfirmDialog}
-                  isDeleting={isDeleting}
-                  onClose={() => setShowDeleteConfirmDialog(false)}
-                />
-                <div className="flex w-full justify-end">
-                  <Button
-                    size="sm"
-                    label="Delete Space"
-                    variant="warning"
-                    onClick={() => setShowDeleteConfirmDialog(true)}
-                  />
-                </div>
+                {!isManual && selectedGroups.length > 0 && (
+                  <>
+                    <SearchInput
+                      name="search"
+                      placeholder={"Search groups"}
+                      value={searchSelectedMembers}
+                      onChange={(s) => {
+                        setSearchSelectedMembers(s);
+                      }}
+                    />
+                    <ScrollArea className="h-full">
+                      <GroupsTable
+                        onGroupsUpdated={(groups) => {
+                          setSelectedGroups(groups);
+                          setIsDirty(true);
+                        }}
+                        selectedGroups={selectedGroups}
+                        searchSelectedGroups={searchSelectedMembers}
+                      />
+                    </ScrollArea>
+                  </>
+                )}
               </>
             )}
           </div>

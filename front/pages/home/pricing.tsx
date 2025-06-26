@@ -39,7 +39,7 @@ export default function Pricing() {
               label="Start with Pro, 15 Days free"
               icon={RocketIcon}
               onClick={() => {
-                window.location.href = "/api/auth/login";
+                window.location.href = "/api/workos/login";
               }}
             />
           </>
@@ -50,7 +50,7 @@ export default function Pricing() {
           <PricePlans
             display="landing"
             onClickProPlan={() => {
-              window.location.href = "/api/auth/login";
+              window.location.href = "/api/workos/login";
             }}
           />
         </div>

@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use tracing::info;
 
 use anyhow::{anyhow, Result};
@@ -9,7 +9,9 @@ use gcp_bigquery_client::{
     model::{
         field_type::FieldType, get_query_results_parameters::GetQueryResultsParameters, job::Job,
         job_configuration::JobConfiguration, job_configuration_query::JobConfigurationQuery,
-        job_reference::JobReference, table_row::TableRow,
+        job_reference::JobReference, query_parameter::QueryParameter,
+        query_parameter_type::QueryParameterType, query_parameter_value::QueryParameterValue,
+        query_request::QueryRequest, table_row::TableRow,
     },
     yup_oauth2::ServiceAccountKey,
     Client,
@@ -37,6 +39,22 @@ pub struct BigQueryRemoteDatabase {
     project_id: String,
     location: String,
     client: Client,
+}
+
+pub struct DatasetCheckDetails {
+    allowed_table_names: HashSet<String>,   // table_id
+    forbidden_tables: HashSet<String>,      // project_id.dataset_id.table_id
+    forbidden_table_names: HashSet<String>, // table_id
+}
+
+impl Default for DatasetCheckDetails {
+    fn default() -> Self {
+        Self {
+            allowed_table_names: HashSet::new(),
+            forbidden_tables: HashSet::new(),
+            forbidden_table_names: HashSet::new(),
+        }
+    }
 }
 
 impl TryFrom<&gcp_bigquery_client::model::table_schema::TableSchema> for TableSchema {
@@ -307,6 +325,226 @@ impl BigQueryRemoteDatabase {
             affected_tables,
         })
     }
+
+    pub async fn check_if_all_forbidden_tables_are_part_of_allowed_views(
+        &self,
+        allowed_tables: &HashSet<String>,
+        forbidden_tables: &Vec<String>,
+    ) -> Result<(), QueryDatabaseError> {
+        // This query will allow us to check if all forbidden tables are part of allowed views's sub-tables.
+        // If they are, we can return the allowed tables.
+        // If they are not, we return an error.
+
+        let mut dataset_details = HashMap::<String, DatasetCheckDetails>::new();
+
+        // Group allowed tables by dataset, there might be views in the "allowed_tables".
+        for table in allowed_tables {
+            // Split on the last dot, everyting before is the dataset_key, everything after is the table_name.
+            // There might be more than 3 parts as in some legacy bigquery project id, a dot was allowed.
+            let parts: Vec<&str> = table.split('.').collect();
+            if parts.len() < 3 {
+                Err(anyhow!("Invalid table name: {}", table))?
+            }
+            let table_name = parts[parts.len() - 1].to_string();
+            let dataset_key = parts[..parts.len() - 1].join(".");
+
+            dataset_details
+                .entry(dataset_key)
+                .or_insert_with(|| DatasetCheckDetails {
+                    ..Default::default()
+                })
+                .allowed_table_names
+                .insert(table_name);
+        }
+
+        // Also include forbidden tables in the dataset grouping
+        for table in forbidden_tables {
+            let parts: Vec<&str> = table.split('.').collect();
+            if parts.len() < 3 {
+                Err(anyhow!("Invalid table name: {}", table))?
+            }
+            let table_name = parts[parts.len() - 1].to_string();
+            let dataset_key = parts[..parts.len() - 1].join(".");
+            let entry = dataset_details
+                .entry(dataset_key)
+                .or_insert_with(|| DatasetCheckDetails {
+                    ..Default::default()
+                });
+
+            entry.forbidden_table_names.insert(table_name);
+            entry.forbidden_tables.insert(table.clone());
+        }
+
+        let mut remaining_forbidden_tables = Vec::<String>::new();
+
+        for (dataset_key, dataset) in dataset_details.iter() {
+            // This query will return the view definitions for all specified tables in the dataset, if they are views.
+            let query = format!(
+                r#"SELECT table_name as view_name, view_definition
+                FROM `{dataset_key}`.INFORMATION_SCHEMA.VIEWS
+                WHERE table_name IN UNNEST(@view_names)"#
+            );
+
+            // Create query parameters to get proper escaping of the view names.
+            let mut query_parameters = Vec::<QueryParameter>::new();
+
+            query_parameters.push(QueryParameter {
+                name: Some("view_names".to_string()),
+                parameter_type: Some(QueryParameterType {
+                    array_type: Some(Box::new(QueryParameterType {
+                        r#type: "STRING".to_string(),
+                        ..Default::default()
+                    })),
+                    r#type: "ARRAY".to_string(),
+                    ..Default::default()
+                }),
+                parameter_value: Some(QueryParameterValue {
+                    array_values: Some(
+                        dataset
+                            .allowed_table_names
+                            .iter()
+                            .map(|name| QueryParameterValue {
+                                value: Some(name.clone()),
+                                ..Default::default()
+                            })
+                            .collect(),
+                    ),
+                    ..Default::default()
+                }),
+            });
+
+            let request = QueryRequest {
+                query: query.clone(),
+                parameter_mode: Some("NAMED".to_string()),
+                query_parameters: Some(query_parameters),
+                use_legacy_sql: false,
+                ..Default::default()
+            };
+
+            let result = self
+                .client
+                .job()
+                .query(&self.project_id, request)
+                .await
+                .map_err(|e| {
+                    QueryDatabaseError::GenericError(anyhow!(
+                        "Error executing views check query {} dataset_key {}, view_names: {:?}, error: {}",
+                        query,
+                        dataset_key,
+                        dataset
+                            .allowed_table_names
+                            .iter()
+                            .map(|name| name.clone())
+                            .collect::<Vec<_>>(),
+                        e
+                    ))
+                })?;
+
+            // Turn the result into a list of view_name, view definitions.
+            if let Some(rows) = result.rows {
+                let fields = match &result.schema {
+                    Some(s) => match &s.fields {
+                        Some(f) => f,
+                        None => Err(QueryDatabaseError::GenericError(anyhow!(
+                            "Schema not found"
+                        )))?,
+                    },
+                    None => Err(QueryDatabaseError::GenericError(anyhow!(
+                        "Schema not found"
+                    )))?,
+                };
+
+                let mut view_definitions: Vec<(String, String)> = Vec::new();
+
+                for row in &rows {
+                    let mut view_name = None;
+                    let mut view_definition = None;
+
+                    for (column, field) in row
+                        .columns
+                        .as_ref()
+                        .unwrap_or(&Vec::new())
+                        .iter()
+                        .zip(fields)
+                    {
+                        if field.name == "view_name" {
+                            if let Some(Value::String(name)) = &column.value {
+                                view_name = Some(name.clone());
+                            }
+                        } else if field.name == "view_definition" {
+                            if let Some(Value::String(definition)) = &column.value {
+                                view_definition = Some(definition.clone());
+                            }
+                        }
+                    }
+
+                    if let (Some(name), Some(definition)) = (view_name, view_definition) {
+                        // Only include views that are using forbidden table names.
+                        if dataset
+                            .forbidden_table_names
+                            .iter()
+                            .any(|table_name| definition.contains(table_name))
+                        {
+                            view_definitions.push((name, definition));
+                        }
+                    }
+                }
+
+                let mut remaining_forbidden_tables_of_dataset = dataset.forbidden_tables.clone();
+                for (view_name, view_definition) in view_definitions {
+                    // We still leverage the query plan to check if the view is a select query and the affected tables.
+                    let plan = self.get_query_plan(view_definition.as_str()).await?;
+                    if !plan.is_select_query {
+                        Err(QueryDatabaseError::ExecutionError(
+                            format!("Query for view {} is not a SELECT query", view_name),
+                            Some(view_definition),
+                        ))?
+                    }
+
+                    // Remove all affected tables from the remaining forbidden tables.
+                    remaining_forbidden_tables_of_dataset.retain(|table| {
+                        !plan
+                            .affected_tables
+                            .iter()
+                            .any(|affected_table| affected_table == table)
+                    });
+
+                    if remaining_forbidden_tables_of_dataset.is_empty() {
+                        // Skip the rest of the view definitions as there are no remaining forbidden tables.
+                        break;
+                    }
+                }
+
+                // We could Err immediately if there are remaining forbidden tables in a specific dataset,
+                // but we'll keep track of them and list them in the error message at the end.
+                remaining_forbidden_tables.extend(remaining_forbidden_tables_of_dataset);
+            }
+        }
+
+        if !remaining_forbidden_tables.is_empty() {
+            info!(
+                remote_database = "bigquery",
+                used_forbidden_tables = remaining_forbidden_tables.join(", "),
+                used_forbidden_tables_count = remaining_forbidden_tables.len(),
+                allowed_tables_count = allowed_tables.len(),
+                allowed_tables = allowed_tables
+                    .iter()
+                    .map(|t| t.to_string())
+                    .collect::<Vec<_>>()
+                    .join(", "),
+                "Query uses tables that are not allowed",
+            );
+
+            Err(QueryDatabaseError::ExecutionError(
+                format!(
+                    "Query is using tables that are not part of allowed tables: {:?}",
+                    remaining_forbidden_tables
+                ),
+                None,
+            ))?
+        }
+        Ok(())
+    }
 }
 
 #[async_trait]
@@ -320,9 +558,8 @@ impl RemoteDatabase for BigQueryRemoteDatabase {
         tables: &Vec<Table>,
         query: &str,
     ) -> Result<(Vec<QueryResult>, TableSchema, String), QueryDatabaseError> {
-        // Ensure that query is a SELECT query and only uses tables that are allowed.
+        // Ensure that query is a SELECT query and only uses tables that are allowed directly or indirectly in an allowed view.
         let plan = self.get_query_plan(query).await?;
-
         if !plan.is_select_query {
             Err(QueryDatabaseError::ExecutionError(
                 format!("Query is not a SELECT query"),
@@ -330,38 +567,28 @@ impl RemoteDatabase for BigQueryRemoteDatabase {
             ))?
         }
 
-        let used_tables: HashSet<&str> = plan
-            .affected_tables
-            .iter()
-            .map(|table| table.as_str())
-            .collect();
-
         let allowed_tables: HashSet<String> = tables
             .iter()
             .map(|table| table.name().replace("__DUST_DOT__", "."))
             .collect();
 
-        let used_forbidden_tables = used_tables
+        let used_forbidden_tables: Vec<String> = plan
+            .affected_tables
+            .clone()
             .into_iter()
-            .filter(|table| !allowed_tables.contains(*table))
-            .collect::<Vec<_>>();
+            .filter(|table| !allowed_tables.contains(table))
+            .collect();
 
         if !used_forbidden_tables.is_empty() {
-            info!(
-                remote_database = "bigquery",
-                used_forbidden_tables = used_forbidden_tables.join(", "),
-                used_forbidden_tables_count = used_forbidden_tables.len(),
-                allowed_tables_count = allowed_tables.len(),
-                allowed_tables = allowed_tables.into_iter().collect::<Vec<_>>().join(", "),
-                "Query uses tables that are not allowed",
-            );
-            Err(QueryDatabaseError::ExecutionError(
-                format!(
-                    "Query uses tables that are not allowed: {}",
-                    used_forbidden_tables.join(", "),
-                ),
-                Some(query.to_string()),
-            ))?
+            // Tables selected in the datasource modal might actually be views.
+            // In this case, we need to check if any of the allowed tables is a view.
+            // If so, we need to check the view definitions and see if they are using forbidden tables.
+            // If they are, we let it go. If they are not, we return an error.
+            self.check_if_all_forbidden_tables_are_part_of_allowed_views(
+                &allowed_tables,
+                &used_forbidden_tables,
+            )
+            .await?;
         }
 
         self.execute_query(query).await
@@ -394,6 +621,7 @@ impl RemoteDatabase for BigQueryRemoteDatabase {
 
         Ok(schemas)
     }
+
     fn should_use_column_description(&self, table: &Table) -> bool {
         table
             .get_tags()

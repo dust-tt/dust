@@ -18,6 +18,7 @@ export type EnumValue = {
 };
 
 export type EnumValues = AtLeastTwoElements<EnumValue>;
+export type AsyncEnumValues = readonly EnumValue[];
 
 // Helper function to convert arrays with at least 2 elements to EnumValues.
 export function mapToEnumValues<T>(
@@ -32,6 +33,13 @@ export function mapToEnumValues<T>(
 interface EnumArgDefinition extends BaseArgDefinition {
   type: "enum";
   values: EnumValues;
+  async?: false;
+}
+
+interface AsyncEnumArgDefinition extends BaseArgDefinition {
+  type: "enum";
+  values: AsyncEnumValues;
+  async: true;
 }
 
 interface StringArgDefinition extends BaseArgDefinition {
@@ -61,6 +69,7 @@ interface FileArgDefinition extends BaseArgDefinition {
 
 export type PluginArgDefinition =
   | EnumArgDefinition
+  | AsyncEnumArgDefinition
   | StringArgDefinition
   | TextArgDefinition
   | NumberArgDefinition
@@ -120,30 +129,49 @@ export function createIoTsCodecFromArgs(
       case "text":
         codecProps[key] = t.string;
         break;
+
       case "string":
         codecProps[key] = t.string;
         break;
+
       case "number":
         codecProps[key] = t.number;
         break;
+
       case "boolean":
         codecProps[key] = t.boolean;
         break;
+
       case "enum":
-        if (!Array.isArray(arg.values) || arg.values.length < 2) {
+        if (!Array.isArray(arg.values)) {
+          throw new Error(`Enum argument "${key}" must be an array`);
+        }
+
+        // For async enums, allow empty arrays initially
+        // For non-async enums, require at least 2 values.
+        if (!arg.async && arg.values.length < 2) {
           throw new Error(
-            `Enum argument "${key}" must have at least two values`
+            `Non-async enum argument "${key}" must have at least two values`
           );
         }
 
         // Extract values from EnumValue objects.
         const enumValues = arg.values.map((v) => v.value);
-        codecProps[key] = t.union([
-          t.literal(enumValues[0]),
-          t.literal(enumValues[1]),
-          ...enumValues.slice(2).map((v) => t.literal(v)),
-        ]);
+
+        // Handle empty async enums
+        if (enumValues.length === 0) {
+          codecProps[key] = t.string; // Allow any string for async enums initially.
+        } else if (enumValues.length === 1) {
+          codecProps[key] = t.literal(enumValues[0]);
+        } else {
+          codecProps[key] = t.union([
+            t.literal(enumValues[0]),
+            t.literal(enumValues[1]),
+            ...enumValues.slice(2).map((v) => t.literal(v)),
+          ]);
+        }
         break;
+
       case "file":
         codecProps[key] = t.any;
         break;

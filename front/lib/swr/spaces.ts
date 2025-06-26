@@ -29,13 +29,8 @@ import type { GetSpaceDataSourceViewsResponseBody } from "@app/pages/api/w/[wId]
 import type { GetDataSourceViewResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]";
 import type { PostSpaceDataSourceResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources";
 import type {
-  PostSpaceSearchRequestBody,
-  PostSpaceSearchResponseBody,
-} from "@app/pages/api/w/[wId]/spaces/[spaceId]/search";
-import type {
   ContentNodesViewType,
   DataSourceViewCategoryWithoutApps,
-  DataSourceViewContentNode,
   DataSourceViewType,
   LightWorkspaceType,
   SearchWarningCode,
@@ -380,19 +375,22 @@ export function useDeleteFolderOrWebsite({
 type DoCreateOrUpdateAllowedParams =
   | {
       name: string | null;
-      isRestricted: false;
+      isRestricted: boolean;
+      managementMode?: never;
     }
   | {
       name: string | null;
       memberIds: string[];
+      groupIds?: never;
       isRestricted: true;
-      managementMode?: "manual";
+      managementMode: "manual";
     }
   | {
       name: string | null;
+      memberIds?: never;
       groupIds: string[];
       isRestricted: true;
-      managementMode?: "group";
+      managementMode: "group";
     };
 
 export function useCreateSpace({ owner }: { owner: LightWorkspaceType }) {
@@ -407,14 +405,16 @@ export function useCreateSpace({ owner }: { owner: LightWorkspaceType }) {
   });
 
   const doCreate = async (params: DoCreateOrUpdateAllowedParams) => {
-    const { name, isRestricted } = params;
+    const { name, managementMode, isRestricted } = params;
     if (!name) {
       return null;
     }
 
-    if (isRestricted) {
-      const memberIds = "memberIds" in params ? params.memberIds : undefined;
-      const groupIds = "groupIds" in params ? params.groupIds : undefined;
+    const url = `/api/w/${owner.sId}/spaces`;
+    let res;
+
+    if (managementMode) {
+      const { memberIds, groupIds } = params;
 
       // Must have either memberIds or groupIds for restricted spaces
       if (
@@ -423,24 +423,32 @@ export function useCreateSpace({ owner }: { owner: LightWorkspaceType }) {
       ) {
         return null;
       }
-    }
 
-    const url = `/api/w/${owner.sId}/spaces`;
-    const res = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        name,
-        ...("memberIds" in params && { memberIds: params.memberIds }),
-        ...("groupIds" in params && { groupIds: params.groupIds }),
-        ...("managementMode" in params && {
-          managementMode: params.managementMode,
+      res = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name,
+          memberIds,
+          groupIds,
+          managementMode,
+          isRestricted,
         }),
-        isRestricted,
-      }),
-    });
+      });
+    } else {
+      res = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name,
+          isRestricted,
+        }),
+      });
+    }
 
     if (!res.ok) {
       const errorData = await getErrorFromResponse(res);
@@ -484,11 +492,7 @@ export function useUpdateSpace({ owner }: { owner: LightWorkspaceType }) {
     space: SpaceType,
     params: DoCreateOrUpdateAllowedParams
   ) => {
-    const { name: newName, isRestricted } = params;
-    const memberIds = "memberIds" in params ? params.memberIds : undefined;
-    const groupIds = "groupIds" in params ? params.groupIds : undefined;
-    const managementMode =
-      "managementMode" in params ? params.managementMode : undefined;
+    const { name: newName, managementMode } = params;
 
     const updatePromises: Promise<Response>[] = [];
 
@@ -510,22 +514,24 @@ export function useUpdateSpace({ owner }: { owner: LightWorkspaceType }) {
 
     // Prepare space members update request if provided.
     const spaceMembersUrl = `/api/w/${owner.sId}/spaces/${space.sId}/members`;
-    updatePromises.push(
-      fetch(spaceMembersUrl, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          ...(memberIds !== undefined && { memberIds }),
-          ...(groupIds !== undefined && { groupIds }),
-          ...(managementMode !== undefined && {
+    if (managementMode) {
+      const { memberIds, groupIds, isRestricted } = params;
+
+      updatePromises.push(
+        fetch(spaceMembersUrl, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            memberIds,
+            groupIds,
             managementMode,
+            isRestricted,
           }),
-          isRestricted,
-        }),
-      })
-    );
+        })
+      );
+    }
 
     if (updatePromises.length === 0) {
       return null;
@@ -629,90 +635,6 @@ export function useSystemSpace({
 
 const DEFAULT_SEARCH_LIMIT = 15;
 
-export function useSpaceSearch({
-  dataSourceViews,
-  disabled = false,
-  includeDataSources = false,
-  owner,
-  search,
-  space,
-  viewType,
-  pagination,
-  parentId,
-}: {
-  dataSourceViews: DataSourceViewType[];
-  disabled?: boolean;
-  includeDataSources: boolean;
-  owner: LightWorkspaceType;
-  search: string;
-  space: SpaceType;
-  viewType: ContentNodesViewType;
-  warningCode?: SearchWarningCode;
-  pagination?: CursorPaginationParams;
-  parentId?: string;
-}): {
-  isSearchLoading: boolean;
-  isSearchError: boolean;
-  isSearchValidating: boolean;
-  mutate: KeyedMutator<PostSpaceSearchResponseBody>;
-  searchResultNodes: DataSourceViewContentNode[];
-  total: number;
-  warningCode: SearchWarningCode | null;
-  nextPageCursor: string | null;
-} {
-  const params = new URLSearchParams();
-  if (pagination?.cursor) {
-    params.append("cursor", pagination.cursor);
-  }
-  if (pagination?.limit) {
-    params.append("limit", pagination.limit.toString());
-  }
-
-  const body: PostSpaceSearchRequestBody = {
-    dataSourceViewIds: dataSourceViews.map((dsv) => dsv.sId),
-    includeDataSources,
-    limit: pagination?.limit ?? DEFAULT_SEARCH_LIMIT,
-    query: search,
-    viewType,
-    parentId,
-  };
-
-  // Only perform a query if we have a valid search.
-  const url =
-    search.length >= MIN_SEARCH_QUERY_SIZE || parentId
-      ? `/api/w/${owner.sId}/spaces/${space.sId}/search?${params}`
-      : null;
-
-  const fetchKey = JSON.stringify([url + "?" + params.toString(), body]);
-
-  const { data, error, mutate, isValidating, isLoading } = useSWRWithDefaults(
-    fetchKey,
-    async () => {
-      if (!url) {
-        return null;
-      }
-
-      return fetcherWithBody([url, body, "POST"]);
-    },
-    {
-      revalidateOnFocus: false,
-      revalidateOnReconnect: false,
-      disabled,
-    }
-  );
-
-  return {
-    searchResultNodes: data?.nodes ?? emptyArray(),
-    total: data?.total ?? 0,
-    isSearchLoading: isLoading,
-    isSearchError: error,
-    mutate,
-    isSearchValidating: isValidating,
-    warningCode: data?.warningCode,
-    nextPageCursor: data?.nextPageCursor || null,
-  };
-}
-
 type BaseSearchParams = {
   disabled?: boolean;
   includeDataSources: boolean;
@@ -720,6 +642,8 @@ type BaseSearchParams = {
   spaceIds?: string[];
   viewType: ContentNodesViewType;
   pagination?: CursorPaginationParams;
+  allowAdminSearch?: boolean;
+  dataSourceViewIdsBySpaceId?: Record<string, string[]>;
 };
 
 // Text search variant
@@ -748,6 +672,8 @@ export function useSpacesSearch({
   viewType,
   pagination,
   searchSourceUrls = false,
+  allowAdminSearch = false,
+  dataSourceViewIdsBySpaceId,
 }: SpacesSearchParams): {
   isSearchLoading: boolean;
   isSearchError: boolean;
@@ -773,6 +699,8 @@ export function useSpacesSearch({
     searchSourceUrls,
     spaceIds,
     viewType,
+    allowAdminSearch,
+    dataSourceViewIdsBySpaceId,
   };
 
   // Only perform a query if we have a valid search
@@ -819,6 +747,7 @@ export function useSpacesSearchWithInfiniteScroll({
   spaceIds,
   viewType,
   pageSize = 25,
+  allowAdminSearch = false,
 }: SpacesSearchParams & { pageSize?: number }): {
   isSearchLoading: boolean;
   isSearchError: boolean;
@@ -834,6 +763,7 @@ export function useSpacesSearchWithInfiniteScroll({
     spaceIds,
     includeDataSources,
     limit: pageSize,
+    allowAdminSearch,
   };
 
   // Only perform a query if we have a valid search

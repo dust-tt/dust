@@ -369,6 +369,7 @@ export function AssistantInputBar({
                 fileUploaderService={fileUploaderService}
                 isSubmitting={isSubmitting ?? false}
                 onNodeSelect={handleNodesAttachmentSelect}
+                onNodeUnselect={handleNodesAttachmentRemove}
                 attachedNodes={attachedNodes}
               />
             </div>

@@ -115,7 +115,14 @@ export function AddToolsDropdown({
       actionType === "DATA_VISUALIZATION"
         ? getDataVisualizationActionConfiguration()
         : getDefaultActionConfiguration(actionType);
-    assert(defaultAction);
+
+    // TODO(durable agents, 2025-06-24): remove this on cleaning by typing
+    // getDefaultActionConfiguration.
+    assert(
+      defaultAction &&
+        (defaultAction.type === "MCP" ||
+          defaultAction.type === "DATA_VISUALIZATION")
+    );
 
     setAction({
       type: defaultAction.noConfigurationRequired ? "insert" : "pending",

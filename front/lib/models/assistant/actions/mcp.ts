@@ -350,7 +350,8 @@ AgentMCPActionOutputItem.belongsTo(FileModel, {
 
 /**
  * Configuration of a child agent used by an MCP server.
- * TODO(mcp): move this model in a file dedicated to the configuration blocks, add Resources for all of them.
+ * TODO(mcp): move this model in a file dedicated to the configuration blocks, add Resources for
+ *  all of them (should be done after cleaning up all the actions).
  */
 export class AgentChildAgentConfiguration extends WorkspaceAwareModel<AgentChildAgentConfiguration> {
   declare createdAt: CreationOptional<Date>;

@@ -17,19 +17,14 @@ import { fetchAgentRetrievalActionConfigurations } from "@app/lib/actions/config
 import { fetchTableQueryActionConfigurations } from "@app/lib/actions/configuration/table_query";
 import { fetchWebsearchActionConfigurations } from "@app/lib/actions/configuration/websearch";
 import {
-  DEFAULT_BROWSE_ACTION_NAME,
-  DEFAULT_PROCESS_ACTION_NAME,
   DEFAULT_REASONING_ACTION_DESCRIPTION,
-  DEFAULT_REASONING_ACTION_NAME,
   DEFAULT_RETRIEVAL_ACTION_NAME,
-  DEFAULT_TABLES_QUERY_ACTION_NAME,
-  DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/actions/constants";
 import type { ReasoningModelConfiguration } from "@app/lib/actions/reasoning";
 import type { TableDataSourceConfiguration } from "@app/lib/actions/tables_query";
 import type {
   AgentActionConfigurationType,
-  UnsavedAgentActionConfigurationType,
+  UnsavedMCPServerConfigurationType,
 } from "@app/lib/actions/types/agent";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import { getFavoriteStates } from "@app/lib/api/assistant/get_favorite_states";
@@ -38,21 +33,16 @@ import { agentConfigurationWasUpdatedBy } from "@app/lib/api/assistant/recent_au
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
 import { getPublicUploadBucket } from "@app/lib/file_storage";
-import { AgentBrowseConfiguration } from "@app/lib/models/assistant/actions/browse";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
-import { AgentDustAppRunConfiguration } from "@app/lib/models/assistant/actions/dust_app_run";
 import {
   AgentChildAgentConfiguration,
   AgentMCPServerConfiguration,
 } from "@app/lib/models/assistant/actions/mcp";
-import { AgentProcessConfiguration } from "@app/lib/models/assistant/actions/process";
+import type { AgentProcessConfiguration } from "@app/lib/models/assistant/actions/process";
 import { AgentReasoningConfiguration } from "@app/lib/models/assistant/actions/reasoning";
-import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
-import {
-  AgentTablesQueryConfiguration,
-  AgentTablesQueryConfigurationTable,
-} from "@app/lib/models/assistant/actions/tables_query";
-import { AgentWebsearchConfiguration } from "@app/lib/models/assistant/actions/websearch";
+import type { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
+import type { AgentTablesQueryConfiguration } from "@app/lib/models/assistant/actions/tables_query";
+import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
 import {
   AgentConfiguration,
   AgentUserRelation,
@@ -90,7 +80,6 @@ import {
   isAdmin,
   isBuilder,
   isGlobalAgentId,
-  isTimeFrame,
   MAX_STEPS_USE_PER_RUN_LIMIT,
   normalizeAsInternalDustError,
   normalizeError,
@@ -1139,296 +1128,95 @@ export async function restoreAgentConfiguration(
  */
 export async function createAgentActionConfiguration(
   auth: Authenticator,
-  action: UnsavedAgentActionConfigurationType,
+  action: UnsavedMCPServerConfigurationType,
   agentConfiguration: LightAgentConfigurationType
 ): Promise<Result<AgentActionConfigurationType, Error>> {
   const owner = auth.getNonNullableWorkspace();
 
-  switch (action.type) {
-    case "retrieval_configuration": {
-      return frontSequelize.transaction(async (t) => {
-        const retrievalConfig = await AgentRetrievalConfiguration.create(
-          {
-            sId: generateRandomModelSId(),
-            query: action.query,
-            relativeTimeFrame: isTimeFrame(action.relativeTimeFrame)
-              ? "custom"
-              : action.relativeTimeFrame,
-            relativeTimeFrameDuration: isTimeFrame(action.relativeTimeFrame)
-              ? action.relativeTimeFrame.duration
-              : null,
-            relativeTimeFrameUnit: isTimeFrame(action.relativeTimeFrame)
-              ? action.relativeTimeFrame.unit
-              : null,
-            topK: action.topK !== "auto" ? action.topK : null,
-            topKMode: action.topK === "auto" ? "auto" : "custom",
-            agentConfigurationId: agentConfiguration.id,
-            name: action.name,
-            description: action.description,
-            workspaceId: owner.id,
-          },
-          { transaction: t }
-        );
-        await createAgentDataSourcesConfiguration(auth, t, {
-          dataSourceConfigurations: action.dataSources,
-          retrievalConfiguration: retrievalConfig,
-          processConfiguration: null,
-          mcpServerConfiguration: null,
-        });
+  assert(isServerSideMCPServerConfiguration(action));
 
-        return new Ok({
-          id: retrievalConfig.id,
-          sId: retrievalConfig.sId,
-          type: "retrieval_configuration",
-          query: action.query,
-          relativeTimeFrame: action.relativeTimeFrame,
-          topK: action.topK,
-          dataSources: action.dataSources,
-          name: action.name || DEFAULT_RETRIEVAL_ACTION_NAME,
-          description: action.description,
-        });
-      });
+  return frontSequelize.transaction(async (t) => {
+    const mcpServerView = await MCPServerViewResource.fetchById(
+      auth,
+      action.mcpServerViewId
+    );
+    if (!mcpServerView) {
+      return new Err(new Error("MCP server view not found"));
     }
-    case "dust_app_run_configuration": {
-      const dustAppRunConfig = await AgentDustAppRunConfiguration.create({
-        sId: generateRandomModelSId(),
-        appWorkspaceId: action.appWorkspaceId,
-        appId: action.appId,
-        agentConfigurationId: agentConfiguration.id,
-        workspaceId: owner.id,
-      });
 
-      return new Ok({
-        id: dustAppRunConfig.id,
-        sId: dustAppRunConfig.sId,
-        type: "dust_app_run_configuration",
-        appWorkspaceId: action.appWorkspaceId,
-        appId: action.appId,
-        name: action.name,
-        description: action.description,
-      });
-    }
-    case "tables_query_configuration": {
-      return frontSequelize.transaction(async (t) => {
-        const tablesQueryConfig = await AgentTablesQueryConfiguration.create(
-          {
-            sId: generateRandomModelSId(),
-            agentConfigurationId: agentConfiguration.id,
-            name: action.name,
-            description: action.description,
-            workspaceId: owner.id,
-          },
-          { transaction: t }
-        );
+    const {
+      server: { name: serverName, description: serverDescription },
+    } = mcpServerView.toJSON();
 
-        await createTableDataSourceConfiguration(auth, t, {
-          tableConfigurations: action.tables,
-          tablesQueryConfig,
-          mcpConfig: null,
-        });
-
-        return new Ok({
-          id: tablesQueryConfig.id,
-          sId: tablesQueryConfig.sId,
-          type: "tables_query_configuration",
-          tables: action.tables,
-          name: action.name || DEFAULT_TABLES_QUERY_ACTION_NAME,
-          description: action.description,
-        });
-      });
-    }
-    case "process_configuration": {
-      return frontSequelize.transaction(async (t) => {
-        const processConfig = await AgentProcessConfiguration.create(
-          {
-            sId: generateRandomModelSId(),
-            relativeTimeFrame: isTimeFrame(action.relativeTimeFrame)
-              ? "custom"
-              : action.relativeTimeFrame,
-            relativeTimeFrameDuration: isTimeFrame(action.relativeTimeFrame)
-              ? action.relativeTimeFrame.duration
-              : null,
-            relativeTimeFrameUnit: isTimeFrame(action.relativeTimeFrame)
-              ? action.relativeTimeFrame.unit
-              : null,
-            agentConfigurationId: agentConfiguration.id,
-            jsonSchema: action.jsonSchema,
-            name: action.name,
-            description: action.description,
-            workspaceId: owner.id,
-          },
-          { transaction: t }
-        );
-        await createAgentDataSourcesConfiguration(auth, t, {
-          dataSourceConfigurations: action.dataSources,
-          retrievalConfiguration: null,
-          processConfiguration: processConfig,
-          mcpServerConfiguration: null,
-        });
-
-        return new Ok({
-          id: processConfig.id,
-          sId: processConfig.sId,
-          type: "process_configuration",
-          relativeTimeFrame: action.relativeTimeFrame,
-          jsonSchema: action.jsonSchema,
-          dataSources: action.dataSources,
-          name: action.name || DEFAULT_PROCESS_ACTION_NAME,
-          description: action.description,
-        });
-      });
-    }
-    case "websearch_configuration": {
-      const websearchConfig = await AgentWebsearchConfiguration.create({
+    const mcpConfig = await AgentMCPServerConfiguration.create(
+      {
         sId: generateRandomModelSId(),
         agentConfigurationId: agentConfiguration.id,
-        name: action.name,
-        description: action.description,
         workspaceId: owner.id,
-      });
+        mcpServerViewId: mcpServerView.id,
+        internalMCPServerId: mcpServerView.internalMCPServerId,
+        additionalConfiguration: action.additionalConfiguration,
+        timeFrame: action.timeFrame,
+        jsonSchema: action.jsonSchema,
+        name: serverName !== action.name ? action.name : null,
+        singleToolDescriptionOverride:
+          serverDescription !== action.description ? action.description : null,
+        appId: action.dustAppConfiguration?.appId ?? null,
+      },
+      { transaction: t }
+    );
 
-      return new Ok({
-        id: websearchConfig.id,
-        sId: websearchConfig.sId,
-        type: "websearch_configuration",
-        name: action.name || DEFAULT_WEBSEARCH_ACTION_NAME,
-        description: action.description,
-      });
-    }
-    case "browse_configuration": {
-      const browseConfig = await AgentBrowseConfiguration.create({
-        sId: generateRandomModelSId(),
-        agentConfigurationId: agentConfiguration.id,
-        name: action.name,
-        description: action.description,
-        workspaceId: owner.id,
-      });
-
-      return new Ok({
-        id: browseConfig.id,
-        sId: browseConfig.sId,
-        type: "browse_configuration",
-        name: action.name || DEFAULT_BROWSE_ACTION_NAME,
-        description: action.description,
+    // Creating the AgentDataSourceConfiguration if configured
+    if (action.dataSources) {
+      await createAgentDataSourcesConfiguration(auth, t, {
+        dataSourceConfigurations: action.dataSources,
+        retrievalConfiguration: null,
+        processConfiguration: null,
+        mcpServerConfiguration: mcpConfig,
       });
     }
-    case "reasoning_configuration": {
-      const reasoningConfig = await AgentReasoningConfiguration.create({
-        sId: generateRandomModelSId(),
-        agentConfigurationId: agentConfiguration.id,
-        mcpServerConfigurationId: null,
-        name: action.name,
-        description: action.description,
-        providerId: action.providerId,
-        modelId: action.modelId,
-        temperature: action.temperature,
-        reasoningEffort: action.reasoningEffort,
-        workspaceId: owner.id,
-      });
-
-      return new Ok({
-        id: reasoningConfig.id,
-        sId: reasoningConfig.sId,
-        type: "reasoning_configuration",
-        providerId: action.providerId,
-        modelId: action.modelId,
-        temperature: action.temperature,
-        reasoningEffort: action.reasoningEffort,
-        name: action.name || DEFAULT_REASONING_ACTION_NAME,
-        description: action.description,
+    // Creating the AgentTablesQueryConfigurationTable if configured
+    if (action.tables) {
+      await createTableDataSourceConfiguration(auth, t, {
+        tableConfigurations: action.tables,
+        tablesQueryConfig: null,
+        mcpConfig,
       });
     }
-    case "mcp_server_configuration": {
-      assert(isServerSideMCPServerConfiguration(action));
-
-      return frontSequelize.transaction(async (t) => {
-        const mcpServerView = await MCPServerViewResource.fetchById(
-          auth,
-          action.mcpServerViewId
-        );
-        if (!mcpServerView) {
-          return new Err(new Error("MCP server view not found"));
-        }
-
-        const {
-          server: { name: serverName, description: serverDescription },
-        } = mcpServerView.toJSON();
-
-        const mcpConfig = await AgentMCPServerConfiguration.create(
-          {
-            sId: generateRandomModelSId(),
-            agentConfigurationId: agentConfiguration.id,
-            workspaceId: owner.id,
-            mcpServerViewId: mcpServerView.id,
-            internalMCPServerId: mcpServerView.internalMCPServerId,
-            additionalConfiguration: action.additionalConfiguration,
-            timeFrame: action.timeFrame,
-            jsonSchema: action.jsonSchema,
-            name: serverName !== action.name ? action.name : null,
-            singleToolDescriptionOverride:
-              serverDescription !== action.description
-                ? action.description
-                : null,
-            appId: action.dustAppConfiguration?.appId ?? null,
-          },
-          { transaction: t }
-        );
-
-        // Creating the AgentDataSourceConfiguration if configured
-        if (action.dataSources) {
-          await createAgentDataSourcesConfiguration(auth, t, {
-            dataSourceConfigurations: action.dataSources,
-            retrievalConfiguration: null,
-            processConfiguration: null,
-            mcpServerConfiguration: mcpConfig,
-          });
-        }
-        // Creating the AgentTablesQueryConfigurationTable if configured
-        if (action.tables) {
-          await createTableDataSourceConfiguration(auth, t, {
-            tableConfigurations: action.tables,
-            tablesQueryConfig: null,
-            mcpConfig,
-          });
-        }
-        // Creating the ChildAgentConfiguration if configured
-        if (action.childAgentId) {
-          await createChildAgentConfiguration(auth, t, {
-            childAgentId: action.childAgentId,
-            mcpConfig,
-          });
-        }
-        // Creating the AgentTablesQueryConfigurationTable if configured
-        if (action.reasoningModel) {
-          await createReasoningConfiguration(auth, t, {
-            reasoningModel: action.reasoningModel,
-            mcpConfig,
-            agentConfiguration,
-          });
-        }
-
-        return new Ok({
-          id: mcpConfig.id,
-          sId: mcpConfig.sId,
-          type: "mcp_server_configuration",
-          name: action.name,
-          description: action.description,
-          mcpServerViewId: action.mcpServerViewId,
-          internalMCPServerId: action.internalMCPServerId,
-          dataSources: action.dataSources,
-          tables: action.tables,
-          childAgentId: action.childAgentId,
-          reasoningModel: action.reasoningModel,
-          timeFrame: action.timeFrame,
-          additionalConfiguration: action.additionalConfiguration,
-          dustAppConfiguration: action.dustAppConfiguration,
-          jsonSchema: action.jsonSchema,
-        });
+    // Creating the ChildAgentConfiguration if configured
+    if (action.childAgentId) {
+      await createChildAgentConfiguration(auth, t, {
+        childAgentId: action.childAgentId,
+        mcpConfig,
       });
     }
-    default:
-      assertNever(action);
-  }
+    // Creating the AgentTablesQueryConfigurationTable if configured
+    if (action.reasoningModel) {
+      await createReasoningConfiguration(auth, t, {
+        reasoningModel: action.reasoningModel,
+        mcpConfig,
+        agentConfiguration,
+      });
+    }
+
+    return new Ok({
+      id: mcpConfig.id,
+      sId: mcpConfig.sId,
+      type: "mcp_server_configuration",
+      name: action.name,
+      description: action.description,
+      mcpServerViewId: action.mcpServerViewId,
+      internalMCPServerId: action.internalMCPServerId,
+      dataSources: action.dataSources,
+      tables: action.tables,
+      childAgentId: action.childAgentId,
+      reasoningModel: action.reasoningModel,
+      timeFrame: action.timeFrame,
+      additionalConfiguration: action.additionalConfiguration,
+      dustAppConfiguration: action.dustAppConfiguration,
+      jsonSchema: action.jsonSchema,
+    });
+  });
 }
 
 /**

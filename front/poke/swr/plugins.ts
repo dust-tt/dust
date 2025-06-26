@@ -1,6 +1,5 @@
 import type { Fetcher } from "swr";
 
-import type { PluginListItem } from "@app/lib/api/poke/types";
 import {
   emptyArray,
   fetcher,
@@ -13,8 +12,6 @@ import type { PokeGetPluginDetailsResponseBody } from "@app/pages/api/poke/plugi
 import type { PokeRunPluginResponseBody } from "@app/pages/api/poke/plugins/[pluginId]/run";
 import type { PluginResourceTarget, Result } from "@app/types";
 import { Err, Ok } from "@app/types";
-
-const EMPTY_ARRAY: PluginListItem[] = [];
 
 export function usePokeListPluginForResourceType({
   disabled,

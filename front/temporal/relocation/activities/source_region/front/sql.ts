@@ -3,13 +3,13 @@ import { Op, QueryTypes } from "sequelize";
 
 import type { RegionType } from "@app/lib/api/regions/config";
 import { getWorkspaceInfos } from "@app/lib/api/workspace";
-import { Workspace } from "@app/lib/models/workspace";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import {
   UserMetadataModel,
   UserModel,
 } from "@app/lib/resources/storage/models/user";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import type {
@@ -40,7 +40,7 @@ export async function readCoreEntitiesFromSourceRegion({
   localLogger.info("[SQL Core Entities] Reading core entities.");
 
   // Find the raw workspace.
-  const workspace = await Workspace.findOne({
+  const workspace = await WorkspaceModel.findOne({
     where: {
       sId: workspaceId,
     },

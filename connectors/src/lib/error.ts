@@ -52,6 +52,16 @@ export class ProviderWorkflowError extends DustConnectorWorkflowError {
   }
 }
 
+export class ProviderRateLimitError extends ProviderWorkflowError {
+  constructor(
+    message: string,
+    originalError?: Error | APIError,
+    readonly retryAfter?: number
+  ) {
+    super("slack", message, "rate_limit_error", originalError);
+  }
+}
+
 export class HTTPError extends Error {
   readonly statusCode: number;
   constructor(message: string, statusCode: number) {

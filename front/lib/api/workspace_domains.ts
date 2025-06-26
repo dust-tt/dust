@@ -1,33 +1,88 @@
-import { Workspace } from "@app/lib/models/workspace";
-import { WorkspaceHasDomainModel } from "@app/lib/models/workspace_has_domain";
+import {
+  listWorkOSOrganizationsWithDomain,
+  removeWorkOSOrganizationDomain,
+} from "@app/lib/api/workos/organization";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
+import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
+import logger from "@app/logger/logger";
 import type { LightWorkspaceType, Result, WorkspaceDomain } from "@app/types";
 import { Err, Ok } from "@app/types";
 
 export async function upsertWorkspaceDomain(
   workspace: LightWorkspaceType,
-  { domain }: { domain: string }
+  {
+    domain,
+    dropExistingDomain = false,
+  }: { domain: string; dropExistingDomain?: boolean }
 ): Promise<Result<WorkspaceHasDomainModel, Error>> {
-  const existingDomain = await WorkspaceHasDomainModel.findOne({
+  const existingDomainInRegion = await WorkspaceHasDomainModel.findOne({
     where: { domain },
     include: [
       {
-        model: Workspace,
+        model: WorkspaceModel,
         as: "workspace",
         required: true,
       },
     ],
   });
 
-  if (existingDomain && existingDomain.workspace.id === workspace.id) {
-    return new Ok(existingDomain);
+  if (
+    existingDomainInRegion &&
+    existingDomainInRegion.workspace.id === workspace.id
+  ) {
+    return new Ok(existingDomainInRegion);
   }
 
-  if (existingDomain) {
-    return new Err(
-      new Error(
-        `Domain ${domain} already exists in workspace ${existingDomain.workspace.id}`
-      )
+  if (existingDomainInRegion) {
+    if (dropExistingDomain) {
+      logger.info(
+        {
+          domain,
+          workspaceId: existingDomainInRegion.workspace.id,
+        },
+        "Dropping existing domain"
+      );
+
+      const { workspace } = existingDomainInRegion;
+
+      // Delete the domain from the DB.
+      await existingDomainInRegion.destroy();
+
+      // Delete the domain from WorkOS.
+      await removeWorkOSOrganizationDomain(
+        renderLightWorkspaceType({ workspace }),
+        {
+          domain,
+        }
+      );
+    } else {
+      return new Err(
+        new Error(
+          `Domain ${domain} already exists in workspace ${existingDomainInRegion.workspace.id}`
+        )
+      );
+    }
+  }
+
+  // Ensure the domain is not already in use by another workspace in another region.
+  const organizationsWithDomain =
+    await listWorkOSOrganizationsWithDomain(domain);
+
+  if (organizationsWithDomain.length > 0) {
+    const otherOrganizationsWithDomain = organizationsWithDomain.filter(
+      (o) => o.id !== workspace.workOSOrganizationId
     );
+
+    const [otherOrganizationWithDomain] = otherOrganizationsWithDomain;
+    if (otherOrganizationWithDomain) {
+      return new Err(
+        new Error(
+          `Domain ${domain} already associated with organization ` +
+            `${otherOrganizationWithDomain.id} - ${otherOrganizationWithDomain.metadata.region}`
+        )
+      );
+    }
   }
 
   const d = await WorkspaceHasDomainModel.create({

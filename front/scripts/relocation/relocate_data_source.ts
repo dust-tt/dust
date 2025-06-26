@@ -5,8 +5,8 @@ import {
   isRegionType,
   SUPPORTED_REGIONS,
 } from "@app/lib/api/regions/config";
-import { Workspace } from "@app/lib/models/workspace";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { makeScript } from "@app/scripts/helpers";
 import { RELOCATION_QUEUES_PER_REGION } from "@app/temporal/relocation/config";
 import { getTemporalRelocationClient } from "@app/temporal/relocation/temporal";
@@ -57,7 +57,7 @@ makeScript(
     const dataSource = await DataSourceModel.findByPk(dataSourceId, {
       include: [
         {
-          model: Workspace,
+          model: WorkspaceModel,
           required: true,
         },
       ],

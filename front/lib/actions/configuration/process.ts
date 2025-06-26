@@ -10,8 +10,8 @@ import type { ProcessConfigurationType } from "@app/lib/actions/process";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { AgentProcessConfiguration } from "@app/lib/models/assistant/actions/process";
-import { Workspace } from "@app/lib/models/workspace";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import type { AgentFetchVariant, ModelId } from "@app/types";
 
 export async function fetchAgentProcessActionConfigurations(
@@ -55,7 +55,7 @@ export async function fetchAgentProcessActionConfigurations(
           as: "dataSourceView",
           include: [
             {
-              model: Workspace,
+              model: WorkspaceModel,
               as: "workspace",
             },
           ],

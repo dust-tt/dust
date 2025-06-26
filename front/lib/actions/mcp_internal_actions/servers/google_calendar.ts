@@ -16,13 +16,13 @@ const serverInfo: InternalMCPServerDefinitionType = {
   version: "1.0.0",
   description: "Tools for managing Google calendars and events.",
   authorization: {
-    provider: "gmail",
+    provider: "google_drive",
     supported_use_cases: ["personal_actions"] as const,
     scope:
       "https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/calendar.events" as const,
   },
   icon: "GcalLogo",
-  documentationUrl: "https://docs.dust.tt/docs/gmail",
+  documentationUrl: "https://docs.dust.tt/docs/google-calendar",
 };
 
 const createServer = (): McpServer => {

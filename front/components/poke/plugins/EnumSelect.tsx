@@ -17,12 +17,12 @@ import {
   PokeCommandList,
 } from "@app/components/poke/shadcn/ui/command";
 import { PokeFormControl } from "@app/components/poke/shadcn/ui/form";
-import type { EnumValues } from "@app/types/poke/plugins";
+import type { AsyncEnumValues, EnumValues } from "@app/types/poke/plugins";
 
 interface EnumSelectProps {
   label?: string;
   onValueChange: (value: string) => void;
-  options: EnumValues;
+  options: AsyncEnumValues | EnumValues;
   placeholder?: string;
   value: string;
 }

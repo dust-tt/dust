@@ -194,7 +194,6 @@ export const SearchResultResourceSchema = z.object({
   ref: z.string(),
   chunks: z.array(z.string()),
   source: z.object({
-    name: z.string(),
     provider: z.string().optional(),
   }),
 });

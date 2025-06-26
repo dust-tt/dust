@@ -16,9 +16,10 @@ export interface UpsertFileToDataSourceRequestBody {
   fileId: string;
   upsertArgs?:
     | Pick<UpsertDocumentArgs, "document_id" | "title" | "tags">
-    | (Pick<UpsertTableArgs, "name" | "title" | "description" | "tags"> & {
-        tableId: string | undefined;
-      }); // we actually don't always have a tableId, this is very dirty, but the refactoring should be done at the level of the whole upsertArgs mechanic
+    | Pick<
+        UpsertTableArgs,
+        "name" | "title" | "description" | "tags" | "tableId"
+      >;
 }
 
 export interface UpsertFileToDataSourceResponseBody {

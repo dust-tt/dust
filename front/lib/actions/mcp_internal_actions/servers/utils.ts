@@ -1,5 +1,3 @@
-import { Op } from "sequelize";
-
 import { renderDataSourceConfiguration } from "@app/lib/actions/configuration/helpers";
 import type {
   DataSourcesToolConfigurationType,
@@ -9,6 +7,7 @@ import {
   DATA_SOURCE_CONFIGURATION_URI_PATTERN,
   TABLE_CONFIGURATION_URI_PATTERN,
 } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import type { TableDataSourceConfiguration } from "@app/lib/actions/tables_query";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import {
   isServerSideMCPServerConfiguration,
@@ -18,10 +17,10 @@ import type { DataSourceConfiguration } from "@app/lib/api/assistant/configurati
 import type { Authenticator } from "@app/lib/auth";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
-import { Workspace } from "@app/lib/models/workspace";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { getResourceNameAndIdFromSId } from "@app/lib/resources/string_ids";
 import type {
   CoreAPISearchFilter,
@@ -61,7 +60,7 @@ export async function fetchAgentDataSourceConfiguration(
           model: DataSourceViewModel,
           as: "dataSourceView",
           required: true,
-          include: [{ model: Workspace, as: "workspace", required: true }],
+          include: [{ model: WorkspaceModel, as: "workspace", required: true }],
         },
       ],
     });
@@ -75,11 +74,12 @@ export async function fetchAgentDataSourceConfiguration(
   return new Ok(agentDataSourceConfiguration);
 }
 
-export async function fetchAgentTableConfigurations(
+export async function fetchTableDataSourceConfigurations(
   auth: Authenticator,
   tablesConfiguration: TablesConfigurationToolType
-): Promise<Result<AgentTablesQueryConfigurationTable[], Error>> {
-  const configurationIds = [];
+): Promise<Result<TableDataSourceConfiguration[], Error>> {
+  const results: TableDataSourceConfiguration[] = [];
+
   for (const tableConfiguration of tablesConfiguration) {
     const match = tableConfiguration.uri.match(TABLE_CONFIGURATION_URI_PATTERN);
     if (!match) {
@@ -89,38 +89,78 @@ export async function fetchAgentTableConfigurations(
         )
       );
     }
-    // Safe to do because the inputs are already checked against the zod schema here.
-    const [, , tableConfigId] = match;
-    const sIdParts = getResourceNameAndIdFromSId(tableConfigId);
-    if (!sIdParts) {
+
+    const [, workspaceId, tableConfigId, viewId, tableId] = match;
+
+    if (tableConfigId) {
+      // Database configuration
+      const sIdParts = getResourceNameAndIdFromSId(tableConfigId);
+      if (!sIdParts) {
+        return new Err(
+          new Error(`Invalid table configuration ID: ${tableConfigId}`)
+        );
+      }
+      if (sIdParts.resourceName !== "table_configuration") {
+        return new Err(
+          new Error(`ID is not a table configuration ID: ${tableConfigId}`)
+        );
+      }
+      if (sIdParts.workspaceModelId !== auth.getNonNullableWorkspace().id) {
+        return new Err(
+          new Error(
+            `Table configuration ${tableConfigId} does not belong to workspace ${sIdParts.workspaceModelId}`
+          )
+        );
+      }
+
+      const agentTableConfiguration =
+        await AgentTablesQueryConfigurationTable.findOne({
+          where: {
+            id: sIdParts.resourceModelId,
+            workspaceId: auth.getNonNullableWorkspace().id,
+          },
+        });
+
+      if (!agentTableConfiguration) {
+        return new Err(
+          new Error(`Table configuration ${tableConfigId} not found`)
+        );
+      }
+
+      // Convert to TableDataSourceConfiguration
+      const dataSourceView = await DataSourceViewResource.fetchByModelIds(
+        auth,
+        [agentTableConfiguration.dataSourceViewId]
+      );
+
+      if (dataSourceView.length !== 1) {
+        return new Err(
+          new Error(
+            `Data source view not found for table configuration ${tableConfigId}`
+          )
+        );
+      }
+
+      results.push({
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        dataSourceViewId: dataSourceView[0].sId,
+        tableId: agentTableConfiguration.tableId,
+      });
+    } else if (viewId && tableId) {
+      // Dynamic configuration
+      results.push({
+        workspaceId,
+        dataSourceViewId: viewId,
+        tableId,
+      });
+    } else {
       return new Err(
-        new Error(`Invalid table configuration ID: ${tableConfigId}`)
+        new Error(`Invalid URI format: ${tableConfiguration.uri}`)
       );
     }
-    if (sIdParts.resourceName !== "table_configuration") {
-      return new Err(
-        new Error(`ID is not a table configuration ID: ${tableConfigId}`)
-      );
-    }
-    if (sIdParts.workspaceModelId !== auth.getNonNullableWorkspace().id) {
-      return new Err(
-        new Error(
-          `Table configuration ${tableConfigId} does not belong to workspace ${sIdParts.workspaceModelId}`
-        )
-      );
-    }
-    configurationIds.push(sIdParts.resourceModelId);
   }
 
-  const agentTableConfigurations =
-    await AgentTablesQueryConfigurationTable.findAll({
-      where: {
-        id: { [Op.in]: configurationIds },
-        workspaceId: auth.getNonNullableWorkspace().id,
-      },
-    });
-
-  return new Ok(agentTableConfigurations);
+  return new Ok(results);
 }
 
 type CoreSearchArgs = {
@@ -321,37 +361,33 @@ export async function getCoreSearchArgs(
   }
 }
 
+function hasTagAutoMode(dataSourceConfigurations: DataSourceConfiguration[]) {
+  return dataSourceConfigurations.some(
+    (dataSourceConfiguration) =>
+      dataSourceConfiguration.filter.tags?.mode === "auto"
+  );
+}
+
 export function shouldAutoGenerateTags(
   agentLoopContext: AgentLoopContextType
 ): boolean {
-  const hasTagAutoMode = (
-    dataSourceConfigurations: DataSourceConfiguration[]
-  ) =>
-    dataSourceConfigurations.some(
-      (dataSourceConfiguration) =>
-        dataSourceConfiguration.filter.tags?.mode === "auto"
-    );
-
+  const { listToolsContext, runContext } = agentLoopContext;
   if (
-    !!agentLoopContext.listToolsContext?.agentActionConfiguration &&
+    !!listToolsContext?.agentActionConfiguration &&
     isServerSideMCPServerConfiguration(
-      agentLoopContext.listToolsContext.agentActionConfiguration
+      listToolsContext.agentActionConfiguration
     ) &&
-    !!agentLoopContext.listToolsContext.agentActionConfiguration.dataSources
+    !!listToolsContext.agentActionConfiguration.dataSources
   ) {
     return hasTagAutoMode(
-      agentLoopContext.listToolsContext.agentActionConfiguration.dataSources
+      listToolsContext.agentActionConfiguration.dataSources
     );
   } else if (
-    !!agentLoopContext.runContext?.actionConfiguration &&
-    isServerSideMCPToolConfiguration(
-      agentLoopContext.runContext.actionConfiguration
-    ) &&
-    !!agentLoopContext.runContext.actionConfiguration.dataSources
+    !!runContext?.actionConfiguration &&
+    isServerSideMCPToolConfiguration(runContext.actionConfiguration) &&
+    !!runContext.actionConfiguration.dataSources
   ) {
-    return hasTagAutoMode(
-      agentLoopContext.runContext.actionConfiguration.dataSources
-    );
+    return hasTagAutoMode(runContext.actionConfiguration.dataSources);
   }
 
   return false;
@@ -379,4 +415,47 @@ export function renderTagsForToolOutput(
       ? `, excluding labels ${tagsNot?.join(", ")}`
       : "";
   return `${tagsInAsString}${tagsNotAsString}`;
+}
+
+/**
+ * Checks for conflicting tags across core search arguments and returns an error message if any.
+ * If a tag is both included and excluded, we will not get any result.
+ */
+export function checkConflictingTags(
+  coreSearchArgs: CoreSearchArgs[],
+  { tagsIn, tagsNot }: { tagsIn?: string[]; tagsNot?: string[] }
+): string | null {
+  for (const args of coreSearchArgs) {
+    const configTagsIn = args.filter.tags?.in ?? [];
+    const configTagsNot = args.filter.tags?.not ?? [];
+
+    const finalTagsIn = [...configTagsIn, ...(tagsIn ?? [])];
+    const finalTagsNot = [...configTagsNot, ...(tagsNot ?? [])];
+
+    const conflictingTags = finalTagsIn.filter((tag) =>
+      finalTagsNot.includes(tag)
+    );
+    if (conflictingTags.length > 0) {
+      const conflictingTagsList = conflictingTags.join(", ");
+      const tagsInList =
+        configTagsIn.length > 0 ? configTagsIn.join(", ") : "none";
+      const tagsNotList =
+        configTagsNot.length > 0 ? configTagsNot.join(", ") : "none";
+
+      // We actually return even if we get one conflict.
+      // We can have a conflict only if the agent created one by passing some tags without being
+      // aware that it would create a conflict with a configured tag.
+      // The rationale behind it is that there is a low overlap between the tags across data
+      // sources. Therefore, even if we did have some content in another data source, it is
+      // probably not what the agent intended and its filtering had no use.
+      return (
+        "No results were found due to conflicting tags. The following tags appear in both " +
+        `include and exclude lists: ${conflictingTagsList}.\n\nTags that are already included: ` +
+        `${tagsInList}\n Tags that are already excluded ${tagsNotList}\n\nPlease adjust your ` +
+        "tag filters to avoid conflicts."
+      );
+    }
+  }
+
+  return null;
 }

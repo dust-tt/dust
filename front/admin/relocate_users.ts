@@ -8,19 +8,19 @@ import { getWorkOS } from "@app/lib/api/workos/client";
 import { getOrCreateWorkOSOrganization } from "@app/lib/api/workos/organization";
 import { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
-import { Workspace } from "@app/lib/models/workspace";
 import {
   FREE_NO_PLAN_CODE,
   FREE_TEST_PLAN_CODE,
 } from "@app/lib/plans/plan_codes";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type { Logger } from "@app/logger/logger";
 import { launchDeleteWorkspaceWorkflow } from "@app/poke/temporal/client";
 import { makeScript } from "@app/scripts/helpers";
 import type { Result } from "@app/types";
-import { Err, Ok, removeNulls } from "@app/types";
+import { Err, normalizeError, Ok, removeNulls } from "@app/types";
 
 let remaining = 10;
 let resetTime = Date.now();
@@ -72,8 +72,7 @@ function makeWorkOSThrottler<T>(logger: Logger) {
         await new Promise((resolve) => setTimeout(resolve, waitTime));
         return await fn();
       } else {
-        logger.error({ err }, "When calling WorkOS");
-        process.exit(1);
+        throw normalizeError(err);
       }
     }
   };
@@ -227,7 +226,7 @@ export async function updateAllWorkspaceUsersRegionMetadata(
     const workspaceIds = [
       ...new Set(externalMemberships.map((m) => m.workspaceId)),
     ];
-    const workspaces = await Workspace.findAll({
+    const workspaces = await WorkspaceModel.findAll({
       where: {
         id: workspaceIds,
       },
@@ -293,25 +292,16 @@ export async function updateAllWorkspaceUsersRegionMetadata(
 
   const organizationRes = await getOrCreateWorkOSOrganization(workspace);
   if (organizationRes.isErr()) {
-    logger.error(
-      { error: organizationRes.error },
-      "When calling getOrCreateWorkOSOrganization"
-    );
-    process.exit(1);
+    return new Err(organizationRes.error);
   }
   const organization = organizationRes.value;
   if (execute && organization.metadata.region !== newRegion) {
-    try {
-      await getWorkOS().organizations.updateOrganization({
-        organization: organization.id,
-        metadata: {
-          region: newRegion,
-        },
-      });
-    } catch (error) {
-      logger.error({ error }, "When calling getOrCreateWorkOSOrganization");
-      process.exit(1);
-    }
+    await getWorkOS().organizations.updateOrganization({
+      organization: organization.id,
+      metadata: {
+        region: newRegion,
+      },
+    });
   }
 
   const workOSUserIds = removeNulls(users.map((u) => u.workOSUserId));

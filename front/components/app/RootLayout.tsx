@@ -82,7 +82,7 @@ export default function RootLayout({
               error.error.type === "not_authenticated"
             ) {
               // Redirect to login page.
-              await router.push("/api/auth/login");
+              await router.push("/api/workos/login");
             }
           },
         }}

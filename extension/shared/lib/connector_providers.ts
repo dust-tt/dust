@@ -69,6 +69,12 @@ export const CONNECTOR_CONFIGURATIONS: Record<
       return SlackLogo;
     },
   },
+  slack_bot: {
+    name: "Slack (Bot)",
+    getLogoComponent: () => {
+      return SlackLogo;
+    },
+  },
   github: {
     name: "GitHub",
     getLogoComponent: (isDark?: boolean) => {

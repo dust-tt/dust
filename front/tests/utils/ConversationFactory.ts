@@ -4,6 +4,7 @@ import { createConversation } from "@app/lib/api/assistant/conversation";
 import type { Authenticator } from "@app/lib/auth";
 import {
   AgentMessage,
+  ConversationModel,
   Message,
   UserMessage,
 } from "@app/lib/models/assistant/conversation";
@@ -16,11 +17,13 @@ export class ConversationFactory {
     auth,
     agentConfigurationId,
     messagesCreatedAt,
+    conversationCreatedAt,
     t,
   }: {
     auth: Authenticator;
     agentConfigurationId: string;
     messagesCreatedAt: Date[];
+    conversationCreatedAt?: Date;
     t?: Transaction;
   }): Promise<ConversationType> {
     const user = auth.getNonNullableUser();
@@ -30,6 +33,13 @@ export class ConversationFactory {
       title: "Test Conversation",
       visibility: "unlisted",
     });
+
+    if (conversationCreatedAt) {
+      await ConversationModel.update(
+        { createdAt: conversationCreatedAt },
+        { where: { id: conversation.id } }
+      );
+    }
 
     for (let i = 0; i < messagesCreatedAt.length; i++) {
       const createdAt = messagesCreatedAt[i];

@@ -1,8 +1,8 @@
 import { QueryTypes, Sequelize } from "sequelize";
 
 import { Authenticator } from "@app/lib/auth";
-import { Workspace } from "@app/lib/models/workspace";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { makeSId } from "@app/lib/resources/string_ids";
 import { makeScript } from "@app/scripts/helpers";
 import { EnvironmentConfig } from "@app/types";

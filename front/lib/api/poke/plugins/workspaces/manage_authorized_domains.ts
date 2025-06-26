@@ -8,8 +8,8 @@ import {
 } from "@app/lib/api/workos/organization";
 import { getOrCreateWorkOSOrganization } from "@app/lib/api/workos/organization";
 import type { Authenticator } from "@app/lib/auth";
-import { Workspace } from "@app/lib/models/workspace";
-import { WorkspaceHasDomainModel } from "@app/lib/models/workspace_has_domain";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
+import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
 import { isDomain } from "@app/lib/utils";
 import type { Result } from "@app/types";
 import { Err, mapToEnumValues, Ok } from "@app/types";
@@ -144,7 +144,7 @@ export const addAuthorizedDomain = createPlugin({
       where: { domain },
       include: [
         {
-          model: Workspace,
+          model: WorkspaceModel,
           as: "workspace",
           required: true,
         },

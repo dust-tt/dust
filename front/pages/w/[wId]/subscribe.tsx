@@ -135,7 +135,11 @@ export default function Subscribe({
               <Page.Vertical sizing="grow" gap="lg">
                 <Page.Header
                   icon={CreditCardIcon}
-                  title="Setting up your subscription"
+                  title={
+                    noPreviousSubscription
+                      ? "Start your free trial"
+                      : "Resume your subscription"
+                  }
                 />
                 {!noPreviousSubscription ? (
                   <>

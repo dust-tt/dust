@@ -1,8 +1,11 @@
 import type { Channel } from "@slack/web-api/dist/response/ConversationsListResponse";
 import { makeScript } from "scripts/helpers";
 
-import { joinChannel } from "@connectors/connectors/slack/lib/channels";
-import { getChannels } from "@connectors/connectors/slack/temporal/activities";
+import {
+  getChannels,
+  joinChannel,
+} from "@connectors/connectors/slack/lib/channels";
+import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
 import { SlackChannel } from "@connectors/lib/models/slack";
 import type Logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -80,8 +83,13 @@ makeScript(
       );
     }
 
-    // Get all channels from Slack
-    const remoteChannels = await getChannels(parseInt(connectorId, 10), false);
+    // Get all channels from Slack.
+    const slackClient = await getSlackClient(connector.id);
+    const remoteChannels = await getChannels(
+      slackClient,
+      parseInt(connectorId, 10),
+      false
+    );
     const matchingChannels = remoteChannels.filter(
       (c) => c.name && new RegExp(pattern).test(c.name)
     );

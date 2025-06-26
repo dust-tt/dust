@@ -8,6 +8,7 @@ import type {
   UpsertTableArgs,
 } from "@app/lib/api/data_sources";
 import {
+  isUpsertDocumentArgs,
   isUpsertTableArgs,
   upsertDocument,
   upsertTable,
@@ -43,7 +44,7 @@ const upsertDocumentToDatasource: ProcessingFunction = async (
   // Use the file id as the document id to make it easy to track the document back to the file.
   const sourceUrl = file.getPrivateUrl(auth);
   let documentId = file.sId;
-  if (upsertArgs && "document_id" in upsertArgs) {
+  if (isUpsertDocumentArgs(upsertArgs)) {
     documentId = upsertArgs.document_id;
   }
   const { title: upsertTitle, ...restArgs } = upsertArgs ?? {};
@@ -158,9 +159,17 @@ const upsertTableToDatasource: ProcessingFunction = async (
 ) => {
   // Use the file sId as the table id to make it easy to track the table back to the file.
   let tableId = file.sId;
-  if (upsertArgs && "tableId" in upsertArgs) {
-    tableId = upsertArgs.tableId ?? tableId;
+
+  if (upsertArgs && !isUpsertTableArgs(upsertArgs)) {
+    return new Err<DustError>({
+      name: "dust_error",
+      code: "internal_error",
+      message:
+        "Only table upsert args are supported for this file type. Please use the table upsert args instead.",
+    });
   }
+  tableId = upsertArgs?.tableId ?? tableId;
+
   const { title: upsertTitle, ...restArgs } = upsertArgs ?? {};
   const title = upsertTitle ?? file.fileName;
 
@@ -179,9 +188,7 @@ const upsertTableToDatasource: ProcessingFunction = async (
         `fileId:${file.sId}`,
         `fileName:${file.fileName}`,
       ],
-      parentId: isUpsertTableArgs(upsertArgs)
-        ? upsertArgs?.parentId
-        : upsertArgs?.parent_id ?? null,
+      parentId: upsertArgs?.parentId ?? null,
       parents: upsertArgs?.parents ?? [tableId],
       async: false,
       title,
@@ -232,18 +239,6 @@ const upsertExcelToDatasource: ProcessingFunction = async (
   ) => {
     const title = `${file.fileName} ${worksheetName}`;
     const tableId = `${file.sId}-${slugify(worksheetName)}`;
-    const upsertTableArgs: UpsertTableArgs = {
-      ...upsertArgs,
-      title,
-      name: slugify(title),
-      tableId,
-      parentId: file.sId,
-      parents: [tableId, file.sId],
-      description: "Table uploaded from excel file",
-      truncate: true,
-      mimeType: "text/csv",
-      sourceUrl: null,
-    };
 
     const worksheetFile = await FileResource.makeNew({
       workspaceId: file.workspaceId,
@@ -254,6 +249,20 @@ const upsertExcelToDatasource: ProcessingFunction = async (
       useCase: file.useCase,
       useCaseMetadata: file.useCaseMetadata,
     });
+
+    const upsertTableArgs: UpsertTableArgs = {
+      ...upsertArgs,
+      title,
+      name: slugify(title),
+      tableId,
+      parentId: file.sId,
+      parents: [tableId, file.sId],
+      description: "Table uploaded from excel file",
+      truncate: true,
+      mimeType: "text/csv",
+      fileId: worksheetFile.sId,
+      sourceUrl: null,
+    };
 
     await processAndStoreFile(auth, {
       file: worksheetFile,

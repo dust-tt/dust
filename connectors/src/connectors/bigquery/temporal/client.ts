@@ -29,6 +29,9 @@ export async function launchBigQuerySyncWorkflow(
   const client = await getTemporalClient();
   const workflowId = makeBigQuerySyncWorkflowId(connectorId);
 
+  // hourOffset ensures jobs are distributed across the day based on connector ID
+  const hourOffset = connector.id % 6;
+
   try {
     await client.workflow.signalWithStart(bigquerySyncWorkflow, {
       args: [
@@ -47,8 +50,8 @@ export async function launchBigQuerySyncWorkflow(
       memo: {
         connectorId,
       },
-      // Every hour.
-      cronSchedule: `${connector.id % 60} * * * *`,
+      // Every 6 hours, with hour offset based on connector ID.
+      cronSchedule: `${connector.id % 60} ${hourOffset},${(hourOffset + 6) % 24},${(hourOffset + 12) % 24},${(hourOffset + 18) % 24} * * *`,
     });
   } catch (err) {
     return new Err(normalizeError(err));

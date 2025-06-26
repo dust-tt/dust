@@ -9,6 +9,7 @@ import {
   launchGithubIssueSyncWorkflow,
 } from "@connectors/connectors/github/temporal/client";
 import {
+  GithubCodeFile,
   GithubCodeRepository,
   GithubConnectorState,
   GithubIssue,
@@ -274,6 +275,98 @@ export const github = async ({
           `  - Repository ${repo.repoLogin}/${repo.repoName} (ID: ${repo.repoId}): ${repo.skipReason}`
         );
       }
+
+      return { success: true };
+    }
+
+    case "skip-code-file": {
+      if (!args.repoId) {
+        throw new Error("Missing --repoId argument");
+      }
+      if (!args.documentId) {
+        throw new Error("Missing --documentId argument");
+      }
+      if (!args.skipReason) {
+        throw new Error("Missing --skipReason argument");
+      }
+
+      const githubCodeRepository = await GithubCodeRepository.findOne({
+        where: {
+          connectorId: connector.id,
+          repoId: args.repoId,
+        },
+      });
+      if (!githubCodeRepository) {
+        throw new Error(
+          `Could not find github code repository for connector ${connector.id}, repoId ${args.repoId}`
+        );
+      }
+
+      const githubCodeFile = await GithubCodeFile.findOne({
+        where: {
+          connectorId: connector.id,
+          repoId: args.repoId,
+          documentId: args.documentId,
+        },
+      });
+
+      if (!githubCodeFile) {
+        throw new Error(
+          `Could not find github code file for connector ${connector.id}, repoId ${args.repoId}, documentId ${args.documentId}`
+        );
+      }
+
+      await githubCodeFile.update({
+        skipReason: args.skipReason,
+      });
+
+      logger.info(
+        `[Admin] Skipped code file ${args.repoId}/${args.documentId} with reason: ${args.skipReason}`
+      );
+
+      return { success: true };
+    }
+
+    case "unskip-code-file": {
+      if (!args.repoId) {
+        throw new Error("Missing --repoId argument");
+      }
+      if (!args.documentId) {
+        throw new Error("Missing --documentId argument");
+      }
+
+      const githubCodeRepository = await GithubCodeRepository.findOne({
+        where: {
+          connectorId: connector.id,
+          repoId: args.repoId,
+        },
+      });
+      if (!githubCodeRepository) {
+        throw new Error(
+          `Could not find github code repository for connector ${connector.id}, repoId ${args.repoId}`
+        );
+      }
+
+      const githubCodeFile = await GithubCodeFile.findOne({
+        where: {
+          connectorId: connector.id,
+          repoId: args.repoId,
+          documentId: args.documentId,
+        },
+      });
+      if (!githubCodeFile) {
+        throw new Error(
+          `Could not find github code file for connector ${connector.id}, repoId ${args.repoId}, documentId ${args.documentId}`
+        );
+      }
+
+      await githubCodeFile.update({
+        skipReason: null,
+      });
+
+      logger.info(
+        `[Admin] Unskipped code file ${args.repoId}/${args.documentId}`
+      );
 
       return { success: true };
     }

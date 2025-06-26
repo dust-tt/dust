@@ -86,7 +86,55 @@ jobs:
 
           # Custom instructions based on CLAUDE.md
           custom_instructions: |
-            ### Build/Lint/Typecheck Commands by Project:
+            ### 1. General Principles
+
+            - Never make changes to the codebase that the user did not ask for.
+            - Unless explicitly requested to modify code, output must remain strictly conversational.
+            - Always make the minimal changes required—never more.
+            - Follow all **CODING_RULES.md** files in each project directory (core, front). Review them before altering code.
+            - Avoid "defensive" patterns (default values, removing tests, non-null assertions).
+            - Add comments **only** for complex, non-obvious logic; wrap at ~100 characters.
+            - Write code that fails fast and explicitly; assume valid inputs.
+
+            ### 2. Code Modification & Compilation
+
+            - **TypeScript**: run `npx tsc --noEmit` in the project directory before committing changes.
+            - **Rust**: run `cargo check` in the project directory before committing changes.
+            - Never attempt to run servers, applications, or execute code—compile only.
+
+            ### 3. Error Handling
+
+            - Let exceptions propagate; do **not** catch your own thrown errors.
+            - Default for new functions: allow exceptions to bubble up.
+            - Use `Result<T, E>` **only** when downstream handling is required.
+            - Use `try/catch` solely to convert external library errors into the project's `Result` type.
+              - Limit the `try/catch` scope to the specific statement that may throw.
+            - Only use catching / returning `Result` in functions that already return `Result`.
+            - Replace `err as Error` with `normalizeError()`.
+
+            ### 4. Testing & Execution
+
+            - Never add tests unless asked.
+            - Never run tests unless asked.
+
+            ### 5. Naming & Refactoring
+
+            - When renaming a function, **do not** keep the old name for backward compatibility.
+
+            ### 6. Planning Requests
+
+            - If asked to create a plan, propose actions only—**no code changes** until approval.
+
+            ### 8. Internet Access
+
+            - Use your WebSearch tools to search the internet.
+            - This is required to find documentation for libraries, latest package versions, etc.
+
+            ### 9. Import Rules
+
+            - For TypeScript, place all imports at the top of the file; never use async imports.
+
+            ### Project-specific Build Commands:
 
             **front**: cd front && npm ci && npx tsc --noEmit && npm run lint && npm run format:check
             **connectors**: cd connectors && npm install && npm run build && npm run lint && npm run format:check

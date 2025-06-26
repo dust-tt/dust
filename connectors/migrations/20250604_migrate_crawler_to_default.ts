@@ -56,9 +56,13 @@ makeScript(
       return;
     }
 
-    if (crawler !== null && crawler !== "firecrawl") {
+    if (
+      crawler !== null &&
+      crawler !== "firecrawl" &&
+      crawler !== "firecrawl-api"
+    ) {
       logger.error(
-        `"${crawler}" is not a valid crawler option, only null or "firecrawl" are allowed`
+        `"${crawler}" is not a valid crawler option, only null, "firecrawl" or "firecrawl-api" are allowed`
       );
       return;
     }
@@ -83,12 +87,13 @@ makeScript(
       forcedWorkspaces = res.value;
     }
 
-    // If the new crawler is null, it means the previous was firecrawl
-    const currentCrawler = crawler === null ? "firecrawl" : null;
-
+    // @ts-expect-error -- Dropped column
     const webcrawlerConfigs = await WebCrawlerConfigurationModel.findAll({
       where: {
-        customCrawler: currentCrawler,
+        // @ts-expect-error -- Dropped column
+        customCrawler: {
+          [Op.not]: crawler,
+        },
       },
       include: [
         {
@@ -126,7 +131,9 @@ makeScript(
         webcrawlerConfigsToMigrate,
         async (c) =>
           WebCrawlerConfigurationModel.update(
+            // @ts-expect-error -- Dropped column
             { customCrawler: crawler },
+            // @ts-expect-error -- Dropped column
             { where: { id: c.id } }
           ),
         { concurrency: 10 }

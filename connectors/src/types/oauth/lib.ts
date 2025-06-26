@@ -107,13 +107,45 @@ export function isProviderWithDefaultWorkspaceConfiguration(
 
 // Credentials
 
-export const SnowflakeCredentialsSchema = t.type({
+// Base schema with common fields
+const SnowflakeBaseCredentialsSchema = t.type({
   username: t.string,
-  password: t.string,
   account: t.string,
   role: t.string,
   warehouse: t.string,
 });
+
+// Legacy schema for backward compatibility
+export const SnowflakeLegacyCredentialsSchema = t.intersection([
+  SnowflakeBaseCredentialsSchema,
+  t.type({
+    password: t.string,
+  }),
+]);
+
+export const SnowflakePasswordCredentialsSchema = t.intersection([
+  SnowflakeBaseCredentialsSchema,
+  t.type({
+    auth_type: t.literal("password"),
+    password: t.string,
+  }),
+]);
+
+export const SnowflakeKeyPairCredentialsSchema = t.intersection([
+  SnowflakeBaseCredentialsSchema,
+  t.type({
+    auth_type: t.literal("keypair"),
+    private_key: t.string,
+    private_key_passphrase: t.union([t.string, t.undefined]),
+  }),
+]);
+
+export const SnowflakeCredentialsSchema = t.union([
+  SnowflakeLegacyCredentialsSchema,
+  SnowflakePasswordCredentialsSchema,
+  SnowflakeKeyPairCredentialsSchema,
+]);
+
 export type SnowflakeCredentials = t.TypeOf<typeof SnowflakeCredentialsSchema>;
 
 export const CheckBigQueryCredentialsSchema = t.type({
@@ -175,7 +207,18 @@ export type ConnectionCredentials =
 export function isSnowflakeCredentials(
   credentials: ConnectionCredentials
 ): credentials is SnowflakeCredentials {
-  return "username" in credentials && "password" in credentials;
+  return (
+    "username" in credentials &&
+    "account" in credentials &&
+    "role" in credentials &&
+    "warehouse" in credentials &&
+    (("password" in credentials &&
+      (!("auth_type" in credentials) ||
+        credentials.auth_type === "password")) ||
+      ("auth_type" in credentials &&
+        credentials.auth_type === "keypair" &&
+        "private_key" in credentials))
+  );
 }
 
 export function isModjoCredentials(

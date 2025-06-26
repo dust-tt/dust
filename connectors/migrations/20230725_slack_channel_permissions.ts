@@ -1,4 +1,5 @@
-import { getChannels } from "@connectors/connectors/slack/temporal/activities";
+import { getChannels } from "@connectors/connectors/slack/lib/channels";
+import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
 import { SlackChannel } from "@connectors/lib/models/slack";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
@@ -23,7 +24,9 @@ async function main() {
       }
     );
 
-    const channelsInSlack = await getChannels(c.id, true);
+    const slackClient = await getSlackClient(c.id);
+
+    const channelsInSlack = await getChannels(slackClient, c.id, true);
     const channelIdsInSlackSet = new Set(
       channelsInSlack.map((c) => c.id).filter((id) => id)
     );

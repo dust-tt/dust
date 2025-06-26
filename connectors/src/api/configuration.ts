@@ -71,6 +71,7 @@ const _patchConnectorConfiguration = async (
     case "bigquery":
     case "zendesk":
     case "gong":
+    case "slack_bot":
     case "slack": {
       throw new Error(
         `Connector type ${connector.type} does not support configuration patching`

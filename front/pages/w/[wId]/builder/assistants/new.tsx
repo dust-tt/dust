@@ -20,6 +20,7 @@ import config from "@app/lib/api/config";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { isRestrictedFromAgentCreation } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { useAssistantTemplate } from "@app/lib/swr/assistants";
 import type {
   AgentConfigurationType,
@@ -68,11 +69,14 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
-  if (await isRestrictedFromAgentCreation(owner)) {
+  const isRestricted = await isRestrictedFromAgentCreation(owner);
+  if (isRestricted) {
     return {
       notFound: true,
     };
   }
+
+  await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
 
   const { spaces, dataSourceViews, dustApps, mcpServerViews } =
     await getAccessibleSourcesAndApps(auth);

@@ -7,9 +7,9 @@ import { Authenticator } from "@app/lib/auth";
 import { AgentDustAppRunConfiguration } from "@app/lib/models/assistant/actions/dust_app_run";
 import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
-import { Workspace } from "@app/lib/models/workspace";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { AppModel } from "@app/lib/resources/storage/models/apps";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { getInsertSQL } from "@app/lib/utils/sql_utils";
@@ -209,9 +209,9 @@ makeScript(
       );
     }
 
-    let workspaces: Workspace[] = [];
+    let workspaces: WorkspaceModel[] = [];
     if (workspaceId) {
-      const workspace = await Workspace.findOne({
+      const workspace = await WorkspaceModel.findOne({
         where: {
           sId: workspaceId,
         },
@@ -222,7 +222,7 @@ makeScript(
       workspaces = [workspace];
     } else if (allWorkspaces) {
       const workspaceIds = await findWorkspacesWithDustAppRunConfigurations();
-      workspaces = await Workspace.findAll({
+      workspaces = await WorkspaceModel.findAll({
         where: {
           id: { [Op.in]: workspaceIds },
         },

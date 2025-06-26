@@ -11,9 +11,9 @@ import {
 import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 import { sendEmail } from "@app/lib/api/email";
 import type { Authenticator } from "@app/lib/auth";
-import { Workspace } from "@app/lib/models/workspace";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import { UserModel } from "@app/lib/resources/storage/models/user";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { filterAndSortAgents } from "@app/lib/utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
@@ -119,7 +119,7 @@ export async function userAndWorkspacesFromEmail({
         `Please sign up for Dust at https://dust.tt to interact with assitsants over email.`,
     });
   }
-  const workspaces = await Workspace.findAll({
+  const workspaces = await WorkspaceModel.findAll({
     include: [
       {
         model: MembershipModel,

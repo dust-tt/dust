@@ -88,26 +88,6 @@ export const useBuilderActionInfo = (builderState: AssistantBuilderState) => {
       const actionType = action.type;
 
       switch (actionType) {
-        case "TABLES_QUERY":
-          Object.values(action.configuration).forEach((config) => {
-            addActionToSpace(config.dataSourceView.spaceId);
-          });
-          break;
-
-        case "RETRIEVAL_SEARCH":
-        case "RETRIEVAL_EXHAUSTIVE":
-        case "PROCESS":
-          Object.values(action.configuration.dataSourceConfigurations).forEach(
-            (config) => {
-              addActionToSpace(config.dataSourceView.spaceId);
-            }
-          );
-          break;
-
-        case "DUST_APP_RUN":
-          addActionToSpace(action.configuration.app?.space.sId);
-          break;
-
         case "MCP":
           if (action.configuration.dataSourceConfigurations) {
             Object.values(
@@ -139,8 +119,6 @@ export const useBuilderActionInfo = (builderState: AssistantBuilderState) => {
           }
           break;
 
-        case "WEB_NAVIGATION":
-        case "REASONING":
         case "DATA_VISUALIZATION": // Data visualization is not an action but we show it in the UI like an action.
           break;
 

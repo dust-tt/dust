@@ -139,7 +139,7 @@ describe("JSON Schema Utilities", () => {
                           uri: {
                             type: "string",
                             pattern:
-                              "^table_configuration:\\/\\/dust\\/w\\/(\\w+)\\/table_configurations\\/(\\w+)$",
+                              "^table_configuration:\\/\\/dust\\/w\\/(\\w+)\\/(?:table_configurations\\/(\\w+)|data_source_views\\/(\\w+)\\/tables\\/(.+))$",
                           },
                           mimeType: {
                             type: "string",
@@ -254,6 +254,24 @@ describe("JSON Schema Utilities", () => {
         INTERNAL_MIME_TYPES.TOOL_INPUT.NULLABLE_TIME_FRAME
       );
       expect(Object.keys(r)).toStrictEqual(["optionalTimeFrame"]);
+    });
+
+    it("should handle arrays of any", () => {
+      // Schema we get with the zod schema z.object({ query: z.array(z.any()) }).
+      const mainSchema: JSONSchema = {
+        type: "object",
+        properties: {
+          query: {
+            type: "array",
+          },
+        },
+      };
+
+      for (const mimeType of Object.values(INTERNAL_MIME_TYPES.TOOL_INPUT)) {
+        const result = findMatchingSubSchemas(mainSchema, mimeType);
+        // It should not match any existing type.
+        expect(Object.keys(result)).toStrictEqual([]);
+      }
     });
   });
 });

@@ -4,7 +4,7 @@ import {
   buildInitialActions,
   getAccessibleSourcesAndApps,
 } from "@app/components/assistant_builder/server_side_props_helpers";
-import type { AssistantBuilderActionConfiguration } from "@app/components/assistant_builder/types";
+import type { AssistantBuilderMCPConfiguration } from "@app/components/assistant_builder/types";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -12,7 +12,7 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 
 export type GetActionsResponseBody = {
-  actions: AssistantBuilderActionConfiguration[];
+  actions: AssistantBuilderMCPConfiguration[];
 };
 
 async function handler(

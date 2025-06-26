@@ -295,7 +295,7 @@ const handleDataSourceWithProvider = async ({
   let dataSourceDescription = getDefaultDataSourceDescription(provider, suffix);
 
   let { configuration } = body;
-  if (provider === "slack") {
+  if (provider === "slack" || provider === "slack_bot") {
     configuration = {
       botEnabled: true,
       whitelistedDomains: undefined,

@@ -11,6 +11,7 @@ import { ActionValidationProvider } from "@app/components/assistant/conversation
 import { CoEditionContainer } from "@app/components/assistant/conversation/co_edition/CoEditionContainer";
 import { CoEditionProvider } from "@app/components/assistant/conversation/co_edition/CoEditionProvider";
 import { useCoEditionContext } from "@app/components/assistant/conversation/co_edition/context";
+import { CONVERSATION_VIEW_SCROLL_LAYOUT } from "@app/components/assistant/conversation/constant";
 import { ConversationErrorDisplay } from "@app/components/assistant/conversation/ConversationError";
 import {
   ConversationsNavigationProvider,
@@ -214,7 +215,10 @@ function ConversationInnerLayout({
         <ResizablePanel defaultSize={100}>
           <FileDropProvider>
             <GenerationContextProvider>
-              <div className="h-full overflow-y-auto px-4 sm:px-8">
+              <div
+                id={CONVERSATION_VIEW_SCROLL_LAYOUT}
+                className="h-full overflow-y-auto scroll-smooth px-4 sm:px-8"
+              >
                 {children}
               </div>
             </GenerationContextProvider>

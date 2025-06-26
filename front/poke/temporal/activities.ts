@@ -27,7 +27,6 @@ import {
   AgentMCPActionOutputItem,
   AgentMCPServerConfiguration,
 } from "@app/lib/models/assistant/actions/mcp";
-import { MCPServerConnection } from "@app/lib/models/assistant/actions/mcp_server_connection";
 import {
   AgentProcessAction,
   AgentProcessConfiguration,
@@ -56,8 +55,6 @@ import { DustAppSecret } from "@app/lib/models/dust_app_secret";
 import { FeatureFlag } from "@app/lib/models/feature_flag";
 import { MembershipInvitationModel } from "@app/lib/models/membership_invitation";
 import { Subscription } from "@app/lib/models/plan";
-import { Workspace } from "@app/lib/models/workspace";
-import { WorkspaceHasDomainModel } from "@app/lib/models/workspace_has_domain";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -77,6 +74,8 @@ import {
   LabsTranscriptsConfigurationModel,
   LabsTranscriptsHistoryModel,
 } from "@app/lib/resources/storage/models/labs_transcripts";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
+import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { TrackerConfigurationResource } from "@app/lib/resources/tracker_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -341,7 +340,7 @@ export async function deleteAgentsActivity({
     await AgentReasoningAction.destroy({
       where: {
         reasoningConfigurationId: {
-          [Op.in]: reasoningConfigurations.map((r) => r.id),
+          [Op.in]: reasoningConfigurations.map((r) => r.sId),
         },
       },
     });
@@ -576,23 +575,9 @@ export const deleteRemoteMCPServersActivity = async ({
 }) => {
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
 
-  const personalConnections = await MCPServerConnectionResource.listByWorkspace(
-    auth,
-    {
-      connectionType: "personal",
-    }
+  await MCPServerConnectionResource.deleteAllForWorkspace(
+    auth.getNonNullableWorkspace()
   );
-  for (const mcpServerConnection of personalConnections) {
-    await mcpServerConnection.delete(auth);
-  }
-
-  const workspaceConnections =
-    await MCPServerConnectionResource.listByWorkspace(auth, {
-      connectionType: "workspace",
-    });
-  for (const mcpServerConnection of workspaceConnections) {
-    await mcpServerConnection.delete(auth);
-  }
 
   const remoteMCPServers = await RemoteMCPServerResource.listByWorkspace(auth);
   for (const remoteMCPServer of remoteMCPServers) {
@@ -838,7 +823,7 @@ export async function deleteWorkspaceActivity({
 
   hardDeleteLogger.info({ workspaceId }, "Deleting Workspace");
 
-  await Workspace.destroy({
+  await WorkspaceModel.destroy({
     where: {
       id: workspace.id,
     },

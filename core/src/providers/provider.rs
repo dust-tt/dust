@@ -1,4 +1,4 @@
-use crate::providers::anthropic::AnthropicProvider;
+use crate::providers::anthropic::anthropic::AnthropicProvider;
 use crate::providers::azure_openai::AzureOpenAIProvider;
 use crate::providers::embedder::Embedder;
 use crate::providers::google_ai_studio::GoogleAiStudioProvider;

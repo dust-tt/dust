@@ -231,22 +231,22 @@ function GroupedConfigurationSection({
         <StringConfigurationSection
           requiredStrings={requiredStrings}
           additionalConfiguration={additionalConfiguration}
-          onConfigUpdate={(key, value) => onConfigUpdate(key, value)}
+          onConfigUpdate={onConfigUpdate}
         />
         <NumberConfigurationSection
           requiredNumbers={requiredNumbers}
           additionalConfiguration={additionalConfiguration}
-          onConfigUpdate={(key, value) => onConfigUpdate(key, value)}
+          onConfigUpdate={onConfigUpdate}
         />
         <BooleanConfigurationSection
           requiredBooleans={requiredBooleans}
           additionalConfiguration={additionalConfiguration}
-          onConfigUpdate={(key, value) => onConfigUpdate(key, value)}
+          onConfigUpdate={onConfigUpdate}
         />
         <EnumConfigurationSection
           requiredEnums={requiredEnums}
           additionalConfiguration={additionalConfiguration}
-          onConfigUpdate={(key, value) => onConfigUpdate(key, value)}
+          onConfigUpdate={onConfigUpdate}
         />
       </div>
     </div>

@@ -458,11 +458,13 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
       const MIN_GENERATION_TOKENS = 2048;
       const allowedTokenCount = model.contextSize - MIN_GENERATION_TOKENS;
       const prompt = "";
+      const tools = "";
 
       const convoRes = await renderConversationForModel(auth, {
         conversation,
         model,
         prompt,
+        tools,
         allowedTokenCount,
         excludeImages: true,
       });

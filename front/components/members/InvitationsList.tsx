@@ -91,11 +91,7 @@ export function InvitationsList({
         onClose={() => setSelectedInvite(null)}
       />
       <div className="flex flex-col gap-1 pt-2">
-        {filteredInvitations.length > 0 && (
-          <Page.H variant="h6">Invitations</Page.H>
-        )}
-
-        {isInvitationsLoading ? (
+        {isInvitationsLoading && (
           <div className="flex flex-col gap-2">
             <div
               className={classNames(
@@ -120,11 +116,29 @@ export function InvitationsList({
               </div>
             </div>
           </div>
-        ) : (
-          filteredInvitations.length > 0 && (
-            <DataTable data={rows} columns={columns} />
-          )
         )}
+        {!isInvitationsLoading && invitations.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-8 text-center">
+            <Page.P variant="secondary">No pending invitations</Page.P>
+            <Page.P variant="secondary">
+              Send invitations to add new members to your workspace
+            </Page.P>
+          </div>
+        )}
+        {!isInvitationsLoading &&
+          invitations.length > 0 &&
+          (filteredInvitations.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-8 text-center">
+              <Page.P variant="secondary">
+                No invitations match your search
+              </Page.P>
+              <Page.P variant="secondary">
+                Try adjusting your search terms
+              </Page.P>
+            </div>
+          ) : (
+            <DataTable data={rows} columns={columns} />
+          ))}
       </div>
     </>
   );

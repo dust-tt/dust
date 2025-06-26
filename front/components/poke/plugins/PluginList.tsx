@@ -1,5 +1,5 @@
-import { ScrollArea, Tooltip } from "@dust-tt/sparkle";
-import React, { useState } from "react";
+import { Input, ScrollArea, Tooltip } from "@dust-tt/sparkle";
+import React, { useMemo, useState } from "react";
 
 import { RunPluginDialog } from "@app/components/poke/plugins/RunPluginDialog";
 import {
@@ -46,6 +46,7 @@ export function PluginList({ pluginResourceTarget }: PluginListProps) {
   const [selectedPlugin, setSelectedPlugin] = useState<PluginListItem | null>(
     null
   );
+  const [searchQuery, setSearchQuery] = useState("");
 
   const handlePluginSelect = (plugin: PluginListItem) => {
     setSelectedPlugin(plugin);
@@ -55,36 +56,68 @@ export function PluginList({ pluginResourceTarget }: PluginListProps) {
     setSelectedPlugin(null);
   };
 
+  const filteredPlugins = useMemo(() => {
+    if (!searchQuery.trim()) {
+      return plugins;
+    }
+
+    const query = searchQuery.toLowerCase().trim();
+    return plugins.filter(
+      (plugin) =>
+        // Search by name or description.
+        plugin.name.toLowerCase().includes(query) ||
+        plugin.description.toLowerCase().includes(query)
+    );
+  }, [plugins, searchQuery]);
+
   return (
     <div className="border-material-200 flex min-h-48 flex-col rounded-lg border bg-muted-background dark:bg-muted-background-night">
       <div className="flex justify-between gap-3 rounded-t-lg bg-primary-300 p-4 dark:bg-primary-300-night">
         <h2 className="text-md font-bold">Plugins :</h2>
+        <div className="max-w-xs flex-1">
+          <Input
+            placeholder="Search plugins..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-white dark:bg-gray-800"
+          />
+        </div>
       </div>
 
       <ScrollArea className="h-80">
-        <div
-          className="grid w-full gap-3 p-4"
-          // 11rem is the fixed width of the card.
-          style={{
-            gridTemplateColumns: "repeat(auto-fill, minmax(11rem, 1fr))",
-          }}
-        >
-          {plugins
-            .sort((a, b) => a.name.localeCompare(b.name))
-            .map((plugin) => (
-              <Tooltip
-                key={plugin.id}
-                trigger={
-                  <PluginCard
-                    key={plugin.id}
-                    plugin={plugin}
-                    onClick={() => handlePluginSelect(plugin)}
-                  />
-                }
-                label={plugin.description}
-              />
-            ))}
-        </div>
+        {filteredPlugins.length === 0 ? (
+          <div className="flex h-full items-center justify-center text-gray-500">
+            {searchQuery.trim() ? (
+              <p>No plugins match your search.</p>
+            ) : (
+              <p>No plugins available.</p>
+            )}
+          </div>
+        ) : (
+          <div
+            className="grid w-full gap-3 p-4"
+            // 11rem is the fixed width of the card.
+            style={{
+              gridTemplateColumns: "repeat(auto-fill, minmax(11rem, 1fr))",
+            }}
+          >
+            {filteredPlugins
+              .sort((a, b) => a.name.localeCompare(b.name))
+              .map((plugin) => (
+                <Tooltip
+                  key={plugin.id}
+                  trigger={
+                    <PluginCard
+                      key={plugin.id}
+                      plugin={plugin}
+                      onClick={() => handlePluginSelect(plugin)}
+                    />
+                  }
+                  label={plugin.description}
+                />
+              ))}
+          </div>
+        )}
       </ScrollArea>
       {selectedPlugin && (
         <RunPluginDialog

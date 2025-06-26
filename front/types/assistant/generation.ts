@@ -60,14 +60,14 @@ export interface AssistantFunctionCallMessageTypeModel {
   role: "assistant";
   content?: string;
   function_calls: FunctionCallType[];
-  contents?: Array<{ step: number; content: AgentContentItemType }>;
+  contents?: Array<AgentContentItemType>;
 }
 
 export interface AssistantContentMessageTypeModel {
   role: "assistant";
   name: string;
   content: string;
-  contents?: Array<{ step: number; content: AgentContentItemType }>;
+  contents?: Array<AgentContentItemType>;
 }
 
 // This is the output of one function call

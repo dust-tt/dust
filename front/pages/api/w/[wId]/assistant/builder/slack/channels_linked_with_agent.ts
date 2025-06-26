@@ -6,10 +6,15 @@ import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type { DataSourceType, WithAPIErrorResponse } from "@app/types";
+import type {
+  ConnectorProvider,
+  DataSourceType,
+  WithAPIErrorResponse,
+} from "@app/types";
 import { ConnectorsAPI } from "@app/types";
 
 export type GetSlackChannelsLinkedWithAgentResponseBody = {
+  provider: Extract<ConnectorProvider, "slack" | "slack_bot">;
   slackChannels: {
     slackChannelId: string;
     slackChannelName: string;
@@ -18,12 +23,13 @@ export type GetSlackChannelsLinkedWithAgentResponseBody = {
   slackDataSource?: DataSourceType;
 };
 
-async function handler(
+export async function handleSlackChannelsLinkedWithAgent(
   req: NextApiRequest,
   res: NextApiResponse<
     WithAPIErrorResponse<GetSlackChannelsLinkedWithAgentResponseBody>
   >,
-  auth: Authenticator
+  auth: Authenticator,
+  connectorProvider: Extract<ConnectorProvider, "slack" | "slack_bot">
 ): Promise<void> {
   if (!auth.isBuilder()) {
     return apiError(req, res, {
@@ -36,13 +42,22 @@ async function handler(
     });
   }
 
-  const [dataSource] = await DataSourceResource.listByConnectorProvider(
+  const [dataSourceSlack] = await DataSourceResource.listByConnectorProvider(
     auth,
     "slack"
   );
 
+  const [dataSourceSlackBot] = await DataSourceResource.listByConnectorProvider(
+    auth,
+    "slack_bot"
+  );
+
+  const provider = dataSourceSlackBot ? "slack_bot" : "slack";
+  const dataSource = dataSourceSlackBot ? dataSourceSlackBot : dataSourceSlack;
+
   if (!dataSource) {
     return res.status(200).json({
+      provider,
       slackChannels: [],
       slackDataSource: undefined,
     });
@@ -60,14 +75,14 @@ async function handler(
 
   if (
     !dataSource.connectorProvider ||
-    dataSource.connectorProvider !== "slack"
+    (dataSource.connectorProvider !== "slack_bot" &&
+      dataSource.connectorProvider !== "slack")
   ) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "data_source_not_managed",
-        message:
-          "The data source you requested is not managed by a Slack connector.",
+        message: `The data source you requested is not managed by a ${connectorProvider} connector.`,
       },
     });
   }
@@ -94,6 +109,7 @@ async function handler(
       }
 
       res.status(200).json({
+        provider,
         slackChannels: linkedSlackChannelsRes.value.slackChannels,
         slackDataSource: dataSource.toJSON(),
       });
@@ -110,6 +126,16 @@ async function handler(
         },
       });
   }
+}
+
+async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse<
+    WithAPIErrorResponse<GetSlackChannelsLinkedWithAgentResponseBody>
+  >,
+  auth: Authenticator
+): Promise<void> {
+  return handleSlackChannelsLinkedWithAgent(req, res, auth, "slack");
 }
 
 export default withSessionAuthenticationForWorkspace(handler);

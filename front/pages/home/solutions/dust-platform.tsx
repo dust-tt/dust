@@ -145,11 +145,11 @@ export default function DustPlatform() {
         )}
       >
         <div className="mt-4 flex justify-center gap-4">
-          <Link href="home/contact" shallow={true}>
+          <Link href="/home/contact" shallow={true}>
             <Button variant="outline" size="md" label="Request a demo" />
           </Link>
 
-          <Link href="home/pricing" shallow={true}>
+          <Link href="/home/pricing" shallow={true}>
             <Button
               variant="highlight"
               size="md"

@@ -3,7 +3,7 @@ import type { Logger } from "pino";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
-import { Workspace } from "@app/lib/models/workspace";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { makeScript } from "@app/scripts/helpers";
@@ -100,7 +100,7 @@ makeScript(
   },
   async ({ wId, execute }, logger) => {
     if (wId) {
-      const ws = await Workspace.findOne({ where: { sId: wId } });
+      const ws = await WorkspaceModel.findOne({ where: { sId: wId } });
       if (!ws) {
         throw new Error(`Workspace not found: ${wId}`);
       }

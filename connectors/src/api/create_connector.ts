@@ -105,7 +105,8 @@ const _createConnectorAPIHandler = async (
         break;
       }
 
-      case "slack": {
+      case "slack":
+      case "slack_bot": {
         const configurationRes = ioTsParsePayload(
           configuration,
           SlackConfigurationTypeSchema
@@ -120,7 +121,7 @@ const _createConnectorAPIHandler = async (
           });
         }
         connectorRes = await createConnector({
-          connectorProvider: "slack",
+          connectorProvider: req.params.connector_provider,
           params: {
             configuration: configurationRes.value,
             dataSourceConfig: {

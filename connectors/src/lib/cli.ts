@@ -16,7 +16,7 @@ import { slack } from "@connectors/connectors/slack/lib/cli";
 import { snowflake } from "@connectors/connectors/snowflake/lib/cli";
 import {
   launchCrawlWebsiteScheduler,
-  updateCrawlerType,
+  updateCrawlerCrawlFrequency,
 } from "@connectors/connectors/webcrawler/temporal/client";
 import { zendesk } from "@connectors/connectors/zendesk/lib/cli";
 import { getTemporalClient } from "@connectors/lib/temporal";
@@ -147,11 +147,11 @@ export const connectors = async ({
       return { success: true };
     }
     case "pause": {
-      await throwOnError(manager.pause());
+      await throwOnError(manager.pauseAndStop());
       return { success: true };
     }
     case "unpause": {
-      await throwOnError(manager.unpause());
+      await throwOnError(manager.unpauseAndResume());
       return { success: true };
     }
     case "resume": {
@@ -391,18 +391,19 @@ export const webcrawler = async ({
       await throwOnError(launchCrawlWebsiteScheduler());
       return { success: true };
     }
-    case "update-crawler": {
+    case "update-frequency": {
       if (!args.connectorId) {
         throw new Error("Missing --connectorId argument");
       }
 
-      if (!args.customCrawler) {
-        throw new Error("Missing --customCrawler argument");
+      if (!args.crawlFrequency) {
+        throw new Error("Missing --crawlFrequency argument");
       }
 
       await throwOnError(
-        updateCrawlerType(args.connectorId, args.customCrawler)
+        updateCrawlerCrawlFrequency(args.connectorId, args.crawlFrequency)
       );
+
       return { success: true };
     }
   }

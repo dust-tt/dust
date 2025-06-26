@@ -10,7 +10,11 @@ import {
 } from "@dust-tt/sparkle";
 
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
-import type { ContentNode, DataSourceViewContentNode } from "@app/types";
+import type {
+  ContentNode,
+  ContentNodeType,
+  DataSourceViewContentNode,
+} from "@app/types";
 import { assertNever } from "@app/types";
 // Since titles will be synced in ES we don't support arbitrarily large titles.
 export const MAX_NODE_TITLE_LENGTH = 512;
@@ -66,6 +70,19 @@ export function getVisualForDataSourceViewContentNode(
   return getVisualForContentNode(node);
 }
 
+export function getVisualForContentNodeType(type: ContentNodeType) {
+  switch (type) {
+    case "table":
+      return Square3Stack3DIcon;
+    case "folder":
+      return FolderIcon;
+    case "document":
+      return DocumentIcon;
+    default:
+      assertNever(type);
+  }
+}
+
 export function getVisualForContentNode(node: ContentNode) {
   // Check mime type first for special icon handling.
   if (node.mimeType) {
@@ -94,22 +111,8 @@ export function getVisualForContentNode(node: ContentNode) {
     }
   }
 
-  // Fall back to node type if mime type doesn't determine the icon.
-  switch (node.type) {
-    case "table":
-      return Square3Stack3DIcon;
-
-    case "folder":
-      return FolderIcon;
-
-    case "document":
-      return getVisualForFileContentNode(
-        node as ContentNode & { type: "document" }
-      );
-
-    default:
-      assertNever(node.type);
-  }
+  // Fall back to the node type if the mime type doesn't determine the icon.
+  return getVisualForContentNodeType(node.type);
 }
 
 export function getLocationForDataSourceViewContentNode(

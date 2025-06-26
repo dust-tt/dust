@@ -19,6 +19,7 @@ import type {
   SpaceType,
   WorkspaceType,
 } from "@app/types";
+import { isAdmin } from "@app/types";
 
 // We need to stabilize the initial state of the selection configurations,
 // to avoid resetting state when swr revalidates initialSelectedDataSources
@@ -172,6 +173,7 @@ export default function SpaceManagedDataSourcesViewsModal({
                 viewType="all"
                 isRootSelectable={true}
                 space={systemSpace}
+                allowAdminSearch={isAdmin(owner)}
               />
             )}
           </div>

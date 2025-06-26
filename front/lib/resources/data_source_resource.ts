@@ -11,7 +11,6 @@ import { getDataSourceUsage } from "@app/lib/api/agent_data_sources";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
-import { LabsPersonalSalesforceConnection } from "@app/lib/models/labs_personal_salesforce_connection";
 import { ResourceWithSpace } from "@app/lib/resources/resource_with_space";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
@@ -210,17 +209,6 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
         return null;
       }
 
-      logger.info(
-        {
-          workspaceId: auth.workspace()?.sId,
-          nameOrId: nameOrId,
-          type: "sid",
-          sId: nameOrId,
-          origin: options?.origin,
-          success: true,
-        },
-        "fetchByNameOrId"
-      );
       return dataSources[0];
     } else {
       // Fetch by name
@@ -473,13 +461,6 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
       // Use 'hardDelete: true' to ensure the record is permanently deleted from the database,
       // bypassing the soft deletion in place.
       hardDelete: true,
-    });
-
-    await LabsPersonalSalesforceConnection.destroy({
-      where: {
-        dataSourceId: this.id,
-      },
-      transaction,
     });
 
     const deletedCount = await DataSourceModel.destroy({

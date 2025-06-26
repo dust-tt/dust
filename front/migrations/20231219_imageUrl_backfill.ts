@@ -1,12 +1,12 @@
 import { UserMessage } from "@app/lib/models/assistant/conversation";
-import { Workspace } from "@app/lib/models/workspace";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import { UserModel } from "@app/lib/resources/storage/models/user";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 
 async function main() {
   console.log("Starting imageUrl backfill");
   const workspaceIds = (
-    await Workspace.findAll({
+    await WorkspaceModel.findAll({
       attributes: ["id"],
     })
   ).map((a) => a.id);

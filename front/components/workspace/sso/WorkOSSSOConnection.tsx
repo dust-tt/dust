@@ -9,6 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
   Label,
+  LockIcon,
   Page,
   Spinner,
 } from "@dust-tt/sparkle";
@@ -24,6 +25,8 @@ import {
 } from "@app/lib/swr/workos";
 import type { WorkOSConnectionSyncStatus } from "@app/lib/types/workos";
 import type { PlanType, WorkspaceType } from "@app/types";
+
+import { WorkspaceSection } from "../WorkspaceSection";
 
 interface WorkOSSSOConnectionProps {
   domains: Organization["domains"];
@@ -52,8 +55,7 @@ export default function WorkOSSSOConnection({
   const isSSOConfigured = ssoStatus?.status === "configured";
 
   return (
-    <Page.Vertical gap="lg">
-      <Page.H variant="h4">Authentication and access</Page.H>
+    <WorkspaceSection title="Authentication and access" icon={LockIcon}>
       <div className="flex w-full flex-row items-center gap-2">
         <div className="flex-1">
           <div className="flex flex-row items-center gap-2">
@@ -133,7 +135,6 @@ export default function WorkOSSSOConnection({
           </div>
         </div>
       ) : null}
-
       <UpgradePlanDialog
         isOpen={showUpgradePlanDialog}
         onClose={() => setShowUpgradePlanDialog(false)}
@@ -154,14 +155,13 @@ export default function WorkOSSSOConnection({
         }}
         owner={owner}
       />
-
       <DisableWorkOSSSOConnectionModal
         isOpen={showDisableWorkOSSSOConnectionModal}
         onClose={() => setShowDisableWorkOSSSOConnectionModal(false)}
         owner={owner}
         ssoStatus={ssoStatus}
       />
-    </Page.Vertical>
+    </WorkspaceSection>
   );
 }
 

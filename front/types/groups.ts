@@ -1,3 +1,4 @@
+import * as t from "io-ts";
 import type { ModelId } from "./shared/model_id";
 import type { RoleType } from "./user";
 import { isRoleType } from "./user";
@@ -59,6 +60,14 @@ export type GroupType = {
   workspaceId: ModelId;
   memberCount: number;
 };
+
+export const GroupKindCodec = t.keyof({
+  global: null,
+  regular: null,
+  agent_editors: null,
+  system: null,
+  provisioned: null,
+});
 
 const DustGroupIdsHeader = "X-Dust-Group-Ids";
 

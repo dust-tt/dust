@@ -54,7 +54,6 @@ export async function reportInitialSyncProgress(
 
   await connector.update({
     firstSyncProgress: progress,
-    lastSyncSuccessfulTime: null,
   });
 
   return new Ok(undefined);

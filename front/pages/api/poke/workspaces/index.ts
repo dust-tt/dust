@@ -7,8 +7,6 @@ import { getWorkspaceVerifiedDomains } from "@app/lib/api/workspace_domains";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { Plan, Subscription } from "@app/lib/models/plan";
-import { Workspace } from "@app/lib/models/workspace";
-import { WorkspaceHasDomainModel } from "@app/lib/models/workspace_has_domain";
 import { FREE_NO_PLAN_DATA } from "@app/lib/plans/free_plans";
 import {
   isEntreprisePlan,
@@ -20,6 +18,8 @@ import {
 import { renderSubscriptionFromModels } from "@app/lib/plans/renderers";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
+import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { isDomain, isEmailValid } from "@app/lib/utils";
@@ -145,7 +145,7 @@ async function handler(
         limit = originalLimit;
       }
 
-      const conditions: WhereOptions<Workspace>[] = [];
+      const conditions: WhereOptions<WorkspaceModel>[] = [];
 
       if (listUpgraded !== undefined) {
         const subscriptions =
@@ -223,13 +223,13 @@ async function handler(
         limit = 100;
       }
 
-      const where: FindOptions<Workspace>["where"] = conditions.length
+      const where: FindOptions<WorkspaceModel>["where"] = conditions.length
         ? {
             [Op.and]: conditions,
           }
         : {};
 
-      const workspaces = await Workspace.findAll({
+      const workspaces = await WorkspaceModel.findAll({
         where,
         limit,
         include: [

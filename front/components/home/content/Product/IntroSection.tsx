@@ -111,7 +111,7 @@ export function IntroSection() {
           <HeroVisual />
         </div>
         <div className="mt-12">
-          <TrustedBy />
+          <TrustedBy logoSet="landing" />
         </div>
         <div className="mt-12">
           <FunctionsSection />

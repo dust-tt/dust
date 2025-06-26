@@ -19,7 +19,6 @@ import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/cit
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import type { PaginationParams } from "@app/lib/api/pagination";
 import { Authenticator } from "@app/lib/auth";
-import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
 import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
 import {
   AgentMessage,
@@ -46,6 +45,7 @@ import type {
   UserMessageType,
 } from "@app/types";
 import { ConversationError, Err, Ok, removeNulls } from "@app/types";
+import type { TextContentType } from "@app/types/assistant/agent_message_content";
 
 async function batchRenderUserMessages(
   auth: Authenticator,
@@ -249,17 +249,29 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
         };
       }
 
-      const rawContents =
-        agentMessage.agentMessageContents?.sort((a, b) => a.step - b.step) ??
+      const agentStepContents =
+        agentMessage.agentStepContents
+          ?.sort((a, b) => a.step - b.step || a.index - b.index)
+          .map((sc) => ({
+            step: sc.step,
+            content: sc.value,
+          })) ?? [];
+      const textContents: Array<{ step: number; content: TextContentType }> =
         [];
+      for (const content of agentStepContents) {
+        if (content.content.type === "text_content") {
+          textContents.push({ step: content.step, content: content.content });
+        }
+      }
       const contentParser = new AgentMessageContentParser(
         agentConfiguration,
         message.sId,
         getDelimitersConfiguration({ agentConfiguration })
       );
       const parsedContent = await contentParser.parseContents(
-        rawContents.map((r) => r.content)
+        textContents.map((r) => r.content.value)
       );
+
       const m = {
         id: message.id,
         agentMessageId: agentMessage.id,
@@ -274,18 +286,11 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
         actions,
         content: parsedContent.content,
         chainOfThought: parsedContent.chainOfThought,
-        rawContents:
-          agentMessage.agentMessageContents?.map((rc) => ({
-            step: rc.step,
-            content: rc.content,
-          })) ?? [],
-        contents:
-          agentMessage.agentStepContents
-            ?.sort((a, b) => a.step - b.step || a.index - b.index)
-            .map((sc) => ({
-              step: sc.step,
-              content: sc.value,
-            })) ?? [],
+        rawContents: textContents.map((c) => ({
+          step: c.step,
+          content: c.content.value,
+        })),
+        contents: agentStepContents,
         error,
         configuration: agentConfiguration,
         skipToolsValidation: agentMessage.skipToolsValidation,
@@ -418,11 +423,6 @@ async function fetchMessagesForPage(
         as: "agentMessage",
         required: false,
         include: [
-          {
-            model: AgentMessageContent,
-            as: "agentMessageContents",
-            required: false,
-          },
           {
             model: AgentStepContentModel,
             as: "agentStepContents",

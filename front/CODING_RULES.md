@@ -166,6 +166,22 @@ When quadratic complexity cannot be avoided:
 - Consider moving to background processing for larger datasets
 - Implement proper async handling with progress indicators for long operations
 
+### [GEN8] Do not use console.log, console.error, etc. — always use the app logger
+
+Direct calls to `console.log`, `console.error`, `console.warn`, `console.info`, or similar console methods are prohibited in the codebase. Always use the application logger for all logging, debugging, and error reporting purposes. This ensures consistent log formatting, proper log routing, and easier log management across environments.
+
+Example:
+
+```
+// BAD
+console.log("User created", user);
+console.error("Failed to fetch data", error);
+
+// GOOD
+logger.info({ user }, "User created");
+logger.error({ err: error }, "Failed to fetch data");
+```
+
 ## SECURITY
 
 ### [SEC1] No sensitive data outside of HTTP bodies or headers

@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use crate::{
     databases::{
         database::{QueryDatabaseError, QueryResult, SqlDialect},
-        remote_databases::snowflake::SnowflakeRemoteDatabase,
+        remote_databases::snowflake::snowflake::SnowflakeRemoteDatabase,
         table::Table,
         table_schema::TableSchema,
     },

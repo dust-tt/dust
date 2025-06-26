@@ -1,5 +1,7 @@
 import { Err, Ok, removeNulls } from "@dust-tt/client";
 
+import { getChannelsToSync } from "@connectors/connectors/slack/lib/channels";
+import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { SlackMessages } from "@connectors/lib/models/slack";
 import { getTemporalClient } from "@connectors/lib/temporal";
@@ -9,7 +11,6 @@ import type { ModelId } from "@connectors/types";
 import { normalizeError } from "@connectors/types";
 
 import { getWeekStart } from "../lib/utils";
-import { getChannelsToSync } from "./activities";
 import { QUEUE_NAME } from "./config";
 import { newWebhookSignal, syncChannelSignal } from "./signals";
 import {
@@ -34,9 +35,15 @@ export async function launchSlackSyncWorkflow(
   if (!connector) {
     return new Err(new Error(`Connector ${connectorId} not found`));
   }
+
   if (channelsToSync === null) {
+    const slackClient = await getSlackClient(connectorId, {
+      rejectRateLimitedCalls: false,
+    });
     channelsToSync = removeNulls(
-      (await getChannelsToSync(connectorId)).map((c) => c.id || null)
+      (await getChannelsToSync(slackClient, connectorId)).map(
+        (c) => c.id || null
+      )
     );
   }
   const client = await getTemporalClient();

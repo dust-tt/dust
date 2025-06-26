@@ -1,14 +1,14 @@
 import config from "@app/lib/api/config";
-import { Workspace } from "@app/lib/models/workspace";
 import { getDustProdActionRegistry } from "@app/lib/registry";
 import { AppModel } from "@app/lib/resources/storage/models/apps";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { makeScript } from "@app/scripts/helpers";
 
 makeScript({}, async ({ execute }, logger) => {
   const publicVaultSqid = config.getDustAppsSpaceId();
   const vaultId = getResourceIdFromSId(publicVaultSqid);
-  const dustAppsWorkspace = await Workspace.findOne({
+  const dustAppsWorkspace = await WorkspaceModel.findOne({
     where: { sId: config.getDustAppsWorkspaceId() },
   });
   if (!dustAppsWorkspace) {

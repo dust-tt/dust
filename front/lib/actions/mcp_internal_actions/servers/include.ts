@@ -17,6 +17,7 @@ import {
   makeFindTagsTool,
 } from "@app/lib/actions/mcp_internal_actions/servers/common/find_tags_tool";
 import {
+  checkConflictingTags,
   getCoreSearchArgs,
   renderRelativeTimeFrameForToolOutput,
   shouldAutoGenerateTags,
@@ -46,7 +47,7 @@ import {
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "include_data",
   version: "1.0.0",
-  description: "Include data exhaustively (mcp)",
+  description: "Include data exhaustively",
   icon: "ActionTimeIcon",
   authorization: null,
   documentationUrl: null,
@@ -157,6 +158,17 @@ function createServer(
     const coreSearchArgs = removeNulls(
       coreSearchArgsResults.map((res) => (res.isOk() ? res.value : null))
     );
+
+    const conflictingTagsError = checkConflictingTags(coreSearchArgs, {
+      tagsIn,
+      tagsNot,
+    });
+    if (conflictingTagsError) {
+      return {
+        isError: false,
+        content: [{ type: "text", text: conflictingTagsError }],
+      };
+    }
 
     const searchResults = await coreAPI.searchDataSources(
       "",

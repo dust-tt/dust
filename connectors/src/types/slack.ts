@@ -6,7 +6,7 @@ const SlackAutoReadPatternSchema = t.type({
   pattern: t.string,
   spaceId: t.string,
 });
-const SlackAutoReadPatternsSchema = t.array(SlackAutoReadPatternSchema);
+export const SlackAutoReadPatternsSchema = t.array(SlackAutoReadPatternSchema);
 
 export type SlackAutoReadPattern = t.TypeOf<typeof SlackAutoReadPatternSchema>;
 

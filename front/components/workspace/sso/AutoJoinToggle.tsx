@@ -122,9 +122,9 @@ export function AutoJoinToggle({
   const [showUpgradePlanDialog, setShowUpgradePlanDialog] = useState(false);
   const [isActivateAutoJoinOpened, setIsActivateAutoJoinOpened] =
     useState(false);
-  const domainAutoJoinEnabled = workspaceVerifiedDomains.every(
-    (d) => d.domainAutoJoinEnabled
-  );
+  const domainAutoJoinEnabled =
+    workspaceVerifiedDomains.length > 0 &&
+    workspaceVerifiedDomains.every((d) => d.domainAutoJoinEnabled);
 
   return (
     <>

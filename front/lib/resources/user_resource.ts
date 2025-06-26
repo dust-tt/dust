@@ -8,7 +8,6 @@ import type {
 import { Op } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
-import { LabsPersonalSalesforceConnection } from "@app/lib/models/labs_personal_salesforce_connection";
 import type { ResourceLogJSON } from "@app/lib/resources/base_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
@@ -252,13 +251,6 @@ export class UserResource extends BaseResource<UserModel> {
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, Error>> {
     await this.deleteAllMetadata();
-
-    await LabsPersonalSalesforceConnection.destroy({
-      where: {
-        userId: this.id,
-      },
-      transaction,
-    });
 
     try {
       await this.model.destroy({

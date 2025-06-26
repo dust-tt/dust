@@ -17,6 +17,7 @@ export const CONNECTOR_PROVIDERS = [
   "notion",
   "salesforce",
   "slack",
+  "slack_bot",
   "snowflake",
   "webcrawler",
   "zendesk",

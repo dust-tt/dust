@@ -125,7 +125,7 @@ export const TableUploadOrEditModal = ({
             fileId,
             upsertArgs: {
               // Make sure to reuse the tableId from the initialId if it exists.
-              tableId: initialId ?? undefined,
+              tableId: initialId ?? fileId,
               name: table.name,
               description: table.description,
               title: table.name,

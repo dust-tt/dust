@@ -124,7 +124,7 @@ function getErrorMessage(domain: string | null, reason: string | null) {
             label="Sign in"
             icon={LoginIcon}
             onClick={() => {
-              window.location.href = `/api/auth/login?returnTo=/api/login`;
+              window.location.href = `/api/workos/login?returnTo=/api/login`;
             }}
           />
         </>

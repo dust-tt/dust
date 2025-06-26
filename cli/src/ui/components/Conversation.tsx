@@ -11,10 +11,12 @@ import React, {
   useState,
 } from "react";
 
+import { formatFileSize, isImageFile } from "../../utils/fileHandling.js";
 import { useTerminalSize } from "../../utils/hooks/use_terminal_size.js";
 import { clearTerminal } from "../../utils/terminal.js";
 import type { Command } from "../commands/types.js";
 import { CommandSelector } from "./CommandSelector.js";
+import type { UploadedFile } from "./FileUpload.js";
 import { InputBox } from "./InputBox.js";
 
 export type ConversationItem = { key: string } & (
@@ -27,6 +29,11 @@ export type ConversationItem = { key: string } & (
       type: "user_message";
       firstName: string;
       content: string;
+      index: number;
+    }
+  | {
+      type: "user_message_attachments";
+      attachments: UploadedFile[];
       index: number;
     }
   | {
@@ -187,6 +194,30 @@ const StaticConversationItem: FC<StaticConversationItemProps> = ({
             <Text wrap="wrap">
               {item.content.replace(/^\n+/, "").replace(/\n+$/, "")}
             </Text>
+          </Box>
+        </Box>
+      );
+    case "user_message_attachments":
+      return (
+        <Box flexDirection="column" marginLeft={2} marginBottom={1}>
+          <Box borderStyle="round" borderColor="gray" padding={1}>
+            <Box flexDirection="column">
+              <Text color="gray" bold>
+                📎 {item.attachments.length} attachment
+                {item.attachments.length > 1 ? "s" : ""}
+              </Text>
+              {item.attachments.map((file, index) => {
+                const isImage = isImageFile(file.fileName);
+                return (
+                  <Box key={index}>
+                    <Text color={isImage ? "yellow" : "cyan"}>
+                      {isImage ? "🖼️  " : "📄 "} {file.fileName}
+                    </Text>
+                    <Text color="gray"> ({formatFileSize(file.fileSize)})</Text>
+                  </Box>
+                );
+              })}
+            </Box>
           </Box>
         </Box>
       );

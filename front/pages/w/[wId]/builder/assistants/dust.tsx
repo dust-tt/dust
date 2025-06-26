@@ -10,6 +10,7 @@ import {
 import { useSendNotification } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
+import { useMemo } from "react";
 
 import AppContentLayout from "@app/components/sparkle/AppContentLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
@@ -17,7 +18,10 @@ import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { isRestrictedFromAgentCreation } from "@app/lib/auth";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
-import { getDisplayNameForDataSource } from "@app/lib/data_sources";
+import {
+  getDisplayNameForDataSource,
+  isRemoteDatabase,
+} from "@app/lib/data_sources";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
@@ -97,11 +101,22 @@ export default function EditDustAssistant({
     agentsGetView: "global",
   });
 
-  const { spaceDataSourceViews, mutate: mutateDataSourceViews } =
-    useSpaceDataSourceViews({
-      workspaceId: owner.sId,
-      spaceId: globalSpace.sId,
-    });
+  const {
+    spaceDataSourceViews: unfilteredSpaceDataSourceViews,
+    mutate: mutateDataSourceViews,
+  } = useSpaceDataSourceViews({
+    workspaceId: owner.sId,
+    spaceId: globalSpace.sId,
+  });
+
+  // We do not support remote databases for the Dust agent at the moment.
+  const spaceDataSourceViews = useMemo(
+    () =>
+      unfilteredSpaceDataSourceViews.filter(
+        (ds) => !isRemoteDatabase(ds.dataSource)
+      ),
+    [unfilteredSpaceDataSourceViews]
+  );
 
   const sortedDatasources = spaceDataSourceViews.sort((a, b) => {
     if (a.dataSource.connectorProvider && !b.dataSource.connectorProvider) {

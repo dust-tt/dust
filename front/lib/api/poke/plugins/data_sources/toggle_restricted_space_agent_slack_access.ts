@@ -30,14 +30,18 @@ export const restrictedSpaceAgentsPlugin = createPlugin({
     },
   },
   isApplicableTo: (auth, resource) => {
-    return resource?.connectorProvider === "slack";
+    return (
+      (resource?.connectorProvider &&
+        ["slack", "slack_bot"].includes(resource?.connectorProvider)) ??
+      false
+    );
   },
   execute: async (auth, dataSource, args) => {
-    if (!dataSource) {
+    if (!dataSource?.connectorProvider) {
       return new Err(new Error("Cannot find data source."));
     }
 
-    if (dataSource.connectorProvider !== "slack") {
+    if (!["slack", "slack_bot"].includes(dataSource.connectorProvider)) {
       return new Err(
         new Error("This action is only available for Slack data sources.")
       );

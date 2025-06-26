@@ -25,7 +25,7 @@ export async function listAgentConfigurationsForGroups(
   groups: GroupResource[]
 ) {
   return AgentConfiguration.findAll({
-    attributes: ["sId", "groupIds"],
+    attributes: ["sId"],
     where: {
       workspaceId: auth.getNonNullableWorkspace().id,
       status: "active",
@@ -158,8 +158,6 @@ export async function getAgentConfigurationGroupIdsFromActions(
   return Array.from(spacePermissions.values())
     .map((set) => Array.from(set))
     .filter((arr) => arr.length > 0);
-
-  // TODO(mcp): add something here for child agents.
 }
 
 export async function getContentFragmentGroupIds(

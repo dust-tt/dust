@@ -466,6 +466,7 @@ export function useSlackChannelsLinkedWithAgent({
   );
 
   return {
+    provider: data?.provider ?? "slack",
     slackChannels: data?.slackChannels ?? emptyArray(),
     slackDataSource: data?.slackDataSource,
     isSlackChannelsLoading: !error && !data,

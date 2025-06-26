@@ -43,9 +43,9 @@ export function MCPBrowseActionDetails({
                     </span>
                   </>
                 ) : (
-                  <span className="text-sm text-foreground">
-                    Cannot fetch content for {r.uri}, error code :{" "}
-                    {r.responseCode}.{r.errorMessage}
+                  <span className="text-sm text-foreground dark:text-foreground-night">
+                    Cannot fetch content for {r.uri}, error code:{" "}
+                    {r.responseCode}. {r.errorMessage}
                   </span>
                 )}
               </div>

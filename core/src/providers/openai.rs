@@ -21,7 +21,7 @@ use hyper::StatusCode;
 use hyper::{body::Buf, Uri};
 use itertools::izip;
 use lazy_static::lazy_static;
-use parking_lot::{Mutex, RwLock};
+use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use serde_json::Value;
@@ -185,7 +185,7 @@ pub async fn streamed_completion(
 
     let mut stream = client.stream();
 
-    let completions: Arc<Mutex<Vec<Completion>>> = Arc::new(Mutex::new(Vec::new()));
+    let mut completions: Vec<Completion> = Vec::new();
     let mut request_id: Option<String> = None;
 
     'stream: loop {
@@ -205,10 +205,7 @@ pub async fn streamed_completion(
                         break 'stream;
                     }
                     _ => {
-                        let index = {
-                            let guard = completions.lock();
-                            guard.len()
-                        };
+                        let index = completions.len();
 
                         let completion: Completion = match serde_json::from_str(e.data.as_str()) {
                             Ok(c) => c,
@@ -299,7 +296,7 @@ pub async fn streamed_completion(
                             }
                             None => (),
                         };
-                        completions.lock().push(completion);
+                        completions.push(completion);
                     }
                 },
                 None => {
@@ -357,14 +354,13 @@ pub async fn streamed_completion(
     }
 
     let completion = {
-        let mut guard = completions.lock();
-        let mut c = match guard.len() {
+        let mut c = match completions.len() {
             0 => Err(anyhow!("No completions received from OpenAI")),
-            _ => Ok(guard[0].clone()),
+            _ => Ok(completions[0].clone()),
         }?;
-        guard.remove(0);
-        for i in 0..guard.len() {
-            let a = guard[i].clone();
+        completions.remove(0);
+        for i in 0..completions.len() {
+            let a = completions[i].clone();
             if a.choices.len() != c.choices.len() {
                 Err(anyhow!(
                     "Inconsistent number of choices in streamed completions"

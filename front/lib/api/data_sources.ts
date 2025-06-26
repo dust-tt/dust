@@ -20,6 +20,7 @@ import { DustError } from "@app/lib/error";
 import { getDustDataSourcesBucket } from "@app/lib/file_storage";
 import { isGCSNotFoundError } from "@app/lib/file_storage/types";
 import { Lock } from "@app/lib/lock";
+import { TrackerDataSourceConfigurationModel } from "@app/lib/models/doc_tracker";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -195,6 +196,14 @@ export async function hardDeleteDataSource(
       );
     }
   } while (files.length === FILE_BATCH_SIZE);
+
+  // Delete all trackers datasource configurations associated with the data source.
+  await TrackerDataSourceConfigurationModel.destroy({
+    where: {
+      dataSourceId: dataSource.id,
+    },
+    hardDelete: true,
+  });
 
   // Ensure all content fragments from dsviews are expired.
   // Only used temporarily to unstuck queues -- TODO(fontanierh)
@@ -627,6 +636,12 @@ export interface UpsertTableArgs {
   parentId?: string | null;
   parents?: string[] | null;
   allowEmptySchema?: boolean;
+}
+
+export function isUpsertDocumentArgs(
+  args: UpsertTableArgs | UpsertDocumentArgs | undefined
+): args is UpsertDocumentArgs {
+  return args !== undefined && "document_id" in args;
 }
 
 export function isUpsertTableArgs(
@@ -1223,7 +1238,7 @@ export async function pauseAllManagedDataSources(
   return new Ok(res);
 }
 
-export async function resumeAllManagedDataSources(
+export async function unpauseAllManagedDataSources(
   auth: Authenticator,
   providers?: ConnectorProvider[]
 ) {
@@ -1247,36 +1262,19 @@ export async function resumeAllManagedDataSources(
     async (ds) => {
       assert(ds.connectorId, "Connector ID is required");
 
-      const { connectorId } = ds;
-
-      const setErrorCommand: AdminCommandType = {
-        majorCommand: "connectors",
-        command: "clear-error",
-        args: {
-          connectorId,
-          wId: auth.getNonNullableWorkspace().sId,
-          dsId: ds.sId,
-        },
-      };
-
-      const setErrorRes = await connectorsAPI.admin(setErrorCommand);
-      if (setErrorRes.isErr()) {
-        return new Err(new Error(setErrorRes.error.message));
+      const unpauseRes = await connectorsAPI.unpauseConnector(ds.connectorId);
+      if (unpauseRes.isErr()) {
+        return new Err(new Error(unpauseRes.error.message));
       }
 
-      const resumeRes = await connectorsAPI.resumeConnector(ds.connectorId);
-      if (resumeRes.isErr()) {
-        return new Err(new Error(resumeRes.error.message));
-      }
-
-      return new Ok(resumeRes.value);
+      return new Ok(unpauseRes.value);
     },
     { concurrency: 5 }
   );
 
   const failed = res.filter((r) => r.isErr());
   if (failed.length > 0) {
-    return new Err(new Error(`Failed to resume ${failed.length} connectors.`));
+    return new Err(new Error(`Failed to unpause ${failed.length} connectors.`));
   }
 
   return new Ok(res);

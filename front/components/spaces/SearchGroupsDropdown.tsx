@@ -5,6 +5,7 @@ import {
   DropdownMenuItem,
   DropdownMenuSearchbar,
   DropdownMenuTrigger,
+  PlusIcon,
 } from "@dust-tt/sparkle";
 import { UserGroupIcon } from "@dust-tt/sparkle";
 import React, { useCallback, useMemo, useState } from "react";
@@ -52,7 +53,7 @@ export function SearchGroupsDropdown({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button label="Add user groups" icon={UserGroupIcon} size="sm" />
+        <Button label="Add groups" icon={PlusIcon} size="sm" />
       </DropdownMenuTrigger>
       <DropdownMenuContent
         className="w-80"
@@ -71,8 +72,7 @@ export function SearchGroupsDropdown({
             onClick={addGroup(group)}
             icon={UserGroupIcon}
             label={group.name}
-            // TODO: add member count
-            description=""
+            description={`${group.memberCount} members`}
           />
         ))}
         {filteredGroups.length === 0 && !isGroupsLoading && (

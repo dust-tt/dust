@@ -1,8 +1,8 @@
 import assert from "assert";
 import { Op } from "sequelize";
 
-import { Workspace } from "@app/lib/models/workspace";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { getWorkspaceFirstAdmin } from "@app/lib/workspace";
 import { makeScript } from "@app/scripts/helpers";
 
@@ -16,7 +16,7 @@ makeScript({}, async ({ execute }, logger) => {
   });
 
   for (const ds of dataSources) {
-    const workspace = await Workspace.findOne({
+    const workspace = await WorkspaceModel.findOne({
       where: {
         id: ds.workspaceId,
       },

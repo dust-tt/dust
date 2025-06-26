@@ -8,7 +8,6 @@ import { getWorkspaceInfos } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { Subscription } from "@app/lib/models/plan";
 import { Plan } from "@app/lib/models/plan";
-import { Workspace } from "@app/lib/models/workspace";
 import type { PlanAttributes } from "@app/lib/plans/free_plans";
 import { FREE_NO_PLAN_DATA } from "@app/lib/plans/free_plans";
 import {
@@ -31,6 +30,7 @@ import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
 import { REPORT_USAGE_METADATA_KEY } from "@app/lib/plans/usage/types";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
@@ -475,7 +475,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
 
     const subscription = await Subscription.findOne({
       where: { stripeSubscriptionId },
-      include: [Workspace],
+      include: [WorkspaceModel],
     });
 
     // Bail early if the DB subscription is not in trial mode.
