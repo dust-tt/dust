@@ -62,6 +62,10 @@ WHERE
           await workOS.organizations.updateOrganization({
             organization: domain.workOSOrganizationId,
             domainData: [],
+          });
+          // Add a second update, for a weird reason doing both doesn't work
+          await workOS.organizations.updateOrganization({
+            organization: domain.workOSOrganizationId,
             metadata: {
               // Add a metadata to trigger the webhook.
               cleanDomain: format(new Date(), "PPP"),
