@@ -6,9 +6,9 @@ import Text from "@tiptap/extension-text";
 import { EditorContent, useEditor } from "@tiptap/react";
 import { cva } from "class-variance-authority";
 import React, { useEffect } from "react";
+import { useController } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
-import { useFormContext } from "react-hook-form";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { InstructionTipsPopover } from "@app/components/agent_builder/instructions/InstructionsTipsPopover";
 import { ParagraphExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/ParagraphExtension";
@@ -59,16 +59,17 @@ const editorVariants = cva(
 
 export function AgentBuilderInstructionsEditor() {
   const { owner } = useAgentBuilderContext();
-  const form = useFormContext<AgentBuilderFormData>();
-  const instructions = form.watch("instructions");
+  const { field } = useController<AgentBuilderFormData, "instructions">({
+    name: "instructions",
+  });
 
   const editor = useEditor({
     extensions,
-    content: tipTapContentFromPlainText(instructions),
+    content: tipTapContentFromPlainText(field.value),
     onUpdate: ({ editor }) => {
       const json = editor.getJSON();
       const plainText = plainTextFromTipTapContent(json);
-      form.setValue("instructions", plainText);
+      field.onChange(plainText);
     },
   });
 
@@ -92,22 +93,22 @@ export function AgentBuilderInstructionsEditor() {
   }, [editor, displayError]);
 
   useEffect(() => {
-    if (!editor || instructions === undefined) {
+    if (!editor || field.value === undefined) {
       return;
     }
 
     const currentContent = plainTextFromTipTapContent(editor.getJSON());
-    if (currentContent !== instructions) {
-      editor.commands.setContent(tipTapContentFromPlainText(instructions));
+    if (currentContent !== field.value) {
+      editor.commands.setContent(tipTapContentFromPlainText(field.value));
     }
-  }, [editor, instructions]);
+  }, [editor, field.value]);
 
   return (
     <div className="flex h-full flex-col gap-1">
       <div className="relative h-full min-h-60 grow p-px">
         <EditorContent editor={editor} className="absolute inset-0" />
         <div className="absolute bottom-2 right-2">
-          <InstructionTipsPopover owner={owner} instructions={instructions} />
+          <InstructionTipsPopover owner={owner} instructions={field.value} />
         </div>
       </div>
       {editor && (
