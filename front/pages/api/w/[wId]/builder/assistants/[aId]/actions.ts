@@ -60,7 +60,7 @@ async function handler(
     const actions = await buildInitialActions({
       dataSourceViews,
       configuration: agentConfiguration,
-      mcpServerViews: mcpServerViewsJSON
+      mcpServerViews: mcpServerViewsJSON,
     });
 
     if (
