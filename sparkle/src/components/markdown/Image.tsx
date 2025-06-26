@@ -15,11 +15,11 @@ export function Img({
 }
 
 function isAllowedImageSrc(src: string): boolean {
-  // allow internal paths
+  // Allow internal paths
   if (src.startsWith("https://dust.tt")) {
     return true;
   }
 
-  // block everything else
+  // Block everything else
   return false;
 }
