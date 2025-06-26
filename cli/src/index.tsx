@@ -48,6 +48,11 @@ const cli = meow({
       shortFlag: "a",
       description: "Search for and use an agent by name",
     },
+    message: {
+      type: "string",
+      shortFlag: "m",
+      description: "Send a message to the agent non-interactively",
+    },
   },
 });
 
