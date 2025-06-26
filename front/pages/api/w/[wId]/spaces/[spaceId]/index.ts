@@ -115,7 +115,7 @@ async function handler(
               if (space.managementMode === "group") {
                 return g.kind === "provisioned";
               }
-              return g.kind === "regular";
+              return g.kind === "regular" || g.kind === "global";
             }),
             (group) => group.getActiveMembers(auth),
             { concurrency: 10 }
