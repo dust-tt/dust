@@ -1,15 +1,23 @@
 import {
   Avatar,
+  Button,
   Card,
   CardActionButton,
   CardGrid,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
   EmptyCTA,
+  Input,
   Page,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import React from "react";
+import React, { useEffect } from "react";
 import { useFieldArray } from "react-hook-form";
+import { useController } from "react-hook-form";
 
+import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type {
   AgentBuilderAction,
   AgentBuilderFormData,
@@ -17,6 +25,11 @@ import type {
 import { AddKnowledgeDropdown } from "@app/components/agent_builder/capabilities/AddKnowledgeDropdown";
 import { AddToolsDropdown } from "@app/components/agent_builder/capabilities/AddToolsDropdown";
 import { DATA_VISUALIZATION_SPECIFICATION } from "@app/lib/actions/utils";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import {
+  EXTENDED_MAX_STEPS_USE_PER_RUN_LIMIT,
+  MAX_STEPS_USE_PER_RUN_LIMIT,
+} from "@app/types";
 
 function ActionCard({
   action,
@@ -62,6 +75,66 @@ function ActionCard({
   );
 }
 
+function MaxStepsPerRunSettings() {
+  const { owner } = useAgentBuilderContext();
+  const { hasFeature, isFeatureFlagsLoading } = useFeatureFlags({
+    workspaceId: owner.sId,
+  });
+  const { field } = useController<AgentBuilderFormData, "maxStepsPerRun">({
+    name: "maxStepsPerRun",
+  });
+
+  const hasExtendedFeature = hasFeature("extended_max_steps_per_run");
+  const maxLimit = hasExtendedFeature
+    ? EXTENDED_MAX_STEPS_USE_PER_RUN_LIMIT
+    : MAX_STEPS_USE_PER_RUN_LIMIT;
+
+  useEffect(() => {
+    if (!isFeatureFlagsLoading && field.value > maxLimit) {
+      field.onChange(maxLimit);
+    }
+  }, [isFeatureFlagsLoading, maxLimit, field]);
+
+  const displayLabel = isFeatureFlagsLoading
+    ? "Max steps settings"
+    : `Max steps settings (up to ${maxLimit})`;
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          label={displayLabel}
+          variant="outline"
+          size="sm"
+          isSelect
+          disabled={isFeatureFlagsLoading}
+        />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent className="w-60 p-2" align="end">
+        <DropdownMenuLabel
+          label={
+            isFeatureFlagsLoading
+              ? "Loading..."
+              : `Max steps per run (up to ${maxLimit})`
+          }
+        />
+        <Input
+          value={field.value?.toString() ?? ""}
+          placeholder="10"
+          name="maxStepsPerRun"
+          disabled={isFeatureFlagsLoading}
+          onChange={(e) => {
+            const value = parseInt(e.target.value);
+            if (!isNaN(value) && value >= 1 && value <= maxLimit) {
+              field.onChange(value);
+            }
+          }}
+        />
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 export function AgentBuilderCapabilitiesBlock() {
   const { fields, remove } = useFieldArray<AgentBuilderFormData, "actions">({
     name: "actions",
@@ -80,14 +153,17 @@ export function AgentBuilderCapabilitiesBlock() {
             Add tools and capabilities to enhance your agent's abilities.
           </span>
         </Page.P>
-        {fields.length > 0 && (
-          <div className="flex w-full flex-col gap-2 sm:w-auto">
-            <div className="flex items-center gap-2">
-              <AddKnowledgeDropdown />
-              <AddToolsDropdown />
-            </div>
+        <div className="flex w-full flex-col gap-2 sm:w-auto">
+          <div className="flex items-center gap-2">
+            {fields.length > 0 && (
+              <>
+                <AddKnowledgeDropdown />
+                <AddToolsDropdown />
+              </>
+            )}
+            <MaxStepsPerRunSettings />
           </div>
-        )}
+        </div>
       </div>
       <div className="flex-1">
         {fields.length === 0 ? (

@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import React from "react";
+import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
@@ -10,9 +10,14 @@ import {
 import { AgentBuilderLayout } from "@app/components/agent_builder/AgentBuilderLayout";
 import { AgentBuilderLeftPanel } from "@app/components/agent_builder/AgentBuilderLeftPanel";
 import { AgentBuilderRightPanel } from "@app/components/agent_builder/AgentBuilderRightPanel";
+import { submitAgentBuilderForm } from "@app/components/agent_builder/submitAgentBuilderForm";
+import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { GPT_4O_MODEL_ID } from "@app/types";
 
 export default function AgentBuilder() {
+  const { owner } = useAgentBuilderContext();
+  const [isSaving, setIsSaving] = useState(false);
+
   const form = useForm<AgentBuilderFormData>({
     resolver: zodResolver(agentBuilderFormSchema),
     defaultValues: {
@@ -30,17 +35,47 @@ export default function AgentBuilder() {
         temperature: 0.7,
       },
       actions: [],
+      maxStepsPerRun: 10,
     },
   });
 
+  const handleSubmit = async (formData: AgentBuilderFormData) => {
+    setIsSaving(true);
+    try {
+      const result = await submitAgentBuilderForm({
+        formData,
+        owner,
+        isDraft: false,
+      });
+
+      if (result.isOk()) {
+        console.log("Agent created successfully:", result.value);
+        // TODO: Navigate to agent page or show success message
+      } else {
+        console.error("Failed to create agent:", result.error.message);
+        // TODO: Show error message to user
+      }
+    } catch (error) {
+      console.error("Unexpected error:", error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleSave = () => {
+    // Trigger form submission
+    form.handleSubmit(handleSubmit)();
+  };
+
   return (
-    <AgentBuilderFormProvider form={form}>
+    <AgentBuilderFormProvider form={form} onSubmit={handleSubmit}>
       <AgentBuilderLayout
         leftPanel={
           <AgentBuilderLeftPanel
             title="Create new agent"
             onCancel={() => console.log("Cancel")}
-            onSave={() => console.log("Save")}
+            onSave={handleSave}
+            isSaving={isSaving}
           />
         }
         rightPanel={<AgentBuilderRightPanel />}
