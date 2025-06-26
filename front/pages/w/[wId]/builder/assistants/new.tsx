@@ -24,6 +24,7 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import { useAssistantTemplate } from "@app/lib/swr/assistants";
 import type {
   AgentConfigurationType,
+  AppType,
   DataSourceViewType,
   PlanType,
   SpaceType,
@@ -43,6 +44,7 @@ function getDuplicateAndTemplateIdFromQuery(query: ParsedUrlQuery) {
 }
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
+  dustApps: AppType[];
   owner: WorkspaceType;
   subscription: SubscriptionType;
   plan: PlanType;
@@ -146,6 +148,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 });
 
 export default function CreateAssistant({
+  dustApps,
   actions,
   agentConfiguration,
   baseUrl,
@@ -170,6 +173,7 @@ export default function CreateAssistant({
 
   return (
     <AssistantBuilderProvider
+      dustApps={dustApps}
       spaces={spaces}
       dataSourceViews={dataSourceViews}
       mcpServerViews={mcpServerViews}

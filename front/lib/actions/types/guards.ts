@@ -23,6 +23,7 @@ import type { SearchLabelsConfigurationType } from "@app/lib/actions/search_labe
 import type { TablesQueryConfigurationType } from "@app/lib/actions/tables_query";
 import type {
   ActionConfigurationType,
+  AgentActionConfigurationType,
   UnsavedAgentActionConfigurationType,
 } from "@app/lib/actions/types/agent";
 import type {
@@ -140,7 +141,7 @@ export function isServerSideMCPServerConfiguration(
 }
 
 export function isMCPConfigurationWithDataSource(
-  arg: MCPServerConfigurationType
+  arg: AgentActionConfigurationType
 ): arg is ServerSideMCPServerConfigurationType {
   return (
     isServerSideMCPServerConfiguration(arg) &&
@@ -150,7 +151,7 @@ export function isMCPConfigurationWithDataSource(
 }
 
 export function isMCPConfigurationForInternalWebsearch(
-  arg: MCPServerConfigurationType
+  arg: AgentActionConfigurationType
 ): arg is ServerSideMCPServerConfigurationType {
   return (
     isServerSideMCPServerConfiguration(arg) &&
@@ -159,7 +160,7 @@ export function isMCPConfigurationForInternalWebsearch(
 }
 
 export function isMCPConfigurationForInternalSlack(
-  arg: MCPServerConfigurationType
+  arg: AgentActionConfigurationType
 ): arg is ServerSideMCPServerConfigurationType {
   return (
     isServerSideMCPServerConfiguration(arg) &&
@@ -168,7 +169,7 @@ export function isMCPConfigurationForInternalSlack(
 }
 
 export function isMCPConfigurationForInternalNotion(
-  arg: MCPServerConfigurationType
+  arg: AgentActionConfigurationType
 ): arg is ServerSideMCPServerConfigurationType {
   return (
     isServerSideMCPServerConfiguration(arg) &&

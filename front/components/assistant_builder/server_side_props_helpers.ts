@@ -63,6 +63,10 @@ export async function buildInitialActions({
   const builderActions: AssistantBuilderMCPConfiguration[] = [];
 
   for (const action of configuration.actions) {
+    assert(
+      action.type === "mcp_server_configuration",
+      "Legacy action type, non-MCP, are no longer supported."
+    );
     const mcpServerView = mcpServerViews.find(
       (mcpServerView) => mcpServerView.server.name === action.name
     );
