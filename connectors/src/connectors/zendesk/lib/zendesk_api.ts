@@ -22,6 +22,7 @@ import type { ModelId } from "@connectors/types";
 const ZENDESK_RATE_LIMIT_MAX_RETRIES = 5;
 const ZENDESK_RATE_LIMIT_TIMEOUT_SECONDS = 60;
 const ZENDESK_TICKET_PAGE_SIZE = 250;
+const ZENDESK_COMMENT_PAGE_SIZE = 100;
 
 function extractMetadataFromZendeskUrl(url: string): {
   subdomain: string;
@@ -465,7 +466,7 @@ export async function listZendeskTicketComments({
   ticketId: number;
 }): Promise<ZendeskFetchedTicketComment[]> {
   const comments = [];
-  let url: string = `https://${brandSubdomain}.zendesk.com/api/v2/tickets/${ticketId}/comments?page[size]=100`;
+  let url: string = `https://${brandSubdomain}.zendesk.com/api/v2/tickets/${ticketId}/comments?page[size]=${ZENDESK_COMMENT_PAGE_SIZE}`;
   let hasMore = true;
 
   while (hasMore) {
