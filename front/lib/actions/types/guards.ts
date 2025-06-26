@@ -23,7 +23,6 @@ import type { SearchLabelsConfigurationType } from "@app/lib/actions/search_labe
 import type { TablesQueryConfigurationType } from "@app/lib/actions/tables_query";
 import type {
   ActionConfigurationType,
-  AgentActionConfigurationType,
   UnsavedAgentActionConfigurationType,
 } from "@app/lib/actions/types/agent";
 import type {
@@ -135,13 +134,13 @@ export function isMCPServerConfiguration(
 }
 
 export function isServerSideMCPServerConfiguration(
-  arg: AgentActionConfigurationType | UnsavedAgentActionConfigurationType
+  arg: MCPServerConfigurationType | UnsavedAgentActionConfigurationType
 ): arg is ServerSideMCPServerConfigurationType {
   return isMCPServerConfiguration(arg) && "mcpServerViewId" in arg;
 }
 
 export function isMCPConfigurationWithDataSource(
-  arg: AgentActionConfigurationType
+  arg: MCPServerConfigurationType
 ): arg is ServerSideMCPServerConfigurationType {
   return (
     isServerSideMCPServerConfiguration(arg) &&
@@ -151,7 +150,7 @@ export function isMCPConfigurationWithDataSource(
 }
 
 export function isMCPConfigurationForInternalWebsearch(
-  arg: AgentActionConfigurationType
+  arg: MCPServerConfigurationType
 ): arg is ServerSideMCPServerConfigurationType {
   return (
     isServerSideMCPServerConfiguration(arg) &&
@@ -160,7 +159,7 @@ export function isMCPConfigurationForInternalWebsearch(
 }
 
 export function isMCPConfigurationForInternalSlack(
-  arg: AgentActionConfigurationType
+  arg: MCPServerConfigurationType
 ): arg is ServerSideMCPServerConfigurationType {
   return (
     isServerSideMCPServerConfiguration(arg) &&
@@ -169,7 +168,7 @@ export function isMCPConfigurationForInternalSlack(
 }
 
 export function isMCPConfigurationForInternalNotion(
-  arg: AgentActionConfigurationType
+  arg: MCPServerConfigurationType
 ): arg is ServerSideMCPServerConfigurationType {
   return (
     isServerSideMCPServerConfiguration(arg) &&
@@ -177,7 +176,7 @@ export function isMCPConfigurationForInternalNotion(
   );
 }
 export function isMCPConfigurationForDustAppRun(
-  arg: AgentActionConfigurationType
+  arg: MCPServerConfigurationType
 ): arg is ServerSideMCPServerConfigurationType {
   return (
     isServerSideMCPServerConfiguration(arg) &&
@@ -313,17 +312,6 @@ export function isConversationIncludeFileConfigurationActionType(
 export function throwIfInvalidAgentConfiguration(
   configuration: AgentConfigurationType | TemplateAgentConfigurationType
 ) {
-  configuration.actions.forEach((action) => {
-    if (isProcessConfiguration(action)) {
-      if (action.relativeTimeFrame === "none") {
-        /** Should never happen as not permitted for now. */
-        throw new Error(
-          "Invalid configuration: process must have a definite time frame"
-        );
-      }
-    }
-  });
-
   const templateConfiguration = configuration as TemplateAgentConfigurationType; // Creation
   const agentConfiguration = configuration as AgentConfigurationType; // Edition
 

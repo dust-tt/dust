@@ -25,7 +25,6 @@ export const AssistantBuilderContext =
   });
 
 export function AssistantBuilderProvider({
-  dustApps,
   dataSourceViews,
   spaces,
   mcpServerViews,

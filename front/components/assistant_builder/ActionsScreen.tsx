@@ -56,14 +56,17 @@ import type {
   AssistantBuilderSetActionType,
   AssistantBuilderState,
 } from "@app/components/assistant_builder/types";
-import { isDefaultActionName } from "@app/components/assistant_builder/types";
+import {
+  getDefaultMCPServerConfigurationWithId,
+  isDefaultActionName,
+} from "@app/components/assistant_builder/types";
 import { useBuilderActionInfo } from "@app/components/assistant_builder/useBuilderActionInfo";
 import { useTools } from "@app/components/assistant_builder/useTools";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import {
-  ACTION_SPECIFICATIONS,
   DATA_VISUALIZATION_SPECIFICATION,
+  MCP_SPECIFICATION,
 } from "@app/lib/actions/utils";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useMCPServerConnections } from "@app/lib/swr/mcp_servers";
@@ -118,10 +121,6 @@ function actionIcon(
       <Avatar icon={DATA_VISUALIZATION_SPECIFICATION.cardIcon} size="xs" />
     );
   }
-
-  return (
-    <Avatar icon={ACTION_SPECIFICATIONS[action.type].cardIcon} size="xs" />
-  );
 }
 
 function actionDisplayName(
@@ -136,7 +135,7 @@ function actionDisplayName(
     return asDisplayName(action.name);
   }
 
-  return `${ACTION_SPECIFICATIONS[action.type].label}${
+  return `${MCP_SPECIFICATION.label}${
     !isDefaultActionName(action) ? " - " + action.name : ""
   }`;
 }
@@ -202,20 +201,21 @@ export default function ActionsScreen({
       setEdited(true);
       setBuilderState((state) => ({
         ...state,
-        actions: state.actions.map((action) =>
-          action.name === actionName
-            ? {
-                ...action,
-                name: newActionName ?? action.name,
-                description: newActionDescription ?? action.description,
-                // This is quite unsatisfying, but using `as any` here and repeating every
-                // other key in the object instead of spreading is actually the safest we can do.
-                // There is no way (that I could find) to make typescript understand that
-                // type and configuration are compatible.
-                configuration: getNewActionConfig(action.configuration) as any,
-              }
-            : action
-        ),
+        actions: state.actions.map((action) => {
+          if (action.name === actionName) {
+            assert(
+              action.type !== "DATA_VISUALIZATION",
+              "Data visualization actions cannot be edited"
+            );
+            return {
+              ...action,
+              name: newActionName ?? action.name,
+              description: newActionDescription ?? action.description,
+              configuration: getNewActionConfig(action.configuration),
+            };
+          }
+          return action;
+        }),
       }));
     },
     [setBuilderState, setEdited]
@@ -247,7 +247,11 @@ export default function ActionsScreen({
       <NewActionModal
         isOpen={pendingAction.action !== null}
         builderState={builderState}
-        initialAction={pendingAction.action}
+        initialAction={
+          pendingAction.action && pendingAction.action.type === "MCP"
+            ? pendingAction.action
+            : null
+        }
         isEditing={!!pendingAction.previousActionName}
         spacesUsedInActions={spaceIdToActions}
         onSave={(newAction) => {
@@ -428,10 +432,10 @@ export default function ActionsScreen({
 type NewActionModalProps = {
   isOpen: boolean;
   builderState: AssistantBuilderState;
-  initialAction: AssistantBuilderMCPOrVizState | null;
+  initialAction: AssistantBuilderMCPConfigurationWithId | null;
   isEditing: boolean;
   spacesUsedInActions: SpaceIdToActions;
-  onSave: (newAction: AssistantBuilderMCPOrVizState) => void;
+  onSave: (newAction: AssistantBuilderMCPConfigurationWithId) => void;
   onClose: () => void;
   updateAction: (args: {
     actionName: string;
@@ -457,7 +461,7 @@ function NewActionModal({
   hasFeature,
 }: NewActionModalProps) {
   const [newActionConfig, setNewActionConfig] =
-    useState<AssistantBuilderMCPOrVizState | null>(null);
+    useState<AssistantBuilderMCPConfigurationWithId | null>(null);
 
   const [showInvalidActionError, setShowInvalidActionError] = useState<
     string | null
@@ -645,7 +649,7 @@ function ActionCard({
   const spec =
     action.type === "DATA_VISUALIZATION"
       ? DATA_VISUALIZATION_SPECIFICATION
-      : ACTION_SPECIFICATIONS[action.type];
+      : MCP_SPECIFICATION;
 
   if (!spec) {
     // Unreachable
@@ -863,7 +867,7 @@ function ActionEditor({
                 icon={
                   action.type === "DATA_VISUALIZATION"
                     ? DATA_VISUALIZATION_SPECIFICATION.cardIcon
-                    : ACTION_SPECIFICATIONS[action.type].cardIcon
+                    : MCP_SPECIFICATION.cardIcon
                 }
               />
               <h2 className="heading-lg line-clamp-1 text-foreground dark:text-foreground-night">

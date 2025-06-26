@@ -1,11 +1,10 @@
+import { AssistantBuilderMCPOrVizState } from "@app/components/assistant_builder/types";
 import React, { createContext, useContext, useMemo, useState } from "react";
 
-import type { AssistantBuilderActionState } from "@app/components/assistant_builder/types";
-
 interface AgentBuilderCapabilitiesContextType {
-  actions: AssistantBuilderActionState[];
+  actions: AssistantBuilderMCPOrVizState[];
   setActions: React.Dispatch<
-    React.SetStateAction<AssistantBuilderActionState[]>
+    React.SetStateAction<AssistantBuilderMCPOrVizState[]>
   >;
 }
 
@@ -20,7 +19,7 @@ interface AgentBuilderCapabilitiesProviderProps {
 export function AgentBuilderCapabilitiesProvider({
   children,
 }: AgentBuilderCapabilitiesProviderProps) {
-  const [actions, setActions] = useState<AssistantBuilderActionState[]>([]);
+  const [actions, setActions] = useState<AssistantBuilderMCPOrVizState[]>([]);
 
   const contextValue = useMemo(
     () => ({

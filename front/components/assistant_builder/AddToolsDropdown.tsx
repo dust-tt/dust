@@ -16,15 +16,15 @@ import { useState } from "react";
 
 import type {
   ActionSpecificationWithType,
-  AssistantBuilderMCPServerType,
   AssistantBuilderDataVisualizationType,
+  AssistantBuilderMCPServerType,
   AssistantBuilderSetActionType,
   AssistantBuilderState,
 } from "@app/components/assistant_builder/types";
 import {
   getDataVisualizationActionConfiguration,
-  getDefaultMCPServerConfigurationWithId,
   getDefaultMCPServerActionConfiguration,
+  getDefaultMCPServerConfigurationWithId,
 } from "@app/components/assistant_builder/types";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";

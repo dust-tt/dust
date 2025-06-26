@@ -1,3 +1,4 @@
+import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type {
   ActionConfigurationType,
   AgentActionConfigurationType,

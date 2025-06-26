@@ -30,7 +30,6 @@ import type {
   WorkspaceType,
 } from "@app/types";
 import {
-  assertNever,
   CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG,
   DEFAULT_MAX_STEPS_USE_PER_RUN,
 } from "@app/types";
@@ -223,9 +222,9 @@ export function getDefaultAssistantState() {
   } satisfies AssistantBuilderState;
 }
 
-const ASSISTANT_BUILDER_DUST_APP_RUN_ACTION_CONFIGURATION_DEFAULT_NAME =
+export const ASSISTANT_BUILDER_DUST_APP_RUN_ACTION_CONFIGURATION_DEFAULT_NAME =
   "run_dust_app";
-const ASSISTANT_BUILDER_DUST_APP_RUN_ACTION_CONFIGURATION_DEFAULT_DESCRIPTION =
+export const ASSISTANT_BUILDER_DUST_APP_RUN_ACTION_CONFIGURATION_DEFAULT_DESCRIPTION =
   "Run a Dust app.";
 
 export function getDataVisualizationConfiguration(): AssistantBuilderDataVisualizationConfiguration {

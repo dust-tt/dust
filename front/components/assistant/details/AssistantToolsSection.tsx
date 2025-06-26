@@ -15,7 +15,7 @@ import {
   getServerTypeAndIdFromSId,
 } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
-import type { AgentActionConfigurationType } from "@app/lib/actions/types/agent";
+import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import {
   isBrowseConfiguration,
   isDustAppRunConfiguration,
@@ -36,6 +36,7 @@ import {
   removeNulls,
   SUPPORTED_MODEL_CONFIGS,
 } from "@app/types";
+import { AgentActionConfigurationType } from "@app/lib/actions/types/agent";
 
 interface AssistantToolsSectionProps {
   agentConfiguration: AgentConfigurationType;
@@ -47,7 +48,7 @@ interface AssistantToolsSectionProps {
 // We use the `hidden_dust_search_` prefix to identify these additional searches.
 const isHiddenDustAction = (
   agentConfiguration: AgentConfigurationType,
-  action: AgentActionConfigurationType
+  action: MCPServerConfigurationType
 ) => {
   const isDustGlobalAgent = agentConfiguration.sId === GLOBAL_AGENTS_SID.DUST;
   return isDustGlobalAgent && action.name.startsWith("hidden_dust_search_");
@@ -81,18 +82,6 @@ export function AssistantToolsSection({
         m.providerId === agentConfiguration.model.providerId
     ),
   ];
-  const reasoningAction = agentConfiguration.actions.find(
-    isReasoningConfiguration
-  );
-  if (reasoningAction) {
-    models.push(
-      SUPPORTED_MODEL_CONFIGS.find(
-        (m) =>
-          m.modelId === reasoningAction.modelId &&
-          m.providerId === reasoningAction.providerId
-      )
-    );
-  }
 
   const filteredModels = removeNulls(models);
   return (

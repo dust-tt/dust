@@ -40,16 +40,17 @@ import { getDefaultMCPServerConfigurationWithId } from "@app/components/assistan
 import { ConfirmContext } from "@app/components/Confirm";
 import { internalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
-import { ACTION_SPECIFICATIONS } from "@app/lib/actions/utils";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useUser } from "@app/lib/swr/user";
 import type { FetchAssistantTemplateResponse } from "@app/pages/api/templates/[tId]";
 import type {
   AssistantBuilderRightPanelTabType,
+  TemplateActionPreset,
   WorkspaceType,
 } from "@app/types";
 import type { LightAgentConfigurationType } from "@app/types";
 import { assertNever, isAssistantBuilderRightPanelTab } from "@app/types";
+import { MCP_SPECIFICATION } from "@app/lib/actions/utils";
 
 interface AssistantBuilderRightPanelProps {
   screen: BuilderScreen;
@@ -338,10 +339,10 @@ const TemplateAddActionButton = ({
   action,
   addAction,
 }: {
-  action: TemplateActionType;
-  addAction: (action: TemplateActionType) => void;
+  action: TemplateActionPreset;
+  addAction: (action: TemplateActionPreset) => void;
 }) => {
-  const spec = ACTION_SPECIFICATIONS[action.type];
+  const spec = MCP_SPECIFICATION;
   if (!spec) {
     // Unreachable
     return null;

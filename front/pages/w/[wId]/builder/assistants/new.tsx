@@ -24,7 +24,6 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import { useAssistantTemplate } from "@app/lib/swr/assistants";
 import type {
   AgentConfigurationType,
-  AppType,
   DataSourceViewType,
   PlanType,
   SpaceType,
@@ -49,7 +48,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   plan: PlanType;
   spaces: SpaceType[];
   dataSourceViews: DataSourceViewType[];
-  dustApps: AppType[];
   mcpServerViews: MCPServerViewType[];
   actions: AssistantBuilderInitialState["actions"];
   agentConfiguration:
@@ -123,7 +121,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   const actions = configuration
     ? await buildInitialActions({
         dataSourceViews,
-        dustApps,
         configuration,
       })
     : [];
@@ -154,7 +151,6 @@ export default function CreateAssistant({
   baseUrl,
   spaces,
   dataSourceViews,
-  dustApps,
   mcpServerViews,
   flow,
   owner,
@@ -175,7 +171,6 @@ export default function CreateAssistant({
   return (
     <AssistantBuilderProvider
       spaces={spaces}
-      dustApps={dustApps}
       dataSourceViews={dataSourceViews}
       mcpServerViews={mcpServerViews}
     >

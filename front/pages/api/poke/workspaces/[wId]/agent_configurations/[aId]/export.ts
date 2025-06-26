@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import type { AgentActionConfigurationType } from "@app/lib/actions/types/agent";
+import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { Authenticator } from "@app/lib/auth";
@@ -10,6 +10,7 @@ import type {
   LightAgentConfigurationType,
   WithAPIErrorResponse,
 } from "@app/types";
+import assert from "assert";
 
 export type ExportAgentConfigurationResponseBody = {
   assistant: Omit<
@@ -26,7 +27,7 @@ export type ExportAgentConfigurationResponseBody = {
     | "requestedGroupIds"
   > & {
     // If empty, no actions are performed, otherwise the actions are performed.
-    actions: Omit<AgentActionConfigurationType, "id" | "sId">[];
+    actions: Omit<MCPServerConfigurationType, "id" | "sId">[];
   };
 };
 
@@ -99,6 +100,10 @@ async function handler(
           scope: agentConfiguration.scope,
           model: agentConfiguration.model,
           actions: agentConfiguration.actions.map((action) => {
+            assert(
+              action.type === "mcp_server_configuration",
+              "Legacy action type, non-MCP, are no longer supported."
+            );
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
             const { id, sId, ...actionWithoutIds } = action;
             return {

@@ -24,6 +24,7 @@ import type { ReasoningModelConfiguration } from "@app/lib/actions/reasoning";
 import type { TableDataSourceConfiguration } from "@app/lib/actions/tables_query";
 import type {
   AgentActionConfigurationType,
+  UnsavedAgentActionConfigurationType,
   UnsavedMCPServerConfigurationType,
 } from "@app/lib/actions/types/agent";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
@@ -1128,7 +1129,7 @@ export async function restoreAgentConfiguration(
  */
 export async function createAgentActionConfiguration(
   auth: Authenticator,
-  action: UnsavedMCPServerConfigurationType,
+  action: UnsavedAgentActionConfigurationType,
   agentConfiguration: LightAgentConfigurationType
 ): Promise<Result<AgentActionConfigurationType, Error>> {
   const owner = auth.getNonNullableWorkspace();

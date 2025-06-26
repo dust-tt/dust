@@ -1,19 +1,6 @@
-import {
-  BarChartIcon,
-  BoltIcon,
-  ChatBubbleThoughtIcon,
-  CommandLineIcon,
-  MagnifyingGlassIcon,
-  PlanetIcon,
-  ScanIcon,
-  TableIcon,
-  TimeIcon,
-} from "@dust-tt/sparkle";
+import { BarChartIcon, BoltIcon } from "@dust-tt/sparkle";
 
-import type {
-  ActionSpecification,
-  AssistantBuilderMCPConfiguration,
-} from "@app/components/assistant_builder/types";
+import type { ActionSpecification } from "@app/components/assistant_builder/types";
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import type { ActionConfigurationType } from "@app/lib/actions/types/agent";
@@ -37,67 +24,12 @@ export const WEBSEARCH_ACTION_NUM_RESULTS = 16;
 export const SLACK_SEARCH_ACTION_NUM_RESULTS = 24;
 export const NOTION_SEARCH_ACTION_NUM_RESULTS = 16;
 
-export const ACTION_SPECIFICATIONS: Record<
-  AssistantBuilderMCPConfiguration["type"],
-  ActionSpecification
-> = {
-  RETRIEVAL_EXHAUSTIVE: {
-    label: "Include data",
-    description: "Include data exhaustively",
-    cardIcon: TimeIcon,
-    dropDownIcon: TimeIcon,
-    flag: null,
-  },
-  RETRIEVAL_SEARCH: {
-    label: "Search",
-    description: "Search through selected Data sources",
-    cardIcon: MagnifyingGlassIcon,
-    dropDownIcon: MagnifyingGlassIcon,
-    flag: null,
-  },
-  PROCESS: {
-    label: "Extract data",
-    description: "Structured extraction",
-    cardIcon: ScanIcon,
-    dropDownIcon: ScanIcon,
-    flag: null,
-  },
-  DUST_APP_RUN: {
-    label: "Run a Dust App",
-    description: "Run a Dust app, then reply",
-    cardIcon: CommandLineIcon,
-    dropDownIcon: CommandLineIcon,
-    flag: null,
-  },
-  TABLES_QUERY: {
-    label: "Query Tables",
-    description: "Tables, Spreadsheets, Notion DBs (quantitative)",
-    cardIcon: TableIcon,
-    dropDownIcon: TableIcon,
-    flag: null,
-  },
-  WEB_NAVIGATION: {
-    label: "Web navigation",
-    description:
-      "Navigate the web (browse any provided links, make a google search, etc.)",
-    cardIcon: PlanetIcon,
-    dropDownIcon: PlanetIcon,
-    flag: null,
-  },
-  REASONING: {
-    label: "Reasoning",
-    description: "Complex step by step reasoning",
-    cardIcon: ChatBubbleThoughtIcon,
-    dropDownIcon: ChatBubbleThoughtIcon,
-    flag: null,
-  },
-  MCP: {
-    label: "More...",
-    description: "Add additional sets of tools",
-    cardIcon: BoltIcon,
-    dropDownIcon: BoltIcon,
-    flag: null,
-  },
+export const MCP_SPECIFICATION: ActionSpecification = {
+  label: "More...",
+  description: "Add additional sets of tools",
+  cardIcon: BoltIcon,
+  dropDownIcon: BoltIcon,
+  flag: null,
 };
 
 export const DATA_VISUALIZATION_SPECIFICATION: ActionSpecification = {
