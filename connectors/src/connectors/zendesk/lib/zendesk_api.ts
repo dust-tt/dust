@@ -21,6 +21,7 @@ import type { ModelId } from "@connectors/types";
 
 const ZENDESK_RATE_LIMIT_MAX_RETRIES = 5;
 const ZENDESK_RATE_LIMIT_TIMEOUT_SECONDS = 60;
+const ZENDESK_TICKET_PAGE_SIZE = 250;
 
 function extractMetadataFromZendeskUrl(url: string): {
   subdomain: string;
@@ -407,7 +408,8 @@ export async function listZendeskTickets(
     const response = await fetchFromZendeskWithRetries({
       url:
         url ?? // using the URL if we got one, reconstructing it otherwise
-        `https://${brandSubdomain}.zendesk.com/api/v2/incremental/tickets/cursor?per_page=250&start_time=${startTime}`,
+        `https://${brandSubdomain}.zendesk.com/api/v2/incremental/tickets/cursor?` +
+          `per_page=${ZENDESK_TICKET_PAGE_SIZE}&start_time=${startTime}`,
       accessToken,
     });
     return {
