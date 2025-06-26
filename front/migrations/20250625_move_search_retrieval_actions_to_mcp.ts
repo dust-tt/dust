@@ -168,11 +168,11 @@ function createOutputItem(
   resource: SearchQueryResourceType | SearchResultResourceType,
   mcpActionId: ModelId,
   retrievalAction: AgentRetrievalAction
-) {
+): CreationAttributes<AgentMCPActionOutputItem> {
   return {
     agentMCPActionId: mcpActionId,
     content: {
-      type: "resource" as const,
+      type: "resource",
       resource,
     },
     createdAt: retrievalAction.createdAt,
