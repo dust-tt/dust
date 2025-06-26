@@ -241,20 +241,26 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId, agentSearch, message }) 
     if (!message || !selectedAgent || nonInteractiveComplete) {
       return;
     }
+    
+    // Wait for authentication to load
+    if (isMeLoading) {
+      return;
+    }
+    
+    // Check for authentication errors
+    if (!me || meError) {
+      console.error(JSON.stringify({ 
+        error: "Authentication error",
+        details: meError || "Not authenticated"
+      }));
+      process.exit(1);
+    }
 
     // Automatically send the message in non-interactive mode
     async function sendNonInteractiveMessage() {
       if (!message) {
         // This should never happen due to the outer check, but TypeScript needs this
         return;
-      }
-      
-      if (!me || meError || isMeLoading) {
-        console.error(JSON.stringify({ 
-          error: "Authentication error",
-          details: meError || "Not authenticated"
-        }));
-        process.exit(1);
       }
 
       setIsProcessingQuestion(true);
