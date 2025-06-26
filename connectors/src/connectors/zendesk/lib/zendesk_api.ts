@@ -520,7 +520,7 @@ export function isUserAdmin(user: ZendeskFetchedUser): boolean {
 }
 
 /**
- * Fetches a multiple users at once from the Zendesk API.
+ * Fetches multiple users at once from the Zendesk API.
  * May run multiple queries, more precisely we need userCount // 100 + 1 API calls.
  */
 export async function listZendeskUsers({
