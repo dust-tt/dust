@@ -62,6 +62,7 @@ export async function getWorkOSSession(
         | RefreshSessionResponse = await session.authenticate();
 
       if (!r.authenticated) {
+        logger.info({ refreshResponse: r }, "Unauthenticated session");
         // If authentication fails, try to refresh the session
         r = await session.refresh({
           cookiePassword: config.getWorkOSCookiePassword(),
@@ -87,6 +88,7 @@ export async function getWorkOSSession(
             `sessionType=workos; Path=/; Secure;SameSite=Lax; Max-Age=86400`,
           ]);
         } else {
+          logger.info({ refreshResponse: r }, "Can't refresh session");
           return undefined;
         }
       }
