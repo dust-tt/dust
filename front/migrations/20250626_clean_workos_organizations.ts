@@ -72,6 +72,7 @@ WHERE
           const memberships =
             await workOS.userManagement.listOrganizationMemberships({
               organizationId: domain.workOSOrganizationId,
+              limit: 100,
             });
 
           domainRecord.memberships = memberships.data.length;
@@ -92,6 +93,7 @@ WHERE
           const memberships =
             await workOS.userManagement.listOrganizationMemberships({
               organizationId: domain.workOSOrganizationId,
+              limit: 100,
             });
           domainRecord.memberships = memberships.data.length;
         }
