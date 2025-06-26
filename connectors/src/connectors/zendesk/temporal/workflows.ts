@@ -26,12 +26,10 @@ const {
   startToCloseTimeout: "15 minutes",
 });
 
-const {
-  setZendeskTimestampCursorActivity,
-  getZendeskTimestampCursorActivity,
-} = proxyActivities<typeof incremental_activities>({
-  startToCloseTimeout: "5 minutes",
-});
+const { setZendeskTimestampCursorActivity, getZendeskTimestampCursorActivity } =
+  proxyActivities<typeof incremental_activities>({
+    startToCloseTimeout: "5 minutes",
+  });
 
 const {
   syncZendeskTicketUpdateBatchActivity,
