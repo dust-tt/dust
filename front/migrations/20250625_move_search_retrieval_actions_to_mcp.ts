@@ -29,7 +29,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import type { LightWorkspaceType, ModelId, TimeFrame } from "@app/types";
-import { stripNullBytes } from "@app/types";
+import { isGlobalAgentId, stripNullBytes } from "@app/types";
 
 const WORKSPACE_CONCURRENCY = 50;
 const BATCH_SIZE = 200;
@@ -184,7 +184,7 @@ function createOutputItem(
 async function migrateSingleRetrievalAction(
   auth: Authenticator,
   retrievalAction: AgentRetrievalAction,
-  agentConfiguration: AgentConfiguration,
+  agentConfiguration: AgentConfiguration | null,
   logger: Logger,
   {
     execute,
@@ -352,12 +352,16 @@ async function migrateWorkspaceRetrievalActions(
         const agentConfiguration = agentConfigurationsMap.get(
           `${agentMessage.agentConfigurationId}-${agentMessage.agentConfigurationVersion}`
         );
-        assert(agentConfiguration, "Agent configuration must exist");
+        assert(
+          agentConfiguration ||
+            isGlobalAgentId(agentMessage.agentConfigurationId),
+          "Agent configuration must exist"
+        );
 
         await migrateSingleRetrievalAction(
           auth,
           retrievalAction,
-          agentConfiguration,
+          agentConfiguration ?? null,
           logger,
           {
             execute,
