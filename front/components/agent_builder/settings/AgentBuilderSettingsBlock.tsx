@@ -32,44 +32,35 @@ export function AgentBuilderSettingsBlock() {
 
   const handleGenerateNameSuggestions = async () => {
     setIsGenerating("name");
-    try {
-      const result = await getNameSuggestions({
-        owner,
-        instructions,
-        description,
-      });
+    const result = await getNameSuggestions({
+      owner,
+      instructions,
+      description,
+    });
 
-      if (result.isErr()) {
-        console.error("Failed to generate name suggestions:", result.error);
-        sendNotification({
-          type: "error",
-          title: "Failed to generate name suggestions",
-          description: result.error.message,
-        });
-        return;
-      }
-
-      if (result.value.status === "ok" && result.value.suggestions) {
-        setNameSuggestions(result.value.suggestions);
-        if (result.value.suggestions.length === 0) {
-          sendNotification({
-            type: "info",
-            title: "No suggestions available",
-            description:
-              "Try adding more details to your instructions to get better suggestions.",
-          });
-        }
-      }
-    } catch (error) {
-      console.error("Failed to generate name suggestions:", error);
+    if (result.isErr()) {
+      console.error("Failed to generate name suggestions:", result.error);
       sendNotification({
         type: "error",
         title: "Failed to generate name suggestions",
-        description: "Failed to generate name suggestions. Please try again.",
+        description: result.error.message,
       });
-    } finally {
       setIsGenerating(null);
+      return;
     }
+
+    if (result.value.status === "ok" && result.value.suggestions) {
+      setNameSuggestions(result.value.suggestions);
+      if (result.value.suggestions.length === 0) {
+        sendNotification({
+          type: "info",
+          title: "No suggestions available",
+          description:
+            "Try adding more details to your instructions to get better suggestions.",
+        });
+      }
+    }
+    setIsGenerating(null);
   };
 
   const handleGenerateDescription = async () => {
@@ -87,6 +78,7 @@ export function AgentBuilderSettingsBlock() {
         title: "Failed to generate description",
         description: result.error.message,
       });
+      setIsGenerating(null);
       return;
     }
 
@@ -97,6 +89,7 @@ export function AgentBuilderSettingsBlock() {
     ) {
       setDescription(result.value.suggestions[0]);
     }
+    setIsGenerating(null);
   };
 
   return (
