@@ -7,7 +7,9 @@ import {
 import dynamic from "next/dynamic";
 import React from "react";
 
-import type { AgentBuilderGenerationSettings } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { useController } from "react-hook-form";
+
+import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { isInvalidJson } from "@app/components/agent_builder/utils";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 
@@ -35,23 +37,14 @@ const RESPONSE_FORMAT_PLACEHOLDER =
   "  }\n" +
   "}";
 
-interface ResponseFormatSubmenuProps {
-  generationSettings: AgentBuilderGenerationSettings;
-  setGenerationSettings: (generationSettings: AgentBuilderGenerationSettings) => void;
-}
-
-export function ResponseFormatSubmenu({
-  generationSettings,
-  setGenerationSettings,
-}: ResponseFormatSubmenuProps) {
+export function ResponseFormatSubmenu() {
   const { isDark } = useTheme();
-
-  const handleResponseFormatChange = (value: string) => {
-    setGenerationSettings({
-      ...generationSettings,
-      responseFormat: value,
-    });
-  };
+  const { field } = useController<
+    AgentBuilderFormData,
+    "generationSettings.responseFormat"
+  >({
+    name: "generationSettings.responseFormat",
+  });
 
   return (
     <DropdownMenuSub>
@@ -59,14 +52,14 @@ export function ResponseFormatSubmenu({
       <DropdownMenuSubContent className="w-96">
         <CodeEditor
           data-color-mode={isDark ? "dark" : "light"}
-          value={generationSettings?.responseFormat ?? ""}
+          value={field.value ?? ""}
           placeholder={RESPONSE_FORMAT_PLACEHOLDER}
           name="responseFormat"
-          onChange={(e) => handleResponseFormatChange(e.target.value)}
+          onChange={(e) => field.onChange(e.target.value)}
           minHeight={380}
           className={cn(
             "rounded-lg",
-            isInvalidJson(generationSettings?.responseFormat)
+            isInvalidJson(field.value)
               ? "border-2 border-red-500 bg-slate-100 dark:bg-slate-100-night"
               : "bg-slate-100 dark:bg-slate-100-night"
           )}

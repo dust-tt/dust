@@ -18,17 +18,18 @@ import { isSupportingResponseFormat } from "@app/types";
 export function AdvancedSettings() {
   const { owner } = useAgentBuilderContext();
   const { models } = useModels({ owner });
-  const { field } = useController<AgentBuilderFormData, "generationSettings">({
-    name: "generationSettings",
+  const { field: modelIdField } = useController<
+    AgentBuilderFormData,
+    "generationSettings.modelSettings.modelId"
+  >({
+    name: "generationSettings.modelSettings.modelId",
   });
 
   if (!models) {
     return null;
   }
 
-  const supportsResponseFormat = isSupportingResponseFormat(
-    field.value.modelSettings.modelId
-  );
+  const supportsResponseFormat = isSupportingResponseFormat(modelIdField.value);
 
   return (
     <DropdownMenu>
@@ -41,23 +42,11 @@ export function AdvancedSettings() {
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <ModelSelectionSubmenu
-          generationSettings={field.value}
-          setGenerationSettings={field.onChange}
-          models={models}
-        />
+        <ModelSelectionSubmenu models={models} />
 
-        <CreativityLevelSubmenu
-          generationSettings={field.value}
-          setGenerationSettings={field.onChange}
-        />
+        <CreativityLevelSubmenu />
 
-        {supportsResponseFormat && (
-          <ResponseFormatSubmenu
-            generationSettings={field.value}
-            setGenerationSettings={field.onChange}
-          />
-        )}
+        {supportsResponseFormat && <ResponseFormatSubmenu />}
       </DropdownMenuContent>
     </DropdownMenu>
   );

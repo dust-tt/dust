@@ -8,7 +8,9 @@ import {
 } from "@dust-tt/sparkle";
 import React from "react";
 
-import type { AgentBuilderGenerationSettings } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { useController } from "react-hook-form";
+
+import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import {
   categorizeModels,
   getModelKey,
@@ -18,10 +20,6 @@ import { useTheme } from "@app/components/sparkle/ThemeContext";
 import type { ModelConfigurationType } from "@app/types";
 
 interface ModelSelectionSubmenuProps {
-  generationSettings: AgentBuilderGenerationSettings;
-  setGenerationSettings: (
-    generationSettings: AgentBuilderGenerationSettings
-  ) => void;
   models: ModelConfigurationType[];
 }
 
@@ -47,25 +45,24 @@ function ModelRadioItem({
   );
 }
 
-export function ModelSelectionSubmenu({
-  generationSettings,
-  setGenerationSettings,
-  models,
-}: ModelSelectionSubmenuProps) {
+export function ModelSelectionSubmenu({ models }: ModelSelectionSubmenuProps) {
   const { isDark } = useTheme();
+  const { field } = useController<
+    AgentBuilderFormData,
+    "generationSettings.modelSettings"
+  >({
+    name: "generationSettings.modelSettings",
+  });
   const { bestPerformingModelConfigs, otherModelConfigs } =
     categorizeModels(models);
 
-  const currentModelKey = `${generationSettings.modelSettings.modelId}${generationSettings.modelSettings.reasoningEffort ? `-${generationSettings.modelSettings.reasoningEffort}` : ""}`;
+  const currentModelKey = `${field.value.modelId}${field.value.reasoningEffort ? `-${field.value.reasoningEffort}` : ""}`;
 
   const handleModelSelection = (modelConfig: ModelConfigurationType) => {
-    setGenerationSettings({
-      ...generationSettings,
-      modelSettings: {
-        modelId: modelConfig.modelId,
-        providerId: modelConfig.providerId,
-        reasoningEffort: modelConfig.reasoningEffort,
-      },
+    field.onChange({
+      modelId: modelConfig.modelId,
+      providerId: modelConfig.providerId,
+      reasoningEffort: modelConfig.reasoningEffort,
     });
   };
 
