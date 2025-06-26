@@ -1115,20 +1115,8 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId, agentSearch, message }) 
 
   // In non-interactive mode, show minimal UI
   if (message) {
-    if (agentSearch && agentsIsLoading) {
-      return <Text>Searching for agent...</Text>;
-    }
-    if (error || agentsError) {
-      // Error already logged in useEffect
-      return null;
-    }
-    if (!selectedAgent) {
-      return <Text>Waiting for agent selection...</Text>;
-    }
-    if (isProcessingQuestion) {
-      return <Text>Processing message...</Text>;
-    }
-    // Non-interactive mode complete or processing
+    // Don't show any UI in non-interactive mode
+    // All output is handled via console.log/console.error in the useEffect
     return null;
   }
 
