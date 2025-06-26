@@ -140,6 +140,9 @@ const TemplateActionTypePreset = t.type({
   description: NonEmptyString,
   help: NonEmptyString,
 });
+
+export type TemplateActionPreset = t.TypeOf<typeof TemplateActionTypePreset>;
+
 const TemplateActionsPreset = t.array(TemplateActionTypePreset);
 
 // VISIBILITY

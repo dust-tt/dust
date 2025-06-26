@@ -1,4 +1,4 @@
-import type { AssistantBuilderActionConfiguration } from "@app/components/assistant_builder/types";
+import type { AssistantBuilderMCPConfiguration } from "@app/components/assistant_builder/types";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
   getInternalMCPServerNameAndWorkspaceId,
@@ -99,14 +99,14 @@ export function isRemoteMCPServerType(
 
 export function getMcpServerViewDisplayName(
   view: MCPServerViewType,
-  action?: AssistantBuilderActionConfiguration
+  action?: AssistantBuilderMCPConfiguration
 ) {
   return getMcpServerDisplayName(view.server, action);
 }
 
 export function getMcpServerDisplayName(
   server: MCPServerType,
-  action?: AssistantBuilderActionConfiguration
+  action?: AssistantBuilderMCPConfiguration
 ) {
   // Unreleased internal servers are displayed with a suffix in the UI.
   const res = getInternalMCPServerNameAndWorkspaceId(server.sId);

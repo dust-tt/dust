@@ -12,14 +12,14 @@ import React from "react";
 import { AddKnowledgeDropdown } from "@app/components/agent_builder/capabilities/AddKnowledgeDropdown";
 import { AddToolsDropdown } from "@app/components/agent_builder/capabilities/AddToolsDropdown";
 import { useAgentBuilderCapabilitiesContext } from "@app/components/agent_builder/capabilities/AgentBuilderCapabilitiesContext";
-import type { AssistantBuilderActionState } from "@app/components/assistant_builder/types";
+import type { AssistantBuilderMCPOrVizState } from "@app/components/assistant_builder/types";
 import { DATA_VISUALIZATION_SPECIFICATION } from "@app/lib/actions/utils";
 
 function ActionCard({
   action,
   onRemove,
 }: {
-  action: AssistantBuilderActionState;
+  action: AssistantBuilderMCPOrVizState;
   onRemove: () => void;
 }) {
   const spec =
@@ -62,7 +62,7 @@ function ActionCard({
 export function AgentBuilderCapabilitiesBlock() {
   const { actions, setActions } = useAgentBuilderCapabilitiesContext();
 
-  function removeAction(actionToRemove: AssistantBuilderActionState) {
+  function removeAction(actionToRemove: AssistantBuilderMCPOrVizState) {
     setActions((prevActions) =>
       prevActions.filter((action) => action.id !== actionToRemove.id)
     );

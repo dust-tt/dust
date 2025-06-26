@@ -23,7 +23,6 @@ import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useAssistantTemplate } from "@app/lib/swr/assistants";
 import type {
   AgentConfigurationType,
-  AppType,
   DataSourceViewType,
   PlanType,
   SpaceType,
@@ -48,7 +47,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   plan: PlanType;
   spaces: SpaceType[];
   dataSourceViews: DataSourceViewType[];
-  dustApps: AppType[];
   mcpServerViews: MCPServerViewType[];
   actions: AssistantBuilderInitialState["actions"];
   agentConfiguration:
@@ -126,7 +124,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   const actions = configuration
     ? await buildInitialActions({
         dataSourceViews,
-        dustApps,
         configuration,
       })
     : [];
@@ -155,7 +152,6 @@ export default function CreateAgent({
   agentConfiguration,
   spaces,
   dataSourceViews,
-  dustApps,
   mcpServerViews,
   owner,
   templateId,
@@ -173,7 +169,6 @@ export default function CreateAgent({
   return (
     <AgentBuilderProvider
       spaces={spaces}
-      dustApps={dustApps}
       dataSourceViews={dataSourceViews}
       mcpServerViews={mcpServerViews}
       owner={owner}

@@ -53,13 +53,12 @@ async function handler(
       });
     }
 
-    const { dataSourceViews, dustApps, mcpServerViews } =
+    const { dataSourceViews, mcpServerViews } =
       await getAccessibleSourcesAndApps(auth);
     const mcpServerViewsJSON = mcpServerViews.map((v) => v.toJSON());
 
     const actions = await buildInitialActions({
       dataSourceViews,
-      dustApps,
       configuration: agentConfiguration,
       mcpServerViews: mcpServerViewsJSON,
     });

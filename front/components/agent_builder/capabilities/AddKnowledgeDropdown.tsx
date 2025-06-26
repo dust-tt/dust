@@ -1,5 +1,4 @@
 import {
-  Avatar,
   BookOpenIcon,
   Button,
   DropdownMenu,
@@ -9,15 +8,7 @@ import {
 } from "@dust-tt/sparkle";
 
 import { getAvatar } from "@app/lib/actions/mcp_icons";
-import { ACTION_SPECIFICATIONS } from "@app/lib/actions/utils";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-
-const DATA_SOURCES_ACTION_CATEGORIES = [
-  "RETRIEVAL_SEARCH",
-  "RETRIEVAL_EXHAUSTIVE",
-  "PROCESS",
-  "TABLES_QUERY",
-] as const;
 
 interface AddKnowledgeDropdownProps {
   mcpServerViewsWithKnowledge?: (MCPServerViewType & { label: string })[];
@@ -32,19 +23,6 @@ export function AddKnowledgeDropdown({
         <Button label="Add knowledge" size="sm" icon={BookOpenIcon} isSelect />
       </DropdownMenuTrigger>
       <DropdownMenuContent>
-        {DATA_SOURCES_ACTION_CATEGORIES.map((key) => {
-          const spec = ACTION_SPECIFICATIONS[key];
-
-          return (
-            <DropdownMenuItem
-              truncateText
-              key={key}
-              icon={<Avatar icon={spec.dropDownIcon} size="sm" />}
-              label={spec.label}
-              description={spec.description}
-            />
-          );
-        })}
         {mcpServerViewsWithKnowledge.map((view) => (
           <DropdownMenuItem
             truncateText

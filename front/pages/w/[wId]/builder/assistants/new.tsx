@@ -44,12 +44,12 @@ function getDuplicateAndTemplateIdFromQuery(query: ParsedUrlQuery) {
 }
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
+  dustApps: AppType[];
   owner: WorkspaceType;
   subscription: SubscriptionType;
   plan: PlanType;
   spaces: SpaceType[];
   dataSourceViews: DataSourceViewType[];
-  dustApps: AppType[];
   mcpServerViews: MCPServerViewType[];
   actions: AssistantBuilderInitialState["actions"];
   agentConfiguration:
@@ -123,7 +123,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   const actions = configuration
     ? await buildInitialActions({
         dataSourceViews,
-        dustApps,
         configuration,
       })
     : [];
@@ -149,12 +148,12 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 });
 
 export default function CreateAssistant({
+  dustApps,
   actions,
   agentConfiguration,
   baseUrl,
   spaces,
   dataSourceViews,
-  dustApps,
   mcpServerViews,
   flow,
   owner,
@@ -174,8 +173,8 @@ export default function CreateAssistant({
 
   return (
     <AssistantBuilderProvider
-      spaces={spaces}
       dustApps={dustApps}
+      spaces={spaces}
       dataSourceViews={dataSourceViews}
       mcpServerViews={mcpServerViews}
     >
