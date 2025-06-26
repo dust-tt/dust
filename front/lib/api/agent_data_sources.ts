@@ -144,10 +144,10 @@ export async function getDataSourceViewsUsageByCategory({
           Sequelize.fn(
             "array_agg",
             Sequelize.col(
-              "agent_retrieval_configuration->agent_configuration.id"
+              "agent_retrieval_configuration->agent_configuration.sId"
             )
           ),
-          "ids",
+          "sIds",
         ],
       ],
       include: [
@@ -197,9 +197,11 @@ export async function getDataSourceViewsUsageByCategory({
         [
           Sequelize.fn(
             "array_agg",
-            Sequelize.col("agent_process_configuration->agent_configuration.id")
+            Sequelize.col(
+              "agent_process_configuration->agent_configuration.sId"
+            )
           ),
-          "ids",
+          "sIds",
         ],
       ],
       include: [
@@ -250,10 +252,10 @@ export async function getDataSourceViewsUsageByCategory({
           Sequelize.fn(
             "array_agg",
             Sequelize.col(
-              "agent_mcp_server_configuration->agent_configuration.id"
+              "agent_mcp_server_configuration->agent_configuration.sId"
             )
           ),
-          "ids",
+          "sIds",
         ],
       ],
       include: [
@@ -304,10 +306,10 @@ export async function getDataSourceViewsUsageByCategory({
           Sequelize.fn(
             "array_agg",
             Sequelize.col(
-              "agent_tables_query_configuration->agent_configuration.id"
+              "agent_tables_query_configuration->agent_configuration.sId"
             )
           ),
-          "ids",
+          "sIds",
         ],
       ],
       include: [
@@ -351,7 +353,7 @@ export async function getDataSourceViewsUsageByCategory({
   ])) as unknown as {
     dataSourceViewId: ModelId;
     names: string[];
-    ids: number[];
+    sIds: string[];
   }[][];
 
   return res.flat().reduce<DataSourcesUsageByAgent>((acc, dsViewConfig) => {
@@ -370,7 +372,9 @@ export async function getDataSourceViewsUsageByCategory({
       .filter((t) => t && t.length > 0);
     usage.agentNames = uniq(sortBy(usage.agentNames));
     usage.agentConfigurationIds = [
-      ...new Set(usage.agentConfigurationIds.filter((id) => id > 0)),
+      ...new Set(
+        usage.agentConfigurationIds.filter((sId) => sId && sId.length > 0)
+      ),
     ];
 
     usage.count = usage.agentNames.length;
@@ -435,10 +439,10 @@ export async function getDataSourcesUsageByCategory({
           Sequelize.fn(
             "array_agg",
             Sequelize.col(
-              "agent_retrieval_configuration->agent_configuration.id"
+              "agent_retrieval_configuration->agent_configuration.sId"
             )
           ),
-          "ids",
+          "sIds",
         ],
       ],
       include: [
@@ -491,9 +495,11 @@ export async function getDataSourcesUsageByCategory({
         [
           Sequelize.fn(
             "array_agg",
-            Sequelize.col("agent_process_configuration->agent_configuration.id")
+            Sequelize.col(
+              "agent_process_configuration->agent_configuration.sId"
+            )
           ),
-          "ids",
+          "sIds",
         ],
       ],
       include: [
@@ -547,10 +553,10 @@ export async function getDataSourcesUsageByCategory({
           Sequelize.fn(
             "array_agg",
             Sequelize.col(
-              "agent_mcp_server_configuration->agent_configuration.id"
+              "agent_mcp_server_configuration->agent_configuration.sId"
             )
           ),
-          "ids",
+          "sIds",
         ],
       ],
       include: [
@@ -604,10 +610,10 @@ export async function getDataSourcesUsageByCategory({
           Sequelize.fn(
             "array_agg",
             Sequelize.col(
-              "agent_tables_query_configuration->agent_configuration.id"
+              "agent_tables_query_configuration->agent_configuration.sId"
             )
           ),
-          "ids",
+          "sIds",
         ],
       ],
       include: [
@@ -643,7 +649,7 @@ export async function getDataSourcesUsageByCategory({
   ])) as unknown as {
     dataSourceId: ModelId;
     names: string[];
-    ids: number[];
+    sIds: string[];
   }[][];
 
   return res.flat().reduce<DataSourcesUsageByAgent>((acc, dsConfig) => {
@@ -661,7 +667,9 @@ export async function getDataSourcesUsageByCategory({
       .filter((t) => t && t.length > 0);
     usage.agentNames = uniq(sortBy(usage.agentNames));
     usage.agentConfigurationIds = [
-      ...new Set(usage.agentConfigurationIds.filter((id) => id > 0)),
+      ...new Set(
+        usage.agentConfigurationIds.filter((sId) => sId && sId.length > 0)
+      ),
     ];
 
     usage.count = usage.agentNames.length;
@@ -708,10 +716,10 @@ export async function getDataSourceUsage({
           Sequelize.fn(
             "array_agg",
             Sequelize.col(
-              "agent_retrieval_configuration->agent_configuration.id"
+              "agent_retrieval_configuration->agent_configuration.sId"
             )
           ),
-          "ids",
+          "sIds",
         ],
       ],
       where: {
@@ -754,9 +762,11 @@ export async function getDataSourceUsage({
         [
           Sequelize.fn(
             "array_agg",
-            Sequelize.col("agent_process_configuration->agent_configuration.id")
+            Sequelize.col(
+              "agent_process_configuration->agent_configuration.sId"
+            )
           ),
-          "ids",
+          "sIds",
         ],
       ],
       where: {
@@ -800,10 +810,10 @@ export async function getDataSourceUsage({
           Sequelize.fn(
             "array_agg",
             Sequelize.col(
-              "agent_mcp_server_configuration->agent_configuration.id"
+              "agent_mcp_server_configuration->agent_configuration.sId"
             )
           ),
-          "ids",
+          "sIds",
         ],
       ],
       where: {
@@ -847,10 +857,10 @@ export async function getDataSourceUsage({
           Sequelize.fn(
             "array_agg",
             Sequelize.col(
-              "agent_tables_query_configuration->agent_configuration.id"
+              "agent_tables_query_configuration->agent_configuration.sId"
             )
           ),
-          "ids",
+          "sIds",
         ],
       ],
       where: {
@@ -878,7 +888,7 @@ export async function getDataSourceUsage({
         },
       ],
     }),
-  ])) as unknown as { names: string[]; ids: number[] }[] | null;
+  ])) as unknown as { names: string[]; sIds: string[] }[] | null;
 
   if (!res) {
     return new Ok({ count: 0, agentNames: [], agentConfigurationIds: [] });
@@ -891,7 +901,9 @@ export async function getDataSourceUsage({
       )
     );
     const agentConfigurationIds = [
-      ...new Set(res.flatMap((r) => r.ids).filter((id) => id > 0)),
+      ...new Set(
+        res.flatMap((r) => r.sIds).filter((sId) => sId && sId.length > 0)
+      ),
     ];
     return new Ok({
       count: agentNames.length,
@@ -938,10 +950,10 @@ export async function getDataSourceViewUsage({
           Sequelize.fn(
             "array_agg",
             Sequelize.col(
-              "agent_retrieval_configuration->agent_configuration.id"
+              "agent_retrieval_configuration->agent_configuration.sId"
             )
           ),
-          "ids",
+          "sIds",
         ],
       ],
       where: {
@@ -984,9 +996,11 @@ export async function getDataSourceViewUsage({
         [
           Sequelize.fn(
             "array_agg",
-            Sequelize.col("agent_process_configuration->agent_configuration.id")
+            Sequelize.col(
+              "agent_process_configuration->agent_configuration.sId"
+            )
           ),
-          "ids",
+          "sIds",
         ],
       ],
       where: {
@@ -1030,10 +1044,10 @@ export async function getDataSourceViewUsage({
           Sequelize.fn(
             "array_agg",
             Sequelize.col(
-              "agent_mcp_server_configuration->agent_configuration.id"
+              "agent_mcp_server_configuration->agent_configuration.sId"
             )
           ),
-          "ids",
+          "sIds",
         ],
       ],
       where: {
@@ -1077,10 +1091,10 @@ export async function getDataSourceViewUsage({
           Sequelize.fn(
             "array_agg",
             Sequelize.col(
-              "agent_tables_query_configuration->agent_configuration.id"
+              "agent_tables_query_configuration->agent_configuration.sId"
             )
           ),
-          "ids",
+          "sIds",
         ],
       ],
       where: {
@@ -1108,7 +1122,7 @@ export async function getDataSourceViewUsage({
         },
       ],
     }),
-  ])) as unknown as { names: string[]; ids: number[] }[] | null;
+  ])) as unknown as { names: string[]; sIds: string[] }[] | null;
 
   if (!res) {
     return new Ok({ count: 0, agentNames: [], agentConfigurationIds: [] });
@@ -1121,7 +1135,9 @@ export async function getDataSourceViewUsage({
       )
     );
     const agentConfigurationIds = [
-      ...new Set(res.flatMap((r) => r.ids).filter((id) => id > 0)),
+      ...new Set(
+        res.flatMap((r) => r.sIds).filter((sId) => sId && sId.length > 0)
+      ),
     ];
     return new Ok({
       count: agentNames.length,

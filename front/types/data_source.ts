@@ -65,7 +65,7 @@ export type DataSourceWithConnectorDetailsType = DataSourceType &
 export type DataSourceWithAgentsUsageType = {
   count: number;
 
-  agentConfigurationIds: ModelId[];
+  agentConfigurationIds: string[];
   agentNames: string[];
 };
 
