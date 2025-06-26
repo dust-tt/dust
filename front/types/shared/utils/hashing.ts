@@ -4,6 +4,10 @@ export function md5(str: string): string {
   return crypto.createHash("md5").update(str).digest("hex");
 }
 
+export function sha256(str: string): string {
+  return crypto.createHash("sha256").update(str).digest("base64");
+}
+
 function saltedKey(key: string, size = 32): string {
   const { DUST_DEVELOPERS_SECRETS_SECRET } = process.env;
   return crypto
