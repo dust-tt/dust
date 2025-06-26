@@ -1,9 +1,9 @@
 import React from "react";
 
-type ImgProps = {
+interface ImgProps {
   src?: string;
   alt?: string;
-};
+}
 
 export function Img({ src, alt }: ImgProps): JSX.Element {
   if (!src || !isAllowedImageSrc(src)) {
