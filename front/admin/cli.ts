@@ -219,7 +219,7 @@ const user = async (command: string, args: parseArgs.ParsedArgs) => {
         users: [u],
       });
 
-      const workspaces = await WorkspaceResource.listByIds(
+      const workspaces = await WorkspaceResource.fetchByModelIds(
         memberships.map((m) => m.workspaceId)
       );
 

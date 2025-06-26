@@ -7,7 +7,7 @@ import { BaseResource } from "@app/lib/resources/base_resource";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelId, Result } from "@app/types";
-import { Err, Ok } from "@app/types";
+import { Err, normalizeError, Ok } from "@app/types";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -59,7 +59,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     return workspace ? new this(this.model, workspace.get()) : null;
   }
 
-  static async listByIds(ids: ModelId[]): Promise<WorkspaceResource[]> {
+  static async fetchByModelIds(ids: ModelId[]): Promise<WorkspaceResource[]> {
     const workspaces = await this.model.findAll({
       where: { id: ids },
     });
@@ -82,7 +82,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
       });
       return new Ok(deletedCount);
     } catch (error) {
-      return new Err(error as Error);
+      return new Err(normalizeError(error));
     }
   }
 

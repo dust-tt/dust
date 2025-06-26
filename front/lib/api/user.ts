@@ -90,7 +90,7 @@ export async function getUserWithWorkspaces<T extends boolean>(
     users: [user],
   });
   const workspaceIds = memberships.map((m) => m.workspaceId);
-  const workspaces = await WorkspaceResource.listByIds(workspaceIds);
+  const workspaces = await WorkspaceResource.fetchByModelIds(workspaceIds);
 
   const configs = populateExtensionConfig
     ? await ExtensionConfigurationResource.internalFetchForWorkspaces(
