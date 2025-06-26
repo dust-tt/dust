@@ -24,7 +24,7 @@ async function main() {
   if (!where.name && !where.sId) {
     throw new Error("Please provide name and/or sId for the workspace");
   }
-  let w = await WorkspaceResource.fetchByNameAndSId(where);
+  let w = await WorkspaceResource.fetchByNameAndId(where);
   if (!w) {
     console.log("Creating workspace");
     w = await WorkspaceResource.makeNew({

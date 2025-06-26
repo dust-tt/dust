@@ -46,7 +46,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     return workspace ? new this(this.model, workspace.get()) : null;
   }
 
-  static async fetchByNameAndSId({
+  static async fetchByNameAndId({
     name,
     sId,
   }: {
