@@ -684,7 +684,7 @@ export async function renderLightContentFragmentForModel(
         },
         {
           type: "text",
-          text: `url="${getFileProcessedUrl(auth.getNonNullableWorkspace(), fileStringId)}" type="${contentType}" title=${title}"`,
+          text: `url="dust.tt${getFileProcessedUrl(auth.getNonNullableWorkspace(), fileStringId)}" type="${contentType}" title=${title}"`,
         },
       ],
     };
