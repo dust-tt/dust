@@ -342,10 +342,7 @@ const TemplateAddActionButton = ({
   addAction: (action: TemplateActionPreset) => void;
 }) => {
   const spec = MCP_SPECIFICATION;
-  if (!spec) {
-    // Unreachable
-    return null;
-  }
+
   return (
     <div className="w-auto">
       <Button
