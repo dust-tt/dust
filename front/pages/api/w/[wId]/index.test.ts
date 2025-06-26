@@ -7,6 +7,43 @@ import { itInTransaction } from "@app/tests/utils/utils";
 
 import handler from "./index";
 
+describe("GET /api/w/[wId]", () => {
+  itInTransaction("returns 403 when user is not admin", async () => {
+    const { req, res } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "user",
+    });
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(403);
+    expect(res._getJSONData()).toEqual({
+      error: {
+        type: "workspace_auth_error",
+        message:
+          "Only users that are `admins` for the current workspace can access this endpoint.",
+      },
+    });
+  });
+
+  itInTransaction("returns 403 when user is not admin", async () => {
+    const { req, res, workspace } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "admin",
+    });
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    expect(res._getJSONData()).toEqual({
+      workspace: expect.objectContaining({
+        id: workspace.id,
+        name: workspace.name,
+      }),
+    });
+  });
+});
+
 describe("POST /api/w/[wId]", () => {
   itInTransaction("returns 403 when user is not admin", async () => {
     const { req, res } = await createPrivateApiMockRequest({
@@ -21,7 +58,7 @@ describe("POST /api/w/[wId]", () => {
       error: {
         type: "workspace_auth_error",
         message:
-          "Only users that are `admins` for the current workspace can modify it.",
+          "Only users that are `admins` for the current workspace can access this endpoint.",
       },
     });
   });
@@ -166,7 +203,7 @@ describe("POST /api/w/[wId]", () => {
   });
 
   itInTransaction("returns 405 for non-POST methods", async () => {
-    for (const method of ["GET", "PUT", "DELETE"] as const) {
+    for (const method of ["PUT", "DELETE"] as const) {
       const { req, res } = await createPrivateApiMockRequest({
         method,
         role: "admin",
@@ -178,7 +215,8 @@ describe("POST /api/w/[wId]", () => {
       expect(res._getJSONData()).toEqual({
         error: {
           type: "method_not_supported_error",
-          message: "The method passed is not supported, POST is expected.",
+          message:
+            "The method passed is not supported, POST or GET is expected.",
         },
       });
     }

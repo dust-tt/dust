@@ -65,7 +65,7 @@ async function handler(
       api_error: {
         type: "workspace_auth_error",
         message:
-          "Only users that are `admins` for the current workspace can access it.",
+          "Only users that are `admins` for the current workspace can access this endpoint.",
       },
     });
   }
