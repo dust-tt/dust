@@ -8,18 +8,21 @@ import {
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import React from "react";
+import { useFieldArray } from "react-hook-form";
 
+import type {
+  AgentBuilderAction,
+  AgentBuilderFormData,
+} from "@app/components/agent_builder/AgentBuilderFormContext";
 import { AddKnowledgeDropdown } from "@app/components/agent_builder/capabilities/AddKnowledgeDropdown";
 import { AddToolsDropdown } from "@app/components/agent_builder/capabilities/AddToolsDropdown";
-import { useAgentBuilderCapabilitiesContext } from "@app/components/agent_builder/capabilities/AgentBuilderCapabilitiesContext";
-import type { AssistantBuilderMCPOrVizState } from "@app/components/assistant_builder/types";
 import { DATA_VISUALIZATION_SPECIFICATION } from "@app/lib/actions/utils";
 
 function ActionCard({
   action,
   onRemove,
 }: {
-  action: AssistantBuilderMCPOrVizState;
+  action: AgentBuilderAction;
   onRemove: () => void;
 }) {
   const spec =
@@ -60,12 +63,12 @@ function ActionCard({
 }
 
 export function AgentBuilderCapabilitiesBlock() {
-  const { actions, setActions } = useAgentBuilderCapabilitiesContext();
+  const { fields, remove } = useFieldArray<AgentBuilderFormData, "actions">({
+    name: "actions",
+  });
 
-  function removeAction(actionToRemove: AssistantBuilderMCPOrVizState) {
-    setActions((prevActions) =>
-      prevActions.filter((action) => action.id !== actionToRemove.id)
-    );
+  function removeAction(index: number) {
+    remove(index);
   }
 
   return (
@@ -77,7 +80,7 @@ export function AgentBuilderCapabilitiesBlock() {
             Add tools and capabilities to enhance your agent's abilities.
           </span>
         </Page.P>
-        {actions.length > 0 && (
+        {fields.length > 0 && (
           <div className="flex w-full flex-col gap-2 sm:w-auto">
             <div className="flex items-center gap-2">
               <AddKnowledgeDropdown />
@@ -87,7 +90,7 @@ export function AgentBuilderCapabilitiesBlock() {
         )}
       </div>
       <div className="flex-1">
-        {actions.length === 0 ? (
+        {fields.length === 0 ? (
           <EmptyCTA
             message="No tools added yet. Add knowledge and tools to enhance your agent's capabilities."
             action={
@@ -99,11 +102,11 @@ export function AgentBuilderCapabilitiesBlock() {
           />
         ) : (
           <CardGrid>
-            {actions.map((action) => (
+            {fields.map((field, index) => (
               <ActionCard
-                key={action.id}
-                action={action}
-                onRemove={() => removeAction(action)}
+                key={field.id}
+                action={field}
+                onRemove={() => removeAction(index)}
               />
             ))}
           </CardGrid>
