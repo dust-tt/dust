@@ -22,7 +22,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { cacheWithRedis } from "@app/lib/utils/cache";
 import logger from "@app/logger/logger";
 import type { LightWorkspaceType, Result } from "@app/types";
-import { Err, Ok } from "@app/types";
+import { Err, Ok, sha256 } from "@app/types";
 
 export type SessionCookie = {
   sessionData: string;
@@ -104,7 +104,7 @@ export async function _getRefreshedCookie(
 const getRefreshedCookie = cacheWithRedis(
   _getRefreshedCookie,
   (workOSSessionCookie) => {
-    return `workos_session_refresh:${workOSSessionCookie}`;
+    return `workos_session_refresh:${sha256(workOSSessionCookie)}`;
   },
   60 * 10 * 1000
 );
