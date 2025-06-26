@@ -11,6 +11,7 @@ const providerIdSchema = z.enum(MODEL_PROVIDER_IDS);
 const supportedModelSchema = z.object({
   modelId: modelIdSchema,
   providerId: providerIdSchema,
+  reasoningEffort: z.string().optional(),
 });
 
 const generationSettingsSchema = z.object({

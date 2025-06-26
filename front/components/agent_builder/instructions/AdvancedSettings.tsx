@@ -5,33 +5,29 @@ import {
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
 import React from "react";
+import { useController } from "react-hook-form";
 
+import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
+import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { CreativityLevelSubmenu } from "@app/components/agent_builder/instructions/CreativityLevelSubmenu";
 import { ModelSelectionSubmenu } from "@app/components/agent_builder/instructions/ModelSelectionSubmenu";
 import { ResponseFormatSubmenu } from "@app/components/agent_builder/instructions/ResponseFormatSubmenu";
-import type { GenerationSettingsType } from "@app/components/agent_builder/types";
-import type { ModelConfigurationType } from "@app/types";
+import { useModels } from "@app/lib/swr/models";
 import { isSupportingResponseFormat } from "@app/types";
 
-interface AdvancedSettingsProps {
-  generationSettings: GenerationSettingsType;
-  setGenerationSettings: (
-    generationSettingsSettings: GenerationSettingsType
-  ) => void;
-  models: ModelConfigurationType[];
-}
+export function AdvancedSettings() {
+  const { owner } = useAgentBuilderContext();
+  const { models } = useModels({ owner });
+  const { field } = useController<AgentBuilderFormData, "generationSettings">({
+    name: "generationSettings",
+  });
 
-export function AdvancedSettings({
-  generationSettings,
-  setGenerationSettings,
-  models,
-}: AdvancedSettingsProps) {
   if (!models) {
     return null;
   }
 
   const supportsResponseFormat = isSupportingResponseFormat(
-    generationSettings.modelSettings.modelId
+    field.value.modelSettings.modelId
   );
 
   return (
@@ -46,20 +42,20 @@ export function AdvancedSettings({
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <ModelSelectionSubmenu
-          generationSettings={generationSettings}
-          setGenerationSettings={setGenerationSettings}
+          generationSettings={field.value}
+          setGenerationSettings={field.onChange}
           models={models}
         />
 
         <CreativityLevelSubmenu
-          generationSettings={generationSettings}
-          setGenerationSettings={setGenerationSettings}
+          generationSettings={field.value}
+          setGenerationSettings={field.onChange}
         />
 
         {supportsResponseFormat && (
           <ResponseFormatSubmenu
-            generationSettings={generationSettings}
-            setGenerationSettings={setGenerationSettings}
+            generationSettings={field.value}
+            setGenerationSettings={field.onChange}
           />
         )}
       </DropdownMenuContent>

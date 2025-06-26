@@ -25,6 +25,7 @@ export default function AgentBuilder() {
         modelSettings: {
           modelId: GPT_4O_MODEL_ID,
           providerId: "openai",
+          reasoningEffort: undefined,
         },
         temperature: 0.7,
       },

@@ -8,11 +8,13 @@ import {
 import React from "react";
 
 import { CREATIVITY_LEVELS } from "@app/components/agent_builder/instructions/utils";
-import type { GenerationSettingsType } from "@app/components/agent_builder/types";
+import type { AgentBuilderGenerationSettings } from "@app/components/agent_builder/AgentBuilderFormContext";
 
 interface CreativityLevelSubmenuProps {
-  generationSettings: GenerationSettingsType;
-  setGenerationSettings: (generationSettings: GenerationSettingsType) => void;
+  generationSettings: AgentBuilderGenerationSettings;
+  setGenerationSettings: (
+    generationSettings: AgentBuilderGenerationSettings
+  ) => void;
 }
 
 export function CreativityLevelSubmenu({

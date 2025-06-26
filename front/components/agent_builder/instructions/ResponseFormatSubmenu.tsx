@@ -7,7 +7,7 @@ import {
 import dynamic from "next/dynamic";
 import React from "react";
 
-import type { GenerationSettingsType } from "@app/components/agent_builder/types";
+import type { AgentBuilderGenerationSettings } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { isInvalidJson } from "@app/components/agent_builder/utils";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 
@@ -36,8 +36,8 @@ const RESPONSE_FORMAT_PLACEHOLDER =
   "}";
 
 interface ResponseFormatSubmenuProps {
-  generationSettings: GenerationSettingsType;
-  setGenerationSettings: (generationSettings: GenerationSettingsType) => void;
+  generationSettings: AgentBuilderGenerationSettings;
+  setGenerationSettings: (generationSettings: AgentBuilderGenerationSettings) => void;
 }
 
 export function ResponseFormatSubmenu({
