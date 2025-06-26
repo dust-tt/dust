@@ -4,6 +4,7 @@ import {
   shouldSyncTicket,
   syncTicket,
 } from "@connectors/connectors/zendesk/lib/sync_ticket";
+import type { ZendeskFetchedTicketComment } from "@connectors/connectors/zendesk/lib/types";
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import {
   fetchZendeskCategory,
@@ -28,7 +29,6 @@ import {
 } from "@connectors/resources/zendesk_resources";
 import type { ModelId } from "@connectors/types";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
-import { ZendeskFetchedTicketComment } from "@connectors/connectors/zendesk/lib/types";
 
 /**
  * Retrieves the timestamp cursor, which is the start date of the last successful incremental sync.
