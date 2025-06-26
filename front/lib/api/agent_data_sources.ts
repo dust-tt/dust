@@ -373,7 +373,8 @@ export async function getDataSourceViewsUsageByCategory({
     usage.agentNames = uniq(sortBy(usage.agentNames));
     usage.agentConfigurationIds = [
       ...new Set(
-        usage.agentConfigurationIds.filter((sId) => sId && sId.length > 0)
+        ...usage.agentConfigurationIds,
+        ...dsViewConfig.sIds.filter((sId) => sId && sId.length > 0)
       ),
     ];
 
@@ -668,7 +669,8 @@ export async function getDataSourcesUsageByCategory({
     usage.agentNames = uniq(sortBy(usage.agentNames));
     usage.agentConfigurationIds = [
       ...new Set(
-        usage.agentConfigurationIds.filter((sId) => sId && sId.length > 0)
+        ...usage.agentConfigurationIds,
+        ...dsConfig.sIds.filter((sId) => sId && sId.length > 0)
       ),
     ];
 
