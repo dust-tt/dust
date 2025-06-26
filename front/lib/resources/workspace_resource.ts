@@ -48,13 +48,13 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
 
   static async fetchByNameAndId({
     name,
-    sId,
+    sId: wId,
   }: {
     name: string;
     sId: string;
   }): Promise<WorkspaceResource | null> {
     const workspace = await this.model.findOne({
-      where: { name, sId },
+      where: { name, sId: wId },
     });
     return workspace ? new this(this.model, workspace.get()) : null;
   }
