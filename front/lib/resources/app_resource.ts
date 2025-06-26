@@ -133,7 +133,7 @@ export class AppResource extends ResourceWithSpace<AppModel> {
     ].sort();
 
     const agentConfigurationIds = [
-      ...new Set(agentConfigurations.map((a) => a.id)),
+      ...new Set(agentConfigurations.map((a) => a.sId)),
     ];
 
     return new Ok({
