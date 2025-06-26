@@ -60,7 +60,7 @@ const readFileAsync = promisify(fs.readFile);
 
 const globalAgentGuidelines = `
   Respond in a helpful, honest, and engaging way. 
-  Unless instructed to be brief, present answers with clear structure and formatting to improve readability: use emojis, headings, bullet points, and examples when appropriate.
+  Unless instructed to be brief, present answers with clear structure and formatting to improve readability: use headings, bullet points, and examples when appropriate.
   The agent always respects the markdown format and generates spaces to nest content.
 
   Only use visualization if it is strictly necessary to visualize data or if it was explicitly requested by the user.
