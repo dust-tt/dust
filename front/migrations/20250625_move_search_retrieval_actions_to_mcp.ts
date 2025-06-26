@@ -12,6 +12,7 @@ import {
 import type { ActionBaseParams } from "@app/lib/actions/mcp";
 import type { SearchResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { makeQueryResource } from "@app/lib/actions/mcp_internal_actions/servers/search/utils";
+import config from "@app/lib/api/config";
 import { getWorkspaceInfos } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
 import { getDisplayNameForDocument } from "@app/lib/data_sources";
@@ -29,7 +30,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import type { LightWorkspaceType, ModelId, TimeFrame } from "@app/types";
-import { isGlobalAgentId, stripNullBytes } from "@app/types";
+import { GLOBAL_AGENTS_SID, isGlobalAgentId, stripNullBytes } from "@app/types";
 
 const WORKSPACE_CONCURRENCY = 50;
 const BATCH_SIZE = 200;
@@ -183,6 +184,7 @@ function createOutputItem(
 
 async function migrateSingleRetrievalAction(
   auth: Authenticator,
+  dustAppsWorkspaceAuth: Authenticator,
   retrievalAction: AgentRetrievalAction,
   agentConfiguration: AgentConfiguration | null,
   logger: Logger,
@@ -208,10 +210,26 @@ async function migrateSingleRetrievalAction(
   );
 
   // Step 2: Find the corresponding DocumentRetrieval resources.
+  // Step 2.1: Fetch first in the current workspace.
   const documentRetrievalsWithChunks =
     await RetrievalDocumentResource.listAllForActions(auth, [
       retrievalAction.id,
     ]);
+
+  const allDocumentRetrievals: RetrievalDocumentResource[] = [
+    ...documentRetrievalsWithChunks,
+  ];
+
+  // Step 2.2: Fetch in dust-apps workspace as well. This is required to cover for the usage of
+  // `@help` agent that relies on public data sources.
+  if (agentConfiguration?.sId === GLOBAL_AGENTS_SID["HELPER"]) {
+    const dustAppsDocumentRetrievalsWithChunks =
+      await RetrievalDocumentResource.listAllForActions(dustAppsWorkspaceAuth, [
+        retrievalAction.id,
+      ]);
+
+    allDocumentRetrievals.push(...dustAppsDocumentRetrievalsWithChunks);
+  }
 
   logger.info(
     {
@@ -252,15 +270,23 @@ async function migrateSingleRetrievalAction(
       ]);
 
       // Step 5: Delete the legacy retrieval document and chunks.
+      // Step 5.1 Delete in the current workspace.
       await RetrievalDocumentResource.deleteAllForActions(auth, [
         retrievalAction.id,
       ]);
+
+      // Step 5.2 Delete in dust-apps workspace.
+      await RetrievalDocumentResource.deleteAllForActions(
+        dustAppsWorkspaceAuth,
+        [retrievalAction.id]
+      );
     }
   }
 }
 
 async function migrateWorkspaceRetrievalActions(
   workspace: LightWorkspaceType,
+  dustAppsWorkspaceAuth: Authenticator,
   logger: Logger,
   { execute }: { execute: boolean }
 ) {
@@ -360,6 +386,7 @@ async function migrateWorkspaceRetrievalActions(
 
         await migrateSingleRetrievalAction(
           auth,
+          dustAppsWorkspaceAuth,
           retrievalAction,
           agentConfiguration ?? null,
           logger,
@@ -402,6 +429,10 @@ makeScript(
   async ({ execute, workspaceId }, parentLogger) => {
     const logger = parentLogger.child({ workspaceId });
 
+    const dustAppsWorkspaceAuth = await Authenticator.internalAdminForWorkspace(
+      config.getDustAppsWorkspaceId()
+    );
+
     if (workspaceId) {
       const workspace = await getWorkspaceInfos(workspaceId);
 
@@ -409,12 +440,18 @@ makeScript(
         throw new Error(`Workspace ${workspaceId} not found`);
       }
 
-      await migrateWorkspaceRetrievalActions(workspace, logger, { execute });
+      await migrateWorkspaceRetrievalActions(
+        workspace,
+        dustAppsWorkspaceAuth,
+        logger,
+        { execute }
+      );
     } else {
       await runOnAllWorkspaces(
         async (workspace) =>
           migrateWorkspaceRetrievalActions(
             workspace,
+            dustAppsWorkspaceAuth,
             logger.child({ workspaceId: workspace.sId }),
             {
               execute,
