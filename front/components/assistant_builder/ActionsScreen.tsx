@@ -247,11 +247,7 @@ export default function ActionsScreen({
       <NewActionModal
         isOpen={pendingAction.action !== null}
         builderState={builderState}
-        initialAction={
-          pendingAction.action && pendingAction.action.type === "MCP"
-            ? pendingAction.action
-            : null
-        }
+        initialAction={pendingAction.action}
         isEditing={!!pendingAction.previousActionName}
         spacesUsedInActions={spaceIdToActions}
         onSave={(newAction) => {
