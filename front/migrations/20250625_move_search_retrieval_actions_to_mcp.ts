@@ -223,7 +223,9 @@ async function migrateSingleRetrievalAction(
 
   // Step 2.2: Fetch in dust-apps workspace as well. This is required to cover for the usage of
   // `@help` agent that relies on public data sources.
-  if (agentMessage.agentConfigurationId === GLOBAL_AGENTS_SID["HELPER"]) {
+  const isHelperAgent =
+    agentMessage.agentConfigurationId === GLOBAL_AGENTS_SID["HELPER"];
+  if (isHelperAgent) {
     const dustAppsDocumentRetrievalsWithChunks =
       await RetrievalDocumentResource.listAllForActions(dustAppsWorkspaceAuth, [
         retrievalAction.id,
@@ -235,7 +237,7 @@ async function migrateSingleRetrievalAction(
   logger.info(
     {
       retrievalActionId: retrievalAction.id,
-      documentRetrievalsWithChunks: documentRetrievalsWithChunks.length,
+      allDocumentRetrievals: allDocumentRetrievals.length,
     },
     "Found document retrievals with chunks"
   );
@@ -251,7 +253,7 @@ async function migrateSingleRetrievalAction(
       retrievalAction.tagsNot ?? undefined
     );
 
-    if (documentRetrievalsWithChunks.length > 0) {
+    if (allDocumentRetrievals.length > 0) {
       // Step 4: Create the MCP action output items.
       await AgentMCPActionOutputItem.bulkCreate([
         // Create the search query resource.
@@ -261,7 +263,7 @@ async function migrateSingleRetrievalAction(
           retrievalAction
         ),
         // Map the document retrievals to search result resources.
-        ...documentRetrievalsWithChunks.map((documentRetrieval) =>
+        ...allDocumentRetrievals.map((documentRetrieval) =>
           createOutputItem(
             documentRetrievalToSearchResultResourceType(documentRetrieval),
             mcpActionCreated.id,
@@ -277,10 +279,12 @@ async function migrateSingleRetrievalAction(
       ]);
 
       // Step 5.2 Delete in dust-apps workspace.
-      await RetrievalDocumentResource.deleteAllForActions(
-        dustAppsWorkspaceAuth,
-        [retrievalAction.id]
-      );
+      if (isHelperAgent) {
+        await RetrievalDocumentResource.deleteAllForActions(
+          dustAppsWorkspaceAuth,
+          [retrievalAction.id]
+        );
+      }
     }
   }
 }
