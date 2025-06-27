@@ -38,15 +38,12 @@ function ActionCard({
   action: AgentBuilderAction;
   onRemove: () => void;
 }) {
-  console.log("ActionCard received action:", action, "type:", action.type);
   const spec =
     action.type === "DATA_VISUALIZATION"
       ? DATA_VISUALIZATION_SPECIFICATION
       : null;
 
-  console.log("ActionCard found spec:", spec);
   if (!spec) {
-    console.log("ActionCard: No spec found for type:", action.type);
     return null;
   }
 
@@ -149,8 +146,6 @@ export function AgentBuilderCapabilitiesBlock() {
   function removeAction(index: number) {
     remove(index);
   }
-
-  console.log(">>>>> parent", fields);
 
   return (
     <div className="flex h-full flex-col gap-4">

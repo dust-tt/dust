@@ -1,10 +1,8 @@
-import { zodResolver } from "@hookform/resolvers/zod";
 import { useSendNotification } from "@dust-tt/sparkle";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/router";
 import React, { useState } from "react";
 import { useForm } from "react-hook-form";
-
-import { appLayoutBack } from "@app/components/sparkle/AppContentLayout";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
@@ -16,8 +14,9 @@ import { AgentBuilderLayout } from "@app/components/agent_builder/AgentBuilderLa
 import { AgentBuilderLeftPanel } from "@app/components/agent_builder/AgentBuilderLeftPanel";
 import { AgentBuilderRightPanel } from "@app/components/agent_builder/AgentBuilderRightPanel";
 import { submitAgentBuilderForm } from "@app/components/agent_builder/submitAgentBuilderForm";
-import { GPT_4O_MODEL_ID } from "@app/types";
+import { appLayoutBack } from "@app/components/sparkle/AppContentLayout";
 import logger from "@app/logger/logger";
+import { GPT_4O_MODEL_ID } from "@app/types";
 
 export default function AgentBuilder() {
   const { owner } = useAgentBuilderContext();
