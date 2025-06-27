@@ -600,7 +600,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
           retentionPeriodDays: finalRetentionDays,
         });
 
-        // If retention period is increased, trigger a debounced sync to include
+        // If retention period is increased, trigger a sync to include
         // previously excluded tickets that are now within the retention window
         if (finalRetentionDays > currentRetentionDays) {
           await updateRetentionPeriod(
