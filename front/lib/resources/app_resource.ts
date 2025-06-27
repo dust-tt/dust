@@ -17,6 +17,7 @@ import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { AppType, LightWorkspaceType, Result } from "@app/types";
 import type { SpecificationType } from "@app/types";
 import { Err, Ok } from "@app/types";
+import { sortBy } from "lodash";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -128,18 +129,21 @@ export class AppResource extends ResourceWithSpace<AppModel> {
       },
     });
 
-    const agentNames = [
-      ...new Set(agentConfigurations.map((a) => a.name)),
-    ].sort();
-
-    const agentConfigurationIds = [
-      ...new Set(agentConfigurations.map((a) => a.sId)),
-    ];
+    const agentConfigurationIdsToAgentNames = sortBy(
+      [
+        ...new Set(
+          agentConfigurations.map((a) => ({
+            sId: a.sId,
+            name: a.name,
+          }))
+        ),
+      ],
+      "name"
+    );
 
     return new Ok({
-      count: agentNames.length,
-      agentNames,
-      agentConfigurationIds,
+      count: agentConfigurationIdsToAgentNames.length,
+      agentConfigurationIdsToAgentNames,
     });
   }
 
