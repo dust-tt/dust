@@ -718,10 +718,7 @@ export async function syncDeltaForRootNodesInDrive({
           blob
         );
 
-        if (
-          resource.lastSeenTs &&
-          resource.lastSeenTs > new Date(startSyncTs)
-        ) {
+        if (isAlreadySeenItem({ driveItemResource: resource, startSyncTs })) {
           continue;
         }
 
