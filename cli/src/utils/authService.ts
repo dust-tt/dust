@@ -24,7 +24,7 @@ export const AuthService = {
       throw new Error("No refresh token available.");
     }
 
-    const workOSDomain = process.env.WORKOS_CLIENT_DOMAIN || "";
+    const workOSDomain = process.env.WORKOS_DOMAIN || "";
     const clientId = process.env.WORKOS_CLIENT_ID || "";
 
     const response = await fetch(
