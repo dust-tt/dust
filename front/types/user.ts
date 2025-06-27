@@ -101,12 +101,12 @@ export type UserType = {
 
 export type UserTypeWithWorkspace = UserType & {
   workspace: WorkspaceType;
-  origin: MembershipOriginType;
+  origin?: MembershipOriginType;
 };
 
 export type UserTypeWithWorkspaces = UserType & {
   workspaces: WorkspaceType[];
-  origin: MembershipOriginType;
+  origin?: MembershipOriginType;
 };
 
 export type UserTypeWithExtensionWorkspaces = UserType & {
