@@ -17,12 +17,18 @@ import React from "react";
 import { useController, useFieldArray } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
-import type { AgentBuilderAction, AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import type {
+  AgentBuilderAction,
+  AgentBuilderFormData,
+} from "@app/components/agent_builder/AgentBuilderFormContext";
 import { AddKnowledgeDropdown } from "@app/components/agent_builder/capabilities/AddKnowledgeDropdown";
 import { AddToolsDropdown } from "@app/components/agent_builder/capabilities/AddToolsDropdown";
 import { DATA_VISUALIZATION_SPECIFICATION } from "@app/lib/actions/utils";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import { EXTENDED_MAX_STEPS_USE_PER_RUN_LIMIT, MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types";
+import {
+  EXTENDED_MAX_STEPS_USE_PER_RUN_LIMIT,
+  MAX_STEPS_USE_PER_RUN_LIMIT,
+} from "@app/types";
 
 function ActionCard({
   action,
