@@ -29,7 +29,7 @@ export function useWorkspace({
 
   return {
     workspace: data?.workspace,
-    isWorkspaceLoading: !error && !data,
+    isWorkspaceLoading: !error && !data && !disabled,
     isWorkspaceValidating: isValidating,
     isWorkspaceError: error,
     mutateWorkspace: mutate,
