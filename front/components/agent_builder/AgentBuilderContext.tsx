@@ -2,17 +2,16 @@ import { createContext, useContext, useState } from "react";
 import { useEffect } from "react";
 
 import { MCPServerViewsProvider } from "@app/components/assistant_builder/contexts/MCPServerViewsContext";
-import type { SpaceType, WorkspaceType } from "@app/types";
+import { SpacesProvider } from "@app/components/assistant_builder/contexts/SpacesContext";
+import type { WorkspaceType } from "@app/types";
 
 type AgentBuilderContextType = {
-  spaces: SpaceType[];
   owner: WorkspaceType;
   isPreviewPanelOpen: boolean;
   setIsPreviewPanelOpen: React.Dispatch<React.SetStateAction<boolean>>;
 };
 
 export const AgentBuilderContext = createContext<AgentBuilderContextType>({
-  spaces: [],
   owner: {} as WorkspaceType,
   isPreviewPanelOpen: true,
   setIsPreviewPanelOpen: () => {},
@@ -27,7 +26,6 @@ interface AgentBuilderContextProps
 }
 
 export function AgentBuilderProvider({
-  spaces,
   owner,
   children,
 }: AgentBuilderContextProps) {
@@ -50,15 +48,16 @@ export function AgentBuilderProvider({
   return (
     <AgentBuilderContext.Provider
       value={{
-        spaces,
         owner,
         isPreviewPanelOpen,
         setIsPreviewPanelOpen,
       }}
     >
-      <MCPServerViewsProvider owner={owner} spaces={spaces}>
-        {children}
-      </MCPServerViewsProvider>
+      <SpacesProvider owner={owner}>
+        <MCPServerViewsProvider owner={owner}>
+          {children}
+        </MCPServerViewsProvider>
+      </SpacesProvider>
     </AgentBuilderContext.Provider>
   );
 }

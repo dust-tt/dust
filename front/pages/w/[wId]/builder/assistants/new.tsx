@@ -2,8 +2,7 @@ import type { InferGetServerSidePropsType } from "next";
 import type { ParsedUrlQuery } from "querystring";
 
 import AssistantBuilder from "@app/components/assistant_builder/AssistantBuilder";
-import { AssistantBuilderProvider } from "@app/components/assistant_builder/AssistantBuilderContext";
-import { getAccessibleSourcesAndApps } from "@app/components/assistant_builder/server_side_props_helpers";
+import { AssistantBuilderProviders } from "@app/components/assistant_builder/contexts/AssistantBuilderContexts";
 import type { BuilderFlow } from "@app/components/assistant_builder/types";
 import { BUILDER_FLOWS } from "@app/components/assistant_builder/types";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
@@ -17,9 +16,7 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import { useAssistantTemplate } from "@app/lib/swr/assistants";
 import type {
   AgentConfigurationType,
-  AppType,
   PlanType,
-  SpaceType,
   SubscriptionType,
   TemplateAgentConfigurationType,
   WorkspaceType,
@@ -36,11 +33,9 @@ function getDuplicateAndTemplateIdFromQuery(query: ParsedUrlQuery) {
 }
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
-  dustApps: AppType[];
   owner: WorkspaceType;
   subscription: SubscriptionType;
   plan: PlanType;
-  spaces: SpaceType[];
   agentConfiguration:
     | AgentConfigurationType
     | TemplateAgentConfigurationType
@@ -67,8 +62,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   }
 
   await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
-
-  const { spaces, dustApps } = await getAccessibleSourcesAndApps(auth);
 
   const flow: BuilderFlow = BUILDER_FLOWS.includes(
     context.query.flow as BuilderFlow
@@ -113,23 +106,19 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     props: {
       agentConfiguration: configuration,
       baseUrl: config.getClientFacingUrl(),
-      dustApps: dustApps.map((a) => a.toJSON()),
       flow,
       owner,
       plan,
       subscription,
       templateId,
-      spaces: spaces.map((s) => s.toJSON()),
       duplicateAgentId: duplicate,
     },
   };
 });
 
 export default function CreateAssistant({
-  dustApps,
   agentConfiguration,
   baseUrl,
-  spaces,
   flow,
   owner,
   plan,
@@ -148,7 +137,7 @@ export default function CreateAssistant({
   }
 
   return (
-    <AssistantBuilderProvider owner={owner} dustApps={dustApps} spaces={spaces}>
+    <AssistantBuilderProviders owner={owner}>
       <AssistantBuilder
         owner={owner}
         subscription={subscription}
@@ -196,7 +185,7 @@ export default function CreateAssistant({
         baseUrl={baseUrl}
         defaultTemplate={assistantTemplate}
       />
-    </AssistantBuilderProvider>
+    </AssistantBuilderProviders>
   );
 }
 
