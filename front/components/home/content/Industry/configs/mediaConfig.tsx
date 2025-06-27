@@ -42,25 +42,25 @@ export const mediaConfig: IndustryPageConfig = {
     },
   },
   painPoints: {
-    title: "3 Pain points Dust solves",
+    title: "3 pain points Dust solves",
     painPoints: [
       {
         icon: "/static/landing/industry/d-blue.svg",
-        title: "Editorial & Content Production Pressure",
+        title: "Editorial & content production pressure",
         description:
           "Meeting tight deadlines while maintaining quality content across multiple channels and formats becomes increasingly challenging.",
         color: "blue",
       },
       {
         icon: "/static/landing/industry/d-red.svg",
-        title: "Audience Management & Personalization Improvement",
+        title: "Audience management & personalization improvement",
         description:
           "Understanding and engaging diverse audience segments while delivering personalized content experiences at scale.",
         color: "red",
       },
       {
         icon: "/static/landing/industry/d-green.svg",
-        title: "Audience Engagement & Revenue Optimization",
+        title: "Audience engagement & revenue optimization",
         description:
           "Maximizing audience retention and monetization while adapting to changing consumption patterns and market dynamics.",
         color: "green",
@@ -71,137 +71,137 @@ export const mediaConfig: IndustryPageConfig = {
     title: "Dust in Action",
     useCases: [
       {
-        title: "Editorial & Newsroom Operations",
-        image: "/static/landing/industry/features/Radar_pressdigest.svg",
+        title: "Editorial & newsroom operations",
+        image: "/static/landing/industry/features/Radar_pressdigest.webp",
         bgColor: "bg-blue-100",
         features: [
           {
             icon: "bg-blue-500",
-            title: "Story Research & Briefings",
+            title: "Story research & briefings",
             description:
               "Automatically gather background information, sources, and context for breaking news and feature stories.",
           },
           {
             icon: "bg-purple-500 rounded-tl-full",
-            title: "Content Planning & Coordination",
+            title: "Content planning & coordination",
             description:
               "Optimize editorial calendars, manage assignments, and coordinate multi-platform publishing.",
           },
           {
             icon: "bg-green-500 rounded-tr-full",
-            title: "Fact-Checking & Verification",
+            title: "Fact-checking & verification",
             description:
               "Accelerate fact-checking processes with AI-assisted source verification and information validation.",
           },
           {
             icon: "bg-yellow-400",
-            title: "SEO & Headlines Optimization",
+            title: "SEO & headlines optimization",
             description:
               "Generate compelling headlines and optimize content for search engines and social media platforms.",
           },
           {
             icon: "bg-red-500 rounded-bl-full",
-            title: "Interview Preparation",
+            title: "Interview preparation",
             description:
               "Compile comprehensive briefings, background research, and strategic questions for interviews.",
           },
         ],
       },
       {
-        title: "Audience & Engagement",
-        image: "/static/landing/industry/features/Social_post.svg",
+        title: "Audience & engagement",
+        image: "/static/landing/industry/features/Social_post.webp",
         bgColor: "bg-pink-100",
         features: [
           {
             icon: "bg-pink-500",
-            title: "Content Performance Analytics",
+            title: "Content performance analytics",
             description:
               "Track engagement metrics across platforms and identify top-performing content patterns.",
           },
           {
             icon: "bg-blue-500 rounded-tl-full",
-            title: "Audience Segmentation Analysis",
+            title: "Audience segmentation analysis",
             description:
               "Understand reader preferences, demographics, and consumption behaviors for targeted content.",
           },
           {
             icon: "bg-purple-500 rounded-tr-full",
-            title: "Social Media Strategy",
+            title: "Social media strategy",
             description:
               "Optimize social media presence with data-driven content strategies and engagement tactics.",
           },
           {
             icon: "bg-green-500 rounded-bl-full",
-            title: "Newsletter & Email Campaigns",
+            title: "Newsletter & email campaigns",
             description:
               "Create personalized email content and optimize newsletter performance with audience insights.",
           },
           {
             icon: "bg-yellow-400 rounded-br-full",
-            title: "Community Management",
+            title: "Community management",
             description:
               "Monitor and respond to audience feedback, comments, and engagement across all channels.",
           },
         ],
       },
       {
-        title: "Strategic Intelligence",
-        image: "/static/landing/industry/features/Radar_AIDigest.svg",
+        title: "Strategic intelligence",
+        image: "/static/landing/industry/features/Radar_AIDigest.webp",
         bgColor: "bg-gray-900",
         features: [
           {
             icon: "bg-gray-300",
-            title: "Competitive Coverage Analysis",
+            title: "Competitive coverage analysis",
             description:
               "Monitor competitor content strategies, performance metrics, and market positioning.",
           },
           {
             icon: "bg-blue-500 rounded-tl-full",
-            title: "Opportunity Trend Identification",
+            title: "Opportunity trend identification",
             description:
               "Identify emerging topics, trending stories, and content opportunities before competitors.",
           },
           {
             icon: "bg-purple-500 rounded-tr-full",
-            title: "Revenue Forecasting & Strategy",
+            title: "Revenue forecasting & strategy",
             description:
               "Analyze revenue trends, subscription patterns, and monetization opportunities.",
           },
           {
             icon: "bg-green-500 rounded-bl-full",
-            title: "Market Trend Monitoring",
+            title: "Market trend monitoring",
             description:
               "Track industry developments, regulatory changes, and technological advancements affecting media landscape.",
           },
         ],
       },
       {
-        title: "Legal & Business Affairs",
+        title: "Legal & business affairs",
         image:
-          "/static/landing/industry/features/Compliance_verification_2.svg",
+          "/static/landing/industry/features/Compliance_verification_2.webp",
         bgColor: "bg-yellow-100",
         features: [
           {
             icon: "bg-yellow-500",
-            title: "Rights Management & Licensing",
+            title: "Rights management & licensing",
             description:
               "Track content usage rights, licensing agreements, and copyright compliance across all platforms.",
           },
           {
             icon: "bg-blue-500 rounded-tl-full",
-            title: "Regulatory Compliance Monitoring",
+            title: "Regulatory compliance monitoring",
             description:
               "Stay updated on media regulations, privacy laws, and industry standards affecting content publication.",
           },
           {
             icon: "bg-purple-500 rounded-tr-full",
-            title: "Contract Analysis & Management",
+            title: "Contract analysis & management",
             description:
               "Streamline contract reviews, vendor agreements, and talent contracts with AI-assisted analysis.",
           },
           {
             icon: "bg-green-500 rounded-bl-full",
-            title: "Compliance Documentation",
+            title: "Compliance documentation",
             description:
               "Maintain comprehensive records for legal compliance, audit trails, and regulatory reporting requirements.",
           },
@@ -253,7 +253,7 @@ export const mediaConfig: IndustryPageConfig = {
     ],
   },
   justUseDust: {
-    title: "#JustUseDust",
+    title: "Just use Dust",
     titleColor: "text-blue-600",
     ctaButtons: {
       primary: {

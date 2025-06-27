@@ -100,7 +100,7 @@ export const retailEcommerceConfig: IndustryPageConfig = {
     useCases: [
       {
         title: "Customer service",
-        image: "/static/landing/industry/features/UxWriter_2.svg",
+        image: "/static/landing/industry/features/UxWriter_2.webp",
         bgColor: "bg-pink-100",
         features: [
           {
@@ -131,7 +131,7 @@ export const retailEcommerceConfig: IndustryPageConfig = {
       },
       {
         title: "Business intelligence & analytics",
-        image: "/static/landing/industry/features/Data_graph.svg",
+        image: "/static/landing/industry/features/Data_graph.webp",
         bgColor: "bg-green-100",
         features: [
           {
@@ -162,7 +162,7 @@ export const retailEcommerceConfig: IndustryPageConfig = {
       },
       {
         title: "Marketing & intelligence",
-        image: "/static/landing/industry/features/Radar_AIDigest.svg",
+        image: "/static/landing/industry/features/Radar_AIDigest.webp",
         bgColor: "bg-gray-950",
         features: [
           {
@@ -193,7 +193,7 @@ export const retailEcommerceConfig: IndustryPageConfig = {
       },
       {
         title: "Product & catalog operations",
-        image: "/static/landing/industry/features/Catalog.svg",
+        image: "/static/landing/industry/features/Catalog.webp",
         bgColor: "bg-blue-100",
         features: [
           {
@@ -224,7 +224,7 @@ export const retailEcommerceConfig: IndustryPageConfig = {
       },
       {
         title: "Merchant management",
-        image: "/static/landing/industry/features/Provider_list.svg",
+        image: "/static/landing/industry/features/Provider_list.webp",
         bgColor: "bg-orange-100",
         features: [
           {

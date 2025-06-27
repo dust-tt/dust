@@ -101,7 +101,7 @@ export const insuranceConfig: IndustryPageConfig = {
     useCases: [
       {
         title: "Customer service",
-        image: "/static/landing/industry/features/UxWriter.svg",
+        image: "/static/landing/industry/features/UxWriter.webp",
         bgColor: "bg-orange-100",
         features: [
           {
@@ -132,7 +132,7 @@ export const insuranceConfig: IndustryPageConfig = {
       },
       {
         title: "Business development",
-        image: "/static/landing/industry/features/Compliance_verification.svg",
+        image: "/static/landing/industry/features/Compliance_verification.webp",
         bgColor: "bg-blue-100",
         features: [
           {
@@ -163,7 +163,7 @@ export const insuranceConfig: IndustryPageConfig = {
       },
       {
         title: "Legal & compliance support",
-        image: "/static/landing/industry/features/Legal_review_2.svg",
+        image: "/static/landing/industry/features/Legal_review_2.webp",
         bgColor: "bg-blue-100",
         features: [
           {
@@ -188,7 +188,7 @@ export const insuranceConfig: IndustryPageConfig = {
       },
       {
         title: "Intelligence",
-        image: "/static/landing/industry/features/Radar_AIDigest.svg",
+        image: "/static/landing/industry/features/Radar_AIDigest.webp",
         bgColor: "bg-gray-950",
         features: [
           {

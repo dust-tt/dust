@@ -42,25 +42,25 @@ export const investmentConfig: IndustryPageConfig = {
     },
   },
   painPoints: {
-    title: "3 Pain points Dust solves",
+    title: "3 pain points Dust solves",
     painPoints: [
       {
         icon: "/static/landing/industry/d-blue.svg",
-        title: "Operational Costs: Optimization and Knowledge Transfer",
+        title: "Operational costs",
         description:
           "Reduce operational overhead through automated research processes and efficient knowledge management across investment teams.",
         color: "blue",
       },
       {
         icon: "/static/landing/industry/d-red.svg",
-        title: "Customer Retention: Engagement and Data Access",
+        title: "Customer retention",
         description:
           "Enhance client relationships through timely insights, personalized reporting, and improved access to investment data and analysis.",
         color: "red",
       },
       {
         icon: "/static/landing/industry/d-green.svg",
-        title: "Revenue Leakage: Inefficient Manual Workflows",
+        title: "Revenue leakage",
         description:
           "Eliminate revenue loss from missed opportunities, delayed decision-making, and inefficient manual processes in investment workflows.",
         color: "green",
@@ -71,118 +71,118 @@ export const investmentConfig: IndustryPageConfig = {
     title: "Dust in Action",
     useCases: [
       {
-        title: "Target Identification & Research",
-        image: "/static/landing/industry/features/Search_assistant.svg",
+        title: "Target identification & research",
+        image: "/static/landing/industry/features/Search_assistant.webp",
         bgColor: "bg-pink-100",
         features: [
           {
             icon: "bg-pink-500",
-            title: "Sales Research",
+            title: "Sales research",
             description:
               "Identify high-potential investment targets through comprehensive market and company analysis.",
           },
           {
             icon: "bg-purple-500 rounded-tl-full",
-            title: "Target Intelligence",
+            title: "Target intelligence",
             description:
               "Gather detailed intelligence on potential acquisition targets and competitive landscape analysis.",
           },
           {
             icon: "bg-blue-500 rounded-tr-full",
-            title: "Market Analysis",
+            title: "Market analysis",
             description:
               "Analyze market trends, sector dynamics, and investment opportunities with real-time data insights.",
           },
           {
             icon: "bg-green-500 rounded-bl-full",
-            title: "Pipeline Management",
+            title: "Pipeline management",
             description:
               "Streamline deal pipeline management with automated tracking and prioritization of investment opportunities.",
           },
           {
             icon: "bg-yellow-400 rounded-br-full",
-            title: "Competitive Intelligence",
+            title: "Competitive intelligence",
             description:
               "Monitor competitor activities, market positioning, and strategic moves in target sectors.",
           },
         ],
       },
       {
-        title: "Due Diligence",
-        image: "/static/landing/industry/features/Doc_analysis.svg",
+        title: "Due diligence",
+        image: "/static/landing/industry/features/Doc_analysis.webp",
         bgColor: "bg-yellow-100",
         features: [
           {
             icon: "bg-yellow-500",
-            title: "Investment History & DD",
+            title: "Investment history & DD",
             description:
               "Comprehensive analysis of investment history, financial performance, and risk assessment.",
           },
           {
             icon: "bg-purple-500 rounded-tl-full",
-            title: "ESG Assessments",
+            title: "ESG assessments",
             description:
               "Evaluate environmental, social, and governance factors for sustainable investment decisions.",
           },
           {
             icon: "bg-blue-500 rounded-tr-full",
-            title: "Financial Analysis",
+            title: "Financial analysis",
             description:
               "Deep financial modeling, valuation analysis, and performance benchmarking against industry standards.",
           },
         ],
       },
       {
-        title: "Portfolio Support",
-        image: "/static/landing/industry/features/Radar_partner.svg",
+        title: "Portfolio support",
+        image: "/static/landing/industry/features/Radar_partner.webp",
         bgColor: "bg-gray-100",
         features: [
           {
             icon: "bg-gray-600",
-            title: "Board Preparation",
+            title: "Board preparation",
             description:
               "Automate board meeting prep with comprehensive portfolio updates and strategic recommendations.",
           },
           {
             icon: "bg-blue-500 rounded-tl-full",
-            title: "Performance Monitoring",
+            title: "Performance monitoring",
             description:
               "Track portfolio company performance with real-time metrics and automated reporting dashboards.",
           },
           {
             icon: "bg-green-500 rounded-tr-full",
-            title: "Value Creation",
+            title: "Value creation",
             description:
               "Identify value creation opportunities and operational improvements across portfolio companies.",
           },
           {
             icon: "bg-purple-500 rounded-bl-full",
-            title: "Exit Planning",
+            title: "Exit planning",
             description:
               "Strategic exit planning support with market timing analysis and buyer identification.",
           },
         ],
       },
       {
-        title: "Reporting & Content",
-        image: "/static/landing/industry/features/Document_generation.svg",
+        title: "Reporting & content",
+        image: "/static/landing/industry/features/Document_generation.webp",
         bgColor: "bg-orange-100",
         features: [
           {
             icon: "bg-orange-500",
-            title: "LP Portfolio Reporting",
+            title: "LP portfolio reporting",
             description:
               "Generate comprehensive limited partner reports with portfolio performance and market insights.",
           },
           {
             icon: "bg-blue-500 rounded-tl-full",
-            title: "Marketing & Social",
+            title: "Marketing & social",
             description:
               "Create compelling marketing materials and maintain thought leadership through strategic content.",
           },
           {
             icon: "bg-purple-500 rounded-tr-full",
-            title: "Compliance Support",
+            title: "Compliance support",
             description:
               "Ensure regulatory compliance with automated documentation and reporting requirements.",
           },
@@ -234,7 +234,7 @@ export const investmentConfig: IndustryPageConfig = {
     ],
   },
   justUseDust: {
-    title: "#JustUseDust",
+    title: "Just use Dust",
     titleColor: "text-blue-600",
     ctaButtons: {
       primary: {
