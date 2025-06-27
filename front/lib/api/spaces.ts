@@ -62,9 +62,7 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
 
   if (usages.length > 0) {
     const agentNames = uniq(
-      usages
-        .flatMap((u) => u.agentConfigurationIdsToAgentNames)
-        .map((agent) => agent.name)
+      usages.flatMap((u) => u.agents).map((agent) => agent.name)
     );
     return new Err(
       new Error(

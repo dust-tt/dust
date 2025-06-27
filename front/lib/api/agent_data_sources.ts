@@ -386,13 +386,13 @@ export async function getDataSourceViewsUsageByCategory({
     if (!usage) {
       usage = {
         count: 0,
-        agentConfigurationIdsToAgentNames: [],
+        agents: [],
       };
     }
 
-    usage.agentConfigurationIdsToAgentNames = sortBy(
+    usage.agents = sortBy(
       uniqBy(
-        usage.agentConfigurationIdsToAgentNames.concat(
+        usage.agents.concat(
           dsViewConfig.sIds
             .map((sId, index) => ({
               sId,
@@ -411,7 +411,7 @@ export async function getDataSourceViewsUsageByCategory({
       "name"
     );
 
-    usage.count = usage.agentConfigurationIdsToAgentNames.length;
+    usage.count = usage.agents.length;
 
     acc[dsViewConfig.dataSourceViewId] = usage;
     return acc;
@@ -715,13 +715,13 @@ export async function getDataSourcesUsageByCategory({
     if (!usage) {
       usage = {
         count: 0,
-        agentConfigurationIdsToAgentNames: [],
+        agents: [],
       };
     }
 
-    usage.agentConfigurationIdsToAgentNames = sortBy(
+    usage.agents = sortBy(
       uniqBy(
-        usage.agentConfigurationIdsToAgentNames.concat(
+        usage.agents.concat(
           dsConfig.sIds
             .map((sId, index) => ({
               sId,
@@ -740,7 +740,7 @@ export async function getDataSourcesUsageByCategory({
       "name"
     );
 
-    usage.count = usage.agentConfigurationIdsToAgentNames.length;
+    usage.count = usage.agents.length;
 
     acc[dsConfig.dataSourceId] = usage;
     return acc;
@@ -764,7 +764,7 @@ export async function getDataSourceUsage({
   }
 
   if (DISABLE_QUERIES) {
-    return new Ok({ count: 0, agentConfigurationIdsToAgentNames: [] });
+    return new Ok({ count: 0, agents: [] });
   }
 
   const res = (await Promise.all([
@@ -983,7 +983,7 @@ export async function getDataSourceUsage({
   ])) as unknown as { names: string[]; sIds: string[] }[] | null;
 
   if (!res) {
-    return new Ok({ count: 0, agentConfigurationIdsToAgentNames: [] });
+    return new Ok({ count: 0, agents: [] });
   } else {
     const agents = res
       .flatMap((r) =>
@@ -1004,7 +1004,7 @@ export async function getDataSourceUsage({
 
     return new Ok({
       count: sortedAgents.length,
-      agentConfigurationIdsToAgentNames: sortedAgents,
+      agents: sortedAgents,
     });
   }
 }
@@ -1026,7 +1026,7 @@ export async function getDataSourceViewUsage({
   }
 
   if (DISABLE_QUERIES) {
-    return new Ok({ count: 0, agentConfigurationIdsToAgentNames: [] });
+    return new Ok({ count: 0, agents: [] });
   }
 
   const res = (await Promise.all([
@@ -1245,7 +1245,7 @@ export async function getDataSourceViewUsage({
   ])) as unknown as { names: string[]; sIds: string[] }[] | null;
 
   if (!res) {
-    return new Ok({ count: 0, agentConfigurationIdsToAgentNames: [] });
+    return new Ok({ count: 0, agents: [] });
   } else {
     const agents = res
       .flatMap((r) =>
@@ -1266,7 +1266,7 @@ export async function getDataSourceViewUsage({
 
     return new Ok({
       count: sortedAgents.length,
-      agentConfigurationIdsToAgentNames: sortedAgents,
+      agents: sortedAgents,
     });
   }
 }

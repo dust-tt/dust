@@ -129,7 +129,7 @@ export class AppResource extends ResourceWithSpace<AppModel> {
       },
     });
 
-    const agentConfigurationIdsToAgentNames = sortBy(
+    const agents = sortBy(
       [
         ...new Set(
           agentConfigurations.map((a) => ({
@@ -142,8 +142,8 @@ export class AppResource extends ResourceWithSpace<AppModel> {
     );
 
     return new Ok({
-      count: agentConfigurationIdsToAgentNames.length,
-      agentConfigurationIdsToAgentNames,
+      count: agents.length,
+      agents,
     });
   }
 
