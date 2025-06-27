@@ -470,10 +470,17 @@ export async function listZendeskTicketComments({
   let hasMore = true;
 
   while (hasMore) {
-    const response = await fetchFromZendeskWithRetries({ url, accessToken });
-    comments.push(...response.comments);
-    hasMore = response.hasMore || false;
-    url = response.nextLink;
+    try {
+      const response = await fetchFromZendeskWithRetries({ url, accessToken });
+      comments.push(...response.comments);
+      hasMore = response.hasMore || false;
+      url = response.nextLink;
+    } catch (e) {
+      if (isZendeskNotFoundError(e)) {
+        return [];
+      }
+      throw e;
+    }
   }
   return comments;
 }
@@ -523,7 +530,7 @@ export function isUserAdmin(user: ZendeskFetchedUser): boolean {
 }
 
 /**
- * Fetches a multiple users at once from the Zendesk API.
+ * Fetches multiple users at once from the Zendesk API.
  * May run multiple queries, more precisely we need userCount // 100 + 1 API calls.
  */
 export async function listZendeskUsers({

@@ -2,6 +2,7 @@ import { groupBy } from "lodash";
 import { useContext, useMemo } from "react";
 
 import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
+import { useMCPServerViewsContext } from "@app/components/assistant_builder/contexts/MCPServerViewsContext";
 import type {
   ActionSpecificationWithType,
   AssistantBuilderDataVisualizationConfiguration,
@@ -120,7 +121,8 @@ interface UseToolsProps {
 }
 
 export const useTools = ({ actions, reasoningModels }: UseToolsProps) => {
-  const { mcpServerViews, spaces } = useContext(AssistantBuilderContext);
+  const { spaces } = useContext(AssistantBuilderContext);
+  const { mcpServerViews } = useMCPServerViewsContext();
 
   const nonDefaultMCPActions = getAvailableNonMCPActions();
 

@@ -42,6 +42,8 @@ const PARALLEL_FILE_UPLOADS = 15;
 const PARALLEL_DIRECTORY_UPLOADS = 10;
 const GCS_FILES_BATCH_SIZE = 500;
 
+const GITHUB_TARBALL_DOWNLOAD_TIMEOUT_MS = 20 * 60 * 1000; // 20 minutes.
+
 export async function githubExtractToGcsActivity({
   connectorId,
   dataSourceConfig,
@@ -97,6 +99,7 @@ export async function githubExtractToGcsActivity({
       ref: repoInfo.default_branch,
       request: {
         parseSuccessResponseBody: false,
+        timeout: GITHUB_TARBALL_DOWNLOAD_TIMEOUT_MS,
       },
     }
   );

@@ -21,6 +21,7 @@ import ActionsScreen, {
 import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
 import AssistantBuilderRightPanel from "@app/components/assistant_builder/AssistantBuilderPreviewDrawer";
 import { BuilderLayout } from "@app/components/assistant_builder/BuilderLayout";
+import { useMCPServerViewsContext } from "@app/components/assistant_builder/contexts/MCPServerViewsContext";
 import {
   INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT,
   InstructionScreen,
@@ -228,8 +229,11 @@ export default function AssistantBuilder({
     agentConfigurationId: agentConfiguration?.sId ?? null,
   });
   useNavigationLock(edited && !disableUnsavedChangesPrompt);
-  const { mcpServerViews, isPreviewPanelOpen, setIsPreviewPanelOpen } =
-    useContext(AssistantBuilderContext);
+  const { isPreviewPanelOpen, setIsPreviewPanelOpen } = useContext(
+    AssistantBuilderContext
+  );
+
+  const { mcpServerViews } = useMCPServerViewsContext();
 
   const checkUsernameTimeout = React.useRef<NodeJS.Timeout | null>(null);
 
@@ -309,9 +313,11 @@ export default function AssistantBuilder({
     }
 
     // Check if there are any errors in the actions
-    const anyActionError = builderState.actions.some((action) =>
-      hasActionError(action, mcpServerViews)
-    );
+    const anyActionError =
+      mcpServerViews.length > 0 &&
+      builderState.actions.some((action) =>
+        hasActionError(action, mcpServerViews)
+      );
 
     setHasAnyActionsError(anyActionError);
   }, [

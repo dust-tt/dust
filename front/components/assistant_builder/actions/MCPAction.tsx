@@ -1,5 +1,5 @@
 import { ContentMessage, InformationCircleIcon } from "@dust-tt/sparkle";
-import { useCallback, useContext, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import { ToolsList } from "@app/components/actions/mcp/ToolsList";
 import { AdditionalConfigurationSection } from "@app/components/assistant_builder/actions/configuration/AdditionalConfigurationSection";
@@ -13,7 +13,7 @@ import { JsonSchemaConfigurationSection } from "@app/components/assistant_builde
 import { ReasoningModelConfigurationSection } from "@app/components/assistant_builder/actions/configuration/ReasoningModelConfigurationSection";
 import { TimeFrameConfigurationSection } from "@app/components/assistant_builder/actions/configuration/TimeFrameConfigurationSection";
 import { DataDescription } from "@app/components/assistant_builder/actions/DataDescription";
-import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
+import { useMCPServerViewsContext } from "@app/components/assistant_builder/contexts/MCPServerViewsContext";
 import type {
   AssistantBuilderMCPConfiguration,
   AssistantBuilderMCPOrVizState,
@@ -111,7 +111,7 @@ export function MCPAction({
   const actionConfiguration =
     action.configuration as AssistantBuilderMCPServerConfiguration;
 
-  const { mcpServerViews } = useContext(AssistantBuilderContext);
+  const { mcpServerViews } = useMCPServerViewsContext();
 
   const noMCPServerView = mcpServerViews.length === 0;
 

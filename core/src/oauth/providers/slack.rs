@@ -111,6 +111,22 @@ impl Provider for SlackConnectionProvider {
             )));
         }
 
+        let (team_id, team_name) = match raw_json["team"].is_object() {
+            true => (
+                raw_json["team"]["id"]
+                    .as_str()
+                    .ok_or_else(|| anyhow!("Missing `team_id` in response from Slack"))?,
+                raw_json["team"]["name"]
+                    .as_str()
+                    .ok_or_else(|| anyhow!("Missing `team_name` in response from Slack"))?,
+            ),
+            false => {
+                return Err(ProviderError::UnknownError(format!(
+                    "Missing `team` in response from Slack"
+                )))
+            }
+        };
+
         // Depending on the scopes we can get a bot or user access token.
         // For simplicity, we only support one of them at a time, the user access token is preferred.
 
@@ -130,7 +146,16 @@ impl Provider for SlackConnectionProvider {
             access_token: access_token.to_string(),
             access_token_expiry: None,
             refresh_token: None,
-
+            extra_metadata: Some(serde_json::Map::from_iter([
+                (
+                    "team_id".to_string(),
+                    serde_json::Value::String(team_id.to_string()),
+                ),
+                (
+                    "team_name".to_string(),
+                    serde_json::Value::String(team_name.to_string()),
+                ),
+            ])),
             raw_json,
         })
     }
