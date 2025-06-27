@@ -67,41 +67,32 @@ export function ProviderManagementModal({
   const { isDark } = useTheme();
   const sendNotifications = useSendNotification();
 
-  const { workspace, isWorkspaceLoading, mutateWorkspace } = useWorkspace({
-    owner,
-  });
-
-  const [initialProviderStates, setInitialProviderStates] =
-    useState<ProviderStates>({} as ProviderStates);
+  const { workspace, mutateWorkspace } = useWorkspace({ owner });
 
   const [providerStates, setProviderStates] = useState<ProviderStates>(
     {} as ProviderStates
   );
-
-  const [initialDefaultEmbeddingProvider, setInitialDefaultEmbeddingProvider] =
-    useState<ModelProviderIdType | null>(null);
-
   const [embeddingProvider, setDefaultEmbeddingProvider] =
     useState<ModelProviderIdType | null>(null);
 
-  useEffect(() => {
-    if (!isWorkspaceLoading) {
-      const enabledProviders: ModelProviderIdType[] =
-        workspace?.whiteListedProviders ?? [...MODEL_PROVIDER_IDS];
-      const states = MODEL_PROVIDER_IDS.reduce((acc, provider) => {
-        acc[provider] = enabledProviders.includes(provider);
-        return acc;
-      }, {} as ProviderStates);
+  const [open, setOpen] = useState(false);
 
-      // After a data fetch, we set both the initial and current states
-      setInitialProviderStates(states);
-      setProviderStates(states);
-      setInitialDefaultEmbeddingProvider(
-        workspace?.defaultEmbeddingProvider ?? null
-      );
+  const { initialProviderStates } = useMemo(() => {
+    const enabledProviders: ModelProviderIdType[] =
+      workspace?.whiteListedProviders ?? [...MODEL_PROVIDER_IDS];
+    const states = MODEL_PROVIDER_IDS.reduce((acc, provider) => {
+      acc[provider] = enabledProviders.includes(provider);
+      return acc;
+    }, {} as ProviderStates);
+    return { initialProviderStates: states };
+  }, [workspace]);
+
+  useEffect(() => {
+    if (open) {
+      setProviderStates(initialProviderStates);
       setDefaultEmbeddingProvider(workspace?.defaultEmbeddingProvider ?? null);
     }
-  }, [isWorkspaceLoading, workspace]);
+  }, [open, initialProviderStates, workspace?.defaultEmbeddingProvider]);
 
   const allToggleEnabled = useMemo(
     () => Object.values(providerStates).every(Boolean),
@@ -170,18 +161,13 @@ export function ProviderManagementModal({
 
   const hasChanges =
     !isEqual(providerStates, initialProviderStates) ||
-    embeddingProvider !== initialDefaultEmbeddingProvider;
+    embeddingProvider !== workspace?.defaultEmbeddingProvider;
 
   return (
     <Sheet
+      open={open}
       onOpenChange={(open) => {
-        if (!open) {
-          // Reset states to the initial states when the sheet is closed
-          // We do this even if changes were saved, which is quirky but harmless,
-          // since in that case we call mutateWorkspace() which will refetch the data
-          setProviderStates(initialProviderStates);
-          setDefaultEmbeddingProvider(initialDefaultEmbeddingProvider);
-        }
+        setOpen(open);
       }}
     >
       <SheetTrigger asChild>
