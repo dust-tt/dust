@@ -4,7 +4,10 @@ import React, { createContext, memo, useContext } from "react";
 import { mcpServerViewSortingFn } from "@app/lib/actions/mcp_helper";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useMCPServerViewsFromSpaces } from "@app/lib/swr/mcp_servers";
-import type { LightWorkspaceType, SpaceType } from "@app/types";
+import type { LightWorkspaceType } from "@app/types";
+
+import { useSpacesContext } from "./SpacesContext";
+
 interface MCPServerViewsContextType {
   mcpServerViews: MCPServerViewType[];
   isMCPServerViewsLoading: boolean;
@@ -29,12 +32,13 @@ export const useMCPServerViewsContext = () => {
 
 interface MCPServerViewsProviderProps {
   owner: LightWorkspaceType;
-  spaces: SpaceType[];
   children: ReactNode;
 }
 
 export const MCPServerViewsProvider = memo(
-  ({ owner, spaces, children }: MCPServerViewsProviderProps) => {
+  ({ owner, children }: MCPServerViewsProviderProps) => {
+    const { spaces } = useSpacesContext();
+
     const {
       serverViews: mcpServerViews,
       isLoading: isMCPServerViewsLoading,

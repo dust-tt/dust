@@ -5,6 +5,7 @@ import AgentBuilder from "@app/components/agent_builder/AgentBuilder";
 import { AgentBuilderProvider } from "@app/components/agent_builder/AgentBuilderContext";
 import { DataSourceViewsProvider } from "@app/components/assistant_builder/contexts/DataSourceViewsContext";
 import { MCPServerViewsProvider } from "@app/components/assistant_builder/contexts/MCPServerViewsContext";
+import { SpacesProvider } from "@app/components/assistant_builder/contexts/SpacesContext";
 import { getAccessibleSourcesAndApps } from "@app/components/assistant_builder/server_side_props_helpers";
 import type { BuilderFlow } from "@app/components/assistant_builder/types";
 import { BUILDER_FLOWS } from "@app/components/assistant_builder/types";
@@ -18,9 +19,7 @@ import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useAssistantTemplate } from "@app/lib/swr/assistants";
 import type {
   AgentConfigurationType,
-  AppType,
   PlanType,
-  SpaceType,
   SubscriptionType,
   TemplateAgentConfigurationType,
   WorkspaceType,
@@ -40,8 +39,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
   plan: PlanType;
-  spaces: SpaceType[];
-  dustApps: AppType[];
   agentConfiguration:
     | AgentConfigurationType
     | TemplateAgentConfigurationType
@@ -72,7 +69,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
-  const { spaces, dustApps } = await getAccessibleSourcesAndApps(auth);
+  const { dustApps } = await getAccessibleSourcesAndApps(auth);
 
   const flow: BuilderFlow = BUILDER_FLOWS.includes(
     context.query.flow as BuilderFlow
@@ -123,14 +120,12 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       plan,
       subscription,
       templateId,
-      spaces: spaces.map((s) => s.toJSON()),
     },
   };
 });
 
 export default function CreateAgent({
   agentConfiguration,
-  spaces,
   owner,
   templateId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
@@ -145,12 +140,14 @@ export default function CreateAgent({
   }
 
   return (
-    <AgentBuilderProvider spaces={spaces} owner={owner}>
-      <MCPServerViewsProvider owner={owner} spaces={spaces}>
-        <DataSourceViewsProvider owner={owner}>
-          <AgentBuilder />
-        </DataSourceViewsProvider>
-      </MCPServerViewsProvider>
+    <AgentBuilderProvider owner={owner}>
+      <SpacesProvider owner={owner}>
+        <MCPServerViewsProvider owner={owner}>
+          <DataSourceViewsProvider owner={owner}>
+            <AgentBuilder />
+          </DataSourceViewsProvider>
+        </MCPServerViewsProvider>
+      </SpacesProvider>
     </AgentBuilderProvider>
   );
 }

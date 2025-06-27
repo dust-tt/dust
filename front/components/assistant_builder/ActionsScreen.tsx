@@ -30,13 +30,7 @@ import {
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import assert from "assert";
 import type { ReactNode } from "react";
-import React, {
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 import { MCPActionHeader } from "@app/components/actions/MCPActionHeader";
 import { DataVisualization } from "@app/components/assistant_builder/actions/DataVisualization";
@@ -45,7 +39,6 @@ import {
   MCPAction,
 } from "@app/components/assistant_builder/actions/MCPAction";
 import { AddToolsDropdown } from "@app/components/assistant_builder/AddToolsDropdown";
-import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
 import { useMCPServerViewsContext } from "@app/components/assistant_builder/contexts/MCPServerViewsContext";
 import { isLegacyAssistantBuilderConfiguration } from "@app/components/assistant_builder/legacy_agent";
 import type {
@@ -83,6 +76,7 @@ import {
   EXTENDED_MAX_STEPS_USE_PER_RUN_LIMIT,
   MAX_STEPS_USE_PER_RUN_LIMIT,
 } from "@app/types";
+import { useSpacesContext } from "@app/components/assistant_builder/contexts/SpacesContext";
 
 function ActionModeSection({
   children,
@@ -753,7 +747,7 @@ function ActionConfigEditor({
   showInvalidActionDescError,
   hasFeature,
 }: ActionConfigEditorProps) {
-  const { spaces } = useContext(AssistantBuilderContext);
+  const { spaces } = useSpacesContext();
 
   // Only allow one space across all actions.
   const allowedSpaces = useMemo(() => {
