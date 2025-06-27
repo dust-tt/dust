@@ -2,7 +2,7 @@ import type { Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
 import assert from "assert";
 import gunzip from "gunzip-maybe";
-import type { PassThrough, Readable } from "stream";
+import type { Readable } from "stream";
 import { pipeline } from "stream/promises";
 import * as tar from "tar-stream";
 
