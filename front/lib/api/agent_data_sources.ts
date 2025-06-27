@@ -356,42 +356,44 @@ export async function getDataSourceViewsUsageByCategory({
     sIds: string[];
   }[][];
 
-  return res.flat().reduce<DataSourcesUsageByAgent>((acc, dsViewConfig) => {
-    let usage = acc[dsViewConfig.dataSourceViewId];
+  const result = res
+    .flat()
+    .reduce<DataSourcesUsageByAgent>((acc, dsViewConfig) => {
+      let usage = acc[dsViewConfig.dataSourceViewId];
 
-    if (!usage) {
-      usage = {
-        count: 0,
-        agents: [],
-      };
+      if (!usage) {
+        usage = {
+          count: 0,
+          agents: [],
+        };
+        acc[dsViewConfig.dataSourceViewId] = usage;
+      }
+
+      const newAgents = dsViewConfig.sIds
+        .map((sId, index) => ({
+          sId,
+          name: dsViewConfig.names[index],
+        }))
+        .filter(
+          (agent) =>
+            agent.sId &&
+            agent.sId.length > 0 &&
+            agent.name &&
+            agent.name.length > 0
+        );
+
+      usage.agents.push(...newAgents);
+      return acc;
+    }, {});
+
+  Object.values(result).forEach((usage) => {
+    if (usage) {
+      usage.agents = sortBy(uniqBy(usage.agents, "sId"), "name");
+      usage.count = usage.agents.length;
     }
+  });
 
-    usage.agents = sortBy(
-      uniqBy(
-        usage.agents.concat(
-          dsViewConfig.sIds
-            .map((sId, index) => ({
-              sId,
-              name: dsViewConfig.names[index],
-            }))
-            .filter(
-              (agent) =>
-                agent.sId &&
-                agent.sId.length > 0 &&
-                agent.name &&
-                agent.name.length > 0
-            )
-        ),
-        "sId"
-      ),
-      "name"
-    );
-
-    usage.count = usage.agents.length;
-
-    acc[dsViewConfig.dataSourceViewId] = usage;
-    return acc;
-  }, {});
+  return result;
 }
 
 export async function getDataSourcesUsageByCategory({
@@ -661,7 +663,7 @@ export async function getDataSourcesUsageByCategory({
     sIds: string[];
   }[][];
 
-  return res.flat().reduce<DataSourcesUsageByAgent>((acc, dsConfig) => {
+  const result = res.flat().reduce<DataSourcesUsageByAgent>((acc, dsConfig) => {
     let usage = acc[dsConfig.dataSourceId];
 
     if (!usage) {
@@ -669,34 +671,34 @@ export async function getDataSourcesUsageByCategory({
         count: 0,
         agents: [],
       };
+      acc[dsConfig.dataSourceId] = usage;
     }
 
-    usage.agents = sortBy(
-      uniqBy(
-        usage.agents.concat(
-          dsConfig.sIds
-            .map((sId, index) => ({
-              sId,
-              name: dsConfig.names[index],
-            }))
-            .filter(
-              (agent) =>
-                agent.sId &&
-                agent.sId.length > 0 &&
-                agent.name &&
-                agent.name.length > 0
-            )
-        ),
-        "sId"
-      ),
-      "name"
-    );
+    const newAgents = dsConfig.sIds
+      .map((sId, index) => ({
+        sId,
+        name: dsConfig.names[index],
+      }))
+      .filter(
+        (agent) =>
+          agent.sId &&
+          agent.sId.length > 0 &&
+          agent.name &&
+          agent.name.length > 0
+      );
 
-    usage.count = usage.agents.length;
-
-    acc[dsConfig.dataSourceId] = usage;
+    usage.agents.push(...newAgents);
     return acc;
   }, {});
+
+  Object.values(result).forEach((usage) => {
+    if (usage) {
+      usage.agents = sortBy(uniqBy(usage.agents, "sId"), "name");
+      usage.count = usage.agents.length;
+    }
+  });
+
+  return result;
 }
 
 export async function getDataSourceUsage({
