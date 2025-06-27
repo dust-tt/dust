@@ -14,7 +14,6 @@ import {
   allowSyncZendeskBrand,
   forbidSyncZendeskBrand,
 } from "@connectors/connectors/zendesk/lib/brand_permissions";
-import { updateRetentionPeriod } from "@connectors/connectors/zendesk/lib/edit_retention";
 import {
   allowSyncZendeskCategory,
   allowSyncZendeskHelpCenter,
@@ -60,6 +59,8 @@ const SYNC_UNRESOLVED_TICKETS_CONFIG_KEY =
   "zendeskSyncUnresolvedTicketsEnabled";
 const HIDE_CUSTOMER_DETAILS_CONFIG_KEY = "zendeskHideCustomerDetails";
 const RETENTION_PERIOD_CONFIG_KEY = "zendeskRetentionPeriodDays";
+const MAX_RETENTION_DAYS = 365;
+const DEFAULT_RETENTION_DAYS = 180;
 
 export class ZendeskConnectorManager extends BaseConnectorManager<null> {
   readonly provider: ConnectorProvider = "zendesk";
@@ -93,7 +94,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       },
       {
         subdomain,
-        retentionPeriodDays: 180,
+        retentionPeriodDays: DEFAULT_RETENTION_DAYS,
         syncUnresolvedTickets: false,
         hideCustomerDetails: false,
       }
@@ -575,41 +576,29 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       }
       case RETENTION_PERIOD_CONFIG_KEY: {
         const retentionDays = parseInt(configValue.trim(), 10);
-
-        // Validate retention period
         if (
           configValue.trim() !== "" &&
           (isNaN(retentionDays) || retentionDays < 0)
         ) {
           return new Err(
             new Error(
-              "Retention period must be a non-negative integer or empty for no limit."
+              "Retention period must be a non-negative integer or empty to use default."
             )
           );
         }
-        if (retentionDays > 365) {
-          return new Err(new Error("Retention period cannot exceed 365 days."));
+        if (retentionDays > MAX_RETENTION_DAYS) {
+          return new Err(
+            new Error(
+              `Retention period cannot exceed ${MAX_RETENTION_DAYS} days.`
+            )
+          );
         }
-
-        // Use 180 as default if empty string
         const finalRetentionDays =
-          configValue.trim() === "" ? 180 : retentionDays;
-        const currentRetentionDays = zendeskConfiguration.retentionPeriodDays;
+          configValue.trim() === "" ? DEFAULT_RETENTION_DAYS : retentionDays;
 
         await zendeskConfiguration.update({
           retentionPeriodDays: finalRetentionDays,
         });
-
-        // If retention period is increased, trigger a sync to include
-        // previously excluded tickets that are now within the retention window
-        if (finalRetentionDays > currentRetentionDays) {
-          await updateRetentionPeriod(
-            connector,
-            currentRetentionDays,
-            finalRetentionDays
-          );
-        }
-
         break;
       }
       default: {
