@@ -17,9 +17,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   co_edition: {
     description: "Collaborative editing features",
   },
-  custom_webcrawler: {
-    description: "Custom web crawling configuration",
-  },
   deepseek_feature: {
     description: "Access to DeepSeek models",
   },
@@ -80,17 +77,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   salesforce_tool: {
     description: "Salesforce MCP tool",
   },
-  search_knowledge_builder: {
-    description: "Build custom knowledge bases for search",
-  },
   show_debug_tools: {
     description: "Display debug tools in the interface",
   },
   slack_tool: {
     description: "Slack integration tool",
-  },
-  snowflake_connector_feature: {
-    description: "Snowflake database connector",
   },
   usage_data_api: {
     description: "API for accessing usage data",
