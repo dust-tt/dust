@@ -8,6 +8,7 @@ export const mediaConfig: IndustryPageConfig = {
     "hero",
     "painPoints",
     "dustInAction",
+    "customerStories",
     "justUseDust",
   ]),
   hero: {
@@ -36,7 +37,7 @@ export const mediaConfig: IndustryPageConfig = {
       },
     },
     heroImage: {
-      src: "/static/landing/industry/Dust_Connectors.webp",
+      src: "/static/landing/industry/Dust_Connectors.svg",
       alt: "Media Companies AI-powered workflows illustration",
     },
   },
@@ -177,7 +178,7 @@ export const mediaConfig: IndustryPageConfig = {
       {
         title: "Legal & business affairs",
         image:
-          "/static/landing/industry/features/Compliance_verification_2.webp",
+          "/static/landing/industry/features/Compliance_verification_2.svg",
         bgColor: "bg-yellow-100",
         features: [
           {
@@ -252,7 +253,7 @@ export const mediaConfig: IndustryPageConfig = {
     ],
   },
   justUseDust: {
-    title: "Just use Dust",
+    title: "#JustUseDust",
     titleColor: "text-blue-600",
     ctaButtons: {
       primary: {

@@ -37,7 +37,7 @@ export const investmentConfig: IndustryPageConfig = {
       },
     },
     heroImage: {
-      src: "/static/landing/industry/Dust_Connectors.webp",
+      src: "/static/landing/industry/Dust_Connectors.svg",
       alt: "Investment Firms AI-powered workflows illustration",
     },
   },
@@ -66,125 +66,119 @@ export const investmentConfig: IndustryPageConfig = {
         color: "green",
       },
     ],
-  },  
+  },
   dustInAction: {
     title: "Dust in Action",
     useCases: [
       {
-        title: "Target identification & research",
-        image: "/static/landing/industry/features/Search_assistant.webp",
+        title: "Target Identification & Research",
+        image: "/static/landing/industry/features/Search_assistant.svg",
         bgColor: "bg-pink-100",
         features: [
           {
             icon: "bg-pink-500",
-            title: "Sales research",
+            title: "Sector Research",
             description:
-              "Identify high-potential investment targets through comprehensive market and company analysis.",
+              "Research companies operating in specific sectors, including recent funding activity and market positioning.",
           },
           {
             icon: "bg-purple-500 rounded-tl-full",
-            title: "Target intelligence",
+            title: "Target Intelligence",
             description:
-              "Gather detailed intelligence on potential acquisition targets and competitive landscape analysis.",
+              "Get snapshots of recent discussions and interactions with potential targets.",
           },
           {
             icon: "bg-blue-500 rounded-tr-full",
-            title: "Market analysis",
+            title: "Meeting Preparation",
             description:
-              "Analyze market trends, sector dynamics, and investment opportunities with real-time data insights.",
+              "Prepare notes for initial meetings with targets, analyzing past context and interactions.",
           },
           {
             icon: "bg-green-500 rounded-bl-full",
-            title: "Pipeline management",
+            title: "Industry News",
             description:
-              "Streamline deal pipeline management with automated tracking and prioritization of investment opportunities.",
-          },
-          {
-            icon: "bg-yellow-400 rounded-br-full",
-            title: "Competitive intelligence",
-            description:
-              "Monitor competitor activities, market positioning, and strategic moves in target sectors.",
+              "Monitor industry trends and developments by pulling insights from newsletters, reports, and market intelligence.",
           },
         ],
       },
       {
-        title: "Due diligence",
-        image: "/static/landing/industry/features/Doc_analysis.webp",
+        title: "Due Diligence",
+        image: "/static/landing/industry/features/Doc_analysis.svg",
         bgColor: "bg-yellow-100",
         features: [
           {
             icon: "bg-yellow-500",
-            title: "Investment history & DD",
+            title: "Investment Memo Writing",
             description:
-              "Comprehensive analysis of investment history, financial performance, and risk assessment.",
+              "Write comprehensive investment memos summarizing findings, risks, and opportunities.",
           },
           {
             icon: "bg-purple-500 rounded-tl-full",
-            title: "ESG assessments",
+            title: "Deal Assessment",
             description:
-              "Evaluate environmental, social, and governance factors for sustainable investment decisions.",
+              "Screen dealflow, evaluate pitch decks, and filter startups matching your investment thesis.",
           },
           {
             icon: "bg-blue-500 rounded-tr-full",
-            title: "Financial analysis",
+            title: "Document Analysis",
             description:
-              "Deep financial modeling, valuation analysis, and performance benchmarking against industry standards.",
+              "Summarize legal documents and extract key insights from due diligence materials.",
           },
         ],
       },
       {
-        title: "Portfolio support",
-        image: "/static/landing/industry/features/Radar_partner.webp",
+        title: "Portfolio Support",
+        image: "/static/landing/industry/features/Radar_partner.svg",
         bgColor: "bg-gray-100",
         features: [
           {
             icon: "bg-gray-600",
-            title: "Board preparation",
+            title: "Board Preparation",
             description:
-              "Automate board meeting prep with comprehensive portfolio updates and strategic recommendations.",
+              "Prepare materials and briefings for board meetings.",
           },
           {
             icon: "bg-blue-500 rounded-tl-full",
-            title: "Performance monitoring",
+            title: "Network Intelligence",
             description:
-              "Track portfolio company performance with real-time metrics and automated reporting dashboards.",
+              "Identify key contacts from your network who can provide expertise to portfolio companies.",
           },
           {
             icon: "bg-green-500 rounded-tr-full",
-            title: "Value creation",
+            title: "Portfolio Monitoring",
             description:
-              "Identify value creation opportunities and operational improvements across portfolio companies.",
+              "Track news and developments related to your portfolio companies.",
           },
           {
             icon: "bg-purple-500 rounded-bl-full",
-            title: "Exit planning",
+            title: "Board Minutes",
             description:
-              "Strategic exit planning support with market timing analysis and buyer identification.",
+              "Create meeting minutes from transcripts with key decisions and action points.",
           },
         ],
       },
       {
-        title: "Reporting & content",
-        image: "/static/landing/industry/features/Document_generation.webp",
+        title: "Reporting & Content",
+        image: "/static/landing/industry/features/Document_generation.svg",
         bgColor: "bg-orange-100",
         features: [
           {
             icon: "bg-orange-500",
-            title: "LP portfolio reporting",
+            title: "LP Communications",
             description:
-              "Generate comprehensive limited partner reports with portfolio performance and market insights.",
+              "Generate reports for Limited Partners.",
           },
           {
             icon: "bg-blue-500 rounded-tl-full",
-            title: "Marketing & social",
+            title: "Marketing & Social",
             description:
-              "Create compelling marketing materials and maintain thought leadership through strategic content.",
+              "Generate content for public audiences including case studies, LinkedIn posts, and thought leadership pieces.",
           },
           {
             icon: "bg-purple-500 rounded-tr-full",
-            title: "Compliance support",
+            title: "Compliance Support",
             description:
-              "Ensure regulatory compliance with automated documentation and reporting requirements.",
+              "Handle ESG questionnaires and ensure regulatory compliance across reporting.",
           },
         ],
       },
@@ -234,7 +228,7 @@ export const investmentConfig: IndustryPageConfig = {
     ],
   },
   justUseDust: {
-    title: "Just use Dust",
+    title: "#JustUseDust",
     titleColor: "text-blue-600",
     ctaButtons: {
       primary: {
