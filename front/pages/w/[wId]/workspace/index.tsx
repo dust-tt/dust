@@ -33,10 +33,13 @@ import {
   useToggleSlackChatBot,
 } from "@app/lib/swr/connectors";
 import type { PostDataSourceRequestBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources";
-import type {DataSourceType, SpaceType, SubscriptionType, WorkspaceType} from "@app/types";
-import {
-  setupOAuthConnection
+import type {
+  DataSourceType,
+  SpaceType,
+  SubscriptionType,
+  WorkspaceType,
 } from "@app/types";
+import { setupOAuthConnection } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
