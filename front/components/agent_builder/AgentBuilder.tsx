@@ -1,7 +1,7 @@
 import { useSendNotification } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/router";
-import React, { useState } from "react";
+import React from "react";
 import { useForm } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
@@ -15,14 +15,27 @@ import { AgentBuilderLeftPanel } from "@app/components/agent_builder/AgentBuilde
 import { AgentBuilderRightPanel } from "@app/components/agent_builder/AgentBuilderRightPanel";
 import { submitAgentBuilderForm } from "@app/components/agent_builder/submitAgentBuilderForm";
 import { appLayoutBack } from "@app/components/sparkle/AppContentLayout";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import logger from "@app/logger/logger";
-import { GPT_4O_MODEL_ID } from "@app/types";
+import {
+  EXTENDED_MAX_STEPS_USE_PER_RUN_LIMIT,
+  GPT_4O_MODEL_ID,
+  MAX_STEPS_USE_PER_RUN_LIMIT,
+} from "@app/types";
 
 export default function AgentBuilder() {
   const { owner } = useAgentBuilderContext();
-  const [isSaving, setIsSaving] = useState(false);
   const router = useRouter();
   const sendNotification = useSendNotification();
+
+  const { hasFeature } = useFeatureFlags({
+    workspaceId: owner.sId,
+  });
+
+  const hasExtendedFeature = hasFeature("extended_max_steps_per_run");
+  const defaultMaxSteps = hasExtendedFeature
+    ? Math.min(10, EXTENDED_MAX_STEPS_USE_PER_RUN_LIMIT)
+    : Math.min(10, MAX_STEPS_USE_PER_RUN_LIMIT);
 
   const form = useForm<AgentBuilderFormData>({
     resolver: zodResolver(agentBuilderFormSchema),
@@ -41,12 +54,11 @@ export default function AgentBuilder() {
         temperature: 0.7,
       },
       actions: [],
-      maxStepsPerRun: 10,
+      maxStepsPerRun: defaultMaxSteps,
     },
   });
 
   const handleSubmit = async (formData: AgentBuilderFormData) => {
-    setIsSaving(true);
     try {
       const result = await submitAgentBuilderForm({
         formData,
@@ -65,8 +77,6 @@ export default function AgentBuilder() {
       }
     } catch (error) {
       logger.error("Unexpected error:", error);
-    } finally {
-      setIsSaving(false);
     }
   };
 
@@ -84,7 +94,7 @@ export default function AgentBuilder() {
               await appLayoutBack(owner, router);
             }}
             onSave={handleSave}
-            isSaving={isSaving}
+            isSaving={form.formState.isSubmitting}
           />
         }
         rightPanel={<AgentBuilderRightPanel />}

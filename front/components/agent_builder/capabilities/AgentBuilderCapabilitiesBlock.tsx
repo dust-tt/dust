@@ -13,9 +13,8 @@ import {
   Page,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import React, { useEffect } from "react";
-import { useFieldArray } from "react-hook-form";
-import { useController } from "react-hook-form";
+import React from "react";
+import { useFieldArray, useController } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type {
@@ -88,12 +87,6 @@ function MaxStepsPerRunSettings() {
   const maxLimit = hasExtendedFeature
     ? EXTENDED_MAX_STEPS_USE_PER_RUN_LIMIT
     : MAX_STEPS_USE_PER_RUN_LIMIT;
-
-  useEffect(() => {
-    if (!isFeatureFlagsLoading && field.value > maxLimit) {
-      field.onChange(maxLimit);
-    }
-  }, [isFeatureFlagsLoading, maxLimit, field]);
 
   const displayLabel = isFeatureFlagsLoading
     ? "Max steps settings"
