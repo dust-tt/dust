@@ -8,7 +8,6 @@ export const energyConfig: IndustryPageConfig = {
     "hero",
     "painPoints",
     "dustInAction",
-    "customerStories",
     "justUseDust",
   ]),
 
@@ -43,27 +42,27 @@ export const energyConfig: IndustryPageConfig = {
   },
 
   painPoints: {
-    title: "3 Pain points Dust solves",
+    title: "Transform how you work",
     painPoints: [
       {
         icon: "/static/landing/industry/d-blue.svg",
-        title: "Operational costs",
+        title: "Operational excellence: smart knowledge transfer",
         description:
-          "Optimize maintenance schedules and predict equipment failures, reducing downtime and operational expenses while maximizing efficiency.",
+          "Accelerate team performance by capturing and sharing expertise across distributed operations. Preserve institutional knowledge and standardize processes to boost project execution speed.",
         color: "blue",
       },
       {
         icon: "/static/landing/industry/d-red.svg",
-        title: "Customer penetration",
+        title: "Customer success: unified information access",
         description:
-          "Enhance customer acquisition and retention through personalized energy solutions and proactive service delivery.",
+          "Empower frontline teams with instant access to integrated systems for faster issue resolution. Enhance infrastructure diagnostics and deliver consistent service excellence.",
         color: "red",
       },
       {
         icon: "/static/landing/industry/d-green.svg",
-        title: "Revenue leakage",
+        title: "Revenue growth: automated compliance workflows",
         description:
-          "Identify billing discrepancies, optimize pricing strategies, and ensure accurate meter readings to maximize revenue capture.",
+          "Streamline contract and regulatory document processing to accelerate project launches. Transform compliance monitoring into a competitive advantage for faster time-to-revenue.",
         color: "green",
       },
     ],
@@ -81,25 +80,25 @@ export const energyConfig: IndustryPageConfig = {
             icon: "bg-red-500",
             title: "Documentation and process efficiency",
             description:
-              "Automate regulatory compliance documentation and streamline operational processes across multiple facilities and jurisdictions.",
+              "Accelerate RFP responses by extracting requirements from tender documents. Aggregate customer information into coherent briefings. Analyze agreements against templates for risk assessment.",
           },
           {
             icon: "bg-blue-500 rounded-tl-full",
-            title: "Energy market analysis",
+            title: "Site evaluation and prioritization",
             description:
-              "Monitor energy markets, analyze pricing trends, and optimize procurement strategies for maximum cost efficiency.",
+              "Rapidly assess potential infrastructure locations by aggregating market data, regulatory requirements, and technical feasibility studies for faster decision-making.",
           },
           {
             icon: "bg-yellow-400 rounded-tr-full",
-            title: "Regulatory compliance automation",
+            title: "Contract review and risk assessment",
             description:
-              "Ensure adherence to environmental regulations and safety standards through automated monitoring and reporting.",
+              "Automatically analyze agreements, permits, and construction documents to identify non-standard clauses and jurisdiction-specific risks with negotiation support.",
           },
           {
             icon: "bg-green-500",
-            title: "Contract and vendor management",
+            title: "Customer briefing preparation",
             description:
-              "Streamline supplier relationships, manage service agreements, and optimize vendor performance across operations.",
+              "Aggregate scattered information about customer sites, consumption history, and ongoing projects into coherent pre-meeting summaries saving hours of preparation time.",
           },
         ],
       },
@@ -110,21 +109,21 @@ export const energyConfig: IndustryPageConfig = {
         features: [
           {
             icon: "bg-green-500",
-            title: "Billing disputes and customer services",
+            title: "Real-time problem resolution across distributed networks",
             description:
-              "Resolve billing inquiries quickly and accurately while providing personalized energy usage insights to customers.",
+              "Instantly aggregate data from monitoring systems, customer history, and maintenance activities to provide service representatives with complete situational awareness.",
           },
           {
             icon: "bg-blue-500 rounded-tl-full",
-            title: "Outage management and communication",
+            title: "Intelligent incident correlation",
             description:
-              "Coordinate outage responses, communicate proactively with affected customers, and manage restoration priorities.",
+              "Automatically connect customer complaints with real-time infrastructure status and similar incidents across the network to accelerate root cause identification.",
           },
           {
             icon: "bg-yellow-400 rounded-tr-full",
-            title: "Energy efficiency recommendations",
+            title: "Technical issue translation",
             description:
-              "Provide tailored energy saving recommendations based on usage patterns and customer preferences.",
+              "Convert complex technical explanations into clear, customer-appropriate language while providing accurate restoration timelines based on similar past incidents.",
           },
         ],
       },
@@ -135,21 +134,21 @@ export const energyConfig: IndustryPageConfig = {
         features: [
           {
             icon: "bg-blue-500",
-            title: "Predictive maintenance alerts",
+            title: "Information access and documentation efficiency",
             description:
-              "Anticipate equipment failures and schedule maintenance proactively to minimize downtime and reduce costs.",
+              "Provide instant access to commissioning guides, firmware details, and safety protocols through natural language queries for diverse equipment configurations.",
           },
           {
             icon: "bg-red-500 rounded-tr-full",
-            title: "Safety protocol automation",
+            title: "Cross-site knowledge propagation",
             description:
-              "Ensure compliance with safety procedures and automate incident reporting for improved workplace safety.",
+              "Automatically identify and share successful solutions discovered at one site with similar equipment across the network to scale expert knowledge.",
           },
           {
             icon: "bg-yellow-400 rounded-bl-full",
-            title: "Asset management and documentation",
+            title: "Legal document extraction",
             description:
-              "Track equipment lifecycle, manage inventory, and maintain comprehensive asset documentation.",
+              "Extract key information from complex bundles of contracts, permits, and construction plans to help project managers understand site permissions instantly.",
           },
         ],
       },
@@ -161,37 +160,29 @@ export const energyConfig: IndustryPageConfig = {
         features: [
           {
             icon: "bg-purple-500",
-            title: "Planning, execution, and decision intelligence",
+            title: "Planning, compliance, and business intelligence",
             description:
-              "Optimize project timelines, resource allocation, and strategic decision-making with data-driven insights.",
+              "Analyze project documentation to identify bottlenecks and dependencies in the development cycle. Monitor regulatory changes and provide actionable compliance guidance.",
           },
           {
             icon: "bg-blue-500 rounded-tl-full",
-            title: "Project coordination",
+            title: "Project communication",
             description:
-              "Streamline cross-functional collaboration and ensure projects stay on schedule and within budget.",
+              "Analyze project documentation to provide real-time status updates and coordinate activities across multiple teams and stakeholders automatically.",
           },
           {
             icon: "bg-green-500 rounded-br-full",
-            title: "Strategic planning",
+            title: "Industry research & news",
             description:
-              "Support long-term planning initiatives with comprehensive market analysis and operational intelligence.",
+              "Aggregate insights from industry news, reports, and market analyses to identify specific opportunities and monitor trends for strategic planning.",
           },
         ],
       },
     ],
   },
-
   customerStories: {
     title: "Customer stories",
     stories: [
-      {
-        title: "How Clay is powering 4x team growth with Dust",
-        content:
-          "Clay uses Dust AI agents to scale their GTM team 4x while maintaining sales velocity and achieving 100% adoption across their growing team.",
-        href: "https://blog.dust.tt/clay-scaling-gtme-team/",
-        src: "https://blog.dust.tt/content/images/size/w2000/2025/06/clay_dust_agents.jpg",
-      },
       {
         title:
           "20%+ productivity gains in Sales: Insights from Alan and Payfit",

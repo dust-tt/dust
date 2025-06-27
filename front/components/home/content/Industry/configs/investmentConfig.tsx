@@ -42,31 +42,31 @@ export const investmentConfig: IndustryPageConfig = {
     },
   },
   painPoints: {
-    title: "3 Pain points Dust solves",
+    title: "Transform how you work",
     painPoints: [
       {
         icon: "/static/landing/industry/d-blue.svg",
-        title: "Operational Costs: Optimization and Knowledge Transfer",
+        title: "Deal sourcing excellence: accelerated target identification",
         description:
-          "Reduce operational overhead through automated research processes and efficient knowledge management across investment teams.",
+          "Transform deal sourcing with intelligent market scanning and automated target research. Turn scattered industry data into comprehensive investment opportunities with instant competitive intelligence.",
         color: "blue",
       },
       {
         icon: "/static/landing/industry/d-red.svg",
-        title: "Customer Retention: Engagement and Data Access",
+        title: "Due diligence speed: comprehensive analysis at scale",
         description:
-          "Enhance client relationships through timely insights, personalized reporting, and improved access to investment data and analysis.",
+          "Accelerate due diligence processes with automated document analysis and risk assessment. Transform weeks of manual review into rapid, thorough evaluations with consistent quality.",
         color: "red",
       },
       {
         icon: "/static/landing/industry/d-green.svg",
-        title: "Revenue Leakage: Inefficient Manual Workflows",
+        title: "Portfolio optimization: data-driven value creation",
         description:
-          "Eliminate revenue loss from missed opportunities, delayed decision-making, and inefficient manual processes in investment workflows.",
+          "Maximize portfolio performance with real-time monitoring and strategic insights. Convert complex data across investments into actionable recommendations for sustainable growth.",
         color: "green",
       },
     ],
-  },
+  },  
   dustInAction: {
     title: "Dust in Action",
     useCases: [
