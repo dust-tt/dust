@@ -40,20 +40,39 @@ export async function submitAgentBuilderForm({
           formData.generationSettings.modelSettings.reasoningEffort,
         responseFormat: formData.generationSettings.responseFormat,
       },
-      actions: formData.actions.map((action) => ({
-        type: "mcp_server_configuration",
-        mcpServerViewId: action.id,
-        name: action.name,
-        description: action.description,
-        dataSources: null,
-        tables: null,
-        childAgentId: null,
-        reasoningModel: null,
-        timeFrame: null,
-        jsonSchema: null,
-        additionalConfiguration: {},
-        dustAppConfiguration: null,
-      })),
+      actions: formData.actions.flatMap((action) => {
+        // Handle DATA_VISUALIZATION actions by filtering them out
+        // (they're handled via visualizationEnabled flag)
+        if (action.type === "DATA_VISUALIZATION") {
+          return [];
+        }
+
+        // Handle MCP server configurations
+        if (
+          action.type === "MCP" ||
+          action.type === "mcp_server_configuration"
+        ) {
+          return [
+            {
+              type: "mcp_server_configuration" as const,
+              mcpServerViewId: action.id,
+              name: action.name,
+              description: action.description,
+              dataSources: action.configuration.dataSources || null,
+              tables: action.configuration.tables || null,
+              childAgentId: action.configuration.childAgentId || null,
+              reasoningModel: action.configuration.reasoningModel || null,
+              timeFrame: action.configuration.timeFrame || null,
+              jsonSchema: action.configuration.jsonSchema || null,
+              additionalConfiguration:
+                action.configuration.additionalConfiguration || {},
+              dustAppConfiguration:
+                action.configuration.dustAppConfiguration || null,
+            },
+          ];
+        }
+        return [];
+      }),
       maxStepsPerRun: formData.maxStepsPerRun,
       visualizationEnabled: formData.actions.some(
         (action) => action.type === "DATA_VISUALIZATION"

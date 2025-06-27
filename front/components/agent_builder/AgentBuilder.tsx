@@ -1,6 +1,10 @@
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useSendNotification } from "@dust-tt/sparkle";
+import { useRouter } from "next/router";
 import React, { useState } from "react";
 import { useForm } from "react-hook-form";
+
+import { appLayoutBack } from "@app/components/sparkle/AppContentLayout";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
@@ -13,10 +17,13 @@ import { AgentBuilderLeftPanel } from "@app/components/agent_builder/AgentBuilde
 import { AgentBuilderRightPanel } from "@app/components/agent_builder/AgentBuilderRightPanel";
 import { submitAgentBuilderForm } from "@app/components/agent_builder/submitAgentBuilderForm";
 import { GPT_4O_MODEL_ID } from "@app/types";
+import logger from "@app/logger/logger";
 
 export default function AgentBuilder() {
   const { owner } = useAgentBuilderContext();
   const [isSaving, setIsSaving] = useState(false);
+  const router = useRouter();
+  const sendNotification = useSendNotification();
 
   const form = useForm<AgentBuilderFormData>({
     resolver: zodResolver(agentBuilderFormSchema),
@@ -49,21 +56,23 @@ export default function AgentBuilder() {
       });
 
       if (result.isOk()) {
-        console.log("Agent created successfully:", result.value);
-        // TODO: Navigate to agent page or show success message
+        await router.push(`/w/${owner.sId}/builder/assistants`);
       } else {
-        console.error("Failed to create agent:", result.error.message);
-        // TODO: Show error message to user
+        sendNotification({
+          title: "Error creating agent",
+          description: result.error.message,
+          type: "error",
+        });
       }
     } catch (error) {
-      console.error("Unexpected error:", error);
+      logger.error("Unexpected error:", error);
     } finally {
       setIsSaving(false);
     }
   };
 
   const handleSave = () => {
-    form.handleSubmit(handleSubmit)();
+    void form.handleSubmit(handleSubmit)();
   };
 
   return (
@@ -72,7 +81,9 @@ export default function AgentBuilder() {
         leftPanel={
           <AgentBuilderLeftPanel
             title="Create new agent"
-            onCancel={() => console.log("Cancel")}
+            onCancel={async () => {
+              await appLayoutBack(owner, router);
+            }}
             onSave={handleSave}
             isSaving={isSaving}
           />
