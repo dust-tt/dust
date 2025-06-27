@@ -17,7 +17,7 @@ export type MemberDisplayType = {
   provider: string | null;
   role: RoleType;
   sId: string;
-  origin: MembershipOriginType;
+  origin?: MembershipOriginType;
 };
 
 export function makeColumnsForMembers({

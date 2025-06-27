@@ -162,7 +162,7 @@ export async function getMembers(
   const usersWithWorkspaces = await Promise.all(
     memberships.map(async (m) => {
       let role = "none" as RoleType;
-      let origin: MembershipOriginType;
+      let origin: MembershipOriginType = undefined;
       if (m && !m.isRevoked()) {
         switch (m.role) {
           case "admin":
@@ -247,7 +247,7 @@ export async function searchMembers(
       const [m] = u.memberships ?? [];
       let role: RoleType = "none";
       let groups: string[] | undefined;
-      let origin: MembershipOriginType;
+      let origin: MembershipOriginType = undefined;
 
       if (m) {
         const membership = new MembershipResource(
