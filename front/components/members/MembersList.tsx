@@ -31,7 +31,7 @@ type RowData = {
   isCurrentUser: boolean;
   onClick: () => void;
   onRemoveMemberClick?: () => void;
-  origin: MembershipOriginType;
+  origin?: MembershipOriginType;
 };
 
 type Info = CellContext<RowData, string>;
