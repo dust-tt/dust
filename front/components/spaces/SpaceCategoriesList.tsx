@@ -23,7 +23,7 @@ import React from "react";
 import { SpaceSearchContext } from "@app/components/spaces/search/SpaceSearchContext";
 import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
-import { ACTION_SPECIFICATIONS } from "@app/lib/actions/utils";
+import { MCP_SPECIFICATION } from "@app/lib/actions/utils";
 import { CATEGORY_DETAILS } from "@app/lib/spaces";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
@@ -195,7 +195,7 @@ export const SpaceCategoriesList = ({
           <DropdownMenuItem
             disabled={!isAdmin}
             href={`/w/${owner.sId}/spaces/${space.sId}/categories/actions`}
-            icon={ACTION_SPECIFICATIONS["MCP"].cardIcon}
+            icon={MCP_SPECIFICATION.cardIcon}
             label="Tools"
           />
         </DropdownMenuContent>

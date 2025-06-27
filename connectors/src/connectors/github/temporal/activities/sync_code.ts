@@ -5,7 +5,10 @@ import type { Readable } from "stream";
 import { upsertCodeDirectory } from "@connectors/connectors/github/lib/code/directory_operations";
 import { upsertCodeFile } from "@connectors/connectors/github/lib/code/file_operations";
 import { garbageCollectCodeSync } from "@connectors/connectors/github/lib/code/garbage_collect";
-import { GCSRepositoryManager } from "@connectors/connectors/github/lib/code/gcs_repository";
+import {
+  DIRECTORY_PLACEHOLDER_FILE,
+  GCSRepositoryManager,
+} from "@connectors/connectors/github/lib/code/gcs_repository";
 import { extractGitHubTarballToGCS } from "@connectors/connectors/github/lib/code/tar_extraction";
 import { RepositoryAccessBlockedError } from "@connectors/connectors/github/lib/errors";
 import { getOctokit } from "@connectors/connectors/github/lib/github_api";
@@ -37,6 +40,9 @@ import type { DataSourceConfig } from "@connectors/types";
 
 const PARALLEL_FILE_UPLOADS = 15;
 const PARALLEL_DIRECTORY_UPLOADS = 10;
+const GCS_FILES_BATCH_SIZE = 500;
+
+const GITHUB_TARBALL_DOWNLOAD_TIMEOUT_MS = 20 * 60 * 1000; // 20 minutes.
 
 export async function githubExtractToGcsActivity({
   connectorId,
@@ -93,6 +99,7 @@ export async function githubExtractToGcsActivity({
       ref: repoInfo.default_branch,
       request: {
         parseSuccessResponseBody: false,
+        timeout: GITHUB_TARBALL_DOWNLOAD_TIMEOUT_MS,
       },
     }
   );
@@ -152,53 +159,81 @@ export async function githubExtractToGcsActivity({
   };
 }
 
-// Activity to get GCS files organized by depth for hierarchical processing.
-export async function githubGetGcsFilesByDepthActivity({
+export interface DirectoryListing {
+  dirPath: string;
+  gcsPath: string;
+  internalId: string;
+  parentInternalId: string | null;
+}
+
+interface FileListing {
+  gcsPath: string;
+  relativePath: string;
+}
+
+// Activity to get GCS files with simple pagination to avoid Temporal return size limits.
+export async function githubGetGcsFilesActivity({
+  batchSize = GCS_FILES_BATCH_SIZE,
   gcsBasePath,
+  pageToken,
   repoId,
-  batchSize = 50,
 }: {
-  gcsBasePath: string;
-  repoId: number;
   batchSize?: number;
+  gcsBasePath: string;
+  pageToken?: string;
+  repoId: number;
 }): Promise<{
-  directoryBatches: Array<{
-    depth: number;
-    directories: Array<{
-      gcsPath: string;
-      dirPath: string;
-      internalId: string;
-      parentInternalId: string | null;
-    }>;
-  }>;
-  fileBatches: Array<{
-    depth: number;
-    files: Array<{
-      gcsPath: string;
-      relativePath: string;
-    }>;
-  }>;
+  directories: DirectoryListing[];
+  files: FileListing[];
+  nextPageToken?: string;
+  hasMore: boolean;
 }> {
   const gcsManager = new GCSRepositoryManager();
-  const { directoryBatches: rawDirBatches, fileBatches: rawFileBatches } =
-    await gcsManager.organizeFilesByDepth(gcsBasePath, batchSize);
+  const allFiles = await gcsManager.listFiles(gcsBasePath);
 
-  // Add internal IDs for directories.
-  const directoryBatches = rawDirBatches.map((batch) => ({
-    ...batch,
-    directories: batch.directories.map((dir) => ({
-      ...dir,
-      internalId: getCodeDirInternalId(repoId, dir.dirPath),
-      parentInternalId: dir.dirPath.includes("/")
-        ? getCodeDirInternalId(
-            repoId,
-            dir.dirPath.split("/").slice(0, -1).join("/")
-          )
-        : null,
-    })),
-  }));
+  // Simple offset-based pagination with validation.
+  const startIndex = pageToken ? Math.max(0, parseInt(pageToken) || 0) : 0;
+  const endIndex = Math.min(startIndex + batchSize, allFiles.length);
+  const paginatedFiles = allFiles.slice(startIndex, endIndex);
 
-  return { directoryBatches, fileBatches: rawFileBatches };
+  const directories: DirectoryListing[] = [];
+  const files: FileListing[] = [];
+
+  for (const file of paginatedFiles) {
+    const relativePath = file.name.replace(`${gcsBasePath}/`, "");
+
+    if (file.name.endsWith(`/${DIRECTORY_PLACEHOLDER_FILE}`)) {
+      // This is a directory placeholder.
+      const dirPath = relativePath.replace(
+        `/${DIRECTORY_PLACEHOLDER_FILE}`,
+        ""
+      );
+      directories.push({
+        gcsPath: file.name,
+        dirPath,
+        internalId: getCodeDirInternalId(repoId, dirPath),
+        parentInternalId: dirPath.includes("/")
+          ? getCodeDirInternalId(
+              repoId,
+              dirPath.split("/").slice(0, -1).join("/")
+            )
+          : null,
+      });
+    } else {
+      // This is a regular file.
+      files.push({
+        gcsPath: file.name,
+        relativePath,
+      });
+    }
+  }
+
+  return {
+    directories,
+    files,
+    nextPageToken: endIndex < allFiles.length ? endIndex.toString() : undefined,
+    hasMore: endIndex < allFiles.length,
+  };
 }
 
 // Activity to process a chunk of directories with concurrency control.

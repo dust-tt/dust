@@ -47,7 +47,6 @@ import config from "@app/lib/api/config";
 import { getRedisClient } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
-import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
 import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
 import type { KillSwitchType } from "@app/lib/poke/types";
 import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
@@ -271,18 +270,6 @@ async function* runMultiActionsAgentLoop(
           break;
 
         case "agent_message_content":
-          const owner = auth.getNonNullableWorkspace();
-          // We store the raw content emitted by the agent.
-          await AgentMessageContent.create({
-            agentMessageId: agentMessage.agentMessageId,
-            step: i,
-            content: event.content,
-            workspaceId: owner.id,
-          });
-          agentMessage.rawContents.push({
-            step: i,
-            content: event.content,
-          });
           processedContent += event.processedContent;
           break;
 
@@ -439,6 +426,25 @@ async function* runMultiActionsAgent(
     },
     jitServers
   );
+
+  if (mcpToolsListingError) {
+    logger.error(
+      {
+        workspaceId: conversation.owner.sId,
+        conversationId: conversation.sId,
+        error: mcpToolsListingError,
+      },
+      "Error listing MCP tools."
+    );
+  } else {
+    logger.info(
+      {
+        workspaceId: conversation.owner.sId,
+        conversationId: conversation.sId,
+      },
+      "MCP tools listed successfully."
+    );
+  }
 
   if (!isLastGenerationIteration) {
     availableActions.push(...mcpActions.flatMap((s) => s.tools));

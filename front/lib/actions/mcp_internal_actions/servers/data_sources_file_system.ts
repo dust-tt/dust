@@ -1,5 +1,6 @@
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import assert from "assert";
 import { z } from "zod";
 
@@ -16,11 +17,12 @@ import {
   makeFindTagsDescription,
   makeFindTagsTool,
 } from "@app/lib/actions/mcp_internal_actions/servers/common/find_tags_tool";
+import { makeQueryResource } from "@app/lib/actions/mcp_internal_actions/servers/search/utils";
 import {
+  checkConflictingTags,
   fetchAgentDataSourceConfiguration,
   getCoreSearchArgs,
   parseDataSourceConfigurationURI,
-  renderRelativeTimeFrameForToolOutput,
   shouldAutoGenerateTags,
 } from "@app/lib/actions/mcp_internal_actions/servers/utils";
 import {
@@ -47,7 +49,6 @@ import type {
   CoreAPIError,
   CoreAPISearchNodesResponse,
   Result,
-  TimeFrame,
 } from "@app/types";
 import {
   assertNever,
@@ -143,7 +144,7 @@ async function searchCallback(
     relativeTimeFrame,
   }: z.infer<typeof SearchToolInputSchema>,
   { tagsIn, tagsNot }: { tagsIn?: string[]; tagsNot?: string[] } = {}
-) {
+): Promise<CallToolResult> {
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
   const credentials = dustManagedCredentials();
   const timeFrame = parseTimeFrame(relativeTimeFrame);
@@ -229,6 +230,17 @@ async function searchCallback(
     return makeMCPToolTextError(
       "Search action must have at least one data source configured."
     );
+  }
+
+  const conflictingTags = checkConflictingTags(coreSearchArgs, {
+    tagsIn,
+    tagsNot,
+  });
+  if (conflictingTags) {
+    return {
+      isError: false,
+      content: [{ type: "text", text: conflictingTags }],
+    };
   }
 
   const searchResults = await coreAPI.searchDataSources(
@@ -336,7 +348,7 @@ async function searchCallback(
     content: [
       {
         type: "resource" as const,
-        resource: makeQueryResource(query, timeFrame),
+        resource: makeQueryResource(query, timeFrame, tagsIn, tagsNot),
       },
       ...(renderedNodes
         ? [{ type: "resource" as const, resource: renderedNodes }]
@@ -484,7 +496,7 @@ const createServer = (
 
   server.tool(
     "find",
-    "Find content based on their title starting from a specific node. Can be used to to find specific " +
+    "Find content based on their title starting from a specific node. Can be used to find specific " +
       "nodes by searching for their titles. The query title can be omitted to list all nodes " +
       "starting from a specific node. This is like using 'find' in Unix.",
     {
@@ -1246,22 +1258,6 @@ function renderSearchResults(
     ),
     nextPageCursor: response.next_page_cursor,
     resultCount: response.hit_count,
-  };
-}
-
-function makeQueryResource(
-  query: string,
-  relativeTimeFrame: TimeFrame | null
-): SearchQueryResourceType {
-  const timeFrameAsString =
-    renderRelativeTimeFrameForToolOutput(relativeTimeFrame);
-
-  return {
-    mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_QUERY,
-    text: query
-      ? `Searching "${query}", ${timeFrameAsString}.`
-      : `Searching ${timeFrameAsString}.`,
-    uri: "",
   };
 }
 

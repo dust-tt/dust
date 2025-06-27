@@ -200,9 +200,6 @@ export const INTERNAL_MCP_SERVERS: Record<
   gmail: {
     id: 15,
     availability: "manual",
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("gmail_tool");
-    },
     tools_stakes: {
       get_drafts: "never_ask",
       create_draft: "low",
@@ -211,9 +208,6 @@ export const INTERNAL_MCP_SERVERS: Record<
   google_calendar: {
     id: 16,
     availability: "manual",
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("google_calendar_tool");
-    },
     tools_stakes: {
       list_calendars: "never_ask",
       list_events: "never_ask",
@@ -274,9 +268,9 @@ export const INTERNAL_MCP_SERVERS: Record<
   data_sources_file_system: {
     id: 1010,
     availability: "auto",
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("dev_mcp_actions");
-    },
+    // This server is hidden for everyone, it is only available through the search tool
+    // when the advanced_search mode is enabled.
+    isRestricted: () => true,
   },
 };
 

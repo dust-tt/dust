@@ -1,18 +1,18 @@
 import { useMemo } from "react";
 
 import type {
-  AssistantBuilderActionState,
+  AssistantBuilderMCPOrVizState,
   AssistantBuilderState,
 } from "@app/components/assistant_builder/types";
 
 export function getDeprecatedDefaultSingleAction(
   builderState: AssistantBuilderState
-): AssistantBuilderActionState | undefined {
+): AssistantBuilderMCPOrVizState | undefined {
   return builderState.actions[0];
 }
 
 export function useDeprecatedDefaultSingleAction(
   builderState: AssistantBuilderState
-): AssistantBuilderActionState | undefined {
+): AssistantBuilderMCPOrVizState | undefined {
   return useMemo(() => builderState.actions[0], [builderState.actions]);
 }

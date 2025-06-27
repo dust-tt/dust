@@ -341,7 +341,13 @@ async function handleOrganizationDomainEvent(
 
   let domainResult: Result<any, Error>;
   if (expectedState === "verified") {
-    domainResult = await upsertWorkspaceDomain(workspace, { domain });
+    domainResult = await upsertWorkspaceDomain(workspace, {
+      domain,
+      // If a workspace has a verified domain, it means that they went through the DNS
+      // verification process. If this domain is already assigned to another workspace,
+      // we need to delete the domain from the other workspace.
+      dropExistingDomain: true,
+    });
   } else {
     domainResult = await deleteWorkspaceDomain(workspace, { domain });
   }
@@ -390,7 +396,16 @@ async function handleOrganizationUpdated(
   // Add new verified domains that don't exist yet.
   for (const domain of workOSVerifiedDomains) {
     if (!existingVerifiedDomainsSet.has(domain)) {
-      await upsertWorkspaceDomain(workspace, { domain });
+      const result = await upsertWorkspaceDomain(workspace, { domain });
+
+      // Swallow errors, we don't want to block the event from being processed. Sole error returned
+      // is if the domain is already in use by another workspace.
+      if (result.isErr()) {
+        logger.error(
+          { error: result.error, domain },
+          "Error upserting workspace domain, skipping"
+        );
+      }
     }
   }
 
@@ -482,6 +497,31 @@ async function handleUserAddedToGroup(
 
   // Handle role assignment for special groups.
   await handleRoleAssignmentForGroup({ workspace, user, group, action: "add" });
+
+  // Update membership origin to "provisioned" when syncing from WorkOS groups.
+  const currentMembership =
+    await MembershipResource.getActiveMembershipOfUserInWorkspace({
+      user,
+      workspace,
+    });
+
+  if (currentMembership && currentMembership.origin !== "provisioned") {
+    const { previousOrigin, newOrigin } = await currentMembership.updateOrigin({
+      user,
+      workspace,
+      newOrigin: "provisioned",
+    });
+
+    logger.info(
+      {
+        userId: user.sId,
+        previousOrigin,
+        newOrigin,
+        groupName: group.name,
+      },
+      "Updated membership origin to provisioned based on group sync"
+    );
+  }
 }
 
 async function handleUserRemovedFromGroup(
@@ -565,8 +605,13 @@ async function handleCreateOrUpdateWorkOSUser(
     });
   if (membership) {
     logger.info(
-      `User ${createdOrUpdatedUser.sId} already have a membership associated to workspace "${workspace.sId}", skipping`
+      `User ${createdOrUpdatedUser.sId} already have a membership associated to workspace "${workspace.sId}"`
     );
+    await membership.updateOrigin({
+      user: createdOrUpdatedUser,
+      workspace,
+      newOrigin: "provisioned",
+    });
     return;
   }
 
@@ -574,6 +619,7 @@ async function handleCreateOrUpdateWorkOSUser(
     user: createdOrUpdatedUser,
     workspace,
     role: "user",
+    origin: "provisioned",
   });
 }
 

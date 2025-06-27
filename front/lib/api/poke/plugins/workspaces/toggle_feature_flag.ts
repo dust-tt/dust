@@ -1,18 +1,8 @@
 import { createPlugin } from "@app/lib/api/poke/types";
 import { FeatureFlag } from "@app/lib/models/feature_flag";
-import type { EnumValue, WhitelistableFeature } from "@app/types";
-import { mapToEnumValues, Ok } from "@app/types";
+import type { WhitelistableFeature } from "@app/types";
+import { Ok } from "@app/types";
 import { WHITELISTABLE_FEATURES } from "@app/types/shared/feature_flags";
-
-function convertFeatureFlagToEnumValue(
-  featureFlag: WhitelistableFeature
-): EnumValue {
-  return {
-    label: featureFlag,
-    value: featureFlag,
-    checked: false,
-  };
-}
 
 export const toggleFeatureFlagPlugin = createPlugin({
   manifest: {
@@ -28,10 +18,7 @@ export const toggleFeatureFlagPlugin = createPlugin({
         label: "Feature Flag",
         description: "Select which feature flag you want to enable/disable",
         async: true,
-        values: mapToEnumValues(
-          WHITELISTABLE_FEATURES,
-          convertFeatureFlagToEnumValue
-        ),
+        values: [],
       },
     },
   },

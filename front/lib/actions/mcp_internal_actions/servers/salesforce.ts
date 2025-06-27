@@ -17,7 +17,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
     supported_use_cases: ["personal_actions", "platform_actions"] as const,
   },
   icon: "SalesforceLogo",
-  documentationUrl: null,
+  documentationUrl: "https://docs.dust.tt/docs/salesforce",
 };
 
 const SF_API_VERSION = "57.0";

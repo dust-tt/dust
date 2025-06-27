@@ -19,7 +19,11 @@ import type Logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import type { ModelId } from "@app/types";
 
-async function findWorkspacesWithRetrievalConfigurations(): Promise<ModelId[]> {
+type AgentStatus = "active" | "archived" | "draft";
+
+async function findWorkspacesWithRetrievalConfigurations(
+  agentStatus: AgentStatus
+): Promise<ModelId[]> {
   const retrievalConfigurations = await AgentRetrievalConfiguration.findAll({
     attributes: ["workspaceId"],
     // Filter on active agents.
@@ -29,7 +33,7 @@ async function findWorkspacesWithRetrievalConfigurations(): Promise<ModelId[]> {
         model: AgentConfiguration,
         required: true,
         where: {
-          status: "active",
+          status: agentStatus,
         },
       },
     ],
@@ -49,9 +53,11 @@ async function migrateWorkspaceRetrievalActions(
   {
     execute,
     parentLogger,
+    agentStatus,
   }: {
     execute: boolean;
     parentLogger: typeof Logger;
+    agentStatus: AgentStatus;
   }
 ): Promise<string> {
   const logger = parentLogger.child({
@@ -73,7 +79,7 @@ async function migrateWorkspaceRetrievalActions(
         model: AgentConfiguration,
         required: true,
         where: {
-          status: "active",
+          status: agentStatus,
         },
       },
     ],
@@ -227,8 +233,15 @@ makeScript(
       description: "Workspace SID to migrate",
       required: false,
     },
+    agentStatus: {
+      type: "string",
+      description: "Agent status to filter on",
+      required: false,
+      default: "active",
+      choices: ["active", "archived", "draft"],
+    },
   },
-  async ({ execute, workspaceId }, parentLogger) => {
+  async ({ execute, workspaceId, agentStatus }, parentLogger) => {
     const now = new Date().toISOString().slice(0, 16).replace(/-/g, "");
 
     let workspaces: WorkspaceModel[] = [];
@@ -243,7 +256,9 @@ makeScript(
       }
       workspaces = [workspace];
     } else {
-      const workspaceIds = await findWorkspacesWithRetrievalConfigurations();
+      const workspaceIds = await findWorkspacesWithRetrievalConfigurations(
+        agentStatus as AgentStatus
+      );
       workspaces = await WorkspaceModel.findAll({
         where: {
           id: { [Op.in]: workspaceIds },
@@ -259,6 +274,7 @@ makeScript(
       const workspaceRevertSql = await migrateWorkspaceRetrievalActions(auth, {
         execute,
         parentLogger,
+        agentStatus: agentStatus as AgentStatus,
       });
 
       if (execute) {

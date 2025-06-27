@@ -1,37 +1,47 @@
+import { Separator } from "@dust-tt/sparkle";
+import { useMemo } from "react";
+
+import { MCPServerSettings } from "@app/components/actions/mcp/MCPServerSettings";
 import { RemoteMCPForm } from "@app/components/actions/mcp/RemoteMCPForm";
 import { ToolsList } from "@app/components/actions/mcp/ToolsList";
-import {
-  getServerTypeAndIdFromSId,
-  isRemoteMCPServerType,
-} from "@app/lib/actions/mcp_helper";
-import type { MCPServerType } from "@app/lib/api/mcp";
+import { isRemoteMCPServerType } from "@app/lib/actions/mcp_helper";
+import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { LightWorkspaceType } from "@app/types";
 
 type MCPServerDetailsInfoProps = {
-  mcpServer: MCPServerType;
+  mcpServerView: MCPServerViewType;
   owner: LightWorkspaceType;
 };
 
 export function MCPServerDetailsInfo({
-  mcpServer,
+  mcpServerView,
+
   owner,
 }: MCPServerDetailsInfoProps) {
-  const serverType = getServerTypeAndIdFromSId(mcpServer.sId).serverType;
+  const editedAt = useMemo(() => {
+    const d = new Date(0);
+    d.setUTCMilliseconds(mcpServerView.editedByUser?.editedAt ?? 0);
+    return d.toLocaleDateString();
+  }, [mcpServerView.editedByUser]);
+
   return (
     <div className="flex flex-col gap-2">
-      {isRemoteMCPServerType(mcpServer) && (
-        <RemoteMCPForm mcpServer={mcpServer} owner={owner} />
+      {mcpServerView.editedByUser && (
+        <div className="flex w-full justify-end text-sm text-muted-foreground dark:text-muted-foreground-night">
+          Edited by {mcpServerView.editedByUser.fullName}, {editedAt}
+        </div>
       )}
-      <h3 className="heading-base mb-4 font-semibold text-foreground dark:text-foreground-night">
-        Available Tools
-      </h3>
-      <ToolsList
-        owner={owner}
-        tools={mcpServer.tools}
-        serverType={serverType}
-        serverId={mcpServer.sId}
-        canUpdate={owner.role === "admin"}
-      />
+      {mcpServerView.server.authorization && (
+        <MCPServerSettings mcpServerView={mcpServerView} owner={owner} />
+      )}
+      {isRemoteMCPServerType(mcpServerView.server) && (
+        <RemoteMCPForm mcpServer={mcpServerView.server} owner={owner} />
+      )}
+
+      <Separator className="mb-4 mt-4" />
+      <div className="heading-lg">Available Tools</div>
+
+      <ToolsList owner={owner} mcpServerView={mcpServerView} />
     </div>
   );
 }

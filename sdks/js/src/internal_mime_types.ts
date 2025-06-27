@@ -139,7 +139,7 @@ export const CONTENT_NODE_MIME_TYPES = {
   }),
   SALESFORCE: generateConnectorRelativeMimeTypes({
     provider: "salesforce",
-    resourceTypes: ["DATABASE", "SCHEMA", "TABLE"],
+    resourceTypes: ["SYNCED_QUERY_FOLDER"],
   }),
   GONG: generateConnectorRelativeMimeTypes({
     provider: "gong",

@@ -1,5 +1,5 @@
 import type { Transaction } from "sequelize";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, vi } from "vitest";
 
 import { destroyConversation } from "@app/lib/api/assistant/conversation/destroy";
 import { Authenticator } from "@app/lib/auth";
@@ -10,6 +10,7 @@ import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { itInTransaction } from "@app/tests/utils/utils";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { LightWorkspaceType } from "@app/types/user";
 
 vi.mock(import("../../../lib/api/redis"), async (importOriginal) => {
@@ -186,6 +187,141 @@ describe("ConversationResource", () => {
           batchSize: 1,
         });
         expect(oldConversations.length).toBe(4);
+      }
+    );
+  });
+
+  describe("listConversationWithAgentCreatedBeforeDate", () => {
+    let auth: Authenticator;
+    let convo1Id: string;
+    let convo2Id: string;
+    let convo3Id: string;
+    let convo4Id: string;
+
+    let anotherAuth: Authenticator;
+    let anotherConvoId: string;
+
+    let agents: LightAgentConfigurationType[];
+
+    beforeEach(async () => {
+      const workspace = await WorkspaceFactory.basic();
+      const user = await UserFactory.basic();
+      auth = await Authenticator.fromUserIdAndWorkspaceId(
+        user.sId,
+        workspace.sId
+      );
+      agents = await setupTestAgents(workspace, user);
+
+      const convo1 = await ConversationFactory.create({
+        auth,
+        agentConfigurationId: agents[0].sId,
+        messagesCreatedAt: [dateFromDaysAgo(10), dateFromDaysAgo(8)],
+        conversationCreatedAt: dateFromDaysAgo(10),
+      });
+      const convo2 = await ConversationFactory.create({
+        auth,
+        agentConfigurationId: agents[0].sId,
+        messagesCreatedAt: [dateFromDaysAgo(11), dateFromDaysAgo(1)],
+        conversationCreatedAt: dateFromDaysAgo(11),
+      });
+      const convo3 = await ConversationFactory.create({
+        auth,
+        agentConfigurationId: agents[0].sId,
+        messagesCreatedAt: [dateFromDaysAgo(5), dateFromDaysAgo(1)],
+        conversationCreatedAt: dateFromDaysAgo(5),
+      });
+      const convo4 = await ConversationFactory.create({
+        auth,
+        agentConfigurationId: agents[1].sId,
+        messagesCreatedAt: [dateFromDaysAgo(10), dateFromDaysAgo(1)],
+        conversationCreatedAt: dateFromDaysAgo(10),
+      });
+
+      convo1Id = convo1.sId;
+      convo2Id = convo2.sId;
+      convo3Id = convo3.sId;
+      convo4Id = convo4.sId;
+
+      // Just to make sure we have the filter on workspaceId we also create a very very old convo for another workspace.
+      const anotherWorkspace = await WorkspaceFactory.basic();
+      const anotherUser = await UserFactory.basic();
+      anotherAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        anotherUser.sId,
+        anotherWorkspace.sId
+      );
+      const anotherAgents = await setupTestAgents(
+        anotherWorkspace,
+        anotherUser
+      );
+      const anotherConvo = await ConversationFactory.create({
+        auth: anotherAuth,
+        agentConfigurationId: anotherAgents[0].sId,
+        messagesCreatedAt: [dateFromDaysAgo(800)],
+        conversationCreatedAt: dateFromDaysAgo(10),
+      });
+      anotherConvoId = anotherConvo.sId;
+    });
+
+    afterEach(async () => {
+      await destroyConversation(auth, {
+        conversationId: convo1Id,
+      });
+      await destroyConversation(auth, {
+        conversationId: convo2Id,
+      });
+      await destroyConversation(auth, {
+        conversationId: convo3Id,
+      });
+      await destroyConversation(auth, {
+        conversationId: convo4Id,
+      });
+      await destroyConversation(anotherAuth, {
+        conversationId: anotherConvoId,
+      });
+    });
+
+    itInTransaction(
+      "should return only conversations created before cutoff date and with the valid agent: 7 days ago",
+      async () => {
+        const conversations =
+          await ConversationResource.listConversationWithAgentCreatedBeforeDate(
+            {
+              auth,
+              agentConfigurationId: agents[0].sId,
+              cutoffDate: dateFromDaysAgo(7),
+            }
+          );
+        expect(conversations.length).toBe(2);
+        expect(conversations).toContain(convo1Id);
+        expect(conversations).toContain(convo2Id);
+      }
+    );
+    itInTransaction(
+      "should return only conversations created before cutoff date and with the valid agent: 1 day ago",
+      async () => {
+        const conversationsAgent0 =
+          await ConversationResource.listConversationWithAgentCreatedBeforeDate(
+            {
+              auth,
+              agentConfigurationId: agents[0].sId,
+              cutoffDate: dateFromDaysAgo(1),
+            }
+          );
+        expect(conversationsAgent0.length).toBe(3);
+        expect(conversationsAgent0).toContain(convo1Id);
+        expect(conversationsAgent0).toContain(convo2Id);
+        expect(conversationsAgent0).toContain(convo3Id);
+
+        const conversationsAgent1 =
+          await ConversationResource.listConversationWithAgentCreatedBeforeDate(
+            {
+              auth,
+              agentConfigurationId: agents[1].sId,
+              cutoffDate: dateFromDaysAgo(1),
+            }
+          );
+        expect(conversationsAgent1.length).toBe(1);
+        expect(conversationsAgent1).toContain(convo4Id);
       }
     );
   });
