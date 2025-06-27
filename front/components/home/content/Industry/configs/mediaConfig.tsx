@@ -36,7 +36,7 @@ export const mediaConfig: IndustryPageConfig = {
       },
     },
     heroImage: {
-      src: "/static/landing/industry/Dust_Connectors.svg",
+      src: "/static/landing/industry/Dust_Connectors.webp",
       alt: "Media Companies AI-powered workflows illustration",
     },
   },
@@ -177,7 +177,7 @@ export const mediaConfig: IndustryPageConfig = {
       {
         title: "Legal & business affairs",
         image:
-          "/static/landing/industry/features/Compliance_verification_2.svg",
+          "/static/landing/industry/features/Compliance_verification_2.webp",
         bgColor: "bg-yellow-100",
         features: [
           {
@@ -252,7 +252,7 @@ export const mediaConfig: IndustryPageConfig = {
     ],
   },
   justUseDust: {
-    title: "#JustUseDust",
+    title: "Just use Dust",
     titleColor: "text-blue-600",
     ctaButtons: {
       primary: {

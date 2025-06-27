@@ -36,7 +36,7 @@ export const energyConfig: IndustryPageConfig = {
       },
     },
     heroImage: {
-      src: "/static/landing/industry/Dust_Connectors.svg",
+      src: "/static/landing/industry/Dust_Connectors.webp",
       alt: "Energy & Utilities AI-powered automation illustration",
     },
   },
@@ -73,7 +73,7 @@ export const energyConfig: IndustryPageConfig = {
     useCases: [
       {
         title: "Commercial operations",
-        image: "/static/landing/industry/features/Radar_pressdigest.svg",
+        image: "/static/landing/industry/features/Radar_pressdigest.webp",
         bgColor: "bg-blue-100",
         features: [
           {
@@ -104,7 +104,7 @@ export const energyConfig: IndustryPageConfig = {
       },
       {
         title: "Customer service operations",
-        image: "/static/landing/industry/features/Social_post.svg",
+        image: "/static/landing/industry/features/Social_post.webp",
         bgColor: "bg-pink-100",
         features: [
           {
@@ -129,7 +129,7 @@ export const energyConfig: IndustryPageConfig = {
       },
       {
         title: "Field operations",
-        image: "/static/landing/industry/features/Radar_AIDigest.svg",
+        image: "/static/landing/industry/features/Radar_AIDigest.webp",
         bgColor: "bg-gray-950",
         features: [
           {
@@ -155,7 +155,7 @@ export const energyConfig: IndustryPageConfig = {
       {
         title: "Project management & strategic operations",
         image:
-          "/static/landing/industry/features/Compliance_verification_2.svg",
+          "/static/landing/industry/features/Compliance_verification_2.webp",
         bgColor: "bg-golden-100",
         features: [
           {
