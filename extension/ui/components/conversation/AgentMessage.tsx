@@ -39,16 +39,21 @@ import type {
   LightWorkspaceType,
   RetrievalActionPublicType,
   RetrievalDocumentPublicType,
+  SearchResultResourceType,
   WebsearchActionPublicType,
   WebsearchResultPublicType,
+  WebsearchResultResourceType,
   WorkspaceType,
 } from "@dust-tt/client";
 import {
   assertNever,
   getProviderFromRetrievedDocument,
   getTitleFromRetrievedDocument,
+  isMCPActionType,
   isRetrievalActionType,
+  isSearchResultResourceType,
   isWebsearchActionType,
+  isWebsearchResultResourceType,
   removeNulls,
 } from "@dust-tt/client";
 import {
@@ -141,6 +146,16 @@ export function makeWebsearchResultsCitation(
     description: result.snippet,
     href: result.link,
     title: result.title,
+    icon: <DocumentTextIcon />,
+  };
+}
+
+export function makeMCPActionCitation(
+  result: SearchResultResourceType | WebsearchResultResourceType
+): MarkdownCitation {
+  return {
+    href: result.uri,
+    title: result.text,
     icon: <DocumentTextIcon />,
   };
 }
@@ -405,8 +420,45 @@ export function AgentMessage({
       return acc;
     }, {});
 
+    // MCP search actions
+    const allMCPSearchResources = agentMessageToRender.actions
+      .filter((a) => isMCPActionType(a))
+      .map((a) =>
+        a.output?.filter(isSearchResultResourceType).map((o) => o.resource)
+      )
+      .flat();
+
+    const allMCPSearchReferences = removeNulls(allMCPSearchResources).reduce<{
+      [key: string]: MarkdownCitation;
+    }>((acc, l) => {
+      acc[l.ref] = makeMCPActionCitation(l);
+      return acc;
+    }, {});
+
+    // MCP websearch actions
+    const allMCPWebSearchResources = agentMessageToRender.actions
+      .filter((a) => isMCPActionType(a))
+      .map((a) =>
+        a.output?.filter(isWebsearchResultResourceType).map((o) => o.resource)
+      )
+      .flat();
+
+    const allMCPWebSearchReferences = removeNulls(
+      allMCPWebSearchResources
+    ).reduce<{
+      [key: string]: MarkdownCitation;
+    }>((acc, l) => {
+      acc[l.reference] = makeMCPActionCitation(l);
+      return acc;
+    }, {});
+
     // Merge all references
-    setReferences({ ...allDocsReferences, ...allWebReferences });
+    setReferences({
+      ...allDocsReferences,
+      ...allWebReferences,
+      ...allMCPSearchReferences,
+      ...allMCPWebSearchReferences,
+    });
   }, [
     agentMessageToRender.actions,
     agentMessageToRender.status,

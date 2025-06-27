@@ -9,13 +9,6 @@ import {
   DEFAULT_DATA_VISUALIZATION_DESCRIPTION,
   DEFAULT_DATA_VISUALIZATION_NAME,
   DEFAULT_MCP_ACTION_NAME,
-  DEFAULT_PROCESS_ACTION_NAME,
-  DEFAULT_REASONING_ACTION_DESCRIPTION,
-  DEFAULT_REASONING_ACTION_NAME,
-  DEFAULT_RETRIEVAL_ACTION_NAME,
-  DEFAULT_RETRIEVAL_NO_QUERY_ACTION_NAME,
-  DEFAULT_TABLES_QUERY_ACTION_NAME,
-  DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/actions/constants";
 import type { DustAppRunConfigurationType } from "@app/lib/actions/dust_app_run";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
@@ -25,12 +18,8 @@ import type { FetchAssistantTemplateResponse } from "@app/pages/api/templates/[t
 import type {
   AgentConfigurationScope,
   AgentConfigurationType,
-  AgentReasoningEffort,
-  AppType,
   DataSourceViewSelectionConfigurations,
   LightAgentConfigurationType,
-  ModelIdType,
-  ModelProviderIdType,
   PlanType,
   SubscriptionType,
   SupportedModel,
@@ -41,7 +30,6 @@ import type {
   WorkspaceType,
 } from "@app/types";
 import {
-  assertNever,
   CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG,
   DEFAULT_MAX_STEPS_USE_PER_RUN,
 } from "@app/types";
@@ -56,33 +44,8 @@ export const ACTION_MODES = [
   "PROCESS",
 ] as const;
 
-export function isDefaultActionName(
-  action: AssistantBuilderActionConfiguration
-) {
-  const actionType = action.type;
-
-  switch (actionType) {
-    case "RETRIEVAL_SEARCH":
-      return action.name.includes(DEFAULT_RETRIEVAL_ACTION_NAME);
-    case "RETRIEVAL_EXHAUSTIVE":
-      return action.name.includes(DEFAULT_RETRIEVAL_NO_QUERY_ACTION_NAME);
-    case "DUST_APP_RUN":
-      return action.name.includes(
-        ASSISTANT_BUILDER_DUST_APP_RUN_ACTION_CONFIGURATION_DEFAULT_NAME
-      );
-    case "TABLES_QUERY":
-      return action.name.includes(DEFAULT_TABLES_QUERY_ACTION_NAME);
-    case "PROCESS":
-      return action.name.includes(DEFAULT_PROCESS_ACTION_NAME);
-    case "WEB_NAVIGATION":
-      return action.name.includes(DEFAULT_WEBSEARCH_ACTION_NAME);
-    case "REASONING":
-      return action.name.includes(DEFAULT_REASONING_ACTION_NAME);
-    case "MCP":
-      return action.name.includes(DEFAULT_MCP_ACTION_NAME);
-    default:
-      assertNever(actionType);
-  }
+export function isDefaultActionName(action: AssistantBuilderMCPConfiguration) {
+  return action.name.includes(DEFAULT_MCP_ACTION_NAME);
 }
 
 // Retrieval configuration
@@ -94,47 +57,6 @@ export type AssistantBuilderTimeFrame = {
 
 export type AssistantBuilderTagsFilter = {
   in: string[];
-};
-
-export type AssistantBuilderRetrievalConfiguration = {
-  dataSourceConfigurations: DataSourceViewSelectionConfigurations;
-};
-
-export type AssistantBuilderRetrievalExhaustiveConfiguration = {
-  timeFrame?: AssistantBuilderTimeFrame | null;
-} & AssistantBuilderRetrievalConfiguration;
-
-// DustAppRun configuration
-
-export type AssistantBuilderDustAppConfiguration = {
-  app: AppType | null;
-};
-
-// TablesQuery configuration
-
-export type AssistantBuilderTableConfiguration =
-  DataSourceViewSelectionConfigurations;
-
-// Process configuration
-
-export type AssistantBuilderProcessConfiguration = {
-  timeFrame?: AssistantBuilderTimeFrame | null;
-} & {
-  dataSourceConfigurations: DataSourceViewSelectionConfigurations;
-  tagsFilter: AssistantBuilderTagsFilter | null;
-  jsonSchema: JSONSchema | null;
-  _jsonSchemaString?: string | null;
-};
-
-// Websearch configuration (no configuration)
-export type AssistantBuilderWebNavigationConfiguration = Record<string, never>;
-
-// Reasoning configuration
-export type AssistantBuilderReasoningConfiguration = {
-  modelId: ModelIdType | null;
-  providerId: ModelProviderIdType | null;
-  temperature: number | null;
-  reasoningEffort: AgentReasoningEffort | null;
 };
 
 // MCP configuration
@@ -153,47 +75,16 @@ export type AssistantBuilderMCPServerConfiguration = {
 
 // Builder State
 
-export type AssistantBuilderActionConfiguration = (
-  | {
-      type: "RETRIEVAL_SEARCH";
-      configuration: AssistantBuilderRetrievalConfiguration;
-    }
-  | {
-      type: "RETRIEVAL_EXHAUSTIVE";
-      configuration: AssistantBuilderRetrievalExhaustiveConfiguration;
-    }
-  | {
-      type: "DUST_APP_RUN";
-      configuration: AssistantBuilderDustAppConfiguration;
-    }
-  | {
-      type: "TABLES_QUERY";
-      configuration: AssistantBuilderTableConfiguration;
-    }
-  | {
-      type: "PROCESS";
-      configuration: AssistantBuilderProcessConfiguration;
-    }
-  | {
-      type: "WEB_NAVIGATION";
-      configuration: AssistantBuilderWebNavigationConfiguration;
-    }
-  | {
-      type: "REASONING";
-      configuration: AssistantBuilderReasoningConfiguration;
-    }
-  | {
-      type: "MCP";
-      configuration: AssistantBuilderMCPServerConfiguration;
-    }
-) & {
+export type AssistantBuilderMCPConfiguration = {
+  type: "MCP";
+  configuration: AssistantBuilderMCPServerConfiguration;
   name: string;
   description: string;
   noConfigurationRequired?: boolean;
 };
 
-export type AssistantBuilderActionConfigurationWithId =
-  AssistantBuilderActionConfiguration & {
+export type AssistantBuilderMCPConfigurationWithId =
+  AssistantBuilderMCPConfiguration & {
     id: string;
   };
 
@@ -212,33 +103,33 @@ export type AssistantBuilderDataVisualizationConfigurationWithId =
   };
 
 export type AssistantBuilderActionAndDataVisualizationConfiguration =
-  | AssistantBuilderActionConfiguration
+  | AssistantBuilderMCPConfiguration
   | AssistantBuilderDataVisualizationConfiguration;
 
 export type TemplateActionType = Omit<
-  AssistantBuilderActionConfiguration,
+  AssistantBuilderMCPConfiguration,
   "configuration"
 > & {
   help: string;
 };
 
-export type AssistantBuilderActionType =
-  AssistantBuilderActionConfiguration["type"];
+export type AssistantBuilderMCPServerType =
+  AssistantBuilderMCPConfiguration["type"];
 
 export type AssistantBuilderDataVisualizationType =
   AssistantBuilderDataVisualizationConfiguration["type"];
 
-export type AssistantBuilderActionState =
-  | AssistantBuilderActionConfigurationWithId
+export type AssistantBuilderMCPOrVizState =
+  | AssistantBuilderMCPConfigurationWithId
   | AssistantBuilderDataVisualizationConfigurationWithId;
 
 export type AssistantBuilderSetActionType =
   | {
-      action: AssistantBuilderActionState;
+      action: AssistantBuilderMCPOrVizState;
       type: "insert" | "edit" | "pending";
     }
   | {
-      action: AssistantBuilderActionConfigurationWithId;
+      action: AssistantBuilderMCPConfigurationWithId;
       type: "pending";
     }
   | {
@@ -247,7 +138,7 @@ export type AssistantBuilderSetActionType =
 
 export type AssistantBuilderPendingAction =
   | {
-      action: AssistantBuilderActionState;
+      action: AssistantBuilderMCPOrVizState;
       previousActionName: string | null;
     }
   | {
@@ -266,7 +157,7 @@ export type AssistantBuilderState = {
     temperature: number;
     responseFormat?: string;
   };
-  actions: AssistantBuilderActionState[];
+  actions: AssistantBuilderMCPOrVizState[];
   maxStepsPerRun: number | null;
   visualizationEnabled: boolean;
   templateId: string | null;
@@ -302,7 +193,7 @@ export interface ActionSpecification {
 }
 
 export type ActionSpecificationWithType = ActionSpecification & {
-  type: AssistantBuilderActionType | "DATA_VISUALIZATION";
+  type: AssistantBuilderMCPServerType | "DATA_VISUALIZATION";
 };
 
 // Creates a fresh instance of AssistantBuilderState to prevent unintended mutations of shared state.
@@ -331,100 +222,10 @@ export function getDefaultAssistantState() {
   } satisfies AssistantBuilderState;
 }
 
-export function getDefaultRetrievalSearchActionConfiguration() {
-  return {
-    type: "RETRIEVAL_SEARCH",
-    configuration: {
-      dataSourceConfigurations: {},
-      timeFrame: {
-        value: 1,
-        unit: "month",
-      },
-    } as AssistantBuilderRetrievalConfiguration,
-    name: DEFAULT_RETRIEVAL_ACTION_NAME,
-    description: "",
-  } satisfies AssistantBuilderActionConfiguration;
-}
-
-export function getDefaultRetrievalExhaustiveActionConfiguration() {
-  return {
-    type: "RETRIEVAL_EXHAUSTIVE",
-    configuration: {
-      dataSourceConfigurations: {},
-      timeFrame: null,
-    } as AssistantBuilderRetrievalExhaustiveConfiguration,
-    name: DEFAULT_RETRIEVAL_NO_QUERY_ACTION_NAME,
-    description: "",
-  } satisfies AssistantBuilderActionConfiguration;
-}
-
 export const ASSISTANT_BUILDER_DUST_APP_RUN_ACTION_CONFIGURATION_DEFAULT_NAME =
   "run_dust_app";
 export const ASSISTANT_BUILDER_DUST_APP_RUN_ACTION_CONFIGURATION_DEFAULT_DESCRIPTION =
   "Run a Dust app.";
-
-export function getDefaultDustAppRunActionConfiguration() {
-  return {
-    type: "DUST_APP_RUN",
-    configuration: {
-      app: null,
-    } as AssistantBuilderDustAppConfiguration,
-    name: ASSISTANT_BUILDER_DUST_APP_RUN_ACTION_CONFIGURATION_DEFAULT_NAME,
-    description:
-      ASSISTANT_BUILDER_DUST_APP_RUN_ACTION_CONFIGURATION_DEFAULT_DESCRIPTION,
-  } satisfies AssistantBuilderActionConfiguration;
-}
-
-export function getDefaultTablesQueryActionConfiguration() {
-  return {
-    type: "TABLES_QUERY",
-    configuration: {} as AssistantBuilderTableConfiguration,
-    name: DEFAULT_TABLES_QUERY_ACTION_NAME,
-    description: "",
-  } satisfies AssistantBuilderActionConfiguration;
-}
-
-export function getDefaultProcessActionConfiguration() {
-  return {
-    type: "PROCESS",
-    configuration: {
-      dataSourceConfigurations: {},
-      timeFrame: null,
-      tagsFilter: null,
-      jsonSchema: null,
-      _jsonSchemaString: null,
-    } as AssistantBuilderProcessConfiguration,
-    name: DEFAULT_PROCESS_ACTION_NAME,
-    description: "",
-  } satisfies AssistantBuilderActionConfiguration;
-}
-
-export function getDefaultWebsearchActionConfiguration(): AssistantBuilderActionConfiguration {
-  return {
-    type: "WEB_NAVIGATION",
-    configuration: {},
-    name: DEFAULT_WEBSEARCH_ACTION_NAME,
-    description: "Perform a web search and/or browse a page content.",
-    noConfigurationRequired: true,
-  };
-}
-
-export function getDefaultReasoningActionConfiguration(): AssistantBuilderActionConfiguration {
-  return {
-    type: "REASONING",
-    configuration: {
-      providerId: null,
-      modelId: null,
-      temperature: null,
-      reasoningEffort: null,
-    },
-    name: DEFAULT_REASONING_ACTION_NAME,
-    // Old reasoning is actually configurable, but it is set to true (= non-configurable) because we have a special dropdown menu to configure and
-    // we don't want to show the configuration modal. We will remove this and the dropdown when we fully switch to MCP.
-    noConfigurationRequired: true,
-    description: DEFAULT_REASONING_ACTION_DESCRIPTION,
-  } satisfies AssistantBuilderActionConfiguration;
-}
 
 export function getDataVisualizationConfiguration(): AssistantBuilderDataVisualizationConfiguration {
   return {
@@ -438,7 +239,7 @@ export function getDataVisualizationConfiguration(): AssistantBuilderDataVisuali
 
 export function getDefaultMCPServerActionConfiguration(
   mcpServerView?: MCPServerViewType
-): AssistantBuilderActionConfiguration {
+): AssistantBuilderMCPConfiguration {
   const requirements = getMCPServerRequirements(mcpServerView);
 
   return {
@@ -465,42 +266,15 @@ export function getDefaultMCPServerActionConfiguration(
   };
 }
 
-export function getDefaultActionConfiguration(
-  actionType: AssistantBuilderActionType | null
-): AssistantBuilderActionConfigurationWithId | null {
-  const config = (() => {
-    switch (actionType) {
-      case null:
-        return null;
-      case "RETRIEVAL_SEARCH":
-        return getDefaultRetrievalSearchActionConfiguration();
-      case "RETRIEVAL_EXHAUSTIVE":
-        return getDefaultRetrievalExhaustiveActionConfiguration();
-      case "DUST_APP_RUN":
-        return getDefaultDustAppRunActionConfiguration();
-      case "TABLES_QUERY":
-        return getDefaultTablesQueryActionConfiguration();
-      case "PROCESS":
-        return getDefaultProcessActionConfiguration();
-      case "WEB_NAVIGATION":
-        return getDefaultWebsearchActionConfiguration();
-      case "REASONING":
-        return getDefaultReasoningActionConfiguration();
-      case "MCP":
-        return getDefaultMCPServerActionConfiguration();
-      default:
-        assertNever(actionType);
-    }
-  })();
+export function getDefaultMCPServerConfigurationWithId(
+  mcpServerView?: MCPServerViewType
+): AssistantBuilderMCPConfigurationWithId {
+  const config = getDefaultMCPServerActionConfiguration(mcpServerView);
 
-  if (config) {
-    return {
-      id: uniqueId(),
-      ...config,
-    };
-  }
-
-  return null;
+  return {
+    id: uniqueId(),
+    ...config,
+  };
 }
 
 export function getDataVisualizationActionConfiguration() {
@@ -526,7 +300,7 @@ type AssistantBuilderPropsBase<T> = {
   owner: WorkspaceType;
   plan: PlanType;
   subscription: SubscriptionType;
-  isAgentDuplication?: boolean;
+  duplicateAgentId?: string | null;
 };
 
 export type AssistantBuilderProps =

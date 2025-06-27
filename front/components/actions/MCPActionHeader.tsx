@@ -1,26 +1,14 @@
-import { Chip } from "@dust-tt/sparkle";
-
-import type { AssistantBuilderActionConfiguration } from "@app/components/assistant_builder/types";
+import type { AssistantBuilderMCPConfiguration } from "@app/components/assistant_builder/types";
 import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerType } from "@app/lib/api/mcp";
-import type { MCPOAuthUseCase } from "@app/types";
 
 interface MCPActionHeaderProps {
   mcpServer: MCPServerType;
-  oAuthUseCase: MCPOAuthUseCase | null;
-  isConnected: boolean;
-  isConnectionsLoading: boolean;
-  action?: AssistantBuilderActionConfiguration;
+  action?: AssistantBuilderMCPConfiguration;
 }
 
-export function MCPActionHeader({
-  mcpServer,
-  oAuthUseCase,
-  isConnected,
-  isConnectionsLoading,
-  action,
-}: MCPActionHeaderProps) {
+export function MCPActionHeader({ mcpServer, action }: MCPActionHeaderProps) {
   return (
     <div className="items-top flex flex-col gap-3 sm:flex-row">
       {getAvatar(mcpServer, "md")}
@@ -31,23 +19,6 @@ export function MCPActionHeader({
         <div className="line-clamp-1 overflow-hidden text-sm text-muted-foreground dark:text-muted-foreground-night">
           {mcpServer.description}
         </div>
-        {oAuthUseCase &&
-          !isConnectionsLoading &&
-          (isConnected ? (
-            <div className="pt-2">
-              <Chip color="success" size="xs">
-                Uses{" "}
-                {oAuthUseCase === "personal_actions" ? "personal" : "workspace"}{" "}
-                credentials
-              </Chip>
-            </div>
-          ) : (
-            <div className="pt-2">
-              <Chip color="warning" size="xs">
-                Requires authentication
-              </Chip>
-            </div>
-          ))}
       </div>
     </div>
   );

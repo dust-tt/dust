@@ -23,10 +23,8 @@ import type { CSVRecord } from "@app/lib/api/csv";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import { LabsSalesforcePersonalConnectionResource } from "@app/lib/resources/labs_salesforce_personal_connection_resource";
 import { sanitizeJSONOutput } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import type { ConnectorProvider } from "@app/types";
@@ -125,37 +123,6 @@ function createServer(
 
       const tableConfigurations = tableConfigurationsRes.value;
 
-      const personalConnectionIds: Record<string, string> = {};
-
-      // This is for Salesforce personal connections.
-      const flags = await getFeatureFlags(owner);
-      if (flags.includes("labs_salesforce_personal_connections")) {
-        const dataSourceViews = await DataSourceViewResource.fetchByIds(auth, [
-          ...new Set(tableConfigurations.map((t) => t.dataSourceViewId)),
-        ]);
-
-        for (const dataSourceView of dataSourceViews) {
-          if (dataSourceView.dataSource.connectorProvider === "salesforce") {
-            const personalConnection =
-              await LabsSalesforcePersonalConnectionResource.fetchByDataSource(
-                auth,
-                {
-                  dataSource: dataSourceView.dataSource.toJSON(),
-                }
-              );
-            if (personalConnection) {
-              personalConnectionIds[dataSourceView.sId] =
-                personalConnection.connectionId;
-            } else {
-              return makeMCPToolTextError(
-                `The query requires authentication. Please connect to Salesforce.`
-              );
-            }
-          }
-        }
-      }
-      // End salesforce specific
-
       const configuredTables = tableConfigurations.map((t) => {
         return {
           workspace_id: t.workspaceId,
@@ -163,9 +130,7 @@ function createServer(
           // Note: This value is passed to the registry for lookup.
           // The registry will return the associated data source's dustAPIDataSourceId.
           data_source_id: t.dataSourceViewId,
-          remote_database_secret_id: t.dataSourceViewId
-            ? personalConnectionIds[t.dataSourceViewId]
-            : null,
+          remote_database_secret_id: null,
         };
       });
       if (configuredTables.length === 0) {

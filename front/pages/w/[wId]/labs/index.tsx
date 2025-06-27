@@ -5,7 +5,6 @@ import {
   EyeIcon,
   Icon,
   Page,
-  SalesforceLogo,
   TestTubeIcon,
 } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
@@ -53,15 +52,6 @@ const LABS_FEATURES: LabsFeatureItemType[] = [
     description:
       "Monitor and track MCP (Model Context Protocol) actions executed by your agents.",
     onlyAdminCanManage: true,
-  },
-  {
-    id: "salesforce_personal_connections",
-    label: "Salesforce Personal Connections",
-    featureFlag: "labs_salesforce_personal_connections",
-    visibleWithoutAccess: false,
-    icon: SalesforceLogo,
-    description:
-      "Connect your Salesforce personal accounts to Dust. We'll use your credentials to fetch data from Salesforce connector.",
   },
 ];
 

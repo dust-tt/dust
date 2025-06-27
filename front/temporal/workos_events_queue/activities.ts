@@ -341,7 +341,13 @@ async function handleOrganizationDomainEvent(
 
   let domainResult: Result<any, Error>;
   if (expectedState === "verified") {
-    domainResult = await upsertWorkspaceDomain(workspace, { domain });
+    domainResult = await upsertWorkspaceDomain(workspace, {
+      domain,
+      // If a workspace has a verified domain, it means that they went through the DNS
+      // verification process. If this domain is already assigned to another workspace,
+      // we need to delete the domain from the other workspace.
+      dropExistingDomain: true,
+    });
   } else {
     domainResult = await deleteWorkspaceDomain(workspace, { domain });
   }
@@ -390,7 +396,16 @@ async function handleOrganizationUpdated(
   // Add new verified domains that don't exist yet.
   for (const domain of workOSVerifiedDomains) {
     if (!existingVerifiedDomainsSet.has(domain)) {
-      await upsertWorkspaceDomain(workspace, { domain });
+      const result = await upsertWorkspaceDomain(workspace, { domain });
+
+      // Swallow errors, we don't want to block the event from being processed. Sole error returned
+      // is if the domain is already in use by another workspace.
+      if (result.isErr()) {
+        logger.error(
+          { error: result.error, domain },
+          "Error upserting workspace domain, skipping"
+        );
+      }
     }
   }
 

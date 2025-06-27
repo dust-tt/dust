@@ -6,6 +6,7 @@ import {
   setHandler,
   workflowInfo,
 } from "@temporalio/workflow";
+import { chunk } from "lodash";
 
 import type { ConfluencePageRef } from "@connectors/connectors/confluence/lib/confluence_api";
 import type * as activities from "@connectors/connectors/confluence/temporal/activities";
@@ -66,6 +67,8 @@ const TEMPORAL_WORKFLOW_MAX_HISTORY_LENGTH = 10_000;
 const TEMPORAL_WORKFLOW_MAX_HISTORY_SIZE_MB = 10;
 
 const MAX_LEAF_PAGES_PER_BATCH = 50;
+
+const TOP_LEVEL_PAGE_REFS_CHUNK_SIZE = 100;
 
 export async function confluenceSyncWorkflow({
   connectorId,
@@ -216,12 +219,23 @@ export async function confluenceSpaceSyncWorkflow(
   }
 
   const { workflowId, searchAttributes: parentSearchAttributes, memo } = wInfo;
-  for (const pageRef of uniqueTopLevelPageRefs.values()) {
+
+  const uniqueTopLevelPageRefsArray = Array.from(
+    uniqueTopLevelPageRefs.values()
+  );
+  // For small spaces, process each page individually; for large spaces, chunk them to be
+  // conservative.
+  const topLevelPageRefsToProcess =
+    uniqueTopLevelPageRefsArray.length > TOP_LEVEL_PAGE_REFS_CHUNK_SIZE
+      ? chunk(uniqueTopLevelPageRefsArray, TOP_LEVEL_PAGE_REFS_CHUNK_SIZE)
+      : uniqueTopLevelPageRefsArray.map((page) => [page]);
+
+  for (const pageRefChunk of topLevelPageRefsToProcess) {
     // Start a new workflow to import the child pages.
     await executeChild(confluenceSyncTopLevelChildPagesWorkflow, {
       workflowId: makeConfluenceSyncTopLevelChildPagesWorkflowIdFromParentId(
         workflowId,
-        pageRef.id
+        pageRefChunk[0]?.id ?? ""
       ),
       searchAttributes: parentSearchAttributes,
       args: [
@@ -230,7 +244,7 @@ export async function confluenceSpaceSyncWorkflow(
           space,
           confluenceCloudId,
           visitedAtMs,
-          topLevelPageRefs: [pageRef],
+          topLevelPageRefs: pageRefChunk,
         },
       ],
       memo,

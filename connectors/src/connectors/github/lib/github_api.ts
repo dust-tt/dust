@@ -7,7 +7,7 @@ import fs from "fs-extra";
 import * as reporter from "io-ts-reporters";
 import { Octokit, RequestError } from "octokit";
 import { tmpdir } from "os";
-import { basename, extname, join, resolve } from "path";
+import { basename, join, resolve } from "path";
 import type { Readable } from "stream";
 import { pipeline } from "stream/promises";
 import type { ReadEntry } from "tar";
@@ -18,6 +18,10 @@ import type {
 } from "undici";
 import { fetch as undiciFetch, ProxyAgent } from "undici";
 
+import {
+  isSupportedDirectory,
+  isSupportedFile,
+} from "@connectors/connectors/github/lib/code/supported_files";
 import {
   isBadCredentials,
   isGithubRequestErrorNotFound,
@@ -671,141 +675,13 @@ export async function getOctokit(
 
 // Repository processing
 
-const EXTENSION_WHITELIST = [
-  // Programming Languages - General Purpose
-  ".js",
-  ".ts",
-  ".tsx",
-  ".jsx",
-  ".py",
-  ".rb",
-  ".rs",
-  ".go",
-  ".swift",
-  ".java",
-  ".c",
-  ".h",
-  ".cc",
-  ".cpp",
-  ".hpp",
-  ".php",
-  ".scala",
-  ".kt", // Kotlin
-  ".neon", // PHP configuration
-  ".phtml", // PHP template
-  ".twig", // PHP template
-  ".xhtml", // XML/HTML
-  ".xsd", // XML Schema Definition
-
-  // .NET Ecosystem
-  ".cs",
-  ".csproj", // XML-based
-  ".sln", // Text-based solution file
-  ".cshtml", // Razor template
-  ".razor", // Razor component
-  ".resx", // XML-based resource
-  ".vb", // Visual Basic
-  ".fs", // F#
-  ".fsproj", // XML-based F# project
-  ".props", // MSBuild properties (XML)
-  ".targets", // MSBuild targets (XML)
-  ".nuspec", // NuGet specification (XML)
-
-  // Web Technologies
-  ".html",
-  ".htm",
-  ".css",
-  ".scss",
-  ".sass",
-  ".less",
-
-  // Data & Configuration
-  ".json",
-  ".yaml",
-  ".yml",
-  ".toml",
-  ".ini",
-  ".env",
-  ".conf",
-  ".config",
-
-  // Build & Dependencies
-  ".gradle",
-  ".lock", // Text-based lock files
-  ".mk", // Makefile
-  ".just", // Justfile
-  ".dockerfile",
-  ".editorconfig",
-
-  // Infrastructure as Code
-  ".tf", // Terraform
-  ".hcl", // HashiCorp Configuration Language
-  ".nix", // Nix expressions
-
-  // Documentation
-  ".md", // Markdown
-  ".mdx", // Markdown with JSX
-  ".rst", // ReStructured Text
-  ".adoc", // AsciiDoc
-  ".tex", // LaTeX
-  ".txt",
-  ".patch",
-
-  // Shell & Scripts
-  ".sh",
-  ".sql",
-  ".kts", // Kotlin script
-
-  // Version Control
-  ".gitignore",
-  ".dockerignore",
-
-  // Testing
-  ".test.cs",
-  ".spec.cs",
-  ".tests.cs",
-
-  // Templates
-  ".liquid",
-  ".mustache",
-  ".handlebars",
-];
-
-const SUFFIX_BLACKLIST = [".min.js", ".min.css"];
-
-const FILENAME_WHITELIST = [
-  "README",
-  "Dockerfile",
-  "package.json",
-  "Cargo.toml",
-];
-
-const DIRECTORY_BLACKLIST = [
-  "node_modules",
-  "vendor",
-  "dist",
-  "build",
-  "coverage",
-  "pkg",
-  "bundle",
-  "built",
-  "eggs",
-  "downloads",
-  "env",
-  "venv",
-  "tmp",
-  "temp",
-  "debug",
-  "target",
-];
-
 async function* getFiles(dir: string): AsyncGenerator<string> {
   const dirents = await readdir(dir, { withFileTypes: true });
   for (const dirent of dirents) {
     const res = resolve(dir, dirent.name);
     if (dirent.isDirectory()) {
       // blacklist
-      if (DIRECTORY_BLACKLIST.includes(dirent.name)) {
+      if (!isSupportedDirectory(dirent.name)) {
         continue;
       }
       yield* getFiles(res);
@@ -964,12 +840,8 @@ export async function processRepository({
           logger.info({ path, size }, "File is over the size limit, skipping.");
           return false;
         }
-        const ext = extname(path).toLowerCase();
 
-        const isWhitelisted =
-          (EXTENSION_WHITELIST.includes(ext) ||
-            FILENAME_WHITELIST.includes(path)) &&
-          !SUFFIX_BLACKLIST.some((suffix) => path.endsWith(suffix));
+        const isWhitelisted = isSupportedFile(path);
 
         if (!isWhitelisted) {
           return false;

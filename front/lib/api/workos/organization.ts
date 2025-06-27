@@ -161,6 +161,18 @@ export async function removeWorkOSOrganizationDomain(
   return new Ok(undefined);
 }
 
+export async function listWorkOSOrganizationsWithDomain(
+  domain: string
+): Promise<Organization[]> {
+  const workOS = getWorkOS();
+  const organizations = await workOS.organizations.listOrganizations({
+    domains: [domain],
+    limit: 100,
+  });
+
+  return organizations.data;
+}
+
 // Mapping WorkOSPortalIntent to GeneratePortalLinkIntent,
 // as we can't use the WorkOSPortalIntent enum on any Client-Side code.
 const INTENT_MAP: Record<WorkOSPortalIntent, GeneratePortalLinkIntent> = {
@@ -266,5 +278,30 @@ export async function deleteWorkOSOrganizationDSyncConnection(
     return new Ok(undefined);
   } catch (error) {
     return new Err(normalizeError(error));
+  }
+}
+
+export async function deleteWorksOSOrganizationWithWorkspace(
+  workspaceId: string
+): Promise<Result<undefined, Error>> {
+  const localLogger = logger.child({
+    workspaceId,
+  });
+
+  let organization: Organization;
+  try {
+    organization =
+      await getWorkOS().organizations.getOrganizationByExternalId(workspaceId);
+  } catch (err) {
+    localLogger.warn({ workspaceId }, "Can't get workOSOrganization");
+    return new Ok(undefined);
+  }
+
+  try {
+    await getWorkOS().organizations.deleteOrganization(organization.id);
+
+    return new Ok(undefined);
+  } catch (err) {
+    return new Err(normalizeError(err));
   }
 }

@@ -76,6 +76,11 @@ const Help: FC = () => {
           <Text bold>-a, --agent</Text> Search for and use an agent by name
         </Text>
       </Box>
+      <Box marginLeft={2}>
+        <Text>
+          <Text bold>-m, --message</Text> Send a message non-interactively (requires --agent)
+        </Text>
+      </Box>
     </Box>
   );
 };

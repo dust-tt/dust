@@ -81,18 +81,9 @@ export function AssistantToolsSection({
         m.providerId === agentConfiguration.model.providerId
     ),
   ];
-  const reasoningAction = agentConfiguration.actions.find(
-    isReasoningConfiguration
-  );
-  if (reasoningAction) {
-    models.push(
-      SUPPORTED_MODEL_CONFIGS.find(
-        (m) =>
-          m.modelId === reasoningAction.modelId &&
-          m.providerId === reasoningAction.providerId
-      )
-    );
-  }
+
+  // TODO(20250626, aubin): Add model used for reasoning in details following
+  // regression when moving reasoning to MCP.
 
   const filteredModels = removeNulls(models);
   return (

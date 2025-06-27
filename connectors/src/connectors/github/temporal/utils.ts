@@ -12,6 +12,13 @@ export function getCodeSyncWorkflowId(connectorId: ModelId, repoId: number) {
   return `workflow-github-${connectorId}-code-sync-${repoId}`;
 }
 
+export function getCodeSyncStatelessWorkflowId(
+  connectorId: ModelId,
+  repoId: number
+) {
+  return `workflow-github-${connectorId}-code-sync-stateless-${repoId}`;
+}
+
 export function getCodeSyncDailyCronWorkflowId(
   connectorId: ModelId,
   repoId: number

@@ -7,6 +7,7 @@ import { getAuth0ManagemementClient } from "@app/lib/api/auth0";
 import config from "@app/lib/api/config";
 import { hardDeleteDataSource } from "@app/lib/api/data_sources";
 import { hardDeleteSpace } from "@app/lib/api/spaces";
+import { deleteWorksOSOrganizationWithWorkspace } from "@app/lib/api/workos/organization";
 import {
   areAllSubscriptionsCanceled,
   isWorkspaceRelocationDone,
@@ -50,6 +51,7 @@ import {
   AgentUserRelation,
   GlobalAgentSettings,
 } from "@app/lib/models/assistant/agent";
+import { AgentDataRetentionModel } from "@app/lib/models/assistant/agent_data_retention";
 import { TagAgentModel } from "@app/lib/models/assistant/tag_agent";
 import { DustAppSecret } from "@app/lib/models/dust_app_secret";
 import { FeatureFlag } from "@app/lib/models/feature_flag";
@@ -340,7 +342,7 @@ export async function deleteAgentsActivity({
     await AgentReasoningAction.destroy({
       where: {
         reasoningConfigurationId: {
-          [Op.in]: reasoningConfigurations.map((r) => r.id),
+          [Op.in]: reasoningConfigurations.map((r) => r.sId),
         },
       },
     });
@@ -828,6 +830,9 @@ export async function deleteWorkspaceActivity({
       id: workspace.id,
     },
   });
+  await AgentDataRetentionModel.destroy({
+    where: { workspaceId: workspace.id },
+  });
 }
 
 export async function deleteTranscriptsActivity({
@@ -869,4 +874,12 @@ export async function deleteTagsActivity({
   for (const tag of tags) {
     await tag.delete(auth);
   }
+}
+
+export async function deleteWorkOSOrganization({
+  workspaceId,
+}: {
+  workspaceId: string;
+}) {
+  await deleteWorksOSOrganizationWithWorkspace(workspaceId);
 }

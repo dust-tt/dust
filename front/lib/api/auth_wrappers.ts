@@ -407,17 +407,6 @@ export function withPublicAPIAuthentication<T, U extends boolean>(
           )) ?? workspaceAuth;
       }
 
-      const apiKey = keyAuth.key();
-
-      logger.info(
-        {
-          method: req.method,
-          url: req.url,
-          key: apiKey ? { id: apiKey.id, name: apiKey.name } : null,
-        },
-        "withPublicAPIAuthentication request"
-      );
-
       return handler(
         req,
         res,
