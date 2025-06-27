@@ -29,7 +29,9 @@ export async function submitAgentBuilderForm({
       name: formData.agentSettings.name,
       description: formData.agentSettings.description,
       instructions: formData.instructions,
-      pictureUrl: "https://dust.tt/static/assistants/logo.svg", // Default avatar for now
+      pictureUrl:
+        formData.agentSettings.pictureUrl ||
+        "https://dust.tt/static/assistants/logo.svg",
       status: isDraft ? "draft" : "active",
       scope: "visible", // Default to visible
       model: {

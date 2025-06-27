@@ -1,10 +1,12 @@
 import {
+  Avatar,
   Button,
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
   Input,
   Page,
+  PencilSquareIcon,
   SparklesIcon,
   TextArea,
   useSendNotification,
@@ -18,6 +20,11 @@ import {
   getDescriptionSuggestion,
   getNameSuggestions,
 } from "@app/components/agent_builder/settings/utils";
+import { AvatarPicker } from "@app/components/assistant_builder/avatar_picker/AssistantBuilderAvatarPicker";
+import {
+  DROID_AVATAR_URLS,
+  SPIRIT_AVATAR_URLS,
+} from "@app/components/assistant_builder/shared";
 
 function AgentNameInput() {
   const { owner } = useAgentBuilderContext();
@@ -80,7 +87,7 @@ function AgentNameInput() {
   };
 
   return (
-    <div className="space-y-2">
+    <div className="max-w-md space-y-2">
       <label className="text-sm font-medium text-foreground dark:text-foreground-night">
         Name
       </label>
@@ -191,6 +198,43 @@ function AgentDescriptionInput() {
   );
 }
 
+function AgentPictureInput() {
+  const { owner } = useAgentBuilderContext();
+  const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
+
+  const { field } = useController<
+    AgentBuilderFormData,
+    "agentSettings.pictureUrl"
+  >({
+    name: "agentSettings.pictureUrl",
+  });
+
+  return (
+    <>
+      <AvatarPicker
+        owner={owner}
+        isOpen={isAvatarModalOpen}
+        setOpen={setIsAvatarModalOpen}
+        onPick={field.onChange}
+        droidAvatarUrls={DROID_AVATAR_URLS}
+        spiritAvatarUrls={SPIRIT_AVATAR_URLS}
+        avatarUrl={field.value || null}
+      />
+      <div className="flex flex-col items-center space-y-2">
+        <Avatar size="xl" visual={field.value || null} />
+        <Button
+          label="Change"
+          variant="outline"
+          size="xs"
+          icon={PencilSquareIcon}
+          type="button"
+          onClick={() => setIsAvatarModalOpen(true)}
+        />
+      </div>
+    </>
+  );
+}
+
 export function AgentBuilderSettingsBlock() {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -211,8 +255,13 @@ export function AgentBuilderSettingsBlock() {
               </span>
             </Page.P>
             <div className="space-y-4">
-              <AgentNameInput />
-              <AgentDescriptionInput />
+              <div className="flex gap-8">
+                <div className="flex flex-grow flex-col gap-4">
+                  <AgentNameInput />
+                  <AgentDescriptionInput />
+                </div>
+                <AgentPictureInput />
+              </div>
             </div>
           </div>
         </CollapsibleContent>
