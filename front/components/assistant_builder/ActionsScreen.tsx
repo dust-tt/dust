@@ -1015,12 +1015,11 @@ function AddKnowledgeDropdown({
         className="w-[20rem] md:w-[22rem]"
         collisionPadding={10}
       >
-        {isLoading && (
+        {isLoading ? (
           <div className="flex h-56 w-full items-center justify-center rounded-xl">
             <Spinner />
           </div>
-        )}
-        {!isLoading &&
+        ) : (
           mcpServerViewsWithKnowledge.map((view) => {
             const action = getDefaultMCPServerConfigurationWithId(view);
             assert(action);
@@ -1040,7 +1039,8 @@ function AddKnowledgeDropdown({
                 description={view.server.description}
               />
             );
-          })}
+          })
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );
