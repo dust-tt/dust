@@ -385,7 +385,9 @@ async function migrateWorkspaceRetrievalActions(
         );
         assert(
           agentConfiguration ||
-            isGlobalAgentId(agentMessage.agentConfigurationId),
+            isGlobalAgentId(agentMessage.agentConfigurationId) ||
+            // Dust Next is a global agent that was removed from everywhere.
+            agentMessage.agentConfigurationId === "dust-next",
           `Agent configuration must exist for agent ${agentMessage.agentConfigurationId}`
         );
 
