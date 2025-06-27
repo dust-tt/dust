@@ -16,7 +16,7 @@ import { getDataVisualizationActionConfiguration } from "@app/components/assista
 import { DATA_VISUALIZATION_SPECIFICATION } from "@app/lib/actions/utils";
 
 interface AddToolsDropdownProps {
-  fields: FieldArrayWithId<AgentBuilderFormData, "actions">[];
+  tools: FieldArrayWithId<AgentBuilderFormData, "actions">[];
   addTools: (
     value:
       | FieldArray<AgentBuilderFormData, "actions">
@@ -24,7 +24,7 @@ interface AddToolsDropdownProps {
   ) => void;
 }
 
-export function AddToolsDropdown({ fields, addTools }: AddToolsDropdownProps) {
+export function AddToolsDropdown({ tools, addTools }: AddToolsDropdownProps) {
   function onClickDataVisualization() {
     const dataVisualizationConfig = getDataVisualizationActionConfiguration();
     if (!dataVisualizationConfig) {
@@ -39,7 +39,7 @@ export function AddToolsDropdown({ fields, addTools }: AddToolsDropdownProps) {
     addTools(newAction);
   }
 
-  const hasDataVisualization = fields.some(
+  const hasDataVisualization = tools.some(
     (action: AgentBuilderAction) => action.type === "DATA_VISUALIZATION"
   );
 
