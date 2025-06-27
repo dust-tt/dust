@@ -20,6 +20,7 @@ import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import logger from "@connectors/logger/logger";
 
 const MAX_FILE_SIZE_BYTES = 1024 * 1024; // 1MB
+const GCS_RESUMABLE_UPLOAD_THRESHOLD_BYTES = 10 * 1024 * 1024; // 10MB
 
 interface TarExtractionOptions {
   repoId: number;
@@ -170,6 +171,8 @@ export async function extractGitHubTarballToGCS(
               metadata: {
                 contentType: "text/plain",
               },
+              resumable: (header.size ?? 0) >= GCS_RESUMABLE_UPLOAD_THRESHOLD_BYTES,
+              validation: false,
             })
           ).catch((error) => {
             logger.error(
