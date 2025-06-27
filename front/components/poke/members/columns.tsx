@@ -145,7 +145,8 @@ export function makeColumnsForMembers({
       cell: ({ row }) => {
         const member = row.original;
 
-        return member.role !== "none" ? (
+        // Hide the revoke button for provisioned users and users with no role.
+        return member.role !== "none" && member.origin !== "provisioned" ? (
           <IconButton
             icon={TrashIcon}
             size="xs"

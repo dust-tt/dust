@@ -118,7 +118,8 @@ const memberColumns = [
     header: "",
     cell: (info: Info) => (
       <DataTable.CellContent>
-        {info.row.original.isCurrentUser ? (
+        {info.row.original.isCurrentUser ||
+        info.row.original.origin === "provisioned" ? (
           <></>
         ) : (
           <IconButton
