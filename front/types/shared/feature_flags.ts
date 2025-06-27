@@ -20,6 +20,7 @@ export const WHITELISTABLE_FEATURES = [
   "labs_mcp_actions_dashboard",
   "labs_trackers",
   "labs_transcripts",
+  "monday_tool",
   "okta_enterprise_connection",
   "openai_o1_custom_assistants_feature",
   "openai_o1_feature",
