@@ -130,7 +130,7 @@ export const financialServicesConfig: IndustryPageConfig = {
         ],
       },
       {
-        title: "Prospect account insights",
+        title: "Commercial operations",
         image: "/static/landing/industry/features/Sales_agent_2.webp",
         bgColor: "bg-purple-100",
         features: [
@@ -162,7 +162,7 @@ export const financialServicesConfig: IndustryPageConfig = {
       },
       {
         title: "Support operations",
-        image: "/static/landing/industry/features/Incident_copilot_slack.webp",
+        image: "/static/landing/industry/features/Incident_copilot_slack.svg",
         bgColor: "bg-green-100",
         features: [
           {
@@ -193,7 +193,7 @@ export const financialServicesConfig: IndustryPageConfig = {
       },
       {
         title: "Marketing & content generation",
-        image: "/static/landing/industry/features/Content_localization.webp",
+        image: "/static/landing/industry/features/Content_localization.svg",
         bgColor: "bg-golden-100",
         features: [
           {

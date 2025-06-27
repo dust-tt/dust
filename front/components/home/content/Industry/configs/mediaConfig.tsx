@@ -8,7 +8,6 @@ export const mediaConfig: IndustryPageConfig = {
     "hero",
     "painPoints",
     "dustInAction",
-    "customerStories",
     "justUseDust",
   ]),
   hero: {

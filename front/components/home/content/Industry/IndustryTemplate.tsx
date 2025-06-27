@@ -326,16 +326,18 @@ const ImpactMetricsSection = ({
   >
     <div className="container mx-auto max-w-7xl px-4 sm:px-6 md:px-8">
       <div
-        className={`flex flex-wrap items-start justify-center ${
-          config.metrics.length === 2 ? "gap-16 md:gap-24" : "gap-8 md:gap-12"
+        className={`flex flex-col flex-wrap items-start justify-center md:flex-row ${
+          config.metrics.length === 2
+            ? "gap-8 md:gap-20 lg:gap-32"
+            : "gap-6 md:gap-12 lg:gap-20"
         }`}
       >
         {config.metrics.map((metric, index) => (
           <div
             key={index}
-            className="flex min-w-[200px] max-w-[300px] flex-1 flex-col items-center justify-center"
+            className="flex w-full flex-col items-center justify-center md:flex-1 lg:items-start"
           >
-            <div className="text-left">
+            <div className="text-center lg:text-left">
               <div className="text-5xl font-bold text-gray-900 md:text-8xl">
                 {metric.value}
                 {metric.unit}

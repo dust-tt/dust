@@ -102,7 +102,7 @@ export const insuranceConfig: IndustryPageConfig = {
       {
         title: "Customer service",
         image: "/static/landing/industry/features/UxWriter.webp",
-        bgColor: "bg-orange-100",
+        bgColor: "bg-golden-100",
         features: [
           {
             icon: "bg-golden-500",
@@ -163,8 +163,8 @@ export const insuranceConfig: IndustryPageConfig = {
       },
       {
         title: "Legal & compliance support",
-        image: "/static/landing/industry/features/Legal_review_2.webp",
-        bgColor: "bg-blue-100",
+        image: "/static/landing/industry/features/Legal_review_3.webp",
+        bgColor: "bg-green-100",
         features: [
           {
             icon: "bg-golden-500",
