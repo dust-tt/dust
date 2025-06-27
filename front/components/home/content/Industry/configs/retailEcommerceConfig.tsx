@@ -1,8 +1,21 @@
 import { ActionStoreIcon } from "@dust-tt/sparkle";
 
 import type { IndustryPageConfig } from "@app/components/home/content/Industry/configs/utils";
+import { createLayoutConfig } from "@app/components/home/content/Industry/configs/utils";
 
 export const retailEcommerceConfig: IndustryPageConfig = {
+  layout: createLayoutConfig([
+    "hero",
+    "aiAgents",
+    "trustedBy",
+    "painPoints",
+    "dustInAction",
+    "impactMetrics",
+    "demoVideo",
+    "testimonial",
+    "customerStories",
+    "justUseDust",
+  ]),
   hero: {
     chip: {
       label: "Retail & e-Commerce",
