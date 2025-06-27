@@ -3,7 +3,11 @@ import { ArrowsUpDownIcon } from "@heroicons/react/20/solid";
 import type { ColumnDef } from "@tanstack/react-table";
 
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
-import type { ActiveRoleType, RoleType } from "@app/types";
+import type {
+  ActiveRoleType,
+  MembershipOriginType,
+  RoleType,
+} from "@app/types";
 import { ACTIVE_ROLES } from "@app/types";
 
 export type MemberDisplayType = {
@@ -13,6 +17,7 @@ export type MemberDisplayType = {
   provider: string | null;
   role: RoleType;
   sId: string;
+  origin: MembershipOriginType;
 };
 
 export function makeColumnsForMembers({
