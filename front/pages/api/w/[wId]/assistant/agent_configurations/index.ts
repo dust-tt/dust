@@ -267,6 +267,7 @@ export async function createOrUpgradeAgentConfiguration({
   auth: Authenticator;
   assistant: PostOrPatchAgentConfigurationRequestBody["assistant"];
   agentConfigurationId?: string;
+  ignoreSpaceIds?: Set<string>;
 }): Promise<Result<AgentConfigurationType, Error>> {
   const { actions } = assistant;
 
@@ -324,10 +325,9 @@ export async function createOrUpgradeAgentConfiguration({
     model: assistant.model,
     agentConfigurationId,
     templateId: assistant.templateId ?? null,
-    requestedGroupIds: await getAgentConfigurationGroupIdsFromActions(
-      auth,
-      actions
-    ),
+    requestedGroupIds: await getAgentConfigurationGroupIdsFromActions(auth, {
+      actions,
+    }),
     tags: assistant.tags,
     editors,
   });

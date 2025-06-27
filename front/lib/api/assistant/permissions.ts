@@ -7,12 +7,17 @@ import {
   isDustAppRunConfiguration,
   isServerSideMCPServerConfiguration,
 } from "@app/lib/actions/types/guards";
+import {
+  getAgentConfigurations,
+  getAgentSIdFromName,
+} from "@app/lib/api/assistant/configuration";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import type { SpaceResource } from "@app/lib/resources/space_resource";
 import type {
   CombinedResourcePermissions,
   ContentFragmentInputWithContentNode,
@@ -85,7 +90,7 @@ export function getDataSourceViewIdsFromActions(
   );
 }
 
-function groupsFromRequestedPermissions(
+export function groupsFromRequestedPermissions(
   requestedPermissions: CombinedResourcePermissions[]
 ) {
   return (
@@ -96,10 +101,57 @@ function groupsFromRequestedPermissions(
   );
 }
 
+/**
+ * This is a wrapper function of getAgentConfigurationGroupIdsFromActions for simplicity of use.
+ * Note: if you have the actions, use getAgentConfigurationGroupIdsFromActions as this is a less efficient function.
+ *
+ * @param auth - The authenticator instance for workspace access and permissions
+ * @param agentName - The sId/name of the agent configuration to fetch group IDs for
+ * @param ignoreSpaces - Optional list of spaces to exclude from group requirements calculation
+ * @returns Promise resolving to array of arrays, where each inner array contains ModelIds of groups required for one space
+ * @throws Error if the agent configuration is not found
+ */
+export async function getAgentConfigurationGroupIdsFromName(
+  auth: Authenticator,
+  params: { agentName: string; ignoreSpaces?: SpaceResource[] }
+): Promise<ModelId[][]> {
+  const { agentName, ignoreSpaces } = params;
+  // Get the agent sId via name and auth
+  const agentId = await getAgentSIdFromName(auth, agentName);
+
+  if (!agentId) {
+    throw new Error(`Agent Id not found: ${agentName}`);
+  }
+
+  // Get the agent configuration with full details including actions
+  const [agentConfig] = await getAgentConfigurations({
+    auth,
+    agentsGetView: { agentIds: [agentId] },
+    variant: "full",
+    dangerouslySkipPermissionFiltering: true,
+  });
+
+  if (!agentConfig) {
+    throw new Error(`Agent configuration not found: ${agentName}`);
+  }
+
+  // Get the required group IDs from the agent's actions
+  return getAgentConfigurationGroupIdsFromActions(auth, {
+    actions: agentConfig.actions,
+    ignoreSpaces: ignoreSpaces,
+  });
+}
+
 export async function getAgentConfigurationGroupIdsFromActions(
   auth: Authenticator,
-  actions: UnsavedAgentActionConfigurationType[]
+  params: {
+    actions: UnsavedAgentActionConfigurationType[];
+    ignoreSpaces?: SpaceResource[];
+  }
 ): Promise<ModelId[][]> {
+  const { actions, ignoreSpaces } = params;
+  const ignoreSpaceIds = new Set(ignoreSpaces?.map((space) => space.sId));
+
   const dsViews = await DataSourceViewResource.fetchByIds(
     auth,
     getDataSourceViewIdsFromActions(actions)
@@ -117,6 +169,10 @@ export async function getAgentConfigurationGroupIdsFromActions(
   // Collect DataSourceView permissions by space.
   for (const view of dsViews) {
     const { sId: spaceId } = view.space;
+    if (ignoreSpaceIds?.has(spaceId)) {
+      continue;
+    }
+
     if (!spacePermissions.has(spaceId)) {
       spacePermissions.set(spaceId, new Set());
     }
@@ -127,6 +183,10 @@ export async function getAgentConfigurationGroupIdsFromActions(
   // Collect DustApp permissions by space.
   for (const app of dustApps) {
     const { sId: spaceId } = app.space;
+    if (ignoreSpaceIds?.has(spaceId)) {
+      continue;
+    }
+
     if (!spacePermissions.has(spaceId)) {
       spacePermissions.set(spaceId, new Set());
     }
@@ -147,6 +207,9 @@ export async function getAgentConfigurationGroupIdsFromActions(
 
   for (const view of mcpServerViews) {
     const { sId: spaceId } = view.space;
+    if (ignoreSpaceIds?.has(spaceId)) {
+      continue;
+    }
     if (!spacePermissions.has(spaceId)) {
       spacePermissions.set(spaceId, new Set());
     }
