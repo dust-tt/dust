@@ -118,8 +118,9 @@ export function ChangeMemberModal({
                           size="sm"
                           disabled={member.origin === "provisioned"}
                           tooltip={
-                            member.origin === "provisioned" &&
-                            "This user is managed by your identity provider."
+                            member.origin === "provisioned"
+                              ? "This user is managed by your identity provider."
+                              : undefined
                           }
                         />
                       </DialogTrigger>
