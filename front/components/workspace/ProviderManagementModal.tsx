@@ -77,14 +77,14 @@ export function ProviderManagementModal({
 
   const [open, setOpen] = useState(false);
 
-  const { initialProviderStates } = useMemo(() => {
+  const initialProviderStates = useMemo(() => {
     const enabledProviders: ModelProviderIdType[] =
       workspace?.whiteListedProviders ?? [...MODEL_PROVIDER_IDS];
     const states = MODEL_PROVIDER_IDS.reduce((acc, provider) => {
       acc[provider] = enabledProviders.includes(provider);
       return acc;
     }, {} as ProviderStates);
-    return { initialProviderStates: states };
+    return states;
   }, [workspace]);
 
   useEffect(() => {
