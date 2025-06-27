@@ -38,12 +38,15 @@ function ActionCard({
   action: AgentBuilderAction;
   onRemove: () => void;
 }) {
+  console.log("ActionCard received action:", action, "type:", action.type);
   const spec =
     action.type === "DATA_VISUALIZATION"
       ? DATA_VISUALIZATION_SPECIFICATION
       : null;
 
+  console.log("ActionCard found spec:", spec);
   if (!spec) {
+    console.log("ActionCard: No spec found for type:", action.type);
     return null;
   }
 
@@ -136,13 +139,18 @@ function MaxStepsPerRunSettings() {
 }
 
 export function AgentBuilderCapabilitiesBlock() {
-  const { fields, remove } = useFieldArray<AgentBuilderFormData, "actions">({
+  const { fields, remove, append } = useFieldArray<
+    AgentBuilderFormData,
+    "actions"
+  >({
     name: "actions",
   });
 
   function removeAction(index: number) {
     remove(index);
   }
+
+  console.log(">>>>> parent", fields);
 
   return (
     <div className="flex h-full flex-col gap-4">
@@ -158,7 +166,7 @@ export function AgentBuilderCapabilitiesBlock() {
             {fields.length > 0 && (
               <>
                 <AddKnowledgeDropdown />
-                <AddToolsDropdown />
+                <AddToolsDropdown fields={fields} addTools={append} />
               </>
             )}
             <MaxStepsPerRunSettings />
@@ -172,7 +180,7 @@ export function AgentBuilderCapabilitiesBlock() {
             action={
               <div className="flex items-center gap-2">
                 <AddKnowledgeDropdown />
-                <AddToolsDropdown />
+                <AddToolsDropdown fields={fields} addTools={append} />
               </div>
             }
           />
