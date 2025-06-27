@@ -2,22 +2,13 @@ import { createContext, useState } from "react";
 import { useEffect } from "react";
 
 import { DataSourceViewsProvider } from "@app/components/assistant_builder/contexts/DataSourceViewsContext";
-import { mcpServerViewSortingFn } from "@app/lib/actions/mcp_helper";
-import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { AppType, SpaceType, WorkspaceType } from "@app/types";
 
-interface AssistantBuilderProviderProps {
-  owner: WorkspaceType;
-  dustApps: AppType[];
-  spaces: SpaceType[];
-  mcpServerViews: MCPServerViewType[];
-  children: React.ReactNode;
-}
+import { MCPServerViewsProvider } from "./contexts/MCPServerViewsContext";
 
 type AssistantBuilderContextType = {
   dustApps: AppType[];
   spaces: SpaceType[];
-  mcpServerViews: MCPServerViewType[];
   isPreviewPanelOpen: boolean;
   setIsPreviewPanelOpen: React.Dispatch<React.SetStateAction<boolean>>;
 };
@@ -26,16 +17,21 @@ export const AssistantBuilderContext =
   createContext<AssistantBuilderContextType>({
     dustApps: [],
     spaces: [],
-    mcpServerViews: [],
     isPreviewPanelOpen: true,
     setIsPreviewPanelOpen: () => {},
   });
 
+interface AssistantBuilderProviderProps {
+  owner: WorkspaceType;
+  dustApps: AppType[];
+  spaces: SpaceType[];
+  children: React.ReactNode;
+}
+
 export function AssistantBuilderProvider({
+  owner,
   dustApps,
   spaces,
-  mcpServerViews,
-  owner,
   children,
 }: AssistantBuilderProviderProps) {
   const [isPreviewPanelOpen, setIsPreviewPanelOpen] = useState(() => {
@@ -56,19 +52,21 @@ export function AssistantBuilderProvider({
       mediaQuery.removeEventListener("change", handleMediaChange);
     };
   }, []);
+
   return (
     <AssistantBuilderContext.Provider
       value={{
         dustApps,
         spaces,
-        mcpServerViews: mcpServerViews.sort(mcpServerViewSortingFn),
         isPreviewPanelOpen,
         setIsPreviewPanelOpen,
       }}
     >
-      <DataSourceViewsProvider owner={owner}>
-        {children}
-      </DataSourceViewsProvider>
+      <MCPServerViewsProvider owner={owner} spaces={spaces}>
+        <DataSourceViewsProvider owner={owner}>
+          {children}
+        </DataSourceViewsProvider>
+      </MCPServerViewsProvider>
     </AssistantBuilderContext.Provider>
   );
 }

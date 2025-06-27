@@ -11,7 +11,6 @@ import { throwIfInvalidAgentConfiguration } from "@app/lib/actions/types/guards"
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { generateMockAgentConfigurationFromTemplate } from "@app/lib/api/assistant/templates";
 import config from "@app/lib/api/config";
-import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { isRestrictedFromAgentCreation } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -42,7 +41,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   subscription: SubscriptionType;
   plan: PlanType;
   spaces: SpaceType[];
-  mcpServerViews: MCPServerViewType[];
   agentConfiguration:
     | AgentConfigurationType
     | TemplateAgentConfigurationType
@@ -70,8 +68,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 
   await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
 
-  const { spaces, dustApps, mcpServerViews } =
-    await getAccessibleSourcesAndApps(auth);
+  const { spaces, dustApps } = await getAccessibleSourcesAndApps(auth);
 
   const flow: BuilderFlow = BUILDER_FLOWS.includes(
     context.query.flow as BuilderFlow
@@ -112,14 +109,11 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     configuration = agentConfigRes.value;
   }
 
-  const mcpServerViewsJSON = mcpServerViews.map((v) => v.toJSON());
-
   return {
     props: {
       agentConfiguration: configuration,
       baseUrl: config.getClientFacingUrl(),
       dustApps: dustApps.map((a) => a.toJSON()),
-      mcpServerViews: mcpServerViewsJSON,
       flow,
       owner,
       plan,
@@ -136,7 +130,6 @@ export default function CreateAssistant({
   agentConfiguration,
   baseUrl,
   spaces,
-  mcpServerViews,
   flow,
   owner,
   plan,
@@ -155,12 +148,7 @@ export default function CreateAssistant({
   }
 
   return (
-    <AssistantBuilderProvider
-      owner={owner}
-      spaces={spaces}
-      dustApps={dustApps}
-      mcpServerViews={mcpServerViews}
-    >
+    <AssistantBuilderProvider owner={owner} dustApps={dustApps} spaces={spaces}>
       <AssistantBuilder
         owner={owner}
         subscription={subscription}

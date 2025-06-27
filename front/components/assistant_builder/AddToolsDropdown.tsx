@@ -8,6 +8,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSearchbar,
   DropdownMenuTrigger,
+  Spinner,
   useSendNotification,
 } from "@dust-tt/sparkle";
 import assert from "assert";
@@ -45,6 +46,7 @@ interface AddToolsDropdownProps {
   defaultMCPServerViews: MCPServerViewTypeWithLabel[];
   nonDefaultMCPServerViews: MCPServerViewTypeWithLabel[];
   reasoningModels: ModelConfigurationType[];
+  isLoading: boolean;
 }
 
 const DEFAULT_REASONING_MODEL_ID = O4_MINI_MODEL_ID;
@@ -57,6 +59,7 @@ export function AddToolsDropdown({
   defaultMCPServerViews,
   nonDefaultMCPServerViews,
   reasoningModels,
+  isLoading,
 }: AddToolsDropdownProps) {
   const [searchText, setSearchText] = useState("");
   const [filteredNonMCPActions, setFilteredNonMCPActions] =
@@ -206,7 +209,13 @@ export function AddToolsDropdown({
           />
         }
       >
-        {searchText.length > 0 &&
+        {isLoading && (
+          <div className="flex h-full w-full items-center justify-center rounded-xl">
+            <Spinner />
+          </div>
+        )}
+        {!isLoading &&
+          searchText.length > 0 &&
           (noFilteredTools ? (
             <DropdownMenuLabel label="No tools found" />
           ) : (
@@ -229,7 +238,7 @@ export function AddToolsDropdown({
             </>
           ))}
 
-        {searchText.length === 0 && (
+        {!isLoading && searchText.length === 0 && (
           <>
             <DropdownMenuLabel label="Top tools" />
             {nonDefaultMCPActions.map((tool) => (

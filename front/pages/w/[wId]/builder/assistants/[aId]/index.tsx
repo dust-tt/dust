@@ -9,7 +9,6 @@ import { BUILDER_FLOWS } from "@app/components/assistant_builder/types";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import config from "@app/lib/api/config";
-import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -28,7 +27,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   agentEditors: UserType[];
   baseUrl: string;
   dustApps: AppType[];
-  mcpServerViews: MCPServerViewType[];
   flow: BuilderFlow;
   owner: WorkspaceType;
   plan: PlanType;
@@ -51,12 +49,11 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       };
     }
 
-    const [{ spaces, dustApps, mcpServerViews }, configuration] =
-      await Promise.all([
-        getAccessibleSourcesAndApps(auth),
-        getAgentConfiguration(auth, context.params?.aId as string, "light"),
-        MCPServerViewResource.ensureAllAutoToolsAreCreated(auth),
-      ]);
+    const [{ spaces, dustApps }, configuration] = await Promise.all([
+      getAccessibleSourcesAndApps(auth),
+      getAgentConfiguration(auth, context.params?.aId as string, "light"),
+      MCPServerViewResource.ensureAllAutoToolsAreCreated(auth),
+    ]);
 
     if (!configuration) {
       return {
@@ -76,8 +73,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       ? (context.query.flow as BuilderFlow)
       : "personal_assistants";
 
-    const mcpServerViewsJSON = mcpServerViews.map((v) => v.toJSON());
-
     const editorGroupRes = await GroupResource.findEditorGroupForAgent(
       auth,
       configuration
@@ -96,7 +91,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
         agentEditors,
         baseUrl: config.getClientFacingUrl(),
         dustApps: dustApps.map((a) => a.toJSON()),
-        mcpServerViews: mcpServerViewsJSON,
         flow,
         owner,
         plan,
@@ -113,7 +107,6 @@ export default function EditAssistant({
   baseUrl,
   spaces,
   dustApps,
-  mcpServerViews,
   flow,
   owner,
   plan,
@@ -128,12 +121,7 @@ export default function EditAssistant({
   }
 
   return (
-    <AssistantBuilderProvider
-      owner={owner}
-      spaces={spaces}
-      dustApps={dustApps}
-      mcpServerViews={mcpServerViews}
-    >
+    <AssistantBuilderProvider owner={owner} spaces={spaces} dustApps={dustApps}>
       <AssistantBuilder
         owner={owner}
         subscription={subscription}

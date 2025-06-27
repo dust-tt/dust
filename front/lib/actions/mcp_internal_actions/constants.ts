@@ -50,6 +50,14 @@ const MCP_SERVER_AVAILABILITY = [
 ] as const;
 export type MCPServerAvailability = (typeof MCP_SERVER_AVAILABILITY)[number];
 
+export const isMCPServerAvailability = (
+  availability: string
+): availability is MCPServerAvailability => {
+  return MCP_SERVER_AVAILABILITY.includes(
+    availability as MCPServerAvailability
+  );
+};
+
 export const INTERNAL_MCP_SERVERS: Record<
   InternalMCPServerNameType,
   {

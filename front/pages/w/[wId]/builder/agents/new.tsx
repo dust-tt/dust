@@ -4,6 +4,7 @@ import type { ParsedUrlQuery } from "querystring";
 import AgentBuilder from "@app/components/agent_builder/AgentBuilder";
 import { AgentBuilderProvider } from "@app/components/agent_builder/AgentBuilderContext";
 import { DataSourceViewsProvider } from "@app/components/assistant_builder/contexts/DataSourceViewsContext";
+import { MCPServerViewsProvider } from "@app/components/assistant_builder/contexts/MCPServerViewsContext";
 import { getAccessibleSourcesAndApps } from "@app/components/assistant_builder/server_side_props_helpers";
 import type { BuilderFlow } from "@app/components/assistant_builder/types";
 import { BUILDER_FLOWS } from "@app/components/assistant_builder/types";
@@ -12,7 +13,6 @@ import { throwIfInvalidAgentConfiguration } from "@app/lib/actions/types/guards"
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { generateMockAgentConfigurationFromTemplate } from "@app/lib/api/assistant/templates";
 import config from "@app/lib/api/config";
-import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { getFeatureFlags, isRestrictedFromAgentCreation } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useAssistantTemplate } from "@app/lib/swr/assistants";
@@ -42,7 +42,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   plan: PlanType;
   spaces: SpaceType[];
   dustApps: AppType[];
-  mcpServerViews: MCPServerViewType[];
   agentConfiguration:
     | AgentConfigurationType
     | TemplateAgentConfigurationType
@@ -73,8 +72,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
-  const { spaces, dustApps, mcpServerViews } =
-    await getAccessibleSourcesAndApps(auth);
+  const { spaces, dustApps } = await getAccessibleSourcesAndApps(auth);
 
   const flow: BuilderFlow = BUILDER_FLOWS.includes(
     context.query.flow as BuilderFlow
@@ -115,14 +113,11 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     configuration = agentConfigRes.value;
   }
 
-  const mcpServerViewsJSON = mcpServerViews.map((v) => v.toJSON());
-
   return {
     props: {
       agentConfiguration: configuration,
       baseUrl: config.getClientFacingUrl(),
       dustApps: dustApps.map((a) => a.toJSON()),
-      mcpServerViews: mcpServerViewsJSON,
       flow,
       owner,
       plan,
@@ -136,7 +131,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 export default function CreateAgent({
   agentConfiguration,
   spaces,
-  mcpServerViews,
   owner,
   templateId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
@@ -151,14 +145,12 @@ export default function CreateAgent({
   }
 
   return (
-    <AgentBuilderProvider
-      spaces={spaces}
-      mcpServerViews={mcpServerViews}
-      owner={owner}
-    >
-      <DataSourceViewsProvider owner={owner}>
-        <AgentBuilder />
-      </DataSourceViewsProvider>
+    <AgentBuilderProvider spaces={spaces} owner={owner}>
+      <MCPServerViewsProvider owner={owner} spaces={spaces}>
+        <DataSourceViewsProvider owner={owner}>
+          <AgentBuilder />
+        </DataSourceViewsProvider>
+      </MCPServerViewsProvider>
     </AgentBuilderProvider>
   );
 }
