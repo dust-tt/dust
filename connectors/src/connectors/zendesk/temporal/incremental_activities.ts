@@ -277,7 +277,7 @@ export async function syncZendeskTicketUpdateBatchActivity({
       }
       commentsPerTicket[ticket.id] = comments;
     },
-    { concurrency: 10 }
+    { concurrency: 3 }
   );
 
   // If we hide customer details, we don't need to fetch the users at all.
