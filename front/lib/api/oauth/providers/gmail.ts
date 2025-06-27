@@ -2,7 +2,10 @@ import type { ParsedUrlQuery } from "querystring";
 import querystring from "querystring";
 
 import config from "@app/lib/api/config";
-import type { BaseOAuthStrategyProvider } from "@app/lib/api/oauth/providers/base_oauth_stragegy_provider";
+import type {
+  BaseOAuthStrategyProvider,
+  UpdatedExtraConfigAndRelatedCredential,
+} from "@app/lib/api/oauth/providers/base_oauth_stragegy_provider";
 import {
   finalizeUriForProvider,
   getStringFromQuery,
@@ -62,19 +65,20 @@ export class GmailOAuthProvider implements BaseOAuthStrategyProvider {
     return Object.keys(extraConfig).length === 0;
   }
 
-  async getRelatedCredential(
+  async updateConfigAndGetRelatedCredential(
     auth: Authenticator,
-    extraConfig: ExtraConfigType,
-    workspaceId: string,
-    userId: string,
-    useCase: OAuthUseCase
-  ): Promise<{
-    credential: {
-      content: Record<string, string>;
-      metadata: { workspace_id: string; user_id: string };
-    };
-    cleanedConfig: ExtraConfigType;
-  } | null> {
+    {
+      extraConfig,
+      workspaceId,
+      userId,
+      useCase,
+    }: {
+      extraConfig: ExtraConfigType;
+      workspaceId: string;
+      userId: string;
+      useCase: OAuthUseCase;
+    }
+  ): Promise<UpdatedExtraConfigAndRelatedCredential | null> {
     if (useCase === "personal_actions") {
       // For personal actions we reuse the existing connection credential id from the existing
       // workspace connection (setup by admin) if we have it, otherwise we fallback to assuming
@@ -109,7 +113,7 @@ export class GmailOAuthProvider implements BaseOAuthStrategyProvider {
             },
             metadata: { workspace_id: workspaceId, user_id: userId },
           },
-          cleanedConfig: {
+          updatedConfig: {
             client_id: connection.metadata.client_id,
             ...restConfig,
           },
@@ -127,7 +131,7 @@ export class GmailOAuthProvider implements BaseOAuthStrategyProvider {
         },
         metadata: { workspace_id: workspaceId, user_id: userId },
       },
-      cleanedConfig: restConfig,
+      updatedConfig: restConfig,
     };
   }
 }

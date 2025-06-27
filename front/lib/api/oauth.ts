@@ -2,6 +2,7 @@ import type { ParsedUrlQuery } from "querystring";
 
 import config from "@app/lib/api/config";
 import type { BaseOAuthStrategyProvider } from "@app/lib/api/oauth/providers/base_oauth_stragegy_provider";
+import { isUpdatedExtraConfigAndRelatedCredential } from "@app/lib/api/oauth/providers/base_oauth_stragegy_provider";
 import { ConfluenceOAuthProvider } from "@app/lib/api/oauth/providers/confluence";
 import { GithubOAuthProvider } from "@app/lib/api/oauth/providers/github";
 import { GmailOAuthProvider } from "@app/lib/api/oauth/providers/gmail";
@@ -16,6 +17,7 @@ import { SalesforceOAuthProvider } from "@app/lib/api/oauth/providers/salesforce
 import { SlackOAuthProvider } from "@app/lib/api/oauth/providers/slack";
 import { SlackBotOAuthProvider } from "@app/lib/api/oauth/providers/slack_bot";
 import { ZendeskOAuthProvider } from "@app/lib/api/oauth/providers/zendesk";
+import { finalizeUriForProvider } from "@app/lib/api/oauth/utils";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import type { ExtraConfigType } from "@app/pages/w/[wId]/oauth/[provider]/setup";
@@ -36,10 +38,6 @@ export type OAuthError = {
   message: string;
   oAuthAPIError?: OAuthAPIError;
 };
-
-function finalizeUriForProvider(provider: OAuthProvider): string {
-  return config.getClientFacingUrl() + `/oauth/${provider}/finalize`;
-}
 
 // DO NOT USE THIS DIRECTLY, USE getProviderStrategy instead.
 const _PROVIDER_STRATEGIES: Record<OAuthProvider, BaseOAuthStrategyProvider> = {
@@ -97,20 +95,24 @@ export async function createConnectionAndGetSetupUrl(
   const workspaceId = auth.getNonNullableWorkspace().sId;
   const userId = auth.getNonNullableUser().sId;
 
-  if (providerStrategy.getRelatedCredential) {
-    const result = await providerStrategy.getRelatedCredential!(
+  if (providerStrategy.updateConfigAndGetRelatedCredential) {
+    const result = await providerStrategy.updateConfigAndGetRelatedCredential!(
       auth,
-      extraConfig,
-      workspaceId,
-      userId,
-      useCase
+      {
+        extraConfig,
+        workspaceId,
+        userId,
+        useCase,
+      }
     );
     if (result) {
-      relatedCredential = result.credential;
-      extraConfig = result.cleanedConfig;
+      if (isUpdatedExtraConfigAndRelatedCredential(result)) {
+        relatedCredential = result.credential;
+      }
+      extraConfig = result.updatedConfig;
 
       if (
-        //TODO: add the same verification for other providers with a getRelatedCredential method.
+        //TODO: add the same verification for other providers with a updateConfigAndGetRelatedCredential method.
         providerStrategy.isExtraConfigValidPostRelatedCredential &&
         !providerStrategy.isExtraConfigValidPostRelatedCredential!(
           extraConfig,
@@ -221,6 +223,18 @@ export async function finalizeConnection(
       message: `Failed to finalize ${provider} connection: ${cRes.error.message}`,
       oAuthAPIError: cRes.error,
     });
+  }
+
+  if (providerStrategy.checkConnectionValidPostFinalize) {
+    const res = providerStrategy.checkConnectionValidPostFinalize(
+      cRes.value.connection
+    );
+    if (res.isErr()) {
+      return new Err({
+        code: "connection_finalization_failed",
+        message: res.error.message,
+      });
+    }
   }
 
   return new Ok(cRes.value.connection);

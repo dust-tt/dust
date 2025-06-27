@@ -1,7 +1,10 @@
 import type { ParsedUrlQuery } from "querystring";
 
 import config from "@app/lib/api/config";
-import type { BaseOAuthStrategyProvider } from "@app/lib/api/oauth/providers/base_oauth_stragegy_provider";
+import type {
+  BaseOAuthStrategyProvider,
+  UpdatedExtraConfigAndRelatedCredential,
+} from "@app/lib/api/oauth/providers/base_oauth_stragegy_provider";
 import {
   finalizeUriForProvider,
   getStringFromQuery,
@@ -70,19 +73,20 @@ export class SalesforceOAuthProvider implements BaseOAuthStrategyProvider {
     return isValidSalesforceDomain(extraConfig.instance_url);
   }
 
-  async getRelatedCredential(
+  async updateConfigAndGetRelatedCredential(
     auth: Authenticator,
-    extraConfig: ExtraConfigType,
-    workspaceId: string,
-    userId: string,
-    useCase: OAuthUseCase
-  ): Promise<{
-    credential: {
-      content: Record<string, string>;
-      metadata: { workspace_id: string; user_id: string };
-    };
-    cleanedConfig: ExtraConfigType;
-  } | null> {
+    {
+      extraConfig,
+      workspaceId,
+      userId,
+      useCase,
+    }: {
+      extraConfig: ExtraConfigType;
+      workspaceId: string;
+      userId: string;
+      useCase: OAuthUseCase;
+    }
+  ): Promise<UpdatedExtraConfigAndRelatedCredential | null> {
     if (useCase === "personal_actions") {
       // For personal actions we reuse the existing connection credential id from the existing
       // workspace connection (setup by admin) if we have it, otherwise we fallback to assuming
@@ -119,7 +123,7 @@ export class SalesforceOAuthProvider implements BaseOAuthStrategyProvider {
             },
             metadata: { workspace_id: workspaceId, user_id: userId },
           },
-          cleanedConfig: {
+          updatedConfig: {
             ...restConfig,
             client_id: connection.metadata.client_id,
             instance_url: connection.metadata.instance_url,
@@ -142,7 +146,7 @@ export class SalesforceOAuthProvider implements BaseOAuthStrategyProvider {
         },
         metadata: { workspace_id: workspaceId, user_id: userId },
       },
-      cleanedConfig: {
+      updatedConfig: {
         ...restConfig,
         code_verifier,
         code_challenge,

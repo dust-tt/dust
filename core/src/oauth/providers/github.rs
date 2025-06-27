@@ -171,6 +171,7 @@ impl Provider for GithubConnectionProvider {
             access_token_expiry: Some(expiry),
             refresh_token: None,
             raw_json,
+            extra_metadata: None,
         })
     }
 

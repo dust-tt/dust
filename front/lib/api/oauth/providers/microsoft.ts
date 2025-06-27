@@ -2,7 +2,10 @@ import type { ParsedUrlQuery } from "querystring";
 import querystring from "querystring";
 
 import config from "@app/lib/api/config";
-import type { BaseOAuthStrategyProvider } from "@app/lib/api/oauth/providers/base_oauth_stragegy_provider";
+import type {
+  BaseOAuthStrategyProvider,
+  UpdatedExtraConfigAndRelatedCredential,
+} from "@app/lib/api/oauth/providers/base_oauth_stragegy_provider";
 import {
   finalizeUriForProvider,
   getStringFromQuery,
@@ -66,12 +69,18 @@ export class MicrosoftOAuthProvider implements BaseOAuthStrategyProvider {
     );
   }
 
-  async getRelatedCredential(
+  async updateConfigAndGetRelatedCredential(
     auth: Authenticator,
-    extraConfig: ExtraConfigType,
-    workspaceId: string,
-    userId: string
-  ) {
+    {
+      extraConfig,
+      workspaceId,
+      userId,
+    }: {
+      extraConfig: ExtraConfigType;
+      workspaceId: string;
+      userId: string;
+    }
+  ): Promise<UpdatedExtraConfigAndRelatedCredential | null> {
     const { client_id, client_secret, ...restConfig } = extraConfig;
     if (!client_id || !client_secret) {
       return null;
@@ -84,7 +93,7 @@ export class MicrosoftOAuthProvider implements BaseOAuthStrategyProvider {
         },
         metadata: { workspace_id: workspaceId, user_id: userId },
       },
-      cleanedConfig: restConfig,
+      updatedConfig: restConfig,
     };
   }
 }

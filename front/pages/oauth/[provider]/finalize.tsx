@@ -47,21 +47,19 @@ export default function Finalize({
         const res = await doFinalize(provider, queryParams);
         // Send a message `connection_finalized` to the window that opened
         // this one, with either an error or the connection data.
-        if (!res.ok) {
+        if (res.isErr()) {
           window.opener.postMessage(
             {
               type: "connection_finalized",
-              error: "Failed to finalize connection",
+              error: res.error.message || "Failed to finalize connection",
             },
             window.location.origin
           );
         } else {
-          const data = await res.json();
-
           window.opener.postMessage(
             {
               type: "connection_finalized",
-              connection: data.connection,
+              connection: res.value,
             },
             window.location.origin
           );
