@@ -1,4 +1,5 @@
 import assert from "assert";
+import { sortBy } from "lodash";
 import type { Attributes, CreationAttributes, ModelStatic } from "sequelize";
 import { Op } from "sequelize";
 
@@ -17,7 +18,6 @@ import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { AppType, LightWorkspaceType, Result } from "@app/types";
 import type { SpecificationType } from "@app/types";
 import { Err, Ok } from "@app/types";
-import { sortBy } from "lodash";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.

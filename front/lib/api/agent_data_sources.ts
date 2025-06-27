@@ -1,4 +1,4 @@
-import { sortBy, uniq, uniqBy } from "lodash";
+import { sortBy, uniqBy } from "lodash";
 import type { WhereAttributeHashValue } from "sequelize";
 import { Op, Sequelize } from "sequelize";
 
