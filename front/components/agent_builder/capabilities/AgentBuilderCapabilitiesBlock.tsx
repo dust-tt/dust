@@ -166,7 +166,7 @@ export function AgentBuilderCapabilitiesBlock() {
             {fields.length > 0 && (
               <>
                 <AddKnowledgeDropdown />
-                <AddToolsDropdown fields={fields} addTools={append} />
+                <AddToolsDropdown tools={fields} addTools={append} />
               </>
             )}
             <MaxStepsPerRunSettings />
@@ -180,7 +180,7 @@ export function AgentBuilderCapabilitiesBlock() {
             action={
               <div className="flex items-center gap-2">
                 <AddKnowledgeDropdown />
-                <AddToolsDropdown fields={fields} addTools={append} />
+                <AddToolsDropdown tools={fields} addTools={append} />
               </div>
             }
           />

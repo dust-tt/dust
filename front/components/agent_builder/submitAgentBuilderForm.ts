@@ -46,31 +46,6 @@ export async function submitAgentBuilderForm({
         if (action.type === "DATA_VISUALIZATION") {
           return [];
         }
-
-        // Handle MCP server configurations
-        if (
-          action.type === "MCP" ||
-          action.type === "mcp_server_configuration"
-        ) {
-          return [
-            {
-              type: "mcp_server_configuration" as const,
-              mcpServerViewId: action.id,
-              name: action.name,
-              description: action.description,
-              dataSources: action.configuration.dataSources || null,
-              tables: action.configuration.tables || null,
-              childAgentId: action.configuration.childAgentId || null,
-              reasoningModel: action.configuration.reasoningModel || null,
-              timeFrame: action.configuration.timeFrame || null,
-              jsonSchema: action.configuration.jsonSchema || null,
-              additionalConfiguration:
-                action.configuration.additionalConfiguration || {},
-              dustAppConfiguration:
-                action.configuration.dustAppConfiguration || null,
-            },
-          ];
-        }
         return [];
       }),
       maxStepsPerRun: formData.maxStepsPerRun,
