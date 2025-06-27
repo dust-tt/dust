@@ -108,64 +108,67 @@ export function ChangeMemberModal({
                   </Page.P>
                 </div>
 
-                <div className="flex flex-none flex-col gap-2">
-                  <div className="flex-none">
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <Button
-                          variant="warning"
-                          label="Revoke member access"
-                          size="sm"
-                        />
-                      </DialogTrigger>
-                      <DialogContent>
-                        <DialogHeader>
-                          <DialogTitle>Confirm deletion</DialogTitle>
-                        </DialogHeader>
-                        {isSaving ? (
-                          <div className="flex justify-center py-8">
-                            <Spinner variant="dark" size="md" />
-                          </div>
-                        ) : (
-                          <>
-                            <DialogContainer>
-                              <div>
-                                Revoke access for user{" "}
-                                <span className="font-bold">
-                                  {member.fullName}
-                                </span>
-                                ?
-                              </div>
-                            </DialogContainer>
-                            <DialogFooter
-                              leftButtonProps={{
-                                label: "Cancel",
-                                variant: "outline",
-                              }}
-                              rightButtonProps={{
-                                label: "Yes, revoke",
-                                variant: "warning",
-                                onClick: async () => {
-                                  await handleMembersRoleChange({
-                                    members: [member],
-                                    role: "none",
-                                    sendNotification,
-                                  });
-                                  await mutateMembers();
-                                  onClose();
-                                },
-                              }}
-                            />
-                          </>
-                        )}
-                      </DialogContent>
-                    </Dialog>
+                {member.origin !== "provisioned" && (
+                  <div className="flex flex-none flex-col gap-2">
+                    <div className="flex-none">
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button
+                            variant="warning"
+                            label="Revoke member access"
+                            size="sm"
+                          />
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>Confirm deletion</DialogTitle>
+                          </DialogHeader>
+                          {isSaving ? (
+                            <div className="flex justify-center py-8">
+                              <Spinner variant="dark" size="md" />
+                            </div>
+                          ) : (
+                            <>
+                              <DialogContainer>
+                                <div>
+                                  Revoke access for user{" "}
+                                  <span className="font-bold">
+                                    {member.fullName}
+                                  </span>
+                                  ?
+                                </div>
+                              </DialogContainer>
+                              <DialogFooter
+                                leftButtonProps={{
+                                  label: "Cancel",
+                                  variant: "outline",
+                                }}
+                                rightButtonProps={{
+                                  label: "Yes, revoke",
+                                  variant: "warning",
+                                  onClick: async () => {
+                                    await handleMembersRoleChange({
+                                      members: [member],
+                                      role: "none",
+                                      sendNotification,
+                                    });
+                                    await mutateMembers();
+                                    onClose();
+                                  },
+                                }}
+                              />
+                            </>
+                          )}
+                        </DialogContent>
+                      </Dialog>
+                    </div>
+                    <Page.P>
+                      Deleting a member will remove them from the workspace.
+                      They will be able to rejoin if they have an invitation
+                      link.
+                    </Page.P>
                   </div>
-                  <Page.P>
-                    Deleting a member will remove them from the workspace. They
-                    will be able to rejoin if they have an invitation link.
-                  </Page.P>
-                </div>
+                )}
               </div>
             </SheetContainer>
             <SheetFooter
