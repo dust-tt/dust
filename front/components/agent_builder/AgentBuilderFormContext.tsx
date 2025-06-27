@@ -3,16 +3,21 @@ import type { UseFormReturn } from "react-hook-form";
 import { FormProvider } from "react-hook-form";
 import { z } from "zod";
 
-import { MODEL_IDS, MODEL_PROVIDER_IDS } from "@app/types/assistant/assistant";
 import { EXTENDED_MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types";
+import {
+  MODEL_IDS,
+  MODEL_PROVIDER_IDS,
+  REASONING_EFFORT_IDS,
+} from "@app/types/assistant/assistant";
 
 const modelIdSchema = z.enum(MODEL_IDS);
 const providerIdSchema = z.enum(MODEL_PROVIDER_IDS);
+const reasoningEffortSchema = z.enum(REASONING_EFFORT_IDS).optional();
 
 const supportedModelSchema = z.object({
   modelId: modelIdSchema,
   providerId: providerIdSchema,
-  reasoningEffort: z.string().optional(),
+  reasoningEffort: reasoningEffortSchema,
 });
 
 export const generationSettingsSchema = z.object({

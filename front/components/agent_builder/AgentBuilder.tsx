@@ -2,6 +2,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 
+import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import {
   AgentBuilderFormProvider,
@@ -11,7 +12,6 @@ import { AgentBuilderLayout } from "@app/components/agent_builder/AgentBuilderLa
 import { AgentBuilderLeftPanel } from "@app/components/agent_builder/AgentBuilderLeftPanel";
 import { AgentBuilderRightPanel } from "@app/components/agent_builder/AgentBuilderRightPanel";
 import { submitAgentBuilderForm } from "@app/components/agent_builder/submitAgentBuilderForm";
-import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { GPT_4O_MODEL_ID } from "@app/types";
 
 export default function AgentBuilder() {
@@ -63,7 +63,6 @@ export default function AgentBuilder() {
   };
 
   const handleSave = () => {
-    // Trigger form submission
     form.handleSubmit(handleSubmit)();
   };
 
