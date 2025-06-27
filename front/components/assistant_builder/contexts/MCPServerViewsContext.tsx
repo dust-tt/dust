@@ -37,17 +37,17 @@ interface MCPServerViewsProviderProps {
 
 export const MCPServerViewsProvider = memo(
   ({ owner, children }: MCPServerViewsProviderProps) => {
-    const { spaces } = useSpacesContext();
+    const { spaces, isSpacesLoading } = useSpacesContext();
 
     const {
       serverViews: mcpServerViews,
-      isLoading: isMCPServerViewsLoading,
+      isLoading,
       isError: isMCPServerViewsError,
     } = useMCPServerViewsFromSpaces(owner, spaces);
 
     const value: MCPServerViewsContextType = {
       mcpServerViews: mcpServerViews.sort(mcpServerViewSortingFn),
-      isMCPServerViewsLoading,
+      isMCPServerViewsLoading: isLoading || isSpacesLoading, // Spaces is required to fetch server views so we check isSpacesLoading too.
       isMCPServerViewsError,
     };
 
