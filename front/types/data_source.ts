@@ -64,7 +64,6 @@ export type DataSourceWithConnectorDetailsType = DataSourceType &
 
 export type DataSourceWithAgentsUsageType = {
   count: number;
-
   agents: Array<{ sId: string; name: string }>;
 };
 
