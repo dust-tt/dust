@@ -37,7 +37,7 @@ export const mediaConfig: IndustryPageConfig = {
       },
     },
     heroImage: {
-      src: "/static/landing/industry/Dust_Connectors.svg",
+      src: "/static/landing/industry/Dust_Connectors.webp",
       alt: "Media Companies AI-powered workflows illustration",
     },
   },
@@ -72,7 +72,7 @@ export const mediaConfig: IndustryPageConfig = {
     useCases: [
       {
         title: "Editorial & newsroom operations",
-        image: "/static/landing/industry/features/Radar_pressdigest.svg",
+        image: "/static/landing/industry/features/Radar_pressdigest.webp",
         bgColor: "bg-blue-100",
         features: [
           {
@@ -109,7 +109,7 @@ export const mediaConfig: IndustryPageConfig = {
       },
       {
         title: "Audience & engagement",
-        image: "/static/landing/industry/features/Social_post.svg",
+        image: "/static/landing/industry/features/Social_post.webp",
         bgColor: "bg-pink-100",
         features: [
           {
@@ -146,7 +146,7 @@ export const mediaConfig: IndustryPageConfig = {
       },
       {
         title: "Strategic intelligence",
-        image: "/static/landing/industry/features/Radar_AIDigest.svg",
+        image: "/static/landing/industry/features/Radar_AIDigest.webp",
         bgColor: "bg-gray-900",
         features: [
           {
@@ -178,7 +178,7 @@ export const mediaConfig: IndustryPageConfig = {
       {
         title: "Legal & business affairs",
         image:
-          "/static/landing/industry/features/Compliance_verification_2.svg",
+          "/static/landing/industry/features/Compliance_verification_2.webp",
         bgColor: "bg-yellow-100",
         features: [
           {

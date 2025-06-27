@@ -37,7 +37,7 @@ export const investmentConfig: IndustryPageConfig = {
       },
     },
     heroImage: {
-      src: "/static/landing/industry/Dust_Connectors.svg",
+      src: "/static/landing/industry/Dust_Connectors.webp",
       alt: "Investment Firms AI-powered workflows illustration",
     },
   },
@@ -72,7 +72,7 @@ export const investmentConfig: IndustryPageConfig = {
     useCases: [
       {
         title: "Target Identification & Research",
-        image: "/static/landing/industry/features/Search_assistant.svg",
+        image: "/static/landing/industry/features/Search_assistant.webp",
         bgColor: "bg-pink-100",
         features: [
           {
@@ -103,7 +103,7 @@ export const investmentConfig: IndustryPageConfig = {
       },
       {
         title: "Due Diligence",
-        image: "/static/landing/industry/features/Doc_analysis.svg",
+        image: "/static/landing/industry/features/Doc_analysis.webp",
         bgColor: "bg-yellow-100",
         features: [
           {
@@ -128,14 +128,13 @@ export const investmentConfig: IndustryPageConfig = {
       },
       {
         title: "Portfolio Support",
-        image: "/static/landing/industry/features/Radar_partner.svg",
+        image: "/static/landing/industry/features/Radar_partner.webp",
         bgColor: "bg-gray-100",
         features: [
           {
             icon: "bg-gray-600",
             title: "Board Preparation",
-            description:
-              "Prepare materials and briefings for board meetings.",
+            description: "Prepare materials and briefings for board meetings.",
           },
           {
             icon: "bg-blue-500 rounded-tl-full",
@@ -159,14 +158,13 @@ export const investmentConfig: IndustryPageConfig = {
       },
       {
         title: "Reporting & Content",
-        image: "/static/landing/industry/features/Document_generation.svg",
+        image: "/static/landing/industry/features/Document_generation.webp",
         bgColor: "bg-orange-100",
         features: [
           {
             icon: "bg-orange-500",
             title: "LP Communications",
-            description:
-              "Generate reports for Limited Partners.",
+            description: "Generate reports for Limited Partners.",
           },
           {
             icon: "bg-blue-500 rounded-tl-full",

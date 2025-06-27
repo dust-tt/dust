@@ -100,10 +100,6 @@ const IndustriesMenuConfig: MenuConfig = {
       href: "/home/industry/b2b-saas",
     },
     {
-      title: "Energy & Utilities",
-      href: "/home/industry/energy-utilities",
-    },
-    {
       title: "Financial Services",
       href: "/home/industry/financial-services",
     },
@@ -112,21 +108,8 @@ const IndustriesMenuConfig: MenuConfig = {
       href: "/home/industry/insurance",
     },
     {
-      title: "Investment Firms",
-      href: "/home/industry/investment-firms",
-    },
-    {
-      title: "",
-      href: "",
-    },
-
-    {
       title: "Marketplace",
       href: "/home/industry/marketplace",
-    },
-    {
-      title: "Media Companies",
-      href: "/home/industry/media",
     },
     {
       title: "Retail & E-commerce",
@@ -192,9 +175,6 @@ const SolutionsMenuConfig: MenuConfig = {
     IndustriesMenuConfig.items[2],
     IndustriesMenuConfig.items[3],
     IndustriesMenuConfig.items[4],
-    IndustriesMenuConfig.items[5],
-    IndustriesMenuConfig.items[6],
-    IndustriesMenuConfig.items[7],
   ],
 };
 
