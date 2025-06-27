@@ -31,7 +31,7 @@ gcloud run deploy slack-webhook-router \
   --region us-central1 \
   --project "$GCP_GLOBAL_PROJECT_ID" \
   --allow-unauthenticated \
-  --min-instances 1 \
+  --min 1 \
   --startup-probe httpGet.path=/ready,initialDelaySeconds=0,failureThreshold=3,timeoutSeconds=4,periodSeconds=10 \
   --liveness-probe httpGet.path=/health,initialDelaySeconds=30,failureThreshold=3,timeoutSeconds=4,periodSeconds=30
 
