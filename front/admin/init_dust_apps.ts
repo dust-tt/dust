@@ -70,6 +70,7 @@ async function main() {
             user: new UserResource(UserModel, user.get()),
             workspace: lightWorkspace,
             role: "admin",
+            origin: "invited",
           }),
         { concurrency: 5 }
       );
