@@ -24,6 +24,7 @@ import {
 import { renderConversationForModel } from "@app/lib/api/assistant/preprocessing";
 import config from "@app/lib/api/config";
 import { getDatasetSchema } from "@app/lib/api/datasets";
+import { getDustAppRunResultsFileAttachment } from "@app/lib/api/files/attachments";
 import type { Authenticator } from "@app/lib/auth";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import { extractConfig } from "@app/lib/config";
@@ -888,36 +889,6 @@ export async function dustAppRunTypesFromAgentMessageIds(
       type: "dust_app_run_action",
     });
   });
-}
-
-export function getDustAppRunResultsFileAttachment({
-  resultsFileId,
-  resultsFileSnippet,
-  resultsFileContentType,
-  includeSnippet = true,
-  appName,
-}: {
-  resultsFileId: string | null;
-  resultsFileSnippet: string | null;
-  resultsFileContentType: SupportedFileContentType;
-  includeSnippet: boolean;
-  appName: string;
-}): string | null {
-  if (!resultsFileId || !resultsFileSnippet) {
-    return null;
-  }
-
-  const attachment =
-    `<file ` +
-    `id="${resultsFileId}" type="${resultsFileContentType}" title=${getDustAppRunResultsFileTitle(
-      { appName, resultsFileContentType }
-    )}`;
-
-  if (!includeSnippet) {
-    return `${attachment} />`;
-  }
-
-  return `${attachment}>\n${resultsFileSnippet}\n</file>`;
 }
 
 function containsValidJsonOutput(output: unknown): output is {

@@ -4,7 +4,6 @@ import {
   DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME,
   DEFAULT_CONVERSATION_SEARCH_ACTION_NAME,
 } from "@app/lib/actions/constants";
-import { conversationAttachmentId } from "@app/lib/actions/conversation/list_files";
 import type { ExtractActionBlob } from "@app/lib/actions/types";
 import type { BaseActionRunParams } from "@app/lib/actions/types";
 import { BaseAction } from "@app/lib/actions/types";
@@ -13,6 +12,7 @@ import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { dustAppRunInputsToInputSchema } from "@app/lib/actions/types/agent";
 import { listFiles } from "@app/lib/api/assistant/jit_utils";
 import config from "@app/lib/api/config";
+import { conversationAttachmentId } from "@app/lib/api/files/attachments";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConversationIncludeFileAction } from "@app/lib/models/assistant/actions/conversation/include_file";
@@ -144,7 +144,7 @@ export class ConversationIncludeFileActionType extends BaseAction {
         }
 
         const r = await renderFromAttachmentId(auth, {
-          contentType: f.contentType,
+          file: f,
           excludeImages: false,
           conversationAttachmentId: conversationAttachmentId(f),
           model,

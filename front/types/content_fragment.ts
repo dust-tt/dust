@@ -7,7 +7,10 @@ import type {
 } from "./assistant/conversation";
 import type { ContentNodeType } from "./core/content_node";
 import type { DataSourceViewContentNode } from "./data_source_view";
-import type { SupportedFileContentType } from "./files";
+import type {
+  SupportedFileContentType,
+  SupportedImageContentType,
+} from "./files";
 import type { ModelId } from "./shared/model_id";
 
 export type ContentFragmentExpiredReason = "data_source_deleted";
@@ -37,11 +40,6 @@ export type ContentFragmentNodeData = {
 export type ContentFragmentType = {
   id: ModelId;
   sId: string;
-  fileId: string | null;
-  nodeId: string | null;
-  nodeDataSourceViewId: string | null;
-  nodeType: ContentNodeType | null;
-  snippet: string | null;
   generatedTables: string[];
   created: number;
   type: "content_fragment";
@@ -52,12 +50,40 @@ export type ContentFragmentType = {
   textBytes: number | null;
   title: string;
   contentType: SupportedContentFragmentType;
+
   context: ContentFragmentContextType;
   contentFragmentId: string;
   contentFragmentVersion: ContentFragmentVersion;
-  contentNodeData: ContentFragmentNodeData | null;
   expiredReason: ContentFragmentExpiredReason | null;
-};
+} & (
+  | {
+      kind: "file";
+      fileId: string;
+      nodeId: null;
+      nodeDataSourceViewId: null;
+      nodeType: null;
+      contentNodeData: null;
+      snippet: string | null;
+    }
+  | {
+      kind: "content_node";
+      nodeId: string;
+      nodeDataSourceViewId: string;
+      nodeType: ContentNodeType;
+      contentNodeData: ContentFragmentNodeData | null;
+      fileId: null;
+      snippet: null;
+    }
+  | {
+      kind: "image";
+      fileId: null;
+      nodeId: null;
+      nodeDataSourceViewId: null;
+      nodeType: null;
+      contentNodeData: null;
+      snippet: null;
+    }
+);
 
 export type UploadedContentFragment = {
   fileId: string;

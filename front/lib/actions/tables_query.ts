@@ -20,6 +20,7 @@ import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { dustAppRunInputsToInputSchema } from "@app/lib/actions/types/agent";
 import { renderConversationForModel } from "@app/lib/api/assistant/preprocessing";
 import type { CSVRecord } from "@app/lib/api/csv";
+import { getTablesQueryResultsFileAttachments } from "@app/lib/api/files/attachments";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentTablesQueryAction } from "@app/lib/models/assistant/actions/tables_query";
@@ -58,37 +59,6 @@ export type TableDataSourceConfiguration = {
   dataSourceViewId: string;
   tableId: string;
 };
-
-function getTablesQueryResultsFileAttachments({
-  resultsFileId,
-  resultsFileSnippet,
-  sectionFileId,
-  output,
-}: {
-  resultsFileId: string | null;
-  resultsFileSnippet: string | null;
-  sectionFileId: string | null;
-  output: Record<string, unknown> | null;
-}): string | null {
-  if (!resultsFileId || !resultsFileSnippet) {
-    return null;
-  }
-
-  const fileTitle = getTablesQueryResultsFileTitle({ output });
-
-  const resultsFileAttachment =
-    `<file ` +
-    `id="${resultsFileId}" type="text/csv" title="${fileTitle}">\n${resultsFileSnippet}\n</file>`;
-
-  let sectionFileAttachment = "";
-  if (sectionFileId) {
-    sectionFileAttachment =
-      `\n<file ` +
-      `id="${sectionFileId}" type="application/vnd.dust.section.json" title="${fileTitle} (Results optimized for search)" />`;
-  }
-
-  return `${resultsFileAttachment}${sectionFileAttachment}`;
-}
 
 /**
  * TablesQuey Events

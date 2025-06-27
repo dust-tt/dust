@@ -6,16 +6,7 @@ import {
   DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_DATA_DESCRIPTION,
   DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME,
 } from "@app/lib/actions/constants";
-import type {
-  ConversationAttachmentType,
-  ConversationContentNodeType,
-} from "@app/lib/actions/conversation/list_files";
-import {
-  isContentFragmentDataSourceNode,
-  isConversationContentNodeType,
-  isConversationFileType,
-  makeConversationListFilesAction,
-} from "@app/lib/actions/conversation/list_files";
+import { makeConversationListFilesAction } from "@app/lib/actions/conversation/list_files";
 import type {
   MCPServerConfigurationType,
   ServerSideMCPServerConfigurationType,
@@ -28,6 +19,15 @@ import {
   listFiles,
 } from "@app/lib/api/assistant/jit_utils";
 import config from "@app/lib/api/config";
+import type {
+  ConversationAttachmentType,
+  ConversationContentNodeType,
+} from "@app/lib/api/files/attachments";
+import {
+  isContentFragmentDataSourceNode,
+  isConversationContentNodeType,
+  isConversationFileType,
+} from "@app/lib/api/files/attachments";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
